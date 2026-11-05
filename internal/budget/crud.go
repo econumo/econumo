@@ -178,9 +178,7 @@ func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req model.Reset
 		if cerr := s.comments.DeleteCommentsByBudget(txCtx, budgetID); cerr != nil {
 			return cerr
 		}
-		// Like create-budget: the budget begins with the period holding the date.
-		d := b.budget.PeriodStartDay
-		b.budget.StartFrom(model.StartForPeriod(model.PeriodOf(startedAt, d), d), now)
+		b.budget.StartFrom(startedAt, now)
 		return s.budgets.Save(txCtx, b.budget)
 	})
 	if err != nil {

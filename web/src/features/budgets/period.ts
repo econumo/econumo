@@ -48,8 +48,8 @@ export function currentPeriod(startDay: number, now: Date = new Date()): string 
   return periodOf(isoDay(now), startDay)
 }
 
-/** the current period, but never one before the budget's start: the server
- *  refuses a month before it for an end month or a copy's start */
+/** the month a budget opens on: the current period, or the budget's first month
+ *  while it has not started yet (the server refuses a month before it) */
 export function budgetCurrentPeriod(
   meta: Pick<BudgetMetaDto, 'periodStartDay' | 'startedAt'>,
   now: Date = new Date(),

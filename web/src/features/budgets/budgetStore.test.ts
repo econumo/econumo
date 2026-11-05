@@ -53,6 +53,14 @@ describe('the default period follows the budget', () => {
     expect(track).not.toHaveBeenCalled()
   })
 
+  it('a budget that has not started yet opens on its first month', () => {
+    // key October switched to day 28 on 5 October: today is in September's period
+    useBudgetPeriodStore.getState().followCurrentPeriod('b1', 28, '2026-10-01 00:00:00')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')
+    useBudgetPeriodStore.getState().followCurrentPeriod('b2', 28, '2026-01-01 00:00:00')
+    expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01')
+  })
+
   it('a calendar-month budget stays on October', () => {
     useBudgetPeriodStore.getState().followCurrentPeriod('b1', 1)
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')

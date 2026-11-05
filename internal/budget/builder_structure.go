@@ -161,7 +161,6 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 	first := b.budget.FirstPeriod()
 	var offset time.Duration
 	if f.startDay == model.MinPeriodStartDay {
-		first = model.FirstOfMonth(b.budget.StartedAt)
 		offset = b.budget.StartedAt.Sub(first)
 	}
 	for key := first; key.Before(f.periodKey); key = key.AddDate(0, 1, 0) {
@@ -226,8 +225,8 @@ func convItem(a amountSpent, to vo.Id) model.ConvertItem {
 }
 
 // carryOverStart is the lower bound of the plans summed into budgetedBefore:
-// the raw start date on day 1 (unchanged for legacy mid-month starts), the
-// first period's key otherwise.
+// the stored start on day 1 (unchanged for legacy mid-month starts), the first
+// period's key otherwise.
 func carryOverStart(b *budgetAggregate, startDay int) time.Time {
 	if startDay == model.MinPeriodStartDay {
 		return b.budget.StartedAt

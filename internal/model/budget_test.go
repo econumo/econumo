@@ -502,41 +502,28 @@ func TestSetPeriodStartDay(t *testing.T) {
 	}
 }
 
-func TestFirstPeriod(t *testing.T) {
-	day := func(m time.Month, d int) time.Time { return time.Date(2026, m, d, 0, 0, 0, 0, time.UTC) }
-	cases := []struct {
-		started  time.Time
-		startDay int
-		want     time.Time
-	}{
-		{day(10, 1), 1, day(10, 1)},
-		{day(10, 15), 1, day(10, 1)},
-		{day(10, 1), 28, day(9, 1)},
-		{day(10, 1), 2, day(9, 1)},
-		{day(10, 28), 28, day(10, 1)},
-		{day(10, 1), 0, day(10, 1)},
+// The first period is started_at's key whatever the day, and changing the day
+// leaves it, the end month and their check alone.
+func TestFirstPeriodIgnoresTheDay(t *testing.T) {
+	oct := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	b := NewBudget(vo.NewId(), vo.NewId(), "B", vo.NewId(), oct, t0)
+	end := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	if err := b.EndAt(&end, t1); err != nil {
+		t.Fatal(err)
 	}
-	for _, c := range cases {
-		b := NewBudget(vo.NewId(), vo.NewId(), "B", vo.NewId(), day(1, 1), t0)
-		b.StartedAt, b.PeriodStartDay = c.started, c.startDay
-		if got := b.FirstPeriod(); !got.Equal(c.want) {
-			t.Errorf("started %s day %d: first period %s, want %s", c.started, c.startDay, got, c.want)
+	for _, d := range []int{28, 5, 1, 16} {
+		if err := b.SetPeriodStartDay(d, t1); err != nil {
+			t.Fatal(err)
+		}
+		if !b.FirstPeriod().Equal(oct) || !b.StartedAt.Equal(oct) || !b.EndedAt.Equal(end) {
+			t.Fatalf("day %d: first %s started %s end %s, want all %s", d, b.FirstPeriod(), b.StartedAt, *b.EndedAt, oct)
+		}
+		if err := b.EndAt(&end, t1); err != nil {
+			t.Fatalf("day %d: the end month stopped being valid: %v", d, err)
 		}
 	}
-}
-
-func TestStartForPeriod(t *testing.T) {
-	for d := MinPeriodStartDay; d <= MaxPeriodStartDay; d++ {
-		for m := time.January; m <= time.December; m++ {
-			key := time.Date(2026, m, 1, 0, 0, 0, 0, time.UTC)
-			start := StartForPeriod(key, d)
-			if start.Day() != 1 {
-				t.Fatalf("day %d key %s: start %s is not a first of month", d, key, start)
-			}
-			b := &Budget{StartedAt: start, PeriodStartDay: d}
-			if got := b.FirstPeriod(); !got.Equal(key) {
-				t.Fatalf("day %d key %s: start %s begins with %s", d, key, start, got)
-			}
-		}
+	legacy := &Budget{StartedAt: time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC), PeriodStartDay: 28}
+	if got := legacy.FirstPeriod(); !got.Equal(time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Fatalf("legacy mid-month start: first period %s, want 2026-09-01", got)
 	}
 }

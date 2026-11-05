@@ -32,7 +32,7 @@ func (s *Service) GetBudgetPlan(ctx context.Context, userID vo.Id, req model.Get
 	if err != nil {
 		return nil, err
 	}
-	from, err := parsePeriodDate(req.From, currentPeriod(s.clock.Now(), reqctx.Location(ctx), b.budget.PeriodStartDay))
+	from, err := parsePeriodDate(req.From, openingPeriod(b.budget, currentPeriod(s.clock.Now(), reqctx.Location(ctx), b.budget.PeriodStartDay)))
 	if err != nil {
 		return nil, err
 	}

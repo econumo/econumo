@@ -21,7 +21,7 @@ type emptyInput struct{}
 type createBudgetInput struct {
 	Name           string   `json:"name" jsonschema:"budget name"`
 	CurrencyID     string   `json:"currency_id,omitempty" jsonschema:"currency id (UUID), from list_currencies; defaults to the user's currency"`
-	StartDate      string   `json:"start_date,omitempty" jsonschema:"YYYY-MM-DD; the budget begins with the budget month that holds this day (with period_start_day 28, 2026-10-20 begins with the month named September, 28 Sep - 27 Oct); defaults to today"`
+	StartDate      string   `json:"start_date,omitempty" jsonschema:"YYYY-MM-DD; names the budget month it falls in (the day is ignored); defaults to the current month"`
 	AccountIDs     []string `json:"account_ids" jsonschema:"account ids (UUIDs) to track in the budget, at least one; from list_accounts"`
 	PeriodStartDay int      `json:"period_start_day,omitempty" jsonschema:"day of the month (1-28) a budget month starts on; default 1"`
 }

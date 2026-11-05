@@ -138,7 +138,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const followCurrentPeriod = useBudgetPeriodStore((s) => s.followCurrentPeriod)
   useEffect(() => {
     if (budgetId && periodMeta) {
-      followCurrentPeriod(budgetId, periodStartDayOf(periodMeta))
+      followCurrentPeriod(budgetId, periodStartDayOf(periodMeta), periodMeta.startedAt)
     }
   }, [budgetId, periodMeta, followCurrentPeriod])
   // the month view's income, Balance and Total savings (phone and desktop alike): the

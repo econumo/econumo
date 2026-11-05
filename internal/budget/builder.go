@@ -291,8 +291,9 @@ func metaStartedAt(b *model.Budget) time.Time {
 	return b.FirstPeriod()
 }
 
-// openingPeriod is the period a fresh budget's response is built for: the
-// caller's current period, or the first period when the budget starts later.
+// openingPeriod is the period a budget opens on: the caller's current period,
+// or the first period when the budget has not started yet (an explicit future
+// start, or a later day making today fall before the first window).
 func openingPeriod(b *model.Budget, current time.Time) time.Time {
 	if first := b.FirstPeriod(); current.Before(first) {
 		return first

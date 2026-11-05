@@ -59,7 +59,7 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 		if key.Before(first) || key.After(last) {
 			return nil, model.ValidateBlank(map[string]string{"startDate": ""})
 		}
-		startDate = model.StartForPeriod(key, src.budget.PeriodStartDay)
+		startDate = key
 	}
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {

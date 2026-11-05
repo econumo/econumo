@@ -43,7 +43,7 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudg
 		return nil, err
 	}
 	now := s.clock.Now()
-	key, err := parsePeriodDate(req.Date, currentPeriod(now, reqctx.Location(ctx), b.budget.PeriodStartDay))
+	key, err := parsePeriodDate(req.Date, openingPeriod(b.budget, currentPeriod(now, reqctx.Location(ctx), b.budget.PeriodStartDay)))
 	if err != nil {
 		return nil, err
 	}

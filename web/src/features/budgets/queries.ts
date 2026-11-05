@@ -18,7 +18,7 @@ import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { followsCurrentPeriod, useBudgetPeriodStore } from './budgetStore'
 import { addMonths, monthDiff } from './planMath'
-import { currentPeriod, periodStartDayOf } from './period'
+import { budgetCurrentPeriod, currentPeriod, periodStartDayOf } from './period'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -120,7 +120,7 @@ export function useDefaultPeriodSettled(budgetId: Id | null): boolean {
     return false
   }
   const meta = budgets?.find((b) => b.id === budgetId)
-  return !meta || currentPeriod(periodStartDayOf(meta)) === selectedDate
+  return !meta || budgetCurrentPeriod(meta) === selectedDate
 }
 
 export function useBudget() {

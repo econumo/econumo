@@ -27,8 +27,8 @@ type Budget struct {
 	UserID     vo.Id
 	Name       string
 	CurrencyID vo.Id
-	// StartedAt is the start date, the first of a month for every budget written
-	// by NewBudget/StartFrom; FirstPeriod derives the first period from it.
+	// StartedAt is the first period's key, the first of a month for every budget
+	// written by NewBudget/StartFrom (legacy rows may carry a mid-month time).
 	StartedAt time.Time
 	// EndedAt is the last month the budget covers (inclusive, first-of-month);
 	// nil is open-ended.
@@ -70,21 +70,11 @@ func (b *Budget) SetPeriodStartDay(d int, now time.Time) error {
 	return nil
 }
 
-// FirstPeriod is the key of the budget's first period: the period that holds
-// its start date under the current day. Day 1 gives FirstOfMonth(StartedAt);
-// day 28 on a budget started on 1 October gives September (28 Sep - 27 Oct).
-// Derived, never stored, so changing the day and changing it back restores the
-// budget exactly.
+// FirstPeriod is the key of the budget's first period. started_at holds that
+// key whatever the period start day, so changing the day never moves the
+// budget's first or last period, its plans or its comments.
 func (b *Budget) FirstPeriod() time.Time {
-	return PeriodOf(b.StartedAt, b.PeriodStartDay)
-}
-
-// StartForPeriod is the first-of-month start date whose period under startDay
-// is key, so a budget meant to begin with key gets FirstPeriod() == key: key
-// itself on day 1, else the next month's 1st (it lies inside key's window).
-func StartForPeriod(key time.Time, startDay int) time.Time {
-	_, end := PeriodWindow(key, startDay)
-	return FirstOfMonth(end.AddDate(0, 0, -1))
+	return FirstOfMonth(b.StartedAt)
 }
 
 // InvalidPeriodStartDayError is the coded field error for a start day outside

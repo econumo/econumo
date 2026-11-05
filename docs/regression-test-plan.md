@@ -1598,18 +1598,17 @@ and on tablet/phone only with a hardware keyboard.
       date range appears, spent/actuals re-split at the 28th). Changing back
       to day 1 restores the original figures exactly.
 - [ ] **Shifted budget — changing the day near the start**: create a budget
-      on day 1 in the current month (e.g. on 20 Oct, starting "October"),
-      then change it to day 28. The budget now begins with "September"
-      (28 Sep - 27 Oct, the period holding its start date, which is also the
-      current period): the strip and Plan grid show September as the first
-      month, it opens by default and is not greyed out, a plan and a comment
-      can be saved on it, and spending from 1-27 Oct counts in September.
-      Completing the budget defaults the last month to September, and
-      "Continue in a copy" / Duplicate with "Start from this month" succeed
-      (the copy begins with September). Changing back to day 1 restores
-      every figure exactly (October first again); switching back and forth
-      never adds further months. A new day-28 budget created on 30 Oct
-      begins with "October" and carries nothing from September. A shared
+      on day 1 in the current month (e.g. on 5 Oct, starting "October"), then
+      change it to day 28. The budget still starts with "October" (now 28 Oct
+      - 27 Nov) and has not started yet: the page opens on October (not on
+      September, never greyed out), the strip and Plan grid start at October,
+      a plan and a comment can be saved on it, and 1-27 Oct spending belongs
+      to no month. Completing it defaults the last month to October, and
+      "Continue in a copy" / Duplicate (with and without "Start from this
+      month") succeed and copy October's plans and comments. An end month set
+      before the change stays valid. Changing back to day 1 restores every
+      figure exactly. A day-28 budget created on 30 Oct and switched to day 1
+      keeps October as its first month with its plans counted. A shared
       budget's `user`-role participant sees the day picker disabled, and a
       forced request changing the day is refused (403); an admin can change
       it.

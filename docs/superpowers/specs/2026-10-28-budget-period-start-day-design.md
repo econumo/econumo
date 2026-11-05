@@ -78,15 +78,12 @@ Bounds are day boundaries on the stored `spent_at` wall clock, exactly like toda
 bounds.
 
 **Dates in requests name a key** (builder-check call): every request date that picks a
-period — `get-budget` `date`, `clone-budget` `startDate`, `update-budget` `endDate`, the MCP
-`month`/`end_date` and `clone_budget` `start_date` — keeps snapping to the first of its
+period — `get-budget` `date`, `create-budget`/`clone-budget` `startDate`, `update-budget`
+`endDate`, the MCP `month`/`start_date`/`end_date` — keeps snapping to the first of its
 month, and that month is the key. The day part is ignored, as today. ("The period
 containing this date" was rejected: for `d = 5` the SPA's `2026-10-01` for "October" would
 then resolve to September.) The MCP descriptions say the value names the budget month and
-the day is ignored. The one exception (review fix, 2026-11-04) is a budget's *start date*
-(`create-budget` `startDate`, MCP `create_budget` `start_date`, `reset-budget`
-`startedAt`, none of which the SPA sends): it is a date, and the budget begins with the
-period holding it (below).
+the day is ignored.
 
 **`filters.periodStart` / `filters.periodEnd` carry the real window** (builder-check call):
 in the `get-budget` response (REST and MCP) these two fields become the shifted date range
@@ -122,28 +119,27 @@ payment is counted in, and the MCP defaults.
   comments stay on their month keys and are simply read against the new date ranges. The
   update dialog just lets the user pick another day (user decision 2026-11-04; an earlier
   draft warned before saving).
-- **The first period is derived, never stored** (review fix, 2026-11-04). The budget's
-  first period is the period that holds its start date under the current day
-  (`Budget.FirstPeriod()` = `PeriodOf(started_at, d)`); `started_at` itself is never
-  rewritten by a day change. Day 1 gives the month of `started_at`, as before. A budget
-  started on 1 October set to day 28 begins with September (28 Sep – 27 Oct), so on
-  20 October its current period is inside it: plans, comments, the end month and a copy's
-  start are accepted there and 1–27 October count. Changing the day back restores the
-  budget exactly, and toggling never drifts. Every place the start acts as the first
-  period uses it: the set-limit / comment lower bound, the carry-over walk and
-  `budgetedBefore` lower bound, the account-removal window, `EndAt`'s end >= start check,
-  the clone bounds (the copy may start from the source's first period to the later of the
-  current period and that first period), and the meta `startedAt` on the wire, which
-  reports the first period's key so the SPA strip, Plan window and dialogs follow it. A
-  new budget's start is stored as the first of a month lying inside its intended first
-  period (`StartForPeriod`: the key itself on day 1, the next month's 1st otherwise), so
-  `create-budget` (default: today; explicit: the given date), `reset-budget` and a
-  `clone-budget` naming a key begin with exactly that period, and no earlier period's
-  spending is carried into a fresh budget. Create and clone responses are built for the
-  later of the current period and the first period. On day 1 a legacy mid-month
-  `started_at` keeps its old carry-over walk (offset windows) and meta value, so day-1
-  budgets stay byte-identical; on other days the walk runs over plain period windows from
-  the first period.
+- **Keys never move: `started_at` is the first period's key** (review fix, 2026-11-04, after
+  two rejected attempts to move or derive the start). A day change writes only the day:
+  the first key (`started_at`, `Budget.FirstPeriod()` = its first of month), the end key,
+  plans and comments stay put, so changing the day back restores the budget exactly and an
+  end month can never end up before the start. `create-budget` stores the current period's
+  key by default and an explicit `startDate`'s key; `clone-budget` works in keys throughout
+  (its limit and comment cutoffs are the copy's first key), from the source's first key to
+  the later of the caller's current period and that first key.
+- **A budget that has not started yet.** Today can fall before the first key's window: a day
+  change on a brand-new budget (key October, day 1 -> 28 on 5 October puts today in
+  September's period) or an explicit future start. This is treated exactly like a budget
+  that has not started: the server's default period for `get-budget` / `get-budget-plan`
+  (no date) and the create/clone responses open on the later of the current period and the
+  first key, the SPA's default-month adoption clamps up to the first key the same way
+  (`budgetCurrentPeriod`), so the page opens on the first month and never greys it out, and
+  the Complete/Duplicate dialogs never offer an earlier month. Plans and comments on the
+  first key work as always. Days before the first key's window (1–27 October in that
+  example) belong to no period, like any days before a budget's start.
+- On day 1 a legacy `started_at` with a time past the first of its month keeps its old
+  carry-over walk (windows shifted by that offset) and meta value, so day-1 budgets stay
+  byte-identical; on other days the walk runs over plain period windows from the first key.
 - **Changing the day is owner/admin only** (review fix, 2026-11-04): it reshapes every
   period for every participant, its first one included, so like sharing it needs the owner
   or an accepted admin (the SPA's `canConfigureBudget`); a `user`-role participant gets the

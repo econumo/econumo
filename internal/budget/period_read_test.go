@@ -422,40 +422,48 @@ func (h *periodHarness) mustSetDay(day int) string {
 	return meta.StartedAt
 }
 
-// A budget started with key October changed to day 28 on 20 October begins
-// with the period holding its start date, September (28 Sep - 27 Oct), which
-// is also the current period: plans and comments are accepted there and the
-// 5 October spending counts in it.
-func TestPeriodStartDayFirstPeriod(t *testing.T) {
-	h := newPeriodHarness(t, 1, time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC))
+func (h *periodHarness) setLimit(budgetID, period, amount string) {
+	h.t.Helper()
+	a := vo.NewFlexString(amount)
+	if _, err := h.svc.SetLimit(context.Background(), h.owner, model.SetLimitRequest{
+		BudgetId: budgetID, ElementId: h.category, Period: period, Amount: &a,
+	}); err != nil {
+		h.t.Fatalf("set-limit %s on %s: %v", amount, period, err)
+	}
+}
+
+func (h *periodHarness) comment(budgetID, period, text string) {
+	h.t.Helper()
+	if _, err := h.svc.CreateComment(context.Background(), h.owner, model.CreateCommentRequest{
+		Id: vo.NewId().String(), BudgetId: budgetID, ElementId: h.category, Period: period, Comment: text,
+	}); err != nil {
+		h.t.Fatalf("comment on %s: %v", period, err)
+	}
+}
+
+// A brand-new day-1 budget (key October, today 5 October) switched to day 28:
+// its first period stays October (28 Oct - 27 Nov) and today falls before it,
+// so the budget has not started yet. The default get-budget and plan open on
+// October, not on September, and October takes plans and comments.
+func TestPeriodStartDayNotStartedYet(t *testing.T) {
+	h := newPeriodHarness(t, 1, time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC))
 	h.exec(`UPDATE budgets SET started_at = ? WHERE id = ?`, "2026-10-01 00:00:00", h.budgetID)
-	h.spend("30", "2026-10-05 10:00:00")
 	ctx := context.Background()
 
-	if got := h.mustSetDay(28); got != "2026-09-01 00:00:00" {
-		t.Fatalf("startedAt = %s, want the first period 2026-09-01 00:00:00", got)
+	if got := h.mustSetDay(28); got != "2026-10-01 00:00:00" {
+		t.Fatalf("startedAt = %s, want the unchanged first key 2026-10-01", got)
 	}
-	res := h.get(ctx, h.owner, "")
-	sameWindow(t, res, "2026-09-28 00:00:00", "2026-10-28 00:00:00")
-	sameAmount(t, "september spent", h.categoryRow(res).Spent, "30")
-
-	amount := vo.NewFlexString("100")
-	if _, err := h.svc.SetLimit(ctx, h.owner, model.SetLimitRequest{
-		BudgetId: h.budgetID, ElementId: h.category, Period: "2026-09-01", Amount: &amount,
-	}); err != nil {
-		t.Fatalf("set-limit on the first period: %v", err)
+	sameWindow(t, h.get(ctx, h.owner, ""), "2026-10-28 00:00:00", "2026-11-28 00:00:00")
+	plan, err := h.svc.GetBudgetPlan(ctx, h.owner, model.GetBudgetPlanRequest{Id: h.budgetID, Months: "2"})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := h.svc.CreateComment(ctx, h.owner, model.CreateCommentRequest{
-		Id: vo.NewId().String(), BudgetId: h.budgetID, ElementId: h.category, Period: "2026-09-01", Comment: "rent",
-	}); err != nil {
-		t.Fatalf("comment on the first period: %v", err)
+	if len(plan.Item.Months) == 0 || plan.Item.Months[0] != "2026-10-01" {
+		t.Fatalf("plan months = %v, want to open on 2026-10-01", plan.Item.Months)
 	}
-	sameAmount(t, "september budgeted", h.categoryRow(h.get(ctx, h.owner, "2026-09-01")).Budgeted, "100")
-
-	// Nothing is stored for it: back on day 1 the budget begins with October again.
-	if got := h.mustSetDay(1); got != "2026-10-01 00:00:00" {
-		t.Fatalf("back to day 1: startedAt = %s, want 2026-10-01 00:00:00", got)
-	}
+	h.setLimit(h.budgetID, "2026-10-01", "100")
+	h.comment(h.budgetID, "2026-10-01", "first")
+	sameAmount(t, "october budgeted", h.categoryRow(h.get(ctx, h.owner, "2026-10-01")).Budgeted, "100")
 }
 
 // Changing the day and changing it back leaves every figure as it was.
@@ -464,6 +472,7 @@ func TestPeriodStartDayRoundTripRestores(t *testing.T) {
 	h.exec(`UPDATE budgets SET started_at = ? WHERE id = ?`, "2026-10-01 00:00:00", h.budgetID)
 	h.spend("30", "2026-10-05 10:00:00")
 	h.spend("7", "2026-09-29 10:00:00")
+	h.setLimit(h.budgetID, "2026-10-01", "40")
 	ctx := context.Background()
 	snapshot := func() string {
 		t.Helper()
@@ -487,92 +496,133 @@ func TestPeriodStartDayRoundTripRestores(t *testing.T) {
 	}
 }
 
-// create-budget on 20 October with start 2026-10-20 and day 28: the budget
-// begins with September, the current period, so 20 October counts and
-// plans and comments are accepted there.
-func TestCreateBudgetExplicitStartLateDay(t *testing.T) {
-	h := newPeriodHarness(t, 1, time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC))
-	h.spend("12", "2026-10-20 09:00:00")
+// A budget created on 30 October on day 28 (first key October) switched to
+// day 1 keeps October as its first key: its plans still count and no period
+// is refused.
+func TestPeriodStartDayKeepsTheFirstKey(t *testing.T) {
+	h := newPeriodHarness(t, 1, time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC))
 	ctx := context.Background()
-	id := vo.NewId().String()
 	res, err := h.svc.CreateBudget(ctx, h.owner, model.CreateBudgetRequest{
-		Id: id, Name: "Payday", CurrencyId: fixture.USD, AccountIds: []string{h.account},
+		Id: vo.NewId().String(), Name: "Payday", CurrencyId: fixture.USD, AccountIds: []string{h.account}, PeriodStartDay: 28,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.budgetID = res.Item.Meta.Id
+	h.setLimit(h.budgetID, "2026-10-01", "100")
+	if got := h.mustSetDay(1); got != "2026-10-01 00:00:00" {
+		t.Fatalf("startedAt = %s, want 2026-10-01", got)
+	}
+	sameAmount(t, "october budgeted", h.categoryRow(h.get(ctx, h.owner, "")).Budgeted, "100")
+	sameAmount(t, "november available (october's plan carried over)", h.categoryRow(h.get(ctx, h.owner, "2026-11-01")).Available, "100")
+	h.setLimit(h.budgetID, "2026-10-01", "120")
+	h.comment(h.budgetID, "2026-10-01", "still mine")
+}
+
+// An end month set before a day change stays valid after it.
+func TestPeriodStartDayKeepsTheEndMonth(t *testing.T) {
+	h := newPeriodHarness(t, 1, time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC))
+	h.exec(`UPDATE budgets SET started_at = ?, ended_at = ? WHERE id = ?`, "2026-10-01 00:00:00", "2026-10-01 00:00:00", h.budgetID)
+	ctx := context.Background()
+	for _, day := range []int{28, 5, 1} {
+		h.mustSetDay(day)
+		end := "2026-10-01"
+		if _, err := h.svc.UpdateBudget(ctx, h.owner, model.UpdateBudgetRequest{
+			Id: h.budgetID, Name: "Budget", CurrencyId: fixture.USD, EndDate: &end,
+		}); err != nil {
+			t.Fatalf("day %d: end month refused: %v", day, err)
+		}
+		h.setLimit(h.budgetID, "2026-10-01", "10")
+		if res := h.get(ctx, h.owner, ""); res.Meta.EndedAt != "2026-10-01 00:00:00" {
+			t.Fatalf("day %d: endedAt = %s", day, res.Meta.EndedAt)
+		}
+	}
+}
+
+// create-budget on 20 October with start 2026-10-20 and day 28: the date names
+// the key October; the budget has not started yet and opens on October.
+func TestCreateBudgetExplicitStartNamesAKey(t *testing.T) {
+	h := newPeriodHarness(t, 1, time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC))
+	res, err := h.svc.CreateBudget(context.Background(), h.owner, model.CreateBudgetRequest{
+		Id: vo.NewId().String(), Name: "Payday", CurrencyId: fixture.USD, AccountIds: []string{h.account},
 		StartDate: "2026-10-20", PeriodStartDay: 28,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Item.Meta.StartedAt != "2026-09-01 00:00:00" {
-		t.Errorf("startedAt = %s, want the current period 2026-09-01", res.Item.Meta.StartedAt)
+	if res.Item.Meta.StartedAt != "2026-10-01 00:00:00" {
+		t.Errorf("startedAt = %s, want the key 2026-10-01", res.Item.Meta.StartedAt)
 	}
-	sameWindow(t, res.Item, "2026-09-28 00:00:00", "2026-10-28 00:00:00")
-	sameAmount(t, "20 October spent", h.categoryRow(res.Item).Spent, "12")
-
-	amount := vo.NewFlexString("50")
-	if _, err := h.svc.SetLimit(ctx, h.owner, model.SetLimitRequest{
-		BudgetId: id, ElementId: h.category, Period: "2026-09-01", Amount: &amount,
-	}); err != nil {
-		t.Fatalf("set-limit on the first period: %v", err)
-	}
-	if _, err := h.svc.CreateComment(ctx, h.owner, model.CreateCommentRequest{
-		Id: vo.NewId().String(), BudgetId: id, ElementId: h.category, Period: "2026-09-01", Comment: "first",
-	}); err != nil {
-		t.Fatalf("comment on the first period: %v", err)
-	}
+	sameWindow(t, res.Item, "2026-10-28 00:00:00", "2026-11-28 00:00:00")
 }
 
 // The Complete dialog's sequence against the real service on a day-28 budget
-// with key October on 20 October: end with the current period, archive, and
-// continue in a copy starting there.
+// with key October on 20 October (not started yet): end with October, archive,
+// and continue in a copy starting there; the first key's plan and comment are
+// copied, as they are by a full copy.
 func TestCompleteShiftedBudgetFlow(t *testing.T) {
 	h := newPeriodHarness(t, 28, time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC))
 	h.exec(`UPDATE budgets SET started_at = ? WHERE id = ?`, "2026-10-01 00:00:00", h.budgetID)
 	ctx := context.Background()
-	start := h.get(ctx, h.owner, "").Meta.StartedAt
-	if start != "2026-09-01 00:00:00" {
-		t.Fatalf("startedAt = %s, want 2026-09-01 00:00:00", start)
+	h.setLimit(h.budgetID, "2026-10-01", "100")
+	h.comment(h.budgetID, "2026-10-01", "rent")
+
+	full, err := h.svc.CloneBudget(ctx, h.owner, model.CloneBudgetRequest{
+		Id: h.budgetID, NewId: vo.NewId().String(), Name: "Full", WithLimits: true,
+	})
+	if err != nil {
+		t.Fatalf("full copy: %v", err)
 	}
-	end := "2026-09-01"
+
+	end := "2026-10-01"
 	if _, err := h.svc.UpdateBudget(ctx, h.owner, model.UpdateBudgetRequest{
 		Id: h.budgetID, Name: "Budget", CurrencyId: fixture.USD, EndDate: &end,
 	}); err != nil {
-		t.Fatalf("end with the current period: %v", err)
+		t.Fatalf("end with October: %v", err)
 	}
 	if _, err := h.svc.ArchiveBudget(ctx, h.owner, model.ArchiveBudgetRequest{Id: h.budgetID}); err != nil {
 		t.Fatalf("archive: %v", err)
 	}
-	copyID := vo.NewId().String()
-	res, err := h.svc.CloneBudget(ctx, h.owner, model.CloneBudgetRequest{
-		Id: h.budgetID, NewId: copyID, Name: "Next", StartDate: "2026-09-01", WithLimits: true,
+	next, err := h.svc.CloneBudget(ctx, h.owner, model.CloneBudgetRequest{
+		Id: h.budgetID, NewId: vo.NewId().String(), Name: "Next", StartDate: "2026-10-01", WithLimits: true,
 	})
 	if err != nil {
 		t.Fatalf("continue in a copy: %v", err)
 	}
-	if res.Item.Meta.StartedAt != "2026-09-01 00:00:00" {
-		t.Errorf("copy startedAt = %s, want 2026-09-01 00:00:00", res.Item.Meta.StartedAt)
-	}
-	sameWindow(t, res.Item, "2026-09-28 00:00:00", "2026-10-28 00:00:00")
-	// a month past the current period would skip periods
 	if _, err := h.svc.CloneBudget(ctx, h.owner, model.CloneBudgetRequest{
-		Id: h.budgetID, NewId: vo.NewId().String(), Name: "Later", StartDate: "2026-10-01",
+		Id: h.budgetID, NewId: vo.NewId().String(), Name: "Later", StartDate: "2026-11-01",
 	}); err == nil {
-		t.Fatal("a copy starting after the current period was accepted")
+		t.Fatal("a copy starting after the current period and the first key was accepted")
+	}
+
+	for name, copy := range map[string]model.BudgetResult{"full copy": full.Item, "continuation": next.Item} {
+		if copy.Meta.StartedAt != "2026-10-01 00:00:00" {
+			t.Errorf("%s: startedAt = %s, want 2026-10-01", name, copy.Meta.StartedAt)
+		}
+		sameWindow(t, copy, "2026-10-28 00:00:00", "2026-11-28 00:00:00")
+		sameAmount(t, name+" october budgeted", h.categoryRow(copy).Budgeted, "100")
+		comments, err := h.svc.GetCommentList(ctx, h.owner, model.GetCommentListRequest{BudgetId: copy.Meta.Id, From: "2026-10-01", Months: "1"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(comments.Items) != 1 || comments.Items[0].Period != "2026-10-01" {
+			t.Errorf("%s: comments = %+v, want the October one", name, comments.Items)
+		}
 	}
 }
 
-// A legacy mid-month start on a day-28 budget: its first period holds the
-// start date (15 Sep -> August, 28 Aug - 27 Sep) and every earlier window is
-// a plain period window, not shifted again by the start's offset.
+// A legacy mid-month start on a day-28 budget: the first key is its month
+// (15 Sep -> September, 28 Sep - 27 Oct) and earlier windows are plain period
+// windows, never shifted again by the start's offset.
 func TestCarryOverLegacyMidMonthStartShifted(t *testing.T) {
 	h := newPeriodHarness(t, 28, periodNow)
 	h.exec(`UPDATE budgets SET started_at = ? WHERE id = ?`, "2026-09-15 00:00:00", h.budgetID)
-	h.spend("1000", "2026-08-27 10:00:00") // July's period, before the budget
-	h.spend("1", "2026-08-29 10:00:00")    // August
-	h.spend("10", "2026-10-10 10:00:00")   // September
-	h.spend("100", "2026-10-29 10:00:00")  // October
+	h.spend("1", "2026-09-27 10:00:00")   // August's period, before the budget
+	h.spend("10", "2026-10-10 10:00:00")  // September
+	h.spend("100", "2026-10-29 10:00:00") // October
 	row := h.categoryRow(h.get(context.Background(), h.owner, "2026-10-01"))
 	sameAmount(t, "october spent", row.Spent, "100")
-	sameAmount(t, "october available", row.Available, "-111")
+	sameAmount(t, "october available", row.Available, "-110")
 }
 
 // The day reshapes the budget for every participant: owner or admin only; a

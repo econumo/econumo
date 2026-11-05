@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Id } from '@/api/types'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { currentPeriod } from './period'
+import { budgetCurrentPeriod, currentPeriod } from './period'
 
 /** the reporting-tags folder exists only in rendering: no folder row stands behind
  *  it, so its fold state is keyed by a reserved literal no element id (a UUID) can
@@ -57,8 +57,9 @@ interface BudgetPeriodState {
    *  the calendar month is not taken for a default after a reload */
   chosenPeriod: string | null
   /** an unpicked default month moves to the opened budget's current period: a
-   *  shifted budget can still be in last month's period */
-  followCurrentPeriod: (budgetId: Id, startDay: number, now?: Date) => void
+   *  shifted budget can still be in last month's period. A budget that has not
+   *  started yet (its first month, startedAt, is later) opens on its first month. */
+  followCurrentPeriod: (budgetId: Id, startDay: number, startedAt?: string | null, now?: Date) => void
   /** the budget followCurrentPeriod last ran for this session (not persisted): until
    *  it names the open budget a default month may still move (another budget can
    *  start its months on another day), so the budget page holds its period fetches */
@@ -113,14 +114,16 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
       periodChosen: false,
       adoptedPeriod: null,
       chosenPeriod: null,
-      followCurrentPeriod: (budgetId, startDay, now = new Date()) => {
+      followCurrentPeriod: (budgetId, startDay, startedAt, now = new Date()) => {
         if (get().periodFollowedFor !== budgetId) {
           set({ periodFollowedFor: budgetId })
         }
         if (!followsCurrentPeriod(get(), now)) {
           return
         }
-        const target = currentPeriod(startDay, now)
+        const target = startedAt
+          ? budgetCurrentPeriod({ periodStartDay: startDay, startedAt }, now)
+          : currentPeriod(startDay, now)
         if (target !== get().selectedDate) {
           set({ selectedDate: target, adoptedPeriod: target, chosenPeriod: null })
         }

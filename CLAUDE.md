@@ -1550,15 +1550,14 @@ data unreadable. Most are also asserted by the test suite.
 - **Budget period start day**: each budget starts its months on `period_start_day` 1-28
   (default 1; `periodStartDay` on the meta, optional on `create-budget`/`update-budget`, copied
   by `clone-budget`, anything else is the field error `budget.invalid_period_start_day`). A
-  period keeps its key `YYYY-MM-01` (`ended_at`, limit and comment periods, Plan
+  period keeps its key `YYYY-MM-01` (`started_at`, `ended_at`, limit and comment periods, Plan
   `months`, MCP `month`); only the date window it covers shifts. The rule lives in one helper
   per stack (`model.PeriodWindow` / `model.PeriodOf`, `web/src/features/budgets/period.ts`):
   every period is named after the month it starts in, key `M` covering day `d` of `M` to day
   `d` of `M+1` (day 1 = the calendar month; day 5: "October" = 5 Oct to 4 Nov; day 28:
   "October" = 28 Oct to 27 Nov). Request dates that pick a period name a key (snapped to the
   first, day ignored),
-  never "the period containing this date" (the exception is a budget's start date on
-  `create-budget`/`reset-budget`, below). `get-budget` `filters.periodStart/periodEnd` carry
+  never "the period containing this date". `get-budget` `filters.periodStart/periodEnd` carry
   the real window. Currency conversion averages the rates inside a shifted window
   (`currencyRates[]` reports that window); a range inside one calendar month (day 1, an
   import's day) or a shifted window holding no rate keeps the latest-rate-month snap
@@ -1567,13 +1566,12 @@ data unreadable. Most are also asserted by the test suite.
   the period containing the caller's local today. The by-month SQL (`internal/budget/repo/read.go`,
   `periodExpr`) keeps grouping by month for day 1, so a day-1 budget stays byte-identical, and
   groups by day and folds the rows onto keys in Go (`foldPeriods`) otherwise. Changing the day
-  keeps plans and comments on their keys, read against the new windows, and writes nothing
-  else: the first period is DERIVED, `Budget.FirstPeriod()` = the period holding
-  `started_at` (day 28 on a budget started 1 October begins with September), used by every
-  first-period bound (set-limit, comments, carry-over, removal window, end month, clone)
-  and reported as the meta `startedAt`; changing the day back restores everything. New
-  starts are stored with `model.StartForPeriod` (a first of a month inside the intended
-  first period), and `create-budget`'s start date begins with the period holding it. Only the owner or an admin may change the day.
+  writes only the day: `started_at` (the first key, `Budget.FirstPeriod()`), `ended_at`, plans
+  and comments never move, so changing it back restores everything. Today may then fall
+  before the first key's window (key October switched to day 28 on 5 October): the budget
+  has not started yet, so the default `get-budget`/`get-budget-plan` period, create/clone
+  responses and the SPA's default month (`budgetCurrentPeriod`) open on the first key, and
+  days before its window belong to no period. Only the owner or an admin may change the day.
   Reports, recurring schedules and account pages stay on calendar months. The SPA hides the
   day picker against a server whose budgets carry no day. Changing the
   naming rule after release needs a key migration (move `started_at`, `ended_at`, limit and
