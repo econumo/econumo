@@ -34,6 +34,10 @@ func (a accountViewStub) OwnedLiveAccountIDs(context.Context, vo.Id) ([]vo.Id, e
 	return nil, nil
 }
 
+func (a accountViewStub) OwnedAccountIDs(context.Context, vo.Id) ([]vo.Id, error) {
+	return nil, nil
+}
+
 type emptyMetadataStub struct{}
 
 func (emptyMetadataStub) CategoriesByOwners(context.Context, []vo.Id) ([]model.CategoryMeta, error) {

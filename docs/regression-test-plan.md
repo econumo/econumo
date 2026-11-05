@@ -2053,6 +2053,109 @@ and on tablet/phone only with a hardware keyboard.
       actions; unarchive restores writability.
 - [ ] Reset budget (if surfaced in UI) clears plans after confirm.
 
+## 10a. Reports
+
+- [ ] The report list offers "Am I getting richer or poorer?" and "Suggest a
+      report"; Suggest a report opens the feedback form on the feature-request
+      type (no card when `ECONUMO_FEEDBACK=false`) 📱
+- [ ] **Entry point**: Reports is a chart icon right before the sync button in the
+      sidebar footer (expanded, collapsed rail, and the phone menu); there is no
+      Reports entry under Budget & Plan 📱
+
+Seed at least two years of transactions on several accounts, and a budget
+shared with a partner.
+
+- [ ] **Tabs**: Reports opens on the FIRST tab, whichever was active last
+      time. "+" adds a New tab (report list) in the active tab's scope;
+      double-click renames (a blank name goes back to the report's name);
+      close removes it and a last closed tab leaves one New tab; drag
+      reorders; Duplicate copies a tab next to it. At 12 tabs "+" is
+      disabled with "Up to 12 tabs". Desktop tabs are underlined text like
+      the Budget / Plan switch; the × shows on hover; renaming keeps the
+      tab's width (the field grows only as the name does).
+- [ ] Tabs are per user and per device: another user on the same browser
+      sees only their own tabs; a tab whose budget was deleted or unshared
+      falls back to My accounts. A tab left on a report this build does not
+      offer (a beta's Spending or Cash flow) is gone, without an error.
+- [ ] 📱 Phone: tabs are pills; long-press a pill (or Shift+click) opens the
+      Rename / Duplicate / Close menu; the back arrow returns home.
+- [ ] Report list: the scope picker lists My accounts and every budget;
+      the Net worth card shows this year's figures for that scope; picking it
+      turns the tab into the report in the same scope.
+- [ ] **Net worth**: one line for the total with a soft fill under it (no
+      stacked colours, no legend); hovering a month shows each folder (My
+      accounts) or person (budget) with its amount and the Total at the
+      bottom. Period buttons 1y / 3y / All sit small on the chart's top-right
+      corner; the scope picker is a quiet "{budget} ▾" top-right. The headline
+      shows the months the period covers (e.g. "Jan 2024 – Nov 2026"), the
+      latest total, and "+/-{amount} in the last year /
+      in the last 3 years / since the start". All's label and chart start at
+      the month of the first transaction, and its change and Start column count
+      from zero, so the change equals the latest total. Amounts show cents.
+- [ ] Net worth's latest total counts transactions through the end of today in
+      the device's timezone: a transaction dated later this month is left
+      out of the current month until its day comes (earlier months are
+      unchanged). A report of a single month shows its total without a
+      change line.
+- [ ] Net worth in My accounts: rows are my account folders, plus "No
+      folder" when such accounts carry a balance; accounts that are zero in
+      every month are not listed. Columns Start,
+      Now, Change (green up, red down) and a Total row equal to the
+      headline; a folder opens (chevron or row tap) to its accounts, each
+      with its sidebar icon, and closes again. Rows use the Budget page's
+      look: rounded hover on every row, no lines between rows.
+- [ ] Net worth in a budget shared with a partner: one row per person with
+      their avatar, partners first and me last; no folder names appear.
+      A person with savings members in the budget opens to those savings
+      accounts by name plus "Everyday accounts" (wallet icon) for the rest;
+      a person without savings members is a single row. With "This year"
+      figures on the report list's card, the card's total equals the
+      report's latest total.
+- [ ] Net worth, desktop: before any selection a quiet hint under the chart
+      reads "Drag across the chart to pick a period" (not on touch screens).
+      Dragging across the chart shades the range; a chip with × takes the
+      place of 1y/3y/All and names the months whose transactions make the
+      change ("Apr – Dec 2025", the Transactions list's own title). The
+      headline names the same months, then the balance at their end and the change "since
+      <the month before>"; a Transactions button appears under it, in the same
+      row as the chip. Selecting moves nothing below the headline. The
+      table's Start/Now/Change follow the range. Transactions lists every transaction of the report's
+      accounts in those months (accounts not on this device, e.g. a
+      partner's unshared ones, are not listed). A plain click on the chart or
+      the chip's × clears the range; changing the period or scope drops it.
+      Clicking the chart draws no outline around it.
+- [ ] Net worth: an account row (inside an opened folder, or a budget's
+      savings account) opens its transactions over the shown period (or the
+      selected range), transfers in and out included. In a budget, every
+      savings account opens, a partner's included (the budget's own
+      transaction list, as on the Budget page); "Everyday accounts" and
+      person rows do not. In My accounts an account that is not in my
+      account list is not clickable.
+- [ ] Net worth "All" reaching back before the instance's first stored
+      currency rate: a foreign-currency account (e.g. RUB in a CAD budget) is
+      converted at the earliest rate in those months, never shown at face
+      value (40,000 RUB is not 40,000 CA$).
+- [ ] Net worth leaves deleted accounts out entirely, in both scopes: no row,
+      none of their past balance in the chart or Total, and a deleted
+      account's old transactions do not move the start of "All".
+- [ ] Archived budgets are not offered in any report's budget picker; with no
+      active budget the picker is not shown and reports cover My accounts.
+- [ ] Offline (or after a failed refresh) a report shown from the cache
+      carries a muted "Updated {date and time}" line under its filters; it
+      goes away after the next successful load. Reports longer than 36
+      months (e.g. All time over several years) are not kept for an offline
+      start, shorter ones are.
+- [ ] All time over more than 20 years of history shows the last 240
+      months instead of an error; a Custom range longer than 240 months is
+      refused.
+- [ ] 📱 Net worth on a phone: the table's Now and Change show whole amounts
+      (no cents, the currency kept, e.g. "+48,450 CA$") and never run into
+      each other; Change equals Now minus Start as shown; the headline keeps
+      cents.
+- [ ] 📱 At 390px the Net worth header fits, the chart fits the width and
+      the list shows the name, Now and Change; light and dark theme keep the
+      line, the fill and the change colours readable.
+
 ## 11. Sharing — connections, accounts, budgets (multi-user)
 
 Run with Users A and B side by side (two browser profiles/windows), verifying

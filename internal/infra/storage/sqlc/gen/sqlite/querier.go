@@ -216,6 +216,9 @@ type Querier interface {
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
+	// Oldest published_at for a base currency: the rate month used for periods
+	// before the first stored rate.
+	GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyID string) (time.Time, error)
 	// Where a rate-gap check starts by default. ORDER BY ... LIMIT 1 so the
 	// result types as the column. sql.ErrNoRows = no transactions yet.
 	GetEarliestTransactionDate(ctx context.Context) (time.Time, error)
@@ -434,6 +437,8 @@ type Querier interface {
 	// Args, in order: before (x4), user_id (own), user_id (shared). REAL balance per
 	// row; the repo formats it to PHP's precision-14 string.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
+	// Every account the user owns, soft-deleted ones included (the reports).
+	ListAccountIDsByOwner(ctx context.Context, userID string) ([]string, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// The same count for every AVAILABLE account (the balance query's set).
 	// Args: user_id (own), user_id (shared).

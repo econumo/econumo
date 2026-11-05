@@ -85,6 +85,22 @@ func (q *Queries) GetCurrencyByIDView(ctx context.Context, id string) (GetCurren
 	return i, err
 }
 
+const getEarliestCurrencyRateDate = `-- name: GetEarliestCurrencyRateDate :one
+SELECT published_at FROM currencies_rates
+WHERE base_currency_id = ?
+ORDER BY published_at ASC
+LIMIT 1
+`
+
+// Oldest published_at for a base currency: the rate month used for periods
+// before the first stored rate.
+func (q *Queries) GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyID string) (time.Time, error) {
+	row := q.db.QueryRowContext(ctx, getEarliestCurrencyRateDate, baseCurrencyID)
+	var published_at time.Time
+	err := row.Scan(&published_at)
+	return published_at, err
+}
+
 const getHiddenCurrencyIDs = `-- name: GetHiddenCurrencyIDs :many
 SELECT currency_id FROM users_hidden_currencies WHERE user_id = ?
 `

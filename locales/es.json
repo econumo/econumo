@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Presupuesto y plan",
+      "reports": "Informes",
       "onboarding": "Primeros pasos",
       "create_account": "Añadir cuenta",
       "collapse_menu": "Contraer el menú",
@@ -1579,6 +1580,68 @@
         }
       }
     }
+  },
+  "reports": {
+    "page": {
+      "title": "Informes"
+    },
+    "tabs": {
+      "new": "Nueva pestaña",
+      "close": "Cerrar {name}",
+      "close_menu": "Cerrar",
+      "rename": "Renombrar",
+      "duplicate": "Duplicar",
+      "name_label": "Nombre de la pestaña",
+      "limit": "Hasta {count} pestañas"
+    },
+    "kind": {
+      "networth": "Patrimonio neto"
+    },
+    "list": {
+      "choose": "Elige un informe",
+      "scope": "Ámbito",
+      "scope_mine": "Mis cuentas",
+      "networth_q": "¿Me estoy haciendo más rico o más pobre?",
+      "suggest_q": "Sugerir un informe",
+      "suggest_note": "¿Echas en falta un informe? Cuéntanos qué te gustaría ver.",
+      "networth_caption": "hoy",
+      "networth_up": "Sube {amount} este año",
+      "networth_down": "Baja {amount} este año",
+      "networth_flat": "Sin cambios este año"
+    },
+    "period": {
+      "quarter": "T{quarter} {year}"
+    },
+    "networth": {
+      "period_1y": "1 a",
+      "period_3y": "3 a",
+      "period_all": "Todo",
+      "chart": "Gráfico de patrimonio",
+      "col_start": "Inicio",
+      "col_now": "Ahora",
+      "no_folder": "Sin carpeta",
+      "other_owner": "Otro participante",
+      "expand": "Mostrar las cuentas de {name}",
+      "collapse": "Ocultar las cuentas de {name}",
+      "empty": "Aún no hay saldos en las cuentas",
+      "everyday": "Cuentas diarias",
+      "period_1y_words": "en el último año",
+      "period_3y_words": "en los últimos 3 años",
+      "period_all_words": "desde el inicio",
+      "range_words": "desde {from}",
+      "clear_range": "Quitar la selección",
+      "show_transactions": "Ver las transacciones de {name}",
+      "drag_hint": "Arrastra sobre el gráfico para elegir un periodo",
+      "range_transactions": "Transacciones",
+      "period": "Periodo",
+      "headline": "Resumen",
+      "col_change": "Cambio",
+      "total": "Total"
+    },
+    "insight": {
+      "empty": "Aún no hay transacciones"
+    },
+    "updated_at": "Actualizado {time}"
   },
   "classifications": {
     "common": {

@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budget et plan",
+      "reports": "Rapports",
       "onboarding": "Premiers pas",
       "create_account": "Ajouter un compte",
       "collapse_menu": "Réduire le menu",
@@ -1579,6 +1580,68 @@
         }
       }
     }
+  },
+  "reports": {
+    "page": {
+      "title": "Rapports"
+    },
+    "tabs": {
+      "new": "Nouvel onglet",
+      "close": "Fermer {name}",
+      "close_menu": "Fermer",
+      "rename": "Renommer",
+      "duplicate": "Dupliquer",
+      "name_label": "Nom de l’onglet",
+      "limit": "{count} onglets au maximum"
+    },
+    "kind": {
+      "networth": "Patrimoine net"
+    },
+    "list": {
+      "choose": "Choisissez un rapport",
+      "scope": "Périmètre",
+      "scope_mine": "Mes comptes",
+      "networth_q": "Est-ce que je m’enrichis ou m’appauvris ?",
+      "suggest_q": "Suggérer un rapport",
+      "suggest_note": "Il vous manque un rapport ? Dites-nous ce que vous aimeriez voir.",
+      "networth_caption": "aujourd’hui",
+      "networth_up": "+{amount} cette année",
+      "networth_down": "−{amount} cette année",
+      "networth_flat": "Aucun changement cette année"
+    },
+    "period": {
+      "quarter": "T{quarter} {year}"
+    },
+    "networth": {
+      "period_1y": "1 an",
+      "period_3y": "3 ans",
+      "period_all": "Tout",
+      "chart": "Graphique du patrimoine",
+      "col_start": "Début",
+      "col_now": "Maintenant",
+      "no_folder": "Sans dossier",
+      "other_owner": "Autre participant",
+      "expand": "Afficher les comptes de {name}",
+      "collapse": "Masquer les comptes de {name}",
+      "empty": "Aucun solde de compte pour l'instant",
+      "everyday": "Comptes courants",
+      "period_1y_words": "sur la dernière année",
+      "period_3y_words": "sur les 3 dernières années",
+      "period_all_words": "depuis le début",
+      "range_words": "depuis {from}",
+      "clear_range": "Effacer la sélection",
+      "show_transactions": "Voir les transactions de {name}",
+      "drag_hint": "Faites glisser sur le graphique pour choisir une période",
+      "range_transactions": "Transactions",
+      "period": "Période",
+      "headline": "Résumé",
+      "col_change": "Évolution",
+      "total": "Total"
+    },
+    "insight": {
+      "empty": "Aucune transaction pour l’instant"
+    },
+    "updated_at": "Mis à jour {time}"
   },
   "classifications": {
     "common": {

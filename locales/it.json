@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budget e piano",
+      "reports": "Report",
       "onboarding": "Per iniziare",
       "create_account": "Aggiungi conto",
       "collapse_menu": "Comprimi il menu",
@@ -1579,6 +1580,68 @@
         }
       }
     }
+  },
+  "reports": {
+    "page": {
+      "title": "Report"
+    },
+    "tabs": {
+      "new": "Nuova scheda",
+      "close": "Chiudi {name}",
+      "close_menu": "Chiudi",
+      "rename": "Rinomina",
+      "duplicate": "Duplica",
+      "name_label": "Nome della scheda",
+      "limit": "Fino a {count} schede"
+    },
+    "kind": {
+      "networth": "Patrimonio netto"
+    },
+    "list": {
+      "choose": "Scegli un report",
+      "scope": "Ambito",
+      "scope_mine": "I miei conti",
+      "networth_q": "Sto diventando più ricco o più povero?",
+      "suggest_q": "Suggerisci un report",
+      "suggest_note": "Ti manca un report? Dicci cosa vorresti vedere.",
+      "networth_caption": "oggi",
+      "networth_up": "+{amount} quest’anno",
+      "networth_down": "−{amount} quest’anno",
+      "networth_flat": "Nessuna variazione quest’anno"
+    },
+    "period": {
+      "quarter": "T{quarter} {year}"
+    },
+    "networth": {
+      "period_1y": "1 a",
+      "period_3y": "3 a",
+      "period_all": "Tutto",
+      "chart": "Grafico del patrimonio",
+      "col_start": "Inizio",
+      "col_now": "Ora",
+      "no_folder": "Nessuna cartella",
+      "other_owner": "Altro partecipante",
+      "expand": "Mostra i conti in {name}",
+      "collapse": "Nascondi i conti in {name}",
+      "empty": "Ancora nessun saldo sui conti",
+      "everyday": "Conti di tutti i giorni",
+      "period_1y_words": "nell'ultimo anno",
+      "period_3y_words": "negli ultimi 3 anni",
+      "period_all_words": "dall'inizio",
+      "range_words": "da {from}",
+      "clear_range": "Annulla la selezione",
+      "show_transactions": "Mostra le transazioni di {name}",
+      "drag_hint": "Trascina sul grafico per scegliere un periodo",
+      "range_transactions": "Transazioni",
+      "period": "Periodo",
+      "headline": "Riepilogo",
+      "col_change": "Variazione",
+      "total": "Totale"
+    },
+    "insight": {
+      "empty": "Ancora nessuna transazione"
+    },
+    "updated_at": "Aggiornato {time}"
   },
   "classifications": {
     "common": {

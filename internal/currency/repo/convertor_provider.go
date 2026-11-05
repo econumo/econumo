@@ -39,6 +39,7 @@ type fixedRateRow struct {
 type providerQuerier interface {
 	GetAverage(ctx context.Context, db backend.DBTX, start, end time.Time, baseID string) ([]avgRow, error)
 	GetLatestDate(ctx context.Context, db backend.DBTX, baseID string, before time.Time) (time.Time, error)
+	GetEarliestDate(ctx context.Context, db backend.DBTX, baseID string) (time.Time, error)
 	GetFixedRates(ctx context.Context, db backend.DBTX) ([]fixedRateRow, error)
 }
 
@@ -128,7 +129,8 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 
 // SnappedRatePeriod returns the [start, end) AverageRates actually uses for the
 // requested period: the month of the latest published rate at or before `end`,
-// or the requested period when no rate exists. The budget currencyRates block
+// the earliest rate's month before the first rate, or the requested period when
+// no rate exists. The budget currencyRates block
 // reports THIS period.
 func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error) {
 	baseID, err := p.BaseCurrencyID(ctx)
@@ -138,19 +140,34 @@ func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Ti
 	return p.snapPeriod(ctx, baseID, start, end)
 }
 
-// snapPeriod resolves [start,end) to the latest-rate month, or returns the
-// request unchanged when no rate is found.
+// snapPeriod resolves [start,end) to the latest-rate month at or before it, the
+// earliest-rate month for a period before the first rate, or the request
+// unchanged when no rate is stored at all.
 func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end time.Time) (time.Time, time.Time, error) {
-	last, derr := p.q.GetLatestDate(ctx, p.db(ctx), baseID.String(), end)
-	if derr == nil {
-		realStart := time.Date(last.Year(), last.Month(), 1, 0, 0, 0, 0, last.Location())
+	month := func(t time.Time) (time.Time, time.Time, error) {
+		realStart := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
 		return realStart, realStart.AddDate(0, 1, 0), nil
 	}
-	if !errors.Is(derr, sql.ErrNoRows) {
+	notFound := func(err error) bool {
 		var nf *errs.NotFoundError
-		if !errors.As(derr, &nf) {
-			return time.Time{}, time.Time{}, derr
-		}
+		return errors.Is(err, sql.ErrNoRows) || errors.As(err, &nf)
+	}
+	last, derr := p.q.GetLatestDate(ctx, p.db(ctx), baseID.String(), end)
+	if derr == nil {
+		return month(last)
+	}
+	if !notFound(derr) {
+		return time.Time{}, time.Time{}, derr
+	}
+	// A period before the first stored rate takes the earliest rates rather than
+	// none: without rates every foreign amount would count at face value
+	// (40,000 RUB as 40,000 CAD).
+	first, ferr := p.q.GetEarliestDate(ctx, p.db(ctx), baseID.String())
+	if ferr == nil {
+		return month(first)
+	}
+	if !notFound(ferr) {
+		return time.Time{}, time.Time{}, ferr
 	}
 	return start, end, nil
 }
@@ -177,6 +194,10 @@ func (sqliteProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX,
 	// datetime(published_at) < datetime(?): bind the bound as 'Y-m-d H:i:s'
 	// text so rows at/after the boundary are excluded.
 	return sqlitegen.New(db).GetLatestCurrencyRateDate(ctx, sqlitegen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, Datetime: before.Format(datetime.Layout)})
+}
+
+func (sqliteProviderQuerier) GetEarliestDate(ctx context.Context, db backend.DBTX, baseID string) (time.Time, error) {
+	return sqlitegen.New(db).GetEarliestCurrencyRateDate(ctx, baseID)
 }
 
 func (sqliteProviderQuerier) GetFixedRates(ctx context.Context, db backend.DBTX) ([]fixedRateRow, error) {
@@ -209,6 +230,10 @@ func (pgsqlProviderQuerier) GetAverage(ctx context.Context, db backend.DBTX, sta
 }
 func (pgsqlProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX, baseID string, before time.Time) (time.Time, error) {
 	return pgsqlgen.New(db).GetLatestCurrencyRateDate(ctx, pgsqlgen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, PublishedAt: before})
+}
+
+func (pgsqlProviderQuerier) GetEarliestDate(ctx context.Context, db backend.DBTX, baseID string) (time.Time, error) {
+	return pgsqlgen.New(db).GetEarliestCurrencyRateDate(ctx, baseID)
 }
 
 func (pgsqlProviderQuerier) GetFixedRates(ctx context.Context, db backend.DBTX) ([]fixedRateRow, error) {

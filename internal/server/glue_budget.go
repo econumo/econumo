@@ -35,6 +35,7 @@ func (l *BudgetCurrencyLookup) EnsureUsable(ctx context.Context, userID, currenc
 type budgetAccountRepo interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
+	ListIDsByOwner(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 // BudgetAccountLookup adapts the account repository to budget.AccountLookup.
@@ -86,6 +87,11 @@ func (l *BudgetAccountLookup) OwnedLiveAccountIDs(ctx context.Context, userID vo
 		out = append(out, a.ID)
 	}
 	return out, nil
+}
+
+// OwnedAccountIDs returns the user's own accounts, deleted ones included.
+func (l *BudgetAccountLookup) OwnedAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	return l.accounts.ListIDsByOwner(ctx, userID)
 }
 
 // AccountOwner returns an account's owner id.
