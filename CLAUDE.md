@@ -417,8 +417,9 @@ Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
 sidebar footer, not a menu entry): Net worth for everyone, plus a "Suggest a report" card that
-opens the feedback form on its feature-request type; Spending is unfinished and shows only
-behind `ECONUMO_DEV` (a stored tab on it goes back to the report list without it). All read the report routes above. The tab list is stored per user on
+opens the feedback form on its feature-request type; Spending and Cash flow (Sankey on desktop)
+are unfinished and show only behind `ECONUMO_DEV` (a stored tab on one of them goes back to the
+report list without it). All read the report routes above. The tab list is stored per user on
 the device only (localStorage `econumo.reportTabs`) and Reports always opens on the FIRST tab.
 Every report query key is invalidated after any successful mutation
 (`web/src/lib/appQueryClient.ts`), so a report never shows stale figures.
@@ -865,7 +866,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   existing external cron.
 - `ECONUMO_DEV` — the feature-flag gate (strict boolean, default `false`; malformed fails at boot),
   served to the SPA as `DEV` (`isDevEnabled()`, `web/src/lib/config.ts`). See "Feature flags"
-  above: unfinished features show only while it is on. Today it gates the Spending report.
+  above: unfinished features show only while it is on. Today it gates the Spending and Cash
+  flow reports.
 - `ECONUMO_IMPORT_SIMPLEFIN` — the SimpleFIN pull provider (strict boolean, default `false`;
   malformed fails at boot). Apple Wallet import has no switch and is always on (the former
   `ECONUMO_IMPORT_APPLE_WALLET` is ignored), so `internal/imports/api` is always mounted with

@@ -1600,7 +1600,8 @@
     },
     "kind": {
       "networth": "Nettovermogen",
-      "spending": "Uitgaven"
+      "spending": "Uitgaven",
+      "cashflow": "Kasstroom"
     },
     "list": {
       "choose": "Kies een rapport",
@@ -1614,9 +1615,13 @@
       "networth_down": "{amount} minder dit jaar",
       "networth_flat": "Geen verandering dit jaar",
       "spending_q": "Waar geef ik geld aan uit, en hoe verandert dat?",
+      "cashflow_q": "Verdien ik meer dan ik uitgeef?",
       "forecast_q": "Wat gebeurt er met mijn geld?",
       "coming_later": "Komt later",
-      "spent_caption": "uitgegeven in {year}"
+      "spent_caption": "uitgegeven in {year}",
+      "saved_caption": "gespaard in {year}",
+      "overspent_caption": "te veel uitgegeven in {year}",
+      "saved_rate": "{rate}% van het inkomen"
     },
     "period": {
       "quarter": "K{quarter} {year}"
@@ -1650,6 +1655,8 @@
     "insight": {
       "empty": "Nog geen transacties",
       "spending_top": "{name} is de grootste: {amount}, {share}% van het totaal",
+      "cashflow_saved": "{amount} gespaard, {rate}% van het inkomen",
+      "cashflow_overspent": "{amount} meer uitgegeven dan verdiend",
       "networth_up": "{amount} meer in deze periode",
       "networth_down": "{amount} minder in deze periode",
       "networth_flat": "Geen verandering in deze periode"
@@ -1709,6 +1716,28 @@
       "compare_note": "Beide jaren beslaan alleen {period}, zodat je gelijke perioden vergelijkt.",
       "hint_select": "Tik op een rij of balk om alleen die rij te tonen.",
       "hint_drill": "Tik op een balk om de transacties te zien."
+    },
+    "cashflow": {
+      "view": "Weergave",
+      "view_bars": "Staven",
+      "view_flow": "Stroom",
+      "col_period": "Periode",
+      "income": "Inkomsten",
+      "available": "Beschikbaar",
+      "spent": "Uitgegeven",
+      "saved": "Gespaard",
+      "spending": "Uitgaven",
+      "net_saved": "Netto gespaard",
+      "transfers_in": "Inkomende overboekingen",
+      "transfers_out": "Uitgaande overboekingen",
+      "chart": "Kasstroomgrafiek",
+      "flow_chart": "Geldstroom",
+      "from_balance": "Uit het saldo",
+      "to_savings": "Naar spaarrekeningen",
+      "stayed": "Op betaalrekeningen gebleven",
+      "other_income": "Overige inkomsten",
+      "running_note": "* {period} is nog niet voorbij: de cijfers zijn tot nu toe.",
+      "flow_note": "De stroom beslaat de hele periode: waar de inkomsten vandaan kwamen en waar ze heen gingen."
     },
     "drill": {
       "unsupported": "Deze transacties kunnen hier niet worden getoond. Open de Budget-pagina om ze te zien.",

@@ -19,6 +19,7 @@ import { isDevEnabled } from '@/lib/config'
 import { flowReportQuery, useReportBudgets } from './queries'
 import { flowQueryArgs } from './reportPeriod'
 import { SpendingReport } from './SpendingReport'
+import { CashFlowReport } from './CashFlowReport'
 import { NetWorthReport } from './NetWorthReport'
 import { spendingRowNames } from './reportRows'
 
@@ -46,7 +47,17 @@ function ReportBody({ tab }: { tab: ReportTab }) {
       </div>
     )
   }
-  return <NetWorthReport tab={tab} />
+  if (tab.kind === 'cashflow') {
+    return (
+      <div className="flex flex-col gap-3">
+        <h2 className="text-lg font-normal">{t(REPORT_QUESTION.cashflow)}</h2>
+        <CashFlowReport tab={tab} />
+      </div>
+    )
+  }
+  return (
+    <NetWorthReport tab={tab} />
+  )
 }
 
 export function ReportsPage() {
@@ -80,7 +91,7 @@ export function ReportsPage() {
   useEffect(() => {
     if (!ready || isDevEnabled()) return
     useReportTabs.setState((s) => ({
-      tabs: s.tabs.map((tab) => (tab.kind === 'spending' ? { ...tab, kind: 'list', title: null } : tab)),
+      tabs: s.tabs.map((tab) => (tab.kind === 'spending' || tab.kind === 'cashflow' ? { ...tab, kind: 'list', title: null } : tab)),
     }))
   }, [ready])
 
@@ -108,6 +119,7 @@ export function ReportsPage() {
     report: {
       list: t('reports.tabs.new'),
       spending: t('reports.kind.spending'),
+      cashflow: t('reports.kind.cashflow'),
       networth: t('reports.kind.networth'),
     } satisfies Record<ReportKind, string>,
     rows: {

@@ -1600,7 +1600,8 @@
     },
     "kind": {
       "networth": "Net worth",
-      "spending": "Spending"
+      "spending": "Spending",
+      "cashflow": "Cash flow"
     },
     "list": {
       "choose": "Choose a report",
@@ -1614,9 +1615,13 @@
       "networth_down": "Down {amount} this year",
       "networth_flat": "No change this year",
       "spending_q": "What do I spend money on, and how is it changing?",
+      "cashflow_q": "Do I earn more than I spend?",
       "forecast_q": "What will happen to my money?",
       "coming_later": "Coming later",
-      "spent_caption": "spent in {year}"
+      "spent_caption": "spent in {year}",
+      "saved_caption": "saved in {year}",
+      "overspent_caption": "overspent in {year}",
+      "saved_rate": "{rate}% of income"
     },
     "period": {
       "quarter": "Q{quarter} {year}"
@@ -1650,6 +1655,8 @@
     "insight": {
       "empty": "No transactions yet",
       "spending_top": "{name} is the largest: {amount}, {share}% of the total",
+      "cashflow_saved": "Saved {amount}, {rate}% of income",
+      "cashflow_overspent": "Spent {amount} more than earned",
       "networth_up": "Up {amount} over the period",
       "networth_down": "Down {amount} over the period",
       "networth_flat": "No change over the period"
@@ -1709,6 +1716,28 @@
       "compare_note": "Both years cover {period} only, so they compare like for like.",
       "hint_select": "Tap a row or a bar to chart only that row.",
       "hint_drill": "Tap a bar to see its transactions."
+    },
+    "cashflow": {
+      "view": "View",
+      "view_bars": "Bars",
+      "view_flow": "Flow",
+      "col_period": "Period",
+      "income": "Income",
+      "available": "Available",
+      "spent": "Spent",
+      "saved": "Saved",
+      "spending": "Spending",
+      "net_saved": "Net saved",
+      "transfers_in": "Transferred in",
+      "transfers_out": "Transferred out",
+      "chart": "Cash flow chart",
+      "flow_chart": "Money flow",
+      "from_balance": "From balance",
+      "to_savings": "Moved to savings accounts",
+      "stayed": "Stayed in everyday accounts",
+      "other_income": "Other income",
+      "running_note": "* {period} is not over yet: its figures are so far.",
+      "flow_note": "Flow covers the whole period: where the income came from and where it went."
     },
     "drill": {
       "unsupported": "These transactions can't be listed here. Open the Budget page to see them.",

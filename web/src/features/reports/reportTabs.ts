@@ -5,7 +5,7 @@ import type { GroupBy } from '@/api/dto/report'
 import type { Id } from '@/api/types'
 import type { Step } from './reportMath'
 
-export type ReportKind = 'list' | 'spending' | 'networth'
+export type ReportKind = 'list' | 'spending' | 'cashflow' | 'networth'
 
 export interface ReportParams {
   budgetId: Id | null
@@ -18,6 +18,7 @@ export interface ReportParams {
   groupBy: GroupBy
   selectedId: Id | null
   compare: [number, number] | null
+  view: 'bars' | 'flow'
 }
 
 export interface ReportTab {
@@ -32,10 +33,11 @@ export const MAX_REPORT_TABS = 12
 
 export const REPORT_QUESTION: Record<Exclude<ReportKind, 'list'>, string> = {
   spending: 'reports.list.spending_q',
+  cashflow: 'reports.list.cashflow_q',
   networth: 'reports.list.networth_q',
 }
 
-const KINDS: ReportKind[] = ['list', 'spending', 'networth']
+const KINDS: ReportKind[] = ['list', 'spending', 'cashflow', 'networth']
 
 export function defaultParams(budgetId: Id | null): ReportParams {
   return {
@@ -47,6 +49,7 @@ export function defaultParams(budgetId: Id | null): ReportParams {
     groupBy: 'category',
     selectedId: null,
     compare: null,
+    view: 'bars',
   }
 }
 
@@ -73,6 +76,7 @@ const STEPS: Step[] = ['month', 'quarter', 'year']
 const MODES: ReportParams['mode'][] = ['overTime', 'compare']
 const SIDES: ReportParams['side'][] = ['expense', 'income']
 const GROUP_BYS: GroupBy[] = ['category', 'payee', 'tag']
+const VIEWS: ReportParams['view'][] = ['bars', 'flow']
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])-01$/
 
 function oneOf<T>(allowed: readonly T[], value: unknown, fallback: T): T {
@@ -96,6 +100,7 @@ function sanitizeParams(raw: unknown): ReportParams {
     mode: oneOf(MODES, p.mode, d.mode),
     side: oneOf(SIDES, p.side, d.side),
     groupBy: oneOf(GROUP_BYS, p.groupBy, d.groupBy),
+    view: oneOf(VIEWS, p.view, d.view),
     selectedId: typeof p.selectedId === 'string' ? p.selectedId : null,
     compare,
   }

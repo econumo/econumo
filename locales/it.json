@@ -1600,7 +1600,8 @@
     },
     "kind": {
       "networth": "Patrimonio netto",
-      "spending": "Spese"
+      "spending": "Spese",
+      "cashflow": "Flusso di cassa"
     },
     "list": {
       "choose": "Scegli un report",
@@ -1614,9 +1615,13 @@
       "networth_down": "−{amount} quest’anno",
       "networth_flat": "Nessuna variazione quest’anno",
       "spending_q": "Per cosa spendo i soldi e come sta cambiando?",
+      "cashflow_q": "Guadagno più di quanto spendo?",
       "forecast_q": "Cosa succederà ai miei soldi?",
       "coming_later": "In arrivo",
-      "spent_caption": "spesi nel {year}"
+      "spent_caption": "spesi nel {year}",
+      "saved_caption": "risparmiati nel {year}",
+      "overspent_caption": "spesi in eccesso nel {year}",
+      "saved_rate": "{rate}% delle entrate"
     },
     "period": {
       "quarter": "T{quarter} {year}"
@@ -1650,6 +1655,8 @@
     "insight": {
       "empty": "Ancora nessuna transazione",
       "spending_top": "{name} è la voce maggiore: {amount}, il {share}% del totale",
+      "cashflow_saved": "Risparmiati {amount}, il {rate}% delle entrate",
+      "cashflow_overspent": "Spesi {amount} più di quanto guadagnato",
       "networth_up": "+{amount} nel periodo",
       "networth_down": "−{amount} nel periodo",
       "networth_flat": "Nessuna variazione nel periodo"
@@ -1709,6 +1716,28 @@
       "compare_note": "Entrambi gli anni coprono solo {period}, così il confronto è alla pari.",
       "hint_select": "Tocca una riga o una barra per mostrare solo quella riga.",
       "hint_drill": "Tocca una barra per vederne le transazioni."
+    },
+    "cashflow": {
+      "view": "Vista",
+      "view_bars": "Barre",
+      "view_flow": "Flusso",
+      "col_period": "Periodo",
+      "income": "Entrate",
+      "available": "Disponibile",
+      "spent": "Speso",
+      "saved": "Risparmiato",
+      "spending": "Spese",
+      "net_saved": "Risparmio netto",
+      "transfers_in": "Trasferito in entrata",
+      "transfers_out": "Trasferito in uscita",
+      "chart": "Grafico del flusso di cassa",
+      "flow_chart": "Flusso di denaro",
+      "from_balance": "Dal saldo",
+      "to_savings": "Spostato sui conti di risparmio",
+      "stayed": "Rimasto sui conti di tutti i giorni",
+      "other_income": "Altre entrate",
+      "running_note": "* {period} non è ancora finito: le cifre sono quelle finora.",
+      "flow_note": "Il flusso copre l’intero periodo: da dove sono arrivate le entrate e dove sono andate."
     },
     "drill": {
       "unsupported": "Queste transazioni non possono essere elencate qui. Apri la pagina Budget per vederle.",

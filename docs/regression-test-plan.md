@@ -2148,10 +2148,10 @@ and on tablet/phone only with a hardware keyboard.
 - [ ] **Default** (`ECONUMO_DEV` unset): the report list offers "Am I getting
       richer or poorer?" and "Suggest a report" only; Suggest a report opens the
       feedback form on the feature-request type (no card when
-      `ECONUMO_FEEDBACK=false`). A tab left on Spending goes back to
+      `ECONUMO_FEEDBACK=false`). A tab left on Spending or Cash flow goes back to
       the report list 📱
-- [ ] **`ECONUMO_DEV=true`**: the list also offers Spending and the
-      greyed forecast card; the items below marked Spending are
+- [ ] **`ECONUMO_DEV=true`**: the list also offers Spending, Cash flow and the
+      greyed forecast card; the items below marked Spending / Cash flow are
       checked with it on.
 - [ ] **Entry point**: Reports is a chart icon right before the sync button in the
       sidebar footer (expanded, collapsed rail, and the phone menu); there is no
@@ -2241,6 +2241,37 @@ tag, and a budget with a planned limit on one category.
 - [ ] Light and dark theme: bars, outline, planned line, change colours and
       table stay readable. 📱 At 390px the controls wrap, the chart fits
       the width and the table shows Name, the later period and Change %.
+- [ ] **Cash flow, Bars**: per step bucket, income (green) above the zero
+      line, spending (orange) below, and a dashed "Net saved" line. The
+      headline reads "Saved {amount}, {pct}% of income" for the period
+      (red "Spent {amount} more than earned" when spending is higher), with
+      the period's Income and Spent totals under it. Amounts show cents.
+- [ ] Cash flow table: one row per bucket, newest first: Period, Income,
+      Spent, Saved (green "+", red "−" for a month that spent more than it
+      earned). "Transferred in / out" columns appear only when money moved
+      in or out of the scope's accounts (hidden at 390px). The running
+      bucket ends in "*" and the footnote says its figures are so far;
+      nothing is projected. "Show N more" after 12 rows.
+- [ ] **Cash flow matches Plan**: in a budget scope, Month step, the Income
+      and Spent of one month equal the Plan page's income and expense row
+      totals for that month (an account's opening balance appears as
+      Uncategorized income in its creation month on both screens).
+- [ ] **Flow (Sankey)**, desktop only: Bars / Flow switch; Flow draws the
+      top 5 income rows (+ "Other income") and "Transferred in" into the
+      hub, then out to the top 7 expense rows (+ "Everything else"),
+      "Transferred out" and "Saved"; transfer nodes appear only when
+      non-zero. In a budget with savings members, "Saved" splits into
+      "Moved to savings accounts" and "Stayed in everyday accounts"; a
+      budget without savings members shows one "Saved". When the outflows
+      are higher than the inflows, a "From balance" source covers the gap
+      and nothing is shown as saved. The hub reads "Income" (equal to the
+      headline Income) when only income feeds it, "Available" when
+      transfers in or From balance do. Step is hidden in Flow; Group by
+      (My accounts) regroups the rows.
+- [ ] 📱 At 390px the Bars / Flow switch is not shown, a tab left in Flow
+      on desktop opens as Bars, and the chart and four table columns fit
+      the width. Light and dark theme: bars, line, Sankey labels and links
+      stay readable.
 - [ ] **Net worth**: one line for the total with a soft fill under it (no
       stacked colours, no legend); hovering a month shows each folder (My
       accounts) or person (budget) with its amount and the Total at the
