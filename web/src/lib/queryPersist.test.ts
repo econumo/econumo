@@ -56,10 +56,11 @@ it('never persists the transactions list: it lives in IndexedDB', () => {
 it('persists a report of up to 37 months and leaves longer ones out', () => {
   const should = createPersistOptions().dehydrateOptions.shouldDehydrateQuery
   const months = (n: number) => ({ months: Array.from({ length: n }, (_, i) => String(i)) })
-  const key = ['reportNetWorth', 'b1', '', '', '']
-  expect(should({ queryKey: key, state: { status: 'success', data: months(37) } })).toBe(true)
-  expect(should({ queryKey: key, state: { status: 'success', data: months(38) } })).toBe(false)
-  expect(should({ queryKey: key, state: { status: 'success', data: months(240) } })).toBe(false)
+  for (const key of [['reportFlow', 'mine', '', '', ''], ['reportNetWorth', 'b1', '', '', '']]) {
+    expect(should({ queryKey: key, state: { status: 'success', data: months(37) } })).toBe(true)
+    expect(should({ queryKey: key, state: { status: 'success', data: months(38) } })).toBe(false)
+    expect(should({ queryKey: key, state: { status: 'success', data: months(240) } })).toBe(false)
+  }
   expect(should({ queryKey: ['accounts'], state: { status: 'success', data: months(240) } })).toBe(true)
 })
 

@@ -118,6 +118,7 @@ func (l *BudgetAccountLookup) AccountOwner(ctx context.Context, accountID vo.Id)
 
 type budgetCategoryRepo interface {
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
+	ListByIDs(ctx context.Context, ids []vo.Id) ([]*model.Category, error)
 }
 
 // BudgetCategoryMetadataLookup adapts the category repository to the category
@@ -157,8 +158,26 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, u
 	return out, nil
 }
 
+// CategoriesByIDs resolves the given categories whoever owns them, in one
+// query; an id that does not exist is skipped.
+func (l *BudgetCategoryMetadataLookup) CategoriesByIDs(ctx context.Context, ids []vo.Id) ([]model.CategoryMeta, error) {
+	cats, err := l.categories.ListByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.CategoryMeta, 0, len(cats))
+	for _, c := range cats {
+		out = append(out, model.CategoryMeta{
+			ID: c.ID.String(), OwnerID: c.UserID.String(), Name: c.Name, Icon: c.Icon,
+			IsIncome: c.Type == model.TypeIncome, IsArchived: c.IsArchived,
+		})
+	}
+	return out, nil
+}
+
 type budgetTagRepo interface {
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, error)
+	ListByIDs(ctx context.Context, ids []vo.Id) ([]*model.Tag, error)
 }
 
 // BudgetTagMetadataLookup adapts the tag repository to the tag slice of
@@ -197,8 +216,23 @@ func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo
 	return out, nil
 }
 
+// TagsByIDs resolves the given tags whoever owns them, in one query; an id
+// that does not exist is skipped.
+func (l *BudgetTagMetadataLookup) TagsByIDs(ctx context.Context, ids []vo.Id) ([]model.TagMeta, error) {
+	tags, err := l.tags.ListByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.TagMeta, 0, len(tags))
+	for _, t := range tags {
+		out = append(out, model.TagMeta{ID: t.ID.String(), OwnerID: t.UserID.String(), Name: t.Name, IsArchived: t.IsArchived})
+	}
+	return out, nil
+}
+
 type budgetPayeeRepo interface {
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error)
+	ListByIDs(ctx context.Context, ids []vo.Id) ([]*model.Payee, error)
 }
 
 // BudgetPayeeMetadataLookup adapts the payee repository to the payee slice of
@@ -231,6 +265,20 @@ func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs 
 			seen[p.ID.String()] = true
 			out = append(out, model.PayeeMeta{ID: p.ID.String(), Name: p.Name})
 		}
+	}
+	return out, nil
+}
+
+// PayeesByIDs resolves the given payees whoever owns them, in one query; an
+// id that does not exist is skipped.
+func (l *BudgetPayeeMetadataLookup) PayeesByIDs(ctx context.Context, ids []vo.Id) ([]model.PayeeMeta, error) {
+	payees, err := l.payees.ListByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.PayeeMeta, 0, len(payees))
+	for _, p := range payees {
+		out = append(out, model.PayeeMeta{ID: p.ID.String(), Name: p.Name})
 	}
 	return out, nil
 }

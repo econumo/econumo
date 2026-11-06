@@ -55,6 +55,44 @@ func (q *Queries) GetPayeeByID(ctx context.Context, id string) (Payee, error) {
 	return i, err
 }
 
+const listPayeesByIDs = `-- name: ListPayeesByIDs :many
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key
+FROM payees
+WHERE id IN (SELECT CAST(e AS uuid) FROM jsonb_array_elements_text(CAST($1::text AS jsonb)) e)
+`
+
+// ids is a JSON array of payee ids (see the sqlite variant).
+func (q *Queries) ListPayeesByIDs(ctx context.Context, ids string) ([]Payee, error) {
+	rows, err := q.db.QueryContext(ctx, listPayeesByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Payee{}
+	for rows.Next() {
+		var i Payee
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.IsArchived,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SortKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPayeesByOwner = `-- name: ListPayeesByOwner :many
 SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key
 FROM payees

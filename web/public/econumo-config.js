@@ -18,6 +18,7 @@ window.econumoConfig = {
   MCP_URL: '',
   AI_ENABLED: false,
   IMPORT_SIMPLEFIN: false,
+  DEV: false,
   FEEDBACK: true,
   ALLOW_CUSTOM_API: true,
   VERSION: null,

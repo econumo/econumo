@@ -10,12 +10,15 @@ import (
 	"time"
 
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/model"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	recurringrepo "github.com/econumo/econumo/internal/recurring/repo"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/vo"
+	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
@@ -122,7 +125,7 @@ func TestBudgetAccountLookup_OwnedLiveAccountIDs(t *testing.T) {
 	}
 }
 
-// OwnedAccountIDs feeds net worth: the user's own accounts, deleted ones
+// OwnedAccountIDs feeds the reports: the user's own accounts, deleted ones
 // included, never one merely shared with them.
 func TestBudgetAccountLookup_OwnedAccountIDs(t *testing.T) {
 	db := dbtest.New(t)
@@ -149,6 +152,64 @@ func TestBudgetAccountLookup_OwnedAccountIDs(t *testing.T) {
 		if !id.Equal(live) && !id.Equal(dead) {
 			t.Fatalf("unexpected account %s in %v", id, got)
 		}
+	}
+}
+
+// The ByIDs lookups resolve ids whoever owns them and skip unknown ones.
+func TestBudgetMetadataLookup_ByIDsAcrossOwners(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	u, other := vo.NewId().String(), vo.NewId().String()
+	f.User(fixture.User{ID: u, Email: "u@e.test", Name: "U", Password: "pw", Salt: "s"})
+	f.User(fixture.User{ID: other, Email: "o@e.test", Name: "O", Password: "pw", Salt: "s"})
+	cat := f.Category(fixture.Category{UserID: other, Name: "Theirs"})
+	tag := f.Tag(fixture.Tag{UserID: other, Name: "TheirTag"})
+	payee := f.Payee(fixture.Payee{UserID: other, Name: "TheirPayee"})
+	ctx := context.Background()
+
+	cats, err := server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo(db.Engine, db.TX)).
+		CategoriesByIDs(ctx, []vo.Id{vo.MustParseId(cat), vo.NewId()})
+	if err != nil || len(cats) != 1 || cats[0].Name != "Theirs" {
+		t.Fatalf("categories = %+v, %v", cats, err)
+	}
+	tags, err := server.NewBudgetTagMetadataLookup(tagrepo.NewRepo(db.Engine, db.TX)).
+		TagsByIDs(ctx, []vo.Id{vo.MustParseId(tag), vo.NewId()})
+	if err != nil || len(tags) != 1 || tags[0].Name != "TheirTag" {
+		t.Fatalf("tags = %+v, %v", tags, err)
+	}
+	payees, err := server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo(db.Engine, db.TX)).
+		PayeesByIDs(ctx, []vo.Id{vo.MustParseId(payee), vo.NewId()})
+	if err != nil || len(payees) != 1 || payees[0].Name != "TheirPayee" {
+		t.Fatalf("payees = %+v, %v", payees, err)
+	}
+}
+
+// One batched query resolves many ids across owners; none asks for nothing.
+func TestBudgetMetadataLookup_ByIDsBatch(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	u, other := vo.NewId().String(), vo.NewId().String()
+	f.User(fixture.User{ID: u, Email: "u@e.test", Name: "U", Password: "pw", Salt: "s"})
+	f.User(fixture.User{ID: other, Email: "o@e.test", Name: "O", Password: "pw", Salt: "s"})
+	mine := f.Category(fixture.Category{UserID: u, Name: "Mine"})
+	theirs := f.Category(fixture.Category{UserID: other, Name: "Theirs"})
+	f.Category(fixture.Category{UserID: u, Name: "Not asked"})
+	ctx := context.Background()
+	l := server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo(db.Engine, db.TX))
+
+	cats, err := l.CategoriesByIDs(ctx, []vo.Id{vo.MustParseId(mine), vo.MustParseId(theirs), vo.NewId()})
+	if err != nil || len(cats) != 2 {
+		t.Fatalf("categories = %+v, %v", cats, err)
+	}
+	names := map[string]string{}
+	for _, c := range cats {
+		names[c.ID] = c.Name + "/" + c.OwnerID
+	}
+	if names[mine] != "Mine/"+u || names[theirs] != "Theirs/"+other {
+		t.Fatalf("names = %v", names)
+	}
+	if none, err := l.CategoriesByIDs(ctx, nil); err != nil || len(none) != 0 {
+		t.Fatalf("empty = %+v, %v", none, err)
 	}
 }
 

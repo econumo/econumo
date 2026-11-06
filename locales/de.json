@@ -1595,10 +1595,12 @@
       "rename": "Umbenennen",
       "duplicate": "Duplizieren",
       "name_label": "Tabname",
-      "limit": "Höchstens {count} Tabs"
+      "limit": "Höchstens {count} Tabs",
+      "versus": "{later} vs. {earlier}"
     },
     "kind": {
-      "networth": "Nettovermögen"
+      "networth": "Nettovermögen",
+      "spending": "Ausgaben"
     },
     "list": {
       "choose": "Bericht wählen",
@@ -1610,7 +1612,11 @@
       "networth_caption": "heute",
       "networth_up": "Plus {amount} in diesem Jahr",
       "networth_down": "Minus {amount} in diesem Jahr",
-      "networth_flat": "Keine Veränderung in diesem Jahr"
+      "networth_flat": "Keine Veränderung in diesem Jahr",
+      "spending_q": "Wofür gebe ich Geld aus, und wie verändert sich das?",
+      "forecast_q": "Was wird aus meinem Geld?",
+      "coming_later": "Kommt später",
+      "spent_caption": "{year} ausgegeben"
     },
     "period": {
       "quarter": "Q{quarter} {year}"
@@ -1642,9 +1648,72 @@
       "total": "Gesamt"
     },
     "insight": {
-      "empty": "Noch keine Buchungen"
+      "empty": "Noch keine Buchungen",
+      "spending_top": "{name} ist der größte Posten: {amount}, {share} % der Summe",
+      "networth_up": "Plus {amount} im Zeitraum",
+      "networth_down": "Minus {amount} im Zeitraum",
+      "networth_flat": "Keine Veränderung im Zeitraum"
     },
-    "updated_at": "Aktualisiert {time}"
+    "updated_at": "Aktualisiert {time}",
+    "filters": {
+      "period": "Zeitraum",
+      "period_thisYear": "Dieses Jahr",
+      "period_last12": "Letzte 12 Monate",
+      "period_last3y": "Letzte 3 Jahre",
+      "period_all": "Gesamter Zeitraum",
+      "period_custom": "Benutzerdefiniert",
+      "from": "Von",
+      "to": "Bis",
+      "step": "Schritt",
+      "step_month": "Monat",
+      "step_quarter": "Quartal",
+      "step_year": "Jahr",
+      "group_by": "Gruppieren nach",
+      "group_category": "Kategorie",
+      "group_payee": "Empfänger",
+      "group_tag": "Tag"
+    },
+    "spending": {
+      "headline": "Übersicht",
+      "show_transactions": "Transaktionen anzeigen",
+      "mode": "Ansicht",
+      "mode_overTime": "Im Zeitverlauf",
+      "mode_compare": "Jahre vergleichen",
+      "side": "Art",
+      "side_expense": "Ausgaben",
+      "side_income": "Einnahmen",
+      "spent_in": "Ausgegeben {period}",
+      "earned_in": "Eingenommen {period}",
+      "vs": "ggü. {period}",
+      "on_pace": "Hochgerechnet {amount} für {period}",
+      "other": "Alles andere",
+      "no_payee": "Ohne Empfänger",
+      "no_tag": "Ohne Tag",
+      "total": "Gesamt",
+      "projected": "Hochgerechnet",
+      "planned": "Geplant",
+      "legend": "Legende",
+      "chart": "Diagramm",
+      "show_all": "Alle Zeilen anzeigen",
+      "later_year": "Späteres Jahr",
+      "earlier_year": "Früheres Jahr",
+      "versus": "vs.",
+      "col_name": "Name",
+      "col_change": "Veränderung",
+      "col_avg": "Monatsschnitt",
+      "expand": "Zeigen, woraus {name} besteht",
+      "collapse": "Ausblenden, woraus {name} besteht",
+      "show_more": "{count} weitere anzeigen",
+      "show_less": "Weniger anzeigen",
+      "projected_note": "* {period} ist noch nicht vorbei: Der gestrichelte Umriss zeigt, wohin es beim bisherigen Tempo geht.",
+      "compare_note": "Beide Jahre umfassen nur {period}, damit der Vergleich fair ist.",
+      "hint_select": "Tippe auf eine Zeile oder einen Balken, um nur diese Zeile darzustellen.",
+      "hint_drill": "Tippe auf einen Balken, um seine Transaktionen zu sehen."
+    },
+    "drill": {
+      "unsupported": "Diese Transaktionen können hier nicht aufgelistet werden. Öffne die Budget-Seite, um sie zu sehen.",
+      "deleted_accounts": "Buchungen gelöschter Konten sind im Bericht enthalten, werden hier aber nicht aufgeführt."
+    }
   },
   "classifications": {
     "common": {

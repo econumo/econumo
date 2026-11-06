@@ -1595,10 +1595,12 @@
       "rename": "Перейменувати",
       "duplicate": "Дублювати",
       "name_label": "Назва вкладки",
-      "limit": "Не більше {count} вкладок"
+      "limit": "Не більше {count} вкладок",
+      "versus": "{later} і {earlier}"
     },
     "kind": {
-      "networth": "Капітал"
+      "networth": "Капітал",
+      "spending": "Витрати"
     },
     "list": {
       "choose": "Оберіть звіт",
@@ -1610,7 +1612,11 @@
       "networth_caption": "сьогодні",
       "networth_up": "Зростання на {amount} цього року",
       "networth_down": "Зниження на {amount} цього року",
-      "networth_flat": "Без змін цього року"
+      "networth_flat": "Без змін цього року",
+      "spending_q": "На що я витрачаю гроші і як це змінюється?",
+      "forecast_q": "Що буде з моїми грошима?",
+      "coming_later": "Незабаром",
+      "spent_caption": "витрачено у {year}"
     },
     "period": {
       "quarter": "{quarter} кв. {year}"
@@ -1642,9 +1648,72 @@
       "total": "Разом"
     },
     "insight": {
-      "empty": "Поки немає операцій"
+      "empty": "Поки немає операцій",
+      "spending_top": "Найбільше — {name}: {amount}, {share}% від загальної суми",
+      "networth_up": "Зростання на {amount} за період",
+      "networth_down": "Зниження на {amount} за період",
+      "networth_flat": "Без змін за період"
     },
-    "updated_at": "Оновлено {time}"
+    "updated_at": "Оновлено {time}",
+    "filters": {
+      "period": "Період",
+      "period_thisYear": "Цей рік",
+      "period_last12": "Останні 12 місяців",
+      "period_last3y": "Останні 3 роки",
+      "period_all": "За весь час",
+      "period_custom": "Свій період",
+      "from": "З",
+      "to": "По",
+      "step": "Крок",
+      "step_month": "Місяць",
+      "step_quarter": "Квартал",
+      "step_year": "Рік",
+      "group_by": "Групувати за",
+      "group_category": "Категорія",
+      "group_payee": "Отримувач",
+      "group_tag": "Тег"
+    },
+    "spending": {
+      "headline": "Підсумок",
+      "show_transactions": "Показати операції",
+      "mode": "Вигляд",
+      "mode_overTime": "Динаміка",
+      "mode_compare": "Порівняти роки",
+      "side": "Тип",
+      "side_expense": "Витрати",
+      "side_income": "Доходи",
+      "spent_in": "Витрачено: {period}",
+      "earned_in": "Отримано: {period}",
+      "vs": "проти {period}",
+      "on_pace": "У такому темпі {amount} за {period}",
+      "other": "Усе інше",
+      "no_payee": "Без отримувача",
+      "no_tag": "Без тегу",
+      "total": "Разом",
+      "projected": "Прогноз",
+      "planned": "План",
+      "legend": "Легенда",
+      "chart": "Графік",
+      "show_all": "Показати всі рядки",
+      "later_year": "Пізніший рік",
+      "earlier_year": "Раніший рік",
+      "versus": "проти",
+      "col_name": "Назва",
+      "col_change": "Зміна",
+      "col_avg": "У середньому за місяць",
+      "expand": "Показати, з чого складається {name}",
+      "collapse": "Сховати, з чого складається {name}",
+      "show_more": "Ще {count}",
+      "show_less": "Згорнути",
+      "projected_note": "* {period} ще не закінчився: пунктир показує, куди він іде за поточного темпу.",
+      "compare_note": "Обидва роки взято лише за {period}, щоб порівняння було чесним.",
+      "hint_select": "Торкніться рядка або стовпця, щоб показати лише цей рядок.",
+      "hint_drill": "Торкніться стовпця, щоб побачити його операції."
+    },
+    "drill": {
+      "unsupported": "Ці операції не можна показати тут. Відкрийте сторінку Бюджету, щоб їх побачити.",
+      "deleted_accounts": "Операції видалених рахунків враховано у звіті, але тут вони не показані."
+    }
   },
   "classifications": {
     "common": {

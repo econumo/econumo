@@ -37,3 +37,9 @@ UPDATE transactions SET category_id = $1 WHERE category_id = $2;
 
 -- name: ReassignCategoryRecurring :exec
 UPDATE recurring_transactions SET category_id = $1 WHERE category_id = $2;
+
+-- name: ListCategoriesByIDs :many
+-- ids is a JSON array of category ids (see the sqlite variant).
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
+FROM categories
+WHERE id IN (SELECT CAST(e AS uuid) FROM jsonb_array_elements_text(CAST(sqlc.arg(ids)::text AS jsonb)) e);

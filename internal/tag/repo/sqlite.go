@@ -38,3 +38,7 @@ func (sqliteQuerier) ReassignTagTransactions(ctx context.Context, db backend.DBT
 func (sqliteQuerier) ReassignTagRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return sqlitegen.New(db).ReassignTagRecurring(ctx, p)
 }
+
+func (sqliteQuerier) ListTagsByIDs(ctx context.Context, db backend.DBTX, ids string) ([]tagRow, error) {
+	return sqlitegen.New(db).ListTagsByIDs(ctx, ids)
+}

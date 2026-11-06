@@ -13,7 +13,7 @@ afterEach(() => {
 // The current server (internal/web/router builds the complete map,
 // internal/web/spa writes it verbatim) emits the whole document as a single
 // assignment.
-const SERVED = `window.econumoConfig = {"ALLOW_REGISTRATION":false,"PASSWORD_LOGIN":false,"INSTANCE_ID":"a3f19c02b7d4","VERSION":"v1.4.2","MIN_APP_VERSION":"v1.1.0","BILLING_URL":"https://x","MCP_URL":"https://x/mcp","FEEDBACK":false};
+const SERVED = `window.econumoConfig = {"ALLOW_REGISTRATION":false,"PASSWORD_LOGIN":false,"INSTANCE_ID":"a3f19c02b7d4","VERSION":"v1.4.2","MIN_APP_VERSION":"v1.1.0","BILLING_URL":"https://x","MCP_URL":"https://x/mcp","FEEDBACK":false,"DEV":true};
 `
 
 // The app can be pointed at any user-chosen backend, including one running an
@@ -56,6 +56,7 @@ it('merges only the allowlist and stores the version handshake separately', asyn
   expect(window.econumoConfig.BILLING_URL).toBe('') // not on the allowlist
   expect(window.econumoConfig.MCP_URL).toBe('https://x/mcp')
   expect(window.econumoConfig.FEEDBACK).toBe(false)
+  expect(window.econumoConfig.DEV).toBe(true)
   expect(window.econumoConfig.VERSION).toBeUndefined() // never merged
   expect('MIN_APP_VERSION' in window.econumoConfig).toBe(false) // never merged
   expect(useServerConfig.getState().serverVersion).toBe('v1.4.2')

@@ -60,3 +60,15 @@ func (pgsqlQuerier) MarkOperationHandled(ctx context.Context, db backend.DBTX, p
 func (pgsqlQuerier) ReassignCategoryRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return pgsqlgen.New(db).ReassignCategoryRecurring(ctx, pgsqlgen.ReassignCategoryRecurringParams(p))
 }
+
+func (pgsqlQuerier) ListCategoriesByIDs(ctx context.Context, db backend.DBTX, ids string) ([]categoryRow, error) {
+	rows, err := pgsqlgen.New(db).ListCategoriesByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]categoryRow, len(rows))
+	for i, x := range rows {
+		out[i] = categoryRow(x)
+	}
+	return out, nil
+}

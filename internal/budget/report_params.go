@@ -95,3 +95,19 @@ func (s *Service) resolveReportWindow(ctx context.Context, rawFrom, rawTo string
 	}
 	return reportWindow{from: from, months: months}, nil
 }
+
+const (
+	flowGroupCategory = "category"
+	flowGroupTag      = "tag"
+	flowGroupPayee    = "payee"
+)
+
+func parseFlowGroupBy(raw string) (string, error) {
+	switch raw {
+	case "":
+		return flowGroupCategory, nil
+	case flowGroupCategory, flowGroupTag, flowGroupPayee:
+		return raw, nil
+	}
+	return "", invalidChoice("groupBy")
+}

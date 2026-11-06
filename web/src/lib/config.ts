@@ -19,6 +19,7 @@ export interface EconumoConfig {
   INSTANCE_ID?: string
   AI_ENABLED?: boolean
   IMPORT_SIMPLEFIN?: boolean
+  DEV?: boolean
   FEEDBACK?: boolean
   BILLING_URL?: string
   MCP_URL?: string
@@ -228,4 +229,10 @@ export function isPasswordLoginAllowed(): boolean {
 
 export function getInstanceId(): string {
   return window.econumoConfig?.INSTANCE_ID || ''
+}
+
+// ECONUMO_DEV: the feature-flag gate. Unfinished features show only while the
+// server turns it on.
+export function isDevEnabled(): boolean {
+  return window.econumoConfig?.DEV === true
 }

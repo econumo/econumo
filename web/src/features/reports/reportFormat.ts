@@ -16,6 +16,12 @@ export function compactNumber(lang: string) {
   return (v: number) => fmt.format(v)
 }
 
+export function percent(pct: number | null): string | null {
+  if (pct === null) return null
+  const r = Math.round(pct)
+  return `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r)}%`
+}
+
 export function signedMoney(diff: string, money: (a: string) => string): string {
   if (isZero(diff)) return money('0')
   return `${isNegative(diff) ? '−' : '+'}${money(abs(diff))}`

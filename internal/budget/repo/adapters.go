@@ -19,12 +19,15 @@ import (
 
 type categoryMetadataLookup interface {
 	CategoriesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.CategoryMeta, error)
+	CategoriesByIDs(ctx context.Context, ids []vo.Id) ([]model.CategoryMeta, error)
 }
 type tagMetadataLookup interface {
 	TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]model.TagMeta, error)
+	TagsByIDs(ctx context.Context, ids []vo.Id) ([]model.TagMeta, error)
 }
 type payeeMetadataLookup interface {
 	PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.PayeeMeta, error)
+	PayeesByIDs(ctx context.Context, ids []vo.Id) ([]model.PayeeMeta, error)
 }
 
 // MetadataLookup adapts the category + tag + payee metadata lookups to
@@ -58,4 +61,19 @@ func (l *MetadataLookup) CategoriesByOwners(ctx context.Context, userIDs []vo.Id
 // TagsByOwners returns all tags owned by the given users.
 func (l *MetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]model.TagMeta, error) {
 	return l.tags.TagsByOwners(ctx, userIDs)
+}
+
+// CategoriesByIDs resolves the given categories whoever owns them.
+func (l *MetadataLookup) CategoriesByIDs(ctx context.Context, ids []vo.Id) ([]model.CategoryMeta, error) {
+	return l.categories.CategoriesByIDs(ctx, ids)
+}
+
+// TagsByIDs resolves the given tags whoever owns them.
+func (l *MetadataLookup) TagsByIDs(ctx context.Context, ids []vo.Id) ([]model.TagMeta, error) {
+	return l.tags.TagsByIDs(ctx, ids)
+}
+
+// PayeesByIDs resolves the given payees whoever owns them.
+func (l *MetadataLookup) PayeesByIDs(ctx context.Context, ids []vo.Id) ([]model.PayeeMeta, error) {
+	return l.payees.PayeesByIDs(ctx, ids)
 }

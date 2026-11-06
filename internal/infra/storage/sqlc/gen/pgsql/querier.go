@@ -345,6 +345,8 @@ type Querier interface {
 	ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetLimitsForPeriodParams) ([]ListBudgetLimitsForPeriodRow, error)
 	ListBudgetLimitsFrom(ctx context.Context, arg ListBudgetLimitsFromParams) ([]ListBudgetLimitsFromRow, error)
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)
+	// ids is a JSON array of category ids (see the sqlite variant).
+	ListCategoriesByIDs(ctx context.Context, ids string) ([]Category, error)
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
 	ListConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
 	// Write-side queries for the currency module: the CLI admin commands
@@ -392,6 +394,8 @@ type Querier interface {
 	// The owner's labels ordered by sort key; used by move-label (load, place the
 	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
+	// ids is a JSON array of payee ids (see the sqlite variant).
+	ListPayeesByIDs(ctx context.Context, ids string) ([]Payee, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
@@ -403,6 +407,8 @@ type Querier interface {
 	ListRatedPeriods(ctx context.Context, arg ListRatedPeriodsParams) ([]ListRatedPeriodsRow, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	// ids is a JSON array of tag ids (see the sqlite variant).
+	ListTagsByIDs(ctx context.Context, ids string) ([]Tag, error)
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
 	// Transactions on an account (as source or recipient) in list order: newest
 	// day first, then the row's place in that day on THIS account's side

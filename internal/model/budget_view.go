@@ -68,6 +68,16 @@ type MonthlyIncomeRow struct {
 	Amount     string
 }
 
+// MonthlyFlowRow is one (month, type, group, currency) total of expense
+// (Type 0) or income (Type 1). GroupID nil = no category/tag/payee.
+type MonthlyFlowRow struct {
+	Month      string
+	Type       int
+	GroupID    *string
+	CurrencyID string
+	Amount     string
+}
+
 // MonthlyTransferRow is one (month, currency) total of transfers that crossed
 // the budget boundary: In sums transfers INTO the included set (recipient
 // inside, source outside) in the recipient account's currency; Out sums
