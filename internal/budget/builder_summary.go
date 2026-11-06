@@ -6,6 +6,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -13,8 +14,9 @@ import (
 // the period average rates. Balance amount fields are nil when the period has not
 // started/ended.
 func (s *Service) buildFinancialSummary(ctx context.Context, budgetCurrencyID vo.Id, f filters, now time.Time) ([]model.CurrencyBalanceResult, []model.AverageCurrencyRateResult, error) {
-	periodStarted := !f.periodStart.After(now)
-	periodEnded := !f.periodEnd.After(now)
+	wall := localNow(now, reqctx.Location(ctx))
+	periodStarted := !f.periodStart.After(wall)
+	periodEnded := !f.periodEnd.After(wall)
 
 	var startBalances, endBalances []model.AccountBalanceRow
 	var reports []model.AccountReportRow
@@ -89,7 +91,7 @@ func (s *Service) buildFinancialSummary(ctx context.Context, budgetCurrencyID vo
 		balances = append(balances, item)
 	}
 
-	rates, err := s.buildAverageRates(ctx, f.periodStart, f.periodEnd)
+	rates, err := s.buildAverageRates(ctx, f.startDay, f.periodStart, f.periodEnd)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -97,18 +99,19 @@ func (s *Service) buildFinancialSummary(ctx context.Context, budgetCurrencyID vo
 }
 
 // buildAverageRates returns all currency rates (no filter).
-func (s *Service) buildAverageRates(ctx context.Context, periodStart, periodEnd time.Time) ([]model.AverageCurrencyRateResult, error) {
-	base, err := s.rates.BaseCurrencyID(ctx)
+func (s *Service) buildAverageRates(ctx context.Context, startDay int, periodStart, periodEnd time.Time) ([]model.AverageCurrencyRateResult, error) {
+	lookup := s.ratesFor(startDay)
+	base, err := lookup.BaseCurrencyID(ctx)
 	if err != nil {
 		return nil, err
 	}
-	fullRates, err := s.rates.AverageRates(ctx, periodStart, periodEnd)
+	fullRates, err := lookup.AverageRates(ctx, periodStart, periodEnd)
 	if err != nil {
 		return nil, err
 	}
 	// The reported period is the SNAPPED one (latest-rate month), not the
 	// requested period — the currencyRates block stamps this snapped range.
-	rateStart, rateEnd, err := s.rates.SnappedRatePeriod(ctx, periodStart, periodEnd)
+	rateStart, rateEnd, err := lookup.SnappedRatePeriod(ctx, periodStart, periodEnd)
 	if err != nil {
 		return nil, err
 	}

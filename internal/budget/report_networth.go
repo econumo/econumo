@@ -143,7 +143,8 @@ func (s *Service) buildNetWorth(ctx context.Context, userID vo.Id, views []model
 	if tomorrow.Before(netsTo) {
 		netsTo = tomorrow
 	}
-	nets, err := s.read.AccountsNetByMonth(ctx, accountIDs, w.from, netsTo)
+	// net worth runs on calendar months, whatever day a budget's months start on
+	nets, err := s.read.AccountsNetByMonth(ctx, accountIDs, w.from, netsTo, 1)
 	if err != nil {
 		return result, err
 	}

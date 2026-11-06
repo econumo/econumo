@@ -1,5 +1,5 @@
 import type { Id } from '@/api/types'
-import { addMonths, currentMonth } from '@/features/budgets/planMath'
+import { addMonths } from '@/features/budgets/planMath'
 import type { ReportParams } from './reportTabs'
 
 export interface NetWorthQueryArgs {
@@ -7,10 +7,15 @@ export interface NetWorthQueryArgs {
   from?: string
 }
 
+// net worth runs on calendar months, whatever day a budget's months start on
+function calendarMonth(today: Date): string {
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
+}
+
 function periodFrom(p: ReportParams, today: Date): string | undefined {
   switch (p.period) {
     case 'last12':
-      return addMonths(currentMonth(today), -11)
+      return addMonths(calendarMonth(today), -11)
     case 'last3y':
       return `${today.getFullYear() - 2}-01-01`
     case 'all':

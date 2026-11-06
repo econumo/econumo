@@ -412,6 +412,36 @@ the device only (localStorage `econumo.reportTabs`) and Reports always opens on 
 Every report query key is invalidated after any successful mutation
 (`web/src/lib/appQueryClient.ts`), so a report never shows stale figures.
 
+**Service worker** (`web/sw/sw.js`, registered by `web/src/lib/serviceWorker.ts`, production
+web builds only, never in the native app): it makes the installed PWA start offline. A Vite
+plugin in `web/vite.config.ts` writes `dist/sw.js` after the build, prepending the precache
+list (the bundle, the manifest and the icons it and `index.html` name)
+and a build hash, a digest of the worker and those files rather than the release version (every
+dev deploy reports `dev`), so a deploy that changes any of them installs a new worker
+(`skipWaiting` + `clients.claim`, every other shell and the runtime cache dropped on activate).
+Navigations are network-first with the shell cached under `/` (Go's file server redirects
+`/index.html`); `/assets/*` is cache-first; other shell files network-first. Network-first falls
+back to the cache after 4 s, body included, so a dead connection opens the app in about 4 s, and
+on a 5xx or 404 when a copy exists (the server has these files and answers client routes with the
+shell, so those are from a proxy whose upstream is down). `/api`,
+`/mcp`, the OAuth server routes, `/.well-known`, `/health`, `/_` and liltag are never intercepted,
+and nothing user-specific is cached (the data lives in IndexedDB, below). Two rules keep an
+offline launch consistent: the offline `/` is only ever the precached one (a newer build's page
+would name a bundle that is not cached), and `econumo-config.js` lives in the `econumo-config`
+cache, which outlives every worker. Only the page that booted with a config stores it
+(`rememberRunningConfig`), the worker just reads it, and a page opened from the cached shell gets
+the cached config even if the server answers that request. Its
+`VERSION_REF` keys the stored data (`getCacheBuster`), so a worker that updates while the page
+stays open must not make the next offline launch discard the transactions; the price is that
+such a launch runs the new bundle over data the previous build stored, until it is next online,
+so a change that breaks reading stored data must bump `FORMAT_VERSION`, which both the store and
+the query cache key on. "Clear cache and reload" also asks
+the worker to download its shell files again. Install and refresh share one
+check: nothing changes until every file has arrived and belongs to this build, so an unreachable
+server, a redirect, an HTML page under an asset's name, a shell page naming no asset (a proxy's)
+or a server already on another build leave the offline copy in place. The hook's lock
+then lasts until that answer too (at most 60 s).
+
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One
 database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the SimpleFIN
 data key, migrated once from the old `econumo-import` database), `accountTransactions`
@@ -1577,6 +1607,36 @@ data unreadable. Most are also asserted by the test suite.
   cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
+- **Budget period start day**: each budget starts its months on `period_start_day` 1-28
+  (default 1; `periodStartDay` on the meta, optional on `create-budget`/`update-budget`, copied
+  by `clone-budget`, anything else is the field error `budget.invalid_period_start_day`). A
+  period keeps its key `YYYY-MM-01` (`started_at`, `ended_at`, limit and comment periods, Plan
+  `months`, MCP `month`); only the date window it covers shifts. The rule lives in one helper
+  per stack (`model.PeriodWindow` / `model.PeriodOf`, `web/src/features/budgets/period.ts`):
+  every period is named after the month it starts in, key `M` covering day `d` of `M` to day
+  `d` of `M+1` (day 1 = the calendar month; day 5: "October" = 5 Oct to 4 Nov; day 28:
+  "October" = 28 Oct to 27 Nov). Request dates that pick a period name a key (snapped to the
+  first, day ignored),
+  never "the period containing this date". `get-budget` `filters.periodStart/periodEnd` carry
+  the real window. A budget whose day is not 1 converts at the rates inside each window
+  (`RateProvider.Windowed()`, wired through `budget.Service.SetShiftedPeriodRates`;
+  `currencyRates[]` reports that window, and a window holding no rate keeps the snap); day-1
+  budgets, legacy mid-month windows included, imports and everything else keep the default
+  latest-rate-month snap (`internal/currency/repo/convertor_provider.go`). "Current month"
+  everywhere (default period, Plan window, plan hints, removal window, overdue recurring) is
+  the period containing the caller's local today. The by-month SQL (`internal/budget/repo/read.go`,
+  `periodExpr`) keeps grouping by month for day 1, so a day-1 budget stays byte-identical, and
+  groups by day and folds the rows onto keys in Go (`foldPeriods`) otherwise. Changing the day
+  writes only the day: `started_at` (the first key, `Budget.FirstPeriod()`), `ended_at`, plans
+  and comments never move, so changing it back restores everything. Today may then fall
+  before the first key's window (key October switched to day 28 on 5 October): the budget
+  has not started yet, so the default `get-budget`/`get-budget-plan` period, create/clone
+  responses and the SPA's default month (`budgetCurrentPeriod`) open on the first key, and
+  days before its window belong to no period. Only the owner or an admin may change the day.
+  Reports, recurring schedules and account pages stay on calendar months. The SPA hides the
+  day picker against a server whose budgets carry no day. Changing the
+  naming rule after release needs a key migration (move `started_at`, `ended_at`, limit and
+  comment periods of the affected budgets by one month).
 - **Budget savings**: savings is a per-budget MEMBERSHIP flag
   (`budgets_accounts.is_savings`), not an account type — the same account can be a
   savings member of one budget and an everyday member of another, and `accounts.type`

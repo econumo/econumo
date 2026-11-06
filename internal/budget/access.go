@@ -49,6 +49,12 @@ func (s *Service) canShare(b *budgetAggregate, userID vo.Id) bool {
 	return err == nil && (r == model.BudgetRoleOwner || r == model.BudgetRoleAdmin)
 }
 
+// canConfigure = owner|admin: budget settings that reshape the budget for
+// every participant (the period start day).
+func (s *Service) canConfigure(b *budgetAggregate, userID vo.Id) bool {
+	return s.canShare(b, userID)
+}
+
 // canAccept = has an UNaccepted access row for the user.
 func (s *Service) canAccept(b *budgetAggregate, userID vo.Id) bool {
 	for _, a := range b.access {

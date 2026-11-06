@@ -14060,6 +14060,10 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "periodStartDay": {
+                    "description": "PeriodStartDay is the day of the month (1-28) a budget month starts on;\nabsent or 0 means 1.",
+                    "type": "integer"
+                },
                 "savingsAccountIds": {
                     "description": "SavingsAccountIds flags members as savings in this budget; each must be one\nof AccountIds.",
                     "type": "array",
@@ -15909,6 +15913,10 @@ const docTemplate = `{
                 "ownerUserId": {
                     "type": "string"
                 },
+                "periodStartDay": {
+                    "description": "PeriodStartDay is the day of the month (1-28) a budget month starts on.",
+                    "type": "integer"
+                },
                 "startedAt": {
                     "type": "string"
                 }
@@ -17652,6 +17660,10 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "periodStartDay": {
+                    "description": "PeriodStartDay is nil when omitted (untouched).",
+                    "type": "integer"
                 },
                 "savingsAccountIds": {
                     "description": "SavingsAccountIds is nil when omitted (flags untouched); a present list is\nthe caller's own savings members after AccountIds applies.",

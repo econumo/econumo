@@ -41,6 +41,11 @@ type Service struct {
 
 	txLabels  TransactionLabels
 	recurring RecurringSource
+
+	// shiftedConvertor/shiftedRates convert periods starting on a day other than
+	// the 1st at the rates inside each window; nil falls back to the defaults.
+	shiftedConvertor Convertor
+	shiftedRates     AverageRateLookup
 }
 
 // SetTransactionLabels wires the reporting-label lookup. It is a setter rather
@@ -52,6 +57,27 @@ func (s *Service) SetTransactionLabels(l TransactionLabels) { s.txLabels = l }
 // projection; a setter for the same reason as SetTransactionLabels. Unset, the
 // projection is empty.
 func (s *Service) SetRecurring(r RecurringSource) { s.recurring = r }
+
+// SetShiftedPeriodRates wires the conversions used for budgets whose periods
+// start on a day other than the 1st. Calendar-month budgets keep the default
+// convertor and rate lookup, so their figures never depend on this.
+func (s *Service) SetShiftedPeriodRates(c Convertor, r AverageRateLookup) {
+	s.shiftedConvertor, s.shiftedRates = c, r
+}
+
+func (s *Service) convertorFor(startDay int) Convertor {
+	if startDay != model.MinPeriodStartDay && s.shiftedConvertor != nil {
+		return s.shiftedConvertor
+	}
+	return s.convertor
+}
+
+func (s *Service) ratesFor(startDay int) AverageRateLookup {
+	if startDay != model.MinPeriodStartDay && s.shiftedRates != nil {
+		return s.shiftedRates
+	}
+	return s.rates
+}
 
 func NewService(
 	repo Repository,
@@ -174,16 +200,11 @@ func (s *Service) requireFreeEnvelopeID(ctx context.Context, id vo.Id) error {
 // roleGuest returns the guest role (the read-only "reader" role).
 func roleGuest() model.BudgetRole { return model.BudgetRoleGuest }
 
-// localMonth returns the first of now's month as seen in loc (the caller's
-// request timezone), expressed as a UTC-typed wall-clock. model.Budget timestamps are
-// stored as naive "Y-m-d H:i:s", so the value must be UTC-typed to serialize as
-// that bare wall-clock. Snapping in UTC instead would start a budget in the
-// NEXT month for a behind-UTC caller creating it on the evening of the 30th/31st
-// (their local month hasn't rolled over yet, the server's UTC month has).
-func localMonth(now time.Time, loc *time.Location) time.Time {
-	if loc == nil {
-		loc = time.UTC
-	}
-	y, m, _ := now.In(loc).Date()
-	return time.Date(y, m, 1, 0, 0, 0, 0, time.UTC)
+// currentPeriod returns the key of the budget period holding the caller's
+// local today (loc is the request timezone), as a UTC-typed wall clock:
+// model.Budget timestamps are stored as naive "Y-m-d H:i:s". Snapping in UTC
+// instead would start a budget in the NEXT period for a behind-UTC caller on
+// the evening before the period rolls over.
+func currentPeriod(now time.Time, loc *time.Location, startDay int) time.Time {
+	return model.PeriodOf(localToday(now, loc), startDay)
 }

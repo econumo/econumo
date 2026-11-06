@@ -61,7 +61,9 @@ func (s *Service) resolveReportWindow(ctx context.Context, rawFrom, rawTo string
 	if err != nil {
 		return reportWindow{}, err
 	}
-	current := localMonth(s.clock.Now(), reqctx.Location(ctx))
+	// reports run on calendar months, whatever day a budget's months start on
+	y, m, _ := localToday(s.clock.Now(), reqctx.Location(ctx)).Date()
+	current := time.Date(y, m, 1, 0, 0, 0, 0, time.UTC)
 	if !hasTo {
 		to = current
 	}

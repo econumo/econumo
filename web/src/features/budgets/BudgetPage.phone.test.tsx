@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -442,4 +442,29 @@ it('someone else’s reporting tag shows Edit inactive', async () => {
   await user.click(await screen.findByRole('button', { name: 'Reporting tags' }))
   await user.click(await screen.findByRole('button', { name: /^kid-A, spent/ }))
   expect(within(await screen.findByRole('dialog', { name: /^kid-A · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
+})
+
+it('a shifted budget shows its dates under the strip months and figures for its current period', async () => {
+  handlers({ budget: { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, periodStartDay: 16 } } })
+  vi.useFakeTimers({ toFake: ['Date'] })
+  // 10 August is still in the July period of a day-16 budget
+  vi.setSystemTime(new Date(2026, 7, 10, 12))
+  try {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', periodChosen: true })
+    renderPage()
+    await screen.findByTestId('phone-month-view')
+    const strip = screen.getByRole('tablist', { name: 'period' })
+    expect(strip.nextElementSibling).toBeNull()
+    const selectedDates = () => within(screen.getByRole('tab', { selected: true })).getByTestId('period-strip-dates')
+    expect(selectedDates()).toHaveTextContent('Jul 16 – Aug 15')
+    // only the selected month shows its range on a phone too; the others name it
+    expect(within(screen.getByRole('tab', { name: 'June, Jun 16 – Jul 15' })).queryByTestId('period-strip-dates')).toBeNull()
+    expect(screen.getByRole('button', { name: /^Food, budget .*, spent 45\.50$/ })).toBeInTheDocument()
+    // a calendar budget would show August's spending; this budget's August is still ahead
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' }))
+    expect(await screen.findByRole('button', { name: /^Food, budget .*, spent —$/ })).toBeInTheDocument()
+    expect(selectedDates()).toHaveTextContent('Aug 16 – Sep 15')
+  } finally {
+    vi.useRealTimers()
+  }
 })

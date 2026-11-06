@@ -11,22 +11,29 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { BudgetAccountsField, BudgetSavingsField } from './BudgetAccountsField'
+import { PeriodStartDayField } from './PeriodStartDayField'
+import { useBudgets } from './queries'
 
 interface BudgetDialogProps {
   open: boolean
   onClose: () => void
-  onSubmit: (form: { name: string; currencyId: Id; accountIds: Id[]; savingsAccountIds: Id[] }) => void
+  onSubmit: (form: { name: string; currencyId: Id; accountIds: Id[]; savingsAccountIds: Id[]; periodStartDay: number }) => void
 }
 
 export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
+  const { data: budgets } = useBudgets()
+  // a server older than the setting sends budgets without a day and would ignore a
+  // chosen one; with no budget to tell by, assume a current server
+  const knowsPeriodStartDay = !budgets?.length || budgets.some((b) => b.periodStartDay !== undefined)
 
   const [name, setName] = useState('')
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
   const [selected, setSelected] = useState<Set<Id>>(new Set())
   const [savings, setSavings] = useState<Set<Id>>(new Set())
+  const [periodStartDay, setPeriodStartDay] = useState(1)
   const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<{ name?: string; currency?: string; accounts?: string }>()
 
   useEffect(() => {
@@ -35,6 +42,7 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
       setCurrencyId(userCurrencyId(user))
       setSelected(new Set())
       setSavings(new Set())
+      setPeriodStartDay(1)
       resetErrors()
     }
   }, [open, user])
@@ -86,7 +94,7 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
     if (Object.keys(next).length > 0 || !currencyId) {
       return
     }
-    onSubmit({ name, currencyId, accountIds: [...selected], savingsAccountIds: [...savings].filter((id) => selected.has(id)) })
+    onSubmit({ name, currencyId, accountIds: [...selected], savingsAccountIds: [...savings].filter((id) => selected.has(id)), periodStartDay })
   }
 
   return (
@@ -137,6 +145,10 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
           }}
           error={errors.currency}
         />
+
+        {knowsPeriodStartDay ? (
+          <PeriodStartDayField id="budget-period-start-day" value={periodStartDay} onChange={setPeriodStartDay} />
+        ) : null}
 
         {ownAccounts.length > 0 ? (
           <>

@@ -7,6 +7,7 @@ import (
 
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -195,4 +196,96 @@ func TestRateProvider_FixedCustomRate_AppliesToAnyPeriod(t *testing.T) {
 	if got != "10" {
 		t.Fatalf("fixed PTS rate for a historical period = %q, want 10; rates=%+v", got, rates)
 	}
+}
+
+// shiftedRates seeds EUR rates on both sides of a day-5 budget period
+// ("October" = 5 Oct - 4 Nov) on whichever engine dbtest selects, plus a
+// custom currency with a fixed rate.
+func shiftedRates(t *testing.T, rates map[string]string) (*currencyrepo.RateProvider, string) {
+	t.Helper()
+	db := dbtest.New(t)
+	db.Exec(t, `DELETE FROM currencies_rates`)
+	db.Exec(t, `DELETE FROM currencies`)
+	f := fixture.New(t, db)
+	f.Currency(fixture.Currency{ID: usdID, Code: "USD", Symbol: "$"})
+	f.Currency(fixture.Currency{ID: eurID, Code: "EUR", Symbol: "E"})
+	uid := f.User(fixture.User{Name: "A"})
+	pts := f.Currency(fixture.Currency{Code: "PTS", Symbol: "p", UserID: uid, Rate: "10.00000000"})
+	for date, rate := range rates {
+		f.Rate(fixture.Rate{CurrencyID: eurID, BaseCurrencyID: usdID, Rate: rate, PublishedAt: date})
+	}
+	return currencyrepo.NewRateProvider(db.Engine, db.TX, currencyrepo.New(db.Engine, db.TX), usdID), pts
+}
+
+func rateOf(t *testing.T, rates []model.FullRate, id string) string {
+	t.Helper()
+	for _, r := range rates {
+		if r.CurrencyID.String() == id {
+			return r.Rate.String()
+		}
+	}
+	t.Fatalf("no rate for %s in %+v", id, rates)
+	return ""
+}
+
+func day(y int, m time.Month, d int) time.Time { return time.Date(y, m, d, 0, 0, 0, 0, time.UTC) }
+
+func checkRatePeriod(t *testing.T, p *currencyrepo.RateProvider, start, end time.Time, wantStart, wantEnd, wantEUR string, pts string) {
+	t.Helper()
+	ctx := context.Background()
+	rates, err := p.AverageRates(ctx, start, end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := rateOf(t, rates, eurID); got != wantEUR {
+		t.Errorf("EUR = %s, want %s", got, wantEUR)
+	}
+	if got := rateOf(t, rates, pts); got != "10" {
+		t.Errorf("custom fixed rate = %s, want 10", got)
+	}
+	rs, re, err := p.SnappedRatePeriod(ctx, start, end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rs.Format("2006-01-02") != wantStart || re.Format("2006-01-02") != wantEnd {
+		t.Errorf("rate period = %s..%s, want %s..%s", rs.Format("2006-01-02"), re.Format("2006-01-02"), wantStart, wantEnd)
+	}
+}
+
+var octNovRates = map[string]string{
+	"2026-10-01": "0.82", // before the shifted window
+	"2026-10-05": "0.90", // first day of the window, included
+	"2026-10-20": "0.92",
+	"2026-11-04": "0.94", // last day of the window, included
+	"2026-11-05": "1.50", // the next window's first day
+	"2026-11-20": "1.61",
+}
+
+// On the Windowed provider (shifted budget periods) a day-5 "October" averages
+// the rates inside 5 Oct - 4 Nov, not November's (the month of the latest rate
+// before its end) nor October's. The default provider keeps the snap.
+func TestRateProvider_ShiftedWindowAveragesItsOwnRates(t *testing.T) {
+	p, pts := shiftedRates(t, octNovRates)
+	checkRatePeriod(t, p.Windowed(), day(2026, 10, 5), day(2026, 11, 5), "2026-10-05", "2026-11-05", "0.92", pts)
+	checkRatePeriod(t, p, day(2026, 10, 5), day(2026, 11, 5), "2026-11-01", "2026-12-01", "1.35", pts)
+}
+
+// A calendar month gets its own month's average on both providers.
+func TestRateProvider_CalendarMonthUnchanged(t *testing.T) {
+	p, pts := shiftedRates(t, octNovRates)
+	for _, provider := range []*currencyrepo.RateProvider{p, p.Windowed()} {
+		checkRatePeriod(t, provider, day(2026, 10, 1), day(2026, 11, 1), "2026-10-01", "2026-11-01", "0.88", pts)
+		checkRatePeriod(t, provider, day(2026, 11, 1), day(2026, 12, 1), "2026-11-01", "2026-12-01", "1.35", pts)
+	}
+	// A single day (an import's conversion) keeps its month's average.
+	checkRatePeriod(t, p, day(2026, 10, 20), day(2026, 10, 21), "2026-10-01", "2026-11-01", "0.88", pts)
+	// A legacy day-1 budget's mid-month window [15 Oct, 15 Nov) keeps the snap
+	// to the latest rate's month, as before shifted periods existed.
+	checkRatePeriod(t, p, day(2026, 10, 15), day(2026, 11, 15), "2026-11-01", "2026-12-01", "1.35", pts)
+}
+
+// A shifted window holding no rate falls back to the latest rate's month.
+func TestRateProvider_ShiftedWindowWithoutRatesSnaps(t *testing.T) {
+	p, pts := shiftedRates(t, map[string]string{"2026-08-10": "0.70", "2026-08-20": "0.72"})
+	checkRatePeriod(t, p.Windowed(), day(2026, 10, 5), day(2026, 11, 5), "2026-08-01", "2026-09-01", "0.71", pts)
 }

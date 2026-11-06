@@ -17,7 +17,7 @@ import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 import { sheetPlanHint } from './phoneMonth'
 import { planHintClass } from './planHint'
-import { currentMonth } from './planMath'
+import { currentPeriod, periodStartDayOf } from './period'
 import { commentCellKey } from './queries'
 import { segmentTagGroups } from './tagGroups'
 
@@ -297,7 +297,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     const hint = sheetPlanHint(target)
     return { first: planned === '' ? EMPTY : fmt(planned, currencyId), firstClass: planHintClass(hint) }
   }
-  const future = selectedDate > currentMonth()
+  const future = selectedDate > currentPeriod(periodStartDayOf(budget.meta))
   const commented = (id: Id) => (commentsByCell.get(commentCellKey(id, selectedDate))?.length ?? 0) > 0
 
   // an envelope's category: its own amount, which opens that category's share of the

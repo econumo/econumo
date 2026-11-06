@@ -61,15 +61,16 @@ type AccountsOption struct {
 }
 
 type Budget struct {
-	ID         string
-	CurrencyID string
-	UserID     string
-	Name       string
-	StartedAt  time.Time
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	EndedAt    *time.Time
-	IsArchived bool
+	ID             string
+	CurrencyID     string
+	UserID         string
+	Name           string
+	StartedAt      time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	EndedAt        *time.Time
+	IsArchived     bool
+	PeriodStartDay int16
 }
 
 type BudgetsAccess struct {

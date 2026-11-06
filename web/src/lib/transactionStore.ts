@@ -25,8 +25,11 @@ export interface StoredTransactions {
   snapshot: unknown
 }
 
-// Bump when the stored shape changes in a build that reports no revision (a
-// local build outside git); every other build already gets a buster of its own.
+// Bump when what is stored changes shape (the transaction rows or a response
+// in the query-cache snapshot). A build with a revision gets a buster of its
+// own, except on an offline launch right after a service worker update: the
+// worker keeps the config the app last ran with, so the new bundle reads the
+// previous build's data until it is next online. Only this number stops that.
 export const FORMAT_VERSION = 1
 const META_KEY = 'state'
 const SNAPSHOT_KEY = 'snapshot'

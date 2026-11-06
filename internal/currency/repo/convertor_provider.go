@@ -2,6 +2,8 @@
 // [start,end) to the rate month (the latest published rate's month -> first of
 // that month .. next month; fall back to the raw range when no rates exist),
 // then AVG(rate) per currency over that snapped period for the base currency.
+// The Windowed variant (budget periods starting on a day other than the 1st)
+// averages exactly the rates inside a range that holds any instead.
 package repo
 
 import (
@@ -50,6 +52,8 @@ type RateProvider struct {
 	q      providerQuerier
 	lookup *Lookup
 	baseID string
+	// windowed: a range holding rates averages those instead of snapping.
+	windowed bool
 }
 
 var _ domcurrency.RateProvider = (*RateProvider)(nil)
@@ -70,6 +74,18 @@ func NewRateProvider(driver string, tx *backend.TxManager, lookup *Lookup, baseI
 }
 
 func (p *RateProvider) db(ctx context.Context) backend.DBTX { return p.tx.Querier(ctx) }
+
+// Windowed returns a provider that averages the rates inside a requested range
+// whenever the range holds any, and snaps like this one otherwise. A shifted
+// budget period ("October" = 5 Oct - 4 Nov) snapped to the latest rate's month
+// would be converted at November's average once a November rate exists; every
+// other caller (calendar budget months, legacy day-1 windows, an import's day)
+// keeps the snap.
+func (p *RateProvider) Windowed() *RateProvider {
+	c := *p
+	c.windowed = true
+	return &c
+}
 
 // BaseCurrencyID returns the boot-resolved base currency's id.
 func (p *RateProvider) BaseCurrencyID(ctx context.Context) (vo.Id, error) {
@@ -128,12 +144,14 @@ func (p *RateProvider) StoredRates(ctx context.Context, start, end time.Time) ([
 	if err != nil {
 		return nil, err
 	}
-	realStart, realEnd, found, err := p.latestRateMonth(ctx, baseID, end)
+	last, found, err := p.latestRate(ctx, baseID, end)
 	if err != nil {
 		return nil, err
 	}
-	if !found {
-		realStart, realEnd = start, end
+	realStart, realEnd := start, end
+	if found {
+		realStart = time.Date(last.Year(), last.Month(), 1, 0, 0, 0, 0, last.Location())
+		realEnd = realStart.AddDate(0, 1, 0)
 	}
 	rows, err := p.q.GetAverage(ctx, p.db(ctx), realStart, realEnd, baseID.String())
 	if err != nil {
@@ -169,10 +187,10 @@ func (p *RateProvider) withFixedRates(ctx context.Context, rows []avgRow) ([]mod
 }
 
 // SnappedRatePeriod returns the [start, end) AverageRates actually uses for the
-// requested period: the month of the latest published rate at or before `end`,
-// the earliest rate's month before the first rate, or the requested period when
-// no rate exists. The budget currencyRates block
-// reports THIS period.
+// requested period: the month of the latest published rate before `end` (the
+// requested period itself on a Windowed provider when it holds a rate), the
+// earliest rate's month before the first rate, or the requested period when no
+// rate exists. The budget currencyRates block reports THIS period.
 func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error) {
 	baseID, err := p.BaseCurrencyID(ctx)
 	if err != nil {
@@ -181,20 +199,25 @@ func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Ti
 	return p.snapPeriod(ctx, baseID, start, end)
 }
 
-// snapPeriod resolves [start,end) to the latest-rate month at or before it, the
-// earliest-rate month for a period before the first rate, or the request
-// unchanged when no rate is stored at all.
+// snapPeriod resolves [start,end) to the latest-rate month at or before it (on a
+// Windowed provider, the range itself when it holds a rate), the earliest-rate
+// month for a period before the first rate, or the request unchanged when no
+// rate is stored at all.
 func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end time.Time) (time.Time, time.Time, error) {
-	realStart, realEnd, found, err := p.latestRateMonth(ctx, baseID, end)
+	last, found, err := p.latestRate(ctx, baseID, end)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
 	if found {
-		return realStart, realEnd, nil
+		if p.windowed && rateDayWithin(last, start, end) {
+			return start, end, nil
+		}
+		realStart := time.Date(last.Year(), last.Month(), 1, 0, 0, 0, 0, last.Location())
+		return realStart, realStart.AddDate(0, 1, 0), nil
 	}
 	first, ferr := p.q.GetEarliestDate(ctx, p.db(ctx), baseID.String())
 	if ferr == nil {
-		realStart = time.Date(first.Year(), first.Month(), 1, 0, 0, 0, 0, first.Location())
+		realStart := time.Date(first.Year(), first.Month(), 1, 0, 0, 0, 0, first.Location())
 		return realStart, realStart.AddDate(0, 1, 0), nil
 	}
 	if !rateNotFound(ferr) {
@@ -203,22 +226,27 @@ func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end 
 	return start, end, nil
 }
 
-// latestRateMonth is the month of the latest published rate before end.
-func (p *RateProvider) latestRateMonth(ctx context.Context, baseID vo.Id, end time.Time) (time.Time, time.Time, bool, error) {
+// latestRate is the latest published rate date before end.
+func (p *RateProvider) latestRate(ctx context.Context, baseID vo.Id, end time.Time) (time.Time, bool, error) {
 	last, err := p.q.GetLatestDate(ctx, p.db(ctx), baseID.String(), end)
 	if err != nil {
 		if rateNotFound(err) {
-			return time.Time{}, time.Time{}, false, nil
+			return time.Time{}, false, nil
 		}
-		return time.Time{}, time.Time{}, false, err
+		return time.Time{}, false, err
 	}
-	realStart := time.Date(last.Year(), last.Month(), 1, 0, 0, 0, 0, last.Location())
-	return realStart, realStart.AddDate(0, 1, 0), true, nil
+	return last, true, nil
 }
 
 func rateNotFound(err error) bool {
 	var nf *errs.NotFoundError
 	return errors.Is(err, sql.ErrNoRows) || errors.As(err, &nf)
+}
+
+// rateDayWithin compares days the way GetAverage bounds them ('Y-m-d').
+func rateDayWithin(rate, start, end time.Time) bool {
+	day := rate.Format(datetime.DateLayout)
+	return day >= start.Format(datetime.DateLayout) && day < end.Format(datetime.DateLayout)
 }
 
 type sqliteProviderQuerier struct{}

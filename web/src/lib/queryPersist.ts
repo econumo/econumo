@@ -9,9 +9,8 @@ import { isPendingForMe } from '@/features/connections/shared'
 import { resetRevisions, seedRevisions } from '@/features/transactions/revisionTracking'
 import { assemble, hasRevisions } from '@/features/transactions/sync'
 import { CACHE_MAX_AGE_MS } from './appQueryClient'
-import { getCacheBuster } from './config'
 import { getSessionUserId, hasToken } from './storage'
-import { clearTransactions, deleteBuckets, putSnapshot, storeEpoch, tryLoadStored, type StoredTransactions } from './transactionStore'
+import { clearTransactions, deleteBuckets, putSnapshot, storeBuster, storeEpoch, tryLoadStored, type StoredTransactions } from './transactionStore'
 
 // Vue parity: the Quasar app keeps every store in localStorage, so a page
 // reload starts from cached data and refreshes in the background instead of
@@ -177,7 +176,7 @@ function isLongReport(key: readonly unknown[], data: unknown): boolean {
 // default timeout, so asserting on the written snapshot would race it.
 export function createPersistOptions({ throttleTime = 1000 }: { throttleTime?: number } = {}) {
   // a build may change response shapes; never restore across builds
-  const buster = getCacheBuster()
+  const buster = storeBuster()
   return {
     persister: withTransactionRestore(
       createSyncStoragePersister({ storage: window.localStorage, key: QUERY_CACHE_KEY, throttleTime }),
