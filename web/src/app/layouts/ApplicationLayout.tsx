@@ -1,7 +1,7 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
+import { ChartColumn, RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file sits right at vite's 4KB auto-inline
 // cutoff, and a separately shipped sidebar logo can 404 where an inlined one
@@ -260,6 +260,9 @@ export function ApplicationLayout() {
                     <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" data-testid="update-dot" />
                   ) : null}
                 </Link>
+                <Link to={RouterPage.REPORTS} title={t('common.nav.reports')} className="text-muted-foreground hover:text-foreground">
+                  <ChartColumn className="size-5" />
+                </Link>
                 <button
                   type="button"
                   aria-label="sync"
@@ -280,15 +283,25 @@ export function ApplicationLayout() {
                   {t('settings.page.menu_item')}
                   {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
                 </Link>
-                <button
-                  type="button"
-                  aria-label="sync"
-                  title={syncTitle}
-                  className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
-                  {...syncPress}
-                >
-                  <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <Link
+                    to={RouterPage.REPORTS}
+                    title={t('common.nav.reports')}
+                    aria-label={t('common.nav.reports')}
+                    className={`grid ${isCompact ? 'size-11' : 'size-9'} place-items-center rounded-full text-muted-foreground hover:text-foreground`}
+                  >
+                    <ChartColumn className={isCompact ? 'size-6' : 'size-5'} />
+                  </Link>
+                  <button
+                    type="button"
+                    aria-label="sync"
+                    title={syncTitle}
+                    className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
+                    {...syncPress}
+                  >
+                    <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </footer>
             )}
           </aside>

@@ -46,7 +46,7 @@ beforeEach(() => {
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   server.use(...coreHandlers())
-  useUiStore.setState({ feedbackOpen: true })
+  useUiStore.setState({ feedbackOpen: true, feedbackType: 'feedback', feedbackTopic: 'general' })
   vi.mocked(trackEvent).mockClear()
 })
 
@@ -63,6 +63,7 @@ it('sends the type, message, email, version and hosting to the feedback form', a
   expect(urls[0]).toContain('?key=ak_')
   expect(bodies[0].fields).toEqual({
     type: 'bug_report',
+    topic: 'general',
     message: 'The plan grid is blank',
     email: 'ada@example.test',
     app_version: 'v1.7.0',
@@ -73,7 +74,7 @@ it('sends the type, message, email, version and hosting to the feedback form', a
   expect(bodies[0].fields).not.toHaveProperty('$user_id')
   expect(await screen.findByText('Thanks for your feedback!')).toBeInTheDocument()
   expect(useUiStore.getState().feedbackOpen).toBe(false)
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.FEEDBACK_SEND, { type: 'bug_report', with_email: true })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.FEEDBACK_SEND, { type: 'bug_report', topic: 'general', with_email: true })
 })
 
 it('starts as plain feedback with no email filled in', async () => {
@@ -119,4 +120,17 @@ it('keeps the message when the collector refuses it', async () => {
   expect(screen.getByLabelText('Message')).toHaveValue('Keep me')
   expect(useUiStore.getState().feedbackOpen).toBe(true)
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.FEEDBACK_SEND, expect.anything())
+})
+
+it('opened from Reports: preselects Feature request and sends the reports topic', async () => {
+  const { bodies } = captureSubmissions()
+  useUiStore.setState({ feedbackOpen: false })
+  useUiStore.getState().openFeedback('feature_request', 'reports')
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.FEEDBACK_OPEN, { type: 'feature_request', topic: 'reports' })
+  renderDialog()
+  expect(screen.getByRole('radio', { name: 'Feature request' })).toBeChecked()
+  await userEvent.type(screen.getByLabelText('Message'), 'Spending by year')
+  await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0].fields).toMatchObject({ type: 'feature_request', topic: 'reports' })
 })

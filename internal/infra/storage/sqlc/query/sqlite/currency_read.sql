@@ -60,6 +60,28 @@ WHERE base_currency_id = ? AND datetime(published_at) < datetime(?)
 ORDER BY published_at DESC
 LIMIT 1;
 
+-- name: GetNearestCurrencyRates :many
+-- Per currency with stored rates: its latest rate before a date, else its first.
+-- Fills a period's gaps, since rate histories start and stop at different dates.
+SELECT c.id AS currency_id, CAST(COALESCE(
+    (SELECT r.rate FROM currencies_rates r
+     WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id) AND datetime(r.published_at) < datetime(sqlc.arg(before))
+     ORDER BY r.published_at DESC LIMIT 1),
+    (SELECT r.rate FROM currencies_rates r
+     WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id)
+     ORDER BY r.published_at ASC LIMIT 1)
+) AS REAL) AS rate
+FROM currencies c
+WHERE EXISTS (SELECT 1 FROM currencies_rates r WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id));
+
+-- name: GetEarliestCurrencyRateDate :one
+-- Oldest published_at for a base currency: the rate month used for periods
+-- before the first stored rate.
+SELECT published_at FROM currencies_rates
+WHERE base_currency_id = ?
+ORDER BY published_at ASC
+LIMIT 1;
+
 -- name: GetLatestCurrencyRateListView :many
 -- Latest rate row per (currency, base) pair. The previous single-latest-date
 -- form dropped any currency whose newest rate predates the newest OXR batch,

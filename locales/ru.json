@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Бюджет и план",
+      "reports": "Отчёты",
       "onboarding": "Начало работы",
       "create_account": "Добавить счёт",
       "collapse_menu": "Свернуть меню",
@@ -1582,6 +1583,68 @@
         }
       }
     }
+  },
+  "reports": {
+    "page": {
+      "title": "Отчёты"
+    },
+    "tabs": {
+      "new": "Новая вкладка",
+      "close": "Закрыть {name}",
+      "close_menu": "Закрыть",
+      "rename": "Переименовать",
+      "duplicate": "Дублировать",
+      "name_label": "Название вкладки",
+      "limit": "Не больше {count} вкладок"
+    },
+    "kind": {
+      "networth": "Капитал"
+    },
+    "list": {
+      "choose": "Выберите отчёт",
+      "scope": "Область",
+      "scope_mine": "Мои счета",
+      "networth_q": "Я богатею или беднею?",
+      "suggest_q": "Предложить отчёт",
+      "suggest_note": "Не хватает отчёта? Расскажите, что вы хотели бы видеть.",
+      "networth_caption": "сегодня",
+      "networth_up": "Рост на {amount} в этом году",
+      "networth_down": "Снижение на {amount} в этом году",
+      "networth_flat": "Без изменений в этом году"
+    },
+    "period": {
+      "quarter": "{quarter} кв. {year}"
+    },
+    "networth": {
+      "period_1y": "1 г.",
+      "period_3y": "3 г.",
+      "period_all": "Всё",
+      "chart": "График капитала",
+      "col_start": "Начало",
+      "col_now": "Сейчас",
+      "no_folder": "Без папки",
+      "other_owner": "Другой участник",
+      "expand": "Показать счета в «{name}»",
+      "collapse": "Скрыть счета в «{name}»",
+      "empty": "Пока нет остатков на счетах",
+      "everyday": "Обычные счета",
+      "period_1y_words": "за последний год",
+      "period_3y_words": "за последние 3 года",
+      "period_all_words": "с самого начала",
+      "range_words": "с {from}",
+      "clear_range": "Сбросить выделение",
+      "show_transactions": "Показать транзакции: {name}",
+      "drag_hint": "Проведите по графику, чтобы выбрать период",
+      "range_transactions": "Транзакции",
+      "period": "Период",
+      "headline": "Сводка",
+      "col_change": "Изменение",
+      "total": "Итого"
+    },
+    "insight": {
+      "empty": "Пока нет операций"
+    },
+    "updated_at": "Обновлено {time}"
   },
   "classifications": {
     "common": {

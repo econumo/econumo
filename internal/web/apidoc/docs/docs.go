@@ -9658,6 +9658,80 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/report/get-net-worth-report": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Report"
+                ],
+                "summary": "Account balances at the end of each month",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Budget id (omit for the caller's own accounts)",
+                        "name": "budgetId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "First month (Y-m-d, snapped to first of month; defaults to the month before the first transaction's month, at most 240 months back)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last month (Y-m-d, snapped to first of month; defaults to the current month; window is at most 240 months)",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetNetWorthReportResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/system/get-update-info": {
             "get": {
                 "security": [
@@ -15110,6 +15184,14 @@ const docTemplate = `{
                 }
             }
         },
+        "model.GetNetWorthReportResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.NetWorthReportResult"
+                }
+            }
+        },
         "model.GetOptionListResult": {
             "type": "object",
             "properties": {
@@ -16049,6 +16131,55 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.TransactionResult"
+                    }
+                }
+            }
+        },
+        "model.NetWorthAccountRow": {
+            "type": "object",
+            "properties": {
+                "balances": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isSavings": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.NetWorthReportResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.NetWorthAccountRow"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "months": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 }
             }

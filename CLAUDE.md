@@ -405,6 +405,13 @@ into a new minor line links that line's `.0` notes (v1.6.x -> v1.7.2 shows v1.7.
 upgrade within the line the running patch. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
+**Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
+sidebar footer, not a menu entry): Net worth, plus a "Suggest a report" card that opens the
+feedback form on its feature-request type. The tab list is stored per user on
+the device only (localStorage `econumo.reportTabs`) and Reports always opens on the FIRST tab.
+Every report query key is invalidated after any successful mutation
+(`web/src/lib/appQueryClient.ts`), so a report never shows stale figures.
+
 **Service worker** (`web/sw/sw.js`, registered by `web/src/lib/serviceWorker.ts`, production
 web builds only, never in the native app): it makes the installed PWA start offline. A Vite
 plugin in `web/vite.config.ts` writes `dist/sw.js` after the build, prepending the precache
@@ -860,8 +867,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   covering its routes.
 - `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
   fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
-  it on). Served as `FEEDBACK`; `false` hides the Settings row, the form's only entry point. The
-  form (`web/src/features/feedback`) posts `type`, `message`, an optional `email` (empty by
+  it on). Served as `FEEDBACK`; `false` hides its entry points (the Settings row and Reports'
+  "Suggest a report" card). The form (`web/src/features/feedback`, opened through
+  `useUiStore.openFeedback(type, topic)`) posts `type`, a hidden `topic` (where it was opened:
+  `general` from Settings, `reports` from Reports), `message`, an optional `email` (empty by
   default, the user's own offered as a one-tap chip), `app_version` and `hosting` (`cloud`/`self-hosted`) from the
   BROWSER straight to the Twillingate form `feedback` of the product-analytics project
   (`submitForm` in `web/src/lib/analytics.ts`, the SDK's wire shape without the SDK), so it
@@ -1272,6 +1281,19 @@ In the distroless image these run via the binary directly, e.g.
   200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
   error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
   older clients and the SPA's fallback against a server without revisions) is unchanged.
+- **Reports:** `GET /api/v1/report/get-net-worth-report`, hosted by the budget feature
+  (`internal/budget/report_*.go`, `internal/budget/api/report.go`; no `report` package). Scope is
+  a budget (every member account; another member's are named only when they are savings members
+  or shared with the caller, the rest come as one nameless sum per owner, and the page lists
+  only savings members by name) or the caller's own accounts. It is the
+  opening balance plus `AccountsNetByMonth`, converted at each month's average rate, over live
+  accounts only (deleted ones are left out entirely, history included); the current month stops
+  at the end of the caller's today (as the account balance does), an all-time window opens one
+  month before the first transaction (a zero balance), and a budget that ended stops at its end
+  month. A window is at most 240
+  months: an explicit longer one is a 400 on `to` (`common.invalid_choice`), a defaulted
+  (all-time) one is clamped to the last 240. The SPA persists a report response only up to 37
+  months (`web/src/lib/queryPersist.ts`).
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
@@ -1550,6 +1572,12 @@ data unreadable. Most are also asserted by the test suite.
   in upcoming, not in spent, so never added twice) without committing. A cell with nothing still to
   come (no due payment, no future-dated row) shows no list, Spent/Total lines included.
   Past months and read-only cells never show it; there is no Post/Skip/Edit of templates from budget views.
+- **Gaps in stored rates**: a period with no rate at or before it snaps to the earliest stored
+  month (`RateProvider.snapPeriod`), and a currency that month has no rate for takes its latest
+  earlier rate, else its first (`AverageRates`), never face value, so a long report window or an
+  old budget month does not count 40,000 RUB as 40,000 CAD. Server conversions and the budget's
+  `currencyRates` block read the same rates. The import converter alone reads `StoredRates`, with
+  nothing filled: a transaction with no rate for its month queues as no-rate.
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
   never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
   so a hard delete would silently destroy every account and transaction in that currency. A

@@ -43,6 +43,9 @@ type ReadModel interface {
 	// category — and NULL-category rows — under the income-side Uncategorized
 	// row, so no income ever silently vanishes from the Balance projection.
 	IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyIncomeRow, error)
+	// FirstTransactionDate: earliest spent_at of any transaction touching the
+	// accounts as source or recipient; nil when there are none.
+	FirstTransactionDate(ctx context.Context, accountIDs []vo.Id) (*time.Time, error)
 	// TransfersByMonth: transfers (type=2) that crossed the budget boundary,
 	// per (month, currency) over [from, to) — the plan sheet's Transfers
 	// line. "In" = recipient in accountIDs and source not, in the recipient

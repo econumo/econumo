@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "预算与计划",
+      "reports": "报表",
       "onboarding": "快速入门",
       "create_account": "添加账户",
       "collapse_menu": "收起菜单",
@@ -1582,6 +1583,68 @@
         }
       }
     }
+  },
+  "reports": {
+    "page": {
+      "title": "报表"
+    },
+    "tabs": {
+      "new": "新标签页",
+      "close": "关闭 {name}",
+      "close_menu": "关闭",
+      "rename": "重命名",
+      "duplicate": "复制",
+      "name_label": "标签页名称",
+      "limit": "最多 {count} 个标签页"
+    },
+    "kind": {
+      "networth": "净资产"
+    },
+    "list": {
+      "choose": "选择报表",
+      "scope": "范围",
+      "scope_mine": "我的账户",
+      "networth_q": "我在变富还是变穷？",
+      "suggest_q": "建议一份报表",
+      "suggest_note": "缺少需要的报表？告诉我们你想看到什么。",
+      "networth_caption": "今天",
+      "networth_up": "今年增加 {amount}",
+      "networth_down": "今年减少 {amount}",
+      "networth_flat": "今年没有变化"
+    },
+    "period": {
+      "quarter": "{year}第{quarter}季度"
+    },
+    "networth": {
+      "period_1y": "1年",
+      "period_3y": "3年",
+      "period_all": "全部",
+      "chart": "净资产图表",
+      "col_start": "期初",
+      "col_now": "当前",
+      "no_folder": "无文件夹",
+      "other_owner": "其他参与者",
+      "expand": "显示 {name} 中的账户",
+      "collapse": "隐藏 {name} 中的账户",
+      "empty": "暂无账户余额",
+      "everyday": "日常账户",
+      "period_1y_words": "过去一年",
+      "period_3y_words": "过去 3 年",
+      "period_all_words": "自开始以来",
+      "range_words": "自 {from} 以来",
+      "clear_range": "清除选择",
+      "show_transactions": "查看 {name} 的交易",
+      "drag_hint": "在图表上拖动以选择时间段",
+      "range_transactions": "交易",
+      "period": "期间",
+      "headline": "摘要",
+      "col_change": "变化",
+      "total": "合计"
+    },
+    "insight": {
+      "empty": "还没有交易"
+    },
+    "updated_at": "更新于 {time}"
   },
   "classifications": {
     "common": {
