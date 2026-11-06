@@ -277,7 +277,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	}
 
 	// One bulk conversion for everything.
-	amounts, err := s.convertor.BulkConvert(ctx, f.periodStart, f.periodEnd, toConvert)
+	amounts, err := s.convertorFor(f.startDay).BulkConvert(ctx, f.periodStart, f.periodEnd, toConvert)
 	if err != nil {
 		return model.StructureResult{}, err
 	}

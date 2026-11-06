@@ -24,10 +24,12 @@ type MetaResult struct {
 	Name        string `json:"name"`
 	StartedAt   string `json:"startedAt"`
 	// EndedAt is the last covered month, "" when the budget is open-ended.
-	EndedAt    string         `json:"endedAt"`
-	CurrencyId string         `json:"currencyId"`
-	IsArchived int            `json:"isArchived"`
-	Access     []AccessResult `json:"access"`
+	EndedAt    string `json:"endedAt"`
+	CurrencyId string `json:"currencyId"`
+	IsArchived int    `json:"isArchived"`
+	// PeriodStartDay is the day of the month (1-28) a budget month starts on.
+	PeriodStartDay int            `json:"periodStartDay"`
+	Access         []AccessResult `json:"access"`
 }
 
 // BudgetAccountFilter is one member account of the budget as the requester sees
@@ -195,6 +197,9 @@ type CreateBudgetRequest struct {
 	// SavingsAccountIds flags members as savings in this budget; each must be one
 	// of AccountIds.
 	SavingsAccountIds []string `json:"savingsAccountIds"`
+	// PeriodStartDay is the day of the month (1-28) a budget month starts on;
+	// absent or 0 means 1.
+	PeriodStartDay int `json:"periodStartDay"`
 }
 
 // Validate enforces id + name NotBlank.
@@ -224,6 +229,8 @@ type UpdateBudgetRequest struct {
 	// ConfirmSavingsRemoval allows a write that drops a savings row carrying
 	// planned amounts or comments.
 	ConfirmSavingsRemoval bool `json:"confirmSavingsRemoval"`
+	// PeriodStartDay is nil when omitted (untouched).
+	PeriodStartDay *int `json:"periodStartDay"`
 }
 
 // Validate enforces id, name, currencyId NotBlank.

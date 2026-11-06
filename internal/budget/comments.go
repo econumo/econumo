@@ -28,7 +28,7 @@ func (s *Service) GetCommentList(ctx context.Context, userID vo.Id, req model.Ge
 	if err != nil {
 		return nil, model.ValidateBlank(map[string]string{"budgetId": ""})
 	}
-	from, err := parseCommentFrom(req.From, localMonth(s.clock.Now(), reqctx.Location(ctx)))
+	from, err := parseCommentFrom(req.From)
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +43,9 @@ func (s *Service) GetCommentList(ctx context.Context, userID vo.Id, req model.Ge
 	}
 	if !s.canRead(b, userID) {
 		return nil, accessDenied()
+	}
+	if from.IsZero() {
+		from = openingPeriod(b.budget, currentPeriod(s.clock.Now(), reqctx.Location(ctx), b.budget.PeriodStartDay))
 	}
 
 	// One row past the cap is enough to know the window overflowed without
@@ -90,10 +93,11 @@ func commentResult(row model.BudgetCommentRow) model.CommentResult {
 }
 
 // parseCommentFrom snaps the window start to the first of its month. An empty
-// value means the caller's current month.
-func parseCommentFrom(raw string, fallback time.Time) (time.Time, error) {
+// value is the zero time: the caller's current period, resolved once the
+// budget is loaded.
+func parseCommentFrom(raw string) (time.Time, error) {
 	if raw == "" {
-		return model.FirstOfMonth(fallback), nil
+		return time.Time{}, nil
 	}
 	t, err := time.Parse(datetime.DateLayout, raw)
 	if err != nil {
@@ -146,7 +150,7 @@ func (s *Service) CreateComment(ctx context.Context, userID vo.Id, req model.Cre
 	if aerr := s.requireNotArchived(b); aerr != nil {
 		return nil, aerr
 	}
-	if period.Before(model.FirstOfMonth(b.budget.StartedAt)) {
+	if period.Before(b.budget.FirstPeriod()) {
 		return nil, model.ValidateBlank(map[string]string{"period": ""})
 	}
 	if end := b.endMonth(); end != nil && period.After(*end) {

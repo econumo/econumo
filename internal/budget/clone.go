@@ -49,17 +49,22 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"startDate": ""})
 		}
-		startDate = model.FirstOfMonth(d)
-		// The copy may start anywhere between the source's start and the caller's
-		// current month: earlier would invent history, later would skip months.
-		if startDate.Before(model.FirstOfMonth(src.budget.StartedAt)) ||
-			startDate.After(localMonth(now, reqctx.Location(ctx))) {
+		// The date names the copy's first period. It may be anywhere from the
+		// source's first period to the caller's current one (or the source's
+		// first, when that is later): earlier would invent history, later would
+		// skip periods.
+		key := model.FirstOfMonth(d)
+		first := src.budget.FirstPeriod()
+		last := openingPeriod(src.budget, currentPeriod(now, reqctx.Location(ctx), src.budget.PeriodStartDay))
+		if key.Before(first) || key.After(last) {
 			return nil, model.ValidateBlank(map[string]string{"startDate": ""})
 		}
+		startDate = key
 	}
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		nb := model.NewBudget(newID, userID, req.Name, src.budget.CurrencyID, startDate, now)
+		nb.PeriodStartDay = src.budget.PeriodStartDay
 		if serr := s.budgets.Save(txCtx, nb); serr != nil {
 			return serr
 		}
@@ -184,7 +189,7 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.BuildBudget(ctx, userID, b, localMonth(now, reqctx.Location(ctx)), now)
+	result, err := s.BuildBudget(ctx, userID, b, openingPeriod(b.budget, currentPeriod(now, reqctx.Location(ctx), b.budget.PeriodStartDay)), now)
 	if err != nil {
 		return nil, err
 	}
