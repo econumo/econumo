@@ -189,6 +189,7 @@ export const METRICS = {
   REPORTS_CHANGE_GROUP_BY: 'appReportsChangeGroupBy',
   REPORTS_SELECT_ROW: 'appReportsSelectRow',
   REPORTS_DRILL_DOWN: 'appReportsDrillDown',
+  REPORTS_CASHFLOW_VIEW: 'appReportsCashflowView',
   REPORTS_NETWORTH_EXPAND: 'appReportsNetworthExpand',
   REPORTS_NETWORTH_RANGE: 'appReportsNetworthRange',
   REPORTS_SUGGEST: 'appReportsSuggest',

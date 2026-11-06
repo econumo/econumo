@@ -23,7 +23,7 @@ it('first visit has one list tab, active', () => {
 it('defaultParams: last 3 years by year, over time, expenses by category, bars', () => {
   expect(defaultParams('b1')).toEqual({
     budgetId: 'b1', period: 'last3y', step: 'year', mode: 'overTime', side: 'expense', groupBy: 'category',
-    selectedId: null, compare: null,
+    selectedId: null, compare: null, view: 'bars',
   })
 })
 
@@ -172,7 +172,7 @@ const storedParams = async (params: unknown) => {
 
 it('replaces unknown enum values with the defaults', async () => {
   const params = await storedParams({
-    budgetId: 'b1', period: 'forever', step: 'week', mode: 'pie', side: 'both', groupBy: 'account',
+    budgetId: 'b1', period: 'forever', step: 'week', mode: 'pie', side: 'both', groupBy: 'account', view: 3,
     selectedId: 42, from: 7, to: null,
   })
   expect(params).toEqual(defaultParams('b1'))
@@ -181,7 +181,7 @@ it('replaces unknown enum values with the defaults', async () => {
 it('keeps valid stored values', async () => {
   const kept = {
     budgetId: null, period: 'custom', from: '2024-03-01', to: '2025-02-01', step: 'quarter', mode: 'compare',
-    side: 'income', groupBy: 'payee', selectedId: 'cat-1', compare: [2024, 2026],
+    side: 'income', groupBy: 'payee', selectedId: 'cat-1', compare: [2024, 2026], view: 'flow',
   }
   expect(await storedParams(kept)).toEqual(kept)
 })
@@ -208,7 +208,7 @@ it(`caps tabs at ${MAX_REPORT_TABS}`, () => {
 })
 
 const names = {
-  report: { list: 'New tab', spending: 'Spending', networth: 'Net worth' },
+  report: { list: 'New tab', spending: 'Spending', cashflow: 'Cash flow', networth: 'Net worth' },
   rows: { 'cat-food': 'Groceries' } as Record<string, string>,
   versus: (later: number, earlier: number) => `${later} vs ${earlier}`,
 }

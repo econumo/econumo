@@ -31,7 +31,9 @@ it('first visit shows one New tab with the report list and this year’s headlin
   expect(await within(spending).findByText('550 $')).toBeInTheDocument()
   expect(within(spending).getByText(`spent in ${year}`)).toBeInTheDocument()
   expect(within(spending).getByText('Groceries is the largest: 500 $, 91% of the total')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /Do I earn more than I spend/ })).toBeNull()
+  const cashflow = screen.getByRole('button', { name: /Do I earn more than I spend/ })
+  expect(within(cashflow).getByText('2,450 $')).toBeInTheDocument()
+  expect(within(cashflow).getByText('82% of income')).toBeInTheDocument()
   const networth = screen.getByRole('button', { name: /Am I getting richer or poorer/ })
   expect(await within(networth).findByText('2,500 $')).toBeInTheDocument()
   expect(within(networth).getByText('Up 1,500 $ this year')).toBeInTheDocument()
@@ -41,11 +43,11 @@ it('first visit shows one New tab with the report list and this year’s headlin
 it('clicking a card turns the tab into that report', async () => {
   server.use(...coreHandlers(), ...reportHandlers())
   renderReports()
-  await userEvent.click(await screen.findByRole('button', { name: /What do I spend money on/ }))
-  expect(await screen.findByRole('tab', { name: 'Spending' })).toHaveAttribute('aria-selected', 'true')
-  expect(screen.getByRole('heading', { name: 'What do I spend money on, and how is it changing?' })).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /Am I getting richer or poorer/ })).toBeNull()
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_OPEN_REPORT, { report: 'spending', scope: 'mine' })
+  await userEvent.click(await screen.findByRole('button', { name: /Do I earn more than I spend/ }))
+  expect(await screen.findByRole('tab', { name: 'Cash flow' })).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByRole('heading', { name: 'Do I earn more than I spend?' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /What do I spend money on/ })).toBeNull()
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_OPEN_REPORT, { report: 'cashflow', scope: 'mine' })
 })
 
 it('the scope picker lists the budgets and My accounts; the chosen report inherits it', async () => {

@@ -1,4 +1,4 @@
-import type { NetWorthAccountDto, NetWorthReportDto, ReportRowDto } from '@/api/dto/report'
+import type { FlowReportDto, NetWorthAccountDto, NetWorthReportDto, ReportRowDto } from '@/api/dto/report'
 import type { Id } from '@/api/types'
 import { abs, add, cmp, div, isNegative, isZero, mul, sub } from '@/lib/decimal'
 import { monthDiff } from '@/features/budgets/planMath'
@@ -182,6 +182,30 @@ export function bucketChanges(rows: ReportRowDto[], allMonths: string[], step: S
   return { earlier, later, rows: list }
 }
 
+export interface CashFlowMonth {
+  month: string
+  income: string
+  spent: string
+  saved: string
+  transfersIn: string
+  transfersOut: string
+}
+
+export function cashFlow(report: FlowReportDto): CashFlowMonth[] {
+  return report.months.map((month, i) => {
+    const income = sum(report.income.map((r) => r.amounts[i] ?? '0'))
+    const spent = sum(report.expense.map((r) => r.amounts[i] ?? '0'))
+    return {
+      month,
+      income,
+      spent,
+      saved: sub(income, spent),
+      transfersIn: report.transfersIn[i] ?? '0',
+      transfersOut: report.transfersOut[i] ?? '0',
+    }
+  })
+}
+
 export function netWorthSeries(
   report: NetWorthReportDto,
   groupOf: (a: NetWorthAccountDto) => { id: string; name: string },
@@ -235,6 +259,15 @@ export function spendingInsight(rows: ReportRowDto[]): Insight {
   return { key: 'reports.insight.spending_top', params: { id: top.id, name: top.name, amount: top.total, share: String(share) } }
 }
 
+export function cashFlowInsight(months: CashFlowMonth[]): Insight {
+  if (months.length === 0) return EMPTY
+  const income = sum(months.map((m) => m.income))
+  const saved = sum(months.map((m) => m.saved))
+  if (isNegative(saved)) return { key: 'reports.insight.cashflow_overspent', params: { amount: abs(saved) } }
+  const rate = isZero(income) ? 0 : Math.round(Number(div(mul(saved, 100), income)))
+  return { key: 'reports.insight.cashflow_saved', params: { amount: saved, rate: String(rate) } }
+}
+
 export function netWorthInsight(total: string[]): Insight {
   if (total.length < 2) return EMPTY
   const change = sub(total[total.length - 1], total[0])
@@ -242,5 +275,90 @@ export function netWorthInsight(total: string[]): Insight {
   return {
     key: isNegative(change) ? 'reports.insight.networth_down' : 'reports.insight.networth_up',
     params: { amount: abs(change) },
+  }
+}
+
+
+export const FLOW_HUB = '__income'
+export const FLOW_BALANCE = '__balance'
+export const FLOW_SAVED = '__saved'
+export const FLOW_TO_SAVINGS = '__toSavings'
+export const FLOW_STAYED = '__stayed'
+export const FLOW_OTHER_INCOME = '__otherIncome'
+export const FLOW_OTHER_EXPENSE = '__otherExpense'
+export const FLOW_TRANSFER_IN = '__transferIn'
+export const FLOW_TRANSFER_OUT = '__transferOut'
+const FLOW_TOP_INCOME = 5
+const FLOW_TOP_EXPENSE = 7
+
+export interface FlowNode {
+  id: string
+  kind: 'income' | 'expense' | 'special'
+  /** the row's own name and kind; special nodes are named by the caller */
+  name: string
+  rowKind: string
+  value: string
+}
+
+export interface FlowGraph {
+  /** false when transfers in or a balance draw feed the hub, so it is more than income */
+  hubIncomeOnly: boolean
+  nodes: FlowNode[]
+  links: { source: number; target: number; value: string }[]
+}
+
+const positive = (v: string) => (cmp(v, 0) > 0 ? v : '0')
+
+function flowSide(rows: ReportRowDto[], n: number, kind: FlowNode['kind'], otherId: string): FlowNode[] {
+  const ranked = rows
+    .map((r, i) => ({ r, total: sum(r.amounts), i }))
+    .sort((a, b) => cmp(b.total, a.total) || a.i - b.i)
+  const top = ranked.slice(0, n).filter((x) => cmp(x.total, 0) > 0)
+  // a row netting below zero (refunds over spending) lowers Other rather than
+  // vanishing, so the flow stays as close to the headline as a Sankey allows
+  const rest = positive(sum(ranked.filter((x) => !top.includes(x)).map((x) => x.total)))
+  const nodes: FlowNode[] = top.map((x) => ({ id: x.r.id, kind, name: x.r.name, rowKind: x.r.kind, value: x.total }))
+  if (cmp(rest, 0) > 0) nodes.push({ id: otherId, kind, name: '', rowKind: '', value: rest })
+  return nodes
+}
+
+/**
+ * The Flow view: income rows and transfers in -> the hub -> expense rows,
+ * transfers out and what was left. In a budget with savings members, what
+ * was left splits into what moved to them (Plan's Saved, never below zero)
+ * and what stayed in everyday accounts. Whenever the outflows exceed the
+ * inflows, "From balance" covers the gap, so the hub's two sides always add
+ * up.
+ */
+export function flowGraph(report: FlowReportDto, budget: boolean): FlowGraph {
+  const income = flowSide(report.income, FLOW_TOP_INCOME, 'income', FLOW_OTHER_INCOME)
+  const expense = flowSide(report.expense, FLOW_TOP_EXPENSE, 'expense', FLOW_OTHER_EXPENSE)
+  const special = (id: string, value: string): FlowNode[] => (cmp(value, 0) > 0 ? [{ id, kind: 'special', name: '', rowKind: '', value }] : [])
+  const transferIn = special(FLOW_TRANSFER_IN, positive(sum(report.transfersIn)))
+  const transferOut = special(FLOW_TRANSFER_OUT, positive(sum(report.transfersOut)))
+  // a savings member with a plan but no activity moved nothing: one Saved node then
+  const moved = budget ? positive(sum(report.savings.flatMap((r) => r.amounts))) : '0'
+  const split = cmp(moved, 0) > 0
+  const inflow = sum([...income, ...transferIn].map((x) => x.value))
+  const outflow = sum([...expense, ...transferOut].map((x) => x.value))
+  const left = sub(inflow, add(outflow, moved))
+  const balance = special(FLOW_BALANCE, positive(sub('0', left)))
+  const sources = [...income, ...transferIn, ...balance]
+  const outputs = [
+    ...expense,
+    ...transferOut,
+    ...(split ? [...special(FLOW_TO_SAVINGS, moved), ...special(FLOW_STAYED, positive(left))] : special(FLOW_SAVED, positive(left))),
+  ]
+  if (sources.length === 0 || outputs.length === 0) return { hubIncomeOnly: true, nodes: [], links: [] }
+  const hubValue = sum(sources.map((x) => x.value))
+  const nodes = [...sources, { id: FLOW_HUB, kind: 'special' as const, name: '', rowKind: '', value: hubValue }, ...outputs]
+  const hub = sources.length
+  return {
+    hubIncomeOnly: transferIn.length === 0 && balance.length === 0,
+    nodes,
+    links: [
+      ...sources.map((x, i) => ({ source: i, target: hub, value: x.value })),
+      ...outputs.map((x, i) => ({ source: hub, target: hub + 1 + i, value: x.value })),
+    ],
   }
 }

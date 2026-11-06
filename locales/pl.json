@@ -1600,7 +1600,8 @@
     },
     "kind": {
       "networth": "Wartość netto",
-      "spending": "Wydatki"
+      "spending": "Wydatki",
+      "cashflow": "Przepływy"
     },
     "list": {
       "choose": "Wybierz raport",
@@ -1614,7 +1615,11 @@
       "networth_down": "Spadek o {amount} w tym roku",
       "networth_flat": "Bez zmian w tym roku",
       "spending_q": "Na co wydaję pieniądze i jak to się zmienia?",
-      "spent_caption": "wydano w {year}"
+      "cashflow_q": "Czy zarabiam więcej, niż wydaję?",
+      "spent_caption": "wydano w {year}",
+      "saved_caption": "zaoszczędzono w {year}",
+      "overspent_caption": "wydano za dużo w {year}",
+      "saved_rate": "{rate}% dochodu"
     },
     "period": {
       "quarter": "{quarter} kw. {year}"
@@ -1648,6 +1653,8 @@
     "insight": {
       "empty": "Brak transakcji",
       "spending_top": "Najwięcej: {name}, {amount}, {share}% całości",
+      "cashflow_saved": "Zaoszczędzono {amount}, {rate}% dochodu",
+      "cashflow_overspent": "Wydano o {amount} więcej, niż zarobiono",
       "networth_up": "Wzrost o {amount} w okresie",
       "networth_down": "Spadek o {amount} w okresie",
       "networth_flat": "Bez zmian w okresie"
@@ -1707,6 +1714,28 @@
       "compare_note": "Oba lata obejmują tylko {period}, więc porównanie jest uczciwe.",
       "hint_select": "Dotknij wiersza lub słupka, aby pokazać tylko ten wiersz.",
       "hint_drill": "Dotknij słupka, aby zobaczyć jego transakcje."
+    },
+    "cashflow": {
+      "view": "Widok",
+      "view_bars": "Słupki",
+      "view_flow": "Przepływ",
+      "col_period": "Okres",
+      "income": "Przychody",
+      "available": "Dostępne",
+      "spent": "Wydano",
+      "saved": "Zaoszczędzono",
+      "spending": "Wydatki",
+      "net_saved": "Oszczędności netto",
+      "transfers_in": "Przelewy przychodzące",
+      "transfers_out": "Przelewy wychodzące",
+      "chart": "Wykres przepływów pieniężnych",
+      "flow_chart": "Przepływ pieniędzy",
+      "from_balance": "Z salda",
+      "to_savings": "Przeniesione na konta oszczędnościowe",
+      "stayed": "Zostało na kontach codziennych",
+      "other_income": "Inne przychody",
+      "running_note": "* {period} jeszcze trwa: kwoty są dotychczasowe.",
+      "flow_note": "Przepływ obejmuje cały okres: skąd pochodziły przychody i dokąd trafiły."
     },
     "drill": {
       "unsupported": "Tych transakcji nie można tu wyświetlić. Otwórz stronę Budżetu, aby je zobaczyć.",

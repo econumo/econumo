@@ -4,12 +4,12 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCurrencies } from '@/features/currencies/queries'
-import { abs, add, isNegative, isZero, sub } from '@/lib/decimal'
+import { abs, add, div, isNegative, isZero, mul, sub } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
 import { isFeedbackEnabled } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat } from '@/lib/money'
-import { netWorthInsight, netWorthSeries, spendingInsight } from './reportMath'
+import { cashFlow, netWorthInsight, netWorthSeries, spendingInsight } from './reportMath'
 import { useFlowReport, useNetWorthReport, useReportBudgets } from './queries'
 import { REPORT_QUESTION } from './reportTabs'
 import type { ReportKind } from './reportTabs'
@@ -116,6 +116,34 @@ function SpendingCard({ budgetId, year, onChoose }: { budgetId: Id | null; year:
   )
 }
 
+function CashFlowCard({ budgetId, year, onChoose }: { budgetId: Id | null; year: number; onChoose: () => void }) {
+  const { t } = useTranslation()
+  const report = useFlowReport({ budgetId, from: `${year}-01-01` })
+  const money = useMoney(report.data?.currencyId)
+  const months = report.data ? cashFlow(report.data) : []
+  const income = sum(months.map((m) => m.income))
+  const saved = sum(months.map((m) => m.saved))
+  // transfers or savings movement alone are activity too, as the report shows them
+  const moved = months.some((m) => !isZero(m.transfersIn) || !isZero(m.transfersOut)) || (report.data?.savings ?? []).some((r) => r.amounts.some((a) => !isZero(a)))
+  const empty = isZero(income) && isZero(sum(months.map((m) => m.spent))) && !moved
+  const overspent = isNegative(saved)
+  const rate = isZero(income) ? null : Math.round(Number(div(mul(saved, 100), income)))
+  return (
+    <Card question={t(REPORT_QUESTION.cashflow)} onClick={onChoose}>
+      <Figure
+        isPending={report.isPending}
+        isError={report.isError && !report.data}
+        empty={empty}
+        amount={money(abs(saved))}
+        caption={t(overspent ? 'reports.list.overspent_caption' : 'reports.list.saved_caption', { year })}
+        series={months.map((m) => m.saved)}
+        seriesClass="text-sky-600 dark:text-sky-400"
+        note={!overspent && rate !== null ? t('reports.list.saved_rate', { rate }) : null}
+      />
+    </Card>
+  )
+}
+
 const NETWORTH_NOTE: Record<string, string> = {
   'reports.insight.networth_up': 'reports.list.networth_up',
   'reports.insight.networth_down': 'reports.list.networth_down',
@@ -184,6 +212,7 @@ export function ReportList({ budgetId, onScope, onChoose }: {
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <SpendingCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('spending')} />
+        <CashFlowCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('cashflow')} />
         <NetWorthCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('networth')} />
         {isFeedbackEnabled() ? (
           <Card

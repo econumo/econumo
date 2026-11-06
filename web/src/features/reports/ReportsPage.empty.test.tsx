@@ -27,7 +27,7 @@ it('a user with no transactions sees the empty state on every card, without erro
     ),
   )
   renderReports()
-  for (const name of [/What do I spend money on/, /Am I getting richer or poorer/]) {
+  for (const name of [/What do I spend money on/, /Do I earn more than I spend/, /Am I getting richer or poorer/]) {
     expect(await within(await screen.findByRole('button', { name })).findByText('No transactions yet')).toBeInTheDocument()
   }
   expect(errors).not.toHaveBeenCalled()

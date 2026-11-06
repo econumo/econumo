@@ -1600,7 +1600,8 @@
     },
     "kind": {
       "networth": "Património líquido",
-      "spending": "Gastos"
+      "spending": "Gastos",
+      "cashflow": "Fluxo de caixa"
     },
     "list": {
       "choose": "Escolha um relatório",
@@ -1614,7 +1615,11 @@
       "networth_down": "Menos {amount} este ano",
       "networth_flat": "Sem alteração este ano",
       "spending_q": "Com o que gasto dinheiro e como isso está mudando?",
-      "spent_caption": "gasto em {year}"
+      "cashflow_q": "Ganho mais do que gasto?",
+      "spent_caption": "gasto em {year}",
+      "saved_caption": "poupado em {year}",
+      "overspent_caption": "gasto a mais em {year}",
+      "saved_rate": "{rate}% da renda"
     },
     "period": {
       "quarter": "{quarter}º tri. {year}"
@@ -1648,6 +1653,8 @@
     "insight": {
       "empty": "Ainda não há transações",
       "spending_top": "{name} é o maior: {amount}, {share}% do total",
+      "cashflow_saved": "Poupou {amount}, {rate}% da renda",
+      "cashflow_overspent": "Gastou {amount} a mais do que ganhou",
       "networth_up": "Alta de {amount} no período",
       "networth_down": "Queda de {amount} no período",
       "networth_flat": "Sem mudança no período"
@@ -1707,6 +1714,28 @@
       "compare_note": "Os dois anos cobrem apenas {period}, para comparar em pé de igualdade.",
       "hint_select": "Toque numa linha ou barra para mostrar só essa linha.",
       "hint_drill": "Toque numa barra para ver as transações."
+    },
+    "cashflow": {
+      "view": "Vista",
+      "view_bars": "Barras",
+      "view_flow": "Fluxo",
+      "col_period": "Período",
+      "income": "Receitas",
+      "available": "Disponível",
+      "spent": "Gasto",
+      "saved": "Poupado",
+      "spending": "Despesas",
+      "net_saved": "Poupança líquida",
+      "transfers_in": "Transferido para dentro",
+      "transfers_out": "Transferido para fora",
+      "chart": "Gráfico de fluxo de caixa",
+      "flow_chart": "Fluxo de dinheiro",
+      "from_balance": "Do saldo",
+      "to_savings": "Movido para contas poupança",
+      "stayed": "Ficou nas contas do dia a dia",
+      "other_income": "Outras receitas",
+      "running_note": "* {period} ainda não terminou: os valores são até agora.",
+      "flow_note": "O fluxo abrange todo o período: de onde veio a receita e para onde foi."
     },
     "drill": {
       "unsupported": "Estas transações não podem ser listadas aqui. Abra a página Orçamento para vê-las.",

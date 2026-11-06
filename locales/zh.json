@@ -1600,7 +1600,8 @@
     },
     "kind": {
       "networth": "净资产",
-      "spending": "支出"
+      "spending": "支出",
+      "cashflow": "现金流"
     },
     "list": {
       "choose": "选择报表",
@@ -1614,7 +1615,11 @@
       "networth_down": "今年减少 {amount}",
       "networth_flat": "今年没有变化",
       "spending_q": "我的钱花在哪里，变化如何？",
-      "spent_caption": "{year} 年支出"
+      "cashflow_q": "我的收入多于支出吗？",
+      "spent_caption": "{year} 年支出",
+      "saved_caption": "{year} 年结余",
+      "overspent_caption": "{year} 年超支",
+      "saved_rate": "占收入的 {rate}%"
     },
     "period": {
       "quarter": "{year}第{quarter}季度"
@@ -1648,6 +1653,8 @@
     "insight": {
       "empty": "还没有交易",
       "spending_top": "{name} 最多：{amount}，占总额的 {share}%",
+      "cashflow_saved": "结余 {amount}，占收入的 {rate}%",
+      "cashflow_overspent": "支出比收入多 {amount}",
       "networth_up": "期间增加 {amount}",
       "networth_down": "期间减少 {amount}",
       "networth_flat": "期间没有变化"
@@ -1707,6 +1714,28 @@
       "compare_note": "两个年份都只取 {period}，以便同期对比。",
       "hint_select": "点按某一行或柱子，图表只显示该行。",
       "hint_drill": "点按柱子查看相应交易。"
+    },
+    "cashflow": {
+      "view": "视图",
+      "view_bars": "柱状",
+      "view_flow": "流向",
+      "col_period": "期间",
+      "income": "收入",
+      "available": "可用",
+      "spent": "已支出",
+      "saved": "结余",
+      "spending": "支出",
+      "net_saved": "净结余",
+      "transfers_in": "转入",
+      "transfers_out": "转出",
+      "chart": "现金流图表",
+      "flow_chart": "资金流向",
+      "from_balance": "动用余额",
+      "to_savings": "转入储蓄账户",
+      "stayed": "留在日常账户",
+      "other_income": "其他收入",
+      "running_note": "* {period} 尚未结束：数字为截至目前。",
+      "flow_note": "流向图涵盖整个期间：收入从何而来、去向何处。"
     },
     "drill": {
       "unsupported": "这些交易无法在此列出。请打开预算页面查看。",

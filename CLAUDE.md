@@ -406,7 +406,7 @@ upgrade within the line the running patch. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
-sidebar footer, not a menu entry): Net worth and Spending, plus a "Suggest a report" card that
+sidebar footer, not a menu entry): Net worth, Spending and Cash flow (a Sankey on desktop), plus a "Suggest a report" card that
 opens the feedback form on its feature-request type. All read the report routes above. The tab list is stored per user on
 the device only (localStorage `econumo.reportTabs`) and Reports always opens on the FIRST tab.
 Every report query key is invalidated after any successful mutation
