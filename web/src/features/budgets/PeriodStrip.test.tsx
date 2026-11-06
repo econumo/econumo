@@ -95,19 +95,21 @@ it('mouse wheel scrolls the strip horizontally (the scrollbar is hidden)', () =>
   expect(strip.scrollLeft).toBe(1140)
 })
 
-it('a shifted budget shows each month\'s dates under its name, in the tab\'s name too', async () => {
+it('a shifted budget shows the selected month\'s dates under its name; every tab names its dates', async () => {
   const user = userEvent.setup()
   render(<PeriodStrip startedAt="2026-01-01 00:00:00" startDay={28} />)
   const selected = screen.getByRole('tab', { selected: true })
   expect(selected).toHaveAccessibleName('July, Jul 28 – Aug 27')
   expect(within(selected).getByTestId('period-strip-dates')).toHaveTextContent('Jul 28 – Aug 27')
   const march = screen.getByRole('tab', { name: 'March, Mar 28 – Apr 27' })
-  expect(within(march).getByTestId('period-strip-dates')).toBeInTheDocument()
-  expect(screen.getAllByTestId('period-strip-dates')).toHaveLength(screen.getAllByRole('tab').length)
+  expect(within(march).queryByTestId('period-strip-dates')).toBeNull()
+  expect(screen.getAllByTestId('period-strip-dates')).toHaveLength(1)
   // nothing trails the strip
   expect(screen.getByRole('tablist').nextElementSibling).toBeNull()
   await user.click(march)
   expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-03-01')
+  expect(within(screen.getByRole('tab', { selected: true })).getByTestId('period-strip-dates')).toHaveTextContent('Mar 28 – Apr 27')
+  expect(screen.getAllByTestId('period-strip-dates')).toHaveLength(1)
 })
 
 it('a calendar-month budget shows month names only', () => {

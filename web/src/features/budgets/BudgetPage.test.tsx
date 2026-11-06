@@ -1076,8 +1076,8 @@ describe('a budget whose months start on the 28th', () => {
     await waitFor(() => expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-09-01'))
     expect(await screen.findByRole('tab', { selected: true, name: 'September, Sep 28 – Oct 27' })).toBeInTheDocument()
     await expectSelectedDates('Sep 28 – Oct 27')
-    // every month of the strip carries its own dates, none sit at the end of the line
-    expect(within(screen.getByRole('tab', { name: /^October,/ })).getByTestId('period-strip-dates')).toHaveTextContent('Oct 28 – Nov 27')
+    // only the selected month shows its dates, none sit at the end of the line; the others name theirs
+    expect(within(screen.getByRole('tab', { name: 'October, Oct 28 – Nov 27' })).queryByTestId('period-strip-dates')).toBeNull()
     expect(screen.getByRole('tablist', { name: 'period' }).nextElementSibling).toBeNull()
     await waitFor(() => expect(dates).toContain('2026-09-01'))
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.BUDGET_CHANGE_DATE)

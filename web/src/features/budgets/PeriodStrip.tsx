@@ -131,14 +131,16 @@ export function PeriodStrip({
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="flex flex-1 gap-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={`flex flex-1 gap-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${startDay !== 1 ? 'items-start' : ''}`}
         role="tablist"
         aria-label="period"
       >
       {items.map((item) => {
-        // a shifted budget's month is not the calendar month: its dates sit under
-        // the name, as in the Plan header
+        // a shifted budget's month is not the calendar month: the selected month's
+        // dates sit under its name, styled as in the Plan header; every tab names
+        // its dates for assistive tech
         const range = periodDatesLabel(item.value, startDay, i18n.language)
+        const shownRange = item.isActive ? range : null
         return (
           <button
             key={item.value}
@@ -147,7 +149,7 @@ export function PeriodStrip({
             role="tab"
             aria-selected={item.isActive}
             aria-label={range ? `${item.label}, ${range}` : undefined}
-            className={`shrink-0 px-2.5 py-1 text-sm uppercase tracking-wide ${range ? 'flex flex-col items-center' : ''} ${
+            className={`shrink-0 px-2.5 py-1 text-sm uppercase tracking-wide ${shownRange ? 'flex flex-col items-center' : ''} ${
               item.isActive
                 ? 'font-bold text-foreground'
                 : item.outsideBudget
@@ -160,14 +162,14 @@ export function PeriodStrip({
               setPeriod(item.value)
             }}
           >
-            {range ? (
+            {shownRange ? (
               <>
                 <span>{item.label}</span>
                 <span
                   data-testid="period-strip-dates"
-                  className={`whitespace-nowrap font-normal normal-case tracking-normal ${PERIOD_DATES_CLASS}${item.outsideBudget ? ' opacity-50' : ''}`}
+                  className={`whitespace-nowrap font-normal normal-case tracking-normal ${PERIOD_DATES_CLASS}`}
                 >
-                  {range}
+                  {shownRange}
                 </span>
               </>
             ) : (

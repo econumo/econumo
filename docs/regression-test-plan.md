@@ -1560,15 +1560,15 @@ and on tablet/phone only with a hardware keyboard.
       dates, and Reports still bucket them into calendar October. A day 5
       budget behaves the same way with "October" = 5 Oct - 4 Nov, a day 15
       budget with "September" = 15 Sep - 14 Oct.
-- [ ] 📱 **Shifted budget — date ranges under the strip months**: on a budget
-      whose day is not 1 every month of the period strip shows its real dates
-      ("Oct 28 – Nov 27", in the UI language) as a small muted second line
-      under the month name, styled like the Plan grid's month header, on
-      desktop /budget and in the phone month view (at 375px the strip stays
-      scrollable with about three months in view, each range on one line);
-      nothing trails the strip on the right. A screen reader announces each
-      month with its range. A day-1 budget's strip shows month names only, at
-      its usual height.
+- [ ] 📱 **Shifted budget — date range under the selected month**: on a
+      budget whose day is not 1 the selected month of the period strip shows
+      its real dates ("Oct 28 – Nov 27", in the UI language) as a small muted
+      second line under the month name, styled like the Plan grid's month
+      header, on desktop /budget and in the phone month view; the other months
+      show their names only, aligned with the selected one, and picking
+      another month moves the range to it. Nothing trails the strip on the
+      right. A screen reader announces every month with its range. A day-1
+      budget's strip shows month names only, at its usual height.
 - [ ] **Shifted budget — date ranges in the Plan grid**: on desktop /plan, a
       budget whose day is not 1 shows each month column's dates ("Oct 28 – Nov
       27", in the UI language) as a small muted second line under the month

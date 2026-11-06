@@ -457,8 +457,8 @@ it('a shifted budget shows its dates under the strip months and figures for its 
     expect(strip.nextElementSibling).toBeNull()
     const selectedDates = () => within(screen.getByRole('tab', { selected: true })).getByTestId('period-strip-dates')
     expect(selectedDates()).toHaveTextContent('Jul 16 – Aug 15')
-    // every month carries its range on a phone too
-    expect(within(screen.getByRole('tab', { name: /^June,/ })).getByTestId('period-strip-dates')).toHaveTextContent('Jun 16 – Jul 15')
+    // only the selected month shows its range on a phone too; the others name it
+    expect(within(screen.getByRole('tab', { name: 'June, Jun 16 – Jul 15' })).queryByTestId('period-strip-dates')).toBeNull()
     expect(screen.getByRole('button', { name: /^Food, budget .*, spent 45\.50$/ })).toBeInTheDocument()
     // a calendar budget would show August's spending; this budget's August is still ahead
     act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' }))
