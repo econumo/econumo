@@ -1633,7 +1633,6 @@
       "show_transactions": "查看 {name} 的交易",
       "drag_hint": "在图表上拖动以选择时间段",
       "range_transactions": "交易",
-      "range_partial": "未与您共享的账户的交易已计入，但不会列出。",
       "period": "期间",
       "headline": "摘要",
       "col_change": "变化",

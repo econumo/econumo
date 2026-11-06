@@ -1633,7 +1633,6 @@
       "show_transactions": "Transacties van {name} tonen",
       "drag_hint": "Sleep over de grafiek om een periode te kiezen",
       "range_transactions": "Transacties",
-      "range_partial": "Transacties van rekeningen die niet met u zijn gedeeld, tellen mee maar worden niet getoond.",
       "period": "Periode",
       "headline": "Samenvatting",
       "col_change": "Verandering",

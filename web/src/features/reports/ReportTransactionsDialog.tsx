@@ -35,8 +35,6 @@ export interface AccountsDrill {
   accountIds?: Id[]
   /** kind 'accounts': savings members only the budget can list */
   savingsIds?: Id[]
-  /** kind 'accounts': the report counts accounts that cannot be listed */
-  partial?: boolean
 }
 
 function monthList(from: string, to: string): string[] {
@@ -175,7 +173,6 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
             )}
           </div>
         )}
-        {row.partial ? <p className="pt-2 text-xs text-muted-foreground">{t('reports.networth.range_partial')}</p> : null}
       </ResponsiveDialog>
 
       {preview ? (

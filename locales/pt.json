@@ -1633,7 +1633,6 @@
       "show_transactions": "Ver as transações de {name}",
       "drag_hint": "Arraste sobre o gráfico para escolher um período",
       "range_transactions": "Transações",
-      "range_partial": "As transações de contas não partilhadas consigo são contabilizadas, mas não listadas.",
       "period": "Período",
       "headline": "Resumo",
       "col_change": "Variação",

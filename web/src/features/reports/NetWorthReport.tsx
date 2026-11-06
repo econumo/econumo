@@ -408,8 +408,6 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
                       name: scopeName,
                       accountIds: shown.filter((a) => !isEverydaySum(a)).map((a) => a.id),
                       savingsIds: shown.filter((a) => a.isSavings === 1 && !onDevice(a.id)).map((a) => a.id),
-                      // another member's own accounts count in the figures but are theirs to list
-                      partial: shown.some(isEverydaySum),
                     })
                     trackEvent(METRICS.REPORTS_DRILL_DOWN, { scope: p.budgetId ? 'budget' : 'mine', mode: 'networth_range' })
                   }}

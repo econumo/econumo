@@ -1633,7 +1633,6 @@
       "show_transactions": "Mostra le transazioni di {name}",
       "drag_hint": "Trascina sul grafico per scegliere un periodo",
       "range_transactions": "Transazioni",
-      "range_partial": "Le transazioni dei conti non condivisi con te sono conteggiate ma non elencate.",
       "period": "Periodo",
       "headline": "Riepilogo",
       "col_change": "Variazione",

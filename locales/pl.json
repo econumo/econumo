@@ -1633,7 +1633,6 @@
       "show_transactions": "Pokaż transakcje: {name}",
       "drag_hint": "Przeciągnij po wykresie, aby wybrać okres",
       "range_transactions": "Transakcje",
-      "range_partial": "Transakcje z kont, które nie są Ci udostępnione, są wliczone, ale niewymienione.",
       "period": "Okres",
       "headline": "Podsumowanie",
       "col_change": "Zmiana",

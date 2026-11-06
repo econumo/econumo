@@ -2125,7 +2125,7 @@ shared with a partner.
       table's Start/Now/Change follow the range. Transactions lists every transaction of the report's
       accounts in those months, a partner's savings accounts included with a
       signed amount and currency; a partner's other unshared accounts are not
-      listed, and a note under the list says so. A month that fails to load
+      listed. A month that fails to load
       shows an error instead of a shorter list; offline with nothing cached the
       report and its card show the error, not an endless placeholder. A plain click on the chart or
       the chip's × clears the range; changing the period or scope drops it.

@@ -1633,7 +1633,6 @@
       "show_transactions": "Show the transactions of {name}",
       "drag_hint": "Drag across the chart to pick a period",
       "range_transactions": "Transactions",
-      "range_partial": "Transactions of accounts not shared with you are counted but not listed.",
       "period": "Period",
       "headline": "Summary",
       "col_change": "Change",
