@@ -1614,8 +1614,6 @@
       "networth_down": "今年减少 {amount}",
       "networth_flat": "今年没有变化",
       "spending_q": "我的钱花在哪里，变化如何？",
-      "forecast_q": "我的钱将会怎样？",
-      "coming_later": "即将推出",
       "spent_caption": "{year} 年支出"
     },
     "period": {

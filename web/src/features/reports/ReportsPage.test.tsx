@@ -35,9 +35,6 @@ it('first visit shows one New tab with the report list and this year’s headlin
   const networth = screen.getByRole('button', { name: /Am I getting richer or poorer/ })
   expect(await within(networth).findByText('2,500 $')).toBeInTheDocument()
   expect(within(networth).getByText('Up 1,500 $ this year')).toBeInTheDocument()
-  const forecast = screen.getByRole('button', { name: /What will happen to my money/ })
-  expect(forecast).toBeDisabled()
-  expect(within(forecast).getByText('Coming later')).toBeInTheDocument()
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_OPEN)
 })
 
@@ -139,36 +136,19 @@ it('phone: long-press Duplicate copies the tab and fires its metric', async () =
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_TAB_DUPLICATE)
 })
 
-it('without ECONUMO_DEV the list offers Net worth and Suggest a report only', async () => {
-  window.econumoConfig = { DEV: false, FEEDBACK: true }
+it('Suggest a report opens the feedback form on its feature-request type', async () => {
+  window.econumoConfig = { FEEDBACK: true }
   server.use(...coreHandlers(), ...reportHandlers())
   renderReports()
-  expect(await screen.findByRole('button', { name: /Am I getting richer or poorer/ })).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /What do I spend money on/ })).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /Do I earn more than I spend/ })).not.toBeInTheDocument()
-  expect(screen.queryByText('What will happen to my money?')).not.toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: /Suggest a report/ }))
+  await userEvent.click(await screen.findByRole('button', { name: /Suggest a report/ }))
   expect(useUiStore.getState().feedbackOpen).toBe(true)
   expect(useUiStore.getState().feedbackType).toBe('feature_request')
   expect(useUiStore.getState().feedbackTopic).toBe('reports')
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_SUGGEST)
 })
 
-it('without ECONUMO_DEV a tab left on Spending goes back to the report list', async () => {
-  window.econumoConfig = { DEV: false, FEEDBACK: true }
-  useReportTabs.setState({
-    userId: 'u1',
-    tabs: [{ id: 't1', kind: 'spending', title: null, params: defaultParams(null) }],
-    activeId: 't1',
-  })
-  server.use(...coreHandlers(), ...reportHandlers())
-  renderReports()
-  expect(await screen.findByRole('button', { name: /Am I getting richer or poorer/ })).toBeInTheDocument()
-  await waitFor(() => expect(useReportTabs.getState().tabs[0].kind).toBe('list'))
-})
-
 it('with feedback switched off there is no Suggest a report card', async () => {
-  window.econumoConfig = { DEV: false, FEEDBACK: false }
+  window.econumoConfig = { FEEDBACK: false }
   server.use(...coreHandlers(), ...reportHandlers())
   renderReports()
   expect(await screen.findByRole('button', { name: /Am I getting richer or poorer/ })).toBeInTheDocument()

@@ -1614,8 +1614,6 @@
       "networth_down": "{amount} minder dit jaar",
       "networth_flat": "Geen verandering dit jaar",
       "spending_q": "Waar geef ik geld aan uit, en hoe verandert dat?",
-      "forecast_q": "Wat gebeurt er met mijn geld?",
-      "coming_later": "Komt later",
       "spent_caption": "uitgegeven in {year}"
     },
     "period": {

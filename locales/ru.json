@@ -1614,8 +1614,6 @@
       "networth_down": "Снижение на {amount} в этом году",
       "networth_flat": "Без изменений в этом году",
       "spending_q": "На что я трачу деньги и как это меняется?",
-      "forecast_q": "Что будет с моими деньгами?",
-      "coming_later": "Скоро",
       "spent_caption": "потрачено в {year}"
     },
     "period": {

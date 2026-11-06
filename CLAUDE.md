@@ -63,7 +63,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL`, `FEEDBACK` and `DEV` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `FEEDBACK` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -137,16 +137,6 @@ and the unit template from the workflow's own commit (`make -f
 SHIP_TEMPLATES=.ship-tools/deploy/ship`, then `ship-publish`), so hotfixes from
 release branches cut before ship still publish. Local use needs `ship` installed
 (`brew install dmtrkzntsv/tap/ship`).
-
-### Feature flags (`ECONUMO_DEV`)
-
-From now on, unfinished user-facing work ships behind the single `ECONUMO_DEV` gate (default
-`false`) instead of a new per-feature environment variable: the SPA checks `isDevEnabled()`
-(and the server `config.Config.Dev` where a route or behaviour itself must stay off), so
-development and demo instances run with `ECONUMO_DEV=true` and production stays clean. When a
-feature is finished, delete its gate rather than leaving it behind `ECONUMO_DEV`. Dedicated
-variables remain for genuine operator choices (providers, limits, integrations), not for
-"not ready yet".
 
 ### Branch naming
 
@@ -416,9 +406,8 @@ upgrade within the line the running patch. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
-sidebar footer, not a menu entry): Net worth for everyone, plus a "Suggest a report" card that
-opens the feedback form on its feature-request type; Spending is unfinished and shows only
-behind `ECONUMO_DEV` (a stored tab on it goes back to the report list without it). All read the report routes above. The tab list is stored per user on
+sidebar footer, not a menu entry): Net worth and Spending, plus a "Suggest a report" card that
+opens the feedback form on its feature-request type. All read the report routes above. The tab list is stored per user on
 the device only (localStorage `econumo.reportTabs`) and Reports always opens on the FIRST tab.
 Every report query key is invalidated after any successful mutation
 (`web/src/lib/appQueryClient.ts`), so a report never shows stale figures.
@@ -863,9 +852,6 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
-- `ECONUMO_DEV` — the feature-flag gate (strict boolean, default `false`; malformed fails at boot),
-  served to the SPA as `DEV` (`isDevEnabled()`, `web/src/lib/config.ts`). See "Feature flags"
-  above: unfinished features show only while it is on. Today it gates the Spending report.
 - `ECONUMO_IMPORT_SIMPLEFIN` — the SimpleFIN pull provider (strict boolean, default `false`;
   malformed fails at boot). Apple Wallet import has no switch and is always on (the former
   `ECONUMO_IMPORT_APPLE_WALLET` is ignored), so `internal/imports/api` is always mounted with
@@ -998,7 +984,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
   `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`,
-  `IMPORT_SIMPLEFIN`, `FEEDBACK` and `DEV` are always present (server truth). `MCP_URL` is the MCP OAuth resource
+  `IMPORT_SIMPLEFIN` and `FEEDBACK` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom

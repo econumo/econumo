@@ -2145,14 +2145,9 @@ and on tablet/phone only with a hardware keyboard.
 
 ## 10a. Reports
 
-- [ ] **Default** (`ECONUMO_DEV` unset): the report list offers "Am I getting
-      richer or poorer?" and "Suggest a report" only; Suggest a report opens the
-      feedback form on the feature-request type (no card when
-      `ECONUMO_FEEDBACK=false`). A tab left on Spending goes back to
-      the report list 📱
-- [ ] **`ECONUMO_DEV=true`**: the list also offers Spending and the
-      greyed forecast card; the items below marked Spending are
-      checked with it on.
+- [ ] The report list offers "What do I spend money on?", "Am I getting richer
+      or poorer?" and "Suggest a report"; Suggest a report opens the feedback
+      form on the feature-request type (no card when `ECONUMO_FEEDBACK=false`) 📱
 - [ ] **Entry point**: Reports is a chart icon right before the sync button in the
       sidebar footer (expanded, collapsed rail, and the phone menu); there is no
       Reports entry under Budget & Plan 📱

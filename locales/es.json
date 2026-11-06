@@ -1614,8 +1614,6 @@
       "networth_down": "Baja {amount} este año",
       "networth_flat": "Sin cambios este año",
       "spending_q": "¿En qué gasto el dinero y cómo está cambiando?",
-      "forecast_q": "¿Qué pasará con mi dinero?",
-      "coming_later": "Próximamente",
       "spent_caption": "gastado en {year}"
     },
     "period": {
