@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -67,7 +66,8 @@ func (r *ReadRepo) FlowByMonth(ctx context.Context, accountIDs []vo.Id, from, to
 				return nil, err
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				// sqliteSum: a float SUM keeps binary noise and drifts past 2^26
+				a = sqliteSum(*amount)
 			}
 		}
 		row.Amount = a

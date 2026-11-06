@@ -208,5 +208,5 @@ it('budget selectors mirror the Budget page', () => {
   expect(budgetSelector({ id: 'uncategorized', kind: 'category', name: '', side: 'expense' })).toEqual({ uncategorized: true })
   expect(budgetSelector({ id: 'c1', kind: 'income_category', name: '', side: 'income' })).toEqual({ income: true, categoryId: 'c1' })
   expect(budgetSelector({ id: 'e2', kind: 'income_envelope', name: '', side: 'income' })).toEqual({ income: true, envelopeId: 'e2' })
-  expect(budgetSelector({ id: 'uncategorized', kind: 'income_category', name: '', side: 'income' })).toBeNull()
+  expect(budgetSelector({ id: 'uncategorized', kind: 'income_category', name: '', side: 'income' })).toEqual({ income: true, uncategorized: true })
 })

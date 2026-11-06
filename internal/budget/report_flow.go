@@ -120,7 +120,12 @@ func (s *Service) buildPersonalFlow(ctx context.Context, accountIDs []vo.Id, w r
 		monthStrs[i] = m.Format(datetime.DateLayout)
 		monthIdx[monthStrs[i]] = i
 	}
+	// money dated after the caller's today has not happened yet, as in the
+	// budget's own figures
 	end := w.end()
+	if tomorrow := localTomorrow(ctx, s.clock.Now()); tomorrow.Before(end) {
+		end = tomorrow
+	}
 
 	flows, err := s.read.FlowByMonth(ctx, accountIDs, w.from, end, groupBy)
 	if err != nil {
@@ -287,7 +292,7 @@ func (s *Service) budgetFlowReport(ctx context.Context, userID vo.Id, req model.
 	if err != nil {
 		return nil, err
 	}
-	item, err := s.flowFromPlan(ctx, b.budget.CurrencyID, window.monthList(), plan)
+	item, err := s.flowFromPlan(ctx, b.budget.CurrencyID, window.monthList(), b.budget.PeriodStartDay, plan)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +302,9 @@ func (s *Service) budgetFlowReport(ctx context.Context, userID vo.Id, req model.
 // flowFromPlan converts the plan's element-currency cells (actuals and plans
 // alike) to the budget currency month by month and drops rows with neither
 // activity nor a plan in the window.
-func (s *Service) flowFromPlan(ctx context.Context, currency vo.Id, months []time.Time, plan model.BudgetPlanResult) (model.FlowReportResult, error) {
+// The plan built each month on the budget's own window (15 Jul - 14 Aug for a
+// budget starting on the 15th), so its cells convert over that window too.
+func (s *Service) flowFromPlan(ctx context.Context, currency vo.Id, months []time.Time, startDay int, plan model.BudgetPlanResult) (model.FlowReportResult, error) {
 	toConvert := map[string][]model.ConvertItem{}
 	queue := func(key string, i int, from, amount string) error {
 		if amount == "" {
@@ -307,8 +314,9 @@ func (s *Service) flowFromPlan(ctx context.Context, currency vo.Id, months []tim
 		if err != nil {
 			return err
 		}
+		start, end := model.PeriodWindow(months[i], startDay)
 		toConvert[key] = append(toConvert[key], model.ConvertItem{
-			PeriodStart: months[i], PeriodEnd: months[i].AddDate(0, 1, 0),
+			PeriodStart: start, PeriodEnd: end,
 			From: cid, To: currency, Amount: vo.NewDecimal(amount),
 		})
 		return nil
@@ -357,7 +365,8 @@ func (s *Service) flowFromPlan(ctx context.Context, currency vo.Id, months []tim
 		}
 	}
 
-	converted, err := s.convertor.BulkConvert(ctx, months[0], months[0].AddDate(0, 1, 0), toConvert)
+	firstStart, firstEnd := model.PeriodWindow(months[0], startDay)
+	converted, err := s.convertorFor(startDay).BulkConvert(ctx, firstStart, firstEnd, toConvert)
 	if err != nil {
 		return model.FlowReportResult{}, err
 	}

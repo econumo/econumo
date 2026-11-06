@@ -212,3 +212,14 @@ func TestFlowReport_Personal_PartnerCategoryOnSharedAccount(t *testing.T) {
 		t.Fatalf("tag rows = %+v", rt.Expense)
 	}
 }
+
+// The clock says May 17: a transaction dated May 25 has not happened, as on the
+// Budget page.
+func TestFlowReport_Personal_LeavesOutFutureMoney(t *testing.T) {
+	h := newReportHarness(t)
+	food := h.f.Category(fixture.Category{UserID: h.user, Name: "Food", Type: 0})
+	h.tx(0, h.acct, food, "", "", "10", "2026-05-02 10:00:00")
+	h.tx(0, h.acct, food, "", "", "90", "2026-05-25 10:00:00")
+	r := h.report(t, model.GetFlowReportRequest{From: "2026-05-01", To: "2026-05-01"})
+	eqAmounts(t, rowByName(t, r.Expense, "Food").Amounts, "10")
+}

@@ -68,6 +68,8 @@ func newReportHarness(t *testing.T) *reportHarness {
 		operationrepo.NewGuard(eng, txm),
 		txm, clk,
 	)
+	shifted := rateProvider.Windowed()
+	svc.SetShiftedPeriodRates(domcurrency.NewConvertor(shifted), shifted)
 	return &reportHarness{ctx: context.Background(), svc: svc, f: f, user: user, acct: acct, accounts: accountRepo, tdb: tdb}
 }
 
