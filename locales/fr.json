@@ -1315,7 +1315,7 @@
           "none": "Aucune date de fin"
         },
         "period_start_day": {
-          "label": "Le mois commence le jour"
+          "label": "Début du mois"
         }
       },
       "budget_envelope": {

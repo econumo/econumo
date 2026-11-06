@@ -1534,8 +1534,8 @@ and on tablet/phone only with a hardware keyboard.
       existing (even locked) member. Escape (desktop) closes only the picker,
       not the budget dialog. On a 320px phone in German or Ukrainian the rows
       truncate long name lists with "…" and the pickers open as bottom sheets.
-- [ ] 📱 **Budget settings — "Month starts on day"**: the create and edit
-      budget dialogs show a "Month starts on day" picker (1 to 28) between
+- [ ] 📱 **Budget settings — "Month start day"**: the create and edit
+      budget dialogs show a "Month start day" picker (1 to 28) between
       Currency and Accounts, defaulting to 1 on create and to the budget's
       stored day on edit (a dropdown on desktop and tablet, a bottom sheet on
       a phone, no search). Picking another day shows no note or warning.

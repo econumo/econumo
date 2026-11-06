@@ -58,7 +58,7 @@ it('submits the default period start day 1', async () => {
   const onSubmit = renderDialog()
   await user.type(screen.getByLabelText('Name'), 'Vacation')
   await toggleInPicker(user, 'accounts', 'include Cash')
-  expect(screen.getByRole('combobox', { name: 'Month starts on day' })).toHaveTextContent('1')
+  expect(screen.getByRole('combobox', { name: 'Month start day' })).toHaveTextContent('1')
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
   expect(onSubmit.mock.calls[0][0].periodStartDay).toBe(1)
@@ -69,7 +69,7 @@ it('submits the picked period start day', async () => {
   const onSubmit = renderDialog()
   await user.type(screen.getByLabelText('Name'), 'Vacation')
   await toggleInPicker(user, 'accounts', 'include Cash')
-  await user.click(screen.getByRole('combobox', { name: 'Month starts on day' }))
+  await user.click(screen.getByRole('combobox', { name: 'Month start day' }))
   await user.click(await screen.findByRole('option', { name: '28' }))
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
@@ -89,7 +89,7 @@ describe('a server that does not know the period start day', () => {
     )
     return () => served
   }
-  const picker = () => screen.queryByRole('combobox', { name: 'Month starts on day' })
+  const picker = () => screen.queryByRole('combobox', { name: 'Month start day' })
   const settled = async (served: () => boolean) => {
     await waitFor(() => expect(served()).toBe(true))
     await new Promise((r) => setTimeout(r, 50))
