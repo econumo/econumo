@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCurrencies } from '@/features/currencies/queries'
 import { abs, add, div, isNegative, isZero, mul, sub } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
-import { isDevEnabled, isFeedbackEnabled } from '@/lib/config'
+import { isFeedbackEnabled } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat } from '@/lib/money'
 import { cashFlow, netWorthInsight, netWorthSeries, spendingInsight } from './reportMath'
@@ -43,18 +43,12 @@ function Sparkline({ values, className }: { values: string[]; className: string 
   )
 }
 
-function Card({ question, onClick, disabled, children }: {
-  question: string
-  onClick?: () => void
-  disabled?: boolean
-  children: ReactNode
-}) {
+function Card({ question, onClick, children }: { question: string; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
-      disabled={disabled}
       onClick={onClick}
-      className="flex flex-col gap-1.5 rounded-xl bg-econumo-card p-4 text-left transition-colors hover:bg-econumo-hover disabled:pointer-events-none disabled:opacity-50"
+      className="flex flex-col gap-1.5 rounded-xl bg-econumo-card p-4 text-left transition-colors hover:bg-econumo-hover"
     >
       <span className="text-[15px] leading-snug">{question}</span>
       {children}
@@ -191,7 +185,6 @@ export function ReportList({ budgetId, onScope, onChoose }: {
   onChoose: (kind: Exclude<ReportKind, 'list'>) => void
 }) {
   const { t } = useTranslation()
-  const dev = isDevEnabled()
   const openFeedback = useUiStore((s) => s.openFeedback)
   const { data: budgets } = useReportBudgets()
   const year = new Date().getFullYear()
@@ -216,15 +209,9 @@ export function ReportList({ budgetId, onScope, onChoose }: {
         ) : null}
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        {/* Spending, Cash flow and the forecast are unfinished: ECONUMO_DEV only */}
-        {dev ? <SpendingCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('spending')} /> : null}
-        {dev ? <CashFlowCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('cashflow')} /> : null}
+        <SpendingCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('spending')} />
+        <CashFlowCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('cashflow')} />
         <NetWorthCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('networth')} />
-        {dev ? (
-          <Card question={t('reports.list.forecast_q')} disabled>
-            <span className="text-sm text-muted-foreground">{t('reports.list.coming_later')}</span>
-          </Card>
-        ) : null}
         {isFeedbackEnabled() ? (
           <Card
             question={t('reports.list.suggest_q')}

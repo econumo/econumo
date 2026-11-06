@@ -1616,8 +1616,6 @@
       "networth_flat": "Geen verandering dit jaar",
       "spending_q": "Waar geef ik geld aan uit, en hoe verandert dat?",
       "cashflow_q": "Verdien ik meer dan ik uitgeef?",
-      "forecast_q": "Wat gebeurt er met mijn geld?",
-      "coming_later": "Komt later",
       "spent_caption": "uitgegeven in {year}",
       "saved_caption": "gespaard in {year}",
       "overspent_caption": "te veel uitgegeven in {year}",

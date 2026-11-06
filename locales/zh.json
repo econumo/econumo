@@ -1616,8 +1616,6 @@
       "networth_flat": "今年没有变化",
       "spending_q": "我的钱花在哪里，变化如何？",
       "cashflow_q": "我的收入多于支出吗？",
-      "forecast_q": "我的钱将会怎样？",
-      "coming_later": "即将推出",
       "spent_caption": "{year} 年支出",
       "saved_caption": "{year} 年结余",
       "overspent_caption": "{year} 年超支",

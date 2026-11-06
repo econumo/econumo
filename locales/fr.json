@@ -1616,8 +1616,6 @@
       "networth_flat": "Aucun changement cette année",
       "spending_q": "À quoi je dépense mon argent, et comment cela évolue-t-il ?",
       "cashflow_q": "Est-ce que je gagne plus que je ne dépense ?",
-      "forecast_q": "Que va devenir mon argent ?",
-      "coming_later": "Bientôt disponible",
       "spent_caption": "dépensé en {year}",
       "saved_caption": "épargné en {year}",
       "overspent_caption": "dépassement en {year}",

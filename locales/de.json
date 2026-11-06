@@ -1616,8 +1616,6 @@
       "networth_flat": "Keine Veränderung in diesem Jahr",
       "spending_q": "Wofür gebe ich Geld aus, und wie verändert sich das?",
       "cashflow_q": "Verdiene ich mehr, als ich ausgebe?",
-      "forecast_q": "Was wird aus meinem Geld?",
-      "coming_later": "Kommt später",
       "spent_caption": "{year} ausgegeben",
       "saved_caption": "{year} gespart",
       "overspent_caption": "{year} zu viel ausgegeben",

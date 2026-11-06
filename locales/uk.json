@@ -1616,8 +1616,6 @@
       "networth_flat": "Без змін цього року",
       "spending_q": "На що я витрачаю гроші і як це змінюється?",
       "cashflow_q": "Чи заробляю я більше, ніж витрачаю?",
-      "forecast_q": "Що буде з моїми грошима?",
-      "coming_later": "Незабаром",
       "spent_caption": "витрачено у {year}",
       "saved_caption": "заощаджено у {year}",
       "overspent_caption": "перевитрата у {year}",
