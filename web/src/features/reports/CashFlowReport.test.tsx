@@ -203,3 +203,12 @@ it('an empty period says so', async () => {
   expect(await screen.findByText('No transactions yet')).toBeInTheDocument()
   expect(screen.queryByRole('table')).toBeNull()
 })
+
+it('Flow with only money taken out of savings says so instead of drawing nothing', async () => {
+  openCashFlow({ budgetId: 'b1', view: 'flow' }, report({
+    income: [], expense: [],
+    savings: [row('acc-s', 'Deposit', months.map((m) => (m === '2026-05-01' ? '-200' : '0')), { kind: 'savings' })],
+  }))
+  expect(await screen.findByRole('table')).toBeInTheDocument()
+  expect(await screen.findByText('No transactions yet')).toBeInTheDocument()
+})

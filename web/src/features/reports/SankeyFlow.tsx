@@ -92,7 +92,8 @@ export function SankeyFlow({ report, budget, money }: {
     )
   }
 
-  if (graph.nodes.length === 0) return null
+  // only money moved out of savings: nothing flows through the hub to draw
+  if (graph.nodes.length === 0) return <p className="py-6 text-sm text-muted-foreground">{t('reports.insight.empty')}</p>
   return (
     <figure aria-label={t('reports.cashflow.flow_chart')} className="flex flex-col gap-2">
       <ChartContainer config={{}} className="aspect-auto w-full" style={{ height }}>
