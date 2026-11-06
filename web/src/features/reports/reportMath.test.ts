@@ -224,14 +224,25 @@ describe('flowGraph', () => {
     expect(balanced(g)).toEqual([1300, 1300])
   })
 
-  it('savings taken out (negative) count as nothing moved', () => {
+  it('savings taken out (negative) count as nothing moved: one Saved node', () => {
     const g = flowGraph(flow({
       income: [row('salary', ['1000'], { kind: 'income_category' })],
       expense: [row('rent', ['600'])],
       savings: [row('acc-s', ['-200'], { kind: 'savings' })],
     }), true)
     expect(value(g, FLOW_TO_SAVINGS)).toBeUndefined()
-    expect(value(g, FLOW_STAYED)).toBe('400')
+    expect(value(g, FLOW_STAYED)).toBeUndefined()
+    expect(value(g, FLOW_SAVED)).toBe('400')
+  })
+
+  it('a savings member with a plan but no activity: one Saved node', () => {
+    const g = flowGraph(flow({
+      income: [row('salary', ['1000'], { kind: 'income_category' })],
+      expense: [row('rent', ['600'])],
+      savings: [row('acc-s', ['0'], { kind: 'savings' })],
+    }), true)
+    expect(value(g, FLOW_SAVED)).toBe('400')
+    expect(value(g, FLOW_STAYED)).toBeUndefined()
   })
 
   it('an empty window gives no graph', () => {

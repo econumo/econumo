@@ -336,8 +336,9 @@ export function flowGraph(report: FlowReportDto, budget: boolean): FlowGraph {
   const special = (id: string, value: string): FlowNode[] => (cmp(value, 0) > 0 ? [{ id, kind: 'special', name: '', rowKind: '', value }] : [])
   const transferIn = special(FLOW_TRANSFER_IN, positive(sum(report.transfersIn)))
   const transferOut = special(FLOW_TRANSFER_OUT, positive(sum(report.transfersOut)))
-  const split = budget && report.savings.length > 0
-  const moved = split ? positive(sum(report.savings.flatMap((r) => r.amounts))) : '0'
+  // a savings member with a plan but no activity moved nothing: one Saved node then
+  const moved = budget ? positive(sum(report.savings.flatMap((r) => r.amounts))) : '0'
+  const split = cmp(moved, 0) > 0
   const inflow = sum([...income, ...transferIn].map((x) => x.value))
   const outflow = sum([...expense, ...transferOut].map((x) => x.value))
   const left = sub(inflow, add(outflow, moved))

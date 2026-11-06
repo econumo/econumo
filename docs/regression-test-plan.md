@@ -2260,7 +2260,8 @@ tag, and a budget with a planned limit on one category.
       "Transferred out" and "Saved"; transfer nodes appear only when
       non-zero. In a budget with savings members, "Saved" splits into
       "Moved to savings accounts" and "Stayed in everyday accounts"; a
-      budget without savings members shows one "Saved". When the outflows
+      budget where nothing moved to savings (no savings members, or none with
+      money moved in) shows one "Saved". When the outflows
       are higher than the inflows, a "From balance" source covers the gap
       and nothing is shown as saved. The hub reads "Income" (equal to the
       headline Income) when only income feeds it, "Available" when

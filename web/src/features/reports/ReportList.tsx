@@ -123,7 +123,9 @@ function CashFlowCard({ budgetId, year, onChoose }: { budgetId: Id | null; year:
   const months = report.data ? cashFlow(report.data) : []
   const income = sum(months.map((m) => m.income))
   const saved = sum(months.map((m) => m.saved))
-  const empty = isZero(income) && isZero(sum(months.map((m) => m.spent)))
+  // transfers or savings movement alone are activity too, as the report shows them
+  const moved = months.some((m) => !isZero(m.transfersIn) || !isZero(m.transfersOut)) || (report.data?.savings ?? []).some((r) => r.amounts.some((a) => !isZero(a)))
+  const empty = isZero(income) && isZero(sum(months.map((m) => m.spent))) && !moved
   const overspent = isNegative(saved)
   const rate = isZero(income) ? null : Math.round(Number(div(mul(saved, 100), income)))
   return (
