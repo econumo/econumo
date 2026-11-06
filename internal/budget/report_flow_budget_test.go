@@ -250,3 +250,21 @@ func TestFlowReport_Budget_NoAccess(t *testing.T) {
 		t.Fatalf("want access denied, got %T", reportErr)
 	}
 }
+
+// A budget whose months start on the 15th: its "March" runs 15 Mar - 14 Apr, and
+// the report converts it over that window, as the plan does (here at the 20 Mar
+// rate only, not March's calendar average), so the round trip comes back exact.
+func TestFlowReport_Budget_ShiftedMonthsConvertOverTheirWindow(t *testing.T) {
+	h := newReportHarness(t)
+	eur := h.f.Currency(fixture.Currency{Code: "EUR", Symbol: "E"})
+	h.f.Rate(fixture.Rate{CurrencyID: eur, BaseCurrencyID: fixture.USD, Rate: "0.5", PublishedAt: "2024-03-10"})
+	h.f.Rate(fixture.Rate{CurrencyID: eur, BaseCurrencyID: fixture.USD, Rate: "0.25", PublishedAt: "2024-03-20"})
+	b := h.budget(t, "2024-01-01 00:00:00", h.acct)
+	h.exec(t, "UPDATE budgets SET period_start_day = ? WHERE id = ?", 15, b)
+	food := h.f.Category(fixture.Category{UserID: h.user, Name: "Food", Type: 0})
+	h.f.BudgetElement(fixture.BudgetElement{BudgetID: b, ExternalID: food, Type: 1, CurrencyID: eur})
+	h.tx(0, h.acct, food, "", "", "10", "2024-03-18 10:00:00")
+
+	r := h.report(t, model.GetFlowReportRequest{BudgetId: b, From: "2024-03-01", To: "2024-03-01"})
+	eqAmounts(t, rowByName(t, r.Expense, "Food").Amounts, "10")
+}

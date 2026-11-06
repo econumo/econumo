@@ -2172,6 +2172,9 @@ tag, and a budget with a planned limit on one category.
 - [ ] Report list: the scope picker lists My accounts and every budget;
       the three cards show this year's figures for that scope; picking a
       card turns the tab into that report in the same scope.
+- [ ] Spending in My accounts counts transactions through the end of today: a
+      transaction dated later this month is left out of the current month (and
+      its projection) until its day comes, as on the Budget page.
 - [ ] **Spending, Over time**: stacked bars of the top five rows plus
       "Everything else" (grey); a row keeps the same colour in the legend,
       the table, a narrowed chart and Compare. Month / Quarter / Year and
@@ -2227,7 +2230,7 @@ tag, and a budget with a planned limit on one category.
       month bar of either year (Compare) opens that row's transactions for
       the bar's months, newest first, grouped by day. Budget scope lists
       what the Budget page lists for the row (a partner's transactions
-      included, read-only); My accounts lists my own accounts' matching
+      included, read-only; income Uncategorized too); My accounts lists my own accounts' matching
       transactions only. When a deleted account of mine has transactions in
       the bar, the listed amounts add up to less than the bar and a muted
       note says that transactions of deleted accounts are counted in the

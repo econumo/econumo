@@ -36,7 +36,6 @@ export const matches = (value: Id | null, id: Id) => (id === UNCATEGORIZED_ID ? 
 
 // The budget transaction list takes the same selectors the Budget page sends for
 // the row; a category listed under a tag is the tag-and-category intersection.
-// Uncategorized income has no selector on the server, so it cannot be listed.
 export function budgetSelector(row: DrillRow): Omit<BudgetTransactionsParams, 'budgetId' | 'periodStart'> | null {
   const uncategorized = row.id === UNCATEGORIZED_ID
   const underTag = row.parent?.kind === 'tag' ? { tagId: row.parent.id } : {}
@@ -48,7 +47,7 @@ export function budgetSelector(row: DrillRow): Omit<BudgetTransactionsParams, 'b
     case 'envelope':
       return { envelopeId: row.id }
     case 'income_category':
-      return uncategorized ? null : { income: true, categoryId: row.id }
+      return uncategorized ? { income: true, uncategorized: true } : { income: true, categoryId: row.id }
     case 'income_envelope':
       return { income: true, envelopeId: row.id }
     case 'savings':
