@@ -1,19 +1,29 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { v7 as uuidv7 } from 'uuid'
+import type { GroupBy } from '@/api/dto/report'
 import type { Id } from '@/api/types'
+import type { Step } from './reportMath'
 
-export type ReportKind = 'list' | 'networth'
+export type ReportKind = 'list' | 'spending' | 'networth'
 
 export interface ReportParams {
   budgetId: Id | null
-  period: 'last12' | 'last3y' | 'all'
+  period: 'thisYear' | 'last12' | 'last3y' | 'all' | 'custom'
+  from?: string
+  to?: string
+  step: Step
+  mode: 'overTime' | 'compare'
+  side: 'expense' | 'income'
+  groupBy: GroupBy
+  selectedId: Id | null
+  compare: [number, number] | null
 }
 
 export interface ReportTab {
   id: string
   kind: ReportKind
-  /** null = generated from the report */
+  /** null = generated from the report and its main parameter */
   title: string | null
   params: ReportParams
 }
@@ -21,13 +31,23 @@ export interface ReportTab {
 export const MAX_REPORT_TABS = 12
 
 export const REPORT_QUESTION: Record<Exclude<ReportKind, 'list'>, string> = {
+  spending: 'reports.list.spending_q',
   networth: 'reports.list.networth_q',
 }
 
-const KINDS: ReportKind[] = ['list', 'networth']
+const KINDS: ReportKind[] = ['list', 'spending', 'networth']
 
 export function defaultParams(budgetId: Id | null): ReportParams {
-  return { budgetId, period: 'last3y' }
+  return {
+    budgetId,
+    period: 'last3y',
+    step: 'year',
+    mode: 'overTime',
+    side: 'expense',
+    groupBy: 'category',
+    selectedId: null,
+    compare: null,
+  }
 }
 
 function listTab(budgetId: Id | null): ReportTab {
@@ -48,12 +68,40 @@ function sanitize(raw: unknown): ReportTab | null {
   }
 }
 
-const PERIODS: ReportParams['period'][] = ['last12', 'last3y', 'all']
+const PERIODS: ReportParams['period'][] = ['thisYear', 'last12', 'last3y', 'all', 'custom']
+const STEPS: Step[] = ['month', 'quarter', 'year']
+const MODES: ReportParams['mode'][] = ['overTime', 'compare']
+const SIDES: ReportParams['side'][] = ['expense', 'income']
+const GROUP_BYS: GroupBy[] = ['category', 'payee', 'tag']
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])-01$/
+
+function oneOf<T>(allowed: readonly T[], value: unknown, fallback: T): T {
+  return allowed.includes(value as T) ? (value as T) : fallback
+}
 
 function sanitizeParams(raw: unknown): ReportParams {
   const p = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const d = defaultParams(typeof p.budgetId === 'string' ? p.budgetId : null)
-  return { ...d, period: PERIODS.includes(p.period as ReportParams['period']) ? (p.period as ReportParams['period']) : d.period }
+  const from = typeof p.from === 'string' && MONTH.test(p.from) ? p.from : undefined
+  const to = typeof p.to === 'string' && MONTH.test(p.to) ? p.to : undefined
+  const period = oneOf(PERIODS, p.period, d.period)
+  const compare = Array.isArray(p.compare) && p.compare.length === 2 && p.compare.every((y) => Number.isInteger(y)) && (p.compare[0] as number) < (p.compare[1] as number)
+    ? [p.compare[0] as number, p.compare[1] as number] as [number, number]
+    : null
+  const out: ReportParams = {
+    ...d,
+    // a custom range without a readable start would silently become "all time"
+    period: period === 'custom' && !from ? d.period : period,
+    step: oneOf(STEPS, p.step, d.step),
+    mode: oneOf(MODES, p.mode, d.mode),
+    side: oneOf(SIDES, p.side, d.side),
+    groupBy: oneOf(GROUP_BYS, p.groupBy, d.groupBy),
+    selectedId: typeof p.selectedId === 'string' ? p.selectedId : null,
+    compare,
+  }
+  if (from) out.from = from
+  if (to) out.to = to
+  return out
 }
 
 interface ReportTabsState {
@@ -143,7 +191,8 @@ export const useReportTabs = create<ReportTabsState>()(
         repair: (id, budgetIds) => {
           const tab = get().tabs.find((t) => t.id === id)
           if (!tab || tab.params.budgetId === null || budgetIds.includes(tab.params.budgetId)) return
-          patchTab(id, (t) => ({ ...t, params: { ...t.params, budgetId: null } }))
+          // a selected row belongs to the scope it was picked in
+          patchTab(id, (t) => ({ ...t, params: { ...t.params, budgetId: null, selectedId: null } }))
         },
       }
     },
@@ -160,6 +209,18 @@ export const useReportTabs = create<ReportTabsState>()(
   ),
 )
 
-export function tabTitle(tab: ReportTab, names: Record<ReportKind, string>): string {
-  return tab.title ?? names[tab.kind]
+export interface TabTitleNames {
+  report: Record<ReportKind, string>
+  rows: Record<Id, string>
+  versus: (later: number, earlier: number) => string
+}
+
+export function tabTitle(tab: ReportTab, names: TabTitleNames): string {
+  if (tab.title) return tab.title
+  if (tab.kind === 'list') return names.report.list
+  const row = tab.params.selectedId ? names.rows[tab.params.selectedId] : undefined
+  const compare = tab.params.mode === 'compare' && tab.params.compare ? tab.params.compare : null
+  const years = compare ? names.versus(compare[1], compare[0]) : null
+  if (row && years) return `${row} · ${years}`
+  return row ?? years ?? names.report[tab.kind]
 }

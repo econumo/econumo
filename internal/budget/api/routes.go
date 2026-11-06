@@ -56,6 +56,7 @@ func RegisterReportAPI(h *Handlers, authn middleware.TokenAuthenticator) router.
 		authMw := middleware.Auth(authn)
 		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
+		mux.Handle("GET /api/v1/report/get-flow-report", auth(h.GetFlowReport))
 		mux.Handle("GET /api/v1/report/get-net-worth-report", auth(h.GetNetWorthReport))
 	}
 }

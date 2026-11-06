@@ -12,6 +12,7 @@ vi.mock('@/lib/metrics', async (importOriginal) => ({
   trackEvent: vi.fn(),
 }))
 
+const year = new Date().getFullYear()
 
 beforeEach(() => {
   localStorage.clear()
@@ -21,26 +22,30 @@ beforeEach(() => {
   setViewport(false)
 })
 
-it('first visit shows one New tab with Net worth and Suggest a report', async () => {
+it('first visit shows one New tab with the report list and this year’s headlines', async () => {
   server.use(...coreHandlers(), ...reportHandlers())
   renderReports()
   expect(await screen.findByRole('tab', { name: 'New tab' })).toHaveAttribute('aria-selected', 'true')
   expect(screen.getAllByRole('tab')).toHaveLength(1)
-  const networth = await screen.findByRole('button', { name: /Am I getting richer or poorer/ })
+  const spending = screen.getByRole('button', { name: /What do I spend money on/ })
+  expect(await within(spending).findByText('550 $')).toBeInTheDocument()
+  expect(within(spending).getByText(`spent in ${year}`)).toBeInTheDocument()
+  expect(within(spending).getByText('Groceries is the largest: 500 $, 91% of the total')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Do I earn more than I spend/ })).toBeNull()
+  const networth = screen.getByRole('button', { name: /Am I getting richer or poorer/ })
   expect(await within(networth).findByText('2,500 $')).toBeInTheDocument()
   expect(within(networth).getByText('Up 1,500 $ this year')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /What do I spend money on/ })).toBeNull()
-  expect(screen.queryByRole('button', { name: /Do I earn more than I spend/ })).toBeNull()
   expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_OPEN)
 })
 
-it('clicking the card turns the tab into that report', async () => {
+it('clicking a card turns the tab into that report', async () => {
   server.use(...coreHandlers(), ...reportHandlers())
   renderReports()
-  await userEvent.click(await screen.findByRole('button', { name: /Am I getting richer or poorer/ }))
-  expect(await screen.findByRole('tab', { name: 'Net worth' })).toHaveAttribute('aria-selected', 'true')
+  await userEvent.click(await screen.findByRole('button', { name: /What do I spend money on/ }))
+  expect(await screen.findByRole('tab', { name: 'Spending' })).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByRole('heading', { name: 'What do I spend money on, and how is it changing?' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /Am I getting richer or poorer/ })).toBeNull()
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_OPEN_REPORT, { report: 'networth', scope: 'mine' })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_OPEN_REPORT, { report: 'spending', scope: 'mine' })
 })
 
 it('the scope picker lists the budgets and My accounts; the chosen report inherits it', async () => {
@@ -49,9 +54,9 @@ it('the scope picker lists the budgets and My accounts; the chosen report inheri
   const user = userEvent.setup()
   await user.click(await screen.findByRole('combobox', { name: 'Scope' }))
   await user.click(await screen.findByRole('option', { name: fixtureBudgets[0].name }))
-  await user.click(screen.getByRole('button', { name: /Am I getting richer or poorer/ }))
-  expect(useReportTabs.getState().tabs[0]).toMatchObject({ kind: 'networth', params: { budgetId: 'b1' } })
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_OPEN_REPORT, { report: 'networth', scope: 'budget' })
+  await user.click(screen.getByRole('button', { name: /What do I spend money on/ }))
+  expect(useReportTabs.getState().tabs[0]).toMatchObject({ kind: 'spending', params: { budgetId: 'b1' } })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.REPORTS_OPEN_REPORT, { report: 'spending', scope: 'budget' })
 })
 
 it('a first visit starts in the default budget', async () => {

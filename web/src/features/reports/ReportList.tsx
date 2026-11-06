@@ -4,13 +4,13 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCurrencies } from '@/features/currencies/queries'
-import { abs, isNegative, isZero, sub } from '@/lib/decimal'
+import { abs, add, isNegative, isZero, sub } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
 import { isFeedbackEnabled } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat } from '@/lib/money'
-import { netWorthSeries } from './reportMath'
-import { useNetWorthReport, useReportBudgets } from './queries'
+import { netWorthInsight, netWorthSeries, spendingInsight } from './reportMath'
+import { useFlowReport, useNetWorthReport, useReportBudgets } from './queries'
 import { REPORT_QUESTION } from './reportTabs'
 import type { ReportKind } from './reportTabs'
 
@@ -90,6 +90,38 @@ function Figure({ isPending, isError, empty, amount, caption, series, seriesClas
   )
 }
 
+const sum = (xs: string[]) => xs.reduce((acc, x) => add(acc, x), '0')
+
+function SpendingCard({ budgetId, year, onChoose }: { budgetId: Id | null; year: number; onChoose: () => void }) {
+  const { t } = useTranslation()
+  const report = useFlowReport({ budgetId, from: `${year}-01-01` })
+  const money = useMoney(report.data?.currencyId)
+  const rows = report.data?.expense ?? []
+  const monthly = (report.data?.months ?? []).map((_, i) => sum(rows.map((r) => r.amounts[i] ?? '0')))
+  const total = sum(monthly)
+  const insight = spendingInsight(rows)
+  return (
+    <Card question={t(REPORT_QUESTION.spending)} onClick={onChoose}>
+      <Figure
+        isPending={report.isPending}
+        isError={report.isError && !report.data}
+        empty={insight.key === 'reports.insight.empty'}
+        amount={money(total)}
+        caption={t('reports.list.spent_caption', { year })}
+        series={monthly}
+        seriesClass="text-orange-500 dark:text-orange-400"
+        note={t(insight.key, { ...insight.params, amount: money(insight.params.amount ?? '0') })}
+      />
+    </Card>
+  )
+}
+
+const NETWORTH_NOTE: Record<string, string> = {
+  'reports.insight.networth_up': 'reports.list.networth_up',
+  'reports.insight.networth_down': 'reports.list.networth_down',
+  'reports.insight.networth_flat': 'reports.list.networth_flat',
+}
+
 function NetWorthCard({ budgetId, year, onChoose }: { budgetId: Id | null; year: number; onChoose: () => void }) {
   const { t } = useTranslation()
   // balances are month-end: last December's closing balance is where this year started
@@ -98,8 +130,9 @@ function NetWorthCard({ budgetId, year, onChoose }: { budgetId: Id | null; year:
   const unavailable = report.fetchStatus === 'paused' && (report.isPending || report.isPlaceholderData)
   const money = useMoney(report.data?.currencyId)
   const total = report.data ? netWorthSeries(report.data, (a) => ({ id: a.id, name: a.name })).total : []
+  const insight = netWorthInsight(total)
+  const noteKey = NETWORTH_NOTE[insight.key]
   const change = total.length >= 2 ? sub(total[total.length - 1], total[0]) : '0'
-  const noteKey = total.length < 2 ? null : isZero(change) ? 'reports.list.networth_flat' : isNegative(change) ? 'reports.list.networth_down' : 'reports.list.networth_up'
   return (
     <Card question={t(REPORT_QUESTION.networth)} onClick={onChoose}>
       <Figure
@@ -150,6 +183,7 @@ export function ReportList({ budgetId, onScope, onChoose }: {
         ) : null}
       </div>
       <div className="grid gap-3 md:grid-cols-2">
+        <SpendingCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('spending')} />
         <NetWorthCard budgetId={known ? budgetId : null} year={year} onChoose={() => onChoose('networth')} />
         {isFeedbackEnabled() ? (
           <Card

@@ -5,6 +5,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -31,6 +32,7 @@ type (
 type querier interface {
 	GetCategoryByID(ctx context.Context, db backend.DBTX, id string) (categoryRow, error)
 	ListCategoriesByOwner(ctx context.Context, db backend.DBTX, userID string) ([]categoryRow, error)
+	ListCategoriesByIDs(ctx context.Context, db backend.DBTX, ids string) ([]categoryRow, error)
 	UpsertCategory(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteCategory(ctx context.Context, db backend.DBTX, id string) error
 	ReassignCategoryTransactions(ctx context.Context, db backend.DBTX, p reassignParams) error
@@ -80,6 +82,35 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Category, error) {
 		return nil, err
 	}
 	return hydrate(row)
+}
+
+// ListByIDs loads the given category rows whoever owns them, in one query;
+// an unknown id is absent from the result.
+func (r *Repo) ListByIDs(ctx context.Context, ids []vo.Id) ([]*model.Category, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	strs := make([]string, len(ids))
+	for i, id := range ids {
+		strs[i] = id.String()
+	}
+	raw, err := json.Marshal(strs)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.q.ListCategoriesByIDs(ctx, r.db(ctx), string(raw))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.Category, 0, len(rows))
+	for _, row := range rows {
+		c, herr := hydrate(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, c)
+	}
+	return out, nil
 }
 
 func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error) {

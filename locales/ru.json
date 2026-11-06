@@ -1595,10 +1595,12 @@
       "rename": "Переименовать",
       "duplicate": "Дублировать",
       "name_label": "Название вкладки",
-      "limit": "Не больше {count} вкладок"
+      "limit": "Не больше {count} вкладок",
+      "versus": "{later} и {earlier}"
     },
     "kind": {
-      "networth": "Капитал"
+      "networth": "Капитал",
+      "spending": "Расходы"
     },
     "list": {
       "choose": "Выберите отчёт",
@@ -1610,7 +1612,9 @@
       "networth_caption": "сегодня",
       "networth_up": "Рост на {amount} в этом году",
       "networth_down": "Снижение на {amount} в этом году",
-      "networth_flat": "Без изменений в этом году"
+      "networth_flat": "Без изменений в этом году",
+      "spending_q": "На что я трачу деньги и как это меняется?",
+      "spent_caption": "потрачено в {year}"
     },
     "period": {
       "quarter": "{quarter} кв. {year}"
@@ -1642,9 +1646,72 @@
       "total": "Итого"
     },
     "insight": {
-      "empty": "Пока нет операций"
+      "empty": "Пока нет операций",
+      "spending_top": "Больше всего — {name}: {amount}, {share}% от общей суммы",
+      "networth_up": "Рост на {amount} за период",
+      "networth_down": "Снижение на {amount} за период",
+      "networth_flat": "Без изменений за период"
     },
-    "updated_at": "Обновлено {time}"
+    "updated_at": "Обновлено {time}",
+    "filters": {
+      "period": "Период",
+      "period_thisYear": "Этот год",
+      "period_last12": "Последние 12 месяцев",
+      "period_last3y": "Последние 3 года",
+      "period_all": "За всё время",
+      "period_custom": "Свой период",
+      "from": "С",
+      "to": "По",
+      "step": "Шаг",
+      "step_month": "Месяц",
+      "step_quarter": "Квартал",
+      "step_year": "Год",
+      "group_by": "Группировать по",
+      "group_category": "Категория",
+      "group_payee": "Получатель",
+      "group_tag": "Тег"
+    },
+    "spending": {
+      "headline": "Сводка",
+      "show_transactions": "Показать операции",
+      "mode": "Вид",
+      "mode_overTime": "Динамика",
+      "mode_compare": "Сравнить годы",
+      "side": "Тип",
+      "side_expense": "Расходы",
+      "side_income": "Доходы",
+      "spent_in": "Потрачено: {period}",
+      "earned_in": "Получено: {period}",
+      "vs": "против {period}",
+      "on_pace": "В таком темпе {amount} за {period}",
+      "other": "Всё остальное",
+      "no_payee": "Без получателя",
+      "no_tag": "Без тега",
+      "total": "Итого",
+      "projected": "Прогноз",
+      "planned": "План",
+      "legend": "Легенда",
+      "chart": "График",
+      "show_all": "Показать все строки",
+      "later_year": "Более поздний год",
+      "earlier_year": "Более ранний год",
+      "versus": "против",
+      "col_name": "Название",
+      "col_change": "Изменение",
+      "col_avg": "В среднем за месяц",
+      "expand": "Показать, из чего состоит {name}",
+      "collapse": "Скрыть, из чего состоит {name}",
+      "show_more": "Ещё {count}",
+      "show_less": "Свернуть",
+      "projected_note": "* {period} ещё не закончился: пунктир показывает, куда он идёт при текущем темпе.",
+      "compare_note": "Оба года взяты только за {period}, чтобы сравнение было честным.",
+      "hint_select": "Нажмите на строку или столбец, чтобы показать только эту строку.",
+      "hint_drill": "Нажмите на столбец, чтобы увидеть его операции."
+    },
+    "drill": {
+      "unsupported": "Эти операции нельзя показать здесь. Откройте страницу Бюджета, чтобы их увидеть.",
+      "deleted_accounts": "Операции удалённых счетов учтены в отчёте, но здесь не показаны."
+    }
   },
   "classifications": {
     "common": {

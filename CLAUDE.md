@@ -406,8 +406,8 @@ upgrade within the line the running patch. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
-sidebar footer, not a menu entry): Net worth, plus a "Suggest a report" card that opens the
-feedback form on its feature-request type. The tab list is stored per user on
+sidebar footer, not a menu entry): Net worth and Spending, plus a "Suggest a report" card that
+opens the feedback form on its feature-request type. All read the report routes above. The tab list is stored per user on
 the device only (localStorage `econumo.reportTabs`) and Reports always opens on the FIRST tab.
 Every report query key is invalidated after any successful mutation
 (`web/src/lib/appQueryClient.ts`), so a report never shows stale figures.
@@ -1281,9 +1281,12 @@ In the distroless image these run via the binary directly, e.g.
   200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
   error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
   older clients and the SPA's fallback against a server without revisions) is unchanged.
-- **Reports:** `GET /api/v1/report/get-net-worth-report`, hosted by the budget feature
-  (`internal/budget/report_*.go`, `internal/budget/api/report.go`; no `report` package). Scope is
-  a budget (every member account; another member's are named only when they are savings members
+- **Reports:** `GET /api/v1/report/get-net-worth-report` and `get-flow-report`, hosted by the budget
+  feature (`internal/budget/report_*.go`, `internal/budget/api/report.go`; no `report` package).
+  The flow report's budget scope reuses `BuildBudgetPlan`, so its figures equal `get-budget-plan`'s
+  for the same rows and months (a parity test enforces it), showing months before the budget start
+  but none past an ended budget's end month; its my-accounts scope reads `FlowByMonth`. Net
+  worth's scope is a budget (every member account; another member's are named only when they are savings members
   or shared with the caller, the rest come as one nameless sum per owner, and the page lists
   only savings members by name) or the caller's own accounts. It is the
   opening balance plus `AccountsNetByMonth`, converted at each month's average rate, over live

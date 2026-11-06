@@ -47,3 +47,9 @@ UPDATE transactions SET payee_id = ? WHERE payee_id = ?;
 
 -- name: ReassignPayeeRecurring :exec
 UPDATE recurring_transactions SET payee_id = ? WHERE payee_id = ?;
+
+-- name: ListPayeesByIDs :many
+-- ids is a JSON array of payee ids: one round trip whoever owns them.
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key
+FROM payees
+WHERE id IN (SELECT j.value FROM (SELECT CAST(sqlc.arg(ids) AS TEXT) AS ids) w, json_each(w.ids) j);

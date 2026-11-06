@@ -23,8 +23,11 @@ import type { ViewTransaction } from '@/features/transactions/useAccountTransact
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { useUserData } from '@/features/user/queries'
 import { dayKey } from '@/lib/datetime'
+import { add, cmp } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import { usePeriodLabels } from './usePeriodLabels'
+import { budgetSelector, matches } from './reportRows'
+import type { DrillRow } from './reportRows'
 
 export interface AccountsDrill {
   /** one account, or `accounts` for every transaction touching accountIds */
@@ -37,15 +40,35 @@ export interface AccountsDrill {
   savingsIds?: Id[]
 }
 
+const ACCOUNT_KINDS = ['account', 'savings', 'accounts']
+const isAccountsDrill = (row: AccountsDrill | DrillRow): row is AccountsDrill => ACCOUNT_KINDS.includes(row.kind)
+
+type BudgetSelector = Omit<budgetApi.BudgetTransactionsParams, 'budgetId' | 'periodStart'>
+
+export interface Expected {
+  /** the report's figure for the row over the range */
+  amount: string
+  currencyId: Id
+}
+
+// My-accounts rows come from the local transaction list, which holds no
+// deleted account, while the report still counts them. The two only compare
+// when every listed row is in the report's currency.
+function missesDeleted(rows: { view: ViewTransaction }[], expected: Expected | undefined): boolean {
+  if (!expected) return false
+  if (rows.some((r) => r.view.account?.currency.id !== expected.currencyId)) return false
+  return cmp(rows.reduce((acc, r) => add(acc, r.view.amount), '0'), expected.amount) !== 0
+}
+
 function monthList(from: string, to: string): string[] {
   return Array.from({ length: Math.max(0, monthDiff(from, to) + 1) }, (_, i) => addMonths(from, i))
 }
 
-function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: string) {
+function useBudgetRows(budgetId: Id | null, selectors: BudgetSelector[], from: string, to: string) {
   const months = monthList(from, to)
   const results = useQueries({
-    queries: (budgetId ? accountIds : []).flatMap((accountId) => months.map((periodStart) => {
-      const params: budgetApi.BudgetTransactionsParams = { budgetId: budgetId!, periodStart, accountId }
+    queries: (budgetId ? selectors : []).flatMap((selector) => months.map((periodStart) => {
+      const params: budgetApi.BudgetTransactionsParams = { budgetId: budgetId!, periodStart, ...selector }
       return {
         queryKey: [...queryKeys.budgetTransactions, params],
         queryFn: () => budgetApi.getBudgetTransactions(params),
@@ -60,7 +83,7 @@ function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: 
   const { data: currencies } = useCurrencies()
   // a transfer between two listed accounts comes back once per account
   const wire = [...new Map(results.flatMap((r) => r.data?.items ?? []).map((w) => [w.id, w])).values()]
-  const rows = wire.map((w) => {
+  const rows = wire.sort((a, b) => (a.spentAt < b.spentAt ? 1 : a.spentAt > b.spentAt ? -1 : 0)).map((w) => {
     const view = budgetTransactionView(w, { transactions, accounts, categories, payees, tags })
     const currency = currencies?.find((c) => c.id === w.currencyId)
     return {
@@ -81,40 +104,65 @@ function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: 
   }
 }
 
-function useLocalRows(enabled: boolean, row: AccountsDrill, from: string, to: string) {
+function useLocalRows(enabled: boolean, row: AccountsDrill | DrillRow, from: string, to: string) {
   const { data: transactions, isLoading, isError } = useTransactions()
+  const { data: user } = useUserData()
   const lookups = useTransactionLookups()
   const rows = useMemo(() => {
     if (!enabled) return []
     const first = from.slice(0, 7)
     const last = to.slice(0, 7)
-    const ids = row.kind === 'accounts' ? (row.accountIds ?? []) : [row.id]
+    const owned = new Set((lookups.accounts ?? []).filter((a) => a.owner.id === user?.id).map((a) => a.id))
+    const ids = isAccountsDrill(row) ? (row.kind === 'accounts' ? (row.accountIds ?? []) : [row.id]) : []
     return (transactions ?? [])
       .filter((tx) => {
         const month = tx.date.slice(0, 7)
         if (month < first || month > last) return false
-        // either side, whoever owns the account
-        return ids.includes(tx.accountId) || (tx.accountRecipientId !== null && ids.includes(tx.accountRecipientId))
+        // an account's own list: either side, whoever owns the account
+        if (isAccountsDrill(row)) return ids.includes(tx.accountId) || (tx.accountRecipientId !== null && ids.includes(tx.accountRecipientId))
+        // a report row: my own accounts' transactions of that row
+        if (tx.type !== row.side || !owned.has(tx.accountId)) return false
+        switch (row.kind) {
+          case 'category':
+          case 'income_category':
+            return matches(tx.categoryId, row.id)
+          case 'tag':
+            return matches(tx.tagId, row.id)
+          case 'payee':
+            return matches(tx.payeeId, row.id)
+          default:
+            return false
+        }
       })
       // the account page's order: day, then the account's own position within the day
       .sort((a, b) => compareTransactions(a, b, row.kind === 'account' ? row.id : undefined))
       .map((tx) => ({ view: enrichTransaction(tx, lookups), currencyId: undefined as Id | undefined, amount: undefined }))
-  }, [enabled, transactions, lookups, row, from, to])
+  }, [enabled, transactions, lookups, user, row, from, to])
   return { isLoading: enabled && isLoading, isError: enabled && isError && !transactions, rows }
 }
 
-export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
+export function ReportTransactionsDialog({ budgetId, row, from, to, expected, onClose }: {
   budgetId: Id | null
-  row: AccountsDrill
+  /** an account (or a set of them), or a report row: a category, tag, payee or envelope */
+  row: AccountsDrill | DrillRow
   from: string
   to: string
+  /** a report row's figure, to note what the local list cannot show */
+  expected?: Expected
   onClose: () => void
 }) {
   const { t, i18n } = useTranslation()
   const labels = usePeriodLabels()
-  const budgetIds = row.kind === 'savings' ? [row.id] : (row.savingsIds ?? [])
-  const budgetRows = useBudgetRows(budgetId, budgetIds, from, to)
-  const localRows = useLocalRows(row.kind !== 'savings', row, from, to)
+  const accountsDrill = isAccountsDrill(row)
+  // a budget lists a row with the Budget page's selectors; my accounts come from the local list
+  const flowSelector = !accountsDrill && budgetId ? budgetSelector(row) : null
+  const selectors: BudgetSelector[] = accountsDrill
+    ? (row.kind === 'savings' ? [row.id] : (row.savingsIds ?? [])).map((accountId) => ({ accountId }))
+    : flowSelector ? [flowSelector] : []
+  const supported = accountsDrill || budgetId === null || flowSelector !== null
+  const local = accountsDrill ? row.kind !== 'savings' : budgetId === null
+  const budgetRows = useBudgetRows(budgetId, selectors, from, to)
+  const localRows = useLocalRows(local, row, from, to)
   const isLoading = budgetRows.isLoading || localRows.isLoading
   const isError = budgetRows.isError || localRows.isError
   // newest first across both sources; a transfer between two listed accounts once
@@ -124,7 +172,7 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
     return budgetRows.rows.length > 0 ? merged.sort((a, b) => (a.view.date < b.view.date ? 1 : a.view.date > b.view.date ? -1 : 0)) : merged
   }, [localRows.rows, budgetRows.rows])
   const { data: accounts } = useAccounts()
-  const pageAccount = row.kind === 'accounts' ? undefined : accounts?.find((a) => a.id === row.id)
+  const pageAccount = accountsDrill && row.kind !== 'accounts' ? accounts?.find((a) => a.id === row.id) : undefined
   const { data: user } = useUserData()
   const { data: currencies = [] } = useCurrencies()
   const deleteTransaction = useDeleteTransaction()
@@ -141,11 +189,14 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
   const entries = groupByDay(rows.map((r) => ({ tx: r.view, groupDay: dayKey(r.view.date) })))
   const canChange = (tx: ViewTransaction) => canTouchTransaction(tx, !!tx.account && canWriteToAccount(tx.account, user?.id))
   const title = `${row.name} · ${labels.range([from, to])}`
+  const deletedNote = !accountsDrill && local && !isLoading && missesDeleted(rows, expected)
 
   return (
     <>
       <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={title} dismissible={!preview && !deleteTarget}>
-        {isError ? (
+        {!supported ? (
+          <p className="py-2 text-sm text-muted-foreground">{t('reports.drill.unsupported')}</p>
+        ) : isError ? (
           <p className="py-2 text-sm text-muted-foreground">{t('common.app.error')}</p>
         ) : isLoading ? (
           <div className="flex justify-center py-6">
@@ -173,6 +224,7 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
             )}
           </div>
         )}
+        {deletedNote ? <p className="pt-2 text-xs text-muted-foreground">{t('reports.drill.deleted_accounts')}</p> : null}
       </ResponsiveDialog>
 
       {preview ? (

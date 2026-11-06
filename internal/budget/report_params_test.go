@@ -115,6 +115,19 @@ func TestReportWindow_MalformedDates(t *testing.T) {
 	}
 }
 
+func TestParseFlowGroupBy(t *testing.T) {
+	for in, want := range map[string]string{"": "category", "category": "category", "tag": "tag", "payee": "payee"} {
+		got, err := parseFlowGroupBy(in)
+		if err != nil || got != want {
+			t.Errorf("%q -> %q, %v; want %q", in, got, err, want)
+		}
+	}
+	_, err := parseFlowGroupBy("label")
+	if k := fieldKey(t, err); k != "groupBy" {
+		t.Fatalf("field = %q, want groupBy", k)
+	}
+}
+
 func TestReportWindow_DefaultedFromClampsToMax(t *testing.T) {
 	first := time.Date(1990, 7, 4, 9, 0, 0, 0, time.UTC)
 	w, err := reportSvc(&first).resolveReportWindow(context.Background(), "", "", someAccounts, nil)
