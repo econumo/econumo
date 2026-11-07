@@ -23,7 +23,7 @@ func (s *Service) checkDebtPeriod(ctx context.Context, b *budgetAggregate, el *m
 		if v.ID != el.ExternalID.String() {
 			continue
 		}
-		if period.Before(v.StartMonth) || period.After(v.EndMonth) {
+		if !plannable(v, b.budget.PeriodStartDay, period) {
 			return errs.NewValidation("Validation failed", errs.FieldError{
 				Key: "period", Message: "This debt cannot be planned in this month", Code: errs.CodeBudgetDebtPeriodOutOfRange,
 			})
@@ -96,7 +96,7 @@ func (s *Service) TransferElementData(ctx context.Context, t model.ElementDataTr
 				}
 				continue
 			}
-			dropped, err := s.moveElementData(ctx, from, to, t, now)
+			dropped, err := s.moveElementData(ctx, from, to, t, b.PeriodStartDay, now)
 			if err != nil {
 				return err
 			}
@@ -207,13 +207,14 @@ func (s *Service) elementOfType(ctx context.Context, budgetID, externalID vo.Id,
 }
 
 // moveElementData reports whether a source plan was dropped on a clash.
-func (s *Service) moveElementData(ctx context.Context, from, to *model.BudgetElement, t model.ElementDataTransfer, now time.Time) (dropped bool, err error) {
+func (s *Service) moveElementData(ctx context.Context, from, to *model.BudgetElement, t model.ElementDataTransfer, startDay int, now time.Time) (dropped bool, err error) {
 	limits, err := s.limits.ListLimitsByElement(ctx, from.ID)
 	if err != nil {
 		return false, err
 	}
+	first, last := transferPeriods(t, startDay)
 	for _, l := range limits {
-		if !inMonths(t, l.Period) {
+		if !inPeriods(first, last, l.Period) {
 			continue
 		}
 		existing, gerr := s.limits.GetLimit(ctx, to.ID, l.Period)
@@ -242,10 +243,9 @@ func (s *Service) moveElementData(ctx context.Context, from, to *model.BudgetEle
 			return false, err
 		}
 	}
-	if t.FirstMonth.IsZero() && t.LastMonth.IsZero() {
+	if first.IsZero() && last.IsZero() {
 		return dropped, s.comments.RepointComments(ctx, from.ID, to.ID)
 	}
-	first, last := t.FirstMonth, t.LastMonth
 	if first.IsZero() {
 		first = time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)
 	}
@@ -255,6 +255,18 @@ func (s *Service) moveElementData(ctx context.Context, from, to *model.BudgetEle
 	return dropped, s.comments.RepointCommentsBetween(ctx, from.ID, to.ID, first, last)
 }
 
-func inMonths(t model.ElementDataTransfer, period time.Time) bool {
-	return (t.FirstMonth.IsZero() || !period.Before(t.FirstMonth)) && (t.LastMonth.IsZero() || !period.After(t.LastMonth))
+// transferPeriods maps t's day bounds onto the keys of the periods holding
+// them in a budget whose periods start on startDay; zero stays open.
+func transferPeriods(t model.ElementDataTransfer, startDay int) (first, last time.Time) {
+	if !t.FirstDay.IsZero() {
+		first = model.PeriodOf(t.FirstDay, startDay)
+	}
+	if !t.LastDay.IsZero() {
+		last = model.PeriodOf(t.LastDay, startDay)
+	}
+	return first, last
+}
+
+func inPeriods(first, last, period time.Time) bool {
+	return (first.IsZero() || !period.Before(first)) && (last.IsZero() || !period.After(last))
 }

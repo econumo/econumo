@@ -504,7 +504,7 @@ func TestTransferElementData_MovesOnlyTheBoundedMonths(t *testing.T) {
 
 	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
 		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD),
-		FirstMonth: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), LastMonth: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)})
+		FirstDay: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), LastDay: time.Date(2026, 5, 31, 0, 0, 0, 0, time.UTC)})
 	if err != nil || left {
 		t.Fatalf("TransferElementData = %v, %v; want nothing reported left behind", left, err)
 	}
@@ -520,6 +520,32 @@ func TestTransferElementData_MovesOnlyTheBoundedMonths(t *testing.T) {
 	}
 	if n := h.commentCount(t, catEl.ID); n != 1 {
 		t.Errorf("category has %d comments, want the April one kept", n)
+	}
+}
+
+// A budget whose periods start on the 15th moves the periods holding the
+// transfer's days: 20 May is in period May, 10 Jul in period June.
+func TestTransferElementData_BoundsFollowShiftedPeriods(t *testing.T) {
+	h := newDebtHarness(t)
+	if _, err := h.tdb.Raw.Exec(h.tdb.Rebind(`UPDATE budgets SET period_start_day = 15 WHERE id = ?`), h.budgetID.String()); err != nil {
+		t.Fatal(err)
+	}
+	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
+	debt := h.addDebt(h.owner, fixture.USD)
+	for _, m := range []string{"2026-04-01", "2026-05-01", "2026-06-01", "2026-07-01"} {
+		h.mustSetLimit(t, cat, m, "10")
+	}
+
+	if _, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD),
+		FirstDay: time.Date(2026, 5, 20, 0, 0, 0, 0, time.UTC), LastDay: time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC)}); err != nil {
+		t.Fatal(err)
+	}
+	if got := h.limits(t, h.element(t, debt).ID); len(got) != 2 || got["2026-05-01"] != amount("10") || got["2026-06-01"] != amount("10") {
+		t.Errorf("debt limits = %v, want May and June", got)
+	}
+	if got := h.limits(t, h.element(t, cat).ID); len(got) != 2 || got["2026-04-01"] != amount("10") || got["2026-07-01"] != amount("10") {
+		t.Errorf("category limits = %v, want April and July kept", got)
 	}
 }
 

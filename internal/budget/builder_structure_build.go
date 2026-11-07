@@ -410,14 +410,14 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			paidBefore: get(fmt.Sprintf("spent-before_%s", index)),
 		}
 	}
-	timelines, err := s.debtTimelines(ctx, b, f, []time.Time{f.periodStart})
+	timelines, err := s.debtTimelines(ctx, b, f, []time.Time{f.periodKey})
 	if err != nil {
 		return model.StructureResult{}, err
 	}
 	return model.StructureResult{
 		Folders: folders, Elements: result, Labels: labels,
 		Savings: emitMonthlySavings(savings, limits, get),
-		Debts:   emitMonthlyDebts(debtRows(f, options), f.periodStart, limits, paid, timelines),
+		Debts:   emitMonthlyDebts(debtRows(f, options), f.periodKey, f.startDay, limits, paid, timelines),
 	}, nil
 }
 

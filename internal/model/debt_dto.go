@@ -137,14 +137,16 @@ type DebtDetailsResult struct {
 	Payments  []DebtPaymentResult  `json:"payments"`
 }
 
-// DebtTimelineRequest asks for the month-by-month projection of debts.
-// Plans maps debt id -> "YYYY-MM-01" -> planned amount; Months are
-// first-of-month dates.
+// DebtTimelineRequest asks for the period-by-period projection of debts over
+// a budget's periods (PeriodWindow on PeriodStartDay; 0 or 1 = calendar
+// months). Plans maps debt id -> period key "YYYY-MM-01" -> planned amount;
+// Months are period keys.
 type DebtTimelineRequest struct {
-	DebtIDs []string
-	Months  []time.Time
-	Plans   map[string]map[string]string
-	Today   time.Time
+	DebtIDs        []string
+	Months         []time.Time
+	Plans          map[string]map[string]string
+	Today          time.Time
+	PeriodStartDay int
 }
 
 type DebtTimelineMonth struct {

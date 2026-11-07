@@ -97,7 +97,7 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 // only: a plan left in a month the debt no longer reaches (an early payoff)
 // is ignored, as the row ignores it in its own month.
 func (s *Service) addDebtPlansBefore(ctx context.Context, b *budgetAggregate, f filters, add func(key, amount string)) error {
-	rows, err := s.read.LimitsByMonth(ctx, b.budget.ID, b.budget.StartedAt, f.periodStart)
+	rows, err := s.read.LimitsByMonth(ctx, b.budget.ID, carryOverStart(b, f.startDay), f.periodKey)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (s *Service) addDebtPlansBefore(ctx context.Context, b *budgetAggregate, f 
 		if !ok || model.ElementType(l.Type) != model.ElementDebt {
 			continue
 		}
-		if m, perr := time.Parse(datetime.DateLayout, l.Month); perr == nil && plannable(v, m) {
+		if m, perr := time.Parse(datetime.DateLayout, l.Month); perr == nil && plannable(v, f.startDay, m) {
 			add(elementKey(v.ID, model.ElementDebt), l.Amount)
 		}
 	}

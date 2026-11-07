@@ -44,3 +44,18 @@ func TestDebtMatches(t *testing.T) {
 		})
 	}
 }
+
+func TestDebtView_PlanningBounds(t *testing.T) {
+	v := DebtView{FirstDay: ymd(2026, time.June, 12), LastDay: ymd(2027, time.June, 10),
+		StartMonth: ymd(2026, time.June, 1), EndMonth: ymd(2027, time.June, 1)}
+	if f, l := v.PlanningBounds(1); !f.Equal(v.StartMonth) || !l.Equal(v.EndMonth) {
+		t.Errorf("day 1 = %v .. %v, want the calendar months", f, l)
+	}
+	if f, l := v.PlanningBounds(15); !f.Equal(ymd(2026, time.May, 1)) || !l.Equal(ymd(2027, time.May, 1)) {
+		t.Errorf("day 15 = %v .. %v, want the periods keyed May 2026 .. May 2027", f, l)
+	}
+	months := DebtView{StartMonth: ymd(2026, time.March, 1), EndMonth: ymd(2026, time.July, 1)}
+	if f, l := months.PlanningBounds(15); !f.Equal(months.StartMonth) || !l.Equal(months.EndMonth) {
+		t.Errorf("no days = %v .. %v, want the months as given", f, l)
+	}
+}

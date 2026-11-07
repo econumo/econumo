@@ -270,7 +270,7 @@ func TestUpdateDebt_BecomingWholeCategoryTakesItsPlans(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt, currency: fixture.USD,
-		sum: true, first: "2026-03-01", last: "2027-03-01"}
+		sum: true, first: "2026-03-10", last: "2027-03-01"}
 	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
 		t.Fatalf("transfers = %+v, want [%+v]", e.budget.transfers, want)
 	}

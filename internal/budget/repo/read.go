@@ -728,11 +728,11 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 	if err := rows.Err(); err != nil || startDay == 1 {
 		return out, err
 	}
-	type key struct{ month, category, tag, currency string }
+	type key struct{ month, category, tag, debt, currency string }
 	return foldPeriods(out, startDay,
 		func(x *model.MonthlySpendingRow) *string { return &x.Month },
 		func(x model.MonthlySpendingRow) key {
-			return key{x.Month, derefStr(x.CategoryID), derefStr(x.TagID), x.CurrencyID}
+			return key{x.Month, derefStr(x.CategoryID), derefStr(x.TagID), derefStr(x.DebtID), x.CurrencyID}
 		},
 		func(x *model.MonthlySpendingRow) []*string { return []*string{&x.Amount} })
 }

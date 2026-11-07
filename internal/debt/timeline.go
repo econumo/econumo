@@ -9,7 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// Timelines projects each debt over the requested months, with the plans as
+// Timelines projects each debt over the requested budget periods, with the plans as
 // extra payments. Unknown debts are left out of the result. It writes
 // nothing: the caller has already run Sync, and splits not stored yet are
 // computed in memory.
@@ -45,21 +45,21 @@ func (s *Service) Timelines(ctx context.Context, req model.DebtTimelineRequest) 
 		}
 		for _, st := range states {
 			if st.debt.ID.Equal(id) {
-				out[raw] = timelineOf(st, today, req.Months, req.Plans[raw])
+				out[raw] = timelineOf(st, today, req.Months, req.Plans[raw], req.PeriodStartDay)
 			}
 		}
 	}
 	return out, nil
 }
 
-func timelineOf(st *debtState, today time.Time, months []time.Time, plans map[string]string) model.DebtTimeline {
+func timelineOf(st *debtState, today time.Time, months []time.Time, plans map[string]string, startDay int) model.DebtTimeline {
 	planned := make(map[string]float64, len(plans))
 	for month, amount := range plans {
 		if f, err := strconv.ParseFloat(amount, 64); err == nil {
 			planned[month] = f
 		}
 	}
-	proj := st.project(today, months, planned)
+	proj := st.projectPeriods(today, months, planned, startDay)
 	digits := st.digits
 	tl := model.DebtTimeline{
 		Months:              make(map[string]model.DebtTimelineMonth, len(proj.Months)),

@@ -48,9 +48,14 @@ func (st *debtState) mathPays() ([]model.MathPayment, map[string]float64) {
 }
 
 func (st *debtState) project(today time.Time, months []time.Time, plans map[string]float64) model.Projection {
+	return st.projectPeriods(today, months, plans, model.MinPeriodStartDay)
+}
+
+// projectPeriods projects over budget periods starting on startDay.
+func (st *debtState) projectPeriods(today time.Time, months []time.Time, plans map[string]float64, startDay int) model.Projection {
 	pays, interest := st.mathPays()
 	return model.ProjectDebt(model.ProjectionInput{Snaps: st.mathSnaps(), Pays: pays, Interest: interest,
-		Today: today, Months: months, Plans: plans, Digits: st.digits})
+		Today: today, Months: months, Plans: plans, Digits: st.digits, PeriodStartDay: startDay})
 }
 
 // Sync brings the stored payment splits of the owners' debts up to date.

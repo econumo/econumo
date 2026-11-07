@@ -48,6 +48,7 @@ func (r *attrRecurring) CanEdit(context.Context, vo.Id, vo.Id) (bool, error) { r
 // drive the attribution exactly as in production. Today is 2026-06-15.
 type attrHarness struct {
 	ctx       context.Context
+	tdb       *dbtest.DB
 	svc       *appbudget.Service
 	debts     *appdebt.Service
 	f         *fixture.Builder
@@ -113,7 +114,7 @@ func newAttrHarness(t *testing.T) *attrHarness {
 	svc.SetRecurring(rec)
 
 	return &attrHarness{
-		ctx: context.Background(), svc: svc, debts: debts, f: f, recurring: rec,
+		ctx: context.Background(), tdb: db, svc: svc, debts: debts, f: f, recurring: rec,
 		owner: vo.MustParseId(owner), budgetID: budgetID, usd: usd, eur: eur, eurCur: eurCur,
 		loan: loan, food: food, tag: tag,
 	}

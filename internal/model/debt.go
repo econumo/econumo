@@ -48,8 +48,26 @@ type DebtView struct {
 	PayeeID, TagID                      *string
 	From                                *time.Time // inclusive; nil = unbounded
 	Until                               *time.Time // exclusive (next same-key debt's start); nil = unbounded
-	StartMonth, EndMonth                time.Time  // planning bounds (first-of-month)
-	PaidOff                             bool
+	// FirstDay and LastDay are the dates the planning bounds come from; a
+	// budget plans the debt in the periods holding them (PlanningBounds).
+	// StartMonth and EndMonth are their calendar months.
+	FirstDay, LastDay    time.Time
+	StartMonth, EndMonth time.Time
+	PaidOff              bool
+}
+
+// PlanningBounds are the first and last period keys a budget whose periods
+// start on startDay can plan the debt in. A view without days falls back to
+// its calendar months.
+func (d DebtView) PlanningBounds(startDay int) (first, last time.Time) {
+	first, last = d.StartMonth, d.EndMonth
+	if !d.FirstDay.IsZero() {
+		first = PeriodOf(d.FirstDay, startDay)
+	}
+	if !d.LastDay.IsZero() {
+		last = PeriodOf(d.LastDay, startDay)
+	}
+	return first, last
 }
 
 // ElementDataTransfer moves one budget row's plans and comments onto another
@@ -61,9 +79,10 @@ type ElementDataTransfer struct {
 	// SumOnClash adds a moved plan to the target's plan for that month;
 	// otherwise the target's wins and the moved one is dropped.
 	SumOnClash bool
-	// FirstMonth and LastMonth bound the months moved (zero = open); data
-	// outside them stays on the source row.
-	FirstMonth, LastMonth time.Time
+	// FirstDay and LastDay bound the data moved (zero = open): each budget
+	// moves its periods from the one holding FirstDay to the one holding
+	// LastDay; data outside them stays on the source row.
+	FirstDay, LastDay time.Time
 }
 
 func DebtMatches(d DebtView, categoryID, payeeID, tagID *string, at time.Time) bool {

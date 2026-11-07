@@ -48,7 +48,7 @@ func (s *Service) moveToDebt(ctx context.Context, d *model.Debt) error {
 	first, last := planningBounds(st, st.project(s.today(ctx), nil, nil))
 	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
 		FromID: d.CategoryID, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
-		CurrencyID: d.CurrencyID, SumOnClash: true, FirstMonth: first, LastMonth: last,
+		CurrencyID: d.CurrencyID, SumOnClash: true, FirstDay: first, LastDay: last,
 	})
 	return err
 }
@@ -249,6 +249,10 @@ func dateString(t time.Time) string {
 
 func monthOf(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
+}
+
+func debtDate(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 func isNotFound(err error) bool {

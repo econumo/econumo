@@ -1783,6 +1783,16 @@ data unreadable. Most are also asserted by the test suite.
   category, payee or tag a debt uses is refused (`*.used_by_debt`); a merge moves the debt to
   the target and refuses with `debt.key_conflict` when that would overlap another debt. No MCP
   tool of its own: `get_budget` lists `structure.debts` and `set_limit` accepts a debt id.
+  **Shifted periods**: in a budget whose months start on another day (see "Budget period start
+  day"), every debt figure follows the budget's periods, keys still `YYYY-MM-01`: Paid reads the
+  period window; the timeline (`DebtTimelineRequest.PeriodStartDay` ->
+  `ProjectionInput.PeriodStartDay`) counts scheduled and still-due dues, closing balances,
+  payments left, a period's planned extra and the current-period rules by the period window; and
+  the planning bounds are the periods holding the bound DAYS (`DebtView.FirstDay`/`LastDay`,
+  `PlanningBounds(startDay)`; `TransferData` maps its `FirstDay`/`LastDay` per budget the same
+  way). Day 1 gives exactly the calendar figures. The debt service's own figures (Settings,
+  details) stay calendar-month and today based; the SPA's red debt hint takes the budget's
+  start day (`planHint` `startDay`).
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per
   provider (`create-source` is idempotent on the pair); a Wallet card is keyed by its
   normalized name and starts `unmapped` — its events queue (`import_transaction_links`

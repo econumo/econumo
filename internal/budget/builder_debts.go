@@ -41,14 +41,16 @@ func debtRows(f filters, options map[string]elementOption) []debtRow {
 	return out
 }
 
-// plannable reports whether month lies within the debt's life.
-func plannable(v model.DebtView, month time.Time) bool {
-	return !month.Before(v.StartMonth) && !month.After(v.EndMonth)
+// plannable reports whether the period keyed month lies within the debt's
+// life, on a budget whose periods start on startDay.
+func plannable(v model.DebtView, startDay int, month time.Time) bool {
+	first, last := v.PlanningBounds(startDay)
+	return !month.Before(first) && !month.After(last)
 }
 
 // debtTimelines projects every debt of the budget over months. The projection
-// takes this budget's plans of the debt from the caller's current month to the
-// debt's end, wherever the window is, so the payoff figures agree between
+// takes this budget's plans of the debt from the caller's current period to
+// the debt's end, wherever the window is, so the payoff figures agree between
 // views; a plan stored outside the debt's life is ignored. Nil while no debt
 // source is wired: the upcoming pass unwires it, as its debt rows are dropped.
 func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filters, months []time.Time) (map[string]model.DebtTimeline, error) {
@@ -56,13 +58,13 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 		return nil, nil
 	}
 	today := localToday(s.clock.Now(), reqctx.Location(ctx))
-	current := model.FirstOfMonth(today)
+	current := model.PeriodOf(today, f.startDay)
 	last := current
 	ids := make([]string, 0, len(f.debtViews))
 	for _, v := range f.debtViews {
 		ids = append(ids, v.ID)
-		if v.EndMonth.After(last) {
-			last = v.EndMonth
+		if _, end := v.PlanningBounds(f.startDay); end.After(last) {
+			last = end
 		}
 	}
 	rows, err := s.read.LimitsByMonth(ctx, b.budget.ID, current, last.AddDate(0, 1, 0))
@@ -76,7 +78,7 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 			continue
 		}
 		m, perr := time.Parse(datetime.DateLayout, l.Month)
-		if perr != nil || !plannable(v, m) {
+		if perr != nil || !plannable(v, f.startDay, m) {
 			continue
 		}
 		if plans[v.ID] == nil {
@@ -84,21 +86,21 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 		}
 		plans[v.ID][l.Month] = vo.NewDecimal(l.Amount).String()
 	}
-	return s.debts.Timelines(ctx, model.DebtTimelineRequest{DebtIDs: ids, Months: months, Plans: plans, Today: today})
+	return s.debts.Timelines(ctx, model.DebtTimelineRequest{DebtIDs: ids, Months: months, Plans: plans, Today: today, PeriodStartDay: f.startDay})
 }
 
 // timelineMonth is the debt's projection for month, zero when there is none.
 // Outside the debt's life nothing is scheduled or due, and before its start
 // there is no balance or payment count to show yet.
-func timelineMonth(tl model.DebtTimeline, v model.DebtView, month time.Time) model.DebtTimelineMonth {
+func timelineMonth(tl model.DebtTimeline, v model.DebtView, startDay int, month time.Time) model.DebtTimelineMonth {
 	m, ok := tl.Months[month.Format(datetime.DateLayout)]
 	if !ok {
 		m = model.DebtTimelineMonth{ClosingBalance: "0"}
 	}
-	if !plannable(v, month) {
+	if !plannable(v, startDay, month) {
 		m.ScheduledTotal, m.StillDue = "0", "0"
 	}
-	if month.Before(v.StartMonth) {
+	if first, _ := v.PlanningBounds(startDay); month.Before(first) {
 		m.ClosingBalance, m.PaymentsLeft = "0", 0
 	}
 	return m
@@ -109,14 +111,14 @@ func decimalString(s string) string { return vo.NewDecimal(s).String() }
 // emitMonthlyDebts renders get-budget's debt rows. A row shows in a month of
 // the debt's life, and outside it only when something was paid then or earlier
 // months left something over: the Available total counts that carry.
-func emitMonthlyDebts(rows []debtRow, month time.Time, limits map[string]budgetedAmount, paid map[string]debtPaid, timelines map[string]model.DebtTimeline) []model.DebtElementResult {
+func emitMonthlyDebts(rows []debtRow, month time.Time, startDay int, limits map[string]budgetedAmount, paid map[string]debtPaid, timelines map[string]model.DebtTimeline) []model.DebtElementResult {
 	zero := vo.NewDecimal("0")
 	out := []model.DebtElementResult{}
 	for _, r := range rows {
 		v := r.view
 		p := paid[v.ID]
 		paidNow, budgetPaid, paidBefore := orZero(p.paid, zero), orZero(p.budgetPaid, zero), orZero(p.paidBefore, zero)
-		in := plannable(v, month)
+		in := plannable(v, startDay, month)
 		lim := limits[elementKey(v.ID, model.ElementDebt)]
 		budgeted, hasLimit := orZero(lim.budgeted, zero), lim.hasLimit
 		if !in {
@@ -127,7 +129,7 @@ func emitMonthlyDebts(rows []debtRow, month time.Time, limits map[string]budgete
 			continue
 		}
 		tl := timelines[v.ID]
-		tm := timelineMonth(tl, v, month)
+		tm := timelineMonth(tl, v, startDay, month)
 		out = append(out, model.DebtElementResult{
 			Id: v.ID, Type: int(model.ElementDebt.Int16()), Name: v.Name, Icon: v.Icon,
 			CurrencyId: v.CurrencyID, OwnerUserId: v.OwnerID, Position: len(out),
@@ -146,7 +148,7 @@ func emitMonthlyDebts(rows []debtRow, month time.Time, limits map[string]budgete
 // emitPlanDebts renders the plan's debt rows: a row shows when a window month
 // lies in the debt's life or holds a payment; a cell outside the debt's life
 // shows no plan.
-func emitPlanDebts(rows []debtRow, months []time.Time, plannedFor func(string) []string, get func(string) vo.DecimalNumber, timelines map[string]model.DebtTimeline) []model.PlanDebtElementResult {
+func emitPlanDebts(rows []debtRow, months []time.Time, startDay int, plannedFor func(string) []string, get func(string) vo.DecimalNumber, timelines map[string]model.DebtTimeline) []model.PlanDebtElementResult {
 	out := []model.PlanDebtElementResult{}
 	for _, r := range rows {
 		v := r.view
@@ -157,13 +159,13 @@ func emitPlanDebts(rows []debtRow, months []time.Time, plannedFor func(string) [
 		cells := make([]model.PlanDebtCellResult, len(months))
 		for i, m := range months {
 			actual := get(planKey(i, index))
-			in := plannable(v, m)
+			in := plannable(v, startDay, m)
 			visible = visible || in || !actual.IsZero()
 			plan := planned[i]
 			if !in {
 				plan = ""
 			}
-			tm := timelineMonth(tl, v, m)
+			tm := timelineMonth(tl, v, startDay, m)
 			cells[i] = model.PlanDebtCellResult{
 				Actual: actual.String(), Planned: plan,
 				ClosingBalance: decimalString(tm.ClosingBalance), PaymentsLeft: tm.PaymentsLeft,

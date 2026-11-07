@@ -56,7 +56,7 @@ func TestReassignClassification_CategoryFollowsTarget(t *testing.T) {
 	}
 	// the merge must not drop the target's plans: a clash adds up
 	want := transferCall{from: target, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt, currency: res.CurrencyId,
-		sum: true, first: "2026-03-01", last: "2027-03-01"}
+		sum: true, first: "2026-03-10", last: "2027-03-01"}
 	if len(e.budget.transfers) != 2 || e.budget.transfers[1] != want {
 		t.Fatalf("a whole-category debt must take the target category's budget data: %+v", e.budget.transfers)
 	}
@@ -169,7 +169,7 @@ func TestReassignClassification_MergeIntoWholeCategoryDebtMovesThePlans(t *testi
 		t.Fatal(err)
 	}
 	want := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt, currency: res.CurrencyId,
-		sum: true, first: "2026-03-01", last: "2027-03-01"}
+		sum: true, first: "2026-03-10", last: "2027-03-01"}
 	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
 		t.Fatalf("transfers = %+v, want [%+v]", e.budget.transfers, want)
 	}

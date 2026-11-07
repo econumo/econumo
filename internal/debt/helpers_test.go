@@ -107,7 +107,7 @@ func monthString(t time.Time) string {
 func (b *fakeBudget) TransferData(_ context.Context, t model.ElementDataTransfer) (bool, error) {
 	b.calls = append(b.calls, "transfer")
 	b.transfers = append(b.transfers, transferCall{t.FromID.String(), t.FromType, t.ToID.String(), t.ToType, t.CurrencyID.String(),
-		t.SumOnClash, monthString(t.FirstMonth), monthString(t.LastMonth)})
+		t.SumOnClash, monthString(t.FirstDay), monthString(t.LastDay)})
 	return b.leftBehind, nil
 }
 

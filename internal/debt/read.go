@@ -162,25 +162,26 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 		v := st.view
 		v.Icon = icon
 		v.PaidOff = proj.PaidOff
-		v.StartMonth, v.EndMonth = planningBounds(st, proj)
+		v.FirstDay, v.LastDay = planningBounds(st, proj)
+		v.StartMonth, v.EndMonth = monthOf(v.FirstDay), monthOf(v.LastDay)
 		views = append(views, v)
 	}
 	return views, nil
 }
 
-// planningBounds: a debt can be planned from the month of its start date
-// (else of the earlier of its first matched payment and its first snapshot)
-// to the month of its last payment date, or of its payoff once paid off. A
-// first payment dated after the first snapshot does not move the start later:
-// plans a conversion moved into the snapshot's month would drop out of the
-// life.
-func planningBounds(st *debtState, proj model.Projection) (start, end time.Time) {
+// planningBounds: a debt can be planned from its start date (else the earlier
+// of its first matched payment and its first snapshot) to its last payment
+// date, or its payoff once paid off; a budget plans it in the periods holding
+// those days. A first payment dated after the first snapshot does not move the
+// start later: plans a conversion moved into the snapshot's month would drop
+// out of the life.
+func planningBounds(st *debtState, proj model.Projection) (first, last time.Time) {
 	d := st.debt
 	switch {
 	case d.StartDate != nil:
-		start = monthOf(*d.StartDate)
+		first = debtDate(*d.StartDate)
 	case len(st.snaps) > 0:
-		first := st.snaps[0].AsOf
+		first = st.snaps[0].AsOf
 		for _, sn := range st.snaps {
 			if sn.AsOf.Before(first) {
 				first = sn.AsOf
@@ -189,14 +190,14 @@ func planningBounds(st *debtState, proj model.Projection) (start, end time.Time)
 		if len(st.pays) > 0 && st.pays[0].date.Before(first) {
 			first = st.pays[0].date
 		}
-		start = monthOf(first)
+		first = debtDate(first)
 	case len(st.pays) > 0:
-		start = monthOf(st.pays[0].date)
+		first = debtDate(st.pays[0].date)
 	default:
-		start = monthOf(d.Current.AsOf)
+		first = debtDate(d.Current.AsOf)
 	}
 	if proj.PaidOff {
-		return start, proj.PayoffMonth
+		return first, proj.PaidOffAt
 	}
-	return start, monthOf(d.Current.LastPaymentDate)
+	return first, debtDate(d.Current.LastPaymentDate)
 }

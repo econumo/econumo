@@ -29,8 +29,11 @@ type ProjectionInput struct {
 	Pays     []MathPayment
 	Interest map[string]float64
 	Today    time.Time
-	Months   []time.Time        // first-of-month, ascending
-	Plans    map[string]float64 // "YYYY-MM-01" -> planned
+	Months   []time.Time        // period keys (first-of-month), ascending
+	Plans    map[string]float64 // period key "YYYY-MM-01" -> planned
+	// PeriodStartDay is the day the budget's periods start on (PeriodWindow);
+	// 0 or 1 is the calendar month.
+	PeriodStartDay int
 	// Digits are the debt currency's fraction digits: a balance is paid off
 	// when it rounds to 0 in them.
 	Digits int
@@ -54,6 +57,8 @@ type Projection struct {
 	Months              map[string]ProjectionMonth
 	PaidOff             bool
 	PayoffMonth         time.Time
+	// PaidOffAt is the day the debt was paid off (PayoffMonth's day).
+	PaidOffAt time.Time
 }
 
 const (
@@ -402,11 +407,12 @@ func (r projRun) moneyLeft() float64 {
 	return total
 }
 
-// runProjection amortises balance forward from firstDue. An extra goes fully
-// to principal right after the month's first projected payment (the regular
-// payment already took that period's interest), or at month end when the
-// month has no projected payment.
-func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue time.Time, extras map[string]float64) projRun {
+// runProjection amortises balance forward from firstDue, period by period
+// (budget periods starting on startDay). An extra goes fully to principal right
+// after the period's first projected payment (the regular payment already took
+// that schedule period's interest), or at period end when the period has no
+// projected payment.
+func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue time.Time, extras map[string]float64, startDay int) projRun {
 	run := projRun{closing: map[string]float64{}, endBalance: balance}
 	if balance <= eps {
 		run.endBalance = 0
@@ -414,9 +420,9 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 	}
 	anchor := int16(debtDay(s.Last).Day())
 	due := firstDue
-	month := monthStart(today)
+	month := PeriodOf(today, startDay)
 	for i := 0; i < maxProjectMonths && balance > eps; i++ {
-		next := month.AddDate(0, 1, 0)
+		_, next := PeriodWindow(month, startDay)
 		extra := extras[monthKey(month)]
 		stepped := false
 		for balance > eps && due.Before(next) {
@@ -450,7 +456,7 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 			}
 		}
 		run.closing[monthKey(month)] = balance
-		month = next
+		month = month.AddDate(0, 1, 0)
 	}
 	run.endBalance = balance
 	return run
@@ -524,7 +530,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 
 	eps := halfUnit(in.Digits)
 	if at, ok := payoffEvent(snaps, pays, in.Interest, today, in.Digits); ok && roundDigits(current, in.Digits) <= 0 {
-		out.PaidOff, out.PayoffMonth = true, monthStart(at)
+		out.PaidOff, out.PayoffMonth, out.PaidOffAt = true, monthStart(at), at
 	}
 	if current < 0 {
 		current = 0
@@ -537,25 +543,28 @@ func ProjectDebt(in ProjectionInput) Projection {
 	}
 
 	firstDue := firstUnpaidDue(latest, pays, today)
-	base := runProjection(latest, rate, current, eps, today, firstDue, nil)
-	currentMonth := monthStart(today)
+	sd := in.PeriodStartDay
+	base := runProjection(latest, rate, current, eps, today, firstDue, nil, sd)
+	currentMonth := PeriodOf(today, sd)
+	currentStart, currentEnd := PeriodWindow(currentMonth, sd)
 	extras := map[string]float64{}
 	for key, planned := range in.Plans {
 		m, err := time.Parse(monthKeyLayout, key)
 		if err != nil || m.Before(currentMonth) {
 			continue
 		}
-		covered := latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, m.AddDate(0, 0, -1), m.AddDate(0, 1, -1))))
-		// This month's plan is also met by what was paid and is still due in
-		// it; a due paid early last month keeps counting as scheduled here.
+		ws, we := PeriodWindow(m, sd)
+		covered := latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, ws.AddDate(0, 0, -1), we.AddDate(0, 0, -1))))
+		// This period's plan is also met by what was paid and is still due in
+		// it; a due paid early last period keeps counting as scheduled here.
 		if m.Equal(currentMonth) {
-			covered = math.Max(covered, paidBetween(pays, currentMonth, today)+stillDueBefore(base, currentMonth.AddDate(0, 1, 0)))
+			covered = math.Max(covered, paidBetween(pays, currentStart, today)+stillDueBefore(base, currentEnd))
 		}
 		if extra := planned - covered; extra > 0 {
 			extras[key] = extra
 		}
 	}
-	run := runProjection(latest, rate, current, eps, today, firstDue, extras)
+	run := runProjection(latest, rate, current, eps, today, firstDue, extras, sd)
 
 	out.PaymentsLeft = len(run.steps)
 	out.MoneyLeft = run.moneyLeft()
@@ -569,34 +578,35 @@ func ProjectDebt(in ProjectionInput) Projection {
 
 	for _, m := range in.Months {
 		m = monthStart(m)
-		monthEnd := m.AddDate(0, 1, -1)
+		ws, we := PeriodWindow(m, sd)
+		monthEnd := we.AddDate(0, 0, -1)
 		pm := ProjectionMonth{}
-		pm.ScheduledTotal = latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, m.AddDate(0, 0, -1), monthEnd)))
+		pm.ScheduledTotal = latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, ws.AddDate(0, 0, -1), monthEnd)))
 		stepsReach := false
 		for _, st := range run.steps {
-			// An unpaid due before this month still has to be paid, so it
-			// counts in the current month.
+			// An unpaid due before this period still has to be paid, so it
+			// counts in the current period.
 			date := st.date
-			if date.Before(currentMonth) {
-				date = currentMonth
+			if date.Before(currentStart) {
+				date = currentStart
 			}
-			if !date.Before(m) {
+			if !date.Before(ws) {
 				stepsReach = true
 			}
 			switch {
 			case date.After(monthEnd):
 				pm.PaymentsLeft++
-			case !date.Before(m):
+			case !date.Before(ws):
 				pm.StillDue += st.pay
 			}
 		}
-		// From the current month on, nothing is scheduled once the projection
+		// From the current period on, nothing is scheduled once the projection
 		// has paid the debt off, whatever the term says.
 		if !m.Before(currentMonth) && !stepsReach {
 			pm.ScheduledTotal = 0
 		}
 		switch {
-		case m.Before(monthStart(today)):
+		case m.Before(currentMonth):
 			pm.ClosingBalance = math.Max(BalanceAt(snaps, pays, in.Interest, monthEnd), 0)
 			pm.PaymentsLeft = paymentsLeftAt(snaps, pm.ClosingBalance, monthEnd, eps)
 		default:

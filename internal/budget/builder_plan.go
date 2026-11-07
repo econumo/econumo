@@ -464,7 +464,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 		amount := vo.NewDecimal(row.Amount)
 		if d, ok := f.debtOf(row.DebtID, row.CategoryID, row.TagID); ok {
-			if err := addDebtActual(toConvert, monthsList, i, d, amount, cid); err != nil {
+			if err := addDebtActual(toConvert, windows[i], i, d, amount, cid); err != nil {
 				return model.PlanStructureResult{}, err
 			}
 			continue
@@ -570,20 +570,20 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		Folders:  folders,
 		Elements: s.emitPlanElements(elements, converted, nMonths),
 		Savings:  emitPlanSavings(savingsRows, plannedFor, savingsHasActual, get, nMonths),
-		Debts:    emitPlanDebts(debtRows(f, options), monthsList, plannedFor, get, timelines),
+		Debts:    emitPlanDebts(debtRows(f, options), monthsList, f.startDay, plannedFor, get, timelines),
 	}, nil
 }
 
 // addDebtActual files a debt's matched payments of month i under the debt's
-// own key, in the debt's currency.
-func addDebtActual(toConvert map[string][]model.ConvertItem, monthsList []time.Time, i int, d model.DebtView, amount vo.DecimalNumber, currencyID vo.Id) error {
+// own key, in the debt's currency, at the rates of the month's window.
+func addDebtActual(toConvert map[string][]model.ConvertItem, window [2]time.Time, i int, d model.DebtView, amount vo.DecimalNumber, currencyID vo.Id) error {
 	to, err := vo.ParseId(d.CurrencyID)
 	if err != nil {
 		return err
 	}
 	key := planKey(i, elementKey(d.ID, model.ElementDebt))
 	toConvert[key] = append(toConvert[key], model.ConvertItem{
-		PeriodStart: monthsList[i], PeriodEnd: monthsList[i].AddDate(0, 1, 0),
+		PeriodStart: window[0], PeriodEnd: window[1],
 		From: currencyID, To: to, Amount: amount,
 	})
 	return nil

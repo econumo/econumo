@@ -2253,6 +2253,14 @@ member account in USD, before running these.
       an overspent category row. Plans stored for months after an early
       payoff do not count: they neither raise the row's Available nor keep it
       on screen.
+- [ ] 📱 In a budget whose months start on the 15th, a debt paid on the 10th:
+      a payment on 12 June counts as Paid in "May" (15 May - 14 Jun), the
+      10 July due is still due and scheduled in "June" (15 Jun - 14 Jul) and
+      its balance at that period's end already drops by it; the red plan
+      hint starts from the budget's current period; plannable months run
+      from the period holding the debt's first day to the one holding its
+      last payment date (a plan for the calendar month after that is
+      refused). A day-1 budget shows the same figures as before.
 - [ ] Changing a debt row's currency (change element currency) is refused; the
       row is in the debt's currency.
 - [ ] A debt row cannot be dragged into a folder; it keeps its own ordering in

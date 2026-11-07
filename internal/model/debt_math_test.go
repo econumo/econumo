@@ -556,3 +556,34 @@ func TestSplit_LateEntryInASplitWindowReservesTheStoredInterest(t *testing.T) {
 	r := mustRate(t, snap)
 	near(t, "backward window total", got["a"]+got["b"], (snap.Balance+2500)/(1+r)*r, 1e-6)
 }
+
+func TestProjectDebt_PeriodStartDay(t *testing.T) {
+	// 12000 interest-free, 1000 on the 10th through 2027-06-10; today is
+	// 2026-06-15, so the next due is 10 Jul.
+	in := ProjectionInput{
+		Snaps: []MathSnapshot{{AsOf: ymd(2026, time.June, 15), Balance: 12000, Payment: 1000,
+			Schedule: RecurringScheduleMonthly, Last: ymd(2027, time.June, 10)}},
+		Today:  ymd(2026, time.June, 15),
+		Months: []time.Time{ymd(2026, time.June, 1), ymd(2026, time.July, 1)},
+		Plans:  map[string]float64{"2026-06-01": 1500},
+		Digits: 2,
+	}
+	calendar := ProjectDebt(in)
+	in.PeriodStartDay = 1
+	if got := ProjectDebt(in); got.Months["2026-06-01"] != calendar.Months["2026-06-01"] || !got.PayoffDate.Equal(calendar.PayoffDate) {
+		t.Fatalf("day 1 = %+v, want the calendar projection %+v", got.Months, calendar.Months)
+	}
+	if m := calendar.Months["2026-06-01"]; m.StillDue != 0 || m.ClosingBalance != 11500 {
+		t.Errorf("calendar June = %+v, want nothing still due and the extra at month end", m)
+	}
+
+	in.PeriodStartDay = 15
+	p := ProjectDebt(in)
+	june, july := p.Months["2026-06-01"], p.Months["2026-07-01"]
+	if june.StillDue != 1000 || june.ScheduledTotal != 1000 || june.ClosingBalance != 10500 || june.PaymentsLeft != 11 {
+		t.Errorf("period June (15 Jun - 14 Jul) = %+v, want the 10 Jul due, 500 extra after it", june)
+	}
+	if july.StillDue != 1000 || july.ClosingBalance != 9500 {
+		t.Errorf("period July (15 Jul - 14 Aug) = %+v, want the 10 Aug due", july)
+	}
+}
