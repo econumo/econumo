@@ -116,3 +116,48 @@ func TestConvertor_BulkSummarizesAndSums(t *testing.T) {
 		t.Errorf("b = %s, want 25", got)
 	}
 }
+
+type countingDigits struct {
+	fakeRates
+	calls map[string]int
+}
+
+func (f *countingDigits) FractionDigits(ctx context.Context, id vo.Id) (int, error) {
+	f.calls[id.String()]++
+	return f.fakeRates.FractionDigits(ctx, id)
+}
+
+func TestConvertor_BulkLooksUpFractionDigitsOncePerCurrency(t *testing.T) {
+	usd := mustID(t, "00000000-0000-7000-8000-000000000001")
+	eur := mustID(t, "00000000-0000-7000-8000-000000000002")
+	jpy := mustID(t, "00000000-0000-7000-8000-000000000003")
+	f := &countingDigits{
+		fakeRates: fakeRates{
+			base:   usd,
+			rates:  []model.FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("0.5")}, {CurrencyID: jpy, Rate: vo.NewDecimal("150")}},
+			digits: map[string]int{usd.String(): 2, eur.String(): 2, jpy.String(): 0},
+		},
+		calls: map[string]int{},
+	}
+	c := NewConvertor(f)
+	ps := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	items := map[string][]model.ConvertItem{}
+	for m := 0; m < 24; m++ {
+		start := ps.AddDate(0, m, 0)
+		items[start.Format("2006-01")] = []model.ConvertItem{
+			{PeriodStart: start, PeriodEnd: start.AddDate(0, 1, 0), From: eur, To: usd, Amount: vo.NewDecimal("1.234")},
+			{PeriodStart: start, PeriodEnd: start.AddDate(0, 1, 0), From: usd, To: jpy, Amount: vo.NewDecimal("1.234")},
+		}
+	}
+	res, err := c.BulkConvert(context.Background(), ps, ps.AddDate(0, 1, 0), items)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 1.234 EUR / 0.5 = 2.468 -> 2.47 USD; 1.234 USD * 150 = 185.1 -> 185 JPY
+	if got := res["2025-12"].String(); got != "187.47" {
+		t.Fatalf("2025-12 = %s, want 187.47", got)
+	}
+	if f.calls[usd.String()] != 1 || f.calls[jpy.String()] != 1 || f.calls[eur.String()] != 0 {
+		t.Fatalf("lookups = %v, want one per result currency", f.calls)
+	}
+}

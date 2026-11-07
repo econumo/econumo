@@ -42,6 +42,12 @@ type AccountLookup interface {
 	// deleted — accounts merely shared with them are excluded. Feeds the
 	// accept-access membership seeding.
 	OwnedLiveAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
+	// OwnedAccountIDs returns every account the user OWNS, soft-deleted
+	// ones included; net worth drops the deleted ones itself.
+	OwnedAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
+	// AvailableAccountIDs returns the accounts the user owns or that are
+	// shared with them.
+	AvailableAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 // CurrencyLookup resolves a currency id by code (createBudget default
@@ -75,7 +81,8 @@ type Convertor interface {
 type AverageRateLookup interface {
 	AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
 	// SnappedRatePeriod returns the [start,end) AverageRates actually used (the
-	// latest-rate month <= end, or the requested period when no rate exists).
+	// latest-rate month <= end, the earliest-rate month before the first rate,
+	// or the requested period when no rate exists).
 	// The currencyRates block reports THIS period.
 	SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error)
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)

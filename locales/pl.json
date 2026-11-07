@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budżet i plan",
+      "reports": "Raporty",
       "onboarding": "Pierwsze kroki",
       "create_account": "Dodaj konto",
       "collapse_menu": "Zwiń menu",
@@ -1313,6 +1314,9 @@
         "end_month": {
           "label": "Miesiąc końcowy",
           "none": "Bez daty końcowej"
+        },
+        "period_start_day": {
+          "label": "Początek miesiąca"
         }
       },
       "budget_envelope": {
@@ -1579,6 +1583,68 @@
         }
       }
     }
+  },
+  "reports": {
+    "page": {
+      "title": "Raporty"
+    },
+    "tabs": {
+      "new": "Nowa karta",
+      "close": "Zamknij {name}",
+      "close_menu": "Zamknij",
+      "rename": "Zmień nazwę",
+      "duplicate": "Duplikuj",
+      "name_label": "Nazwa karty",
+      "limit": "Maksymalnie {count} kart"
+    },
+    "kind": {
+      "networth": "Wartość netto"
+    },
+    "list": {
+      "choose": "Wybierz raport",
+      "scope": "Zakres",
+      "scope_mine": "Moje konta",
+      "networth_q": "Bogacę się czy biednieję?",
+      "suggest_q": "Zaproponuj raport",
+      "suggest_note": "Brakuje Ci raportu? Napisz, co chcesz zobaczyć.",
+      "networth_caption": "dziś",
+      "networth_up": "Wzrost o {amount} w tym roku",
+      "networth_down": "Spadek o {amount} w tym roku",
+      "networth_flat": "Bez zmian w tym roku"
+    },
+    "period": {
+      "quarter": "{quarter} kw. {year}"
+    },
+    "networth": {
+      "period_1y": "1 r.",
+      "period_3y": "3 l.",
+      "period_all": "Wszystko",
+      "chart": "Wykres majątku",
+      "col_start": "Początek",
+      "col_now": "Teraz",
+      "no_folder": "Bez folderu",
+      "other_owner": "Inny uczestnik",
+      "expand": "Pokaż konta w {name}",
+      "collapse": "Ukryj konta w {name}",
+      "empty": "Brak sald na kontach",
+      "everyday": "Konta codzienne",
+      "period_1y_words": "w ostatnim roku",
+      "period_3y_words": "w ostatnich 3 latach",
+      "period_all_words": "od początku",
+      "range_words": "od {from}",
+      "clear_range": "Wyczyść zaznaczenie",
+      "show_transactions": "Pokaż transakcje: {name}",
+      "drag_hint": "Przeciągnij po wykresie, aby wybrać okres",
+      "range_transactions": "Transakcje",
+      "period": "Okres",
+      "headline": "Podsumowanie",
+      "col_change": "Zmiana",
+      "total": "Razem"
+    },
+    "insight": {
+      "empty": "Brak transakcji"
+    },
+    "updated_at": "Zaktualizowano {time}"
   },
   "classifications": {
     "common": {
@@ -2075,6 +2141,7 @@
       "accounts_required": "Wybierz co najmniej jedno konto",
       "archived": "Ten budżet jest zarchiwizowany",
       "end_before_start": "Miesiąc końcowy jest wcześniejszy niż początek budżetu",
+      "invalid_period_start_day": "Wybierz dzień od 1 do 28",
       "comment_not_found": "Nie znaleziono komentarza",
       "comment_forbidden": "Nie możesz zmienić tego komentarza"
     },

@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Бюджет і план",
+      "reports": "Звіти",
       "onboarding": "Початок роботи",
       "create_account": "Додати рахунок",
       "collapse_menu": "Згорнути меню",
@@ -1313,6 +1314,9 @@
         "end_month": {
           "label": "Останній місяць",
           "none": "Без дати завершення"
+        },
+        "period_start_day": {
+          "label": "Початок місяця"
         }
       },
       "budget_envelope": {
@@ -1579,6 +1583,68 @@
         }
       }
     }
+  },
+  "reports": {
+    "page": {
+      "title": "Звіти"
+    },
+    "tabs": {
+      "new": "Нова вкладка",
+      "close": "Закрити {name}",
+      "close_menu": "Закрити",
+      "rename": "Перейменувати",
+      "duplicate": "Дублювати",
+      "name_label": "Назва вкладки",
+      "limit": "Не більше {count} вкладок"
+    },
+    "kind": {
+      "networth": "Капітал"
+    },
+    "list": {
+      "choose": "Оберіть звіт",
+      "scope": "Область",
+      "scope_mine": "Мої рахунки",
+      "networth_q": "Я багатшаю чи біднішаю?",
+      "suggest_q": "Запропонувати звіт",
+      "suggest_note": "Бракує звіту? Розкажіть, що ви хотіли б бачити.",
+      "networth_caption": "сьогодні",
+      "networth_up": "Зростання на {amount} цього року",
+      "networth_down": "Зниження на {amount} цього року",
+      "networth_flat": "Без змін цього року"
+    },
+    "period": {
+      "quarter": "{quarter} кв. {year}"
+    },
+    "networth": {
+      "period_1y": "1 р.",
+      "period_3y": "3 р.",
+      "period_all": "Усе",
+      "chart": "Графік капіталу",
+      "col_start": "Початок",
+      "col_now": "Зараз",
+      "no_folder": "Без теки",
+      "other_owner": "Інший учасник",
+      "expand": "Показати рахунки в «{name}»",
+      "collapse": "Сховати рахунки в «{name}»",
+      "empty": "Поки немає залишків на рахунках",
+      "everyday": "Звичайні рахунки",
+      "period_1y_words": "за останній рік",
+      "period_3y_words": "за останні 3 роки",
+      "period_all_words": "з самого початку",
+      "range_words": "з {from}",
+      "clear_range": "Скинути виділення",
+      "show_transactions": "Показати транзакції: {name}",
+      "drag_hint": "Проведіть по графіку, щоб вибрати період",
+      "range_transactions": "Транзакції",
+      "period": "Період",
+      "headline": "Підсумок",
+      "col_change": "Зміна",
+      "total": "Разом"
+    },
+    "insight": {
+      "empty": "Поки немає операцій"
+    },
+    "updated_at": "Оновлено {time}"
   },
   "classifications": {
     "common": {
@@ -2075,6 +2141,7 @@
       "accounts_required": "Виберіть принаймні один рахунок",
       "archived": "Цей бюджет в архіві",
       "end_before_start": "Останній місяць раніше за початок бюджету",
+      "invalid_period_start_day": "Виберіть день від 1 до 28",
       "comment_not_found": "Коментар не знайдено",
       "comment_forbidden": "Ви не можете змінити цей коментар"
     },

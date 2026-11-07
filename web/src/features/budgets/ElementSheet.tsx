@@ -14,7 +14,8 @@ import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
 import { sheetCell, sheetIcon, sheetPlanHint, sheetSetsPlan } from './phoneMonth'
 import { planHintClass } from './planHint'
-import { currentMonth, formatPlanMonth } from './planMath'
+import { formatPlanMonth } from './planMath'
+import { currentPeriod } from './period'
 
 const EMPTY = '—'
 
@@ -22,6 +23,8 @@ export interface ElementSheetProps {
   target: SheetTarget | null
   /** the month the sheet describes, 'YYYY-MM-01' */
   month: string
+  /** the budget's period start day */
+  startDay: number
   baseCurrencyId: Id
   currencies: CurrencyDto[]
   /** converts at `month`'s rates */
@@ -52,6 +55,7 @@ interface Figure {
 export function ElementSheet({
   target,
   month,
+  startDay,
   baseCurrencyId,
   currencies,
   exchange,
@@ -75,7 +79,7 @@ export function ElementSheet({
   const currency = currencies.find((c) => c.id === cell.currencyId)
   const baseCurrency = currencies.find((c) => c.id === baseCurrencyId)
   const foreign = cell.currencyId !== baseCurrencyId
-  const future = month > currentMonth()
+  const future = month > currentPeriod(startDay)
   const isUncategorized = cell.id === UNCATEGORIZED_ID
   // a reporting tag is not a budget cell: no comment thread
   const hasThread = !isUncategorized && target.kind !== 'label'

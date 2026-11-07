@@ -7,6 +7,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sort"
 	"strconv"
 	"strings"
@@ -122,6 +123,21 @@ FROM accounts a LEFT JOIN (
 // regardless of how the connection formats a time.Time.
 func sqliteDatetime(t time.Time) string { return t.Format(datetime.Layout) }
 
+// sqliteSum renders a SQLite SUM, a float, as the exact 8-decimal sum
+// PostgreSQL's NUMERIC returns. Amounts carry at most 8 decimals, so the float
+// is the true sum plus rounding noise: rounding its SHORTEST decimal form to 8
+// places (half away from zero) drops the noise (1339.8899999999999 ->
+// 1339.89000000). The binary value itself would not do: past 2^26 a float64
+// holds no exact cent, and 123456789.01 prints as 123456789.01000001 at 'f', 8.
+func sqliteSum(v float64) string {
+	r, ok := new(big.Rat).SetString(strconv.FormatFloat(v, 'f', -1, 64))
+	if !ok {
+		// A SUM that overflowed to ±Inf (or NaN) has no decimal form.
+		return strconv.FormatFloat(v, 'f', 8, 64)
+	}
+	return r.FloatString(8)
+}
+
 // phFrom is ph for pgsql numbered params starting at `start` (sqlite ignores start).
 func (r *ReadRepo) phFrom(start, n int) string { return r.ph(start, n) }
 
@@ -139,11 +155,8 @@ func (r *ReadRepo) accountBalances(ctx context.Context, accountIDs []vo.Id, date
 	var out []model.AccountBalanceRow
 	for rows.Next() {
 		var row model.AccountBalanceRow
-		// SQLite's SUM over NUMERIC is float; scanning it as a string yields the
-		// driver's full-precision rendering (e.g. "358.34999999999127"). Round to
-		// 8 decimals (the stored-balance scale) by scanning the float and
-		// formatting with 'f',8, giving "358.35". PostgreSQL's SUM is exact
-		// NUMERIC, so scan it as a string and pass through unchanged.
+		// SQLite's SUM over NUMERIC is a float (e.g. 358.34999999999127), read
+		// through sqliteSum; PostgreSQL's SUM is exact NUMERIC text.
 		if r.driver == "postgresql" {
 			var bal *string
 			if err := rows.Scan(&row.AccountID, &row.CurrencyID, &bal); err != nil {
@@ -160,7 +173,7 @@ func (r *ReadRepo) accountBalances(ctx context.Context, accountIDs []vo.Id, date
 				return nil, err
 			}
 			if bal != nil {
-				row.Balance = strconv.FormatFloat(*bal, 'f', 8, 64)
+				row.Balance = sqliteSum(*bal)
 			} else {
 				row.Balance = "0"
 			}
@@ -207,8 +220,20 @@ func (r *ReadRepo) AccountsReport(ctx context.Context, accountIDs []vo.Id, start
 	var out []model.AccountReportRow
 	for rows.Next() {
 		var row model.AccountReportRow
-		if err := rows.Scan(&row.AccountID, &row.CurrencyID, &row.Incomes, &row.TransferIncomes, &row.ExchangeIncomes, &row.Expenses, &row.TransferExpenses, &row.ExchangeExpenses); err != nil {
-			return nil, err
+		cols := []*string{&row.Incomes, &row.TransferIncomes, &row.ExchangeIncomes, &row.Expenses, &row.TransferExpenses, &row.ExchangeExpenses}
+		if r.driver == "postgresql" {
+			if err := rows.Scan(&row.AccountID, &row.CurrencyID, cols[0], cols[1], cols[2], cols[3], cols[4], cols[5]); err != nil {
+				return nil, err
+			}
+		} else {
+			// SQLite's SUM is a float; sqliteSum gives back PostgreSQL's exact sum
+			var sums [6]float64
+			if err := rows.Scan(&row.AccountID, &row.CurrencyID, &sums[0], &sums[1], &sums[2], &sums[3], &sums[4], &sums[5]); err != nil {
+				return nil, err
+			}
+			for i, v := range sums {
+				*cols[i] = sqliteSum(v)
+			}
 		}
 		out = append(out, row)
 	}
@@ -232,9 +257,23 @@ func (r *ReadRepo) HoldingsReport(ctx context.Context, accountIDs []vo.Id, start
 		defer rows.Close()
 		for rows.Next() {
 			var currencyID *string
-			var amount *string
-			if err := rows.Scan(&amount, &currencyID); err != nil {
-				return err
+			a := "0"
+			if r.driver == "postgresql" {
+				var amount *string
+				if err := rows.Scan(&amount, &currencyID); err != nil {
+					return err
+				}
+				if amount != nil {
+					a = *amount
+				}
+			} else {
+				var amount *float64
+				if err := rows.Scan(&amount, &currencyID); err != nil {
+					return err
+				}
+				if amount != nil {
+					a = sqliteSum(*amount)
+				}
 			}
 			if currencyID == nil {
 				continue
@@ -243,10 +282,6 @@ func (r *ReadRepo) HoldingsReport(ctx context.Context, accountIDs []vo.Id, start
 			if m == nil {
 				m = &acc{from: "0", to: "0"}
 				merged[*currencyID] = m
-			}
-			a := "0"
-			if amount != nil {
-				a = *amount
 			}
 			set(m, a)
 		}
@@ -370,10 +405,8 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 	var out []model.SpendingRow
 	for rows.Next() {
 		var categoryID, currencyID, tagID *string
-		// SQLite's SUM(amount) is a float; scan it as float and format with %.8f
-		// (round to 8 decimals) instead of the driver's full-precision text (e.g.
-		// "32.26999999"). PostgreSQL's SUM is exact NUMERIC, scanned as text and
-		// passed through.
+		// SQLite's SUM(amount) is a float, read through sqliteSum; PostgreSQL's
+		// SUM is exact NUMERIC text.
 		a := "0"
 		if r.driver == "postgresql" {
 			var amount *string
@@ -395,7 +428,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 				continue
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				a = sqliteSum(*amount)
 			}
 		}
 		out = append(out, model.SpendingRow{CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
@@ -445,10 +478,8 @@ func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 		var labelID string
 		var categoryID *string
 		var currencyID *string
-		// SQLite's SUM(amount) is a float; scan it as float and format with
-		// 'f',8 (round to 8 decimals) instead of the driver's full-precision
-		// text. PostgreSQL's SUM is exact NUMERIC, scanned as text and passed
-		// through.
+		// SQLite's SUM(amount) is a float, read through sqliteSum; PostgreSQL's
+		// SUM is exact NUMERIC text.
 		a := "0"
 		if r.driver == "postgresql" {
 			var amount *string
@@ -470,7 +501,7 @@ func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 				continue
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				a = sqliteSum(*amount)
 			}
 		}
 		out = append(out, model.LabelSpendingRow{LabelID: labelID, CategoryID: categoryID, CurrencyID: *currencyID, Amount: a})
@@ -525,10 +556,9 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 	var out []model.SummarizedLimitRow
 	for rows.Next() {
 		var row model.SummarizedLimitRow
-		// SQLite's SUM(amount) over NUMERIC is a float; scanning it as a string
-		// yields full float precision (e.g. "155.56000000001"), which leaks a 1e-8
-		// into budgetedBefore. Scan as float and format with %.8f (round to 8
-		// decimals). PostgreSQL's SUM is exact NUMERIC text.
+		// SQLite's SUM(amount) over NUMERIC is a float (e.g. 155.56000000001),
+		// which as text would leak a 1e-8 into budgetedBefore; read it through
+		// sqliteSum. PostgreSQL's SUM is exact NUMERIC text.
 		if r.driver == "postgresql" {
 			var amount *string
 			if err := rows.Scan(&row.ExternalID, &row.Type, &amount); err != nil {
@@ -545,7 +575,7 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 				return nil, err
 			}
 			if amount != nil {
-				row.Amount = strconv.FormatFloat(*amount, 'f', 8, 64)
+				row.Amount = sqliteSum(*amount)
 			} else {
 				row.Amount = "0"
 			}
@@ -571,8 +601,58 @@ func (r *ReadRepo) planMonthExpr(col string) string {
 	return "substr(" + col + ", 1, 7) || '-01'"
 }
 
+// planDayExpr renders a datetime column as its "YYYY-MM-DD" day, slicing
+// the SQLite text for the reason planMonthExpr gives.
+func (r *ReadRepo) planDayExpr(col string) string {
+	if r.driver == "postgresql" {
+		return "to_char(" + col + ", 'YYYY-MM-DD')"
+	}
+	return "substr(" + col + ", 1, 10)"
+}
+
+// periodExpr is the grouping column of the by-month reads. Day 1 groups by
+// month in SQL, so its sums keep each engine's own text; any other start day
+// groups by day and foldPeriods re-keys and adds the rows in Go.
+func (r *ReadRepo) periodExpr(col string, startDay int) string {
+	if startDay == 1 {
+		return r.planMonthExpr(col)
+	}
+	return r.planDayExpr(col)
+}
+
+// foldPeriods re-keys day-grouped rows onto their period key and adds the
+// amounts of rows that then share a key; first-seen order is kept and every
+// amount comes out normalized.
+func foldPeriods[R any, K comparable](rows []R, startDay int, month func(*R) *string, key func(R) K, amounts func(*R) []*string) ([]R, error) {
+	var out []R
+	at := map[K]int{}
+	for _, row := range rows {
+		m := month(&row)
+		p, err := model.PeriodKeyOfDay(*m, startDay)
+		if err != nil {
+			return nil, err
+		}
+		*m = p
+		k := key(row)
+		i, seen := at[k]
+		if !seen {
+			at[k] = len(out)
+			out = append(out, row)
+			for _, a := range amounts(&out[len(out)-1]) {
+				*a = vo.NewDecimal(*a).String()
+			}
+			continue
+		}
+		dst, src := amounts(&out[i]), amounts(&row)
+		for j := range dst {
+			*dst[j] = vo.NewDecimal(*dst[j]).Add(vo.NewDecimal(*src[j])).String()
+		}
+	}
+	return out, nil
+}
+
 // SpendingByMonth implements ReadModel.
-func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlySpendingRow, error) {
+func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
 	// Empty IN () is a no-op on SQLite but a syntax error on PostgreSQL (same
 	// guard as CountSpending); an empty category set is NOT a short-circuit —
 	// the NULL-category rows still have to come back.
@@ -581,7 +661,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 	}
 	catArgs := idArgs(categoryIDs)
 	accArgs := idArgs(accountIDs)
-	month := r.planMonthExpr("t.spent_at")
+	month := r.periodExpr("t.spent_at", startDay)
 	var sql string
 	var args []any
 	if r.driver == "postgresql" {
@@ -617,7 +697,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 	for rows.Next() {
 		var monthStr string
 		var categoryID, tagID, currencyID *string
-		// SQLite's SUM is float (format 'f',8); PostgreSQL's is exact NUMERIC
+		// SQLite's SUM is float (sqliteSum); PostgreSQL's is exact NUMERIC
 		// text — same split as CountSpending.
 		a := "0"
 		if r.driver == "postgresql" {
@@ -640,21 +720,30 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 				continue
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				a = sqliteSum(*amount)
 			}
 		}
 		out = append(out, model.MonthlySpendingRow{Month: monthStr, CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil || startDay == 1 {
+		return out, err
+	}
+	type key struct{ month, category, tag, currency string }
+	return foldPeriods(out, startDay,
+		func(x *model.MonthlySpendingRow) *string { return &x.Month },
+		func(x model.MonthlySpendingRow) key {
+			return key{x.Month, derefStr(x.CategoryID), derefStr(x.TagID), x.CurrencyID}
+		},
+		func(x *model.MonthlySpendingRow) []*string { return []*string{&x.Amount} })
 }
 
 // IncomeByMonth implements ReadModel.
-func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyIncomeRow, error) {
+func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyIncomeRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
 	accArgs := idArgs(accountIDs)
-	month := r.planMonthExpr("t.spent_at")
+	month := r.periodExpr("t.spent_at", startDay)
 	var sql string
 	var args []any
 	// INNER JOIN: every income row's account must be one of accountIDs (the
@@ -705,18 +794,25 @@ func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, 
 				continue
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				a = sqliteSum(*amount)
 			}
 		}
 		out = append(out, model.MonthlyIncomeRow{Month: monthStr, CategoryID: categoryID, CurrencyID: *currencyID, Amount: a})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil || startDay == 1 {
+		return out, err
+	}
+	type key struct{ month, category, currency string }
+	return foldPeriods(out, startDay,
+		func(x *model.MonthlyIncomeRow) *string { return &x.Month },
+		func(x model.MonthlyIncomeRow) key { return key{x.Month, derefStr(x.CategoryID), x.CurrencyID} },
+		func(x *model.MonthlyIncomeRow) []*string { return []*string{&x.Amount} })
 }
 
 // TransfersByMonth implements ReadModel: one grouped query per direction,
 // merged per (month, currency). Rows come back sorted by month then currency
 // id so the wire is deterministic across engines.
-func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyTransferRow, error) {
+func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlyTransferRow, error) {
 	// Empty IN () is a pgsql syntax error (same guard as the other by-month
 	// queries) — and with no included account nothing can cross the boundary.
 	if len(accountIDs) == 0 {
@@ -724,7 +820,7 @@ func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, fro
 	}
 	merged := map[string]*model.MonthlyTransferRow{}
 	run := func(out bool) error {
-		sql, args := r.transfersByMonthSQL(out, accountIDs, from, to)
+		sql, args := r.transfersByMonthSQL(out, accountIDs, from, to, startDay)
 		rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 		if err != nil {
 			return err
@@ -734,7 +830,7 @@ func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, fro
 			var monthStr string
 			var currencyID *string
 			a := "0"
-			// SQLite's SUM is float (format 'f',8); PostgreSQL's is exact
+			// SQLite's SUM is float (sqliteSum); PostgreSQL's is exact
 			// NUMERIC text — same split as IncomeByMonth.
 			if r.driver == "postgresql" {
 				var amount *string
@@ -750,7 +846,7 @@ func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, fro
 					return err
 				}
 				if amount != nil {
-					a = strconv.FormatFloat(*amount, 'f', 8, 64)
+					a = sqliteSum(*amount)
 				}
 			}
 			if currencyID == nil {
@@ -780,6 +876,17 @@ func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, fro
 	for _, row := range merged {
 		result = append(result, *row)
 	}
+	if startDay != 1 {
+		type key struct{ month, currency string }
+		var err error
+		result, err = foldPeriods(result, startDay,
+			func(x *model.MonthlyTransferRow) *string { return &x.Month },
+			func(x model.MonthlyTransferRow) key { return key{x.Month, x.CurrencyID} },
+			func(x *model.MonthlyTransferRow) []*string { return []*string{&x.In, &x.Out} })
+		if err != nil {
+			return nil, err
+		}
+	}
 	sort.Slice(result, func(i, j int) bool {
 		if result[i].Month != result[j].Month {
 			return result[i].Month < result[j].Month
@@ -793,14 +900,14 @@ func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, fro
 // t.amount of transfers whose SOURCE is included and recipient is not, in
 // the source account's currency; out=false sums t.amount_recipient of the
 // mirror, in the recipient account's currency.
-func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to time.Time) (string, []any) {
+func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to time.Time, startDay int) (string, []any) {
 	ids := idArgs(accountIDs)
 	n := len(ids)
 	amountCol, joinCol, insideCol, outsideCol := "t.amount", "t.account_id", "t.account_id", "t.account_recipient_id"
 	if !out {
 		amountCol, joinCol, insideCol, outsideCol = "t.amount_recipient", "t.account_recipient_id", "t.account_recipient_id", "t.account_id"
 	}
-	month := r.planMonthExpr("t.spent_at")
+	month := r.periodExpr("t.spent_at", startDay)
 	args := make([]any, 0, 2*n+2)
 	args = append(args, ids...)
 	args = append(args, ids...)
@@ -820,13 +927,13 @@ func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to ti
 
 // AccountsNetByMonth implements ReadModel. The sign rules are balanceSQL's,
 // bucketed by month.
-func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
+func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.SavingsMonthRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
 	ids := idArgs(accountIDs)
 	n := len(ids)
-	month := r.planMonthExpr("t.spent_at")
+	month := r.periodExpr("t.spent_at", startDay)
 	var args []any
 	var d1, d2, d3, d4 string
 	if r.driver == "postgresql" {
@@ -845,7 +952,7 @@ func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, f
 		" UNION ALL " +
 		"SELECT " + month + " as month, t.account_recipient_id as account_id, t.amount_recipient as amount FROM transactions t WHERE t.type = 2 AND t.account_recipient_id IN (" + r.ph(n+3, n) + ") AND t.spent_at >= " + d3 + " AND t.spent_at < " + d4 +
 		") x GROUP BY month, account_id"
-	rows, err := r.monthAccountAmounts(ctx, sql, args)
+	rows, err := r.monthAccountAmounts(ctx, sql, args, startDay)
 	if err != nil {
 		return nil, err
 	}
@@ -861,7 +968,7 @@ func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, f
 
 // AccountsIncomeExpenseByMonth implements ReadModel: AccountsNetByMonth
 // without the transfers.
-func (r *ReadRepo) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
+func (r *ReadRepo) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.SavingsMonthRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -875,10 +982,10 @@ func (r *ReadRepo) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs 
 	} else {
 		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
 	}
-	month := r.planMonthExpr("t.spent_at")
+	month := r.periodExpr("t.spent_at", startDay)
 	sql := "SELECT " + month + " as month, t.account_id as account_id, SUM(CASE WHEN t.type = 1 THEN t.amount ELSE 0 - t.amount END) as amount FROM transactions t WHERE t.type IN (0, 1) AND t.account_id IN (" + r.ph(1, n) + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
 		" GROUP BY month, t.account_id"
-	rows, err := r.monthAccountAmounts(ctx, sql, args)
+	rows, err := r.monthAccountAmounts(ctx, sql, args, startDay)
 	if err != nil {
 		return nil, err
 	}
@@ -893,8 +1000,8 @@ func (r *ReadRepo) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs 
 }
 
 // monthAccountAmounts scans (month, account_id, amount) rows with the
-// engine's SUM representation.
-func (r *ReadRepo) monthAccountAmounts(ctx context.Context, sql string, args []any) ([]model.SavingsMonthRow, error) {
+// engine's SUM representation, folded onto period keys for startDay != 1.
+func (r *ReadRepo) monthAccountAmounts(ctx context.Context, sql string, args []any, startDay int) ([]model.SavingsMonthRow, error) {
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -918,13 +1025,19 @@ func (r *ReadRepo) monthAccountAmounts(ctx context.Context, sql string, args []a
 				return nil, err
 			}
 			if amount != nil {
-				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				a = sqliteSum(*amount)
 			}
 		}
 		row.Amount = a
 		out = append(out, row)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil || startDay == 1 {
+		return out, err
+	}
+	return foldPeriods(out, startDay,
+		func(x *model.SavingsMonthRow) *string { return &x.Month },
+		func(x model.SavingsMonthRow) [2]string { return [2]string{x.Month, x.AccountID} },
+		func(x *model.SavingsMonthRow) []*string { return []*string{&x.Amount} })
 }
 
 func sortedSavingsRows(merged map[string]vo.DecimalNumber, keys map[string]model.SavingsMonthRow) []model.SavingsMonthRow {
@@ -981,7 +1094,7 @@ func (r *ReadRepo) LimitsByMonth(ctx context.Context, budgetID vo.Id, from, to t
 				return nil, err
 			}
 			if amount != nil {
-				row.Amount = strconv.FormatFloat(*amount, 'f', 8, 64)
+				row.Amount = sqliteSum(*amount)
 			} else {
 				row.Amount = "0"
 			}

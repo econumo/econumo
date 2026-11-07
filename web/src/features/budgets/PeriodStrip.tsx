@@ -5,13 +5,24 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MONTHS_AROUND, periodRange } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
+import { PERIOD_DATES_CLASS, periodDatesLabel } from './period'
 
 const EXTEND_STEP = 12
 const EDGE_THRESHOLD_PX = 300
 // roughly a screenful of month chips per arrow click
 const SCROLL_STEP_PX = 320
 
-export function PeriodStrip({ startedAt, endedAt = null, leading }: { startedAt: string | null; endedAt?: string | null; leading?: ReactNode }) {
+export function PeriodStrip({
+  startedAt,
+  endedAt = null,
+  startDay = 1,
+  leading,
+}: {
+  startedAt: string | null
+  endedAt?: string | null
+  startDay?: number
+  leading?: ReactNode
+}) {
   const { t, i18n } = useTranslation()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const setPeriod = useBudgetPeriodStore((s) => s.setPeriod)
@@ -120,33 +131,53 @@ export function PeriodStrip({ startedAt, endedAt = null, leading }: { startedAt:
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="flex flex-1 gap-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={`flex flex-1 gap-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${startDay !== 1 ? 'items-start' : ''}`}
         role="tablist"
         aria-label="period"
       >
-      {items.map((item) => (
-        <button
-          key={item.value}
-          ref={item.isActive ? activeRef : undefined}
-          type="button"
-          role="tab"
-          aria-selected={item.isActive}
-          className={`shrink-0 px-2.5 py-1 text-sm uppercase tracking-wide ${
-            item.isActive
-              ? 'font-bold text-foreground'
-              : item.outsideBudget
-                ? 'text-muted-foreground/50 hover:text-muted-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-          }`}
-          onClick={() => {
-            // recenter the window on the new month so both directions stay deep
-            setExtend({ before: 0, after: 0 })
-            setPeriod(item.value)
-          }}
-        >
-          {item.label}
-        </button>
-      ))}
+      {items.map((item) => {
+        // a shifted budget's month is not the calendar month: the selected month's
+        // dates sit under its name, styled as in the Plan header; every tab names
+        // its dates for assistive tech
+        const range = periodDatesLabel(item.value, startDay, i18n.language)
+        const shownRange = item.isActive ? range : null
+        return (
+          <button
+            key={item.value}
+            ref={item.isActive ? activeRef : undefined}
+            type="button"
+            role="tab"
+            aria-selected={item.isActive}
+            aria-label={range ? `${item.label}, ${range}` : undefined}
+            className={`shrink-0 px-2.5 py-1 text-sm uppercase tracking-wide ${shownRange ? 'flex flex-col items-center' : ''} ${
+              item.isActive
+                ? 'font-bold text-foreground'
+                : item.outsideBudget
+                  ? 'text-muted-foreground/50 hover:text-muted-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => {
+              // recenter the window on the new month so both directions stay deep
+              setExtend({ before: 0, after: 0 })
+              setPeriod(item.value)
+            }}
+          >
+            {shownRange ? (
+              <>
+                <span>{item.label}</span>
+                <span
+                  data-testid="period-strip-dates"
+                  className={`whitespace-nowrap font-normal normal-case tracking-normal ${PERIOD_DATES_CLASS}`}
+                >
+                  {shownRange}
+                </span>
+              </>
+            ) : (
+              item.label
+            )}
+          </button>
+        )
+      })}
       </div>
     </div>
   )

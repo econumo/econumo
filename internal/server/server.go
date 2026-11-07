@@ -390,6 +390,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		opGuard,
 		txm, clk,
 	)
+	shiftedRates := rateProvider.Windowed()
+	budgetSvc.SetShiftedPeriodRates(appcurrency.NewConvertor(shiftedRates), shiftedRates)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
 
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
@@ -497,6 +499,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handlerrecurring.RegisterAPI(recurringHandlers, authn),
 		handlerconnection.RegisterAPI(connectionHandlers, authn),
 		handlerbudget.RegisterAPI(budgetHandlers, authn),
+		handlerbudget.RegisterReportAPI(budgetHandlers, authn),
 		importsAPI,
 		handlersystem.RegisterAPI(systemHandlers, authn),
 		apidoc.RegisterAPI(),

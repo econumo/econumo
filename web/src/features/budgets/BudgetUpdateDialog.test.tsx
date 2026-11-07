@@ -134,6 +134,78 @@ it('renders when the server omits filters entirely', async () => {
   await waitFor(() => expect(screen.getByDisplayValue('Main budget')).toBeInTheDocument())
 })
 
+describe('period start day', () => {
+  const dayBudget: BudgetDto = { ...baseBudget, meta: { ...baseBudget.meta, periodStartDay: 5 } }
+
+  function captureUpdate(respond?: () => Response) {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.post('*/api/v1/budget/update-budget', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>)
+        return respond?.() ?? HttpResponse.json({ success: true, message: '', data: { item: dayBudget.meta } })
+      }),
+    )
+    return bodies
+  }
+
+  it('pre-fills the stored day and omits the field when unchanged', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
+    renderDialog(dayBudget)
+    await screen.findByText(/ of 4 included/)
+    expect(screen.getByRole('combobox', { name: 'Month start day' })).toHaveTextContent('5')
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).not.toHaveProperty('periodStartDay')
+  })
+
+  it('hides the picker and sends no day for a server that sends none', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
+    renderDialog(baseBudget)
+    await screen.findByText(/ of 4 included/)
+    expect(screen.queryByRole('combobox', { name: 'Month start day' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).not.toHaveProperty('periodStartDay')
+  })
+
+  it('shows the picker for a stored day 1', async () => {
+    renderDialog({ ...baseBudget, meta: { ...baseBudget.meta, periodStartDay: 1 } })
+    await screen.findByText(/ of 4 included/)
+    expect(screen.getByRole('combobox', { name: 'Month start day' })).toHaveTextContent('1')
+  })
+
+  it('sends a changed day', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
+    renderDialog(dayBudget)
+    await screen.findByText(/ of 4 included/)
+    await user.click(screen.getByRole('combobox', { name: 'Month start day' }))
+    await user.click(await screen.findByRole('option', { name: '16' }))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].periodStartDay).toBe(16)
+  })
+
+  it('shows the server field error inline', async () => {
+    captureUpdate(() =>
+      HttpResponse.json(
+        { success: false, message: 'Form validation error', code: 400, errors: { periodStartDay: ['Choose a day from 1 to 28'] } },
+        { status: 400 },
+      ),
+    )
+    const user = userEvent.setup()
+    renderDialog(dayBudget)
+    await screen.findByText(/ of 4 included/)
+    await user.click(screen.getByRole('combobox', { name: 'Month start day' }))
+    await user.click(await screen.findByRole('option', { name: '16' }))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    expect(await screen.findByText('Choose a day from 1 to 28')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+})
+
 describe('savings flags omitted for a server/cache that never reported isSavings', () => {
   // baseBudget's filters.accounts carries no isSavings field on either member, as
   // an older server or a stale cache would report it.

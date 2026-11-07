@@ -50,6 +50,7 @@ type querier interface {
 	GetAccount(ctx context.Context, db backend.DBTX, id string) (accountRow, error)
 	ListAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) ([]accountRow, error)
 	ListDeletedAccounts(ctx context.Context, db backend.DBTX) ([]accountRow, error)
+	ListAccountIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]string, error)
 	CountAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	GetAccountTransactionsRevision(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error
@@ -116,6 +117,24 @@ func (r *Repo) TransactionsRevision(ctx context.Context, id vo.Id) (int64, error
 		return 0, errs.NewNotFound("Account not found")
 	}
 	return rev, err
+}
+
+// ListIDsByOwner returns every account the user owns, soft-deleted ones
+// included.
+func (r *Repo) ListIDsByOwner(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	raw, err := r.q.ListAccountIDsByOwner(ctx, r.db(ctx), userID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]vo.Id, 0, len(raw))
+	for _, s := range raw {
+		id, perr := vo.ParseId(s)
+		if perr != nil {
+			return nil, perr
+		}
+		out = append(out, id)
+	}
+	return out, nil
 }
 
 // ListAvailable returns the user's non-deleted accounts.

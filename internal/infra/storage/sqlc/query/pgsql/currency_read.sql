@@ -50,6 +50,24 @@ WHERE base_currency_id = $1 AND published_at < $2
 ORDER BY published_at DESC
 LIMIT 1;
 
+-- name: GetNearestCurrencyRates :many
+SELECT c.id AS currency_id, CAST(COALESCE(
+    (SELECT r.rate FROM currencies_rates r
+     WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id) AND r.published_at < sqlc.arg(before)
+     ORDER BY r.published_at DESC LIMIT 1),
+    (SELECT r.rate FROM currencies_rates r
+     WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id)
+     ORDER BY r.published_at ASC LIMIT 1)
+) AS TEXT) AS rate
+FROM currencies c
+WHERE EXISTS (SELECT 1 FROM currencies_rates r WHERE r.currency_id = c.id AND r.base_currency_id = sqlc.arg(base_currency_id));
+
+-- name: GetEarliestCurrencyRateDate :one
+SELECT published_at FROM currencies_rates
+WHERE base_currency_id = $1
+ORDER BY published_at ASC
+LIMIT 1;
+
 -- name: GetLatestCurrencyRateListView :many
 -- Latest rate row per (currency, base) pair. See the sqlite variant.
 SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate

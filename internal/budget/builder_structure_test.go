@@ -42,15 +42,19 @@ func (s *spendingStub) SummarizedLimits(context.Context, vo.Id, time.Time, time.
 	return nil, nil
 }
 
-func (s *spendingStub) SpendingByMonth(context.Context, []vo.Id, []vo.Id, time.Time, time.Time) ([]model.MonthlySpendingRow, error) {
+func (s *spendingStub) SpendingByMonth(context.Context, []vo.Id, []vo.Id, time.Time, time.Time, int) ([]model.MonthlySpendingRow, error) {
 	return nil, nil
 }
 
-func (s *spendingStub) IncomeByMonth(context.Context, []vo.Id, time.Time, time.Time) ([]model.MonthlyIncomeRow, error) {
+func (s *spendingStub) IncomeByMonth(context.Context, []vo.Id, time.Time, time.Time, int) ([]model.MonthlyIncomeRow, error) {
 	return nil, nil
 }
 
-func (s *spendingStub) TransfersByMonth(context.Context, []vo.Id, time.Time, time.Time) ([]model.MonthlyTransferRow, error) {
+func (s *spendingStub) FirstTransactionDate(context.Context, []vo.Id) (*time.Time, error) {
+	return nil, nil
+}
+
+func (s *spendingStub) TransfersByMonth(context.Context, []vo.Id, time.Time, time.Time, int) ([]model.MonthlyTransferRow, error) {
 	return nil, nil
 }
 
@@ -58,7 +62,7 @@ func (s *spendingStub) LimitsByMonth(context.Context, vo.Id, time.Time, time.Tim
 	return nil, nil
 }
 
-func (s *spendingStub) AccountsNetByMonth(context.Context, []vo.Id, time.Time, time.Time) ([]model.SavingsMonthRow, error) {
+func (s *spendingStub) AccountsNetByMonth(context.Context, []vo.Id, time.Time, time.Time, int) ([]model.SavingsMonthRow, error) {
 	return nil, nil
 }
 
@@ -74,7 +78,7 @@ func (s *spendingStub) BudgetTransactionsOnAccount(context.Context, vo.Id, time.
 	return nil, nil
 }
 
-func (s *spendingStub) AccountsIncomeExpenseByMonth(context.Context, []vo.Id, time.Time, time.Time) ([]model.SavingsMonthRow, error) {
+func (s *spendingStub) AccountsIncomeExpenseByMonth(context.Context, []vo.Id, time.Time, time.Time, int) ([]model.SavingsMonthRow, error) {
 	return nil, nil
 }
 

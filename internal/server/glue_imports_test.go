@@ -60,7 +60,7 @@ type stubRates struct {
 }
 
 func (s stubRates) BaseCurrencyID(context.Context) (vo.Id, error) { return s.base, nil }
-func (s stubRates) AverageRates(context.Context, time.Time, time.Time) ([]model.FullRate, error) {
+func (s stubRates) StoredRates(context.Context, time.Time, time.Time) ([]model.FullRate, error) {
 	return s.rates, nil
 }
 
@@ -125,6 +125,36 @@ func TestImportsCurrencyConverter_StaleSnappedMonth(t *testing.T) {
 	c := NewImportsCurrencyConverter(lookup, rates, stubConvertor{factor: "1.10"})
 	if _, ok, err := c.Convert(context.Background(), vo.NewId(), "EUR", "USD", "10", at); err != nil || ok {
 		t.Errorf("a rate snapped to a month other than the event's must be ok=false: %v, %v", ok, err)
+	}
+}
+
+// Rates that reports fill in for a gap must not let an import through: a tap in a
+// month with rates for other currencies only, or before its currency's first
+// rate, queues as no-rate.
+func TestImportsCurrencyConverter_StaggeredRatesQueue(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	eur := f.Currency(fixture.Currency{Code: "EUR", Symbol: "E"})
+	cad := f.Currency(fixture.Currency{Code: "CAD", Symbol: "C"})
+	f.Rate(fixture.Rate{CurrencyID: eur, BaseCurrencyID: fixture.USD, Rate: "0.90", PublishedAt: "2026-06-10"})
+	f.Rate(fixture.Rate{CurrencyID: cad, BaseCurrencyID: fixture.USD, Rate: "1.40", PublishedAt: "2026-08-10"})
+
+	lookup := currencyrepo.New("sqlite", db.TX)
+	rateProvider := currencyrepo.NewRateProvider("sqlite", db.TX, lookup, fixture.USD)
+	c := NewImportsCurrencyConverter(lookup, rateProvider, appcurrency.NewConvertor(rateProvider))
+	userID := vo.NewId()
+
+	august := time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC)
+	if _, ok, err := c.Convert(ctx, userID, "CAD", "USD", "10", august); err != nil || !ok {
+		t.Errorf("CAD has an August rate: ok=%v err=%v", ok, err)
+	}
+	if _, ok, err := c.Convert(ctx, userID, "EUR", "USD", "10", august); err != nil || ok {
+		t.Errorf("EUR's last rate is from June, must queue: ok=%v err=%v", ok, err)
+	}
+	beforeAny := time.Date(2026, 6, 2, 10, 0, 0, 0, time.UTC)
+	if _, ok, err := c.Convert(ctx, userID, "EUR", "USD", "10", beforeAny); err != nil || ok {
+		t.Errorf("before the first rate, must queue: ok=%v err=%v", ok, err)
 	}
 }
 
