@@ -2226,8 +2226,9 @@ member account in USD, before running these.
       scheduled payments that month): the plan editor says what it buys
       ("Paid off 14 months earlier, 21,000.00 $ less overpayment"), the
       payments left, projected payoff and overpayment left shorten from that
-      month on (Plan grid row shows the projection as "Paid off by Mar 2028",
-      a paid-off debt plain "Paid off"; plans in the past months do not change
+      month on (Plan grid row shows only the projection, "Paid off by Mar
+      2028", or plain "Paid off" once paid; the "N months earlier" note is not
+      repeated in the row header; plans in the past months do not change
       the future). In the current month, an extra already paid counts against
       the plan: pay 7,000.00 on a 2,000.00 schedule, plan 7,000.00 for this
       month, and Left, payments left and the payoff equal those with no plan

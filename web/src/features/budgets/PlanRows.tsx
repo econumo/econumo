@@ -405,7 +405,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
               <span className="min-w-0 truncate text-[15px]" title={displayName}>
                 {displayName}
               </span>
-              <DebtPayoff debt={row.debt} currency={currency} />
+              <DebtPayoff debt={row.debt} />
             </div>
           ) : (
             <span className={`min-w-0 truncate ${isUncategorized ? '' : 'text-[15px]'}`} title={displayName}>

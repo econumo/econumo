@@ -28,9 +28,9 @@ export function DebtExtraNote({ row, currency, className = 'text-xs text-muted-f
   )
 }
 
-/** A Plan row's payoff under its name: the projected "Paid off by Mar 2028" (or
- *  "Paid off" once it is), then what the planned extras buy when they move it. */
-export function DebtPayoff({ debt, currency }: { debt: PayoffFigures & Pick<BudgetDebtElementDto, 'isPaidOff'>; currency: CurrencyDto | undefined }) {
+/** A Plan row's payoff under its name: the projected "Paid off by Mar 2028", or
+ *  "Paid off" once it is. What the planned extras buy shows only in the plan editor. */
+export function DebtPayoff({ debt }: { debt: PayoffFigures & Pick<BudgetDebtElementDto, 'isPaidOff'> }) {
   const { t, i18n } = useTranslation()
   const payoff =
     debt.isPaidOff === 1
@@ -42,12 +42,9 @@ export function DebtPayoff({ debt, currency }: { debt: PayoffFigures & Pick<Budg
     return null
   }
   return (
-    <>
-      <span className="min-w-0 truncate text-[11px] text-muted-foreground" data-testid="debt-payoff" title={payoff}>
-        {payoff}
-      </span>
-      <DebtExtraNote row={debt} currency={currency} className="min-w-0 truncate text-[11px] text-muted-foreground" />
-    </>
+    <span className="min-w-0 truncate text-[11px] text-muted-foreground" data-testid="debt-payoff" title={payoff}>
+      {payoff}
+    </span>
   )
 }
 
