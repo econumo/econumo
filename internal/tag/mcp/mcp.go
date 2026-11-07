@@ -44,8 +44,8 @@ type mergeTagInput struct {
 
 func Register(read *apptag.ReadService, write *apptag.Service) webmcp.Register {
 	return func(s *sdk.Server) {
-		sdk.AddTool(s, &sdk.Tool{Name: "list_tags",
-			Description: "The user's transaction tags: id, name, isArchived (0/1)."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("list_tags", "List tags",
+			"The user's transaction tags: id, name, isArchived (0/1)."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetTagListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_tags")
 				userID, err := webmcp.UserID(ctx)
@@ -59,8 +59,8 @@ func Register(read *apptag.ReadService, write *apptag.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "create_tag",
-			Description: "Create a new transaction tag owned by the caller. See list_tags for existing ids."},
+		sdk.AddTool(s, webmcp.WriteTool("create_tag", "Create tag",
+			"Create a new transaction tag owned by the caller. See list_tags for existing ids."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in createTagInput) (*sdk.CallToolResult, model.CreateTagResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_tag")
 				userID, err := webmcp.UserID(ctx)
@@ -77,8 +77,8 @@ func Register(read *apptag.ReadService, write *apptag.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "merge_tag",
-			Description: "Merge one tag into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."},
+		sdk.AddTool(s, webmcp.DestructiveTool("merge_tag", "Merge tags",
+			"Merge one tag into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in mergeTagInput) (*sdk.CallToolResult, model.MergeTagResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "merge_tag")
 				userID, err := webmcp.UserID(ctx)
@@ -95,8 +95,8 @@ func Register(read *apptag.ReadService, write *apptag.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "update_tag",
-			Description: "Rename a tag; use list_tags to find its id."},
+		sdk.AddTool(s, webmcp.WriteTool("update_tag", "Rename tag",
+			"Rename a tag; use list_tags to find its id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateTagInput) (*sdk.CallToolResult, model.UpdateTagResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_tag")
 				userID, err := webmcp.UserID(ctx)
@@ -113,8 +113,8 @@ func Register(read *apptag.ReadService, write *apptag.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "set_tag_archived",
-			Description: "Hide an unused tag (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_tags to find its id."},
+		sdk.AddTool(s, webmcp.WriteTool("set_tag_archived", "Archive or restore tag",
+			"Hide an unused tag (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_tags to find its id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in setArchivedInput) (*sdk.CallToolResult, archivedResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_tag_archived")
 				userID, err := webmcp.UserID(ctx)

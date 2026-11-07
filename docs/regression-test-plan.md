@@ -2485,6 +2485,13 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Allow sends the browser to the client's callback; the client finishes
       connecting and its MCP tools (for example listing accounts) return the
       signed-in user's data.
+- [ ] In the connected client, a read tool (`list_accounts`, `get_budget`) runs
+      without asking for per-call confirmation, and a destructive one
+      (`delete_transaction`, any `merge_*`, `add_budget_account`,
+      `remove_budget_account`, `bulk_update_transactions`) prompts every time.
+      Recording an expense with `create_transaction`, renaming a tag or setting
+      a limit does NOT prompt. Each tool shows a readable title rather than its
+      raw `snake_case` name.
 - [ ] Deny sends the browser back to the client with an `access_denied` result;
       the client reports that the sign-in was refused and nothing appears under
       Connected apps.

@@ -144,8 +144,8 @@ func flexPtr(s string) *vo.FlexString {
 
 func Register(svc *appbudget.Service) webmcp.Register {
 	return func(s *sdk.Server) {
-		sdk.AddTool(s, &sdk.Tool{Name: "list_budgets",
-			Description: "The user's budgets; pass a budget id and month to the get_budget tool for monthly state."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("list_budgets", "List budgets",
+			"The user's budgets; pass a budget id and month to the get_budget tool for monthly state."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetBudgetListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_budgets")
 				userID, err := webmcp.UserID(ctx)
@@ -164,8 +164,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			Month    string `json:"month,omitempty" jsonschema:"YYYY-MM naming the budget month (the day is ignored); defaults to the current month"`
 		}
 
-		sdk.AddTool(s, &sdk.Tool{Name: "get_budget",
-			Description: "Full monthly budget state: folders, envelopes, categories, tags, limits, spent and available amounts. When the budget's period_start_day is not 1, a month runs from that day to the day before it in the following month and is named after the month it starts in; filters.periodStart/periodEnd carry the real window."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("get_budget", "Get monthly budget",
+			"Full monthly budget state: folders, envelopes, categories, tags, limits, spent and available amounts. When the budget's period_start_day is not 1, a month runs from that day to the day before it in the following month and is named after the month it starts in; filters.periodStart/periodEnd carry the real window."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in getBudgetInput) (*sdk.CallToolResult, model.GetBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "get_budget")
 				userID, err := webmcp.UserID(ctx)
@@ -192,8 +192,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			Months    int    `json:"months,omitempty" jsonschema:"window length in months, 1-24; defaults to 12"`
 		}
 
-		sdk.AddTool(s, &sdk.Tool{Name: "get_budget_plan",
-			Description: "Multi-month plan sheet: every income and expense row with per-month actual and planned amounts, plus opening balances and per-month rates. Planned values are edited with set_limit. Months are budget months: when the budget's period_start_day is not 1 each one is shifted to start on that day."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("get_budget_plan", "Get multi-month plan",
+			"Multi-month plan sheet: every income and expense row with per-month actual and planned amounts, plus opening balances and per-month rates. Planned values are edited with set_limit. Months are budget months: when the budget's period_start_day is not 1 each one is shifted to start on that day."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in getBudgetPlanInput) (*sdk.CallToolResult, model.GetBudgetPlanResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "get_budget_plan")
 				userID, err := webmcp.UserID(ctx)
@@ -218,8 +218,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "create_budget",
-			Description: "Create a new budget for the caller, seeded with their existing categories and tags. Use list_currencies for currency_id."},
+		sdk.AddTool(s, webmcp.WriteTool("create_budget", "Create budget",
+			"Create a new budget for the caller, seeded with their existing categories and tags. Use list_currencies for currency_id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in createBudgetInput) (*sdk.CallToolResult, model.CreateBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_budget")
 				userID, err := webmcp.UserID(ctx)
@@ -240,8 +240,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "update_budget",
-			Description: "Rename a budget, change its currency or period start day, or set/clear its end month. Member accounts are left untouched (use add_budget_account / remove_budget_account)."},
+		sdk.AddTool(s, webmcp.WriteTool("update_budget", "Update budget",
+			"Rename a budget, change its currency or period start day, or set/clear its end month. Member accounts are left untouched (use add_budget_account / remove_budget_account)."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateBudgetInput) (*sdk.CallToolResult, model.UpdateBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_budget")
 				userID, err := webmcp.UserID(ctx)
@@ -264,8 +264,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "create_folder",
-			Description: "Create a folder to group budget envelopes, categories and tags. Use list_budgets for budget_id."},
+		sdk.AddTool(s, webmcp.WriteTool("create_folder", "Create budget folder",
+			"Create a folder to group budget envelopes, categories and tags. Use list_budgets for budget_id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in createFolderInput) (*sdk.CallToolResult, model.CreateBudgetFolderResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_folder")
 				userID, err := webmcp.UserID(ctx)
@@ -284,8 +284,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "update_folder",
-			Description: "Rename a budget folder. Use get_budget to find its id."},
+		sdk.AddTool(s, webmcp.WriteTool("update_folder", "Rename budget folder",
+			"Rename a budget folder. Use get_budget to find its id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateFolderInput) (*sdk.CallToolResult, model.UpdateBudgetFolderResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_folder")
 				userID, err := webmcp.UserID(ctx)
@@ -303,8 +303,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "create_envelope",
-			Description: "Create a budget envelope that groups one or more categories under a shared limit. Use list_currencies for currency_id, list_categories for category_ids, get_budget for folder_id."},
+		sdk.AddTool(s, webmcp.WriteTool("create_envelope", "Create envelope",
+			"Create a budget envelope that groups one or more categories under a shared limit. Use list_currencies for currency_id, list_categories for category_ids, get_budget for folder_id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in createEnvelopeInput) (*sdk.CallToolResult, model.CreateEnvelopeResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_envelope")
 				userID, err := webmcp.UserID(ctx)
@@ -327,8 +327,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "update_envelope",
-			Description: "Update an envelope's name/icon/currency/categories, or archive/unarchive it (MCP has no delete; the app does). Send the full field set including category_ids, which replaces the group. Use get_budget for its id."},
+		sdk.AddTool(s, webmcp.WriteTool("update_envelope", "Update envelope",
+			"Update an envelope's name/icon/currency/categories, or archive/unarchive it (MCP has no delete; the app does). Send the full field set including category_ids, which replaces the group. Use get_budget for its id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateEnvelopeInput) (*sdk.CallToolResult, model.UpdateEnvelopeResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_envelope")
 				userID, err := webmcp.UserID(ctx)
@@ -354,8 +354,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "set_limit",
-			Description: "Set or clear an envelope/category/tag's limit for one month. Use get_budget for element_id. Savings rows (structure.savings) take limits too: element_id is the savings account id."},
+		sdk.AddTool(s, webmcp.WriteTool("set_limit", "Set monthly plan amount",
+			"Set or clear an envelope/category/tag's limit for one month. Use get_budget for element_id. Savings rows (structure.savings) take limits too: element_id is the savings account id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in setLimitInput) (*sdk.CallToolResult, setLimitResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_limit")
 				userID, err := webmcp.UserID(ctx)
@@ -383,8 +383,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			Months   int    `json:"months,omitempty" jsonschema:"window length in months, 1-24 (default 1)"`
 		}
 
-		sdk.AddTool(s, &sdk.Tool{Name: "list_budget_comments",
-			Description: "Comment threads on a budget's cells for a month window. Each comment names its element (the id get_budget returns) and its month."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("list_budget_comments", "List budget comments",
+			"Comment threads on a budget's cells for a month window. Each comment names its element (the id get_budget returns) and its month."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in listCommentsInput) (*sdk.CallToolResult, model.GetCommentListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_budget_comments")
 				userID, err := webmcp.UserID(ctx)
@@ -416,8 +416,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			Comment   string `json:"comment" jsonschema:"plain text, 1-500 characters"`
 		}
 
-		sdk.AddTool(s, &sdk.Tool{Name: "create_budget_comment",
-			Description: "Post a comment on one budget cell (element + month). Every participant may post, read-only guests included."},
+		sdk.AddTool(s, webmcp.WriteTool("create_budget_comment", "Add budget comment",
+			"Post a comment on one budget cell (element + month). Every participant may post, read-only guests included."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in createCommentInput) (*sdk.CallToolResult, model.CreateCommentResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_budget_comment")
 				userID, err := webmcp.UserID(ctx)
@@ -442,8 +442,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			Comment   string `json:"comment" jsonschema:"plain text, 1-500 characters"`
 		}
 
-		sdk.AddTool(s, &sdk.Tool{Name: "update_budget_comment",
-			Description: "Edit a comment you wrote. Only the author may edit."},
+		sdk.AddTool(s, webmcp.WriteTool("update_budget_comment", "Edit budget comment",
+			"Edit a comment you wrote. Only the author may edit."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateCommentInput) (*sdk.CallToolResult, model.UpdateCommentResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_budget_comment")
 				userID, err := webmcp.UserID(ctx)
@@ -461,8 +461,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			CommentID string `json:"comment_id" jsonschema:"comment id (UUID), from list_budget_comments"`
 		}
 
-		sdk.AddTool(s, &sdk.Tool{Name: "delete_budget_comment",
-			Description: "Delete a comment. The author may delete their own; the budget owner or an admin may delete any."},
+		sdk.AddTool(s, webmcp.DestructiveTool("delete_budget_comment", "Delete budget comment",
+			"Delete a comment. The author may delete their own; the budget owner or an admin may delete any."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in deleteCommentInput) (*sdk.CallToolResult, model.DeleteCommentResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "delete_budget_comment")
 				userID, err := webmcp.UserID(ctx)
@@ -476,8 +476,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "move_element",
-			Description: "Move one budget element (an envelope, tag or category) into a folder and/or reorder it, or put a category into an envelope (envelope_id). Use get_budget for element_id, folder_id, after_element_id and envelope_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first. A category moved to a folder or the ungrouped area leaves the envelope it was in; a category put into an envelope leaves any other envelope. A savings row (id = savings account id) reorders only among savings rows and cannot be put into a folder."},
+		sdk.AddTool(s, webmcp.WriteTool("move_element", "Move or reorder budget row",
+			"Move one budget element (an envelope, tag or category) into a folder and/or reorder it, or put a category into an envelope (envelope_id). Use get_budget for element_id, folder_id, after_element_id and envelope_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first. A category moved to a folder or the ungrouped area leaves the envelope it was in; a category put into an envelope leaves any other envelope. A savings row (id = savings account id) reorders only among savings rows and cannot be put into a folder."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in moveElementInput) (*sdk.CallToolResult, moveElementResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "move_element")
 				userID, err := webmcp.UserID(ctx)
@@ -496,8 +496,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, moveElementResult{BudgetID: in.BudgetID, ElementIDs: []string{in.ElementID}}, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "clone_budget",
-			Description: "Clone a budget you own or administer: structure, sharing and accounts are copied (the copy is yours); optionally the plans. Start from the source's start (full copy) or a later month (continuation)."},
+		sdk.AddTool(s, webmcp.WriteTool("clone_budget", "Clone budget",
+			"Clone a budget you own or administer: structure, sharing and accounts are copied (the copy is yours); optionally the plans. Start from the source's start (full copy) or a later month (continuation)."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in cloneBudgetInput) (*sdk.CallToolResult, model.CloneBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "clone_budget")
 				userID, err := webmcp.UserID(ctx)
@@ -517,8 +517,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "archive_budget",
-			Description: "Archive a budget: hidden and read-only until unarchived."},
+		sdk.AddTool(s, webmcp.WriteTool("archive_budget", "Archive budget",
+			"Archive a budget: hidden and read-only until unarchived."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in budgetIDInput) (*sdk.CallToolResult, model.ArchiveBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "archive_budget")
 				userID, err := webmcp.UserID(ctx)
@@ -532,8 +532,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "unarchive_budget",
-			Description: "Unarchive a budget."},
+		sdk.AddTool(s, webmcp.WriteTool("unarchive_budget", "Unarchive budget",
+			"Unarchive a budget."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in budgetIDInput) (*sdk.CallToolResult, model.UnarchiveBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "unarchive_budget")
 				userID, err := webmcp.UserID(ctx)
@@ -547,8 +547,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "add_budget_account",
-			Description: "Add one of your accounts to a budget so its transactions and balance count, or change whether an existing member is a savings account in this budget. Use list_accounts for account_id. A savings account gets its own savings row in the budget, where you plan how much goes into it each month; every budget participant sees that row, with the account's name and amounts. Turning savings off deletes the row's planned amounts and comments, so it is refused unless confirm_savings_removal is true."},
+		sdk.AddTool(s, webmcp.DestructiveTool("add_budget_account", "Add account to budget",
+			"Add one of your accounts to a budget so its transactions and balance count, or change whether an existing member is a savings account in this budget. Use list_accounts for account_id. A savings account gets its own savings row in the budget, where you plan how much goes into it each month; every budget participant sees that row, with the account's name and amounts. Turning savings off deletes the row's planned amounts and comments, so it is refused unless confirm_savings_removal is true."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in addBudgetAccountInput) (*sdk.CallToolResult, budgetAccountResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "add_budget_account")
 				userID, err := webmcp.UserID(ctx)
@@ -563,8 +563,8 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, budgetAccountResult{BudgetID: in.BudgetID, AccountID: in.AccountID, Member: true}, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "remove_budget_account",
-			Description: "Remove one of your accounts from a budget. Only possible while the account has no transactions in past months of the budget. Removing a savings account deletes its savings row (visible to every budget participant), and when that row has planned amounts or comments the removal is refused unless confirm_savings_removal is true."},
+		sdk.AddTool(s, webmcp.DestructiveTool("remove_budget_account", "Remove account from budget",
+			"Remove one of your accounts from a budget. Only possible while the account has no transactions in past months of the budget. Removing a savings account deletes its savings row (visible to every budget participant), and when that row has planned amounts or comments the removal is refused unless confirm_savings_removal is true."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in removeBudgetAccountInput) (*sdk.CallToolResult, budgetAccountResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "remove_budget_account")
 				userID, err := webmcp.UserID(ctx)
