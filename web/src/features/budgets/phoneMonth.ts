@@ -161,8 +161,9 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
 }
 
 /** the hint on the target's plan figure; Uncategorized and reporting tags hold no plan.
- *  `month` ('YYYY-MM-01'): the month the figure is for, which a debt row's hint needs. */
-export function sheetPlanHint(target: SheetTarget, month?: string): PlanHint {
+ *  `period`: the period key ('YYYY-MM-01') the figure is for and the budget's period
+ *  start day, which a debt row's hint needs. */
+export function sheetPlanHint(target: SheetTarget, period?: { month: string; startDay: number }): PlanHint {
   switch (target.kind) {
     case 'expense': {
       const el = target.element
@@ -172,7 +173,7 @@ export function sheetPlanHint(target: SheetTarget, month?: string): PlanHint {
     case 'savings':
       return planHint({ planned: target.row.budgeted, spent: target.row.spent, upcoming: target.row.upcoming, kind: 'savings' })
     case 'debt':
-      return planHint({ planned: target.row.budgeted, spent: target.row.spent, scheduled: target.row.scheduledTotal, month, kind: 'debt' })
+      return planHint({ planned: target.row.budgeted, spent: target.row.spent, scheduled: target.row.scheduledTotal, month: period?.month, startDay: period?.startDay, kind: 'debt' })
     case 'plan': {
       const { element, planned, actual, upcoming } = target.cell
       if (element.id === UNCATEGORIZED_ID) return null

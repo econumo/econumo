@@ -7,63 +7,63 @@ const sel = '2026-10-01'
 
 describe('planCellView', () => {
   it('Uncategorized gets no hint', () => {
-    expect(planCellView({ type: cat, id: UNCATEGORIZED_ID, cell: { actual: '0', planned: '', upcoming: '650' }, month: '2026-11-01', selected: sel }).hint).toBeNull()
+    expect(planCellView({ type: cat, id: UNCATEGORIZED_ID, cell: { actual: '0', planned: '', upcoming: '650' }, month: '2026-11-01', selected: sel, startDay: 1 }).hint).toBeNull()
   })
 
   it('shows actual and plan up to the selected month', () => {
-    expect(planCellView({ type: cat, cell: { actual: '612', planned: '600' }, month: '2026-09-01', selected: sel })).toEqual({ actual: '612', dash: false, plan: '600', over: true, balance: false, hint: null })
-    expect(planCellView({ type: cat, cell: { actual: '341', planned: '600' }, month: sel, selected: sel })).toEqual({ actual: '341', dash: false, plan: '600', over: false, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '612', planned: '600' }, month: '2026-09-01', selected: sel, startDay: 1 })).toEqual({ actual: '612', dash: false, plan: '600', over: true, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '341', planned: '600' }, month: sel, selected: sel, startDay: 1 })).toEqual({ actual: '341', dash: false, plan: '600', over: false, balance: false, hint: null })
   })
   it('shows only the plan after the selected month', () => {
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '55' }, month: '2026-11-01', selected: sel })).toEqual({ actual: null, dash: false, plan: '55', over: false, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '55' }, month: '2026-11-01', selected: sel, startDay: 1 })).toEqual({ actual: null, dash: false, plan: '55', over: false, balance: false, hint: null })
   })
   it('leaves an unplanned month blank, never 0', () => {
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: '2026-11-01', selected: sel }).plan).toBeNull()
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: '2026-11-01', selected: sel, startDay: 1 }).plan).toBeNull()
   })
   it('marks a planned month with nothing spent yet with a dash: "— · 55"', () => {
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '55' }, month: sel, selected: sel })).toEqual({ actual: null, dash: true, plan: '55', over: false, balance: false, hint: null })
-    expect(planCellView({ type: cat, cell: { actual: '0.00', planned: '55' }, month: '2026-09-01', selected: sel })).toEqual({ actual: null, dash: true, plan: '55', over: false, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '55' }, month: sel, selected: sel, startDay: 1 })).toEqual({ actual: null, dash: true, plan: '55', over: false, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '0.00', planned: '55' }, month: '2026-09-01', selected: sel, startDay: 1 })).toEqual({ actual: null, dash: true, plan: '55', over: false, balance: false, hint: null })
   })
   it('leaves a month with neither an actual nor a plan blank', () => {
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: sel, selected: sel })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: sel, selected: sel, startDay: 1 })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false, hint: null })
   })
   it('shows a plan of 0 even while nothing happened in that month; only no plan is blank', () => {
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '0.00' }, month: sel, selected: sel })).toEqual({ actual: null, dash: true, plan: '0.00', over: false, balance: false, hint: null })
-    expect(planCellView({ type: cat, cell: { actual: '0.00', planned: '0' }, month: '2026-09-01', selected: sel }).plan).toBe('0')
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '0.00' }, month: '2026-11-01', selected: sel }).plan).toBe('0.00')
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: sel, selected: sel })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '0.00' }, month: sel, selected: sel, startDay: 1 })).toEqual({ actual: null, dash: true, plan: '0.00', over: false, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '0.00', planned: '0' }, month: '2026-09-01', selected: sel, startDay: 1 }).plan).toBe('0')
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '0.00' }, month: '2026-11-01', selected: sel, startDay: 1 }).plan).toBe('0.00')
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '' }, month: sel, selected: sel, startDay: 1 })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false, hint: null })
   })
   it('keeps a zero plan next to a non-zero actual: "12 · 0"', () => {
-    expect(planCellView({ type: cat, cell: { actual: '12', planned: '0.00' }, month: sel, selected: sel })).toEqual({ actual: '12', dash: false, plan: '0.00', over: true, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '12', planned: '0.00' }, month: sel, selected: sel, startDay: 1 })).toEqual({ actual: '12', dash: false, plan: '0.00', over: true, balance: false, hint: null })
   })
   it('shows an actual with no plan on its own, red when it is overspent', () => {
-    expect(planCellView({ type: cat, cell: { actual: '20', planned: '' }, month: sel, selected: sel })).toEqual({ actual: '20', dash: false, plan: null, over: true, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: { actual: '20', planned: '' }, month: sel, selected: sel, startDay: 1 })).toEqual({ actual: '20', dash: false, plan: null, over: true, balance: false, hint: null })
   })
   it('never marks income or savings as over', () => {
-    expect(planCellView({ type: BudgetElementType.INCOME_CATEGORY, cell: { actual: '9', planned: '1' }, month: sel, selected: sel }).over).toBe(false)
-    expect(planCellView({ type: BudgetElementType.SAVINGS, cell: { actual: '9', planned: '1' }, month: sel, selected: sel }).over).toBe(false)
+    expect(planCellView({ type: BudgetElementType.INCOME_CATEGORY, cell: { actual: '9', planned: '1' }, month: sel, selected: sel, startDay: 1 }).over).toBe(false)
+    expect(planCellView({ type: BudgetElementType.SAVINGS, cell: { actual: '9', planned: '1' }, month: sel, selected: sel, startDay: 1 }).over).toBe(false)
   })
   it('reads a missing cell as nothing at all', () => {
-    expect(planCellView({ type: cat, cell: undefined, month: sel, selected: sel })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false, hint: null })
+    expect(planCellView({ type: cat, cell: undefined, month: sel, selected: sel, startDay: 1 })).toEqual({ actual: null, dash: false, plan: null, over: false, balance: false, hint: null })
   })
 })
 
 describe('planCellView plan hint', () => {
   it('a future cell with no plan stays empty', () => {
-    const view = planCellView({ type: cat, cell: { actual: '0', planned: '', upcoming: '650' }, month: '2026-11-01', selected: sel })
+    const view = planCellView({ type: cat, cell: { actual: '0', planned: '', upcoming: '650' }, month: '2026-11-01', selected: sel, startDay: 1 })
     expect(view.hint).toBeNull()
     expect(view.plan).toBeNull()
   })
   it('current month short', () => {
-    expect(planCellView({ type: cat, cell: { actual: '300', planned: '500', upcoming: '250' }, month: sel, selected: sel }).hint).toEqual({ kind: 'short' })
+    expect(planCellView({ type: cat, cell: { actual: '300', planned: '500', upcoming: '250' }, month: sel, selected: sel, startDay: 1 }).hint).toEqual({ kind: 'short' })
   })
   it('past month has no hint', () => {
-    expect(planCellView({ type: cat, cell: { actual: '0', planned: '', upcoming: '650' }, month: '2026-09-01', selected: sel }).hint).toBeNull()
+    expect(planCellView({ type: cat, cell: { actual: '0', planned: '', upcoming: '650' }, month: '2026-09-01', selected: sel, startDay: 1 }).hint).toBeNull()
   })
   it('a savings balance cell never carries a hint', () => {
     const sav = BudgetElementType.SAVINGS
-    expect(planCellView({ type: sav, cell: { actual: '100', planned: '', closingBalance: '5000', upcoming: '200' }, month: '2026-11-01', selected: sel }).hint).toBeNull()
-    expect(planCellView({ type: sav, cell: { actual: '100', planned: '50', closingBalance: '5000', upcoming: '200' }, month: '2026-11-01', selected: sel }).hint).toBeNull()
+    expect(planCellView({ type: sav, cell: { actual: '100', planned: '', closingBalance: '5000', upcoming: '200' }, month: '2026-11-01', selected: sel, startDay: 1 }).hint).toBeNull()
+    expect(planCellView({ type: sav, cell: { actual: '100', planned: '50', closingBalance: '5000', upcoming: '200' }, month: '2026-11-01', selected: sel, startDay: 1 }).hint).toBeNull()
   })
 })
 
@@ -79,29 +79,29 @@ describe('shownActual', () => {
 describe('planCellView for a savings account', () => {
   const sav = BudgetElementType.SAVINGS
   it('shows the month-end balance instead of what was saved, in every month', () => {
-    expect(planCellView({ type: sav, cell: { actual: '500', planned: '500', closingBalance: '10000' }, month: '2026-09-01', selected: sel })).toMatchObject({
+    expect(planCellView({ type: sav, cell: { actual: '500', planned: '500', closingBalance: '10000' }, month: '2026-09-01', selected: sel, startDay: 1 })).toMatchObject({
       actual: '10000',
       plan: '500',
       balance: true,
       over: false,
     })
     // a future month: the projected balance, which stays flat without a plan
-    expect(planCellView({ type: sav, cell: { actual: '0', planned: '', closingBalance: '2400' }, month: '2026-11-01', selected: sel })).toMatchObject({
+    expect(planCellView({ type: sav, cell: { actual: '0', planned: '', closingBalance: '2400' }, month: '2026-11-01', selected: sel, startDay: 1 })).toMatchObject({
       actual: '2400',
       plan: null,
       balance: true,
     })
   })
   it('a zero balance is a real figure, not a dash', () => {
-    expect(planCellView({ type: sav, cell: { actual: '0', planned: '50', closingBalance: '0' }, month: sel, selected: sel })).toMatchObject({ actual: '0', dash: false })
+    expect(planCellView({ type: sav, cell: { actual: '0', planned: '50', closingBalance: '0' }, month: sel, selected: sel, startDay: 1 })).toMatchObject({ actual: '0', dash: false })
   })
   it('keeps a plan of 0 next to any balance, leaves no plan blank', () => {
-    expect(planCellView({ type: sav, cell: { actual: '0', planned: '0.00', closingBalance: '0' }, month: sel, selected: sel })).toMatchObject({ actual: '0', plan: '0.00' })
-    expect(planCellView({ type: sav, cell: { actual: '0', planned: '', closingBalance: '0' }, month: sel, selected: sel })).toMatchObject({ actual: '0', plan: null })
-    expect(planCellView({ type: sav, cell: { actual: '0', planned: '0.00', closingBalance: '2400' }, month: '2026-11-01', selected: sel })).toMatchObject({ actual: '2400', plan: '0.00' })
+    expect(planCellView({ type: sav, cell: { actual: '0', planned: '0.00', closingBalance: '0' }, month: sel, selected: sel, startDay: 1 })).toMatchObject({ actual: '0', plan: '0.00' })
+    expect(planCellView({ type: sav, cell: { actual: '0', planned: '', closingBalance: '0' }, month: sel, selected: sel, startDay: 1 })).toMatchObject({ actual: '0', plan: null })
+    expect(planCellView({ type: sav, cell: { actual: '0', planned: '0.00', closingBalance: '2400' }, month: '2026-11-01', selected: sel, startDay: 1 })).toMatchObject({ actual: '2400', plan: '0.00' })
   })
   it('without balances from the server it falls back to what was saved', () => {
-    expect(planCellView({ type: sav, cell: { actual: '30', planned: '50' }, month: sel, selected: sel })).toMatchObject({ actual: '30', balance: false, hint: null })
+    expect(planCellView({ type: sav, cell: { actual: '30', planned: '50' }, month: sel, selected: sel, startDay: 1 })).toMatchObject({ actual: '30', balance: false, hint: null })
   })
 })
 
@@ -120,25 +120,25 @@ describe('planCellView for a debt', () => {
   })
 
   it('shows the month-end balance and the payments left beside the plan', () => {
-    expect(planCellView({ type: debt, cell: cell(), month: sel, selected: sel })).toEqual({
+    expect(planCellView({ type: debt, cell: cell(), month: sel, selected: sel, startDay: 1 })).toEqual({
       actual: '23000', dash: false, plan: '1500', over: false, balance: true, hint: null, paymentsLeft: 23,
     })
     // ahead of today it is the projection
-    expect(planCellView({ type: debt, cell: cell({ actual: '0' }), month: '2026-12-01', selected: sel })).toMatchObject({ actual: '23000', balance: true })
+    expect(planCellView({ type: debt, cell: cell({ actual: '0' }), month: '2026-12-01', selected: sel, startDay: 1 })).toMatchObject({ actual: '23000', balance: true })
   })
 
   it('a paid-off month leaves no payments', () => {
-    expect(planCellView({ type: debt, cell: cell({ closingBalance: '0', paymentsLeft: 0 }), month: sel, selected: sel })).toMatchObject({ actual: '0', paymentsLeft: 0 })
+    expect(planCellView({ type: debt, cell: cell({ closingBalance: '0', paymentsLeft: 0 }), month: sel, selected: sel, startDay: 1 })).toMatchObject({ actual: '0', paymentsLeft: 0 })
   })
 
   it('a plan below the scheduled dues is red from the current month on, never before', () => {
-    expect(planCellView({ type: debt, cell: cell({ planned: '800' }), month: sel, selected: sel }).hint).toEqual({ kind: 'short' })
-    expect(planCellView({ type: debt, cell: cell({ planned: '800' }), month: '2026-09-01', selected: sel }).hint).toBeNull()
-    expect(planCellView({ type: debt, cell: cell({ planned: '' }), month: sel, selected: sel }).hint).toBeNull()
+    expect(planCellView({ type: debt, cell: cell({ planned: '800' }), month: sel, selected: sel, startDay: 1 }).hint).toEqual({ kind: 'short' })
+    expect(planCellView({ type: debt, cell: cell({ planned: '800' }), month: '2026-09-01', selected: sel, startDay: 1 }).hint).toBeNull()
+    expect(planCellView({ type: debt, cell: cell({ planned: '' }), month: sel, selected: sel, startDay: 1 }).hint).toBeNull()
   })
 
   it('outside the debt\'s life with nothing owed the cell is blank', () => {
-    expect(planCellView({ type: debt, cell: cell({ actual: '0', planned: '', closingBalance: '0', paymentsLeft: 0, isPlannable: 0 }), month: sel, selected: sel })).toEqual({
+    expect(planCellView({ type: debt, cell: cell({ actual: '0', planned: '', closingBalance: '0', paymentsLeft: 0, isPlannable: 0 }), month: sel, selected: sel, startDay: 1 })).toEqual({
       actual: null, dash: false, plan: null, over: false, balance: false, hint: null, paymentsLeft: null,
     })
   })

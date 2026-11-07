@@ -79,22 +79,41 @@ describe('planHint on a debt row', () => {
   const thisMonth = currentPeriod(1)
 
   it('a plan below the scheduled amount is red, from the current month on', () => {
-    expect(planHint({ planned: '500', spent: '0', upcoming: '1000', scheduled: '1000', month: thisMonth, kind: 'debt' })).toEqual({ kind: 'short' })
-    expect(planHint({ planned: '500', spent: '0', scheduled: '1000', month: '2999-01-01', kind: 'debt' })).toEqual({ kind: 'short' })
+    expect(planHint({ planned: '500', spent: '0', upcoming: '1000', scheduled: '1000', month: thisMonth, startDay: 1, kind: 'debt' })).toEqual({ kind: 'short' })
+    expect(planHint({ planned: '500', spent: '0', scheduled: '1000', month: '2999-01-01', startDay: 1, kind: 'debt' })).toEqual({ kind: 'short' })
   })
 
   it('a past month is never red', () => {
-    expect(planHint({ planned: '500', spent: '500', scheduled: '1000', month: '2000-01-01', kind: 'debt' })).toBeNull()
+    expect(planHint({ planned: '500', spent: '500', scheduled: '1000', month: '2000-01-01', startDay: 1, kind: 'debt' })).toBeNull()
   })
 
   it('no plan, or a plan at or above the scheduled amount, is not red', () => {
-    expect(planHint({ planned: '', spent: '0', scheduled: '1000', month: thisMonth, kind: 'debt' })).toBeNull()
-    expect(planHint({ planned: '1000', spent: '0', scheduled: '1000', month: thisMonth, kind: 'debt' })).toBeNull()
-    expect(planHint({ planned: '1500', spent: '0', scheduled: '1000', month: thisMonth, kind: 'debt' })).toBeNull()
+    expect(planHint({ planned: '', spent: '0', scheduled: '1000', month: thisMonth, startDay: 1, kind: 'debt' })).toBeNull()
+    expect(planHint({ planned: '1000', spent: '0', scheduled: '1000', month: thisMonth, startDay: 1, kind: 'debt' })).toBeNull()
+    expect(planHint({ planned: '1500', spent: '0', scheduled: '1000', month: thisMonth, startDay: 1, kind: 'debt' })).toBeNull()
   })
 
   it('what was paid and is still due does not matter: only the scheduled amount does', () => {
-    expect(planHint({ planned: '1000', spent: '900', upcoming: '600', scheduled: '1000', month: thisMonth, kind: 'debt' })).toBeNull()
+    expect(planHint({ planned: '1000', spent: '900', upcoming: '600', scheduled: '1000', month: thisMonth, startDay: 1, kind: 'debt' })).toBeNull()
+  })
+})
+
+describe('planHint on a debt row in a shifted budget', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    // 10 August is in the July period of a day-16 budget
+    vi.setSystemTime(new Date(2026, 7, 10, 12))
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('is red from the budget\'s current period on, not the calendar month', () => {
+    const short = { planned: '500', spent: '0', scheduled: '1000', month: '2026-07-01', kind: 'debt' as const }
+    expect(planHint({ ...short, startDay: 16 })).toEqual({ kind: 'short' })
+    expect(planHint({ ...short, startDay: 1 })).toBeNull()
+  })
+
+  it('without the start day there is no hint', () => {
+    expect(planHint({ planned: '500', spent: '0', scheduled: '1000', month: '2999-01-01', kind: 'debt' })).toBeNull()
   })
 })
 

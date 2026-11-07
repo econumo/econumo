@@ -29,6 +29,7 @@ import { arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, 
 import type { DropIndicator, ElementContainer, ElementMoveItem } from './elementMove'
 import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
 import { isEnvelopeType } from './elementEdit'
+import { periodOf, periodStartDayOf } from './period'
 
 export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' } | { kind: 'debt' }>
 
@@ -174,9 +175,11 @@ export function MonthFlows({
     const c = currencyOf(currencyId)
     return moneyFormat(amount, c, cellOpts(c))
   }
-  const month = budget.filters.periodStart.slice(0, 10)
+  const startDay = periodStartDayOf(budget.meta)
+  // filters.periodStart is the period's first day; the hint wants its key
+  const month = periodOf(budget.filters.periodStart.slice(0, 10), startDay)
   const planned = (target: FlowTarget, amount: string, currencyId: Id) => {
-    const hint = sheetPlanHint(target, month)
+    const hint = sheetPlanHint(target, { month, startDay })
     return renderPlanned(target, amount === '' ? EMPTY_CELL : fmt(amount, currencyId), hint)
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)

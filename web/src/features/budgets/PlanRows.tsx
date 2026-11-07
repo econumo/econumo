@@ -421,7 +421,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
           const idx = ctx.monthIndex(m)
           const cell = idx >= 0 ? el.cells[idx] : undefined
           const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
-          const view = planCellView({ type: el.type, id: el.id, cell, month: m, selected: ctx.selected })
+          const view = planCellView({ type: el.type, id: el.id, cell, month: m, selected: ctx.selected, startDay: periodStartDayOf(ctx.meta) })
           const actual = view.actual
           const planFigure = view.plan
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i

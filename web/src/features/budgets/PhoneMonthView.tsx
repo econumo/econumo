@@ -295,7 +295,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const planFigure = (target: SheetTarget, planned: string, currencyId: Id | null) => {
-    const hint = sheetPlanHint(target, selectedDate)
+    const hint = sheetPlanHint(target, { month: selectedDate, startDay: periodStartDayOf(budget.meta) })
     return { first: planned === '' ? EMPTY : fmt(planned, currencyId), firstClass: planHintClass(hint) }
   }
   const future = selectedDate > currentPeriod(periodStartDayOf(budget.meta))

@@ -93,7 +93,7 @@ export function ElementSheet({
   // the sheet repeats a foreign item's code beside every amount (the row only tags its name)
   const fmt = (amount: string) => `${fmtIn(amount, currency)}${foreign && currency ? ` ${currency.code}` : ''}`
   const actual = (amount: string) => (future ? EMPTY : fmt(amount))
-  const hint = sheetPlanHint(target, month)
+  const hint = sheetPlanHint(target, { month, startDay })
   const planFigure = (key: string, figureLabel: string, planned: string): Figure => ({
     key,
     label: figureLabel,

@@ -19,13 +19,22 @@ export function planNeed(spent: string, upcoming: string | undefined): string {
 
 /** planned: '' or a decimal (element currency); spent: real money so far; upcoming: still due (absent = 0).
  *  An empty plan stays empty: only an expense plan below what the month needs is marked.
- *  A debt row's one rule is a plan below the month's scheduled dues (`scheduled`), from
- *  the current month on (`month`, 'YYYY-MM-01'): the bank collects them whatever was planned. */
-export function planHint(input: { planned: string; spent: string; upcoming?: string; kind: PlanHintKind; scheduled?: string; month?: string }): PlanHint {
+ *  A debt row's one rule is a plan below the period's scheduled dues (`scheduled`), from
+ *  the budget's current period on (`month`, the period key 'YYYY-MM-01', of a budget whose
+ *  periods start on `startDay`): the bank collects them whatever was planned. */
+export function planHint(input: {
+  planned: string
+  spent: string
+  upcoming?: string
+  kind: PlanHintKind
+  scheduled?: string
+  month?: string
+  startDay?: number
+}): PlanHint {
   const { planned, spent, upcoming, kind } = input
   if (kind === 'debt') {
-    const { scheduled, month } = input
-    if (planned === '' || scheduled === undefined || month === undefined || month < currentPeriod(1)) return null
+    const { scheduled, month, startDay } = input
+    if (planned === '' || scheduled === undefined || month === undefined || startDay === undefined || month < currentPeriod(startDay)) return null
     return cmp(planned, scheduled) < 0 ? { kind: 'short' } : null
   }
   if (kind !== 'expense' || upcoming === undefined || isZero(upcoming) || planned === '') return null
