@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budget & plan",
+      "reports": "Rapporten",
       "onboarding": "Aan de slag",
       "create_account": "Rekening toevoegen",
       "collapse_menu": "Menu inklappen",
@@ -1398,6 +1399,9 @@
         "end_month": {
           "label": "Eindmaand",
           "none": "Geen einddatum"
+        },
+        "period_start_day": {
+          "label": "Begin van de maand"
         }
       },
       "budget_envelope": {
@@ -1677,6 +1681,68 @@
         }
       }
     }
+  },
+  "reports": {
+    "page": {
+      "title": "Rapporten"
+    },
+    "tabs": {
+      "new": "Nieuw tabblad",
+      "close": "{name} sluiten",
+      "close_menu": "Sluiten",
+      "rename": "Hernoemen",
+      "duplicate": "Dupliceren",
+      "name_label": "Naam van tabblad",
+      "limit": "Maximaal {count} tabbladen"
+    },
+    "kind": {
+      "networth": "Nettovermogen"
+    },
+    "list": {
+      "choose": "Kies een rapport",
+      "scope": "Bereik",
+      "scope_mine": "Mijn rekeningen",
+      "networth_q": "Word ik rijker of armer?",
+      "suggest_q": "Rapport voorstellen",
+      "suggest_note": "Mist u een rapport? Vertel ons wat u graag zou zien.",
+      "networth_caption": "vandaag",
+      "networth_up": "{amount} meer dit jaar",
+      "networth_down": "{amount} minder dit jaar",
+      "networth_flat": "Geen verandering dit jaar"
+    },
+    "period": {
+      "quarter": "K{quarter} {year}"
+    },
+    "networth": {
+      "period_1y": "1 j",
+      "period_3y": "3 j",
+      "period_all": "Alles",
+      "chart": "Vermogensgrafiek",
+      "col_start": "Begin",
+      "col_now": "Nu",
+      "no_folder": "Geen map",
+      "other_owner": "Andere deelnemer",
+      "expand": "Rekeningen in {name} tonen",
+      "collapse": "Rekeningen in {name} verbergen",
+      "empty": "Nog geen rekeningsaldi",
+      "everyday": "Betaalrekeningen",
+      "period_1y_words": "in het afgelopen jaar",
+      "period_3y_words": "in de afgelopen 3 jaar",
+      "period_all_words": "sinds het begin",
+      "range_words": "sinds {from}",
+      "clear_range": "Selectie wissen",
+      "show_transactions": "Transacties van {name} tonen",
+      "drag_hint": "Sleep over de grafiek om een periode te kiezen",
+      "range_transactions": "Transacties",
+      "period": "Periode",
+      "headline": "Samenvatting",
+      "col_change": "Verandering",
+      "total": "Totaal"
+    },
+    "insight": {
+      "empty": "Nog geen transacties"
+    },
+    "updated_at": "Bijgewerkt {time}"
   },
   "classifications": {
     "common": {
@@ -2174,6 +2240,7 @@
       "accounts_required": "Selecteer minstens één rekening",
       "archived": "Dit budget is gearchiveerd",
       "end_before_start": "De eindmaand ligt vóór de start van het budget",
+      "invalid_period_start_day": "Kies een dag van 1 tot 28",
       "comment_not_found": "Opmerking niet gevonden",
       "comment_forbidden": "Je kunt deze opmerking niet wijzigen"
     },

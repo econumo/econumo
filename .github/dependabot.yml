@@ -20,6 +20,13 @@ updates:
           - "react"
           - "react-dom"
 
+  - package-ecosystem: "npm"
+    directory: "/.github/release-tools/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore: "
+
   # Enable version updates for Docker
   - package-ecosystem: "docker"
     directory: "/deployment/docker/"

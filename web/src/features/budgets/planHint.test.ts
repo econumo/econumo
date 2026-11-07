@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BudgetElementType } from '@/api/dto/budget'
-import { planHint, planHintKind, planNeed } from './planHint'
-import { currentMonth } from './planMath'
+import { planHint, planHintKind, planNeed, wantsUpcomingPanel } from './planHint'
+import { currentPeriod } from './period'
 
 describe('planHint', () => {
   it('an empty plan stays empty', () => {
@@ -76,7 +76,7 @@ describe('planHintKind', () => {
 })
 
 describe('planHint on a debt row', () => {
-  const thisMonth = currentMonth()
+  const thisMonth = currentPeriod(1)
 
   it('a plan below the scheduled amount is red, from the current month on', () => {
     expect(planHint({ planned: '500', spent: '0', upcoming: '1000', scheduled: '1000', month: thisMonth, kind: 'debt' })).toEqual({ kind: 'short' })
@@ -95,5 +95,25 @@ describe('planHint on a debt row', () => {
 
   it('what was paid and is still due does not matter: only the scheduled amount does', () => {
     expect(planHint({ planned: '1000', spent: '900', upcoming: '600', scheduled: '1000', month: thisMonth, kind: 'debt' })).toBeNull()
+  })
+})
+
+describe('wantsUpcomingPanel in a shifted budget', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 5, 12))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('on 5 October a day-28 budget is still in September, so September is not past', () => {
+    expect(wantsUpcomingPanel('2026-08-01', '300', '250', false, 28)).toBe(false)
+    expect(wantsUpcomingPanel('2026-09-01', '300', '250', false, 28)).toBe(true)
+  })
+
+  it('a calendar-month budget is already in October, so September is past', () => {
+    expect(wantsUpcomingPanel('2026-09-01', '300', '250', false, 1)).toBe(false)
+    expect(wantsUpcomingPanel('2026-10-01', '300', '250', false, 1)).toBe(true)
   })
 })

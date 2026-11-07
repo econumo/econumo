@@ -323,7 +323,8 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   `client_secret_post`/`client_secret_basic`). Redirect URIs must be https (ASCII host
   only) or http on a loopback host (`127.0.0.1`, `[::1]`, `localhost`; the port is
   ignored when matching), at most 2048 bytes; clients never approved are purged
-  on the next registration once 30 days old. Registration is behind the global per-endpoint rate cap; the token
+  on the next registration once 30 days old, and at most 1000 are kept, oldest out first, so
+  anonymous registration cannot grow the database without bound. Registration is behind the per-IP per-endpoint rate cap; the token
   endpoint has no limiter of its own.
 - Consent lives at the SPA route `/oauth/authorize`. The session is a localStorage
   bearer token, so the browser cannot carry it to a Go-rendered page: the SPA calls
@@ -365,7 +366,9 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
 
 Directory structure in `web/src/`: `pages/` (routes), `features/`, `components/`
 (shadcn-style UI), `api/` (typed API clients), `hooks/`, `app/` (providers,
-router, i18n setup), `lib/`, `locales/`, `test/`. Anything that waits on the
+router, i18n setup), `lib/`, `locales/`, `test/`. The shadcn CLI is not a dependency (its tree
+brought unpatchable advisories into the lockfile): add components with `pnpm dlx shadcn add`;
+its Tailwind helpers are a copy in `src/shadcn-tailwind.css`. Anything that waits on the
 user (share invites, imported transactions to review, failed imports, failing
 syncs) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
 `useInbox()` hook that also drives the sidebar badge; new attention items go
@@ -407,6 +410,43 @@ dismissing it writes the running version through `update-last-seen-version`. An 
 into a new minor line links that line's `.0` notes (v1.6.x -> v1.7.2 shows v1.7.0), a patch
 upgrade within the line the running patch. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
+
+**Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
+sidebar footer, not a menu entry): Net worth, plus a "Suggest a report" card that opens the
+feedback form on its feature-request type. The tab list is stored per user on
+the device only (localStorage `econumo.reportTabs`) and Reports always opens on the FIRST tab.
+Every report query key is invalidated after any successful mutation
+(`web/src/lib/appQueryClient.ts`), so a report never shows stale figures.
+
+**Service worker** (`web/sw/sw.js`, registered by `web/src/lib/serviceWorker.ts`, production
+web builds only, never in the native app): it makes the installed PWA start offline. A Vite
+plugin in `web/vite.config.ts` writes `dist/sw.js` after the build, prepending the precache
+list (the bundle, the manifest and the icons it and `index.html` name)
+and a build hash, a digest of the worker and those files rather than the release version (every
+dev deploy reports `dev`), so a deploy that changes any of them installs a new worker
+(`skipWaiting` + `clients.claim`, every other shell and the runtime cache dropped on activate).
+Navigations are network-first with the shell cached under `/` (Go's file server redirects
+`/index.html`); `/assets/*` is cache-first; other shell files network-first. Network-first falls
+back to the cache after 4 s, body included, so a dead connection opens the app in about 4 s, and
+on a 5xx or 404 when a copy exists (the server has these files and answers client routes with the
+shell, so those are from a proxy whose upstream is down). `/api`,
+`/mcp`, the OAuth server routes, `/.well-known`, `/health`, `/_` and liltag are never intercepted,
+and nothing user-specific is cached (the data lives in IndexedDB, below). Two rules keep an
+offline launch consistent: the offline `/` is only ever the precached one (a newer build's page
+would name a bundle that is not cached), and `econumo-config.js` lives in the `econumo-config`
+cache, which outlives every worker. Only the page that booted with a config stores it
+(`rememberRunningConfig`), the worker just reads it, and a page opened from the cached shell gets
+the cached config even if the server answers that request. Its
+`VERSION_REF` keys the stored data (`getCacheBuster`), so a worker that updates while the page
+stays open must not make the next offline launch discard the transactions; the price is that
+such a launch runs the new bundle over data the previous build stored, until it is next online,
+so a change that breaks reading stored data must bump `FORMAT_VERSION`, which both the store and
+the query cache key on. "Clear cache and reload" also asks
+the worker to download its shell files again. Install and refresh share one
+check: nothing changes until every file has arrived and belongs to this build, so an unreachable
+server, a redirect, an HTML page under an asset's name, a shell page naming no asset (a proxy's)
+or a server already on another build leave the offline copy in place. The hook's lock
+then lasts until that answer too (at most 60 s).
 
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One
 database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the SimpleFIN
@@ -665,7 +705,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   no token-related configuration. Persist the `/app/var` volume (the db) to keep data and
   logins valid. Leftover `ECONUMO_JWT_*` variables from older builds are ignored.
 - `ECONUMO_DATA_SALT` — **Deprecated and IGNORED by the API/repositories**, which always run
-  salt-free (plaintext emails, `lower(email)` as the lookup key). It is consumed by exactly one
+  salt-free (plaintext normalized emails, `email` as the lookup key). It is consumed by exactly one
   code path, the `data:remove-salt` migration (below), which reads it to decrypt existing data.
   Set it to your old salt, run that command, then unset it. Until you migrate, a still-salted
   database has unreadable emails, so those users cannot log in (the intended push to migrate);
@@ -833,8 +873,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   covering its routes.
 - `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
   fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
-  it on). Served as `FEEDBACK`; `false` hides the Settings row, the form's only entry point. The
-  form (`web/src/features/feedback`) posts `type`, `message`, an optional `email` (empty by
+  it on). Served as `FEEDBACK`; `false` hides its entry points (the Settings row and Reports'
+  "Suggest a report" card). The form (`web/src/features/feedback`, opened through
+  `useUiStore.openFeedback(type, topic)`) posts `type`, a hidden `topic` (where it was opened:
+  `general` from Settings, `reports` from Reports), `message`, an optional `email` (empty by
   default, the user's own offered as a one-tap chip), `app_version` and `hosting` (`cloud`/`self-hosted`) from the
   BROWSER straight to the Twillingate form `feedback` of the product-analytics project
   (`submitForm` in `web/src/lib/analytics.ts`, the SDK's wire shape without the SDK), so it
@@ -876,7 +918,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
   max attempts per username/email per window (defaults 5/5/3/5; login and reset count
-  only FAILED attempts and clear on success, remind and register count every request).
+  only FAILED attempts and clear on success, remind and register count every request). A successful
+  login clears only the caller's own per-address-and-IP counter, never the per-address ceiling: two
+  SQLite accounts can differ only by the case of a non-ASCII letter and share that key.
   `ECONUMO_RATE_LIMIT_ACCEPT_INVITE` — cap on `connection/accept-invite` attempts per
   authenticated user per window (default `10`; every attempt counts), guarding the short
   invite code against online brute force.
@@ -889,7 +933,34 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_SYNC` — `import/sync-source` calls per user per window (default `10`; every request counts — a sync is a real bridge round trip).
   `ECONUMO_RATE_LIMIT_PREVIEW_RULE` — `import/preview-rule` calls per user per window (default `120`; every request counts — the rule editors fire it from a 300 ms typing debounce, and each call walks every matching link).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
-  `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
+  `ECONUMO_RATE_LIMIT_IP` — per-endpoint cap per minute per client IP (default `60`), replacing the
+  former cap shared by all callers (`ECONUMO_RATE_LIMIT_GLOBAL`, now ignored with a boot WARN), which
+  any one caller could fill to lock everyone out. **No limit may be shared by unrelated callers.**
+  `ingest` and `preview-rule` are exempt (`IPExempt` in `internal/server/server.go`): one user's own
+  limit could fill the cap for a household behind one IP, and their effects stay inside that account.
+  The limits keyed by an email address (`login`, `reset`, `remind`, `register`, `verify-email`,
+  `confirm-email`) count per address AND client IP (`allowEmailAttempt`), so a stranger locks out
+  only their own IP, under a per-address ceiling across all IPs: 10x the limit, but 2x for `reset`
+  and `confirm-email`, because a 6-digit code must not get many more guesses. Enough IPs can still
+  reach a ceiling and lock that one address. The `login`, `reset` and `confirm-email` ceilings of real
+  accounts and the per-user `accept-invite` and `confirm-email-change` counters are `Pinned` (never
+  evicted before they expire), so a spray of invented addresses from many IPs cannot wipe them from
+  the 10,000-entry counter map. Addresses with no account count in a separate evictable ceiling
+  that answers 429 at the same point, so the limit does not reveal which accounts exist, unless a
+  spray happens to evict it first. Accepted residual: many accounts on many IPs have no
+  overall ceiling on `accept-invite`, `request-email-change`, `claim-setup-token` and `sync-source`.
+  `ECONUMO_CLIENT_IP_HEADER` — the header your reverse proxy puts the client IP in (e.g.
+  `CF-Connecting-IP`); a request without a valid value counts as its connecting address. Alone, it
+  is believed from anyone, which is safe only when a firewall lets nothing but the proxy reach the
+  server: a direct caller could otherwise forge it, dodging the limits or spending another IP's.
+  `ECONUMO_CLIENT_IP_TRUSTED_PROXIES` — optional comma-separated IPs/CIDRs of those proxies (for
+  Cloudflare, https://www.cloudflare.com/ips/ plus the `cloudflared` address when using a tunnel).
+  With it the header counts only on a request from a listed address (default header
+  `X-Forwarded-For`), so direct and proxied traffic can share one instance, and a list is walked
+  from the nearest entry to the first address outside the proxies. Neither set: the client IP is the
+  connecting address, so behind a proxy all its users count as one IP (logged once as a WARN when
+  a forwarding header arrives). Resolved in
+  `middleware.ClientIP`; IPv6 is grouped by /64; the IP stays in memory and is never logged.
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.
@@ -1088,11 +1159,12 @@ migration:seed-analytics-option
 migration:normalize-sqlite-datetimes
 migration:seed-transaction-sort-keys
 migration:copy-access-tokens
+migration:normalize-emails
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
-back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `lower(email)` is the
-unique lookup key (unique expression index `users_email_lower_uniq`), so a
+back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `email` is the
+unique lookup key (unique index `users_email_uniq`), so a
 still-salted instance MUST run this command after upgrading, before that index
 is relied on — otherwise emails stay encrypted and those users can't log in
 (they are already login-broken pre-migration, so this is not a regression).
@@ -1158,6 +1230,20 @@ transfers it receives together. One account per DB transaction, with that accoun
 bumped; idempotent (only rows with no key are touched), and invoked automatically at boot as
 migration step `20261024000001`, right after the SQL file that adds the columns.
 
+`migration:normalize-emails` rewrites stored addresses to `model.NormalizeEmail` (boot step
+`20261103000001`, right after the SQL file that swaps the `lower(email)` index for a unique one on
+`email`). This changes the spelling users see, and the original case is not kept. Addresses that
+normalize alike could already exist, since SQLite's `lower()` folds ASCII only: an address already
+normalized keeps its place, then the oldest account takes the normalized form, and the others keep
+their spelling, each logged once at WARN by user id, because their data cannot be merged and failing
+the boot would take the instance down. Such an account signs in by its exact spelling (lookups try it
+before the normalized form), a save leaves its spelling alone, and it still shares rate-limit counters
+with the other account until the operator moves it with `user:change-email`. Idempotent, and rerunning
+it by hand normalizes such an account once the other has moved away. Rows with the shape of ciphertext
+(`auth.LooksEncrypted`) are skipped, because lowercasing ciphertext would destroy it; `data:remove-salt` stores
+what it decrypts normalized by the same rule, and refuses, naming both user ids, when two accounts
+decrypt to byte-identical addresses.
+
 `migration:copy-access-tokens` is step 2 of the three-step `access_tokens` repair
 (`20261031000010` creates `access_tokens_new` in the final shape, `20261031000011` runs
 this command, `20261031000012` drops the old table and renames the new one; sqlite only,
@@ -1201,6 +1287,19 @@ In the distroless image these run via the binary directly, e.g.
   200 comma-separated ids; ids the caller cannot access are omitted from `revisions` (never an
   error). `/api/v1/transaction/get-transaction-list` (the legacy full list, still used by MCP,
   older clients and the SPA's fallback against a server without revisions) is unchanged.
+- **Reports:** `GET /api/v1/report/get-net-worth-report`, hosted by the budget feature
+  (`internal/budget/report_*.go`, `internal/budget/api/report.go`; no `report` package). Scope is
+  a budget (every member account; another member's are named only when they are savings members
+  or shared with the caller, the rest come as one nameless sum per owner, and the page lists
+  only savings members by name) or the caller's own accounts. It is the
+  opening balance plus `AccountsNetByMonth`, converted at each month's average rate, over live
+  accounts only (deleted ones are left out entirely, history included); the current month stops
+  at the end of the caller's today (as the account balance does), an all-time window opens one
+  month before the first transaction (a zero balance), and a budget that ended stops at its end
+  month. A window is at most 240
+  months: an explicit longer one is a 400 on `to` (`common.invalid_choice`), a defaulted
+  (all-time) one is clamped to the last 240. The SPA persists a report response only up to 37
+  months (`web/src/lib/queryPersist.ts`).
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
@@ -1379,7 +1478,7 @@ data unreadable. Most are also asserted by the test suite.
 
 ### Auth crypto (`internal/infra/auth/`)
 - **Password hash**: versioned by `users.algorithm`. `sha512` (legacy, all pre-existing rows): sha512, 500 iterations, base64 (88 chars), salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`; verify rejects len≠88 or a `$`, constant-time. `argon2id` (every new hash: registration and all password changes): PHC string `$argon2id$v=19$m=19456,t=2,p=1$…$…` (OWASP params), salt embedded in the hash — the `salt` column persists for sha512 rows. Verification dispatches on the column; unknown values fail closed.
-- **User lookup key**: `lower(email)` — enforced unique by the expression index `users_email_lower_uniq`; repo lookups are `GetByEmail`/`ExistsByEmail` (`WHERE lower(email) = lower(?)`). The legacy `identifier` column is retained (dropping a NOT NULL UNIQUE column would force a SQLite table rebuild) but retired: it now holds the row's own `id` as a unique non-null placeholder, no longer derived from email. `EncodeService.Hash` (the md5 identifier derivation) was removed — nothing computes it anymore.
+- **User lookup key**: `users.email` holds `model.NormalizeEmail(email)`, computed in Go (the one form every write, lookup, comparison and rate-limit key goes through) because the engines' `lower()` disagree; enforced unique by `users_email_uniq`. The case an address was typed in is not kept. Trim plus Unicode lowercase, except that a non-ASCII letter whose lowercase is ASCII (`İ`, the Kelvin sign) keeps its form, since it spells a different mailbox. Callers hand `GetByEmail`/`ExistsByEmail` the address as typed; the repo tries that exact spelling, then the normalized form. The services normalize on every email write, and `Save` stores the aggregate's spelling verbatim. The legacy `identifier` column is retained (dropping a NOT NULL UNIQUE column would force a SQLite table rebuild) but retired: it now holds the row's own `id` as a unique non-null placeholder, no longer derived from email. `EncodeService.Hash` (the md5 identifier derivation) was removed — nothing computes it anymore.
 - **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
 - **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy email data to plaintext (the repo writes the row `id` into `identifier` automatically, so no re-derivation is needed).
 
@@ -1479,6 +1578,12 @@ data unreadable. Most are also asserted by the test suite.
   in upcoming, not in spent, so never added twice) without committing. A cell with nothing still to
   come (no due payment, no future-dated row) shows no list, Spent/Total lines included.
   Past months and read-only cells never show it; there is no Post/Skip/Edit of templates from budget views.
+- **Gaps in stored rates**: a period with no rate at or before it snaps to the earliest stored
+  month (`RateProvider.snapPeriod`), and a currency that month has no rate for takes its latest
+  earlier rate, else its first (`AverageRates`), never face value, so a long report window or an
+  old budget month does not count 40,000 RUB as 40,000 CAD. Server conversions and the budget's
+  `currencyRates` block read the same rates. The import converter alone reads `StoredRates`, with
+  nothing filled: a transaction with no rate for its month queues as no-rate.
 - **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
   never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
   so a hard delete would silently destroy every account and transaction in that currency. A
@@ -1508,6 +1613,36 @@ data unreadable. Most are also asserted by the test suite.
   cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
+- **Budget period start day**: each budget starts its months on `period_start_day` 1-28
+  (default 1; `periodStartDay` on the meta, optional on `create-budget`/`update-budget`, copied
+  by `clone-budget`, anything else is the field error `budget.invalid_period_start_day`). A
+  period keeps its key `YYYY-MM-01` (`started_at`, `ended_at`, limit and comment periods, Plan
+  `months`, MCP `month`); only the date window it covers shifts. The rule lives in one helper
+  per stack (`model.PeriodWindow` / `model.PeriodOf`, `web/src/features/budgets/period.ts`):
+  every period is named after the month it starts in, key `M` covering day `d` of `M` to day
+  `d` of `M+1` (day 1 = the calendar month; day 5: "October" = 5 Oct to 4 Nov; day 28:
+  "October" = 28 Oct to 27 Nov). Request dates that pick a period name a key (snapped to the
+  first, day ignored),
+  never "the period containing this date". `get-budget` `filters.periodStart/periodEnd` carry
+  the real window. A budget whose day is not 1 converts at the rates inside each window
+  (`RateProvider.Windowed()`, wired through `budget.Service.SetShiftedPeriodRates`;
+  `currencyRates[]` reports that window, and a window holding no rate keeps the snap); day-1
+  budgets, legacy mid-month windows included, imports and everything else keep the default
+  latest-rate-month snap (`internal/currency/repo/convertor_provider.go`). "Current month"
+  everywhere (default period, Plan window, plan hints, removal window, overdue recurring) is
+  the period containing the caller's local today. The by-month SQL (`internal/budget/repo/read.go`,
+  `periodExpr`) keeps grouping by month for day 1, so a day-1 budget stays byte-identical, and
+  groups by day and folds the rows onto keys in Go (`foldPeriods`) otherwise. Changing the day
+  writes only the day: `started_at` (the first key, `Budget.FirstPeriod()`), `ended_at`, plans
+  and comments never move, so changing it back restores everything. Today may then fall
+  before the first key's window (key October switched to day 28 on 5 October): the budget
+  has not started yet, so the default `get-budget`/`get-budget-plan` period, create/clone
+  responses and the SPA's default month (`budgetCurrentPeriod`) open on the first key, and
+  days before its window belong to no period. Only the owner or an admin may change the day.
+  Reports, recurring schedules and account pages stay on calendar months. The SPA hides the
+  day picker against a server whose budgets carry no day. Changing the
+  naming rule after release needs a key migration (move `started_at`, `ended_at`, limit and
+  comment periods of the affected budgets by one month).
 - **Budget savings**: savings is a per-budget MEMBERSHIP flag
   (`budgets_accounts.is_savings`), not an account type — the same account can be a
   savings member of one budget and an everyday member of another, and `accounts.type`
@@ -1682,7 +1817,7 @@ data unreadable. Most are also asserted by the test suite.
   importer's own rules never apply there, and the owner's "all" apply reaches those rows.
 - **OAuth/OIDC auto-link and email verification**: a callback with a verified (or
   `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing **passwordless**
-  account by `lower(email)` (no matching identity yet) — no confirmation screen, since both
+  account by `email` (no matching identity yet) — no confirmation screen, since both
   the account's address and the new claim were proven by providers. A match on an account
   that has a password is refused (`account_exists_password`), never merged. An unverified
   email is rejected (`email_unverified`) for every intent, including an already-linked

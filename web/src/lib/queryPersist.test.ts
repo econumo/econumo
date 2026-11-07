@@ -8,7 +8,7 @@ import { delayTransactionCompletion } from '@/test/idbDelay'
 import { createAppQueryClient } from './appQueryClient'
 import { resetDbForTests } from './db'
 import { QUERY_CACHE_KEY, clearPersistedQueryCache, createPersistOptions } from './queryPersist'
-import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, putSnapshot, resetTransactionStoreForTests, tryLoadStored, type Bucket } from './transactionStore'
+import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, putSnapshot, resetTransactionStoreForTests, storeBuster, tryLoadStored, type Bucket } from './transactionStore'
 
 function defaultRetry(): (failureCount: number, error: unknown) => boolean {
   const retry = createAppQueryClient().getDefaultOptions().queries?.retry
@@ -51,6 +51,16 @@ it('never persists an authorization request', () => {
 it('never persists the transactions list: it lives in IndexedDB', () => {
   const should = createPersistOptions().dehydrateOptions.shouldDehydrateQuery
   expect(should({ queryKey: ['transactions'], state: { status: 'success' } })).toBe(false)
+})
+
+it('persists a report of up to 37 months and leaves longer ones out', () => {
+  const should = createPersistOptions().dehydrateOptions.shouldDehydrateQuery
+  const months = (n: number) => ({ months: Array.from({ length: n }, (_, i) => String(i)) })
+  const key = ['reportNetWorth', 'b1', '', '', '']
+  expect(should({ queryKey: key, state: { status: 'success', data: months(37) } })).toBe(true)
+  expect(should({ queryKey: key, state: { status: 'success', data: months(38) } })).toBe(false)
+  expect(should({ queryKey: key, state: { status: 'success', data: months(240) } })).toBe(false)
+  expect(should({ queryKey: ['accounts'], state: { status: 'success', data: months(240) } })).toBe(true)
 })
 
 describe('restoring the stored transactions', () => {
@@ -308,4 +318,8 @@ describe('restoring the stored transactions', () => {
     // the store stayed on: once the slow load is done, a restore seeds again
     expect((await restoredTransactions())?.data.map((t) => t.id)).toEqual(['t1'])
   }, 10_000)
+})
+
+it('the query-cache buster moves with the stored format version too', () => {
+  expect(createPersistOptions().buster).toBe(storeBuster())
 })

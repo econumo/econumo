@@ -135,7 +135,7 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		RateLimitRemind:          3,
 		RateLimitRegister:        5,
 		RateLimitWindow:          15 * time.Minute,
-		RateLimitGlobal:          60,
+		RateLimitIP:              60,
 		RateLimitIngest:          60,
 		RateLimitClaimSetupToken: 5,
 		RateLimitSync:            10,

@@ -87,11 +87,11 @@ export const fixtureTransactions = [
 export const fixtureBudgets = [
   {
     id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', endedAt: '', currencyId: 'cur-usd',
-    isArchived: 0, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
+    periodStartDay: 1, isArchived: 0, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
   },
   {
     id: 'b2', ownerUserId: 'u1', name: 'Alpha plan', startedAt: '2026-01-01 00:00:00', endedAt: '', currencyId: 'cur-usd',
-    isArchived: 0, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
+    periodStartDay: 1, isArchived: 0, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
   },
 ]
 
@@ -103,7 +103,7 @@ export const fixtureRates = [
 export const fixtureWireBudget = {
   meta: {
     id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', endedAt: '', currencyId: 'cur-usd',
-    isArchived: 0, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
+    periodStartDay: 1, isArchived: 0, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
   },
   filters: {
     periodStart: '2026-07-01 00:00:00',
@@ -168,7 +168,7 @@ export function fixtureDebtRow(overrides: Partial<BudgetDebtElementDto> = {}): B
 export const fixtureWirePlan = {
   meta: {
     id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', endedAt: '', currencyId: 'cur-usd',
-    isArchived: 0, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
+    periodStartDay: 1, isArchived: 0, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
   },
   months: ['2026-05-01', '2026-06-01', '2026-07-01', '2026-08-01'],
   openingBalances: [{ currencyId: 'cur-usd', amount: '500' }],

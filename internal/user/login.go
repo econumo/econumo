@@ -4,7 +4,6 @@ package user
 import (
 	"context"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -20,20 +19,27 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if err := s.requirePasswordLogin(); err != nil {
 		return nil, err
 	}
-	limitKey := strings.ToLower(strings.TrimSpace(req.Username))
-	if err := s.allowAttempt(RateScopeLogin, limitKey); err != nil {
+	limitKey := model.NormalizeEmail(req.Username)
+	if err := s.allowEmailAttempt(ctx, RateScopeLogin, limitKey); err != nil {
 		return nil, err
 	}
 	u, err := s.repo.GetByEmail(ctx, req.Username)
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
-			s.failAttempt(RateScopeLogin, limitKey)
+			if lerr := s.countUnknownEmailAttempt(ctx, RateScopeLogin, limitKey); lerr != nil {
+				return nil, lerr
+			}
 			return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 		}
 		return nil, err
 	}
+	attempt, err := s.reserveEmailAttempt(ctx, RateScopeLogin, limitKey)
+	if err != nil {
+		return nil, err
+	}
+	defer attempt.giveBack()
 	if !u.IsActive || !s.hasher.Verify(u.Algorithm, u.Password, req.Password, u.Salt) {
-		s.failAttempt(RateScopeLogin, limitKey)
+		attempt.keep()
 		return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
 	// Transparently upgrade a legacy (sha512) hash to argon2id now that we hold the
@@ -63,7 +69,11 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if cerr != nil {
 		return nil, cerr
 	}
-	s.clearAttempt(RateScopeLogin, limitKey)
+	// A success forgives only the caller's own counter, never the ceiling: accounts
+	// that collided when addresses were normalized still share a counter key, so
+	// signing in to one must not reset the guesses at the other.
+	attempt.giveBack()
+	s.clearAttempt(RateScopeLogin, emailIPKey(ctx, limitKey))
 	// Best-effort: the language preference must never block a login.
 	_ = s.repo.UpdateLanguage(ctx, u.ID, reqctx.Language(ctx))
 	return &model.LoginResult{Token: token, User: cur}, nil

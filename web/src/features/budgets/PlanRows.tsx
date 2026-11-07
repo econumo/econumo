@@ -31,6 +31,7 @@ import type { CellMove } from './PlanCellInput'
 import { wantsUpcomingPanel } from './planHint'
 import type { MonthExchange, PlanRow } from './planMath'
 import { tagGroupPlanSums } from './planMath'
+import { periodStartDayOf } from './period'
 
 export interface PlanLimitTarget {
   el: PlanElementDto
@@ -490,7 +491,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                     onCancel={ctx.cancelEdit}
                     upcoming={
                       // a debt's dues are collected whatever is planned: no list of them to fill from
-                      cell && !isDebt && wantsUpcomingPanel(m, cell.actual, cell.upcoming, el.type === BudgetElementType.SAVINGS)
+                      cell && !isDebt && wantsUpcomingPanel(m, cell.actual, cell.upcoming, el.type === BudgetElementType.SAVINGS, periodStartDayOf(ctx.meta))
                         ? {
                             budget: { meta: ctx.meta },
                             target: { id: el.id, type: el.type, name: displayName, icon: el.icon, currencyId: el.currencyId },

@@ -195,6 +195,11 @@ func checkMigrationOrder(t *testing.T, release string, released, upgraded []stri
 // upgraded database can still mint sessions.
 func checkCredentials(t *testing.T, in *instance, s seeded) {
 	t.Helper()
+	for email, id := range s.twins {
+		if got := in.client(t, "").login(email, ownerPassword).User.Id; got != id {
+			t.Errorf("%s signed in as %s, want its own account %s", email, got, id)
+		}
+	}
 	for _, tok := range []struct{ name, token, wantUser string }{
 		{"owner session", s.ownerSession, s.ownerID},
 		{"partner session", s.partnerSession, s.partnerID},

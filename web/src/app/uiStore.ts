@@ -85,9 +85,16 @@ interface UiState {
   openSearch: () => void
   closeSearch: () => void
   feedbackOpen: boolean
-  openFeedback: () => void
+  /** the form's preselected type; Reports opens it on a feature request */
+  feedbackType: FeedbackType
+  /** where the form was opened from, sent with the message as a hidden field */
+  feedbackTopic: FeedbackTopic
+  openFeedback: (type?: FeedbackType, topic?: FeedbackTopic) => void
   closeFeedback: () => void
 }
+
+export type FeedbackType = 'feedback' | 'feature_request' | 'bug_report'
+export type FeedbackTopic = 'general' | 'reports'
 
 export const useUiStore = create<UiState>()((set) => ({
   transactionModal: null,
@@ -116,9 +123,11 @@ export const useUiStore = create<UiState>()((set) => ({
   },
   closeSearch: () => set({ searchOpen: false }),
   feedbackOpen: false,
-  openFeedback: () => {
-    trackEvent(METRICS.FEEDBACK_OPEN)
-    set({ feedbackOpen: true })
+  feedbackType: 'feedback',
+  feedbackTopic: 'general',
+  openFeedback: (type = 'feedback', topic = 'general') => {
+    trackEvent(METRICS.FEEDBACK_OPEN, { type, topic })
+    set({ feedbackOpen: true, feedbackType: type, feedbackTopic: topic })
   },
   closeFeedback: () => set({ feedbackOpen: false }),
 }))

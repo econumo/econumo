@@ -8,7 +8,7 @@ import { useBudgetPeriodStore } from './budgetStore'
 import { MonthFlows } from './MonthFlows'
 import { DebtExtraNote } from './debtRow'
 import { planHintClass } from './planHint'
-import { currentMonth } from './planMath'
+import { currentPeriod } from './period'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
@@ -75,7 +75,7 @@ it('a paid-off debt says so instead of counting payments', () => {
 })
 
 it('a plan below the scheduled amount is red', () => {
-  const thisMonth = `${currentMonth()} 00:00:00`
+  const thisMonth = `${currentPeriod(1)} 00:00:00`
   renderFlows(
     [
       fixtureDebtRow({ budgeted: '500' }),

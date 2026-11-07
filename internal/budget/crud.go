@@ -38,6 +38,12 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	if aerr := s.requireNotArchived(b); aerr != nil {
 		return nil, aerr
 	}
+	// The day reshapes every period of a shared budget, its first one included,
+	// so it is a setting like sharing: owner or admin only.
+	dayChange := req.PeriodStartDay != nil && *req.PeriodStartDay != b.budget.PeriodStartDay
+	if dayChange && !s.canConfigure(b, userID) {
+		return nil, accessDenied()
+	}
 	if !curID.Equal(b.budget.CurrencyID) {
 		if eerr := s.currency.EnsureUsable(ctx, userID.String(), curID.String()); eerr != nil {
 			return nil, eerr
@@ -48,6 +54,11 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		b.budget.UpdateName(req.Name, now)
 		b.budget.UpdateCurrency(curID, now)
+		if dayChange {
+			if derr := b.budget.SetPeriodStartDay(*req.PeriodStartDay, now); derr != nil {
+				return derr
+			}
+		}
 		if req.EndDate != nil {
 			if *req.EndDate == "" {
 				if eerr := b.budget.EndAt(nil, now); eerr != nil {

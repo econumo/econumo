@@ -52,6 +52,7 @@ const (
 	CodeBudgetAccountsRequired          = "budget.accounts_required"
 	CodeBudgetArchived                  = "budget.archived"
 	CodeBudgetEndBeforeStart            = "budget.end_before_start"
+	CodeBudgetInvalidPeriodStartDay     = "budget.invalid_period_start_day"
 	CodeBudgetCommentNotFound           = "budget.comment_not_found"
 	CodeBudgetCommentForbidden          = "budget.comment_forbidden"
 
@@ -200,6 +201,7 @@ var AllCodes = []string{
 	CodeBudgetAccountsRequired,
 	CodeBudgetArchived,
 	CodeBudgetEndBeforeStart,
+	CodeBudgetInvalidPeriodStartDay,
 	CodeBudgetCommentNotFound,
 	CodeBudgetCommentForbidden,
 

@@ -56,7 +56,7 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 		return nil, nil
 	}
 	today := localToday(s.clock.Now(), reqctx.Location(ctx))
-	current := firstOfMonth(today)
+	current := model.FirstOfMonth(today)
 	last := current
 	ids := make([]string, 0, len(f.debtViews))
 	for _, v := range f.debtViews {

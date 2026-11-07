@@ -122,7 +122,7 @@ type Querier interface {
 	// Whether the external id's element of this type carries a limit or a comment
 	// in any budget.
 	ElementHasData(ctx context.Context, arg ElementHasDataParams) (int64, error)
-	ExistsUserByEmail(ctx context.Context, lower string) (int64, error)
+	ExistsUserByEmail(ctx context.Context, arg ExistsUserByEmailParams) (int64, error)
 	// Joins users for access_level/access_until so per-request auth can report
 	// the caller's effective access level in the same round trip. This does NOT
 	// reuse the is_active shortcut (see GetAccessTokenByHash's Go caller): a
@@ -228,6 +228,9 @@ type Querier interface {
 	// Budget debts. DATE columns are bound as 'Y-m-d' text (CAST ... AS TEXT):
 	// the driver would otherwise store a time part, like currencies_rates.published_at.
 	GetDebtByID(ctx context.Context, id string) (Debt, error)
+	// Oldest published_at for a base currency: the rate month used for periods
+	// before the first stored rate.
+	GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyID string) (time.Time, error)
 	// Where a rate-gap check starts by default. ORDER BY ... LIMIT 1 so the
 	// result types as the column. sql.ErrNoRows = no transactions yet.
 	GetEarliestTransactionDate(ctx context.Context) (time.Time, error)
@@ -279,6 +282,9 @@ type Querier interface {
 	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
 	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
 	GetLatestRateDate(ctx context.Context) (time.Time, error)
+	// Per currency with stored rates: its latest rate before a date, else its first.
+	// Fills a period's gaps, since rate histories start and stop at different dates.
+	GetNearestCurrencyRates(ctx context.Context, arg GetNearestCurrencyRatesParams) ([]GetNearestCurrencyRatesRow, error)
 	GetOAuthClient(ctx context.Context, id string) (OauthClient, error)
 	GetOAuthGrant(ctx context.Context, id string) (OauthGrant, error)
 	GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHash string) (OauthGrant, error)
@@ -320,7 +326,9 @@ type Querier interface {
 	// category/payee/tag (non-transfers). Listing filters by account id sets the
 	// app layer computes (excluding deleted/hidden-folder accounts).
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
-	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
+	// A row that collided when addresses were normalized keeps its own spelling, so the
+	// account that exact spelling names wins over the normalized one.
+	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
 	// Read-model queries for the currency module (CQRS read side). Both currency
 	// endpoints are pure reads, so the whole module lives on the read side; there is
@@ -333,6 +341,7 @@ type Querier interface {
 	GetUserCurrencyListView(ctx context.Context, arg GetUserCurrencyListViewParams) ([]GetUserCurrencyListViewRow, error)
 	GetUserEmailChangeRequestByUser(ctx context.Context, userID string) (UsersEmailChangeRequest, error)
 	GetUserEmailVerificationByUser(ctx context.Context, userID string) (UsersEmailVerification, error)
+	GetUserIDByExactEmail(ctx context.Context, email string) (string, error)
 	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
@@ -447,6 +456,8 @@ type Querier interface {
 	// Args, in order: before (x4), user_id (own), user_id (shared). REAL balance per
 	// row; the repo formats it to PHP's precision-14 string.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
+	// Every account the user owns, soft-deleted ones included (the reports).
+	ListAccountIDsByOwner(ctx context.Context, userID string) ([]string, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// The same count for every AVAILABLE account (the balance query's set).
 	// Args: user_id (own), user_id (shared).
@@ -576,6 +587,7 @@ type Querier interface {
 	// too, their history still counts), a budget, a budget element, or a user's
 	// display currency. The rate-gap check looks at these only.
 	ListUsedGlobalCurrencyCodes(ctx context.Context) ([]string, error)
+	ListUserEmailsOldestFirst(ctx context.Context) ([]ListUserEmailsOldestFirstRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	// Ordered by id so the backfill is deterministic across engines and reruns.
 	// A LEFT JOIN + IS NULL, not NOT EXISTS: sqlc's sqlite parser fails to detect
@@ -600,6 +612,7 @@ type Querier interface {
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
+	PurgeExcessUnusedOAuthClients(ctx context.Context, limit int64) (int64, error)
 	PurgeExpiredOAuthCodes(ctx context.Context, expiresAt time.Time) error
 	PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Time) (int64, error)
 	// The operation_requests_ids idempotency queries moved to operations.sql (shared
@@ -659,6 +672,7 @@ type Querier interface {
 	// comment: dropping the element (flag off or member removed) deletes both.
 	SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (int64, error)
 	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
+	SetUserEmail(ctx context.Context, arg SetUserEmailParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.

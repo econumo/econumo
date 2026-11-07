@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budget & Plan",
+      "reports": "Reports",
       "onboarding": "Getting started",
       "create_account": "Add account",
       "collapse_menu": "Collapse menu",
@@ -1398,6 +1399,9 @@
         "end_month": {
           "label": "End month",
           "none": "No end date"
+        },
+        "period_start_day": {
+          "label": "Month start day"
         }
       },
       "budget_envelope": {
@@ -1677,6 +1681,68 @@
         }
       }
     }
+  },
+  "reports": {
+    "page": {
+      "title": "Reports"
+    },
+    "tabs": {
+      "new": "New tab",
+      "close": "Close {name}",
+      "close_menu": "Close",
+      "rename": "Rename",
+      "duplicate": "Duplicate",
+      "name_label": "Tab name",
+      "limit": "Up to {count} tabs"
+    },
+    "kind": {
+      "networth": "Net worth"
+    },
+    "list": {
+      "choose": "Choose a report",
+      "scope": "Scope",
+      "scope_mine": "My accounts",
+      "networth_q": "Am I getting richer or poorer?",
+      "suggest_q": "Suggest a report",
+      "suggest_note": "Missing a report you need? Tell us what you'd like to see.",
+      "networth_caption": "today",
+      "networth_up": "Up {amount} this year",
+      "networth_down": "Down {amount} this year",
+      "networth_flat": "No change this year"
+    },
+    "period": {
+      "quarter": "Q{quarter} {year}"
+    },
+    "networth": {
+      "period_1y": "1y",
+      "period_3y": "3y",
+      "period_all": "All",
+      "chart": "Net worth chart",
+      "col_start": "Start",
+      "col_now": "Now",
+      "no_folder": "No folder",
+      "other_owner": "Another participant",
+      "expand": "Show the accounts in {name}",
+      "collapse": "Hide the accounts in {name}",
+      "empty": "No account balances yet",
+      "everyday": "Everyday accounts",
+      "period_1y_words": "in the last year",
+      "period_3y_words": "in the last 3 years",
+      "period_all_words": "since the start",
+      "range_words": "since {from}",
+      "clear_range": "Clear the selection",
+      "show_transactions": "Show the transactions of {name}",
+      "drag_hint": "Drag across the chart to pick a period",
+      "range_transactions": "Transactions",
+      "period": "Period",
+      "headline": "Summary",
+      "col_change": "Change",
+      "total": "Total"
+    },
+    "insight": {
+      "empty": "No transactions yet"
+    },
+    "updated_at": "Updated {time}"
   },
   "classifications": {
     "common": {
@@ -2174,6 +2240,7 @@
       "accounts_required": "Select at least one account",
       "archived": "This budget is archived",
       "end_before_start": "The end month is before the budget start",
+      "invalid_period_start_day": "Choose a day from 1 to 28",
       "comment_not_found": "Comment not found",
       "comment_forbidden": "You can't change this comment"
     },

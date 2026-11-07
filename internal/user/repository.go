@@ -8,6 +8,12 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
+// StoredEmail is a user's address as the column holds it.
+type StoredEmail struct {
+	ID    vo.Id
+	Email string
+}
+
 // Repository is the user aggregate's persistence port; the application service
 // depends only on this interface. Methods that look up a missing user return an
 // *errs.NotFoundError so the HTTP layer maps it consistently. Save upserts the
@@ -19,13 +25,24 @@ type Repository interface {
 	// GetByID loads a user (with options) by id. Missing -> *errs.NotFoundError.
 	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
 
-	// GetByEmail loads a user (with options) by email, case-insensitively.
+	// GetByEmail loads a user (with options) by the address as typed: the row storing
+	// that exact spelling, else the one storing its model.NormalizeEmail form.
 	// Missing -> *errs.NotFoundError.
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 
-	// ExistsByEmail reports whether a user with that email exists
-	// (case-insensitive). Used by registration/change-email dup-checks.
+	// ExistsByEmail reports whether GetByEmail would find a user. Used by
+	// registration/change-email dup-checks.
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
+
+	// ListEmailsOldestFirst returns every user's stored address, oldest account first.
+	ListEmailsOldestFirst(ctx context.Context) ([]StoredEmail, error)
+
+	// HolderOfExactEmail returns the user storing exactly this address.
+	// Missing -> *errs.NotFoundError.
+	HolderOfExactEmail(ctx context.Context, email string) (vo.Id, error)
+
+	// SetEmail writes only the address column.
+	SetEmail(ctx context.Context, userID vo.Id, email string) error
 
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error

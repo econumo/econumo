@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PeriodStrip } from './PeriodStrip'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -93,4 +93,27 @@ it('mouse wheel scrolls the strip horizontally (the scrollbar is hidden)', () =>
   expect(strip.scrollLeft).toBe(1240)
   fireEvent.wheel(strip, { deltaX: -100, deltaY: 0 })
   expect(strip.scrollLeft).toBe(1140)
+})
+
+it('a shifted budget shows the selected month\'s dates under its name; every tab names its dates', async () => {
+  const user = userEvent.setup()
+  render(<PeriodStrip startedAt="2026-01-01 00:00:00" startDay={28} />)
+  const selected = screen.getByRole('tab', { selected: true })
+  expect(selected).toHaveAccessibleName('July, Jul 28 – Aug 27')
+  expect(within(selected).getByTestId('period-strip-dates')).toHaveTextContent('Jul 28 – Aug 27')
+  const march = screen.getByRole('tab', { name: 'March, Mar 28 – Apr 27' })
+  expect(within(march).queryByTestId('period-strip-dates')).toBeNull()
+  expect(screen.getAllByTestId('period-strip-dates')).toHaveLength(1)
+  // nothing trails the strip
+  expect(screen.getByRole('tablist').nextElementSibling).toBeNull()
+  await user.click(march)
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-03-01')
+  expect(within(screen.getByRole('tab', { selected: true })).getByTestId('period-strip-dates')).toHaveTextContent('Mar 28 – Apr 27')
+  expect(screen.getAllByTestId('period-strip-dates')).toHaveLength(1)
+})
+
+it('a calendar-month budget shows month names only', () => {
+  render(<PeriodStrip startedAt="2026-01-01 00:00:00" startDay={1} />)
+  expect(screen.queryAllByTestId('period-strip-dates')).toHaveLength(0)
+  expect(screen.getByRole('tab', { selected: true })).toHaveAccessibleName('July')
 })

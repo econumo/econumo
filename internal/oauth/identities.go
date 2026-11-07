@@ -120,10 +120,10 @@ func (s *Service) ReclaimAccount(ctx context.Context, userID vo.Id, provenEmail 
 	if err != nil {
 		return 0, 0, err
 	}
-	proven := strings.ToLower(strings.TrimSpace(provenEmail))
+	proven := model.NormalizeEmail(provenEmail)
 	var identities int64
 	for _, r := range rows {
-		if strings.ToLower(strings.TrimSpace(r.Email)) == proven {
+		if model.NormalizeEmail(r.Email) == proven {
 			continue
 		}
 		n, derr := s.identities.DeleteByUserProvider(ctx, userID, r.Provider)

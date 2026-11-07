@@ -34,6 +34,14 @@ func (a accountViewStub) OwnedLiveAccountIDs(context.Context, vo.Id) ([]vo.Id, e
 	return nil, nil
 }
 
+func (a accountViewStub) AvailableAccountIDs(context.Context, vo.Id) ([]vo.Id, error) {
+	return nil, nil
+}
+
+func (a accountViewStub) OwnedAccountIDs(context.Context, vo.Id) ([]vo.Id, error) {
+	return nil, nil
+}
+
 type emptyMetadataStub struct{}
 
 func (emptyMetadataStub) CategoriesByOwners(context.Context, []vo.Id) ([]model.CategoryMeta, error) {
@@ -115,7 +123,7 @@ func TestBuildFilters_ConcurrentCallsTouchNoServiceState(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			for n := 0; n < 20; n++ {
-				f, err := s.buildFilters(context.Background(), ownerID, b, periodStart, periodStart.AddDate(0, 1, 0))
+				f, err := s.buildFilters(context.Background(), ownerID, b, periodStart, 1)
 				if err != nil {
 					errs[i] = err
 					return

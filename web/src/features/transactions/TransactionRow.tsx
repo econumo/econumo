@@ -47,6 +47,9 @@ interface TransactionRowProps {
   amountNote?: React.ReactNode
   /** overrides the default author-avatar rule (shown only on shared accounts) */
   showAuthor?: boolean
+  /** a row with no account on this device (a partner's, from a budget's list):
+      the signed amount with its symbol, as the budget wire gives it */
+  amount?: { text: string; direction: 'in' | 'out' }
 }
 
 function AccountName({ account, fallback }: { account?: AccountDto; fallback: string }) {
@@ -61,7 +64,7 @@ function AccountName({ account, fallback }: { account?: AccountDto; fallback: st
 // Presentational only: the row wrapper on the page owns the click (menu on
 // desktop, preview sheet on mobile) so hover/active feedback covers the whole
 // row including the kebab.
-export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote, amountNote, showAuthor: showAuthorProp }: TransactionRowProps) {
+export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote, amountNote, showAuthor: showAuthorProp, amount }: TransactionRowProps) {
   const { t } = useTranslation()
   const global = !pageAccount
   const title: TitleInfo =
@@ -151,10 +154,14 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote
       {/* global rows name the account here; capped so a long name truncates
           instead of squeezing the title column */}
       <span data-testid={`amount-col-${tx.id}`} className={`flex shrink-0 flex-col items-end ${global ? 'max-w-[45%] gap-0.5' : ''}`}>
-        <span className={`text-sm leading-6 tabular-nums ${neutral ? 'text-muted-foreground' : income ? 'text-income' : 'text-expense'}`}>
-          {displayAmount(tx, pageAccount?.id)}
-          <span className="ml-1 text-muted-foreground">{amountAccount?.currency.symbol}</span>
-        </span>
+        {amount ? (
+          <span className={`text-sm leading-6 tabular-nums ${amount.direction === 'in' ? 'text-income' : 'text-expense'}`}>{amount.text}</span>
+        ) : (
+          <span className={`text-sm leading-6 tabular-nums ${neutral ? 'text-muted-foreground' : income ? 'text-income' : 'text-expense'}`}>
+            {displayAmount(tx, pageAccount?.id)}
+            <span className="ml-1 text-muted-foreground">{amountAccount?.currency.symbol}</span>
+          </span>
+        )}
         {global ? (
           <span data-testid={`tx-account-${tx.id}`} className="flex max-w-full items-center gap-1 text-[13px] text-muted-foreground">
             <AccountName account={tx.account} fallback={hiddenName} />

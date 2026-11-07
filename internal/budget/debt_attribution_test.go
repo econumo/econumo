@@ -25,10 +25,6 @@ import (
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
-type fixedClock struct{ now time.Time }
-
-func (c fixedClock) Now() time.Time { return c.now }
-
 type attrRecurring struct{ templates []*model.RecurringTransaction }
 
 func (r *attrRecurring) ListByAccountIDs(_ context.Context, ids []vo.Id) ([]*model.RecurringTransaction, error) {
@@ -73,7 +69,7 @@ func newAttrHarness(t *testing.T) *attrHarness {
 	txm := db.TX
 	engine := db.Engine
 	f := fixture.New(t, db)
-	clk := fixedClock{now: attrToday}
+	clk := fixedClock{t: attrToday}
 
 	owner := f.User(fixture.User{Name: "Owner", Email: "owner@attr.test"})
 	eurCur := f.Currency(fixture.Currency{Code: "EUR", Symbol: "€", Name: "Euro"})

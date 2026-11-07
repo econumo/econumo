@@ -63,7 +63,6 @@ import { SetLimitDialog } from './SetLimitDialog'
 import { useBudgetLineMenus } from './useBudgetLineMenus'
 import {
   addMonths,
-  currentMonth,
   balanceRow,
   bucketPlanRows,
   everydayBalanceRow,
@@ -91,6 +90,7 @@ import {
 } from './planMath'
 import type { MonthExchange, PlanCellRef, PlanFolderSection, PlanRow, PlanRows } from './planMath'
 import type { LineControls, MenuAction } from './monthLayout'
+import { PERIOD_DATES_CLASS, currentPeriod, periodDatesLabel, periodStartDayOf } from './period'
 import { LineControlsContext, LineLayoutContext, PLAN_FIGURE_COL, PLAN_LINE, PLAN_CROSSHAIR, PLAN_NAME_COL, PLAN_SECTION_RULE, ROW_INDENT, RowLevelContext } from './monthLayout'
 import { FigureCells, FolderLine, MonthSectionHeader } from './monthLines'
 import { ElementRow, PlanTagGroup, SumCell, cellCommentsReadOnly, cellDomId, isEditableCell, pickedKey, sourceAmount } from './PlanRows'
@@ -555,7 +555,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     stepPeriod(monthDiff(selectedDate, visible > 1 ? addMonths(first, 1) : first))
   }
 
-  const { data: plan, isPending, isError, refetch, planKey, fetchFrom } = useBudgetPlan(budget.meta.id, firstMonth, visible)
+  const startDay = periodStartDayOf(budget.meta)
+  const { data: plan, isPending, isError, refetch, planKey, fetchFrom } = useBudgetPlan(budget.meta.id, firstMonth, visible, startDay)
   const setLimit = usePlanSetLimit(planKey)
   const fillCells = useFillPlannedCells(planKey)
   const menus = useBudgetLineMenus({ budget, plan, userId, onOpenSettings })
@@ -567,7 +568,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     }
   }, [editorOpen])
   // the plan's OWN window, so both caches cover exactly the same months
-  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(budget.meta.id, fetchFrom, planFetchWindow(firstMonth, visible).months)
+  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(budget.meta.id, fetchFrom, planFetchWindow(firstMonth, visible, startDay).months)
 
   // The optimistic drop (an order, or a category hidden on its way into or out of an
   // envelope) is released only when genuinely fresh plan data arrives: a refetch yields
@@ -612,7 +613,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // column to tint
   // the picked month only anchors the window; the grid marks the current month instead
   const selectedCol = visibleMonths.indexOf(selectedDate)
-  const cur = currentMonth()
+  const cur = currentPeriod(startDay)
   // An editor whose month left the window (a resize, the strip) closes rather than
   // reappearing, stale, when that month scrolls back in. Leaving its cell by click or
   // key has already committed it.
@@ -661,6 +662,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     const label = periodLabeler(i18n.language)
     return (m: string) => label(monthDate(m))
   }, [i18n.language])
+  const dates = useMemo(
+    () => (startDay === 1 ? null : (m: string) => periodDatesLabel(m, startDay, i18n.language)),
+    [startDay, i18n.language],
+  )
   const layout = useMemo(
     () => ({ kind: 'plan' as const, cols: visible, selectedCol: -1, crosshairCol, months: visibleMonths, monthLabels: visibleMonths.map(monthLabel) }),
     [visible, crosshairCol, visibleMonths, monthLabel],
@@ -774,14 +779,14 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (!plan) {
       return []
     }
-    const all = (plan.structure.savings ?? []).map((row) => savingsAsPlanElement(projectSavingsClosings(row, plan.months)))
+    const all = (plan.structure.savings ?? []).map((row) => savingsAsPlanElement(projectSavingsClosings(row, plan.months, startDay)))
     const placed = dragArrangement ? placeElements(all, dragArrangement) : all
     const byPosition = (a: PlanElementDto, b: PlanElementDto) => a.position - b.position
     return [
       ...placed.filter((el) => el.isArchived === 0).sort(byPosition),
       ...placed.filter((el) => el.isArchived !== 0).sort(byPosition),
     ].map((element) => ({ element }))
-  }, [plan, dragArrangement])
+  }, [plan, dragArrangement, startDay])
 
   // Debt rows by position: never in a folder, never dragged
   const debtRows = useMemo(
@@ -1875,6 +1880,15 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           {visibleMonths.map((m, i) => {
             const selected = i === selectedCol
             const current = m === cur
+            const label = (
+              <span
+                data-month-label=""
+                className={`block w-full px-2 text-right text-sm uppercase tracking-wide ${dates ? 'pt-1' : 'py-2'} ${current ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+              >
+                {monthLabel(m)}
+              </span>
+            )
+            const range = dates?.(m)
             return (
               <div
                 key={m}
@@ -1886,12 +1900,22 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
                 aria-current={current ? 'date' : undefined}
                 className={`${PLAN_FIGURE_COL}${i === crosshairCol ? ` ${PLAN_CROSSHAIR}` : ''} p-0!`}
               >
-                <span
-                  data-month-label=""
-                  className={`block w-full px-2 py-2 text-right text-sm uppercase tracking-wide ${current ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
-                >
-                  {monthLabel(m)}
-                </span>
+                {range ? (
+                  // a shifted budget's month is not the calendar month: its dates sit
+                  // under the name, inside the header's usual height
+                  <span className="flex w-full min-w-0 flex-col">
+                    {label}
+                    <span
+                      data-testid="plan-month-dates"
+                      title={range}
+                      className={`block w-full truncate px-2 pb-1 text-right ${PERIOD_DATES_CLASS}`}
+                    >
+                      {range}
+                    </span>
+                  </span>
+                ) : (
+                  label
+                )}
               </div>
             )
           })}
@@ -2102,7 +2126,10 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
         note={dialogDebt ? <DebtExtraNote row={dialogDebt} currency={currencies.find((c) => c.id === dialogDebt.currencyId)} /> : null}
         upcoming={
           // a debt's dues are collected whatever is planned: no list of them to fill from
-          planLimitTarget && dialogCell && !dialogIsDebt && wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming, planLimitTarget.el.type === BudgetElementType.SAVINGS)
+          planLimitTarget &&
+          dialogCell &&
+          !dialogIsDebt &&
+          wantsUpcomingPanel(planLimitTarget.month, dialogCell.actual, dialogCell.upcoming, planLimitTarget.el.type === BudgetElementType.SAVINGS, startDay)
             ? {
                 budget,
                 target: {
@@ -2125,6 +2152,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
       <ElementSheet
         target={sheetPlanTarget}
         month={sheetCellTarget?.month ?? ''}
+        startDay={startDay}
         baseCurrencyId={budget.meta.currencyId}
         currencies={currencies}
         exchange={plan && sheetCellTarget ? planMonthExchange(plan, currencies, sheetCellTarget.monthIndex) : (_from, _to, amount) => amount}
