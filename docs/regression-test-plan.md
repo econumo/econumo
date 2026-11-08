@@ -2173,7 +2173,9 @@ out), and add a second budget member account in USD, before running these.
       Balance, Payment, Repeats, Last payment date and Start date, Save and
       Cancel (Cancel returns to the review untouched). Editing the balance or
       the payment recalculates the last payment date in the form (keeping the
-      rate); changing the date or the schedule recalculates nothing; terms
+      rate; on a debt whose next payment is due today or overdue, the first
+      counted payment is the next one after today, and saving the filled-in
+      date succeeds); changing the date or the schedule recalculates nothing; terms
       typed back to what they were restore the stored date; when the payment
       can never pay the balance off, a message under the payment says so and
       the date stays. Saving a payment that cannot cover the balance, or a last

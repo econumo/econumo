@@ -26,6 +26,30 @@ function nextDue(current: Date, schedule: RecurringSchedule, anchor: number): Da
   return new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), day))
 }
 
+function parseDay(date: string): Date | null {
+  const match = DATE.exec(date)
+  if (!match) return null
+  const d = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+/**
+ * The first due of the series after `today` (Y-m-d), starting from
+ * `nextDueDate`: a snapshot saved today counts only the dues after it, so an
+ * overdue due, or one due today, is not part of new terms. `anchorDay` is the
+ * series' day of month, as for projectLastPaymentDate. null for unusable input.
+ */
+export function firstDueAfter(nextDueDate: string, schedule: RecurringSchedule, today: string, anchorDay?: number): string | null {
+  let due = parseDay(nextDueDate)
+  const day = parseDay(today)
+  if (!due || !day) return null
+  const anchor = anchorDay ?? due.getUTCDate()
+  for (let i = 0; i < MAX_DUES * 5 && due.getTime() <= day.getTime(); i++) {
+    due = nextDue(due, schedule, anchor)
+  }
+  return due.getTime() > day.getTime() ? formatDate(due) : null
+}
+
 /**
  * The date of the payment that clears the debt: from `balance`, each due adds
  * interest (balance * periodRate) and takes `payment`, until the balance is at

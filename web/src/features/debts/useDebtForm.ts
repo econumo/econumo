@@ -8,7 +8,8 @@ import { tryNormalize } from '@/lib/decimal'
 import { normalizeNumber } from '@/lib/money'
 import { isNotEmpty, isValidFormula } from '@/lib/validation'
 import { evaluatedAmount } from '@/features/transactions/useTransactionForm'
-import { projectLastPaymentDate } from './debtMath'
+import { formatDate } from '@/lib/datetime'
+import { firstDueAfter, projectLastPaymentDate } from './debtMath'
 
 export const SCHEDULE_ORDER: RecurringSchedule[] = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']
 
@@ -119,8 +120,10 @@ const DAY = /^\d{4}-\d{2}-(\d{2})/
     amount, a debt with no rate or next due date yet, a negative balance, no
     payment, another schedule than the stored one); 'never' when the payment
     does not cover the interest. `fractionDigits` is the debt currency's
-    precision: the debt is paid off below half its smallest unit. */
-export function projectTerms(form: DebtTermsState, debt: DebtDto, fractionDigits?: number): Projection {
+    precision: the debt is paid off below half its smallest unit. New terms
+    are a snapshot as of `today` (the caller's day), which pays only the dues
+    after it, so the projection starts at the first of those. */
+export function projectTerms(form: DebtTermsState, debt: DebtDto, fractionDigits?: number, today = formatDate(new Date())): Projection {
   // a debt not set up has no rate to project with: its last payment date is typed
   if (debt.isSetUp !== 1) {
     return { status: 'unknown' }
@@ -141,8 +144,13 @@ export function projectTerms(form: DebtTermsState, debt: DebtDto, fractionDigits
     return { status: 'unknown' }
   }
   // the server anchors month-based schedules on the last payment date's day
-  const anchor = DAY.exec(debt.lastPaymentDate)
-  const date = projectLastPaymentDate(balance, payment, rate, form.schedule, debt.nextDueDate, anchor ? Number(anchor[1]) : undefined, fractionDigits)
+  const match = DAY.exec(debt.lastPaymentDate)
+  const anchor = match ? Number(match[1]) : undefined
+  const first = firstDueAfter(debt.nextDueDate, form.schedule, today, anchor)
+  if (first === null) {
+    return { status: 'unknown' }
+  }
+  const date = projectLastPaymentDate(balance, payment, rate, form.schedule, first, anchor, fractionDigits)
   if (date !== null) {
     return { status: 'date', date }
   }

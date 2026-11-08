@@ -45,6 +45,15 @@ function captureUpdate(answer: (body: Record<string, unknown>) => unknown = () =
   return bodies
 }
 
+// the projection starts after the caller's day: pin it before the stored next due
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 10, 8, 12))
+})
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
