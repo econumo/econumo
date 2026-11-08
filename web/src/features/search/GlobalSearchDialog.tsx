@@ -148,8 +148,7 @@ function SearchPanel({
     result.recurring.length === 0 &&
     CLASSIFICATION_GROUPS.every(({ key }) => result[key].length === 0)
 
-  // phones: the panel fills the full-screen sheet, with the list scrolling
-  // between the fixed input and the Close bar
+  // phones: the panel fills the full-screen sheet, with the list scrolling below the fixed input
   return (
     <div className="flex flex-col max-sm:h-full max-sm:pt-[env(safe-area-inset-top)]">
       {/* outside Command: cmdk claims Enter on its root, which would hijack the Back button */}
@@ -173,7 +172,6 @@ function SearchPanel({
               placeholder={isPhone ? t('search.title') : t('search.placeholder')}
             />
           </div>
-          {/* the bottom Close bar sits under the on-screen keyboard while typing; this one stays in reach */}
           {isPhone && dismissible ? (
             <Button type="button" variant="ghost" className="-mr-3 size-12 shrink-0" onClick={close} aria-label={t('common.button.close.label')}>
               <XIcon className="size-5" />
@@ -259,15 +257,6 @@ function SearchPanel({
           {nothing ? <div className="py-6 text-center text-sm text-muted-foreground">{t('search.nothing_found')}</div> : null}
         </CommandList>
       </Command>
-      {/* ResponsiveDialog's footer prop would force this button to its shared h-11; this bar
-          needs its own h-12, so it renders here instead, bled to the sheet edges */}
-      {isPhone && dismissible ? (
-        <div className="-mx-4 border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-          <Button type="button" variant="secondary" className="h-12 w-full" onClick={close}>
-            {t('common.button.close.label')}
-          </Button>
-        </div>
-      ) : null}
     </div>
   )
 }

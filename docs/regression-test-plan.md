@@ -1030,10 +1030,10 @@ and on tablet/phone only with a hardware keyboard.
       schedule row opens the template form (search closes).
 - [ ] Keyboard: ↑/↓ move the highlight, Enter opens the highlighted row, Esc
       closes search.
-- [ ] 📱 On a phone the search field reads "Search" with a ✕ to its right, and
-      a full-width Close button sits at the bottom; each closes the search, the
-      ✕ stays reachable while the on-screen keyboard is up, and the list
-      scrolls between the field and the Close button.
+- [ ] 📱 On a phone the search field reads "Search" with a ✕ to its right that
+      closes the search and stays reachable while the on-screen keyboard is up;
+      there is no Close button at the bottom, and the list scrolls below the
+      field down to the bottom of the screen.
 
 ## 8. Currencies
 
