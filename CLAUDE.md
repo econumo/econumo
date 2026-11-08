@@ -1817,7 +1817,8 @@ data unreadable. Most are also asserted by the test suite.
   whole-category debt to another category) and a category merge onto a whole-category debt (the
   source's debt moving there, or one already on the target) do the same, a month both rows plan
   adding up; deleting it moves them back (the category's plan wins a clash; a category inside an
-  envelope takes nothing, its child row showing no plan), and a delete that would leave data behind (or a
+  envelope takes nothing, its child row showing no plan, and gives nothing when converted:
+  its own plans count nowhere, so they stay hidden on it rather than surface on the debt row), and a delete that would leave data behind (or a
   partial debt's plans) needs `confirmDataRemoval` (`debt.removal_unconfirmed`, a field error on
   that field); the delete write-locks the debt's rows first (`LockElementsByExternal`, like the
   savings guard), so a concurrent plan is either seen or refused, and deletes the debt's budget

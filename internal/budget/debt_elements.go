@@ -37,7 +37,8 @@ func (s *Service) checkDebtPeriod(ctx context.Context, b *budgetAggregate, el *m
 // row in every budget where both rows are in t.CurrencyID. Each budget's rows
 // are synced first, so a target row that does not exist yet is created.
 // leftBehind reports source data that was not moved: a budget skipped for its
-// currencies, or a plan dropped on a clash. Months outside t's bounds stay on
+// currencies, or a plan dropped on a clash. Months outside t's bounds, and the
+// plans of a source category inside an envelope (they count nowhere), stay on
 // the source by design and are not reported.
 func (s *Service) TransferElementData(ctx context.Context, t model.ElementDataTransfer) (leftBehind bool, err error) {
 	fromID, fromType, toID, toType, currencyID := t.FromID, t.FromType, t.ToID, t.ToType, t.CurrencyID
@@ -74,6 +75,14 @@ func (s *Service) TransferElementData(ctx context.Context, t model.ElementDataTr
 				return err
 			}
 			if from == nil {
+				continue
+			}
+			// A category inside an envelope never counts its own plans: moving
+			// them would surface them on the target and inflate the totals, so
+			// they stay hidden where they are.
+			if sourceHidden, err := s.inEnvelope(ctx, src.BudgetID, from); err != nil {
+				return err
+			} else if sourceHidden {
 				continue
 			}
 			to, err := s.elementOfType(ctx, src.BudgetID, toID, toType)

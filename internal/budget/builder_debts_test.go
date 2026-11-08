@@ -579,3 +579,46 @@ func TestFinishSetup_PlansPastTheEndReturnToTheCategory(t *testing.T) {
 		t.Errorf("January 2027 category row = %+v, want its 100 plan shown again", el)
 	}
 }
+
+func plannedTotal(t *testing.T, res *model.GetBudgetResult) float64 {
+	t.Helper()
+	var total float64
+	add := func(s string) {
+		v, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			t.Fatalf("budgeted %q: %v", s, err)
+		}
+		total += v
+	}
+	for _, el := range res.Item.Structure.Elements {
+		add(el.Budgeted)
+	}
+	for _, d := range res.Item.Structure.Debts {
+		add(d.Budgeted)
+	}
+	return total
+}
+
+// A category inside an envelope never counts its own plans: converting it to
+// a whole-category debt leaves those hidden plans where they are instead of
+// surfacing them on the debt row, so the budget's planned total is unchanged.
+func TestConvert_EnvelopeChildKeepsItsHiddenPlans(t *testing.T) {
+	h := newAttrHarness(t)
+	h.setLimit(t, h.loan, "2026-06-01", "300")
+	envelope := vo.NewId().String()
+	if _, err := h.svc.CreateEnvelope(h.ctx, h.owner, model.CreateEnvelopeRequest{BudgetId: h.budgetID, Id: envelope,
+		Name: "Housing", Icon: "home", CurrencyId: fixture.USD, Categories: []string{h.loan}}); err != nil {
+		t.Fatal(err)
+	}
+	h.setLimit(t, envelope, "2026-06-01", "500")
+	before := plannedTotal(t, h.budgetAt(t, h.owner, "2026-06-01"))
+
+	debtID := h.createRefDebt(t, nil)
+	res := h.budgetAt(t, h.owner, "2026-06-01")
+	if after := plannedTotal(t, res); after != before {
+		t.Fatalf("planned total = %v after converting, want %v", after, before)
+	}
+	if row := debtRow(res, debtID); row == nil || row.IsBudgeted != 0 {
+		t.Fatalf("debt row = %+v, want it without the category's hidden plan", row)
+	}
+}
