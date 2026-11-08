@@ -368,6 +368,11 @@
       "update_form": {
         "header": "Editar la transacción"
       },
+      "draft": {
+        "message": "¿Restaurar la transacción sin terminar?",
+        "restore": "Restaurar",
+        "discard": "Descartar"
+      },
       "form": {
         "date": {
           "label": "Fecha"

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -10,6 +10,7 @@ import { useUiStore } from '@/app/uiStore'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { TransactionDialog } from './TransactionDialog'
+import { DRAFT_TTL_MS } from './transactionDraft'
 
 function mockMatchMedia(phone = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -1046,4 +1047,184 @@ it('account pickers match the account name with skipped letters, never its balan
   await user.clear(picker)
   await user.keyboard('2000')
   expect(screen.queryAllByRole('option')).toHaveLength(0)
+})
+
+describe('unfinished new transaction', () => {
+  const draftKey = 'econumo.transaction-draft'
+
+  const openNew = async () => {
+    useUiStore.getState().openTransactionModal({ type: 'expense' })
+    await screen.findByRole('heading', { name: 'Add transaction' })
+  }
+
+  const typeAmountAndCancel = async (user: ReturnType<typeof userEvent.setup>, amount = '42') => {
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), amount)
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+  }
+
+  const offer = () => screen.queryByText("Restore the transaction you didn't finish?")
+
+  afterEach(() => vi.restoreAllMocks())
+
+  it('offers a cancelled form and restores it with the same id', async () => {
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user)
+    const savedId = (JSON.parse(localStorage.getItem(draftKey)!) as { form: { id: string } }).form.id
+
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+    expect(screen.getByLabelText('Amount')).toHaveValue('')
+
+    await user.click(screen.getByRole('button', { name: 'Restore' }))
+    expect(screen.getByLabelText('Amount')).toHaveValue('42')
+    expect(offer()).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(body).toBeDefined())
+    expect(body!.id).toBe(savedId)
+    await waitFor(() => expect(localStorage.getItem(draftKey)).toBeNull())
+  })
+
+  it('survives a page reload without Cancel', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), '7')
+    cleanup()
+
+    useUiStore.setState({ transactionModal: null })
+    renderDialog()
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+  })
+
+  it('stops offering after two minutes, counted from leaving the form', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user)
+    const left = Date.now()
+
+    vi.spyOn(Date, 'now').mockReturnValue(left + DRAFT_TTL_MS + 5000)
+    await openNew()
+    expect(offer()).not.toBeInTheDocument()
+    expect(localStorage.getItem(draftKey)).toBeNull()
+  })
+
+  it('still offers when the form sat idle and was then cancelled', async () => {
+    const user = userEvent.setup()
+    const start = Date.now()
+    renderDialog()
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), '42')
+
+    const left = start + DRAFT_TTL_MS * 5
+    vi.spyOn(Date, 'now').mockReturnValue(left)
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+
+    vi.spyOn(Date, 'now').mockReturnValue(left + DRAFT_TTL_MS - 1000)
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+  })
+
+  it('is dropped by Discard and stays gone', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user)
+
+    await openNew()
+    await user.click(screen.getByRole('button', { name: 'Discard' }))
+    expect(offer()).not.toBeInTheDocument()
+    expect(localStorage.getItem(draftKey)).toBeNull()
+  })
+
+  it('keeps the offer when the empty form is cancelled untouched', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user)
+
+    await openNew()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+  })
+
+  it('is replaced by typing into the new form, even if it is emptied again', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user, '42')
+
+    await openNew()
+    const amount = screen.getByLabelText('Amount')
+    await user.type(amount, '9')
+    expect(offer()).not.toBeInTheDocument()
+    expect((JSON.parse(localStorage.getItem(draftKey)!) as { form: { amount: string } }).form.amount).toBe('9')
+
+    await user.clear(amount)
+    expect(offer()).not.toBeInTheDocument()
+    expect(localStorage.getItem(draftKey)).toBeNull()
+  })
+
+  it('is kept when adding fails', async () => {
+    server.use(
+      http.post('*/api/v1/transaction/create-transaction', () =>
+        HttpResponse.json({ success: false, message: 'nope', code: 400, errors: {} }, { status: 400 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderDialog()
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), '42')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await screen.findByRole('button', { name: 'Add' })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled())
+    expect(localStorage.getItem(draftKey)).not.toBeNull()
+    expect(useUiStore.getState().transactionModal).not.toBeNull()
+  })
+
+  it('does not save a form where only the prefilled choices changed', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await openNew()
+    await user.click(screen.getByRole('radio', { name: 'Income' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(localStorage.getItem(draftKey)).toBeNull()
+  })
+
+  it('is neither offered nor overwritten by a prefilled form', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user, '42')
+    const before = localStorage.getItem(draftKey)
+
+    useUiStore.getState().openTransactionModal({
+      importQueued: { linkId: 'l1', accountId: 'a1', amount: '5.00', currency: 'USD', type: 'expense', payee: 'Shop', date: '2026-07-03 10:00:00' },
+    })
+    await screen.findByRole('heading', { name: 'Add transaction' })
+    expect(offer()).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText('Amount'), '1')
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(localStorage.getItem(draftKey)).toBe(before)
+  })
+
+  it('ignores an unreadable stored draft', async () => {
+    localStorage.setItem(draftKey, '{not json')
+    renderDialog()
+    await openNew()
+    expect(offer()).not.toBeInTheDocument()
+    expect(localStorage.getItem(draftKey)).toBeNull()
+  })
 })

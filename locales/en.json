@@ -368,6 +368,11 @@
       "update_form": {
         "header": "Edit transaction"
       },
+      "draft": {
+        "message": "Restore the transaction you didn't finish?",
+        "restore": "Restore",
+        "discard": "Discard"
+      },
       "form": {
         "date": {
           "label": "Date"

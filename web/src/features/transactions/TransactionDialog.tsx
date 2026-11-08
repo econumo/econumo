@@ -50,6 +50,7 @@ import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TransactionType } from '@/api/dto/transaction'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { TransactionDatePicker } from './TransactionDatePicker'
+import { clearTransactionDraft, useTransactionDraft } from './transactionDraft'
 
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 
@@ -84,6 +85,8 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   )
   const { errors, setErrors, clear: clearError } = useFormErrors<Record<string, string | undefined>>()
   const [addTagOpen, setAddTagOpen] = useState(false)
+  // prefilled forms can simply be opened again from where they came from
+  const draft = useTransactionDraft(form, !params.transaction && !params.postRecurring && !params.importQueued)
 
   const isTransfer = form.type === 'transfer'
   const isExpense = form.type === 'expense'
@@ -214,6 +217,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         await postRecurring.mutateAsync({ ...payload, recurringId: params.postRecurring.id })
       } else if (form.isNew) {
         await createTransaction.mutateAsync(payload)
+        clearTransactionDraft()
         if (isTransfer && payload.accountRecipientId && payload.accountRecipientId !== accountPageId) {
           setSwitchAccountPrompt(payload.accountRecipientId)
         } else if (accountPageId && payload.accountId !== accountPageId && payload.accountRecipientId !== accountPageId) {
@@ -239,6 +243,38 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     }
   }
 
+  const cancel = () => {
+    draft.stamp()
+    onDone()
+  }
+
+  // The draft keeps its id: if its first submit reached the server and only
+  // the response was lost, the server refuses the repeat instead of duplicating.
+  const restoreDraft = () => {
+    if (draft.offer) {
+      patch(draft.offer)
+      setErrors({})
+      trackEvent(METRICS.TRANSACTION_DRAFT_RESTORE)
+    }
+  }
+
+  const discardDraft = () => {
+    draft.discard()
+    trackEvent(METRICS.TRANSACTION_DRAFT_DISCARD)
+  }
+
+  const draftSummary = draft.offer
+    ? [
+        draft.offer.amount,
+        accounts.find((a) => a.id === draft.offer?.accountId)?.name,
+        categories.find((c) => c.id === draft.offer?.categoryId)?.name,
+        payees.find((p) => p.id === draft.offer?.payeeId)?.name,
+        draft.offer.description,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : ''
+
   const dateOnly = dayKey(form.date)
   const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending || importQueued.isPending
   // posting a template creates an ordinary transaction (prefilled from it), so
@@ -262,11 +298,11 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       fullScreen
       hideHeader
       dismissible={false}
-      onOpenChange={(o) => !o && onDone()}
+      onOpenChange={(o) => !o && cancel()}
       title={title}
       footer={
         <div className={dialogActionsClass}>
-          <Button type="button" variant="secondary" onClick={onDone}>
+          <Button type="button" variant="secondary" onClick={cancel}>
             {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="transaction-dialog-form" disabled={pending}>
@@ -309,6 +345,23 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           }} />
         </span>
       </div>
+
+      {draft.offer ? (
+        <div role="status" className="flex flex-col gap-2 rounded-lg bg-econumo-card px-3 py-2 sm:flex-row sm:items-center">
+          <div className="min-w-0 flex-1 text-sm">
+            <p>{t('transactions.modal.draft.message')}</p>
+            <p className="truncate text-muted-foreground">{draftSummary}</p>
+          </div>
+          <div className="flex shrink-0 justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" className="max-sm:h-11" onClick={discardDraft}>
+              {t('transactions.modal.draft.discard')}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" className="max-sm:h-11" onClick={restoreDraft}>
+              {t('transactions.modal.draft.restore')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex rounded-lg bg-econumo-card p-1" role="radiogroup" aria-label="type">
         {TYPE_ORDER.map((type) => (

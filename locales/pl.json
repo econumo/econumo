@@ -368,6 +368,11 @@
       "update_form": {
         "header": "Edytuj transakcję"
       },
+      "draft": {
+        "message": "Przywrócić niedokończoną transakcję?",
+        "restore": "Przywróć",
+        "discard": "Odrzuć"
+      },
       "form": {
         "date": {
           "label": "Data"

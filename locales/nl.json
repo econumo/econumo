@@ -368,6 +368,11 @@
       "update_form": {
         "header": "Transactie bewerken"
       },
+      "draft": {
+        "message": "Onafgeronde transactie herstellen?",
+        "restore": "Herstellen",
+        "discard": "Verwijderen"
+      },
       "form": {
         "date": {
           "label": "Datum"

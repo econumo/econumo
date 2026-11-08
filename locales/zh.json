@@ -368,6 +368,11 @@
       "update_form": {
         "header": "编辑交易"
       },
+      "draft": {
+        "message": "恢复未完成的交易？",
+        "restore": "恢复",
+        "discard": "放弃"
+      },
       "form": {
         "date": {
           "label": "日期"
