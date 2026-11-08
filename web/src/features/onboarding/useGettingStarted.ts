@@ -1,12 +1,12 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useImportSources } from '@/features/imports/queries'
-import { isStandalone, useInstallMode } from '@/features/install/installPrompt'
+import { isAppInstalled, isStandalone, subscribeInstallState, useInstallMode } from '@/features/install/installPrompt'
 import { useTransactions } from '@/features/transactions/queries'
 import { gettingStartedOption, useUserData } from '@/features/user/queries'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { isIOS } from '@/lib/platform'
+import { isIPhone } from '@/lib/platform'
 import {
   hasRealTransactions,
   dismissGettingStarted,
@@ -41,10 +41,32 @@ export function isOpenStep(step: GettingStartedStep): boolean {
   return !step.done && !step.dismissed
 }
 
+// Per device and shared by every hook instance: the install dialog that
+// finishes the step is opened from another component than the cards.
+const homeScreenListeners = new Set<() => void>()
+
 function homeScreenState(): StepState {
-  if (isStandalone()) return 'done'
+  if (isStandalone() || isAppInstalled()) return 'done'
   const stored = localStorage.getItem(HOME_SCREEN_KEY)
   return stored === 'done' || stored === 'dismissed' ? stored : 'open'
+}
+
+function subscribeHomeScreen(listener: () => void): () => void {
+  homeScreenListeners.add(listener)
+  const unsubscribeInstall = subscribeInstallState(listener)
+  return () => {
+    homeScreenListeners.delete(listener)
+    unsubscribeInstall()
+  }
+}
+
+function setHomeScreenState(state: 'done' | 'dismissed'): void {
+  localStorage.setItem(HOME_SCREEN_KEY, state)
+  homeScreenListeners.forEach((l) => l())
+}
+
+export function markHomeScreenDone(): void {
+  setHomeScreenState('done')
 }
 
 export function useGettingStarted(): GettingStarted {
@@ -55,7 +77,14 @@ export function useGettingStarted(): GettingStarted {
   const isCompact = useIsCompact()
   // a browser that cannot install from a page has nothing for the card to open
   const installable = useInstallMode() !== null
-  const [homeScreen, setHomeScreen] = useState(homeScreenState)
+  const homeScreen = useSyncExternalStore(subscribeHomeScreen, homeScreenState)
+
+  // an install seen only in this page's memory is written down for the next launch
+  useEffect(() => {
+    if (homeScreen === 'done' && isAppInstalled() && localStorage.getItem(HOME_SCREEN_KEY) !== 'done') {
+      localStorage.setItem(HOME_SCREEN_KEY, 'done')
+    }
+  }, [homeScreen])
 
   const option = gettingStartedOption(user)
   const active = option !== null
@@ -70,7 +99,7 @@ export function useGettingStarted(): GettingStarted {
     const step = (key: StepKey): GettingStartedStep => ({ key, done: state(key) === 'done', dismissed: state(key) === 'dismissed' })
     const phoneKeys: StepKey[] = [
       ...(installable || homeScreen === 'done' ? ['home_screen' as const] : []),
-      ...(isIOS() ? ['apple_wallet' as const] : []),
+      ...(isIPhone() ? ['apple_wallet' as const] : []),
     ]
     const cardKeys: StepKey[] = isCompact ? phoneKeys : ['plan', 'import']
     const inboxKeys = [...new Set<StepKey>([...cardKeys, 'plan', 'import'])]
@@ -84,8 +113,7 @@ export function useGettingStarted(): GettingStarted {
   const markDone = useCallback(
     (key: StepKey) => {
       if (key === 'home_screen') {
-        localStorage.setItem(HOME_SCREEN_KEY, 'done')
-        setHomeScreen('done')
+        markHomeScreenDone()
         return
       }
       markGettingStartedDone(queryClient, key)
@@ -97,8 +125,7 @@ export function useGettingStarted(): GettingStarted {
     (key: StepKey) => {
       trackEvent(METRICS.GETTING_STARTED_DISMISS, { step: key })
       if (key === 'home_screen') {
-        localStorage.setItem(HOME_SCREEN_KEY, 'dismissed')
-        setHomeScreen('dismissed')
+        setHomeScreenState('dismissed')
         return
       }
       dismissGettingStarted(queryClient, key)

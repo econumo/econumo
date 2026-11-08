@@ -8,27 +8,28 @@ export type InstallSource = 'settings' | 'banner' | 'popup' | 'getting_started'
 // the menu-only browsers get the steps.
 export function useInstallApp(): {
   mode: InstallMode | null
-  start: (source: InstallSource) => void
+  // resolves true when the browser's own install dialog was accepted
+  start: (source: InstallSource) => Promise<boolean>
   // the steps to show, while they are open
   instructions: InstructionMode | null
   closeInstructions: () => void
 } {
   const mode = useInstallMode()
   const [instructionsOpen, setInstructionsOpen] = useState(false)
-  const start = useCallback((source: InstallSource) => {
+  const start = useCallback(async (source: InstallSource) => {
     if (!mode) {
-      return
+      return false
     }
     trackEvent(METRICS.INSTALL_APP_OPEN, { source, mode })
     if (mode !== 'prompt') {
       setInstructionsOpen(true)
-      return
+      return false
     }
-    void promptInstall().then((accepted) => {
-      if (accepted) {
-        trackEvent(METRICS.INSTALL_APP_ACCEPT, { source })
-      }
-    })
+    const accepted = await promptInstall()
+    if (accepted) {
+      trackEvent(METRICS.INSTALL_APP_ACCEPT, { source })
+    }
+    return accepted
   }, [mode])
   const closeInstructions = useCallback(() => setInstructionsOpen(false), [])
   const instructions = instructionsOpen && mode && mode !== 'prompt' ? mode : null

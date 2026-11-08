@@ -6,9 +6,11 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { hasRealTransactions, markGettingStartedDone, withStepState } from './gettingStarted'
-import { HOME_SCREEN_KEY, useGettingStarted } from './useGettingStarted'
+import { HOME_SCREEN_KEY, markHomeScreenDone, useGettingStarted } from './useGettingStarted'
+import { listenForInstallPrompt, resetInstallStateForTests } from '@/features/install/installPrompt'
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+const IPAD = 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
 const ANDROID_FIREFOX = 'Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0'
 const ANDROID_CHROME = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36'
 const DESKTOP = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
@@ -39,7 +41,10 @@ function setup(user: unknown, extra: Record<string, unknown> = {}) {
 
 const keys = (steps: { key: string }[]) => steps.map((s) => s.key)
 
+beforeAll(() => listenForInstallPrompt())
+
 beforeEach(() => {
+  resetInstallStateForTests()
   localStorage.clear()
   window.econumoConfig = {}
   setDevice(DESKTOP, false)
@@ -66,6 +71,34 @@ it('gives an iPhone home screen and Apple Wallet, with plan and import in the In
   await waitFor(() => expect(result.current.active).toBe(true))
   expect(keys(result.current.steps)).toEqual(['home_screen', 'apple_wallet'])
   expect(keys(result.current.inboxSteps)).toEqual(['home_screen', 'apple_wallet', 'plan', 'import'])
+})
+
+it('gives an iPad home screen but not Apple Wallet, which is iPhone only', async () => {
+  setDevice(IPAD, true)
+  const { result } = setup(userWith(''))
+  await waitFor(() => expect(result.current.active).toBe(true))
+  expect(keys(result.current.steps)).toEqual(['home_screen'])
+  expect(keys(result.current.inboxSteps)).toEqual(['home_screen', 'plan', 'import'])
+})
+
+it('marks home screen done when the browser reports the install, and keeps it for the next launch', async () => {
+  setDevice(ANDROID_FIREFOX, true)
+  const { result } = setup(userWith(''))
+  await waitFor(() => expect(result.current.active).toBe(true))
+  expect(result.current.steps[0]).toEqual({ key: 'home_screen', done: false, dismissed: false })
+  act(() => {
+    window.dispatchEvent(new Event('appinstalled'))
+  })
+  expect(result.current.steps[0]).toEqual({ key: 'home_screen', done: true, dismissed: false })
+  expect(localStorage.getItem(HOME_SCREEN_KEY)).toBe('done')
+})
+
+it('a home screen step finished elsewhere updates every mounted hook', async () => {
+  setDevice(IPHONE, true)
+  const { result } = setup(userWith(''))
+  await waitFor(() => expect(result.current.active).toBe(true))
+  act(() => markHomeScreenDone())
+  expect(result.current.steps[0]).toEqual({ key: 'home_screen', done: true, dismissed: false })
 })
 
 it('gives an Android phone home screen only', async () => {

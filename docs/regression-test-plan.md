@@ -287,9 +287,12 @@ navigation (single-pane vs sidebar).
       removes the card and its result dialog still shows.
 - [ ] 📱 On an iPhone in Safari the cards are "Add Econumo to your home screen"
       (opens the Share-menu steps) and "Import Apple Wallet payments" (opens the
-      Apple Wallet settings; gone once a Wallet source exists); on Android only
-      the home-screen card, and only where the browser can install. Opened
-      from the home screen, the home-screen card is gone.
+      Apple Wallet settings; gone once a Wallet source exists); an iPad gets
+      the home-screen card only (no Apple Wallet); on Android only the
+      home-screen card, and only where the browser can install. Opened from
+      the home screen, the home-screen card is gone; it is also done once the
+      Share-menu steps opened from it are closed, or once the browser's install
+      prompt is accepted.
 - [ ] Skip on a card removes it for good (home screen: on this device only);
       once every card is done or skipped, or the first real transaction is
       added (an opening balance does not count), the normal budget shows.

@@ -25,7 +25,7 @@ function notify(): void {
   listeners.forEach((l) => l())
 }
 
-function subscribe(listener: () => void): () => void {
+export function subscribeInstallState(listener: () => void): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
@@ -43,6 +43,11 @@ export function listenForInstallPrompt(): void {
     installed = true
     notify()
   })
+}
+
+// true once this page saw the browser finish an install (appinstalled)
+export function isAppInstalled(): boolean {
+  return installed
 }
 
 export function isStandalone(): boolean {
@@ -76,7 +81,7 @@ export function installMode(): InstallMode | null {
 }
 
 export function useInstallMode(): InstallMode | null {
-  return useSyncExternalStore(subscribe, installMode)
+  return useSyncExternalStore(subscribeInstallState, installMode)
 }
 
 // Resolves true when the user accepted the browser's install dialog.

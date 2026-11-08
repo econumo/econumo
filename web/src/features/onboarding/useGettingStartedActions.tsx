@@ -8,6 +8,7 @@ import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { StepKey } from './gettingStarted'
+import { markHomeScreenDone } from './useGettingStarted'
 
 export type GettingStartedSurface = 'budget' | 'inbox'
 
@@ -23,16 +24,24 @@ export function useGettingStartedActions(surface: GettingStartedSurface): { open
   const open = useCallback(
     (key: StepKey) => {
       trackEvent(METRICS.GETTING_STARTED_OPEN, { step: key, surface })
-      if (key === 'home_screen') start('getting_started')
-      else if (key === 'apple_wallet') navigate(RouterPage.SETTINGS_APPLE_WALLET)
+      if (key === 'home_screen') {
+        void start('getting_started').then((accepted) => {
+          if (accepted) markHomeScreenDone()
+        })
+      } else if (key === 'apple_wallet') navigate(RouterPage.SETTINGS_APPLE_WALLET)
       else if (key === 'plan') navigate(RouterPage.PLAN)
       else setImportOpen(true)
     },
     [surface, start, navigate],
   )
+  // the steps cannot be confirmed from a page, so having read them finishes the step
+  const closeInstructions = () => {
+    install.closeInstructions()
+    markHomeScreenDone()
+  }
   const dialogs = (
     <>
-      {install.instructions ? <InstallInstructionsDialog mode={install.instructions} open onClose={install.closeInstructions} /> : null}
+      {install.instructions ? <InstallInstructionsDialog mode={install.instructions} open onClose={closeInstructions} /> : null}
       <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
       <ImportResultDialog open={importResult !== null} result={importResult} onClose={() => setImportResult(null)} />
     </>

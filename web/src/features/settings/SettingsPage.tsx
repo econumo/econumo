@@ -158,7 +158,7 @@ export function SettingsPage() {
               accent="hover"
               label={t('install.menu_item')}
               trailing={<Download className="size-4 shrink-0 text-muted-foreground" />}
-              onClick={() => install.start('settings')}
+              onClick={() => void install.start('settings')}
             />
           ) : null}
 
