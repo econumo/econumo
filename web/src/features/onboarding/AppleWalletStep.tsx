@@ -15,7 +15,7 @@ export function AppleWalletStep({ onSkip }: StepBodyProps) {
       <p className="text-sm text-muted-foreground">{t('onboarding.wallet_step.text')}</p>
       <button
         type="button"
-        className="mt-4 flex items-center justify-center rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-6 text-sm text-primary hover:bg-primary/10"
+        className="mt-4 flex items-center justify-center rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-6 text-sm text-muted-foreground hover:bg-primary/10"
         onClick={() => navigate(RouterPage.SETTINGS_APPLE_WALLET)}
       >
         {t('onboarding.wallet_step.tile')}

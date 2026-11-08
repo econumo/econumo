@@ -307,13 +307,13 @@ navigation (single-pane vs sidebar).
       Continue and Skip reachable).
 - [ ] Import step: "Choose a CSV file" (a dashed, accent-tinted area) and
       Import open the CSV import dialog; a successful import marks Categories
-      and Accounts done and opens the next open step (Budget & plan); closing
+      and Accounts done and opens the next open step (normally Budget & plan); closing
       the dialog or importing nothing leaves the step open; Skip skips only
       Import.
 - [ ] Steps per device: Install app appears only where the browser can
       install or show home-screen instructions (a standalone PWA shows
       none); the Install button or "Done" marks it done and Skip skips it. On
-      an iPhone or Mac, Apple Wallet appears when that provider is on: its
+      an iPhone or Mac, Apple Wallet appears: its
       "Set up the Shortcut" tile and Set up open the Apple Wallet settings,
       Skip skips it. Install instructions render as a grouped rounded card
       with dividers and icon tiles.
