@@ -369,9 +369,8 @@
         "header": "Transactie bewerken"
       },
       "draft": {
-        "message": "Onafgeronde transactie herstellen?",
-        "restore": "Herstellen",
-        "discard": "Verwijderen"
+        "message": "Onafgerond",
+        "restore": "Herstellen"
       },
       "form": {
         "date": {

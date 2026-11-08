@@ -369,9 +369,8 @@
         "header": "Modifier la transaction"
       },
       "draft": {
-        "message": "Restaurer la transaction non terminée ?",
-        "restore": "Restaurer",
-        "discard": "Supprimer"
+        "message": "Non terminée",
+        "restore": "Restaurer"
       },
       "form": {
         "date": {

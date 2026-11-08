@@ -369,9 +369,8 @@
         "header": "Edytuj transakcję"
       },
       "draft": {
-        "message": "Przywrócić niedokończoną transakcję?",
-        "restore": "Przywróć",
-        "discard": "Odrzuć"
+        "message": "Niedokończona",
+        "restore": "Przywróć"
       },
       "form": {
         "date": {

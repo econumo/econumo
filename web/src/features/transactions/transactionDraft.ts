@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { getSessionUserId } from '@/lib/storage'
 import type { TransactionFormState } from './useTransactionForm'
 
 const DRAFT_KEY = 'econumo.transaction-draft'
@@ -8,6 +9,9 @@ export const DRAFT_TTL_MS = 2 * 60 * 1000
 
 interface StoredDraft {
   savedAt: number
+  // A tab left open across a sign-out can still write after the purge, so the
+  // draft names whose it is.
+  userId: string | null
   form: TransactionFormState
 }
 
@@ -15,9 +19,9 @@ interface StoredDraft {
 // reloaded in the background starts cold, and the draft has to survive that.
 // Storage can be full (the query cache lives there too) or blocked, and neither
 // may break typing in the form, hence the catch-alls.
-function saveDraft(form: TransactionFormState): void {
+function saveDraft(form: TransactionFormState, userId: string | null): void {
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ savedAt: Date.now(), form } satisfies StoredDraft))
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ savedAt: Date.now(), userId, form } satisfies StoredDraft))
   } catch {
     // no draft this time
   }
@@ -38,7 +42,7 @@ export function loadTransactionDraft(): TransactionFormState | null {
   } catch {
     // unreadable, dropped below
   }
-  if (typeof stored?.savedAt !== 'number' || !stored.form || Date.now() - stored.savedAt > DRAFT_TTL_MS) {
+  if (typeof stored?.savedAt !== 'number' || !stored.form || stored.userId !== getSessionUserId() || Date.now() - stored.savedAt > DRAFT_TTL_MS) {
     clearTransactionDraft()
     return null
   }
@@ -67,6 +71,8 @@ export function useTransactionDraft(form: TransactionFormState, enabled: boolean
     setOffer(null)
   }
 
+  // the user this form was opened for, not whoever holds the session at save time
+  const [userId] = useState(getSessionUserId)
   const savedThisForm = useRef(false)
   useEffect(() => {
     if (!enabled) {
@@ -81,24 +87,34 @@ export function useTransactionDraft(form: TransactionFormState, enabled: boolean
       }
       return
     }
-    saveDraft(form)
+    saveDraft(form, userId)
     savedThisForm.current = true
-    // restamp at the moment the page goes away, however long the form sat idle
-    const stamp = () => saveDraft(form)
+    // Restamp when the page goes away, however long the form sat idle. iOS
+    // kills a backgrounded app without pagehide; hiding it is the last signal.
+    const stamp = () => saveDraft(form, userId)
+    const stampIfHidden = () => {
+      if (document.visibilityState === 'hidden') {
+        stamp()
+      }
+    }
     window.addEventListener('pagehide', stamp)
-    return () => window.removeEventListener('pagehide', stamp)
-  }, [enabled, form])
+    document.addEventListener('visibilitychange', stampIfHidden)
+    return () => {
+      window.removeEventListener('pagehide', stamp)
+      document.removeEventListener('visibilitychange', stampIfHidden)
+    }
+  }, [enabled, form, userId])
 
   return {
     offer,
-    discard: () => {
-      clearTransactionDraft()
-      setOffer(null)
-    },
-    // restamps a form being closed, however long it sat idle
-    stamp: () => {
-      if (enabled && hasDraftContent(form)) {
-        saveDraft(form)
+    // Closing the form with the offer still up is the answer to it: the draft
+    // goes. A form with content becomes the draft, restamped at this moment
+    // however long it sat idle.
+    leave: () => {
+      if (offer) {
+        clearTransactionDraft()
+      } else if (enabled && hasDraftContent(form)) {
+        saveDraft(form, userId)
       }
     },
   }

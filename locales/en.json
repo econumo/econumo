@@ -369,9 +369,8 @@
         "header": "Edit transaction"
       },
       "draft": {
-        "message": "Restore the transaction you didn't finish?",
-        "restore": "Restore",
-        "discard": "Discard"
+        "message": "Unfinished",
+        "restore": "Restore"
       },
       "form": {
         "date": {

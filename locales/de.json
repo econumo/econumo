@@ -369,9 +369,8 @@
         "header": "Transaktion bearbeiten"
       },
       "draft": {
-        "message": "Nicht abgeschlossene Transaktion wiederherstellen?",
-        "restore": "Wiederherstellen",
-        "discard": "Verwerfen"
+        "message": "Nicht abgeschlossen",
+        "restore": "Wiederherstellen"
       },
       "form": {
         "date": {

@@ -1064,7 +1064,7 @@ describe('unfinished new transaction', () => {
     await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
   }
 
-  const offer = () => screen.queryByText("Restore the transaction you didn't finish?")
+  const offer = () => screen.queryByRole('button', { name: 'Restore' })
 
   afterEach(() => vi.restoreAllMocks())
 
@@ -1137,23 +1137,44 @@ describe('unfinished new transaction', () => {
     expect(offer()).toBeInTheDocument()
   })
 
-  it('is dropped by Discard and stays gone', async () => {
+  it.each([
+    ['Cancel', (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Cancel' }))],
+    ['Escape', (user: ReturnType<typeof userEvent.setup>) => user.keyboard('{Escape}')],
+  ])('is dropped by %s while it is still offered', async (_name, close) => {
     const user = userEvent.setup()
     renderDialog()
     await typeAmountAndCancel(user)
 
     await openNew()
-    await user.click(screen.getByRole('button', { name: 'Discard' }))
-    expect(offer()).not.toBeInTheDocument()
+    expect(offer()).toBeInTheDocument()
+    await close(user)
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
     expect(localStorage.getItem(draftKey)).toBeNull()
+
+    await openNew()
+    expect(offer()).not.toBeInTheDocument()
   })
 
-  it('keeps the offer when the empty form is cancelled untouched', async () => {
+  it('stays offered across a reload while it is showing', async () => {
     const user = userEvent.setup()
     renderDialog()
     await typeAmountAndCancel(user)
 
     await openNew()
+    cleanup()
+    useUiStore.setState({ transactionModal: null })
+    renderDialog()
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+  })
+
+  it('is offered again when the restored form is cancelled', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user)
+
+    await openNew()
+    await user.click(screen.getByRole('button', { name: 'Restore' }))
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
 
@@ -1218,6 +1239,33 @@ describe('unfinished new transaction', () => {
     await user.type(screen.getByLabelText('Amount'), '1')
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(localStorage.getItem(draftKey)).toBe(before)
+  })
+
+  it('restamps when the app is backgrounded', async () => {
+    const user = userEvent.setup()
+    const start = Date.now()
+    renderDialog()
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), '42')
+
+    const hiddenAt = start + DRAFT_TTL_MS * 5
+    vi.spyOn(Date, 'now').mockReturnValue(hiddenAt)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    expect((JSON.parse(localStorage.getItem(draftKey)!) as { savedAt: number }).savedAt).toBe(hiddenAt)
+  })
+
+  it('is not offered to another user', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('sessionUserId', 'user-a')
+    renderDialog()
+    await typeAmountAndCancel(user)
+
+    localStorage.setItem('sessionUserId', 'user-b')
+    await openNew()
+    expect(offer()).not.toBeInTheDocument()
+    expect(localStorage.getItem(draftKey)).toBeNull()
   })
 
   it('ignores an unreadable stored draft', async () => {

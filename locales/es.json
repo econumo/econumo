@@ -369,9 +369,8 @@
         "header": "Editar la transacción"
       },
       "draft": {
-        "message": "¿Restaurar la transacción sin terminar?",
-        "restore": "Restaurar",
-        "discard": "Descartar"
+        "message": "Sin terminar",
+        "restore": "Restaurar"
       },
       "form": {
         "date": {

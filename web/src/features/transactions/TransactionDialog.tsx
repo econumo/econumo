@@ -244,7 +244,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }
 
   const cancel = () => {
-    draft.stamp()
+    draft.leave()
     onDone()
   }
 
@@ -256,11 +256,6 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       setErrors({})
       trackEvent(METRICS.TRANSACTION_DRAFT_RESTORE)
     }
-  }
-
-  const discardDraft = () => {
-    draft.discard()
-    trackEvent(METRICS.TRANSACTION_DRAFT_DISCARD)
   }
 
   const draftSummary = draft.offer
@@ -347,19 +342,13 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       </div>
 
       {draft.offer ? (
-        <div role="status" className="flex flex-col gap-2 rounded-lg bg-econumo-card px-3 py-2 sm:flex-row sm:items-center">
-          <div className="min-w-0 flex-1 text-sm">
-            <p>{t('transactions.modal.draft.message')}</p>
-            <p className="truncate text-muted-foreground">{draftSummary}</p>
-          </div>
-          <div className="flex shrink-0 justify-end gap-2">
-            <Button type="button" variant="ghost" size="sm" className="max-sm:h-11" onClick={discardDraft}>
-              {t('transactions.modal.draft.discard')}
-            </Button>
-            <Button type="button" variant="secondary" size="sm" className="max-sm:h-11" onClick={restoreDraft}>
-              {t('transactions.modal.draft.restore')}
-            </Button>
-          </div>
+        <div role="status" className="flex items-center gap-2 rounded-lg bg-econumo-card pl-3 text-sm">
+          <p className="min-w-0 flex-1 truncate">
+            {t('transactions.modal.draft.message')} <span className="text-muted-foreground">{draftSummary}</span>
+          </p>
+          <Button type="button" variant="ghost" size="sm" className="shrink-0 max-sm:h-11" onClick={restoreDraft}>
+            {t('transactions.modal.draft.restore')}
+          </Button>
         </div>
       ) : null}
 
