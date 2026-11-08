@@ -7,7 +7,7 @@ import { gettingStartedOption } from '@/features/user/queries'
 
 export type StepKey = 'home_screen' | 'apple_wallet' | 'plan' | 'import'
 // the steps whose state lives in the users_options value; add to home screen is per device
-export type StoredStepKey = Exclude<StepKey, 'home_screen'>
+export type StoredStepKey = 'import' | 'categories' | 'accounts' | 'plan' | 'apple_wallet'
 
 export type StepState = 'open' | 'done' | 'dismissed'
 

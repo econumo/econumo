@@ -245,13 +245,13 @@ type UpdateAnalyticsResult struct {
 // ---------------------------------------------------------------------------
 
 // UpdateGettingStartedRequest is the update-getting-started request body. Value
-// is a comma-separated list of steps (plan, import, apple_wallet), each with an
+// is a comma-separated list of steps (plan, import, apple_wallet, categories, accounts), each with an
 // optional "!" prefix meaning dismissed; "" is valid (Day 0 done, nothing else).
 type UpdateGettingStartedRequest struct {
 	Value *string `json:"value"`
 }
 
-var gettingStartedSteps = map[string]bool{"plan": true, "import": true, "apple_wallet": true}
+var gettingStartedSteps = map[string]bool{"plan": true, "import": true, "apple_wallet": true, "categories": true, "accounts": true}
 
 func (r UpdateGettingStartedRequest) Validate() error {
 	if r.Value == nil {

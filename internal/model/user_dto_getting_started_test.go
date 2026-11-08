@@ -18,6 +18,8 @@ func TestUpdateGettingStartedRequestValidate(t *testing.T) {
 		{"mixed", str("plan,!import"), ""},
 		{"empty", str(""), ""},
 		{"all", str("plan,import,!apple_wallet"), ""},
+		{"new steps", str("import,categories,!accounts,plan"), ""},
+		{"duplicate new", str("categories,categories"), errs.CodeInvalidChoice},
 		{"duplicate", str("plan,plan"), errs.CodeInvalidChoice},
 		{"duplicate dismissed", str("plan,!plan"), errs.CodeInvalidChoice},
 		{"unknown", str("foo"), errs.CodeInvalidChoice},
