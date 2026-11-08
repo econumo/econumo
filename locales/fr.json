@@ -495,9 +495,6 @@
       "tag": {
         "label": "Tag (facultatif)"
       },
-      "label": {
-        "label": "Tag de rapport (facultatif)"
-      },
       "start_date": {
         "label": "Date de début (facultatif)",
         "hint": "Les paiements antérieurs ne comptent pas",
@@ -511,7 +508,14 @@
         "label": "Paiement"
       },
       "schedule": {
-        "label": "Répétition"
+        "label": "Répétition",
+        "every": {
+          "weekly": "toutes les semaines",
+          "biweekly": "toutes les 2 semaines",
+          "monthly": "tous les mois",
+          "quarterly": "tous les trimestres",
+          "yearly": "tous les ans"
+        }
       },
       "last_payment_date": {
         "label": "Date du dernier paiement",
@@ -552,11 +556,11 @@
       "in": "Paiements de la catégorie",
       "from": "bénéficiaire",
       "tagged": "tag",
-      "labelled": "tag de rapport",
       "choose_category": "à choisir",
       "any_payee": "tous",
       "any_tag": "tous",
-      "any_label": "tous",
+      "group_tags": "Tags",
+      "group_labels": "Tags de rapport",
       "explainer": "Econumo trouve les paiements de ce prêt grâce à ces critères. Ils passent de la catégorie à cette dette."
     },
     "terms": {

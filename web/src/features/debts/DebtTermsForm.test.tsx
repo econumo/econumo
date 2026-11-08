@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -126,7 +126,7 @@ it('editing the last payment date leaves the other fields', async () => {
   expect(lastPaymentChip()).toHaveTextContent('2027-11-20')
   expect(screen.getByLabelText('Balance now')).toHaveValue('900')
   expect(screen.getByLabelText('Payment')).toHaveValue('100')
-  expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('Monthly')
+  expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('every month')
 })
 
 it('saving untouched terms sends the stored snapshot, not the balance shown now', async () => {
@@ -198,7 +198,7 @@ it('setup starts with payment and repeats filled, balance and date empty', () =>
   renderForm(wireDebtNotSetUp)
   expect(screen.getByLabelText('Balance now')).toHaveValue('')
   expect(screen.getByLabelText('Payment')).toHaveValue('100')
-  expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('Monthly')
+  expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('every month')
   expect(lastPaymentChip()).toHaveTextContent('Choose a date')
 })
 
@@ -259,4 +259,45 @@ it('setup saved without terms only updates the payment and is no finished setup'
   expect(bodies[0]).not.toHaveProperty('lastPaymentDate')
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
+})
+
+it('shows the currency and sends the stored one when it is kept', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm(wireDebt)
+
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ currencyId: 'cur-usd' })
+})
+
+it('a changed currency is sent with the terms, the amounts read in it', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm(wireDebt)
+
+  await user.click(await screen.findByRole('button', { name: /^Currency: USD/ }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/EUR/))
+  expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('EUR')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ currencyId: 'cur-eur', balance: '1200', payment: '100', lastPaymentDate: '2027-11-05' })
+})
+
+it('payment and repeats read as one line', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm(wireDebtNotSetUp)
+
+  const repeats = screen.getByRole('combobox', { name: 'Repeats' })
+  expect(repeats.closest('[data-testid="debt-payment-card"]')).toContainElement(screen.getByLabelText('Payment'))
+  await user.click(repeats)
+  await user.click(await screen.findByRole('option', { name: 'every 2 weeks' }))
+  await user.click(screen.getByRole('button', { name: 'Finish setup' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ schedule: 'biweekly' })
 })

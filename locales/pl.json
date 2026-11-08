@@ -495,9 +495,6 @@
       "tag": {
         "label": "Tag (opcjonalnie)"
       },
-      "label": {
-        "label": "Tag raportowy (opcjonalnie)"
-      },
       "start_date": {
         "label": "Data rozpoczęcia (opcjonalnie)",
         "hint": "Wcześniejsze płatności się nie liczą",
@@ -511,7 +508,14 @@
         "label": "Płatność"
       },
       "schedule": {
-        "label": "Powtarzanie"
+        "label": "Powtarzanie",
+        "every": {
+          "weekly": "co tydzień",
+          "biweekly": "co 2 tygodnie",
+          "monthly": "co miesiąc",
+          "quarterly": "co kwartał",
+          "yearly": "co rok"
+        }
       },
       "last_payment_date": {
         "label": "Data ostatniej płatności",
@@ -552,11 +556,11 @@
       "in": "Płatności z kategorii",
       "from": "odbiorca",
       "tagged": "tag",
-      "labelled": "tag raportowy",
       "choose_category": "wybierz",
       "any_payee": "dowolny",
       "any_tag": "dowolny",
-      "any_label": "dowolny",
+      "group_tags": "Tagi",
+      "group_labels": "Tagi raportowe",
       "explainer": "Po tych danych Econumo znajduje płatności tej pożyczki. Przechodzą z kategorii do tego długu."
     },
     "terms": {

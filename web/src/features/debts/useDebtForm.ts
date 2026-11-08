@@ -66,6 +66,8 @@ export function useDebtCreateForm(params: OpenDebtParams, categories: CategoryDt
 }
 
 export interface DebtTermsState {
+  /** the balance and payment are read in this currency, the debt's own until changed */
+  currencyId: Id
   balance: string
   payment: string
   schedule: RecurringSchedule
@@ -77,6 +79,7 @@ export interface DebtTermsState {
 
 export function initialTermsState(debt: DebtDto): DebtTermsState {
   return {
+    currencyId: debt.currencyId,
     // what is owed right now: the stored snapshot's balance is as of its own date
     balance: debt.isSetUp === 1 ? normalizeNumber(debt.currentBalance) : '',
     payment: normalizeNumber(debt.payment),
@@ -172,12 +175,12 @@ function withProjection(form: DebtTermsState, initial: DebtTermsState, debt: Deb
   return projection.status === 'date' ? { ...form, lastPaymentDate: projection.date } : form
 }
 
-/** the update that saves the terms; the debt's name and filters go back as stored */
+/** the update that saves the terms and the currency; the debt's name and filters go back as stored */
 export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState, debt: DebtDto): UpdateDebtDto {
   const base = {
     id: debt.id,
     name: debt.name,
-    currencyId: debt.currencyId,
+    currencyId: form.currencyId,
     categoryId: debt.categoryId,
     payeeId: debt.payeeId,
     tagId: debt.tagId,
@@ -196,7 +199,8 @@ export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState,
   }
   // The form shows what is owed now, the server compares against the stored
   // snapshot: when no term was touched, send the snapshot back so a start date
-  // change does not write a new one.
+  // or currency change does not write a new one (the server reads the stored
+  // numbers in the new currency).
   if (termsUntouched(form, initial) && form.lastPaymentDate === initial.lastPaymentDate) {
     return { ...base, balance: debt.balance, payment: debt.payment, schedule: debt.schedule, lastPaymentDate: debt.lastPaymentDate }
   }
@@ -209,17 +213,20 @@ export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState,
   }
 }
 
-export function useDebtTermsForm(debt: DebtDto, fractionDigits?: number) {
+/** `digitsOf` gives a currency's fraction digits: the projection rounds in the
+    currency the form is in */
+export function useDebtTermsForm(debt: DebtDto, digitsOf: (currencyId: Id) => number | undefined = () => undefined) {
   const [initial] = useState(() => initialTermsState(debt))
   const [form, setForm] = useState<DebtTermsState>(initial)
   const patch = (partial: Partial<DebtTermsState>) => setForm((prev) => ({ ...prev, ...partial }))
 
   // Balance and payment re-fill the last payment date from the debt's own
   // rate; the date itself and the schedule recalculate nothing.
-  const setBalance = (balance: string) => setForm((prev) => withProjection({ ...prev, balance }, initial, debt, fractionDigits))
-  const setPayment = (payment: string) => setForm((prev) => withProjection({ ...prev, payment }, initial, debt, fractionDigits))
+  const reproject = (next: DebtTermsState) => withProjection(next, initial, debt, digitsOf(next.currencyId))
+  const setBalance = (balance: string) => setForm((prev) => reproject({ ...prev, balance }))
+  const setPayment = (payment: string) => setForm((prev) => reproject({ ...prev, payment }))
 
-  const projection = projectTerms(form, debt, fractionDigits)
+  const projection = projectTerms(form, debt, digitsOf(form.currencyId))
 
   return { form, initial, patch, setBalance, setPayment, projection }
 }

@@ -30,7 +30,7 @@ it('projects with the debt currency precision', () => {
   const btc = { ...wireDebt, periodRate: '0', nextDueDate: '2026-12-15', lastPaymentDate: '2027-06-15' }
   const form = { ...initialTermsState(btc), balance: '0.004', payment: '0.001' }
   expect(projectTerms(form, btc, 8)).toEqual({ status: 'date', date: '2027-03-15' })
-  const { result } = renderHook(() => useDebtTermsForm(btc, 8))
+  const { result } = renderHook(() => useDebtTermsForm(btc, () => 8))
   act(() => result.current.setBalance('0.004'))
   act(() => result.current.setPayment('0.001'))
   expect(result.current.form.lastPaymentDate).toBe('2027-03-15')
@@ -49,7 +49,7 @@ it('projects from the first due after today when the next due is overdue or toda
 
 it('a debt not set up starts with an empty balance and date, and projects nothing', () => {
   const { result } = renderHook(() => useDebtTermsForm(wireDebtNotSetUp))
-  expect(result.current.form).toEqual({ balance: '', payment: '100', schedule: 'monthly', lastPaymentDate: '', startDate: '' })
+  expect(result.current.form).toEqual({ currencyId: 'cur-usd', balance: '', payment: '100', schedule: 'monthly', lastPaymentDate: '', startDate: '' })
   act(() => result.current.setBalance('600'))
   expect(result.current.form.lastPaymentDate).toBe('')
   expect(result.current.projection).toEqual({ status: 'unknown' })

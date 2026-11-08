@@ -495,9 +495,6 @@
       "tag": {
         "label": "Tag (facoltativo)"
       },
-      "label": {
-        "label": "Tag per i report (facoltativo)"
-      },
       "start_date": {
         "label": "Data di inizio (facoltativa)",
         "hint": "I pagamenti precedenti non contano",
@@ -511,7 +508,14 @@
         "label": "Pagamento"
       },
       "schedule": {
-        "label": "Si ripete"
+        "label": "Si ripete",
+        "every": {
+          "weekly": "ogni settimana",
+          "biweekly": "ogni 2 settimane",
+          "monthly": "ogni mese",
+          "quarterly": "ogni trimestre",
+          "yearly": "ogni anno"
+        }
       },
       "last_payment_date": {
         "label": "Data dell'ultimo pagamento",
@@ -552,11 +556,11 @@
       "in": "Pagamenti nella categoria",
       "from": "beneficiario",
       "tagged": "tag",
-      "labelled": "tag per i report",
       "choose_category": "scegli",
       "any_payee": "qualsiasi",
       "any_tag": "qualsiasi",
-      "any_label": "qualsiasi",
+      "group_tags": "Tag",
+      "group_labels": "Tag per i report",
       "explainer": "Econumo trova i pagamenti di questo prestito con questi criteri. Passano dalla categoria a questo debito."
     },
     "terms": {

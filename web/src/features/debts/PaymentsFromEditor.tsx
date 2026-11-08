@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CommandEmpty, CommandItem } from '@/components/ui/command'
+import { CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 import { EntityIcon } from '@/components/EntityIcon'
 import { PickerSheet } from '@/components/PickerSheet'
 import { rankByName } from '@/lib/search'
@@ -27,13 +27,20 @@ interface Option {
   icon?: string
 }
 
+/** options under a heading; a group with no heading lists its options bare */
+interface OptionGroup {
+  heading?: string
+  options: Option[]
+}
+
 const ANY = '__any__'
 
 /** One word of the sentence: the chosen name, or what an empty slot means, and
-    a picker sheet behind it. `anyLabel` makes the slot optional. */
+    a picker sheet behind it. `anyLabel` makes the slot optional. Option ids
+    are unique across the groups. */
 function SlotPicker({
   title,
-  options,
+  groups,
   value,
   placeholder,
   anyLabel,
@@ -41,21 +48,27 @@ function SlotPicker({
   onPick,
 }: {
   title: string
-  options: Option[]
-  value: Id | null
+  groups: OptionGroup[]
+  value: string | null
   placeholder: string
   anyLabel?: string
   disabled?: boolean
-  onPick: (id: Id | null) => void
+  onPick: (id: string | null) => void
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const selected = options.find((o) => o.id === value)
+  const selected = groups.flatMap((g) => g.options).find((o) => o.id === value)
   const shown = selected?.name ?? placeholder
-  const pick = (id: Id | null) => {
+  const pick = (id: string | null) => {
     onPick(id)
     setOpen(false)
   }
+  const item = (option: Option) => (
+    <CommandItem key={option.id} value={option.id} data-checked={option.id === value} onSelect={() => pick(option.id)}>
+      {option.icon ? <EntityIcon name={option.icon} className="text-base text-muted-foreground" /> : null}
+      <span className="flex-1">{option.name}</span>
+    </CommandItem>
+  )
 
   return (
     <>
@@ -88,18 +101,28 @@ function SlotPicker({
                 <span className="flex-1 text-muted-foreground">{anyLabel}</span>
               </CommandItem>
             ) : null}
-            {rankByName(options, (o) => o.name, search).map((option) => (
-              <CommandItem key={option.id} value={option.id} data-checked={option.id === value} onSelect={() => pick(option.id)}>
-                {option.icon ? <EntityIcon name={option.icon} className="text-base text-muted-foreground" /> : null}
-                <span className="flex-1">{option.name}</span>
-              </CommandItem>
-            ))}
+            {groups.map((group, i) => {
+              const ranked = rankByName(group.options, (o) => o.name, search)
+              if (ranked.length === 0) {
+                return null
+              }
+              return group.heading ? (
+                <CommandGroup key={group.heading} heading={group.heading} className="p-0">
+                  {ranked.map(item)}
+                </CommandGroup>
+              ) : (
+                <div key={i}>{ranked.map(item)}</div>
+              )
+            })}
           </>
         )}
       </PickerSheet>
     </>
   )
 }
+
+const TAG = 'tag:'
+const LABEL = 'label:'
 
 /** the caller's live rows, plus the chosen one even when archived */
 function ownLive<T extends { id: Id; ownerUserId: Id; isArchived: 0 | 1 }>(rows: T[], chosen: Id | null, ownerId: Id | undefined): T[] {
@@ -108,8 +131,9 @@ function ownLive<T extends { id: Id; ownerUserId: Id; isArchived: 0 | 1 }>(rows:
 
 /**
  * Which payments count as the debt's, as a sentence of pickers: "Payments in
- * [category] · from [any payee] · tagged [any tag] · with [any reporting tag]".
- * The category is required, the rest narrow it down.
+ * [category] · from [any payee] · tagged [any tag]". The tag slot holds a tag
+ * or a reporting tag, never both. The category is required, the rest narrow
+ * it down.
  */
 export function PaymentsFromEditor({ value, onChange, categoryLocked = false, errors = {} }: PaymentsFromEditorProps) {
   const { t } = useTranslation()
@@ -129,6 +153,16 @@ export function PaymentsFromEditor({ value, onChange, categoryLocked = false, er
   }
   const set = (partial: Partial<PaymentsFrom>) => onChange({ ...value, ...partial })
   const error = errors.categoryId ?? errors.payeeId ?? errors.tagId ?? errors.labelId
+  const tagValue = value.tagId ? TAG + value.tagId : value.labelId ? LABEL + value.labelId : null
+  const pickTag = (key: string | null) => {
+    if (key?.startsWith(TAG)) {
+      set({ tagId: key.slice(TAG.length), labelId: null })
+    } else if (key?.startsWith(LABEL)) {
+      set({ tagId: null, labelId: key.slice(LABEL.length) })
+    } else {
+      set({ tagId: null, labelId: null })
+    }
+  }
 
   return (
     <div className="flex flex-col gap-1">
@@ -138,7 +172,7 @@ export function PaymentsFromEditor({ value, onChange, categoryLocked = false, er
           <span>{t('debts.payments_from.in')}</span>
           <SlotPicker
             title={t('debts.form.category.label')}
-            options={categoryRows.map((c) => ({ id: c.id, name: c.name, icon: c.icon || 'pending' }))}
+            groups={[{ options: categoryRows.map((c) => ({ id: c.id, name: c.name, icon: c.icon || 'pending' })) }]}
             value={value.categoryId}
             placeholder={t('debts.payments_from.choose_category')}
             disabled={categoryLocked}
@@ -148,7 +182,7 @@ export function PaymentsFromEditor({ value, onChange, categoryLocked = false, er
           <span>{t('debts.payments_from.from')}</span>
           <SlotPicker
             title={t('debts.form.payee.label')}
-            options={ownLive(payees, value.payeeId, ownerId).map((p) => ({ id: p.id, name: p.name }))}
+            groups={[{ options: ownLive(payees, value.payeeId, ownerId).map((p) => ({ id: p.id, name: p.name })) }]}
             value={value.payeeId}
             placeholder={t('debts.payments_from.any_payee')}
             anyLabel={t('debts.payments_from.any_payee')}
@@ -158,21 +192,20 @@ export function PaymentsFromEditor({ value, onChange, categoryLocked = false, er
           <span>{t('debts.payments_from.tagged')}</span>
           <SlotPicker
             title={t('debts.form.tag.label')}
-            options={ownLive(tags, value.tagId, ownerId).map((tag) => ({ id: tag.id, name: tag.name, icon: tag.icon || 'sell' }))}
-            value={value.tagId}
+            groups={[
+              {
+                heading: t('debts.payments_from.group_tags'),
+                options: ownLive(tags, value.tagId, ownerId).map((tag) => ({ id: TAG + tag.id, name: tag.name, icon: tag.icon || 'sell' })),
+              },
+              {
+                heading: t('debts.payments_from.group_labels'),
+                options: ownLive(labels, value.labelId, ownerId).map((label) => ({ id: LABEL + label.id, name: label.name, icon: label.icon || 'label' })),
+              },
+            ]}
+            value={tagValue}
             placeholder={t('debts.payments_from.any_tag')}
             anyLabel={t('debts.payments_from.any_tag')}
-            onPick={(tagId) => set({ tagId })}
-          />
-          <span aria-hidden className="text-muted-foreground">·</span>
-          <span>{t('debts.payments_from.labelled')}</span>
-          <SlotPicker
-            title={t('debts.form.label.label')}
-            options={ownLive(labels, value.labelId, ownerId).map((label) => ({ id: label.id, name: label.name, icon: label.icon || 'label' }))}
-            value={value.labelId}
-            placeholder={t('debts.payments_from.any_label')}
-            anyLabel={t('debts.payments_from.any_label')}
-            onPick={(labelId) => set({ labelId })}
+            onPick={pickTag}
           />
         </p>
         <p className="text-xs text-muted-foreground">{t('debts.payments_from.explainer')}</p>

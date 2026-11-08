@@ -495,9 +495,6 @@
       "tag": {
         "label": "标签（可选）"
       },
-      "label": {
-        "label": "统计标签（可选）"
-      },
       "start_date": {
         "label": "开始日期（可选）",
         "hint": "此前的还款不计入",
@@ -511,7 +508,14 @@
         "label": "还款额"
       },
       "schedule": {
-        "label": "重复周期"
+        "label": "重复周期",
+        "every": {
+          "weekly": "每周",
+          "biweekly": "每 2 周",
+          "monthly": "每月",
+          "quarterly": "每季度",
+          "yearly": "每年"
+        }
       },
       "last_payment_date": {
         "label": "最后还款日",
@@ -552,11 +556,11 @@
       "in": "分类",
       "from": "收款人",
       "tagged": "标签",
-      "labelled": "统计标签",
       "choose_category": "请选择",
       "any_payee": "任意",
       "any_tag": "任意",
-      "any_label": "任意",
+      "group_tags": "标签",
+      "group_labels": "统计标签",
       "explainer": "Econumo 通过这些条件找到这笔贷款的还款，并把它们从分类转到这笔债务。"
     },
     "terms": {

@@ -65,10 +65,12 @@ it('create form asks only name, payments from, payment and repeats', async () =>
   expect(screen.getByText('Track a loan without an account. You can fine-tune it afterwards.')).toBeInTheDocument()
   expect(screen.getByLabelText('Name')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Category: choose a category' })).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Reporting tag (optional): any reporting tag' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Tag (optional): any tag' })).toBeInTheDocument()
   expect(screen.getByLabelText('Payment')).toBeInTheDocument()
-  expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('Monthly')
-  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('every month')
+  // the currency is the category row's, or the user's: never asked here
+  expect(screen.queryByRole('button', { name: /^Currency/ })).toBeNull()
+  expect(screen.queryByText('Currency')).toBeNull()
 
   expect(screen.queryByLabelText('Balance now')).toBeNull()
   expect(screen.queryByRole('button', { name: 'Last payment date' })).toBeNull()
@@ -83,7 +85,6 @@ it('converting from a category locks the category and prefills the name', async 
 
   expect(screen.getByLabelText('Name')).toHaveValue('Food')
   expect(screen.getByRole('button', { name: 'Category: Food' })).toBeDisabled()
-  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('EUR'))
 
   await user.type(screen.getByLabelText('Payment'), '50')
   await user.click(screen.getByRole('button', { name: 'Add' }))
@@ -156,20 +157,33 @@ it('a start date already taken reveals the start date field and resends with it'
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
 })
 
-it('picks the label in the sentence and sends it', async () => {
+it('sends the user\'s currency when no category row names one', async () => {
   const bodies = captureCreate()
   const user = userEvent.setup()
   renderDialog()
   await openCreate({ categoryId: 'cat-food' })
 
-  await user.click(screen.getByRole('button', { name: 'Reporting tag (optional): any reporting tag' }))
-  const sheet = await screen.findByRole('dialog', { name: 'Reporting tag (optional)' })
+  await user.type(screen.getByLabelText('Payment'), '50')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0].currencyId).toBe('cur-usd')
+})
+
+it('picks a reporting tag in the tag slot and sends it', async () => {
+  const bodies = captureCreate()
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ categoryId: 'cat-food' })
+
+  await user.click(screen.getByRole('button', { name: 'Tag (optional): any tag' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Tag (optional)' })
   await user.click(within(sheet).getByText('health'))
   await user.type(screen.getByLabelText('Payment'), '50')
   await user.click(screen.getByRole('button', { name: 'Add' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0].labelId).toBe('label1')
+  expect(bodies[0]).toMatchObject({ labelId: 'label1', tagId: null })
 })
 
 it('requires the name, category and payment before sending', async () => {

@@ -495,9 +495,6 @@
       "tag": {
         "label": "Tag (optioneel)"
       },
-      "label": {
-        "label": "Rapportagetag (optioneel)"
-      },
       "start_date": {
         "label": "Startdatum (optioneel)",
         "hint": "Eerdere betalingen tellen niet mee",
@@ -511,7 +508,14 @@
         "label": "Betaling"
       },
       "schedule": {
-        "label": "Herhaling"
+        "label": "Herhaling",
+        "every": {
+          "weekly": "elke week",
+          "biweekly": "elke 2 weken",
+          "monthly": "elke maand",
+          "quarterly": "elk kwartaal",
+          "yearly": "elk jaar"
+        }
       },
       "last_payment_date": {
         "label": "Datum van de laatste betaling",
@@ -552,11 +556,11 @@
       "in": "Betalingen in categorie",
       "from": "begunstigde",
       "tagged": "tag",
-      "labelled": "rapportagetag",
       "choose_category": "kies",
       "any_payee": "elke",
       "any_tag": "elke",
-      "any_label": "elke",
+      "group_tags": "Tags",
+      "group_labels": "Rapportagetags",
       "explainer": "Hiermee vindt Econumo de betalingen van deze lening. Ze gaan van de categorie naar deze schuld."
     },
     "terms": {

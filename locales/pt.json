@@ -495,9 +495,6 @@
       "tag": {
         "label": "Etiqueta (opcional)"
       },
-      "label": {
-        "label": "Etiqueta de relatório (opcional)"
-      },
       "start_date": {
         "label": "Data de início (opcional)",
         "hint": "Os pagamentos anteriores não contam",
@@ -511,7 +508,14 @@
         "label": "Pagamento"
       },
       "schedule": {
-        "label": "Repetição"
+        "label": "Repetição",
+        "every": {
+          "weekly": "todas as semanas",
+          "biweekly": "de 2 em 2 semanas",
+          "monthly": "todos os meses",
+          "quarterly": "todos os trimestres",
+          "yearly": "todos os anos"
+        }
       },
       "last_payment_date": {
         "label": "Data do último pagamento",
@@ -552,11 +556,11 @@
       "in": "Pagamentos na categoria",
       "from": "beneficiário",
       "tagged": "etiqueta",
-      "labelled": "etiqueta de relatório",
       "choose_category": "escolha",
       "any_payee": "qualquer",
       "any_tag": "qualquer",
-      "any_label": "qualquer",
+      "group_tags": "Etiquetas",
+      "group_labels": "Etiquetas de relatório",
       "explainer": "O Econumo encontra os pagamentos deste empréstimo com estes dados. Passam da categoria para esta dívida."
     },
     "terms": {

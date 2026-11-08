@@ -40,22 +40,47 @@ export function AmountField({
   )
 }
 
-export function ScheduleField({ id, value, error, onChange }: { id: string; value: RecurringSchedule; error?: string; onChange: (value: RecurringSchedule) => void }) {
+/** The payment and how often it repeats, read as one line: "2,000.00 $ every month ▾". */
+export function PaymentField({
+  id,
+  value,
+  symbol,
+  schedule,
+  error,
+  onChange,
+  onScheduleChange,
+}: {
+  id: string
+  value: string
+  symbol: string
+  schedule: RecurringSchedule
+  error?: string | null
+  onChange: (value: string) => void
+  onScheduleChange: (value: RecurringSchedule) => void
+}) {
   const { t } = useTranslation()
+  const repeats = t('debts.form.schedule.label')
   return (
-    <CardField label={t('debts.form.schedule.label')} htmlFor={id} error={error}>
-      <div className="[&_button]:h-auto [&_button]:w-full [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-sm [&_button]:shadow-none [&_button]:focus-visible:ring-0">
-        <OptionSelect
-          id={id}
-          aria-label={t('debts.form.schedule.label')}
-          title={t('debts.form.schedule.label')}
-          className="w-full"
-          value={value}
-          onValueChange={(v) => onChange(v as RecurringSchedule)}
-          options={SCHEDULE_ORDER.map((schedule) => ({ value: schedule, label: t(`recurring.schedule.${schedule}`) }))}
-        />
-      </div>
-    </CardField>
+    <div data-testid="debt-payment-card">
+      <CardField label={t('debts.form.payment.label')} htmlFor={id} error={error}>
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <CalculatorInput id={id} className={amountInputClass} value={value} onChange={onChange} />
+          </div>
+          <span className="pt-0.5 text-sm text-muted-foreground">{symbol}</span>
+          <div className="shrink-0 [&_button]:h-auto [&_button]:gap-1 [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:pt-0.5 [&_button]:text-sm [&_button]:text-econumo-link [&_button]:shadow-none [&_button]:focus-visible:ring-0">
+            <OptionSelect
+              id={`${id}-schedule`}
+              aria-label={repeats}
+              title={repeats}
+              value={schedule}
+              onValueChange={(v) => onScheduleChange(v as RecurringSchedule)}
+              options={SCHEDULE_ORDER.map((s) => ({ value: s, label: t(`debts.form.schedule.every.${s}`) }))}
+            />
+          </div>
+        </div>
+      </CardField>
+    </div>
   )
 }
 

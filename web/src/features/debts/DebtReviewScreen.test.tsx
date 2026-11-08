@@ -264,6 +264,23 @@ it('Edit opens the terms with the debt as it is now, and Cancel goes back', asyn
   expect(screen.queryByLabelText('Balance now')).toBeNull()
 })
 
+it('a debt not set up can be edited from the Loan card too, its currency included', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
+  const bodies = captureUpdate(() => ({ ...wireDebtNotSetUp, currencyId: 'cur-eur' }))
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+
+  await user.click(within(screen.getByRole('region', { name: 'Loan' })).getByRole('button', { name: 'Edit' }))
+  await user.click(await screen.findByRole('button', { name: /^Currency: USD/ }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/EUR/))
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ id: 'd1', currencyId: 'cur-eur', payment: '100', schedule: 'monthly' })
+  expect(bodies[0]).not.toHaveProperty('balance')
+})
+
 it('editing payments-from saves the label', async () => {
   const bodies = captureUpdate(() => ({ ...details.item, labelId: 'label1' }))
   const user = userEvent.setup()
@@ -272,8 +289,8 @@ it('editing payments-from saves the label', async () => {
 
   // nothing to save until a pick changes
   expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
-  await user.click(screen.getByRole('button', { name: 'Reporting tag (optional): any reporting tag' }))
-  const sheet = await screen.findByRole('dialog', { name: 'Reporting tag (optional)' })
+  await user.click(screen.getByRole('button', { name: 'Tag (optional): any tag' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Tag (optional)' })
   await user.click(within(sheet).getByText('health'))
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -301,8 +318,8 @@ it('a refused payments-from change shows why under the sentence', async () => {
   renderScreen()
   await openScreen()
 
-  await user.click(screen.getByRole('button', { name: 'Reporting tag (optional): any reporting tag' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Reporting tag (optional)' })).getByText('health'))
+  await user.click(screen.getByRole('button', { name: 'Tag (optional): any tag' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Tag (optional)' })).getByText('health'))
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   expect(await screen.findByText('Another debt already counts these payments.')).toBeInTheDocument()

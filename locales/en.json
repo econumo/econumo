@@ -495,9 +495,6 @@
       "tag": {
         "label": "Tag (optional)"
       },
-      "label": {
-        "label": "Reporting tag (optional)"
-      },
       "start_date": {
         "label": "Start date (optional)",
         "hint": "Earlier payments don't count",
@@ -511,7 +508,14 @@
         "label": "Payment"
       },
       "schedule": {
-        "label": "Repeats"
+        "label": "Repeats",
+        "every": {
+          "weekly": "every week",
+          "biweekly": "every 2 weeks",
+          "monthly": "every month",
+          "quarterly": "every quarter",
+          "yearly": "every year"
+        }
       },
       "last_payment_date": {
         "label": "Last payment date",
@@ -552,11 +556,11 @@
       "in": "Payments in",
       "from": "from",
       "tagged": "tagged",
-      "labelled": "with",
       "choose_category": "choose a category",
       "any_payee": "any payee",
       "any_tag": "any tag",
-      "any_label": "any reporting tag",
+      "group_tags": "Tags",
+      "group_labels": "Reporting tags",
       "explainer": "Econumo finds this loan's payments with these. They move from the category to this debt."
     },
     "terms": {

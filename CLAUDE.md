@@ -1744,8 +1744,16 @@ data unreadable. Most are also asserted by the test suite.
   empty strings); `Timelines` leaves such a debt out. `periodsPaid` counts the schedule's due
   windows holding at least one payment dated up to today (payments from before setup count). Create refuses a currency the user may not use (deleted, or another
   user's custom one: `currency.not_available`, the same `EnsureUsable` check budgets use).
-  Currency is not editable; category, payee, tag, label and start date are,
-  rechecked by the same key checks. **Splitting is bank-style** (`internal/model/debt_math.go`):
+  A debt names a tag OR a label, never both (create/update refuse the pair: `common.invalid_choice`
+  on `labelId`). Category, payee, tag, label and start date are editable, rechecked by the same
+  key checks, and so is the currency: an update whose `currencyId` differs from the stored one
+  (empty keeps it; `EnsureUsable` applies to the new one only) moves the debt to it. The amounts
+  in that request are in the new currency, and with terms left out the stored numbers are kept and
+  read in it, unconverted; the change alone writes no snapshot (snapshots are read in the debt's
+  current currency). In the same transaction it drops the debt's stored splits, so the next sync
+  splits every payment again from its amount converted into the new currency, and moves the
+  debt's budget rows to it (`BudgetElements.SetRowsCurrency`; `syncElements` also keeps every debt
+  row in its debt's currency), their plans keeping their numbers. **Splitting is bank-style** (`internal/model/debt_math.go`):
   the implied periodic rate `r` is solved from the snapshot (annuity over the schedule, `r = 0`
   when payment x n = balance within half the currency's smallest unit, payments that cannot cover the balance are refused, and so is a last
   payment date more than 100 years out, past the projection's horizon); interest
@@ -1843,9 +1851,12 @@ data unreadable. Most are also asserted by the test suite.
   details) stay calendar-month and today based; the SPA's red debt hint takes the budget's
   start day (`planHint` `startDay`).
   **Debt SPA flow** (`web/src/features/debts`): create is a short form (name, a "payments from"
-  sentence of chip pickers `PaymentsFromEditor` for category/payee/tag/label with "any ..." rows
-  and expense-only categories, payment and repeats, currency; Payment and Repeats stack on
-  phones, side by side from `sm`); the start date field appears only after
+  sentence of chip pickers `PaymentsFromEditor` for category/payee and ONE tag slot whose picker
+  lists tags and reporting tags in two headed groups, setting `tagId` or `labelId` and clearing the
+  other, with "any ..." rows and expense-only categories, and one Payment card,
+  `PaymentField`: the amount with an inline "every month" schedule picker, full width, reused by
+  `DebtTermsForm`). It asks no currency: it sends the converted category row's currency, else the
+  user's default; the start date field appears only after
   `debt.start_date_taken` (the one refusal a date can resolve; `debt.key_conflict` just shows its
   message) and the form creates a debt with no terms, then opens the review screen. The ONLY way
   into a debt is its Details entry (Settings row, budget row menu, item sheet; owner only), opening
@@ -1853,7 +1864,8 @@ data unreadable. Most are also asserted by the test suite.
   `fullScreen="always"`): payments left in large text with an X-of-Y progress bar (`periodsPaid`
   of `periodsPaid + paymentsLeft`, hidden at 0), a "Loan" card (owed now, payment, repeats, next
   payment, loan ends, start date, left to pay, overpaid so far, overpayment still to come,
-  currency) with its Edit button (`DebtTermsForm` mode `edit`), the payments-from editor in
+  currency) with its Edit button (`DebtTermsForm` mode `edit`, also on a debt not set up; the form
+  has a Currency row, `CurrencyPickerDialog`, in both modes), the payments-from editor in
   place (saves with the stored snapshot, so no new snapshot), rename (header menu), payments
   and a collapsed "History of terms". A debt not set up shows "Paid so far" (its payments dated up to the caller's today), a hint and a
   Finish setup button (`DebtTermsForm` mode `setup`: no stored rate, so the last payment date

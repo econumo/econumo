@@ -282,11 +282,9 @@ function ReviewContent({ details, lang, onFinishSetup, onEdit }: { details: Debt
         <SectionHeading
           id={loanHeadingId}
           action={
-            setUp ? (
-              <Button type="button" variant="ghost" size="sm" className="text-econumo-link" onClick={onEdit}>
-                {t('common.button.edit.label')}
-              </Button>
-            ) : null
+            <Button type="button" variant="ghost" size="sm" className="text-econumo-link" onClick={onEdit}>
+              {t('common.button.edit.label')}
+            </Button>
           }
         >
           {t('debts.review.loan')}

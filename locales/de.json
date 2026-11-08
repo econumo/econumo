@@ -495,9 +495,6 @@
       "tag": {
         "label": "Tag (optional)"
       },
-      "label": {
-        "label": "Auswertungs-Tag (optional)"
-      },
       "start_date": {
         "label": "Startdatum (optional)",
         "hint": "Frühere Zahlungen zählen nicht",
@@ -511,7 +508,14 @@
         "label": "Rate"
       },
       "schedule": {
-        "label": "Wiederholung"
+        "label": "Wiederholung",
+        "every": {
+          "weekly": "jede Woche",
+          "biweekly": "alle 2 Wochen",
+          "monthly": "jeden Monat",
+          "quarterly": "jedes Quartal",
+          "yearly": "jedes Jahr"
+        }
       },
       "last_payment_date": {
         "label": "Datum der letzten Zahlung",
@@ -552,11 +556,11 @@
       "in": "Zahlungen aus Kategorie",
       "from": "Empfänger",
       "tagged": "Tag",
-      "labelled": "Auswertungs-Tag",
       "choose_category": "wählen",
       "any_payee": "beliebig",
       "any_tag": "beliebig",
-      "any_label": "beliebig",
+      "group_tags": "Tags",
+      "group_labels": "Auswertungs-Tags",
       "explainer": "Damit findet Econumo die Zahlungen dieses Kredits. Sie wandern von der Kategorie zu dieser Schuld."
     },
     "terms": {

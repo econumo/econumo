@@ -495,9 +495,6 @@
       "tag": {
         "label": "Etiqueta (opcional)"
       },
-      "label": {
-        "label": "Etiqueta de informes (opcional)"
-      },
       "start_date": {
         "label": "Fecha de inicio (opcional)",
         "hint": "Los pagos anteriores no cuentan",
@@ -511,7 +508,14 @@
         "label": "Pago"
       },
       "schedule": {
-        "label": "Se repite"
+        "label": "Se repite",
+        "every": {
+          "weekly": "cada semana",
+          "biweekly": "cada 2 semanas",
+          "monthly": "cada mes",
+          "quarterly": "cada trimestre",
+          "yearly": "cada año"
+        }
       },
       "last_payment_date": {
         "label": "Fecha del último pago",
@@ -552,11 +556,11 @@
       "in": "Pagos de la categoría",
       "from": "beneficiario",
       "tagged": "etiqueta",
-      "labelled": "etiqueta de informes",
       "choose_category": "elige una",
       "any_payee": "cualquiera",
       "any_tag": "cualquiera",
-      "any_label": "cualquiera",
+      "group_tags": "Etiquetas",
+      "group_labels": "Etiquetas de informes",
       "explainer": "Econumo encuentra los pagos de este préstamo con estos datos. Pasan de la categoría a esta deuda."
     },
     "terms": {

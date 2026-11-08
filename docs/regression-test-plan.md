@@ -2132,19 +2132,27 @@ out), and add a second budget member account in USD, before running these.
       Another user (even a budget partner) never sees the debt in their own
       list.
 - [ ] 📱 **Create form** is short: an intro line, Name, a "Payments from"
-      sentence of chips (Category, then optional payee, tag and reporting tag,
-      each opening a searchable picker with an "any ..." row at the top that
-      is hidden while searching), Payment and Repeats (weekly / every two
-      weeks / monthly / quarterly / yearly), and a compact "Currency" line at
-      the bottom. Name defaults to the category name. Only the owner's active
-      expense categories are offered (income categories never); the pickers
-      list only the caller's own payees, tags and reporting tags. No balance
-      or last payment date is asked. 📱 On a phone Payment and Repeats stack
-      one above the other; from tablet width they sit side by side. Saving
-      creates the debt and opens its review screen (no list flash). A
-      payment of 0 or less, or a missing name or category, shows a field
-      error. Creating a debt in a deleted custom currency is refused with a
-      field error on the currency.
+      sentence of chips (Category, then an optional payee and an optional
+      tag, each opening a searchable picker with an "any ..." row at the top
+      that is hidden while searching), and one Payment card that reads as a
+      sentence: the amount (calculator keypad row kept), its currency symbol,
+      then an "every month ▾" picker (every week / every 2 weeks / every month /
+      every quarter / every year), full width on every breakpoint. There is no
+      currency line: a debt converted from a budget row takes that row's
+      currency, one created in Settings → Debts the user's default currency
+      (check both on the review screen's Loan card). Name defaults to the
+      category name. Only the owner's active expense categories are offered
+      (income categories never); the pickers list only the caller's own
+      payees, tags and reporting tags. No balance or last payment date is
+      asked. Saving creates the debt and opens its review screen (no list
+      flash). A payment of 0 or less, or a missing name or category, shows a
+      field error.
+- [ ] 📱 **Tag or reporting tag**: the tag chip's picker lists Tags and
+      Reporting tags as two headed groups (a search narrows both, and a group
+      with no match disappears). Picking a reporting tag shows its name in the
+      chip and saves the debt with that reporting tag and no tag; picking a
+      tag clears the reporting tag; "any tag" clears both. The server refuses
+      a debt that names both (field error on the reporting tag).
 - [ ] 📱 **Start date only when needed**: the create form has no start date
       field. Saving a second debt that matches the same payments as an
       existing one (same category, payee, tag and reporting tag) is refused
@@ -2170,8 +2178,9 @@ out), and add a second budget member account in USD, before running these.
       the balance after that payment, not the one from before it, and saving
       without changes writes no snapshot that undoes the payment.
 - [ ] 📱 Edit (Loan card button) swaps the screen for the terms form with
-      Balance, Payment, Repeats, Last payment date and Start date, Save and
-      Cancel (Cancel returns to the review untouched). Editing the balance or
+      Balance, the Payment card (amount and its "every month ▾" picker on one
+      line, as on the create form), Last payment date, Start date and
+      Currency, Save and Cancel (Cancel returns to the review untouched). Editing the balance or
       the payment recalculates the last payment date in the form (keeping the
       rate; on a debt whose next payment is due today or overdue, the first
       counted payment is the next one after today, and saving the filled-in
@@ -2180,6 +2189,16 @@ out), and add a second budget member account in USD, before running these.
       can never pay the balance off, a message under the payment says so and
       the date stays. Saving a payment that cannot cover the balance, or a last
       payment date before today, shows a field error.
+- [ ] 📱 **Change the currency** (Edit → Currency, a searchable picker), on a
+      set-up debt with a payment and a plan in a budget: leave the other
+      fields and save. No snapshot is added; the balance and payment keep
+      their numbers, now in the new currency (no conversion); the payments
+      list shows each payment converted into the new currency and split
+      again; the debt's budget row shows the new currency with its plans
+      unchanged. Typing a new balance or payment together with the currency
+      saves them in the new currency (with a snapshot, as any change of
+      terms). A debt not set up can change its currency the same way, from
+      Edit or Finish setup. A deleted custom currency is not offered.
 - [ ] 📱 A rename (header menu → Rename) and a change of the "Payments from"
       sentence on the review screen save without a new snapshot (the history
       does not grow); changing the balance, payment, schedule or last payment
@@ -2212,9 +2231,11 @@ out), and add a second budget member account in USD, before running these.
 - [ ] 📱 **Not set up**: a debt created without terms shows "Paid so far" (the
       sum of its payments dated up to today; a future-dated payment is listed
       but not counted), the hint "Add what you owe and when the loan ends
-      to see payments left" and a "Finish setup" button; there is no balance,
-      progress bar or Edit, the Loan card is short (payment · repeats, start
-      date, currency) and the payment list shows Date and Payment only. Mark as
+      to see payments left" and a "Finish setup" button; there is no balance
+      or progress bar, the Loan card is short (payment · repeats, start date,
+      currency; its Edit opens the same form as Finish setup and may save
+      just payment, repeats, start date or currency) and the payment list
+      shows Date and Payment only. Mark as
       paid off is not offered (and the server refuses it). Finish setup swaps
       the screen for the terms form (balance, payment, repeats, last payment
       date, start date; the last payment date is typed, not filled in
@@ -2373,7 +2394,8 @@ out), and add a second budget member account in USD, before running these.
       row), no balance and no payments-left line, and the row header has no
       payoff line.
 - [ ] Changing a debt row's currency (change element currency) is refused; the
-      row is in the debt's currency.
+      row is in the debt's currency and follows it when the debt's currency
+      is changed on its review screen (plans keep their numbers).
 - [ ] A debt row cannot be dragged into a folder; it keeps its own ordering in
       the Debts section.
 - [ ] The Expenses section header (the rows of the expense section only)
