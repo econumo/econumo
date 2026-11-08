@@ -2193,7 +2193,8 @@
       "disabled": "此服务器不支持连接应用。",
       "client_not_found": "此应用的注册已过期或无法识别。请在应用中移除 Econumo，然后重新添加。",
       "redirect_uri_mismatch": "此登录链接对该应用无效。请从应用中重新开始连接。",
-      "grant_not_found": "未找到已连接的应用。"
+      "grant_not_found": "未找到已连接的应用。",
+      "app_not_yours": "此应用已连接到另一个 Econumo 账号。请在应用中移除 Econumo，然后重新添加。"
     },
     "oauth": {
       "provider_not_configured": "登录提供方未配置",

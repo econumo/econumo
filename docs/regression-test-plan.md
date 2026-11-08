@@ -2521,6 +2521,14 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       `resource`) shows "This app sent an invalid request" and does
       NOT leave the page until you press "Return to <host>" (or "Return to the
       app" for a loopback client).
+- [ ] Signed in as user B, opening a consent link for an app user A already
+      connected (the same Claude Code or Codex registration) shows "This app is
+      connected to a different Econumo account. Remove Econumo from the app and
+      add it again.", no buttons and no redirect, and the page names nobody. The
+      same happens when the link also carries a redirect URI the app never
+      registered.
+- [ ] User A disconnects the app in Connected apps and connects again from the
+      same client: it works.
 - [ ] Read-only account: pressing Allow shows "Your account is read-only, so apps
       can't be connected." and "Return to the app" sends the client back with an
       `access_denied` result; Deny works on a read-only account too.

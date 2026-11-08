@@ -306,6 +306,8 @@ definitions:
         type: string
       isLoopback:
         type: boolean
+      isOfficial:
+        type: boolean
       redirectHost:
         type: string
     type: object
@@ -651,6 +653,8 @@ definitions:
       id:
         type: string
       isLoopback:
+        type: boolean
+      isOfficial:
         type: boolean
       lastUsedAt:
         type: string

@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
@@ -512,5 +514,31 @@ func TestRefresh_FenceMissLeavesGrantUnrotated(t *testing.T) {
 	// The failed attempt rolled back its rotation: the presented token is still current.
 	if _, err := s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: tr.RefreshToken}); err != nil {
 		t.Fatalf("grant must not have been rotated: %v", err)
+	}
+}
+
+// The ownership backfill gives an app to its earliest approver; any other user
+// who had connected it before keeps a working grant, because exchange and
+// refresh never check the owner. Only a new consent is refused.
+func TestRefresh_NonOwnerGrantFromBeforeTheMigration(t *testing.T) {
+	s, _, clock, db := newTestServiceDB(t)
+	a := newUser(t, db, fixture.User{})
+	b := newUser(t, db, fixture.User{})
+	cid, _ := approve(t, s, a)
+	raw, hash, err := newSecret()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := clock.Now()
+	if err := s.repo.InsertGrant(ctx, &model.OAuthGrant{ID: vo.NewId(), UserID: b, ClientID: vo.MustParseId(cid),
+		RefreshTokenHash: hash, CreatedAt: now, LastUsedAt: now, ExpiresAt: now.Add(24 * time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := refreshWith(s, cid, raw)
+	if err != nil || tr.RefreshToken == "" || tr.RefreshToken == raw {
+		t.Fatalf("a pre-existing non-owner grant must keep refreshing: %+v %v", tr, err)
+	}
+	if _, err := s.DescribeAuthorization(ctx, b, authReq(cid)); !hasCode(err, errs.CodeAuthServerAppNotYours) {
+		t.Fatalf("a new consent by the non-owner must be refused: %v", err)
 	}
 }

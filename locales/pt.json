@@ -2193,7 +2193,8 @@
       "disabled": "A conexão de aplicações não está disponível neste servidor.",
       "client_not_found": "O registo desta aplicação expirou ou é desconhecido. Remova o Econumo da aplicação e adicione-o novamente.",
       "redirect_uri_mismatch": "Esta ligação de início de sessão não é válida para esta aplicação. Inicie a ligação novamente a partir da aplicação.",
-      "grant_not_found": "Aplicação ligada não encontrada."
+      "grant_not_found": "Aplicação ligada não encontrada.",
+      "app_not_yours": "Esta aplicação está ligada a outra conta Econumo. Remova o Econumo da aplicação e adicione-o novamente."
     },
     "oauth": {
       "provider_not_configured": "O provedor de início de sessão não está configurado",

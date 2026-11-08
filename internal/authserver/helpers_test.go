@@ -3,6 +3,7 @@ package authserver
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ const testURL = "https://econumo.example.test"
 var ctx = context.Background()
 
 type fakeCreds struct {
+	mu         sync.Mutex
 	gen        int64
 	issued     int
 	failFence  bool
@@ -29,6 +31,8 @@ type fakeCreds struct {
 }
 
 func (f *fakeCreds) LockForOAuth(_ context.Context, u vo.Id) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.locked = append(f.locked, u)
 	return f.gen, nil
 }
@@ -58,12 +62,48 @@ func (c *fixedClock) Advance(d time.Duration) { c.t = c.t.Add(d) }
 
 func newTestService(t *testing.T) (*Service, *fakeCreds, *fixedClock, vo.Id) {
 	t.Helper()
+	s, creds, clock, db := newTestServiceDB(t)
+	return s, creds, clock, newUser(t, db, fixture.User{})
+}
+
+func newTestServiceDB(t *testing.T) (*Service, *fakeCreds, *fixedClock, *dbtest.DB) {
+	t.Helper()
 	db := dbtest.New(t)
-	userID := vo.MustParseId(fixture.New(t, db).User(fixture.User{}))
 	creds := &fakeCreds{}
 	clock := &fixedClock{t: time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)}
 	s := NewService(authrepo.NewRepo(db.Engine, db.TX), creds, db.TX, clock, nil, testURL)
-	return s, creds, clock, userID
+	return s, creds, clock, db
+}
+
+// The fixture's default email takes the id's first 8 characters, which UUIDv7
+// users created in the same test share.
+func newUser(t *testing.T, db *dbtest.DB, u fixture.User) vo.Id {
+	t.Helper()
+	if u.ID == "" {
+		u.ID = vo.NewId().String()
+	}
+	if u.Email == "" {
+		u.Email = "user-" + u.ID + "@example.test"
+	}
+	return vo.MustParseId(fixture.New(t, db).User(u))
+}
+
+func codeCount(t *testing.T, db *dbtest.DB, user vo.Id) int {
+	t.Helper()
+	var n int
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind("SELECT COUNT(*) FROM oauth_authorization_codes WHERE user_id = ?"), user.String()).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func insertOfficialClient(t *testing.T, s *Service, createdAt time.Time, uris ...string) vo.Id {
+	t.Helper()
+	id := vo.NewId()
+	if err := s.repo.InsertClient(ctx, &model.OAuthClient{ID: id, Name: "Official", RedirectURIs: uris, CreatedAt: createdAt, IsGlobal: true}); err != nil {
+		t.Fatal(err)
+	}
+	return id
 }
 
 // session is the presenting token id every approval in these tests carries.

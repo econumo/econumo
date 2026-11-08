@@ -350,6 +350,16 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   refreshes, at most once every 10 minutes per process, it purges, best-effort and outside
   the transaction, expired codes and grants and `oauth` access tokens revoked/expired more
   than 30 days ago.
+- Ownership: a self-registered (user) app belongs to its first approver. Approve claims
+  an unowned client (`ClaimClient`) under the user row lock, in the transaction that stores
+  the code; a claim matching no row re-reads the client and fails unless the caller now owns
+  it. Describe, approve and decline refuse anyone else with the coded
+  `authserver.app_not_yours` (which names no owner) BEFORE the redirect-URI check, so a
+  stranger cannot probe registered URIs; decline never claims; exchange and refresh never
+  re-check the owner (grants from before the ownership backfill keep working). Official
+  apps (`is_global`, registered by the operator) have no owner, are open to every user, and
+  are never purged. `get-authorization-request` and `get-connected-app-list` carry
+  `isOfficial`.
 - Revocation: `revoke-connected-app` takes the user row lock first. The reclaim
   (`reset-password`, CLI `user:change-password`) and `user:deactivate` revoke every grant and
   every `oauth` token in their own transaction (through the user feature's

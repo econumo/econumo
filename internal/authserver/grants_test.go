@@ -1,6 +1,7 @@
 package authserver
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -39,5 +40,31 @@ func TestConnectedApps(t *testing.T) {
 	_, _ = exchange(s, cid, code)
 	if n, _ := s.RevokeAllForUser(ctx, user); n != 1 {
 		t.Fatalf("revoke all = %d", n)
+	}
+}
+
+func TestConnectedApps_IsOfficial(t *testing.T) {
+	s, _, clock, user := newTestService(t)
+	cid, code := approve(t, s, user)
+	if _, err := exchange(s, cid, code); err != nil {
+		t.Fatal(err)
+	}
+	official := insertOfficialClient(t, s, clock.Now(), "https://claude.ai/api/mcp/auth_callback")
+	res, err := s.ApproveAuthorization(ctx, user, session, authReq(official.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := url.Parse(res.RedirectURL)
+	if _, err := exchange(s, official.String(), u.Query().Get("code")); err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.ListConnectedApps(ctx, user)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("%+v %v", list, err)
+	}
+	for _, app := range list {
+		if want := app.ClientName == "Official"; app.IsOfficial != want {
+			t.Errorf("%s: isOfficial = %v", app.ClientName, app.IsOfficial)
+		}
 	}
 }

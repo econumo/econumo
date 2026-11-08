@@ -2193,7 +2193,8 @@
       "disabled": "La connexion d'applications n'est pas disponible sur ce serveur.",
       "client_not_found": "L'enregistrement de cette application a expiré ou est inconnu. Retirez Econumo de l'application, puis ajoutez-le à nouveau.",
       "redirect_uri_mismatch": "Ce lien de connexion n'est pas valide pour cette application. Relancez la connexion depuis l'application.",
-      "grant_not_found": "Application connectée introuvable."
+      "grant_not_found": "Application connectée introuvable.",
+      "app_not_yours": "Cette application est connectée à un autre compte Econumo. Retirez Econumo de l'application, puis ajoutez-le à nouveau."
     },
     "oauth": {
       "provider_not_configured": "Le fournisseur de connexion n'est pas configuré",

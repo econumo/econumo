@@ -13380,6 +13380,9 @@
                 "isLoopback": {
                     "type": "boolean"
                 },
+                "isOfficial": {
+                    "type": "boolean"
+                },
                 "redirectHost": {
                     "type": "string"
                 }
@@ -13872,6 +13875,9 @@
                     "type": "string"
                 },
                 "isLoopback": {
+                    "type": "boolean"
+                },
+                "isOfficial": {
                     "type": "boolean"
                 },
                 "lastUsedAt": {

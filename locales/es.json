@@ -2193,7 +2193,8 @@
       "disabled": "La conexión de aplicaciones no está disponible en este servidor.",
       "client_not_found": "El registro de esta aplicación ha caducado o es desconocido. Quita Econumo de la aplicación y vuelve a añadirlo.",
       "redirect_uri_mismatch": "Este enlace de inicio de sesión no es válido para esta aplicación. Inicia la conexión de nuevo desde la aplicación.",
-      "grant_not_found": "Aplicación conectada no encontrada."
+      "grant_not_found": "Aplicación conectada no encontrada.",
+      "app_not_yours": "Esta aplicación está conectada a otra cuenta de Econumo. Quita Econumo de la aplicación y vuelve a añadirlo."
     },
     "oauth": {
       "provider_not_configured": "El proveedor de inicio de sesión no está configurado",

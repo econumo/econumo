@@ -13387,6 +13387,9 @@ const docTemplate = `{
                 "isLoopback": {
                     "type": "boolean"
                 },
+                "isOfficial": {
+                    "type": "boolean"
+                },
                 "redirectHost": {
                     "type": "string"
                 }
@@ -13879,6 +13882,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "isLoopback": {
+                    "type": "boolean"
+                },
+                "isOfficial": {
                     "type": "boolean"
                 },
                 "lastUsedAt": {

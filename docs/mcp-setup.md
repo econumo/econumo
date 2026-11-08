@@ -70,6 +70,14 @@ rotating refresh token. A connection expires 90 days after its last refresh (cli
 refresh at least hourly while in use), and the app then asks you to sign in
 again.
 
+An app that registered itself (Claude, Codex, Claude Code) belongs to the
+Econumo account that approves it first. If someone else opens its consent link,
+Econumo shows "This app is connected to a different Econumo account" and
+connects nothing; that person adds Econumo in their own client, which registers
+a separate app for them. Disconnecting the app does not release it: the owner
+can always connect it again. Apps the server operator registered with the CLI
+(official apps) are open to every user.
+
 ## Revoking an app
 
 Settings → Profile → Connected apps lists every app you approved with when it

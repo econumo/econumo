@@ -1,13 +1,16 @@
 package authserver
 
 import (
+	"context"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 func register(t *testing.T, s *Service, name string, uris ...string) model.ClientRegistrationResult {
@@ -221,5 +224,202 @@ func TestChallengeAndStateShape(t *testing.T) {
 	q.State = strings.Repeat("s", 1024)
 	if res, err := s.DescribeAuthorization(ctx, user, q); err != nil || res.ErrorRedirectURL != "" {
 		t.Errorf("state at the cap must pass: %+v %v", res, err)
+	}
+}
+
+const claudeCallback = "https://claude.ai/api/mcp/auth_callback"
+
+func owner(t *testing.T, s *Service, clientID string) *vo.Id {
+	t.Helper()
+	c, err := s.repo.GetClient(ctx, vo.MustParseId(clientID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c.OwnerUserID
+}
+
+func TestApprove_ClaimsUnownedClient(t *testing.T) {
+	s, _, _, db := newTestServiceDB(t)
+	a := newUser(t, db, fixture.User{})
+	c := register(t, s, "Claude", claudeCallback)
+	if o := owner(t, s, c.ClientID); o != nil {
+		t.Fatalf("a fresh user app has no owner: %v", o)
+	}
+	if _, err := s.ApproveAuthorization(ctx, a, session, authReq(c.ClientID)); err != nil {
+		t.Fatal(err)
+	}
+	if o := owner(t, s, c.ClientID); o == nil || !o.Equal(a) {
+		t.Fatalf("the first approver must own the app: %v", o)
+	}
+}
+
+func TestOtherUserIsRefused(t *testing.T) {
+	s, _, _, db := newTestServiceDB(t)
+	const ownerEmail = "owner-a@example.test"
+	a := newUser(t, db, fixture.User{Email: ownerEmail})
+	b := newUser(t, db, fixture.User{})
+	c := register(t, s, "Claude", claudeCallback)
+	if _, err := s.ApproveAuthorization(ctx, a, session, authReq(c.ClientID)); err != nil {
+		t.Fatal(err)
+	}
+	mismatched := authReq(c.ClientID)
+	mismatched.RedirectURI = "https://evil.test/cb"
+	for name, q := range map[string]model.AuthorizationRequest{"registered uri": authReq(c.ClientID), "unregistered uri": mismatched} {
+		checkErr := func(op string, err error) {
+			t.Helper()
+			if !hasCode(err, errs.CodeAuthServerAppNotYours) {
+				t.Fatalf("%s %s: want app_not_yours, got %v", name, op, err)
+			}
+			if msg := err.Error(); strings.Contains(msg, a.String()) || strings.Contains(msg, ownerEmail) {
+				t.Fatalf("%s %s: the error must not name the owner: %q", name, op, msg)
+			}
+		}
+		d, err := s.DescribeAuthorization(ctx, b, q)
+		checkErr("describe", err)
+		if d.ErrorRedirectURL != "" {
+			t.Fatalf("%s describe must not redirect: %+v", name, d)
+		}
+		r, err := s.ApproveAuthorization(ctx, b, session, q)
+		checkErr("approve", err)
+		if r.RedirectURL != "" {
+			t.Fatalf("%s approve must not redirect: %+v", name, r)
+		}
+		r, err = s.DeclineAuthorization(ctx, b, q)
+		checkErr("decline", err)
+		if r.RedirectURL != "" {
+			t.Fatalf("%s decline must not redirect: %+v", name, r)
+		}
+	}
+	if n := codeCount(t, db, b); n != 0 {
+		t.Fatalf("no code may be issued to a stranger: %d", n)
+	}
+	if o := owner(t, s, c.ClientID); o == nil || !o.Equal(a) {
+		t.Fatalf("owner changed: %v", o)
+	}
+}
+
+func TestOwnerReconnects(t *testing.T) {
+	s, _, _, db := newTestServiceDB(t)
+	a := newUser(t, db, fixture.User{})
+	c := register(t, s, "Claude", claudeCallback)
+	for i := range 2 {
+		if _, err := s.ApproveAuthorization(ctx, a, session, authReq(c.ClientID)); err != nil {
+			t.Fatalf("approval %d: %v", i, err)
+		}
+	}
+	if o := owner(t, s, c.ClientID); o == nil || !o.Equal(a) {
+		t.Fatalf("owner: %v", o)
+	}
+}
+
+func TestDecline_DoesNotClaim(t *testing.T) {
+	s, _, _, db := newTestServiceDB(t)
+	a := newUser(t, db, fixture.User{})
+	b := newUser(t, db, fixture.User{})
+	c := register(t, s, "Claude", claudeCallback)
+	if _, err := s.DeclineAuthorization(ctx, a, authReq(c.ClientID)); err != nil {
+		t.Fatal(err)
+	}
+	if o := owner(t, s, c.ClientID); o != nil {
+		t.Fatalf("a decline must not claim the app: %v", o)
+	}
+	if _, err := s.ApproveAuthorization(ctx, b, session, authReq(c.ClientID)); err != nil {
+		t.Fatal(err)
+	}
+	if o := owner(t, s, c.ClientID); o == nil || !o.Equal(b) {
+		t.Fatalf("owner: %v", o)
+	}
+}
+
+func TestOfficialApp_UsableByEveryone(t *testing.T) {
+	s, _, clock, db := newTestServiceDB(t)
+	a := newUser(t, db, fixture.User{})
+	b := newUser(t, db, fixture.User{})
+	id := insertOfficialClient(t, s, clock.Now(), claudeCallback)
+	for _, u := range []vo.Id{a, b} {
+		d, err := s.DescribeAuthorization(ctx, u, authReq(id.String()))
+		if err != nil || !d.IsOfficial {
+			t.Fatalf("describe: %+v %v", d, err)
+		}
+		if _, err := s.ApproveAuthorization(ctx, u, session, authReq(id.String())); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if o := owner(t, s, id.String()); o != nil {
+		t.Fatalf("an official app never gets an owner: %v", o)
+	}
+	c := register(t, s, "Claude", claudeCallback)
+	if d, err := s.DescribeAuthorization(ctx, a, authReq(c.ClientID)); err != nil || d.IsOfficial {
+		t.Fatalf("a user app is not official: %+v %v", d, err)
+	}
+}
+
+// racingRepo lets another user's claim land between validate and the approver's claim.
+type racingRepo struct {
+	Repository
+	before func(ctx context.Context)
+}
+
+func (r racingRepo) ClaimClient(ctx context.Context, id, userID vo.Id) (int64, error) {
+	r.before(ctx)
+	return r.Repository.ClaimClient(ctx, id, userID)
+}
+
+func TestApprove_LosesClaimRace(t *testing.T) {
+	s, creds, clock, db := newTestServiceDB(t)
+	a := newUser(t, db, fixture.User{})
+	b := newUser(t, db, fixture.User{})
+	c := register(t, s, "Claude", claudeCallback)
+	id := vo.MustParseId(c.ClientID)
+	inner := s.repo
+	racing := NewService(racingRepo{Repository: inner, before: func(ctx context.Context) {
+		if n, err := inner.ClaimClient(ctx, id, b); err != nil || n != 1 {
+			t.Errorf("rival claim: %d %v", n, err)
+		}
+	}}, creds, s.tx, clock, nil, testURL)
+	res, err := racing.ApproveAuthorization(ctx, a, session, authReq(c.ClientID))
+	if !hasCode(err, errs.CodeAuthServerAppNotYours) || res.RedirectURL != "" {
+		t.Fatalf("the loser must get app_not_yours and no redirect: %+v %v", res, err)
+	}
+	if n := codeCount(t, db, a); n != 0 {
+		t.Fatalf("the loser must get no code: %d", n)
+	}
+	if got, err := s.repo.GetClient(ctx, id); err != nil || got.LastUsedAt != nil {
+		t.Fatalf("a lost race must not mark the client used: %+v %v", got, err)
+	}
+}
+
+func TestApprove_ConcurrentApprovalsOneWins(t *testing.T) {
+	s, _, _, db := newTestServiceDB(t)
+	users := []vo.Id{newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})}
+	c := register(t, s, "Claude", claudeCallback)
+	errsOut := make([]error, len(users))
+	var wg sync.WaitGroup
+	for i, u := range users {
+		wg.Go(func() {
+			_, errsOut[i] = s.ApproveAuthorization(ctx, u, session, authReq(c.ClientID))
+		})
+	}
+	wg.Wait()
+	winner := -1
+	for i, err := range errsOut {
+		switch {
+		case err == nil:
+			if winner != -1 {
+				t.Fatal("both approvals succeeded")
+			}
+			winner = i
+		case !hasCode(err, errs.CodeAuthServerAppNotYours):
+			t.Fatalf("loser error: %v", err)
+		}
+	}
+	if winner == -1 {
+		t.Fatalf("no approval succeeded: %v", errsOut)
+	}
+	if o := owner(t, s, c.ClientID); o == nil || !o.Equal(users[winner]) {
+		t.Fatalf("owner %v, winner %v", o, users[winner])
+	}
+	if n := codeCount(t, db, users[1-winner]); n != 0 {
+		t.Fatalf("the loser must get no code: %d", n)
 	}
 }
