@@ -7,6 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 func TestResetBudget_DeletesComments(t *testing.T) {
@@ -132,5 +133,94 @@ func TestCloneBudget_RefusesAnIdAlreadyInUse(t *testing.T) {
 	}
 	if got := h.list(t, h.owner, "2026-05-01", "12"); len(got.Items) != 1 {
 		t.Fatalf("comments on the source = %d, want the original 1 kept", len(got.Items))
+	}
+}
+
+// TestCreateBudget_RefusesAnotherUsersBudgetID covers an IDOR on the REST
+// create-budget path, where req.Id is the budget's primary key rather than an
+// operation id (every other create mints the entity id server-side) and the
+// write used to be an upsert. A caller who knows an existing budget's id - a
+// participant whose access was later revoked still knows it - could rewrite
+// that budget's name, currency, dates, archived flag and start day, and then
+// have their own accounts seeded onto it as member accounts. MCP is unaffected
+// because its handler mints the id itself.
+func TestCreateBudget_RefusesAnotherUsersBudgetID(t *testing.T) {
+	h := newCommentHarness(t)
+
+	before, err := h.svc.GetBudgetList(h.ctx, h.owner)
+	if err != nil {
+		t.Fatalf("GetBudgetList: %v", err)
+	}
+	var victim *model.MetaResult
+	for i := range before.Items {
+		if before.Items[i].Id == h.budgetID.String() {
+			victim = &before.Items[i]
+		}
+	}
+	if victim == nil {
+		t.Fatalf("the harness budget %s is not in the owner's list", h.budgetID)
+	}
+
+	// The attacker owns an account, so the only thing standing between them and
+	// the victim's budget row is the id check.
+	attackerAccount := h.f.Account(fixture.Account{UserID: h.stranger.String(), Name: "Attacker wallet"})
+
+	_, err = h.svc.CreateBudget(h.ctx, h.stranger, model.CreateBudgetRequest{
+		Id:   h.budgetID.String(), // another user's budget
+		Name: "Seized",
+		// Explicit, so the call does not stop at the attacker's missing default
+		// currency option before it reaches the id check.
+		CurrencyId: fixture.USD,
+		AccountIds: []string{attackerAccount},
+	})
+	if err == nil {
+		t.Fatal("CreateBudget onto another user's budget id succeeded; it must be refused")
+	}
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v (%T), want a validation error naming id", err, err)
+	}
+	found := false
+	for _, f := range v.Fields {
+		if f.Key == "id" {
+			found = true
+			if f.Code != errs.CodeBudgetIDInUse {
+				t.Fatalf("id code = %q, want %q", f.Code, errs.CodeBudgetIDInUse)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("validation fields = %+v, want one naming id", v.Fields)
+	}
+
+	// The victim's budget is untouched: same name, and no attacker account
+	// grafted on as a member.
+	after, err := h.svc.GetBudgetList(h.ctx, h.owner)
+	if err != nil {
+		t.Fatalf("GetBudgetList: %v", err)
+	}
+	for i := range after.Items {
+		if after.Items[i].Id != h.budgetID.String() {
+			continue
+		}
+		if after.Items[i].Name != victim.Name {
+			t.Fatalf("victim budget name %q -> %q: the refused create overwrote it",
+				victim.Name, after.Items[i].Name)
+		}
+		if after.Items[i].OwnerUserId != victim.OwnerUserId {
+			t.Fatalf("victim budget owner %q -> %q", victim.OwnerUserId, after.Items[i].OwnerUserId)
+		}
+		if after.Items[i].PeriodStartDay != victim.PeriodStartDay {
+			t.Fatalf("victim budget periodStartDay %d -> %d", victim.PeriodStartDay, after.Items[i].PeriodStartDay)
+		}
+	}
+	members, err := h.budgetRepo.MemberAccounts(h.ctx, h.budgetID)
+	if err != nil {
+		t.Fatalf("MemberAccounts: %v", err)
+	}
+	for _, m := range members {
+		if m.AccountID.String() == attackerAccount {
+			t.Fatal("the attacker's account was added to the victim's budget")
+		}
 	}
 }

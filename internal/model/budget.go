@@ -86,12 +86,13 @@ func InvalidPeriodStartDayError() error {
 }
 
 // BudgetIDInUseError is the coded field error for a client-supplied budget id
-// that is already taken. Only clone-budget supplies one, and the copy must
-// never land on an existing budget: the write would overwrite its settings and
-// then layer the source's structure underneath.
-func BudgetIDInUseError() error {
+// that is already taken; field names the request field that carried it ("id"
+// on create-budget, "newId" on clone-budget). Neither may land on an existing
+// budget: the write would overwrite its settings and then layer structure
+// underneath it.
+func BudgetIDInUseError(field string) error {
 	return errs.NewValidation("Validation failed", errs.FieldError{
-		Key: "newId", Message: "That budget id is already in use", Code: errs.CodeBudgetIDInUse,
+		Key: field, Message: "That budget id is already in use", Code: errs.CodeBudgetIDInUse,
 	})
 }
 

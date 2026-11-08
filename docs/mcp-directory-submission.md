@@ -30,6 +30,7 @@ Verified against the code, not assumed:
 | Actionable errors | `webmcp.MapErr` returns the REST envelope's coded, translated message plus per-field errors — never a bare "Internal Server Error" |
 | Tool titles + hints on all 50 tools | `internal/web/mcp/annotations.go`, guarded by `TestEveryToolIsAnnotated` |
 | `clone_budget` cannot overwrite an existing budget | `internal/budget/clone.go` creates through `InsertIfAbsent` (`INSERT ... ON CONFLICT DO NOTHING`), so a `new_id` already in use is refused atomically |
+| `create-budget` cannot overwrite another user's budget | same `InsertIfAbsent` gate in `internal/budget/create.go`; REST-only, since the MCP handler mints the id itself |
 
 Two notes on things that look like gaps and are not:
 

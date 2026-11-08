@@ -77,7 +77,7 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 			return serr
 		}
 		if !inserted {
-			return model.BudgetIDInUseError()
+			return model.BudgetIDInUseError("newId")
 		}
 		// The cloner becomes the copy's owner, so their own grant (if any) is
 		// dropped; when an admin clones, the former owner joins the copy as an

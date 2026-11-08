@@ -2485,6 +2485,11 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Allow sends the browser to the client's callback; the client finishes
       connecting and its MCP tools (for example listing accounts) return the
       signed-in user's data.
+- [ ] `POST /api/v1/budget/create-budget` and `clone-budget` with an `id` /
+      `newId` that an existing budget already uses (your own or another user's)
+      are refused with the field error "That budget id is already in use"
+      (`budget.id_in_use`), and that budget keeps its name, currency, start day
+      and member accounts. A fresh id still creates normally.
 - [ ] In the connected client, a read tool (`list_accounts`, `get_budget`) runs
       without asking for per-call confirmation, and a destructive one
       (`delete_transaction`, `delete_budget_comment`, any `merge_*`,
