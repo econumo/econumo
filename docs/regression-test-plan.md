@@ -73,7 +73,7 @@ navigation (single-pane vs sidebar).
       the server's reason ("User already exists", localized), no account
       created.
 - [ ] Login with correct credentials → lands on `/` (onboarding for a fresh
-      user); wrong password → error dialog, no session created.
+      user, Day 0 step 1); wrong password → error dialog, no session created.
 - [ ] "Remember email" checkbox pre-fills the email on next visit.
 - [ ] Forgot password: send code → email arrives (console transport prints to
       server stdout in dev) → enter code + new password → old password rejected,
@@ -270,6 +270,12 @@ navigation (single-pane vs sidebar).
       with the accounts, completes onboarding and lands on `/budget`; the
       sidebar onboarding link disappears; `/` now renders the budget.
 - [ ] "Skip setup" on either step completes onboarding and lands on `/budget`.
+- [ ] Skip on step 1 creates nothing; skip on step 2 keeps the accounts already
+      created in step 1 and creates no categories or budget.
+- [ ] 📱 Step 1 and step 2 render usably on a phone, tablet and desktop width
+      (no horizontal scroll; Continue and Skip reachable).
+- [ ] An existing user who owns accounts (upgraded instance) is not sent to
+      onboarding and sees no get-ready cards or Next steps.
 - [ ] 📱 Reloading mid-flow (or retrying after a failed request) resumes at the
       same step with the same rows and creates nothing twice.
 - [ ] An invalid balance in a row with no name does not block Continue; Skip is

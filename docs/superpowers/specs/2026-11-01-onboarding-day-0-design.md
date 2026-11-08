@@ -130,9 +130,9 @@ budget. They are not banners. Which cards show depends on the device and the ser
 - Add to home screen: iPhone gets a short Safari "Share, Add to Home Screen" guide,
   Android gets the browser's install prompt. It is skipped when already opened from the
   home screen.
-- Apple Wallet needs `IMPORT_APPLE_WALLET` on. CSV import is always available. SimpleFIN
-  is unannounced and out of scope: no card, and Day 0 does not change it. A card that doesn't fit the device or the server is
-  not shown.
+- The Apple Wallet card shows on an iPhone (there is no feature flag any more). CSV import is
+  always available. SimpleFIN is unannounced and out of scope: no card, and Day 0 does not
+  change it. A card that doesn't fit the device is not shown.
 - A card disappears once done, and all cards can be skipped.
 - There is no prompt to add a first transaction.
 - The cards show only until the first transaction is added: "no data" means no

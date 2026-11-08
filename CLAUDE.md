@@ -405,6 +405,20 @@ into a new minor line links that line's `.0` notes (v1.6.x -> v1.7.2 shows v1.7.
 upgrade within the line the running patch. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
+**Onboarding Day 0** (`web/src/features/onboarding`; spec
+`docs/superpowers/specs/2026-11-01-onboarding-day-0-design.md`): a new user's first run is two
+steps, accounts (name, balance as of today, currency, Savings switch, plus a used-currencies
+block that sets the main currency) then categories, with an automatic "My budget" and a Skip on
+each step; the unsaved draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the
+writes are idempotent so a reload or retry creates nothing twice. Afterwards, until the first
+real transaction (opening corrections do not count), the budget page shows "get ready" cards
+(phone: add to home screen, Apple Wallet on iOS; desktop: set the plan, CSV import) and the Inbox
+lists the same items under "Next steps", which is NOT counted in the sidebar badge. Per-user
+progress is the `getting_started` user option (comma-separated keys `plan`/`import`/`apple_wallet`,
+a `!` suffix = dismissed, `""` = went through Day 0, absent = never in the flow), written by
+`POST /api/v1/user/update-getting-started`. Migration `20261108000000` marks onboarding complete
+for existing users who own accounts.
+
 **Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
 sidebar footer, not a menu entry): Net worth, plus a "Suggest a report" card that opens the
 feedback form on its feature-request type. The tab list is stored per user on
@@ -1508,6 +1522,13 @@ data unreadable. Most are also asserted by the test suite.
 - **SQLite is the reference engine** — it's the default; PostgreSQL must match it byte-for-byte (enforced by the `enginecompare` suite).
 
 ### Notable behaviours
+- **Keep balance (CSV import and Day 0)**: `GET /api/v1/account/get-balance-snapshot?accountIds=`
+  returns each account's current balance, and `POST /api/v1/account/restore-balance` (under the
+  account row lock) brings it back to a snapshot by moving or resizing the account's opening
+  correction, or by adding a "Balance adjustment" transaction; both bump the account's
+  transaction revision. The CSV import's "Keep current balance" checkbox snapshots before the
+  import and restores afterwards; the result lists accounts whose balance was kept and those
+  where it could not be.
 - **Category type matches transaction type**: an income category classifies only income and
   an expense category only expenses. `checkReferences` (create, update, bulk, recurring post,
   MCP, imports) refuses a mismatch with the field error `categoryId` /
