@@ -1237,7 +1237,8 @@
     "words": {
       "cash": "efectivo | cartera | monedero | cash",
       "savings": "ahorro | ahorros | reserva | depósito | emergencia"
-    }
+    },
+    "budget_name": "Mi presupuesto"
   },
   "budgets": {
     "modal": {

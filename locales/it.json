@@ -1237,7 +1237,8 @@
     "words": {
       "cash": "contanti | contante | portafoglio | cash",
       "savings": "risparmi | risparmio | riserva | deposito | emergenza"
-    }
+    },
+    "budget_name": "Il mio budget"
   },
   "budgets": {
     "modal": {

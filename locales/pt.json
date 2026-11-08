@@ -1237,7 +1237,8 @@
     "words": {
       "cash": "dinheiro | carteira | numerário | cash",
       "savings": "poupança | poupanca | reserva | depósito | emergência | cofrinho"
-    }
+    },
+    "budget_name": "Meu orçamento"
   },
   "budgets": {
     "modal": {

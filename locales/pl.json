@@ -1237,7 +1237,8 @@
     "words": {
       "cash": "gotówka | portfel | cash",
       "savings": "oszczędności | oszczędnościowe | rezerwa | lokata | awaryjne | poduszka"
-    }
+    },
+    "budget_name": "Mój budżet"
   },
   "budgets": {
     "modal": {

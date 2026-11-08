@@ -1237,7 +1237,8 @@
     "words": {
       "cash": "espèces | liquide | portefeuille | cash",
       "savings": "épargne | livret | réserve | dépôt | urgence | économies | economies"
-    }
+    },
+    "budget_name": "Mon budget"
   },
   "budgets": {
     "modal": {

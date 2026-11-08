@@ -1237,7 +1237,8 @@
     "words": {
       "cash": "contant | contanten | portemonnee | cash",
       "savings": "spaarrekening | spaargeld | spaarpot | sparen | noodfonds | reserve | deposito"
-    }
+    },
+    "budget_name": "Mijn budget"
   },
   "budgets": {
     "modal": {

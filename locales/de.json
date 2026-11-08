@@ -1237,7 +1237,8 @@
     "words": {
       "cash": "bargeld | geldbeutel | portemonnaie | cash",
       "savings": "sparkonto | sparbuch | sparen | sparschwein | tagesgeld | rücklage | notgroschen | reserve"
-    }
+    },
+    "budget_name": "Mein Budget"
   },
   "budgets": {
     "modal": {

@@ -1237,7 +1237,8 @@
     "words": {
       "cash": "cash | wallet",
       "savings": "savings | saving | reserve | deposit | emergency"
-    }
+    },
+    "budget_name": "My budget"
   },
   "budgets": {
     "modal": {
