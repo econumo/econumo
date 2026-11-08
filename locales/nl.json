@@ -411,7 +411,8 @@
         "label": "Huidig saldo behouden",
         "hint": "Het saldo van vandaag blijft hetzelfde; oudere transacties worden uitgebalanceerd met een correctie.",
         "kept": "Saldo van vandaag behouden: {amount}",
-        "not_kept": "Kon het saldo van {account} niet behouden"
+        "not_kept": "Kon het saldo van {account} niet behouden",
+        "unavailable": "De huidige saldi konden niet worden gecontroleerd, dus deze import behoudt ze niet."
       }
     },
     "import_csv": {

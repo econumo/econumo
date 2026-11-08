@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeftRight, Split, SlidersHorizontal } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
@@ -87,15 +87,25 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     [analysis, selection.modes.account, selection.columns.account, selection.fixed.accountId, writableAccounts],
   )
   const targetKey = [...targetIds].sort().join(',')
-  const { data: snapshot } = useQuery({
+  const {
+    data: snapshot,
+    isPending: snapshotPending,
+    isPlaceholderData: snapshotStale,
+    isError: snapshotFailed,
+  } = useQuery({
     queryKey: ['balance-snapshot', targetKey],
     queryFn: () => getBalanceSnapshot(targetIds),
     enabled: open && targetIds.length > 0,
     staleTime: 0,
     gcTime: 0,
     retry: false,
+    // the previous target's answer keeps the box in place while the new one loads
+    placeholderData: keepPreviousData,
   })
-  const snapshotItems = snapshot?.items ?? []
+  // Importing before the snapshot answers would run a plain import and move a
+  // balance the user meant to keep; a failed snapshot allows a plain import.
+  const snapshotLoading = targetIds.length > 0 && !snapshotFailed && (snapshotPending || snapshotStale)
+  const snapshotItems = snapshotFailed ? [] : (snapshot?.items ?? [])
   const showKeepBalance = targetIds.length > 0 && snapshotItems.length > 0
   const keepBalance = keepBalanceChoice ?? (snapshotItems.length > 0 && snapshotItems.every((item) => item.fresh))
 
@@ -291,7 +301,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     try {
       const onProgress = (done: number, total: number) => setProgress({ done, total })
       const result =
-        showKeepBalance && keepBalance
+        showKeepBalance && !snapshotStale && keepBalance
           ? await runImportKeepingBalance(analysis, selection, importTransactionList, writableAccounts, onProgress)
           : await runImport(analysis, selection, importTransactionList, onProgress)
       if (result.kept) trackEvent(METRICS.IMPORT_KEEP_BALANCE, { accounts: result.kept.length })
@@ -474,6 +484,9 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
             </span>
           </label>
         ) : null}
+        {targetIds.length > 0 && snapshotFailed ? (
+          <p className="text-xs text-muted-foreground">{t('transactions.import.keep_balance.unavailable')}</p>
+        ) : null}
 
         {submitting && progress && chunkCount > 1 ? (
           <Progress value={(progress.done / progress.total) * 100} aria-label="import progress" />
@@ -483,7 +496,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
           <Button type="button" variant="secondary" disabled={submitting} onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="button" disabled={!analysis || !selectionValid(selection) || submitting} onClick={() => void handleSubmit()}>
+          <Button type="button" disabled={!analysis || !selectionValid(selection) || submitting || snapshotLoading} onClick={() => void handleSubmit()}>
             {t('common.button.import.label')}
           </Button>
         </div>

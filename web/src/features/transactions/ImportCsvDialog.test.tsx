@@ -338,3 +338,58 @@ it('keep balance box is hidden when no account is mapped or the snapshot has no 
   await waitFor(() => expect(screen.queryByRole('checkbox', { name: /Keep current balance/ })).not.toBeInTheDocument())
   expect(log.length).toBeGreaterThan(0)
 })
+
+it('keeps Import disabled while the balance snapshot is loading', async () => {
+  let release: () => void = () => {}
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  snapshotHandlers([{ accountId: 'a1', balance: '1', openingCorrectionId: '', fresh: true }])
+  server.use(
+    http.get('*/api/v1/account/get-balance-snapshot', async () => {
+      await gate
+      return HttpResponse.json({ success: true, message: '', data: { takenAt: '2026-11-07 10:00:00', items: [{ accountId: 'a1', balance: '1', openingCorrectionId: '', fresh: true }] } })
+    }),
+  )
+  renderDialog()
+  await uploadCsv()
+  await screen.findByText(/Map the columns/)
+  expect(screen.getByRole('button', { name: 'Import' })).toBeDisabled()
+  release()
+  expect(await screen.findByRole('checkbox', { name: /Keep current balance/ })).toBeChecked()
+  expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled()
+})
+
+it('keeps the box on screen while a changed target reloads the snapshot', async () => {
+  const user = await (async () => {
+    snapshotHandlers([{ accountId: 'a1', balance: '1', openingCorrectionId: '', fresh: true }])
+    renderDialog()
+    return uploadCsv()
+  })()
+  await screen.findByRole('checkbox', { name: /Keep current balance/ })
+  let release: () => void = () => {}
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  server.use(
+    http.get('*/api/v1/account/get-balance-snapshot', async () => {
+      await gate
+      return HttpResponse.json({ success: true, message: '', data: { takenAt: '2026-11-07 10:00:00', items: [{ accountId: 'a1', balance: '1', openingCorrectionId: '', fresh: true }] } })
+    }),
+  )
+  await user.click(screen.getByRole('button', { name: 'toggle Account mode' }))
+  await user.click(screen.getByRole('combobox', { name: 'Account' }))
+  await user.click(await screen.findByRole('option', { name: /Cash \(/ }))
+  expect(screen.getByRole('checkbox', { name: /Keep current balance/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Import' })).toBeDisabled()
+  release()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled())
+})
+
+it('a failed snapshot says the balance cannot be kept and still allows a plain import', async () => {
+  const log = snapshotHandlers([])
+  server.use(http.get('*/api/v1/account/get-balance-snapshot', () => HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })))
+  const { onComplete } = renderDialog()
+  const user = await uploadCsv()
+  expect(await screen.findByText(/Couldn't check the current balances/)).toBeInTheDocument()
+  expect(screen.queryByRole('checkbox', { name: /Keep current balance/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+  await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ imported: 2, failed: 0, errors: [] }))
+  expect(log).toEqual(['import'])
+})

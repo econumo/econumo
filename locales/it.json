@@ -411,7 +411,8 @@
         "label": "Mantieni il saldo attuale",
         "hint": "Il saldo di oggi resta invariato; le transazioni precedenti vengono bilanciate da una rettifica.",
         "kept": "Saldo di oggi mantenuto: {amount}",
-        "not_kept": "Impossibile mantenere il saldo di {account}"
+        "not_kept": "Impossibile mantenere il saldo di {account}",
+        "unavailable": "Impossibile verificare i saldi attuali, quindi questa importazione non li manterrà."
       }
     },
     "import_csv": {

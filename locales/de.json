@@ -411,7 +411,8 @@
         "label": "Aktuellen Kontostand beibehalten",
         "hint": "Der heutige Kontostand bleibt unverändert; ältere Transaktionen werden durch eine Korrekturbuchung ausgeglichen.",
         "kept": "Heutiger Kontostand von {amount} beibehalten",
-        "not_kept": "Der Kontostand von {account} konnte nicht beibehalten werden"
+        "not_kept": "Der Kontostand von {account} konnte nicht beibehalten werden",
+        "unavailable": "Die aktuellen Salden konnten nicht geprüft werden, daher bleiben sie bei diesem Import nicht erhalten."
       }
     },
     "import_csv": {

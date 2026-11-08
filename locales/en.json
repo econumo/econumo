@@ -411,7 +411,8 @@
         "label": "Keep current balance",
         "hint": "Today's balance stays as it is; older transactions are balanced by an adjustment.",
         "kept": "Kept today's balance of {amount}",
-        "not_kept": "Couldn't keep the balance of {account}"
+        "not_kept": "Couldn't keep the balance of {account}",
+        "unavailable": "Couldn't check the current balances, so this import won't keep them."
       }
     },
     "import_csv": {
