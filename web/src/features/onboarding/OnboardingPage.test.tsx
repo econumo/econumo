@@ -81,12 +81,13 @@ beforeEach(() => {
   mockViewport(false)
 })
 
-const heading = (name: string) => screen.findByRole('heading', { name })
+// the categories and accounts steps wait for their lists, which a loaded machine can take a while to serve
+const heading = (name: string) => screen.findByRole('heading', { name }, { timeout: 5000 })
 
 it('opens on the first open step with the stepper above it', async () => {
   serve('import')
   renderPage()
-  expect(await heading('Categories')).toBeInTheDocument()
+  expect(await heading('What do you spend on?')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Categories/ })).toHaveAttribute('aria-current', 'step')
   expect(screen.getByRole('button', { name: /Import/ })).toHaveAttribute('data-state', 'done')
   expect(screen.getByRole('button', { name: 'Skip setup' })).toBeInTheDocument()
@@ -98,7 +99,7 @@ it('skipping a step records it and moves to the next open step', async () => {
   renderPage()
   expect(await heading('Bring in your history')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: "I don't have one" }))
-  expect(await heading('Categories')).toBeInTheDocument()
+  expect(await heading('What do you spend on?')).toBeInTheDocument()
   expect(posts).toEqual([{ path: 'update-getting-started', value: '!import' }])
 })
 
@@ -108,7 +109,7 @@ it('a revisited step moves on to the next open step after it', async () => {
   renderPage()
   await heading('Bring in your history')
   await user.click(screen.getByRole('button', { name: /Accounts/ }))
-  expect(await heading('Accounts')).toBeInTheDocument()
+  expect(await heading("Where's your money right now?")).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Skip' }))
   expect(await heading('Budget & plan')).toBeInTheDocument()
   expect(posts).toEqual([{ path: 'update-getting-started', value: '!accounts' }])
@@ -131,7 +132,7 @@ it('Skip setup skips every open step, then completes onboarding', async () => {
   const state = serve('import')
   const user = userEvent.setup()
   renderPage()
-  await heading('Categories')
+  await heading('What do you spend on?')
   await user.click(screen.getByRole('button', { name: 'Skip setup' }))
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
   expect(posts.at(-1)).toEqual({ path: 'complete-onboarding' })

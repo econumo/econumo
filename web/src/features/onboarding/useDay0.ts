@@ -7,13 +7,14 @@ import { createAccount, getAccountList, getFolderList } from '@/api/account'
 import { createBudget, getBudgetList } from '@/api/budget'
 import { createCategory, getCategoryList } from '@/api/category'
 import { getCurrencyList, hideAllCurrencies, showCurrency } from '@/api/currency'
-import { completeOnboarding, updateCurrency, updateGettingStarted } from '@/api/user'
+import { UserOptions } from '@/api/dto/user'
+import { updateCurrency } from '@/api/user'
 import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
 import { useAccounts } from '@/features/accounts/queries'
-import { isOnboardingCompleted, userCurrencyId, useUserData } from '@/features/user/queries'
+import { userCurrencyId, userOption, useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { clearDraft, emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft } from './draft'
+import { emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft } from './draft'
 
 const isBadRequest = (err: unknown) => isAxiosError(err) && err.response?.status === 400
 
@@ -41,7 +42,6 @@ export function useDay0() {
   const queryClient = useQueryClient()
   const { data: user } = useUserData()
   const accountsQuery = useAccounts()
-  const accounts = accountsQuery.data
   const [version, setVersion] = useState(0)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<unknown>(null)
@@ -49,26 +49,10 @@ export function useDay0() {
 
   const draft = useMemo<Day0Draft | null>(() => {
     void version
-    if (!userId) {
-      return null
-    }
-    const stored = loadDraft(userId)
-    if (stored) {
-      return stored
-    }
-    const owned = (accounts ?? []).filter((a) => a.owner.id === userId)
-    if (owned.length > 0 && !isOnboardingCompleted(user)) {
-      return {
-        ...emptyDraft(),
-        step: 'categories',
-        accountIds: owned.map((a) => a.id),
-        mainCurrencyId: userCurrencyId(user),
-      }
-    }
-    return null
-  }, [userId, user, accounts, version])
+    return userId ? loadDraft(userId) : null
+  }, [userId, version])
 
-  const current = useCallback((): Day0Draft => (userId ? loadDraft(userId) : null) ?? draft ?? emptyDraft(), [userId, draft])
+  const current = useCallback((): Day0Draft => (userId ? loadDraft(userId) : null) ?? emptyDraft(), [userId])
 
   const persist = useCallback(
     (d: Day0Draft) => {
@@ -80,11 +64,11 @@ export function useDay0() {
     [userId],
   )
 
-  const run = useCallback(async (work: () => Promise<void>) => {
+  const run = useCallback(async <T,>(work: () => Promise<T>): Promise<T> => {
     setPending(true)
     setError(null)
     try {
-      await work()
+      return await work()
     } catch (err) {
       setError(err)
       throw err
@@ -93,6 +77,49 @@ export function useDay0() {
     }
   }, [])
 
+  const saveCategories = useCallback(
+    (rows: CategoryRow[]) =>
+      run(async () => {
+        if (!userId) {
+          return
+        }
+        const d = current()
+        const checked = rows.filter((c) => c.checked)
+        d.categoryRows = rows
+        for (const c of checked) {
+          opId(d, `category:${c.key}`)
+        }
+        persist(d)
+
+        try {
+          for (const c of checked) {
+            if (d.createdCategories[c.key]) {
+              continue
+            }
+            try {
+              const item = await createCategory({ id: d.ops[`category:${c.key}`], name: c.name, type: c.type, icon: c.icon })
+              d.createdCategories[c.key] = item.id
+            } catch (err) {
+              // A 400 is the operation guard answering a replay whose first response was lost.
+              if (!isBadRequest(err)) {
+                throw err
+              }
+              const known = new Set(Object.values(d.createdCategories))
+              const found = (await getCategoryList()).find((x) => !known.has(x.id) && x.type === c.type && sameName(x.name, c.name))
+              if (!found) {
+                throw err
+              }
+              d.createdCategories[c.key] = found.id
+            }
+            persist(d)
+          }
+        } finally {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.categories })
+        }
+      }),
+    [run, current, persist, userId, queryClient],
+  )
+
   const saveAccounts = useCallback(
     (rows: AccountRow[], extraCurrencyIds: Id[], mainCurrencyId: Id) =>
       run(async () => {
@@ -100,156 +127,128 @@ export function useDay0() {
           return
         }
         const d = current()
-        const selected = new Set([mainCurrencyId, ...extraCurrencyIds, ...rows.map((r) => r.currencyId)])
+        const selected = [...new Set([mainCurrencyId, ...extraCurrencyIds, ...rows.map((r) => r.currencyId)])]
         d.rows = rows
         d.extraCurrencyIds = extraCurrencyIds
         d.mainCurrencyId = mainCurrencyId
         for (const row of rows) {
-          opId(d, `account:${row.key}`)
+          if (row.accountId) {
+            d.created[row.key] = row.accountId
+          } else {
+            opId(d, `account:${row.key}`)
+          }
         }
         persist(d)
 
-        // The server accepts a blank folder only while the user has none (it then creates "General").
-        let folderId: Id | null = null
-        for (const row of rows) {
-          if (d.created[row.key]) {
-            continue
-          }
-          try {
-            folderId ??= (await getFolderList())[0]?.id ?? null
-            const item = await createAccount({
-              id: d.ops[`account:${row.key}`],
-              name: row.name,
-              currencyId: row.currencyId,
-              balance: row.balance === '' ? '0' : row.balance,
-              icon: row.icon,
-              folderId,
-            })
-            folderId = item.item.folderId ?? folderId
-            d.created[row.key] = item.item.id
-          } catch (err) {
-            // A 400 is the operation guard answering a replay whose first response was lost.
-            if (!isBadRequest(err)) {
-              throw err
+        try {
+          // The server accepts a blank folder only while the user has none (it then creates "General").
+          let folderId: Id | null = null
+          for (const row of rows) {
+            if (d.created[row.key]) {
+              continue
             }
-            const known = new Set(Object.values(d.created))
-            const found = (await getAccountList()).find((a) => a.owner.id === userId && !known.has(a.id) && sameName(a.name, row.name))
-            if (!found) {
-              throw err
+            try {
+              folderId ??= (await getFolderList())[0]?.id ?? null
+              const item = await createAccount({
+                id: d.ops[`account:${row.key}`],
+                name: row.name,
+                currencyId: row.currencyId,
+                balance: row.balance === '' ? '0' : row.balance,
+                icon: row.icon,
+                folderId,
+              })
+              folderId = item.item.folderId ?? folderId
+              d.created[row.key] = item.item.id
+            } catch (err) {
+              if (!isBadRequest(err)) {
+                throw err
+              }
+              const known = new Set(Object.values(d.created))
+              const found = (await getAccountList()).find((a) => a.owner.id === userId && !known.has(a.id) && sameName(a.name, row.name))
+              if (!found) {
+                throw err
+              }
+              d.created[row.key] = found.id
             }
-            d.created[row.key] = found.id
+            persist(d)
           }
-          persist(d)
-        }
 
-        if (!d.currenciesDone) {
-          const currencies = await getCurrencyList()
-          const main = currencies.find((c) => c.id === mainCurrencyId)
-          if (main) {
-            await updateCurrency(main.code)
+          const selection = JSON.stringify([mainCurrencyId, ...[...selected].sort()])
+          if (d.currenciesApplied !== selection) {
+            const currencies = await getCurrencyList()
+            const main = currencies.find((c) => c.id === mainCurrencyId)
+            if (main) {
+              await updateCurrency(main.code)
+            }
+            await ignoreBadRequest(hideAllCurrencies)
+            for (const id of selected) {
+              await ignoreBadRequest(() => showCurrency(id))
+            }
+            d.currenciesApplied = selection
+            persist(d)
           }
-          await ignoreBadRequest(hideAllCurrencies)
-          for (const id of selected) {
-            await ignoreBadRequest(() => showCurrency(id))
-          }
-          d.currenciesDone = true
-          persist(d)
+        } finally {
+          void queryClient.invalidateQueries()
         }
 
         d.accountIds = rows.map((r) => d.created[r.key])
         d.savingsAccountIds = rows.filter((r) => r.savings).map((r) => d.created[r.key])
-        d.step = 'categories'
         persist(d)
-        void queryClient.invalidateQueries()
-        trackEvent(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, { accounts: rows.length, currencies: selected.size })
+        trackEvent(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, { accounts: rows.filter((r) => !r.accountId).length, currencies: selected.length })
       }),
     [run, current, persist, userId, queryClient],
   )
 
-  const finish = useCallback(
-    (categories: CategoryRow[]) =>
-      run(async () => {
+  const ensureBudget = useCallback(
+    () =>
+      run(async (): Promise<Id> => {
         if (!userId) {
-          return
+          throw new Error('Day 0 budget needs a signed-in user')
         }
         const d = current()
-        const currencyId = d.mainCurrencyId ?? userCurrencyId(user)
-        if (d.accountIds.length === 0 || !currencyId) {
-          throw new Error('Day 0 finish needs accounts and a main currency')
+        if (d.budgetDone && d.ops.budget) {
+          return d.ops.budget
         }
-        const checked = categories.filter((c) => c.checked)
-        d.categoryRows = categories
-        for (const c of checked) {
-          opId(d, `category:${c.key}`)
-        }
-        const budgetId = opId(d, 'budget')
-        persist(d)
-
-        for (const c of checked) {
-          if (d.createdCategories[c.key]) {
-            continue
+        const budgets = (await getBudgetList()).filter(
+          (b) => b.ownerUserId === userId || b.access.some((a) => a.user.id === userId && a.isAccepted === 1),
+        )
+        // our own create whose response was lost is already in the list
+        const ours = d.ops.budget && budgets.some((b) => b.id === d.ops.budget) ? d.ops.budget : null
+        if (!ours) {
+          const preferred = userOption(user, UserOptions.BUDGET)
+          const existing = budgets.find((b) => b.id === preferred) ?? budgets[0]
+          if (existing) {
+            return existing.id
           }
-          try {
-            const item = await createCategory({ id: d.ops[`category:${c.key}`], name: c.name, type: c.type, icon: c.icon })
-            d.createdCategories[c.key] = item.id
-          } catch (err) {
-            if (!isBadRequest(err)) {
-              throw err
-            }
-            const known = new Set(Object.values(d.createdCategories))
-            const found = (await getCategoryList()).find((x) => !known.has(x.id) && x.type === c.type && sameName(x.name, c.name))
-            if (!found) {
-              throw err
-            }
-            d.createdCategories[c.key] = found.id
+          const currencyId = d.mainCurrencyId ?? userCurrencyId(user)
+          const owned = (await getAccountList()).filter((a) => a.owner.id === userId).map((a) => a.id)
+          if (owned.length === 0 || !currencyId) {
+            throw new Error('Day 0 budget needs accounts and a main currency')
           }
+          const budgetId = opId(d, 'budget')
           persist(d)
-        }
-
-        if (!d.budgetDone) {
           try {
             await createBudget({
               id: budgetId,
               name: t('onboarding.budget_name'),
               startDate: '',
               currencyId,
-              accountIds: d.accountIds,
-              savingsAccountIds: d.savingsAccountIds,
+              accountIds: owned,
+              savingsAccountIds: d.savingsAccountIds.filter((id) => owned.includes(id)),
             })
           } catch (err) {
             if (!isBadRequest(err) || !(await getBudgetList()).some((b) => b.id === budgetId)) {
               throw err
             }
           }
-          d.budgetDone = true
-          persist(d)
         }
-
-        await updateGettingStarted('')
-        const updated = await completeOnboarding()
-        clearDraft(userId)
-        queryClient.setQueryData(queryKeys.user, updated)
-        void queryClient.invalidateQueries()
-        trackEvent(METRICS.USER_COMPLETE_ONBOARDING)
+        d.budgetDone = true
+        persist(d)
+        void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+        return d.ops.budget
       }),
     [run, current, persist, userId, user, t, queryClient],
   )
 
-  const skip = useCallback(
-    () =>
-      run(async () => {
-        if (!userId) {
-          return
-        }
-        const step = current().step
-        await updateGettingStarted('')
-        const updated = await completeOnboarding()
-        clearDraft(userId)
-        queryClient.setQueryData(queryKeys.user, updated)
-        trackEvent(METRICS.ONBOARDING_SKIP, { step })
-      }),
-    [run, current, userId, queryClient],
-  )
-
-  return { draft, ready: Boolean(user) && !accountsQuery.isPending, saveAccounts, finish, skip, pending, error }
+  return { draft, ready: Boolean(user) && !accountsQuery.isPending, saveCategories, saveAccounts, ensureBudget, pending, error }
 }

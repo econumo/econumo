@@ -1217,7 +1217,10 @@
       "remove": "Konto entfernen",
       "currency_title": "Währung",
       "continue": "Weiter",
-      "skip": "Einrichtung überspringen"
+      "skip": "Überspringen",
+      "add": "Konto hinzufügen",
+      "savings_label": "Sparkonto",
+      "details": "Kontodetails"
     },
     "categories_step": {
       "heading": "Wofür geben Sie Geld aus?",
@@ -1228,16 +1231,16 @@
       "icon_label": "Symbol ändern",
       "add_placeholder": "Eigene hinzufügen",
       "continue": "Weiter",
-      "skip": "Einrichtung überspringen"
+      "skip": "Überspringen"
     },
     "currencies": {
       "title": "Währungen",
-      "main": "Haupt: {code} · basierend auf Ihren Konten",
       "main_title": "Hauptwährung",
       "add": "Währung hinzufügen",
       "remove": "{code} entfernen",
-      "note": "Weitere Währungen können Sie später in den Einstellungen hinzufügen.",
-      "no_rate": "Für {codes} gibt es noch keinen Wechselkurs. Beträge darin werden erst umgerechnet, wenn ein Kurs hinzugefügt wird."
+      "no_rate": "Für {codes} gibt es noch keinen Wechselkurs. Beträge darin werden erst umgerechnet, wenn ein Kurs hinzugefügt wird.",
+      "main_short": "{code} (Haupt)",
+      "add_short": "Hinzufügen"
     },
     "step_of": "Schritt {current} von {total}",
     "steps_nav": {

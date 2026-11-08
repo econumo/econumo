@@ -286,10 +286,25 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 While onboarding is incomplete neither the "Econumo works best as an
       app" banner nor the one-time install popup appears in the app; both
       appear once onboarding is completed.
-- [ ] Skip on step 1 creates nothing; skip on step 2 keeps the accounts already
-      created in step 1 and creates no categories or budget.
-- [ ] 📱 Step 1 and step 2 render usably on a phone, tablet and desktop width
-      (no horizontal scroll; Continue and Skip reachable).
+- [ ] Skip on Categories or Accounts creates nothing; Continue on Categories
+      creates only the ticked categories, Continue on Accounts only the new
+      accounts (and sets the main currency and visible currencies). Neither
+      step creates a budget.
+- [ ] Categories: one card per type, a checkbox on the right of each row, an
+      "Add your own" row at the end. On a fresh account every default is
+      ticked; categories the user already has (after an import, or on a
+      revisit) are listed first, ticked and locked, and defaults with the same
+      name are not offered again.
+- [ ] Accounts: one card of compact rows (icon, name, balance, currency chip);
+      a savings account shows a small "Savings account" label under its name,
+      toggled in the row's details (the chevron), where a new row can also be
+      removed; "Add account" adds a row. Accounts the user already has are
+      listed first and locked, with their balance shown and no balance asked
+      for. The currencies line reads "USD (main) · + Add"; tapping the main
+      currency changes it.
+- [ ] 📱 Categories and Accounts render usably on a phone, tablet and desktop
+      width (each account row stays on one line; no horizontal scroll;
+      Continue and Skip reachable).
 - [ ] An existing user who owns accounts (upgraded instance) is not sent to
       onboarding.
 - [ ] 📱 Reloading mid-flow (or retrying after a failed request) resumes at the

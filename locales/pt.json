@@ -1217,7 +1217,10 @@
       "remove": "Remover conta",
       "currency_title": "Moeda",
       "continue": "Continuar",
-      "skip": "Ignorar configuração"
+      "skip": "Pular",
+      "add": "Adicionar conta",
+      "savings_label": "Conta poupança",
+      "details": "Detalhes da conta"
     },
     "categories_step": {
       "heading": "Em que você gasta?",
@@ -1228,16 +1231,16 @@
       "icon_label": "Alterar ícone",
       "add_placeholder": "Adicione as suas",
       "continue": "Continuar",
-      "skip": "Ignorar configuração"
+      "skip": "Pular"
     },
     "currencies": {
       "title": "Moedas",
-      "main": "Principal: {code} · com base nas suas contas",
       "main_title": "Moeda principal",
       "add": "Adicionar moeda",
       "remove": "Remover {code}",
-      "note": "Pode adicionar mais moedas mais tarde nas Definições.",
-      "no_rate": "Ainda não há taxa de câmbio para {codes}. Os valores nesta moeda não serão convertidos até ser adicionada uma taxa."
+      "no_rate": "Ainda não há taxa de câmbio para {codes}. Os valores nesta moeda não serão convertidos até ser adicionada uma taxa.",
+      "main_short": "{code} (principal)",
+      "add_short": "Adicionar"
     },
     "step_of": "Passo {current} de {total}",
     "steps_nav": {

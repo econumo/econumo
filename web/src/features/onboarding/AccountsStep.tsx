@@ -1,50 +1,74 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { EntityIcon } from '@/components/EntityIcon'
+import { useAccounts } from '@/features/accounts/queries'
 import { useCurrencies, useCurrencyRates } from '@/features/currencies/queries'
 import { selectableCurrencies } from '@/features/currencies/selectable'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { apiErrorMessage } from '@/lib/apiError'
+import { addThousandSeparators, formatNumber } from '@/lib/money'
 import { guessCurrencyCode } from '@/lib/regionCurrency'
+import { cn } from '@/lib/utils'
 import type { Id } from '@/api/types'
 import type { AccountRow } from './draft'
 import { guessAccountIcon, looksLikeSavings } from './defaults'
 import { parseBalance } from './balance'
 import { nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import { CurrenciesBlock, CurrencyListSheet } from './CurrenciesBlock'
+import { rowInput, rowTile } from './CategoriesStep'
+import type { StepBodyProps } from './OnboardingPage'
+import { useDay0 } from './useDay0'
 
-// currencyId '' = the row follows the default currency until the user picks one
-type FormRow = AccountRow
+export interface ExistingAccount {
+  id: Id
+  name: string
+  icon: string
+  balance: string
+  currencyId: Id
+}
 
 interface AccountsStepProps {
+  // the user's own accounts: listed first and locked, no balance asked for
+  existing: ExistingAccount[]
   initialRows?: AccountRow[]
   initialExtraCurrencyIds?: Id[]
-  createdKeys?: ReadonlySet<string>
+  // server account id by draft row key, for rows an earlier submit created
+  createdIds?: Record<string, Id>
   onContinue: (rows: AccountRow[], extraCurrencyIds: Id[], mainCurrencyId: Id) => void
   onSkip: () => void
   pending: boolean
   error?: ReactNode
 }
 
-export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys, onContinue, onSkip, pending, error }: AccountsStepProps) {
+// currencyId '' = the row follows the default currency until the user picks one
+const emptyRow = (): AccountRow => ({ key: uuidv7(), name: '', balance: '', currencyId: '', savings: false, icon: 'credit_card' })
+
+export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, createdIds, onContinue, onSkip, pending, error }: AccountsStepProps) {
   const { t, i18n } = useTranslation()
   const { data: currencies } = useCurrencies()
   const { data: rates } = useCurrencyRates()
   const { data: user } = useUserData()
+  const words = () => ({ cash: t('onboarding.words.cash'), savings: t('onboarding.words.savings') })
 
-  const emptyRow = (): FormRow => ({ key: uuidv7(), name: '', balance: '', currencyId: '', savings: false, icon: 'credit_card' })
-  const [rows, setRows] = useState<FormRow[]>(() => {
-    const seeded = initialRows && initialRows.length > 0 ? initialRows : []
-    return seeded.length > 0 && seeded[seeded.length - 1].name.trim() === '' ? seeded : [...seeded, emptyRow()]
+  const draftRowOf = (accountId: Id) => (initialRows ?? []).find((r) => (r.accountId ?? createdIds?.[r.key]) === accountId)
+  const [savingsOverride, setSavingsOverride] = useState<Record<Id, boolean>>({})
+  const savingsOf = (a: ExistingAccount) => savingsOverride[a.id] ?? draftRowOf(a.id)?.savings ?? looksLikeSavings(a.name, words().savings)
+  const [allRows, setRows] = useState<AccountRow[]>(() => {
+    const leftover = (initialRows ?? []).filter((r) => !r.accountId && !createdIds?.[r.key])
+    return leftover.length > 0 || existing.length > 0 ? leftover : [emptyRow()]
   })
+  // a row an earlier (failed) submit created comes back in the server list
+  const rows = allRows.filter((r) => !createdIds?.[r.key])
   const [extraIds, setExtraIds] = useState<Id[]>(initialExtraCurrencyIds ?? [])
   const [mainOverride, setMainOverride] = useState<Id | null>(null)
   const [pickingRow, setPickingRow] = useState<string | null>(null)
+  const [open, setOpen] = useState<string | null>(null)
+  const [focusKey, setFocusKey] = useState<string | null>(null)
   const savingsTouched = useRef(new Set<string>())
   // a name still being typed is short on its way to valid, so its error waits for blur
   const [nameTouched, setNameTouched] = useState<ReadonlySet<string>>(new Set())
@@ -56,32 +80,27 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
     return byGuess?.id ?? userCurrencyId(user) ?? list[0]?.id ?? ''
   }, [currencies, user])
 
-  const words = () => ({ cash: t('onboarding.words.cash'), savings: t('onboarding.words.savings') })
-  const currencyOf = (row: FormRow) => row.currencyId || defaultId
-  const isCreated = (row: FormRow) => createdKeys?.has(row.key) ?? false
+  const currencyOf = (row: AccountRow) => row.currencyId || defaultId
+  const update = (key: string, patch: Partial<AccountRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
 
-  const update = (key: string, patch: Partial<FormRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
-
-  const rename = (row: FormRow, name: string) => {
-    const patch: Partial<FormRow> = { name, icon: guessAccountIcon(name, words()) }
+  const rename = (row: AccountRow, name: string) => {
+    const patch: Partial<AccountRow> = { name, icon: guessAccountIcon(name, words()) }
     if (!savingsTouched.current.has(row.key)) patch.savings = looksLikeSavings(name, words().savings)
-    setRows((prev) => {
-      const next = prev.map((r) => (r.key === row.key ? { ...r, ...patch } : r))
-      return next[next.length - 1].name.trim() !== '' ? [...next, emptyRow()] : next
-    })
+    update(row.key, patch)
   }
 
-  const remove = (key: string) =>
-    setRows((prev) => {
-      const next = prev.filter((r) => r.key !== key)
-      return next.length === 0 || next[next.length - 1].name.trim() !== '' ? [...next, emptyRow()] : next
-    })
+  const addRow = () => {
+    const row = emptyRow()
+    setRows((prev) => [...prev, row])
+    setFocusKey(row.key)
+  }
+  const remove = (key: string) => setRows((prev) => prev.filter((r) => r.key !== key))
 
   const active = rows.filter((r) => r.name.trim() !== '')
-  const counted = active.length > 0 ? active : rows
-  const usedIds = [...new Set(counted.map(currencyOf).filter(Boolean))]
+  const counted = [...existing.map((a) => a.currencyId), ...(active.length > 0 || existing.length > 0 ? active : rows).map(currencyOf)].filter(Boolean)
+  const usedIds = [...new Set(counted)]
   const counts = new Map<Id, number>()
-  for (const r of counted) counts.set(currencyOf(r), (counts.get(currencyOf(r)) ?? 0) + 1)
+  for (const id of counted) counts.set(id, (counts.get(id) ?? 0) + 1)
   let computedMain: Id | null = null
   for (const id of usedIds) if (computedMain === null || (counts.get(id) ?? 0) > (counts.get(computedMain) ?? 0)) computedMain = id
   const extras = extraIds.filter((id) => !usedIds.includes(id))
@@ -89,93 +108,153 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
   const mainId = mainOverride && selectedIds.includes(mainOverride) ? mainOverride : computedMain
 
   const baseId = rates?.[0]?.baseCurrencyId ?? userCurrencyId(user)
-  const missingRateIds = rates
-    ? selectedIds.filter((id) => id !== baseId && !rates.some((r) => r.currencyId === id))
-    : []
+  const missingRateIds = rates ? selectedIds.filter((id) => id !== baseId && !rates.some((r) => r.currencyId === id)) : []
 
   const parse = (raw: string) => parseBalance(raw, i18n.language)
   const invalid = new Set(active.filter((r) => parse(r.balance) === null).map((r) => r.key))
-  const invalidName = new Set(active.filter((r) => !isCreated(r) && !nameLengthValid(r.name)).map((r) => r.key))
-  const canContinue = active.length > 0 && invalid.size === 0 && invalidName.size === 0 && mainId !== null && !pending
+  const invalidName = new Set(active.filter((r) => !nameLengthValid(r.name)).map((r) => r.key))
+  const canContinue = active.length + existing.length > 0 && invalid.size === 0 && invalidName.size === 0 && mainId !== null && !pending
 
   const submit = () => {
     if (!canContinue || !mainId) return
     onContinue(
-      active.map((r) => ({ ...r, name: r.name.trim(), balance: parse(r.balance) ?? '0', currencyId: currencyOf(r) })),
+      [
+        ...existing.map((a) => ({
+          key: draftRowOf(a.id)?.key ?? `account:${a.id}`,
+          name: a.name,
+          balance: '',
+          currencyId: a.currencyId,
+          savings: savingsOf(a),
+          icon: a.icon,
+          accountId: a.id,
+        })),
+        ...active.map((r) => ({ ...r, name: r.name.trim(), balance: parse(r.balance) ?? '0', currencyId: currencyOf(r) })),
+      ],
       extras,
       mainId,
     )
   }
 
   const editing = rows.find((r) => r.key === pickingRow)
+  const codeOf = (id: Id) => currencies?.find((c) => c.id === id)?.code ?? ''
+  const chip = 'shrink-0 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground'
+
+  const toggle = (key: string) => (
+    <button
+      type="button"
+      aria-label={t('onboarding.accounts.details')}
+      aria-expanded={open === key}
+      className="-mr-1 grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent"
+      onClick={() => setOpen((o) => (o === key ? null : key))}
+    >
+      <ChevronDown className={cn('size-4 transition-transform', open === key && 'rotate-180')} />
+    </button>
+  )
+  const savingsLabel = <div className="px-1 text-[11px] leading-tight text-primary">{t('onboarding.accounts.savings_label')}</div>
+  const savingsSwitch = (checked: boolean, onChange: (v: boolean) => void) => (
+    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+      {t('onboarding.accounts.savings')}
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </label>
+  )
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl">{t('onboarding.accounts.heading')}</h1>
-        <p className="text-muted-foreground">{t('onboarding.accounts.subtext')}</p>
-      </header>
+    <section className="flex flex-col gap-2">
+      <h2 className="text-2xl font-normal">{t('onboarding.accounts.heading')}</h2>
+      <p className="text-sm text-muted-foreground">{t('onboarding.accounts.subtext')}</p>
 
-      <ul className="space-y-3">
-        {rows.map((row) => {
-          const created = isCreated(row)
-          const cur = currencies?.find((c) => c.id === currencyOf(row))
-          const onlyRow = rows.length === 1
+      <ul className="mt-4 divide-y divide-border/60 overflow-hidden rounded-xl border bg-card">
+        {existing.map((a) => {
+          const cur = currencies?.find((c) => c.id === a.currencyId)
+          const savings = savingsOf(a)
           return (
-            <li key={row.key} className="space-y-3 rounded-xl border bg-card p-3" data-testid="account-row">
-              <div className="flex items-center gap-2">
-                <EntityIcon name={row.icon} className="shrink-0 text-2xl text-muted-foreground" />
-                <Input
-                  aria-label={t('onboarding.accounts.name_label')}
-                  placeholder={t('onboarding.accounts.name_label')}
-                  value={row.name}
-                  readOnly={created}
-                  aria-invalid={invalidName.has(row.key) && nameTouched.has(row.key)}
-                  onChange={(e) => rename(row, e.target.value)}
-                  onBlur={() => setNameTouched((prev) => new Set(prev).add(row.key))}
-                />
-                {!created && !onlyRow && (
-                  <Button type="button" variant="ghost" size="icon" aria-label={t('onboarding.accounts.remove')} onClick={() => remove(row.key)}>
-                    <X className="size-4" />
-                  </Button>
-                )}
+            <li key={a.id} className="px-3 py-2" data-testid="account-row">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className={rowTile}>
+                  <EntityIcon name={a.icon} className="text-lg" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate px-1">{a.name}</div>
+                  {savings && savingsLabel}
+                </div>
+                <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                  {addThousandSeparators(formatNumber(a.balance, cur?.fractionDigits ?? 2, true)).join('.')}
+                </span>
+                <span className={chip}>{cur?.code ?? ''}</span>
+                {toggle(a.id)}
               </div>
-              {invalidName.has(row.key) && nameTouched.has(row.key) && (
-                <p className="text-sm text-destructive">{t('errors.account.name_length', { min: NAME_MIN, max: NAME_MAX })}</p>
+              {open === a.id && (
+                <div className="mt-2 flex items-center pl-11">
+                  {savingsSwitch(savings, (v) => setSavingsOverride((prev) => ({ ...prev, [a.id]: v })))}
+                </div>
               )}
-              <div className="flex items-center gap-2">
-                <Input
-                  aria-label={t('onboarding.accounts.balance_label')}
-                  placeholder="0"
-                  value={row.balance}
-                  readOnly={created}
-                  aria-invalid={invalid.has(row.key)}
-                  onChange={(e) => update(row.key, { balance: e.target.value })}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  aria-label={t('onboarding.accounts.currency_title')}
-                  disabled={created}
-                  onClick={() => setPickingRow(row.key)}
-                >
-                  {cur?.code ?? ''}
-                </Button>
-              </div>
-              {invalid.has(row.key) && <p className="text-sm text-destructive">{t('onboarding.accounts.balance_invalid')}</p>}
-              <label className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
-                {t('onboarding.accounts.savings')}
-                <Switch
-                  checked={row.savings}
-                  onCheckedChange={(v) => {
-                    savingsTouched.current.add(row.key)
-                    update(row.key, { savings: v })
-                  }}
-                />
-              </label>
             </li>
           )
         })}
+        {rows.map((row) => {
+          const showName = invalidName.has(row.key) && nameTouched.has(row.key)
+          return (
+            <li key={row.key} className="px-3 py-2" data-testid="account-row">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className={rowTile}>
+                  <EntityIcon name={row.icon} className="text-lg" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <input
+                    className={cn(rowInput, 'w-full')}
+                    aria-label={t('onboarding.accounts.name_label')}
+                    placeholder={t('onboarding.accounts.name_label')}
+                    autoFocus={row.key === focusKey}
+                    value={row.name}
+                    aria-invalid={showName}
+                    onChange={(e) => rename(row, e.target.value)}
+                    onBlur={() => setNameTouched((prev) => new Set(prev).add(row.key))}
+                  />
+                  {row.savings && savingsLabel}
+                </div>
+                <input
+                  className="w-20 shrink-0 rounded-lg border bg-transparent px-2 py-1.5 text-right text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:border-destructive sm:w-28"
+                  aria-label={t('onboarding.accounts.balance_label')}
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={row.balance}
+                  aria-invalid={invalid.has(row.key)}
+                  onChange={(e) => update(row.key, { balance: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className={cn(chip, 'hover:bg-accent')}
+                  aria-label={t('onboarding.accounts.currency_title')}
+                  onClick={() => setPickingRow(row.key)}
+                >
+                  {codeOf(currencyOf(row))}
+                </button>
+                {toggle(row.key)}
+              </div>
+              {showName && <p className="mt-1 pl-11 text-sm text-destructive">{t('errors.account.name_length', { min: NAME_MIN, max: NAME_MAX })}</p>}
+              {invalid.has(row.key) && <p className="mt-1 pl-11 text-sm text-destructive">{t('onboarding.accounts.balance_invalid')}</p>}
+              {open === row.key && (
+                <div className="mt-2 flex items-center justify-between gap-2 pl-11">
+                  {savingsSwitch(row.savings, (v) => {
+                    savingsTouched.current.add(row.key)
+                    update(row.key, { savings: v })
+                  })}
+                  <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => remove(row.key)}>
+                    {t('onboarding.accounts.remove')}
+                  </Button>
+                </div>
+              )}
+            </li>
+          )
+        })}
+        <li>
+          <button type="button" className="flex w-full items-center gap-3 px-3 py-2 text-left text-muted-foreground hover:bg-accent/50" onClick={addRow}>
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted">
+              <Plus className="size-4" />
+            </span>
+            {t('onboarding.accounts.add')}
+          </button>
+        </li>
       </ul>
 
       <CurrenciesBlock
@@ -190,13 +269,13 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
         onMainChange={setMainOverride}
       />
 
-      <div className="flex flex-col items-center gap-3">
-        {error}
-        <Button type="button" className="w-full" disabled={!canContinue} onClick={submit}>
-          {t('onboarding.accounts.continue')}
-        </Button>
-        <Button type="button" variant="link" disabled={pending} onClick={onSkip}>
+      {error}
+      <div className="mt-6 flex items-center justify-between">
+        <Button type="button" variant="ghost" disabled={pending} onClick={onSkip}>
           {t('onboarding.accounts.skip')}
+        </Button>
+        <Button type="button" disabled={!canContinue} onClick={submit}>
+          {t('onboarding.accounts.continue')}
         </Button>
       </div>
 
@@ -208,6 +287,43 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
         onClose={() => setPickingRow(null)}
         onPick={(id) => pickingRow && update(pickingRow, { currencyId: id })}
       />
-    </div>
+    </section>
+  )
+}
+
+export function AccountsStepBody({ onDone, onSkip }: StepBodyProps) {
+  const { data: user } = useUserData()
+  const accounts = useAccounts()
+  const day0 = useDay0()
+  const [skipping, setSkipping] = useState(false)
+  if (!day0.ready) return null
+  const existing = (accounts.data ?? [])
+    .filter((a) => a.owner.id === user?.id)
+    .map((a) => ({ id: a.id, name: a.name, icon: a.icon, balance: a.balance, currencyId: a.currency.id }))
+  return (
+    <AccountsStep
+      existing={existing}
+      initialRows={day0.draft?.rows}
+      initialExtraCurrencyIds={day0.draft?.extraCurrencyIds}
+      createdIds={day0.draft?.created}
+      pending={day0.pending || skipping}
+      error={
+        day0.error != null ? (
+          <p role="alert" className="text-sm text-destructive">
+            {apiErrorMessage(day0.error)}
+          </p>
+        ) : undefined
+      }
+      onContinue={(rows, extras, main) => {
+        void day0
+          .saveAccounts(rows, extras, main)
+          .then(() => onDone())
+          .catch(() => undefined)
+      }}
+      onSkip={() => {
+        setSkipping(true)
+        void onSkip().finally(() => setSkipping(false))
+      }}
+    />
   )
 }

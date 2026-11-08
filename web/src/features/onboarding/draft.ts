@@ -1,20 +1,21 @@
 import type { Id } from '@/api/types'
 
-export type AccountRow = { key: string; name: string; balance: string; currencyId: Id; savings: boolean; icon: string }
+// accountId: the row stands for an account the user already has, so it is never created
+export type AccountRow = { key: string; name: string; balance: string; currencyId: Id; savings: boolean; icon: string; accountId?: Id }
 export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; checked: boolean }
 export type Day0Draft = {
-  step: 'accounts' | 'categories'
   // operation ids by `account:<rowKey>` / `category:<rowKey>` / `budget` (the budget's own id)
   ops: Record<string, Id>
-  // the rows last submitted at step 'accounts'; a reload seeds the form from them to keep their keys
+  // the rows last submitted by saveAccounts; a reload seeds the form from them to keep their keys
   rows: AccountRow[]
   extraCurrencyIds: Id[]
   // server account id by row key / server category id by row key, written right after each create
   created: Record<string, Id>
   createdCategories: Record<string, Id>
-  // the categories last submitted by finish, so a retry after a failure reseeds the form with the same keys
+  // the categories last submitted by saveCategories, so a retry after a failure reseeds the form with the same keys
   categoryRows: CategoryRow[]
-  currenciesDone: boolean
+  // the currency selection last applied, so a revisit that changes it applies it again
+  currenciesApplied: string | null
   budgetDone: boolean
   accountIds: Id[]
   savingsAccountIds: Id[]
@@ -23,14 +24,13 @@ export type Day0Draft = {
 
 export function emptyDraft(): Day0Draft {
   return {
-    step: 'accounts',
     ops: {},
     rows: [],
     extraCurrencyIds: [],
     created: {},
     createdCategories: {},
     categoryRows: [],
-    currenciesDone: false,
+    currenciesApplied: null,
     budgetDone: false,
     accountIds: [],
     savingsAccountIds: [],
@@ -46,11 +46,11 @@ export function loadDraft(userId: Id): Day0Draft | null {
     if (!raw) {
       return null
     }
-    const parsed = JSON.parse(raw) as Partial<Day0Draft>
-    if (parsed.step !== 'accounts' && parsed.step !== 'categories') {
+    const parsed = JSON.parse(raw) as Partial<Day0Draft> | null
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.ops !== 'object') {
       return null
     }
-    return { ...emptyDraft(), ...parsed, step: parsed.step }
+    return { ...emptyDraft(), ...parsed }
   } catch {
     return null
   }

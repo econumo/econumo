@@ -1217,7 +1217,10 @@
       "remove": "Quitar cuenta",
       "currency_title": "Moneda",
       "continue": "Continuar",
-      "skip": "Omitir configuración"
+      "skip": "Omitir",
+      "add": "Añadir cuenta",
+      "savings_label": "Cuenta de ahorro",
+      "details": "Detalles de la cuenta"
     },
     "categories_step": {
       "heading": "¿En qué gastas?",
@@ -1228,16 +1231,16 @@
       "icon_label": "Cambiar icono",
       "add_placeholder": "Añade las tuyas",
       "continue": "Continuar",
-      "skip": "Omitir configuración"
+      "skip": "Omitir"
     },
     "currencies": {
       "title": "Monedas",
-      "main": "Principal: {code} · según tus cuentas",
       "main_title": "Moneda principal",
       "add": "Añadir moneda",
       "remove": "Quitar {code}",
-      "note": "Puedes añadir más monedas más adelante en Ajustes.",
-      "no_rate": "Aún no hay tipo de cambio para {codes}. Los importes en ella no se convertirán hasta que se añada un tipo."
+      "no_rate": "Aún no hay tipo de cambio para {codes}. Los importes en ella no se convertirán hasta que se añada un tipo.",
+      "main_short": "{code} (principal)",
+      "add_short": "Añadir"
     },
     "step_of": "Paso {current} de {total}",
     "steps_nav": {

@@ -1217,7 +1217,10 @@
       "remove": "Remove account",
       "currency_title": "Currency",
       "continue": "Continue",
-      "skip": "Skip setup"
+      "skip": "Skip",
+      "add": "Add account",
+      "savings_label": "Savings account",
+      "details": "Account details"
     },
     "categories_step": {
       "heading": "What do you spend on?",
@@ -1228,16 +1231,16 @@
       "icon_label": "Change icon",
       "add_placeholder": "Add your own",
       "continue": "Continue",
-      "skip": "Skip setup"
+      "skip": "Skip"
     },
     "currencies": {
       "title": "Currencies",
-      "main": "Main: {code} · based on your accounts",
       "main_title": "Main currency",
       "add": "Add currency",
       "remove": "Remove {code}",
-      "note": "You can add more currencies later in Settings.",
-      "no_rate": "No exchange rate yet for {codes}. Amounts in it won't be converted until a rate is added."
+      "no_rate": "No exchange rate yet for {codes}. Amounts in it won't be converted until a rate is added.",
+      "main_short": "{code} (main)",
+      "add_short": "Add"
     },
     "step_of": "Step {current} of {total}",
     "steps_nav": {

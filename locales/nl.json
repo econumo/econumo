@@ -1217,7 +1217,10 @@
       "remove": "Rekening verwijderen",
       "currency_title": "Valuta",
       "continue": "Doorgaan",
-      "skip": "Installatie overslaan"
+      "skip": "Overslaan",
+      "add": "Rekening toevoegen",
+      "savings_label": "Spaarrekening",
+      "details": "Rekeninggegevens"
     },
     "categories_step": {
       "heading": "Waar geef je geld aan uit?",
@@ -1228,16 +1231,16 @@
       "icon_label": "Pictogram wijzigen",
       "add_placeholder": "Voeg je eigen toe",
       "continue": "Doorgaan",
-      "skip": "Instellen overslaan"
+      "skip": "Overslaan"
     },
     "currencies": {
       "title": "Valuta's",
-      "main": "Hoofd: {code} · gebaseerd op je rekeningen",
       "main_title": "Hoofdvaluta",
       "add": "Valuta toevoegen",
       "remove": "{code} verwijderen",
-      "note": "Je kunt later in Instellingen meer valuta's toevoegen.",
-      "no_rate": "Nog geen wisselkoers voor {codes}. Bedragen in deze valuta worden pas omgerekend als er een koers is toegevoegd."
+      "no_rate": "Nog geen wisselkoers voor {codes}. Bedragen in deze valuta worden pas omgerekend als er een koers is toegevoegd.",
+      "main_short": "{code} (hoofd)",
+      "add_short": "Toevoegen"
     },
     "step_of": "Stap {current} van {total}",
     "steps_nav": {

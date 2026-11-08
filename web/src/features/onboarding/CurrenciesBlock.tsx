@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
 import { CommandEmpty, CommandItem } from '@/components/ui/command'
 import { PickerSheet } from '@/components/PickerSheet'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
@@ -72,47 +71,59 @@ export function CurrenciesBlock({
   const [pickingMain, setPickingMain] = useState(false)
   const byId = new Map(currencies.map((c) => [c.id, c]))
   const code = (id: Id) => byId.get(id)?.code ?? ''
-  const selected = [...usedIds, ...extraIds.filter((id) => !usedIds.includes(id))]
+  const extras = extraIds.filter((id) => !usedIds.includes(id))
+  const selected = [...usedIds, ...extras]
   const addable = selectableOptions.filter((c) => !selected.includes(c.id))
   const missingCodes = missingRateIds.map(code).filter(Boolean).join(', ')
+  const dot = <span aria-hidden>·</span>
 
   return (
-    <section className="space-y-3 rounded-xl border bg-card p-4">
-      <h2 className="text-lg text-muted-foreground">{t('onboarding.currencies.title')}</h2>
-      <div className="flex flex-wrap items-center gap-2">
-        {usedIds.map((id) => (
-          <span key={id} className="rounded-full bg-muted px-3 py-1 text-sm">
-            {code(id)}
-          </span>
-        ))}
-        {extraIds
-          .filter((id) => !usedIds.includes(id))
+    <section>
+      <h3 className="mt-4 mb-1.5 text-xs tracking-wider text-muted-foreground uppercase">{t('onboarding.currencies.title')}</h3>
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
+        {mainId && (
+          <button
+            type="button"
+            aria-label={t('onboarding.currencies.main_title')}
+            className="underline-offset-4 hover:underline"
+            onClick={() => setPickingMain(true)}
+          >
+            {t('onboarding.currencies.main_short', { code: code(mainId) })}
+          </button>
+        )}
+        {usedIds
+          .filter((id) => id !== mainId)
           .map((id) => (
-            <span key={id} className="inline-flex items-center gap-1 rounded-full bg-muted py-1 pr-1 pl-3 text-sm">
-              {code(id)}
-              <button
-                type="button"
-                aria-label={t('onboarding.currencies.remove', { code: code(id) })}
-                className="rounded-full p-1 text-muted-foreground hover:bg-background"
-                onClick={() => onRemoveExtra(id)}
-              >
-                <X className="size-3" />
-              </button>
+            <span key={id} className="contents">
+              {dot}
+              <span>{code(id)}</span>
             </span>
           ))}
-        <Button type="button" variant="ghost" size="sm" onClick={() => setAdding(true)}>
-          <Plus className="size-4" />
-          {t('onboarding.currencies.add')}
-        </Button>
-      </div>
-      {mainId && (
-        <button type="button" className="text-left text-sm text-muted-foreground underline-offset-4 hover:underline" onClick={() => setPickingMain(true)}>
-          {t('onboarding.currencies.main', { code: code(mainId) })}
+        {extras
+          .filter((id) => id !== mainId)
+          .map((id) => (
+            <span key={id} className="contents">
+              {dot}
+              <span className="inline-flex items-center">
+                {code(id)}
+                <button
+                  type="button"
+                  aria-label={t('onboarding.currencies.remove', { code: code(id) })}
+                  className="ml-0.5 rounded-full p-0.5 hover:bg-accent"
+                  onClick={() => onRemoveExtra(id)}
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            </span>
+          ))}
+        {dot}
+        <button type="button" aria-label={t('onboarding.currencies.add')} className="text-primary hover:underline" onClick={() => setAdding(true)}>
+          + {t('onboarding.currencies.add_short')}
         </button>
-      )}
-      <p className="text-sm text-muted-foreground">{t('onboarding.currencies.note')}</p>
+      </div>
       {missingCodes && (
-        <p role="note" className="text-sm text-amber-600 dark:text-amber-400">
+        <p role="note" className="mt-2 text-sm text-amber-600 dark:text-amber-400">
           {t('onboarding.currencies.no_rate', { codes: missingCodes })}
         </p>
       )}

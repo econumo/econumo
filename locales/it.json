@@ -1217,7 +1217,10 @@
       "remove": "Rimuovi conto",
       "currency_title": "Valuta",
       "continue": "Continua",
-      "skip": "Salta la configurazione"
+      "skip": "Salta",
+      "add": "Aggiungi conto",
+      "savings_label": "Conto di risparmio",
+      "details": "Dettagli del conto"
     },
     "categories_step": {
       "heading": "In cosa spendi?",
@@ -1228,16 +1231,16 @@
       "icon_label": "Cambia icona",
       "add_placeholder": "Aggiungi le tue",
       "continue": "Continua",
-      "skip": "Salta la configurazione"
+      "skip": "Salta"
     },
     "currencies": {
       "title": "Valute",
-      "main": "Principale: {code} · in base ai tuoi conti",
       "main_title": "Valuta principale",
       "add": "Aggiungi valuta",
       "remove": "Rimuovi {code}",
-      "note": "Potrai aggiungere altre valute più tardi nelle Impostazioni.",
-      "no_rate": "Nessun tasso di cambio per {codes}. Gli importi in questa valuta non verranno convertiti finché non viene aggiunto un tasso."
+      "no_rate": "Nessun tasso di cambio per {codes}. Gli importi in questa valuta non verranno convertiti finché non viene aggiunto un tasso.",
+      "main_short": "{code} (principale)",
+      "add_short": "Aggiungi"
     },
     "step_of": "Passaggio {current} di {total}",
     "steps_nav": {

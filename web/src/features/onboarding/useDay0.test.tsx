@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { http, HttpResponse, delay } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureUsd, fixtureEur, fixtureAccounts } from '@/test/fixtures'
+import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { useDay0 } from './useDay0'
 import { loadDraft, saveDraft, emptyDraft, type AccountRow, type CategoryRow } from './draft'
 
@@ -37,7 +37,6 @@ type Faults = {
   accountResponse?: 'http500' | 'lost' // applied to the 2nd / 1st account create, once
   categoryLost?: boolean
   budgetLost?: boolean
-  gettingStartedFailsOnce?: boolean
   hideStatus?: number
   accountsDelayMs?: number
 }
@@ -51,7 +50,6 @@ function mockWrites(f: Faults = {}) {
   let accountFault = false
   let categoryFault = false
   let budgetFault = false
-  let gsFault = false
   server.use(
     http.get('*/api/v1/account/get-account-list', async () => {
       if (f.accountsDelayMs) await delay(f.accountsDelayMs)
@@ -112,24 +110,12 @@ function mockWrites(f: Faults = {}) {
       const body = (await request.json()) as any
       calls.push({ path: 'create-budget', body })
       if (srv.budgets.some((b) => b.id === body.id)) return HttpResponse.json({ success: false, message: 'in use', code: 400, errors: { id: ['x'] } }, { status: 400 })
-      srv.budgets.push({ id: body.id })
+      srv.budgets.push({ id: body.id, ownerUserId: 'u1', access: [] })
       if (f.budgetLost && !budgetFault) {
         budgetFault = true
         return HttpResponse.error()
       }
       return ok({ item: { meta: { id: body.id } } })
-    }),
-    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
-      calls.push({ path: 'update-getting-started', body: await request.json() })
-      if (f.gettingStartedFailsOnce && !gsFault) {
-        gsFault = true
-        return fail()
-      }
-      return userEnvelope()
-    }),
-    http.post('*/api/v1/user/complete-onboarding', () => {
-      calls.push({ path: 'complete-onboarding', body: null })
-      return userEnvelope()
     }),
   )
 }
@@ -147,7 +133,7 @@ beforeEach(() => {
 })
 
 describe('useDay0', () => {
-  it('saveAccounts creates accounts, sets currencies, moves to categories', async () => {
+  it('saveAccounts creates accounts and sets currencies', async () => {
     mockWrites()
     const { result } = await ready()
     await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
@@ -155,10 +141,32 @@ describe('useDay0', () => {
     expect(calls[0].body).toMatchObject({ name: 'Cash', balance: '0', folderId: null, currencyId: 'cur-usd' })
     expect(calls[2].body).toEqual({ currency: 'USD' })
     const draft = loadDraft('u1')!
-    expect(draft.step).toBe('categories')
     expect(draft.accountIds).toEqual(['acc-1', 'acc-2'])
     expect(draft.savingsAccountIds).toEqual(['acc-2'])
     expect(draft.mainCurrencyId).toBe('cur-usd')
+  })
+
+  it('saveAccounts never creates a row that stands for an existing account', async () => {
+    mockWrites()
+    const { result } = await ready()
+    const existing: AccountRow = { key: 'e1', name: 'Imported', balance: '', currencyId: 'cur-eur', savings: true, icon: 'savings', accountId: 'acc-imp' }
+    await act(() => result.current.saveAccounts([existing, rows[0]], [], 'cur-usd'))
+    expect(calls.filter((c) => c.path === 'create-account').map((c) => c.body.name)).toEqual(['Cash'])
+    expect(calls.filter((c) => c.path === 'show-currency').map((c) => c.body.id).sort()).toEqual(['cur-eur', 'cur-usd'])
+    const d = loadDraft('u1')!
+    expect(d.accountIds).toEqual(['acc-imp', 'acc-1'])
+    expect(d.savingsAccountIds).toEqual(['acc-imp'])
+  })
+
+  it('a second save with the same currencies does not apply them again, a changed main does', async () => {
+    mockWrites()
+    const { result } = await ready()
+    await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
+    calls = []
+    await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
+    expect(paths()).toEqual([])
+    await act(() => result.current.saveAccounts(rows, [], 'cur-eur'))
+    expect(paths()).toEqual(['update-currency', 'hide-all', 'show-currency', 'show-currency'])
   })
 
   it('three accounts in one save reuse the folder created by the first', async () => {
@@ -239,64 +247,122 @@ describe('useDay0', () => {
     }
   })
 
-  it('finish creates categories, then the budget, then completes', async () => {
+  it('saveCategories creates only the checked categories and touches nothing else', async () => {
     mockWrites()
-    saveDraft('u1', { ...emptyDraft(), step: 'categories', accountIds: ['a1', 'a2'], savingsAccountIds: ['a2'], mainCurrencyId: 'cur-usd' })
     const { result } = await ready()
-    await act(() => result.current.finish(cats))
-    expect(paths()).toEqual(['create-category', 'create-category', 'create-budget', 'update-getting-started', 'complete-onboarding'])
-    expect(calls[2].body).toMatchObject({ name: 'My budget', startDate: '', currencyId: 'cur-usd', accountIds: ['a1', 'a2'], savingsAccountIds: ['a2'] })
-    expect(calls[3].body).toEqual({ value: '' })
-    expect(loadDraft('u1')).toBeNull()
+    await act(() => result.current.saveCategories(cats))
+    expect(paths()).toEqual(['create-category', 'create-category'])
+    expect(calls.map((c) => c.body.name)).toEqual(['Food', 'Salary'])
+    expect(loadDraft('u1')!.createdCategories).toEqual({ c1: 'cat-1', c2: 'cat-2' })
   })
 
-  it('retry after a failure past the budget completes without duplicates', async () => {
-    mockWrites({ gettingStartedFailsOnce: true })
-    saveDraft('u1', { ...emptyDraft(), step: 'categories', accountIds: ['a1'], mainCurrencyId: 'cur-usd' })
+  it('saveCategories persists the submitted rows before its first request', async () => {
+    mockWrites()
+    server.use(http.post('*/api/v1/category/create-category', () => fail()))
     const { result } = await ready()
     await act(async () => {
-      await expect(result.current.finish(cats)).rejects.toBeTruthy()
-    })
-    await act(() => result.current.finish(cats))
-    expect(srv.categories).toHaveLength(2)
-    expect(srv.budgets).toHaveLength(1)
-    expect(calls.filter((c) => c.path === 'create-budget')).toHaveLength(1)
-    expect(loadDraft('u1')).toBeNull()
-  })
-
-  it('finish persists the submitted categories before its first request', async () => {
-    mockWrites({ gettingStartedFailsOnce: true })
-    saveDraft('u1', { ...emptyDraft(), step: 'categories', accountIds: ['a1'], mainCurrencyId: 'cur-usd' })
-    const { result } = await ready()
-    await act(async () => {
-      await result.current.finish(cats).catch(() => undefined)
+      await result.current.saveCategories(cats).catch(() => undefined)
     })
     expect(loadDraft('u1')?.categoryRows).toEqual(cats)
+    expect(result.current.error).toBeTruthy()
   })
 
-  it('lost category and budget responses reconcile on retry', async () => {
-    mockWrites({ categoryLost: true, budgetLost: true })
-    saveDraft('u1', { ...emptyDraft(), step: 'categories', accountIds: ['a1'], mainCurrencyId: 'cur-usd' })
-    const { result } = await ready()
-    for (let i = 0; i < 3; i++) {
-      await act(async () => {
-        await result.current.finish(cats).catch(() => undefined)
-      })
-    }
-    expect(srv.categories).toHaveLength(2)
-    expect(srv.budgets).toHaveLength(1)
-    expect(paths().at(-1)).toBe('complete-onboarding')
-    expect(loadDraft('u1')).toBeNull()
-  })
-
-  it('finish throws without accounts or a currency', async () => {
-    mockWrites()
-    saveDraft('u1', { ...emptyDraft(), step: 'categories', mainCurrencyId: 'cur-usd' })
+  it('a lost category response reconciles on retry without duplicates', async () => {
+    mockWrites({ categoryLost: true })
     const { result } = await ready()
     await act(async () => {
-      await expect(result.current.finish(cats)).rejects.toBeTruthy()
+      await expect(result.current.saveCategories(cats)).rejects.toBeTruthy()
+    })
+    await act(() => result.current.saveCategories(cats))
+    expect(srv.categories).toHaveLength(2)
+    expect(loadDraft('u1')!.createdCategories).toEqual({ c1: 'cat-1', c2: 'cat-2' })
+  })
+
+  it('a stored draft with a category already created resumes without creating it again', async () => {
+    mockWrites()
+    saveDraft('u1', { ...emptyDraft(), ops: { 'category:c1': 'op-c1' }, categoryRows: cats, createdCategories: { c1: 'cat-x' } })
+    const { result } = await ready()
+    await act(() => result.current.saveCategories(cats))
+    expect(calls.map((c) => c.body.name)).toEqual(['Salary'])
+  })
+
+  it('ensureBudget creates one budget over every owned account, savings from the draft', async () => {
+    mockWrites()
+    srv.accounts.push(
+      { id: 'acc-imp', name: 'Imported', owner: { id: 'u1' } },
+      { id: 'acc-sav', name: 'Savings', owner: { id: 'u1' } },
+      { id: 'acc-other', name: 'Shared', owner: { id: 'u2' } },
+    )
+    saveDraft('u1', { ...emptyDraft(), savingsAccountIds: ['acc-sav', 'acc-gone'], mainCurrencyId: 'cur-eur' })
+    const { result } = await ready()
+    let id = ''
+    await act(async () => {
+      id = await result.current.ensureBudget()
+    })
+    expect(paths()).toEqual(['create-budget'])
+    expect(calls[0].body).toMatchObject({
+      id,
+      name: 'My budget',
+      startDate: '',
+      currencyId: 'cur-eur',
+      accountIds: ['acc-imp', 'acc-sav'],
+      savingsAccountIds: ['acc-sav'],
+    })
+    let again = ''
+    await act(async () => {
+      again = await result.current.ensureBudget()
+    })
+    expect(again).toBe(id)
+    expect(calls.filter((c) => c.path === 'create-budget')).toHaveLength(1)
+  })
+
+  it('ensureBudget returns the default budget the user already has', async () => {
+    mockWrites()
+    srv.budgets.push({ id: 'b-old', ownerUserId: 'u1', access: [] }, { id: 'b-default', ownerUserId: 'u1', access: [] })
+    server.use(
+      ...coreHandlers({
+        user: { ...pendingUser, options: pendingUser.options.map((o) => (o.name === 'budget' ? { ...o, value: 'b-default' } : o)) },
+        budgets: srv.budgets,
+        accounts: srv.accounts,
+      }),
+    )
+    const { result } = await ready()
+    let id = ''
+    await act(async () => {
+      id = await result.current.ensureBudget()
+    })
+    expect(id).toBe('b-default')
+    expect(paths()).toEqual([])
+  })
+
+  it('ensureBudget falls back to the main currency option and refuses without accounts', async () => {
+    mockWrites()
+    const { result } = await ready()
+    await act(async () => {
+      await expect(result.current.ensureBudget()).rejects.toBeTruthy()
     })
     expect(paths()).toEqual([])
+    srv.accounts.push({ id: 'acc-1', name: 'Cash', owner: { id: 'u1' } })
+    await act(async () => {
+      await result.current.ensureBudget()
+    })
+    expect(calls[0].body).toMatchObject({ currencyId: 'cur-usd', accountIds: ['acc-1'] })
+  })
+
+  it('a lost budget response reconciles on retry without a second budget', async () => {
+    mockWrites({ budgetLost: true })
+    srv.accounts.push({ id: 'acc-1', name: 'Cash', owner: { id: 'u1' } })
+    const { result } = await ready()
+    await act(async () => {
+      await expect(result.current.ensureBudget()).rejects.toBeTruthy()
+    })
+    let id = ''
+    await act(async () => {
+      id = await result.current.ensureBudget()
+    })
+    expect(srv.budgets).toHaveLength(1)
+    expect(srv.budgets[0].id).toBe(id)
+    expect(calls.filter((c) => c.path === 'create-budget')).toHaveLength(1)
   })
 
   it('ready waits for the accounts query', async () => {
@@ -305,24 +371,5 @@ describe('useDay0', () => {
     await new Promise((r) => setTimeout(r, 100))
     expect(result.current.ready).toBe(false)
     await waitFor(() => expect(result.current.ready).toBe(true))
-  })
-
-  it('skip clears getting started and completes onboarding', async () => {
-    mockWrites()
-    const { result } = await ready()
-    await act(() => result.current.skip())
-    expect(paths()).toEqual(['update-getting-started', 'complete-onboarding'])
-    expect(loadDraft('u1')).toBeNull()
-  })
-
-  it('resumes at categories when accounts exist but there is no draft', async () => {
-    mockWrites()
-    server.use(...coreHandlers({ user: pendingUser, accounts: fixtureAccounts, currencies: [fixtureUsd, fixtureEur] }))
-    srv.accounts = fixtureAccounts as any[]
-    const { result } = setup()
-    await waitFor(() => expect(result.current.draft?.step).toBe('categories'))
-    const owned = fixtureAccounts.filter((a) => a.owner.id === 'u1').map((a) => a.id)
-    expect(result.current.draft?.accountIds).toEqual(owned)
-    expect(result.current.draft?.mainCurrencyId).toBe('cur-usd')
   })
 })

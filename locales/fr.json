@@ -1217,7 +1217,10 @@
       "remove": "Supprimer le compte",
       "currency_title": "Devise",
       "continue": "Continuer",
-      "skip": "Passer la configuration"
+      "skip": "Passer",
+      "add": "Ajouter un compte",
+      "savings_label": "Compte d'épargne",
+      "details": "Détails du compte"
     },
     "categories_step": {
       "heading": "Où va votre argent ?",
@@ -1228,16 +1231,16 @@
       "icon_label": "Changer l'icône",
       "add_placeholder": "Ajouter la vôtre",
       "continue": "Continuer",
-      "skip": "Passer la configuration"
+      "skip": "Passer"
     },
     "currencies": {
       "title": "Devises",
-      "main": "Principale : {code} · d'après vos comptes",
       "main_title": "Devise principale",
       "add": "Ajouter une devise",
       "remove": "Retirer {code}",
-      "note": "Vous pourrez ajouter d'autres devises plus tard dans les Paramètres.",
-      "no_rate": "Pas encore de taux de change pour {codes}. Les montants dans cette devise ne seront pas convertis tant qu'un taux n'est pas ajouté."
+      "no_rate": "Pas encore de taux de change pour {codes}. Les montants dans cette devise ne seront pas convertis tant qu'un taux n'est pas ajouté.",
+      "main_short": "{code} (principale)",
+      "add_short": "Ajouter"
     },
     "step_of": "Étape {current} sur {total}",
     "steps_nav": {

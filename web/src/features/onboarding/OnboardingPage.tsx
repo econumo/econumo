@@ -4,11 +4,14 @@ import { Menu } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
-import { useCompleteOnboarding } from '@/features/user/queries'
+import { useCompleteOnboarding, useUserData } from '@/features/user/queries'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { apiErrorMessage } from '@/lib/apiError'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { AccountsStepBody } from './AccountsStep'
 import { AppleWalletStep } from './AppleWalletStep'
+import { CategoriesStepBody } from './CategoriesStep'
+import { clearDraft } from './draft'
 import { ImportStep } from './ImportStep'
 import { InstallStep } from './InstallStep'
 import { Stepper } from './Stepper'
@@ -47,8 +50,8 @@ function placeholderBody(key: OnboardingStepKey): ComponentType<StepBodyProps> {
 
 const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
   import: ImportStep,
-  categories: placeholderBody('categories'),
-  accounts: placeholderBody('accounts'),
+  categories: CategoriesStepBody,
+  accounts: AccountsStepBody,
   plan: placeholderBody('plan'),
   home_screen: InstallStep,
   apple_wallet: AppleWalletStep,
@@ -60,6 +63,8 @@ export function OnboardingPage() {
   const isCompact = useIsCompact()
   const { steps, current, allResolved, markDone, markManyDone, skip, ready } = useOnboardingSteps()
   const complete = useCompleteOnboarding()
+  const { data: user } = useUserData()
+  const userId = user?.id
   const [selected, setSelected] = useState<OnboardingStepKey | null>(null)
   const [skippingAll, setSkippingAll] = useState(false)
   const completing = useRef(false)
@@ -70,11 +75,12 @@ export function OnboardingPage() {
     completing.current = true
     try {
       await complete.mutateAsync()
+      if (userId) clearDraft(userId)
       navigate(RouterPage.BUDGET)
     } finally {
       completing.current = false
     }
-  }, [complete, navigate])
+  }, [complete, navigate, userId])
 
   // Steps answered elsewhere (another device, the budget page) finish the
   // flow on arrival; only once, so a failure waits for the Finish button.

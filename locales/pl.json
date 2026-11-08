@@ -1217,7 +1217,10 @@
       "remove": "Usuń konto",
       "currency_title": "Waluta",
       "continue": "Dalej",
-      "skip": "Pomiń konfigurację"
+      "skip": "Pomiń",
+      "add": "Dodaj konto",
+      "savings_label": "Konto oszczędnościowe",
+      "details": "Szczegóły konta"
     },
     "categories_step": {
       "heading": "Na co wydajesz pieniądze?",
@@ -1228,16 +1231,16 @@
       "icon_label": "Zmień ikonę",
       "add_placeholder": "Dodaj własną",
       "continue": "Dalej",
-      "skip": "Pomiń konfigurację"
+      "skip": "Pomiń"
     },
     "currencies": {
       "title": "Waluty",
-      "main": "Główna: {code} · na podstawie Twoich kont",
       "main_title": "Waluta główna",
       "add": "Dodaj walutę",
       "remove": "Usuń {code}",
-      "note": "Więcej walut możesz dodać później w Ustawieniach.",
-      "no_rate": "Brak jeszcze kursu wymiany dla {codes}. Kwoty w tej walucie nie będą przeliczane, dopóki nie zostanie dodany kurs."
+      "no_rate": "Brak jeszcze kursu wymiany dla {codes}. Kwoty w tej walucie nie będą przeliczane, dopóki nie zostanie dodany kurs.",
+      "main_short": "{code} (główna)",
+      "add_short": "Dodaj"
     },
     "step_of": "Krok {current} z {total}",
     "steps_nav": {
