@@ -589,12 +589,34 @@ func ProjectDebt(in ProjectionInput) Projection {
 	out.BasePayoffDate = base.payoffDate
 	out.BaseOverpaymentLeft = base.moneyLeft() - current
 
+	stepPay := make(map[time.Time]float64, len(run.steps))
+	for _, st := range run.steps {
+		stepPay[st.date] = st.pay
+	}
+	var lastStep time.Time
+	if n := len(run.steps); n > 0 && run.endBalance <= 0 {
+		lastStep = run.steps[n-1].date
+	}
 	for _, m := range in.Months {
 		m = monthStart(m)
 		ws, we := PeriodWindow(m, sd)
 		monthEnd := we.AddDate(0, 0, -1)
 		pm := ProjectionMonth{}
-		pm.ScheduledTotal = latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, ws.AddDate(0, 0, -1), monthEnd)))
+		dues := DueDatesBetween(latest.Schedule, latest.Last, ws.AddDate(0, 0, -1), monthEnd)
+		pm.ScheduledTotal = latest.Payment * float64(len(dues))
+		// From the current period on, a due the projection pays counts its
+		// projected payment (the last one can be smaller) and a due after the
+		// payoff counts nothing; a due already paid keeps the regular payment.
+		if !m.Before(currentMonth) {
+			pm.ScheduledTotal = 0
+			for _, d := range dues {
+				if pay, ok := stepPay[d]; ok {
+					pm.ScheduledTotal += pay
+				} else if lastStep.IsZero() || !d.After(lastStep) {
+					pm.ScheduledTotal += latest.Payment
+				}
+			}
+		}
 		stepsReach := false
 		for _, st := range run.steps {
 			// An unpaid due before this period still has to be paid, so it

@@ -648,3 +648,23 @@ func TestProjectDebt_PastMonthPaymentsLeftOfALongWeeklyLoan(t *testing.T) {
 		t.Fatalf("current PaymentsLeft = %d, want above 1200", p.PaymentsLeft)
 	}
 }
+
+// From the current period on, a period's scheduled figure is what the
+// projection actually pays in it: a smaller final payment is all that is
+// scheduled, so a plan of exactly that is not below schedule. A due already
+// paid this period keeps counting.
+func TestProjectDebt_ScheduledTotalUsesTheFinalSmallerPayment(t *testing.T) {
+	snap := MathSnapshot{AsOf: ymd(2026, time.March, 1), Balance: 1500, Payment: 500, Schedule: RecurringScheduleMonthly,
+		Last: ymd(2026, time.June, 1), Digits: 2}
+	paid := []MathPayment{{ID: "p", Date: ymd(2026, time.April, 1), Amount: 880}}
+	months := []time.Time{ymd(2026, time.April, 1), ymd(2026, time.May, 1), ymd(2026, time.June, 1), ymd(2026, time.July, 1)}
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Pays: paid, Interest: map[string]float64{"p": 0},
+		Today: ymd(2026, time.April, 10), Months: months})
+	for key, want := range map[string]float64{"2026-04-01": 500, "2026-05-01": 500, "2026-06-01": 120, "2026-07-01": 0} {
+		near(t, key+" scheduled", p.Months[key].ScheduledTotal, want, 1e-9)
+	}
+	// a past period keeps the term-based figure
+	past := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Pays: paid, Interest: map[string]float64{"p": 0},
+		Today: ymd(2026, time.July, 10), Months: []time.Time{ymd(2026, time.June, 1)}})
+	near(t, "past June scheduled", past.Months["2026-06-01"].ScheduledTotal, 500, 1e-9)
+}

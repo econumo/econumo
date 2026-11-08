@@ -1795,7 +1795,10 @@ data unreadable. Most are also asserted by the test suite.
   expenses: every total, Available and Balance is unchanged, the Debts block only regroups
   them, so the SPA adds the debt rows to its expense sums (`debtTotals`, `planTotals`) and the
   Expenses SECTION heading no longer equals the Totals Expenses line. The red plan hint on a
-  debt row is only "plan below the scheduled amount" (current and future months). **Reads**:
+  debt row is only "plan below the scheduled amount" (current and future months; there the
+  scheduled amount is what the projection pays in the period, so a smaller final payment is all
+  that is scheduled, a due already paid keeps the regular payment and dues after the payoff
+  count nothing). **Reads**:
   the sync writes splits and runs from the budget's read paths (`Service.Sync`: `GetBudget`,
   `GetBudgetPlan`, build results), outside any budget transaction, and from the debt
   service's own reads and writes (`get-debt`, update, delete, a classification merge) for the
