@@ -2660,8 +2660,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       no-connection icon that cannot be pressed and does not spin, its tooltip
       says "No connection" with the last sync time, and the network log shows
       no retries. When the network returns the button is back and the data
-      refreshes by itself. Saving something while offline shows an error at
-      once and keeps the form filled in, it does not spin.
+      refreshes by itself. Something saved while offline waits (the Save
+      button keeps spinning) and is sent when the network returns.
 - [ ] Sync button tap = incremental refresh: after an edit made on another
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the

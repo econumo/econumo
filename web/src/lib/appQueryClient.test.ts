@@ -38,10 +38,16 @@ describe('started with no connection', () => {
     expect(client.isFetching()).toBe(0)
   })
 
-  it('a write still fails at once rather than hanging', async () => {
+  it('a write waits for the connection and is sent when it returns', async () => {
     const client = createAppQueryClient()
-    await expect(
-      client.getMutationCache().build(client, { mutationFn: async () => { throw new Error('no network') } }).execute(undefined),
-    ).rejects.toThrow('no network')
+    client.mount()
+    onTestFinished(() => client.unmount())
+    const mutationFn = vi.fn(async () => 'saved')
+    const mutation = client.getMutationCache().build(client, { mutationFn })
+    const result = mutation.execute(undefined)
+    await vi.waitFor(() => expect(mutation.state.isPaused).toBe(true))
+    expect(mutationFn).not.toHaveBeenCalled()
+    onlineManager.setOnline(true)
+    await expect(result).resolves.toBe('saved')
   })
 })
