@@ -24,10 +24,16 @@ export function withStepState(option: string | null, key: StoredStepKey, state: 
   return [...rest, state === 'done' ? key : `!${key}`].join(',')
 }
 
-// Written straight into the cached user before the request, so two quick
-// answers build on each other instead of the second overwriting the first;
-// the response is not applied for the same reason. A failed write refetches.
-function writeStepState(queryClient: QueryClient, key: StoredStepKey, state: 'done' | 'dismissed'): void {
+let writesInFlight = 0
+
+// The value is written into the cached user before the request, so two quick
+// answers build on each other instead of the second overwriting the first. A
+// user fetch already running would put the old value back, so it is cancelled
+// first; one started meanwhile (a CSV import refetches everything) is settled
+// by refetching once the last write lands, which also cancels it. Only the
+// last write reconciles, so overlapping writes do not flicker.
+async function writeStepState(queryClient: QueryClient, key: StoredStepKey, state: 'done' | 'dismissed'): Promise<void> {
+  await queryClient.cancelQueries({ queryKey: queryKeys.user })
   const user = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
   const option = gettingStartedOption(user)
   if (!user || option === null || storedStepState(option, key) === state) return
@@ -36,18 +42,27 @@ function writeStepState(queryClient: QueryClient, key: StoredStepKey, state: 'do
     ...user,
     options: user.options.map((o) => (o.name === UserOptions.GETTING_STARTED ? { ...o, value } : o)),
   })
-  updateGettingStarted(value).catch(() => queryClient.invalidateQueries({ queryKey: queryKeys.user }))
+  writesInFlight++
+  try {
+    const saved = await updateGettingStarted(value)
+    if (writesInFlight === 1) queryClient.setQueryData(queryKeys.user, saved)
+  } catch {
+    // the refetch below restores the stored value
+  } finally {
+    writesInFlight--
+    if (writesInFlight === 0) void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+  }
 }
 
 // Callable from the budget mutations without a hook of their own: nothing is
 // sent outside the flow or once the step has an answer.
 export function markGettingStartedDone(queryClient: QueryClient, key: StoredStepKey): void {
   if (storedStepState(gettingStartedOption(queryClient.getQueryData<CurrentUserDto>(queryKeys.user)), key) !== 'open') return
-  writeStepState(queryClient, key, 'done')
+  void writeStepState(queryClient, key, 'done')
 }
 
 export function dismissGettingStarted(queryClient: QueryClient, key: StoredStepKey): void {
-  writeStepState(queryClient, key, 'dismissed')
+  void writeStepState(queryClient, key, 'dismissed')
 }
 
 // The same shape the server treats as an untouched opening correction: the

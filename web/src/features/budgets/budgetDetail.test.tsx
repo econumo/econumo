@@ -92,8 +92,9 @@ it('a saved limit records the getting-started plan step once, in both views', as
   server.use(
     http.post('*/api/v1/budget/set-limit', () => HttpResponse.json({ success: true, message: '', data: {} })),
     http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
-      posts.push(await request.json())
-      return HttpResponse.json({ success: true, message: '', data: { user: fixtureUser } })
+      const body = (await request.json()) as { value: string }
+      posts.push(body)
+      return HttpResponse.json({ success: true, message: '', data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'getting_started', value: body.value }] } } })
     }),
   )
   const { queryClient, wrapper } = makeWrapper()

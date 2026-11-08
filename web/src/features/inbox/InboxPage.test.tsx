@@ -395,12 +395,15 @@ it('lists open next steps last, without counting them toward the badge', async (
 
 it('dismissing a next step posts it and drops the section once nothing is left', async () => {
   const posts: unknown[] = []
+  let served = gettingStartedUser('plan')
   server.use(
-    ...coreHandlers({ user: gettingStartedUser('plan') }),
+    http.get('*/api/v1/user/get-user-data', () => HttpResponse.json({ success: true, message: '', data: { user: served } })),
+    ...coreHandlers({ user: served }),
     http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
       const body = (await request.json()) as { value: string }
       posts.push(body)
-      return HttpResponse.json({ success: true, message: '', data: { user: gettingStartedUser(body.value) } })
+      served = gettingStartedUser(body.value)
+      return HttpResponse.json({ success: true, message: '', data: { user: served } })
     }),
   )
   renderInbox()

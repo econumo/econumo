@@ -115,20 +115,51 @@ it('dismissing home screen stays on this device and sends nothing', async () => 
   expect(posts).toEqual([])
 })
 
+// The server's copy of the option: get-user-data reads it, a POST replaces it
+// (after an optional delay, so a user fetch can answer first).
+function serveOption(initial: string, postDelayMs = 0) {
+  const state = { stored: initial, posts: [] as unknown[] }
+  server.use(
+    http.get('*/api/v1/user/get-user-data', () => HttpResponse.json({ success: true, message: '', data: { user: userWith(state.stored) } })),
+    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
+      const body = (await request.json()) as { value: string }
+      state.posts.push(body)
+      await new Promise((r) => setTimeout(r, postDelayMs))
+      state.stored = body.value
+      return HttpResponse.json({ success: true, message: '', data: { user: userWith(body.value) } })
+    }),
+  )
+  return state
+}
+
 it('two quick dismissals keep both', async () => {
-  const posts: unknown[] = []
-  server.use(http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
-    posts.push(await request.json())
-    return HttpResponse.json({ success: true, message: '', data: { user: userWith('') } })
-  }))
   const { result } = setup(userWith(''))
+  const state = serveOption('')
   await waitFor(() => expect(result.current.active).toBe(true))
   act(() => {
     result.current.dismiss('plan')
     result.current.dismiss('import')
   })
-  await waitFor(() => expect(posts).toEqual([{ value: '!plan' }, { value: '!plan,!import' }]))
+  await waitFor(() => expect(state.posts).toEqual([{ value: '!plan' }, { value: '!plan,!import' }]))
+  await waitFor(() => expect(state.stored).toBe('!plan,!import'))
+  await new Promise((r) => setTimeout(r, 50))
   expect(result.current.steps.every((s) => s.dismissed)).toBe(true)
+})
+
+it('a user fetch answering before the write lands does not bring the step back', async () => {
+  const { result, queryClient } = setup(userWith(''))
+  const state = serveOption('', 100)
+  await waitFor(() => expect(result.current.active).toBe(true))
+  act(() => {
+    markGettingStartedDone(queryClient, 'import')
+    // what the CSV import does right after: refetch everything, the user included
+    void queryClient.invalidateQueries()
+  })
+  await waitFor(() => expect(state.stored).toBe('import'))
+  await waitFor(() => expect(result.current.inboxSteps.find((s) => s.key === 'import')?.done).toBe(true))
+  await new Promise((r) => setTimeout(r, 100))
+  expect(result.current.inboxSteps.find((s) => s.key === 'import')?.done).toBe(true)
+  expect(state.posts).toEqual([{ value: 'import' }])
 })
 
 it('hasData is false with only an opening correction and true after a categorized transaction', async () => {

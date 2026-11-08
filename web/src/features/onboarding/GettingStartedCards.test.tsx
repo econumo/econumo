@@ -34,13 +34,16 @@ let posts: unknown[]
 
 function renderBudget(user: unknown, transactions: unknown[], path: '/budget' | '/plan' = '/budget', extra: Record<string, unknown> = {}) {
   posts = []
+  let served = user
   server.use(
+    http.get('*/api/v1/user/get-user-data', () => HttpResponse.json({ success: true, message: '', data: { user: served } })),
     ...coreHandlers({ user, transactions, ...extra }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
     http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
       const body = (await request.json()) as { value: string }
       posts.push(body)
-      return HttpResponse.json({ success: true, message: '', data: { user: userWith(body.value) } })
+      served = userWith(body.value)
+      return HttpResponse.json({ success: true, message: '', data: { user: served } })
     }),
   )
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
