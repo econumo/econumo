@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { pluralPick } from '@/lib/plural'
+import { moneyFormat } from '@/lib/money'
+import { useAccounts } from '@/features/accounts/queries'
 import type { AggregatedImportResult } from './importCsv'
 
 const MAX_DISPLAY_ERRORS = 5
@@ -16,6 +18,7 @@ interface ImportResultDialogProps {
 
 export function ImportResultDialog({ open, result, onClose }: ImportResultDialogProps) {
   const { t, i18n } = useTranslation()
+  const { data: accounts = [] } = useAccounts()
   if (!result) return null
 
   const outcome =
@@ -45,6 +48,14 @@ export function ImportResultDialog({ open, result, onClose }: ImportResultDialog
         <div className="flex flex-col gap-1 text-center text-sm">
           {result.imported > 0 ? <p>{pluralPick(t('transactions.import_result.imported'), result.imported, i18n.language)}</p> : null}
           {result.failed > 0 ? <p>{pluralPick(t('transactions.import_result.failed'), result.failed, i18n.language)}</p> : null}
+          {(result.kept ?? []).map((kept) => {
+            const account = accounts.find((a) => a.id === kept.accountId)
+            return (
+              <p key={kept.accountId}>
+                {t('transactions.import.keep_balance.kept', { amount: moneyFormat(kept.balance, account?.currency) })}
+              </p>
+            )
+          })}
         </div>
 
         {shownErrors.length > 0 ? (

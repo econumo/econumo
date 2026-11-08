@@ -406,6 +406,13 @@
         }
       }
     },
+    "import": {
+      "keep_balance": {
+        "label": "Mantener el saldo actual",
+        "hint": "El saldo de hoy se mantiene; las transacciones anteriores se compensan con un ajuste.",
+        "kept": "Se mantuvo el saldo de hoy de {amount}"
+      }
+    },
     "import_csv": {
       "header": "Importar CSV",
       "none": "Ninguno",

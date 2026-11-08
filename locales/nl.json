@@ -406,6 +406,13 @@
         }
       }
     },
+    "import": {
+      "keep_balance": {
+        "label": "Huidig saldo behouden",
+        "hint": "Het saldo van vandaag blijft hetzelfde; oudere transacties worden uitgebalanceerd met een correctie.",
+        "kept": "Saldo van vandaag behouden: {amount}"
+      }
+    },
     "import_csv": {
       "header": "CSV importeren",
       "none": "Geen",

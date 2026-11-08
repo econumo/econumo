@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { AccountDto, AccountItemDto, AccountRole } from './dto/account'
+import type { AccountDto, AccountItemDto, AccountRole, BalanceSnapshotDto, RestoreBalanceRequestDto, RestoreBalanceResultDto } from './dto/account'
 import type { FolderDto } from './dto/folder'
 
 interface Envelope<T> {
@@ -34,6 +34,18 @@ export interface AccountPositionChange {
 export async function getAccountList(): Promise<AccountDto[]> {
   const response = await api.get<Envelope<{ items: AccountDto[] }>>(apiUrl('/api/v1/account/get-account-list'))
   return response.data.data.items
+}
+
+export async function getBalanceSnapshot(accountIds: Id[]): Promise<BalanceSnapshotDto> {
+  const response = await api.get<Envelope<BalanceSnapshotDto>>(apiUrl('/api/v1/account/get-balance-snapshot'), {
+    params: { accountIds: accountIds.join(',') },
+  })
+  return response.data.data
+}
+
+export async function restoreBalance(req: RestoreBalanceRequestDto): Promise<RestoreBalanceResultDto> {
+  const response = await api.post<Envelope<RestoreBalanceResultDto>>(apiUrl('/api/v1/account/restore-balance'), req)
+  return response.data.data
 }
 
 export async function createAccount(form: CreateAccountForm): Promise<AccountItemDto> {

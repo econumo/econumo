@@ -11,12 +11,12 @@ const CSV = 'Account,Date,Amount,Category,Description\nCash,2026-01-02,-5.5,Food
 
 function renderDialog(onComplete = vi.fn()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  render(
+  const { unmount } = render(
     <QueryClientProvider client={queryClient}>
       <ImportCsvDialog open onClose={() => {}} onComplete={onComplete} />
     </QueryClientProvider>,
   )
-  return { queryClient, onComplete }
+  return { queryClient, onComplete, unmount }
 }
 
 async function uploadCsv(text = CSV, name = 'import.csv') {
@@ -259,4 +259,62 @@ it('the new-tag count skips names an existing BUDGET tag already holds', async (
   await screen.findByText(/Map the columns/)
   await pickColumn(user, /reporting tags/i, /^Labels/)
   expect(await screen.findByRole('status')).toHaveTextContent('This import will create 1 new tag')
+})
+
+function snapshotHandlers(items: { accountId: string; balance: string; openingCorrectionId: string; fresh: boolean }[], log: string[] = []) {
+  server.use(
+    http.get('*/api/v1/account/get-balance-snapshot', () => {
+      log.push('snapshot')
+      return HttpResponse.json({ success: true, message: '', data: { takenAt: '2026-11-07 10:00:00', items } })
+    }),
+    http.post('*/api/v1/transaction/import-transaction-list', () => {
+      log.push('import')
+      return HttpResponse.json({ success: true, message: '', data: { imported: 2, skipped: 0, errors: {} } })
+    }),
+    http.post('*/api/v1/account/restore-balance', async ({ request }) => {
+      log.push(`restore:${JSON.stringify(await request.json())}`)
+      return HttpResponse.json({ success: true, message: '', data: { item: fixtureAccounts[0], restored: true } })
+    }),
+  )
+  return log
+}
+
+it('keep balance box is ticked for a fresh account and unticked for a used one', async () => {
+  snapshotHandlers([{ accountId: 'a1', balance: '100.5', openingCorrectionId: 'c1', fresh: true }, { accountId: 'a2', balance: '2000', openingCorrectionId: '', fresh: true }])
+  const first = renderDialog()
+  await uploadCsv()
+  expect(await screen.findByRole('checkbox', { name: /Keep current balance/ })).toBeChecked()
+  first.unmount()
+
+  snapshotHandlers([{ accountId: 'a1', balance: '100.5', openingCorrectionId: 'c1', fresh: true }, { accountId: 'a2', balance: '2000', openingCorrectionId: '', fresh: false }])
+  renderDialog()
+  await uploadCsv()
+  expect(await screen.findByRole('checkbox', { name: /Keep current balance/ })).not.toBeChecked()
+})
+
+it('ticked submit runs snapshot, import, restore and reports the kept balances', async () => {
+  const log = snapshotHandlers([{ accountId: 'a1', balance: '100.5', openingCorrectionId: 'c1', fresh: true }, { accountId: 'a2', balance: '2000', openingCorrectionId: '', fresh: true }])
+  const { onComplete } = renderDialog()
+  const user = await uploadCsv()
+  await screen.findByRole('checkbox', { name: /Keep current balance/ })
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+  await waitFor(() => expect(onComplete).toHaveBeenCalled())
+  // the post-import invalidation may refetch the preview snapshot; that is not a restore
+  expect(log.filter((l) => l !== 'snapshot')).toEqual([
+    'import',
+    'restore:{"accountId":"a1","balance":"100.5","openingCorrectionId":"c1","since":"2026-11-07 10:00:00"}',
+    'restore:{"accountId":"a2","balance":"2000","openingCorrectionId":"","since":"2026-11-07 10:00:00"}',
+  ])
+  expect(onComplete.mock.calls[0][0].kept).toHaveLength(2)
+})
+
+it('unticked submit never restores', async () => {
+  const log = snapshotHandlers([{ accountId: 'a1', balance: '100.5', openingCorrectionId: 'c1', fresh: false }])
+  const { onComplete } = renderDialog()
+  const user = await uploadCsv()
+  await screen.findByRole('checkbox', { name: /Keep current balance/ })
+  const before = log.length
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+  await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ imported: 2, failed: 0, errors: [] }))
+  expect(log.slice(before).filter((l) => l !== 'snapshot')).toEqual(['import'])
 })

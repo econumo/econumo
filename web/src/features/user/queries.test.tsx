@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
+import type { CurrentUserDto } from '@/api/dto/user'
 import { queryKeys } from '@/app/queryKeys'
 import { useUpdateName, useUpdateAvatar, useUpdateDefaultBudget, useUpdatePassword, useAccessState, useUpdateGettingStarted, gettingStartedOption } from './queries'
 
@@ -147,6 +148,6 @@ it('update-getting-started posts the value and replaces the user cache', async (
 
 it('gettingStartedOption is null when the option is absent and keeps an empty value', () => {
   expect(gettingStartedOption(undefined)).toBeNull()
-  expect(gettingStartedOption(fixtureUser)).toBeNull()
-  expect(gettingStartedOption({ ...fixtureUser, options: [{ name: 'getting_started', value: '' }] })).toBe('')
+  expect(gettingStartedOption(fixtureUser as unknown as CurrentUserDto)).toBeNull()
+  expect(gettingStartedOption({ ...fixtureUser, options: [{ name: 'getting_started', value: '' }] } as unknown as CurrentUserDto)).toBe('')
 })

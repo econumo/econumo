@@ -406,6 +406,13 @@
         }
       }
     },
+    "import": {
+      "keep_balance": {
+        "label": "Aktuellen Kontostand beibehalten",
+        "hint": "Der heutige Kontostand bleibt unverändert; ältere Transaktionen werden durch eine Korrekturbuchung ausgeglichen.",
+        "kept": "Heutiger Kontostand von {amount} beibehalten"
+      }
+    },
     "import_csv": {
       "header": "CSV importieren",
       "none": "Keine",

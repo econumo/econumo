@@ -406,6 +406,13 @@
         }
       }
     },
+    "import": {
+      "keep_balance": {
+        "label": "Keep current balance",
+        "hint": "Today's balance stays as it is; older transactions are balanced by an adjustment.",
+        "kept": "Kept today's balance of {amount}"
+      }
+    },
     "import_csv": {
       "header": "Import CSV",
       "none": "None",

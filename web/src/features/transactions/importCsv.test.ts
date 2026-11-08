@@ -1,4 +1,8 @@
-import { analyzeCsv, autoDetect, buildImportPayload, countNewLabels, defaultSelection, FIELD_KEYS, runImport, selectionValid } from './importCsv'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/test/msw'
+import { fixtureAccounts } from '@/test/fixtures'
+import type { AccountDto } from '@/api/dto/account'
+import { runImportKeepingBalance, targetAccountIds, analyzeCsv, autoDetect, buildImportPayload, countNewLabels, defaultSelection, FIELD_KEYS, runImport, selectionValid } from './importCsv'
 import type { ImportSelection } from './importCsv'
 
 const LABELS = {
@@ -191,4 +195,42 @@ it('runImport chunks at 500 rows, remaps error rows, and tolerates chunk failure
     { message: "Invalid date format 'x'", rows: [1003] }, // chunk 2 row 3 -> file row 1003
   ])
   expect(progress).toEqual([[1, 3], [2, 3], [3, 3]])
+})
+
+const accounts = fixtureAccounts as unknown as AccountDto[]
+const csvSelection = (): ImportSelection => ({ ...defaultSelection(), columns: { ...defaultSelection().columns, account: 'Account' } })
+
+it('targetAccountIds: fixed account, and csv column names matched case-insensitively', () => {
+  const analysis = analyzeCsv('Account,Amount\ncash,1\nBANK,2\ncash,3\nNowhere,4\n')
+  expect(targetAccountIds(analysis, csvSelection(), accounts)).toEqual(['a1', 'a2'])
+  const fixed: ImportSelection = { ...defaultSelection(), modes: { ...defaultSelection().modes, account: 'existing' }, fixed: { ...defaultSelection().fixed, accountId: 'a3' } }
+  expect(targetAccountIds(analysis, fixed, accounts)).toEqual(['a3'])
+  expect(targetAccountIds(analysis, defaultSelection(), accounts)).toEqual([])
+})
+
+it('runImportKeepingBalance restores after a partial import with the snapshot values', async () => {
+  const restores: unknown[] = []
+  server.use(
+    http.get('*/api/v1/account/get-balance-snapshot', ({ request }) => {
+      expect(new URL(request.url).searchParams.get('accountIds')).toBe('a1')
+      return HttpResponse.json({ success: true, message: '', data: { takenAt: '2026-11-07 10:00:00', items: [{ accountId: 'a1', balance: '100.5', openingCorrectionId: 'c1', fresh: true }] } })
+    }),
+    http.post('*/api/v1/account/restore-balance', async ({ request }) => {
+      restores.push(await request.json())
+      return HttpResponse.json({ success: true, message: '', data: { item: fixtureAccounts[0], restored: true } })
+    }),
+  )
+  const rows = Array.from({ length: 501 }, () => 'Cash,1').join('\n')
+  const analysis = analyzeCsv(`Account,Amount\n${rows}\n`)
+  let call = 0
+  const post = vi.fn(async () => {
+    call += 1
+    if (call === 2) throw new Error('boom')
+    return { imported: 500, skipped: 0, errors: {} }
+  })
+  const result = await runImportKeepingBalance(analysis, csvSelection(), post, accounts)
+  expect(result.imported).toBe(500)
+  expect(result.failed).toBe(1)
+  expect(result.kept).toEqual([{ accountId: 'a1', balance: '100.5' }])
+  expect(restores).toEqual([{ accountId: 'a1', balance: '100.5', openingCorrectionId: 'c1', since: '2026-11-07 10:00:00' }])
 })
