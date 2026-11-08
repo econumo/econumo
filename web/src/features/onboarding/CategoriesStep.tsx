@@ -33,6 +33,8 @@ export interface ExistingCategory {
 interface CategoriesStepProps {
   // the user's own categories: listed first, ticked and locked
   existing: ExistingCategory[]
+  // the user's own archived categories: never listed, but a default named like one is not offered again
+  archived?: ExistingCategory[]
   // the rows last submitted, so a retry keeps their keys (and their operation ids)
   initialRows?: CategoryRow[]
   // rows created by an earlier submit: the server list shows them, so they leave the form
@@ -49,7 +51,7 @@ export const rowTile = 'grid size-8 shrink-0 place-items-center rounded-lg bg-pr
 export const rowInput =
   'min-w-0 flex-1 rounded-md bg-transparent px-1 py-1 outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:ring-2 aria-invalid:ring-destructive/40'
 
-export function CategoriesStep({ existing, initialRows, createdKeys, onContinue, onSkip, pending, error }: CategoriesStepProps) {
+export function CategoriesStep({ existing, archived = [], initialRows, createdKeys, onContinue, onSkip, pending, error }: CategoriesStepProps) {
   const { t } = useTranslation()
   const taken = new Set(existing.map((c) => nameKey(c.type, c.name)))
   const [rows, setRows] = useState<CategoryRow[]>(() => {
@@ -57,8 +59,9 @@ export function CategoriesStep({ existing, initialRows, createdKeys, onContinue,
     if (initialRows && initialRows.length > 0) return seeded
     const build = (list: typeof DEFAULT_EXPENSE_CATEGORIES, type: CategoryType): CategoryRow[] =>
       list.map((c) => ({ key: uuidv7(), name: t(`onboarding.categories.${c.key}`), type, icon: c.icon, checked: existing.length === 0 }))
+    const retired = new Set(archived.map((c) => nameKey(c.type, c.name)))
     return [...build(DEFAULT_EXPENSE_CATEGORIES, 'expense'), ...build(DEFAULT_INCOME_CATEGORIES, 'income')].filter(
-      (r) => !taken.has(nameKey(r.type, r.name)),
+      (r) => !taken.has(nameKey(r.type, r.name)) && !retired.has(nameKey(r.type, r.name)),
     )
   })
   const [drafts, setDrafts] = useState<Record<CategoryType, string>>({ expense: '', income: '' })
@@ -220,10 +223,11 @@ export function CategoriesStepBody({ onDone, onSkip }: StepBodyProps) {
   const [skipping, setSkipping] = useState(false)
   if (categories.isError) return <StepLoadError error={categories.error} onRetry={() => void categories.refetch()} />
   if (!day0.ready || categories.isPending) return null
-  const existing = (categories.data ?? []).filter((c) => c.ownerUserId === user?.id && c.isArchived === 0)
+  const own = (categories.data ?? []).filter((c) => c.ownerUserId === user?.id)
   return (
     <CategoriesStep
-      existing={existing}
+      existing={own.filter((c) => c.isArchived === 0)}
+      archived={own.filter((c) => c.isArchived === 1)}
       initialRows={day0.draft?.categoryRows}
       createdKeys={new Set(Object.keys(day0.draft?.createdCategories ?? {}))}
       pending={day0.pending || skipping}

@@ -109,6 +109,15 @@ it('lists existing categories first, ticked and locked, and omits defaults they 
   expect(chosen(onContinue)).toEqual([])
 })
 
+it('does not offer a default named like an archived category, nor list the archived one', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep({ archived: [{ id: 'cat-9', name: 'groceries', type: 'expense', icon: 'cake' }] })
+  expect(screen.queryByRole('checkbox', { name: 'Groceries' })).not.toBeInTheDocument()
+  expect(screen.getByRole('checkbox', { name: 'Housing' })).toBeChecked()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(chosen(onContinue).map((r) => r.name)).not.toContain('Groceries')
+})
+
 it('never submits a new row named like an existing category', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep({ existing: [food] })
@@ -213,6 +222,14 @@ describe('CategoriesStepBody', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(created).toEqual(['Fun'])
     expect(loadDraft('u1')!.createdCategories).toEqual({ k1: 'cat-food', k2: 'new-1' })
+  })
+
+  it('an archived category of the user keeps its default name out of the list', async () => {
+    // get-category-list as the server sends it: archived categories are included, isArchived 1
+    renderBody([{ id: 'cat-a', ownerUserId: 'u1', name: 'Groceries', position: 0, type: 'expense', icon: 'shopping_cart', isArchived: 1, createdAt: '2026-11-08 21:37:17', updatedAt: '2026-11-08 21:37:17' }])
+    await screen.findByRole('heading', { name: 'What do you spend on?' })
+    expect(screen.queryByRole('checkbox', { name: 'Groceries' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Housing' })).toBeChecked()
   })
 
   it('a failed save shows the error and stays on the step', async () => {
