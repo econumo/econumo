@@ -1189,17 +1189,17 @@
   },
   "onboarding": {
     "categories": {
-      "groceries": "买菜",
-      "housing": "住房",
+      "groceries": "日常买菜",
+      "housing": "住房开支",
       "utilities": "水电燃气",
-      "transport": "交通",
+      "transport": "交通出行",
       "eating_out": "外出就餐",
       "health": "医疗健康",
-      "shopping": "购物",
-      "entertainment": "娱乐",
-      "kids": "孩子",
-      "subscriptions": "订阅",
-      "salary": "工资",
+      "shopping": "日常购物",
+      "entertainment": "休闲娱乐",
+      "kids": "子女开销",
+      "subscriptions": "订阅服务",
+      "salary": "工资收入",
       "other_income": "其他收入"
     },
     "words": {
