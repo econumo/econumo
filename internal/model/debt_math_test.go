@@ -628,3 +628,23 @@ func TestProjectDebt_PeriodsPaid(t *testing.T) {
 		t.Fatalf("PeriodsPaid = %d, want 3", p.PeriodsPaid)
 	}
 }
+
+// A past month's payments left are bounded by the projection's 100-year
+// horizon, not by 1200 payments: a 30-year weekly loan has about 1565.
+func TestProjectDebt_PastMonthPaymentsLeftOfALongWeeklyLoan(t *testing.T) {
+	asOf := ymd(2026, time.January, 1)
+	snap := MathSnapshot{AsOf: asOf, Payment: 100, Schedule: RecurringScheduleWeekly, Last: ymd(2056, time.January, 1), Digits: 2}
+	n := len(DueDatesBetween(snap.Schedule, snap.Last, snap.AsOf, snap.Last))
+	if n <= 1200 {
+		t.Fatalf("n = %d, want a loan longer than 1200 payments", n)
+	}
+	snap.Balance = 100 * float64(n)
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Today: ymd(2026, time.March, 15),
+		Months: []time.Time{ymd(2025, time.December, 1), ymd(2026, time.March, 1)}})
+	if got := p.Months["2025-12-01"].PaymentsLeft; got != n {
+		t.Fatalf("December PaymentsLeft = %d, want %d", got, n)
+	}
+	if p.PaymentsLeft <= 1200 {
+		t.Fatalf("current PaymentsLeft = %d, want above 1200", p.PaymentsLeft)
+	}
+}

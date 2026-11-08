@@ -635,7 +635,9 @@ func ProjectDebt(in ProjectionInput) Projection {
 }
 
 // paymentsLeftAt counts the regular payments that clear balance under the
-// terms in force on day t (the first snapshot's before it).
+// terms in force on day t (the first snapshot's before it), up to the
+// projection's horizon in time: a weekly loan has far more payments than
+// months.
 func paymentsLeftAt(snaps []MathSnapshot, balance float64, t time.Time, eps float64) int {
 	terms := snaps[0]
 	for _, s := range snaps {
@@ -647,11 +649,12 @@ func paymentsLeftAt(snaps []MathSnapshot, balance float64, t time.Time, eps floa
 		return 0
 	}
 	rate := snapshotRate(terms)
+	horizon := len(DueDatesBetween(terms.Schedule, terms.Last, t, t.AddDate(0, maxProjectMonths, 0)))
 	n := 0
-	for ; balance > eps && n < maxProjectMonths; n++ {
+	for ; balance > eps && n < horizon; n++ {
 		interest := balance * rate
 		if terms.Payment <= interest {
-			return maxProjectMonths
+			return horizon
 		}
 		balance += interest - math.Min(terms.Payment, balance+interest)
 	}
