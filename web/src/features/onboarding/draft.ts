@@ -4,10 +4,35 @@ export type AccountRow = { key: string; name: string; balance: string; currencyI
 export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; checked: boolean }
 export type Day0Draft = {
   step: 'accounts' | 'categories'
+  // operation ids by `account:<rowKey>` / `category:<rowKey>` / `budget` (the budget's own id)
   ops: Record<string, Id>
+  // the rows last submitted at step 'accounts'; a reload seeds the form from them to keep their keys
+  rows: AccountRow[]
+  extraCurrencyIds: Id[]
+  // server account id by row key / server category id by row key, written right after each create
+  created: Record<string, Id>
+  createdCategories: Record<string, Id>
+  currenciesDone: boolean
+  budgetDone: boolean
   accountIds: Id[]
   savingsAccountIds: Id[]
   mainCurrencyId: Id | null
+}
+
+export function emptyDraft(): Day0Draft {
+  return {
+    step: 'accounts',
+    ops: {},
+    rows: [],
+    extraCurrencyIds: [],
+    created: {},
+    createdCategories: {},
+    currenciesDone: false,
+    budgetDone: false,
+    accountIds: [],
+    savingsAccountIds: [],
+    mainCurrencyId: null,
+  }
 }
 
 const storageKey = (userId: Id) => `econumo-day0:${userId}`
@@ -22,13 +47,7 @@ export function loadDraft(userId: Id): Day0Draft | null {
     if (parsed.step !== 'accounts' && parsed.step !== 'categories') {
       return null
     }
-    return {
-      step: parsed.step,
-      ops: parsed.ops ?? {},
-      accountIds: parsed.accountIds ?? [],
-      savingsAccountIds: parsed.savingsAccountIds ?? [],
-      mainCurrencyId: parsed.mainCurrencyId ?? null,
-    }
+    return { ...emptyDraft(), ...parsed, step: parsed.step }
   } catch {
     return null
   }

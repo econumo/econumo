@@ -3,9 +3,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
-import { createAccount } from '@/api/account'
-import { createBudget } from '@/api/budget'
-import { createCategory } from '@/api/category'
+import { createAccount, getAccountList } from '@/api/account'
+import { createBudget, getBudgetList } from '@/api/budget'
+import { createCategory, getCategoryList } from '@/api/category'
 import { getCurrencyList, hideAllCurrencies, showCurrency } from '@/api/currency'
 import { completeOnboarding, updateCurrency, updateGettingStarted } from '@/api/user'
 import type { Id } from '@/api/types'
@@ -13,14 +13,15 @@ import { queryKeys } from '@/app/queryKeys'
 import { useAccounts } from '@/features/accounts/queries'
 import { isOnboardingCompleted, userCurrencyId, useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { clearDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft } from './draft'
+import { clearDraft, emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft } from './draft'
 
-async function ignoreClientError(call: () => Promise<void>): Promise<void> {
+const isBadRequest = (err: unknown) => isAxiosError(err) && err.response?.status === 400
+
+async function ignoreBadRequest(call: () => Promise<void>): Promise<void> {
   try {
     await call()
   } catch (err) {
-    const status = isAxiosError(err) ? err.response?.status : undefined
-    if (status === undefined || status < 400 || status >= 500) {
+    if (!isBadRequest(err)) {
       throw err
     }
   }
@@ -33,11 +34,14 @@ function opId(draft: Day0Draft, key: string): Id {
   return draft.ops[key]
 }
 
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
 export function useDay0() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { data: user } = useUserData()
-  const { data: accounts } = useAccounts()
+  const accountsQuery = useAccounts()
+  const accounts = accountsQuery.data
   const [version, setVersion] = useState(0)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<unknown>(null)
@@ -55,22 +59,16 @@ export function useDay0() {
     const owned = (accounts ?? []).filter((a) => a.owner.id === userId)
     if (owned.length > 0 && !isOnboardingCompleted(user)) {
       return {
+        ...emptyDraft(),
         step: 'categories',
-        ops: {},
         accountIds: owned.map((a) => a.id),
-        savingsAccountIds: [],
         mainCurrencyId: userCurrencyId(user),
       }
     }
     return null
   }, [userId, user, accounts, version])
 
-  const current = useCallback((): Day0Draft => {
-    return (
-      (userId ? loadDraft(userId) : null) ??
-      draft ?? { step: 'accounts', ops: {}, accountIds: [], savingsAccountIds: [], mainCurrencyId: null }
-    )
-  }, [userId, draft])
+  const current = useCallback((): Day0Draft => (userId ? loadDraft(userId) : null) ?? draft ?? emptyDraft(), [userId, draft])
 
   const persist = useCallback(
     (d: Day0Draft) => {
@@ -98,44 +96,69 @@ export function useDay0() {
   const saveAccounts = useCallback(
     (rows: AccountRow[], extraCurrencyIds: Id[], mainCurrencyId: Id) =>
       run(async () => {
+        if (!userId) {
+          return
+        }
         const d = current()
+        d.rows = rows
+        d.extraCurrencyIds = extraCurrencyIds
+        d.mainCurrencyId = mainCurrencyId
         for (const row of rows) {
           opId(d, `account:${row.key}`)
         }
-        d.mainCurrencyId = mainCurrencyId
         persist(d)
 
-        const created = new Map<string, Id>()
         for (const row of rows) {
-          const item = await createAccount({
-            id: d.ops[`account:${row.key}`],
-            name: row.name,
-            currencyId: row.currencyId,
-            balance: row.balance === '' ? '0' : row.balance,
-            icon: row.icon,
-            folderId: null,
-          })
-          created.set(row.key, item.item.id)
+          if (d.created[row.key]) {
+            continue
+          }
+          try {
+            const item = await createAccount({
+              id: d.ops[`account:${row.key}`],
+              name: row.name,
+              currencyId: row.currencyId,
+              balance: row.balance === '' ? '0' : row.balance,
+              icon: row.icon,
+              folderId: null,
+            })
+            d.created[row.key] = item.item.id
+          } catch (err) {
+            // A 400 is the operation guard answering a replay whose first response was lost.
+            if (!isBadRequest(err)) {
+              throw err
+            }
+            const known = new Set(Object.values(d.created))
+            const found = (await getAccountList()).find((a) => a.owner.id === userId && !known.has(a.id) && sameName(a.name, row.name))
+            if (!found) {
+              throw err
+            }
+            d.created[row.key] = found.id
+          }
+          persist(d)
         }
 
-        const currencies = await getCurrencyList()
-        const main = currencies.find((c) => c.id === mainCurrencyId)
-        if (main) {
-          await updateCurrency(main.code)
-        }
-        const selected = [...new Set([mainCurrencyId, ...extraCurrencyIds, ...rows.map((r) => r.currencyId)])]
-        await ignoreClientError(hideAllCurrencies)
-        for (const id of selected) {
-          await ignoreClientError(() => showCurrency(id))
+        if (!d.currenciesDone) {
+          const currencies = await getCurrencyList()
+          const main = currencies.find((c) => c.id === mainCurrencyId)
+          if (main) {
+            await updateCurrency(main.code)
+          }
+          const selected = [...new Set([mainCurrencyId, ...extraCurrencyIds, ...rows.map((r) => r.currencyId)])]
+          await ignoreBadRequest(hideAllCurrencies)
+          for (const id of selected) {
+            await ignoreBadRequest(() => showCurrency(id))
+          }
+          d.currenciesDone = true
+          persist(d)
         }
 
-        d.accountIds = rows.map((r) => created.get(r.key)!)
-        d.savingsAccountIds = rows.filter((r) => r.savings).map((r) => created.get(r.key)!)
+        d.accountIds = rows.map((r) => d.created[r.key])
+        d.savingsAccountIds = rows.filter((r) => r.savings).map((r) => d.created[r.key])
         d.step = 'categories'
         persist(d)
         void queryClient.invalidateQueries()
       }),
-    [run, current, persist, queryClient],
+    [run, current, persist, userId, queryClient],
   )
 
   const finish = useCallback(
@@ -145,6 +168,10 @@ export function useDay0() {
           return
         }
         const d = current()
+        const currencyId = d.mainCurrencyId ?? userCurrencyId(user)
+        if (d.accountIds.length === 0 || !currencyId) {
+          throw new Error('Day 0 finish needs accounts and a main currency')
+        }
         const checked = categories.filter((c) => c.checked)
         for (const c of checked) {
           opId(d, `category:${c.key}`)
@@ -153,19 +180,45 @@ export function useDay0() {
         persist(d)
 
         for (const c of checked) {
-          await createCategory({ id: d.ops[`category:${c.key}`], name: c.name, type: c.type, icon: c.icon })
+          if (d.createdCategories[c.key]) {
+            continue
+          }
+          try {
+            const item = await createCategory({ id: d.ops[`category:${c.key}`], name: c.name, type: c.type, icon: c.icon })
+            d.createdCategories[c.key] = item.id
+          } catch (err) {
+            if (!isBadRequest(err)) {
+              throw err
+            }
+            const known = new Set(Object.values(d.createdCategories))
+            const found = (await getCategoryList()).find((x) => !known.has(x.id) && x.type === c.type && sameName(x.name, c.name))
+            if (!found) {
+              throw err
+            }
+            d.createdCategories[c.key] = found.id
+          }
+          persist(d)
         }
-        const currencyId = d.mainCurrencyId ?? userCurrencyId(user)
-        if (currencyId && d.accountIds.length > 0) {
-          await createBudget({
-            id: budgetId,
-            name: t('onboarding.budget_name'),
-            startDate: '',
-            currencyId,
-            accountIds: d.accountIds,
-            savingsAccountIds: d.savingsAccountIds,
-          })
+
+        if (!d.budgetDone) {
+          try {
+            await createBudget({
+              id: budgetId,
+              name: t('onboarding.budget_name'),
+              startDate: '',
+              currencyId,
+              accountIds: d.accountIds,
+              savingsAccountIds: d.savingsAccountIds,
+            })
+          } catch (err) {
+            if (!isBadRequest(err) || !(await getBudgetList()).some((b) => b.id === budgetId)) {
+              throw err
+            }
+          }
+          d.budgetDone = true
+          persist(d)
         }
+
         await updateGettingStarted('')
         const updated = await completeOnboarding()
         clearDraft(userId)
@@ -192,5 +245,5 @@ export function useDay0() {
     [run, current, userId, queryClient],
   )
 
-  return { draft, ready: Boolean(user), saveAccounts, finish, skip, pending, error }
+  return { draft, ready: Boolean(user) && !accountsQuery.isPending, saveAccounts, finish, skip, pending, error }
 }

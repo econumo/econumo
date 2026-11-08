@@ -1,11 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, delay } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureUsd, fixtureEur, fixtureAccounts } from '@/test/fixtures'
 import { useDay0 } from './useDay0'
-import { loadDraft, saveDraft, type AccountRow, type CategoryRow } from './draft'
+import { loadDraft, saveDraft, emptyDraft, type AccountRow, type CategoryRow } from './draft'
 
 const pendingUser = {
   ...fixtureUser,
@@ -16,6 +16,11 @@ const rows: AccountRow[] = [
   { key: 'r1', name: 'Cash', balance: '', currencyId: 'cur-usd', savings: false, icon: 'payments' },
   { key: 'r2', name: 'Savings', balance: '100', currencyId: 'cur-eur', savings: true, icon: 'savings' },
 ]
+const cats: CategoryRow[] = [
+  { key: 'c1', name: 'Food', type: 'expense', icon: 'restaurant', checked: true },
+  { key: 'c2', name: 'Salary', type: 'income', icon: 'work', checked: true },
+  { key: 'c3', name: 'Skipped', type: 'expense', icon: 'x', checked: false },
+]
 
 function setup() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -25,21 +30,53 @@ function setup() {
 
 const ok = (data: unknown = {}) => HttpResponse.json({ success: true, message: '', data })
 const userEnvelope = () => ok({ user: pendingUser })
+const locked = () => HttpResponse.json({ success: false, message: 'Operation is locked', code: 400, errors: {} }, { status: 400 })
+const fail = (status = 500) => HttpResponse.json({ success: false, message: 'boom' }, { status })
+
+type Faults = {
+  accountResponse?: 'http500' | 'lost' // applied to the 2nd / 1st account create, once
+  categoryLost?: boolean
+  budgetLost?: boolean
+  gettingStartedFailsOnce?: boolean
+  hideStatus?: number
+  accountsDelayMs?: number
+}
 
 let calls: { path: string; body: any }[]
+let srv: { accounts: any[]; categories: any[]; budgets: any[]; ops: Set<string> }
 
-function mockWrites(opts: { failSecondAccountOnce?: boolean; hideStatus?: number } = {}) {
+function mockWrites(f: Faults = {}) {
+  srv = { accounts: [], categories: [], budgets: [], ops: new Set() }
   let accountCalls = 0
+  let accountFault = false
+  let categoryFault = false
+  let budgetFault = false
+  let gsFault = false
   server.use(
-    ...coreHandlers({ user: pendingUser, accounts: [] }),
+    http.get('*/api/v1/account/get-account-list', async () => {
+      if (f.accountsDelayMs) await delay(f.accountsDelayMs)
+      return ok({ items: srv.accounts })
+    }),
+    http.get('*/api/v1/category/get-category-list', () => ok({ items: srv.categories })),
+    http.get('*/api/v1/budget/get-budget-list', () => ok({ items: srv.budgets })),
+    ...coreHandlers({ user: pendingUser }),
     http.post('*/api/v1/account/create-account', async ({ request }) => {
       const body = (await request.json()) as any
       calls.push({ path: 'create-account', body })
+      if (srv.ops.has(body.id)) return locked()
       accountCalls++
-      if (opts.failSecondAccountOnce && accountCalls === 2) {
-        return HttpResponse.json({ success: false, message: 'boom' }, { status: 500 })
+      if (f.accountResponse === 'http500' && accountCalls === 2 && !accountFault) {
+        accountFault = true
+        return fail()
       }
-      return ok({ item: { id: `acc-${body.name}`, name: body.name }, transaction: null })
+      srv.ops.add(body.id)
+      const item = { id: `acc-${srv.accounts.length + 1}`, name: body.name, owner: { id: 'u1' } }
+      srv.accounts.push(item)
+      if (f.accountResponse === 'lost' && accountCalls === 1 && !accountFault) {
+        accountFault = true
+        return HttpResponse.error()
+      }
+      return ok({ item, transaction: null })
     }),
     http.post('*/api/v1/user/update-currency', async ({ request }) => {
       calls.push({ path: 'update-currency', body: await request.json() })
@@ -47,22 +84,42 @@ function mockWrites(opts: { failSecondAccountOnce?: boolean; hideStatus?: number
     }),
     http.post('*/api/v1/currency/hide-all-currencies', () => {
       calls.push({ path: 'hide-all', body: null })
-      return opts.hideStatus ? HttpResponse.json({ success: false, message: 'no' }, { status: opts.hideStatus }) : ok()
+      return f.hideStatus ? fail(f.hideStatus) : ok()
     }),
     http.post('*/api/v1/currency/show-currency', async ({ request }) => {
       calls.push({ path: 'show-currency', body: await request.json() })
       return ok()
     }),
     http.post('*/api/v1/category/create-category', async ({ request }) => {
-      calls.push({ path: 'create-category', body: await request.json() })
-      return ok({ item: {} })
+      const body = (await request.json()) as any
+      calls.push({ path: 'create-category', body })
+      if (srv.ops.has(body.id)) return locked()
+      srv.ops.add(body.id)
+      const item = { id: `cat-${srv.categories.length + 1}`, name: body.name, type: body.type }
+      srv.categories.push(item)
+      if (f.categoryLost && !categoryFault) {
+        categoryFault = true
+        return HttpResponse.error()
+      }
+      return ok({ item })
     }),
     http.post('*/api/v1/budget/create-budget', async ({ request }) => {
-      calls.push({ path: 'create-budget', body: await request.json() })
-      return ok({ item: { meta: {} } })
+      const body = (await request.json()) as any
+      calls.push({ path: 'create-budget', body })
+      if (srv.budgets.some((b) => b.id === body.id)) return HttpResponse.json({ success: false, message: 'in use', code: 400, errors: { id: ['x'] } }, { status: 400 })
+      srv.budgets.push({ id: body.id })
+      if (f.budgetLost && !budgetFault) {
+        budgetFault = true
+        return HttpResponse.error()
+      }
+      return ok({ item: { meta: { id: body.id } } })
     }),
     http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
       calls.push({ path: 'update-getting-started', body: await request.json() })
+      if (f.gettingStartedFailsOnce && !gsFault) {
+        gsFault = true
+        return fail()
+      }
       return userEnvelope()
     }),
     http.post('*/api/v1/user/complete-onboarding', () => {
@@ -72,6 +129,13 @@ function mockWrites(opts: { failSecondAccountOnce?: boolean; hideStatus?: number
   )
 }
 
+const ready = async () => {
+  const hook = setup()
+  await waitFor(() => expect(hook.result.current.ready).toBe(true))
+  return hook
+}
+const paths = () => calls.map((c) => c.path)
+
 beforeEach(() => {
   localStorage.clear()
   calls = []
@@ -80,75 +144,149 @@ beforeEach(() => {
 describe('useDay0', () => {
   it('saveAccounts creates accounts, sets currencies, moves to categories', async () => {
     mockWrites()
-    const { result } = setup()
-    await waitFor(() => expect(result.current.ready).toBe(true))
+    const { result } = await ready()
     await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
-    expect(calls.map((c) => c.path)).toEqual(['create-account', 'create-account', 'update-currency', 'hide-all', 'show-currency', 'show-currency'])
+    expect(paths()).toEqual(['create-account', 'create-account', 'update-currency', 'hide-all', 'show-currency', 'show-currency'])
     expect(calls[0].body).toMatchObject({ name: 'Cash', balance: '0', folderId: null, currencyId: 'cur-usd' })
     expect(calls[2].body).toEqual({ currency: 'USD' })
     const draft = loadDraft('u1')!
     expect(draft.step).toBe('categories')
-    expect(draft.accountIds).toEqual(['acc-Cash', 'acc-Savings'])
-    expect(draft.savingsAccountIds).toEqual(['acc-Savings'])
+    expect(draft.accountIds).toEqual(['acc-1', 'acc-2'])
+    expect(draft.savingsAccountIds).toEqual(['acc-2'])
     expect(draft.mainCurrencyId).toBe('cur-usd')
   })
 
-  it('a retry after a failure re-sends the same operation ids', async () => {
-    mockWrites({ failSecondAccountOnce: true })
-    const { result } = setup()
-    await waitFor(() => expect(result.current.ready).toBe(true))
+  it('retry after a 500 mid-accounts completes without duplicates', async () => {
+    mockWrites({ accountResponse: 'http500' })
+    const { result } = await ready()
     await act(async () => {
       await expect(result.current.saveAccounts(rows, [], 'cur-usd')).rejects.toBeTruthy()
     })
-    const first = calls.filter((c) => c.path === 'create-account').map((c) => c.body.id)
-    expect(first).toHaveLength(2)
-    calls.length = 0
+    expect(Object.keys(loadDraft('u1')!.created)).toEqual(['r1'])
     await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
-    const second = calls.filter((c) => c.path === 'create-account').map((c) => c.body.id)
-    expect(second).toEqual(first)
+    expect(srv.accounts.map((a) => a.name)).toEqual(['Cash', 'Savings'])
+    expect(calls.filter((c) => c.path === 'create-account')).toHaveLength(3)
+    expect(loadDraft('u1')!.accountIds).toEqual(['acc-1', 'acc-2'])
   })
 
-  it('ignores a 4xx from hide-all-currencies', async () => {
-    mockWrites({ hideStatus: 400 })
-    const { result } = setup()
-    await waitFor(() => expect(result.current.ready).toBe(true))
+  it('retry after a lost response reconciles by name without duplicates', async () => {
+    mockWrites({ accountResponse: 'lost' })
+    const { result } = await ready()
+    await act(async () => {
+      await expect(result.current.saveAccounts(rows, [], 'cur-usd')).rejects.toBeTruthy()
+    })
     await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
+    expect(srv.accounts.map((a) => a.name)).toEqual(['Cash', 'Savings'])
+    const d = loadDraft('u1')!
+    expect(d.created).toEqual({ r1: 'acc-1', r2: 'acc-2' })
+    expect(d.savingsAccountIds).toEqual(['acc-2'])
+  })
+
+  it('a reloaded hook reuses the persisted rows and keys', async () => {
+    mockWrites({ accountResponse: 'http500' })
+    const first = await ready()
+    await act(async () => {
+      await expect(first.result.current.saveAccounts(rows, [], 'cur-usd')).rejects.toBeTruthy()
+    })
+    first.unmount()
+    const second = await ready()
+    expect(second.result.current.draft?.rows.map((r) => r.key)).toEqual(['r1', 'r2'])
+    await act(() => second.result.current.saveAccounts(second.result.current.draft!.rows, [], 'cur-usd'))
+    expect(srv.accounts).toHaveLength(2)
+  })
+
+  it('ignores a 400 but not a 5xx from hide-all-currencies', async () => {
+    mockWrites({ hideStatus: 400 })
+    const a = await ready()
+    await act(() => a.result.current.saveAccounts(rows, [], 'cur-usd'))
     expect(calls.filter((c) => c.path === 'show-currency').map((c) => c.body.id).sort()).toEqual(['cur-eur', 'cur-usd'])
+    a.unmount()
+    localStorage.clear()
+    for (const status of [401, 404, 429, 500]) {
+      mockWrites({ hideStatus: status })
+      const b = await ready()
+      await act(async () => {
+        await expect(b.result.current.saveAccounts(rows, [], 'cur-usd')).rejects.toBeTruthy()
+      })
+      b.unmount()
+      localStorage.clear()
+    }
   })
 
   it('finish creates categories, then the budget, then completes', async () => {
     mockWrites()
-    saveDraft('u1', { step: 'categories', ops: {}, accountIds: ['a1', 'a2'], savingsAccountIds: ['a2'], mainCurrencyId: 'cur-usd' })
-    const { result } = setup()
-    await waitFor(() => expect(result.current.ready).toBe(true))
-    const cats: CategoryRow[] = [
-      { key: 'c1', name: 'Food', type: 'expense', icon: 'restaurant', checked: true },
-      { key: 'c2', name: 'Salary', type: 'income', icon: 'work', checked: true },
-      { key: 'c3', name: 'Skipped', type: 'expense', icon: 'x', checked: false },
-    ]
+    saveDraft('u1', { ...emptyDraft(), step: 'categories', accountIds: ['a1', 'a2'], savingsAccountIds: ['a2'], mainCurrencyId: 'cur-usd' })
+    const { result } = await ready()
     await act(() => result.current.finish(cats))
-    expect(calls.map((c) => c.path)).toEqual(['create-category', 'create-category', 'create-budget', 'update-getting-started', 'complete-onboarding'])
-    const budget = calls[2].body
-    expect(budget).toMatchObject({ name: 'My budget', startDate: '', currencyId: 'cur-usd', accountIds: ['a1', 'a2'], savingsAccountIds: ['a2'] })
+    expect(paths()).toEqual(['create-category', 'create-category', 'create-budget', 'update-getting-started', 'complete-onboarding'])
+    expect(calls[2].body).toMatchObject({ name: 'My budget', startDate: '', currencyId: 'cur-usd', accountIds: ['a1', 'a2'], savingsAccountIds: ['a2'] })
     expect(calls[3].body).toEqual({ value: '' })
     expect(loadDraft('u1')).toBeNull()
   })
 
+  it('retry after a failure past the budget completes without duplicates', async () => {
+    mockWrites({ gettingStartedFailsOnce: true })
+    saveDraft('u1', { ...emptyDraft(), step: 'categories', accountIds: ['a1'], mainCurrencyId: 'cur-usd' })
+    const { result } = await ready()
+    await act(async () => {
+      await expect(result.current.finish(cats)).rejects.toBeTruthy()
+    })
+    await act(() => result.current.finish(cats))
+    expect(srv.categories).toHaveLength(2)
+    expect(srv.budgets).toHaveLength(1)
+    expect(calls.filter((c) => c.path === 'create-budget')).toHaveLength(1)
+    expect(loadDraft('u1')).toBeNull()
+  })
+
+  it('lost category and budget responses reconcile on retry', async () => {
+    mockWrites({ categoryLost: true, budgetLost: true })
+    saveDraft('u1', { ...emptyDraft(), step: 'categories', accountIds: ['a1'], mainCurrencyId: 'cur-usd' })
+    const { result } = await ready()
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        await result.current.finish(cats).catch(() => undefined)
+      })
+    }
+    expect(srv.categories).toHaveLength(2)
+    expect(srv.budgets).toHaveLength(1)
+    expect(paths().at(-1)).toBe('complete-onboarding')
+    expect(loadDraft('u1')).toBeNull()
+  })
+
+  it('finish throws without accounts or a currency', async () => {
+    mockWrites()
+    saveDraft('u1', { ...emptyDraft(), step: 'categories', mainCurrencyId: 'cur-usd' })
+    const { result } = await ready()
+    await act(async () => {
+      await expect(result.current.finish(cats)).rejects.toBeTruthy()
+    })
+    expect(paths()).toEqual([])
+  })
+
+  it('ready waits for the accounts query', async () => {
+    mockWrites({ accountsDelayMs: 300 })
+    const { result } = setup()
+    await new Promise((r) => setTimeout(r, 100))
+    expect(result.current.ready).toBe(false)
+    await waitFor(() => expect(result.current.ready).toBe(true))
+  })
+
   it('skip clears getting started and completes onboarding', async () => {
     mockWrites()
-    const { result } = setup()
-    await waitFor(() => expect(result.current.ready).toBe(true))
+    const { result } = await ready()
     await act(() => result.current.skip())
-    expect(calls.map((c) => c.path)).toEqual(['update-getting-started', 'complete-onboarding'])
+    expect(paths()).toEqual(['update-getting-started', 'complete-onboarding'])
     expect(loadDraft('u1')).toBeNull()
   })
 
   it('resumes at categories when accounts exist but there is no draft', async () => {
     mockWrites()
     server.use(...coreHandlers({ user: pendingUser, accounts: fixtureAccounts, currencies: [fixtureUsd, fixtureEur] }))
+    srv.accounts = fixtureAccounts as any[]
     const { result } = setup()
     await waitFor(() => expect(result.current.draft?.step).toBe('categories'))
     const owned = fixtureAccounts.filter((a) => a.owner.id === 'u1').map((a) => a.id)
     expect(result.current.draft?.accountIds).toEqual(owned)
+    expect(result.current.draft?.mainCurrencyId).toBe('cur-usd')
   })
 })
