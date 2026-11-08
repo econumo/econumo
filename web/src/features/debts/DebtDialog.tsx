@@ -40,8 +40,8 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
   const { errors, setErrors, clear: clearError } = useFormErrors<FieldErrors>()
   const [serverError, setServerError] = useState<string | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
-  // asked only once another debt turns out to have the same filters: a start
-  // date then tells a second loan in the same category apart
+  // asked only once another debt turns out to have the same filters and start
+  // date: a start date then tells a second loan in the same category apart
   const [askStartDate, setAskStartDate] = useState(false)
 
   const currencyId = form.currencyId ?? defaultCurrencyId
@@ -74,9 +74,10 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
         named[field] = apiFieldErrors(err, field)?.[0]
       }
       setErrors(named)
-      // the same filters as another debt (debt.key_conflict on categoryId,
-      // debt.start_date_taken on startDate)
-      if (named.categoryId || named.startDate) {
+      // identical filters and start date as another debt (debt.start_date_taken):
+      // a start date tells the loans apart. A partial overlap (debt.key_conflict,
+      // on categoryId) needs other filters, so it only shows its message.
+      if (named.startDate) {
         setAskStartDate(true)
       }
       if (!Object.values(named).some(Boolean)) {
@@ -143,7 +144,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
           errors={{ categoryId: errors.categoryId, payeeId: errors.payeeId, tagId: errors.tagId, labelId: errors.labelId }}
         />
 
-        <div className="grid grid-cols-[3fr_2fr] items-start gap-3">
+        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[3fr_2fr]">
           <AmountField
             id="debt-payment"
             label={t('debts.form.payment.label')}

@@ -108,12 +108,10 @@ it('saving opens the debt\'s review screen', async () => {
   expect(useUiStore.getState().debtDetailsId).toBe('d-new')
 })
 
-it('a key conflict reveals the start date field and resends with it', async () => {
+it('a key conflict shows its message under the sentence and keeps the start date hidden', async () => {
   const conflict = 'Another debt could match the same payments.'
-  const bodies = captureCreate((_, call) =>
-    call === 1
-      ? HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { categoryId: [conflict] } }, { status: 400 })
-      : ok({ ...wireDebtNotSetUp, id: 'd-new' }),
+  const bodies = captureCreate(() =>
+    HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { categoryId: [conflict] } }, { status: 400 }),
   )
   const user = userEvent.setup()
   renderDialog()
@@ -123,8 +121,30 @@ it('a key conflict reveals the start date field and resends with it', async () =
   await user.click(screen.getByRole('button', { name: 'Add' }))
 
   expect(await screen.findByText(conflict)).toBeInTheDocument()
-  const startDate = screen.getByRole('button', { name: 'Start date (optional)' })
-  await user.click(startDate)
+  expect(bodies).toHaveLength(1)
+  expect(screen.queryByRole('button', { name: 'Start date (optional)' })).toBeNull()
+  expect(screen.queryByText('Start date (optional)')).toBeNull()
+  expect(useUiStore.getState().debtModal).not.toBeNull()
+})
+
+it('a start date already taken reveals the start date field and resends with it', async () => {
+  const taken = 'Another debt with the same category, payee, tag and reporting tag already starts on this date.'
+  const bodies = captureCreate((_, call) =>
+    call === 1
+      ? HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { startDate: [taken] } }, { status: 400 })
+      : ok({ ...wireDebtNotSetUp, id: 'd-new' }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ categoryId: 'cat-food' })
+
+  await user.type(screen.getByLabelText('Payment'), '50')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  expect(await screen.findByText(taken)).toBeInTheDocument()
+  expect(useUiStore.getState().debtModal).not.toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'Start date (optional)' }))
   const now = new Date()
   const month = new Intl.DateTimeFormat('en', { month: 'long' }).format(now)
   await user.click(await screen.findByRole('button', { name: new RegExp(`${month} 1st, ${now.getFullYear()}`) }))
@@ -134,21 +154,6 @@ it('a key conflict reveals the start date field and resends with it', async () =
   expect(bodies[0].startDate).toBeNull()
   expect(bodies[1].startDate).toBe(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`)
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
-})
-
-it('a start date already taken reveals the field with the refusal under it', async () => {
-  const taken = 'Another debt with the same category, payee, tag and reporting tag already starts on this date.'
-  captureCreate(() => HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { startDate: [taken] } }, { status: 400 }))
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate({ categoryId: 'cat-food' })
-
-  await user.type(screen.getByLabelText('Payment'), '50')
-  await user.click(screen.getByRole('button', { name: 'Add' }))
-
-  expect(await screen.findByText(taken)).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Start date (optional)' })).toBeInTheDocument()
-  expect(useUiStore.getState().debtModal).not.toBeNull()
 })
 
 it('picks the label in the sentence and sends it', async () => {
