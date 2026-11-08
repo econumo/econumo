@@ -195,6 +195,9 @@ export function createPersistOptions({ throttleTime = 1000 }: { throttleTime?: n
         query.queryKey[0] !== queryKeys.transactions[0] &&
         query.state.status === 'success' &&
         !isLongReport(query.queryKey, query.state.data),
+      // A paused login carries the password, and a restored mutation has no
+      // function to resume with anyway.
+      shouldDehydrateMutation: () => false,
     },
   }
 }

@@ -1,6 +1,6 @@
 import { waitFor } from '@testing-library/react'
 import { AxiosError, type AxiosResponse } from 'axios'
-import { hashKey, QueryClient } from '@tanstack/react-query'
+import { dehydrate, hashKey, QueryClient } from '@tanstack/react-query'
 import { IDBFactory } from 'fake-indexeddb'
 import { fixtureAccounts, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { installTransactionTracking, resetRevisions } from '@/features/transactions/revisionTracking'
@@ -46,6 +46,16 @@ it('never persists an authorization request', () => {
   expect(should({ queryKey: ['authserver', 'authorization-request', {}], state: { status: 'success' } })).toBe(false)
   expect(should({ queryKey: ['accounts'], state: { status: 'success' } })).toBe(true)
   expect(should({ queryKey: ['accounts'], state: { status: 'error' } })).toBe(false)
+})
+
+it('never persists a paused write: a login waiting for the network holds the password', () => {
+  const client = new QueryClient()
+  client.getMutationCache().build(client, {}, {
+    context: undefined, data: undefined, error: null, failureCount: 0, failureReason: null,
+    isPaused: true, status: 'pending', submittedAt: 1, variables: { password: 'secret' },
+  })
+  expect(dehydrate(client).mutations).toHaveLength(1)
+  expect(dehydrate(client, createPersistOptions().dehydrateOptions).mutations).toEqual([])
 })
 
 it('never persists the transactions list: it lives in IndexedDB', () => {
