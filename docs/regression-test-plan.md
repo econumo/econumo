@@ -2210,7 +2210,8 @@ out), and add a second budget member account in USD, before running these.
       (several payments in one window count once; payments from before setup
       count).
 - [ ] 📱 **Not set up**: a debt created without terms shows "Paid so far" (the
-      sum of its payments), the hint "Add what you owe and when the loan ends
+      sum of its payments dated up to today; a future-dated payment is listed
+      but not counted), the hint "Add what you owe and when the loan ends
       to see payments left" and a "Finish setup" button; there is no balance,
       progress bar or Edit, the Loan card is short (payment · repeats, start
       date, currency) and the payment list shows Date and Payment only. Mark as

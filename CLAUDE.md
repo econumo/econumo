@@ -1855,7 +1855,7 @@ data unreadable. Most are also asserted by the test suite.
   payment, loan ends, start date, left to pay, overpaid so far, overpayment still to come,
   currency) with its Edit button (`DebtTermsForm` mode `edit`), the payments-from editor in
   place (saves with the stored snapshot, so no new snapshot), rename (header menu), payments
-  and a collapsed "History of terms". A debt not set up shows "Paid so far", a hint and a
+  and a collapsed "History of terms". A debt not set up shows "Paid so far" (its payments dated up to the caller's today), a hint and a
   Finish setup button (`DebtTermsForm` mode `setup`: no stored rate, so the last payment date
   is typed, never auto-filled); the Settings row, the budget row's Left cell and the item
   sheet's Details button read "Finish setup" for the owner, a partner sees a dash; Left sums,

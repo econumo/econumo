@@ -11,6 +11,7 @@ import { EntityIcon } from '@/components/EntityIcon'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
+import { formatDate } from '@/lib/datetime'
 import { add } from '@/lib/decimal'
 import { isNotEmpty } from '@/lib/validation'
 import { useUiStore } from '@/app/uiStore'
@@ -239,8 +240,10 @@ function ReviewContent({ details, lang, onFinishSetup, onEdit }: { details: Debt
   const currency = currencies?.find((c) => c.id === item.currencyId)
   const schedule = t(`recurring.schedule.${item.schedule}`)
 
-  // a debt not set up sends its figures empty: the top shows what was paid instead
-  const paidSoFar = payments.reduce((sum, p) => add(sum, p.amount), '0')
+  // a debt not set up sends its figures empty: the top shows what was paid
+  // instead, up to the caller's today (the list also holds future-dated ones)
+  const today = formatDate(new Date())
+  const paidSoFar = payments.filter((p) => p.date.slice(0, 10) <= today).reduce((sum, p) => add(sum, p.amount), '0')
   const total = item.periodsPaid + item.paymentsLeft
   const owed = t('debts.review.owed_now', { amount: amount(item.currentBalance) })
   const payoff = item.isPaidOff === 0 && item.payoffDate !== '' ? t('budgets.page.debts.payoff_by', { date: debtMonth(item.payoffDate, lang) }) : null

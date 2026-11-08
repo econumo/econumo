@@ -208,6 +208,20 @@ it('not-set-up debt shows Finish setup and no balance', async () => {
   expect(within(screen.getAllByTestId('debt-payment')[0]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Nov 5, 2026', '100.00 $'])
 })
 
+it('Paid so far counts only payments dated up to today; the list keeps the future one', async () => {
+  const withFuture: DebtDetailsDto = {
+    ...notSetUp,
+    payments: [{ transactionId: 't3', date: '2026-11-20 00:00:00', amount: '70', interest: '0', principal: '70' }, ...notSetUp.payments],
+  }
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(withFuture)))
+  renderScreen()
+  await openScreen()
+
+  // today is pinned to 2026-11-08: the Nov 20 payment has not happened yet
+  expect(screen.getByTestId('debt-review-top')).toHaveTextContent('150.50 $')
+  expect(screen.getAllByTestId('debt-payment')).toHaveLength(3)
+})
+
 it('Finish setup saves terms and the screen switches to payments left', async () => {
   let setUp = false
   server.use(http.get('*/api/v1/debt/get-debt', () => ok(setUp ? { ...details, item: { ...details.item, paymentsLeft: 12, periodsPaid: 0 } } : notSetUp)))
