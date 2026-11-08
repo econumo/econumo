@@ -41,7 +41,7 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 		CreatedDay: debtDate(now.In(loc)), CreatedAt: now, UpdatedAt: now}
 	if in.hasTerms {
 		terms := in.terms(s.today(ctx), digits)
-		if err := validateTerms(terms); err != nil {
+		if err := validateTerms(terms, digits); err != nil {
 			return nil, err
 		}
 		d.SetTerms(terms)

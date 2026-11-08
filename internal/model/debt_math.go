@@ -14,6 +14,9 @@ type MathSnapshot struct {
 	Balance, Payment float64
 	Schedule         RecurringSchedule
 	Last             time.Time
+	// Digits are the debt currency's fraction digits: payments within half
+	// its smallest unit of the balance are interest-free.
+	Digits int
 }
 
 type MathPayment struct {
@@ -65,7 +68,6 @@ type Projection struct {
 }
 
 const (
-	debtEpsilon       = 0.005
 	maxProjectMonths  = 1200
 	monthKeyLayout    = "2006-01-02"
 	windowSearchWidth = 370
@@ -168,12 +170,15 @@ func dueContaining(s RecurringSchedule, last, t time.Time) time.Time {
 	return time.Time{}
 }
 
-func ImpliedRate(balance, payment float64, n int) (float64, error) {
+// ImpliedRate solves the periodic rate at which n payments repay balance;
+// digits are the currency's fraction digits, so a difference below half its
+// smallest unit is rounding, not interest or a shortfall.
+func ImpliedRate(balance, payment float64, n, digits int) (float64, error) {
 	if balance <= 0 {
 		return 0, nil
 	}
 	total := payment * float64(n)
-	if math.Abs(total-balance) < debtEpsilon {
+	if math.Abs(total-balance) < halfUnit(digits) {
 		return 0, nil
 	}
 	if total < balance {
@@ -198,7 +203,7 @@ func ImpliedRate(balance, payment float64, n int) (float64, error) {
 
 func snapshotRate(s MathSnapshot) float64 {
 	n := len(DueDatesBetween(s.Schedule, s.Last, s.AsOf, s.Last))
-	r, err := ImpliedRate(s.Balance, s.Payment, n)
+	r, err := ImpliedRate(s.Balance, s.Payment, n, s.Digits)
 	if err != nil {
 		return 0
 	}

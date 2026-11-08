@@ -192,6 +192,23 @@ func TestCreateDebt_RefusesPaymentsDontCover(t *testing.T) {
 	requireCode(t, err, errs.CodeDebtPaymentsDontCover)
 }
 
+// In an 8-digit currency nine payments of 0.001 are short of 0.01: the
+// tolerance is half that currency's smallest unit, not half a cent.
+func TestCreateDebt_RefusesPaymentsDontCoverInAPreciseCurrency(t *testing.T) {
+	e := newEnv(t)
+	e.rates.digits = 8
+	req := e.createReq()
+	// nine monthly dues after Mar 10, 2026: Apr 1 to Dec 1
+	req.Balance, req.Payment, req.LastPaymentDate = vo.NewFlexString("0.01"), vo.NewFlexString("0.001"), "2026-12-01"
+	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	requireCode(t, err, errs.CodeDebtPaymentsDontCover)
+
+	req.LastPaymentDate = "2027-01-01"
+	if _, err := e.svc.CreateDebt(context.Background(), e.uid(), req); err != nil {
+		t.Fatalf("ten payments of 0.001 cover 0.01: %v", err)
+	}
+}
+
 func TestCreateDebt_KeyConflict(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()

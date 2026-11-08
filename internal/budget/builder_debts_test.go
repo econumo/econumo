@@ -100,7 +100,7 @@ func TestGetBudget_DebtRowFigures(t *testing.T) {
 	debtID := h.createRefDebt(t, nil)
 	h.setLimit(t, debtID, "2026-06-01", "2000")
 
-	r, err := model.ImpliedRate(300000, 2000, 240)
+	r, err := model.ImpliedRate(300000, 2000, 240, 2)
 	if err != nil {
 		t.Fatal(err)
 	}

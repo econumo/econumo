@@ -27,7 +27,7 @@ func refLoan() MathSnapshot {
 }
 
 func TestImpliedRate_ReferenceMortgage(t *testing.T) {
-	r, err := ImpliedRate(300000, 2000, 240)
+	r, err := ImpliedRate(300000, 2000, 240, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,15 +35,38 @@ func TestImpliedRate_ReferenceMortgage(t *testing.T) {
 }
 
 func TestImpliedRate_InterestFree(t *testing.T) {
-	r, err := ImpliedRate(12000, 1000, 12)
+	r, err := ImpliedRate(12000, 1000, 12, 2)
 	if err != nil || r != 0 {
 		t.Fatalf("got %v, %v; want 0, nil", r, err)
 	}
 }
 
 func TestImpliedRate_DoesNotCover(t *testing.T) {
-	if _, err := ImpliedRate(12000, 900, 12); !errors.Is(err, ErrPaymentsDontCover) {
+	if _, err := ImpliedRate(12000, 900, 12, 2); !errors.Is(err, ErrPaymentsDontCover) {
 		t.Fatalf("err = %v, want ErrPaymentsDontCover", err)
+	}
+}
+
+// The interest-free tolerance is half the currency's smallest unit: in an
+// 8-digit currency a thousandth short is a real shortfall, and a thousandth
+// over is real interest.
+func TestImpliedRate_ToleranceFollowsCurrencyPrecision(t *testing.T) {
+	if _, err := ImpliedRate(0.01, 0.001, 9, 8); !errors.Is(err, ErrPaymentsDontCover) {
+		t.Fatalf("8 digits, 9 x 0.001 for 0.01: err = %v, want ErrPaymentsDontCover", err)
+	}
+	if r, err := ImpliedRate(0.01, 0.001, 12, 8); err != nil || r <= 0 {
+		t.Fatalf("8 digits, 12 x 0.001 for 0.01: got %v, %v; want a positive rate", r, err)
+	}
+	if r, err := ImpliedRate(0.01, 0.001, 10, 8); err != nil || r != 0 {
+		t.Fatalf("8 digits, exact: got %v, %v; want 0", r, err)
+	}
+	// two digits: both differences are below half a cent
+	if r, err := ImpliedRate(0.01, 0.001, 9, 2); err != nil || r != 0 {
+		t.Fatalf("2 digits, 9 x 0.001: got %v, %v; want 0", r, err)
+	}
+	// zero digits: half a unit
+	if r, err := ImpliedRate(1000, 100.04, 10, 0); err != nil || r != 0 {
+		t.Fatalf("0 digits, 0.4 over: got %v, %v; want 0", r, err)
 	}
 }
 
@@ -136,7 +159,7 @@ func TestSplit_EarlyPaymentLandsOnItsDue(t *testing.T) {
 func mustRate(t *testing.T, s MathSnapshot) float64 {
 	t.Helper()
 	n := len(DueDatesBetween(s.Schedule, s.Last, s.AsOf, s.Last))
-	r, err := ImpliedRate(s.Balance, s.Payment, n)
+	r, err := ImpliedRate(s.Balance, s.Payment, n, s.Digits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -398,7 +421,7 @@ func TestProjectDebt_CurrentMonthPlanCountsPaidAndStillDue(t *testing.T) {
 }
 
 func TestImpliedRate_AboveOneHundredPercent(t *testing.T) {
-	r, err := ImpliedRate(100, 300, 1)
+	r, err := ImpliedRate(100, 300, 1, 2)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -31,7 +31,7 @@ func (st *debtState) mathSnaps() []model.MathSnapshot {
 	out := make([]model.MathSnapshot, 0, len(st.snaps))
 	for _, s := range st.snaps {
 		out = append(out, model.MathSnapshot{AsOf: s.AsOf, Balance: toFloat(s.Balance), Payment: toFloat(s.Payment),
-			Schedule: s.Schedule, Last: s.LastPaymentDate})
+			Schedule: s.Schedule, Last: s.LastPaymentDate, Digits: st.digits})
 	}
 	return out
 }

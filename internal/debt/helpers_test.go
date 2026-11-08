@@ -58,6 +58,8 @@ func (c *fakeClass) LabelOwned(_ context.Context, ownerID, id vo.Id) (bool, erro
 type fakeRates struct {
 	multiplier map[string]float64
 	converted  int
+	// digits are every currency's fraction digits; 0 = 2
+	digits int
 }
 
 func (r *fakeRates) ConvertOnDay(_ context.Context, from, to vo.Id, amount vo.DecimalNumber, _ time.Time) (vo.DecimalNumber, error) {
@@ -69,7 +71,12 @@ func (r *fakeRates) ConvertOnDay(_ context.Context, from, to vo.Id, amount vo.De
 	return amount.Mul(vo.NewDecimal(formatFloat(m))), nil
 }
 
-func (r *fakeRates) FractionDigits(context.Context, vo.Id) (int, error) { return 2, nil }
+func (r *fakeRates) FractionDigits(context.Context, vo.Id) (int, error) {
+	if r.digits == 0 {
+		return 2, nil
+	}
+	return r.digits, nil
+}
 
 // fakeCurrencies refuses the currencies listed as unusable.
 type fakeCurrencies struct{ unusable map[string]bool }

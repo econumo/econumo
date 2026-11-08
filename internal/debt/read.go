@@ -59,7 +59,7 @@ func (s *Service) result(st *debtState, proj model.Projection, icon string) mode
 	res.MoneyLeft, res.OverpaymentLeft = amountString(proj.MoneyLeft, digits), amountString(proj.OverpaymentLeft, digits)
 	res.OverpaidSoFar, res.PayoffDate = amountString(proj.OverpaidSoFar, digits), dateString(payoff)
 	res.NextDueDate = dateString(proj.NextDueDate)
-	res.PeriodRate = strconv.FormatFloat(model.PeriodRate(termsFloats(*d.Current)), 'f', 10, 64)
+	res.PeriodRate = strconv.FormatFloat(model.PeriodRate(termsFloats(*d.Current, digits)), 'f', 10, 64)
 	return res
 }
 

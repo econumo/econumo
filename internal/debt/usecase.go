@@ -202,13 +202,14 @@ func checkKeys(d *model.Debt, others []*model.Debt) error {
 	return nil
 }
 
-func termsFloats(t model.DebtTerms) model.MathSnapshot {
+func termsFloats(t model.DebtTerms, digits int) model.MathSnapshot {
 	return model.MathSnapshot{AsOf: t.AsOf, Balance: toFloat(t.Balance), Payment: toFloat(t.Payment),
-		Schedule: t.Schedule, Last: t.LastPaymentDate}
+		Schedule: t.Schedule, Last: t.LastPaymentDate, Digits: digits}
 }
 
-// validateTerms checks terms about to become a snapshot as of terms.AsOf.
-func validateTerms(t model.DebtTerms) error {
+// validateTerms checks terms about to become a snapshot as of terms.AsOf, in
+// a currency with the given fraction digits.
+func validateTerms(t model.DebtTerms, digits int) error {
 	if !t.LastPaymentDate.After(t.AsOf) {
 		return fieldError("lastPaymentDate", "The last payment date must be after today.", errs.CodeDebtLastPaymentInPast)
 	}
@@ -218,9 +219,9 @@ func validateTerms(t model.DebtTerms) error {
 	if err := validatePayment(t.Payment); err != nil {
 		return err
 	}
-	m := termsFloats(t)
+	m := termsFloats(t, digits)
 	n := len(model.DueDatesBetween(m.Schedule, m.Last, m.AsOf, m.Last))
-	if _, err := model.ImpliedRate(m.Balance, m.Payment, n); err != nil {
+	if _, err := model.ImpliedRate(m.Balance, m.Payment, n, digits); err != nil {
 		return fieldError("payment", "The payments do not cover the balance.", errs.CodeDebtPaymentsDontCover)
 	}
 	return nil

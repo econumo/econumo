@@ -74,7 +74,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if in.hasTerms {
 			terms := in.terms(today, digits)
 			if changed = !cur.IsSetUp() || termsDiffer(*cur.Current, terms); changed {
-				if err := validateTerms(terms); err != nil {
+				if err := validateTerms(terms, digits); err != nil {
 					return err
 				}
 				cur.SetTerms(terms)
