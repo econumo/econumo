@@ -1,6 +1,7 @@
 import type { RecurringSchedule } from '@/api/dto/recurring'
 
 const MAX_DUES = 1200
+const HORIZON_MONTHS = 1200
 const DATE = /^(\d{4})-(\d{2})-(\d{2})/
 
 function daysInMonth(year: number, month0: number): number {
@@ -77,8 +78,11 @@ export function projectLastPaymentDate(
   if (payment <= 0 || payment <= balance * periodRate) return null
 
   const anchor = anchorDay ?? due.getUTCDate()
+  // the server's horizon is 100 years of schedule time, not a payment count:
+  // a weekly loan has far more payments than months
+  const horizon = Date.UTC(due.getUTCFullYear(), due.getUTCMonth() + HORIZON_MONTHS, due.getUTCDate())
   let remaining = balance
-  for (let i = 0; i < MAX_DUES; i++) {
+  while (due.getTime() <= horizon) {
     remaining -= payment - remaining * periodRate
     if (remaining <= epsilon) return formatDate(due)
     due = nextDue(due, schedule, anchor)

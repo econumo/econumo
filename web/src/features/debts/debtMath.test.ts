@@ -73,3 +73,14 @@ describe('projectLastPaymentDate', () => {
     expect(projectLastPaymentDate(Number.NaN, 10, 0, 'monthly', '2026-06-15')).toBeNull()
   })
 })
+
+describe('projectLastPaymentDate horizon', () => {
+  it('reaches 100 years of schedule time, not 1200 payments: a 29-year weekly loan pays off', () => {
+    // 1500 weekly payments from 2026-06-01: the last is 1499 weeks later
+    expect(projectLastPaymentDate(150000, 100, 0, 'weekly', '2026-06-01')).toBe('2055-02-22')
+  })
+
+  it('still gives up past 100 years', () => {
+    expect(projectLastPaymentDate(6000, 1, 0, 'monthly', '2026-06-01')).toBeNull()
+  })
+})
