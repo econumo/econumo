@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 func TestResetBudget_DeletesComments(t *testing.T) {
@@ -67,5 +69,62 @@ func TestMergeCategories_RepointsComments(t *testing.T) {
 		if item.ElementId != h.catTransport {
 			t.Fatalf("elementId=%q want the merge target", item.ElementId)
 		}
+	}
+}
+
+// TestCloneBudget_RefusesAnIdAlreadyInUse covers a silent-corruption path: the
+// copy's id comes from the client and the budget write is an upsert
+// (ON CONFLICT (id) DO UPDATE), so an id that is already taken would rewrite
+// that budget's own settings and then layer the source's folders, envelopes,
+// elements and limits under it. A model reusing an id it already has - the
+// source's own, or a retry of the same clone - must get a field error, and the
+// existing budget must come back untouched.
+func TestCloneBudget_RefusesAnIdAlreadyInUse(t *testing.T) {
+	h := newCommentHarness(t)
+	h.mustCreate(t, h.owner, "cat-food", "2026-05-01", "on the original")
+
+	before, err := h.svc.GetBudgetList(h.ctx, h.owner)
+	if err != nil {
+		t.Fatalf("GetBudgetList: %v", err)
+	}
+
+	_, err = h.svc.CloneBudget(h.ctx, h.owner, model.CloneBudgetRequest{
+		Id:    h.budgetID.String(),
+		NewId: h.budgetID.String(), // the source's own id
+		Name:  "Overwriting copy",
+	})
+	if err == nil {
+		t.Fatal("CloneBudget onto an existing id succeeded; it must be refused")
+	}
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v (%T), want a validation error naming newId", err, err)
+	}
+	named := false
+	for _, f := range v.Fields {
+		if f.Key == "newId" {
+			named = true
+		}
+	}
+	if !named {
+		t.Fatalf("validation fields = %+v, want one naming newId", v.Fields)
+	}
+
+	// Nothing was created, and the source kept its own name and comments.
+	after, err := h.svc.GetBudgetList(h.ctx, h.owner)
+	if err != nil {
+		t.Fatalf("GetBudgetList: %v", err)
+	}
+	if len(after.Items) != len(before.Items) {
+		t.Fatalf("budget count %d -> %d: the refused clone still wrote rows", len(before.Items), len(after.Items))
+	}
+	for i := range after.Items {
+		if after.Items[i].Name != before.Items[i].Name {
+			t.Fatalf("budget %d name %q -> %q: the refused clone overwrote it",
+				i, before.Items[i].Name, after.Items[i].Name)
+		}
+	}
+	if got := h.list(t, h.owner, "2026-05-01", "12"); len(got.Items) != 1 {
+		t.Fatalf("comments on the source = %d, want the original 1 kept", len(got.Items))
 	}
 }

@@ -5,10 +5,12 @@ package budget
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -63,6 +65,19 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 	}
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// newID is client-supplied and Save upserts, so an id that is already
+		// taken would overwrite that budget's settings and then layer the
+		// source's folders, envelopes, elements and limits under it. Reject it
+		// instead: a clone only ever creates. Checked inside the transaction so
+		// a concurrent create cannot slip in between the check and the write.
+		_, gerr := s.budgets.GetByID(txCtx, newID)
+		if gerr == nil {
+			return model.ValidateBlank(map[string]string{"newId": ""})
+		}
+		var nf *errs.NotFoundError
+		if !errors.As(gerr, &nf) {
+			return gerr
+		}
 		nb := model.NewBudget(newID, userID, req.Name, src.budget.CurrencyID, startDate, now)
 		nb.PeriodStartDay = src.budget.PeriodStartDay
 		if serr := s.budgets.Save(txCtx, nb); serr != nil {

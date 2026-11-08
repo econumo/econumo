@@ -327,7 +327,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, webmcp.WriteTool("update_envelope", "Update envelope",
+		sdk.AddTool(s, webmcp.DestructiveTool("update_envelope", "Update envelope",
 			"Update an envelope's name/icon/currency/categories, or archive/unarchive it (MCP has no delete; the app does). Send the full field set including category_ids, which replaces the group. Use get_budget for its id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateEnvelopeInput) (*sdk.CallToolResult, model.UpdateEnvelopeResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_envelope")

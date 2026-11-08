@@ -29,6 +29,7 @@ Verified against the code, not assumed:
 | Read/write split, no catch-all | Separate create/update/delete tools; no `api_request`-style tool with a `method` parameter |
 | Actionable errors | `webmcp.MapErr` returns the REST envelope's coded, translated message plus per-field errors — never a bare "Internal Server Error" |
 | Tool titles + hints on all 50 tools | `internal/web/mcp/annotations.go`, guarded by `TestEveryToolIsAnnotated` |
+| `clone_budget` cannot overwrite an existing budget | `internal/budget/clone.go` rejects a `new_id` already in use |
 
 Two notes on things that look like gaps and are not:
 
@@ -52,17 +53,35 @@ on every call. Register tools through `webmcp.ReadOnlyTool` /
 `webmcp.WriteTool` / `webmcp.DestructiveTool` and this is right by
 construction; `TestEveryToolIsAnnotated` fails the build otherwise.
 
+The rule: **a tool is destructive if it deletes data, overwrites it in bulk, or
+can silently destroy data the caller never mentioned.** That last clause is
+what separates `update_transaction` from `update_category`.
+
 | Hint | Count | Tools |
 | --- | --- | --- |
 | `readOnlyHint: true` | 13 | every `list_*` plus `get_budget`, `get_budget_plan`, `get_user` |
-| `destructiveHint: true` | 9 | `delete_transaction`, `delete_budget_comment`, `merge_category`, `merge_label`, `merge_payee`, `merge_tag`, `add_budget_account`, `remove_budget_account`, `bulk_update_transactions` |
-| `destructiveHint: false` | 28 | creates, renames, `set_*_archived`, `set_limit`, `move_element`, `clone_budget`, `archive_budget`/`unarchive_budget`, single-row updates |
+| `destructiveHint: true` | 11 | `delete_transaction`, `delete_budget_comment`, the four `merge_*`, `add_budget_account`, `remove_budget_account`, `bulk_update_transactions`, `update_transaction`, `update_envelope` |
+| `destructiveHint: false` | 26 | creates, renames, `set_*_archived`, `set_limit`, `move_element`, `clone_budget`, `archive_budget`/`unarchive_budget`, `update_budget`, `update_budget_comment`, `update_folder`, `update_category`/`_label`/`_payee`/`_tag` |
 
 The four `merge_*` tools delete the source after moving its references. Both
 `*_budget_account` tools can destroy a savings row's plans and comments.
-`bulk_update_transactions` overwrites up to 100 rows in one call. Everything in
-the third row is additive or undoable in the app, which keeps
-`create_transaction` — the daily "log 27.50 groceries" path — promptless.
+`bulk_update_transactions` overwrites up to 100 rows in one call.
+`update_transaction` and `update_envelope` send full replacement state, so a
+call that omits a field silently drops it — `update_transaction`'s own
+`category_id` schema says omitting it "CLEARS any category the transaction
+currently has", and `update_envelope` ungroups every category left out of
+`category_ids`.
+
+The 26 in the last row overwrite only the fields the caller names: the other
+`update_*` tools require every field they touch, and `set_limit`'s clearing is
+the documented purpose of omitting `amount`. That keeps `create_transaction` —
+the daily "log 27.50 groceries" path — promptless.
+
+A tidier fix for the two full-replace tools would be to make their replacement
+fields pointers, so omitting one means "leave it alone" (the pattern
+`update_transaction`'s own `label_ids` already uses) rather than "clear it".
+That changes the tools' input contract, so it is left as a follow-up; the
+destructive hint is the safe reading until then.
 
 ## The payments misread
 
@@ -73,6 +92,22 @@ it has no payment rail. A reviewer skimming `create_transaction` could read
 description now say up front that this is bookkeeping, that no real money
 moves, and that a transfer is a ledger entry between two of the user's own
 accounts. Keep that wording in the listing copy below.
+
+## Open risk: unbounded `list_transactions`
+
+The review criteria say to "keep responses reasonably sized".
+`list_transactions` takes `account_id`, a period and the classification
+filters, but **no `limit` and no pagination** — called bare on a long-lived
+account it returns the entire history in one response. The SPA does not hit
+this (it syncs per account through `get-account-transaction-list`), and the
+tool description does list the filters, so a model normally narrows it.
+
+Left as is deliberately: adding a `limit` changes the tool's contract and is a
+product decision, not part of preparing the submission. Worth deciding before
+submitting, because a reviewer escalated to Verified "runs a functional test of
+each tool" against the populated test account. Two cheap options if it matters:
+add an optional `limit` with a server-side default, or make the description
+tell the model to pass a period for anything beyond a recent window.
 
 ## Draft listing copy
 

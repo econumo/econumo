@@ -29,6 +29,12 @@ var destructiveTools = map[string]bool{
 	"merge_payee":              true,
 	"merge_tag":                true,
 	"remove_budget_account":    true, // deletes the savings row's plans and comments
+	// These two send full replacement state, so a call that omits a field
+	// silently destroys data the caller never mentioned: update_transaction
+	// clears the category/payee/tag/description, update_envelope ungroups every
+	// category left out of category_ids.
+	"update_envelope":    true,
+	"update_transaction": true,
 }
 
 // TestEveryToolIsAnnotated guards the Claude connector-directory review

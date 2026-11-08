@@ -2487,10 +2487,11 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       signed-in user's data.
 - [ ] In the connected client, a read tool (`list_accounts`, `get_budget`) runs
       without asking for per-call confirmation, and a destructive one
-      (`delete_transaction`, any `merge_*`, `add_budget_account`,
-      `remove_budget_account`, `bulk_update_transactions`) prompts every time.
-      Recording an expense with `create_transaction`, renaming a tag or setting
-      a limit does NOT prompt. Each tool shows a readable title rather than its
+      (`delete_transaction`, `delete_budget_comment`, any `merge_*`,
+      `add_budget_account`, `remove_budget_account`, `bulk_update_transactions`,
+      `update_transaction`, `update_envelope`) prompts every time. Recording an
+      expense with `create_transaction`, renaming a tag or setting a limit does
+      NOT prompt. Each tool shows a readable title rather than its
       raw `snake_case` name.
 - [ ] Deny sends the browser back to the client with an `access_denied` result;
       the client reports that the sign-in was refused and nothing appears under
