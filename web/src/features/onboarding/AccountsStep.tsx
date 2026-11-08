@@ -88,6 +88,8 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const rows = allRows.filter((r) => !createdIds?.[r.key])
   const [extraIds, setExtraIds] = useState<Id[]>(initialExtraCurrencyIds ?? [])
   const [mainOverride, setMainOverride] = useState<Id | null>(null)
+  // the first new row's pick: rows the user has not changed by hand follow it
+  const [sharedId, setSharedId] = useState<Id | null>(null)
   const [pickingRow, setPickingRow] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
@@ -102,7 +104,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
     return byGuess?.id ?? userCurrencyId(user) ?? list[0]?.id ?? ''
   }, [currencies, user])
 
-  const currencyOf = (row: AccountRow) => row.currencyId || defaultId
+  const currencyOf = (row: AccountRow) => row.currencyId || sharedId || defaultId
   const update = (key: string, patch: Partial<AccountRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
 
   const rename = (row: AccountRow, name: string) => {
@@ -121,10 +123,8 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const active = rows.filter((r) => r.name.trim() !== '')
   const counted = [...existing.map((a) => a.currencyId), ...(active.length > 0 || existing.length > 0 ? active : rows).map(currencyOf)].filter(Boolean)
   const usedIds = [...new Set(counted)]
-  const counts = new Map<Id, number>()
-  for (const id of counted) counts.set(id, (counts.get(id) ?? 0) + 1)
-  let computedMain: Id | null = null
-  for (const id of usedIds) if (computedMain === null || (counts.get(id) ?? 0) > (counts.get(computedMain) ?? 0)) computedMain = id
+  const firstRow = active[0] ?? rows[0]
+  const computedMain: Id | null = (firstRow ? currencyOf(firstRow) : existing[0]?.currencyId) || null
   const extras = extraIds.filter((id) => !usedIds.includes(id))
   const selectedIds = [...usedIds, ...extras]
   const mainId = mainOverride && selectedIds.includes(mainOverride) ? mainOverride : computedMain
@@ -307,7 +307,13 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
         options={selectableCurrencies(currencies, editing ? currencyOf(editing) : undefined)}
         value={editing ? currencyOf(editing) : null}
         onClose={() => setPickingRow(null)}
-        onPick={(id) => pickingRow && update(pickingRow, { currencyId: id })}
+        onPick={(id) => {
+          if (!pickingRow) return
+          if (pickingRow === rows[0]?.key) {
+            setSharedId(id)
+            update(pickingRow, { currencyId: '' })
+          } else update(pickingRow, { currencyId: id })
+        }}
       />
     </section>
   )
