@@ -49,13 +49,13 @@ function Figure({ label, children }: { label: string; children: ReactNode }) {
 
 const filtersOf = (debt: DebtDto): PaymentsFrom => ({ categoryId: debt.categoryId, payeeId: debt.payeeId, tagId: debt.tagId, labelId: debt.labelId })
 
-/** the debt's name, filters and start date as stored, with no payment, schedule or
- *  terms: the server keeps its own, so this screen cannot write back terms another
- *  device changed after it loaded */
+/** the debt's name, filters and start date as stored, with no currency, payment,
+ *  schedule or terms: the server keeps its own, so this screen cannot write back a
+ *  currency or terms another device changed after it loaded */
 const storedPayload = (debt: DebtDto): UpdateDebtDto => ({
   id: debt.id,
   name: debt.name,
-  currencyId: debt.currencyId,
+  currencyId: '',
   categoryId: debt.categoryId,
   payeeId: debt.payeeId,
   tagId: debt.tagId,

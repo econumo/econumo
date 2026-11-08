@@ -297,7 +297,7 @@ it('editing payments-from saves the label', async () => {
   await waitFor(() => expect(bodies).toHaveLength(1))
   // no terms go along: the server keeps the stored ones, even if another
   // device changed them after this screen loaded
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' })
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', currencyId: '', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' })
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
@@ -342,7 +342,8 @@ it('Rename in the menu saves a new name', async () => {
   await user.click(within(prompt).getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', labelId: null })
+  // nor the currency: one changed on another device after this screen loaded stays
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', labelId: null, currencyId: '' })
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }

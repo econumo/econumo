@@ -59,16 +59,17 @@ export function PaymentField({
   onScheduleChange: (value: RecurringSchedule) => void
 }) {
   const { t } = useTranslation()
+  const label = t('debts.form.payment.label')
   const repeats = t('debts.form.schedule.label')
   return (
-    <div data-testid="debt-payment-card">
-      <CardField label={t('debts.form.payment.label')} htmlFor={id} error={error}>
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <CalculatorInput id={id} className={amountInputClass} value={value} onChange={onChange} />
-          </div>
+    <div role="group" aria-label={`${label}, ${repeats}`}>
+      <CardField label={label} htmlFor={id} error={error}>
+        {/* on a phone the schedule takes its own line under the amount, so the
+            keypad row keeps the card's width */}
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <CalculatorInput id={id} className={amountInputClass} value={value} onChange={onChange} />
           <span className="pt-0.5 text-sm text-muted-foreground">{symbol}</span>
-          <div className="shrink-0 [&_button]:h-auto [&_button]:gap-1 [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:pt-0.5 [&_button]:text-sm [&_button]:text-econumo-link [&_button]:shadow-none [&_button]:focus-visible:ring-0">
+          <div className="col-span-2 sm:col-span-1 [&_button]:h-auto [&_button]:gap-1 [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:pt-0.5 [&_button]:text-sm [&_button]:text-econumo-link [&_button]:shadow-none [&_button]:focus-visible:ring-0">
             <OptionSelect
               id={`${id}-schedule`}
               aria-label={repeats}

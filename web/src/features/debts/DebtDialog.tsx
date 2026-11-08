@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
+import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
@@ -20,12 +22,13 @@ import { PaymentsFromEditor } from './PaymentsFromEditor'
 import { amountError, buildCreatePayload, useDebtCreateForm } from './useDebtForm'
 
 // the fields a server refusal can name; anything else lands in the form's alert
-const SERVER_FIELDS = ['name', 'categoryId', 'payeeId', 'tagId', 'labelId', 'startDate', 'payment', 'schedule']
+const SERVER_FIELDS = ['name', 'currencyId', 'categoryId', 'payeeId', 'tagId', 'labelId', 'startDate', 'payment', 'schedule']
 
 /** A new debt: what identifies it, and nothing else. The terms come later,
     with Finish setup on the debt's own screen. The currency is not asked: it
     is the category row's when converting one, else the user's, and can be
-    changed on the debt's screen. */
+    changed on the debt's screen; only a refused one (deleted, or no longer
+    shared) brings up a currency row to pick another. */
 function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: () => void }) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
@@ -41,6 +44,8 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
   // asked only once another debt turns out to have the same filters and start
   // date: a start date then tells a second loan in the same category apart
   const [askStartDate, setAskStartDate] = useState(false)
+  const [askCurrency, setAskCurrency] = useState(false)
+  const [currencyOpen, setCurrencyOpen] = useState(false)
 
   const currencyId = form.currencyId ?? defaultCurrencyId
   const currency = currencies?.find((c) => c.id === currencyId)
@@ -76,6 +81,9 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
       // on categoryId) needs other filters, so it only shows its message.
       if (named.startDate) {
         setAskStartDate(true)
+      }
+      if (named.currencyId) {
+        setAskCurrency(true)
       }
       if (!Object.values(named).some(Boolean)) {
         setServerError(apiErrorMessage(err))
@@ -168,12 +176,36 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
           />
         ) : null}
 
+        {askCurrency ? (
+          <CardField label={t('debts.form.currency.label')} error={errors.currencyId}>
+            <button
+              type="button"
+              aria-label={`${t('debts.form.currency.label')}: ${currency ? fullCurrencyLabel(currency) : '—'}`}
+              className="min-w-0 truncate text-left text-sm text-econumo-link"
+              onClick={() => setCurrencyOpen(true)}
+            >
+              {currency ? fullCurrencyLabel(currency) : '—'}
+            </button>
+          </CardField>
+        ) : null}
+
         {serverError ? (
           <p role="alert" className="text-sm text-destructive">
             {serverError}
           </p>
         ) : null}
       </form>
+
+      <CurrencyPickerDialog
+        open={currencyOpen}
+        title={t('debts.form.currency.label')}
+        value={currencyId}
+        onClose={() => setCurrencyOpen(false)}
+        onPick={(id) => {
+          clearError('currencyId')
+          patch({ currencyId: id })
+        }}
+      />
     </ResponsiveDialog>
   )
 }

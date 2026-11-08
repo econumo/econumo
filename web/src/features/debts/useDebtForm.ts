@@ -197,12 +197,12 @@ export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState,
       ...(terms ? { balance: evaluatedAmount(form.balance), lastPaymentDate: form.lastPaymentDate } : {}),
     }
   }
-  // The form shows what is owed now, the server compares against the stored
-  // snapshot: when no term was touched, send the snapshot back so a start date
-  // or currency change does not write a new one (the server reads the stored
-  // numbers in the new currency).
+  // The form shows what is owed now, not the stored snapshot: when no term was
+  // touched, send none, so the server keeps the stored ones and a start date or
+  // currency change writes no snapshot. (Sent back, the stored numbers would be
+  // rounded to a new currency's digits and read as new terms.)
   if (termsUntouched(form, initial) && form.lastPaymentDate === initial.lastPaymentDate) {
-    return { ...base, balance: debt.balance, payment: debt.payment, schedule: debt.schedule, lastPaymentDate: debt.lastPaymentDate }
+    return base
   }
   return {
     ...base,

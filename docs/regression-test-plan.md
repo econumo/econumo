@@ -2146,7 +2146,14 @@ out), and add a second budget member account in USD, before running these.
       payees, tags and reporting tags. No balance or last payment date is
       asked. Saving creates the debt and opens its review screen (no list
       flash). A payment of 0 or less, or a missing name or category, shows a
-      field error.
+      field error. When the currency it would take is refused (a deleted
+      custom currency, or one no longer usable), the error appears in a
+      Currency row that shows up only then; picking another currency and
+      saving again creates the debt.
+- [ ] 📱 On a 360 px wide phone the Payment card keeps the amount, its symbol
+      and the calculator keypad row on the card's width, with the
+      "every month ▾" picker on its own line under them (one card); from
+      tablet width the picker sits on the amount's line.
 - [ ] 📱 **Tag or reporting tag**: the tag chip's picker lists Tags and
       Reporting tags as two headed groups (a search narrows both, and a group
       with no match disappears). Picking a reporting tag shows its name in the
@@ -2191,14 +2198,22 @@ out), and add a second budget member account in USD, before running these.
       payment date before today, shows a field error.
 - [ ] 📱 **Change the currency** (Edit → Currency, a searchable picker), on a
       set-up debt with a payment and a plan in a budget: leave the other
-      fields and save. No snapshot is added; the balance and payment keep
+      fields and save. No snapshot is added (also when moving a balance with
+      cents, e.g. 1,000.50, to a currency without them such as JPY: the
+      balance shown keeps reflecting the payments made since); the balance and payment keep
       their numbers, now in the new currency (no conversion); the payments
       list shows each payment converted into the new currency and split
       again; the debt's budget row shows the new currency with its plans
       unchanged. Typing a new balance or payment together with the currency
       saves them in the new currency (with a snapshot, as any change of
       terms). A debt not set up can change its currency the same way, from
-      Edit or Finish setup. A deleted custom currency is not offered.
+      Edit or Finish setup. A deleted custom currency is not offered. With
+      the review screen open on two devices, change the currency on the
+      second, then rename (or change the sentence) on the first without
+      reloading: the debt keeps the second device's currency. Finishing setup
+      of a whole-category debt (or giving one a later start date) together
+      with a currency change hands the category its plans outside the debt's
+      months, as without the currency change.
 - [ ] 📱 A rename (header menu → Rename) and a change of the "Payments from"
       sentence on the review screen save without a new snapshot (the history
       does not grow); changing the balance, payment, schedule or last payment
@@ -2237,9 +2252,9 @@ out), and add a second budget member account in USD, before running these.
       just payment, repeats, start date or currency) and the payment list
       shows Date and Payment only. Mark as
       paid off is not offered (and the server refuses it). Finish setup swaps
-      the screen for the terms form (balance, payment, repeats, last payment
-      date, start date; the last payment date is typed, not filled in
-      automatically); saving needs both balance and last payment date (one
+      the screen for the terms form (balance, payment and repeats, last
+      payment date, start date, currency; the last payment date is typed, not
+      filled in automatically); saving needs both balance and last payment date (one
       without the other is a field error, and neither saves just the other
       fields). After saving the screen shows payments left, the progress and
       the Loan card, payments entered before setup are split into interest and
@@ -2291,8 +2306,9 @@ out), and add a second budget member account in USD, before running these.
 - [ ] 📱 **Track as debt** (⋮ menu of an expense category row owned by you,
       also inside an envelope, on a Plan row, and not offered in an archived
       budget or for a partner's category) opens the debt form with the
-      category (locked), name and the row's currency filled in (the short
-      create form: no balance or last payment date). On save the Debts block
+      category (locked) and name filled in (the short create form: no
+      balance, last payment date or currency; the debt silently takes the
+      row's currency, shown afterwards on the review screen's Loan card). On save the Debts block
       gets the debt and its review screen opens. Known gaps (not new bugs): it is still offered for
       a category already covered by a whole-category debt and for a category
       inside an archived envelope.

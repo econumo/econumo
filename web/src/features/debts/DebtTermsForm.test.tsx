@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureUsd } from '@/test/fixtures'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { DebtDto } from '@/api/dto/debt'
 import { DebtTermsForm } from './DebtTermsForm'
@@ -61,6 +61,8 @@ beforeEach(() => {
   mockMatchMedia()
   vi.mocked(trackEvent).mockClear()
 })
+
+const TERM_KEYS = ['balance', 'payment', 'schedule', 'lastPaymentDate']
 
 const lastPaymentChip = () => screen.getByRole('button', { name: 'Last payment date' })
 
@@ -129,7 +131,7 @@ it('editing the last payment date leaves the other fields', async () => {
   expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('every month')
 })
 
-it('saving untouched terms sends the stored snapshot, not the balance shown now', async () => {
+it('saving untouched terms sends none, so the server keeps the stored ones', async () => {
   const bodies = captureUpdate()
   const user = userEvent.setup()
   const onSaved = renderForm({ ...wireDebt, currentBalance: '900' })
@@ -137,10 +139,10 @@ it('saving untouched terms sends the stored snapshot, not the balance shown now'
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  expect(bodies[0]).toMatchObject({
-    id: 'd1', name: 'Car loan', categoryId: 'cat-food', labelId: null,
-    balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05', startDate: null,
-  })
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', categoryId: 'cat-food', labelId: null, startDate: null })
+  for (const key of TERM_KEYS) {
+    expect(bodies[0]).not.toHaveProperty(key)
+  }
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
 })
@@ -159,7 +161,9 @@ it('a balance typed and put back is untouched: no new snapshot', async () => {
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05' })
+  for (const key of TERM_KEYS) {
+    expect(bodies[0]).not.toHaveProperty(key)
+  }
 })
 
 it('a changed balance is sent as typed', async () => {
@@ -273,18 +277,44 @@ it('shows the currency and sends the stored one when it is kept', async () => {
   expect(bodies[0]).toMatchObject({ currencyId: 'cur-usd' })
 })
 
-it('a changed currency is sent with the terms, the amounts read in it', async () => {
+// sending the stored 1000.50 back would be rounded to 1001 yen on the server,
+// a change of terms whose snapshot drops the payments made since
+it('a currency changed alone sends no terms, even into a currency with fewer digits', async () => {
+  server.use(
+    http.get('*/api/v1/currency/get-currency-list', () =>
+      ok({ items: [fixtureUsd, { ...fixtureUsd, id: 'cur-jpy', code: 'JPY', name: 'Yen', symbol: '¥', fractionDigits: 0 }] }),
+    ),
+  )
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm({ ...wireDebt, balance: '1000.50', currentBalance: '900.50', payment: '100.25' })
+
+  await user.click(await screen.findByRole('button', { name: /^Currency: USD/ }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/JPY/))
+  expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('JPY')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ currencyId: 'cur-jpy' })
+  for (const key of TERM_KEYS) {
+    expect(bodies[0]).not.toHaveProperty(key)
+  }
+})
+
+it('a changed balance goes with a changed currency', async () => {
   const bodies = captureUpdate()
   const user = userEvent.setup()
   renderForm(wireDebt)
 
   await user.click(await screen.findByRole('button', { name: /^Currency: USD/ }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/EUR/))
-  expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('EUR')
+  const balance = screen.getByLabelText('Balance now')
+  await user.clear(balance)
+  await user.type(balance, '600')
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ currencyId: 'cur-eur', balance: '1200', payment: '100', lastPaymentDate: '2027-11-05' })
+  expect(bodies[0]).toMatchObject({ currencyId: 'cur-eur', balance: '600', payment: '100' })
 })
 
 it('payment and repeats read as one line', async () => {
@@ -292,8 +322,9 @@ it('payment and repeats read as one line', async () => {
   const user = userEvent.setup()
   renderForm(wireDebtNotSetUp)
 
-  const repeats = screen.getByRole('combobox', { name: 'Repeats' })
-  expect(repeats.closest('[data-testid="debt-payment-card"]')).toContainElement(screen.getByLabelText('Payment'))
+  const card = screen.getByRole('group', { name: 'Payment, Repeats' })
+  const repeats = within(card).getByRole('combobox', { name: 'Repeats' })
+  expect(card).toContainElement(screen.getByLabelText('Payment'))
   await user.click(repeats)
   await user.click(await screen.findByRole('option', { name: 'every 2 weeks' }))
   await user.click(screen.getByRole('button', { name: 'Finish setup' }))

@@ -1728,8 +1728,9 @@ data unreadable. Most are also asserted by the test suite.
   update without the pair keeps the stored terms and a `payment`/`schedule` left out keeps the
   stored one, but on a set-up debt a differing payment or schedule is a change of terms and needs
   the pair (`common.is_blank` on both otherwise). The review screen's rename and "Payments from"
-  saves send no payment, schedule or terms, so a stale screen never writes back terms another
-  device changed. With the pair, a new snapshot is written only when balance, payment, schedule or
+  saves send no currency (`currencyId` ""), payment, schedule or terms, so a stale screen never
+  writes back a currency or terms another device changed; the terms form likewise sends no terms
+  when none was touched. With the pair, a new snapshot is written only when balance, payment, schedule or
   last payment date differ (a rename does not); `mark-debt-paid-off` writes a
   balance-0 snapshot and is refused on a debt not set up (`debt.not_set_up`). **Not set up**:
   payments still match and are stored in `debts_payments` with interest 0 (no projection exists;
@@ -1750,10 +1751,13 @@ data unreadable. Most are also asserted by the test suite.
   (empty keeps it; `EnsureUsable` applies to the new one only) moves the debt to it. The amounts
   in that request are in the new currency, and with terms left out the stored numbers are kept and
   read in it, unconverted; the change alone writes no snapshot (snapshots are read in the debt's
-  current currency). In the same transaction it drops the debt's stored splits, so the next sync
-  splits every payment again from its amount converted into the new currency, and moves the
-  debt's budget rows to it (`BudgetElements.SetRowsCurrency`; `syncElements` also keeps every debt
-  row in its debt's currency), their plans keeping their numbers. **Splitting is bank-style** (`internal/model/debt_math.go`):
+  current currency), and terms sent that differ from the stored ones only by rounding into the new
+  currency's digits are no change of terms either. The currency is resolved from the row read
+  under the owner lock. In the same transaction it drops the debt's stored splits, so the next
+  sync splits every payment again from its amount converted into the new currency, hands plans
+  back to the category (setup tail, later start) in the OLD currency, and only then moves the
+  debt's budget rows to the new one (`BudgetElements.SetRowsCurrency`; `syncElements` also keeps
+  every debt row in its debt's currency), their plans keeping their numbers. **Splitting is bank-style** (`internal/model/debt_math.go`):
   the implied periodic rate `r` is solved from the snapshot (annuity over the schedule, `r = 0`
   when payment x n = balance within half the currency's smallest unit, payments that cannot cover the balance are refused, and so is a last
   payment date more than 100 years out, past the projection's horizon); interest
@@ -1856,7 +1860,8 @@ data unreadable. Most are also asserted by the test suite.
   other, with "any ..." rows and expense-only categories, and one Payment card,
   `PaymentField`: the amount with an inline "every month" schedule picker, full width, reused by
   `DebtTermsForm`). It asks no currency: it sends the converted category row's currency, else the
-  user's default; the start date field appears only after
+  user's default, and shows a Currency row only after a `currencyId` refusal (like the start
+  date); the start date field appears only after
   `debt.start_date_taken` (the one refusal a date can resolve; `debt.key_conflict` just shows its
   message) and the form creates a debt with no terms, then opens the review screen. The ONLY way
   into a debt is its Details entry (Settings row, budget row menu, item sheet; owner only), opening
@@ -1866,7 +1871,7 @@ data unreadable. Most are also asserted by the test suite.
   payment, loan ends, start date, left to pay, overpaid so far, overpayment still to come,
   currency) with its Edit button (`DebtTermsForm` mode `edit`, also on a debt not set up; the form
   has a Currency row, `CurrencyPickerDialog`, in both modes), the payments-from editor in
-  place (saves with the stored snapshot, so no new snapshot), rename (header menu), payments
+  place (saves without terms, so no new snapshot), rename (header menu), payments
   and a collapsed "History of terms". A debt not set up shows "Paid so far" (its payments dated up to the caller's today), a hint and a
   Finish setup button (`DebtTermsForm` mode `setup`: no stored rate, so the last payment date
   is typed, never auto-filled); the Settings row, the budget row's Left cell and the item

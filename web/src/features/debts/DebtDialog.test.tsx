@@ -197,3 +197,29 @@ it('requires the name, category and payment before sending', async () => {
   expect(await screen.findAllByText('Required field')).toHaveLength(3)
   expect(bodies).toHaveLength(0)
 })
+
+it('a refused currency reveals the currency row, and the pick is resent', async () => {
+  const refused = 'Currency is not available'
+  const bodies = captureCreate((_, call) =>
+    call === 1
+      ? HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { currencyId: [refused] } }, { status: 400 })
+      : ok({ ...wireDebtNotSetUp, id: 'd-new' }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ categoryId: 'cat-food', currencyId: 'cur-gone' })
+
+  expect(screen.queryByRole('button', { name: /^Currency/ })).toBeNull()
+  await user.type(screen.getByLabelText('Payment'), '50')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  expect(await screen.findByText(refused)).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /^Currency/ }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/EUR/))
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(2))
+  expect(bodies[0].currencyId).toBe('cur-gone')
+  expect(bodies[1].currencyId).toBe('cur-eur')
+  await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
+})
