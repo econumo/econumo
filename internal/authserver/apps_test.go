@@ -199,15 +199,27 @@ func TestUpdateOfficialApp(t *testing.T) {
 	if got, _ := s.repo.GetClient(ctx, c.ID); got.Name != "Both" || !slices.Equal(got.RedirectURIs, []string{appCallback}) {
 		t.Fatalf("%+v", got)
 	}
-	for i, bad := range [][]string{slices.Repeat([]string{appCallback}, 11), {"http://example.com/cb"}} {
-		if err := s.UpdateOfficialApp(ctx, c.ID, nil, bad); err == nil {
-			t.Errorf("case %d accepted", i)
+	tooLong := "https://a.test/" + strings.Repeat("a", 2049-len("https://a.test/"))
+	wantInsecure := ValidateRedirectURI("http://example.com/cb")
+	for i, tc := range []struct {
+		uris []string
+		want string
+	}{
+		{slices.Repeat([]string{appCallback}, 11), "between 1 and 10 redirect_uris are required"},
+		{[]string{tooLong}, "redirect URI is too long"},
+		{[]string{"http://example.com/cb"}, wantInsecure.Error()},
+	} {
+		if err := s.UpdateOfficialApp(ctx, c.ID, nil, tc.uris); err == nil || err.Error() != tc.want {
+			t.Errorf("case %d: err = %v, want %q", i, err, tc.want)
 		}
 	}
 	long, blank := strings.Repeat("x", 101), " \n"
-	for _, n := range []*string{&long, &blank} {
-		if err := s.UpdateOfficialApp(ctx, c.ID, n, nil); err == nil {
-			t.Errorf("name %q accepted", *n)
+	for _, tc := range []struct {
+		name *string
+		want error
+	}{{&long, errors.New("client_name is too long")}, {&blank, ErrAppNameRequired}} {
+		if err := s.UpdateOfficialApp(ctx, c.ID, tc.name, nil); err == nil || err.Error() != tc.want.Error() {
+			t.Errorf("name %q: err = %v, want %v", *tc.name, err, tc.want)
 		}
 	}
 	if got, _ := s.repo.GetClient(ctx, c.ID); got.Name != "Both" || !slices.Equal(got.RedirectURIs, []string{appCallback}) {
@@ -352,7 +364,7 @@ func TestDisconnectApp(t *testing.T) {
 }
 
 func TestDeleteApp(t *testing.T) {
-	s, creds, _, db := newTestServiceDB(t)
+	s, creds, clock, db := newTestServiceDB(t)
 	a, b := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
 	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
 	if err != nil {
@@ -362,6 +374,8 @@ func TestDeleteApp(t *testing.T) {
 	connect(t, s, b, cid, "")
 	connect(t, s, a, cid, "")
 	app, _ := s.GetApp(ctx, c.ID)
+	// Expired but never revoked: revoked with the rest, not counted as a connection.
+	expired := insertGrant(t, s, a, c.ID, clock.Now().Add(-GrantIdleTTL-time.Hour), nil)
 	creds.locked, creds.revoked = nil, nil
 	n, err := s.DeleteApp(ctx, c.ID)
 	if err != nil || n != 2 {
@@ -371,6 +385,9 @@ func TestDeleteApp(t *testing.T) {
 		if !slices.ContainsFunc(creds.revoked, g.ID.Equal) {
 			t.Errorf("tokens of grant %s not revoked", g.ID)
 		}
+	}
+	if !slices.ContainsFunc(creds.revoked, expired.Equal) {
+		t.Error("the expired grant's tokens must be revoked too")
 	}
 	want := []vo.Id{a, b}
 	slices.SortFunc(want, func(x, y vo.Id) int { return strings.Compare(x.String(), y.String()) })

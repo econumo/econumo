@@ -53,7 +53,7 @@ func (s *Service) RegisterOfficialApp(ctx context.Context, name string, redirect
 	if oe := checkRedirectURIs(redirectURIs); oe != nil {
 		return model.OAuthClient{}, "", plain(oe)
 	}
-	c := model.OAuthClient{ID: vo.NewId(), Name: name, RedirectURIs: redirectURIs, CreatedAt: s.clock.Now().UTC(), IsGlobal: true}
+	c := model.OAuthClient{ID: vo.NewId(), Name: name, RedirectURIs: slices.Clone(redirectURIs), CreatedAt: s.clock.Now().UTC(), IsGlobal: true}
 	var raw string
 	if !public {
 		r, hash, err := newSecret()
@@ -132,7 +132,7 @@ func (s *Service) UpdateOfficialApp(ctx context.Context, id vo.Id, name *string,
 		if oe := checkRedirectURIs(redirectURIs); oe != nil {
 			return plain(oe)
 		}
-		uris = redirectURIs
+		uris = slices.Clone(redirectURIs)
 	}
 	n, err := s.repo.UpdateGlobalClient(ctx, id, newName, uris)
 	if err != nil {
@@ -227,6 +227,7 @@ func (s *Service) DeleteApp(ctx context.Context, id vo.Id) (int, error) {
 	slices.SortFunc(users, func(a, b vo.Id) int { return strings.Compare(a.String(), b.String()) })
 	revoked := 0
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
+		revoked = 0
 		for _, u := range users {
 			if _, err := s.creds.LockForOAuth(ctx, u); err != nil {
 				return err
@@ -238,7 +239,12 @@ func (s *Service) DeleteApp(ctx context.Context, id vo.Id) (int, error) {
 			}
 			return err
 		}
-		ids, err := s.repo.RevokeClientGrants(ctx, id, s.clock.Now())
+		now := s.clock.Now()
+		current, err := s.repo.ListClientGrants(ctx, id)
+		if err != nil {
+			return err
+		}
+		ids, err := s.repo.RevokeClientGrants(ctx, id, now)
 		if err != nil {
 			return err
 		}
@@ -246,11 +252,15 @@ func (s *Service) DeleteApp(ctx context.Context, id vo.Id) (int, error) {
 			if err := s.creds.RevokeOAuthGrantTokens(ctx, g); err != nil {
 				return err
 			}
+			// A grant missing from the list was committed after it was read, so it is new.
+			i := slices.IndexFunc(current, func(c model.OAuthGrant) bool { return c.ID.Equal(g) })
+			if i < 0 || current[i].IsLive(now) {
+				revoked++
+			}
 		}
 		if _, err := s.repo.DeleteClient(ctx, id); err != nil {
 			return err
 		}
-		revoked = len(ids)
 		return nil
 	})
 	return revoked, err
