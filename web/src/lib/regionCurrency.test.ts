@@ -6,6 +6,8 @@ describe('regionCurrency', () => {
     expect(currencyForRegion('CH')).toBe('CHF')
     expect(currencyForRegion('DE')).toBe('EUR')
     expect(currencyForRegion('us')).toBe('USD')
+    expect(currencyForRegion('BG')).toBe('EUR')
+    expect(currencyForRegion('XK')).toBe('EUR')
     expect(currencyForRegion('ZZ')).toBeNull()
   })
 

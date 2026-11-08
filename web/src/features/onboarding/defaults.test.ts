@@ -9,7 +9,20 @@ import {
 
 const words = { cash: 'cash | wallet', savings: 'savings | reserve' }
 
+const de = {
+  cash: 'bargeld | geldbeutel | portemonnaie | cash',
+  savings: 'sparkonto | sparbuch | sparen | sparschwein | tagesgeld | rücklage | notgroschen | reserve',
+}
+
 describe('onboarding defaults', () => {
+  it('does not mistake bank names for savings or cash', () => {
+    for (const name of ['Sparkasse', 'Sparda-Bank', 'Barclays']) {
+      expect(looksLikeSavings(name, de.savings)).toBe(false)
+      expect(guessAccountIcon(name, de)).toBe('credit_card')
+    }
+    expect(guessAccountIcon('Sparkonto', de)).toBe('savings')
+  })
+
   it('uses only known icons', () => {
     for (const c of [...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]) {
       expect(availableIcons).toContain(c.icon)

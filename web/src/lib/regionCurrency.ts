@@ -19,7 +19,7 @@ const REGION_CURRENCY: Record<string, string> = {
   BD: 'BDT',
   BE: 'EUR',
   BF: 'XOF',
-  BG: 'BGN',
+  BG: 'EUR',
   BH: 'BHD',
   BI: 'BIF',
   BJ: 'XOF',
@@ -240,10 +240,11 @@ const REGION_CURRENCY: Record<string, string> = {
   WF: 'XPF',
   WS: 'WST',
   YE: 'YER',
+  XK: 'EUR',
   YT: 'EUR',
   ZA: 'ZAR',
   ZM: 'ZMW',
-  ZW: 'USD',
+  ZW: 'ZWG',
 }
 
 export function currencyForRegion(region: string): string | null {

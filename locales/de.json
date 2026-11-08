@@ -1235,8 +1235,8 @@
       "other_income": "Sonstige Einnahmen"
     },
     "words": {
-      "cash": "bargeld | bar | geldbeutel | portemonnaie | cash",
-      "savings": "spar | sparen | sparkonto | rücklage | notgroschen | reserve | tagesgeld"
+      "cash": "bargeld | geldbeutel | portemonnaie | cash",
+      "savings": "sparkonto | sparbuch | sparen | sparschwein | tagesgeld | rücklage | notgroschen | reserve"
     }
   },
   "budgets": {
