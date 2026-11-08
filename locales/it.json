@@ -2141,7 +2141,8 @@
       "end_before_start": "Il mese finale precede l'inizio del budget",
       "invalid_period_start_day": "Scegli un giorno da 1 a 28",
       "comment_not_found": "Commento non trovato",
-      "comment_forbidden": "Non puoi modificare questo commento"
+      "comment_forbidden": "Non puoi modificare questo commento",
+      "id_in_use": "Questo identificativo di budget è già in uso"
     },
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",

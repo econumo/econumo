@@ -44,8 +44,8 @@ type archivedResult struct {
 
 func Register(read *apppayee.ReadService, write *apppayee.Service) webmcp.Register {
 	return func(s *sdk.Server) {
-		sdk.AddTool(s, &sdk.Tool{Name: "list_payees",
-			Description: "The user's payees: id, name, isArchived (0/1)."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("list_payees", "List payees",
+			"The user's payees: id, name, isArchived (0/1)."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetPayeeListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_payees")
 				userID, err := webmcp.UserID(ctx)
@@ -59,8 +59,8 @@ func Register(read *apppayee.ReadService, write *apppayee.Service) webmcp.Regist
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "create_payee",
-			Description: "Create a new payee owned by the caller. See list_payees for existing ids."},
+		sdk.AddTool(s, webmcp.WriteTool("create_payee", "Create payee",
+			"Create a new payee owned by the caller. See list_payees for existing ids."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in createPayeeInput) (*sdk.CallToolResult, model.CreatePayeeResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_payee")
 				userID, err := webmcp.UserID(ctx)
@@ -77,8 +77,8 @@ func Register(read *apppayee.ReadService, write *apppayee.Service) webmcp.Regist
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "merge_payee",
-			Description: "Merge one payee into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."},
+		sdk.AddTool(s, webmcp.DestructiveTool("merge_payee", "Merge payees",
+			"Merge one payee into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in mergePayeeInput) (*sdk.CallToolResult, model.MergePayeeResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "merge_payee")
 				userID, err := webmcp.UserID(ctx)
@@ -95,8 +95,8 @@ func Register(read *apppayee.ReadService, write *apppayee.Service) webmcp.Regist
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "update_payee",
-			Description: "Rename a payee; use list_payees to find its id."},
+		sdk.AddTool(s, webmcp.WriteTool("update_payee", "Rename payee",
+			"Rename a payee; use list_payees to find its id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in updatePayeeInput) (*sdk.CallToolResult, model.UpdatePayeeResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_payee")
 				userID, err := webmcp.UserID(ctx)
@@ -113,8 +113,8 @@ func Register(read *apppayee.ReadService, write *apppayee.Service) webmcp.Regist
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "set_payee_archived",
-			Description: "Hide an unused payee (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_payees to find its id."},
+		sdk.AddTool(s, webmcp.WriteTool("set_payee_archived", "Archive or restore payee",
+			"Hide an unused payee (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_payees to find its id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in setArchivedInput) (*sdk.CallToolResult, archivedResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_payee_archived")
 				userID, err := webmcp.UserID(ctx)

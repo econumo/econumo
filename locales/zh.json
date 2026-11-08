@@ -2141,7 +2141,8 @@
       "end_before_start": "结束月份早于预算开始时间",
       "invalid_period_start_day": "请选择1到28之间的日期",
       "comment_not_found": "未找到评论",
-      "comment_forbidden": "您无法修改此评论"
+      "comment_forbidden": "您无法修改此评论",
+      "id_in_use": "该预算 ID 已被占用"
     },
     "category": {
       "name_length": "分类名称需为 {min}-{max} 个字符。",

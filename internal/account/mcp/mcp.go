@@ -32,8 +32,8 @@ type createAccountResult struct {
 
 func Register(svc *appaccount.Service) webmcp.Register {
 	return func(s *sdk.Server) {
-		sdk.AddTool(s, &sdk.Tool{Name: "list_accounts",
-			Description: "The user's accounts with current balances."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("list_accounts", "List accounts",
+			"The user's accounts with current balances."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetAccountListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_accounts")
 				userID, err := webmcp.UserID(ctx)
@@ -47,8 +47,8 @@ func Register(svc *appaccount.Service) webmcp.Register {
 				return nil, model.GetAccountListResult{Items: items}, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "create_account",
-			Description: "Create an account for the caller. currency_id is required (use list_currencies). Optional opening balance and icon. folder_id may be omitted only by a user with no folders yet (one is then created automatically); otherwise it is required."},
+		sdk.AddTool(s, webmcp.WriteTool("create_account", "Create account",
+			"Create an account for the caller. currency_id is required (use list_currencies). Optional opening balance and icon. folder_id may be omitted only by a user with no folders yet (one is then created automatically); otherwise it is required."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in createAccountInput) (*sdk.CallToolResult, createAccountResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_account")
 				userID, err := webmcp.UserID(ctx)
