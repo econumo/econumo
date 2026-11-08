@@ -66,12 +66,15 @@ matches. A debt created without terms is whole-category in that sense.
 - A transaction matches when its category is the debt's, its payee matches (when
   set), its tag matches (when set), and it **carries** the debt's label among its
   labels (when set; `transactions_labels`).
-- **Labels never tell two debts apart (agreed: refuse).** A transaction can carry
-  several labels, so two debts on one category that differ only by label could both
-  match it. Key conflicts are checked on (payee, tag) exactly as today, and the
-  label is ignored for that check: two debts whose (payee, tag) keys overlap conflict
-  whatever their labels; identical (payee, tag) keys still need distinct start
-  dates. The label only narrows what a debt matches.
+- **Labels can tell two debts apart, with a rule (agreed).** Two debts on one
+  category whose (payee, tag) keys overlap may coexist when **both** name a label and
+  the labels differ (e.g. "Loans" with label "Car" and label "Student"). Any other
+  overlap is refused as today (`debt.key_conflict`), including one debt with a label
+  and one without. Identical keys, label included, still need distinct start dates.
+- **Tiebreaker:** a transaction that matches more than one debt (it carries both
+  debts' labels) belongs to the **older debt** (earlier `created_at`, then `id`). The
+  sync assigns each payment to exactly one debt by that order, so a payment never
+  counts twice; `debts_payments.transaction_id` stays unique.
 - Deleting a label a debt uses is refused (`label.used_by_debt`); merging a label
   moves the debt to the target, like payee and tag merges.
 - A label changed on a transaction re-matches it, like any other edit: the sync
