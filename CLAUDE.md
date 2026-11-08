@@ -1719,7 +1719,9 @@ data unreadable. Most are also asserted by the test suite.
   update supplies them. Create with terms makes the first snapshot; finishing setup (the update
   that first supplies the pair, SPA event `appDebtFinishSetup`) writes the first snapshot as of
   today and deletes the debt's provisional zero splits in the same transaction, so the next sync
-  splits the collected payments by the normal rules (backward estimate before the snapshot); an
+  splits the collected payments by the normal rules (backward estimate before the snapshot); a
+  debt that covered a whole category before setup hands that category back its plans and comments
+  after the new end, whatever key the same update gives it (it took them with no end); an
   update without the pair keeps the stored terms and a `payment`/`schedule` left out keeps the
   stored one, but on a set-up debt a differing payment or schedule is a change of terms and needs
   the pair (`common.is_blank` on both otherwise). The review screen's rename and "Payments from"

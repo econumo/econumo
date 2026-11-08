@@ -54,10 +54,10 @@ func (s *Service) moveToDebt(ctx context.Context, d *model.Debt) error {
 	return err
 }
 
-// moveTailToCategory hands a whole-category debt's plans and comments after
-// its end back to the category: the debt took them with no end before setup,
-// and its row hides every month past the end.
-func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt) error {
+// moveTailToCategory hands the plans and comments after a debt's end back to
+// category, the whole category the debt covered before setup: it took them
+// with no end, and its row hides every month past the end.
+func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt, category vo.Id) error {
 	if s.budget == nil {
 		return nil
 	}
@@ -73,7 +73,7 @@ func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt) error {
 		return err
 	}
 	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
-		FromID: d.ID, FromType: model.ElementDebt, ToID: d.CategoryID, ToType: model.ElementCategory,
+		FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
 		CurrencyID: d.CurrencyID, SumOnClash: true, AfterDay: last,
 	})
 	return err

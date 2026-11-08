@@ -2,6 +2,7 @@ package debt_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -397,6 +398,52 @@ func TestPlanningStart_OwnerTimezoneChangeKeepsTheCreationDay(t *testing.T) {
 
 func monthStart(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
+}
+
+// Finishing setup of a whole-category debt in a request that also changes its
+// key still hands the months after its end back to the category it took them
+// from; a new whole category then moves its own plans to the debt.
+func TestFinishSetup_KeyChangeReturnsTheTailToTheFormerCategory(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		mod  func(e *env, r *model.UpdateDebtRequest) (newWholeCategory string)
+	}{
+		{"payee added", func(e *env, r *model.UpdateDebtRequest) string {
+			payee := e.newPayee()
+			r.PayeeId = &payee
+			return ""
+		}},
+		{"category changed", func(e *env, r *model.UpdateDebtRequest) string {
+			other := e.newCategory(e.user, true)
+			r.CategoryId = other
+			return other
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			e := newEnv(t)
+			res := e.createWithoutTerms(t, nil)
+			if len(e.budget.transfers) != 1 {
+				t.Fatalf("transfers at creation = %+v", e.budget.transfers)
+			}
+			first := e.budget.transfers[0].first
+			e.budget.transfers = nil
+			req := e.updateReq(res)
+			req.Balance, req.LastPaymentDate = vo.NewFlexString("5800"), "2026-09-01"
+			newWhole := c.mod(e, &req)
+			if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
+				t.Fatal(err)
+			}
+			want := []transferCall{{from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory,
+				currency: res.CurrencyId, sum: true, after: "2026-09-01"}}
+			if newWhole != "" {
+				want = append(want, transferCall{from: newWhole, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
+					currency: res.CurrencyId, sum: true, first: first, last: "2026-09-01"})
+			}
+			if !slices.Equal(e.budget.transfers, want) {
+				t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, want)
+			}
+		})
+	}
 }
 
 // Finishing setup of a whole-category debt hands the months after its last

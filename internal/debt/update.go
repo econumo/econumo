@@ -103,8 +103,10 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 			if err := s.dropSplits(ctx, cur.ID); err != nil {
 				return err
 			}
-			if wasWhole && isWholeCategory(cur) && cur.CategoryID.Equal(wasCategory) {
-				if err := s.moveTailToCategory(ctx, cur); err != nil {
+			// the debt took every month of its former category before setup,
+			// whatever key the same request gives it now
+			if wasWhole {
+				if err := s.moveTailToCategory(ctx, cur, wasCategory); err != nil {
 					return err
 				}
 			}
