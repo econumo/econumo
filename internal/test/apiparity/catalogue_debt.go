@@ -70,6 +70,39 @@ func init() {
 		}
 	}})
 
+	// debt_currency_change moves a set-up debt with a payment and a plan from
+	// USD to a custom currency at 2 per USD, without its terms: the debt keeps
+	// its numbers, its 50 USD payment reads 100 and is split again, and the
+	// budget row turns to the new currency with its plan of 105 kept.
+	register(Scenario{Name: "debt_currency_change", Calls: func() []Call {
+		const (
+			opCurrency = "cc000000-0000-0000-0000-0000000000d1"
+			opCategory = "d3000000-0000-0000-0000-0000000000a1"
+			opPayment  = "d3000000-0000-0000-0000-0000000000b1"
+		)
+		now := ClockTime.Format("2006-01-02 15:04:05")
+		var eurID, categoryID, debtID string
+		return []Call{
+			{Label: "create-eur-currency", Method: "POST", Path: "/api/v1/currency/create-currency", Auth: "owner",
+				Body:          map[string]any{"id": opCurrency, "code": "EUR", "name": "Euro", "symbol": "€", "fractionDigits": 2, "rate": "2"},
+				CaptureIDInto: &eurID},
+			{Label: "create-loan-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
+				Body:          map[string]any{"id": opCategory, "name": "Car loan", "type": "expense", "icon": "car"},
+				CaptureIDInto: &categoryID},
+			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: debtBody(map[string]any{"categoryId": &categoryID}), CaptureIDInto: &debtID},
+			{Label: "pay", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{"id": opPayment, "type": "expense", "amount": "50.00",
+					"accountId": OwnerAccount, "categoryId": &categoryID, "date": now, "description": "loan"}},
+			{Label: "plan", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "elementId": &debtID, "period": month(0), "amount": "105"}},
+			{Label: "change-currency", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "name": "Car loan", "currencyId": &eurID, "categoryId": &categoryID}},
+			{Label: "get-after-change", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+			{Label: "get-budget-after-change", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
+		}
+	}})
+
 	// debt_validation pins every coded refusal of the write routes.
 	register(Scenario{Name: "debt_validation", Calls: func() []Call {
 		const unknownDebt = "d0000000-0000-0000-0000-0000000000ff"
@@ -93,6 +126,7 @@ func init() {
 			create("unknown-label", map[string]any{"labelId": "30000000-0000-0000-0000-0000000000ee"}),
 			create("terms-pair-missing-last-date", map[string]any{"lastPaymentDate": ""}),
 			create("terms-pair-missing-balance", map[string]any{"balance": ""}),
+			create("tag-and-label", map[string]any{"tagId": TagWork, "labelId": LabelWork}),
 
 			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
 				Body: debtBody(nil), CaptureIDInto: &debtID},

@@ -205,17 +205,6 @@ func TestUpdateDebt_RematchKeepsStoredSplits(t *testing.T) {
 	}
 }
 
-func TestUpdateDebt_CurrencyIsNotEditable(t *testing.T) {
-	e := newEnv(t)
-	res := e.create(t, nil)
-	req := e.updateReq(res)
-	req.CurrencyId = e.f.Currency(fixture.Currency{Code: "EUR", Symbol: "E"})
-	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
-	if err != nil || got.CurrencyId != fixture.USD {
-		t.Fatalf("got %+v, %v", got, err)
-	}
-}
-
 func TestUpdateDebt_PaymentRoundingToZeroRefused(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
@@ -286,5 +275,117 @@ func TestUpdateDebt_BecomingWholeCategoryTakesItsPlans(t *testing.T) {
 	}
 	if len(e.budget.transfers) != 0 {
 		t.Fatalf("an edit that keeps or narrows the key moved data: %+v", e.budget.transfers)
+	}
+}
+
+func (e *env) eur() string {
+	return e.f.Currency(fixture.Currency{Code: "EUR", Symbol: "€", Name: "Euro"})
+}
+
+// A set-up debt's currency changes without its terms: the stored numbers are
+// read in the new currency, no snapshot is written, the budget rows follow,
+// and the payments are split again from their amounts in the new currency.
+func TestUpdateDebt_CurrencyChangeResplitsPayments(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	eur := e.eur()
+	res := e.create(t, nil)
+	e.clock.now = ymd(2026, 4, 10)
+	// below the period's interest, so the split takes all of it
+	tx := e.expense(t, e.account, ymd(2026, 4, 1), "50", "")
+	e.sync(t)
+	if got := e.splits(t, res.Id)[tx]; got != vo.NewDecimal("50").String() {
+		t.Fatalf("interest before = %q, want 50", got)
+	}
+
+	e.rates.multiplier[fixture.USD] = 2
+	req := e.updateReq(res)
+	req.CurrencyId = eur
+	req.Balance, req.Payment, req.Schedule, req.LastPaymentDate = vo.FlexString{}, vo.FlexString{}, "", ""
+	got, err := e.svc.UpdateDebt(ctx, e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.CurrencyId != eur || got.Balance != "10000" || got.Payment != "1000" {
+		t.Fatalf("result = %+v", got)
+	}
+	if n := len(e.snapshots(t, res.Id)); n != 1 {
+		t.Errorf("a currency change wrote a snapshot: %d", n)
+	}
+	if len(e.budget.currencies) != 1 || e.budget.currencies[0] != eur {
+		t.Errorf("budget rows moved to %v, want [%s]", e.budget.currencies, eur)
+	}
+	details, err := e.svc.GetDebt(ctx, e.uid(), model.GetDebtRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(details.Payments) != 1 {
+		t.Fatalf("payments = %+v", details.Payments)
+	}
+	p := details.Payments[0]
+	if p.Amount != "100" || p.Interest != "100" {
+		t.Errorf("payment = %+v, want 100 split again as 100 interest", p)
+	}
+}
+
+func TestUpdateDebt_UnchangedCurrencyTouchesNothing(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	res := e.create(t, nil)
+	tx := e.expense(t, e.account, ymd(2026, 3, 1), "50", "")
+	e.sync(t)
+	before := e.splits(t, res.Id)[tx]
+	// a currency no longer usable stays on the debt that holds it
+	e.currency.unusable[fixture.USD] = true
+
+	for _, cur := range []string{fixture.USD, ""} {
+		req := e.updateReq(res)
+		req.CurrencyId = cur
+		got, err := e.svc.UpdateDebt(ctx, e.uid(), req)
+		if err != nil {
+			t.Fatalf("currency %q: %v", cur, err)
+		}
+		if got.CurrencyId != fixture.USD {
+			t.Errorf("currency %q: result currency %s", cur, got.CurrencyId)
+		}
+	}
+	if len(e.budget.currencies) != 0 {
+		t.Errorf("budget rows moved: %v", e.budget.currencies)
+	}
+	if got := e.splits(t, res.Id)[tx]; got != before {
+		t.Errorf("split %q -> %q", before, got)
+	}
+}
+
+func TestUpdateDebt_RefusesAnUnusableCurrency(t *testing.T) {
+	e := newEnv(t)
+	eur := e.eur()
+	res := e.create(t, nil)
+	e.currency.unusable[eur] = true
+	req := e.updateReq(res)
+	req.CurrencyId = eur
+	_, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	requireCode(t, err, errs.CodeCurrencyNotAvailable)
+}
+
+// The payment of a debt not set up is in the currency it moves to, rounded to
+// that currency's digits.
+func TestUpdateDebt_CurrencyChangeOfADebtNotSetUp(t *testing.T) {
+	e := newEnv(t)
+	jpy := e.f.Currency(fixture.Currency{Code: "JPY", Symbol: "¥", Name: "Yen"})
+	e.rates.digitsOf = map[string]int{jpy: 0}
+	res := e.createWithoutTerms(t, nil)
+	req := e.updateReq(res)
+	req.CurrencyId = jpy
+	req.Payment = vo.NewFlexString("1500.6")
+	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.CurrencyId != jpy || got.Payment != "1501" || got.IsSetUp != 0 {
+		t.Fatalf("result = %+v", got)
+	}
+	if len(e.budget.currencies) != 1 || e.budget.currencies[0] != jpy {
+		t.Errorf("budget rows moved to %v", e.budget.currencies)
 	}
 }

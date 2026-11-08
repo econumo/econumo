@@ -35,11 +35,13 @@ func (r CreateDebtRequest) Validate() error {
 	return debtValidation(fields)
 }
 
-// UpdateDebtRequest carries the same fields as create. The currency is never
-// changed: CurrencyId is accepted and ignored. Without a balance and a last
-// payment date the terms stay as stored, and a payment or schedule left out
-// keeps the stored one; on a set-up debt a payment or schedule that differs
-// from the stored one is a change of terms and needs both.
+// UpdateDebtRequest carries the same fields as create. An empty CurrencyId
+// keeps the stored currency; another one moves the debt to it, the amounts in
+// the request (or, when left out, the stored ones, unconverted) then being in
+// that currency. Without a balance and a last payment date the terms stay as
+// stored, and a payment or schedule left out keeps the stored one; on a
+// set-up debt a payment or schedule that differs from the stored one is a
+// change of terms and needs both.
 type UpdateDebtRequest struct {
 	Id              string        `json:"id"`
 	Name            string        `json:"name"`
@@ -58,6 +60,7 @@ type UpdateDebtRequest struct {
 func (r UpdateDebtRequest) Validate() error {
 	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate, true)
 	fields = append(fields, debtIDField("id", r.Id, true)...)
+	fields = append(fields, debtIDField("currencyId", r.CurrencyId, false)...)
 	return debtValidation(fields)
 }
 
@@ -218,6 +221,10 @@ func debtFields(name, categoryID string, payeeID, tagID, labelID, startDate *str
 	fields = append(fields, debtOptionalIDField("payeeId", payeeID)...)
 	fields = append(fields, debtOptionalIDField("tagId", tagID)...)
 	fields = append(fields, debtOptionalIDField("labelId", labelID)...)
+	// a debt narrows its payments by a tag or by a reporting tag, not both
+	if tagID != nil && strings.TrimSpace(*tagID) != "" && labelID != nil && strings.TrimSpace(*labelID) != "" {
+		fields = append(fields, errs.FieldError{Key: "labelId", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
+	}
 	if startDate != nil && strings.TrimSpace(*startDate) != "" {
 		if _, err := time.Parse(datetime.DateLayout, *startDate); err != nil {
 			fields = append(fields, debtInvalidField("startDate"))

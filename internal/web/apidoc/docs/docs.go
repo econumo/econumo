@@ -5789,7 +5789,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Updates a debt's name, key and terms; changed terms start a new snapshot. A body without balance and lastPaymentDate keeps the stored terms (no snapshot), and a payment or schedule left out keeps the stored one; on a set-up debt a payment or schedule that differs from the stored one is a change of terms and needs balance and lastPaymentDate too. A debt not set up is set up by a body carrying balance and lastPaymentDate (its first snapshot, as of today); without them only its payment, schedule and key change. The currency never changes.",
+                "description": "Updates a debt's name, key and terms; changed terms start a new snapshot. A body without balance and lastPaymentDate keeps the stored terms (no snapshot), and a payment or schedule left out keeps the stored one; on a set-up debt a payment or schedule that differs from the stored one is a change of terms and needs balance and lastPaymentDate too. A debt not set up is set up by a body carrying balance and lastPaymentDate (its first snapshot, as of today); without them only its payment, schedule and key change. A currencyId other than the stored one moves the debt to that currency (refused with currency.not_available when the user may not use it): the amounts sent, or the stored ones when left out, are read in it unconverted, the payments are split again and the budget rows follow; empty keeps the stored currency. tagId and labelId are exclusive (common.invalid_choice on labelId).",
                 "consumes": [
                     "application/json"
                 ],

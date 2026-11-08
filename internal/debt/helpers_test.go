@@ -60,6 +60,8 @@ type fakeRates struct {
 	converted  int
 	// digits are every currency's fraction digits; 0 = 2
 	digits int
+	// digitsOf overrides digits per currency id
+	digitsOf map[string]int
 }
 
 func (r *fakeRates) ConvertOnDay(_ context.Context, from, to vo.Id, amount vo.DecimalNumber, _ time.Time) (vo.DecimalNumber, error) {
@@ -71,7 +73,10 @@ func (r *fakeRates) ConvertOnDay(_ context.Context, from, to vo.Id, amount vo.De
 	return amount.Mul(vo.NewDecimal(formatFloat(m))), nil
 }
 
-func (r *fakeRates) FractionDigits(context.Context, vo.Id) (int, error) {
+func (r *fakeRates) FractionDigits(_ context.Context, id vo.Id) (int, error) {
+	if d, ok := r.digitsOf[id.String()]; ok {
+		return d, nil
+	}
 	if r.digits == 0 {
 		return 2, nil
 	}
@@ -107,8 +112,10 @@ type fakeBudget struct {
 	transfers  []transferCall
 	hasData    bool
 	leftBehind bool
-	// calls is the order of the budget calls: "lock", "transfer", "has-data", "remove".
+	// calls is the order of the budget calls: "lock", "transfer", "has-data", "remove", "currency".
 	calls []string
+	// currencies are the currencies the debt rows were moved to, in order
+	currencies []string
 }
 
 func monthString(t time.Time) string {
@@ -132,6 +139,12 @@ func (b *fakeBudget) HasData(context.Context, vo.Id, model.ElementType) (bool, e
 
 func (b *fakeBudget) RemoveRows(context.Context, vo.Id, model.ElementType) error {
 	b.calls = append(b.calls, "remove")
+	return nil
+}
+
+func (b *fakeBudget) SetRowsCurrency(_ context.Context, _ vo.Id, _ model.ElementType, currencyID vo.Id) error {
+	b.calls = append(b.calls, "currency")
+	b.currencies = append(b.currencies, currencyID.String())
 	return nil
 }
 

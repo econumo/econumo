@@ -132,6 +132,13 @@ func (s *Service) removeRows(ctx context.Context, id vo.Id) error {
 	return s.budget.RemoveRows(ctx, id, model.ElementDebt)
 }
 
+func (s *Service) setRowsCurrency(ctx context.Context, id, currencyID vo.Id) error {
+	if s.budget == nil {
+		return nil
+	}
+	return s.budget.SetRowsCurrency(ctx, id, model.ElementDebt, currencyID)
+}
+
 func (s *Service) lockRows(ctx context.Context, id vo.Id) error {
 	if s.budget == nil {
 		return nil

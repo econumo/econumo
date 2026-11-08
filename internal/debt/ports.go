@@ -50,4 +50,7 @@ type BudgetElements interface {
 	// RemoveRows deletes the rows of the external id in every budget, with
 	// their plans and comments.
 	RemoveRows(ctx context.Context, externalID vo.Id, typ model.ElementType) error
+	// SetRowsCurrency moves the rows of the external id in every budget to
+	// currencyID, keeping their plans' numbers.
+	SetRowsCurrency(ctx context.Context, externalID vo.Id, typ model.ElementType, currencyID vo.Id) error
 }

@@ -175,3 +175,35 @@ func TestUpdateDebtRequest_PaymentAndScheduleOptional(t *testing.T) {
 		t.Errorf("terms without payment and schedule: %v, want both blank", got)
 	}
 }
+
+// A debt names a tag or a reporting tag, never both.
+func TestDebtRequests_RefuseATagAndALabelTogether(t *testing.T) {
+	tag, label := "0197c8b2-1111-7000-8000-000000000002", "0197c8b2-1111-7000-8000-000000000003"
+	create := validDebtRequest()
+	create.TagId, create.LabelId = &tag, &label
+	if got := debtFieldCodes(t, create.Validate()); got["labelId"] != errs.CodeInvalidChoice {
+		t.Errorf("create: %v, want labelId %s", got, errs.CodeInvalidChoice)
+	}
+	update := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000009", Name: "Car loan", CategoryId: create.CategoryId,
+		TagId: &tag, LabelId: &label}
+	if got := debtFieldCodes(t, update.Validate()); got["labelId"] != errs.CodeInvalidChoice {
+		t.Errorf("update: %v, want labelId %s", got, errs.CodeInvalidChoice)
+	}
+	empty := ""
+	create.LabelId = &empty
+	if err := create.Validate(); err != nil {
+		t.Errorf("an empty label is none: %v", err)
+	}
+}
+
+func TestUpdateDebtRequest_ValidatesAChangedCurrency(t *testing.T) {
+	update := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000009", Name: "Car loan",
+		CategoryId: "0197c8b2-1111-7000-8000-000000000001", CurrencyId: "nope"}
+	if got := debtFieldCodes(t, update.Validate()); got["currencyId"] != errs.CodeInvalidUUID {
+		t.Errorf("%v, want currencyId %s", got, errs.CodeInvalidUUID)
+	}
+	update.CurrencyId = ""
+	if err := update.Validate(); err != nil {
+		t.Errorf("no currency keeps the stored one: %v", err)
+	}
+}

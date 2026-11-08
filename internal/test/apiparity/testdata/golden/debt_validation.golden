@@ -43,6 +43,9 @@
 == err:terms-pair-missing-balance POST /api/v1/debt/create-debt [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"balance":["This value should not be blank."]}}
 
+== err:tag-and-label POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"labelId":["The value you selected is not a valid choice."]}}
+
 == create-debt POST /api/v1/debt/create-debt [owner] -> 200
 {"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"c0000000-0000-0000-0000-000000000001","payeeId":null,"tagId":null,"labelId":null,"startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"periodsPaid":1,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"5.36","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0,"isSetUp":1}}
 

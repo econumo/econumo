@@ -9,8 +9,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// UpdateDebt saves a debt's name, matching filters, start date and terms. A
-// change to a set-up debt's terms needs all of them and starts a new
+// UpdateDebt saves a debt's name, currency, matching filters, start date and
+// terms. A change to a set-up debt's terms needs all of them and starts a new
 // snapshot; a body without a balance and a last payment date keeps the stored
 // terms, so a stale screen renaming the debt cannot write old ones back. A
 // debt not set up is set up by a body carrying a balance and a last payment
@@ -21,7 +21,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 	if err != nil {
 		return nil, err
 	}
-	in, err := parseInput(debtBody{name: req.Name, categoryID: req.CategoryId,
+	in, err := parseInput(debtBody{name: req.Name, currencyID: req.CurrencyId, categoryID: req.CategoryId,
 		payeeID: req.PayeeId, tagID: req.TagId, labelID: req.LabelId, start: req.StartDate,
 		balance: req.Balance, payment: req.Payment, schedule: req.Schedule, lastPayment: req.LastPaymentDate})
 	if err != nil {
@@ -36,7 +36,15 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 	if _, err := s.syncCategory(ctx, d.CategoryID); err != nil {
 		return nil, err
 	}
-	digits, err := s.rates.FractionDigits(ctx, d.CurrencyID)
+	// the amounts in the request are in the currency the debt ends up in
+	currency := d.CurrencyID
+	if !in.currency.IsZero() && !in.currency.Equal(d.CurrencyID) {
+		if err := s.currencies.EnsureUsable(ctx, userID.String(), in.currency.String()); err != nil {
+			return nil, err
+		}
+		currency = in.currency
+	}
+	digits, err := s.rates.FractionDigits(ctx, currency)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +67,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 			return missingTerms(true, true)
 		}
 		wasWhole, wasCategory, wasSetUp := isWholeCategory(cur), cur.CategoryID, cur.IsSetUp()
+		currencyChanged := !cur.CurrencyID.Equal(currency)
 		keyChanged := !cur.CategoryID.Equal(in.category) || !sameIdPtr(cur.PayeeID, in.payee) ||
 			!sameIdPtr(cur.TagID, in.tag) || !sameIdPtr(cur.LabelID, in.label) || !sameDay(cur.StartDate, in.start)
 		// the start of the months the debt row shows, before this update
@@ -69,6 +78,8 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 			}
 		}
 		cur.Name, cur.CategoryID, cur.PayeeID, cur.TagID, cur.LabelID, cur.StartDate = in.name, in.category, in.payee, in.tag, in.label, in.start
+		// stored numbers are kept as they are and read in the new currency
+		cur.CurrencyID = currency
 		if keyChanged {
 			others, err := s.repo.ListByCategory(ctx, cur.CategoryID)
 			if err != nil {
@@ -107,10 +118,18 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 				return err
 			}
 		}
-		if !wasSetUp && cur.IsSetUp() {
+		if currencyChanged {
+			if err := s.setRowsCurrency(ctx, cur.ID, cur.CurrencyID); err != nil {
+				return err
+			}
+		}
+		// splits are in the debt's currency: the next sync splits again
+		if currencyChanged || (!wasSetUp && cur.IsSetUp()) {
 			if err := s.dropSplits(ctx, cur.ID); err != nil {
 				return err
 			}
+		}
+		if !wasSetUp && cur.IsSetUp() {
 			// the debt took every month of its former category before setup,
 			// whatever key the same request gives it now
 			if wasWhole {

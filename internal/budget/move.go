@@ -463,12 +463,14 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 			return perr
 		}
 		e, key := ensure(did, model.ElementDebt)
-		if _, isNew := created[key]; isNew && e.CurrencyID == nil {
-			cid, perr := vo.ParseId(d.CurrencyID)
-			if perr != nil {
-				return perr
-			}
+		// a debt row is always in its debt's currency, which the debt may change
+		cid, perr := vo.ParseId(d.CurrencyID)
+		if perr != nil {
+			return perr
+		}
+		if e.CurrencyID == nil || !e.CurrencyID.Equal(cid) {
 			e.UpdateCurrency(&cid, now)
+			mark(e)
 		}
 		if e.FolderID != nil {
 			e.UpdateFolder(nil, now)

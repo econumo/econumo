@@ -202,6 +202,30 @@ func (s *Service) RemoveElements(ctx context.Context, externalID vo.Id, typ mode
 	})
 }
 
+// SetElementsCurrency moves the external id's rows of this type in every
+// budget to currencyID; their plans keep their numbers, as with a row's own
+// currency change.
+func (s *Service) SetElementsCurrency(ctx context.Context, externalID vo.Id, typ model.ElementType, currencyID vo.Id) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		rows, err := s.elements.ListElementsByExternal(ctx, externalID)
+		if err != nil {
+			return err
+		}
+		now := s.clock.Now()
+		for _, el := range rows {
+			if el.Type != typ || (el.CurrencyID != nil && el.CurrencyID.Equal(currencyID)) {
+				continue
+			}
+			cid := currencyID
+			el.UpdateCurrency(&cid, now)
+			if err := s.elements.SaveElement(ctx, el); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // ElementHasData reports whether the row holds a plan or a comment in any
 // budget.
 func (s *Service) ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error) {

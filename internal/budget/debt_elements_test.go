@@ -677,3 +677,45 @@ func TestTransferElementData_BeforeDayMovesTheEarlierPeriods(t *testing.T) {
 		t.Errorf("category has %d comments, want the May one moved", n)
 	}
 }
+
+// A debt whose currency changed moves its rows to that currency; their plans
+// keep their numbers.
+func TestSetElementsCurrency_DebtRowsFollowAndKeepPlans(t *testing.T) {
+	h := newDebtHarness(t)
+	debt := h.addDebt(h.owner, fixture.USD)
+	h.mustSetLimit(t, debt, "2026-05-01", "100")
+	el := h.element(t, debt)
+
+	if err := h.svc.SetElementsCurrency(h.ctx, vo.MustParseId(debt), model.ElementDebt, vo.MustParseId(h.eur)); err != nil {
+		t.Fatalf("SetElementsCurrency: %v", err)
+	}
+	got := h.element(t, debt)
+	if got.CurrencyID == nil || got.CurrencyID.String() != h.eur {
+		t.Fatalf("currency = %v, want %s", got.CurrencyID, h.eur)
+	}
+	if l := h.limits(t, el.ID); l["2026-05-01"] != amount("100") {
+		t.Errorf("plans = %v, want 100 in May", l)
+	}
+}
+
+func TestSyncElements_DebtRowFollowsTheDebtCurrency(t *testing.T) {
+	h := newDebtHarness(t)
+	debt := h.addDebt(h.owner, fixture.USD)
+	h.sync(t)
+	h.mustSetLimit(t, debt, "2026-05-01", "100")
+	el := h.element(t, debt)
+
+	h.debts.views[0].CurrencyID = h.eur
+	h.sync(t)
+
+	got := h.element(t, debt)
+	if got.CurrencyID == nil || got.CurrencyID.String() != h.eur {
+		t.Fatalf("currency = %v, want %s", got.CurrencyID, h.eur)
+	}
+	if !got.ID.Equal(el.ID) {
+		t.Fatal("the row was recreated")
+	}
+	if l := h.limits(t, el.ID); l["2026-05-01"] != amount("100") {
+		t.Errorf("plans = %v, want 100 in May", l)
+	}
+}

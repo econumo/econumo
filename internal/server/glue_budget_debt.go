@@ -14,6 +14,7 @@ type debtBudgetElements interface {
 	ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error)
 	LockElements(ctx context.Context, externalID vo.Id, typ model.ElementType) error
 	RemoveElements(ctx context.Context, externalID vo.Id, typ model.ElementType) error
+	SetElementsCurrency(ctx context.Context, externalID vo.Id, typ model.ElementType, currencyID vo.Id) error
 }
 
 // DebtBudgetElements adapts the budget service's method names to
@@ -43,4 +44,8 @@ func (a *DebtBudgetElements) RemoveRows(ctx context.Context, externalID vo.Id, t
 
 func (a *DebtBudgetElements) HasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error) {
 	return a.budget.ElementHasData(ctx, externalID, typ)
+}
+
+func (a *DebtBudgetElements) SetRowsCurrency(ctx context.Context, externalID vo.Id, typ model.ElementType, currencyID vo.Id) error {
+	return a.budget.SetElementsCurrency(ctx, externalID, typ, currencyID)
 }
