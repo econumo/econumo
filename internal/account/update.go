@@ -133,36 +133,10 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 		return nil, err
 	}
 
-	folders, err := s.sortedFolders(ctx, userID)
+	item, err := s.freshAccountResult(ctx, userID, updated)
 	if err != nil {
 		return nil, err
 	}
-	memberships, err := s.memberships.MembershipsByUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	bal, err := s.balances.Balance(ctx, id, s.balanceBefore(ctx))
-	if err != nil {
-		return nil, err
-	}
-	item, err := s.buildAccountResult(ctx, userID, updated, bal, folders, memberships, nil)
-	if err != nil {
-		return nil, err
-	}
-	// updated predates the correction written in the tx, so its revision is stale.
-	item.TransactionsRevision, err = s.accounts.TransactionsRevision(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	item.TransactionsCount, err = s.balances.TransactionsCount(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	idx, err := s.accountIndex(ctx, userID, updated.ID)
-	if err != nil {
-		return nil, err
-	}
-	item.Position = idx
 	// Fill the correction's author: the requesting user, who may be a grantee.
 	if correction != nil {
 		owner, oerr := s.users.GetOwner(ctx, userID.String())

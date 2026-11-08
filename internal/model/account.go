@@ -103,4 +103,6 @@ type AccountCorrection struct {
 	Amount      string
 	SpentAt     time.Time
 	CreatedAt   time.Time
+	// UpdatedAt is read by UpdateCorrection only; an insert stamps CreatedAt.
+	UpdatedAt time.Time
 }

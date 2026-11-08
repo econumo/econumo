@@ -41,4 +41,24 @@ func init() {
 				Body: map[string]any{"accountId": OwnerAccount}},
 		}
 	}})
+
+	// Snapshot then restore: OwnerAccount holds categorized rows, so the
+	// restore adds a "Balance adjustment" just before its earliest row created
+	// since 2000; SharedAccount is shared to the owner without admin rights, so
+	// the snapshot omits it and the restore is refused.
+	register(Scenario{Name: "account_keep_balance", Calls: func() []Call {
+		return []Call{
+			{Label: "get-balance-snapshot", Method: "GET", Path: "/api/v1/account/get-balance-snapshot?accountIds=" + OwnerAccount + "," + SharedAccount, Auth: "owner"},
+			{Label: "restore-balance", Method: "POST", Path: "/api/v1/account/restore-balance", Auth: "owner",
+				Body: map[string]any{"accountId": OwnerAccount, "balance": "2000", "openingCorrectionId": "", "since": "2000-01-01 00:00:00"}},
+			{Label: "restore-balance-unchanged", Method: "POST", Path: "/api/v1/account/restore-balance", Auth: "owner",
+				Body: map[string]any{"accountId": OwnerAccount, "balance": "2000", "openingCorrectionId": "", "since": "2000-01-01 00:00:00"}},
+			{Label: "get-account-transaction-list-after", Method: "GET", Path: "/api/v1/transaction/get-account-transaction-list?accountIds=" + OwnerAccount, Auth: "owner"},
+			{Label: "err:restore-balance-no-admin", Method: "POST", Path: "/api/v1/account/restore-balance", Auth: "owner",
+				Body: map[string]any{"accountId": SharedAccount, "balance": "10", "openingCorrectionId": "", "since": "2000-01-01 00:00:00"}},
+			{Label: "err:restore-balance-invalid", Method: "POST", Path: "/api/v1/account/restore-balance", Auth: "owner",
+				Body: map[string]any{"accountId": OwnerAccount, "balance": "ten", "openingCorrectionId": "", "since": "yesterday"}},
+			{Label: "err:get-balance-snapshot-blank", Method: "GET", Path: "/api/v1/account/get-balance-snapshot?accountIds=", Auth: "owner"},
+		}
+	}})
 }

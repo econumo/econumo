@@ -2,8 +2,11 @@
 package model
 
 import (
+	"regexp"
 	"strings"
+	"time"
 
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -429,3 +432,115 @@ func (r RevokeAccountAccessRequest) Validate() error {
 
 // RevokeAccountAccessResult is the (empty) response.
 type RevokeAccountAccessResult struct{}
+
+// MaxBalanceSnapshotIds caps get-balance-snapshot's accountIds, like the
+// transaction sync read.
+const MaxBalanceSnapshotIds = 200
+
+// BalanceSnapshotRequest is the get-balance-snapshot query; AccountIds is the
+// raw comma-separated value.
+type BalanceSnapshotRequest struct {
+	AccountIds string
+}
+
+func (r BalanceSnapshotRequest) Validate() error {
+	fieldErr := func(msg, code string) error {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "accountIds", Message: msg, Code: code})
+	}
+	if strings.Trim(r.AccountIds, ", \t") == "" {
+		return fieldErr("This value should not be blank.", errs.CodeIsBlank)
+	}
+	parts := strings.Split(r.AccountIds, ",")
+	if len(parts) > MaxBalanceSnapshotIds {
+		return fieldErr("This value is too long.", errs.CodeTooLong)
+	}
+	for _, p := range parts {
+		if _, err := vo.ParseId(strings.TrimSpace(p)); err != nil {
+			return fieldErr("This value is not a valid UUID.", errs.CodeInvalidUUID)
+		}
+	}
+	return nil
+}
+
+// IDs returns the trimmed, deduplicated ids in request order.
+func (r BalanceSnapshotRequest) IDs() []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, p := range strings.Split(r.AccountIds, ",") {
+		p = strings.TrimSpace(p)
+		if p == "" || seen[p] {
+			continue
+		}
+		seen[p] = true
+		out = append(out, p)
+	}
+	return out
+}
+
+// BalanceSnapshotItem is one account's balance before an import. Fresh means
+// the account holds nothing or only its untouched opening correction, whose id
+// is then OpeningCorrectionId ("" otherwise).
+type BalanceSnapshotItem struct {
+	AccountId           string `json:"accountId"`
+	Balance             string `json:"balance"`
+	OpeningCorrectionId string `json:"openingCorrectionId"`
+	Fresh               bool   `json:"fresh"`
+}
+
+// BalanceSnapshotResult carries the server time the snapshot was taken at
+// (UTC, Y-m-d H:i:s); restore-balance treats rows created since then as
+// imported.
+type BalanceSnapshotResult struct {
+	TakenAt string                `json:"takenAt"`
+	Items   []BalanceSnapshotItem `json:"items"`
+}
+
+// RestoreBalanceRequest asks to bring the account back to Balance after an
+// import that started at Since (a snapshot's takenAt).
+type RestoreBalanceRequest struct {
+	AccountId           string `json:"accountId"`
+	Balance             string `json:"balance"`
+	OpeningCorrectionId string `json:"openingCorrectionId"`
+	Since               string `json:"since"`
+}
+
+var restoreBalanceDecimal = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
+
+func (r RestoreBalanceRequest) Validate() error {
+	var fields []errs.FieldError
+	for _, f := range []struct{ key, val string }{
+		{"accountId", r.AccountId}, {"balance", r.Balance}, {"since", r.Since},
+	} {
+		if strings.TrimSpace(f.val) == "" {
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+		}
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	if _, err := vo.ParseId(r.AccountId); err != nil {
+		fields = append(fields, errs.FieldError{Key: "accountId", Message: "This value is not a valid UUID.", Code: errs.CodeInvalidUUID})
+	}
+	if r.OpeningCorrectionId != "" {
+		if _, err := vo.ParseId(r.OpeningCorrectionId); err != nil {
+			fields = append(fields, errs.FieldError{Key: "openingCorrectionId", Message: "This value is not a valid UUID.", Code: errs.CodeInvalidUUID})
+		}
+	}
+	if !restoreBalanceDecimal.MatchString(r.Balance) {
+		fields = append(fields, errs.FieldError{Key: "balance", Message: "This value is not valid.", Code: errs.CodeInvalidFormat})
+	}
+	if _, err := time.Parse(datetime.Layout, r.Since); err != nil {
+		fields = append(fields, errs.FieldError{Key: "since", Message: "Invalid date format, expected Y-m-d H:i:s", Code: errs.CodeInvalidDatetimeFormat})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// RestoreBalanceResult is the account after the restore; Restored is false
+// when nothing needed writing.
+type RestoreBalanceResult struct {
+	Item     AccountResult `json:"item"`
+	Restored bool          `json:"restored"`
+}

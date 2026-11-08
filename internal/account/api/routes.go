@@ -17,6 +17,8 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/account/delete-account", auth(h.DeleteAccount))
 		mux.Handle("GET /api/v1/account/get-account-list", auth(h.GetAccountList))
 		mux.Handle("POST /api/v1/account/move-account", auth(h.MoveAccount))
+		mux.Handle("GET /api/v1/account/get-balance-snapshot", auth(h.GetBalanceSnapshot))
+		mux.Handle("POST /api/v1/account/restore-balance", auth(h.RestoreBalance))
 
 		mux.Handle("POST /api/v1/account/grant-access", auth(h.GrantAccess))
 		mux.Handle("POST /api/v1/account/accept-access", auth(h.AcceptAccess))

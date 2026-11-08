@@ -1082,7 +1082,7 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   COMMIT as one UPDATE per account in sorted id order (a stable lock order, so concurrent
   writers cannot deadlock on it); outside a transaction they apply immediately. Sites:
   the transaction repo (`Save`, `ReplaceLabels`, `LinkRecurring`, `Delete`, `SetSideKey`), account
-  `SaveCorrection`, category/payee/tag merge and delete, label merge and delete, recurring
+  `SaveCorrection` / `UpdateCorrection` / `DeleteCorrection`, category/payee/tag merge and delete, label merge and delete, recurring
   delete, imports `InsertLink` / `UpdateLink` (only when its `transaction_id` changes) /
   `DeleteSource`, and the user `Save` when the name or avatar changes. The account DTO
   carries it as `transactionsRevision` (additive), next to `transactionsCount`, how many rows

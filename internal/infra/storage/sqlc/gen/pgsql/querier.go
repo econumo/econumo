@@ -50,6 +50,7 @@ type Querier interface {
 	DeleteBudgetLimitsByBudget(ctx context.Context, budgetID string) error
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
+	DeleteCorrectionTransaction(ctx context.Context, arg DeleteCorrectionTransactionParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	// The OAuth server's housekeeping purge: oauth tokens live an hour, so they
 	// pile up far faster than sessions and are swept set-based, not per user.
@@ -154,9 +155,11 @@ type Querier interface {
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
 	GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyID string) (time.Time, error)
+	GetEarliestSpentSince(ctx context.Context, arg GetEarliestSpentSinceParams) (time.Time, error)
 	// Where a rate-gap check starts by default. ORDER BY ... LIMIT 1 so the
 	// result types as the column. sql.ErrNoRows = no transactions yet.
 	GetEarliestTransactionDate(ctx context.Context) (time.Time, error)
+	GetFirstAccountTransactionID(ctx context.Context, arg GetFirstAccountTransactionIDParams) (string, error)
 	// Fixed custom-currency rates for the convertor overlay: one rate per custom,
 	// period-independent. Globals never carry a rate here.
 	GetFixedCurrencyRates(ctx context.Context) ([]GetFixedCurrencyRatesRow, error)
@@ -205,6 +208,7 @@ type Querier interface {
 	GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash string) (OauthGrant, error)
 	GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHandoff, error)
 	GetOAuthState(ctx context.Context, stateHash string) (OauthState, error)
+	GetOpeningCorrection(ctx context.Context, arg GetOpeningCorrectionParams) (GetOpeningCorrectionRow, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation; the SQL is identical apart from the
@@ -486,6 +490,7 @@ type Querier interface {
 	// See the sqlite sibling.
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
+	UpdateCorrectionTransaction(ctx context.Context, arg UpdateCorrectionTransactionParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error

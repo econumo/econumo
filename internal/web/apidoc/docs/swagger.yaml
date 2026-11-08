@@ -322,6 +322,26 @@ definitions:
       rate:
         type: string
     type: object
+  model.BalanceSnapshotItem:
+    properties:
+      accountId:
+        type: string
+      balance:
+        type: string
+      fresh:
+        type: boolean
+      openingCorrectionId:
+        type: string
+    type: object
+  model.BalanceSnapshotResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.BalanceSnapshotItem'
+        type: array
+      takenAt:
+        type: string
+    type: object
   model.BudgetAccountFilter:
     properties:
       id:
@@ -2618,6 +2638,24 @@ definitions:
     type: object
   model.ResetPasswordResult:
     type: object
+  model.RestoreBalanceRequest:
+    properties:
+      accountId:
+        type: string
+      balance:
+        type: string
+      openingCorrectionId:
+        type: string
+      since:
+        type: string
+    type: object
+  model.RestoreBalanceResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountResult'
+      restored:
+        type: boolean
+    type: object
   model.RetryImportEventRequest:
     properties:
       eventId:
@@ -3742,6 +3780,45 @@ paths:
       summary: Get the account list
       tags:
       - Account
+  /api/v1/account/get-balance-snapshot:
+    get:
+      description: Returns each requested account's balance and whether it holds nothing
+        but its opening correction. Accounts the caller may not edit are omitted.
+      parameters:
+      - description: Comma-separated account ids (max 200)
+        in: query
+        name: accountIds
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.BalanceSnapshotResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Snapshot account balances before an import
+      tags:
+      - Account
   /api/v1/account/get-folder-list:
     get:
       description: Returns the user's account folders ordered by position.
@@ -3997,6 +4074,53 @@ paths:
       security:
       - Bearer: []
       summary: Replace a folder
+      tags:
+      - Account
+  /api/v1/account/restore-balance:
+    post:
+      consumes:
+      - application/json
+      description: Brings the account back to the snapshot balance by moving its opening
+        correction, or adding a correction, just before the earliest transaction created
+        since the snapshot. Requires ownership or admin access.
+      parameters:
+      - description: Restore balance request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RestoreBalanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RestoreBalanceResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Restore an account balance after an import
       tags:
       - Account
   /api/v1/account/revoke-access:

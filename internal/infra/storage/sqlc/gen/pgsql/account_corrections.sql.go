@@ -10,6 +10,106 @@ import (
 	"time"
 )
 
+const deleteCorrectionTransaction = `-- name: DeleteCorrectionTransaction :exec
+DELETE FROM transactions WHERE id = $1 AND account_id = $2
+`
+
+type DeleteCorrectionTransactionParams struct {
+	ID        string
+	AccountID string
+}
+
+func (q *Queries) DeleteCorrectionTransaction(ctx context.Context, arg DeleteCorrectionTransactionParams) error {
+	_, err := q.db.ExecContext(ctx, deleteCorrectionTransaction, arg.ID, arg.AccountID)
+	return err
+}
+
+const getEarliestSpentSince = `-- name: GetEarliestSpentSince :one
+SELECT spent_at FROM transactions
+WHERE (account_id = $1 OR account_recipient_id = $2) AND created_at >= $3 AND id <> $4
+ORDER BY spent_at ASC
+LIMIT 1
+`
+
+type GetEarliestSpentSinceParams struct {
+	AccountID          string
+	AccountRecipientID *string
+	CreatedAt          time.Time
+	ID                 string
+}
+
+func (q *Queries) GetEarliestSpentSince(ctx context.Context, arg GetEarliestSpentSinceParams) (time.Time, error) {
+	row := q.db.QueryRowContext(ctx, getEarliestSpentSince,
+		arg.AccountID,
+		arg.AccountRecipientID,
+		arg.CreatedAt,
+		arg.ID,
+	)
+	var spent_at time.Time
+	err := row.Scan(&spent_at)
+	return spent_at, err
+}
+
+const getFirstAccountTransactionID = `-- name: GetFirstAccountTransactionID :one
+SELECT id FROM transactions
+WHERE account_id = $1 OR account_recipient_id = $2
+ORDER BY id
+LIMIT 1
+`
+
+type GetFirstAccountTransactionIDParams struct {
+	AccountID          string
+	AccountRecipientID *string
+}
+
+func (q *Queries) GetFirstAccountTransactionID(ctx context.Context, arg GetFirstAccountTransactionIDParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getFirstAccountTransactionID, arg.AccountID, arg.AccountRecipientID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getOpeningCorrection = `-- name: GetOpeningCorrection :one
+SELECT t.id, t.user_id, t.account_id, t.description, t.type, t.amount, t.spent_at, t.created_at
+FROM transactions t
+WHERE t.id = $1 AND t.account_id = $2
+  AND t.account_recipient_id IS NULL AND t.category_id IS NULL AND t.payee_id IS NULL
+  AND t.tag_id IS NULL AND t.recurring_id IS NULL AND t.description = '' AND t.type IN (0, 1)
+  AND NOT EXISTS (SELECT 1 FROM transactions_labels tl WHERE tl.transaction_id = t.id)
+`
+
+type GetOpeningCorrectionParams struct {
+	ID        string
+	AccountID string
+}
+
+type GetOpeningCorrectionRow struct {
+	ID          string
+	UserID      string
+	AccountID   string
+	Description string
+	Type        int16
+	Amount      string
+	SpentAt     time.Time
+	CreatedAt   time.Time
+}
+
+func (q *Queries) GetOpeningCorrection(ctx context.Context, arg GetOpeningCorrectionParams) (GetOpeningCorrectionRow, error) {
+	row := q.db.QueryRowContext(ctx, getOpeningCorrection, arg.ID, arg.AccountID)
+	var i GetOpeningCorrectionRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.Description,
+		&i.Type,
+		&i.Amount,
+		&i.SpentAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertCorrectionTransaction = `-- name: InsertCorrectionTransaction :exec
 
 INSERT INTO transactions (
@@ -48,6 +148,35 @@ func (q *Queries) InsertCorrectionTransaction(ctx context.Context, arg InsertCor
 		arg.Type,
 		arg.Amount,
 		arg.SortKey,
+	)
+	return err
+}
+
+const updateCorrectionTransaction = `-- name: UpdateCorrectionTransaction :exec
+UPDATE transactions
+SET type = $1, amount = $2, spent_at = $3, updated_at = $4, sort_key = $5
+WHERE id = $6 AND account_id = $7
+`
+
+type UpdateCorrectionTransactionParams struct {
+	Type      int16
+	Amount    string
+	SpentAt   time.Time
+	UpdatedAt time.Time
+	SortKey   string
+	ID        string
+	AccountID string
+}
+
+func (q *Queries) UpdateCorrectionTransaction(ctx context.Context, arg UpdateCorrectionTransactionParams) error {
+	_, err := q.db.ExecContext(ctx, updateCorrectionTransaction,
+		arg.Type,
+		arg.Amount,
+		arg.SpentAt,
+		arg.UpdatedAt,
+		arg.SortKey,
+		arg.ID,
+		arg.AccountID,
 	)
 	return err
 }
