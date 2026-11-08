@@ -1281,7 +1281,8 @@
       "text": "Collega Apple Wallet e ogni pagamento con la carta compare da solo in Econumo.",
       "setup": "Configura",
       "skip": "Salta"
-    }
+    },
+    "retry": "Riprova"
   },
   "budgets": {
     "modal": {

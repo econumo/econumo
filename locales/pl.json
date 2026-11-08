@@ -1281,7 +1281,8 @@
       "text": "Połącz Apple Wallet, a każda płatność kartą pojawi się w Econumo automatycznie.",
       "setup": "Skonfiguruj",
       "skip": "Pomiń"
-    }
+    },
+    "retry": "Spróbuj ponownie"
   },
   "budgets": {
     "modal": {

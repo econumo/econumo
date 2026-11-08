@@ -1281,7 +1281,8 @@
       "text": "Conecta Apple Wallet y cada pago con tu tarjeta aparece en Econumo por sí solo.",
       "setup": "Configurar",
       "skip": "Omitir"
-    }
+    },
+    "retry": "Reintentar"
   },
   "budgets": {
     "modal": {

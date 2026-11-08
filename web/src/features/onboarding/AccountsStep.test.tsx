@@ -311,3 +311,64 @@ describe('AccountsStepBody', () => {
     expect(d.savingsAccountIds).toEqual(['a-new'])
   })
 })
+
+describe('AccountsStepBody recovery', () => {
+  const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
+
+  it('a draft row whose create landed but whose response was lost shows once and continues', async () => {
+    localStorage.clear()
+    const rows: AccountRow[] = [{ key: 'k1', name: 'Cash', balance: '100.5', currencyId: 'cur-usd', savings: true, icon: 'payments' }]
+    saveDraft('u1', { ...emptyDraft(), ops: { 'account:k1': 'op1' }, rows })
+    const creates: string[] = []
+    server.use(
+      ...coreHandlers({ accounts: [fixtureAccounts[0]] }),
+      http.post('*/api/v1/account/create-account', async ({ request }) => {
+        creates.push(((await request.json()) as { id: string }).id)
+        return HttpResponse.json({ success: false, message: 'Operation is locked', code: 400, errors: {} }, { status: 400 })
+      }),
+      http.post('*/api/v1/user/update-currency', () => ok({ user: {} })),
+      http.post('*/api/v1/currency/hide-all-currencies', () => ok({})),
+      http.post('*/api/v1/currency/show-currency', () => ok({})),
+    )
+    const onDone = vi.fn(() => Promise.resolve())
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const user = userEvent.setup()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AccountsStepBody onDone={onDone} onSkip={() => Promise.resolve()} />
+      </QueryClientProvider>,
+    )
+    await ready()
+    expect(screen.getAllByTestId('account-row')).toHaveLength(1)
+    expect(screen.queryByLabelText('Account name')).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('account-row')).getByText('Savings account')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(creates).toEqual([])
+    const d = loadDraft('u1')!
+    expect(d.created).toEqual({ k1: 'a1' })
+    expect(d.savingsAccountIds).toEqual(['a1'])
+  })
+
+  it('a failed account list shows the error with a retry instead of an empty form', async () => {
+    let fail = true
+    server.use(
+      http.get('*/api/v1/account/get-account-list', () =>
+        fail ? HttpResponse.json({ success: false, message: 'Server down' }, { status: 500 }) : ok({ items: fixtureAccounts }),
+      ),
+      ...coreHandlers(),
+    )
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const user = userEvent.setup()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AccountsStepBody onDone={() => Promise.resolve()} onSkip={() => Promise.resolve()} />
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+    fail = false
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText('Euro Stash')).toBeInTheDocument()
+  })
+})

@@ -18,6 +18,7 @@ import type { CategoryRow } from './draft'
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from './defaults'
 import { nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import type { StepBodyProps } from './OnboardingPage'
+import { StepLoadError } from './StepLoadError'
 import { useDay0 } from './useDay0'
 
 type CategoryType = CategoryRow['type']
@@ -217,6 +218,7 @@ export function CategoriesStepBody({ onDone, onSkip }: StepBodyProps) {
   const categories = useCategories()
   const day0 = useDay0()
   const [skipping, setSkipping] = useState(false)
+  if (categories.isError) return <StepLoadError error={categories.error} onRetry={() => void categories.refetch()} />
   if (!day0.ready || categories.isPending) return null
   const existing = (categories.data ?? []).filter((c) => c.ownerUserId === user?.id && c.isArchived === 0)
   return (

@@ -1281,7 +1281,8 @@
       "text": "Connect Apple Wallet and every tap with your card appears in Econumo on its own.",
       "setup": "Set up",
       "skip": "Skip"
-    }
+    },
+    "retry": "Try again"
   },
   "budgets": {
     "modal": {

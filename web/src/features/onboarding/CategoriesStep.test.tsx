@@ -173,9 +173,10 @@ describe('CategoriesStepBody', () => {
   const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
   let created: string[]
 
-  function renderBody(categories: unknown[]) {
+  function renderBody(categories: unknown[], first: Parameters<typeof server.use> = []) {
     created = []
     server.use(
+      ...first,
       ...coreHandlers({ categories }),
       http.post('*/api/v1/category/create-category', async ({ request }) => {
         const body = (await request.json()) as { id: string; name: string; type: string }
@@ -222,5 +223,21 @@ describe('CategoriesStepBody', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Nope')
     expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it('a failed category list shows the error with a retry instead of ticked defaults', async () => {
+    let fail = true
+    renderBody([], [
+      http.get('*/api/v1/category/get-category-list', () =>
+        fail ? HttpResponse.json({ success: false, message: 'Server down' }, { status: 500 }) : ok({ items: fixtureCategories }),
+      ),
+    ])
+    const user = userEvent.setup()
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+    fail = false
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('checkbox', { name: 'Food' })).toBeDisabled()
   })
 })

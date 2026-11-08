@@ -22,6 +22,7 @@ import { nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import { CurrenciesBlock, CurrencyListSheet } from './CurrenciesBlock'
 import { rowInput, rowTile } from './CategoriesStep'
 import type { StepBodyProps } from './OnboardingPage'
+import { StepLoadError } from './StepLoadError'
 import { useDay0 } from './useDay0'
 
 export interface ExistingAccount {
@@ -55,11 +56,32 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const { data: user } = useUserData()
   const words = () => ({ cash: t('onboarding.words.cash'), savings: t('onboarding.words.savings') })
 
-  const draftRowOf = (accountId: Id) => (initialRows ?? []).find((r) => (r.accountId ?? createdIds?.[r.key]) === accountId)
+  // A draft row whose create landed but whose response was lost has no created id; the
+  // account it made is matched by name, so it is shown once and its op id is never replayed.
+  const claims = useMemo(() => {
+    const byAccount = new Map<Id, AccountRow>()
+    const draft = initialRows ?? []
+    for (const r of draft) {
+      const id = r.accountId ?? createdIds?.[r.key]
+      if (id) byAccount.set(id, r)
+    }
+    for (const a of existing) {
+      if (byAccount.has(a.id)) continue
+      const name = a.name.trim().toLowerCase()
+      const taken = new Set([...byAccount.values()].map((r) => r.key))
+      const row = draft.find((r) => !taken.has(r.key) && !r.accountId && !createdIds?.[r.key] && r.name.trim().toLowerCase() === name)
+      if (row) byAccount.set(a.id, row)
+    }
+    return byAccount
+    // the draft and the list are read once, at mount, like the rows seeded from them
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const claimedKeys = new Set([...claims.values()].map((r) => r.key))
+  const draftRowOf = (accountId: Id) => claims.get(accountId) ?? (initialRows ?? []).find((r) => (r.accountId ?? createdIds?.[r.key]) === accountId)
   const [savingsOverride, setSavingsOverride] = useState<Record<Id, boolean>>({})
   const savingsOf = (a: ExistingAccount) => savingsOverride[a.id] ?? draftRowOf(a.id)?.savings ?? looksLikeSavings(a.name, words().savings)
   const [allRows, setRows] = useState<AccountRow[]>(() => {
-    const leftover = (initialRows ?? []).filter((r) => !r.accountId && !createdIds?.[r.key])
+    const leftover = (initialRows ?? []).filter((r) => !r.accountId && !createdIds?.[r.key] && !claimedKeys.has(r.key))
     return leftover.length > 0 || existing.length > 0 ? leftover : [emptyRow()]
   })
   // a row an earlier (failed) submit created comes back in the server list
@@ -296,6 +318,7 @@ export function AccountsStepBody({ onDone, onSkip }: StepBodyProps) {
   const accounts = useAccounts()
   const day0 = useDay0()
   const [skipping, setSkipping] = useState(false)
+  if (accounts.isError) return <StepLoadError error={accounts.error} onRetry={() => void accounts.refetch()} />
   if (!day0.ready) return null
   const existing = (accounts.data ?? [])
     .filter((a) => a.owner.id === user?.id)

@@ -1281,7 +1281,8 @@
       "text": "Verbinde Apple Wallet, und jede Kartenzahlung erscheint von selbst in Econumo.",
       "setup": "Einrichten",
       "skip": "Überspringen"
-    }
+    },
+    "retry": "Erneut versuchen"
   },
   "budgets": {
     "modal": {

@@ -1281,7 +1281,8 @@
       "text": "Ligue o Apple Wallet e cada pagamento com o cartão aparece sozinho no Econumo.",
       "setup": "Configurar",
       "skip": "Ignorar"
-    }
+    },
+    "retry": "Tentar novamente"
   },
   "budgets": {
     "modal": {
