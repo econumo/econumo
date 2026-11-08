@@ -280,9 +280,11 @@ right, no bold, the accent colour only for progress and the primary button.
    block), in the compact row style. Existing accounts are listed locked. After an import
    no balance is asked for.
 3. **Budget and plan.** Entering the step creates the budget (all accounts, savings
-   flags, kept categories) if none exists. Then "Plan this month": one amount field per
-   expense category, a running "Planned X of Y in your accounts" line, "Save plan" writes
-   this month's limits. "Skip for now" is allowed.
+   flags, kept categories) if none exists. Then "Plan this month": an Income group (expected
+   income per income category) and an Expenses group (one amount per expense category), a
+   running "Planned X of Y" line (planned spending against expected income, or against the
+   money in the accounts when no income is planned), and "Save plan" writes this month's
+   limits for both groups. "Skip for now" is allowed.
 4. **Install as an app.** Only where the browser can install (or instructions exist);
    hidden when already running as an installed app.
 5. **Apple Wallet.** Only on iPhone or Mac; leads to the existing Apple Wallet setup.
