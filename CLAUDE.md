@@ -1857,26 +1857,38 @@ data unreadable. Most are also asserted by the test suite.
   **Debt SPA flow** (`web/src/features/debts`): create is a short form (name, a "payments from"
   sentence of chip pickers `PaymentsFromEditor` for category/payee and ONE tag slot whose picker
   lists tags and reporting tags in two headed groups, setting `tagId` or `labelId` and clearing the
-  other, with "any ..." rows and expense-only categories, and one Payment card,
-  `PaymentField`: the amount with an inline "every month" schedule picker, full width, reused by
-  `DebtTermsForm`). It asks no currency: it sends the converted category row's currency, else the
-  user's default, and shows a Currency row only after a `currencyId` refusal (like the start
-  date); the start date field appears only after
+  other, with "any ..." rows and expense-only categories, and one Payment row, `PaymentField`: the
+  amount card and, beside it at the same height on every breakpoint, an "every month" schedule
+  card). Amounts (payment, balance) are plain `inputMode="decimal"` inputs, no calculator:
+  `plainAmount` reads "2000", "2 000", "2,000.50", "1,200" and "1,5" (a lone comma is the decimal
+  mark unless exactly three digits follow it, as the app displays amounts) and anything else is
+  `common.validation.invalid_number`. It asks no currency: it sends the converted category row's
+  currency, else the user's default, and shows a Currency row only after a `currencyId` refusal
+  (like the start date); the start date field appears only after
   `debt.start_date_taken` (the one refusal a date can resolve; `debt.key_conflict` just shows its
   message) and the form creates a debt with no terms, then opens the review screen. The ONLY way
   into a debt is its Details entry (Settings row, budget row menu, item sheet; owner only), opening
-  `DebtReviewScreen`, a full-screen dialog on every breakpoint (`ResponsiveDialog`
-  `fullScreen="always"`): payments left in large text with an X-of-Y progress bar (`periodsPaid`
-  of `periodsPaid + paymentsLeft`, hidden at 0), a "Loan" card (owed now, payment, repeats, next
-  payment, loan ends, start date, left to pay, overpaid so far, overpayment still to come,
-  currency) with its Edit button (`DebtTermsForm` mode `edit`, also on a debt not set up; the form
-  has a Currency row, `CurrencyPickerDialog`, in both modes), the payments-from editor in
-  place (saves without terms, so no new snapshot), rename (header menu), payments
-  and a collapsed "History of terms". A debt not set up shows "Paid so far" (its payments dated up to the caller's today), a hint and a
-  Finish setup button (`DebtTermsForm` mode `setup`: no stored rate, so the last payment date
-  is typed, never auto-filled); the Settings row, the budget row's Left cell and the item
-  sheet's Details button read "Finish setup" for the owner, a partner sees a dash; Left sums,
-  Plan cells and payoff lines skip it. Mark as paid off hides until set up.
+  `DebtReviewScreen`: on desktop a centred dialog over 90% of the viewport that scrolls inside
+  (`ResponsiveDialog` `size="large"`), full screen on a phone (`fullScreen`). Its header is the
+  icon, name and close X (no menu); under it the tabs **Overview** and **Settings**
+  (`components/ui/tabs`, `openDebtDetails(id, tab)` picks the first; `debtDetailsTab` in
+  `uiStore`). Overview is read-only: payments left in large text with an X-of-Y progress bar whose
+  visible track is the whole loan (`periodsPaid` of `periodsPaid + paymentsLeft`, hidden at 0), a
+  "Loan" card (owed now, payment, repeats, next payment, loan ends, start date, left to pay,
+  overpaid so far, overpayment still to come, currency), the payments-from sentence read-only
+  (`PaymentsFromEditor readOnly`), payments and a collapsed "History of terms". Settings is ONE
+  form, `DebtSettingsForm` (name, payments from, balance, payment row, last payment date, start
+  date, currency; Cancel resets it, Save sends one `update-debt`, built by `buildTermsPayload`:
+  untouched terms are not sent, and an unchanged currency goes as `""`, so the server keeps what
+  another device may have changed), then Mark as paid off (set up and not paid off) and Delete.
+  The Settings tab stays mounted (edits survive a look at the Overview) and reloads the debt
+  afresh on every visit while it holds no edits (`useFetchDebtForEdit`); a save returns to the
+  Overview. A debt not set up shows "Paid so far" (its payments dated up to the caller's today),
+  a hint and a Finish setup button that switches to Settings and focuses the first missing term
+  (no stored rate, so the last payment date is typed, never auto-filled; saving with both terms
+  fires `appDebtFinishSetup`); the Settings row, the budget row's Left cell and the item sheet's
+  Details button read "Finish setup" for the owner and open the screen on Settings, a partner
+  sees a dash; Left sums, Plan cells and payoff lines skip it.
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per
   provider (`create-source` is idempotent on the pair); a Wallet card is keyed by its
   normalized name and starts `unmapped` — its events queue (`import_transaction_links`

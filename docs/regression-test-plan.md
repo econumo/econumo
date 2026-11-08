@@ -2134,10 +2134,14 @@ out), and add a second budget member account in USD, before running these.
 - [ ] 📱 **Create form** is short: an intro line, Name, a "Payments from"
       sentence of chips (Category, then an optional payee and an optional
       tag, each opening a searchable picker with an "any ..." row at the top
-      that is hidden while searching), and one Payment card that reads as a
-      sentence: the amount (calculator keypad row kept), its currency symbol,
-      then an "every month ▾" picker (every week / every 2 weeks / every month /
-      every quarter / every year), full width on every breakpoint. There is no
+      that is hidden while searching; no explainer line under it), and one
+      row holding the Payment card (a plain amount field with its currency
+      symbol, no calculator keypad, the decimal keyboard on a phone) and,
+      beside it at the same height, an "every month ▾" card (every week /
+      every 2 weeks / every month / every quarter / every year). Amounts
+      typed as "2000", "2 000", "2,000.50", "1,200" or "1,5" save as 2000,
+      2000, 2000.50, 1200 and 1.5; "5+5" or letters show "Enter a valid
+      number". There is no
       currency line: a debt converted from a budget row takes that row's
       currency, one created in Settings → Debts the user's default currency
       (check both on the review screen's Loan card). Name defaults to the
@@ -2150,10 +2154,9 @@ out), and add a second budget member account in USD, before running these.
       custom currency, or one no longer usable), the error appears in a
       Currency row that shows up only then; picking another currency and
       saving again creates the debt.
-- [ ] 📱 On a 360 px wide phone the Payment card keeps the amount, its symbol
-      and the calculator keypad row on the card's width, with the
-      "every month ▾" picker on its own line under them (one card); from
-      tablet width the picker sits on the amount's line.
+- [ ] 📱 On a 360 px wide phone the Payment card and the "every month ▾"
+      card still share one row (the amount card wider, both the same
+      height), as on tablet and desktop; "every 2 weeks" stays readable.
 - [ ] 📱 **Tag or reporting tag**: the tag chip's picker lists Tags and
       Reporting tags as two headed groups (a search narrows both, and a group
       with no match disappears). Picking a reporting tag shows its name in the
@@ -2181,22 +2184,28 @@ out), and add a second budget member account in USD, before running these.
       debt only.
 - [ ] 📱 Edit after a payment: with the details or the budget open, add a
       matching expense (or import one, or merge a category into the debt's),
-      then open the review screen's Edit (Loan card): the balance field shows
+      then open the review screen's Settings tab: the balance field shows
       the balance after that payment, not the one from before it, and saving
       without changes writes no snapshot that undoes the payment.
-- [ ] 📱 Edit (Loan card button) swaps the screen for the terms form with
-      Balance, the Payment card (amount and its "every month ▾" picker on one
-      line, as on the create form), Last payment date, Start date and
-      Currency, Save and Cancel (Cancel returns to the review untouched). Editing the balance or
+- [ ] 📱 **Settings tab** holds one form: Name, the "Payments from"
+      sentence, Balance now, the Payment row (amount and its "every month ▾"
+      card, as on the create form), Last payment date, Start date (always
+      shown) and Currency, then Cancel and Save. Save sends one request and
+      returns to the Overview with the new figures; Cancel puts back what
+      was loaded. Switching to the Overview and back keeps unsaved edits;
+      with no edits, each visit reloads the debt. Editing the balance or
       the payment recalculates the last payment date in the form (keeping the
       rate; on a debt whose next payment is due today or overdue, the first
       counted payment is the next one after today, and saving the filled-in
       date succeeds); changing the date or the schedule recalculates nothing; terms
-      typed back to what they were restore the stored date; when the payment
-      can never pay the balance off, a message under the payment says so and
-      the date stays. Saving a payment that cannot cover the balance, or a last
-      payment date before today, shows a field error.
-- [ ] 📱 **Change the currency** (Edit → Currency, a searchable picker), on a
+      typed back to what they were (also as "1,200" for 1200) restore the
+      stored date; when the payment can never pay the balance off, a message
+      under the payment says so and the date stays. Saving a payment that
+      cannot cover the balance, a last payment date before today, an empty
+      name or a refused sentence (key conflict) shows the error next to its
+      field. Under the form, set apart, sit Mark as paid off (set-up debts
+      that are not paid off only) and Delete.
+- [ ] 📱 **Change the currency** (Settings tab → Currency, a searchable picker), on a
       set-up debt with a payment and a plan in a budget: leave the other
       fields and save. No snapshot is added (also when moving a balance with
       cents, e.g. 1,000.50, to a currency without them such as JPY: the
@@ -2206,38 +2215,43 @@ out), and add a second budget member account in USD, before running these.
       again; the debt's budget row shows the new currency with its plans
       unchanged. Typing a new balance or payment together with the currency
       saves them in the new currency (with a snapshot, as any change of
-      terms). A debt not set up can change its currency the same way, from
-      Edit or Finish setup. A deleted custom currency is not offered. With
+      terms). A debt not set up can change its currency the same way. A
+      deleted custom currency is not offered. With
       the review screen open on two devices, change the currency on the
       second, then rename (or change the sentence) on the first without
       reloading: the debt keeps the second device's currency. Finishing setup
       of a whole-category debt (or giving one a later start date) together
       with a currency change hands the category its plans outside the debt's
       months, as without the currency change.
-- [ ] 📱 A rename (header menu → Rename) and a change of the "Payments from"
-      sentence on the review screen save without a new snapshot (the history
+- [ ] 📱 A rename and a change of the "Payments from" sentence (Settings
+      tab, saved together in one Save) write no new snapshot (the history
       does not grow); changing the balance, payment, schedule or last payment
       date adds a snapshot as of today and leaves the older ones untouched.
       The payments already listed keep their interest figures after such an
-      edit. The sentence shows Cancel and Save only while a pick differs from
-      the stored one; a refused change (key conflict) shows its message under
-      the sentence and keeps the old filters. With the review screen open on
+      edit. A refused change (key conflict) shows its message under the
+      sentence and keeps the old filters. With the review screen open on
       two devices, edit the terms on the second, then rename (or change the
       sentence) on the first without reloading: the debt keeps the second
       device's terms and the history does not grow.
 - [ ] 📱 **Review screen** (one entry, "Details": the Settings row, the
       budget row's ⋮ menu, the desktop row, or on a phone/tablet the item
       sheet's "Details" button; owner only, there is no separate Edit entry
-      or pencil): a full-screen dialog on every width, content in a centred
-      column. Top: "N payments left" in large text (or "Paid off"), a
-      progress bar with "77 of 360 paid" (hidden when both counts are 0), and
-      "Owed now X · Paid off by Mon YYYY" (no payoff part once paid off).
-      The "Loan" card lists owed now, payment · repeats, next payment, loan
-      ends, start date (or "From the first payment"), left to pay, overpaid
-      so far and overpayment still to come, currency; below it the editable
-      "Payments from" sentence, the payments (Date / Payment / Interest /
-      Principal, newest first) and a collapsed "History of terms" that
-      expands on tap (hidden when there are no snapshots). The figures
+      or pencil): on desktop a centred dialog covering about 90% of the
+      screen's width and height that scrolls inside; on a phone a full
+      page. The header is the debt's icon, name and the close X, with no ⋮
+      menu on any width. Under it two tabs, Overview (selected on open) and
+      Settings, stay in view while the content scrolls. Overview is
+      read-only. Top: "N payments left" in large text (or "Paid off"), a
+      progress bar whose grey track is the whole loan and whose filled part
+      is what is paid, with "77 of 360 paid" (hidden when both counts are 0),
+      and "Owed now X · Paid off by Mon YYYY" (no payoff part once paid off).
+      The "Loan" card (no Edit button) lists owed now, payment · repeats,
+      next payment, loan ends, start date (or "From the first payment"),
+      left to pay, overpaid so far and overpayment still to come, currency;
+      below it "Which payments count" as a plain sentence (no pickers), the
+      payments (Date / Payment / Interest / Principal, newest first) and a
+      collapsed "History of terms" that expands on tap (hidden when there
+      are no snapshots). The figures
       follow the entered payments with no typing: add a matching expense and
       the balance drops by its debt part, the payment appears in the list and
       the progress moves by one when the payment lands in a new due window
@@ -2248,15 +2262,16 @@ out), and add a second budget member account in USD, before running these.
       but not counted), the hint "Add what you owe and when the loan ends
       to see payments left" and a "Finish setup" button; there is no balance
       or progress bar, the Loan card is short (payment · repeats, start date,
-      currency; its Edit opens the same form as Finish setup and may save
-      just payment, repeats, start date or currency) and the payment list
-      shows Date and Payment only. Mark as
-      paid off is not offered (and the server refuses it). Finish setup swaps
-      the screen for the terms form (balance, payment and repeats, last
-      payment date, start date, currency; the last payment date is typed, not
-      filled in automatically); saving needs both balance and last payment date (one
-      without the other is a field error, and neither saves just the other
-      fields). After saving the screen shows payments left, the progress and
+      currency) and the payment list shows Date and Payment only. Mark as
+      paid off is not offered (and the server refuses it). Finish setup
+      switches to the Settings tab with the Balance now field focused; the
+      budget row's "Finish setup", the item sheet's "Finish setup" button and
+      the Settings → Debts row of such a debt open the screen straight on
+      that tab. There the last payment date is typed, not filled in
+      automatically; saving with both balance and last payment date finishes
+      the setup, one without the other is a field error, and neither saves
+      just the other fields (name, sentence, payment, repeats, start date,
+      currency). After finishing, the Overview shows payments left, the progress and
       the Loan card, payments entered before setup are split into interest and
       principal, and "Finish setup" fires its analytics event once.
 - [ ] 📱 A debt not set up is still a real debt for matching: payments in its
@@ -2276,12 +2291,12 @@ out), and add a second budget member account in USD, before running these.
       converted to the debt's currency with the rates the app uses for its day
       (the month's average) and shows in the
       payment list in the debt currency.
-- [ ] **Mark as paid off** (review screen menu → asks first): current balance becomes 0,
+- [ ] **Mark as paid off** (review screen's Settings tab, under the form → asks first): current balance becomes 0,
       "Paid off" shows in the list and the row, the payment list keeps its
       history. A later matching payment or a new snapshot with a balance
       reopens the debt; marking it paid off again then settles it (a new zero
       snapshot), even when the balance already showed 0.
-- [ ] **Delete** a debt (review screen menu → asks first): its transactions stay
+- [ ] **Delete** a debt (review screen's Settings tab, under the form → asks first): its transactions stay
       untouched and return to their category row. When the debt carries plans
       or comments in a budget (it is not a whole-category debt, or the
       category row's plans did not move), a second confirmation names what is
@@ -2393,9 +2408,10 @@ out), and add a second budget member account in USD, before running these.
 - [ ] 📱 **Debt not set up in the Budget**: a debt created without terms
       shows its row in the Debts block with Planned and Paid (what was paid
       this month counts) and no balance: for the owner the Left cell is a
-      "Finish setup" link that opens the review screen (the phone/tablet
-      item sheet shows "—" for Left, no payments-left sentence, and its
-      Details button reads "Finish setup"); a partner or guest sees a dash and
+      "Finish setup" link that opens the review screen on its Settings tab
+      (the phone/tablet item sheet shows "—" for Left, no payments-left
+      sentence, and its Details button reads "Finish setup" and opens the
+      same tab); a partner or guest sees a dash and
       no button. The Debts section's Left total skips it. It has no payoff,
       no "N payments left", no projected upcoming payments and no red plan
       hint; planning works from its creation month (in the owner's timezone,
