@@ -313,6 +313,18 @@ func parseInput(name, currencyID, categoryID string, payeeID, tagID, startDate *
 			Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 	in.schedule = sched
+	// The request may leave the terms out; saving a debt without them is not
+	// supported yet, so they stay required here.
+	var missing []errs.FieldError
+	if strings.TrimSpace(balance.String()) == "" {
+		missing = append(missing, errs.FieldError{Key: "balance", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if strings.TrimSpace(lastPayment) == "" {
+		missing = append(missing, errs.FieldError{Key: "lastPaymentDate", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(missing) > 0 {
+		return in, errs.NewValidation("Validation failed", missing...)
+	}
 	if in.lastPayment, err = time.Parse(datetime.DateLayout, lastPayment); err != nil {
 		return in, err
 	}

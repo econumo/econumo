@@ -14602,6 +14602,9 @@ const docTemplate = `{
                 "currencyId": {
                     "type": "string"
                 },
+                "labelId": {
+                    "type": "string"
+                },
                 "lastPaymentDate": {
                     "type": "string"
                 },
@@ -15250,6 +15253,12 @@ const docTemplate = `{
                 "isPaidOff": {
                     "type": "integer"
                 },
+                "isSetUp": {
+                    "type": "integer"
+                },
+                "labelId": {
+                    "type": "string"
+                },
                 "lastPaymentDate": {
                     "type": "string"
                 },
@@ -15282,6 +15291,9 @@ const docTemplate = `{
                 },
                 "periodRate": {
                     "type": "string"
+                },
+                "periodsPaid": {
+                    "type": "integer"
                 },
                 "schedule": {
                     "type": "string"
@@ -18549,6 +18561,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "labelId": {
                     "type": "string"
                 },
                 "lastPaymentDate": {

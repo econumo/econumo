@@ -58,9 +58,14 @@ func TestCreateDebtRequest_Validate(t *testing.T) {
 	blank := validDebtRequest()
 	blank.Balance, blank.Payment, blank.Schedule, blank.LastPaymentDate = vo.FlexString{}, vo.FlexString{}, "", ""
 	got = debtFieldCodes(t, blank.Validate())
-	for _, k := range []string{"balance", "payment", "schedule", "lastPaymentDate"} {
+	for _, k := range []string{"payment", "schedule"} {
 		if got[k] != errs.CodeIsBlank {
 			t.Errorf("%s: code %q, want blank", k, got[k])
+		}
+	}
+	for _, k := range []string{"balance", "lastPaymentDate"} {
+		if _, ok := got[k]; ok {
+			t.Errorf("%s: the terms are optional together, got %v", k, got)
 		}
 	}
 }
@@ -104,5 +109,50 @@ func TestCreateDebtRequest_RejectsNonDecimalAmounts(t *testing.T) {
 		if err := req.Validate(); err != nil {
 			t.Errorf("balance %q: %v", v, err)
 		}
+	}
+}
+
+func TestCreateDebtRequest_TermsPair(t *testing.T) {
+	balanceOnly := validDebtRequest()
+	balanceOnly.LastPaymentDate = ""
+	if got := debtFieldCodes(t, balanceOnly.Validate()); got["lastPaymentDate"] != errs.CodeIsBlank || len(got) != 1 {
+		t.Errorf("balance without lastPaymentDate: %v, want only lastPaymentDate blank", got)
+	}
+	dateOnly := validDebtRequest()
+	dateOnly.Balance = vo.FlexString{}
+	if got := debtFieldCodes(t, dateOnly.Validate()); got["balance"] != errs.CodeIsBlank || len(got) != 1 {
+		t.Errorf("lastPaymentDate without balance: %v, want only balance blank", got)
+	}
+	neither := validDebtRequest()
+	neither.Balance, neither.LastPaymentDate = vo.FlexString{}, ""
+	if err := neither.Validate(); err != nil {
+		t.Errorf("no terms is valid: %v", err)
+	}
+	noPayment := neither
+	noPayment.Payment = vo.FlexString{}
+	if got := debtFieldCodes(t, noPayment.Validate()); got["payment"] != errs.CodeIsBlank {
+		t.Errorf("payment missing: %v", got)
+	}
+	noSchedule := neither
+	noSchedule.Schedule = ""
+	if got := debtFieldCodes(t, noSchedule.Validate()); got["schedule"] != errs.CodeIsBlank {
+		t.Errorf("schedule missing: %v", got)
+	}
+	badLabel := validDebtRequest()
+	badLabel.LabelId = ptrTo("x")
+	if got := debtFieldCodes(t, badLabel.Validate()); got["labelId"] != errs.CodeInvalidUUID {
+		t.Errorf("bad labelId: %v", got)
+	}
+}
+
+func TestUpdateDebtRequest_TermsPair(t *testing.T) {
+	up := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000002", Name: "n", CategoryId: "0197c8b2-1111-7000-8000-000000000001",
+		Payment: vo.NewFlexString("1"), Schedule: "weekly"}
+	if err := up.Validate(); err != nil {
+		t.Errorf("update without terms is valid: %v", err)
+	}
+	up.Balance = vo.NewFlexString("10")
+	if got := debtFieldCodes(t, up.Validate()); got["lastPaymentDate"] != errs.CodeIsBlank {
+		t.Errorf("balance without lastPaymentDate: %v", got)
 	}
 }

@@ -587,3 +587,21 @@ func TestProjectDebt_PeriodStartDay(t *testing.T) {
 		t.Errorf("period July (15 Jul - 14 Aug) = %+v, want the 10 Aug due", july)
 	}
 }
+
+func TestProjectDebt_PeriodsPaid(t *testing.T) {
+	asOf := ymd(2026, time.January, 1)
+	snap := MathSnapshot{AsOf: asOf, Balance: 12000, Payment: 1000,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2026, time.December, 15)}
+	pays := []MathPayment{
+		{ID: "jan", Date: ymd(2026, time.January, 15), Amount: 1000},
+		{ID: "feb1", Date: ymd(2026, time.February, 14), Amount: 500},
+		{ID: "feb2", Date: ymd(2026, time.February, 16), Amount: 500},
+		{ID: "apr", Date: ymd(2026, time.April, 15), Amount: 1000},
+		{ID: "future", Date: ymd(2026, time.June, 15), Amount: 1000},
+	}
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Pays: pays,
+		Interest: SplitPayments([]MathSnapshot{snap}, pays), Today: ymd(2026, time.May, 1)})
+	if p.PeriodsPaid != 3 {
+		t.Fatalf("PeriodsPaid = %d, want 3", p.PeriodsPaid)
+	}
+}

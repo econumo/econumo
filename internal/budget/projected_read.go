@@ -333,7 +333,7 @@ type spendingKey struct{ month, category, tag, debt, currency string }
 // paysDebt reports whether one of the budget's debts matches the occurrence.
 func (p *projectedRead) paysDebt(o *projectedTx) bool {
 	for _, d := range p.debts {
-		if model.DebtMatches(d, o.categoryID, o.payeeID, o.tagID, o.dueAt) {
+		if model.DebtMatches(d, o.categoryID, o.payeeID, o.tagID, o.labelIDs, o.dueAt) {
 			return true
 		}
 	}
@@ -555,7 +555,7 @@ func (p *projectedRead) BudgetTransactionsByCategories(_ context.Context, catego
 
 func (p *projectedRead) BudgetTransactionsByDebt(_ context.Context, debt model.DebtView, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	return p.expenses(accountIDs, start, end, func(o *projectedTx) bool {
-		return model.DebtMatches(debt, o.categoryID, o.payeeID, o.tagID, o.dueAt)
+		return model.DebtMatches(debt, o.categoryID, o.payeeID, o.tagID, o.labelIDs, o.dueAt)
 	}), nil
 }
 

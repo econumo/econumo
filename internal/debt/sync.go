@@ -147,7 +147,7 @@ func matchViews(debts []*model.Debt) map[vo.Id]model.DebtView {
 		for i, d := range g {
 			v := model.DebtView{
 				ID: d.ID.String(), OwnerID: d.OwnerID.String(), CurrencyID: d.CurrencyID.String(),
-				CategoryID: d.CategoryID.String(), Name: d.Name,
+				CategoryID: d.CategoryID.String(), Name: d.Name, CreatedAt: d.CreatedAt, SetUp: d.IsSetUp(),
 			}
 			if d.PayeeID != nil {
 				p := d.PayeeID.String()
@@ -156,6 +156,10 @@ func matchViews(debts []*model.Debt) map[vo.Id]model.DebtView {
 			if d.TagID != nil {
 				t := d.TagID.String()
 				v.TagID = &t
+			}
+			if d.LabelID != nil {
+				l := d.LabelID.String()
+				v.LabelID = &l
 			}
 			if d.StartDate != nil {
 				from := *d.StartDate
@@ -235,7 +239,7 @@ func (s *Service) computeDebts(ctx context.Context, categoryID vo.Id, debts []*m
 			tag = &t
 		}
 		for _, d := range debts {
-			if model.DebtMatches(views[d.ID], &cat, payee, tag, c.SpentAt) {
+			if model.DebtMatches(views[d.ID], &cat, payee, tag, nil, c.SpentAt) {
 				assigned[d.ID] = append(assigned[d.ID], c)
 				matchedTo[c.ID] = d.ID
 				break

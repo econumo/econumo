@@ -14595,6 +14595,9 @@
                 "currencyId": {
                     "type": "string"
                 },
+                "labelId": {
+                    "type": "string"
+                },
                 "lastPaymentDate": {
                     "type": "string"
                 },
@@ -15243,6 +15246,12 @@
                 "isPaidOff": {
                     "type": "integer"
                 },
+                "isSetUp": {
+                    "type": "integer"
+                },
+                "labelId": {
+                    "type": "string"
+                },
                 "lastPaymentDate": {
                     "type": "string"
                 },
@@ -15275,6 +15284,9 @@
                 },
                 "periodRate": {
                     "type": "string"
+                },
+                "periodsPaid": {
+                    "type": "integer"
                 },
                 "schedule": {
                     "type": "string"
@@ -18542,6 +18554,9 @@
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "labelId": {
                     "type": "string"
                 },
                 "lastPaymentDate": {

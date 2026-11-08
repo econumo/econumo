@@ -113,8 +113,8 @@ func (r *Repo) Save(ctx context.Context, d *model.Debt) error {
 		TagID:           idPtr(d.TagID),
 		AsOf:            dateText(d.Current.AsOf),
 		Balance:         d.Current.Balance.String(),
-		Payment:         d.Current.Payment.String(),
-		Schedule:        string(d.Current.Schedule),
+		Payment:         d.Payment.String(),
+		Schedule:        string(d.Schedule),
 		LastPaymentDate: dateText(d.Current.LastPaymentDate),
 		CreatedAt:       d.CreatedAt,
 		UpdatedAt:       d.UpdatedAt,
@@ -390,7 +390,8 @@ func hydrate(row debtRow) (*model.Debt, error) {
 	return &model.Debt{
 		ID: id, OwnerID: owner, CurrencyID: currency, CategoryID: category, Name: row.Name,
 		PayeeID: payee, TagID: tag, StartDate: start,
-		Current: model.DebtTerms{
+		Payment: vo.NewDecimal(row.Payment), Schedule: model.RecurringSchedule(row.Schedule),
+		Current: &model.DebtTerms{
 			AsOf:            day(row.AsOf),
 			Balance:         vo.NewDecimal(row.Balance),
 			Payment:         vo.NewDecimal(row.Payment),

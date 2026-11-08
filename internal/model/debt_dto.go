@@ -21,6 +21,7 @@ type CreateDebtRequest struct {
 	CategoryId      string        `json:"categoryId"`
 	PayeeId         *string       `json:"payeeId"`
 	TagId           *string       `json:"tagId"`
+	LabelId         *string       `json:"labelId"`
 	StartDate       *string       `json:"startDate"`
 	Balance         vo.FlexString `json:"balance"`
 	Payment         vo.FlexString `json:"payment"`
@@ -29,7 +30,7 @@ type CreateDebtRequest struct {
 }
 
 func (r CreateDebtRequest) Validate() error {
-	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate)
+	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate)
 	fields = append(fields, debtIDField("currencyId", r.CurrencyId, true)...)
 	return debtValidation(fields)
 }
@@ -43,6 +44,7 @@ type UpdateDebtRequest struct {
 	CategoryId      string        `json:"categoryId"`
 	PayeeId         *string       `json:"payeeId"`
 	TagId           *string       `json:"tagId"`
+	LabelId         *string       `json:"labelId"`
 	StartDate       *string       `json:"startDate"`
 	Balance         vo.FlexString `json:"balance"`
 	Payment         vo.FlexString `json:"payment"`
@@ -51,7 +53,7 @@ type UpdateDebtRequest struct {
 }
 
 func (r UpdateDebtRequest) Validate() error {
-	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate)
+	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate)
 	fields = append(fields, debtIDField("id", r.Id, true)...)
 	return debtValidation(fields)
 }
@@ -86,7 +88,8 @@ func (r GetDebtRequest) Validate() error {
 // DebtResult is one debt in the API. The terms (balance .. lastPaymentDate)
 // are the latest snapshot's; amounts are decimal strings in the debt's
 // currency, dates "2006-01-02" ("" when none), isPaidOff an int 0/1 and
-// periodRate the implied rate per schedule period with 10 decimals.
+// periodRate the implied rate per schedule period with 10 decimals. While
+// isSetUp is 0 the terms and figures are "" and the counts 0.
 type DebtResult struct {
 	Id              string  `json:"id"`
 	Name            string  `json:"name"`
@@ -95,6 +98,7 @@ type DebtResult struct {
 	CategoryId      string  `json:"categoryId"`
 	PayeeId         *string `json:"payeeId"`
 	TagId           *string `json:"tagId"`
+	LabelId         *string `json:"labelId"`
 	StartDate       string  `json:"startDate"`
 	Balance         string  `json:"balance"`
 	Payment         string  `json:"payment"`
@@ -102,6 +106,7 @@ type DebtResult struct {
 	LastPaymentDate string  `json:"lastPaymentDate"`
 	CurrentBalance  string  `json:"currentBalance"`
 	PaymentsLeft    int     `json:"paymentsLeft"`
+	PeriodsPaid     int     `json:"periodsPaid"`
 	MoneyLeft       string  `json:"moneyLeft"`
 	OverpaymentLeft string  `json:"overpaymentLeft"`
 	OverpaidSoFar   string  `json:"overpaidSoFar"`
@@ -109,6 +114,7 @@ type DebtResult struct {
 	NextDueDate     string  `json:"nextDueDate"`
 	PeriodRate      string  `json:"periodRate"`
 	IsPaidOff       int     `json:"isPaidOff"`
+	IsSetUp         int     `json:"isSetUp"`
 }
 
 type DebtListResult struct {
@@ -195,7 +201,7 @@ func debtOptionalIDField(key string, v *string) []errs.FieldError {
 	return debtIDField(key, *v, false)
 }
 
-func debtFields(name, categoryID string, payeeID, tagID, startDate *string, balance, payment vo.FlexString, schedule, lastPaymentDate string) []errs.FieldError {
+func debtFields(name, categoryID string, payeeID, tagID, labelID, startDate *string, balance, payment vo.FlexString, schedule, lastPaymentDate string) []errs.FieldError {
 	var fields []errs.FieldError
 	switch n := strings.TrimSpace(name); {
 	case n == "":
@@ -206,20 +212,27 @@ func debtFields(name, categoryID string, payeeID, tagID, startDate *string, bala
 	fields = append(fields, debtIDField("categoryId", categoryID, true)...)
 	fields = append(fields, debtOptionalIDField("payeeId", payeeID)...)
 	fields = append(fields, debtOptionalIDField("tagId", tagID)...)
+	fields = append(fields, debtOptionalIDField("labelId", labelID)...)
 	if startDate != nil && strings.TrimSpace(*startDate) != "" {
 		if _, err := time.Parse(datetime.DateLayout, *startDate); err != nil {
 			fields = append(fields, debtInvalidField("startDate"))
 		}
 	}
-	fields = append(fields, debtAmountField("balance", balance.String(), true)...)
+	// Balance and last payment date are the optional terms: both or neither.
+	hasBalance, hasLast := strings.TrimSpace(balance.String()) != "", strings.TrimSpace(lastPaymentDate) != ""
+	if hasBalance || hasLast {
+		fields = append(fields, debtAmountField("balance", balance.String(), true)...)
+	}
 	fields = append(fields, debtAmountField("payment", payment.String(), false)...)
 	if strings.TrimSpace(schedule) == "" {
 		fields = append(fields, blankField("schedule"))
 	} else if _, ok := ParseRecurringSchedule(schedule); !ok {
 		fields = append(fields, errs.FieldError{Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
-	if strings.TrimSpace(lastPaymentDate) == "" {
-		fields = append(fields, blankField("lastPaymentDate"))
+	if !hasLast {
+		if hasBalance {
+			fields = append(fields, blankField("lastPaymentDate"))
+		}
 	} else if _, err := time.Parse(datetime.DateLayout, lastPaymentDate); err != nil {
 		fields = append(fields, debtInvalidField("lastPaymentDate"))
 	}

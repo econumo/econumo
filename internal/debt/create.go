@@ -30,7 +30,8 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 
 	now := s.clock.Now()
 	d := &model.Debt{ID: s.repo.NextIdentity(), OwnerID: userID, CurrencyID: in.currency, CategoryID: in.category,
-		Name: in.name, PayeeID: in.payee, TagID: in.tag, StartDate: in.start, Current: terms, CreatedAt: now, UpdatedAt: now}
+		Name: in.name, PayeeID: in.payee, TagID: in.tag, StartDate: in.start, CreatedAt: now, UpdatedAt: now}
+	d.SetTerms(terms)
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if err := s.repo.LockOwner(ctx, userID); err != nil {
 			return err

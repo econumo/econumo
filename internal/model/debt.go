@@ -1,6 +1,7 @@
 package model
 
 import (
+	"slices"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -11,9 +12,23 @@ type Debt struct {
 	Name                                string
 	PayeeID                             *vo.Id
 	TagID                               *vo.Id
+	LabelID                             *vo.Id
 	StartDate                           *time.Time
-	Current                             DebtTerms
-	CreatedAt, UpdatedAt                time.Time
+	// Current is nil until the debt is set up (a balance and a last payment
+	// date entered); Payment and Schedule are held either way.
+	Current              *DebtTerms
+	Payment              vo.DecimalNumber
+	Schedule             RecurringSchedule
+	CreatedAt, UpdatedAt time.Time
+}
+
+func (d *Debt) IsSetUp() bool { return d.Current != nil }
+
+// SetTerms sets the debt up with t, keeping the debt's payment and schedule
+// equal to the terms'.
+func (d *Debt) SetTerms(t DebtTerms) {
+	d.Current = &t
+	d.Payment, d.Schedule = t.Payment, t.Schedule
 }
 
 type DebtTerms struct {
@@ -45,7 +60,9 @@ type DebtSplit struct {
 type DebtView struct {
 	ID, OwnerID, CurrencyID, CategoryID string
 	Name, Icon                          string
-	PayeeID, TagID                      *string
+	PayeeID, TagID, LabelID             *string
+	CreatedAt                           time.Time
+	SetUp                               bool
 	From                                *time.Time // inclusive; nil = unbounded
 	Until                               *time.Time // exclusive (next same-key debt's start); nil = unbounded
 	// FirstDay and LastDay are the dates the planning bounds come from; a
@@ -85,7 +102,7 @@ type ElementDataTransfer struct {
 	FirstDay, LastDay time.Time
 }
 
-func DebtMatches(d DebtView, categoryID, payeeID, tagID *string, at time.Time) bool {
+func DebtMatches(d DebtView, categoryID, payeeID, tagID *string, labelIDs []string, at time.Time) bool {
 	if categoryID == nil || *categoryID != d.CategoryID {
 		return false
 	}
@@ -95,6 +112,9 @@ func DebtMatches(d DebtView, categoryID, payeeID, tagID *string, at time.Time) b
 	if d.TagID != nil && (tagID == nil || *tagID != *d.TagID) {
 		return false
 	}
+	if d.LabelID != nil && !slices.Contains(labelIDs, *d.LabelID) {
+		return false
+	}
 	if d.From != nil && at.Before(*d.From) {
 		return false
 	}
@@ -102,4 +122,21 @@ func DebtMatches(d DebtView, categoryID, payeeID, tagID *string, at time.Time) b
 		return false
 	}
 	return true
+}
+
+// AssignDebt picks the debt a transaction pays: of the matching views, the
+// oldest (CreatedAt, then ID), so a payment carrying two debts' labels counts
+// once.
+func AssignDebt(views []DebtView, categoryID, payeeID, tagID *string, labelIDs []string, at time.Time) (DebtView, bool) {
+	var best DebtView
+	found := false
+	for _, v := range views {
+		if !DebtMatches(v, categoryID, payeeID, tagID, labelIDs, at) {
+			continue
+		}
+		if !found || v.CreatedAt.Before(best.CreatedAt) || (v.CreatedAt.Equal(best.CreatedAt) && v.ID < best.ID) {
+			best, found = v, true
+		}
+	}
+	return best, found
 }

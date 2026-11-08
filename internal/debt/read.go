@@ -42,20 +42,25 @@ func (s *Service) result(st *debtState, proj model.Projection, icon string) mode
 	if d.StartDate != nil {
 		startDate = dateString(*d.StartDate)
 	}
-	rate := model.PeriodRate(termsFloats(d.Current))
+	rate := model.PeriodRate(termsFloats(*d.Current))
 	payoff := proj.PayoffDate
 	if proj.PaidOff {
 		payoff = time.Time{}
 	}
+	setUp := 0
+	if d.IsSetUp() {
+		setUp = 1
+	}
 	return model.DebtResult{
 		Id: d.ID.String(), Name: d.Name, Icon: icon, CurrencyId: d.CurrencyID.String(), CategoryId: d.CategoryID.String(),
-		PayeeId: idString(d.PayeeID), TagId: idString(d.TagID), StartDate: startDate,
+		PayeeId: idString(d.PayeeID), TagId: idString(d.TagID), LabelId: idString(d.LabelID), StartDate: startDate,
 		Balance: d.Current.Balance.String(), Payment: d.Current.Payment.String(),
 		Schedule: string(d.Current.Schedule), LastPaymentDate: dateString(d.Current.LastPaymentDate),
-		CurrentBalance: amountString(proj.CurrentBalance, digits), PaymentsLeft: proj.PaymentsLeft,
+		CurrentBalance: amountString(proj.CurrentBalance, digits), PaymentsLeft: proj.PaymentsLeft, PeriodsPaid: proj.PeriodsPaid,
 		MoneyLeft: amountString(proj.MoneyLeft, digits), OverpaymentLeft: amountString(proj.OverpaymentLeft, digits),
 		OverpaidSoFar: amountString(proj.OverpaidSoFar, digits), PayoffDate: dateString(payoff),
 		NextDueDate: dateString(proj.NextDueDate), PeriodRate: strconv.FormatFloat(rate, 'f', 10, 64), IsPaidOff: paidOff,
+		IsSetUp: setUp,
 	}
 }
 

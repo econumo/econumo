@@ -44,6 +44,27 @@ func TestCreateDebt_RefusesLastPaymentInPast(t *testing.T) {
 	requireCode(t, err, errs.CodeDebtLastPaymentInPast)
 }
 
+// The request may leave the terms out, but the service still requires them
+// until debts without terms can be stored.
+func TestCreateDebt_StillRequiresTerms(t *testing.T) {
+	e := newEnv(t)
+	req := e.createReq()
+	req.Balance, req.LastPaymentDate = vo.FlexString{}, ""
+	if err := req.Validate(); err != nil {
+		t.Fatalf("the request without terms is valid: %v", err)
+	}
+	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	requireCode(t, err, errs.CodeIsBlank)
+}
+
+func TestCreateDebt_ReportsSetUpAndLabel(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	if res.IsSetUp != 1 || res.LabelId != nil || res.PeriodsPaid != 0 {
+		t.Errorf("isSetUp/labelId/periodsPaid = %d %v %d", res.IsSetUp, res.LabelId, res.PeriodsPaid)
+	}
+}
+
 func TestCreateDebt_RefusesIncomeCategory(t *testing.T) {
 	e := newEnv(t)
 	req := e.createReq()

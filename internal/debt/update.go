@@ -60,12 +60,12 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 			}
 		}
 		terms := in.terms(today, digits)
-		changed := termsDiffer(cur.Current, terms)
+		changed := !cur.IsSetUp() || termsDiffer(*cur.Current, terms)
 		if changed {
 			if err := validateTerms(terms); err != nil {
 				return err
 			}
-			cur.Current = terms
+			cur.SetTerms(terms)
 		}
 		cur.UpdatedAt = now
 		if err := s.repo.Save(ctx, cur); err != nil {

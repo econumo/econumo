@@ -3,6 +3,8 @@ package model
 import (
 	"testing"
 	"time"
+
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 func TestDebtMatches(t *testing.T) {
@@ -38,7 +40,7 @@ func TestDebtMatches(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := DebtMatches(tc.view, tc.cat, tc.payee, tc.tag, tc.at); got != tc.want {
+			if got := DebtMatches(tc.view, tc.cat, tc.payee, tc.tag, nil, tc.at); got != tc.want {
 				t.Fatalf("DebtMatches = %v, want %v", got, tc.want)
 			}
 		})
@@ -57,5 +59,71 @@ func TestDebtView_PlanningBounds(t *testing.T) {
 	months := DebtView{StartMonth: ymd(2026, time.March, 1), EndMonth: ymd(2026, time.July, 1)}
 	if f, l := months.PlanningBounds(15); !f.Equal(months.StartMonth) || !l.Equal(months.EndMonth) {
 		t.Errorf("no days = %v .. %v, want the months as given", f, l)
+	}
+}
+
+func TestDebtMatches_Label(t *testing.T) {
+	str := func(s string) *string { return &s }
+	at := time.Date(2026, time.April, 1, 0, 0, 0, 0, time.UTC)
+	labelled := DebtView{CategoryID: "c", LabelID: str("car")}
+	if !DebtMatches(labelled, str("c"), nil, nil, []string{"x", "car"}, at) {
+		t.Error("a transaction carrying the label should match")
+	}
+	if DebtMatches(labelled, str("c"), nil, nil, []string{"student"}, at) {
+		t.Error("a transaction without the label should not match")
+	}
+	if DebtMatches(labelled, str("c"), nil, nil, nil, at) {
+		t.Error("a transaction with no labels should not match a labelled debt")
+	}
+	if !DebtMatches(DebtView{CategoryID: "c"}, str("c"), nil, nil, []string{"car"}, at) {
+		t.Error("a debt without a label ignores labels")
+	}
+}
+
+func TestAssignDebt_OldestWins(t *testing.T) {
+	str := func(s string) *string { return &s }
+	at := time.Date(2026, time.April, 1, 0, 0, 0, 0, time.UTC)
+	older, newer := at.AddDate(0, -2, 0), at.AddDate(0, -1, 0)
+	car := DebtView{ID: "b", CategoryID: "c", LabelID: str("car"), CreatedAt: newer}
+	student := DebtView{ID: "a", CategoryID: "c", LabelID: str("student"), CreatedAt: older}
+	both := []string{"car", "student"}
+
+	got, ok := AssignDebt([]DebtView{car, student}, str("c"), nil, nil, both, at)
+	if !ok || got.ID != "a" {
+		t.Fatalf("got %q, %v; want the older debt a", got.ID, ok)
+	}
+	got, ok = AssignDebt([]DebtView{car, student}, str("c"), nil, nil, []string{"car"}, at)
+	if !ok || got.ID != "b" {
+		t.Fatalf("got %q, %v; want the only matching debt b", got.ID, ok)
+	}
+
+	car.CreatedAt = older
+	car.ID, student.ID = "a", "b"
+	got, ok = AssignDebt([]DebtView{student, car}, str("c"), nil, nil, both, at)
+	if !ok || got.ID != "a" {
+		t.Fatalf("equal CreatedAt: got %q, %v; want the lower id a", got.ID, ok)
+	}
+}
+
+func TestAssignDebt_NoMatch(t *testing.T) {
+	str := func(s string) *string { return &s }
+	at := time.Date(2026, time.April, 1, 0, 0, 0, 0, time.UTC)
+	views := []DebtView{{ID: "a", CategoryID: "c", LabelID: str("car")}}
+	if _, ok := AssignDebt(views, str("c"), nil, nil, []string{"student"}, at); ok {
+		t.Error("no debt matches, want false")
+	}
+	if _, ok := AssignDebt(nil, str("c"), nil, nil, nil, at); ok {
+		t.Error("no debts, want false")
+	}
+}
+
+func TestDebt_IsSetUp(t *testing.T) {
+	d := &Debt{}
+	if d.IsSetUp() {
+		t.Error("a debt without terms is not set up")
+	}
+	d.SetTerms(DebtTerms{Payment: vo.NewDecimal("100"), Schedule: RecurringScheduleWeekly})
+	if !d.IsSetUp() || !d.Payment.Equals(vo.NewDecimal("100")) || d.Schedule != RecurringScheduleWeekly {
+		t.Errorf("SetTerms should set up the debt and copy payment and schedule: %+v", d)
 	}
 }

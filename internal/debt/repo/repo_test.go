@@ -40,15 +40,16 @@ func newEnv(t *testing.T) *env {
 }
 
 func (e *env) debt(id string) *model.Debt {
-	return &model.Debt{
+	d := &model.Debt{
 		ID: vo.MustParseId(id), OwnerID: vo.MustParseId(e.user), CurrencyID: vo.MustParseId(fixture.USD),
 		CategoryID: vo.MustParseId(e.category), Name: "Car loan",
-		Current: model.DebtTerms{
-			AsOf: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), Balance: vo.NewDecimal("10000.5"), Payment: vo.NewDecimal("250"),
-			Schedule: model.RecurringScheduleMonthly, LastPaymentDate: time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC),
-		},
 		CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
+	d.SetTerms(model.DebtTerms{
+		AsOf: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), Balance: vo.NewDecimal("10000.5"), Payment: vo.NewDecimal("250"),
+		Schedule: model.RecurringScheduleMonthly, LastPaymentDate: time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC),
+	})
+	return d
 }
 
 func isNotFound(err error) bool {
@@ -87,6 +88,9 @@ func TestRepo_SaveGetDebtRoundTrip(t *testing.T) {
 	}
 	if c.Balance.String() != "10000.5" || c.Payment.String() != "250" || c.Schedule != model.RecurringScheduleMonthly {
 		t.Errorf("terms = %+v", c)
+	}
+	if got.Payment.String() != "250" || got.Schedule != model.RecurringScheduleMonthly {
+		t.Errorf("debt payment/schedule = %s / %s", got.Payment, got.Schedule)
 	}
 	if !got.CreatedAt.Equal(fixedTime) || !got.UpdatedAt.Equal(fixedTime) {
 		t.Errorf("timestamps = %v / %v", got.CreatedAt, got.UpdatedAt)

@@ -46,8 +46,11 @@ type ProjectionMonth struct {
 }
 
 type Projection struct {
-	CurrentBalance                            float64
-	PaymentsLeft                              int
+	CurrentBalance float64
+	PaymentsLeft   int
+	// PeriodsPaid counts the due windows (latest terms' schedule) holding at
+	// least one payment dated up to today.
+	PeriodsPaid                               int
 	MoneyLeft, OverpaymentLeft, OverpaidSoFar float64
 	PayoffDate, BasePayoffDate                time.Time
 	// NextDueDate is the first projected payment; an unpaid due already past
@@ -536,11 +539,16 @@ func ProjectDebt(in ProjectionInput) Projection {
 		current = 0
 	}
 	out.CurrentBalance = current
+	paidDues := map[time.Time]bool{}
 	for _, p := range pays {
 		if !p.Date.After(today) {
 			out.OverpaidSoFar += in.Interest[p.ID]
+			if due := dueContaining(latest.Schedule, latest.Last, p.Date); !due.IsZero() {
+				paidDues[due] = true
+			}
 		}
 	}
+	out.PeriodsPaid = len(paidDues)
 
 	firstDue := firstUnpaidDue(latest, pays, today)
 	sd := in.PeriodStartDay
