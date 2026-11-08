@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
@@ -19,9 +20,10 @@ interface CategoriesStepProps {
   onContinue: (rows: CategoryRow[]) => void
   onSkip: () => void
   pending: boolean
+  error?: ReactNode
 }
 
-export function CategoriesStep({ initialRows, createdKeys, onContinue, onSkip, pending }: CategoriesStepProps) {
+export function CategoriesStep({ initialRows, createdKeys, onContinue, onSkip, pending, error }: CategoriesStepProps) {
   const { t } = useTranslation()
   const [rows, setRows] = useState<CategoryRow[]>(() => {
     if (initialRows && initialRows.length > 0) return initialRows
@@ -130,6 +132,7 @@ export function CategoriesStep({ initialRows, createdKeys, onContinue, onSkip, p
       {group('income', t('onboarding.categories_step.income'))}
 
       <div className="flex flex-col items-center gap-3">
+        {error}
         <Button type="button" className="w-full" disabled={!canContinue} onClick={submit}>
           {t('onboarding.categories_step.continue')}
         </Button>

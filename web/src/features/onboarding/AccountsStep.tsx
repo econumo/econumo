@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
@@ -26,9 +27,10 @@ interface AccountsStepProps {
   onContinue: (rows: AccountRow[], extraCurrencyIds: Id[], mainCurrencyId: Id) => void
   onSkip: () => void
   pending: boolean
+  error?: ReactNode
 }
 
-export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys, onContinue, onSkip, pending }: AccountsStepProps) {
+export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys, onContinue, onSkip, pending, error }: AccountsStepProps) {
   const { t } = useTranslation()
   const { data: currencies } = useCurrencies()
   const { data: rates } = useCurrencyRates()
@@ -179,6 +181,7 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
       />
 
       <div className="flex flex-col items-center gap-3">
+        {error}
         <Button type="button" className="w-full" disabled={!canContinue} onClick={submit}>
           {t('onboarding.accounts.continue')}
         </Button>

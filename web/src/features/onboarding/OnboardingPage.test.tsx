@@ -127,7 +127,9 @@ it('shows the error and stays put when saving fails', async () => {
   await user.type(await screen.findByLabelText('Account name'), 'Card')
   await waitFor(() => expect(screen.getAllByLabelText('Currency')[0]).toHaveTextContent('USD'))
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(await screen.findByRole('alert')).toBeInTheDocument()
+  const alert = await screen.findByRole('alert')
+  const cont = screen.getByRole('button', { name: 'Continue' })
+  expect(alert.compareDocumentPosition(cont) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(screen.getByText("Where's your money right now?")).toBeInTheDocument()
 })
 
