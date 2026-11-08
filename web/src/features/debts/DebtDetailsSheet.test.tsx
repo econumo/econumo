@@ -8,7 +8,7 @@ import { coreHandlers } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import type { DebtDetailsDto } from '@/api/dto/debt'
 import { DebtDetailsSheet } from './DebtDetailsSheet'
-import { wireDebt } from './testDebt'
+import { wireDebt, wireDebtNotSetUp } from './testDebt'
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -187,4 +187,17 @@ it('a debt that fails to load says why instead of showing an empty sheet', async
   renderSheet()
   useUiStore.getState().openDebtDetails('d1')
   expect(await screen.findByRole('alert')).toHaveTextContent('Debt not found')
+})
+
+it('a debt not set up shows no figures, offers Finish setup and not Mark as paid off', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ item: wireDebtNotSetUp, snapshots: [], payments: [] })))
+  renderSheet()
+  useUiStore.getState().openDebtDetails('d1')
+  await screen.findByRole('heading', { name: 'Car loan' })
+
+  const figure = (label: string) => screen.getByText(label).nextElementSibling
+  expect(figure('Balance now')).toHaveTextContent('—')
+  expect(figure('Payments left')).toHaveTextContent('—')
+  expect(screen.getByRole('button', { name: 'Finish setup' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Mark as paid off' })).toBeDisabled()
 })

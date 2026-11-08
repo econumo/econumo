@@ -479,6 +479,7 @@
     },
     "form": {
       "header": "Dług",
+      "intro": "Śledź pożyczkę bez konta. Szczegóły możesz dopracować później.",
       "name": {
         "label": "Nazwa"
       },
@@ -493,6 +494,9 @@
       },
       "tag": {
         "label": "Tag (opcjonalnie)"
+      },
+      "label": {
+        "label": "Tag raportowy (opcjonalnie)"
       },
       "start_date": {
         "label": "Data rozpoczęcia (opcjonalnie)",
@@ -547,6 +551,21 @@
         "title": "Usunąć zaplanowane kwoty i komentarze?",
         "action": "Usuń dług"
       }
+    },
+    "payments_from": {
+      "label": "Które płatności się liczą",
+      "in": "Płatności z kategorii",
+      "from": "odbiorca",
+      "tagged": "tag",
+      "labelled": "tag raportowy",
+      "choose_category": "wybierz",
+      "any_payee": "dowolny",
+      "any_tag": "dowolny",
+      "any_label": "dowolny",
+      "explainer": "Po tych danych Econumo znajduje płatności tej pożyczki. Przechodzą z kategorii do tego długu."
+    },
+    "terms": {
+      "finish_setup": "Dokończ konfigurację"
     }
   },
   "recurring": {

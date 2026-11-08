@@ -479,6 +479,7 @@
     },
     "form": {
       "header": "Deuda",
+      "intro": "Sigue un préstamo sin cuenta. Podrás ajustarlo después.",
       "name": {
         "label": "Nombre"
       },
@@ -493,6 +494,9 @@
       },
       "tag": {
         "label": "Etiqueta (opcional)"
+      },
+      "label": {
+        "label": "Etiqueta de informes (opcional)"
       },
       "start_date": {
         "label": "Fecha de inicio (opcional)",
@@ -547,6 +551,21 @@
         "title": "¿Eliminar importes planificados y comentarios?",
         "action": "Eliminar deuda"
       }
+    },
+    "payments_from": {
+      "label": "Qué pagos cuentan",
+      "in": "Pagos de la categoría",
+      "from": "beneficiario",
+      "tagged": "etiqueta",
+      "labelled": "etiqueta de informes",
+      "choose_category": "elige una",
+      "any_payee": "cualquiera",
+      "any_tag": "cualquiera",
+      "any_label": "cualquiera",
+      "explainer": "Econumo encuentra los pagos de este préstamo con estos datos. Pasan de la categoría a esta deuda."
+    },
+    "terms": {
+      "finish_setup": "Terminar configuración"
     }
   },
   "recurring": {

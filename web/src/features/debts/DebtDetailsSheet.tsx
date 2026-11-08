@@ -43,6 +43,8 @@ function DebtDetails({ debtId, onClose }: { debtId: string; onClose: () => void 
   const [error, setError] = useState<string | null>(null)
 
   const item: DebtDto | undefined = data?.item
+  // a debt not set up sends its figures empty
+  const amount = (value: string, debt: DebtDto) => (value === '' ? '—' : money(value, debt))
 
   const edit = () => {
     setError(null)
@@ -84,9 +86,14 @@ function DebtDetails({ debtId, onClose }: { debtId: string; onClose: () => void 
         item ? (
           <div className="flex flex-wrap gap-2 [&_button]:h-11 [&_button]:flex-1">
             <Button type="button" variant="secondary" onClick={edit}>
-              {t('common.button.edit.label')}
+              {item.isSetUp === 1 ? t('common.button.edit.label') : t('debts.terms.finish_setup')}
             </Button>
-            <Button type="button" variant="secondary" disabled={item.isPaidOff === 1 || markPaidOff.isPending} onClick={() => setConfirm('paid-off')}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={item.isSetUp !== 1 || item.isPaidOff === 1 || markPaidOff.isPending}
+              onClick={() => setConfirm('paid-off')}
+            >
               {t('debts.details.mark_paid_off')}
             </Button>
             <Button type="button" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setConfirm('delete')}>
@@ -104,11 +111,11 @@ function DebtDetails({ debtId, onClose }: { debtId: string; onClose: () => void 
             </div>
           ) : null}
           <dl className="divide-y divide-border rounded-lg bg-econumo-card px-4 py-1.5">
-            <Figure label={t('debts.details.current_balance')}>{money(item.currentBalance, item)}</Figure>
-            <Figure label={t('debts.details.payments_left')}>{paymentsLeft(item.paymentsLeft)}</Figure>
-            <Figure label={t('debts.details.money_left')}>{money(item.moneyLeft, item)}</Figure>
-            <Figure label={t('debts.details.overpayment_left')}>{money(item.overpaymentLeft, item)}</Figure>
-            <Figure label={t('debts.details.overpaid_so_far')}>{money(item.overpaidSoFar, item)}</Figure>
+            <Figure label={t('debts.details.current_balance')}>{amount(item.currentBalance, item)}</Figure>
+            <Figure label={t('debts.details.payments_left')}>{item.isSetUp === 1 ? paymentsLeft(item.paymentsLeft) : '—'}</Figure>
+            <Figure label={t('debts.details.money_left')}>{amount(item.moneyLeft, item)}</Figure>
+            <Figure label={t('debts.details.overpayment_left')}>{amount(item.overpaymentLeft, item)}</Figure>
+            <Figure label={t('debts.details.overpaid_so_far')}>{amount(item.overpaidSoFar, item)}</Figure>
             <Figure label={t('debts.details.payoff_date')}>{item.payoffDate || '—'}</Figure>
           </dl>
 

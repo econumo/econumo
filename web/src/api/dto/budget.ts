@@ -241,6 +241,9 @@ export interface BudgetDebtElementDto {
   isPaidOff: 0 | 1
   /** 0 outside the debt's life or after its projected payoff: no plan to edit */
   isPlannable: 0 | 1
+  /** 0 while the debt has no terms: closingBalance and the payoff figures are
+   *  '', paymentsLeft 0, scheduledTotal and upcoming '0' */
+  isSetUp: 0 | 1
 }
 
 /** one of the requester's own member accounts */
@@ -373,6 +376,9 @@ export interface PlanDebtElementDto {
   overpaymentLeft: string
   baseOverpaymentLeft: string
   isPaidOff: 0 | 1
+  /** 0 while the debt has no terms: the cells' closingBalance and the payoff
+   *  figures are '', paymentsLeft 0, scheduledTotal and upcoming '0' */
+  isSetUp: 0 | 1
   cells: PlanDebtCellDto[]
 }
 

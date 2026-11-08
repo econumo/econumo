@@ -51,13 +51,15 @@ export function useCreateDebt({ fromBudget = false }: { fromBudget?: boolean } =
   })
 }
 
-export function useUpdateDebt() {
+/** `finishingSetup`: the debt being saved is not set up yet, so a save that
+ *  comes back set up is the debt's setup finished, not an edit */
+export function useUpdateDebt({ finishingSetup = false }: { finishingSetup?: boolean } = {}) {
   const invalidate = useInvalidateDebts()
   return useMutation({
     mutationFn: (form: UpdateDebtDto) => debtApi.updateDebt(form),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       invalidate()
-      trackEvent(METRICS.DEBT_UPDATE)
+      trackEvent(finishingSetup && saved.isSetUp === 1 ? METRICS.DEBT_FINISH_SETUP : METRICS.DEBT_UPDATE)
     },
   })
 }

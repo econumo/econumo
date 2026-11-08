@@ -479,6 +479,7 @@
     },
     "form": {
       "header": "Dívida",
+      "intro": "Acompanhe um empréstimo sem conta. Pode ajustá-lo mais tarde.",
       "name": {
         "label": "Nome"
       },
@@ -493,6 +494,9 @@
       },
       "tag": {
         "label": "Etiqueta (opcional)"
+      },
+      "label": {
+        "label": "Etiqueta de relatório (opcional)"
       },
       "start_date": {
         "label": "Data de início (opcional)",
@@ -547,6 +551,21 @@
         "title": "Eliminar montantes planeados e comentários?",
         "action": "Eliminar dívida"
       }
+    },
+    "payments_from": {
+      "label": "Que pagamentos contam",
+      "in": "Pagamentos na categoria",
+      "from": "beneficiário",
+      "tagged": "etiqueta",
+      "labelled": "etiqueta de relatório",
+      "choose_category": "escolha",
+      "any_payee": "qualquer",
+      "any_tag": "qualquer",
+      "any_label": "qualquer",
+      "explainer": "O Econumo encontra os pagamentos deste empréstimo com estes dados. Passam da categoria para esta dívida."
+    },
+    "terms": {
+      "finish_setup": "Concluir configuração"
     }
   },
   "recurring": {

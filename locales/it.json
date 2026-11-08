@@ -479,6 +479,7 @@
     },
     "form": {
       "header": "Debito",
+      "intro": "Segui un prestito senza conto. Potrai perfezionarlo in seguito.",
       "name": {
         "label": "Nome"
       },
@@ -493,6 +494,9 @@
       },
       "tag": {
         "label": "Tag (facoltativo)"
+      },
+      "label": {
+        "label": "Tag per i report (facoltativo)"
       },
       "start_date": {
         "label": "Data di inizio (facoltativa)",
@@ -547,6 +551,21 @@
         "title": "Eliminare importi pianificati e commenti?",
         "action": "Elimina debito"
       }
+    },
+    "payments_from": {
+      "label": "Quali pagamenti contano",
+      "in": "Pagamenti nella categoria",
+      "from": "beneficiario",
+      "tagged": "tag",
+      "labelled": "tag per i report",
+      "choose_category": "scegli",
+      "any_payee": "qualsiasi",
+      "any_tag": "qualsiasi",
+      "any_label": "qualsiasi",
+      "explainer": "Econumo trova i pagamenti di questo prestito con questi criteri. Passano dalla categoria a questo debito."
+    },
+    "terms": {
+      "finish_setup": "Completa la configurazione"
     }
   },
   "recurring": {

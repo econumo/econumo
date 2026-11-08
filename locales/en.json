@@ -479,6 +479,7 @@
     },
     "form": {
       "header": "Debt",
+      "intro": "Track a loan without an account. You can fine-tune it afterwards.",
       "name": {
         "label": "Name"
       },
@@ -493,6 +494,9 @@
       },
       "tag": {
         "label": "Tag (optional)"
+      },
+      "label": {
+        "label": "Reporting tag (optional)"
       },
       "start_date": {
         "label": "Start date (optional)",
@@ -547,6 +551,21 @@
         "title": "Delete plans and comments?",
         "action": "Delete debt"
       }
+    },
+    "payments_from": {
+      "label": "Which payments count",
+      "in": "Payments in",
+      "from": "from",
+      "tagged": "tagged",
+      "labelled": "with",
+      "choose_category": "choose a category",
+      "any_payee": "any payee",
+      "any_tag": "any tag",
+      "any_label": "any reporting tag",
+      "explainer": "Econumo finds this loan's payments with these. They move from the category to this debt."
+    },
+    "terms": {
+      "finish_setup": "Finish setup"
     }
   },
   "recurring": {

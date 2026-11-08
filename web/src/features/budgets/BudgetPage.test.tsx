@@ -646,7 +646,7 @@ it('the Balance at month end counts the debt payments and plans as expenses, as 
     withDebt.structure.debts = [
       {
         id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', ownerUserId: 'u1', position: 0,
-        payoffDate: '2028-10-05', basePayoffDate: '2028-10-05', overpaymentLeft: '0', baseOverpaymentLeft: '0', isPaidOff: 0,
+        payoffDate: '2028-10-05', basePayoffDate: '2028-10-05', overpaymentLeft: '0', baseOverpaymentLeft: '0', isPaidOff: 0, isSetUp: 1,
         // June (past) paid 1000; July (current) paid 1000 of a 1200 plan
         cells: [debtCell('0', ''), debtCell('1000', '1000'), debtCell('1000', '1200'), debtCell('0', '1200')],
       },

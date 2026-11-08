@@ -24,7 +24,7 @@ const wireDebt = {
   payeeId: null, tagId: null, startDate: '', balance: '100', payment: '105', schedule: 'monthly',
   lastPaymentDate: '2027-06-20', currentBalance: '100', paymentsLeft: 1, moneyLeft: '105',
   overpaymentLeft: '5', overpaidSoFar: '0', payoffDate: '2027-06-20', nextDueDate: '2027-06-20',
-  periodRate: '0.0500000000', isPaidOff: 0,
+  periodRate: '0.0500000000', isPaidOff: 0, isSetUp: 1, periodsPaid: 0,
 }
 const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
 
@@ -110,6 +110,26 @@ it('useUpdateDebt fires DEBT_UPDATE and invalidates', async () => {
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
   expectInvalidated(invalidated)
+})
+
+it('useUpdateDebt finishing setup fires DEBT_FINISH_SETUP instead, once the debt comes back set up', async () => {
+  server.use(http.post('*/api/v1/debt/update-debt', () => ok(wireDebt)))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useUpdateDebt({ finishingSetup: true }), { wrapper })
+  result.current.mutate({ ...form, id: 'd1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
+  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
+})
+
+it('useUpdateDebt finishing setup without terms is a plain update', async () => {
+  server.use(http.post('*/api/v1/debt/update-debt', () => ok({ ...wireDebt, isSetUp: 0 })))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useUpdateDebt({ finishingSetup: true }), { wrapper })
+  result.current.mutate({ name: 'Car loan', currencyId: 'cur-usd', categoryId: 'c1', payment: '105', schedule: 'monthly', id: 'd1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
+  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
 })
 
 it('useDeleteDebt sends confirmDataRemoval, fires DEBT_DELETE and invalidates', async () => {

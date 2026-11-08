@@ -47,7 +47,7 @@ export interface OpenRecurringParams {
 }
 
 export interface OpenDebtParams {
-  /** edit this debt; absent = a new one */
+  /** this debt's terms (Finish setup, or Edit once set up); absent = a new debt */
   debt?: DebtDto
   /** prefills a new debt (the budget row's "Track as debt") */
   categoryId?: Id

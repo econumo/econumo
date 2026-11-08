@@ -45,7 +45,7 @@ const debtCell = (actual: string, planned: string, closingBalance: string, payme
 // plan months May..Aug; the window shows Jun/Jul/Aug
 const mortgage = {
   id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', ownerUserId: 'u1', position: 0,
-  payoffDate: '2028-03-05', basePayoffDate: '2028-10-05', overpaymentLeft: '1500', baseOverpaymentLeft: '2000', isPaidOff: 0,
+  payoffDate: '2028-03-05', basePayoffDate: '2028-10-05', overpaymentLeft: '1500', baseOverpaymentLeft: '2000', isPaidOff: 0, isSetUp: 1,
   cells: [
     debtCell('0', '', '0', 0, 0, '0'),
     debtCell('1000', '1000', '24000', 24, 1),

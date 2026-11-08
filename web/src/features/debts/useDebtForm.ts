@@ -12,49 +12,76 @@ import { projectLastPaymentDate } from './debtMath'
 
 export const SCHEDULE_ORDER: RecurringSchedule[] = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']
 
-export interface DebtFormState {
-  name: string
-  currencyId: Id | null
+/** the filters that pick a debt's payments: a category, and optionally a payee, a tag and a label */
+export interface PaymentsFrom {
   categoryId: Id | null
   payeeId: Id | null
   tagId: Id | null
-  /** Y-m-d, "" = none */
-  startDate: string
-  balance: string
-  payment: string
-  schedule: RecurringSchedule
-  /** Y-m-d, "" until chosen */
-  lastPaymentDate: string
+  labelId: Id | null
 }
 
-export function initialDebtFormState(params: OpenDebtParams, categories: CategoryDto[], defaultCurrencyId: Id | null): DebtFormState {
-  const debt = params.debt
-  if (debt) {
-    return {
-      name: debt.name,
-      currencyId: debt.currencyId,
-      categoryId: debt.categoryId,
-      payeeId: debt.payeeId,
-      tagId: debt.tagId,
-      startDate: debt.startDate,
-      // what is owed right now: the stored snapshot's balance is as of its own date
-      balance: normalizeNumber(debt.currentBalance),
-      payment: normalizeNumber(debt.payment),
-      schedule: debt.schedule,
-      lastPaymentDate: debt.lastPaymentDate,
-    }
-  }
+export interface DebtCreateState extends PaymentsFrom {
+  name: string
+  currencyId: Id | null
+  payment: string
+  schedule: RecurringSchedule
+  /** Y-m-d, "" = none; asked only once another debt has the same filters */
+  startDate: string
+}
+
+export function initialCreateState(params: OpenDebtParams, categories: CategoryDto[], defaultCurrencyId: Id | null): DebtCreateState {
   return {
     name: categories.find((c) => c.id === params.categoryId)?.name ?? '',
     currencyId: params.currencyId ?? defaultCurrencyId,
     categoryId: params.categoryId ?? null,
     payeeId: null,
     tagId: null,
-    startDate: '',
-    balance: '',
+    labelId: null,
     payment: '',
     schedule: 'monthly',
-    lastPaymentDate: '',
+    startDate: '',
+  }
+}
+
+/** a new debt carries no terms: balance and last payment date come with Finish setup */
+export function buildCreatePayload(state: DebtCreateState): CreateDebtDto {
+  return {
+    name: state.name.trim(),
+    currencyId: state.currencyId as Id,
+    categoryId: state.categoryId as Id,
+    payeeId: state.payeeId,
+    tagId: state.tagId,
+    labelId: state.labelId,
+    startDate: state.startDate || null,
+    payment: evaluatedAmount(state.payment),
+    schedule: state.schedule,
+  }
+}
+
+export function useDebtCreateForm(params: OpenDebtParams, categories: CategoryDto[], defaultCurrencyId: Id | null) {
+  const [form, setForm] = useState<DebtCreateState>(() => initialCreateState(params, categories, defaultCurrencyId))
+  const patch = (partial: Partial<DebtCreateState>) => setForm((prev) => ({ ...prev, ...partial }))
+  return { form, patch }
+}
+
+export interface DebtTermsState {
+  balance: string
+  payment: string
+  schedule: RecurringSchedule
+  /** Y-m-d, "" until chosen */
+  lastPaymentDate: string
+  /** Y-m-d, "" = none */
+  startDate: string
+}
+
+export function initialTermsState(debt: DebtDto): DebtTermsState {
+  return {
+    // what is owed right now: the stored snapshot's balance is as of its own date
+    balance: debt.isSetUp === 1 ? normalizeNumber(debt.currentBalance) : '',
+    payment: normalizeNumber(debt.payment),
+    schedule: debt.schedule,
+    lastPaymentDate: debt.lastPaymentDate,
+    startDate: debt.startDate,
   }
 }
 
@@ -68,16 +95,35 @@ export function amountOf(raw: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/** a required amount's error: blank, a broken formula, not a number, or below the floor */
+export function amountError(raw: string, t: (key: string) => string, positive: boolean): string | undefined {
+  if (!isNotEmpty(raw)) {
+    return t('common.validation.required_field')
+  }
+  if (!isValidFormula(raw)) {
+    return t('common.validation.invalid_formula')
+  }
+  const n = amountOf(raw)
+  if (n === null || n < 0 || (positive && n === 0)) {
+    return t('common.validation.invalid_number')
+  }
+  return undefined
+}
+
 export type Projection = { status: 'date'; date: string } | { status: 'never' } | { status: 'unknown' }
 
 const DAY = /^\d{4}-\d{2}-(\d{2})/
 
 /** The date the debt clears under the form's balance and payment, at the debt's
     own implied rate. 'unknown' while the inputs cannot be projected (a half-typed
-    amount, a debt with no next due date, a negative balance, no payment, another
-    schedule than the stored one); 'never'
-    when the payment does not cover the interest. */
-export function projectForm(form: DebtFormState, debt: DebtDto): Projection {
+    amount, a debt with no rate or next due date yet, a negative balance, no
+    payment, another schedule than the stored one); 'never' when the payment
+    does not cover the interest. */
+export function projectTerms(form: DebtTermsState, debt: DebtDto): Projection {
+  // a debt not set up has no rate to project with: its last payment date is typed
+  if (debt.isSetUp !== 1) {
+    return { status: 'unknown' }
+  }
   const balance = amountOf(form.balance)
   const payment = amountOf(form.payment)
   const rate = Number(debt.periodRate)
@@ -85,7 +131,7 @@ export function projectForm(form: DebtFormState, debt: DebtDto): Projection {
   if (form.schedule !== debt.schedule) {
     return { status: 'unknown' }
   }
-  if (balance === null || payment === null || !Number.isFinite(rate) || !DAY.test(debt.nextDueDate)) {
+  if (balance === null || payment === null || debt.periodRate === '' || !Number.isFinite(rate) || !DAY.test(debt.nextDueDate)) {
     return { status: 'unknown' }
   }
   // a negative balance or a payment of nothing is an input error, not a debt
@@ -103,71 +149,68 @@ export function projectForm(form: DebtFormState, debt: DebtDto): Projection {
   return payment <= balance * rate ? { status: 'never' } : { status: 'unknown' }
 }
 
-function withProjection(form: DebtFormState, initial: DebtFormState, debt: DebtDto | undefined): DebtFormState {
-  if (!debt) {
-    return form
-  }
+function termsUntouched(form: DebtTermsState, initial: DebtTermsState): boolean {
+  return form.balance === initial.balance && form.payment === initial.payment && form.schedule === initial.schedule
+}
+
+function withProjection(form: DebtTermsState, initial: DebtTermsState, debt: DebtDto): DebtTermsState {
   // terms typed back to what they were are untouched: the stored date returns,
   // so saving writes no snapshot
-  if (form.balance === initial.balance && form.payment === initial.payment && form.schedule === initial.schedule) {
+  if (debt.isSetUp === 1 && termsUntouched(form, initial)) {
     return { ...form, lastPaymentDate: initial.lastPaymentDate }
   }
-  const projection = projectForm(form, debt)
+  const projection = projectTerms(form, debt)
   return projection.status === 'date' ? { ...form, lastPaymentDate: projection.date } : form
 }
 
-export function buildDebtPayload(form: DebtFormState, initial: DebtFormState, debt: DebtDto | undefined): CreateDebtDto | UpdateDebtDto {
+/** the update that saves the terms; the debt's name and filters go back as stored */
+export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState, debt: DebtDto): UpdateDebtDto {
   const base = {
-    name: form.name.trim(),
-    currencyId: form.currencyId as Id,
-    categoryId: form.categoryId as Id,
-    payeeId: form.payeeId,
-    tagId: form.tagId,
+    id: debt.id,
+    name: debt.name,
+    currencyId: debt.currencyId,
+    categoryId: debt.categoryId,
+    payeeId: debt.payeeId,
+    tagId: debt.tagId,
+    labelId: debt.labelId,
     startDate: form.startDate || null,
   }
-  if (!debt) {
+  if (debt.isSetUp !== 1) {
+    // without both terms the save only updates payment, repeats and start date
+    const terms = isNotEmpty(form.balance) && form.lastPaymentDate !== ''
     return {
       ...base,
-      balance: evaluatedAmount(form.balance),
       payment: evaluatedAmount(form.payment),
       schedule: form.schedule,
-      lastPaymentDate: form.lastPaymentDate,
+      ...(terms ? { balance: evaluatedAmount(form.balance), lastPaymentDate: form.lastPaymentDate } : {}),
     }
   }
   // The form shows what is owed now, the server compares against the stored
-  // snapshot: when no term was touched, send the snapshot back so a rename does
-  // not write a new one.
-  const untouched =
-    form.balance === initial.balance &&
-    form.payment === initial.payment &&
-    form.schedule === initial.schedule &&
-    form.lastPaymentDate === initial.lastPaymentDate
+  // snapshot: when no term was touched, send the snapshot back so a start date
+  // change does not write a new one.
+  if (termsUntouched(form, initial) && form.lastPaymentDate === initial.lastPaymentDate) {
+    return { ...base, balance: debt.balance, payment: debt.payment, schedule: debt.schedule, lastPaymentDate: debt.lastPaymentDate }
+  }
   return {
     ...base,
-    id: debt.id,
-    ...(untouched
-      ? { balance: debt.balance, payment: debt.payment, schedule: debt.schedule, lastPaymentDate: debt.lastPaymentDate }
-      : {
-          balance: evaluatedAmount(form.balance),
-          payment: evaluatedAmount(form.payment),
-          schedule: form.schedule,
-          lastPaymentDate: form.lastPaymentDate,
-        }),
+    balance: evaluatedAmount(form.balance),
+    payment: evaluatedAmount(form.payment),
+    schedule: form.schedule,
+    lastPaymentDate: form.lastPaymentDate,
   }
 }
 
-export function useDebtForm(params: OpenDebtParams, categories: CategoryDto[], defaultCurrencyId: Id | null) {
-  const debt = params.debt
-  const [initial] = useState(() => initialDebtFormState(params, categories, defaultCurrencyId))
-  const [form, setForm] = useState<DebtFormState>(initial)
-  const patch = (partial: Partial<DebtFormState>) => setForm((prev) => ({ ...prev, ...partial }))
+export function useDebtTermsForm(debt: DebtDto) {
+  const [initial] = useState(() => initialTermsState(debt))
+  const [form, setForm] = useState<DebtTermsState>(initial)
+  const patch = (partial: Partial<DebtTermsState>) => setForm((prev) => ({ ...prev, ...partial }))
 
   // Balance and payment re-fill the last payment date from the debt's own
   // rate; the date itself and the schedule recalculate nothing.
   const setBalance = (balance: string) => setForm((prev) => withProjection({ ...prev, balance }, initial, debt))
   const setPayment = (payment: string) => setForm((prev) => withProjection({ ...prev, payment }, initial, debt))
 
-  const projection: Projection = debt ? projectForm(form, debt) : { status: 'unknown' }
+  const projection = projectTerms(form, debt)
 
   return { form, initial, patch, setBalance, setPayment, projection }
 }

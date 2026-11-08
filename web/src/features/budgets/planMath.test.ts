@@ -1284,7 +1284,7 @@ describe('debts in the totals', () => {
     })
   const debt = (cells: { actual: string; planned: string; isPlannable: 0 | 1 }[]) => ({
     id: 'debt-1', type: BudgetElementType.DEBT, name: 'Loan', icon: 'home', currencyId: 'cur-eur', ownerUserId: 'u1', position: 0,
-    payoffDate: '', basePayoffDate: '', overpaymentLeft: '0', baseOverpaymentLeft: '0', isPaidOff: 0 as const,
+    payoffDate: '', basePayoffDate: '', overpaymentLeft: '0', baseOverpaymentLeft: '0', isPaidOff: 0 as const, isSetUp: 1 as const,
     cells: cells.map((c) => ({ ...c, closingBalance: '0', paymentsLeft: 0, scheduledTotal: '0', upcoming: '0' })),
   })
 

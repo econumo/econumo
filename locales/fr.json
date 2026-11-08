@@ -479,6 +479,7 @@
     },
     "form": {
       "header": "Dette",
+      "intro": "Suivez un prêt sans compte. Vous pourrez l'ajuster ensuite.",
       "name": {
         "label": "Nom"
       },
@@ -493,6 +494,9 @@
       },
       "tag": {
         "label": "Tag (facultatif)"
+      },
+      "label": {
+        "label": "Tag de rapport (facultatif)"
       },
       "start_date": {
         "label": "Date de début (facultatif)",
@@ -547,6 +551,21 @@
         "title": "Supprimer les montants prévus et les commentaires ?",
         "action": "Supprimer la dette"
       }
+    },
+    "payments_from": {
+      "label": "Paiements pris en compte",
+      "in": "Paiements de la catégorie",
+      "from": "bénéficiaire",
+      "tagged": "tag",
+      "labelled": "tag de rapport",
+      "choose_category": "à choisir",
+      "any_payee": "tous",
+      "any_tag": "tous",
+      "any_label": "tous",
+      "explainer": "Econumo trouve les paiements de ce prêt grâce à ces critères. Ils passent de la catégorie à cette dette."
+    },
+    "terms": {
+      "finish_setup": "Terminer la configuration"
     }
   },
   "recurring": {

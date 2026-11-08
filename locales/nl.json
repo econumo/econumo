@@ -479,6 +479,7 @@
     },
     "form": {
       "header": "Schuld",
+      "intro": "Volg een lening zonder rekening. U kunt dit later verfijnen.",
       "name": {
         "label": "Naam"
       },
@@ -493,6 +494,9 @@
       },
       "tag": {
         "label": "Tag (optioneel)"
+      },
+      "label": {
+        "label": "Rapportagetag (optioneel)"
       },
       "start_date": {
         "label": "Startdatum (optioneel)",
@@ -547,6 +551,21 @@
         "title": "Geplande bedragen en opmerkingen verwijderen?",
         "action": "Schuld verwijderen"
       }
+    },
+    "payments_from": {
+      "label": "Welke betalingen tellen",
+      "in": "Betalingen in categorie",
+      "from": "begunstigde",
+      "tagged": "tag",
+      "labelled": "rapportagetag",
+      "choose_category": "kies",
+      "any_payee": "elke",
+      "any_tag": "elke",
+      "any_label": "elke",
+      "explainer": "Hiermee vindt Econumo de betalingen van deze lening. Ze gaan van de categorie naar deze schuld."
+    },
+    "terms": {
+      "finish_setup": "Instellen voltooien"
     }
   },
   "recurring": {

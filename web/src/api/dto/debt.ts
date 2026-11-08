@@ -1,7 +1,9 @@
 import type { Id } from '../types'
 import type { RecurringSchedule } from './recurring'
 
-/** amounts are decimal strings in the debt's currency, dates Y-m-d ("" when none) */
+/** amounts are decimal strings in the debt's currency, dates Y-m-d ("" when none).
+ *  While isSetUp is 0 the terms and figures (balance .. periodRate, payment and
+ *  schedule excepted) are "" and the counts 0. */
 export interface DebtDto {
   id: Id
   name: string
@@ -10,6 +12,7 @@ export interface DebtDto {
   categoryId: Id
   payeeId: Id | null
   tagId: Id | null
+  labelId: Id | null
   /** "" when the debt has no start date */
   startDate: string
   /** the latest snapshot's terms */
@@ -19,6 +22,8 @@ export interface DebtDto {
   lastPaymentDate: string
   currentBalance: string
   paymentsLeft: number
+  /** due periods up to today that received a payment */
+  periodsPaid: number
   moneyLeft: string
   overpaymentLeft: string
   overpaidSoFar: string
@@ -27,6 +32,8 @@ export interface DebtDto {
   /** implied rate per schedule period, 10 decimals */
   periodRate: string
   isPaidOff: 0 | 1
+  /** 1 once the debt has a balance and a last payment date */
+  isSetUp: 0 | 1
 }
 
 export interface DebtSnapshotDto {
@@ -57,13 +64,15 @@ export interface CreateDebtDto {
   categoryId: Id
   payeeId?: Id | null
   tagId?: Id | null
+  labelId?: Id | null
   /** Y-m-d; omitted or null = none */
   startDate?: string | null
-  balance: string
+  /** the optional terms, both or neither: without them the debt is not set up */
+  balance?: string
   /** must be positive (the server refuses 0 and blank) */
   payment: string
   schedule: RecurringSchedule
-  lastPaymentDate: string
+  lastPaymentDate?: string
 }
 
 /** the currency never changes after creation; the server ignores currencyId */

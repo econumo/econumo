@@ -479,6 +479,7 @@
     },
     "form": {
       "header": "债务",
+      "intro": "无需账户即可跟踪贷款。之后可以再细调。",
       "name": {
         "label": "名称"
       },
@@ -493,6 +494,9 @@
       },
       "tag": {
         "label": "标签（可选）"
+      },
+      "label": {
+        "label": "统计标签（可选）"
       },
       "start_date": {
         "label": "开始日期（可选）",
@@ -547,6 +551,21 @@
         "title": "删除计划金额和评论？",
         "action": "删除债务"
       }
+    },
+    "payments_from": {
+      "label": "计入哪些还款",
+      "in": "分类",
+      "from": "收款人",
+      "tagged": "标签",
+      "labelled": "统计标签",
+      "choose_category": "请选择",
+      "any_payee": "任意",
+      "any_tag": "任意",
+      "any_label": "任意",
+      "explainer": "Econumo 通过这些条件找到这笔贷款的还款，并把它们从分类转到这笔债务。"
+    },
+    "terms": {
+      "finish_setup": "完成设置"
     }
   },
   "recurring": {

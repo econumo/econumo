@@ -1,14 +1,14 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureCategories, fixturePayees, fixtureTags } from '@/test/fixtures'
+import { coreHandlers, fixtureCategories, fixtureLabels, fixturePayees, fixtureTags } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import { DebtDialog } from './DebtDialog'
-import { wireDebt } from './testDebt'
+import { wireDebt, wireDebtNotSetUp } from './testDebt'
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -21,6 +21,7 @@ function renderDialog() {
   queryClient.setQueryData(queryKeys.categories, fixtureCategories)
   queryClient.setQueryData(queryKeys.payees, fixturePayees)
   queryClient.setQueryData(queryKeys.tags, fixtureTags)
+  queryClient.setQueryData(queryKeys.labels, fixtureLabels)
   const router = createMemoryRouter([{ path: '/', element: <DebtDialog /> }], { initialEntries: ['/'] })
   render(
     <QueryClientProvider client={queryClient}>
@@ -32,247 +33,160 @@ function renderDialog() {
 
 const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
 
+function captureCreate(answer: (body: Record<string, unknown>, call: number) => Response = () => ok({ ...wireDebtNotSetUp, id: 'd-new' })) {
+  const bodies: Record<string, unknown>[] = []
+  server.use(
+    http.post('*/api/v1/debt/create-debt', async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>
+      bodies.push(body)
+      return answer(body, bodies.length)
+    }),
+  )
+  return bodies
+}
+
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   server.use(...coreHandlers())
   mockMatchMedia()
-  useUiStore.setState({ debtModal: null })
+  useUiStore.setState({ debtModal: null, debtDetailsId: null })
 })
 
-async function openEdit(debt = wireDebt) {
-  useUiStore.getState().openDebtModal({ debt })
+async function openCreate(params = {}) {
+  useUiStore.getState().openDebtModal(params)
   await screen.findByRole('heading', { name: 'Debt' })
 }
 
-const lastPaymentChip = () => screen.getByRole('button', { name: 'Last payment date' })
-
-it('editing the balance recomputes the last payment date', async () => {
-  const user = userEvent.setup()
+it('create form asks only name, payments from, payment and repeats', async () => {
   renderDialog()
-  await openEdit()
-  expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
+  await openCreate()
 
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '600')
-
-  // six 100 payments from the next due date, 2026-12-05
-  expect(lastPaymentChip()).toHaveTextContent('2027-05-05')
-  expect(screen.getByLabelText('Payment')).toHaveValue('100')
-})
-
-it('editing the payment recomputes the date from the debt interest rate', async () => {
-  const user = userEvent.setup()
-  renderDialog()
-  await openEdit({ ...wireDebt, periodRate: '0.01' })
-
-  const payment = screen.getByLabelText('Payment')
-  await user.clear(payment)
-  await user.type(payment, '600')
-
-  // 1200 at 1% a period, 600 a payment: 3 payments, Dec, Jan, Feb
-  expect(lastPaymentChip()).toHaveTextContent('2027-02-05')
-})
-
-it('a payment that never covers the interest says so and keeps the date', async () => {
-  const user = userEvent.setup()
-  renderDialog()
-  await openEdit({ ...wireDebt, periodRate: '0.05' })
-
-  const payment = screen.getByLabelText('Payment')
-  await user.clear(payment)
-  await user.type(payment, '10')
-
-  expect(await screen.findByText(/never pays off/)).toBeInTheDocument()
-  expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
-})
-
-it('an unusable balance or payment is not called a payment that never covers the interest', async () => {
-  const user = userEvent.setup()
-  renderDialog()
-  await openEdit({ ...wireDebt, periodRate: '0.05' })
-
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '-100')
-  const payment = screen.getByLabelText('Payment')
-  await user.clear(payment)
-  await user.type(payment, '0')
-
-  expect(screen.queryByText(/never pays off/)).toBeNull()
-})
-
-it('editing the last payment date leaves the other fields', async () => {
-  const user = userEvent.setup()
-  renderDialog()
-  await openEdit({ ...wireDebt, currentBalance: '900' })
-
-  await user.click(lastPaymentChip())
-  await user.click(await screen.findByRole('button', { name: /November 20th, 2027/ }))
-
-  expect(lastPaymentChip()).toHaveTextContent('2027-11-20')
-  expect(screen.getByLabelText('Balance now')).toHaveValue('900')
-  expect(screen.getByLabelText('Payment')).toHaveValue('100')
+  expect(screen.getByText('Track a loan without an account. You can fine-tune it afterwards.')).toBeInTheDocument()
+  expect(screen.getByLabelText('Name')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Category: choose a category' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Reporting tag (optional): any reporting tag' })).toBeInTheDocument()
+  expect(screen.getByLabelText('Payment')).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('Monthly')
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+
+  expect(screen.queryByLabelText('Balance now')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Last payment date' })).toBeNull()
+  expect(screen.queryByText('Start date (optional)')).toBeNull()
 })
 
-it('saving an untouched debt sends the stored snapshot, not the balance shown now', async () => {
-  let body: Record<string, unknown> | undefined
-  server.use(
-    http.post('*/api/v1/debt/update-debt', async ({ request }) => {
-      body = (await request.json()) as Record<string, unknown>
-      return ok(wireDebt)
-    }),
-  )
+it('converting from a category locks the category and prefills the name', async () => {
+  const bodies = captureCreate()
   const user = userEvent.setup()
   renderDialog()
-  await openEdit({ ...wireDebt, currentBalance: '900' })
+  await openCreate({ categoryId: 'cat-food', currencyId: 'cur-eur', fromBudget: true })
 
-  const name = screen.getByLabelText('Name')
-  await user.clear(name)
-  await user.type(name, 'Auto loan')
-  await user.click(screen.getByRole('button', { name: 'Update' }))
-
-  await waitFor(() => expect(body).toBeDefined())
-  expect(body).toMatchObject({ id: 'd1', name: 'Auto loan', balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05', startDate: null })
-  await waitFor(() => expect(useUiStore.getState().debtModal).toBeNull())
-})
-
-it('a balance typed and put back is untouched: no new snapshot', async () => {
-  let body: Record<string, unknown> | undefined
-  server.use(
-    http.post('*/api/v1/debt/update-debt', async ({ request }) => {
-      body = (await request.json()) as Record<string, unknown>
-      return ok(wireDebt)
-    }),
-  )
-  const user = userEvent.setup()
-  renderDialog()
-  // payments since the snapshot: the projection of what is owed now ends
-  // earlier than the stored last payment date
-  await openEdit({ ...wireDebt, currentBalance: '900' })
-
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '500')
-  await user.clear(balance)
-  await user.type(balance, '900')
-  expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
-  await user.click(screen.getByRole('button', { name: 'Update' }))
-
-  await waitFor(() => expect(body).toBeDefined())
-  expect(body).toMatchObject({ balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05' })
-})
-
-it('a changed balance is sent as typed', async () => {
-  let body: Record<string, unknown> | undefined
-  server.use(
-    http.post('*/api/v1/debt/update-debt', async ({ request }) => {
-      body = (await request.json()) as Record<string, unknown>
-      return ok(wireDebt)
-    }),
-  )
-  const user = userEvent.setup()
-  renderDialog()
-  await openEdit()
-
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '600')
-  await user.click(screen.getByRole('button', { name: 'Update' }))
-
-  await waitFor(() => expect(body).toBeDefined())
-  expect(body).toMatchObject({ balance: '600', payment: '100', lastPaymentDate: '2027-05-05' })
-})
-
-it('creates a debt from a category with the name and currency prefilled', async () => {
-  let body: Record<string, unknown> | undefined
-  server.use(
-    http.post('*/api/v1/debt/create-debt', async ({ request }) => {
-      body = (await request.json()) as Record<string, unknown>
-      return ok(wireDebt)
-    }),
-  )
-  const user = userEvent.setup()
-  renderDialog()
-  useUiStore.getState().openDebtModal({ categoryId: 'cat-food', currencyId: 'cur-eur', fromBudget: true })
-  await screen.findByRole('heading', { name: 'Debt' })
   expect(screen.getByLabelText('Name')).toHaveValue('Food')
+  expect(screen.getByRole('button', { name: 'Category: Food' })).toBeDisabled()
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('EUR'))
 
-  await user.type(screen.getByLabelText('Balance now'), '500')
   await user.type(screen.getByLabelText('Payment'), '50')
-  await user.click(lastPaymentChip())
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toEqual({
+    name: 'Food', currencyId: 'cur-eur', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null,
+    startDate: null, payment: '50', schedule: 'monthly',
+  })
+})
+
+it('saving opens the debt\'s review screen', async () => {
+  captureCreate()
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ categoryId: 'cat-food' })
+
+  await user.type(screen.getByLabelText('Payment'), '50')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(useUiStore.getState().debtModal).toBeNull())
+  expect(useUiStore.getState().debtDetailsId).toBe('d-new')
+})
+
+it('a key conflict reveals the start date field and resends with it', async () => {
+  const conflict = 'Another debt could match the same payments.'
+  const bodies = captureCreate((_, call) =>
+    call === 1
+      ? HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { categoryId: [conflict] } }, { status: 400 })
+      : ok({ ...wireDebtNotSetUp, id: 'd-new' }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ categoryId: 'cat-food' })
+
+  await user.type(screen.getByLabelText('Payment'), '50')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  expect(await screen.findByText(conflict)).toBeInTheDocument()
+  const startDate = screen.getByRole('button', { name: 'Start date (optional)' })
+  await user.click(startDate)
   const now = new Date()
   const month = new Intl.DateTimeFormat('en', { month: 'long' }).format(now)
-  await user.click(await screen.findByRole('button', { name: new RegExp(`${month} 15th, ${now.getFullYear()}`) }))
+  await user.click(await screen.findByRole('button', { name: new RegExp(`${month} 1st, ${now.getFullYear()}`) }))
   await user.click(screen.getByRole('button', { name: 'Add' }))
 
-  await waitFor(() => expect(body).toBeDefined())
-  expect(body).toMatchObject({
-    name: 'Food',
-    currencyId: 'cur-eur',
-    categoryId: 'cat-food',
-    payeeId: null,
-    tagId: null,
-    startDate: null,
-    balance: '500',
-    payment: '50',
-    schedule: 'monthly',
-    lastPaymentDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-15`,
-  })
-  expect(body).not.toHaveProperty('id')
-  await waitFor(() => expect(useUiStore.getState().debtModal).toBeNull())
+  await waitFor(() => expect(bodies).toHaveLength(2))
+  expect(bodies[0].startDate).toBeNull()
+  expect(bodies[1].startDate).toBe(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`)
+  await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
 })
 
-it('offers expense categories only', async () => {
+it('a start date already taken reveals the field with the refusal under it', async () => {
+  const taken = 'Another debt with the same category, payee, tag and reporting tag already starts on this date.'
+  captureCreate(() => HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { startDate: [taken] } }, { status: 400 }))
   const user = userEvent.setup()
   renderDialog()
-  useUiStore.getState().openDebtModal({})
-  await screen.findByRole('heading', { name: 'Debt' })
+  await openCreate({ categoryId: 'cat-food' })
 
-  await user.click(screen.getByRole('combobox', { name: 'Category' }))
-  expect(await screen.findByText('Food')).toBeInTheDocument()
-  expect(screen.queryByText('Salary')).toBeNull()
-  expect(screen.queryByText('Old')).toBeNull()
-})
-
-it('requires the name, category and amounts before sending', async () => {
-  let called = false
-  server.use(http.post('*/api/v1/debt/create-debt', () => { called = true; return ok(wireDebt) }))
-  const user = userEvent.setup()
-  renderDialog()
-  useUiStore.getState().openDebtModal({})
-  await screen.findByRole('heading', { name: 'Debt' })
-
+  await user.type(screen.getByLabelText('Payment'), '50')
   await user.click(screen.getByRole('button', { name: 'Add' }))
 
-  expect((await screen.findAllByText('Required field')).length).toBeGreaterThanOrEqual(4)
-  expect(called).toBe(false)
-})
-
-it('shows a server refusal under its field', async () => {
-  server.use(
-    http.post('*/api/v1/debt/update-debt', () =>
-      HttpResponse.json(
-        { success: false, message: 'Form validation error', code: 400, errors: { payment: ['The payments do not cover the balance.'] } },
-        { status: 400 },
-      ),
-    ),
-  )
-  const user = userEvent.setup()
-  renderDialog()
-  await openEdit()
-
-  await user.click(screen.getByRole('button', { name: 'Update' }))
-
-  expect(await screen.findByText('The payments do not cover the balance.')).toBeInTheDocument()
+  expect(await screen.findByText(taken)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Start date (optional)' })).toBeInTheDocument()
   expect(useUiStore.getState().debtModal).not.toBeNull()
 })
 
-it('the currency cannot change on an existing debt', async () => {
+it('picks the label in the sentence and sends it', async () => {
+  const bodies = captureCreate()
+  const user = userEvent.setup()
   renderDialog()
-  await openEdit()
-  await waitFor(() => expect(screen.getByLabelText('Currency')).toHaveTextContent('USD'))
-  expect(screen.getByLabelText('Currency')).toBeDisabled()
+  await openCreate({ categoryId: 'cat-food' })
+
+  await user.click(screen.getByRole('button', { name: 'Reporting tag (optional): any reporting tag' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Reporting tag (optional)' })
+  await user.click(within(sheet).getByText('health'))
+  await user.type(screen.getByLabelText('Payment'), '50')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0].labelId).toBe('label1')
+})
+
+it('requires the name, category and payment before sending', async () => {
+  const bodies = captureCreate()
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate()
+
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  expect(await screen.findAllByText('Required field')).toHaveLength(3)
+  expect(bodies).toHaveLength(0)
+})
+
+it('an existing debt opens its terms, a debt not set up its setup', async () => {
+  renderDialog()
+  useUiStore.getState().openDebtModal({ debt: wireDebt })
+  await screen.findByRole('heading', { name: 'Car loan' })
+  expect(screen.getByLabelText('Balance now')).toHaveValue('1200')
+  expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
+
+  useUiStore.getState().openDebtModal({ debt: wireDebtNotSetUp })
+  expect(await screen.findByRole('button', { name: 'Finish setup' })).toBeInTheDocument()
+  expect(screen.getByLabelText('Balance now')).toHaveValue('')
 })

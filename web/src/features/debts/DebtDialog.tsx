@@ -1,103 +1,63 @@
-import { X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { OptionSelect } from '@/components/OptionSelect'
-import { CalculatorInput } from '@/components/CalculatorInput'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
-import { formatDate } from '@/lib/datetime'
-import { isNotEmpty, isValidFormula } from '@/lib/validation'
+import { isNotEmpty } from '@/lib/validation'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenDebtParams } from '@/app/uiStore'
-import type { RecurringSchedule } from '@/api/dto/recurring'
-import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
+import type { DebtDto } from '@/api/dto/debt'
+import { useCategories } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
-import { EntitySelect } from '@/features/transactions/EntitySelect'
-import { SelectCard } from '@/features/transactions/SelectCard'
-import { TransactionDatePicker } from '@/features/transactions/TransactionDatePicker'
-import { categoryOptions } from '@/features/transactions/useTransactionForm'
-import { useCreateDebt, useUpdateDebt } from './queries'
-import { amountOf, buildDebtPayload, SCHEDULE_ORDER, useDebtForm } from './useDebtForm'
-import type { UpdateDebtDto } from '@/api/dto/debt'
-
-type Errors = Record<string, string | undefined>
+import { useCreateDebt } from './queries'
+import { AmountField, ScheduleField, StartDateField } from './debtFields'
+import type { FieldErrors } from './debtFields'
+import { DebtTermsForm } from './DebtTermsForm'
+import { PaymentsFromEditor } from './PaymentsFromEditor'
+import { amountError, buildCreatePayload, useDebtCreateForm } from './useDebtForm'
 
 // the fields a server refusal can name; anything else lands in the form's alert
-const SERVER_FIELDS = ['name', 'currencyId', 'categoryId', 'payeeId', 'tagId', 'startDate', 'balance', 'payment', 'schedule', 'lastPaymentDate']
+const SERVER_FIELDS = ['name', 'currencyId', 'categoryId', 'payeeId', 'tagId', 'labelId', 'startDate', 'payment', 'schedule']
 
-const amountInputClass = `${cardFieldControlClass} text-base`
-
-function DebtForm({ params, onDone }: { params: OpenDebtParams; onDone: () => void }) {
+/** A new debt: what identifies it, and nothing else. The terms come later,
+    with Finish setup on the debt's own screen. */
+function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: () => void }) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: categories = [] } = useCategories()
-  const { data: payees = [] } = usePayees()
-  const { data: tags = [] } = useTags()
   const { data: currencies } = useCurrencies()
   const createDebt = useCreateDebt({ fromBudget: params.fromBudget })
-  const updateDebt = useUpdateDebt()
+  const openDebtDetails = useUiStore((s) => s.openDebtDetails)
 
-  const debt = params.debt
   const defaultCurrencyId = userCurrencyId(user)
-  const { form, initial, patch, setBalance, setPayment, projection } = useDebtForm(params, categories, defaultCurrencyId)
-  const { errors, setErrors, clear: clearError } = useFormErrors<Errors>()
+  const { form, patch } = useDebtCreateForm(params, categories, defaultCurrencyId)
+  const { errors, setErrors, clear: clearError } = useFormErrors<FieldErrors>()
   const [serverError, setServerError] = useState<string | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  // asked only once another debt turns out to have the same filters: a start
+  // date then tells a second loan in the same category apart
+  const [askStartDate, setAskStartDate] = useState(false)
 
   const currencyId = form.currencyId ?? defaultCurrencyId
   const currency = currencies?.find((c) => c.id === currencyId)
-  const ownerId = user?.id
-
-  // an edited debt keeps its own category, payee and tag selectable even when archived
-  const categoryRows = categoryOptions(categories, 'expense', ownerId)
-  if (form.categoryId && !categoryRows.some((c) => c.id === form.categoryId)) {
-    const current = categories.find((c) => c.id === form.categoryId)
-    if (current) {
-      categoryRows.push(current)
-    }
-  }
-  const payeeRows = payees.filter((p) => p.id === form.payeeId || (p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId)))
-  const tagRows = tags.filter((tag) => tag.id === form.tagId || (tag.isArchived === 0 && (!ownerId || tag.ownerUserId === ownerId)))
 
   const validate = (): boolean => {
-    const next: Errors = {}
     const required = t('common.validation.required_field')
-    if (!isNotEmpty(form.name.trim())) {
-      next.name = required
+    const next: FieldErrors = {
+      name: isNotEmpty(form.name.trim()) ? undefined : required,
+      currencyId: currencyId ? undefined : required,
+      categoryId: form.categoryId ? undefined : required,
+      payment: amountError(form.payment, t, true),
     }
-    if (!currencyId) {
-      next.currencyId = required
-    }
-    if (!form.categoryId) {
-      next.categoryId = required
-    }
-    for (const field of ['balance', 'payment'] as const) {
-      if (!isNotEmpty(form[field])) {
-        next[field] = required
-      } else if (!isValidFormula(form[field])) {
-        next[field] = t('common.validation.invalid_formula')
-      } else if (amountOf(form[field]) === null) {
-        next[field] = t('common.validation.invalid_number')
-      }
-    }
-    if (!next.balance && (amountOf(form.balance) ?? 0) < 0) {
-      next.balance = t('common.validation.invalid_number')
-    }
-    if (!next.payment && (amountOf(form.payment) ?? 0) <= 0) {
-      next.payment = t('common.validation.invalid_number')
-    }
-    if (!form.lastPaymentDate) {
-      next.lastPaymentDate = required
-    }
-    setErrors(next)
-    return Object.keys(next).length === 0
+    const found = Object.fromEntries(Object.entries(next).filter(([, v]) => v))
+    setErrors(found)
+    return Object.keys(found).length === 0
   }
 
   const submit = async () => {
@@ -105,32 +65,28 @@ function DebtForm({ params, onDone }: { params: OpenDebtParams; onDone: () => vo
     if (!validate()) {
       return
     }
-    const payload = buildDebtPayload({ ...form, currencyId }, initial, debt)
+    let saved: DebtDto
     try {
-      if (debt) {
-        await updateDebt.mutateAsync(payload as UpdateDebtDto)
-      } else {
-        await createDebt.mutateAsync(payload)
-      }
-      onDone()
+      saved = await createDebt.mutateAsync(buildCreatePayload({ ...form, currencyId }))
     } catch (err) {
-      const named: Errors = {}
+      const named: FieldErrors = {}
       for (const field of SERVER_FIELDS) {
         named[field] = apiFieldErrors(err, field)?.[0]
       }
       setErrors(named)
+      // the same filters as another debt (debt.key_conflict on categoryId,
+      // debt.start_date_taken on startDate)
+      if (named.categoryId || named.startDate) {
+        setAskStartDate(true)
+      }
       if (!Object.values(named).some(Boolean)) {
         setServerError(apiErrorMessage(err))
       }
+      return
     }
+    onDone()
+    openDebtDetails(saved.id)
   }
-
-  const pending = createDebt.isPending || updateDebt.isPending
-  const title = t('debts.form.header')
-  const symbol = currency?.symbol ?? ''
-  const neverPaysOff = projection.status === 'never' ? t('debts.form.never_pays_off') : null
-  const lastPaymentLabel = t('debts.form.last_payment_date.label')
-  const startDateLabel = t('debts.form.start_date.label')
 
   return (
     <ResponsiveDialog
@@ -139,14 +95,14 @@ function DebtForm({ params, onDone }: { params: OpenDebtParams; onDone: () => vo
       fullScreen
       dismissible={false}
       onOpenChange={(o) => !o && onDone()}
-      title={title}
+      title={t('debts.form.header')}
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onDone}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="debt-dialog-form" disabled={pending}>
-            {debt ? t('common.button.update.label') : t('common.button.add.label')}
+          <Button type="submit" form="debt-dialog-form" disabled={createDebt.isPending}>
+            {t('common.button.add.label')}
           </Button>
         </div>
       }
@@ -160,6 +116,8 @@ function DebtForm({ params, onDone }: { params: OpenDebtParams; onDone: () => vo
           void submit()
         }}
       >
+        <p className="text-sm text-muted-foreground">{t('debts.form.intro')}</p>
+
         <CardField label={t('debts.form.name.label')} htmlFor="debt-name" error={errors.name}>
           <Input
             id="debt-name"
@@ -173,148 +131,58 @@ function DebtForm({ params, onDone }: { params: OpenDebtParams; onDone: () => vo
           />
         </CardField>
 
-        <CardField label={t('debts.form.currency.label')} htmlFor="debt-currency" error={errors.currencyId}>
-          <button
-            type="button"
-            id="debt-currency"
-            // the currency never changes after creation
-            disabled={!!debt}
-            className="w-full truncate text-left text-sm disabled:cursor-not-allowed disabled:opacity-70"
-            onClick={() => setCurrencyOpen(true)}
-          >
-            {currency ? fullCurrencyLabel(currency) : '—'}
-          </button>
-        </CardField>
+        <PaymentsFromEditor
+          value={{ categoryId: form.categoryId, payeeId: form.payeeId, tagId: form.tagId, labelId: form.labelId }}
+          onChange={(next) => {
+            for (const key of ['categoryId', 'payeeId', 'tagId', 'labelId'] as const) {
+              clearError(key)
+            }
+            patch(next)
+          }}
+          categoryLocked={!!params.categoryId}
+          errors={{ categoryId: errors.categoryId, payeeId: errors.payeeId, tagId: errors.tagId, labelId: errors.labelId }}
+        />
 
-        <SelectCard label={t('debts.form.category.label')} error={errors.categoryId}>
-          <EntitySelect
-            aria-label={t('debts.form.category.label')}
-            value={form.categoryId}
-            onChange={(id) => {
-              clearError('categoryId')
-              patch({ categoryId: id })
+        <div className="grid grid-cols-[3fr_2fr] items-start gap-3">
+          <AmountField
+            id="debt-payment"
+            label={t('debts.form.payment.label')}
+            value={form.payment}
+            symbol={currency?.symbol ?? ''}
+            error={errors.payment}
+            onChange={(payment) => {
+              clearError('payment')
+              patch({ payment })
             }}
-            options={categoryRows.map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
           />
-        </SelectCard>
+          <ScheduleField id="debt-schedule" value={form.schedule} error={errors.schedule} onChange={(schedule) => patch({ schedule })} />
+        </div>
 
-        <SelectCard label={t('debts.form.payee.label')} error={errors.payeeId}>
-          <EntitySelect
-            aria-label={t('debts.form.payee.label')}
-            value={form.payeeId}
-            onChange={(id) => {
-              clearError('payeeId')
-              patch({ payeeId: id })
+        {askStartDate ? (
+          <StartDateField
+            value={form.startDate}
+            error={errors.startDate}
+            onChange={(startDate) => {
+              clearError('startDate')
+              patch({ startDate })
             }}
-            options={payeeRows.map((p) => ({ value: p.id, label: p.name }))}
-            clearable
           />
-        </SelectCard>
+        ) : null}
 
-        <SelectCard label={t('debts.form.tag.label')} error={errors.tagId}>
-          <EntitySelect
-            aria-label={t('debts.form.tag.label')}
-            value={form.tagId}
-            onChange={(id) => {
-              clearError('tagId')
-              patch({ tagId: id })
-            }}
-            options={tagRows.map((tag) => ({ value: tag.id, label: tag.name, icon: tag.icon || 'sell' }))}
-            clearable
-          />
-        </SelectCard>
-
-        <CardField label={startDateLabel} error={errors.startDate}>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-muted-foreground">{t('debts.form.start_date.hint')}</span>
-            <span className="flex shrink-0 items-center gap-1">
-              <TransactionDatePicker
-                ariaLabel={startDateLabel}
-                placeholder={t('debts.form.start_date.none')}
-                value={form.startDate}
-                onChange={(day) => {
-                  clearError('startDate')
-                  patch({ startDate: formatDate(day) })
-                }}
-              />
-              {form.startDate ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  aria-label={t('debts.form.start_date.clear')}
-                  onClick={() => patch({ startDate: '' })}
-                >
-                  <X className="size-4" />
-                </Button>
-              ) : null}
-            </span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-3 px-1 text-sm">
+            <span className="text-muted-foreground">{t('debts.form.currency.label')}</span>
+            <button
+              type="button"
+              aria-label={`${t('debts.form.currency.label')}: ${currency ? fullCurrencyLabel(currency) : '—'}`}
+              className="min-w-0 truncate text-econumo-link"
+              onClick={() => setCurrencyOpen(true)}
+            >
+              {currency ? fullCurrencyLabel(currency) : '—'}
+            </button>
           </div>
-        </CardField>
-
-        <CardField label={t('debts.form.balance.label')} htmlFor="debt-balance" error={errors.balance}>
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <CalculatorInput
-                id="debt-balance"
-                className={amountInputClass}
-                value={form.balance}
-                onChange={(balance) => {
-                  clearError('balance')
-                  setBalance(balance)
-                }}
-              />
-            </div>
-            <span className="pt-0.5 text-sm text-muted-foreground">{symbol}</span>
-          </div>
-        </CardField>
-
-        <CardField label={t('debts.form.payment.label')} htmlFor="debt-payment" error={errors.payment ?? neverPaysOff}>
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <CalculatorInput
-                id="debt-payment"
-                className={amountInputClass}
-                value={form.payment}
-                onChange={(payment) => {
-                  clearError('payment')
-                  setPayment(payment)
-                }}
-              />
-            </div>
-            <span className="pt-0.5 text-sm text-muted-foreground">{symbol}</span>
-          </div>
-        </CardField>
-
-        <CardField label={t('debts.form.schedule.label')} htmlFor="debt-schedule" error={errors.schedule}>
-          <div className="[&_button]:h-auto [&_button]:w-full [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-sm [&_button]:shadow-none [&_button]:focus-visible:ring-0">
-            <OptionSelect
-              id="debt-schedule"
-              aria-label={t('debts.form.schedule.label')}
-              title={t('debts.form.schedule.label')}
-              className="w-full"
-              value={form.schedule}
-              onValueChange={(v) => patch({ schedule: v as RecurringSchedule })}
-              options={SCHEDULE_ORDER.map((schedule) => ({ value: schedule, label: t(`recurring.schedule.${schedule}`) }))}
-            />
-          </div>
-        </CardField>
-
-        <CardField label={lastPaymentLabel} error={errors.lastPaymentDate}>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-muted-foreground">{t('debts.form.last_payment_date.hint')}</span>
-            <TransactionDatePicker
-              ariaLabel={lastPaymentLabel}
-              placeholder={t('debts.form.last_payment_date.choose')}
-              value={form.lastPaymentDate}
-              onChange={(day) => {
-                clearError('lastPaymentDate')
-                patch({ lastPaymentDate: formatDate(day) })
-              }}
-            />
-          </div>
-        </CardField>
+          {errors.currencyId ? <p className="px-1 text-sm text-destructive">{errors.currencyId}</p> : null}
+        </div>
 
         {serverError ? (
           <p role="alert" className="text-sm text-destructive">
@@ -337,6 +205,16 @@ function DebtForm({ params, onDone }: { params: OpenDebtParams; onDone: () => vo
   )
 }
 
+// Until the debt's own screen hosts it, an existing debt opened here gets the
+// terms form: Finish setup when it has no terms, Edit otherwise.
+function DebtTermsDialog({ debt, onDone }: { debt: DebtDto; onDone: () => void }) {
+  return (
+    <ResponsiveDialog open fullScreen dismissible={false} onOpenChange={(o) => !o && onDone()} title={debt.name}>
+      <DebtTermsForm debt={debt} mode={debt.isSetUp === 1 ? 'edit' : 'setup'} onSaved={onDone} onCancel={onDone} />
+    </ResponsiveDialog>
+  )
+}
+
 export function DebtDialog() {
   const params = useUiStore((s) => s.debtModal)
   const close = useUiStore((s) => s.closeDebtModal)
@@ -344,7 +222,9 @@ export function DebtDialog() {
   if (!params) {
     return null
   }
-
   // a different request is a different form
-  return <DebtForm key={params.debt?.id ?? `${params.categoryId ?? ''}:${params.currencyId ?? ''}`} params={params} onDone={close} />
+  if (params.debt) {
+    return <DebtTermsDialog key={`${params.debt.id}:${params.debt.isSetUp}`} debt={params.debt} onDone={close} />
+  }
+  return <DebtCreateForm key={`${params.categoryId ?? ''}:${params.currencyId ?? ''}`} params={params} onDone={close} />
 }

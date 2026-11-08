@@ -155,7 +155,7 @@ export function fixtureDebtRow(overrides: Partial<BudgetDebtElementDto> = {}): B
     budgeted: '1500', isBudgeted: 1, spent: '900', budgetSpent: '900', available: '600',
     closingBalance: '23000', paymentsLeft: 24, scheduledTotal: '1000', upcoming: '100',
     payoffDate: '2028-10-05', basePayoffDate: '2028-10-05', overpaymentLeft: '2000', baseOverpaymentLeft: '2000',
-    isPaidOff: 0, isPlannable: 1,
+    isPaidOff: 0, isPlannable: 1, isSetUp: 1,
     ...overrides,
   }
 }

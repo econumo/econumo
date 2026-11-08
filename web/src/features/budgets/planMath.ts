@@ -164,6 +164,7 @@ export function planDebtMonthRow(d: PlanDebtElementDto, index: number, budgetSpe
     baseOverpaymentLeft: d.baseOverpaymentLeft,
     isPaidOff: d.isPaidOff,
     isPlannable: cell.isPlannable,
+    isSetUp: d.isSetUp,
   }
 }
 

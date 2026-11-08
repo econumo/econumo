@@ -118,6 +118,7 @@ export const METRICS = {
   DEBT_DELETE: 'appDebtDelete',
   DEBT_CONVERT: 'appDebtConvert',
   DEBT_MARK_PAID_OFF: 'appDebtMarkPaidOff',
+  DEBT_FINISH_SETUP: 'appDebtFinishSetup',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
   BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',
   BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',

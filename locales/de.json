@@ -479,6 +479,7 @@
     },
     "form": {
       "header": "Schuld",
+      "intro": "Verfolgen Sie einen Kredit ohne Konto. Die Details können Sie später anpassen.",
       "name": {
         "label": "Name"
       },
@@ -493,6 +494,9 @@
       },
       "tag": {
         "label": "Tag (optional)"
+      },
+      "label": {
+        "label": "Auswertungs-Tag (optional)"
       },
       "start_date": {
         "label": "Startdatum (optional)",
@@ -547,6 +551,21 @@
         "title": "Planbeträge und Kommentare löschen?",
         "action": "Schuld löschen"
       }
+    },
+    "payments_from": {
+      "label": "Welche Zahlungen zählen",
+      "in": "Zahlungen aus Kategorie",
+      "from": "Empfänger",
+      "tagged": "Tag",
+      "labelled": "Auswertungs-Tag",
+      "choose_category": "wählen",
+      "any_payee": "beliebig",
+      "any_tag": "beliebig",
+      "any_label": "beliebig",
+      "explainer": "Damit findet Econumo die Zahlungen dieses Kredits. Sie wandern von der Kategorie zu dieser Schuld."
+    },
+    "terms": {
+      "finish_setup": "Einrichtung abschließen"
     }
   },
   "recurring": {
