@@ -2289,15 +2289,16 @@
       "name_length": "Il nome del tag deve contenere da {min} a {max} caratteri",
       "cannot_be_merged": "I tag selezionati non possono essere uniti.",
       "list_empty": "L'elenco dei tag è vuoto",
-      "used_by_debt": "Un debito usa questo tag. Elimina o modifica prima il debito."
+      "used_by_debt": "Un debito usa questo tag per i report. Elimina o modifica prima il debito."
     },
     "debt": {
       "payments_dont_cover": "I pagamenti non coprono il saldo. Aumenta il pagamento o imposta una data dell'ultimo pagamento successiva.",
-      "key_conflict": "Un altro debito potrebbe corrispondere agli stessi pagamenti. Usa beneficiari o tag diversi, oppure gli stessi con date di inizio diverse.",
-      "start_date_taken": "Un altro debito con la stessa categoria, lo stesso beneficiario e lo stesso tag inizia già in questa data.",
+      "key_conflict": "Un altro debito potrebbe corrispondere agli stessi pagamenti. Usa beneficiari o tag diversi, assegna a ogni debito un tag per i report diverso oppure usa date di inizio diverse.",
+      "start_date_taken": "Un altro debito con la stessa categoria, lo stesso beneficiario, lo stesso tag e lo stesso tag per i report inizia già in questa data.",
       "category_not_expense": "Un debito richiede una categoria di spesa.",
       "removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti di questo debito nei tuoi budget; conferma per continuare.",
-      "last_payment_in_past": "La data dell'ultimo pagamento deve essere successiva a oggi."
+      "last_payment_in_past": "La data dell'ultimo pagamento deve essere successiva a oggi.",
+      "not_set_up": "Completa prima la configurazione di questo debito."
     },
     "authserver": {
       "disabled": "Il collegamento di app non è disponibile su questo server.",

@@ -41,7 +41,7 @@
 {"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"food","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"<generated-uuid>","payeeId":"<generated-uuid>","tagId":null,"labelId":null,"startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"periodsPaid":0,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"0","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0,"isSetUp":1}}
 
 == err:merge-category-key-conflict POST /api/v1/category/merge-category [owner] -> 400
-{"success":false,"message":"Another debt could match the same payments. Give the debts different payees or tags, or the same ones with different start dates.","code":400,"errors":{}}
+{"success":false,"message":"Another debt could match the same payments. Give the debts different payees or tags, give each a different reporting tag, or use different start dates.","code":400,"errors":{}}
 
 == delete-debt-keyed-target POST /api/v1/debt/delete-debt [owner] -> 200
 {"success":true,"message":"","data":{}}
@@ -62,7 +62,7 @@
 {"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"food","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"<generated-uuid>","payeeId":"<generated-uuid>","tagId":null,"labelId":null,"startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"periodsPaid":0,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"0","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0,"isSetUp":1}}
 
 == err:merge-payee-key-conflict POST /api/v1/payee/merge-payee [owner] -> 400
-{"success":false,"message":"Another debt could match the same payments. Give the debts different payees or tags, or the same ones with different start dates.","code":400,"errors":{}}
+{"success":false,"message":"Another debt could match the same payments. Give the debts different payees or tags, give each a different reporting tag, or use different start dates.","code":400,"errors":{}}
 
 == delete-debt-payee-target POST /api/v1/debt/delete-debt [owner] -> 200
 {"success":true,"message":"","data":{}}
@@ -83,7 +83,7 @@
 {"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"food","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"<generated-uuid>","payeeId":null,"tagId":"<generated-uuid>","labelId":null,"startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"periodsPaid":0,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"0","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0,"isSetUp":1}}
 
 == err:merge-tag-key-conflict POST /api/v1/tag/merge-tag [owner] -> 400
-{"success":false,"message":"Another debt could match the same payments. Give the debts different payees or tags, or the same ones with different start dates.","code":400,"errors":{}}
+{"success":false,"message":"Another debt could match the same payments. Give the debts different payees or tags, give each a different reporting tag, or use different start dates.","code":400,"errors":{}}
 
 == delete-debt-tag-target POST /api/v1/debt/delete-debt [owner] -> 200
 {"success":true,"message":"","data":{}}
@@ -98,13 +98,13 @@
 {"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"food","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"<generated-uuid>","payeeId":null,"tagId":null,"labelId":"<generated-uuid>","startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"periodsPaid":0,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"0","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0,"isSetUp":1}}
 
 == err:delete-used-label POST /api/v1/label/delete-label [owner] -> 400
-{"success":false,"message":"A debt uses this tag. Delete or change the debt first.","code":400,"errors":{}}
+{"success":false,"message":"A debt uses this reporting tag. Delete or change the debt first.","code":400,"errors":{}}
 
 == create-debt-label-target POST /api/v1/debt/create-debt [owner] -> 200
 {"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"food","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"<generated-uuid>","payeeId":null,"tagId":null,"labelId":"<generated-uuid>","startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"periodsPaid":0,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"0","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0,"isSetUp":1}}
 
 == err:merge-label-key-conflict POST /api/v1/label/merge-label [owner] -> 400
-{"success":false,"message":"Another debt could match the same payments. Give the debts different payees or tags, or the same ones with different start dates.","code":400,"errors":{}}
+{"success":false,"message":"Another debt could match the same payments. Give the debts different payees or tags, give each a different reporting tag, or use different start dates.","code":400,"errors":{}}
 
 == delete-debt-label-target POST /api/v1/debt/delete-debt [owner] -> 200
 {"success":true,"message":"","data":{}}

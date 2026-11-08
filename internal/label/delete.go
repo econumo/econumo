@@ -36,7 +36,7 @@ func (s *Service) DeleteLabel(ctx context.Context, userID vo.Id, req model.Delet
 				return uerr
 			}
 			if used {
-				return &errs.ValidationError{Msg: "A debt uses this tag. Delete or change the debt first.", MsgCode: errs.CodeLabelUsedByDebt}
+				return &errs.ValidationError{Msg: "A debt uses this reporting tag. Delete or change the debt first.", MsgCode: errs.CodeLabelUsedByDebt}
 			}
 		}
 		return s.repo.Delete(ctx, id)

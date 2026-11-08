@@ -2289,15 +2289,16 @@
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
       "list_empty": "Lista tagów jest pusta.",
-      "used_by_debt": "Dług używa tego tagu. Najpierw usuń lub zmień dług."
+      "used_by_debt": "Dług używa tego tagu raportowego. Najpierw usuń lub zmień dług."
     },
     "debt": {
       "payments_dont_cover": "Płatności nie pokrywają salda. Zwiększ płatność lub ustaw późniejszą datę ostatniej płatności.",
-      "key_conflict": "Inny dług mógłby pasować do tych samych płatności. Użyj różnych odbiorców lub tagów albo tych samych z różnymi datami początku.",
-      "start_date_taken": "Inny dług z tą samą kategorią, odbiorcą i tagiem zaczyna się już w tym dniu.",
+      "key_conflict": "Inny dług mógłby pasować do tych samych płatności. Użyj różnych odbiorców lub tagów, nadaj każdemu długowi inny tag raportowy albo użyj różnych dat początku.",
+      "start_date_taken": "Inny dług z tą samą kategorią, odbiorcą, tagiem i tagiem raportowym zaczyna się już w tym dniu.",
       "category_not_expense": "Dług wymaga kategorii wydatków.",
       "removal_unconfirmed": "Spowoduje to usunięcie zaplanowanych kwot i komentarzy tego długu w Twoich budżetach; potwierdź, aby kontynuować.",
-      "last_payment_in_past": "Data ostatniej płatności musi być późniejsza niż dzisiaj."
+      "last_payment_in_past": "Data ostatniej płatności musi być późniejsza niż dzisiaj.",
+      "not_set_up": "Najpierw dokończ konfigurowanie tego długu."
     },
     "authserver": {
       "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",

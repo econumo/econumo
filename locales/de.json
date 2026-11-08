@@ -2289,15 +2289,16 @@
       "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",
       "cannot_be_merged": "Die ausgewählten Tags können nicht zusammengeführt werden.",
       "list_empty": "Die Tag-Liste ist leer",
-      "used_by_debt": "Eine Schuld verwendet diesen Tag. Löschen oder ändern Sie zuerst die Schuld."
+      "used_by_debt": "Eine Schuld verwendet diesen Auswertungs-Tag. Löschen oder ändern Sie zuerst die Schuld."
     },
     "debt": {
       "payments_dont_cover": "Die Zahlungen decken den Restbetrag nicht. Erhöhen Sie die Rate oder legen Sie ein späteres Datum der letzten Zahlung fest.",
-      "key_conflict": "Eine andere Schuld könnte dieselben Zahlungen erfassen. Wählen Sie unterschiedliche Zahlungsempfänger oder Tags oder dieselben mit unterschiedlichen Startdaten.",
-      "start_date_taken": "Eine andere Schuld mit derselben Kategorie, demselben Zahlungsempfänger und demselben Tag beginnt bereits an diesem Datum.",
+      "key_conflict": "Eine andere Schuld könnte dieselben Zahlungen erfassen. Wählen Sie unterschiedliche Zahlungsempfänger oder Tags, geben Sie jeder Schuld einen anderen Auswertungs-Tag oder verwenden Sie unterschiedliche Startdaten.",
+      "start_date_taken": "Eine andere Schuld mit derselben Kategorie, demselben Zahlungsempfänger, demselben Tag und demselben Auswertungs-Tag beginnt bereits an diesem Datum.",
       "category_not_expense": "Eine Schuld benötigt eine Ausgabenkategorie.",
       "removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare dieser Schuld in Ihren Budgets gelöscht; bestätigen Sie, um fortzufahren.",
-      "last_payment_in_past": "Das Datum der letzten Zahlung muss nach heute liegen."
+      "last_payment_in_past": "Das Datum der letzten Zahlung muss nach heute liegen.",
+      "not_set_up": "Schließen Sie zuerst die Einrichtung dieser Schuld ab."
     },
     "authserver": {
       "disabled": "Das Verbinden von Apps ist auf diesem Server nicht verfügbar.",

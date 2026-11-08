@@ -151,6 +151,7 @@ const (
 	CodeDebtCategoryNotExpense = "debt.category_not_expense"
 	CodeDebtRemovalUnconfirmed = "debt.removal_unconfirmed"
 	CodeDebtLastPaymentInPast  = "debt.last_payment_in_past"
+	CodeDebtNotSetUp           = "debt.not_set_up"
 
 	CodeAuthServerDisabled         = "authserver.disabled"
 	CodeAuthServerClientNotFound   = "authserver.client_not_found"
@@ -306,4 +307,5 @@ var AllCodes = []string{
 	CodeDebtCategoryNotExpense,
 	CodeDebtRemovalUnconfirmed,
 	CodeDebtLastPaymentInPast,
+	CodeDebtNotSetUp,
 }

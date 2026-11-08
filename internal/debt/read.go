@@ -7,6 +7,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -166,7 +167,7 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 		v := st.view
 		v.Icon = icon
 		v.PaidOff = proj.PaidOff
-		v.FirstDay, v.LastDay = planningBounds(st, proj)
+		v.FirstDay, v.LastDay = planningBounds(st, proj, reqctx.Location(ctx))
 		v.StartMonth = monthOf(v.FirstDay)
 		if !v.LastDay.IsZero() {
 			v.EndMonth = monthOf(v.LastDay)
@@ -179,15 +180,16 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 // planningBounds: a debt can be planned from its start date, else from the
 // earliest of its first matched payment, its creation day and its first
 // snapshot, to its last payment date, or its payoff once paid off; a budget
-// plans it in the periods holding those days. Finishing setup later never
+// plans it in the periods holding those days. The creation day is taken in
+// loc, the caller's timezone, like today and every snapshot's as-of. Finishing setup later never
 // moves the start, so plans moved at conversion stay in the life. A debt not
 // set up has no end: LastDay is zero.
-func planningBounds(st *debtState, proj model.Projection) (first, last time.Time) {
+func planningBounds(st *debtState, proj model.Projection, loc *time.Location) (first, last time.Time) {
 	d := st.debt
 	if d.StartDate != nil {
 		first = debtDate(*d.StartDate)
 	} else {
-		first = debtDate(d.CreatedAt.UTC())
+		first = debtDate(d.CreatedAt.In(loc))
 		for _, sn := range st.snaps {
 			if sn.AsOf.Before(first) {
 				first = debtDate(sn.AsOf)

@@ -2289,15 +2289,16 @@
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
       "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg.",
-      "used_by_debt": "Een schuld gebruikt deze tag. Verwijder of wijzig eerst de schuld."
+      "used_by_debt": "Een schuld gebruikt deze rapportagetag. Verwijder of wijzig eerst de schuld."
     },
     "debt": {
       "payments_dont_cover": "De betalingen dekken het saldo niet. Verhoog de betaling of kies een latere datum voor de laatste betaling.",
-      "key_conflict": "Een andere schuld zou met dezelfde betalingen kunnen overeenkomen. Gebruik verschillende begunstigden of tags, of dezelfde met andere startdata.",
-      "start_date_taken": "Een andere schuld met dezelfde categorie, begunstigde en tag begint al op deze datum.",
+      "key_conflict": "Een andere schuld zou met dezelfde betalingen kunnen overeenkomen. Gebruik verschillende begunstigden of tags, geef elke schuld een andere rapportagetag of gebruik andere startdata.",
+      "start_date_taken": "Een andere schuld met dezelfde categorie, begunstigde, tag en rapportagetag begint al op deze datum.",
       "category_not_expense": "Een schuld heeft een uitgavencategorie nodig.",
       "removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen van deze schuld in uw budgetten verwijderd; bevestig om door te gaan.",
-      "last_payment_in_past": "De datum van de laatste betaling moet na vandaag liggen."
+      "last_payment_in_past": "De datum van de laatste betaling moet na vandaag liggen.",
+      "not_set_up": "Rond eerst het instellen van deze schuld af."
     },
     "authserver": {
       "disabled": "Apps koppelen is niet beschikbaar op deze server.",

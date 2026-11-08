@@ -45,7 +45,7 @@ func (s *Service) moveToDebt(ctx context.Context, d *model.Debt) error {
 	if err != nil {
 		return err
 	}
-	first, last := planningBounds(st, st.project(s.today(ctx), nil, nil))
+	first, last := planningBounds(st, st.project(s.today(ctx), nil, nil), reqctx.Location(ctx))
 	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
 		FromID: d.CategoryID, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
 		CurrencyID: d.CurrencyID, SumOnClash: true, FirstDay: first, LastDay: last,
@@ -147,7 +147,7 @@ func checkKeys(d *model.Debt, others []*model.Debt) error {
 		}
 		if sameIdPtr(o.PayeeID, d.PayeeID) && sameIdPtr(o.TagID, d.TagID) && sameIdPtr(o.LabelID, d.LabelID) {
 			if sameDay(o.StartDate, d.StartDate) {
-				return fieldError("startDate", "Another debt with the same category, payee and tag already starts on this date.", errs.CodeDebtStartDateTaken)
+				return fieldError("startDate", "Another debt with the same category, payee, tag and reporting tag already starts on this date.", errs.CodeDebtStartDateTaken)
 			}
 			continue
 		}

@@ -2289,15 +2289,16 @@
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
       "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
       "list_empty": "La lista de etiquetas está vacía.",
-      "used_by_debt": "Una deuda usa esta etiqueta. Elimina o cambia primero la deuda."
+      "used_by_debt": "Una deuda usa esta etiqueta de informes. Elimina o cambia primero la deuda."
     },
     "debt": {
       "payments_dont_cover": "Los pagos no cubren el saldo. Aumenta el pago o fija una fecha de último pago posterior.",
-      "key_conflict": "Otra deuda podría coincidir con los mismos pagos. Usa beneficiarios o etiquetas distintos, o los mismos con fechas de inicio diferentes.",
-      "start_date_taken": "Otra deuda con la misma categoría, beneficiario y etiqueta ya empieza en esta fecha.",
+      "key_conflict": "Otra deuda podría coincidir con los mismos pagos. Usa beneficiarios o etiquetas distintos, da a cada deuda una etiqueta de informes diferente o usa fechas de inicio diferentes.",
+      "start_date_taken": "Otra deuda con la misma categoría, beneficiario, etiqueta y etiqueta de informes ya empieza en esta fecha.",
       "category_not_expense": "Una deuda necesita una categoría de gastos.",
       "removal_unconfirmed": "Esto elimina los importes planificados y los comentarios de esta deuda en tus presupuestos; confirma para continuar.",
-      "last_payment_in_past": "La fecha del último pago debe ser posterior a hoy."
+      "last_payment_in_past": "La fecha del último pago debe ser posterior a hoy.",
+      "not_set_up": "Primero termina de configurar esta deuda."
     },
     "authserver": {
       "disabled": "La conexión de aplicaciones no está disponible en este servidor.",

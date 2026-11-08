@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -171,9 +173,8 @@ func TestViews_NotSetUpStartsAtAnEarlierPayment(t *testing.T) {
 func TestMarkPaidOff_RefusedUntilSetUp(t *testing.T) {
 	e := newEnv(t)
 	res := e.createWithoutTerms(t, nil)
-	if _, err := e.svc.MarkDebtPaidOff(context.Background(), e.uid(), model.MarkDebtPaidOffRequest{Id: res.Id}); err == nil {
-		t.Fatal("a debt without terms was marked paid off")
-	}
+	_, err := e.svc.MarkDebtPaidOff(context.Background(), e.uid(), model.MarkDebtPaidOffRequest{Id: res.Id})
+	requireCode(t, err, errs.CodeDebtNotSetUp)
 	if n := len(e.snapshots(t, res.Id)); n != 0 {
 		t.Fatalf("snapshots = %d, want none", n)
 	}
@@ -260,4 +261,51 @@ func TestReassignClassification_LabelFollowsTarget(t *testing.T) {
 	// merging into the other debt's label would leave two debts with the same key
 	err = e.svc.ReassignClassification(ctx, "label", vo.MustParseId(dst), vo.MustParseId(other))
 	requireCode(t, err, "debt.key_conflict")
+}
+
+// The creation day is the caller's: a debt converted on Oct 31 at 20:00 in
+// New York (Nov 1 in UTC) can be planned from October, and one converted on
+// Nov 1 at 08:00 in Sydney (Oct 31 in UTC) only from November.
+func TestPlanningStart_CreationDayInCallersTimezone(t *testing.T) {
+	for _, c := range []struct {
+		zone      string
+		local     time.Time
+		wantFirst time.Time
+	}{
+		{"America/New_York", time.Date(2026, 10, 31, 20, 0, 0, 0, time.UTC), ymd(2026, 10, 31)},
+		{"Australia/Sydney", time.Date(2026, 11, 1, 8, 0, 0, 0, time.UTC), ymd(2026, 11, 1)},
+	} {
+		t.Run(c.zone, func(t *testing.T) {
+			loc, err := time.LoadLocation(c.zone)
+			if err != nil {
+				t.Fatal(err)
+			}
+			e := newEnv(t)
+			ctx := reqctx.WithLocation(context.Background(), loc)
+			l := c.local
+			e.clock.now = time.Date(l.Year(), l.Month(), l.Day(), l.Hour(), 0, 0, 0, loc)
+			req := e.createReq()
+			withoutTerms(&req)
+			res, err := e.svc.CreateDebt(ctx, e.uid(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
+				currency: res.CurrencyId, sum: true, first: c.wantFirst.Format("2006-01-02"), last: ""}
+			if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
+				t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, want)
+			}
+			views, err := e.svc.Views(ctx, []vo.Id{e.uid()})
+			if err != nil || len(views) != 1 {
+				t.Fatalf("views = %+v, %v", views, err)
+			}
+			if v := views[0]; !v.FirstDay.Equal(c.wantFirst) || !v.StartMonth.Equal(monthStart(c.wantFirst)) {
+				t.Fatalf("view = %+v, want first day %v", v, c.wantFirst)
+			}
+		})
+	}
+}
+
+func monthStart(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
 }

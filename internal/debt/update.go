@@ -206,8 +206,7 @@ func (s *Service) dropSplits(ctx context.Context, id vo.Id) error {
 	return s.repo.DeleteSplits(ctx, id, txIDs)
 }
 
-// notSetUp refuses an action that needs the debt's terms. The SPA never offers
-// one before setup, so the refusal carries no catalogue code.
+// notSetUp refuses an action that needs the debt's terms.
 func notSetUp() error {
-	return &errs.ValidationError{Msg: "Finish setting up this debt first."}
+	return &errs.ValidationError{Msg: "Finish setting up this debt first.", MsgCode: errs.CodeDebtNotSetUp}
 }

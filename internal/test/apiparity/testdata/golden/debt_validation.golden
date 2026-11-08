@@ -47,13 +47,13 @@
 {"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"c0000000-0000-0000-0000-000000000001","payeeId":null,"tagId":null,"labelId":null,"startDate":"","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"periodsPaid":1,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"5.36","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0,"isSetUp":1}}
 
 == err:start-date-taken POST /api/v1/debt/create-debt [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"startDate":["Another debt with the same category, payee and tag already starts on this date."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"startDate":["Another debt with the same category, payee, tag and reporting tag already starts on this date."]}}
 
 == err:key-conflict POST /api/v1/debt/create-debt [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"categoryId":["Another debt could match the same payments. Give the debts different payees or tags, or the same ones with different start dates."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"categoryId":["Another debt could match the same payments. Give the debts different payees or tags, give each a different reporting tag, or use different start dates."]}}
 
 == err:label-key-conflict POST /api/v1/debt/create-debt [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"categoryId":["Another debt could match the same payments. Give the debts different payees or tags, or the same ones with different start dates."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"categoryId":["Another debt could match the same payments. Give the debts different payees or tags, give each a different reporting tag, or use different start dates."]}}
 
 == err:update-payment-dont-cover POST /api/v1/debt/update-debt [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"payment":["The payments do not cover the balance. Raise the payment or set a later last payment date."]}}

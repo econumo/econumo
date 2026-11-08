@@ -2289,15 +2289,16 @@
       "name_length": "Tag name must be {min}-{max} characters",
       "cannot_be_merged": "The selected tags cannot be merged",
       "list_empty": "Tags list is empty",
-      "used_by_debt": "A debt uses this tag. Delete or change the debt first."
+      "used_by_debt": "A debt uses this reporting tag. Delete or change the debt first."
     },
     "debt": {
       "payments_dont_cover": "The payments do not cover the balance. Raise the payment or set a later last payment date.",
-      "key_conflict": "Another debt could match the same payments. Give the debts different payees or tags, or the same ones with different start dates.",
-      "start_date_taken": "Another debt with the same category, payee and tag already starts on this date.",
+      "key_conflict": "Another debt could match the same payments. Give the debts different payees or tags, give each a different reporting tag, or use different start dates.",
+      "start_date_taken": "Another debt with the same category, payee, tag and reporting tag already starts on this date.",
       "category_not_expense": "A debt needs an expense category.",
       "removal_unconfirmed": "This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.",
-      "last_payment_in_past": "The last payment date must be after today."
+      "last_payment_in_past": "The last payment date must be after today.",
+      "not_set_up": "Finish setting up this debt first."
     },
     "authserver": {
       "disabled": "Connecting apps is not available on this server.",
