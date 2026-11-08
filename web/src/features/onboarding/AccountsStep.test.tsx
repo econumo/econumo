@@ -195,11 +195,14 @@ it('with only EUR accounts and a blank row, Main is the existing currency, not t
 
 it('resumes with the first draft row currency as the default for rows added later', async () => {
   const user = userEvent.setup()
-  const initialRows: AccountRow[] = [{ key: 'k1', name: 'Aaa', balance: '1', currencyId: 'cur-eur', savings: false, icon: 'credit_card' }]
+  const initialRows: AccountRow[] = [
+    { key: 'k1', name: 'Aaa', balance: '1', currencyId: 'cur-eur', savings: false, icon: 'credit_card' },
+    { key: 'k2', name: 'Bbb', balance: '1', currencyId: 'cur-usd', savings: false, icon: 'credit_card' },
+  ]
   renderStep({ initialRows })
   await ready()
   await addAccount(user)
-  expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['EUR', 'EUR'])
+  expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['EUR', 'USD', 'EUR'])
 })
 
 it('removing the first row makes the new first row currency the default', async () => {
@@ -214,6 +217,26 @@ it('removing the first row makes the new first row currency the default', async 
   await user.click(screen.getByRole('button', { name: 'Remove account' }))
   await addAccount(user)
   expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['EUR', 'EUR'])
+})
+
+it("Main follows the first row's pick even while that row is blank, and clears when the only row goes", async () => {
+  const user = userEvent.setup()
+  renderStep()
+  await ready()
+  await addAccount(user)
+  await user.type(nameInputs()[1], 'Bbb')
+  await pickCurrency(user, 1, 'USD')
+  await pickCurrency(user, 0, 'EUR')
+  const main = () => screen.getByRole('button', { name: 'Main currency' })
+  expect(main()).toHaveTextContent('EUR (main)')
+  await user.type(nameInputs()[0], 'Aaa')
+  expect(main()).toHaveTextContent('EUR (main)')
+  await details(user, 1)
+  await user.click(screen.getByRole('button', { name: 'Remove account' }))
+  await details(user, 0)
+  await user.click(screen.getByRole('button', { name: 'Remove account' }))
+  await addAccount(user)
+  expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['USD'])
 })
 
 it('adds an extra currency and passes it on', async () => {

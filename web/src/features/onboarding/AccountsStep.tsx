@@ -122,14 +122,18 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
     setFocusKey(row.key)
   }
   const remove = (key: string) => {
-    if (key === rows[0]?.key && rows[1]) setSharedId(currencyOf(rows[1]))
+    if (key === rows[0]?.key) setSharedId(rows[1] ? currencyOf(rows[1]) : null)
     setRows((prev) => prev.filter((r) => r.key !== key))
   }
 
   const active = rows.filter((r) => r.name.trim() !== '')
-  const counted = [...existing.map((a) => a.currencyId), ...(active.length > 0 || existing.length > 0 ? active : rows).map(currencyOf)].filter(Boolean)
+  const counted = [
+    ...existing.map((a) => a.currencyId),
+    ...(active.length > 0 || existing.length > 0 ? active : rows).map(currencyOf),
+    ...(sharedId && rows.length > 0 ? [sharedId] : []),
+  ].filter(Boolean)
   const usedIds = [...new Set(counted)]
-  const computedMain: Id | null = (active[0] ? currencyOf(active[0]) : existing[0]?.currencyId || (rows[0] ? currencyOf(rows[0]) : '')) || null
+  const computedMain: Id | null = (sharedId && rows.length > 0 ? sharedId : active[0] ? currencyOf(active[0]) : existing[0]?.currencyId || (rows[0] ? currencyOf(rows[0]) : '')) || null
   const extras = extraIds.filter((id) => !usedIds.includes(id))
   const selectedIds = [...usedIds, ...extras]
   const mainId = mainOverride && selectedIds.includes(mainOverride) ? mainOverride : computedMain
