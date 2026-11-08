@@ -1179,47 +1179,6 @@
     }
   },
   "onboarding": {
-    "header": "Per iniziare",
-    "title": "Benvenuto in Econumo!",
-    "complete": "Completa la configurazione",
-    "add_account": "Aggiungi conto",
-    "import_transactions": "Importa transazioni",
-    "steps": {
-      "accounts": {
-        "title": "Aggiungi i tuoi conti",
-        "text": "Per cominciare, puoi aggiungere un conto premendo il pulsante qui sotto. In alternativa, puoi sempre andare alla pagina <settings>Impostazioni</settings> -> <accounts>Conti</accounts> per gestire i tuoi conti e organizzarli in cartelle."
-      },
-      "transactions": {
-        "title": "Inserisci la tua prima transazione",
-        "text": "Puoi inserire le transazioni selezionando un conto nella barra laterale a sinistra e premendo il pulsante <action>Aggiungi transazione</action>.",
-        "hint": "Puoi creare categorie, tag e beneficiari direttamente dalla finestra della transazione: inserisci il nome e premi Invio."
-      },
-      "classifications": {
-        "title": "Gestisci categorie, tag e beneficiari",
-        "text": "Per gestire categorie, tag e beneficiari, vai su <settings>Impostazioni</settings> -> <categories>Categorie</categories>, <tags>Tag</tags> o <payees>Beneficiari</payees>. Puoi anche ordinarli o archiviarli se necessario."
-      },
-      "avatar": {
-        "title": "Aggiorna il tuo avatar",
-        "text": "Scegli un'icona e un colore per il tuo avatar: ti rappresenta nei conti condivisi. <choose>Scegli il tuo avatar</choose>"
-      },
-      "connections": {
-        "title": "Collegati al tuo partner",
-        "text": "Per collegarti al tuo partner e gestire insieme l'accesso al budget o ai conti, vai su <settings>Impostazioni</settings> -> <connections>Accesso condiviso</connections>."
-      },
-      "budget": {
-        "title": "Crea il tuo budget",
-        "text": "Puoi creare il tuo primo budget nella pagina <budget>Budget</budget>.",
-        "text_secondary": "Inoltre, nella pagina <settings>Impostazioni</settings> -> <budgets>Budget</budgets> puoi gestire i tuoi budget, l'accesso condiviso e altro ancora."
-      }
-    },
-    "user_guide": {
-      "accounts": "Guida utente: conti",
-      "transactions": "Guida utente: transazioni",
-      "classifications": "Guida utente: classificazione",
-      "user_profile": "Guida utente: profilo utente",
-      "shared_access": "Guida utente: accesso condiviso",
-      "budgets": "Guida utente: budget"
-    },
     "categories": {
       "groceries": "Spesa",
       "housing": "Casa",
@@ -1270,7 +1229,8 @@
       "remove": "Rimuovi {code}",
       "note": "Potrai aggiungere altre valute più tardi nelle Impostazioni.",
       "no_rate": "Nessun tasso di cambio per {codes}. Gli importi in questa valuta non verranno convertiti finché non viene aggiunto un tasso."
-    }
+    },
+    "step_of": "Passaggio {current} di {total}"
   },
   "budgets": {
     "modal": {

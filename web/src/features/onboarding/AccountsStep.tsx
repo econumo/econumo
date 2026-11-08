@@ -88,7 +88,7 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
     ? selectedIds.filter((id) => id !== baseId && !rates.some((r) => r.currencyId === id))
     : []
 
-  const invalid = new Set(rows.filter((r) => parseBalance(r.balance) === null).map((r) => r.key))
+  const invalid = new Set(active.filter((r) => parseBalance(r.balance) === null).map((r) => r.key))
   const canContinue = active.length > 0 && invalid.size === 0 && mainId !== null && !pending
 
   const submit = () => {
@@ -182,7 +182,7 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
         <Button type="button" className="w-full" disabled={!canContinue} onClick={submit}>
           {t('onboarding.accounts.continue')}
         </Button>
-        <Button type="button" variant="link" onClick={onSkip}>
+        <Button type="button" variant="link" disabled={pending} onClick={onSkip}>
           {t('onboarding.accounts.skip')}
         </Button>
       </div>

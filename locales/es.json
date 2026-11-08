@@ -1179,47 +1179,6 @@
     }
   },
   "onboarding": {
-    "header": "Primeros pasos",
-    "title": "¡Te damos la bienvenida a Econumo!",
-    "complete": "Finalizar la configuración",
-    "add_account": "Añadir cuenta",
-    "import_transactions": "Importar transacciones",
-    "steps": {
-      "accounts": {
-        "title": "Añade tus cuentas",
-        "text": "Para empezar, puedes añadir una cuenta con el botón de abajo. También puedes ir en cualquier momento a <settings>Ajustes</settings> -> <accounts>Cuentas</accounts> para gestionar tus cuentas y organizarlas en carpetas."
-      },
-      "transactions": {
-        "title": "Añade tu primera transacción",
-        "text": "Puedes añadir transacciones seleccionando cualquier cuenta en el menú lateral y presionando el botón <action>Añadir transacción</action>.",
-        "hint": "Puedes crear categorías, etiquetas y beneficiarios directamente desde la ventana de la transacción: escribe su nombre y presiona Enter."
-      },
-      "classifications": {
-        "title": "Gestiona categorías, etiquetas y beneficiarios",
-        "text": "Para gestionar categorías, etiquetas y beneficiarios, ve a <settings>Ajustes</settings> -> <categories>Categorías</categories>, <tags>Etiquetas</tags> o <payees>Beneficiarios</payees>. También puedes ordenarlos o archivarlos cuando lo necesites."
-      },
-      "avatar": {
-        "title": "Actualiza tu avatar",
-        "text": "Elige un icono y un color para tu avatar: te representa en las cuentas compartidas. <choose>Elige tu avatar</choose>"
-      },
-      "connections": {
-        "title": "Conecta con tu pareja",
-        "text": "Para conectar con tu pareja y gestionar el acceso compartido a tu presupuesto o a tus cuentas, ve a <settings>Ajustes</settings> -> <connections>Acceso compartido</connections>."
-      },
-      "budget": {
-        "title": "Crea tu presupuesto",
-        "text": "Puedes crear tu primer presupuesto en la página <budget>Presupuesto</budget>.",
-        "text_secondary": "Además, en <settings>Ajustes</settings> -> <budgets>Presupuestos</budgets> puedes gestionar tus presupuestos, el acceso compartido y más."
-      }
-    },
-    "user_guide": {
-      "accounts": "Guía de usuario: cuentas",
-      "transactions": "Guía de usuario: transacciones",
-      "classifications": "Guía de usuario: clasificación",
-      "user_profile": "Guía de usuario: perfil de usuario",
-      "shared_access": "Guía de usuario: acceso compartido",
-      "budgets": "Guía de usuario: presupuestos"
-    },
     "categories": {
       "groceries": "Supermercado",
       "housing": "Vivienda",
@@ -1270,7 +1229,8 @@
       "remove": "Quitar {code}",
       "note": "Puedes añadir más monedas más adelante en Ajustes.",
       "no_rate": "Aún no hay tipo de cambio para {codes}. Los importes en ella no se convertirán hasta que se añada un tipo."
-    }
+    },
+    "step_of": "Paso {current} de {total}"
   },
   "budgets": {
     "modal": {

@@ -1179,47 +1179,6 @@
     }
   },
   "onboarding": {
-    "header": "Erste Schritte",
-    "title": "Willkommen bei Econumo!",
-    "complete": "Einrichtung abschließen",
-    "add_account": "Konto hinzufügen",
-    "import_transactions": "Transaktionen importieren",
-    "steps": {
-      "accounts": {
-        "title": "Fügen Sie Ihre Konten hinzu",
-        "text": "Zum Einstieg können Sie über die Schaltfläche unten ein Konto hinzufügen. Alternativ können Sie jederzeit die Seite <settings>Einstellungen</settings> -> <accounts>Konten</accounts> aufrufen, um Ihre Konten zu verwalten und in Ordnern zu organisieren."
-      },
-      "transactions": {
-        "title": "Erfassen Sie Ihre erste Transaktion",
-        "text": "Sie können Transaktionen erfassen, indem Sie in der linken Seitenleiste ein Konto auswählen und auf die Schaltfläche <action>Transaktion hinzufügen</action> klicken.",
-        "hint": "Sie können Kategorien, Tags und Zahlungsempfänger direkt im Transaktionsdialog erstellen, indem Sie deren Namen eingeben und die Eingabetaste drücken."
-      },
-      "classifications": {
-        "title": "Verwalten Sie Kategorien, Tags und Zahlungsempfänger",
-        "text": "Um Kategorien, Tags und Zahlungsempfänger zu verwalten, gehen Sie zu <settings>Einstellungen</settings> -> <categories>Kategorien</categories>, <tags>Tags</tags> oder <payees>Zahlungsempfänger</payees>. Sie können sie bei Bedarf auch sortieren oder archivieren."
-      },
-      "avatar": {
-        "title": "Aktualisieren Sie Ihren Avatar",
-        "text": "Wählen Sie ein Symbol und eine Farbe für Ihren Avatar — er repräsentiert Sie in gemeinsamen Konten. <choose>Avatar auswählen</choose>"
-      },
-      "connections": {
-        "title": "Verbinden Sie sich mit Ihrem Partner",
-        "text": "Um sich mit Ihrem Partner zu verbinden und den gemeinsamen Zugriff auf Ihr Budget oder Ihre Konten zu verwalten, besuchen Sie bitte <settings>Einstellungen</settings> -> <connections>Gemeinsamer Zugriff</connections>."
-      },
-      "budget": {
-        "title": "Erstellen Sie Ihr Budget",
-        "text": "Sie können Ihr erstes Budget auf der Seite <budget>Budget</budget> erstellen.",
-        "text_secondary": "Außerdem können Sie auf der Seite <settings>Einstellungen</settings> -> <budgets>Budgets</budgets> Ihre Budgets, den gemeinsamen Zugriff und mehr verwalten."
-      }
-    },
-    "user_guide": {
-      "accounts": "Benutzerhandbuch: Konten",
-      "transactions": "Benutzerhandbuch: Transaktionen",
-      "classifications": "Benutzerhandbuch: Listen",
-      "user_profile": "Benutzerhandbuch: Benutzerprofil",
-      "shared_access": "Benutzerhandbuch: gemeinsamer Zugriff",
-      "budgets": "Benutzerhandbuch: Budgets"
-    },
     "categories": {
       "groceries": "Lebensmittel",
       "housing": "Wohnen",
@@ -1270,7 +1229,8 @@
       "remove": "{code} entfernen",
       "note": "Weitere Währungen können Sie später in den Einstellungen hinzufügen.",
       "no_rate": "Für {codes} gibt es noch keinen Wechselkurs. Beträge darin werden erst umgerechnet, wenn ein Kurs hinzugefügt wird."
-    }
+    },
+    "step_of": "Schritt {current} von {total}"
   },
   "budgets": {
     "modal": {

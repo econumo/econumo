@@ -44,15 +44,16 @@ export function CategoriesStep({ initialRows, createdKeys, onContinue, onSkip, p
 
   const kept = () => {
     const seen = new Set<string>()
-    const result: CategoryRow[] = []
-    for (const r of rows) {
+    const chosen = new Set<string>()
+    // created rows go first so a duplicate-named new row can never displace one already on the server
+    for (const r of [...rows.filter(isCreated), ...rows.filter((x) => !isCreated(x))]) {
       const name = r.name.trim()
       const id = `${r.type}:${name.toLowerCase()}`
-      if (!r.checked || name === '' || seen.has(id)) continue
+      if ((!r.checked && !isCreated(r)) || name === '' || seen.has(id)) continue
       seen.add(id)
-      result.push({ ...r, name })
+      chosen.add(r.key)
     }
-    return result
+    return rows.filter((r) => chosen.has(r.key)).map((r) => ({ ...r, name: r.name.trim(), checked: true }))
   }
 
   const canContinue = !pending && kept().length > 0

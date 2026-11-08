@@ -1179,47 +1179,6 @@
     }
   },
   "onboarding": {
-    "header": "Primeiros passos",
-    "title": "Boas-vindas ao Econumo!",
-    "complete": "Concluir configuração",
-    "add_account": "Adicionar conta",
-    "import_transactions": "Importar transações",
-    "steps": {
-      "accounts": {
-        "title": "Adicione as suas contas",
-        "text": "Para começar, pode adicionar uma conta ao clicar no botão abaixo. Em alternativa, pode sempre ir à página <settings>Definições</settings> -> <accounts>Contas</accounts> para gerir as suas contas e organizá-las em pastas."
-      },
-      "transactions": {
-        "title": "Registe a sua primeira transação",
-        "text": "Pode registar transações ao selecionar qualquer conta na barra lateral esquerda e clicar no botão <action>Adicionar transação</action>.",
-        "hint": "Pode criar categorias, etiquetas e beneficiários diretamente na janela da transação — introduza o nome e prima Enter."
-      },
-      "classifications": {
-        "title": "Faça a gestão de categorias, etiquetas e beneficiários",
-        "text": "Para gerir categorias, etiquetas e beneficiários, vá a <settings>Definições</settings> -> <categories>Categorias</categories>, <tags>Etiquetas</tags> ou <payees>Beneficiários</payees>. Também os pode ordenar ou arquivar conforme necessário."
-      },
-      "avatar": {
-        "title": "Atualize o seu avatar",
-        "text": "Escolha um ícone e uma cor para o seu avatar — é a sua imagem nas contas partilhadas. <choose>Escolher o seu avatar</choose>"
-      },
-      "connections": {
-        "title": "Ligue-se ao seu parceiro",
-        "text": "Para se ligar ao seu parceiro e gerir o acesso partilhado ao seu orçamento ou contas, visite <settings>Definições</settings> -> <connections>Acesso partilhado</connections>."
-      },
-      "budget": {
-        "title": "Crie o seu orçamento",
-        "text": "Pode criar o seu primeiro orçamento na página <budget>Orçamento</budget>.",
-        "text_secondary": "Além disso, pode aceder à página <settings>Definições</settings> -> <budgets>Orçamentos</budgets> para gerir os seus orçamentos, o acesso partilhado e muito mais."
-      }
-    },
-    "user_guide": {
-      "accounts": "Guia do utilizador: contas",
-      "transactions": "Guia do utilizador: transações",
-      "classifications": "Guia do utilizador: listas",
-      "user_profile": "Guia do utilizador: perfil",
-      "shared_access": "Guia do utilizador: acesso partilhado",
-      "budgets": "Guia do utilizador: orçamentos"
-    },
     "categories": {
       "groceries": "Supermercado",
       "housing": "Habitação",
@@ -1270,7 +1229,8 @@
       "remove": "Remover {code}",
       "note": "Pode adicionar mais moedas mais tarde nas Definições.",
       "no_rate": "Ainda não há taxa de câmbio para {codes}. Os valores nesta moeda não serão convertidos até ser adicionada uma taxa."
-    }
+    },
+    "step_of": "Passo {current} de {total}"
   },
   "budgets": {
     "modal": {

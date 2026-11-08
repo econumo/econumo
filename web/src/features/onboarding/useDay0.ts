@@ -100,6 +100,7 @@ export function useDay0() {
           return
         }
         const d = current()
+        const selected = new Set([mainCurrencyId, ...extraCurrencyIds, ...rows.map((r) => r.currencyId)])
         d.rows = rows
         d.extraCurrencyIds = extraCurrencyIds
         d.mainCurrencyId = mainCurrencyId
@@ -143,7 +144,6 @@ export function useDay0() {
           if (main) {
             await updateCurrency(main.code)
           }
-          const selected = [...new Set([mainCurrencyId, ...extraCurrencyIds, ...rows.map((r) => r.currencyId)])]
           await ignoreBadRequest(hideAllCurrencies)
           for (const id of selected) {
             await ignoreBadRequest(() => showCurrency(id))
@@ -157,6 +157,7 @@ export function useDay0() {
         d.step = 'categories'
         persist(d)
         void queryClient.invalidateQueries()
+        trackEvent(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, { accounts: rows.length, currencies: selected.size })
       }),
     [run, current, persist, userId, queryClient],
   )
@@ -173,6 +174,7 @@ export function useDay0() {
           throw new Error('Day 0 finish needs accounts and a main currency')
         }
         const checked = categories.filter((c) => c.checked)
+        d.categoryRows = categories
         for (const c of checked) {
           opId(d, `category:${c.key}`)
         }

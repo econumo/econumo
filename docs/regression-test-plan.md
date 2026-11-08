@@ -261,13 +261,19 @@ navigation (single-pane vs sidebar).
 
 ## 3. Onboarding (fresh user)
 
-- [ ] 📱 A fresh user lands on onboarding; steps show completion checkmarks as
-      they are done (account created, transactions, classifications, avatar,
-      connections, budget).
-- [ ] Inline actions work from the onboarding page: add account, import CSV,
-      pick avatar.
-- [ ] "Complete onboarding" navigates to `/budget`; the sidebar onboarding link
-      disappears; `/` now renders the budget.
+- [ ] 📱 A fresh user lands on onboarding step 1 ("Step 1 of 2"): account rows
+      with name, balance, currency and a Savings switch; a new empty row
+      appears as the last one is typed in.
+- [ ] Continue creates the accounts, sets the main currency and shows only the
+      used currencies, then shows step 2 (default categories, all ticked).
+- [ ] Continue on step 2 creates the ticked categories and a "My budget" budget
+      with the accounts, completes onboarding and lands on `/budget`; the
+      sidebar onboarding link disappears; `/` now renders the budget.
+- [ ] "Skip setup" on either step completes onboarding and lands on `/budget`.
+- [ ] 📱 Reloading mid-flow (or retrying after a failed request) resumes at the
+      same step with the same rows and creates nothing twice.
+- [ ] An invalid balance in a row with no name does not block Continue; Skip is
+      disabled while a save is running.
 
 ## 4. Accounts & folders
 

@@ -1179,47 +1179,6 @@
     }
   },
   "onboarding": {
-    "header": "Premiers pas",
-    "title": "Bienvenue dans Econumo !",
-    "complete": "Terminer la configuration",
-    "add_account": "Ajouter un compte",
-    "import_transactions": "Importer des transactions",
-    "steps": {
-      "accounts": {
-        "title": "Ajoutez vos comptes",
-        "text": "Pour commencer, ajoutez un compte en cliquant sur le bouton ci-dessous. Vous pouvez aussi à tout moment ouvrir la page <settings>Paramètres</settings> -> <accounts>Comptes</accounts> pour gérer vos comptes et les organiser en dossiers."
-      },
-      "transactions": {
-        "title": "Saisissez votre première transaction",
-        "text": "Vous pouvez saisir des transactions en sélectionnant un compte dans le menu latéral gauche et en cliquant sur le bouton <action>Ajouter une transaction</action>.",
-        "hint": "Vous pouvez créer des catégories, des tags et des bénéficiaires directement depuis la fenêtre de transaction : saisissez leur nom et appuyez sur Entrée."
-      },
-      "classifications": {
-        "title": "Gérez les catégories, tags et bénéficiaires",
-        "text": "Pour gérer les catégories, tags et bénéficiaires, ouvrez <settings>Paramètres</settings> -> <categories>Catégories</categories>, <tags>Tags</tags> ou <payees>Bénéficiaires</payees>. Vous pouvez aussi les trier ou les archiver selon vos besoins."
-      },
-      "avatar": {
-        "title": "Mettez à jour votre avatar",
-        "text": "Choisissez une icône et une couleur pour votre avatar — il vous représente dans les comptes partagés. <choose>Choisir votre avatar</choose>"
-      },
-      "connections": {
-        "title": "Partagez l’accès avec votre partenaire",
-        "text": "Pour créer une connexion avec votre partenaire et gérer l’accès partagé à votre budget ou à vos comptes, ouvrez <settings>Paramètres</settings> -> <connections>Accès partagé</connections>."
-      },
-      "budget": {
-        "title": "Créez votre budget",
-        "text": "Vous pouvez créer votre premier budget sur la page <budget>Budget</budget>.",
-        "text_secondary": "Vous pouvez également ouvrir la page <settings>Paramètres</settings> -> <budgets>Budgets</budgets> pour gérer vos budgets, l’accès partagé et bien plus."
-      }
-    },
-    "user_guide": {
-      "accounts": "Guide utilisateur : comptes",
-      "transactions": "Guide utilisateur : transactions",
-      "classifications": "Guide utilisateur : classification",
-      "user_profile": "Guide utilisateur : profil",
-      "shared_access": "Guide utilisateur : accès partagé",
-      "budgets": "Guide utilisateur : budgets"
-    },
     "categories": {
       "groceries": "Courses",
       "housing": "Logement",
@@ -1270,7 +1229,8 @@
       "remove": "Retirer {code}",
       "note": "Vous pourrez ajouter d'autres devises plus tard dans les Paramètres.",
       "no_rate": "Pas encore de taux de change pour {codes}. Les montants dans cette devise ne seront pas convertis tant qu'un taux n'est pas ajouté."
-    }
+    },
+    "step_of": "Étape {current} sur {total}"
   },
   "budgets": {
     "modal": {

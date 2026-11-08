@@ -238,6 +238,16 @@ describe('useDay0', () => {
     expect(loadDraft('u1')).toBeNull()
   })
 
+  it('finish persists the submitted categories before its first request', async () => {
+    mockWrites({ gettingStartedFailsOnce: true })
+    saveDraft('u1', { ...emptyDraft(), step: 'categories', accountIds: ['a1'], mainCurrencyId: 'cur-usd' })
+    const { result } = await ready()
+    await act(async () => {
+      await result.current.finish(cats).catch(() => undefined)
+    })
+    expect(loadDraft('u1')?.categoryRows).toEqual(cats)
+  })
+
   it('lost category and budget responses reconcile on retry', async () => {
     mockWrites({ categoryLost: true, budgetLost: true })
     saveDraft('u1', { ...emptyDraft(), step: 'categories', accountIds: ['a1'], mainCurrencyId: 'cur-usd' })

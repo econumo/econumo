@@ -1179,47 +1179,6 @@
     }
   },
   "onboarding": {
-    "header": "快速入门",
-    "title": "欢迎使用 Econumo！",
-    "complete": "完成设置",
-    "add_account": "添加账户",
-    "import_transactions": "导入交易",
-    "steps": {
-      "accounts": {
-        "title": "添加您的账户",
-        "text": "首先，您可以点击下方按钮添加账户。您也可以随时前往<settings>设置</settings> -> <accounts>账户</accounts>页面管理账户，并将它们整理到文件夹中。"
-      },
-      "transactions": {
-        "title": "添加第一笔交易",
-        "text": "在左侧边栏中选择任意账户，然后点击<action>添加交易</action>按钮，即可录入交易。",
-        "hint": "您可以直接在交易窗口中创建分类、标签和收款人：输入名称后按 Enter 键即可。"
-      },
-      "classifications": {
-        "title": "管理分类、标签和收款人",
-        "text": "要管理分类、标签和收款人，请前往<settings>设置</settings> -> <categories>分类</categories>、<tags>标签</tags>或<payees>收款人</payees>页面。您还可以根据需要对它们排序或归档。"
-      },
-      "avatar": {
-        "title": "更新您的头像",
-        "text": "为您的头像选择一个图标和颜色，它将在共享账户中代表您。<choose>选择头像</choose>"
-      },
-      "connections": {
-        "title": "与您的伴侣建立关联",
-        "text": "要与伴侣一起管理预算或账户的共享访问，请前往<settings>设置</settings> -> <connections>共享访问</connections>。"
-      },
-      "budget": {
-        "title": "创建您的预算",
-        "text": "您可以在<budget>预算</budget>页面创建第一个预算。",
-        "text_secondary": "此外，您还可以在<settings>设置</settings> -> <budgets>预算</budgets>页面管理预算、共享访问等内容。"
-      }
-    },
-    "user_guide": {
-      "accounts": "用户指南：账户",
-      "transactions": "用户指南：交易",
-      "classifications": "用户指南：分类管理",
-      "user_profile": "用户指南：个人资料",
-      "shared_access": "用户指南：共享访问",
-      "budgets": "用户指南：预算"
-    },
     "categories": {
       "groceries": "买菜",
       "housing": "住房",
@@ -1270,7 +1229,8 @@
       "remove": "移除 {code}",
       "note": "您以后可以在设置中添加更多币种。",
       "no_rate": "{codes} 还没有汇率。在添加汇率之前，该币种的金额不会被换算。"
-    }
+    },
+    "step_of": "第 {current} 步，共 {total} 步"
   },
   "budgets": {
     "modal": {

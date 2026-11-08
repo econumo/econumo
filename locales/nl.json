@@ -1179,47 +1179,6 @@
     }
   },
   "onboarding": {
-    "header": "Aan de slag",
-    "title": "Welkom bij Econumo!",
-    "complete": "Setup voltooien",
-    "add_account": "Rekening toevoegen",
-    "import_transactions": "Transacties importeren",
-    "steps": {
-      "accounts": {
-        "title": "Voeg uw rekeningen toe",
-        "text": "Voeg om te beginnen een rekening toe met de knop hieronder. U kunt uw rekeningen ook altijd beheren en in mappen ordenen via <settings>Instellingen</settings> -> <accounts>Rekeningen</accounts>."
-      },
-      "transactions": {
-        "title": "Voer uw eerste transactie in",
-        "text": "U voert transacties in door links in het menu een rekening te kiezen en op de knop <action>Transactie toevoegen</action> te klikken.",
-        "hint": "Categorieën, tags en begunstigden kunt u rechtstreeks vanuit het transactievenster aanmaken: typ de naam en druk op Enter."
-      },
-      "classifications": {
-        "title": "Beheer categorieën, tags en begunstigden",
-        "text": "Categorieën, tags en begunstigden beheert u via <settings>Instellingen</settings> -> <categories>Categorieën</categories>, <tags>Tags</tags> of <payees>Begunstigden</payees>. U kunt ze ook sorteren of archiveren."
-      },
-      "avatar": {
-        "title": "Werk uw avatar bij",
-        "text": "Kies een pictogram en een kleur voor uw avatar — die vertegenwoordigt u in gedeelde rekeningen. <choose>Kies uw avatar</choose>"
-      },
-      "connections": {
-        "title": "Maak verbinding met uw partner",
-        "text": "Ga naar <settings>Instellingen</settings> -> <connections>Gedeelde toegang</connections> om verbinding te maken met uw partner en de gedeelde toegang tot uw budget of rekeningen te beheren."
-      },
-      "budget": {
-        "title": "Maak uw budget",
-        "text": "Uw eerste budget maakt u op de pagina <budget>Budget</budget>.",
-        "text_secondary": "Op de pagina <settings>Instellingen</settings> -> <budgets>Budgetten</budgets> beheert u bovendien uw budgetten, de gedeelde toegang en meer."
-      }
-    },
-    "user_guide": {
-      "accounts": "Handleiding: rekeningen",
-      "transactions": "Handleiding: transacties",
-      "classifications": "Handleiding: indeling",
-      "user_profile": "Handleiding: gebruikersprofiel",
-      "shared_access": "Handleiding: gedeelde toegang",
-      "budgets": "Handleiding: budgetten"
-    },
     "categories": {
       "groceries": "Boodschappen",
       "housing": "Wonen",
@@ -1270,7 +1229,8 @@
       "remove": "{code} verwijderen",
       "note": "Je kunt later in Instellingen meer valuta's toevoegen.",
       "no_rate": "Nog geen wisselkoers voor {codes}. Bedragen in deze valuta worden pas omgerekend als er een koers is toegevoegd."
-    }
+    },
+    "step_of": "Stap {current} van {total}"
   },
   "budgets": {
     "modal": {

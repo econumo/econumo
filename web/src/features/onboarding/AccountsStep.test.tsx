@@ -184,3 +184,19 @@ it('seeds from initialRows and keeps created rows read-only but their Savings sw
   expect(out.map((r: AccountRow) => r.key)).toEqual(['k1', 'k2'])
   expect(out[0].savings).toBe(true)
 })
+
+it('ignores a bad balance on a row with no name', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep()
+  await ready()
+  await user.type(nameInputs()[0], 'Card')
+  await user.type(balanceInputs()[1], 'abc')
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][0]).toHaveLength(1)
+})
+
+it('disables Skip setup while pending', async () => {
+  renderStep({ pending: true })
+  expect(screen.getByRole('button', { name: 'Skip setup' })).toBeDisabled()
+})

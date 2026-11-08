@@ -12,6 +12,8 @@ export type Day0Draft = {
   // server account id by row key / server category id by row key, written right after each create
   created: Record<string, Id>
   createdCategories: Record<string, Id>
+  // the categories last submitted by finish, so a retry after a failure reseeds the form with the same keys
+  categoryRows: CategoryRow[]
   currenciesDone: boolean
   budgetDone: boolean
   accountIds: Id[]
@@ -27,6 +29,7 @@ export function emptyDraft(): Day0Draft {
     extraCurrencyIds: [],
     created: {},
     createdCategories: {},
+    categoryRows: [],
     currenciesDone: false,
     budgetDone: false,
     accountIds: [],

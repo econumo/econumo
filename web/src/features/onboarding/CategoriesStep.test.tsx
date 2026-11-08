@@ -109,3 +109,22 @@ it('is inert while pending', () => {
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Skip setup' })).toBeDisabled()
 })
+
+it('never drops a created row when a new row has the same name', async () => {
+  const rows: CategoryRow[] = [
+    { key: 'new', name: 'Food', type: 'expense', icon: 'cake', checked: true },
+    { key: 'made', name: 'food', type: 'expense', icon: 'cake', checked: true },
+  ]
+  const user = userEvent.setup()
+  const { onContinue } = renderStep({ initialRows: rows, createdKeys: new Set(['made']) })
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(submitted(onContinue).map((r) => r.key)).toEqual(['made'])
+})
+
+it('submits a created row as checked even when seeded unchecked', async () => {
+  const rows: CategoryRow[] = [{ key: 'made', name: 'Food', type: 'expense', icon: 'cake', checked: false }]
+  const user = userEvent.setup()
+  const { onContinue } = renderStep({ initialRows: rows, createdKeys: new Set(['made']) })
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(submitted(onContinue)).toEqual([expect.objectContaining({ key: 'made', checked: true })])
+})
