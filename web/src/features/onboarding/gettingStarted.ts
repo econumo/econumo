@@ -1,9 +1,8 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { UserOptions, type CurrentUserDto } from '@/api/dto/user'
-import type { TransactionDto } from '@/api/dto/transaction'
 import { updateGettingStarted } from '@/api/user'
 import { queryKeys } from '@/app/queryKeys'
-import { gettingStartedOption } from '@/features/user/queries'
+import { gettingStartedOption, isOnboardingCompleted } from '@/features/user/queries'
 
 export type OnboardingStepKey = 'import' | 'categories' | 'accounts' | 'plan' | 'home_screen' | 'apple_wallet'
 // the steps whose state lives in the users_options value; add to home screen is per device
@@ -23,6 +22,16 @@ export function storedStepState(option: string | null, key: StoredStepKey): Onbo
 export function withStepState(option: string | null, key: StoredStepKey, state: Answer): string {
   const rest = (option ?? '').split(',').filter((k) => k !== '' && k !== key && k !== `!${key}`)
   return [...rest, state === 'done' ? key : `!${key}`].join(',')
+}
+
+// Registration seeds no getting_started option, so for a user still in the
+// flow an absent option reads as "nothing answered yet". Once onboarding is
+// complete an absent option means the user predates the stepper: null, and
+// nothing is ever written for them.
+export function flowOption(user: CurrentUserDto | undefined): string | null {
+  const option = gettingStartedOption(user)
+  if (option !== null) return option
+  return user !== undefined && !isOnboardingCompleted(user) ? '' : null
 }
 
 let writesInFlight = 0
@@ -45,14 +54,17 @@ export async function markStepsDone(queryClient: QueryClient, keys: StoredStepKe
 async function writeStepStates(queryClient: QueryClient, keys: StoredStepKey[], state: Answer): Promise<void> {
   await queryClient.cancelQueries({ queryKey: queryKeys.user })
   const user = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
-  const option = gettingStartedOption(user)
+  const option = flowOption(user)
   if (!user || option === null) return
   const changing = keys.filter((key) => storedStepState(option, key) !== state)
   if (changing.length === 0) return
   const value = changing.reduce((acc, key) => withStepState(acc, key, state), option)
+  const stored = user.options.some((o) => o.name === UserOptions.GETTING_STARTED)
   queryClient.setQueryData<CurrentUserDto>(queryKeys.user, {
     ...user,
-    options: user.options.map((o) => (o.name === UserOptions.GETTING_STARTED ? { ...o, value } : o)),
+    options: stored
+      ? user.options.map((o) => (o.name === UserOptions.GETTING_STARTED ? { ...o, value } : o))
+      : [...user.options, { name: UserOptions.GETTING_STARTED, value }],
   })
   writesInFlight++
   try {
@@ -69,36 +81,7 @@ async function writeStepStates(queryClient: QueryClient, keys: StoredStepKey[], 
 // Callable from the budget mutations without a hook of their own: nothing is
 // sent outside the flow or once the step has an answer.
 export function markGettingStartedDone(queryClient: QueryClient, key: StoredStepKey): void {
-  if (storedStepState(gettingStartedOption(queryClient.getQueryData<CurrentUserDto>(queryKeys.user)), key) !== 'open') return
+  const option = flowOption(queryClient.getQueryData<CurrentUserDto>(queryKeys.user))
+  if (option === null || storedStepState(option, key) !== 'open') return
   void writeStepState(queryClient, key, 'done')
-}
-
-// The descriptions the server stores, in English, on the corrections it
-// writes itself (internal/account and internal/transaction usecase.go).
-const CORRECTION_DESCRIPTIONS = new Set([
-  'Balance adjustment',
-  'Balance adjustment (account deleted)',
-  'Balance adjustment (deleted transaction)',
-  'Balance adjustment (edited transaction)',
-])
-
-// An opening balance, or a correction the server wrote (a balance edit, a
-// restored balance), may be one of several on an account. Neither is the
-// user's own spending, so neither ends the get-ready phase; a bare row the
-// user described themselves ("Coffee") is.
-function isCorrection(t: Pick<TransactionDto, 'type' | 'accountRecipientId' | 'categoryId' | 'payeeId' | 'tagId' | 'description' | 'labelIds' | 'recurringId'>): boolean {
-  return (
-    t.type !== 'transfer' &&
-    !t.accountRecipientId &&
-    !t.categoryId &&
-    !t.payeeId &&
-    !t.tagId &&
-    !t.recurringId &&
-    (t.labelIds ?? []).length === 0 &&
-    (t.description === '' || CORRECTION_DESCRIPTIONS.has(t.description))
-  )
-}
-
-export function hasRealTransactions(transactions: TransactionDto[]): boolean {
-  return transactions.some((t) => !isCorrection(t))
 }

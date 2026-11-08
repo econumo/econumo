@@ -420,7 +420,9 @@ step is done or skipped (also when answered on another device). The install bann
 stay hidden until it is complete. There are no budget-page "get ready" cards and no Inbox "Next
 steps" section any more. Per-user progress is the `getting_started` user option
 (comma-separated keys `import`/`categories`/`accounts`/`plan`/`apple_wallet`, a `!` prefix =
-dismissed (`!plan`), `""` = went through Day 0, absent = never in the flow), written by
+dismissed (`!plan`); registration seeds no such option, so while `onboarding` is not
+`completed` an absent option reads as `""`, nothing answered yet, and the first answer creates
+it; absent once onboarding is complete = an existing user never in the flow, written nothing), written by
 `POST /api/v1/user/update-getting-started`. Migration `20261108000000` marks onboarding
 complete for existing users who own accounts.
 
