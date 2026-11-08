@@ -1257,11 +1257,6 @@
       "menu": "Menu",
       "finish": "Finish"
     },
-    "placeholder": {
-      "text": "This step is coming soon.",
-      "continue": "Continue",
-      "skip": "Skip"
-    },
     "import_step": {
       "heading": "Bring in your history",
       "text": "Have a CSV export from your bank or another app? It creates accounts, categories and transactions in one go.",
@@ -1282,7 +1277,19 @@
       "setup": "Set up",
       "skip": "Skip"
     },
-    "retry": "Try again"
+    "retry": "Try again",
+    "plan_step": {
+      "heading": "Plan this month",
+      "subtext": "Your budget is ready. Put a rough amount next to what matters — you can refine it any time.",
+      "income": "Income · {month}",
+      "expenses": "Expenses · {month}",
+      "planned_of_income": "Planned {planned} of {total} expected income",
+      "planned_of_accounts": "Planned {planned} of {total} in your accounts",
+      "save": "Save plan",
+      "skip": "Skip for now",
+      "needs_account": "A budget needs at least one account. Add one first.",
+      "add_account": "Add an account"
+    }
   },
   "budgets": {
     "modal": {

@@ -14,6 +14,7 @@ import { CategoriesStepBody } from './CategoriesStep'
 import { clearDraft } from './draft'
 import { ImportStep } from './ImportStep'
 import { InstallStep } from './InstallStep'
+import { PlanStep } from './PlanStep'
 import { Stepper } from './Stepper'
 import { useOnboardingSteps, type OnboardingStepKey } from './useOnboardingSteps'
 
@@ -21,38 +22,14 @@ export interface StepBodyProps {
   // `also`: further steps the same action settled, written together with this one
   onDone: (also?: OnboardingStepKey[]) => Promise<void>
   onSkip: () => Promise<void>
-}
-
-function placeholderBody(key: OnboardingStepKey): ComponentType<StepBodyProps> {
-  return function PlaceholderStep({ onDone, onSkip }: StepBodyProps) {
-    const { t } = useTranslation()
-    const [pending, setPending] = useState(false)
-    const run = (action: () => Promise<void>) => () => {
-      setPending(true)
-      void action().finally(() => setPending(false))
-    }
-    return (
-      <section className="flex flex-col gap-2">
-        <h2 className="text-2xl font-normal">{t(`onboarding.steps_nav.${key}`)}</h2>
-        <p className="text-sm text-muted-foreground">{t('onboarding.placeholder.text')}</p>
-        <div className="mt-6 flex items-center justify-between">
-          <Button type="button" variant="ghost" disabled={pending} onClick={run(onSkip)}>
-            {t('onboarding.placeholder.skip')}
-          </Button>
-          <Button type="button" disabled={pending} onClick={run(onDone)}>
-            {t('onboarding.placeholder.continue')}
-          </Button>
-        </div>
-      </section>
-    )
-  }
+  onGoTo?: (key: OnboardingStepKey) => void
 }
 
 const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
   import: ImportStep,
   categories: CategoriesStepBody,
   accounts: AccountsStepBody,
-  plan: placeholderBody('plan'),
+  plan: PlanStep,
   home_screen: InstallStep,
   apple_wallet: AppleWalletStep,
 }
@@ -155,7 +132,7 @@ export function OnboardingPage() {
           ) : null}
         </div>
       ) : null}
-      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} />}
+      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={setSelected} />}
     </div>
   )
 }

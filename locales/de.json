@@ -1257,11 +1257,6 @@
       "menu": "Menü",
       "finish": "Abschließen"
     },
-    "placeholder": {
-      "text": "Dieser Schritt kommt bald.",
-      "continue": "Weiter",
-      "skip": "Überspringen"
-    },
     "import_step": {
       "heading": "Bring deine Historie mit",
       "text": "Hast du einen CSV-Export von deiner Bank oder einer anderen App? Er legt Konten, Kategorien und Buchungen in einem Schritt an.",
@@ -1282,7 +1277,19 @@
       "setup": "Einrichten",
       "skip": "Überspringen"
     },
-    "retry": "Erneut versuchen"
+    "retry": "Erneut versuchen",
+    "plan_step": {
+      "heading": "Diesen Monat planen",
+      "subtext": "Dein Budget ist bereit. Trag grobe Beträge bei dem ein, was dir wichtig ist – du kannst sie jederzeit anpassen.",
+      "income": "Einnahmen · {month}",
+      "expenses": "Ausgaben · {month}",
+      "planned_of_income": "{planned} von {total} erwarteten Einnahmen geplant",
+      "planned_of_accounts": "{planned} von {total} auf deinen Konten geplant",
+      "save": "Plan speichern",
+      "skip": "Später",
+      "needs_account": "Ein Budget braucht mindestens ein Konto. Lege zuerst eines an.",
+      "add_account": "Konto hinzufügen"
+    }
   },
   "budgets": {
     "modal": {

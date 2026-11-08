@@ -1257,11 +1257,6 @@
       "menu": "菜单",
       "finish": "完成"
     },
-    "placeholder": {
-      "text": "此步骤即将推出。",
-      "continue": "继续",
-      "skip": "跳过"
-    },
     "import_step": {
       "heading": "导入你的历史记录",
       "text": "有银行或其他应用导出的 CSV 吗？它会一次性创建账户、分类和交易。",
@@ -1282,7 +1277,19 @@
       "setup": "设置",
       "skip": "跳过"
     },
-    "retry": "重试"
+    "retry": "重试",
+    "plan_step": {
+      "heading": "规划本月",
+      "subtext": "预算已准备好。为重要的项目填一个大概金额——随时都可以调整。",
+      "income": "收入 · {month}",
+      "expenses": "支出 · {month}",
+      "planned_of_income": "已规划 {planned}，预期收入 {total}",
+      "planned_of_accounts": "已规划 {planned}，账户余额 {total}",
+      "save": "保存计划",
+      "skip": "暂时跳过",
+      "needs_account": "预算至少需要一个账户。请先添加账户。",
+      "add_account": "添加账户"
+    }
   },
   "budgets": {
     "modal": {

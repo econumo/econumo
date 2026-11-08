@@ -1257,11 +1257,6 @@
       "menu": "Menu",
       "finish": "Afronden"
     },
-    "placeholder": {
-      "text": "Deze stap komt binnenkort.",
-      "continue": "Doorgaan",
-      "skip": "Overslaan"
-    },
     "import_step": {
       "heading": "Neem je geschiedenis mee",
       "text": "Heb je een CSV-export van je bank of een andere app? Die maakt rekeningen, categorieën en transacties in één keer aan.",
@@ -1282,7 +1277,19 @@
       "setup": "Instellen",
       "skip": "Overslaan"
     },
-    "retry": "Opnieuw proberen"
+    "retry": "Opnieuw proberen",
+    "plan_step": {
+      "heading": "Plan deze maand",
+      "subtext": "Je budget staat klaar. Zet een globaal bedrag bij wat belangrijk is – je kunt het altijd aanpassen.",
+      "income": "Inkomsten · {month}",
+      "expenses": "Uitgaven · {month}",
+      "planned_of_income": "{planned} gepland van {total} verwachte inkomsten",
+      "planned_of_accounts": "{planned} gepland van {total} op je rekeningen",
+      "save": "Plan opslaan",
+      "skip": "Later",
+      "needs_account": "Een budget heeft minstens één rekening nodig. Voeg er eerst een toe.",
+      "add_account": "Rekening toevoegen"
+    }
   },
   "budgets": {
     "modal": {

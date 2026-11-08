@@ -1257,11 +1257,6 @@
       "menu": "Menu",
       "finish": "Fine"
     },
-    "placeholder": {
-      "text": "Questo passaggio arriverà presto.",
-      "continue": "Continua",
-      "skip": "Salta"
-    },
     "import_step": {
       "heading": "Porta la tua cronologia",
       "text": "Hai un export CSV della tua banca o di un'altra app? Crea conti, categorie e transazioni in un colpo solo.",
@@ -1282,7 +1277,19 @@
       "setup": "Configura",
       "skip": "Salta"
     },
-    "retry": "Riprova"
+    "retry": "Riprova",
+    "plan_step": {
+      "heading": "Pianifica questo mese",
+      "subtext": "Il tuo budget è pronto. Inserisci un importo indicativo accanto a ciò che conta: potrai modificarlo in qualsiasi momento.",
+      "income": "Entrate · {month}",
+      "expenses": "Spese · {month}",
+      "planned_of_income": "Pianificati {planned} su {total} di entrate previste",
+      "planned_of_accounts": "Pianificati {planned} su {total} nei tuoi conti",
+      "save": "Salva piano",
+      "skip": "Più tardi",
+      "needs_account": "Un budget richiede almeno un conto. Aggiungine uno prima.",
+      "add_account": "Aggiungi un conto"
+    }
   },
   "budgets": {
     "modal": {

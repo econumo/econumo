@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser } from '@/test/fixtures'
+import { coreHandlers, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
 import { HomePage } from '@/features/home/HomePage'
 import { OnboardingPage } from './OnboardingPage'
 
@@ -49,6 +49,8 @@ function serve(initial: string) {
   server.use(...coreHandlers({ budgets: [], categories: [] }))
   // added later, so these answer ahead of the core handlers
   server.use(
+    http.post('*/api/v1/budget/create-budget', () => ok({ item: fixtureWireBudget.meta })),
+    http.get('*/api/v1/budget/get-budget', () => ok({ item: fixtureWireBudget })),
     http.get('*/api/v1/user/get-user-data', () => ok({ user: userWith(state.stored, state.completed ? 'completed' : '') })),
     http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
       const { value } = (await request.json()) as { value: string }
@@ -111,7 +113,7 @@ it('a revisited step moves on to the next open step after it', async () => {
   await user.click(screen.getByRole('button', { name: /Accounts/ }))
   expect(await heading("Where's your money right now?")).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Skip' }))
-  expect(await heading('Budget & plan')).toBeInTheDocument()
+  expect(await heading('Plan this month')).toBeInTheDocument()
   expect(posts).toEqual([{ path: 'update-getting-started', value: '!accounts' }])
 })
 
@@ -119,8 +121,8 @@ it('resolving the last open step completes onboarding and lands on the budget', 
   serve('import,!categories,accounts')
   const user = userEvent.setup()
   renderPage()
-  expect(await heading('Budget & plan')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(await heading('Plan this month')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Save plan' }))
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
   expect(posts).toEqual([
     { path: 'update-getting-started', value: 'import,!categories,accounts,plan' },
@@ -147,7 +149,7 @@ it('an import with rows settles import, categories and accounts in one request',
   await heading('Bring in your history')
   await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
   await user.click(await screen.findByRole('button', { name: 'finish import' }))
-  expect(await heading('Budget & plan')).toBeInTheDocument()
+  expect(await heading('Plan this month')).toBeInTheDocument()
   expect(posts).toEqual([{ path: 'update-getting-started', value: 'import,categories,accounts' }])
 })
 

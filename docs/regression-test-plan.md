@@ -319,6 +319,22 @@ navigation (single-pane vs sidebar).
       shows the server's length message under the row once the field is left,
       and Continue stays disabled until it is fixed (or, for a category,
       unticked). In Chinese every default category saves without an error.
+- [ ] 📱 Opening "Budget & plan" creates the budget once (over every own
+      account, savings flags kept) when the user has none, or uses the
+      default/first budget they already have; reopening the step creates
+      nothing more. With no own account it says a budget needs one and
+      "Add an account" opens the Accounts step.
+- [ ] "Plan this month" lists an "Income · {month}" card (income categories)
+      and an "Expenses · {month}" card (expense categories), one amount per
+      row, prefilled with this month's existing plan. The line below reads
+      "Planned X of Y expected income" once any income is entered, otherwise
+      "Planned X of Y in your accounts" (own accounts converted to the budget
+      currency), and updates while typing.
+- [ ] "Save plan" writes only changed rows for this month: a typed 0 is saved
+      as a zero plan, a blank row is never written (clearing an existing plan
+      here leaves it); the step is then marked done and the next open step
+      opens. An unreadable amount disables Save plan; "Skip for now" skips the
+      step and writes nothing.
 - [ ] 📱 The budget page never shows get-ready cards (an empty budget shows the
       normal table or the create-budget prompt), and the Inbox has no "Next
       steps" section, for a user still getting started or not.

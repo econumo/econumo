@@ -1257,11 +1257,6 @@
       "menu": "Menu",
       "finish": "Zakończ"
     },
-    "placeholder": {
-      "text": "Ten krok pojawi się wkrótce.",
-      "continue": "Dalej",
-      "skip": "Pomiń"
-    },
     "import_step": {
       "heading": "Przenieś swoją historię",
       "text": "Masz eksport CSV z banku lub innej aplikacji? Utworzy konta, kategorie i transakcje za jednym razem.",
@@ -1282,7 +1277,19 @@
       "setup": "Skonfiguruj",
       "skip": "Pomiń"
     },
-    "retry": "Spróbuj ponownie"
+    "retry": "Spróbuj ponownie",
+    "plan_step": {
+      "heading": "Zaplanuj ten miesiąc",
+      "subtext": "Twój budżet jest gotowy. Wpisz przybliżoną kwotę przy tym, co ważne – możesz ją zmienić w dowolnej chwili.",
+      "income": "Przychody · {month}",
+      "expenses": "Wydatki · {month}",
+      "planned_of_income": "Zaplanowano {planned} z {total} oczekiwanych przychodów",
+      "planned_of_accounts": "Zaplanowano {planned} z {total} na Twoich kontach",
+      "save": "Zapisz plan",
+      "skip": "Nie teraz",
+      "needs_account": "Budżet wymaga co najmniej jednego konta. Najpierw dodaj konto.",
+      "add_account": "Dodaj konto"
+    }
   },
   "budgets": {
     "modal": {

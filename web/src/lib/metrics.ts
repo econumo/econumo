@@ -32,6 +32,7 @@ export const METRICS = {
   USER_COMPLETE_ONBOARDING: 'appUserCompleteOnboarding',
   ONBOARDING_SKIP: 'appOnboardingSkip',
   ONBOARDING_ACCOUNTS_COMPLETE: 'appOnboardingAccountsComplete',
+  ONBOARDING_PLAN_COMPLETE: 'appOnboardingPlanComplete',
   ONBOARDING_STEP_DONE: 'appOnboardingStepDone',
   ONBOARDING_STEP_SKIP: 'appOnboardingStepSkip',
   USER_UPDATE_DEFAULT_BUDGET: 'appUserUpdateDefaultBudget',
