@@ -6,7 +6,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import type { CurrentUserDto } from '@/api/dto/user'
 import { queryKeys } from '@/app/queryKeys'
-import { useUpdateName, useUpdateAvatar, useUpdateDefaultBudget, useUpdatePassword, useAccessState, useUpdateGettingStarted, gettingStartedOption } from './queries'
+import { useUpdateName, useUpdateAvatar, useUpdateDefaultBudget, useUpdatePassword, useAccessState, gettingStartedOption } from './queries'
 
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -123,27 +123,6 @@ describe('useAccessState', () => {
     const { result } = renderHook(() => useAccessState(), { wrapper })
     await waitFor(() => expect(result.current.state).toBe('readonly'))
   })
-})
-
-it('update-getting-started posts the value and replaces the user cache', async () => {
-  let body: unknown
-  server.use(
-    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
-      body = await request.json()
-      return HttpResponse.json({
-        success: true,
-        message: '',
-        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'getting_started', value: 'plan,!import' }] } },
-      })
-    }),
-  )
-  const { queryClient, wrapper } = makeWrapper()
-  queryClient.setQueryData(queryKeys.user, fixtureUser)
-  const { result } = renderHook(() => useUpdateGettingStarted(), { wrapper })
-  result.current.mutate('plan,!import')
-  await waitFor(() => expect(result.current.isSuccess).toBe(true))
-  expect(body).toEqual({ value: 'plan,!import' })
-  expect(gettingStartedOption(queryClient.getQueryData(queryKeys.user))).toBe('plan,!import')
 })
 
 it('gettingStartedOption is null when the option is absent and keeps an empty value', () => {

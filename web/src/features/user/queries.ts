@@ -161,16 +161,6 @@ export function useUpdateAnalytics() {
   })
 }
 
-export function useUpdateGettingStarted() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (value: string) => userApi.updateGettingStarted(value),
-    onSuccess: (user) => {
-      queryClient.setQueryData(queryKeys.user, user)
-    },
-  })
-}
-
 export function useUpdateLastSeenVersion() {
   const queryClient = useQueryClient()
   return useMutation({
