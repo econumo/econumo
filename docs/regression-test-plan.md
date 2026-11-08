@@ -418,6 +418,9 @@ navigation (single-pane vs sidebar).
 - [ ] Future-dated transaction shows above the "today" separator and does not
       count toward "balance as of end of today" — including one dated exactly
       00:00 tomorrow (SQLite AND PostgreSQL).
+- [ ] An account holding one income of `123456789.01` shows exactly that balance
+      in the sidebar and on the account page, with no extra decimals (SQLite AND
+      PostgreSQL).
 - [ ] Transaction list rows carry `isImported` (0/1) in the API response; an
       imported row shows the import glyph (tooltip "Imported"), hand-entered
       rows do not; the preview dialog of an imported row lists "Imported from"
