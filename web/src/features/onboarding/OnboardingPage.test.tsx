@@ -1,11 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
+import { HomePage } from '@/features/home/HomePage'
 import { OnboardingPage } from './OnboardingPage'
+import { emptyDraft, loadDraft, saveDraft, type Day0Draft } from './draft'
 
 const pendingUser = {
   ...fixtureUser,
@@ -133,8 +135,8 @@ it('shows the error and stays put when saving fails', async () => {
   expect(screen.getByText("Where's your money right now?")).toBeInTheDocument()
 })
 
-it('/ renders onboarding for a not-yet-onboarded user', async () => {
-  const { HomePage } = await import('@/features/home/HomePage')
+// HomePage pulls in the whole budget page, which a loaded machine can take a while to render
+it('/ renders onboarding for a not-yet-onboarded user', { timeout: 15000 }, async () => {
   mockWrites()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const router = createMemoryRouter([{ path: '/', element: <HomePage /> }], { initialEntries: ['/'] })
@@ -144,4 +146,69 @@ it('/ renders onboarding for a not-yet-onboarded user', async () => {
     </QueryClientProvider>,
   )
   expect(await screen.findByText("Where's your money right now?")).toBeInTheDocument()
+})
+
+const storeDraft = (patch: Partial<Day0Draft>) => saveDraft(fixtureUser.id, { ...emptyDraft(), ...patch })
+
+it('resumes step 1 from a stored draft: created rows are read-only and keep their keys', async () => {
+  mockWrites()
+  accounts.push({ id: 'acc-card', name: 'Card', owner: { id: fixtureUser.id } })
+  storeDraft({
+    step: 'accounts',
+    rows: [
+      { key: 'k-card', name: 'Card', balance: '10', currencyId: 'cur-usd', savings: false, icon: 'credit_card' },
+      { key: 'k-wallet', name: 'Wallet', balance: '5', currencyId: 'cur-usd', savings: false, icon: 'credit_card' },
+    ],
+    ops: { 'account:k-card': 'op-card', 'account:k-wallet': 'op-wallet' },
+    created: { 'k-card': 'acc-card' },
+  })
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByText('Step 1 of 2')).toBeInTheDocument()
+  const names = screen.getAllByLabelText('Account name')
+  expect(names.map((n) => (n as HTMLInputElement).value)).toEqual(['Card', 'Wallet', ''])
+  expect(names[0]).toHaveAttribute('readonly')
+  expect(screen.getAllByLabelText('Balance')[0]).toHaveAttribute('readonly')
+  expect(names[1]).not.toHaveAttribute('readonly')
+  expect(within(screen.getAllByTestId('account-row')[0]).queryByRole('button', { name: 'Remove account' })).not.toBeInTheDocument()
+
+  await waitFor(() => expect(screen.getAllByLabelText('Currency')[0]).toHaveTextContent('USD'))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(await screen.findByText('What do you spend on?')).toBeInTheDocument()
+  // only the uncreated row is sent, under the operation id the draft already held
+  expect(calls.filter((c) => c.path === 'create-account').map((c) => c.body)).toEqual([expect.objectContaining({ id: 'op-wallet', name: 'Wallet' })])
+  const saved = loadDraft(fixtureUser.id)!
+  expect(saved.rows.map((r) => r.key)).toEqual(['k-card', 'k-wallet'])
+  expect(saved.created).toEqual({ 'k-card': 'acc-card', 'k-wallet': 'acc-2' })
+})
+
+it('resumes step 2 from a stored draft: created categories are locked and not sent again', async () => {
+  mockWrites()
+  storeDraft({
+    step: 'categories',
+    accountIds: ['acc-card'],
+    mainCurrencyId: 'cur-usd',
+    currenciesDone: true,
+    categoryRows: [
+      { key: 'c-food', name: 'Food', type: 'expense', icon: 'restaurant', checked: true },
+      { key: 'c-fun', name: 'Fun stuff', type: 'expense', icon: 'celebration', checked: true },
+      { key: 'c-pay', name: 'Pay', type: 'income', icon: 'payments', checked: true },
+    ],
+    ops: { 'category:c-food': 'op-food', 'category:c-fun': 'op-fun', 'category:c-pay': 'op-pay' },
+    createdCategories: { 'c-food': 'cat-food' },
+  })
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByText('Step 2 of 2')).toBeInTheDocument()
+  const rows = screen.getAllByTestId('category-row')
+  expect(rows).toHaveLength(3)
+  expect(within(rows[0]).getByLabelText('Category name')).toHaveValue('Food')
+  expect(within(rows[0]).getByLabelText('Category name')).toHaveAttribute('readonly')
+  expect(within(rows[0]).getByRole('checkbox')).toBeDisabled()
+  expect(within(rows[0]).getByRole('button', { name: 'Change icon' })).toBeDisabled()
+  expect(within(rows[1]).getByLabelText('Category name')).not.toHaveAttribute('readonly')
+
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
+  expect(calls.filter((c) => c.path === 'create-category').map((c) => (c.body as { id: string }).id)).toEqual(['op-fun', 'op-pay'])
 })

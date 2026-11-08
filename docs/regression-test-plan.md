@@ -280,6 +280,14 @@ navigation (single-pane vs sidebar).
       same step with the same rows and creates nothing twice.
 - [ ] An invalid balance in a row with no name does not block Continue; Skip is
       disabled while a save is running.
+- [ ] Balances follow the UI language: in English "2,500" saves 2500 and
+      "2.50" saves 2.50; in German "2.500" saves 2500 and "2,50" saves 2.50;
+      a mark that is not the language's own followed by exactly three digits
+      (e.g. "2.500" in Russian) shows the "Enter a number" error.
+- [ ] An account or category name shorter than 3 or longer than 64 characters
+      shows the server's length message under the row once the field is left,
+      and Continue stays disabled until it is fixed (or, for a category,
+      unticked). In Chinese every default category saves without an error.
 - [ ] After finishing setup, a desktop `/budget` shows "Get ready" cards (Set your
       plan, Bring in transactions) in place of the empty budget table; `/plan`
       never shows them. "Open plan" opens `/plan`; saving any plan amount
@@ -474,7 +482,10 @@ navigation (single-pane vs sidebar).
       hidden when none of the import's target accounts qualifies, and its default
       looks only at those. A target that is a shared account with the user role
       is not kept: with the box ticked its balance moves and the result dialog
-      says "Couldn't keep the balance of <account>".
+      says "Couldn't keep the balance of <account>". Import stays disabled
+      while the balance check for a newly picked account loads (the box stays
+      in place meanwhile); if the check fails, a note says the balance won't
+      be kept and Import runs a plain import.
 - [ ] Import with a broken row (bad date/amount) → partial result, failed rows
       detailed, good rows imported.
 - [ ] Category type guard: a category only goes on a transaction of its own
