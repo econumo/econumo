@@ -182,8 +182,10 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 // plans it in the periods holding those days. The creation day is the stored
 // one, taken in the owner's timezone at creation, so every viewer sees the
 // same start and a later timezone change does not move it. Finishing setup
-// later never moves the start, so plans moved at conversion stay in the life.
-// A debt not set up has no end: LastDay is zero.
+// never moves the start (its snapshot is dated today), so plans moved at
+// conversion stay in the life; a later start date does, and the update hands
+// the months before it back to the category (moveHeadToCategory). A debt not
+// set up has no end: LastDay is zero.
 func planningBounds(st *debtState, proj model.Projection) (first, last time.Time) {
 	d := st.debt
 	if d.StartDate != nil {

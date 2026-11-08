@@ -400,6 +400,56 @@ func monthStart(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
 }
 
+// A later start date on a whole-category debt hands the periods before it
+// back to the category: the debt took them from its creation day on, and its
+// row hides every month before its start. An earlier start, or a debt with a
+// payee, moves nothing back.
+func TestUpdateDebt_LaterStartReturnsTheEarlierMonthsToTheCategory(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		setUp bool
+		start string
+		payee bool
+		want  bool
+	}{
+		{"not set up, later start", false, "2026-06-01", false, true},
+		{"set up, later start", true, "2026-06-01", false, true},
+		{"earlier start", false, "2026-01-01", false, false},
+		{"with a payee", false, "2026-06-01", true, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			e := newEnv(t)
+			var payee *string
+			if c.payee {
+				p := e.newPayee()
+				payee = &p
+			}
+			mod := func(r *model.CreateDebtRequest) {
+				r.PayeeId = payee
+				if !c.setUp {
+					withoutTerms(r)
+				}
+			}
+			res := e.create(t, mod)
+			e.budget.transfers = nil
+			req := e.updateReq(res)
+			start := c.start
+			req.StartDate = &start
+			if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
+				t.Fatal(err)
+			}
+			var want []transferCall
+			if c.want {
+				want = append(want, transferCall{from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory,
+					currency: res.CurrencyId, sum: true, before: c.start})
+			}
+			if !slices.Equal(e.budget.transfers, want) {
+				t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, want)
+			}
+		})
+	}
+}
+
 // Finishing setup of a whole-category debt in a request that also changes its
 // key still hands the months after its end back to the category it took them
 // from; a new whole category then moves its own plans to the debt.

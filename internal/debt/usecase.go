@@ -79,6 +79,41 @@ func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt, categor
 	return err
 }
 
+// firstPlanningDay is the first day of the debt's planning bounds as stored.
+func (s *Service) firstPlanningDay(ctx context.Context, d *model.Debt) (time.Time, error) {
+	st, err := s.stateNow(ctx, d)
+	if err != nil {
+		return time.Time{}, err
+	}
+	first, _ := planningBounds(st, st.project(s.today(ctx), nil, nil))
+	return first, nil
+}
+
+// moveHeadToCategory hands the plans and comments before a debt's new first
+// planning day back to category, the whole category the debt covered: it
+// took them from its old first day on, and its row hides every month before
+// its start. A start that did not move later moves nothing.
+func (s *Service) moveHeadToCategory(ctx context.Context, d *model.Debt, category vo.Id, wasFirst time.Time) error {
+	if s.budget == nil {
+		return nil
+	}
+	first, err := s.firstPlanningDay(ctx, d)
+	if err != nil {
+		return err
+	}
+	if !first.After(wasFirst) {
+		return nil
+	}
+	if err := s.lockRows(ctx, d.ID); err != nil {
+		return err
+	}
+	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
+		FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
+		CurrencyID: d.CurrencyID, SumOnClash: true, BeforeDay: first,
+	})
+	return err
+}
+
 // moveToCategory hands a deleted whole-category debt's row back to its
 // category; a month the category already plans keeps the category's plan.
 func (s *Service) moveToCategory(ctx context.Context, d *model.Debt) (leftBehind bool, err error) {

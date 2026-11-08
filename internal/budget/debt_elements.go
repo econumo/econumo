@@ -272,7 +272,10 @@ func transferPeriods(t model.ElementDataTransfer, startDay int) (first, last tim
 	case !t.FirstDay.IsZero():
 		first = model.PeriodOf(t.FirstDay, startDay)
 	}
-	if !t.LastDay.IsZero() {
+	switch {
+	case !t.BeforeDay.IsZero():
+		last = model.PeriodOf(t.BeforeDay, startDay).AddDate(0, -1, 0)
+	case !t.LastDay.IsZero():
 		last = model.PeriodOf(t.LastDay, startDay)
 	}
 	return first, last

@@ -1721,7 +1721,10 @@ data unreadable. Most are also asserted by the test suite.
   today and deletes the debt's provisional zero splits in the same transaction, so the next sync
   splits the collected payments by the normal rules (backward estimate before the snapshot); a
   debt that covered a whole category before setup hands that category back its plans and comments
-  after the new end, whatever key the same update gives it (it took them with no end); an
+  after the new end, whatever key the same update gives it (it took them with no end), and a
+  whole-category debt whose update moves its first planning day later (a later start date, set
+  up or not) hands the category back its plans and comments in the periods before the new start
+  (`BeforeDay` bound on the transfer, a month both rows plan adding up); an
   update without the pair keeps the stored terms and a `payment`/`schedule` left out keeps the
   stored one, but on a set-up debt a differing payment or schedule is a change of terms and needs
   the pair (`common.is_blank` on both otherwise). The review screen's rename and "Payments from"

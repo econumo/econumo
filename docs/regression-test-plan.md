@@ -2294,6 +2294,13 @@ out), and add a second budget member account in USD, before running these.
       moves nothing. Finishing setup through the API or MCP in a request that
       also adds a payee or changes the category still hands those months back
       to the category the debt covered before.
+- [ ] A later start date on a whole-category debt (set up or not): give the
+      category plans and a comment in the months before the new start,
+      convert, then set a start date two months after the debt's creation.
+      Those months show their plans (and the comment) on the category row
+      again, in every budget (a month both rows plan adds up); the debt row
+      keeps the months from its start on. An earlier start date, or a debt
+      with a payee, tag or reporting tag, moves nothing back.
 - [ ] A partial debt (payee set): payments to that payee leave the category
       row's Spent (and its drill-down) and count on the debt row, payments to
       other payees stay in the category row.

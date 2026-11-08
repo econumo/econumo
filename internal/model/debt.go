@@ -107,6 +107,8 @@ type ElementDataTransfer struct {
 	// up to LastDay. A day bound cannot say "the next period" for budgets
 	// whose periods start on different days.
 	AfterDay time.Time
+	// BeforeDay, when set, moves only the periods before the one holding it.
+	BeforeDay time.Time
 }
 
 func DebtMatches(d DebtView, categoryID, payeeID, tagID *string, labelIDs []string, at time.Time) bool {

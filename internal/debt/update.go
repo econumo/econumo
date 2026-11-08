@@ -2,6 +2,7 @@ package debt
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -60,6 +61,13 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		wasWhole, wasCategory, wasSetUp := isWholeCategory(cur), cur.CategoryID, cur.IsSetUp()
 		keyChanged := !cur.CategoryID.Equal(in.category) || !sameIdPtr(cur.PayeeID, in.payee) ||
 			!sameIdPtr(cur.TagID, in.tag) || !sameIdPtr(cur.LabelID, in.label) || !sameDay(cur.StartDate, in.start)
+		// the start of the months the debt row shows, before this update
+		var wasFirst time.Time
+		if wasWhole && (!sameDay(cur.StartDate, in.start) || !cur.CategoryID.Equal(in.category)) {
+			if wasFirst, err = s.firstPlanningDay(ctx, cur); err != nil {
+				return err
+			}
+		}
 		cur.Name, cur.CategoryID, cur.PayeeID, cur.TagID, cur.LabelID, cur.StartDate = in.name, in.category, in.payee, in.tag, in.label, in.start
 		if keyChanged {
 			others, err := s.repo.ListByCategory(ctx, cur.CategoryID)
@@ -109,6 +117,11 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 				if err := s.moveTailToCategory(ctx, cur, wasCategory); err != nil {
 					return err
 				}
+			}
+		}
+		if !wasFirst.IsZero() {
+			if err := s.moveHeadToCategory(ctx, cur, wasCategory, wasFirst); err != nil {
+				return err
 			}
 		}
 		// Now covering a whole category it did not cover before, the debt

@@ -100,6 +100,7 @@ type transferCall struct {
 	sum         bool
 	first, last string // Y-m-d, "" = open
 	after       string // Y-m-d, "" = unset
+	before      string // Y-m-d, "" = unset
 }
 
 type fakeBudget struct {
@@ -120,7 +121,7 @@ func monthString(t time.Time) string {
 func (b *fakeBudget) TransferData(_ context.Context, t model.ElementDataTransfer) (bool, error) {
 	b.calls = append(b.calls, "transfer")
 	b.transfers = append(b.transfers, transferCall{t.FromID.String(), t.FromType, t.ToID.String(), t.ToType, t.CurrencyID.String(),
-		t.SumOnClash, monthString(t.FirstDay), monthString(t.LastDay), monthString(t.AfterDay)})
+		t.SumOnClash, monthString(t.FirstDay), monthString(t.LastDay), monthString(t.AfterDay), monthString(t.BeforeDay)})
 	return b.leftBehind, nil
 }
 
