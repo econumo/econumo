@@ -269,7 +269,13 @@ navigation (single-pane vs sidebar).
       "Getting started · N of M" over a segmented bar.
 - [ ] Clicking a step (or a bar segment on a phone) opens it; Continue or Skip
       on a step moves to the next open step after it, and the stepper shows
-      the new state.
+      the new state. Skip on a revisited done step moves on and leaves it done.
+- [ ] A freshly registered user's answers are saved: after Skip on Import and
+      Continue on Categories and Accounts, a reload keeps those steps checked
+      and opens Budget & plan; finishing it completes onboarding.
+- [ ] 📱 A screen reader announces the page heading "Getting started" and each
+      step with its state ("Import, done", "Categories, skipped"); each phone
+      bar segment is a comfortable (24px tall) tap target.
 - [ ] Answering the last open step completes onboarding and lands on
       `/budget`; the sidebar onboarding link disappears; `/` now renders the
       budget (and on a phone the nav list again).
@@ -294,7 +300,8 @@ navigation (single-pane vs sidebar).
       "Add your own" row at the end. On a fresh account every default is
       ticked; categories the user already has (after an import, or on a
       revisit) are listed first, ticked and locked, and defaults with the same
-      name are not offered again.
+      name are not offered again, nor are defaults named like a category the
+      user archived (the archived one is not listed).
 - [ ] Accounts: one card of compact rows (icon, name, balance, currency chip);
       a savings account shows a small "Savings account" label under its name,
       toggled in the row's details (the chevron), where a new row can also be
@@ -302,6 +309,10 @@ navigation (single-pane vs sidebar).
       listed first and locked, with their balance shown and no balance asked
       for. The currencies line reads "USD (main) · + Add"; tapping the main
       currency changes it.
+- [ ] Revisiting Accounts after Budget & plan: a new account joins the budget,
+      and a changed savings switch moves it to/from the budget's savings
+      accounts; turning savings off on an account whose savings row has plans
+      or comments shows the server's message and changes nothing.
 - [ ] 📱 Categories and Accounts render usably on a phone, tablet and desktop
       width (each account row stays on one line; no horizontal scroll;
       Continue and Skip reachable).
@@ -336,9 +347,11 @@ navigation (single-pane vs sidebar).
       default/first budget they already have; reopening the step creates
       nothing more. With no own account it says a budget needs one and
       "Add an account" opens the Accounts step.
-- [ ] "Plan this month" lists an "Income · {month}" card (income categories)
-      and an "Expenses · {month}" card (expense categories), one amount per
-      row, prefilled with this month's existing plan. The line below reads
+- [ ] "Plan this month" lists an "Income · {month}" card (the user's own
+      income categories, e.g. Salary right after Day 0) and an "Expenses ·
+      {month}" card (own expense categories, not archived ones nor those inside
+      an envelope), one amount per row, prefilled with this month's existing
+      plan exactly as stored; a row with no plan is blank, not 0. The line below reads
       "Planned X of Y expected income" once any income is entered, otherwise
       "Planned X of Y in your accounts" (own accounts converted to the budget
       currency), and updates while typing.
