@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import { createAccount, getAccountList, getFolderList } from '@/api/account'
-import { createBudget, getBudgetList } from '@/api/budget'
+import { addAccount, createBudget, getBudget, getBudgetList } from '@/api/budget'
 import { createCategory, getCategoryList } from '@/api/category'
 import { getCurrencyList, hideAllCurrencies, showCurrency } from '@/api/currency'
 import { UserOptions } from '@/api/dto/user'
@@ -36,6 +36,33 @@ function opId(draft: Day0Draft, key: string): Id {
 }
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+const today = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Accounts saved once the budget exists reach it: an account the flow created
+// joins it, and a savings switch the user changed is applied. A switch on an
+// account the user already had is applied only once they change it, so a
+// guessed flag never overrides a reused budget. Turning savings off on a member
+// with plans or comments is refused by the server, and that error is shown.
+async function syncBudgetAccounts(d: Day0Draft, rows: AccountRow[], budgetId: Id): Promise<void> {
+  const members = new Map(((await getBudget(budgetId, today())).filters.accounts ?? []).map((a) => [a.id, a.isSavings === true]))
+  const submitted = new Set(d.accountIds)
+  const wasSavings = new Set(d.savingsAccountIds)
+  for (const row of rows) {
+    const id = d.created[row.key]
+    const byFlow = Boolean(d.ops[`account:${row.key}`])
+    const member = members.get(id)
+    if (member === undefined) {
+      if (byFlow) await addAccount(budgetId, id, row.savings)
+      continue
+    }
+    const changed = byFlow || (submitted.has(id) && wasSavings.has(id) !== row.savings)
+    if (changed && member !== row.savings) await addAccount(budgetId, id, row.savings)
+  }
+}
 
 export function useDay0() {
   const { t } = useTranslation()
@@ -191,6 +218,14 @@ export function useDay0() {
           void queryClient.invalidateQueries()
         }
 
+        const budgetId = d.budgetId ?? (d.budgetDone ? (d.ops.budget ?? null) : null)
+        if (budgetId) {
+          await syncBudgetAccounts(d, rows, budgetId)
+          void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+          void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+          void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+        }
+
         d.accountIds = rows.map((r) => d.created[r.key])
         d.savingsAccountIds = rows.filter((r) => r.savings).map((r) => d.created[r.key])
         persist(d)
@@ -218,6 +253,8 @@ export function useDay0() {
           const preferred = userOption(user, UserOptions.BUDGET)
           const existing = budgets.find((b) => b.id === preferred) ?? budgets[0]
           if (existing) {
+            d.budgetId = existing.id
+            persist(d)
             return existing.id
           }
           const currencyId = d.mainCurrencyId ?? userCurrencyId(user)
@@ -243,6 +280,7 @@ export function useDay0() {
           }
         }
         d.budgetDone = true
+        d.budgetId = d.ops.budget
         persist(d)
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
         return d.ops.budget

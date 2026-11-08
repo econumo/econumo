@@ -17,6 +17,8 @@ export type Day0Draft = {
   // the currency selection last applied, so a revisit that changes it applies it again
   currenciesApplied: string | null
   budgetDone: boolean
+  // the budget the plan step planned, created or reused; accounts saved later join it
+  budgetId: Id | null
   accountIds: Id[]
   savingsAccountIds: Id[]
   mainCurrencyId: Id | null
@@ -32,6 +34,7 @@ export function emptyDraft(): Day0Draft {
     categoryRows: [],
     currenciesApplied: null,
     budgetDone: false,
+    budgetId: null,
     accountIds: [],
     savingsAccountIds: [],
     mainCurrencyId: null,

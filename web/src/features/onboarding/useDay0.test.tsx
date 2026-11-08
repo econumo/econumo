@@ -42,10 +42,10 @@ type Faults = {
 }
 
 let calls: { path: string; body: any }[]
-let srv: { accounts: any[]; categories: any[]; budgets: any[]; folders: any[]; ops: Set<string> }
+let srv: { accounts: any[]; categories: any[]; budgets: any[]; folders: any[]; ops: Set<string>; savingsPlans: Set<string> }
 
 function mockWrites(f: Faults = {}) {
-  srv = { accounts: [], categories: [], budgets: [], folders: [], ops: new Set() }
+  srv = { accounts: [], categories: [], budgets: [], folders: [], ops: new Set(), savingsPlans: new Set() }
   let accountCalls = 0
   let accountFault = false
   let categoryFault = false
@@ -110,12 +110,41 @@ function mockWrites(f: Faults = {}) {
       const body = (await request.json()) as any
       calls.push({ path: 'create-budget', body })
       if (srv.budgets.some((b) => b.id === body.id)) return HttpResponse.json({ success: false, message: 'in use', code: 400, errors: { id: ['x'] } }, { status: 400 })
-      srv.budgets.push({ id: body.id, ownerUserId: 'u1', access: [] })
+      srv.budgets.push({ id: body.id, ownerUserId: 'u1', access: [], members: body.accountIds.map((id: string) => ({ id, isSavings: body.savingsAccountIds.includes(id) })) })
       if (f.budgetLost && !budgetFault) {
         budgetFault = true
         return HttpResponse.error()
       }
       return ok({ item: { meta: { id: body.id } } })
+    }),
+    // get-budget as the server sends it: filters.accounts lists the caller's own members
+    http.get('*/api/v1/budget/get-budget', ({ request }) => {
+      const id = new URL(request.url).searchParams.get('id')
+      const b = srv.budgets.find((x) => x.id === id)
+      if (!b) return HttpResponse.json({ success: false, message: 'Budget not found', code: 0, errors: {} }, { status: 400 })
+      const accounts = (b.members ?? []).map((m: any) => ({ id: m.id, removable: true, isSavings: m.isSavings }))
+      return ok({ item: { meta: b, filters: { periodStart: '2026-11-01 00:00:00', periodEnd: '2026-12-01 00:00:00', accounts }, balances: [], currencyRates: [], structure: { folders: [], elements: [] } } })
+    }),
+    // add-account: idempotent, sets the flag of an existing member, refuses
+    // turning off a savings member with plans unless confirmed (server wording)
+    http.post('*/api/v1/budget/add-account', async ({ request }) => {
+      const body = (await request.json()) as any
+      calls.push({ path: 'add-account', body })
+      const b = srv.budgets.find((x) => x.id === body.id)
+      b.members ??= []
+      const member = b.members.find((m: any) => m.id === body.accountId)
+      if (member) {
+        if (member.isSavings && body.isSavings === false && srv.savingsPlans.has(body.accountId) && !body.confirmSavingsRemoval) {
+          return HttpResponse.json(
+            { success: false, message: 'Form validation error', code: 400, errors: { confirmSavingsRemoval: ['This deletes the planned amounts and comments of savings accounts you turned off or removed from this budget; confirm to continue'] } },
+            { status: 400 },
+          )
+        }
+        if (body.isSavings !== undefined) member.isSavings = body.isSavings
+      } else {
+        b.members.push({ id: body.accountId, isSavings: body.isSavings === true })
+      }
+      return ok({ item: { id: b.id, ownerUserId: 'u1', name: 'My budget', startedAt: '2026-11-01 00:00:00', endedAt: '', currencyId: 'cur-usd', isArchived: 0, periodStartDay: 1, access: [] } })
     }),
   )
 }
@@ -363,6 +392,72 @@ describe('useDay0', () => {
     expect(srv.budgets).toHaveLength(1)
     expect(srv.budgets[0].id).toBe(id)
     expect(calls.filter((c) => c.path === 'create-budget')).toHaveLength(1)
+  })
+
+  // the rows AccountsStep submits on a revisit: earlier creates come back as existing accounts, keeping their keys
+  const revisit = (savings: Record<string, boolean>, extra: AccountRow[] = []): AccountRow[] => [
+    { ...rows[0], accountId: 'acc-1', balance: '', savings: savings['acc-1'] ?? false },
+    { ...rows[1], accountId: 'acc-2', balance: '', savings: savings['acc-2'] ?? true },
+    ...extra,
+  ]
+
+  it('accounts saved after the budget exists join it, and a changed savings switch is applied', async () => {
+    mockWrites()
+    const { result } = await ready()
+    await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
+    let budgetId = ''
+    await act(async () => {
+      budgetId = await result.current.ensureBudget()
+    })
+    calls = []
+    const wallet: AccountRow = { key: 'r3', name: 'Piggy bank', balance: '5', currencyId: 'cur-usd', savings: true, icon: 'savings' }
+    await act(() => result.current.saveAccounts(revisit({ 'acc-2': false }, [wallet]), [], 'cur-usd'))
+    expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body)).toEqual([
+      { id: budgetId, accountId: 'acc-2', isSavings: false },
+      { id: budgetId, accountId: 'acc-3', isSavings: true },
+    ])
+    expect(srv.budgets[0].members).toEqual([
+      { id: 'acc-1', isSavings: false },
+      { id: 'acc-2', isSavings: false },
+      { id: 'acc-3', isSavings: true },
+    ])
+    // nothing changed: nothing written
+    calls = []
+    await act(() => result.current.saveAccounts(revisit({ 'acc-2': false }, []).concat({ ...wallet, accountId: 'acc-3', balance: '' }), [], 'cur-usd'))
+    expect(paths().filter((p) => p === 'add-account')).toEqual([])
+  })
+
+  it('a reused budget gets only the accounts the flow created, never a guessed flag', async () => {
+    mockWrites()
+    srv.accounts.push({ id: 'acc-old', name: 'Savings', owner: { id: 'u1' }, folderId: 'f1' })
+    srv.folders.push({ id: 'f1', name: 'General' })
+    srv.budgets.push({ id: 'b-old', ownerUserId: 'u1', access: [], members: [{ id: 'acc-old', isSavings: false }] })
+    const { result } = await ready()
+    await act(async () => {
+      await result.current.ensureBudget()
+    })
+    const old: AccountRow = { key: 'account:acc-old', name: 'Savings', balance: '', currencyId: 'cur-usd', savings: true, icon: 'savings', accountId: 'acc-old' }
+    await act(() => result.current.saveAccounts([old, rows[0]], [], 'cur-usd'))
+    expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body)).toEqual([{ id: 'b-old', accountId: 'acc-2', isSavings: false }])
+  })
+
+  it('turning savings off on a member with plans shows the server refusal and retries it next time', async () => {
+    mockWrites()
+    const { result } = await ready()
+    await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
+    await act(async () => {
+      await result.current.ensureBudget()
+    })
+    srv.savingsPlans.add('acc-2')
+    await act(async () => {
+      await expect(result.current.saveAccounts(revisit({ 'acc-2': false }), [], 'cur-usd')).rejects.toBeTruthy()
+    })
+    expect(result.current.error).toBeTruthy()
+    srv.savingsPlans.delete('acc-2')
+    calls = []
+    await act(() => result.current.saveAccounts(revisit({ 'acc-2': false }), [], 'cur-usd'))
+    expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body.accountId)).toEqual(['acc-2'])
+    expect(srv.budgets[0].members.find((m: any) => m.id === 'acc-2').isSavings).toBe(false)
   })
 
   it('ready waits for the accounts query', async () => {
