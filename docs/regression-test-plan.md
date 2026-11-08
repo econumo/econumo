@@ -2185,7 +2185,10 @@ out), and add a second budget member account in USD, before running these.
       The payments already listed keep their interest figures after such an
       edit. The sentence shows Cancel and Save only while a pick differs from
       the stored one; a refused change (key conflict) shows its message under
-      the sentence and keeps the old filters.
+      the sentence and keeps the old filters. With the review screen open on
+      two devices, edit the terms on the second, then rename (or change the
+      sentence) on the first without reloading: the debt keeps the second
+      device's terms and the history does not grow.
 - [ ] 📱 **Review screen** (one entry, "Details": the Settings row, the
       budget row's ⋮ menu, the desktop row, or on a phone/tablet the item
       sheet's "Details" button; owner only, there is no separate Edit entry
@@ -2376,8 +2379,9 @@ out), and add a second budget member account in USD, before running these.
       debt's life. The Plan totals' Expenses and Balance include the debt
       payments exactly as a category row would.
 - [ ] A category, payee, tag or reporting tag used by a debt cannot be deleted
-      (a message names the debt; for a reporting tag "A debt uses this tag.
-      Delete or change the debt first."); archiving it is allowed. Merging
+      (for a reporting tag the message reads "A debt uses this reporting tag.
+      Delete or change the debt first.", and the same with "category",
+      "payee" or "tag"); archiving it is allowed. Merging
       category/payee/tag/reporting tag A into B moves the debt to B and its payments follow; for a whole-category
       debt B's plans move onto the debt row, adding up with the debt's plan in
       a month both plan (nothing is lost); a merge that would

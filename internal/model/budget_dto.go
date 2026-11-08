@@ -503,7 +503,9 @@ type PlanSavingsFlowResult struct {
 
 // PlanDebtElementResult is one debt's plan row, in the debt's currency. Cells
 // align with BudgetPlanResult.Months. The payoff and overpayment figures are
-// get-budget's, over every plan of the debt from the current month on.
+// get-budget's, over every plan of the debt from the current month on. A debt
+// not set up (IsSetUp 0) has no projection: PayoffDate, BasePayoffDate,
+// OverpaymentLeft and BaseOverpaymentLeft are "".
 type PlanDebtElementResult struct {
 	Id                  string               `json:"id"`
 	Type                int                  `json:"type"`
@@ -524,7 +526,8 @@ type PlanDebtElementResult struct {
 // PlanDebtCellResult is a debt row's month: Actual is the matched payments
 // from the everyday accounts, Planned "" with no plan or outside the debt's
 // life (IsPlannable 0), and the rest the month of the debt's projection, as
-// on get-budget's debt row.
+// on get-budget's debt row. For a debt not set up ClosingBalance is "",
+// PaymentsLeft 0, and ScheduledTotal and Upcoming "0".
 type PlanDebtCellResult struct {
 	Actual         string `json:"actual"`
 	Planned        string `json:"planned"`

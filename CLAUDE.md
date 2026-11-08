@@ -1727,11 +1727,15 @@ data unreadable. Most are also asserted by the test suite.
   device changed. With the pair, a new snapshot is written only when balance, payment, schedule or
   last payment date differ (a rename does not); `mark-debt-paid-off` writes a
   balance-0 snapshot and is refused on a debt not set up (`debt.not_set_up`). **Not set up**:
-  payments still match and are stored in `debts_payments` with interest 0 (kept between syncs, no
-  projection exists); `DebtResult`/the budget rows send `isSetUp` 0 with `balance`,
-  `lastPaymentDate`, `currentBalance`, `moneyLeft`, `overpaymentLeft`, `overpaidSoFar`,
-  `payoffDate`, `nextDueDate`, `periodRate` as `""`, `paymentsLeft`/`periodsPaid` 0, budget
-  `closingBalance` `""` and `scheduledTotal`/`upcoming` `"0"` (the SPA keys on `isSetUp`, not on
+  payments still match and are stored in `debts_payments` with interest 0 (no projection exists;
+  a payment dated up to today keeps its zero split until setup drops it, one dated after today is
+  provisional like any other and is dropped and re-inserted by every sync). With `isSetUp` 0,
+  `DebtResult` sends `balance`, `lastPaymentDate`, `currentBalance`, `moneyLeft`,
+  `overpaymentLeft`, `overpaidSoFar`, `payoffDate`, `nextDueDate` and `periodRate` as `""` and
+  `paymentsLeft`/`periodsPaid` 0 (payment and schedule as stored); the budget rows
+  (`get-budget` debt rows and `get-budget-plan` rows and cells) send `closingBalance`,
+  `payoffDate`, `basePayoffDate`, `overpaymentLeft` and `baseOverpaymentLeft` as `""`,
+  `paymentsLeft` 0 and `scheduledTotal`/`upcoming` `"0"` (the SPA keys on `isSetUp`, not on
   empty strings); `Timelines` leaves such a debt out. `periodsPaid` counts the schedule's due
   windows holding at least one payment dated up to today (payments from before setup count). Create refuses a currency the user may not use (deleted, or another
   user's custom one: `currency.not_available`, the same `EnsureUsable` check budgets use).

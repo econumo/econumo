@@ -62,7 +62,7 @@ export interface BudgetLineMenus {
   /** parent: the envelope, whose currency a debt made from the category starts in */
   envelopeChildMenu: (child: EnvelopeChild, parent?: { currencyId: Id | null }) => MenuAction[]
   savingsRowMenu: (row: BudgetSavingsElementDto) => MenuAction[]
-  /** a Debts row: Details and Edit for the debt's owner, nothing for anyone else */
+  /** a Debts row: Details for the debt's owner, nothing for anyone else */
   debtRowMenu: (row: DebtRef) => MenuAction[]
   labelMenu: (label: LabelSpendDto) => MenuAction[]
   folderActionsFor: (folder: { id: Id; name: string } | null, empty: boolean, side: BudgetFolderSide) => MenuAction[] | undefined
