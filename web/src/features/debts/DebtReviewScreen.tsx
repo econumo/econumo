@@ -41,6 +41,9 @@ function Figure({ label, children }: { label: string; children: ReactNode }) {
 
 type Confirm = 'paid-off' | 'delete' | null
 
+const tabClass =
+  '-mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 text-sm font-normal text-muted-foreground after:hidden hover:text-foreground data-active:border-foreground data-active:text-foreground dark:data-active:border-foreground'
+
 function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTab: DebtDetailsTab; onClose: () => void }) {
   const { t, i18n } = useTranslation()
   const { data, error: loadError } = useDebt(debtId)
@@ -135,11 +138,12 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
           <Tabs value={tab} onValueChange={(v) => switchTab(v as DebtDetailsTab)} className="gap-4">
             {/* stays in view while the tab scrolls */}
             <div className="sticky top-0 z-10 -mx-1 bg-popover px-1 pt-1">
-              <TabsList variant="line" className="h-10 w-full justify-start gap-5 rounded-none border-b p-0">
-                <TabsTrigger value="overview" className="flex-none px-0 text-sm">
+              {/* underlined like the Reports tabs: the selected tab carries the rule */}
+              <TabsList variant="line" className="h-auto w-full justify-start gap-5 rounded-none border-b p-0">
+                <TabsTrigger value="overview" className={tabClass}>
                   {t('debts.review.tab.overview')}
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="flex-none px-0 text-sm">
+                <TabsTrigger value="settings" className={tabClass}>
                   {t('debts.review.tab.settings')}
                 </TabsTrigger>
               </TabsList>
