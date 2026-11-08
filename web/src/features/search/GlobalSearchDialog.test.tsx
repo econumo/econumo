@@ -454,27 +454,23 @@ describe('layout', () => {
     expect(list.className).toContain('sm:max-h-[70vh]')
   })
 
-  it.each([
-    ['the ✕ beside the field', 0],
-    ['the bottom Close bar', 1],
-  ])('on a phone %s closes the search', async (_, index) => {
+  it('on a phone the ✕ beside the field is the only close button and closes the search', async () => {
     phone(true)
     const user = userEvent.setup()
     renderDialog()
     await screen.findByTestId('tx-t1')
-    const [cross, bar] = screen.getAllByRole('button', { name: 'Close' })
+    const cross = screen.getByRole('button', { name: 'Close' })
     expect(cross.closest('[cmdk-root]')).not.toBeNull()
-    expect(bar.closest('[cmdk-root]')).toBeNull()
-    await user.click(index === 0 ? cross : bar)
+    await user.click(cross)
     expect(useUiStore.getState().searchOpen).toBe(false)
   })
 
-  it('on a phone both close buttons are hidden while the transaction preview is open', async () => {
+  it('on a phone the ✕ is hidden while the transaction preview is open', async () => {
     phone(true)
     const user = userEvent.setup()
     renderDialog()
     const searchSheet = await screen.findByRole('dialog', { name: 'Search' })
-    expect(within(searchSheet).getAllByRole('button', { name: 'Close' })).toHaveLength(2)
+    expect(within(searchSheet).getByRole('button', { name: 'Close' })).toBeInTheDocument()
     await user.click(await screen.findByTestId('tx-t1'))
     await screen.findByRole('dialog', { name: 'Transaction details' })
     expect(within(searchSheet).queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
