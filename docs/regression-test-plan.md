@@ -275,7 +275,7 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 Step 1 and step 2 render usably on a phone, tablet and desktop width
       (no horizontal scroll; Continue and Skip reachable).
 - [ ] An existing user who owns accounts (upgraded instance) is not sent to
-      onboarding and sees no get-ready cards or Next steps.
+      onboarding.
 - [ ] 📱 Reloading mid-flow (or retrying after a failed request) resumes at the
       same step with the same rows and creates nothing twice.
 - [ ] An invalid balance in a row with no name does not block Continue; Skip is
@@ -288,29 +288,9 @@ navigation (single-pane vs sidebar).
       shows the server's length message under the row once the field is left,
       and Continue stays disabled until it is fixed (or, for a category,
       unticked). In Chinese every default category saves without an error.
-- [ ] After finishing setup, a desktop `/budget` shows "Get ready" cards (Set your
-      plan, Bring in transactions) in place of the empty budget table; `/plan`
-      never shows them. "Open plan" opens `/plan`; saving any plan amount
-      removes that card. "Import CSV" opens the CSV import; a finished import
-      removes the card and its result dialog still shows.
-- [ ] 📱 On an iPhone in Safari the cards are "Add Econumo to your home screen"
-      (opens the Share-menu steps) and "Import Apple Wallet payments" (opens the
-      Apple Wallet settings; gone once a Wallet source exists); an iPad gets
-      the home-screen card only (no Apple Wallet); on Android only the
-      home-screen card, and only where the browser can install. Opened from
-      the home screen, the home-screen card is gone; it is also done once the
-      Share-menu steps opened from it are closed, or once the browser's install
-      prompt is accepted.
-- [ ] Skip on a card removes it for good (home screen: on this device only);
-      once every card is done or skipped, or the first real transaction is
-      added (an opening balance, or the adjustment a balance edit writes,
-      does not count; a bare transaction with only a description such as
-      "Coffee" does), the normal budget shows.
-      With no budget, the cards sit below the create-budget prompt.
-- [ ] 📱 The Inbox lists the same items under "Next steps", last, plus Set your
-      plan and Bring in transactions on a phone; they do not raise the badge,
-      the X dismisses one for good, and they stay after a transaction exists.
-      A user who never went through setup sees no cards and no Next steps.
+- [ ] 📱 The budget page never shows get-ready cards (an empty budget shows the
+      normal table or the create-budget prompt), and the Inbox has no "Next
+      steps" section, for a user still getting started or not.
 
 ## 4. Accounts & folders
 
@@ -717,7 +697,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       sources whose last sync failed/partially failed + failed imports + queued
       imports; skipped rows are not counted.
 - [ ] Inbox page 📱: sections appear in order Due, To review, Sync problems,
-      Failed imports, Skipped (collapsed), Sharing, Next steps; empty sections are
+      Failed imports, Skipped (collapsed), Sharing; empty sections are
       hidden; with nothing pending it reads "All caught up".
 - [ ] Inbox clears itself 📱: accepting/declining an invite, importing/skipping
       every queued row, and a successful re-sync each remove the item and lower

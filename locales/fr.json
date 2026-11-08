@@ -507,8 +507,7 @@
       "sync": "Problèmes de synchronisation",
       "failed": "Importations échouées",
       "to_review": "À vérifier",
-      "skipped": "Ignorés ({count})",
-      "next_steps": "Prochaines étapes"
+      "skipped": "Ignorés ({count})"
     },
     "due": {
       "overdue": "En retard · {date}",
@@ -1240,33 +1239,7 @@
       "note": "Vous pourrez ajouter d'autres devises plus tard dans les Paramètres.",
       "no_rate": "Pas encore de taux de change pour {codes}. Les montants dans cette devise ne seront pas convertis tant qu'un taux n'est pas ajouté."
     },
-    "step_of": "Étape {current} sur {total}",
-    "cards": {
-      "title": "Pour bien démarrer",
-      "description": "Quelques étapes utiles dès le premier jour.",
-      "skip": "Passer",
-      "dismiss": "Masquer : {step}",
-      "home_screen": {
-        "title": "Ajoutez Econumo à l'écran d'accueil",
-        "description": "Ouvrez-le comme une app, d'un seul geste.",
-        "action": "Ajouter"
-      },
-      "apple_wallet": {
-        "title": "Importez les paiements Apple Wallet",
-        "description": "Les paiements par carte de Wallet arrivent tout seuls dans Econumo.",
-        "action": "Configurer"
-      },
-      "plan": {
-        "title": "Définissez votre plan",
-        "description": "Décidez combien va à chaque catégorie ce mois-ci.",
-        "action": "Ouvrir le plan"
-      },
-      "import": {
-        "title": "Importez vos transactions",
-        "description": "Importez votre historique depuis un fichier CSV.",
-        "action": "Importer un CSV"
-      }
-    }
+    "step_of": "Étape {current} sur {total}"
   },
   "budgets": {
     "modal": {

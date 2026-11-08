@@ -80,9 +80,6 @@ import { applyArrangement, arrangementFromBuckets, arrangementItem, dropIndicato
 import type { DropIndicator } from './elementMove'
 import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
 import { CoinLoader } from '@/components/CoinLoader'
-import { GettingStartedCards } from '@/features/onboarding/GettingStartedCards'
-import { useGettingStartedActions } from '@/features/onboarding/useGettingStartedActions'
-import { isOpenStep, useGettingStarted } from '@/features/onboarding/useGettingStarted'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
 type CellTarget = Pick<BudgetElementDto, 'id' | 'name' | 'budgeted'>
@@ -110,15 +107,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const openAccountModal = useUiStore((s) => s.openAccountModal)
   const [editMode, setEditMode] = useState(false)
   const phoneView = isPhone && !editMode
-  // Until the first real transaction the budget page shows the getting-started
-  // cards instead of an empty budget; the Plan route never does, since a card
-  // leads there.
-  const gettingStarted = useGettingStarted()
-  const gettingStartedActions = useGettingStartedActions('budget')
-  const showGettingStarted = mode === 'budget' && gettingStarted.active && !gettingStarted.hasData && gettingStarted.steps.some(isOpenStep)
-  const gettingStartedCards = showGettingStarted ? (
-    <GettingStartedCards steps={gettingStarted.steps} onOpen={gettingStartedActions.open} onDismiss={gettingStarted.dismiss} />
-  ) : null
   // the monthly view's own one-month window (also the phone view's, on both
   // routes); PlanSheet fetches its own — passing null on that route skips the
   // fetch instead of duplicating it. Keyed off the user's stored default budget
@@ -308,12 +296,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     // categories are not needed: a budget can start empty and add them from its own menus
     const hasAccounts = accounts.length > 0
     return (
-      // with the cards below, the page can outgrow the screen: centred content
-      // would be cut off at the top, so it scrolls from the top instead
-      <div
-        className={`flex h-full flex-col items-center gap-3 p-6 text-center ${gettingStartedCards ? 'overflow-y-auto' : 'justify-center'}`}
-        data-testid="budget-empty"
-      >
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="budget-empty">
         <h1 className="text-xl font-semibold">{t('budgets.page.budget.empty.header')}</h1>
         <p className="text-sm text-muted-foreground">{t('budgets.page.budget.empty.no_budget')}</p>
         {hasAccounts ? (
@@ -341,8 +324,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             )
           }}
         />
-        {gettingStartedCards ? <div className="mt-6 w-full">{gettingStartedCards}</div> : null}
-        {gettingStartedActions.dialogs}
       </div>
     )
   }
@@ -682,9 +663,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         ) : null}
       </header>
 
-      {gettingStartedCards && !editMode ? (
-        <div className="min-h-0 flex-1 overflow-y-auto">{gettingStartedCards}</div>
-      ) : phoneView ? (
+      {phoneView ? (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
           <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} startDay={periodStartDay} />
@@ -992,7 +971,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       <BudgetUpdateDialog open={updateBudgetOpen} budget={budget} onClose={() => setUpdateBudgetOpen(false)} />
 
       <BudgetTransactionsDialog budget={budget} element={transactionsTarget} onClose={() => setTransactionsTarget(null)} />
-      {gettingStartedActions.dialogs}
     </div>
   )
 }

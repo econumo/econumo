@@ -507,8 +507,7 @@
       "sync": "Problemi di sincronizzazione",
       "failed": "Importazioni non riuscite",
       "to_review": "Da rivedere",
-      "skipped": "Saltati ({count})",
-      "next_steps": "Prossimi passi"
+      "skipped": "Saltati ({count})"
     },
     "due": {
       "overdue": "Scaduto · {date}",
@@ -1240,33 +1239,7 @@
       "note": "Potrai aggiungere altre valute più tardi nelle Impostazioni.",
       "no_rate": "Nessun tasso di cambio per {codes}. Gli importi in questa valuta non verranno convertiti finché non viene aggiunto un tasso."
     },
-    "step_of": "Passaggio {current} di {total}",
-    "cards": {
-      "title": "Preparati",
-      "description": "Alcune cose utili fin dal primo giorno.",
-      "skip": "Salta",
-      "dismiss": "Ignora: {step}",
-      "home_screen": {
-        "title": "Aggiungi Econumo alla schermata Home",
-        "description": "Aprilo come un'app, con un tocco.",
-        "action": "Aggiungi"
-      },
-      "apple_wallet": {
-        "title": "Importa i pagamenti di Apple Wallet",
-        "description": "I pagamenti con carta da Wallet arrivano in Econumo da soli.",
-        "action": "Configura"
-      },
-      "plan": {
-        "title": "Imposta il tuo piano",
-        "description": "Decidi quanto destinare a ogni categoria questo mese.",
-        "action": "Apri il piano"
-      },
-      "import": {
-        "title": "Porta le tue transazioni",
-        "description": "Importa lo storico da un file CSV.",
-        "action": "Importa CSV"
-      }
-    }
+    "step_of": "Passaggio {current} di {total}"
   },
   "budgets": {
     "modal": {

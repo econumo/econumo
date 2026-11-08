@@ -507,8 +507,7 @@
       "sync": "同步问题",
       "failed": "导入失败",
       "to_review": "待审核",
-      "skipped": "已跳过（{count}）",
-      "next_steps": "后续步骤"
+      "skipped": "已跳过（{count}）"
     },
     "due": {
       "overdue": "已逾期 · {date}",
@@ -1240,33 +1239,7 @@
       "note": "您以后可以在设置中添加更多币种。",
       "no_rate": "{codes} 还没有汇率。在添加汇率之前，该币种的金额不会被换算。"
     },
-    "step_of": "第 {current} 步，共 {total} 步",
-    "cards": {
-      "title": "准备就绪",
-      "description": "从第一天起就有帮助的几件事。",
-      "skip": "跳过",
-      "dismiss": "忽略：{step}",
-      "home_screen": {
-        "title": "将 Econumo 添加到主屏幕",
-        "description": "像应用一样打开，一触即达。",
-        "action": "添加"
-      },
-      "apple_wallet": {
-        "title": "导入 Apple 钱包付款",
-        "description": "钱包中的银行卡付款会自动进入 Econumo。",
-        "action": "设置"
-      },
-      "plan": {
-        "title": "制定计划",
-        "description": "决定本月每个类别的预算。",
-        "action": "打开计划"
-      },
-      "import": {
-        "title": "导入交易",
-        "description": "从 CSV 文件导入历史记录。",
-        "action": "导入 CSV"
-      }
-    }
+    "step_of": "第 {current} 步，共 {total} 步"
   },
   "budgets": {
     "modal": {

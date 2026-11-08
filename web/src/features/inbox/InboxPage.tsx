@@ -8,7 +8,6 @@ import { SettingsShell } from '@/features/settings/SettingsShell'
 import { FailedImportsSection, SkippedSection, ToReviewSection } from '@/features/imports/QueueSections'
 import { DueRecurringSection } from './DueRecurringSection'
 import { InboxSection } from './InboxSection'
-import { NextStepsSection } from './NextStepsSection'
 import { SharingSection } from './SharingSection'
 import { SyncProblemsSection } from './SyncProblemsSection'
 import { useInbox } from './useInbox'
@@ -61,7 +60,6 @@ export function InboxPage() {
         {inbox.invites.length > 0 ? (
           <InboxSection title={t('inbox.sections.sharing')}><SharingSection invites={inbox.invites} /></InboxSection>
         ) : null}
-        <NextStepsSection />
       </div>
     </SettingsShell>
   )

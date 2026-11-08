@@ -369,52 +369,8 @@ it('does not list a due template on an account shared with me read-only', async 
   expect(screen.queryByTestId('due-r-ro')).toBeNull()
 })
 
-const gettingStartedUser = (value: string) => ({
-  ...fixtureUser,
-  options: [...fixtureUser.options, { name: 'getting_started', value }],
-})
-
-it('lists open next steps last, without counting them toward the badge', async () => {
-  server.use(...coreHandlers({ user: gettingStartedUser('plan'), importQueue: { queued: [queued()], skipped: [], failed: [] } }))
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  const router = createMemoryRouter(
-    [{ element: <div><InboxButton variant="row" /><Outlet /></div>, children: [{ path: '/inbox', element: <InboxPage /> }] }],
-    { initialEntries: ['/inbox'] },
-  )
-  render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  )
-  expect(await screen.findByText('Bring in transactions')).toBeInTheDocument()
-  expect(screen.queryByText('Set your plan')).toBeNull()
-  const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-  expect(headings.at(-1)).toBe('Next steps')
-  await waitFor(() => expect(screen.getByTestId('inbox-badge')).toHaveTextContent('1'))
-})
-
-it('dismissing a next step posts it and drops the section once nothing is left', async () => {
-  const posts: unknown[] = []
-  let served = gettingStartedUser('plan')
-  server.use(
-    http.get('*/api/v1/user/get-user-data', () => HttpResponse.json({ success: true, message: '', data: { user: served } })),
-    ...coreHandlers({ user: served }),
-    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
-      const body = (await request.json()) as { value: string }
-      posts.push(body)
-      served = gettingStartedUser(body.value)
-      return HttpResponse.json({ success: true, message: '', data: { user: served } })
-    }),
-  )
-  renderInbox()
-  const user = userEvent.setup()
-  await user.click(await screen.findByRole('button', { name: 'Dismiss: Bring in transactions' }))
-  await waitFor(() => expect(posts).toEqual([{ value: 'plan,!import' }]))
-  expect(screen.queryByText('Next steps')).toBeNull()
-})
-
-it('shows no next steps to a user outside the flow', async () => {
-  server.use(...coreHandlers())
+it('lists no next steps, even for a user still getting started', async () => {
+  server.use(...coreHandlers({ user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'getting_started', value: '' }] } }))
   renderInbox()
   expect(await screen.findByText('All caught up')).toBeInTheDocument()
   expect(screen.queryByText('Next steps')).toBeNull()
