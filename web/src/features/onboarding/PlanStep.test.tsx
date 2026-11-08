@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
 import * as metrics from '@/lib/metrics'
+import { queryKeys } from '@/app/queryKeys'
 import { PlanStep } from './PlanStep'
 
 const pendingUser = {
@@ -43,6 +44,7 @@ const period = (() => {
 let creates: unknown[]
 let limits: { budgetId: string; elementId: string; period: string; amount: string | null }[]
 let budgetPeriods: string[]
+let listCalls: number
 
 interface Setup {
   salary?: string
@@ -50,12 +52,17 @@ interface Setup {
   elements?: unknown[]
   // an existing default budget instead of a fresh one
   existing?: { id: string; periodStartDay: number }
+  // a budget list already cached (fresh) when the step opens
+  cachedBudgets?: unknown[]
+  // the server lists the budget to the first list call only
+  listOnce?: boolean
 }
 
-function setup({ salary = '3000', accounts, elements = defaultElements(salary), existing }: Setup = {}) {
+function setup({ salary = '3000', accounts, elements = defaultElements(salary), existing, cachedBudgets, listOnce }: Setup = {}) {
   creates = []
   limits = []
   budgetPeriods = []
+  listCalls = 0
   const user = existing
     ? { ...pendingUser, options: pendingUser.options.map((o) => (o.name === 'budget' ? { ...o, value: existing.id } : o)) }
     : pendingUser
@@ -66,7 +73,10 @@ function setup({ salary = '3000', accounts, elements = defaultElements(salary), 
   const byId = (id: string) => metas().find((m) => m.id === id)
   server.use(...coreHandlers({ user, budgets: [], ...(accounts ? { accounts } : {}) }))
   server.use(
-    http.get('*/api/v1/budget/get-budget-list', () => ok({ items: metas() })),
+    http.get('*/api/v1/budget/get-budget-list', () => {
+      listCalls++
+      return ok({ items: listOnce && listCalls > 1 ? [] : metas() })
+    }),
     http.post('*/api/v1/budget/create-budget', async ({ request }) => {
       const body = (await request.json()) as { id: string }
       creates.push(body)
@@ -88,6 +98,7 @@ function setup({ salary = '3000', accounts, elements = defaultElements(salary), 
   const onSkip = vi.fn(() => Promise.resolve())
   const onGoTo = vi.fn()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  if (cachedBudgets) queryClient.setQueryData(queryKeys.budgets, cachedBudgets)
   render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
@@ -247,4 +258,19 @@ it('reports the plan only once the step is answered', async () => {
   resolve()
   await waitFor(() => expect(tracked).toEqual([[metrics.METRICS.ONBOARDING_PLAN_COMPLETE, { rows: 1 }]]))
   spy.mockRestore()
+})
+
+it('a cached budget list without the budget is refetched before planning', async () => {
+  setup({ existing: { id: 'b-old', periodStartDay: 1 }, cachedBudgets: [] })
+  expect(await input('Groceries')).toBeInTheDocument()
+  expect(budgetPeriods).toContain(period)
+})
+
+it('a budget the list never shows is an error with retry, and Skip stays', async () => {
+  const user = userEvent.setup()
+  const { onSkip } = setup({ existing: { id: 'b-old', periodStartDay: 1 }, cachedBudgets: [], listOnce: true })
+  expect(await screen.findByRole('button', { name: 'Try again' }, { timeout: 5000 })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: 'Skip for now' }))
+  expect(onSkip).toHaveBeenCalled()
 })

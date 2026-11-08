@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { isAxiosError } from 'axios'
@@ -47,9 +47,13 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
   const ensure = useCallback(() => {
     setEnsureFailure(null)
     ensureBudget()
-      .then(setBudgetId)
+      // the cached list may predate the budget (a fresh create, or a stale cache): its meta names the period
+      .then(async (id) => {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+        setBudgetId(id)
+      })
       .catch((error: unknown) => setEnsureFailure({ error, needsAccount: !isAxiosError(error) }))
-  }, [ensureBudget])
+  }, [ensureBudget, queryClient])
 
   useEffect(() => {
     if (!day0.ready || started.current) return
@@ -67,21 +71,49 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
     enabled: budgetId !== null && period !== null,
   })
 
+  const pending = saving || skipping
+  // every state keeps Skip reachable, so a step that cannot load never traps the user
+  const frame = (body: ReactNode, save?: { onSave: () => void; disabled: boolean }) => (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-2xl font-normal">{t('onboarding.plan_step.heading')}</h2>
+      {body}
+      <div className="mt-6 flex items-center justify-between">
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={pending}
+          onClick={() => {
+            setSkipping(true)
+            void onSkip().finally(() => setSkipping(false))
+          }}
+        >
+          {t('onboarding.plan_step.skip')}
+        </Button>
+        <Button type="button" disabled={pending || !save || save.disabled} onClick={save?.onSave}>
+          {t('onboarding.plan_step.save')}
+        </Button>
+      </div>
+    </section>
+  )
+
   if (ensureFailure?.needsAccount) {
-    return (
-      <section className="flex flex-col items-start gap-3">
-        <h2 className="text-2xl font-normal">{t('onboarding.plan_step.heading')}</h2>
+    return frame(
+      <div className="flex flex-col items-start gap-3">
         <p className="text-sm text-muted-foreground">{t('onboarding.plan_step.needs_account')}</p>
-        <Button type="button" onClick={() => onGoTo?.('accounts')}>
+        <Button type="button" variant="outline" onClick={() => onGoTo?.('accounts')}>
           {t('onboarding.plan_step.add_account')}
         </Button>
-      </section>
+      </div>,
     )
   }
-  if (ensureFailure) return <StepLoadError error={ensureFailure.error} onRetry={ensure} />
-  if (budgets.isError) return <StepLoadError error={budgets.error} onRetry={() => void budgets.refetch()} />
-  if (budget.isError) return <StepLoadError error={budget.error} onRetry={() => void budget.refetch()} />
-  if (!budget.data || period === null) return null
+  if (ensureFailure) return frame(<StepLoadError error={ensureFailure.error} onRetry={ensure} />)
+  if (budgets.isError) return frame(<StepLoadError error={budgets.error} onRetry={() => void budgets.refetch()} />)
+  // ensure() refetched the list before naming the budget, so a budget still missing from it is an error
+  if (budgetId !== null && budgets.data !== undefined && !budgets.isFetching && meta === undefined) {
+    return frame(<StepLoadError error={new Error('budget missing from the list')} onRetry={ensure} />)
+  }
+  if (budget.isError) return frame(<StepLoadError error={budget.error} onRetry={() => void budget.refetch()} />)
+  if (!budget.data || period === null) return frame(null)
 
   const elements = budget.data.structure.elements.filter((e) => e.isArchived === 0)
   const income = elements.filter((e) => e.type === BudgetElementType.INCOME_CATEGORY).sort(byPosition)
@@ -158,10 +190,8 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
       </section>
     )
 
-  const pending = saving || skipping
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-2xl font-normal">{t('onboarding.plan_step.heading')}</h2>
+  return frame(
+    <>
       <p className="text-sm text-muted-foreground">{t('onboarding.plan_step.subtext')}</p>
 
       {rows.length === 0 && (
@@ -187,23 +217,7 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
           {apiErrorMessage(saveError)}
         </p>
       )}
-
-      <div className="mt-6 flex items-center justify-between">
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={pending}
-          onClick={() => {
-            setSkipping(true)
-            void onSkip().finally(() => setSkipping(false))
-          }}
-        >
-          {t('onboarding.plan_step.skip')}
-        </Button>
-        <Button type="button" disabled={pending || invalid.size > 0 || rows.length === 0} onClick={() => void save()}>
-          {t('onboarding.plan_step.save')}
-        </Button>
-      </div>
-    </section>
+    </>,
+    { onSave: () => void save(), disabled: invalid.size > 0 || rows.length === 0 },
   )
 }

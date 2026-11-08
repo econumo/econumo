@@ -127,6 +127,8 @@ it('resolving the last open step completes onboarding and lands on the budget', 
   const user = userEvent.setup()
   renderPage()
   expect(await heading('Plan this month')).toBeInTheDocument()
+  // the heading shows while the budget loads; Save waits for its rows
+  await screen.findByRole('textbox', { name: 'Food' }, { timeout: 5000 })
   await user.click(screen.getByRole('button', { name: 'Save plan' }))
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
   expect(posts).toEqual([
