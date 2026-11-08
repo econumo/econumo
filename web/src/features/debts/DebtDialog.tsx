@@ -18,7 +18,6 @@ import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { useCreateDebt } from './queries'
 import { AmountField, ScheduleField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
-import { DebtTermsForm } from './DebtTermsForm'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
 import { amountError, buildCreatePayload, useDebtCreateForm } from './useDebtForm'
 
@@ -206,16 +205,6 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
   )
 }
 
-// Until the debt's own screen hosts it, an existing debt opened here gets the
-// terms form: Finish setup when it has no terms, Edit otherwise.
-function DebtTermsDialog({ debt, onDone }: { debt: DebtDto; onDone: () => void }) {
-  return (
-    <ResponsiveDialog open fullScreen dismissible={false} onOpenChange={(o) => !o && onDone()} title={debt.name}>
-      <DebtTermsForm debt={debt} mode={debt.isSetUp === 1 ? 'edit' : 'setup'} onSaved={onDone} onCancel={onDone} />
-    </ResponsiveDialog>
-  )
-}
-
 export function DebtDialog() {
   const params = useUiStore((s) => s.debtModal)
   const close = useUiStore((s) => s.closeDebtModal)
@@ -224,8 +213,5 @@ export function DebtDialog() {
     return null
   }
   // a different request is a different form
-  if (params.debt) {
-    return <DebtTermsDialog key={`${params.debt.id}:${params.debt.isSetUp}`} debt={params.debt} onDone={close} />
-  }
   return <DebtCreateForm key={`${params.categoryId ?? ''}:${params.currencyId ?? ''}`} params={params} onDone={close} />
 }

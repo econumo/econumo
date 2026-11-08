@@ -8,7 +8,7 @@ import { coreHandlers, fixtureCategories, fixtureLabels, fixturePayees, fixtureT
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import { DebtDialog } from './DebtDialog'
-import { wireDebt, wireDebtNotSetUp } from './testDebt'
+import { wireDebtNotSetUp } from './testDebt'
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -182,16 +182,4 @@ it('requires the name, category and payment before sending', async () => {
 
   expect(await screen.findAllByText('Required field')).toHaveLength(3)
   expect(bodies).toHaveLength(0)
-})
-
-it('an existing debt opens its terms, a debt not set up its setup', async () => {
-  renderDialog()
-  useUiStore.getState().openDebtModal({ debt: wireDebt })
-  await screen.findByRole('heading', { name: 'Car loan' })
-  expect(screen.getByLabelText('Balance now')).toHaveValue('1200')
-  expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
-
-  useUiStore.getState().openDebtModal({ debt: wireDebtNotSetUp })
-  expect(await screen.findByRole('button', { name: 'Finish setup' })).toBeInTheDocument()
-  expect(screen.getByLabelText('Balance now')).toHaveValue('')
 })

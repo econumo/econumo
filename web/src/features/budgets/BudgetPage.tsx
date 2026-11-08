@@ -751,6 +751,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     debtMenu={hoverMenus ? menus.debtRowMenu : undefined}
                     incomeSectionMenu={hoverMenus ? menus.sectionMenu('income') : undefined}
                     savingsSectionMenu={hoverMenus ? menus.savingsSectionMenu : undefined}
+                    userId={user?.id}
                     drag={
                       dragEnabled
                         ? {

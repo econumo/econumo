@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
-import { fixtureWireBudget } from '@/test/fixtures'
+import { fixtureDebtRow, fixtureWireBudget } from '@/test/fixtures'
 import type { BudgetCommentDto, BudgetElementDto, PlanElementDto } from '@/api/dto/budget'
 import { makeBudgetExchange } from './budgetMath'
 import { ElementSheet } from './ElementSheet'
@@ -261,4 +261,25 @@ it('an income plan cell with no plan keeps its Planned figure empty', () => {
   const salaries = planElement({ id: 'ie1', type: 4, name: 'Salaries' })
   renderSheet({ target: { kind: 'plan', cell: { element: salaries, planned: '0', actual: '0', upcoming: '1500' } }, onShowTransactions: undefined })
   expect(screen.getByTestId('sheet-figure-planned')).not.toHaveTextContent('1,500')
+})
+
+describe('a debt not set up', () => {
+  const row = fixtureDebtRow({ closingBalance: '', paymentsLeft: 0, payoffDate: '', basePayoffDate: '', overpaymentLeft: '', baseOverpaymentLeft: '', isSetUp: 0 })
+
+  it('shows a dash for Left, no payments left, and offers its owner Finish setup', async () => {
+    const onDetails = vi.fn()
+    renderSheet({ target: { kind: 'debt', row }, onDetails })
+    expect(screen.getByTestId('sheet-figure-left')).toHaveTextContent('Left—')
+    expect(screen.getByTestId('sheet-figure-paid')).toHaveTextContent('900.00')
+    expect(screen.queryByTestId('sheet-state')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
+    expect(onDetails).toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'Details' })).toBeNull()
+  })
+
+  it('anyone else gets the dash and no button', () => {
+    renderSheet({ target: { kind: 'debt', row } })
+    expect(screen.getByTestId('sheet-figure-left')).toHaveTextContent('Left—')
+    expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull()
+  })
 })

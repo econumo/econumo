@@ -521,13 +521,8 @@
       "never_pays_off": "Этот платёж не покрывает проценты, поэтому долг никогда не будет погашен."
     },
     "details": {
-      "header": "Долг",
-      "current_balance": "Остаток сейчас",
-      "payments_left": "Осталось платежей",
       "money_left": "Осталось выплатить",
-      "overpayment_left": "Осталось переплатить",
       "overpaid_so_far": "Уже переплачено",
-      "payoff_date": "Дата погашения",
       "snapshots": "История условий",
       "snapshot_terms": "{payment} · {schedule} · до {date}",
       "payments": "Платежи",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "Завершить настройку"
+    },
+    "review": {
+      "menu": "Действия с долгом",
+      "rename": "Переименовать",
+      "progress": "Оплачено {paid} из {total}",
+      "owed_now": "Долг сейчас: {amount}",
+      "owed_now_label": "Долг сейчас",
+      "paid_so_far": "Уже оплачено",
+      "not_set_up": "Укажите сумму долга и дату окончания кредита, чтобы увидеть, сколько платежей осталось",
+      "loan": "Кредит",
+      "next_payment": "Следующий платёж",
+      "loan_ends": "Окончание кредита",
+      "start_date": "Дата начала",
+      "from_first_payment": "С первого платежа",
+      "overpayment_to_come": "Ещё предстоит переплатить"
     }
   },
   "recurring": {

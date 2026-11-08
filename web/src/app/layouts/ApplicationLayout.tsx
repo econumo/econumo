@@ -30,7 +30,7 @@ import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
 import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
-import { DebtDetailsSheet } from '@/features/debts/DebtDetailsSheet'
+import { DebtReviewScreen } from '@/features/debts/DebtReviewScreen'
 import { DebtDialog } from '@/features/debts/DebtDialog'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
@@ -334,7 +334,7 @@ export function ApplicationLayout() {
       <RulePromptDialog />
       <RecurringDialog />
       <DebtDialog />
-      <DebtDetailsSheet />
+      <DebtReviewScreen />
       <SwitchAccountPrompt />
       <LoadingDialog open={showBootLoader} label={t('common.app.modal.loading.data_loading')} />
       {showLogoutEscape ? <LogoutEscapeButton /> : null}

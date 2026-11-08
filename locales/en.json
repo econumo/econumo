@@ -521,13 +521,8 @@
       "never_pays_off": "This payment doesn't cover the interest, so the debt never pays off."
     },
     "details": {
-      "header": "Debt",
-      "current_balance": "Balance now",
-      "payments_left": "Payments left",
       "money_left": "Left to pay",
-      "overpayment_left": "Overpayment left",
       "overpaid_so_far": "Overpaid so far",
-      "payoff_date": "Payoff date",
       "snapshots": "History of terms",
       "snapshot_terms": "{payment} · {schedule} · until {date}",
       "payments": "Payments",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "Finish setup"
+    },
+    "review": {
+      "menu": "Debt actions",
+      "rename": "Rename",
+      "progress": "{paid} of {total} paid",
+      "owed_now": "Owed now {amount}",
+      "owed_now_label": "Owed now",
+      "paid_so_far": "Paid so far",
+      "not_set_up": "Add what you owe and when the loan ends to see payments left",
+      "loan": "Loan",
+      "next_payment": "Next payment",
+      "loan_ends": "Loan ends",
+      "start_date": "Start date",
+      "from_first_payment": "From the first payment",
+      "overpayment_to_come": "Overpayment still to come"
     }
   },
   "recurring": {

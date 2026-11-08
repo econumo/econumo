@@ -521,13 +521,8 @@
       "never_pays_off": "Diese Rate deckt die Zinsen nicht, daher wird die Schuld nie abbezahlt."
     },
     "details": {
-      "header": "Schuld",
-      "current_balance": "Aktueller Saldo",
-      "payments_left": "Verbleibende Zahlungen",
       "money_left": "Noch zu zahlen",
-      "overpayment_left": "Verbleibende Mehrkosten",
       "overpaid_so_far": "Bisherige Mehrkosten",
-      "payoff_date": "Voraussichtlich abbezahlt am",
       "snapshots": "Verlauf der Konditionen",
       "snapshot_terms": "{payment} · {schedule} · bis {date}",
       "payments": "Zahlungen",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "Einrichtung abschließen"
+    },
+    "review": {
+      "menu": "Aktionen für diese Schuld",
+      "rename": "Umbenennen",
+      "progress": "{paid} von {total} bezahlt",
+      "owed_now": "Aktuell geschuldet: {amount}",
+      "owed_now_label": "Aktuell geschuldet",
+      "paid_so_far": "Bisher bezahlt",
+      "not_set_up": "Geben Sie an, was Sie schulden und wann der Kredit endet, um die verbleibenden Zahlungen zu sehen",
+      "loan": "Kredit",
+      "next_payment": "Nächste Zahlung",
+      "loan_ends": "Kredit endet",
+      "start_date": "Startdatum",
+      "from_first_payment": "Ab der ersten Zahlung",
+      "overpayment_to_come": "Noch anfallende Mehrkosten"
     }
   },
   "recurring": {

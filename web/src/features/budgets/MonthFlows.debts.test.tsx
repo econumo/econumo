@@ -9,11 +9,12 @@ import { MonthFlows } from './MonthFlows'
 import { DebtExtraNote } from './debtRow'
 import { planHintClass } from './planHint'
 import { currentPeriod } from './period'
+import { useUiStore } from '@/app/uiStore'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 
-function renderFlows(debts: BudgetDebtElementDto[], adjust?: (b: BudgetDto) => void) {
+function renderFlows(debts: BudgetDebtElementDto[], adjust?: (b: BudgetDto) => void, userId = 'u1') {
   const budget = coerceBudgetFixture(fixtureWireBudget)
   budget.structure.savings = [
     { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0, budgeted: '100', spent: '20', available: '80' },
@@ -34,6 +35,7 @@ function renderFlows(debts: BudgetDebtElementDto[], adjust?: (b: BudgetDto) => v
         </span>
       )}
       onShowTransactions={onShowTransactions}
+      userId={userId}
     />,
   )
   return { onShowTransactions }
@@ -54,6 +56,36 @@ it('renders the Debts section after Savings with Planned/Paid/Left', () => {
   expect(within(row).getByTestId('flow-planned')).toHaveTextContent('1,500.00')
   expect(within(row).getByTestId('flow-actual')).toHaveTextContent('900.00')
   expect(within(row).getByTestId('flow-third')).toHaveTextContent('23,000.00')
+})
+
+const notSetUpRow = () =>
+  fixtureDebtRow({ closingBalance: '', paymentsLeft: 0, scheduledTotal: '0', upcoming: '0', payoffDate: '', basePayoffDate: '', overpaymentLeft: '', baseOverpaymentLeft: '', isSetUp: 0 })
+
+it('debt row offers its owner Finish setup in Left while not set up', async () => {
+  useUiStore.setState({ debtDetailsId: null })
+  renderFlows([notSetUpRow()])
+  const row = screen.getByTestId('month-debts-row-debt-1')
+  const left = within(row).getByTestId('flow-third')
+  expect(left).not.toHaveTextContent('payments left')
+  await userEvent.click(within(left).getByRole('button', { name: 'Finish setup' }))
+  expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
+  // Paid still shows; the section's Left sums only the debts set up
+  expect(within(row).getByTestId('flow-actual')).toHaveTextContent('900.00')
+})
+
+it('debt row shows a dash for a partner when not set up', () => {
+  renderFlows([notSetUpRow()], undefined, 'u2')
+  const left = within(screen.getByTestId('month-debts-row-debt-1')).getByTestId('flow-third')
+  expect(left).toHaveTextContent('—')
+  expect(within(left).queryByRole('button')).toBeNull()
+  expect(left).not.toHaveTextContent('Finish setup')
+})
+
+it('the Left total counts only the debts set up', () => {
+  // a folded section shows its sums in the header
+  useBudgetPeriodStore.setState({ budgetFolds: { debts: true } })
+  renderFlows([fixtureDebtRow(), { ...notSetUpRow(), id: 'debt-2', position: 1 }])
+  expect(screen.getByTestId('month-debts-header')).toHaveTextContent('23,000.00')
 })
 
 it('folds like the other sections', async () => {

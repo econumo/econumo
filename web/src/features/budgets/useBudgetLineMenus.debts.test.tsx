@@ -1,18 +1,12 @@
 import type { ReactNode } from 'react'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { coreHandlers, fixtureDebtRow, fixtureWireBudget } from '@/test/fixtures'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 import { useUiStore } from '@/app/uiStore'
-import { queryKeys } from '@/app/queryKeys'
-import { wireDebt } from '@/features/debts/testDebt'
-import { toast } from 'sonner'
 import { useBudgetLineMenus } from './useBudgetLineMenus'
-
-vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
 function renderMenus(userId = 'u1', adjust?: (b: BudgetDto) => void) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
@@ -80,32 +74,22 @@ it('an archived budget offers no Track as debt', () => {
 })
 
 describe('the debt row menu', () => {
-  it('the owner gets Details and Edit', async () => {
-    server.use(http.get('*/api/v1/debt/get-debt', () => HttpResponse.json({ success: true, message: '', data: { item: { ...wireDebt, id: 'debt-1' }, snapshots: [], payments: [] } })))
+  it('the owner gets Details and Edit, both on the debt\'s review screen', () => {
     const { result } = renderMenus()
     const actions = result.current.debtRowMenu(fixtureDebtRow())
     expect(labels(actions)).toEqual(['Details', 'Edit'])
     act(() => actions[0].onSelect())
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
+    useUiStore.setState({ debtDetailsId: null })
     act(() => actions[1].onSelect())
-    await waitFor(() => expect(useUiStore.getState().debtModal?.debt?.id).toBe('debt-1'))
-  })
-
-  it('Edit loads the debt afresh rather than from the cache', async () => {
-    server.use(http.get('*/api/v1/debt/get-debt', () => HttpResponse.json({ success: true, message: '', data: { item: { ...wireDebt, id: 'debt-1', currentBalance: '990' }, snapshots: [], payments: [] } })))
-    const { result, queryClient } = renderMenus()
-    // cached before a payment moved the balance
-    queryClient.setQueryData(queryKeys.debt('debt-1'), { item: { ...wireDebt, id: 'debt-1', currentBalance: '1090' }, snapshots: [], payments: [] })
-    act(() => result.current.debtRowMenu(fixtureDebtRow())[1].onSelect())
-    await waitFor(() => expect(useUiStore.getState().debtModal?.debt?.currentBalance).toBe('990'))
-  })
-
-  it('Edit says why when the debt cannot be loaded', async () => {
-    server.use(http.get('*/api/v1/debt/get-debt', () => HttpResponse.json({ success: false, message: 'Debt not found', code: 400, errors: {} }, { status: 400 })))
-    const { result } = renderMenus()
-    act(() => result.current.debtRowMenu(fixtureDebtRow())[1].onSelect())
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Debt not found'))
+    expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
     expect(useUiStore.getState().debtModal).toBeNull()
+  })
+
+  it('the sheet pencil opens the review screen too', () => {
+    const { result } = renderMenus()
+    act(() => result.current.editFromSheet({ kind: 'debt', row: fixtureDebtRow() }))
+    expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
   })
 
   it('a guest sees no Edit in the debt row menu', () => {

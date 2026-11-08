@@ -521,13 +521,8 @@
       "never_pays_off": "Цей платіж не покриває відсотки, тож борг ніколи не буде погашено."
     },
     "details": {
-      "header": "Борг",
-      "current_balance": "Залишок зараз",
-      "payments_left": "Залишилося платежів",
       "money_left": "Залишилося виплатити",
-      "overpayment_left": "Залишилося переплатити",
       "overpaid_so_far": "Уже переплачено",
-      "payoff_date": "Дата погашення",
       "snapshots": "Історія умов",
       "snapshot_terms": "{payment} · {schedule} · до {date}",
       "payments": "Платежі",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "Завершити налаштування"
+    },
+    "review": {
+      "menu": "Дії з боргом",
+      "rename": "Перейменувати",
+      "progress": "Сплачено {paid} з {total}",
+      "owed_now": "Борг зараз: {amount}",
+      "owed_now_label": "Борг зараз",
+      "paid_so_far": "Уже сплачено",
+      "not_set_up": "Вкажіть суму боргу та дату закінчення кредиту, щоб побачити, скільки платежів залишилося",
+      "loan": "Кредит",
+      "next_payment": "Наступний платіж",
+      "loan_ends": "Закінчення кредиту",
+      "start_date": "Дата початку",
+      "from_first_payment": "З першого платежу",
+      "overpayment_to_come": "Ще належить переплатити"
     }
   },
   "recurring": {

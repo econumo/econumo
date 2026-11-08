@@ -53,8 +53,9 @@ interface ResponsiveDialogProps {
   hideHeader?: boolean
   /** desktop: keep the corner X even with hideHeader (hero-style dialogs) */
   showClose?: boolean
-  /** mobile only: stretch the sheet to the full viewport (long forms; avoids a scrolling half-sheet) */
-  fullScreen?: boolean
+  /** stretch the sheet to the full viewport (long forms; avoids a scrolling half-sheet):
+   *  `true` on phones only, `'always'` on every screen size (a page of its own) */
+  fullScreen?: boolean | 'always'
   /** action row rendered outside the scroll area — pinned to the sheet bottom on mobile */
   footer?: ReactNode
   /** desktop width: `wide` suits list-heavy dialogs (the global search palette) */
@@ -211,7 +212,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
   // dismissible=false shields against ACCIDENTAL dismissal (outside click /
   // swipe) — those are prevented at the source (onInteractOutside, vaul's
   // dismissible), so any close reaching here is deliberate (Escape) and passes
-  if (isMobile && fullScreen) {
+  if ((isMobile && fullScreen) || fullScreen === 'always') {
     // full-viewport forms read as a PAGE, not a sheet — a plain fade beats the
     // whole screen sliding up from the bottom
     return (
@@ -222,7 +223,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
           ref={contentRef}
           style={pageStyle}
           onFocusCapture={onPageFocus}
-          className="top-0 left-0 flex h-dvh max-h-dvh w-screen after:absolute after:inset-x-0 after:top-full after:h-dvh after:bg-background after:content-[''] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
+          className="top-0 left-0 flex h-dvh max-h-dvh w-screen sm:max-w-none after:absolute after:inset-x-0 after:top-full after:h-dvh after:bg-background after:content-[''] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
           onInteractOutside={onInteractOutside}
           onEscapeKeyDown={onEscapeKeyDown}
           onCloseAutoFocus={onCloseAutoFocus}

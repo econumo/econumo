@@ -521,13 +521,8 @@
       "never_pays_off": "Ce paiement ne couvre pas les intérêts : la dette ne sera donc jamais remboursée."
     },
     "details": {
-      "header": "Dette",
-      "current_balance": "Solde actuel",
-      "payments_left": "Paiements restants",
       "money_left": "Reste à payer",
-      "overpayment_left": "Surcoût restant",
       "overpaid_so_far": "Surcoût déjà payé",
-      "payoff_date": "Date de remboursement",
       "snapshots": "Historique des conditions",
       "snapshot_terms": "{payment} · {schedule} · jusqu’au {date}",
       "payments": "Paiements",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "Terminer la configuration"
+    },
+    "review": {
+      "menu": "Actions de la dette",
+      "rename": "Renommer",
+      "progress": "{paid} sur {total} payés",
+      "owed_now": "Dû actuellement : {amount}",
+      "owed_now_label": "Dû actuellement",
+      "paid_so_far": "Payé jusqu'ici",
+      "not_set_up": "Indiquez ce que vous devez et la date de fin du prêt pour voir les paiements restants",
+      "loan": "Prêt",
+      "next_payment": "Prochain paiement",
+      "loan_ends": "Fin du prêt",
+      "start_date": "Date de début",
+      "from_first_payment": "Dès le premier paiement",
+      "overpayment_to_come": "Surcoût à venir"
     }
   },
   "recurring": {

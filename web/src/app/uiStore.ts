@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { persist } from 'zustand/middleware'
 import type { AccountDto } from '@/api/dto/account'
-import type { DebtDto } from '@/api/dto/debt'
 import type { TransactionImportLinkDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionPrefill, TransactionType } from '@/api/dto/transaction'
@@ -46,9 +45,8 @@ export interface OpenRecurringParams {
   accountId?: Id
 }
 
+/** a new debt; an existing one is opened on its review screen (`openDebtDetails`) */
 export interface OpenDebtParams {
-  /** this debt's terms (Finish setup, or Edit once set up); absent = a new debt */
-  debt?: DebtDto
   /** prefills a new debt (the budget row's "Track as debt") */
   categoryId?: Id
   currencyId?: Id

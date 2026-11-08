@@ -57,11 +57,16 @@ export function DebtsSettingsPage() {
                 <EntityIcon name={debt.icon} className="text-xl text-muted-foreground" />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-sm">{debt.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {debt.isPaidOff === 1 ? <Badge variant="secondary">{t('debts.list.paid_off')}</Badge> : paymentsLeft(debt.paymentsLeft)}
-                  </span>
+                  {/* without its terms a debt has no count or balance yet: the row says what is missing */}
+                  {debt.isSetUp === 0 ? (
+                    <span className="text-xs text-econumo-link">{t('debts.terms.finish_setup')}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      {debt.isPaidOff === 1 ? <Badge variant="secondary">{t('debts.list.paid_off')}</Badge> : paymentsLeft(debt.paymentsLeft)}
+                    </span>
+                  )}
                 </span>
-                <span className="shrink-0 text-sm">{money(debt.currentBalance, debt)}</span>
+                {debt.isSetUp === 0 ? null : <span className="shrink-0 text-sm">{money(debt.currentBalance, debt)}</span>}
               </button>
             </li>
           ))}

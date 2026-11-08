@@ -521,13 +521,8 @@
       "never_pays_off": "Este pago no cubre los intereses, así que la deuda nunca se salda."
     },
     "details": {
-      "header": "Deuda",
-      "current_balance": "Saldo actual",
-      "payments_left": "Pagos restantes",
       "money_left": "Falta por pagar",
-      "overpayment_left": "Sobrecoste restante",
       "overpaid_so_far": "Sobrecoste pagado hasta ahora",
-      "payoff_date": "Fecha de liquidación",
       "snapshots": "Historial de condiciones",
       "snapshot_terms": "{payment} · {schedule} · hasta {date}",
       "payments": "Pagos",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "Terminar configuración"
+    },
+    "review": {
+      "menu": "Acciones de la deuda",
+      "rename": "Renombrar",
+      "progress": "{paid} de {total} pagados",
+      "owed_now": "Debes ahora {amount}",
+      "owed_now_label": "Debes ahora",
+      "paid_so_far": "Pagado hasta ahora",
+      "not_set_up": "Añade lo que debes y cuándo termina el préstamo para ver los pagos que quedan",
+      "loan": "Préstamo",
+      "next_payment": "Próximo pago",
+      "loan_ends": "Fin del préstamo",
+      "start_date": "Fecha de inicio",
+      "from_first_payment": "Desde el primer pago",
+      "overpayment_to_come": "Sobrecoste por pagar"
     }
   },
   "recurring": {

@@ -132,8 +132,13 @@ export function ElementSheet({
     const row = target.row
     figures.push(planFigure('planned', label.planned, row.budgeted))
     figures.push({ key: 'paid', label: t('budgets.page.debts.paid'), value: actual(row.spent) })
-    figures.push({ key: 'left', label: t('budgets.page.debts.left'), value: fmt(row.closingBalance) })
-    stateSentence = row.isPaidOff === 1 ? t('debts.list.paid_off') : pluralPick(t('budgets.page.debts.payments_left'), row.paymentsLeft, i18n.language)
+    // a debt not set up knows no balance; its owner finishes the setup from Details
+    if (row.isSetUp === 0) {
+      figures.push({ key: 'left', label: t('budgets.page.debts.left'), value: EMPTY })
+    } else {
+      figures.push({ key: 'left', label: t('budgets.page.debts.left'), value: fmt(row.closingBalance) })
+      stateSentence = row.isPaidOff === 1 ? t('debts.list.paid_off') : pluralPick(t('budgets.page.debts.payments_left'), row.paymentsLeft, i18n.language)
+    }
     actualInBase = row.budgetSpent
   } else if (target.kind === 'label') {
     figures.push({ key: 'spent', label: label.spent, value: actual(target.label.spent) })
@@ -241,7 +246,7 @@ export function ElementSheet({
             ) : null}
             {onDetails ? (
               <Button type="button" variant="secondary" onClick={onDetails}>
-                {t('budgets.page.debts.details')}
+                {target.kind === 'debt' && target.row.isSetUp === 0 ? t('debts.terms.finish_setup') : t('budgets.page.debts.details')}
               </Button>
             ) : null}
             {canSetAmount ? (

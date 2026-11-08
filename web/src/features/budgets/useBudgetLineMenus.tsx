@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import { v7 as uuidv7 } from 'uuid'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
-import { apiErrorMessage } from '@/lib/apiError'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type {
   BudgetDebtElementDto,
@@ -24,7 +22,6 @@ import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
 import { useUiStore } from '@/app/uiStore'
 import { useAccounts } from '@/features/accounts/queries'
-import { useFetchDebtForEdit } from '@/features/debts/queries'
 import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
@@ -101,7 +98,6 @@ export function useBudgetLineMenus({
   const openAccountModal = useUiStore((s) => s.openAccountModal)
   const openDebtModal = useUiStore((s) => s.openDebtModal)
   const openDebtDetails = useUiStore((s) => s.openDebtDetails)
-  const fetchDebtForEdit = useFetchDebtForEdit()
   const classificationMenu = useClassificationMenu(budget?.meta.id ?? '')
   const createEnvelope = useCreateEnvelope()
   const updateEnvelope = useUpdateEnvelope()
@@ -144,11 +140,6 @@ export function useBudgetLineMenus({
 
   // a debt is its owner's alone: everyone else sees its row and nothing more
   const ownsDebt = (row: DebtRef) => !!userId && row.ownerUserId === userId
-  const editDebt = (id: Id) => {
-    void fetchDebtForEdit(id)
-      .then((details) => openDebtModal({ debt: details.item }))
-      .catch((err: unknown) => toast.error(apiErrorMessage(err)))
-  }
   const editAccess = (target: SheetTarget): boolean | null => {
     if (target.kind === 'label') {
       // update-label answers anyone but the tag's owner with NotFound
@@ -165,7 +156,7 @@ export function useBudgetLineMenus({
       return
     }
     if (target.kind === 'debt') {
-      editDebt(target.row.id)
+      openDebtDetails(target.row.id)
       return
     }
     const el = sheetElement(target)
@@ -293,7 +284,8 @@ export function useBudgetLineMenus({
     ownsDebt(row)
       ? [
           { label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id) },
-          { label: t('common.button.edit.label'), onSelect: () => editDebt(row.id) },
+          // the review screen is where a debt is edited: its terms, filters and name
+          { label: t('common.button.edit.label'), onSelect: () => openDebtDetails(row.id) },
         ]
       : []
   const labelMenu = (label: LabelSpendDto): MenuAction[] => editAction({ kind: 'label', label })

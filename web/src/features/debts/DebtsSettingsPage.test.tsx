@@ -7,7 +7,7 @@ import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { DebtsSettingsPage } from './DebtsSettingsPage'
-import { wireDebt } from './testDebt'
+import { wireDebt, wireDebtNotSetUp } from './testDebt'
 
 function mockMatchMedia(compact = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -51,6 +51,20 @@ it('Settings lists debts with payments left', async () => {
   const order = screen.getAllByRole('listitem').map((li) => li.textContent)
   expect(order[0]).toContain('Car loan')
   expect(order[1]).toContain('Phone plan')
+})
+
+it('Settings list shows Finish setup for a debt without terms', async () => {
+  server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt-list', () => ok({ items: [{ ...wireDebtNotSetUp, id: 'd3', name: 'Study' }] })))
+  const user = userEvent.setup()
+  renderPage()
+
+  const row = await screen.findByTestId('debt-d3')
+  expect(row).toHaveTextContent('Study')
+  expect(row).toHaveTextContent('Finish setup')
+  expect(row).not.toHaveTextContent('payments left')
+  expect(row).not.toHaveTextContent('$')
+  await user.click(row)
+  expect(useUiStore.getState().debtDetailsId).toBe('d3')
 })
 
 it('uses the singular for one payment left', async () => {

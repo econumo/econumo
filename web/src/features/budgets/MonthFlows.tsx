@@ -137,6 +137,8 @@ interface MonthFlowsProps {
   debtMenu?: (row: BudgetDebtElementDto) => MenuAction[] | undefined
   incomeSectionMenu?: MenuAction[]
   savingsSectionMenu?: MenuAction[]
+  /** the caller: a debt not set up offers its owner Finish setup */
+  userId?: Id
   /** drag and drop on hover, for anyone who may configure the budget */
   drag?: {
     /** onFailed: the move did not happen (a hidden row shows again) */
@@ -166,6 +168,7 @@ export function MonthFlows({
   debtMenu,
   incomeSectionMenu,
   savingsSectionMenu,
+  userId,
   drag,
 }: MonthFlowsProps) {
   const { t } = useTranslation()
@@ -413,7 +416,7 @@ export function MonthFlows({
       muted={row.isPaidOff === 1}
       planned={planned({ kind: 'debt', row }, row.budgeted, row.currencyId)}
       actual={actualCell({ id: row.id, type: BudgetElementType.DEBT, name: row.name, icon: row.icon, currencyId: row.currencyId }, row.spent, row.currencyId)}
-      third={<DebtLeft row={row} amount={fmt(row.closingBalance, row.currencyId)} />}
+      third={<DebtLeft row={row} amount={fmt(row.closingBalance, row.currencyId)} userId={userId} />}
       actionsColumn={actionsColumn}
       menu={debtMenu?.(row)}
     />
@@ -576,7 +579,8 @@ export function MonthFlows({
   const savingsSum = totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, exchangeFn)
   const debtRows = [...(budget.structure.debts ?? [])].sort((a, b) => a.position - b.position)
   const debtSum = debtTotals(budget, exchangeFn)
-  const debtLeft = debtRows.reduce((sum, row) => add(sum, exchangeFn(row.currencyId, base, row.closingBalance)), '0')
+  // a debt not set up has no balance to add
+  const debtLeft = debtRows.reduce((sum, row) => (row.isSetUp === 0 ? sum : add(sum, exchangeFn(row.currencyId, base, row.closingBalance))), '0')
 
   return (
     <>

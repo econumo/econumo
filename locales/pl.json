@@ -521,13 +521,8 @@
       "never_pays_off": "Ta płatność nie pokrywa odsetek, więc dług nigdy się nie spłaci."
     },
     "details": {
-      "header": "Dług",
-      "current_balance": "Aktualne saldo",
-      "payments_left": "Pozostałe płatności",
       "money_left": "Do zapłaty",
-      "overpayment_left": "Pozostały koszt długu",
       "overpaid_so_far": "Dotychczasowy koszt długu",
-      "payoff_date": "Data spłaty",
       "snapshots": "Historia warunków",
       "snapshot_terms": "{payment} · {schedule} · do {date}",
       "payments": "Płatności",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "Dokończ konfigurację"
+    },
+    "review": {
+      "menu": "Działania dla długu",
+      "rename": "Zmień nazwę",
+      "progress": "Opłacono {paid} z {total}",
+      "owed_now": "Do spłaty teraz: {amount}",
+      "owed_now_label": "Do spłaty teraz",
+      "paid_so_far": "Zapłacono dotąd",
+      "not_set_up": "Dodaj kwotę do spłaty i datę końca pożyczki, aby zobaczyć pozostałe płatności",
+      "loan": "Pożyczka",
+      "next_payment": "Następna płatność",
+      "loan_ends": "Koniec pożyczki",
+      "start_date": "Data rozpoczęcia",
+      "from_first_payment": "Od pierwszej płatności",
+      "overpayment_to_come": "Koszt długu do zapłacenia"
     }
   },
   "recurring": {

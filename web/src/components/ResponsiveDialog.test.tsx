@@ -47,6 +47,28 @@ it('fullScreen on mobile renders a full-viewport fading page, not a bottom sheet
   expect(content?.querySelector('[data-slot="dialog-header"]')?.className).toContain('safe-area-inset-top')
 })
 
+it('fullScreen="always" is a full-viewport page on desktop too', () => {
+  mockMatchMedia(false)
+  const { baseElement } = render(
+    <ResponsiveDialog open fullScreen="always" onOpenChange={() => {}} title="My title">
+      <p>body text</p>
+    </ResponsiveDialog>,
+  )
+  const content = baseElement.querySelector('[data-slot="dialog-content"]')
+  expect(content?.className).toContain('h-dvh')
+  expect(content?.className).toContain('sm:max-w-none')
+})
+
+it('plain fullScreen stays a centred dialog on desktop', () => {
+  mockMatchMedia(false)
+  const { baseElement } = render(
+    <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="My title">
+      <p>body text</p>
+    </ResponsiveDialog>,
+  )
+  expect(baseElement.querySelector('[data-slot="dialog-content"]')?.className).not.toContain('h-dvh')
+})
+
 it('bottom-reaching content clears the home indicator: body inset without a footer, footer inset with one', () => {
   mockMatchMedia(true)
   const { baseElement, rerender } = render(

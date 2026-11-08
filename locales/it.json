@@ -521,13 +521,8 @@
       "never_pays_off": "Questo pagamento non copre gli interessi, quindi il debito non si estingue mai."
     },
     "details": {
-      "header": "Debito",
-      "current_balance": "Saldo attuale",
-      "payments_left": "Pagamenti rimasti",
       "money_left": "Ancora da pagare",
-      "overpayment_left": "Costo aggiuntivo rimasto",
       "overpaid_so_far": "Costo aggiuntivo già pagato",
-      "payoff_date": "Data di estinzione",
       "snapshots": "Storico delle condizioni",
       "snapshot_terms": "{payment} · {schedule} · fino al {date}",
       "payments": "Pagamenti",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "Completa la configurazione"
+    },
+    "review": {
+      "menu": "Azioni del debito",
+      "rename": "Rinomina",
+      "progress": "{paid} di {total} pagati",
+      "owed_now": "Dovuto ora: {amount}",
+      "owed_now_label": "Dovuto ora",
+      "paid_so_far": "Pagato finora",
+      "not_set_up": "Aggiungi quanto devi e quando finisce il prestito per vedere i pagamenti rimasti",
+      "loan": "Prestito",
+      "next_payment": "Prossimo pagamento",
+      "loan_ends": "Fine del prestito",
+      "start_date": "Data di inizio",
+      "from_first_payment": "Dal primo pagamento",
+      "overpayment_to_come": "Costo aggiuntivo ancora da pagare"
     }
   },
   "recurring": {

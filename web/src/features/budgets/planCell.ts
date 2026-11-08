@@ -15,6 +15,8 @@ export interface PlanCellViewInput {
   selected: string
   /** the budget's period start day (a debt's plan hint) */
   startDay: number
+  /** a debt without its terms: it has no balance, so its cells show what was paid */
+  notSetUp?: boolean
 }
 
 export interface PlanCellView {
@@ -47,7 +49,7 @@ function shownPlan(planned: string): string | null {
   return planned === '' ? null : planned
 }
 
-export function planCellView({ type, id, cell, month, selected, startDay }: PlanCellViewInput): PlanCellView {
+export function planCellView({ type, id, cell, month, selected, startDay, notSetUp = false }: PlanCellViewInput): PlanCellView {
   if (!cell) {
     return { actual: null, dash: false, plan: null, over: false, balance: false, hint: null }
   }
@@ -58,7 +60,7 @@ export function planCellView({ type, id, cell, month, selected, startDay }: Plan
     const runs = cell.isPlannable !== 0 || !isZero(cell.closingBalance ?? '0')
     const plan = shownPlan(cell.planned)
     const debtHint = month < selected ? null : planHint({ planned: cell.planned, spent: cell.actual, scheduled: cell.scheduledTotal, month, startDay, kind: 'debt' })
-    if (!runs || cell.closingBalance === undefined) {
+    if (!runs || notSetUp || cell.closingBalance === undefined) {
       const paid = month <= selected ? cell.actual : null
       return { ...shownActual(paid, plan !== null), plan, over: false, balance: false, hint: debtHint, paymentsLeft: null }
     }

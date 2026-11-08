@@ -521,13 +521,8 @@
       "never_pays_off": "Este pagamento não cobre os juros, por isso a dívida nunca fica liquidada."
     },
     "details": {
-      "header": "Dívida",
-      "current_balance": "Saldo atual",
-      "payments_left": "Pagamentos em falta",
       "money_left": "Falta pagar",
-      "overpayment_left": "Custo adicional em falta",
       "overpaid_so_far": "Custo adicional já pago",
-      "payoff_date": "Data de liquidação",
       "snapshots": "Histórico das condições",
       "snapshot_terms": "{payment} · {schedule} · até {date}",
       "payments": "Pagamentos",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "Concluir configuração"
+    },
+    "review": {
+      "menu": "Ações da dívida",
+      "rename": "Renomear",
+      "progress": "{paid} de {total} pagos",
+      "owed_now": "Em dívida agora: {amount}",
+      "owed_now_label": "Em dívida agora",
+      "paid_so_far": "Pago até agora",
+      "not_set_up": "Indique quanto deve e quando termina o empréstimo para ver os pagamentos em falta",
+      "loan": "Empréstimo",
+      "next_payment": "Próximo pagamento",
+      "loan_ends": "Fim do empréstimo",
+      "start_date": "Data de início",
+      "from_first_payment": "Desde o primeiro pagamento",
+      "overpayment_to_come": "Custo adicional ainda por pagar"
     }
   },
   "recurring": {

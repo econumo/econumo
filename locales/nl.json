@@ -521,13 +521,8 @@
       "never_pays_off": "Deze betaling dekt de rente niet, dus de schuld wordt nooit afbetaald."
     },
     "details": {
-      "header": "Schuld",
-      "current_balance": "Huidig saldo",
-      "payments_left": "Resterende betalingen",
       "money_left": "Nog te betalen",
-      "overpayment_left": "Resterende meerkosten",
       "overpaid_so_far": "Tot nu toe betaalde meerkosten",
-      "payoff_date": "Einddatum van de schuld",
       "snapshots": "Geschiedenis van de voorwaarden",
       "snapshot_terms": "{payment} · {schedule} · tot {date}",
       "payments": "Betalingen",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "Instellen voltooien"
+    },
+    "review": {
+      "menu": "Acties voor deze schuld",
+      "rename": "Hernoemen",
+      "progress": "{paid} van {total} betaald",
+      "owed_now": "Nu verschuldigd: {amount}",
+      "owed_now_label": "Nu verschuldigd",
+      "paid_so_far": "Tot nu toe betaald",
+      "not_set_up": "Vul in wat u verschuldigd bent en wanneer de lening afloopt om de resterende betalingen te zien",
+      "loan": "Lening",
+      "next_payment": "Volgende betaling",
+      "loan_ends": "Lening loopt af",
+      "start_date": "Startdatum",
+      "from_first_payment": "Vanaf de eerste betaling",
+      "overpayment_to_come": "Nog te betalen meerkosten"
     }
   },
   "recurring": {

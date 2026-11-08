@@ -137,6 +137,16 @@ describe('planCellView for a debt', () => {
     expect(planCellView({ type: debt, cell: cell({ planned: '' }), month: sel, selected: sel, startDay: 1 }).hint).toBeNull()
   })
 
+  it('a debt not set up shows what was paid, like any row, and no payments left', () => {
+    expect(planCellView({ type: debt, notSetUp: true, cell: cell({ closingBalance: '', paymentsLeft: 0, scheduledTotal: '0' }), month: sel, selected: sel, startDay: 1 })).toMatchObject({
+      actual: '1000', plan: '1500', balance: false, paymentsLeft: null,
+    })
+    // ahead of today nothing is paid yet
+    expect(planCellView({ type: debt, notSetUp: true, cell: cell({ closingBalance: '', paymentsLeft: 0, actual: '0' }), month: '2026-12-01', selected: sel, startDay: 1 })).toMatchObject({
+      actual: null, balance: false,
+    })
+  })
+
   it('outside the debt\'s life with nothing owed the cell is blank', () => {
     expect(planCellView({ type: debt, cell: cell({ actual: '0', planned: '', closingBalance: '0', paymentsLeft: 0, isPlannable: 0 }), month: sel, selected: sel, startDay: 1 })).toEqual({
       actual: null, dash: false, plan: null, over: false, balance: false, hint: null, paymentsLeft: null,

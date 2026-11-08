@@ -521,13 +521,8 @@
       "never_pays_off": "这笔还款不足以支付利息，因此债务永远无法还清。"
     },
     "details": {
-      "header": "债务",
-      "current_balance": "当前余额",
-      "payments_left": "剩余还款次数",
       "money_left": "待还金额",
-      "overpayment_left": "剩余利息与费用",
       "overpaid_so_far": "已付利息与费用",
-      "payoff_date": "还清日期",
       "snapshots": "条款历史",
       "snapshot_terms": "{payment} · {schedule} · 至 {date}",
       "payments": "还款记录",
@@ -566,6 +561,21 @@
     },
     "terms": {
       "finish_setup": "完成设置"
+    },
+    "review": {
+      "menu": "债务操作",
+      "rename": "重命名",
+      "progress": "已还 {paid}/{total} 期",
+      "owed_now": "当前欠款 {amount}",
+      "owed_now_label": "当前欠款",
+      "paid_so_far": "已还金额",
+      "not_set_up": "填写欠款金额和贷款结束日期，即可查看剩余还款笔数",
+      "loan": "贷款",
+      "next_payment": "下次还款",
+      "loan_ends": "贷款结束",
+      "start_date": "开始日期",
+      "from_first_payment": "从第一笔还款起",
+      "overpayment_to_come": "待付利息与费用"
     }
   },
   "recurring": {
