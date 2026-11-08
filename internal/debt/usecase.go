@@ -53,6 +53,31 @@ func (s *Service) moveToDebt(ctx context.Context, d *model.Debt) error {
 	return err
 }
 
+// moveTailToCategory hands a whole-category debt's plans and comments after
+// its end back to the category: the debt took them with no end before setup,
+// and its row hides every month past the end.
+func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt) error {
+	if s.budget == nil {
+		return nil
+	}
+	st, err := s.stateNow(ctx, d)
+	if err != nil {
+		return err
+	}
+	_, last := planningBounds(st, st.project(s.today(ctx), nil, nil), time.UTC)
+	if last.IsZero() {
+		return nil
+	}
+	if err := s.lockRows(ctx, d.ID); err != nil {
+		return err
+	}
+	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
+		FromID: d.ID, FromType: model.ElementDebt, ToID: d.CategoryID, ToType: model.ElementCategory,
+		CurrencyID: d.CurrencyID, SumOnClash: true, AfterDay: last,
+	})
+	return err
+}
+
 // moveToCategory hands a deleted whole-category debt's row back to its
 // category; a month the category already plans keeps the category's plan.
 func (s *Service) moveToCategory(ctx context.Context, d *model.Debt) (leftBehind bool, err error) {

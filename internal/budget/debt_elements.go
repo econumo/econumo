@@ -258,7 +258,10 @@ func (s *Service) moveElementData(ctx context.Context, from, to *model.BudgetEle
 // transferPeriods maps t's day bounds onto the keys of the periods holding
 // them in a budget whose periods start on startDay; zero stays open.
 func transferPeriods(t model.ElementDataTransfer, startDay int) (first, last time.Time) {
-	if !t.FirstDay.IsZero() {
+	switch {
+	case !t.AfterDay.IsZero():
+		first = model.PeriodOf(t.AfterDay, startDay).AddDate(0, 1, 0)
+	case !t.FirstDay.IsZero():
 		first = model.PeriodOf(t.FirstDay, startDay)
 	}
 	if !t.LastDay.IsZero() {

@@ -500,3 +500,82 @@ func TestGetBudget_SharedLabelPaymentOnOlderDebtRow(t *testing.T) {
 		t.Errorf("car plan row = %+v, want 300", r)
 	}
 }
+
+// planAndComments reads the plans ("2006-01" -> amount) and the comment
+// months of the external id's row in the harness budget.
+func (h *attrHarness) planAndComments(t *testing.T, externalID string) (map[string]string, []string) {
+	t.Helper()
+	plans := map[string]string{}
+	rows, err := h.tdb.Raw.QueryContext(h.ctx, h.tdb.Rebind(`SELECT l.period, l.amount FROM budgets_elements_limits l
+		JOIN budgets_elements e ON e.id = l.element_id WHERE e.budget_id = ? AND e.external_id = ?`), h.budgetID, externalID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var p time.Time
+		var a string
+		if err := rows.Scan(&p, &a); err != nil {
+			t.Fatal(err)
+		}
+		plans[p.Format("2006-01")] = vo.NewDecimal(a).String()
+	}
+	rows.Close()
+	var comments []string
+	rows, err = h.tdb.Raw.QueryContext(h.ctx, h.tdb.Rebind(`SELECT c.period FROM budgets_elements_comments c
+		JOIN budgets_elements e ON e.id = c.element_id WHERE e.budget_id = ? AND e.external_id = ? ORDER BY c.period`), h.budgetID, externalID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var p time.Time
+		if err := rows.Scan(&p); err != nil {
+			t.Fatal(err)
+		}
+		comments = append(comments, p.Format("2006-01"))
+	}
+	rows.Close()
+	return plans, comments
+}
+
+// A whole-category debt created without terms takes the category's plans
+// with no end; finishing setup with an end hands the months after it back to
+// the category, where they show again, with their comments.
+func TestFinishSetup_PlansPastTheEndReturnToTheCategory(t *testing.T) {
+	h := newAttrHarness(t)
+	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	for i := 0; i <= 24; i++ {
+		h.setLimit(t, h.loan, start.AddDate(0, i, 0).Format("2006-01-02"), "100")
+	}
+	for _, m := range []string{"2026-09-01", "2027-03-01"} {
+		if _, err := h.svc.CreateComment(h.ctx, h.owner, model.CreateCommentRequest{
+			Id: vo.NewId().String(), BudgetId: h.budgetID, ElementId: h.loan, Period: m, Comment: "note",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	debtID := h.createLooseDebt(t, nil)
+	if plans, _ := h.planAndComments(t, debtID); len(plans) != 25 {
+		t.Fatalf("debt plans after conversion = %d months, want all 25", len(plans))
+	}
+
+	if _, err := h.debts.UpdateDebt(h.ctx, h.owner, model.UpdateDebtRequest{
+		Id: debtID, Name: "Loose", CurrencyId: fixture.USD, CategoryId: h.loan,
+		Balance: vo.NewFlexString("5800"), Payment: vo.NewFlexString("1000"), Schedule: "monthly", LastPaymentDate: "2026-12-01",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	debtPlans, debtComments := h.planAndComments(t, debtID)
+	catPlans, catComments := h.planAndComments(t, h.loan)
+	if len(debtPlans) != 7 || debtPlans["2026-06"] != "100" || debtPlans["2026-12"] != "100" {
+		t.Errorf("debt plans = %v, want June to December 2026", debtPlans)
+	}
+	if len(catPlans) != 18 || catPlans["2027-01"] != "100" || catPlans["2028-06"] != "100" {
+		t.Errorf("category plans = %v, want January 2027 to June 2028", catPlans)
+	}
+	if len(debtComments) != 1 || debtComments[0] != "2026-09" || len(catComments) != 1 || catComments[0] != "2027-03" {
+		t.Errorf("comments: debt %v, category %v; want September on the debt, March 2027 back on the category", debtComments, catComments)
+	}
+	if el := findElement(h.budgetAt(t, h.owner, "2027-01-01"), h.loan, model.ElementCategory); el == nil || el.Budgeted != "100" {
+		t.Errorf("January 2027 category row = %+v, want its 100 plan shown again", el)
+	}
+}

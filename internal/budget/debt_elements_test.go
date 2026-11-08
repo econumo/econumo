@@ -597,3 +597,43 @@ func TestRemoveElements_DropsTheDebtRowsAndTheirData(t *testing.T) {
 		t.Errorf("another row lost its plan: %v", got)
 	}
 }
+
+// AfterDay moves only the periods after the one holding that day: 10 Jun is
+// in period May of a budget whose periods start on the 15th, so June on moves
+// back with its comment and May stays.
+func TestTransferElementData_AfterDayMovesTheLaterPeriods(t *testing.T) {
+	h := newDebtHarness(t)
+	if _, err := h.tdb.Raw.Exec(h.tdb.Rebind(`UPDATE budgets SET period_start_day = 15 WHERE id = ?`), h.budgetID.String()); err != nil {
+		t.Fatal(err)
+	}
+	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
+	debt := h.addDebt(h.owner, fixture.USD)
+	for _, m := range []string{"2026-05-01", "2026-06-01", "2026-07-01"} {
+		h.mustSetLimit(t, debt, m, "10")
+	}
+	h.mustSetLimit(t, cat, "2026-07-01", "5")
+	for _, m := range []string{"2026-05-01", "2026-07-01"} {
+		if err := h.comment(debt, m); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if _, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
+		ToID: vo.MustParseId(cat), ToType: model.ElementCategory, CurrencyID: vo.MustParseId(fixture.USD), SumOnClash: true,
+		AfterDay: time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)}); err != nil {
+		t.Fatal(err)
+	}
+	debtEl, catEl := h.element(t, debt), h.element(t, cat)
+	if got := h.limits(t, debtEl.ID); len(got) != 1 || got["2026-05-01"] != amount("10") {
+		t.Errorf("debt limits = %v, want only May kept", got)
+	}
+	if got := h.limits(t, catEl.ID); len(got) != 2 || got["2026-06-01"] != amount("10") || got["2026-07-01"] != amount("15") {
+		t.Errorf("category limits = %v, want June 10 and July 15 (summed)", got)
+	}
+	if n := h.commentCount(t, debtEl.ID); n != 1 {
+		t.Errorf("debt has %d comments, want the May one kept", n)
+	}
+	if n := h.commentCount(t, catEl.ID); n != 1 {
+		t.Errorf("category has %d comments, want the July one moved", n)
+	}
+}

@@ -2280,6 +2280,14 @@ out), and add a second budget member account in USD, before running these.
       the category's plans the same way; a month both rows plan adds up. A
       debt created without terms is whole-category too: plans move at once and
       the plannable months run from the creation day on with no end.
+- [ ] Finish setup of a whole-category debt created without terms: give the
+      category plans for the next two years and a comment in a month after
+      the planned end, convert (no terms), then Finish setup with a last
+      payment six months out. The debt row keeps the plans up to the last
+      payment's month; the months after it show their plans (and that
+      comment) on the category row again, in every budget (a month both rows
+      plan adds up). A debt with a payee, tag, reporting tag or start date
+      moves nothing.
 - [ ] A partial debt (payee set): payments to that payee leave the category
       row's Spent (and its drill-down) and count on the debt row, payments to
       other payees stay in the category row.

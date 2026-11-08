@@ -96,6 +96,11 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 			if err := s.dropSplits(ctx, cur.ID); err != nil {
 				return err
 			}
+			if wasWhole && isWholeCategory(cur) && cur.CategoryID.Equal(wasCategory) {
+				if err := s.moveTailToCategory(ctx, cur); err != nil {
+					return err
+				}
+			}
 		}
 		// Now covering a whole category it did not cover before, the debt
 		// takes that category's plans, as a conversion does. Going the other

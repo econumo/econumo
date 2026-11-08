@@ -309,3 +309,46 @@ func TestPlanningStart_CreationDayInCallersTimezone(t *testing.T) {
 func monthStart(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
 }
+
+// Finishing setup of a whole-category debt hands the months after its last
+// payment back to the category; a debt with a payee never took them.
+func TestFinishSetup_WholeDebtReturnsTheMonthsAfterItsEnd(t *testing.T) {
+	e := newEnv(t)
+	res := e.createWithoutTerms(t, nil)
+	payee := e.newPayee()
+	other := e.newCategory(e.user, true)
+	keyed := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.CategoryId, r.PayeeId = other, &payee })
+	e.budget.transfers, e.budget.calls = nil, nil
+
+	var setUp *model.DebtResult
+	for _, r := range []*model.DebtResult{res, keyed} {
+		req := e.updateReq(r)
+		req.Balance, req.LastPaymentDate = vo.NewFlexString("5800"), "2026-09-01"
+		got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if setUp == nil {
+			setUp = got
+		}
+	}
+	want := transferCall{from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory,
+		currency: res.CurrencyId, sum: true, after: "2026-09-01"}
+	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
+		t.Fatalf("transfers = %+v, want only %+v", e.budget.transfers, want)
+	}
+	if len(e.budget.calls) != 2 || e.budget.calls[0] != "lock" || e.budget.calls[1] != "transfer" {
+		t.Fatalf("budget calls = %v, want the rows locked before the transfer", e.budget.calls)
+	}
+
+	// already set up: a new end moves nothing
+	e.budget.transfers = nil
+	req := e.updateReq(setUp)
+	req.Balance, req.LastPaymentDate = vo.NewFlexString("5800"), "2026-10-01"
+	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
+		t.Fatal(err)
+	}
+	if len(e.budget.transfers) != 0 {
+		t.Fatalf("transfers = %+v, want none for a debt already set up", e.budget.transfers)
+	}
+}

@@ -100,6 +100,10 @@ type ElementDataTransfer struct {
 	// moves its periods from the one holding FirstDay to the one holding
 	// LastDay; data outside them stays on the source row.
 	FirstDay, LastDay time.Time
+	// AfterDay, when set, moves only the periods after the one holding it,
+	// up to LastDay. A day bound cannot say "the next period" for budgets
+	// whose periods start on different days.
+	AfterDay time.Time
 }
 
 func DebtMatches(d DebtView, categoryID, payeeID, tagID *string, labelIDs []string, at time.Time) bool {
