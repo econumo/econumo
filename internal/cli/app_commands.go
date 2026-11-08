@@ -66,7 +66,7 @@ func parseAppArgs(args []string, boolFlags, valueFlags []string) ([]string, map[
 			flags[name] = append(flags[name], "")
 		case slices.Contains(valueFlags, name):
 			if !hasValue {
-				if i+1 >= len(args) {
+				if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
 					return nil, nil, fmt.Errorf("option --%s needs a value", name)
 				}
 				i++
@@ -88,7 +88,6 @@ func parseAppID(raw string) (vo.Id, error) {
 	return id, nil
 }
 
-// singleAppID parses the lone <id> positional of a command with no options.
 func singleAppID(args []string, usage string) (vo.Id, error) {
 	pos, _, err := parseAppArgs(args, nil, nil)
 	if err != nil {

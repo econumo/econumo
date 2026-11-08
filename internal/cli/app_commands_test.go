@@ -25,7 +25,6 @@ import (
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
-// captureOutput runs fn with os.Stdout and os.Stderr redirected to pipes.
 func captureOutput(t *testing.T, fn func()) (stdout, stderr string) {
 	t.Helper()
 	outR, outW, err := os.Pipe()
@@ -53,7 +52,6 @@ func captureOutput(t *testing.T, fn func()) (stdout, stderr string) {
 	return outBuf.String(), errBuf.String()
 }
 
-// runApp runs a CLI command, capturing its output.
 func runApp(t *testing.T, args ...string) (code int, stdout, stderr string) {
 	t.Helper()
 	stdout, stderr = captureOutput(t, func() { code = Run(args) })
@@ -79,6 +77,7 @@ func clientID(t *testing.T, stdout string) string {
 func appDB(t *testing.T, path string) *sql.DB {
 	t.Helper()
 	t.Setenv("SQLITE_BUSY_TIMEOUT", "5000")
+	t.Setenv("ECONUMO_URL", "")
 	be := sqlite.New()
 	be.SetBusyTimeout(5000)
 	db, err := be.Open(context.Background(), "sqlite://"+path)
@@ -148,6 +147,9 @@ func TestParseAppArgs(t *testing.T) {
 	}
 	if _, _, err := parseAppArgs([]string{"--bogus"}, []string{"public"}, []string{"name"}); err == nil {
 		t.Fatal("an unknown flag must be an error")
+	}
+	if _, _, err := parseAppArgs([]string{"id", "--name", "--public"}, []string{"public"}, []string{"name"}); err == nil {
+		t.Fatal("a value flag must not take the next option as its value")
 	}
 	if _, _, err := parseAppArgs([]string{"--public=yes"}, []string{"public"}, nil); err == nil {
 		t.Fatal("a bool flag with a value must be an error")
