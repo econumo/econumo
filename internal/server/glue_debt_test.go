@@ -37,6 +37,15 @@ func (s stubDebtTags) GetByID(context.Context, vo.Id) (*model.Tag, error) {
 	return s.t, nil
 }
 
+type stubDebtLabels struct{ l *model.Label }
+
+func (s stubDebtLabels) GetByID(context.Context, vo.Id) (*model.Label, error) {
+	if s.l == nil {
+		return nil, errs.NewNotFound("Label not found")
+	}
+	return s.l, nil
+}
+
 type recordingConvertor struct {
 	start, end time.Time
 	calls      int
@@ -59,6 +68,7 @@ func TestDebtClassifications(t *testing.T) {
 		stubDebtCategories{cat: cat},
 		stubDebtPayees{p: &model.Payee{ID: vo.NewId(), UserID: owner}},
 		stubDebtTags{t: &model.Tag{ID: vo.NewId(), UserID: owner}},
+		stubDebtLabels{l: &model.Label{ID: vo.NewId(), UserID: owner}},
 	)
 
 	name, icon, isExpense, err := c.CategoryOf(ctx, owner, cat.ID)
@@ -88,12 +98,22 @@ func TestDebtClassifications(t *testing.T) {
 		t.Fatalf("TagOwned other = %v, %v", ok, err)
 	}
 
-	missing := NewDebtClassifications(stubDebtCategories{}, stubDebtPayees{}, stubDebtTags{})
+	if ok, err := c.LabelOwned(ctx, owner, vo.NewId()); err != nil || !ok {
+		t.Fatalf("LabelOwned owner = %v, %v", ok, err)
+	}
+	if ok, err := c.LabelOwned(ctx, other, vo.NewId()); err != nil || ok {
+		t.Fatalf("LabelOwned other = %v, %v", ok, err)
+	}
+
+	missing := NewDebtClassifications(stubDebtCategories{}, stubDebtPayees{}, stubDebtTags{}, stubDebtLabels{})
 	if ok, err := missing.PayeeOwned(ctx, owner, vo.NewId()); err != nil || ok {
 		t.Fatalf("missing payee = %v, %v", ok, err)
 	}
 	if ok, err := missing.TagOwned(ctx, owner, vo.NewId()); err != nil || ok {
 		t.Fatalf("missing tag = %v, %v", ok, err)
+	}
+	if ok, err := missing.LabelOwned(ctx, owner, vo.NewId()); err != nil || ok {
+		t.Fatalf("missing label = %v, %v", ok, err)
 	}
 }
 

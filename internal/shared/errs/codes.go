@@ -85,6 +85,7 @@ const (
 	CodeLabelNameLength     = "label.name_length"
 	CodeLabelCannotBeMerged = "label.cannot_be_merged"
 	CodeLabelListEmpty      = "label.list_empty"
+	CodeLabelUsedByDebt     = "label.used_by_debt"
 
 	CodeCurrencyAlreadyExists       = "currency.already_exists"
 	CodeCurrencyNameLength          = "currency.name_length"
@@ -234,6 +235,7 @@ var AllCodes = []string{
 	CodeLabelNameLength,
 	CodeLabelCannotBeMerged,
 	CodeLabelListEmpty,
+	CodeLabelUsedByDebt,
 
 	CodeCurrencyAlreadyExists,
 	CodeCurrencyNameLength,

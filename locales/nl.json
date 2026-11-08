@@ -2288,7 +2288,8 @@
     "label": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
       "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
-      "list_empty": "De lijst met tags is leeg."
+      "list_empty": "De lijst met tags is leeg.",
+      "used_by_debt": "Een schuld gebruikt deze tag. Verwijder of wijzig eerst de schuld."
     },
     "debt": {
       "payments_dont_cover": "De betalingen dekken het saldo niet. Verhoog de betaling of kies een latere datum voor de laatste betaling.",

@@ -44,17 +44,109 @@ func TestCreateDebt_RefusesLastPaymentInPast(t *testing.T) {
 	requireCode(t, err, errs.CodeDebtLastPaymentInPast)
 }
 
-// The request may leave the terms out, but the service still requires them
-// until debts without terms can be stored.
-func TestCreateDebt_StillRequiresTerms(t *testing.T) {
+// A debt created without a balance and a last payment date is not set up: no
+// snapshot, and every figure that needs the terms is empty.
+func TestCreateDebt_WithoutTerms(t *testing.T) {
 	e := newEnv(t)
 	req := e.createReq()
-	req.Balance, req.LastPaymentDate = vo.FlexString{}, ""
+	withoutTerms(&req)
 	if err := req.Validate(); err != nil {
 		t.Fatalf("the request without terms is valid: %v", err)
 	}
+	res, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsSetUp != 0 || res.Payment != "1000" || res.Schedule != "monthly" || res.IsPaidOff != 0 {
+		t.Errorf("result = %+v", res)
+	}
+	for name, v := range map[string]string{
+		"balance": res.Balance, "lastPaymentDate": res.LastPaymentDate, "currentBalance": res.CurrentBalance,
+		"moneyLeft": res.MoneyLeft, "overpaymentLeft": res.OverpaymentLeft, "overpaidSoFar": res.OverpaidSoFar,
+		"payoffDate": res.PayoffDate, "nextDueDate": res.NextDueDate, "periodRate": res.PeriodRate,
+	} {
+		if v != "" {
+			t.Errorf("%s = %q, want empty", name, v)
+		}
+	}
+	if res.PaymentsLeft != 0 || res.PeriodsPaid != 0 {
+		t.Errorf("counts = %d %d, want 0", res.PaymentsLeft, res.PeriodsPaid)
+	}
+	if snaps := e.snapshots(t, res.Id); len(snaps) != 0 {
+		t.Fatalf("snapshots = %d, want none", len(snaps))
+	}
+	// a whole-category debt without terms takes the category's plans from
+	// its creation day on, with no end
+	want := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
+		currency: fixture.USD, sum: true, first: "2026-03-10", last: ""}
+	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
+		t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, want)
+	}
+}
+
+func TestCreateDebt_TermsPairRequired(t *testing.T) {
+	e := newEnv(t)
+	req := e.createReq()
+	req.LastPaymentDate = ""
 	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
-	requireCode(t, err, errs.CodeIsBlank)
+	requireField(t, err, "lastPaymentDate", errs.CodeIsBlank)
+
+	req = e.createReq()
+	req.Balance = vo.FlexString{}
+	_, err = e.svc.CreateDebt(context.Background(), e.uid(), req)
+	requireField(t, err, "balance", errs.CodeIsBlank)
+}
+
+func TestCreateDebt_WithoutTermsNeedsAPositivePayment(t *testing.T) {
+	e := newEnv(t)
+	req := e.createReq()
+	withoutTerms(&req)
+	req.Payment = vo.NewFlexString("0.001")
+	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	requireField(t, err, "payment", errs.CodeOutOfRange)
+}
+
+func TestCreateDebt_LabelMustBeTheOwners(t *testing.T) {
+	e := newEnv(t)
+	other := e.f.User(fixture.User{Name: "other", Email: "other@example.test"})
+	foreign := e.f.Label(fixture.Label{UserID: other})
+	e.class.labels[foreign] = other
+	req := e.createReq()
+	req.LabelId = &foreign
+	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	requireNotFound(t, err)
+
+	own := e.newLabel()
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.LabelId = &own })
+	if res.LabelId == nil || *res.LabelId != own {
+		t.Fatalf("labelId = %v, want %s", res.LabelId, own)
+	}
+	// a labelled debt is not whole-category: the category keeps its plans
+	if len(e.budget.transfers) != 0 {
+		t.Fatalf("transfers = %+v, want none", e.budget.transfers)
+	}
+}
+
+func TestCheckKeys_LabelsTellDebtsApart(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	car, student := e.newLabel(), e.newLabel()
+	e.create(t, func(r *model.CreateDebtRequest) { r.LabelId = &car })
+	e.create(t, func(r *model.CreateDebtRequest) { r.LabelId = &student })
+
+	req := e.createReq()
+	_, err := e.svc.CreateDebt(ctx, e.uid(), req)
+	requireCode(t, err, errs.CodeDebtKeyConflict)
+
+	req = e.createReq()
+	req.LabelId = &car
+	_, err = e.svc.CreateDebt(ctx, e.uid(), req)
+	requireCode(t, err, errs.CodeDebtStartDateTaken)
+
+	req.StartDate = ptr("2026-06-01")
+	if _, err := e.svc.CreateDebt(ctx, e.uid(), req); err != nil {
+		t.Fatalf("same label with a distinct start date: %v", err)
+	}
 }
 
 func TestCreateDebt_ReportsSetUpAndLabel(t *testing.T) {

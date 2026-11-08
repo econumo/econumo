@@ -10,7 +10,7 @@ import (
 )
 
 // Timelines projects each debt over the requested budget periods, with the plans as
-// extra payments. Unknown debts are left out of the result. It writes
+// extra payments. Unknown debts and debts not set up are left out of the result. It writes
 // nothing: the caller has already run Sync, and splits not stored yet are
 // computed in memory.
 func (s *Service) Timelines(ctx context.Context, req model.DebtTimelineRequest) (map[string]model.DebtTimeline, error) {
@@ -44,7 +44,7 @@ func (s *Service) Timelines(ctx context.Context, req model.DebtTimelineRequest) 
 			byCategory[d.CategoryID] = states
 		}
 		for _, st := range states {
-			if st.debt.ID.Equal(id) {
+			if st.debt.ID.Equal(id) && st.debt.IsSetUp() {
 				out[raw] = timelineOf(st, today, req.Months, req.Plans[raw], req.PeriodStartDay)
 			}
 		}

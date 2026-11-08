@@ -13,8 +13,9 @@ import (
 // probe which label ids exist. transactions_labels AND
 // recurring_transactions_labels rows referencing it go with it via their
 // ON DELETE CASCADE FKs — recurring templates silently lose the label, so
-// future postings of those templates no longer carry it. Delete is
-// unconditional; to keep them, use merge-label instead.
+// future postings of those templates no longer carry it. A label a debt
+// matches its payments by cannot be deleted; otherwise to keep them, use
+// merge-label instead.
 func (s *Service) DeleteLabel(ctx context.Context, userID vo.Id, req model.DeleteLabelRequest) (*model.DeleteLabelResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -28,6 +29,15 @@ func (s *Service) DeleteLabel(ctx context.Context, userID vo.Id, req model.Delet
 		}
 		if !l.UserID.Equal(userID) {
 			return errs.NewNotFound("Label not found")
+		}
+		if s.debts != nil {
+			used, uerr := s.debts.InUse(ctx, id)
+			if uerr != nil {
+				return uerr
+			}
+			if used {
+				return &errs.ValidationError{Msg: "A debt uses this tag. Delete or change the debt first.", MsgCode: errs.CodeLabelUsedByDebt}
+			}
 		}
 		return s.repo.Delete(ctx, id)
 	}); err != nil {

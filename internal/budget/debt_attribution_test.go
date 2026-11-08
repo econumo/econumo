@@ -15,6 +15,7 @@ import (
 	appdebt "github.com/econumo/econumo/internal/debt"
 	debtrepo "github.com/econumo/econumo/internal/debt/repo"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
@@ -106,7 +107,7 @@ func newAttrHarness(t *testing.T) *attrHarness {
 		txm, clk,
 	)
 	debts := appdebt.NewService(debtrepo.NewRepo(engine, txm), txm, clk,
-		server.NewDebtClassifications(categoryRepo, payeeRepo, tagRepo),
+		server.NewDebtClassifications(categoryRepo, payeeRepo, tagRepo, labelrepo.NewRepo(engine, txm)),
 		server.NewDebtRates(rateProvider, convertor), currencyLookup)
 	svc.SetDebts(debts)
 	debts.SetBudgetElements(server.NewDebtBudgetElements(svc))

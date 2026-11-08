@@ -10,12 +10,13 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// Classifications is backed by the category, payee and tag repos.
+// Classifications is backed by the category, payee, tag and label repos.
 type Classifications interface {
 	// CategoryOf returns errs.NotFound when the owner does not have the category.
 	CategoryOf(ctx context.Context, ownerID, id vo.Id) (name, icon string, isExpense bool, err error)
 	PayeeOwned(ctx context.Context, ownerID, id vo.Id) (bool, error)
 	TagOwned(ctx context.Context, ownerID, id vo.Id) (bool, error)
+	LabelOwned(ctx context.Context, ownerID, id vo.Id) (bool, error)
 }
 
 type Rates interface {

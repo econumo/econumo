@@ -32,36 +32,35 @@ func idString(id *vo.Id) *string {
 	return &v
 }
 
+// result presents a debt; one not set up has only its identity, payment and
+// schedule, with every term and figure empty.
 func (s *Service) result(st *debtState, proj model.Projection, icon string) model.DebtResult {
 	d, digits := st.debt, st.digits
-	paidOff := 0
-	if proj.PaidOff {
-		paidOff = 1
-	}
 	startDate := ""
 	if d.StartDate != nil {
 		startDate = dateString(*d.StartDate)
 	}
-	rate := model.PeriodRate(termsFloats(*d.Current))
+	res := model.DebtResult{
+		Id: d.ID.String(), Name: d.Name, Icon: icon, CurrencyId: d.CurrencyID.String(), CategoryId: d.CategoryID.String(),
+		PayeeId: idString(d.PayeeID), TagId: idString(d.TagID), LabelId: idString(d.LabelID), StartDate: startDate,
+		Payment: d.Payment.String(), Schedule: string(d.Schedule),
+	}
+	if !d.IsSetUp() {
+		return res
+	}
 	payoff := proj.PayoffDate
 	if proj.PaidOff {
 		payoff = time.Time{}
+		res.IsPaidOff = 1
 	}
-	setUp := 0
-	if d.IsSetUp() {
-		setUp = 1
-	}
-	return model.DebtResult{
-		Id: d.ID.String(), Name: d.Name, Icon: icon, CurrencyId: d.CurrencyID.String(), CategoryId: d.CategoryID.String(),
-		PayeeId: idString(d.PayeeID), TagId: idString(d.TagID), LabelId: idString(d.LabelID), StartDate: startDate,
-		Balance: d.Current.Balance.String(), Payment: d.Current.Payment.String(),
-		Schedule: string(d.Current.Schedule), LastPaymentDate: dateString(d.Current.LastPaymentDate),
-		CurrentBalance: amountString(proj.CurrentBalance, digits), PaymentsLeft: proj.PaymentsLeft, PeriodsPaid: proj.PeriodsPaid,
-		MoneyLeft: amountString(proj.MoneyLeft, digits), OverpaymentLeft: amountString(proj.OverpaymentLeft, digits),
-		OverpaidSoFar: amountString(proj.OverpaidSoFar, digits), PayoffDate: dateString(payoff),
-		NextDueDate: dateString(proj.NextDueDate), PeriodRate: strconv.FormatFloat(rate, 'f', 10, 64), IsPaidOff: paidOff,
-		IsSetUp: setUp,
-	}
+	res.IsSetUp = 1
+	res.Balance, res.LastPaymentDate = d.Current.Balance.String(), dateString(d.Current.LastPaymentDate)
+	res.CurrentBalance, res.PaymentsLeft, res.PeriodsPaid = amountString(proj.CurrentBalance, digits), proj.PaymentsLeft, proj.PeriodsPaid
+	res.MoneyLeft, res.OverpaymentLeft = amountString(proj.MoneyLeft, digits), amountString(proj.OverpaymentLeft, digits)
+	res.OverpaidSoFar, res.PayoffDate = amountString(proj.OverpaidSoFar, digits), dateString(payoff)
+	res.NextDueDate = dateString(proj.NextDueDate)
+	res.PeriodRate = strconv.FormatFloat(model.PeriodRate(termsFloats(*d.Current)), 'f', 10, 64)
+	return res
 }
 
 func (s *Service) presentAll(ctx context.Context, states []*debtState) ([]model.DebtResult, error) {
@@ -168,40 +167,40 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 		v.Icon = icon
 		v.PaidOff = proj.PaidOff
 		v.FirstDay, v.LastDay = planningBounds(st, proj)
-		v.StartMonth, v.EndMonth = monthOf(v.FirstDay), monthOf(v.LastDay)
+		v.StartMonth = monthOf(v.FirstDay)
+		if !v.LastDay.IsZero() {
+			v.EndMonth = monthOf(v.LastDay)
+		}
 		views = append(views, v)
 	}
 	return views, nil
 }
 
-// planningBounds: a debt can be planned from its start date (else the earlier
-// of its first matched payment and its first snapshot) to its last payment
-// date, or its payoff once paid off; a budget plans it in the periods holding
-// those days. A first payment dated after the first snapshot does not move the
-// start later: plans a conversion moved into the snapshot's month would drop
-// out of the life.
+// planningBounds: a debt can be planned from its start date, else from the
+// earliest of its first matched payment, its creation day and its first
+// snapshot, to its last payment date, or its payoff once paid off; a budget
+// plans it in the periods holding those days. Finishing setup later never
+// moves the start, so plans moved at conversion stay in the life. A debt not
+// set up has no end: LastDay is zero.
 func planningBounds(st *debtState, proj model.Projection) (first, last time.Time) {
 	d := st.debt
-	switch {
-	case d.StartDate != nil:
+	if d.StartDate != nil {
 		first = debtDate(*d.StartDate)
-	case len(st.snaps) > 0:
-		first = st.snaps[0].AsOf
+	} else {
+		first = debtDate(d.CreatedAt.UTC())
 		for _, sn := range st.snaps {
 			if sn.AsOf.Before(first) {
-				first = sn.AsOf
+				first = debtDate(sn.AsOf)
 			}
 		}
 		if len(st.pays) > 0 && st.pays[0].date.Before(first) {
-			first = st.pays[0].date
+			first = debtDate(st.pays[0].date)
 		}
-		first = debtDate(first)
-	case len(st.pays) > 0:
-		first = debtDate(st.pays[0].date)
-	default:
-		first = debtDate(d.Current.AsOf)
 	}
-	if proj.PaidOff {
+	switch {
+	case !d.IsSetUp():
+		return first, time.Time{}
+	case proj.PaidOff:
 		return first, proj.PaidOffAt
 	}
 	return first, debtDate(d.Current.LastPaymentDate)

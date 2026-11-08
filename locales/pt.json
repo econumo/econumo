@@ -2288,7 +2288,8 @@
     "label": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",
       "cannot_be_merged": "As etiquetas selecionadas não podem ser mescladas.",
-      "list_empty": "A lista de etiquetas está vazia."
+      "list_empty": "A lista de etiquetas está vazia.",
+      "used_by_debt": "Uma dívida usa esta etiqueta. Elimine ou altere primeiro a dívida."
     },
     "debt": {
       "payments_dont_cover": "Os pagamentos não cobrem o saldo. Aumente o pagamento ou defina uma data de último pagamento posterior.",

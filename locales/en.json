@@ -2288,7 +2288,8 @@
     "label": {
       "name_length": "Tag name must be {min}-{max} characters",
       "cannot_be_merged": "The selected tags cannot be merged",
-      "list_empty": "Tags list is empty"
+      "list_empty": "Tags list is empty",
+      "used_by_debt": "A debt uses this tag. Delete or change the debt first."
     },
     "debt": {
       "payments_dont_cover": "The payments do not cover the balance. Raise the payment or set a later last payment date.",

@@ -9,6 +9,7 @@ import (
 	appcategory "github.com/econumo/econumo/internal/category"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/debt"
+	applabel "github.com/econumo/econumo/internal/label"
 	"github.com/econumo/econumo/internal/model"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -28,16 +29,21 @@ type debtTags interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.Tag, error)
 }
 
-// DebtClassifications answers ownership questions from the category, payee
-// and tag repositories.
+type debtLabels interface {
+	GetByID(ctx context.Context, id vo.Id) (*model.Label, error)
+}
+
+// DebtClassifications answers ownership questions from the category, payee,
+// tag and label repositories.
 type DebtClassifications struct {
 	categories debtCategories
 	payees     debtPayees
 	tags       debtTags
+	labels     debtLabels
 }
 
-func NewDebtClassifications(categories debtCategories, payees debtPayees, tags debtTags) *DebtClassifications {
-	return &DebtClassifications{categories: categories, payees: payees, tags: tags}
+func NewDebtClassifications(categories debtCategories, payees debtPayees, tags debtTags, labels debtLabels) *DebtClassifications {
+	return &DebtClassifications{categories: categories, payees: payees, tags: tags, labels: labels}
 }
 
 // CategoryOf masks a category of another user as not found.
@@ -66,6 +72,14 @@ func (c *DebtClassifications) TagOwned(ctx context.Context, ownerID, id vo.Id) (
 		return false, ignoreNotFound(err)
 	}
 	return t.UserID.Equal(ownerID), nil
+}
+
+func (c *DebtClassifications) LabelOwned(ctx context.Context, ownerID, id vo.Id) (bool, error) {
+	l, err := c.labels.GetByID(ctx, id)
+	if err != nil {
+		return false, ignoreNotFound(err)
+	}
+	return l.UserID.Equal(ownerID), nil
 }
 
 func ignoreNotFound(err error) error {
@@ -112,8 +126,8 @@ type debtClassificationUsage interface {
 	LockForMerge(ctx context.Context, kind string, oldID, newID vo.Id) error
 }
 
-// DebtUsage adapts the debt service to the DebtUsage port the category, payee
-// and tag services declare; one instance serves one classification kind.
+// DebtUsage adapts the debt service to the DebtUsage port the category, payee,
+// tag and label services declare; one instance serves one classification kind.
 type DebtUsage struct {
 	debts debtClassificationUsage
 	kind  string
@@ -139,6 +153,7 @@ var (
 	_ appcategory.DebtUsage = (*DebtUsage)(nil)
 	_ apppayee.DebtUsage    = (*DebtUsage)(nil)
 	_ apptag.DebtUsage      = (*DebtUsage)(nil)
+	_ applabel.DebtUsage    = (*DebtUsage)(nil)
 	_ debt.Classifications  = (*DebtClassifications)(nil)
 	_ debt.Rates            = (*DebtRates)(nil)
 	_ debt.Currencies       = (*currencyrepo.Lookup)(nil)

@@ -21,7 +21,13 @@ type Service struct {
 	read     ReadModel
 	access   AccountAccess
 	tagNames TagNames
+	debts    DebtUsage
 }
+
+// SetDebtUsage installs the debt peer; the debt service is built after this
+// one, so it cannot be a constructor argument. Nil leaves debts out of the
+// delete and merge rules.
+func (s *Service) SetDebtUsage(d DebtUsage) { s.debts = d }
 
 // SetTagNames installs the shared-namespace peer. The label and tag services
 // depend on each other, so neither constructor can take the other; this breaks

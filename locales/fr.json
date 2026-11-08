@@ -2288,7 +2288,8 @@
     "label": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",
       "cannot_be_merged": "Les tags sélectionnés ne peuvent pas être fusionnés.",
-      "list_empty": "La liste des tags est vide."
+      "list_empty": "La liste des tags est vide.",
+      "used_by_debt": "Une dette utilise ce tag. Supprimez ou modifiez d'abord la dette."
     },
     "debt": {
       "payments_dont_cover": "Les paiements ne couvrent pas le solde. Augmentez le paiement ou repoussez la date du dernier paiement.",

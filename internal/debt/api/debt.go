@@ -61,7 +61,7 @@ func (h *Handlers) GetDebt(w http.ResponseWriter, r *http.Request) {
 // CreateDebt handles POST /api/v1/debt/create-debt (auth).
 //
 // @Summary     Create a debt
-// @Description Creates a debt tracked through an expense category, optionally narrowed by payee, tag and start date.
+// @Description Creates a debt tracked through an expense category, optionally narrowed by payee, tag, label and start date. Balance and lastPaymentDate are optional as a pair: without them the debt is created not set up (isSetUp 0), collecting its payments without figures.
 // @Tags        Debt
 // @Accept      json
 // @Produce     json
@@ -80,7 +80,7 @@ func (h *Handlers) CreateDebt(w http.ResponseWriter, r *http.Request) {
 // UpdateDebt handles POST /api/v1/debt/update-debt (auth).
 //
 // @Summary     Update a debt
-// @Description Updates a debt's name, key and terms; changed terms start a new snapshot. The currency never changes.
+// @Description Updates a debt's name, key and terms; changed terms start a new snapshot. A debt not set up is set up by a body carrying balance and lastPaymentDate (its first snapshot, as of today); without them only its payment, schedule and key change. A set-up debt always needs its terms. The currency never changes.
 // @Tags        Debt
 // @Accept      json
 // @Produce     json
@@ -118,7 +118,7 @@ func (h *Handlers) DeleteDebt(w http.ResponseWriter, r *http.Request) {
 // MarkDebtPaidOff handles POST /api/v1/debt/mark-debt-paid-off (auth).
 //
 // @Summary     Mark a debt paid off
-// @Description Writes a zero-balance snapshot as of today.
+// @Description Writes a zero-balance snapshot as of today. A debt not set up is refused.
 // @Tags        Debt
 // @Accept      json
 // @Produce     json

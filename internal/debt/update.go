@@ -8,13 +8,19 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
+// UpdateDebt saves a debt's name, matching filters, start date and terms. A
+// set-up debt needs its terms, and a change to them starts a new snapshot. A
+// debt not set up is set up by a body carrying a balance and a last payment
+// date (its first snapshot, as of today); without them only its payment and
+// schedule change.
 func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.UpdateDebtRequest) (*model.DebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
-	in, err := parseInput(req.Name, "", req.CategoryId, req.PayeeId, req.TagId, req.StartDate,
-		req.Balance, req.Payment, req.Schedule, req.LastPaymentDate)
+	in, err := parseInput(debtBody{name: req.Name, categoryID: req.CategoryId,
+		payeeID: req.PayeeId, tagID: req.TagId, labelID: req.LabelId, start: req.StartDate,
+		balance: req.Balance, payment: req.Payment, schedule: req.Schedule, lastPayment: req.LastPaymentDate})
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +37,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 	if err != nil {
 		return nil, err
 	}
-	if err := s.checkClassifications(ctx, userID, in.category, in.payee, in.tag); err != nil {
+	if err := s.checkClassifications(ctx, userID, in); err != nil {
 		return nil, err
 	}
 
@@ -46,10 +52,13 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if err != nil {
 			return err
 		}
-		wasWhole, wasCategory := isWholeCategory(cur), cur.CategoryID
+		if cur.IsSetUp() && !in.hasTerms {
+			return missingTerms(true, true)
+		}
+		wasWhole, wasCategory, wasSetUp := isWholeCategory(cur), cur.CategoryID, cur.IsSetUp()
 		keyChanged := !cur.CategoryID.Equal(in.category) || !sameIdPtr(cur.PayeeID, in.payee) ||
-			!sameIdPtr(cur.TagID, in.tag) || !sameDay(cur.StartDate, in.start)
-		cur.Name, cur.CategoryID, cur.PayeeID, cur.TagID, cur.StartDate = in.name, in.category, in.payee, in.tag, in.start
+			!sameIdPtr(cur.TagID, in.tag) || !sameIdPtr(cur.LabelID, in.label) || !sameDay(cur.StartDate, in.start)
+		cur.Name, cur.CategoryID, cur.PayeeID, cur.TagID, cur.LabelID, cur.StartDate = in.name, in.category, in.payee, in.tag, in.label, in.start
 		if keyChanged {
 			others, err := s.repo.ListByCategory(ctx, cur.CategoryID)
 			if err != nil {
@@ -59,13 +68,20 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 				return err
 			}
 		}
-		terms := in.terms(today, digits)
-		changed := !cur.IsSetUp() || termsDiffer(*cur.Current, terms)
-		if changed {
-			if err := validateTerms(terms); err != nil {
+		changed := false
+		if in.hasTerms {
+			terms := in.terms(today, digits)
+			if changed = !cur.IsSetUp() || termsDiffer(*cur.Current, terms); changed {
+				if err := validateTerms(terms); err != nil {
+					return err
+				}
+				cur.SetTerms(terms)
+			}
+		} else {
+			cur.Payment, cur.Schedule = in.payment.Round(digits), in.schedule
+			if err := validatePayment(cur.Payment); err != nil {
 				return err
 			}
-			cur.SetTerms(terms)
 		}
 		cur.UpdatedAt = now
 		if err := s.repo.Save(ctx, cur); err != nil {
@@ -73,6 +89,11 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		}
 		if changed {
 			if err := s.repo.AddSnapshot(ctx, s.snapshotOf(cur, now)); err != nil {
+				return err
+			}
+		}
+		if !wasSetUp && cur.IsSetUp() {
+			if err := s.dropSplits(ctx, cur.ID); err != nil {
 				return err
 			}
 		}
@@ -110,6 +131,9 @@ func (s *Service) MarkDebtPaidOff(ctx context.Context, userID vo.Id, req model.M
 	if err != nil {
 		return nil, err
 	}
+	if !d.IsSetUp() {
+		return nil, notSetUp()
+	}
 	if _, err := s.syncCategory(ctx, d.CategoryID); err != nil {
 		return nil, err
 	}
@@ -121,6 +145,9 @@ func (s *Service) MarkDebtPaidOff(ctx context.Context, userID vo.Id, req model.M
 		cur, err := s.ownedDebt(ctx, userID, id)
 		if err != nil {
 			return err
+		}
+		if !cur.IsSetUp() {
+			return notSetUp()
 		}
 		// A zero snapshot followed by a payment is reopened: only a debt
 		// that is paid off right now needs nothing written.
@@ -163,4 +190,24 @@ func (s *Service) stateNow(ctx context.Context, d *model.Debt) (*debtState, erro
 		}
 	}
 	return nil, errs.NewNotFound("Debt not found")
+}
+
+// dropSplits removes the provisional zero-interest splits a debt collected
+// before setup, so the next sync splits those payments by the new terms.
+func (s *Service) dropSplits(ctx context.Context, id vo.Id) error {
+	splits, err := s.repo.Splits(ctx, []vo.Id{id})
+	if err != nil {
+		return err
+	}
+	txIDs := make([]vo.Id, 0, len(splits))
+	for _, sp := range splits {
+		txIDs = append(txIDs, sp.TransactionID)
+	}
+	return s.repo.DeleteSplits(ctx, id, txIDs)
+}
+
+// notSetUp refuses an action that needs the debt's terms. The SPA never offers
+// one before setup, so the refusal carries no catalogue code.
+func notSetUp() error {
+	return &errs.ValidationError{Msg: "Finish setting up this debt first."}
 }

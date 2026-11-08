@@ -105,7 +105,7 @@ func (s *Service) ownedDebt(ctx context.Context, userID, id vo.Id) (*model.Debt,
 }
 
 func isWholeCategory(d *model.Debt) bool {
-	return d.PayeeID == nil && d.TagID == nil && d.StartDate == nil
+	return d.PayeeID == nil && d.TagID == nil && d.LabelID == nil && d.StartDate == nil
 }
 
 func sameIdPtr(a, b *vo.Id) bool {
@@ -134,13 +134,18 @@ func fieldError(key, message, code string) error {
 
 // checkKeys refuses a debt whose key can match a transaction another debt of
 // the owner in the same category also matches. Identical keys are allowed
-// only with distinct start dates, which partition the transactions.
+// only with distinct start dates, which partition the transactions. Two
+// debts naming different labels may overlap otherwise: a payment carrying
+// both labels goes to the older debt.
 func checkKeys(d *model.Debt, others []*model.Debt) error {
 	for _, o := range others {
 		if o.ID.Equal(d.ID) || !o.CategoryID.Equal(d.CategoryID) {
 			continue
 		}
-		if sameIdPtr(o.PayeeID, d.PayeeID) && sameIdPtr(o.TagID, d.TagID) {
+		if o.LabelID != nil && d.LabelID != nil && !o.LabelID.Equal(*d.LabelID) {
+			continue
+		}
+		if sameIdPtr(o.PayeeID, d.PayeeID) && sameIdPtr(o.TagID, d.TagID) && sameIdPtr(o.LabelID, d.LabelID) {
 			if sameDay(o.StartDate, d.StartDate) {
 				return fieldError("startDate", "Another debt with the same category, payee and tag already starts on this date.", errs.CodeDebtStartDateTaken)
 			}
@@ -166,13 +171,20 @@ func validateTerms(t model.DebtTerms) error {
 	if model.DebtTermTooLong(t.AsOf, t.LastPaymentDate) {
 		return fieldError("lastPaymentDate", "This value is out of range.", errs.CodeOutOfRange)
 	}
-	if !t.Payment.IsGreaterThan(vo.NewDecimal("0")) {
-		return fieldError("payment", "This value is out of range.", errs.CodeOutOfRange)
+	if err := validatePayment(t.Payment); err != nil {
+		return err
 	}
 	m := termsFloats(t)
 	n := len(model.DueDatesBetween(m.Schedule, m.Last, m.AsOf, m.Last))
 	if _, err := model.ImpliedRate(m.Balance, m.Payment, n); err != nil {
 		return fieldError("payment", "The payments do not cover the balance.", errs.CodeDebtPaymentsDontCover)
+	}
+	return nil
+}
+
+func validatePayment(p vo.DecimalNumber) error {
+	if !p.IsGreaterThan(vo.NewDecimal("0")) {
+		return fieldError("payment", "This value is out of range.", errs.CodeOutOfRange)
 	}
 	return nil
 }
@@ -189,8 +201,9 @@ func (s *Service) snapshotOf(d *model.Debt, now time.Time) *model.DebtSnapshot {
 }
 
 // checkClassifications verifies the category is an expense category of the
-// owner and the optional payee and tag are the owner's.
-func (s *Service) checkClassifications(ctx context.Context, ownerID vo.Id, categoryID vo.Id, payeeID, tagID *vo.Id) error {
+// owner and the optional payee, tag and label are the owner's.
+func (s *Service) checkClassifications(ctx context.Context, ownerID vo.Id, in debtInput) error {
+	categoryID, payeeID, tagID := in.category, in.payee, in.tag
 	_, _, isExpense, err := s.class.CategoryOf(ctx, ownerID, categoryID)
 	if err != nil {
 		return err
@@ -214,6 +227,15 @@ func (s *Service) checkClassifications(ctx context.Context, ownerID vo.Id, categ
 		}
 		if !ok {
 			return errs.NewNotFound("Tag not found")
+		}
+	}
+	if in.label != nil {
+		ok, err := s.class.LabelOwned(ctx, ownerID, *in.label)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errs.NewNotFound("Label not found")
 		}
 	}
 	return nil
@@ -261,15 +283,25 @@ func isNotFound(err error) bool {
 }
 
 // debtInput is a create/update body parsed into domain values; the balance and
-// payment are rounded to the debt currency once its digits are known.
+// payment are rounded to the debt currency once its digits are known. Without
+// hasTerms the body carries no balance and no last payment date.
 type debtInput struct {
 	name               string
 	currency, category vo.Id
-	payee, tag         *vo.Id
+	payee, tag, label  *vo.Id
 	start              *time.Time
 	balance, payment   vo.DecimalNumber
 	schedule           model.RecurringSchedule
 	lastPayment        time.Time
+	hasTerms           bool
+}
+
+// debtBody is the part of the create and update requests parseInput reads.
+type debtBody struct {
+	name, currencyID, categoryID   string
+	payeeID, tagID, labelID, start *string
+	balance, payment               vo.FlexString
+	schedule, lastPayment          string
 }
 
 func parseOptionalID(v *string) (*vo.Id, error) {
@@ -283,52 +315,63 @@ func parseOptionalID(v *string) (*vo.Id, error) {
 	return &id, nil
 }
 
-func parseInput(name, currencyID, categoryID string, payeeID, tagID, startDate *string, balance, payment vo.FlexString, schedule, lastPayment string) (debtInput, error) {
-	in := debtInput{name: name, balance: vo.NewDecimal(balance.String()), payment: vo.NewDecimal(payment.String())}
+func parseInput(b debtBody) (debtInput, error) {
+	in := debtInput{name: b.name, balance: vo.NewDecimal(b.balance.String()), payment: vo.NewDecimal(b.payment.String())}
 	var err error
-	if currencyID != "" {
-		if in.currency, err = vo.ParseId(currencyID); err != nil {
+	if b.currencyID != "" {
+		if in.currency, err = vo.ParseId(b.currencyID); err != nil {
 			return in, err
 		}
 	}
-	if in.category, err = vo.ParseId(categoryID); err != nil {
+	if in.category, err = vo.ParseId(b.categoryID); err != nil {
 		return in, err
 	}
-	if in.payee, err = parseOptionalID(payeeID); err != nil {
+	if in.payee, err = parseOptionalID(b.payeeID); err != nil {
 		return in, err
 	}
-	if in.tag, err = parseOptionalID(tagID); err != nil {
+	if in.tag, err = parseOptionalID(b.tagID); err != nil {
 		return in, err
 	}
-	if startDate != nil && strings.TrimSpace(*startDate) != "" {
-		start, err := time.Parse(datetime.DateLayout, *startDate)
+	if in.label, err = parseOptionalID(b.labelID); err != nil {
+		return in, err
+	}
+	if b.start != nil && strings.TrimSpace(*b.start) != "" {
+		start, err := time.Parse(datetime.DateLayout, *b.start)
 		if err != nil {
 			return in, err
 		}
 		in.start = &start
 	}
-	sched, ok := model.ParseRecurringSchedule(schedule)
+	sched, ok := model.ParseRecurringSchedule(b.schedule)
 	if !ok {
 		return in, errs.NewValidation("Validation failed", errs.FieldError{
 			Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 	in.schedule = sched
-	// The request may leave the terms out; saving a debt without them is not
-	// supported yet, so they stay required here.
-	var missing []errs.FieldError
-	if strings.TrimSpace(balance.String()) == "" {
-		missing = append(missing, errs.FieldError{Key: "balance", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	// The terms are optional, but only as a pair.
+	hasBalance, hasLast := strings.TrimSpace(b.balance.String()) != "", strings.TrimSpace(b.lastPayment) != ""
+	if !hasBalance && !hasLast {
+		return in, nil
 	}
-	if strings.TrimSpace(lastPayment) == "" {
-		missing = append(missing, errs.FieldError{Key: "lastPaymentDate", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	if !hasBalance || !hasLast {
+		return in, missingTerms(!hasBalance, !hasLast)
 	}
-	if len(missing) > 0 {
-		return in, errs.NewValidation("Validation failed", missing...)
-	}
-	if in.lastPayment, err = time.Parse(datetime.DateLayout, lastPayment); err != nil {
+	if in.lastPayment, err = time.Parse(datetime.DateLayout, b.lastPayment); err != nil {
 		return in, err
 	}
+	in.hasTerms = true
 	return in, nil
+}
+
+func missingTerms(balance, lastPayment bool) error {
+	var missing []errs.FieldError
+	if balance {
+		missing = append(missing, errs.FieldError{Key: "balance", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if lastPayment {
+		missing = append(missing, errs.FieldError{Key: "lastPaymentDate", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	return errs.NewValidation("Validation failed", missing...)
 }
 
 // terms are the snapshot values of the input as of today.

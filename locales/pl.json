@@ -2288,7 +2288,8 @@
     "label": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
-      "list_empty": "Lista tagów jest pusta."
+      "list_empty": "Lista tagów jest pusta.",
+      "used_by_debt": "Dług używa tego tagu. Najpierw usuń lub zmień dług."
     },
     "debt": {
       "payments_dont_cover": "Płatności nie pokrywają salda. Zwiększ płatność lub ustaw późniejszą datę ostatniej płatności.",

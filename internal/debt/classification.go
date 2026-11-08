@@ -14,6 +14,7 @@ const (
 	KindCategory = "category"
 	KindPayee    = "payee"
 	KindTag      = "tag"
+	KindLabel    = "label"
 )
 
 // InUse reports whether any debt is keyed on the classification.
@@ -25,6 +26,8 @@ func (s *Service) InUse(ctx context.Context, kind string, id vo.Id) (bool, error
 		return s.repo.UsesPayee(ctx, id)
 	case KindTag:
 		return s.repo.UsesTag(ctx, id)
+	case KindLabel:
+		return s.repo.UsesLabel(ctx, id)
 	}
 	return false, fmt.Errorf("debt: unknown classification kind %q", kind)
 }
@@ -66,6 +69,8 @@ func (s *Service) ReassignClassification(ctx context.Context, kind string, oldID
 			err = s.repo.ReassignCategory(ctx, oldID, newID)
 		case KindPayee:
 			err = s.repo.ReassignPayee(ctx, oldID, newID)
+		case KindLabel:
+			err = s.repo.ReassignLabel(ctx, oldID, newID)
 		default:
 			err = s.repo.ReassignTag(ctx, oldID, newID)
 		}
@@ -141,7 +146,7 @@ func (s *Service) keyedOn(ctx context.Context, kind string, id vo.Id) ([]*model.
 	switch kind {
 	case KindCategory:
 		return s.repo.ListByCategory(ctx, id)
-	case KindPayee, KindTag:
+	case KindPayee, KindTag, KindLabel:
 		return s.repo.ListByClassification(ctx, kind, id)
 	}
 	return nil, fmt.Errorf("debt: unknown classification kind %q", kind)

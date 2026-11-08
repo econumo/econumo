@@ -20,11 +20,20 @@ func init() {
 		}
 		return body
 	}
+	// withoutTerms leaves the balance and the last payment date out: the
+	// debt is created not set up.
+	withoutTerms := func(extra map[string]any) map[string]any {
+		body := debtBody(extra)
+		delete(body, "balance")
+		delete(body, "lastPaymentDate")
+		return body
+	}
 
 	// debt_crud walks one debt through its life: create, list, get, update the
-	// terms (a new snapshot), mark paid off, delete.
+	// terms (a new snapshot), mark paid off, delete. A second debt is created
+	// without terms, matching by a label, and then set up.
 	register(Scenario{Name: "debt_crud", Calls: func() []Call {
-		var debtID string
+		var debtID, draftID string
 		return []Call{
 			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
 				Body: debtBody(nil), CaptureIDInto: &debtID},
@@ -42,6 +51,19 @@ func init() {
 				Body: map[string]any{"id": &debtID}},
 			{Label: "list-after-delete", Method: "GET", Path: "/api/v1/debt/get-debt-list", Auth: "owner"},
 			{Label: "err:get-deleted", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+
+			{Label: "create-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: withoutTerms(map[string]any{"name": "Student loan", "labelId": LabelWork}), CaptureIDInto: &draftID},
+			{Label: "get-not-set-up", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &draftID},
+			{Label: "update-payment-only", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &draftID, "name": "Student loan", "categoryId": CatFood, "labelId": LabelWork,
+					"payment": "110", "schedule": "weekly"}},
+			{Label: "err:paid-off-not-set-up", Method: "POST", Path: "/api/v1/debt/mark-debt-paid-off", Auth: "owner",
+				Body: map[string]any{"id": &draftID}},
+			{Label: "finish-setup", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &draftID, "name": "Student loan", "categoryId": CatFood, "labelId": LabelWork,
+					"balance": "100", "payment": "105", "schedule": "weekly", "lastPaymentDate": day(7)}},
+			{Label: "get-after-setup", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &draftID},
 		}
 	}})
 
@@ -65,11 +87,16 @@ func init() {
 			create("category-not-expense", map[string]any{"categoryId": CatSalary}),
 			create("unknown-category", map[string]any{"categoryId": "c0000000-0000-0000-0000-0000000000ee"}),
 			create("unknown-payee", map[string]any{"payeeId": "20000000-0000-0000-0000-0000000000ee"}),
+			create("unknown-label", map[string]any{"labelId": "30000000-0000-0000-0000-0000000000ee"}),
+			create("terms-pair-missing-last-date", map[string]any{"lastPaymentDate": ""}),
+			create("terms-pair-missing-balance", map[string]any{"balance": ""}),
 
 			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
 				Body: debtBody(nil), CaptureIDInto: &debtID},
 			create("start-date-taken", nil),
 			create("key-conflict", map[string]any{"payeeId": PayeeShop}),
+			// a label tells two debts apart only when both name one
+			create("label-key-conflict", map[string]any{"labelId": LabelWork}),
 			{Label: "err:update-payment-dont-cover", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{
 					"id": &debtID, "name": "Car loan", "categoryId": CatFood, "balance": "100", "payment": "50",
@@ -112,13 +139,13 @@ func init() {
 		}
 	}})
 
-	// debt_classification_guard: a category, payee or tag a debt uses cannot be
-	// deleted, and a merge moves the debt to the target unless that would leave
-	// two debts able to match the same payment.
+	// debt_classification_guard: a category, payee, tag or label a debt uses
+	// cannot be deleted, and a merge moves the debt to the target unless that
+	// would leave two debts able to match the same payment.
 	register(Scenario{Name: "debt_classification_guard", Calls: func() []Call {
 		op := func(n string) string { return "d1000000-0000-0000-0000-0000000000" + n }
-		var srcCat, dstCat, catA, catB, srcPayee, dstPayee, srcTag, dstTag string
-		var debtA, debtB, debtC, debtD, debtE, debtF string
+		var srcCat, dstCat, catA, catB, catC, srcPayee, dstPayee, srcTag, dstTag, srcLabel, dstLabel string
+		var debtA, debtB, debtC, debtD, debtE, debtF, debtG, debtH string
 		post := func(label, path string, body map[string]any) Call {
 			return Call{Label: label, Method: "POST", Path: path, Auth: "owner", Body: body}
 		}
@@ -145,10 +172,13 @@ func init() {
 			createCat("create-target-category", op("a2"), "Loan target", &dstCat),
 			createCat("create-category-a", op("a3"), "Loan a", &catA),
 			createCat("create-category-b", op("a4"), "Loan b", &catB),
+			createCat("create-category-c", op("a5"), "Loan c", &catC),
 			createNamed("create-source-payee", "/api/v1/payee/create-payee", op("b1"), "Bank one", &srcPayee),
 			createNamed("create-target-payee", "/api/v1/payee/create-payee", op("b2"), "Bank two", &dstPayee),
 			createNamed("create-source-tag", "/api/v1/tag/create-tag", op("c1"), "Loan one", &srcTag),
 			createNamed("create-target-tag", "/api/v1/tag/create-tag", op("c2"), "Loan two", &dstTag),
+			createNamed("create-source-label", "/api/v1/label/create-label", op("e1"), "Debt car", &srcLabel),
+			createNamed("create-target-label", "/api/v1/label/create-label", op("e2"), "Debt student", &dstLabel),
 
 			createDebt("create-debt-whole-source", &debtA, map[string]any{"categoryId": &srcCat}),
 			{Label: "err:delete-used-category", Method: "POST", Path: "/api/v1/category/delete-category", Auth: "owner",
@@ -179,6 +209,16 @@ func init() {
 			post("delete-debt-tag-target", "/api/v1/debt/delete-debt", map[string]any{"id": &debtF}),
 			post("merge-tag", "/api/v1/tag/merge-tag", map[string]any{"sourceId": &srcTag, "targetId": &dstTag}),
 			getDebt("get-debt-after-tag-merge", &debtE),
+
+			createDebt("create-debt-label-source", &debtG, map[string]any{"categoryId": &catC, "labelId": &srcLabel}),
+			{Label: "err:delete-used-label", Method: "POST", Path: "/api/v1/label/delete-label", Auth: "owner",
+				Body: map[string]any{"id": &srcLabel}},
+			createDebt("create-debt-label-target", &debtH, map[string]any{"categoryId": &catC, "labelId": &dstLabel}),
+			{Label: "err:merge-label-key-conflict", Method: "POST", Path: "/api/v1/label/merge-label", Auth: "owner",
+				Body: map[string]any{"sourceId": &srcLabel, "targetId": &dstLabel}},
+			post("delete-debt-label-target", "/api/v1/debt/delete-debt", map[string]any{"id": &debtH}),
+			post("merge-label", "/api/v1/label/merge-label", map[string]any{"sourceId": &srcLabel, "targetId": &dstLabel}),
+			getDebt("get-debt-after-label-merge", &debtG),
 		}
 	}})
 

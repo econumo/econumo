@@ -5451,7 +5451,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Creates a debt tracked through an expense category, optionally narrowed by payee, tag and start date.",
+                "description": "Creates a debt tracked through an expense category, optionally narrowed by payee, tag, label and start date. Balance and lastPaymentDate are optional as a pair: without them the debt is created not set up (isSetUp 0), collecting its payments without figures.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5714,7 +5714,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Writes a zero-balance snapshot as of today.",
+                "description": "Writes a zero-balance snapshot as of today. A debt not set up is refused.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5789,7 +5789,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Updates a debt's name, key and terms; changed terms start a new snapshot. The currency never changes.",
+                "description": "Updates a debt's name, key and terms; changed terms start a new snapshot. A debt not set up is set up by a body carrying balance and lastPaymentDate (its first snapshot, as of today); without them only its payment, schedule and key change. A set-up debt always needs its terms. The currency never changes.",
                 "consumes": [
                     "application/json"
                 ],

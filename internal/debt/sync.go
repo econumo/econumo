@@ -115,10 +115,10 @@ func (s *Service) statesOf(ctx context.Context, ownerIDs []vo.Id,
 }
 
 // matchViews assigns every debt its matching key and range. Debts sharing a
-// key are partitioned by start date: each matches from its own start up to
-// the next one's.
+// key (payee, tag and label) are partitioned by start date: each matches from
+// its own start up to the next one's.
 func matchViews(debts []*model.Debt) map[vo.Id]model.DebtView {
-	type key struct{ payee, tag string }
+	type key struct{ payee, tag, label string }
 	groups := map[key][]*model.Debt{}
 	for _, d := range debts {
 		k := key{}
@@ -127,6 +127,9 @@ func matchViews(debts []*model.Debt) map[vo.Id]model.DebtView {
 		}
 		if d.TagID != nil {
 			k.tag = d.TagID.String()
+		}
+		if d.LabelID != nil {
+			k.label = d.LabelID.String()
 		}
 		groups[k] = append(groups[k], d)
 	}
@@ -225,25 +228,24 @@ func (s *Service) computeDebts(ctx context.Context, categoryID vo.Id, debts []*m
 	}
 
 	views := matchViews(debts)
+	ordered := make([]model.DebtView, 0, len(debts))
+	byView := make(map[string]vo.Id, len(debts))
+	for _, d := range debts {
+		ordered = append(ordered, views[d.ID])
+		byView[d.ID.String()] = d.ID
+	}
 	cat := categoryID.String()
 	assigned := map[vo.Id][]CandidateTx{}
 	matchedTo := map[vo.Id]vo.Id{}
 	for _, c := range cands {
-		var payee, tag *string
-		if c.PayeeID != nil {
-			p := c.PayeeID.String()
-			payee = &p
+		labels := make([]string, 0, len(c.LabelIDs))
+		for _, l := range c.LabelIDs {
+			labels = append(labels, l.String())
 		}
-		if c.TagID != nil {
-			t := c.TagID.String()
-			tag = &t
-		}
-		for _, d := range debts {
-			if model.DebtMatches(views[d.ID], &cat, payee, tag, nil, c.SpentAt) {
-				assigned[d.ID] = append(assigned[d.ID], c)
-				matchedTo[c.ID] = d.ID
-				break
-			}
+		if v, ok := model.AssignDebt(ordered, &cat, idString(c.PayeeID), idString(c.TagID), labels, c.SpentAt); ok {
+			id := byView[v.ID]
+			assigned[id] = append(assigned[id], c)
+			matchedTo[c.ID] = id
 		}
 	}
 
@@ -330,8 +332,13 @@ func (s *Service) fillPayments(ctx context.Context, st *debtState, cands []Candi
 		pays = append(pays, p)
 	}
 	st.pays = pays
-	if !missing || len(st.snaps) == 0 {
+	if !missing {
 		return nil
+	}
+	// A debt not set up has no rate yet: its payments are stored with a
+	// provisional zero interest, replaced when setup is finished.
+	if len(st.snaps) == 0 {
+		return s.storeZeroSplits(ctx, st, stored, persist)
 	}
 
 	mathPays := make([]model.MathPayment, 0, len(pays))
@@ -356,6 +363,21 @@ func (s *Service) fillPayments(ctx context.Context, st *debtState, cands []Candi
 		err := s.repo.InsertSplit(ctx, model.DebtSplit{DebtID: d.ID, TransactionID: p.txID,
 			Interest: vo.NewDecimal(strconv.FormatFloat(p.interest, 'f', st.digits, 64))})
 		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) storeZeroSplits(ctx context.Context, st *debtState, stored map[vo.Id]vo.DecimalNumber, persist bool) error {
+	if !persist {
+		return nil
+	}
+	for _, p := range st.pays {
+		if _, ok := stored[p.txID]; ok {
+			continue
+		}
+		if err := s.repo.InsertSplit(ctx, model.DebtSplit{DebtID: st.debt.ID, TransactionID: p.txID, Interest: vo.NewDecimal("0")}); err != nil {
 			return err
 		}
 	}

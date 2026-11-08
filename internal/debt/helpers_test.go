@@ -30,6 +30,7 @@ type fakeClass struct {
 	categories map[string]fakeCategory
 	payees     map[string]string
 	tags       map[string]string
+	labels     map[string]string
 }
 
 func (c *fakeClass) CategoryOf(_ context.Context, ownerID, id vo.Id) (string, string, bool, error) {
@@ -46,6 +47,10 @@ func (c *fakeClass) PayeeOwned(_ context.Context, ownerID, id vo.Id) (bool, erro
 
 func (c *fakeClass) TagOwned(_ context.Context, ownerID, id vo.Id) (bool, error) {
 	return c.tags[id.String()] == ownerID.String(), nil
+}
+
+func (c *fakeClass) LabelOwned(_ context.Context, ownerID, id vo.Id) (bool, error) {
+	return c.labels[id.String()] == ownerID.String(), nil
 }
 
 // fakeRates converts 1:1 except for currencies with a set multiplier into the
@@ -151,7 +156,7 @@ func newEnv(t *testing.T) *env {
 	e := &env{
 		repo: debtrepo.NewRepo(db.Engine, db.TX), db: db, f: f, user: user,
 		clock:    &fakeClock{now: march10},
-		class:    &fakeClass{categories: map[string]fakeCategory{}, payees: map[string]string{}, tags: map[string]string{}},
+		class:    &fakeClass{categories: map[string]fakeCategory{}, payees: map[string]string{}, tags: map[string]string{}, labels: map[string]string{}},
 		rates:    &fakeRates{multiplier: map[string]float64{}},
 		currency: &fakeCurrencies{unusable: map[string]bool{}},
 		budget:   &fakeBudget{},
@@ -183,6 +188,25 @@ func (e *env) newTag() string {
 	id := e.f.Tag(fixture.Tag{UserID: e.user, Name: "Tag " + fixture.NewID()[:6]})
 	e.class.tags[id] = e.user
 	return id
+}
+
+func (e *env) newLabel() string {
+	id := e.f.Label(fixture.Label{UserID: e.user, Name: "Label " + fixture.NewID()[:6]})
+	e.class.labels[id] = e.user
+	return id
+}
+
+func (e *env) addLabel(t *testing.T, txID, labelID string) {
+	t.Helper()
+	if _, err := e.db.Raw.ExecContext(context.Background(), e.db.Rebind("INSERT INTO transactions_labels (transaction_id, label_id) VALUES (?, ?)"), txID, labelID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// withoutTerms leaves the balance and the last payment date out: the debt is
+// created not set up.
+func withoutTerms(r *model.CreateDebtRequest) {
+	r.Balance, r.LastPaymentDate = vo.FlexString{}, ""
 }
 
 func (e *env) uid() vo.Id { return vo.MustParseId(e.user) }
@@ -218,7 +242,7 @@ func (e *env) updateReq(res *model.DebtResult) model.UpdateDebtRequest {
 	}
 	return model.UpdateDebtRequest{
 		Id: res.Id, Name: res.Name, CurrencyId: res.CurrencyId, CategoryId: res.CategoryId,
-		PayeeId: res.PayeeId, TagId: res.TagId, StartDate: startPtr,
+		PayeeId: res.PayeeId, TagId: res.TagId, LabelId: res.LabelId, StartDate: startPtr,
 		Balance: vo.NewFlexString(res.Balance), Payment: vo.NewFlexString(res.Payment),
 		Schedule: res.Schedule, LastPaymentDate: res.LastPaymentDate,
 	}
@@ -284,4 +308,18 @@ func requireNotFound(t *testing.T, err error) {
 	if _, ok := errs.AsNotFound(err); !ok {
 		t.Fatalf("err = %v, want not found", err)
 	}
+}
+
+func requireField(t *testing.T, err error, key, code string) {
+	t.Helper()
+	var v *errs.ValidationError
+	if !errors.As(err, &v) {
+		t.Fatalf("err = %v, want a validation error on %s", err, key)
+	}
+	for _, f := range v.Fields {
+		if f.Key == key && f.Code == code {
+			return
+		}
+	}
+	t.Fatalf("validation error %+v has no %s/%s field", v, key, code)
 }
