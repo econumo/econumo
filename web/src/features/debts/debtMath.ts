@@ -1,6 +1,5 @@
 import type { RecurringSchedule } from '@/api/dto/recurring'
 
-const EPSILON = 0.005
 const MAX_DUES = 1200
 const DATE = /^(\d{4})-(\d{2})-(\d{2})/
 
@@ -30,7 +29,7 @@ function nextDue(current: Date, schedule: RecurringSchedule, anchor: number): Da
 /**
  * The date of the payment that clears the debt: from `balance`, each due adds
  * interest (balance * periodRate) and takes `payment`, until the balance is at
- * most half a cent. null when the payment never covers the interest (or the
+ * most half the currency's smallest unit (`fractionDigits`, default 2). null when the payment never covers the interest (or the
  * input is unusable). `anchorDay` is the day of month the series keeps
  * (31 -> Feb 28 -> Mar 31); it defaults to nextDue's own day, so pass it when
  * nextDue itself was clamped.
@@ -42,20 +41,22 @@ export function projectLastPaymentDate(
   schedule: RecurringSchedule,
   nextDueDate: string,
   anchorDay?: number,
+  fractionDigits = 2,
 ): string | null {
+  const epsilon = 0.5 * 10 ** -fractionDigits
   const match = DATE.exec(nextDueDate)
   if (!match || !Number.isFinite(balance) || !Number.isFinite(payment) || !Number.isFinite(periodRate)) return null
   if (balance < 0 || periodRate < 0) return null
   let due = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
   if (Number.isNaN(due.getTime())) return null
-  if (balance <= EPSILON) return formatDate(due)
+  if (balance <= epsilon) return formatDate(due)
   if (payment <= 0 || payment <= balance * periodRate) return null
 
   const anchor = anchorDay ?? due.getUTCDate()
   let remaining = balance
   for (let i = 0; i < MAX_DUES; i++) {
     remaining -= payment - remaining * periodRate
-    if (remaining <= EPSILON) return formatDate(due)
+    if (remaining <= epsilon) return formatDate(due)
     due = nextDue(due, schedule, anchor)
   }
   return null

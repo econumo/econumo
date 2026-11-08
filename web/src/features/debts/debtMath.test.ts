@@ -59,6 +59,14 @@ describe('projectLastPaymentDate', () => {
     expect(projectLastPaymentDate(300, 100, 0, 'yearly', '2028-02-29')).toBe('2030-02-28')
   })
 
+  it('stops at half the currency smallest unit: an 8-digit currency keeps paying below a cent', () => {
+    expect(projectLastPaymentDate(0.004, 0.001, 0, 'monthly', '2026-06-15', undefined, 8)).toBe('2026-09-15')
+    // the default is a 2-digit currency
+    expect(projectLastPaymentDate(0.004, 0.001, 0, 'monthly', '2026-06-15')).toBe('2026-06-15')
+    // a 0-digit currency is paid off once less than half a unit is left
+    expect(projectLastPaymentDate(1000.4, 100, 0, 'monthly', '2026-06-15', undefined, 0)).toBe('2027-03-15')
+  })
+
   it('returns null for unusable input', () => {
     expect(projectLastPaymentDate(100, 0, 0, 'monthly', '2026-06-15')).toBeNull()
     expect(projectLastPaymentDate(100, 10, 0, 'monthly', 'nope')).toBeNull()

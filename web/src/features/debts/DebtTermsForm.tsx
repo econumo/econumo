@@ -39,11 +39,12 @@ export function DebtTermsForm({ debt, mode, onSaved, onCancel }: DebtTermsFormPr
   const { data: currencies } = useCurrencies()
   const settingUp = debt.isSetUp !== 1
   const updateDebt = useUpdateDebt({ finishingSetup: settingUp })
-  const { form, initial, patch, setBalance, setPayment, projection } = useDebtTermsForm(debt)
+  const currency = currencies?.find((c) => c.id === debt.currencyId)
+  const { form, initial, patch, setBalance, setPayment, projection } = useDebtTermsForm(debt, currency?.fractionDigits)
   const { errors, setErrors, clear: clearError } = useFormErrors<FieldErrors>()
   const [serverError, setServerError] = useState<string | null>(null)
 
-  const symbol = currencies?.find((c) => c.id === debt.currencyId)?.symbol ?? ''
+  const symbol = currency?.symbol ?? ''
   const lastPaymentLabel = t('debts.form.last_payment_date.label')
 
   const validate = (): boolean => {

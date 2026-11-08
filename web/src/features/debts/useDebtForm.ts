@@ -118,8 +118,9 @@ const DAY = /^\d{4}-\d{2}-(\d{2})/
     own implied rate. 'unknown' while the inputs cannot be projected (a half-typed
     amount, a debt with no rate or next due date yet, a negative balance, no
     payment, another schedule than the stored one); 'never' when the payment
-    does not cover the interest. */
-export function projectTerms(form: DebtTermsState, debt: DebtDto): Projection {
+    does not cover the interest. `fractionDigits` is the debt currency's
+    precision: the debt is paid off below half its smallest unit. */
+export function projectTerms(form: DebtTermsState, debt: DebtDto, fractionDigits?: number): Projection {
   // a debt not set up has no rate to project with: its last payment date is typed
   if (debt.isSetUp !== 1) {
     return { status: 'unknown' }
@@ -141,7 +142,7 @@ export function projectTerms(form: DebtTermsState, debt: DebtDto): Projection {
   }
   // the server anchors month-based schedules on the last payment date's day
   const anchor = DAY.exec(debt.lastPaymentDate)
-  const date = projectLastPaymentDate(balance, payment, rate, form.schedule, debt.nextDueDate, anchor ? Number(anchor[1]) : undefined)
+  const date = projectLastPaymentDate(balance, payment, rate, form.schedule, debt.nextDueDate, anchor ? Number(anchor[1]) : undefined, fractionDigits)
   if (date !== null) {
     return { status: 'date', date }
   }
@@ -153,13 +154,13 @@ function termsUntouched(form: DebtTermsState, initial: DebtTermsState): boolean 
   return form.balance === initial.balance && form.payment === initial.payment && form.schedule === initial.schedule
 }
 
-function withProjection(form: DebtTermsState, initial: DebtTermsState, debt: DebtDto): DebtTermsState {
+function withProjection(form: DebtTermsState, initial: DebtTermsState, debt: DebtDto, fractionDigits?: number): DebtTermsState {
   // terms typed back to what they were are untouched: the stored date returns,
   // so saving writes no snapshot
   if (debt.isSetUp === 1 && termsUntouched(form, initial)) {
     return { ...form, lastPaymentDate: initial.lastPaymentDate }
   }
-  const projection = projectTerms(form, debt)
+  const projection = projectTerms(form, debt, fractionDigits)
   return projection.status === 'date' ? { ...form, lastPaymentDate: projection.date } : form
 }
 
@@ -200,17 +201,17 @@ export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState,
   }
 }
 
-export function useDebtTermsForm(debt: DebtDto) {
+export function useDebtTermsForm(debt: DebtDto, fractionDigits?: number) {
   const [initial] = useState(() => initialTermsState(debt))
   const [form, setForm] = useState<DebtTermsState>(initial)
   const patch = (partial: Partial<DebtTermsState>) => setForm((prev) => ({ ...prev, ...partial }))
 
   // Balance and payment re-fill the last payment date from the debt's own
   // rate; the date itself and the schedule recalculate nothing.
-  const setBalance = (balance: string) => setForm((prev) => withProjection({ ...prev, balance }, initial, debt))
-  const setPayment = (payment: string) => setForm((prev) => withProjection({ ...prev, payment }, initial, debt))
+  const setBalance = (balance: string) => setForm((prev) => withProjection({ ...prev, balance }, initial, debt, fractionDigits))
+  const setPayment = (payment: string) => setForm((prev) => withProjection({ ...prev, payment }, initial, debt, fractionDigits))
 
-  const projection = projectTerms(form, debt)
+  const projection = projectTerms(form, debt, fractionDigits)
 
   return { form, initial, patch, setBalance, setPayment, projection }
 }

@@ -17,6 +17,16 @@ it('an amount edited after the schedule changed leaves the last payment date alo
   expect(result.current.projection).toEqual({ status: 'unknown' })
 })
 
+it('projects with the debt currency precision', () => {
+  const btc = { ...wireDebt, periodRate: '0', nextDueDate: '2026-06-15', lastPaymentDate: '2026-12-15' }
+  const form = { ...initialTermsState(btc), balance: '0.004', payment: '0.001' }
+  expect(projectTerms(form, btc, 8)).toEqual({ status: 'date', date: '2026-09-15' })
+  const { result } = renderHook(() => useDebtTermsForm(btc, 8))
+  act(() => result.current.setBalance('0.004'))
+  act(() => result.current.setPayment('0.001'))
+  expect(result.current.form.lastPaymentDate).toBe('2026-09-15')
+})
+
 it('a debt not set up starts with an empty balance and date, and projects nothing', () => {
   const { result } = renderHook(() => useDebtTermsForm(wireDebtNotSetUp))
   expect(result.current.form).toEqual({ balance: '', payment: '100', schedule: 'monthly', lastPaymentDate: '', startDate: '' })
