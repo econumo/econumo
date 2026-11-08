@@ -460,12 +460,14 @@ it('a snapshot of another user never shows the stored transactions', async () =>
 
 it('clearPersistedQueryCache empties the stored transactions and the snapshot', async () => {
   localStorage.setItem(QUERY_CACHE_KEY, '{}')
+  localStorage.setItem('econumo.transaction-draft', '{}')
   await putBuckets(fixtureUser.id, [{ accountId: 'a1', revision: 1, items: [], authors: [] }])
   expect((await loadBuckets(fixtureUser.id)).size).toBe(1)
 
   await clearPersistedQueryCache()
 
   expect(localStorage.getItem(QUERY_CACHE_KEY)).toBeNull()
+  expect(localStorage.getItem('econumo.transaction-draft')).toBeNull()
   expect((await loadBuckets(fixtureUser.id)).size).toBe(0)
 })
 

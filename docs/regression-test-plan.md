@@ -374,6 +374,14 @@ navigation (single-pane vs sidebar).
       global add button: date picker, amount (formula), category & payee
       selects with **create-on-type** inline creation, tags & labels chips,
       description.
+- [ ] 📱 Add transaction, unsaved work: enter an amount or description, then Cancel
+      or reload the page, and reopen Add transaction within 2 minutes: the form opens
+      empty with a one-line suggestion naming the amount and account. Restore brings
+      every field back; Cancel or Escape while it is still showing drops it and it is
+      not offered again (a reload keeps it); typing into the empty form replaces it.
+      Not offered after 2 minutes, after the transaction
+      was added, after logout, when only the type, account or date were changed,
+      or on Edit, posting a recurring payment or adding a queued import.
 - [ ] 📱 On an account page, add an expense/income after picking a different
       account: a bottom "Switch to <account>" bar appears and opens that
       account. Adding to the open account shows no bar. A transfer shows the

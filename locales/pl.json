@@ -368,6 +368,10 @@
       "update_form": {
         "header": "Edytuj transakcję"
       },
+      "draft": {
+        "message": "Niedokończona",
+        "restore": "Przywróć"
+      },
       "form": {
         "date": {
           "label": "Data"

@@ -132,6 +132,7 @@ export const METRICS = {
   TRANSACTION_CREATE: 'appTransactionCreate',
   TRANSACTION_UPDATE: 'appTransactionUpdate',
   TRANSACTION_DATE_SELECT: 'appTransactionDateSelect',
+  TRANSACTION_DRAFT_RESTORE: 'appTransactionDraftRestore',
   TRANSACTION_DELETE: 'appTransactionDelete',
   TRANSACTION_MOVE: 'appTransactionMove',
   TRANSACTION_IMPORT: 'appTransactionImport',
