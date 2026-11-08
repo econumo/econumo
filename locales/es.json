@@ -1275,6 +1275,7 @@
       "heading": "Pagos con tarjeta, registrados por ti",
       "text": "Conecta Apple Wallet y cada pago con tu tarjeta aparece en Econumo por sí solo.",
       "setup": "Configurar",
+      "tile": "Configurar el atajo",
       "skip": "Omitir"
     },
     "retry": "Reintentar",

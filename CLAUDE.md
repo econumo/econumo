@@ -405,19 +405,24 @@ into a new minor line links that line's `.0` notes (v1.6.x -> v1.7.2 shows v1.7.
 upgrade within the line the running patch. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
-**Onboarding Day 0** (`web/src/features/onboarding`; spec
-`docs/superpowers/specs/2026-11-01-onboarding-day-0-design.md`): a new user's first run is two
-steps, accounts (name, balance as of today, currency, Savings switch, plus a used-currencies
-block that sets the main currency) then categories, with an automatic "My budget" and a Skip on
-each step; the unsaved draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the
-writes are idempotent so a reload or retry creates nothing twice. Afterwards, until the first
-real transaction (correction-shaped rows with no description or a server-written "Balance adjustment…" one, i.e. opening balances and balance-edit adjustments, do not count), the budget page shows "get ready" cards
-(phone: add to home screen, Apple Wallet on iPhone; desktop: set the plan, CSV import) and the Inbox
-lists the same items under "Next steps", which is NOT counted in the sidebar badge. Per-user
-progress is the `getting_started` user option (comma-separated keys `plan`/`import`/`apple_wallet`,
-a `!` prefix = dismissed (`!plan`), `""` = went through Day 0, absent = never in the flow), written by
-`POST /api/v1/user/update-getting-started`. Migration `20261108000000` marks onboarding complete
-for existing users who own accounts.
+**Onboarding Day 0 / Getting started** (`web/src/features/onboarding`; spec
+`docs/superpowers/specs/2026-11-01-onboarding-day-0-design.md`, "Revision 2026-11-08"): a new
+user's first run is the Getting started stepper at `/` (`OnboardingPage` shell + `Stepper`,
+bodies in `STEP_BODIES`; phones land there too, with a Menu link to `/?menu=1` for the nav
+list). The step model is `useOnboardingSteps`, keys `import` (optional CSV import; a successful
+import also marks `categories` and `accounts` done), `categories`, `accounts`, `plan` (budget
+and plan: Income/Expenses cards, the budget's own period, set-limit writes only changed rows),
+then the device-dependent `home_screen` (client-only install step, never sent to the server)
+and `apple_wallet`. Categories and accounts the user already has are shown locked; the unsaved
+draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the writes are idempotent, so
+a reload or retry creates nothing twice. Onboarding completes automatically once every visible
+step is done or skipped (also when answered on another device). The install banner and popup
+stay hidden until it is complete. There are no budget-page "get ready" cards and no Inbox "Next
+steps" section any more. Per-user progress is the `getting_started` user option
+(comma-separated keys `import`/`categories`/`accounts`/`plan`/`apple_wallet`, a `!` prefix =
+dismissed (`!plan`), `""` = went through Day 0, absent = never in the flow), written by
+`POST /api/v1/user/update-getting-started`. Migration `20261108000000` marks onboarding
+complete for existing users who own accounts.
 
 **Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
 sidebar footer, not a menu entry): Net worth, plus a "Suggest a report" card that opens the

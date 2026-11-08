@@ -1275,6 +1275,7 @@
       "heading": "刷卡支付，自动记录",
       "text": "连接 Apple Wallet，每一笔刷卡都会自动出现在 Econumo 中。",
       "setup": "设置",
+      "tile": "设置快捷指令",
       "skip": "跳过"
     },
     "retry": "重试",

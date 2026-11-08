@@ -1275,6 +1275,7 @@
       "heading": "Kaartbetalingen, vanzelf vastgelegd",
       "text": "Koppel Apple Wallet en elke betaling met je kaart verschijnt vanzelf in Econumo.",
       "setup": "Instellen",
+      "tile": "Snelcommando instellen",
       "skip": "Overslaan"
     },
     "retry": "Opnieuw proberen",

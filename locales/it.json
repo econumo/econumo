@@ -1275,6 +1275,7 @@
       "heading": "Pagamenti con carta, registrati per te",
       "text": "Collega Apple Wallet e ogni pagamento con la carta compare da solo in Econumo.",
       "setup": "Configura",
+      "tile": "Configura il comando rapido",
       "skip": "Salta"
     },
     "retry": "Riprova",

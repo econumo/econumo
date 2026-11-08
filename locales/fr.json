@@ -1275,6 +1275,7 @@
       "heading": "Paiements par carte, saisis pour vous",
       "text": "Connectez Apple Wallet et chaque paiement par carte apparaît tout seul dans Econumo.",
       "setup": "Configurer",
+      "tile": "Configurer le raccourci",
       "skip": "Passer"
     },
     "retry": "Réessayer",

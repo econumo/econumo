@@ -1275,6 +1275,7 @@
       "heading": "Card payments, logged for you",
       "text": "Connect Apple Wallet and every tap with your card appears in Econumo on its own.",
       "setup": "Set up",
+      "tile": "Set up the Shortcut",
       "skip": "Skip"
     },
     "retry": "Try again",

@@ -1275,6 +1275,7 @@
       "heading": "Płatności kartą zapisują się same",
       "text": "Połącz Apple Wallet, a każda płatność kartą pojawi się w Econumo automatycznie.",
       "setup": "Skonfiguruj",
+      "tile": "Skonfiguruj skrót",
       "skip": "Pomiń"
     },
     "retry": "Spróbuj ponownie",

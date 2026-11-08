@@ -19,7 +19,7 @@ export function ImportStep({ onDone, onSkip }: StepBodyProps) {
       <p className="text-sm text-muted-foreground">{t('onboarding.import_step.text')}</p>
       <button
         type="button"
-        className="mt-4 flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-8 text-sm text-econumo-link hover:bg-accent"
+        className="mt-4 flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 text-sm text-primary hover:bg-primary/10"
         onClick={() => setOpen(true)}
       >
         <FileUp className="size-6" />

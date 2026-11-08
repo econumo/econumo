@@ -21,7 +21,7 @@ export function InstallStep({ onDone, onSkip }: StepBodyProps) {
       <h2 className="text-2xl font-normal">{t('onboarding.install_step.heading')}</h2>
       <p className="text-sm text-muted-foreground">{t('onboarding.install_step.text')}</p>
       {mode !== null && mode !== 'prompt' ? (
-        <div className="mt-4">
+        <div className="mt-4 rounded-xl border bg-card p-3 [&_ol]:gap-0 [&_ol>li]:px-1 [&_ol>li]:py-2 [&_ol>li+li]:border-t [&_ol>li+li]:border-border/60 [&_li>span:first-child]:bg-primary/10 [&_li_svg]:text-primary">
           <InstallSteps mode={mode} />
         </div>
       ) : null}
