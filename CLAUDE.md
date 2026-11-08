@@ -411,7 +411,9 @@ user's first run is the Getting started stepper at `/` (`OnboardingPage` shell +
 bodies in `STEP_BODIES`; phones land there too, with a Menu link to `/?menu=1` for the nav
 list). The step model is `useOnboardingSteps`, keys `import` (optional CSV import; a successful
 import also marks `categories` and `accounts` done), `categories`, `accounts`, `plan` (budget
-and plan: Income/Expenses cards, the budget's own period, set-limit writes only changed rows),
+and plan: Income/Expenses cards of the user's own categories prefilled from `get-budget-plan`,
+since `get-budget` lists expense categories only; the budget's own period; set-limit writes
+only changed rows),
 then the device-dependent `home_screen` (client-only install step, never sent to the server)
 and `apple_wallet`. Categories and accounts the user already has are shown locked; the unsaved
 draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the writes are idempotent, so

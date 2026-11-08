@@ -54,3 +54,9 @@ export function parseBalance(raw: string, locale: string): string | null {
   if (pieces.length !== 2 || !/^\d*$/.test(pieces[0]) || !/^\d+$/.test(pieces[1]) || pieces[1].length === 3) return null
   return result(pieces[0], pieces[1])
 }
+
+// A stored decimal shown for editing in the UI language, digit for digit:
+// going through a number would round long fractions.
+export function decimalInput(value: string, locale: string): string {
+  return value.replace('.', separators(locale).decimal)
+}

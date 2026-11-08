@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { isAxiosError } from 'axios'
-import { getBudget, setLimit } from '@/api/budget'
-import { BudgetElementType, type BudgetElementDto } from '@/api/dto/budget'
+import { getBudgetPlan, setLimit } from '@/api/budget'
+import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
 import { useAccounts } from '@/features/accounts/queries'
+import { useCategories } from '@/features/classifications/queries'
 import { useBudgets } from '@/features/budgets/queries'
 import { budgetCurrentPeriod, localDate } from '@/features/budgets/period'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -18,13 +19,11 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { add, cmp } from '@/lib/decimal'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat } from '@/lib/money'
-import { parseBalance } from './balance'
+import { decimalInput, parseBalance } from './balance'
 import { rowTile } from './CategoriesStep'
 import type { StepBodyProps } from './OnboardingPage'
 import { StepLoadError } from './StepLoadError'
 import { useDay0 } from './useDay0'
-
-const byPosition = (a: BudgetElementDto, b: BudgetElementDto) => a.position - b.position
 
 export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
   const { t, i18n } = useTranslation()
@@ -34,6 +33,7 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
   const accounts = useAccounts()
   const currencies = useCurrencies()
   const exchange = useExchange()
+  const categories = useCategories()
   const [budgetId, setBudgetId] = useState<Id | null>(null)
   // a non-HTTP refusal: no own account or no main currency to build the budget from
   const [ensureFailure, setEnsureFailure] = useState<{ error: unknown; needsAccount: boolean } | null>(null)
@@ -65,9 +65,11 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
   const budgets = useBudgets()
   const meta = budgets.data?.find((b) => b.id === budgetId)
   const period = meta ? budgetCurrentPeriod(meta) : null
-  const budget = useQuery({
-    queryKey: [...queryKeys.budget, budgetId ?? 'none', period ?? 'none'],
-    queryFn: () => getBudget(budgetId as Id, period as string),
+  // get-budget lists expense categories only; the plan carries both kinds,
+  // with "" for a category that has no plan this month
+  const plan = useQuery({
+    queryKey: [...queryKeys.budgetPlan, budgetId ?? 'none', period ?? 'none', 1],
+    queryFn: () => getBudgetPlan(budgetId as Id, period as string, 1),
     enabled: budgetId !== null && period !== null,
   })
 
@@ -112,29 +114,32 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
   if (budgetId !== null && budgets.data !== undefined && !budgets.isFetching && meta === undefined) {
     return frame(<StepLoadError error={new Error('budget missing from the list')} onRetry={ensure} />)
   }
-  if (budget.isError) return frame(<StepLoadError error={budget.error} onRetry={() => void budget.refetch()} />)
-  if (!budget.data || period === null) return frame(null)
+  if (plan.isError) return frame(<StepLoadError error={plan.error} onRetry={() => void plan.refetch()} />)
+  if (categories.isError) return frame(<StepLoadError error={categories.error} onRetry={() => void categories.refetch()} />)
+  if (!plan.data || !categories.data || period === null) return frame(null)
 
-  const elements = budget.data.structure.elements.filter((e) => e.isArchived === 0)
-  const income = elements.filter((e) => e.type === BudgetElementType.INCOME_CATEGORY).sort(byPosition)
-  const expenses = elements.filter((e) => e.type === BudgetElementType.CATEGORY).sort(byPosition)
+  // a category is its own element id; one inside an envelope is planned with the envelope
+  const planned = new Map(plan.data.structure.elements.map((e) => [e.id, e.cells[0]?.planned ?? '']))
+  const inEnvelopes = new Set(plan.data.structure.elements.flatMap((e) => e.children.map((c) => c.id)))
+  const own = categories.data.filter((c) => c.ownerUserId === user?.id && c.isArchived === 0 && !inEnvelopes.has(c.id))
+  const income = own.filter((c) => c.type === 'income')
+  const expenses = own.filter((c) => c.type === 'expense')
   const rows = [...income, ...expenses]
 
-  const prefill = (e: BudgetElementDto) =>
-    e.budgeted === '' ? '' : new Intl.NumberFormat(i18n.language, { useGrouping: false, maximumFractionDigits: 8 }).format(Number(e.budgeted))
-  const valueOf = (e: BudgetElementDto) => edits[e.id] ?? prefill(e)
-  const parsed = (e: BudgetElementDto): string | null => {
-    const raw = valueOf(e).trim()
+  const stored = (c: CategoryDto) => planned.get(c.id) ?? ''
+  const valueOf = (c: CategoryDto) => edits[c.id] ?? decimalInput(stored(c), i18n.language)
+  const parsed = (c: CategoryDto): string | null => {
+    const raw = valueOf(c).trim()
     if (raw === '') return ''
     // a plan is an amount to spend or to earn, never below zero
     return raw.startsWith('-') ? null : parseBalance(raw, i18n.language)
   }
-  const invalid = new Set(rows.filter((e) => parsed(e) === null).map((e) => e.id))
-  const sum = (list: BudgetElementDto[]) => list.reduce((acc, e) => add(acc, parsed(e) || '0'), '0')
+  const invalid = new Set(rows.filter((c) => parsed(c) === null).map((c) => c.id))
+  const sum = (list: CategoryDto[]) => list.reduce((acc, c) => add(acc, parsed(c) || '0'), '0')
 
-  const budgetCurrencyId = budget.data.meta.currencyId
+  const budgetCurrencyId = plan.data.meta.currencyId
   const currency = (currencies.data ?? []).find((c) => c.id === budgetCurrencyId)
-  const planned = sum(expenses)
+  const plannedTotal = sum(expenses)
   const expected = sum(income)
   const hasIncome = cmp(expected, '0') > 0
   const inAccounts = (accounts.data ?? [])
@@ -148,13 +153,18 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
     setSaveError(null)
     try {
       let written = 0
-      for (const e of rows) {
-        const amount = parsed(e)
-        if (!amount || (e.budgeted !== '' && cmp(amount, e.budgeted) === 0)) continue
-        await setLimit({ budgetId, elementId: e.id, period, amount })
+      for (const c of rows) {
+        const amount = parsed(c)
+        // a blank is never written; a typed zero is a plan of its own unless it is the stored one
+        if (!amount || (stored(c) !== '' && cmp(amount, stored(c)) === 0)) continue
+        // set-limit adds the element row a category created after the budget lacks
+        await setLimit({ budgetId, elementId: c.id, period, amount })
         written++
       }
-      if (written > 0) void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      if (written > 0) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+      }
       await onDone()
       trackEvent(METRICS.ONBOARDING_PLAN_COMPLETE, { rows: written })
     } catch (err) {
@@ -164,25 +174,25 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
     }
   }
 
-  const group = (list: BudgetElementDto[], title: string, testId: string) =>
+  const group = (list: CategoryDto[], title: string, testId: string) =>
     list.length === 0 ? null : (
       <section data-testid={testId}>
         <h3 className="mt-4 mb-1.5 text-xs tracking-wider text-muted-foreground uppercase">{title}</h3>
         <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border bg-card">
-          {list.map((e) => (
-            <li key={e.id} className="flex items-center gap-3 px-3 py-2">
+          {list.map((c) => (
+            <li key={c.id} className="flex items-center gap-3 px-3 py-2">
               <span className={rowTile}>
-                <EntityIcon name={e.icon} className="text-lg" />
+                <EntityIcon name={c.icon} className="text-lg" />
               </span>
-              <span className="min-w-0 flex-1 truncate px-1">{e.name}</span>
+              <span className="min-w-0 flex-1 truncate px-1">{c.name}</span>
               <input
                 className="w-24 shrink-0 rounded-lg border bg-transparent px-2 py-1.5 text-right text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:border-destructive sm:w-32"
-                aria-label={e.name}
+                aria-label={c.name}
                 inputMode="decimal"
                 placeholder="0"
-                value={valueOf(e)}
-                aria-invalid={invalid.has(e.id)}
-                onChange={(ev) => setEdits((prev) => ({ ...prev, [e.id]: ev.target.value }))}
+                value={valueOf(c)}
+                aria-invalid={invalid.has(c.id)}
+                onChange={(ev) => setEdits((prev) => ({ ...prev, [c.id]: ev.target.value }))}
               />
             </li>
           ))}
@@ -207,7 +217,7 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
 
       <p className="mt-3 text-sm text-muted-foreground">
         {t(hasIncome ? 'onboarding.plan_step.planned_of_income' : 'onboarding.plan_step.planned_of_accounts', {
-          planned: moneyFormat(planned, currency),
+          planned: moneyFormat(plannedTotal, currency),
           total: moneyFormat(hasIncome ? expected : inAccounts, currency),
         })}
       </p>

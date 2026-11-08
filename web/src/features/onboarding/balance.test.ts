@@ -1,4 +1,4 @@
-import { parseBalance } from './balance'
+import { decimalInput, parseBalance } from './balance'
 
 describe('parseBalance', () => {
   it('reads en numbers with a comma group mark and a dot decimal', () => {
@@ -34,4 +34,11 @@ describe('parseBalance', () => {
     expect(parseBalance('1234.50', 'ru')).toBe('1234.50')
     expect(parseBalance('2.500', 'ru')).toBeNull()
   })
+})
+
+it('decimalInput keeps every digit and writes the locale decimal mark', () => {
+  expect(decimalInput('1234.123456789', 'en')).toBe('1234.123456789')
+  expect(decimalInput('250.5', 'de')).toBe('250,5')
+  expect(decimalInput('3000', 'de')).toBe('3000')
+  expect(parseBalance(decimalInput('0.123456789012', 'ru'), 'ru')).toBe('0.123456789012')
 })

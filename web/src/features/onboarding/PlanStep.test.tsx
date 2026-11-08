@@ -1,5 +1,5 @@
 import { StrictMode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -16,23 +16,54 @@ const pendingUser = {
 
 const ok = (data: unknown = {}) => HttpResponse.json({ success: true, message: '', data })
 
-const element = (id: string, type: number, name: string, budgeted: string, position: number) => ({
-  id, type, name, icon: 'category', currencyId: null, isArchived: 0, folderId: null, position,
-  budgeted, isBudgeted: budgeted === '' ? 0 : 1, available: '0', spent: '0', budgetSpent: '0', ownerUserId: 'u1', children: [],
+// get-category-list and get-budget-plan as the server sends them (captured
+// from a running instance): get-budget lists expense categories only, the plan
+// lists both kinds with planned "" for no plan, an envelope's categories as
+// its children, plus the synthetic uncategorized income row.
+const category = (id: string, type: 'expense' | 'income', name: string, position: number, extra: Record<string, unknown> = {}) => ({
+  id, ownerUserId: 'u1', name, position, type, icon: 'category', isArchived: 0,
+  createdAt: '2026-11-08 21:37:17', updatedAt: '2026-11-08 21:37:17', ...extra,
 })
 
-const defaultElements = (salary: string) => [
-  element('cat-food', 1, 'Groceries', '200', 0),
-  element('cat-rent', 1, 'Housing', '', 1),
-  element('env-1', 0, 'An envelope', '50', 2),
-  element('cat-salary', 3, 'Salary', salary, 3),
+const defaultCategories = () => [
+  category('cat-food', 'expense', 'Groceries', 0),
+  category('cat-rent', 'expense', 'Housing', 1),
+  category('cat-coffee', 'expense', 'Coffee', 2),
+  category('cat-old', 'expense', 'Old', 3, { isArchived: 1 }),
+  category('cat-theirs', 'expense', 'Partner groceries', 4, { ownerUserId: 'u2' }),
+  category('cat-salary', 'income', 'Salary', 5),
 ]
 
-function wireBudget(id: string, elements: unknown[], periodStartDay = 1) {
+const planElement = (id: string, type: number, name: string, planned: string, position: number, children: unknown[] = []) => ({
+  id, type, name, icon: 'category', currencyId: 'cur-usd', isArchived: 0, folderId: null, position, ownerUserId: 'u1',
+  cells: [{ actual: '0', planned, upcoming: '0' }], children,
+})
+
+const defaultPlans = (salary: string) => ({ 'cat-food': '200', 'cat-rent': '', 'cat-salary': salary } as Record<string, string>)
+
+function wirePlan(id: string, cats: { id: string; type: string; name: string; ownerUserId: string }[], plans: Record<string, string>, month: string, periodStartDay = 1) {
+  const coffee = cats.find((c) => c.id === 'cat-coffee')
+  const own = cats.filter((c) => c.id !== 'cat-coffee')
   return {
-    ...fixtureWireBudget,
     meta: { ...fixtureWireBudget.meta, id, periodStartDay },
-    structure: { folders: [], labels: [], elements },
+    months: [month],
+    openingBalances: [{ currencyId: 'cur-usd', amount: '0' }],
+    savingsOpeningBalances: [{ currencyId: 'cur-usd', amount: '0' }],
+    currencyRates: [{ period: month, rates: [] }],
+    transfers: [{ period: month, items: [] }],
+    savingsFlows: [],
+    savingsIncomeExpense: [],
+    structure: {
+      folders: [],
+      savings: [],
+      elements: [
+        ...own.map((c, i) => planElement(c.id, c.type === 'income' ? 3 : 1, c.name, plans[c.id] ?? '', i)),
+        ...(coffee
+          ? [planElement('env-1', 0, 'An envelope', '50', own.length, [{ id: 'cat-coffee', type: 1, name: 'Coffee', icon: 'category', isArchived: 0, ownerUserId: 'u1', cells: [{ actual: '0', upcoming: '0' }] }])]
+          : []),
+        planElement('uncategorized', 3, 'Uncategorized', '', own.length + 1),
+      ],
+    },
   }
 }
 
@@ -49,7 +80,8 @@ let listCalls: number
 interface Setup {
   salary?: string
   accounts?: unknown[]
-  elements?: unknown[]
+  categories?: ReturnType<typeof category>[]
+  plans?: Record<string, string>
   // an existing default budget instead of a fresh one
   existing?: { id: string; periodStartDay: number }
   // a budget list already cached (fresh) when the step opens
@@ -58,7 +90,7 @@ interface Setup {
   listOnce?: boolean
 }
 
-function setup({ salary = '3000', accounts, elements = defaultElements(salary), existing, cachedBudgets, listOnce }: Setup = {}) {
+function setup({ salary = '3000', accounts, categories = defaultCategories(), plans = defaultPlans(salary), existing, cachedBudgets, listOnce }: Setup = {}) {
   creates = []
   limits = []
   budgetPeriods = []
@@ -66,12 +98,10 @@ function setup({ salary = '3000', accounts, elements = defaultElements(salary), 
   const user = existing
     ? { ...pendingUser, options: pendingUser.options.map((o) => (o.name === 'budget' ? { ...o, value: existing.id } : o)) }
     : pendingUser
-  const metas = () =>
-    existing
-      ? [wireBudget(existing.id, elements, existing.periodStartDay).meta]
-      : creates.map((c) => wireBudget((c as { id: string }).id, elements).meta)
+  const meta = (id: string, periodStartDay = 1) => ({ ...fixtureWireBudget.meta, id, periodStartDay })
+  const metas = () => (existing ? [meta(existing.id, existing.periodStartDay)] : creates.map((c) => meta((c as { id: string }).id)))
   const byId = (id: string) => metas().find((m) => m.id === id)
-  server.use(...coreHandlers({ user, budgets: [], ...(accounts ? { accounts } : {}) }))
+  server.use(...coreHandlers({ user, budgets: [], categories, ...(accounts ? { accounts } : {}) }))
   server.use(
     http.get('*/api/v1/budget/get-budget-list', () => {
       listCalls++
@@ -82,11 +112,12 @@ function setup({ salary = '3000', accounts, elements = defaultElements(salary), 
       creates.push(body)
       return ok({ item: byId(body.id) })
     }),
-    http.get('*/api/v1/budget/get-budget', ({ request }) => {
+    http.get('*/api/v1/budget/get-budget-plan', ({ request }) => {
       const url = new URL(request.url)
-      budgetPeriods.push(url.searchParams.get('date') ?? '')
+      const from = url.searchParams.get('from') ?? ''
+      budgetPeriods.push(from)
       const id = url.searchParams.get('id') ?? ''
-      return ok({ item: wireBudget(id, elements, byId(id)?.periodStartDay ?? 1) })
+      return ok({ item: wirePlan(id, categories, plans, from, byId(id)?.periodStartDay ?? 1) })
     }),
     http.get('*/api/v1/oauth/get-identity-list', () => ok([])),
     http.post('*/api/v1/budget/set-limit', async ({ request }) => {
@@ -134,7 +165,10 @@ it('lists income and expense categories in their groups, prefilled from the plan
   expect(await input('Groceries')).toHaveValue('200')
   expect(screen.getByRole('textbox', { name: 'Housing' })).toHaveValue('')
   expect(screen.getByRole('textbox', { name: 'Salary' })).toHaveValue('3000')
-  expect(screen.queryByRole('textbox', { name: 'An envelope' })).not.toBeInTheDocument()
+  for (const hidden of ['An envelope', 'Coffee', 'Old', 'Partner groceries', 'Uncategorized']) {
+    expect(screen.queryByRole('textbox', { name: hidden })).not.toBeInTheDocument()
+  }
+  expect(within(screen.getByTestId('group-income')).getByRole('textbox', { name: 'Salary' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Plan this month' })).toBeInTheDocument()
   expect(screen.getByText(/^Income · /)).toBeInTheDocument()
   expect(screen.getByText(/^Expenses · /)).toBeInTheDocument()
@@ -166,6 +200,19 @@ it('saves changed amounts only, a typed zero but never a blank, then moves on', 
   await user.click(screen.getByRole('button', { name: 'Save plan' }))
   await waitFor(() => expect(onDone).toHaveBeenCalled())
   expect(limits).toEqual([{ budgetId: createdId(), elementId: 'cat-rent', period, amount: '0' }])
+})
+
+it('keeps a stored plan digit for digit and leaves an untouched one alone', async () => {
+  const user = userEvent.setup()
+  const { onDone } = setup({ plans: { 'cat-food': '1234.123456789', 'cat-rent': '0', 'cat-salary': '' } })
+  expect(await input('Groceries')).toHaveValue('1234.123456789')
+  // a stored zero plan reads as zero, and typing it again writes nothing
+  expect(screen.getByRole('textbox', { name: 'Housing' })).toHaveValue('0')
+  expect(screen.getByRole('textbox', { name: 'Salary' })).toHaveValue('')
+  await user.type(screen.getByRole('textbox', { name: 'Salary' }), '0')
+  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await waitFor(() => expect(onDone).toHaveBeenCalled())
+  expect(limits).toEqual([{ budgetId: createdId(), elementId: 'cat-salary', period, amount: '0' }])
 })
 
 it('writes every changed row with the first of the month', async () => {
@@ -236,7 +283,7 @@ it('refuses a negative amount', async () => {
 
 it('with no categories to plan it points to the Categories step', async () => {
   const user = userEvent.setup()
-  const { onGoTo } = setup({ elements: [element('env-1', 0, 'An envelope', '50', 0)] })
+  const { onGoTo } = setup({ categories: [category('cat-old', 'expense', 'Old', 0, { isArchived: 1 })] })
   await user.click(await screen.findByRole('button', { name: 'Add categories' }, { timeout: 5000 }))
   expect(onGoTo).toHaveBeenCalledWith('categories')
   expect(screen.getByText('There are no categories to plan yet. Add a few first.')).toBeInTheDocument()
