@@ -12,6 +12,8 @@ func TestFormatSum(t *testing.T) {
 	}{
 		// Summation noise rounds away at the 8th decimal.
 		{358.34999999999127, "358.35000000"},
+		{1339.8899999999999, "1339.89000000"},
+		{-1339.8899999999999, "-1339.89000000"},
 		{23.3299999999, "23.33000000"},
 		{4.3199999999, "4.32000000"},
 		// A value already exact to 8 decimals is unchanged.
