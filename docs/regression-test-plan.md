@@ -2662,7 +2662,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       no retries. When the network returns the button is back and the data
       refreshes by itself. Something saved while offline waits (the Save
       button keeps spinning) and is sent when the network returns, as long as
-      the app stays open; nothing waiting is written to local storage.
+      the app stays open; nothing waiting is written to local storage. Signing
+      in offline fails at once with an error. A budget cell's transaction list
+      that was never loaded shows a spinner offline, never "List is empty".
 - [ ] Sync button tap = incremental refresh: after an edit made on another
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the
