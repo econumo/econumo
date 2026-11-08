@@ -42,10 +42,11 @@ func debtRows(f filters, options map[string]elementOption) []debtRow {
 }
 
 // plannable reports whether the period keyed month lies within the debt's
-// life, on a budget whose periods start on startDay.
+// life, on a budget whose periods start on startDay. A debt not set up has no
+// last period yet: it is plannable from its first period on.
 func plannable(v model.DebtView, startDay int, month time.Time) bool {
 	first, last := v.PlanningBounds(startDay)
-	return !month.Before(first) && !month.After(last)
+	return !month.Before(first) && (last.IsZero() || !month.After(last))
 }
 
 // debtTimelines projects every debt of the budget over months. The projection
@@ -53,8 +54,9 @@ func plannable(v model.DebtView, startDay int, month time.Time) bool {
 // the debt's end, wherever the window is, so the payoff figures agree between
 // views; a plan stored outside the debt's life is ignored. Nil while no debt
 // source is wired: the upcoming pass unwires it, as its debt rows are dropped.
+// A debt not set up has nothing to project and is left out.
 func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filters, months []time.Time) (map[string]model.DebtTimeline, error) {
-	if s.debts == nil || len(f.debtViews) == 0 {
+	if s.debts == nil {
 		return nil, nil
 	}
 	today := localToday(s.clock.Now(), reqctx.Location(ctx))
@@ -62,10 +64,16 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 	last := current
 	ids := make([]string, 0, len(f.debtViews))
 	for _, v := range f.debtViews {
+		if !v.SetUp {
+			continue
+		}
 		ids = append(ids, v.ID)
 		if _, end := v.PlanningBounds(f.startDay); end.After(last) {
 			last = end
 		}
+	}
+	if len(ids) == 0 {
+		return nil, nil
 	}
 	rows, err := s.read.LimitsByMonth(ctx, b.budget.ID, current, last.AddDate(0, 1, 0))
 	if err != nil {
@@ -74,7 +82,7 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 	plans := map[string]map[string]string{}
 	for _, l := range rows {
 		v, ok := f.debtByID[l.ExternalID]
-		if !ok || model.ElementType(l.Type) != model.ElementDebt {
+		if !ok || !v.SetUp || model.ElementType(l.Type) != model.ElementDebt {
 			continue
 		}
 		m, perr := time.Parse(datetime.DateLayout, l.Month)
@@ -108,6 +116,43 @@ func timelineMonth(tl model.DebtTimeline, v model.DebtView, startDay int, month 
 
 func decimalString(s string) string { return vo.NewDecimal(s).String() }
 
+// debtMonthFigures are a debt row's projected figures for one month.
+type debtMonthFigures struct {
+	closingBalance           string
+	paymentsLeft             int
+	scheduledTotal, stillDue string
+}
+
+// monthFigures is the row's month of the projection; a debt not set up has
+// no balance to count down and nothing scheduled.
+func monthFigures(tl model.DebtTimeline, v model.DebtView, startDay int, month time.Time) debtMonthFigures {
+	if !v.SetUp {
+		return debtMonthFigures{scheduledTotal: "0", stillDue: "0"}
+	}
+	tm := timelineMonth(tl, v, startDay, month)
+	return debtMonthFigures{
+		closingBalance: decimalString(tm.ClosingBalance), paymentsLeft: tm.PaymentsLeft,
+		scheduledTotal: decimalString(tm.ScheduledTotal), stillDue: decimalString(tm.StillDue),
+	}
+}
+
+// debtPayoffFigures are the payoff date and overpayment, with and without
+// the planned extras; all "" for a debt not set up.
+type debtPayoffFigures struct {
+	payoffDate, basePayoffDate           string
+	overpaymentLeft, baseOverpaymentLeft string
+}
+
+func payoffFigures(tl model.DebtTimeline, v model.DebtView) debtPayoffFigures {
+	if !v.SetUp {
+		return debtPayoffFigures{}
+	}
+	return debtPayoffFigures{
+		payoffDate: tl.PayoffDate, basePayoffDate: tl.BasePayoffDate,
+		overpaymentLeft: decimalString(tl.OverpaymentLeft), baseOverpaymentLeft: decimalString(tl.BaseOverpaymentLeft),
+	}
+}
+
 // emitMonthlyDebts renders get-budget's debt rows. A row shows in a month of
 // the debt's life, and outside it only when something was paid then or earlier
 // months left something over: the Available total counts that carry.
@@ -129,17 +174,17 @@ func emitMonthlyDebts(rows []debtRow, month time.Time, startDay int, limits map[
 			continue
 		}
 		tl := timelines[v.ID]
-		tm := timelineMonth(tl, v, startDay, month)
+		mf, pf := monthFigures(tl, v, startDay, month), payoffFigures(tl, v)
 		out = append(out, model.DebtElementResult{
 			Id: v.ID, Type: int(model.ElementDebt.Int16()), Name: v.Name, Icon: v.Icon,
 			CurrencyId: v.CurrencyID, OwnerUserId: v.OwnerID, Position: len(out),
 			Budgeted: budgeted.String(), IsBudgeted: boolToInt(hasLimit),
 			Spent: paidNow.String(), BudgetSpent: budgetPaid.String(), Available: available.String(),
-			ClosingBalance: decimalString(tm.ClosingBalance), PaymentsLeft: tm.PaymentsLeft,
-			ScheduledTotal: decimalString(tm.ScheduledTotal), Upcoming: decimalString(tm.StillDue),
-			PayoffDate: tl.PayoffDate, BasePayoffDate: tl.BasePayoffDate,
-			OverpaymentLeft: decimalString(tl.OverpaymentLeft), BaseOverpaymentLeft: decimalString(tl.BaseOverpaymentLeft),
-			IsPaidOff: boolToInt(v.PaidOff), IsPlannable: boolToInt(in),
+			ClosingBalance: mf.closingBalance, PaymentsLeft: mf.paymentsLeft,
+			ScheduledTotal: mf.scheduledTotal, Upcoming: mf.stillDue,
+			PayoffDate: pf.payoffDate, BasePayoffDate: pf.basePayoffDate,
+			OverpaymentLeft: pf.overpaymentLeft, BaseOverpaymentLeft: pf.baseOverpaymentLeft,
+			IsPaidOff: boolToInt(v.PaidOff), IsPlannable: boolToInt(in), IsSetUp: boolToInt(v.SetUp),
 		})
 	}
 	return out
@@ -165,23 +210,24 @@ func emitPlanDebts(rows []debtRow, months []time.Time, startDay int, plannedFor 
 			if !in {
 				plan = ""
 			}
-			tm := timelineMonth(tl, v, startDay, m)
+			mf := monthFigures(tl, v, startDay, m)
 			cells[i] = model.PlanDebtCellResult{
 				Actual: actual.String(), Planned: plan,
-				ClosingBalance: decimalString(tm.ClosingBalance), PaymentsLeft: tm.PaymentsLeft,
-				ScheduledTotal: decimalString(tm.ScheduledTotal), Upcoming: decimalString(tm.StillDue),
+				ClosingBalance: mf.closingBalance, PaymentsLeft: mf.paymentsLeft,
+				ScheduledTotal: mf.scheduledTotal, Upcoming: mf.stillDue,
 				IsPlannable: boolToInt(in),
 			}
 		}
 		if !visible {
 			continue
 		}
+		pf := payoffFigures(tl, v)
 		out = append(out, model.PlanDebtElementResult{
 			Id: v.ID, Type: int(model.ElementDebt.Int16()), Name: v.Name, Icon: v.Icon,
 			CurrencyId: v.CurrencyID, OwnerUserId: v.OwnerID, Position: len(out),
-			PayoffDate: tl.PayoffDate, BasePayoffDate: tl.BasePayoffDate,
-			OverpaymentLeft: decimalString(tl.OverpaymentLeft), BaseOverpaymentLeft: decimalString(tl.BaseOverpaymentLeft),
-			IsPaidOff: boolToInt(v.PaidOff), Cells: cells,
+			PayoffDate: pf.payoffDate, BasePayoffDate: pf.basePayoffDate,
+			OverpaymentLeft: pf.overpaymentLeft, BaseOverpaymentLeft: pf.baseOverpaymentLeft,
+			IsPaidOff: boolToInt(v.PaidOff), IsSetUp: boolToInt(v.SetUp), Cells: cells,
 		})
 	}
 	return out

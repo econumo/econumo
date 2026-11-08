@@ -330,14 +330,15 @@ func (p *projectedRead) SummarizedLimits(context.Context, vo.Id, time.Time, time
 
 type spendingKey struct{ month, category, tag, debt, currency string }
 
-// paysDebt reports whether one of the budget's debts matches the occurrence.
+// debtOf is the debt the occurrence would pay, by the rule the debt sync
+// assigns stored payments with: the oldest matching debt.
+func (p *projectedRead) debtOf(o *projectedTx) (model.DebtView, bool) {
+	return model.AssignDebt(p.debts, o.categoryID, o.payeeID, o.tagID, o.labelIDs, o.dueAt)
+}
+
 func (p *projectedRead) paysDebt(o *projectedTx) bool {
-	for _, d := range p.debts {
-		if model.DebtMatches(d, o.categoryID, o.payeeID, o.tagID, o.labelIDs, o.dueAt) {
-			return true
-		}
-	}
-	return false
+	_, ok := p.debtOf(o)
+	return ok
 }
 
 // spending is the CountSpending/SpendingByMonth filter: expenses on the
@@ -555,7 +556,8 @@ func (p *projectedRead) BudgetTransactionsByCategories(_ context.Context, catego
 
 func (p *projectedRead) BudgetTransactionsByDebt(_ context.Context, debt model.DebtView, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	return p.expenses(accountIDs, start, end, func(o *projectedTx) bool {
-		return model.DebtMatches(debt, o.categoryID, o.payeeID, o.tagID, o.labelIDs, o.dueAt)
+		d, ok := p.debtOf(o)
+		return ok && d.ID == debt.ID
 	}), nil
 }
 

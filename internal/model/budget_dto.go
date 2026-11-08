@@ -178,6 +178,8 @@ type SavingsElementResult struct {
 // outside the debt's life has IsPlannable 0 and Budgeted "0" whatever is
 // stored. PayoffDate and BasePayoffDate ("" when none) are with and without
 // the planned extras, and so are OverpaymentLeft and BaseOverpaymentLeft.
+// A debt not set up (IsSetUp 0) has no projection: ClosingBalance and the
+// payoff figures are "", PaymentsLeft 0, ScheduledTotal and Upcoming "0".
 type DebtElementResult struct {
 	Id                  string `json:"id"`
 	Type                int    `json:"type"`
@@ -202,6 +204,7 @@ type DebtElementResult struct {
 	BaseOverpaymentLeft string `json:"baseOverpaymentLeft"`
 	IsPaidOff           int    `json:"isPaidOff"`
 	IsPlannable         int    `json:"isPlannable"`
+	IsSetUp             int    `json:"isSetUp"`
 }
 
 // StructureResult is the budget's folders + ordered elements + labels +
@@ -514,6 +517,7 @@ type PlanDebtElementResult struct {
 	OverpaymentLeft     string               `json:"overpaymentLeft"`
 	BaseOverpaymentLeft string               `json:"baseOverpaymentLeft"`
 	IsPaidOff           int                  `json:"isPaidOff"`
+	IsSetUp             int                  `json:"isSetUp"`
 	Cells               []PlanDebtCellResult `json:"cells"`
 }
 

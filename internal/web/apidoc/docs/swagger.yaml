@@ -1235,6 +1235,8 @@ definitions:
         type: integer
       isPlannable:
         type: integer
+      isSetUp:
+        type: integer
       name:
         type: string
       overpaymentLeft:
@@ -2512,6 +2514,8 @@ definitions:
       id:
         type: string
       isPaidOff:
+        type: integer
+      isSetUp:
         type: integer
       name:
         type: string

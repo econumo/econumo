@@ -36,7 +36,9 @@ func budgetFieldGlossary() string {
 - structure.debts[]: loan rows, in the debt's currency; the payments a debt
   matches count here, not on their category or tag. budgetSpent counts in the
   expense totals like an element's; upcoming is the scheduled dues still to
-  pay this month; closingBalance is the debt left at the month's end.
+  pay this month; closingBalance is the debt left at the month's end. A debt
+  with isSetUp 0 has no balance or end date yet: closingBalance and the payoff
+  figures are "", paymentsLeft 0, scheduledTotal and upcoming "0".
 - balances[]: one row per currency the budget touches (budget currency first) —
   account-level, separate from envelope spending. startBalance/endBalance are
   point-in-time totals (null until the period starts/ends); income/expenses/

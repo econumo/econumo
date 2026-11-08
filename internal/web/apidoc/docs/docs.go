@@ -15166,6 +15166,9 @@ const docTemplate = `{
                 "isPlannable": {
                     "type": "integer"
                 },
+                "isSetUp": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -17123,6 +17126,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "isPaidOff": {
+                    "type": "integer"
+                },
+                "isSetUp": {
                     "type": "integer"
                 },
                 "name": {

@@ -394,3 +394,71 @@ func deref(p *string) string {
 	}
 	return *p
 }
+
+func TestDrilldown_LabelledDebtExcludesOnlyItsPayments(t *testing.T) {
+	h := newAttrHarness(t)
+	car := h.f.Label(fixture.Label{UserID: h.owner.String(), Name: "Car"})
+	student := h.f.Label(fixture.Label{UserID: h.owner.String(), Name: "Student"})
+	carPaid := h.spend(h.usd, h.loan, "", "300", time.Date(2026, 6, 2, 10, 0, 0, 0, time.UTC))
+	h.labelTx(t, carPaid, car)
+	shared := h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
+	h.labelTx(t, shared, car, student)
+	plain := h.spend(h.usd, h.loan, "", "40", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
+	loan := vo.MustParseId(h.loan)
+	carL, studentL := vo.MustParseId(car), vo.MustParseId(student)
+	next := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
+	sharedTemplate, carTemplate, plainTemplate := vo.NewId(), vo.NewId(), vo.NewId()
+	template := func(id vo.Id, labels ...vo.Id) *model.RecurringTransaction {
+		return &model.RecurringTransaction{ID: id, UserID: h.owner, Type: model.TransactionTypeExpense, AccountID: vo.MustParseId(h.usd),
+			Amount: "100", CategoryID: &loan, LabelIDs: labels, Schedule: model.RecurringScheduleMonthly, NextPaymentAt: next, ScheduledDay: 20}
+	}
+	h.recurring.templates = []*model.RecurringTransaction{
+		template(sharedTemplate, carL, studentL), template(carTemplate, carL), template(plainTemplate),
+	}
+
+	carDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.LabelId = "Car", &car })
+	studentDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.LabelId = "Student", &student })
+	h.backdateDebt(t, studentDebt, attrToday.AddDate(0, -1, 0))
+
+	loanID := h.loan
+	category := h.txList(t, model.BudgetTransactionListRequest{CategoryId: &loanID})
+	if got := itemIDs(category); !sameIDs(got, []string{plain}) {
+		t.Errorf("category list = %v, want only the unlabelled payment", got)
+	}
+	if got := upcomingIDs(category); !sameIDs(got, []string{plainTemplate.String()}) {
+		t.Errorf("category upcoming = %v, want only the unlabelled template", got)
+	}
+	studentList := h.txList(t, model.BudgetTransactionListRequest{DebtId: &studentDebt})
+	if got := itemIDs(studentList); !sameIDs(got, []string{shared}) {
+		t.Errorf("older debt list = %v, want the shared payment", got)
+	}
+	if got := upcomingIDs(studentList); !sameIDs(got, []string{sharedTemplate.String()}) {
+		t.Errorf("older debt upcoming = %v, want the shared template", got)
+	}
+	carList := h.txList(t, model.BudgetTransactionListRequest{DebtId: &carDebt})
+	if got := itemIDs(carList); !sameIDs(got, []string{carPaid}) {
+		t.Errorf("newer debt list = %v, want only its own payment", got)
+	}
+	if got := upcomingIDs(carList); !sameIDs(got, []string{carTemplate.String()}) {
+		t.Errorf("newer debt upcoming = %v, want only its own template", got)
+	}
+}
+
+func TestUpcoming_TemplateWithDebtLabelDropped(t *testing.T) {
+	h := newAttrHarness(t)
+	car := h.f.Label(fixture.Label{UserID: h.owner.String(), Name: "Car"})
+	next := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
+	loan, carL := vo.MustParseId(h.loan), vo.MustParseId(car)
+	h.recurring.templates = []*model.RecurringTransaction{
+		{ID: vo.NewId(), UserID: h.owner, Type: model.TransactionTypeExpense, AccountID: vo.MustParseId(h.usd),
+			Amount: "1000", CategoryID: &loan, LabelIDs: []vo.Id{carL}, Schedule: model.RecurringScheduleMonthly, NextPaymentAt: next, ScheduledDay: 20},
+		{ID: vo.NewId(), UserID: h.owner, Type: model.TransactionTypeExpense, AccountID: vo.MustParseId(h.usd),
+			Amount: "30", CategoryID: &loan, Schedule: model.RecurringScheduleMonthly, NextPaymentAt: next, ScheduledDay: 20},
+	}
+
+	h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.LabelId = &car })
+	res, _ := h.getBudget(t)
+	if el := findElement(res, h.loan, model.ElementCategory); el == nil || el.Upcoming != "30" {
+		t.Errorf("loan upcoming = %+v, want 30 (the labelled template went to the debt)", el)
+	}
+}

@@ -1,12 +1,14 @@
 package budget_test
 
 import (
+	"errors"
 	"math"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -350,5 +352,151 @@ func TestGetBudget_DebtRowsStayOutOfElements(t *testing.T) {
 		if el.Id == debtID {
 			t.Error("debt row listed in the plan's elements")
 		}
+	}
+}
+
+// createLooseDebt makes a debt with no terms on the loan category: payment
+// and schedule only, so it is not set up.
+func (h *attrHarness) createLooseDebt(t *testing.T, extra func(*model.CreateDebtRequest)) string {
+	t.Helper()
+	req := model.CreateDebtRequest{
+		Name: "Loose", CurrencyId: fixture.USD, CategoryId: h.loan,
+		Payment: vo.NewFlexString("1000"), Schedule: "monthly",
+	}
+	if extra != nil {
+		extra(&req)
+	}
+	res, err := h.debts.CreateDebt(h.ctx, h.owner, req)
+	if err != nil {
+		t.Fatalf("CreateDebt: %v", err)
+	}
+	if res.IsSetUp != 0 {
+		t.Fatalf("debt without terms reads set up: %+v", res)
+	}
+	return res.Id
+}
+
+func (h *attrHarness) labelTx(t *testing.T, txID string, labelIDs ...string) {
+	t.Helper()
+	for _, l := range labelIDs {
+		if _, err := h.tdb.Raw.ExecContext(h.ctx, h.tdb.Rebind("INSERT INTO transactions_labels (transaction_id, label_id) VALUES (?, ?)"), txID, l); err != nil {
+			t.Fatalf("label %s: %v", txID, err)
+		}
+	}
+}
+
+// backdateDebt moves a debt's creation instant, which decides which of two
+// debts matching one payment is the older.
+func (h *attrHarness) backdateDebt(t *testing.T, debtID string, at time.Time) {
+	t.Helper()
+	if _, err := h.tdb.Raw.ExecContext(h.ctx, h.tdb.Rebind("UPDATE debts SET created_at = ? WHERE id = ?"), at.UTC().Format("2006-01-02 15:04:05"), debtID); err != nil {
+		t.Fatalf("backdate %s: %v", debtID, err)
+	}
+}
+
+func TestGetBudget_NotSetUpDebtRow(t *testing.T) {
+	h := newAttrHarness(t)
+	h.spend(h.usd, h.loan, "", "800", time.Date(2026, 5, 3, 10, 0, 0, 0, time.UTC))
+	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
+	debtID := h.createLooseDebt(t, nil)
+	h.setLimit(t, debtID, "2026-06-01", "1200")
+
+	res := h.budgetAt(t, h.owner, "2026-06-01")
+	if got := spentOf(t, res, h.loan, model.ElementCategory); got != "0" {
+		t.Errorf("loan spent = %s, want 0 (the payments moved to the debt)", got)
+	}
+	june := debtRow(res, debtID)
+	if june == nil {
+		t.Fatal("no row for the debt without terms")
+	}
+	if june.IsSetUp != 0 || june.IsPlannable != 1 || june.IsPaidOff != 0 {
+		t.Errorf("June flags = %+v, want not set up, plannable", june)
+	}
+	if june.Spent != "1000" || june.BudgetSpent != "1000" || june.Budgeted != "1200" || june.IsBudgeted != 1 || june.Available != "-600" {
+		t.Errorf("June planned/paid = %+v, want 1200 planned, 1000 paid, -600 available (May's 800 unplanned)", june)
+	}
+	if june.ClosingBalance != "" || june.PaymentsLeft != 0 || june.ScheduledTotal != "0" || june.Upcoming != "0" {
+		t.Errorf("June schedule = %+v, want no balance, no payments left, nothing scheduled or due", june)
+	}
+	if june.PayoffDate != "" || june.BasePayoffDate != "" || june.OverpaymentLeft != "" || june.BaseOverpaymentLeft != "" {
+		t.Errorf("June payoff = %+v, want every payoff figure empty", june)
+	}
+
+	// Plannable from the first payment's month, with no end.
+	if may := debtRow(h.budgetAt(t, h.owner, "2026-05-01"), debtID); may == nil || may.IsPlannable != 1 || may.Spent != "800" {
+		t.Errorf("May row = %+v, want plannable with 800 paid", may)
+	}
+	if april := debtRow(h.budgetAt(t, h.owner, "2026-04-01"), debtID); april != nil {
+		t.Errorf("April is before the first payment, row = %+v", april)
+	}
+	a := vo.NewFlexString("10")
+	_, err := h.svc.SetLimit(h.ctx, h.owner, model.SetLimitRequest{BudgetId: h.budgetID, ElementId: debtID, Period: "2026-04-01", Amount: &a})
+	var ve *errs.ValidationError
+	if !errors.As(err, &ve) || len(ve.Fields) == 0 || ve.Fields[0].Code != errs.CodeBudgetDebtPeriodOutOfRange {
+		t.Errorf("SetLimit April = %v, want %s", err, errs.CodeBudgetDebtPeriodOutOfRange)
+	}
+	h.setLimit(t, debtID, "2031-01-01", "500")
+	if _, err := h.svc.CreateComment(h.ctx, h.owner, model.CreateCommentRequest{
+		Id: vo.NewId().String(), BudgetId: h.budgetID, ElementId: debtID, Period: "2031-01-01", Comment: "later",
+	}); err != nil {
+		t.Errorf("CreateComment 2031: %v, want accepted (no end until set up)", err)
+	}
+	if far := debtRow(h.budgetAt(t, h.owner, "2031-01-01"), debtID); far == nil || far.IsPlannable != 1 || far.Budgeted != "500" {
+		t.Errorf("2031 row = %+v, want plannable with the 500 plan (no end until set up)", far)
+	}
+
+	row := planDebtRow(h.plan(t, "2026-04-01", "4"), debtID)
+	if row == nil {
+		t.Fatal("no plan row for the debt without terms")
+	}
+	if row.IsSetUp != 0 || row.PayoffDate != "" || row.BasePayoffDate != "" || row.OverpaymentLeft != "" || row.BaseOverpaymentLeft != "" {
+		t.Errorf("plan row = %+v, want not set up, payoff figures empty", row)
+	}
+	for i, want := range []struct {
+		plannable       int
+		actual, planned string
+	}{{0, "0", ""}, {1, "800", ""}, {1, "1000", "1200"}, {1, "0", ""}} {
+		c := row.Cells[i]
+		if c.IsPlannable != want.plannable || c.Actual != want.actual || c.Planned != want.planned {
+			t.Errorf("cell %d = %+v, want plannable %d, actual %s, planned %q", i, c, want.plannable, want.actual, want.planned)
+		}
+		if c.ClosingBalance != "" || c.PaymentsLeft != 0 || c.ScheduledTotal != "0" || c.Upcoming != "0" {
+			t.Errorf("cell %d schedule = %+v, want empty balance, nothing scheduled or due", i, c)
+		}
+	}
+}
+
+func TestGetBudget_SharedLabelPaymentOnOlderDebtRow(t *testing.T) {
+	h := newAttrHarness(t)
+	car := h.f.Label(fixture.Label{UserID: h.owner.String(), Name: "Car"})
+	student := h.f.Label(fixture.Label{UserID: h.owner.String(), Name: "Student"})
+	carOnly := h.spend(h.usd, h.loan, "", "300", time.Date(2026, 6, 2, 10, 0, 0, 0, time.UTC))
+	h.labelTx(t, carOnly, car)
+	both := h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
+	h.labelTx(t, both, car, student)
+	h.spend(h.usd, h.loan, "", "40", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
+
+	carDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.LabelId = "Car", &car })
+	studentDebt := h.createRefDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.LabelId = "Student", &student })
+	// The student loan is the older debt, though created second.
+	h.backdateDebt(t, studentDebt, attrToday.AddDate(0, -1, 0))
+
+	res := h.budgetAt(t, h.owner, "2026-06-01")
+	if got := spentOf(t, res, h.loan, model.ElementCategory); got != "40" {
+		t.Errorf("loan spent = %s, want 40 (the unlabelled payment only)", got)
+	}
+	if r := debtRow(res, studentDebt); r == nil || r.Spent != "1000" || r.IsSetUp != 1 {
+		t.Errorf("student row = %+v, want the shared payment's 1000, set up", r)
+	}
+	if r := debtRow(res, carDebt); r == nil || r.Spent != "300" {
+		t.Errorf("car row = %+v, want only its own 300", r)
+	}
+
+	plan := h.plan(t, "2026-06-01", "1")
+	if r := planDebtRow(plan, studentDebt); r == nil || r.Cells[0].Actual != "1000" || r.IsSetUp != 1 {
+		t.Errorf("student plan row = %+v, want 1000", r)
+	}
+	if r := planDebtRow(plan, carDebt); r == nil || r.Cells[0].Actual != "300" {
+		t.Errorf("car plan row = %+v, want 300", r)
 	}
 }

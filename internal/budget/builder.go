@@ -52,6 +52,9 @@ type filters struct {
 // stored payment split names, when that debt is one of the budget's and the
 // row still carries the debt's category (and tag). A split a recategorised
 // payment left behind therefore keeps counting on the category and tag rows.
+// The sync stores at most one split per payment, on the oldest debt whose
+// category, payee, tag and label match (model.AssignDebt), so a payment
+// carrying two debts' labels leaves the category once, for the older debt.
 func (f filters) debtOf(debtID, categoryID, tagID *string) (model.DebtView, bool) {
 	if debtID == nil || categoryID == nil {
 		return model.DebtView{}, false

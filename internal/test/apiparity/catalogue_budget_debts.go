@@ -17,6 +17,11 @@ import "time"
 // start, to the month after the last payment, so its first and last cells are
 // not plannable. Months stay out of the recorded paths (see
 // budget_upcoming_recurring).
+//
+// Last, the owner adds a debt with no terms (payment and schedule only) on a
+// third category and pays 30 into it today: get-budget and get-budget-plan
+// then show it not set up, with its Paid, no balance, nothing scheduled and
+// plannable from the current month with no end.
 func init() {
 	register(Scenario{Name: "budget_debts", Calls: func() []Call {
 		now := ClockTime.Format("2006-01-02 15:04:05")
@@ -34,7 +39,7 @@ func init() {
 				"balance": "100", "payment": "105", "schedule": "monthly", "lastPaymentDate": lastPayment,
 			}
 		}
-		var loanCat, bikeCat, ownerDebt, partnerDebt string
+		var loanCat, bikeCat, studyCat, ownerDebt, partnerDebt string
 		txList := "/api/v1/budget/get-transaction-list?budgetId=" + Budget + "&periodStart="
 		return []Call{
 			{Label: "guest-accepts", Method: "POST", Path: "/api/v1/budget/accept-access", Auth: "guest",
@@ -73,6 +78,19 @@ func init() {
 			{Label: "err:debt-transaction-list-with-category", Method: "GET", Auth: "owner",
 				Path:       txList + month + "&categoryId=" + CatFood + "&debtId=",
 				GoldenPath: txList + "<current-month>&categoryId=" + CatFood + "&debtId=", PathID: &ownerDebt},
+
+			{Label: "owner-creates-study-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
+				Body:          map[string]any{"id": "d2000000-0000-0000-0000-0000000000a3", "name": "Study loan", "type": "expense", "icon": "school"},
+				CaptureIDInto: &studyCat},
+			{Label: "owner-creates-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: map[string]any{"name": "Study", "currencyId": USD, "categoryId": &studyCat, "payment": "200", "schedule": "monthly"}},
+			{Label: "owner-pays-debt-without-terms", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{"id": "d2000000-0000-0000-0000-0000000000b2", "type": "expense", "amount": "30.00",
+					"accountId": OwnerAccount, "categoryId": &studyCat, "date": now, "description": "study"}},
+			{Label: "owner-get-budget-with-debt-without-terms", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
+			{Label: "get-budget-plan-with-debt-without-terms", Method: "GET",
+				Path:       "/api/v1/budget/get-budget-plan?id=" + Budget + "&from=" + previous + "&months=4",
+				GoldenPath: "/api/v1/budget/get-budget-plan?id=" + Budget + "&from=<previous-month>&months=4", Auth: "owner"},
 		}
 	}})
 }

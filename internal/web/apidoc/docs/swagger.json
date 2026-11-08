@@ -15159,6 +15159,9 @@
                 "isPlannable": {
                     "type": "integer"
                 },
+                "isSetUp": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -17116,6 +17119,9 @@
                     "type": "string"
                 },
                 "isPaidOff": {
+                    "type": "integer"
+                },
+                "isSetUp": {
                     "type": "integer"
                 },
                 "name": {
