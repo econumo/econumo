@@ -208,6 +208,13 @@ SELECT EXISTS(
 SELECT id FROM budgets_elements
 WHERE external_id = ? AND type = ?;
 
+-- name: LockBudgetElementPair :many
+-- Plain read: SQLite serializes writers, so there is no concurrent limit
+-- writer for a lock to order against.
+SELECT id FROM budgets_elements
+WHERE id IN (sqlc.arg(first_id), sqlc.arg(second_id))
+ORDER BY id;
+
 -- name: ElementHasData :one
 -- Whether the external id's element of this type carries a limit or a comment
 -- in any budget.

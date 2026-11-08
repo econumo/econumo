@@ -62,6 +62,7 @@ type querier interface {
 	SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error)
 	ElementHasData(ctx context.Context, db backend.DBTX, externalID string, typ int16) (bool, error)
 	LockElementsByExternal(ctx context.Context, db backend.DBTX, externalID string, typ int16) error
+	LockElementPair(ctx context.Context, db backend.DBTX, firstID, secondID string) (int, error)
 	RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error
 
@@ -221,6 +222,10 @@ func (sqliteQuerier) SavingsElementHasData(ctx context.Context, db backend.DBTX,
 func (sqliteQuerier) LockElementsByExternal(ctx context.Context, db backend.DBTX, externalID string, typ int16) error {
 	_, err := sqlitegen.New(db).LockElementsByExternal(ctx, sqlitegen.LockElementsByExternalParams{ExternalID: externalID, Type: typ})
 	return err
+}
+func (sqliteQuerier) LockElementPair(ctx context.Context, db backend.DBTX, firstID, secondID string) (int, error) {
+	ids, err := sqlitegen.New(db).LockBudgetElementPair(ctx, sqlitegen.LockBudgetElementPairParams{FirstID: firstID, SecondID: secondID})
+	return len(ids), err
 }
 func (sqliteQuerier) ElementHasData(ctx context.Context, db backend.DBTX, externalID string, typ int16) (bool, error) {
 	n, err := sqlitegen.New(db).ElementHasData(ctx, sqlitegen.ElementHasDataParams{ExternalID: externalID, Type: typ})
@@ -501,6 +506,10 @@ func (pgsqlQuerier) SavingsElementHasData(ctx context.Context, db backend.DBTX, 
 func (pgsqlQuerier) LockElementsByExternal(ctx context.Context, db backend.DBTX, externalID string, typ int16) error {
 	_, err := pgsqlgen.New(db).LockElementsByExternal(ctx, pgsqlgen.LockElementsByExternalParams{ExternalID: externalID, Type: typ})
 	return err
+}
+func (pgsqlQuerier) LockElementPair(ctx context.Context, db backend.DBTX, firstID, secondID string) (int, error) {
+	ids, err := pgsqlgen.New(db).LockBudgetElementPair(ctx, pgsqlgen.LockBudgetElementPairParams{FirstID: firstID, SecondID: secondID})
+	return len(ids), err
 }
 func (pgsqlQuerier) ElementHasData(ctx context.Context, db backend.DBTX, externalID string, typ int16) (bool, error) {
 	return pgsqlgen.New(db).ElementHasData(ctx, pgsqlgen.ElementHasDataParams{ExternalID: externalID, Type: typ})

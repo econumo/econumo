@@ -135,6 +135,10 @@ func (r *Repo) LockElementsByExternal(ctx context.Context, externalID vo.Id, typ
 	return r.q.LockElementsByExternal(ctx, r.db(ctx), externalID.String(), typ.Int16())
 }
 
+func (r *Repo) LockElementPair(ctx context.Context, first, second vo.Id) (int, error) {
+	return r.q.LockElementPair(ctx, r.db(ctx), first.String(), second.String())
+}
+
 func (r *Repo) ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error) {
 	return r.q.ElementHasData(ctx, r.db(ctx), externalID.String(), typ.Int16())
 }

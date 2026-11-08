@@ -236,3 +236,16 @@ func TestComments_RepointBetweenMovesOnlyTheBoundedMonths(t *testing.T) {
 		t.Fatalf("LockElementsByExternal: %v", err)
 	}
 }
+
+func TestLockElementPair_CountsTheRowsStillThere(t *testing.T) {
+	ctx, r, fx := newCommentFixture(t)
+	if n, err := r.LockElementPair(ctx, fx.otherElementID, fx.elementID); err != nil || n != 2 {
+		t.Fatalf("LockElementPair = %d, %v; want 2", n, err)
+	}
+	if err := r.DeleteElement(ctx, fx.otherElementID); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := r.LockElementPair(ctx, fx.elementID, fx.otherElementID); err != nil || n != 1 {
+		t.Fatalf("LockElementPair after a delete = %d, %v; want 1", n, err)
+	}
+}

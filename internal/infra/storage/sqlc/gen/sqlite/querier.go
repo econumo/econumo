@@ -598,6 +598,9 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// Plain read: SQLite serializes writers, so there is no concurrent limit
+	// writer for a lock to order against.
+	LockBudgetElementPair(ctx context.Context, arg LockBudgetElementPairParams) ([]string, error)
 	// Plain read: SQLite serializes writers, so there is no concurrent limit or
 	// comment for a lock to order against.
 	LockElementsByExternal(ctx context.Context, arg LockElementsByExternalParams) ([]string, error)

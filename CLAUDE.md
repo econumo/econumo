@@ -1819,7 +1819,9 @@ data unreadable. Most are also asserted by the test suite.
   that field); the delete write-locks the debt's rows first (`LockElementsByExternal`, like the
   savings guard), so a concurrent plan is either seen or refused, and deletes the debt's budget
   rows (plans and comments) in the same transaction rather than leaving them to the next
-  structure sync. Payments are never touched by a delete. **Lock order**: the debt owner's
+  structure sync. Payments are never touched by a delete. Every plan transfer between a category
+  row and a debt row write-locks both rows in id order (`LockElementPair`) before reading their
+  plans, so a concurrent `set-limit` (which share-locks its row) is either moved or waits. **Lock order**: the debt owner's
   user row before any budget row, everywhere; a category/payee/tag merge therefore locks the
   owners of the debts on either side first (`DebtUsage.PrepareMerge`), before it writes. **Classifications**: deleting a
   category, payee, tag or label a debt uses is refused (`*.used_by_debt`, incl.

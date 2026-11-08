@@ -440,6 +440,10 @@ type Querier interface {
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// Locks the source and target rows of a plan transfer, in id order, before it
+	// reads their limits: a limit writer that share-locked either row first has
+	// committed by then, and one that comes later waits for the transfer.
+	LockBudgetElementPair(ctx context.Context, arg LockBudgetElementPairParams) ([]string, error)
 	LockDebtOwner(ctx context.Context, id string) (string, error)
 	// Locks every budget's row of an external id, in id order, before a removal
 	// guard reads the rows' data (the debt counterpart of LockSavingsElement).

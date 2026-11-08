@@ -40,6 +40,11 @@ type BudgetStore interface {
 	// external id, so a removal guard sees every plan or comment a concurrent
 	// writer committed, and later writers wait and then find the source gone.
 	LockElementsByExternal(ctx context.Context, externalID vo.Id, typ model.ElementType) error
+	// LockElementPair write-locks two element rows, in id order, for the rest
+	// of the transaction and reports how many still exist. A plan transfer
+	// holds it before reading either row's limits, so a concurrent limit write
+	// is either committed and moved, or kept waiting until the move is done.
+	LockElementPair(ctx context.Context, first, second vo.Id) (int, error)
 	RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error
 	// RemoveAccountsOwnedBy drops every membership row for accounts owned by
 	// ownerID — a departing participant takes their accounts with them.

@@ -96,6 +96,14 @@ func (s *Service) TransferElementData(ctx context.Context, t model.ElementDataTr
 				}
 				continue
 			}
+			// The owner's user row is already held by the caller, so the
+			// owner-before-budget lock order holds.
+			if n, err := s.budgets.LockElementPair(ctx, from.ID, to.ID); err != nil {
+				return err
+			} else if n < 2 {
+				// a row was deleted while this transfer waited for it
+				continue
+			}
 			dropped, err := s.moveElementData(ctx, from, to, t, b.PeriodStartDay, now)
 			if err != nil {
 				return err

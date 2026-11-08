@@ -970,6 +970,42 @@ func (q *Queries) ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID 
 	return items, nil
 }
 
+const lockBudgetElementPair = `-- name: LockBudgetElementPair :many
+SELECT id FROM budgets_elements
+WHERE id IN (?1, ?2)
+ORDER BY id
+`
+
+type LockBudgetElementPairParams struct {
+	FirstID  string
+	SecondID string
+}
+
+// Plain read: SQLite serializes writers, so there is no concurrent limit
+// writer for a lock to order against.
+func (q *Queries) LockBudgetElementPair(ctx context.Context, arg LockBudgetElementPairParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, lockBudgetElementPair, arg.FirstID, arg.SecondID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockElementsByExternal = `-- name: LockElementsByExternal :many
 SELECT id FROM budgets_elements
 WHERE external_id = ? AND type = ?

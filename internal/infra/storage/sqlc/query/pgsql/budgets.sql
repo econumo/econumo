@@ -202,6 +202,15 @@ WHERE external_id = $1 AND type = $2
 ORDER BY id
 FOR UPDATE;
 
+-- name: LockBudgetElementPair :many
+-- Locks the source and target rows of a plan transfer, in id order, before it
+-- reads their limits: a limit writer that share-locked either row first has
+-- committed by then, and one that comes later waits for the transfer.
+SELECT id FROM budgets_elements
+WHERE id IN (sqlc.arg(first_id), sqlc.arg(second_id))
+ORDER BY id
+FOR UPDATE;
+
 -- name: ElementHasData :one
 -- Whether the external id's element of this type carries a limit or a comment
 -- in any budget.

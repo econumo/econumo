@@ -990,6 +990,44 @@ func (q *Queries) ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID 
 	return items, nil
 }
 
+const lockBudgetElementPair = `-- name: LockBudgetElementPair :many
+SELECT id FROM budgets_elements
+WHERE id IN ($1, $2)
+ORDER BY id
+FOR UPDATE
+`
+
+type LockBudgetElementPairParams struct {
+	FirstID  string
+	SecondID string
+}
+
+// Locks the source and target rows of a plan transfer, in id order, before it
+// reads their limits: a limit writer that share-locked either row first has
+// committed by then, and one that comes later waits for the transfer.
+func (q *Queries) LockBudgetElementPair(ctx context.Context, arg LockBudgetElementPairParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, lockBudgetElementPair, arg.FirstID, arg.SecondID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockElementsByExternal = `-- name: LockElementsByExternal :many
 SELECT id FROM budgets_elements
 WHERE external_id = $1 AND type = $2
