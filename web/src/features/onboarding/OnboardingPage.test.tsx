@@ -8,6 +8,12 @@ import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { HomePage } from '@/features/home/HomePage'
 import { OnboardingPage } from './OnboardingPage'
 
+let importedRows = 0
+vi.mock('@/features/transactions/ImportCsvDialog', () => ({
+  ImportCsvDialog: ({ open, onComplete }: { open: boolean; onComplete: (r: { imported: number }) => void }) =>
+    open ? <button onClick={() => onComplete({ imported: importedRows })}>finish import</button> : null,
+}))
+
 const userWith = (gettingStarted: string, onboarding = '') => ({
   ...fixtureUser,
   options: [
@@ -86,21 +92,21 @@ it('opens on the first open step with the stepper above it', async () => {
   expect(screen.getByRole('button', { name: 'Skip setup' })).toBeInTheDocument()
 })
 
-it('Continue marks the step done and moves to the next open step', async () => {
+it('skipping a step records it and moves to the next open step', async () => {
   serve('')
   const user = userEvent.setup()
   renderPage()
-  expect(await heading('Import')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(await heading('Bring in your history')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: "I don't have one" }))
   expect(await heading('Categories')).toBeInTheDocument()
-  expect(posts).toEqual([{ path: 'update-getting-started', value: 'import' }])
+  expect(posts).toEqual([{ path: 'update-getting-started', value: '!import' }])
 })
 
 it('a revisited step moves on to the next open step after it', async () => {
   serve('')
   const user = userEvent.setup()
   renderPage()
-  await heading('Import')
+  await heading('Bring in your history')
   await user.click(screen.getByRole('button', { name: /Accounts/ }))
   expect(await heading('Accounts')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Skip' }))
@@ -132,6 +138,30 @@ it('Skip setup skips every open step, then completes onboarding', async () => {
   await waitFor(() => expect(state.stored.split(',').sort()).toEqual(['!accounts', '!categories', '!plan', 'import']))
 })
 
+it('an import with rows settles import, categories and accounts in one request', async () => {
+  serve('')
+  importedRows = 12
+  const user = userEvent.setup()
+  renderPage()
+  await heading('Bring in your history')
+  await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
+  await user.click(await screen.findByRole('button', { name: 'finish import' }))
+  expect(await heading('Budget & plan')).toBeInTheDocument()
+  expect(posts).toEqual([{ path: 'update-getting-started', value: 'import,categories,accounts' }])
+})
+
+it('an import that brought nothing in marks nothing', async () => {
+  serve('')
+  importedRows = 0
+  const user = userEvent.setup()
+  renderPage()
+  await heading('Bring in your history')
+  await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
+  await user.click(await screen.findByRole('button', { name: 'finish import' }))
+  expect(screen.getByRole('heading', { name: 'Bring in your history' })).toBeInTheDocument()
+  expect(posts).toEqual([])
+})
+
 // HomePage pulls in the whole budget page, which a loaded machine can take a while to render
 it('/ renders the getting started page for a not-yet-onboarded user', { timeout: 15000 }, async () => {
   serve('')
@@ -142,7 +172,7 @@ it('/ renders the getting started page for a not-yet-onboarded user', { timeout:
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
-  expect(await heading('Import')).toBeInTheDocument()
+  expect(await heading('Bring in your history')).toBeInTheDocument()
 })
 
 it('completes at once when every step was already answered', async () => {
@@ -168,6 +198,6 @@ it('a phone gets a menu button that opens the navigation without finishing', asy
   mockViewport(true)
   serve('')
   renderPage()
-  await heading('Import')
+  await heading('Bring in your history')
   expect(screen.getByRole('link', { name: 'Menu' })).toHaveAttribute('href', '/?menu=1')
 })

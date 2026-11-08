@@ -1258,6 +1258,26 @@
       "text": "此步骤即将推出。",
       "continue": "继续",
       "skip": "跳过"
+    },
+    "import_step": {
+      "heading": "导入你的历史记录",
+      "text": "有银行或其他应用导出的 CSV 吗？它会一次性创建账户、分类和交易。",
+      "choose": "选择 CSV 文件",
+      "skip": "我没有",
+      "import": "导入"
+    },
+    "install_step": {
+      "heading": "让 Econumo 触手可及",
+      "text": "添加到主屏幕，几秒钟就能记下一杯咖啡。",
+      "install": "安装",
+      "done": "完成",
+      "skip": "跳过"
+    },
+    "wallet_step": {
+      "heading": "刷卡支付，自动记录",
+      "text": "连接 Apple Wallet，每一笔刷卡都会自动出现在 Econumo 中。",
+      "setup": "设置",
+      "skip": "跳过"
     }
   },
   "budgets": {

@@ -8,11 +8,15 @@ import { useCompleteOnboarding } from '@/features/user/queries'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { apiErrorMessage } from '@/lib/apiError'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { AppleWalletStep } from './AppleWalletStep'
+import { ImportStep } from './ImportStep'
+import { InstallStep } from './InstallStep'
 import { Stepper } from './Stepper'
 import { useOnboardingSteps, type OnboardingStepKey } from './useOnboardingSteps'
 
 export interface StepBodyProps {
-  onDone: () => Promise<void>
+  // `also`: further steps the same action settled, written together with this one
+  onDone: (also?: OnboardingStepKey[]) => Promise<void>
   onSkip: () => Promise<void>
 }
 
@@ -42,19 +46,19 @@ function placeholderBody(key: OnboardingStepKey): ComponentType<StepBodyProps> {
 }
 
 const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
-  import: placeholderBody('import'),
+  import: ImportStep,
   categories: placeholderBody('categories'),
   accounts: placeholderBody('accounts'),
   plan: placeholderBody('plan'),
-  home_screen: placeholderBody('home_screen'),
-  apple_wallet: placeholderBody('apple_wallet'),
+  home_screen: InstallStep,
+  apple_wallet: AppleWalletStep,
 }
 
 export function OnboardingPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
-  const { steps, current, allResolved, markDone, skip, ready } = useOnboardingSteps()
+  const { steps, current, allResolved, markDone, markManyDone, skip, ready } = useOnboardingSteps()
   const complete = useCompleteOnboarding()
   const [selected, setSelected] = useState<OnboardingStepKey | null>(null)
   const [skippingAll, setSkippingAll] = useState(false)
@@ -89,15 +93,16 @@ export function OnboardingPage() {
 
   // The steps read here are the ones rendered, so the answered step still
   // counts as open in them and is excluded by key.
-  const answer = (act: (key: OnboardingStepKey) => Promise<void>) => async () => {
-    await act(active)
-    const open = steps.filter((s) => s.key !== active && s.state === 'open')
+  const answer = (act: (key: OnboardingStepKey) => Promise<void>) => async (also: OnboardingStepKey[] = []) => {
+    if (also.length > 0) await markManyDone([active, ...also])
+    else await act(active)
+    const open = steps.filter((s) => s.key !== active && !also.includes(s.key) && s.state === 'open')
     if (open.length === 0) {
       autoCompleted.current = true
       await finish().catch(() => undefined)
       return
     }
-    const after = steps.slice(steps.findIndex((s) => s.key === active) + 1).find((s) => s.state === 'open')
+    const after = open.find((s) => steps.indexOf(s) > steps.findIndex((x) => x.key === active))
     setSelected((after ?? open[0]).key)
   }
 

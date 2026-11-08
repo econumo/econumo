@@ -1258,6 +1258,26 @@
       "text": "Dieser Schritt kommt bald.",
       "continue": "Weiter",
       "skip": "Überspringen"
+    },
+    "import_step": {
+      "heading": "Bring deine Historie mit",
+      "text": "Hast du einen CSV-Export von deiner Bank oder einer anderen App? Er legt Konten, Kategorien und Buchungen in einem Schritt an.",
+      "choose": "CSV-Datei auswählen",
+      "skip": "Ich habe keine",
+      "import": "Importieren"
+    },
+    "install_step": {
+      "heading": "Econumo immer griffbereit",
+      "text": "Füge es zum Home-Bildschirm hinzu, damit du einen Kaffee in Sekunden erfasst.",
+      "install": "Installieren",
+      "done": "Fertig",
+      "skip": "Überspringen"
+    },
+    "wallet_step": {
+      "heading": "Kartenzahlungen, automatisch erfasst",
+      "text": "Verbinde Apple Wallet, und jede Kartenzahlung erscheint von selbst in Econumo.",
+      "setup": "Einrichten",
+      "skip": "Überspringen"
     }
   },
   "budgets": {

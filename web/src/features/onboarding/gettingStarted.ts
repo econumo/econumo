@@ -34,11 +34,22 @@ let writesInFlight = 0
 // by refetching once the last write lands, which also cancels it. Only the
 // last write reconciles, so overlapping writes do not flicker.
 export async function writeStepState(queryClient: QueryClient, key: StoredStepKey, state: Answer): Promise<void> {
+  await writeStepStates(queryClient, [key], state)
+}
+
+// Several keys answered in one option write (a CSV import settles three steps).
+export async function markStepsDone(queryClient: QueryClient, keys: StoredStepKey[]): Promise<void> {
+  await writeStepStates(queryClient, keys, 'done')
+}
+
+async function writeStepStates(queryClient: QueryClient, keys: StoredStepKey[], state: Answer): Promise<void> {
   await queryClient.cancelQueries({ queryKey: queryKeys.user })
   const user = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
   const option = gettingStartedOption(user)
-  if (!user || option === null || storedStepState(option, key) === state) return
-  const value = withStepState(option, key, state)
+  if (!user || option === null) return
+  const changing = keys.filter((key) => storedStepState(option, key) !== state)
+  if (changing.length === 0) return
+  const value = changing.reduce((acc, key) => withStepState(acc, key, state), option)
   queryClient.setQueryData<CurrentUserDto>(queryKeys.user, {
     ...user,
     options: user.options.map((o) => (o.name === UserOptions.GETTING_STARTED ? { ...o, value } : o)),

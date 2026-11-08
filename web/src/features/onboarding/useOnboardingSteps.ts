@@ -5,7 +5,7 @@ import { isStandalone, useInstallMode } from '@/features/install/installPrompt'
 import { gettingStartedOption, useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isIPhone, isMac } from '@/lib/platform'
-import { storedStepState, writeStepState, type OnboardingStepKey, type OnboardingStepState } from './gettingStarted'
+import { markStepsDone, storedStepState, writeStepState, type OnboardingStepKey, type OnboardingStepState, type StoredStepKey } from './gettingStarted'
 import { setHomeScreenState, useHomeScreenState } from './homeScreen'
 
 export type { OnboardingStepKey, OnboardingStepState } from './gettingStarted'
@@ -20,6 +20,8 @@ export interface OnboardingSteps {
   current: OnboardingStepKey | null
   allResolved: boolean
   markDone: (key: OnboardingStepKey) => Promise<void>
+  // one option write for steps a single action settles together (a CSV import)
+  markManyDone: (keys: OnboardingStepKey[]) => Promise<void>
   skip: (key: OnboardingStepKey) => Promise<void>
   ready: boolean
 }
@@ -71,7 +73,15 @@ export function useOnboardingSteps(): OnboardingSteps {
     [queryClient, steps],
   )
   const markDone = useCallback((key: OnboardingStepKey) => answer(key, 'done'), [answer])
+  const markManyDone = useCallback(
+    async (keys: OnboardingStepKey[]) => {
+      const stored = keys.filter((k): k is StoredStepKey => k !== 'home_screen' && steps.find((s) => s.key === k)?.state !== 'done')
+      stored.forEach((step) => trackEvent(METRICS.ONBOARDING_STEP_DONE, { step }))
+      await markStepsDone(queryClient, stored)
+    },
+    [queryClient, steps],
+  )
   const skip = useCallback((key: OnboardingStepKey) => answer(key, 'skipped'), [answer])
 
-  return { steps, current, allResolved: ready && current === null, markDone, skip, ready }
+  return { steps, current, allResolved: ready && current === null, markDone, markManyDone, skip, ready }
 }

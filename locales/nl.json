@@ -1258,6 +1258,26 @@
       "text": "Deze stap komt binnenkort.",
       "continue": "Doorgaan",
       "skip": "Overslaan"
+    },
+    "import_step": {
+      "heading": "Neem je geschiedenis mee",
+      "text": "Heb je een CSV-export van je bank of een andere app? Die maakt rekeningen, categorieën en transacties in één keer aan.",
+      "choose": "Kies een CSV-bestand",
+      "skip": "Ik heb er geen",
+      "import": "Importeren"
+    },
+    "install_step": {
+      "heading": "Econumo altijd binnen handbereik",
+      "text": "Zet het op je beginscherm zodat een koffie loggen maar een paar seconden kost.",
+      "install": "Installeren",
+      "done": "Klaar",
+      "skip": "Overslaan"
+    },
+    "wallet_step": {
+      "heading": "Kaartbetalingen, vanzelf vastgelegd",
+      "text": "Koppel Apple Wallet en elke betaling met je kaart verschijnt vanzelf in Econumo.",
+      "setup": "Instellen",
+      "skip": "Overslaan"
     }
   },
   "budgets": {

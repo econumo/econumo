@@ -1258,6 +1258,26 @@
       "text": "Ten krok pojawi się wkrótce.",
       "continue": "Dalej",
       "skip": "Pomiń"
+    },
+    "import_step": {
+      "heading": "Przenieś swoją historię",
+      "text": "Masz eksport CSV z banku lub innej aplikacji? Utworzy konta, kategorie i transakcje za jednym razem.",
+      "choose": "Wybierz plik CSV",
+      "skip": "Nie mam",
+      "import": "Importuj"
+    },
+    "install_step": {
+      "heading": "Econumo zawsze pod ręką",
+      "text": "Dodaj go do ekranu głównego, by zapisanie kawy zajmowało sekundy.",
+      "install": "Zainstaluj",
+      "done": "Gotowe",
+      "skip": "Pomiń"
+    },
+    "wallet_step": {
+      "heading": "Płatności kartą zapisują się same",
+      "text": "Połącz Apple Wallet, a każda płatność kartą pojawi się w Econumo automatycznie.",
+      "setup": "Skonfiguruj",
+      "skip": "Pomiń"
     }
   },
   "budgets": {

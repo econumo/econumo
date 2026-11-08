@@ -1258,6 +1258,26 @@
       "text": "Questo passaggio arriverà presto.",
       "continue": "Continua",
       "skip": "Salta"
+    },
+    "import_step": {
+      "heading": "Porta la tua cronologia",
+      "text": "Hai un export CSV della tua banca o di un'altra app? Crea conti, categorie e transazioni in un colpo solo.",
+      "choose": "Scegli un file CSV",
+      "skip": "Non ne ho uno",
+      "import": "Importa"
+    },
+    "install_step": {
+      "heading": "Econumo a portata di tap",
+      "text": "Aggiungilo alla schermata Home per registrare un caffè in pochi secondi.",
+      "install": "Installa",
+      "done": "Fatto",
+      "skip": "Salta"
+    },
+    "wallet_step": {
+      "heading": "Pagamenti con carta, registrati per te",
+      "text": "Collega Apple Wallet e ogni pagamento con la carta compare da solo in Econumo.",
+      "setup": "Configura",
+      "skip": "Salta"
     }
   },
   "budgets": {
