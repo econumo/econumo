@@ -89,6 +89,34 @@ Resetting your password through the emailed link (or an operator changing it
 with `user:change-password`) disconnects every app, as does deactivating the
 account. Changing your password from Settings keeps them connected.
 
+## For operators: official apps
+
+An app a client registers for itself belongs to the one Econumo account that
+approves it first. To offer an app to every user of your instance, register it
+as an official app with the CLI (`docker exec <container> /app/econumo ...` in
+the image):
+
+```bash
+econumo app:register "Claude" https://claude.ai/api/mcp/auth_callback
+econumo app:register "Econumo Share" https://share.econumo.com/auth/callback
+```
+
+The first is for a Claude directory listing whose credentials Anthropic holds,
+or for your organization's own OAuth client; the second for the share-reports
+app. Each prints a `client_id` and a `client_secret` (shown only once; add
+`--public` for a client with no secret that relies on PKCE alone). Official
+apps carry an "Official" badge on the consent page and in Connected apps.
+
+A client registered with `curl` against `/oauth/register` is a user app and
+works for one account only. `econumo app:list` shows `N (M from other users)`
+for a user app that several people already share; `econumo app:make-official
+<id>` makes it open to everyone (this cannot be undone). The other commands
+are `app:show`, `app:update` (official apps: name and redirect URIs),
+`app:rotate-secret`, `app:disconnect [--user <user-id>]` and `app:delete`;
+disconnecting or deleting signs the app out at once. They work while the
+OAuth server is off (`ECONUMO_URL` not set), and `app:register` warns that
+the app only works once it is on.
+
 ## Alternative: a personal access token
 
 Clients that do not support the browser sign-in can send a personal access
