@@ -241,6 +241,42 @@ type UpdateAnalyticsResult struct {
 }
 
 // ---------------------------------------------------------------------------
+// update-getting-started
+// ---------------------------------------------------------------------------
+
+// UpdateGettingStartedRequest is the update-getting-started request body. Value
+// is a comma-separated list of steps (plan, import, apple_wallet), each with an
+// optional "!" prefix meaning dismissed; "" is valid (Day 0 done, nothing else).
+type UpdateGettingStartedRequest struct {
+	Value *string `json:"value"`
+}
+
+var gettingStartedSteps = map[string]bool{"plan": true, "import": true, "apple_wallet": true}
+
+func (r UpdateGettingStartedRequest) Validate() error {
+	if r.Value == nil {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if *r.Value == "" {
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, item := range strings.Split(*r.Value, ",") {
+		key := strings.TrimPrefix(item, "!")
+		if !gettingStartedSteps[key] || seen[key] {
+			return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
+		}
+		seen[key] = true
+	}
+	return nil
+}
+
+// UpdateGettingStartedResult is the update-getting-started response.
+type UpdateGettingStartedResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
 // update-last-seen-version
 // ---------------------------------------------------------------------------
 

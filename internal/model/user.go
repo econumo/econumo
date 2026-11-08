@@ -25,6 +25,9 @@ const (
 	OptionBudget       = "budget"
 	OptionOnboarding   = "onboarding"
 	OptionAnalytics    = "analytics"
+	// OptionGettingStarted marks a user who went through Day 0 onboarding and
+	// lists the get-ready steps done or dismissed (comma-separated, "!" = dismissed).
+	OptionGettingStarted = "getting_started"
 	// OptionLastSeenVersion is the newest release whose "what's new" notice the
 	// user has seen (a vX.Y.Z string); absent for users predating it.
 	OptionLastSeenVersion = "last_seen_version"
@@ -284,6 +287,17 @@ func (u *User) SetAnalytics(enabled bool, id vo.Id, now time.Time) {
 		return
 	}
 	u.Options = append(u.Options, NewUserOption(id, OptionAnalytics, &v, now))
+}
+
+// SetGettingStarted writes the get-ready progress, appending the option row
+// when absent (like SetAnalytics). id is consumed only when the row is appended.
+func (u *User) SetGettingStarted(value string, id vo.Id, now time.Time) {
+	v := value
+	if o := u.Option(OptionGettingStarted); o != nil {
+		o.setValue(&v, now)
+		return
+	}
+	u.Options = append(u.Options, NewUserOption(id, OptionGettingStarted, &v, now))
 }
 
 // SetLastSeenVersion records the release whose "what's new" notice the user has

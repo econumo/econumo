@@ -41,6 +41,10 @@ export function userOption(user: CurrentUserDto | undefined, name: UserOptions):
   return user?.options.find((o) => o.name === name)?.value ?? null
 }
 
+export function gettingStartedOption(user: CurrentUserDto | undefined): string | null {
+  return userOption(user, UserOptions.GETTING_STARTED)
+}
+
 export function userCurrencyId(user: CurrentUserDto | undefined): string | null {
   return userOption(user, UserOptions.CURRENCY_ID)
 }
@@ -151,6 +155,16 @@ export function useUpdateAnalytics() {
       }
       return user
     },
+    onSuccess: (user) => {
+      queryClient.setQueryData(queryKeys.user, user)
+    },
+  })
+}
+
+export function useUpdateGettingStarted() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (value: string) => userApi.updateGettingStarted(value),
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.user, user)
     },

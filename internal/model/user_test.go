@@ -426,3 +426,29 @@ func TestOptionConstants_Pinned(t *testing.T) {
 		}
 	}
 }
+
+func TestSetGettingStartedAppendsAndUpdates(t *testing.T) {
+	now := time.Date(2026, 11, 7, 10, 0, 0, 0, time.UTC)
+	u := &User{}
+
+	u.SetGettingStarted("", vo.NewId(), now)
+	if len(u.Options) != 1 || u.Options[0].Name != OptionGettingStarted {
+		t.Fatalf("options = %+v, want one getting_started row", u.Options)
+	}
+	if u.Options[0].Value == nil || *u.Options[0].Value != "" {
+		t.Fatalf("value = %v, want empty string", u.Options[0].Value)
+	}
+
+	id := u.Options[0].ID
+	later := now.Add(time.Hour)
+	u.SetGettingStarted("plan,!import", vo.NewId(), later)
+	if len(u.Options) != 1 || u.Options[0].ID != id {
+		t.Fatalf("existing row must be updated in place: %+v", u.Options)
+	}
+	if got := *u.Options[0].Value; got != "plan,!import" {
+		t.Fatalf("value = %q", got)
+	}
+	if !u.Options[0].UpdatedAt.Equal(later) {
+		t.Fatalf("UpdatedAt = %v, want %v", u.Options[0].UpdatedAt, later)
+	}
+}
