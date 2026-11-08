@@ -2031,9 +2031,12 @@
     "consent": {
       "title": "将应用连接到 Econumo",
       "wantsAccess": "请求访问您的 Econumo 账户。",
+      "official": "官方",
       "redirect": "允许后，您将被转到 {host}。",
       "loopback": "允许后，您将返回此电脑上的应用。",
       "fullAccess": "它将能够读取并更改您所有的 Econumo 数据。",
+      "unverified": "由应用自行注册。Econumo 不验证其名称，请核对下方的地址。",
+      "unverifiedLoopback": "由应用自行注册。Econumo 不验证其名称。",
       "signedInAs": "当前登录账户：{email}",
       "switchAccount": "不是您？切换账户",
       "allow": "允许",
@@ -2058,6 +2061,7 @@
       "lastUsed": "上次使用 {when}",
       "loopback": "在这台电脑上运行",
       "returnsTo": "会将您带回 {host}",
+      "official": "官方",
       "menuItem": "已连接的应用"
     }
   },

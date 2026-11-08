@@ -5,6 +5,7 @@ import { Link, useLocation, useSearchParams } from 'react-router'
 import { authorizationRequestFromSearch } from '@/api/authserver'
 import type { AuthorizationRequestResultDto } from '@/api/dto/authserver'
 import { CoinLoader } from '@/components/CoinLoader'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { apiErrorMessage } from '@/lib/apiError'
 import { RouterPage } from '@/app/router-pages'
@@ -196,11 +197,19 @@ export function ConsentPage() {
     <Shell>
       <div className="flex flex-col gap-1">
         <h1 className="text-sm text-muted-foreground">{t('authserver.consent.title')}</h1>
-        <p className="text-xl font-bold break-words">{result.clientName}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xl font-bold break-words">{result.clientName}</p>
+          {result.isOfficial && <Badge variant="secondary">{t('authserver.consent.official')}</Badge>}
+        </div>
         <p>{t('authserver.consent.wantsAccess')}</p>
       </div>
       <div className="flex flex-col gap-2 text-sm text-muted-foreground">
         <p>{t('authserver.consent.fullAccess')}</p>
+        {!result.isOfficial && (
+          <p className="text-xs text-muted-foreground">
+            {result.isLoopback ? t('authserver.consent.unverifiedLoopback') : t('authserver.consent.unverified')}
+          </p>
+        )}
         <p>
           {result.isLoopback
             ? t('authserver.consent.loopback')

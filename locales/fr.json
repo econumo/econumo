@@ -2031,9 +2031,12 @@
     "consent": {
       "title": "Connecter une application à Econumo",
       "wantsAccess": "souhaite accéder à votre compte Econumo.",
+      "official": "Officielle",
       "redirect": "Après votre autorisation, vous serez redirigé vers {host}.",
       "loopback": "Après votre autorisation, vous reviendrez à une application sur cet ordinateur.",
       "fullAccess": "Elle pourra lire et modifier toutes vos données Econumo.",
+      "unverified": "Enregistrée par l'application elle-même. Econumo ne vérifie pas son nom ; vérifiez l'adresse ci-dessous.",
+      "unverifiedLoopback": "Enregistrée par l'application elle-même. Econumo ne vérifie pas son nom.",
       "signedInAs": "Connecté en tant que {email}",
       "switchAccount": "Ce n'est pas vous ? Changer de compte",
       "allow": "Autoriser",
@@ -2058,6 +2061,7 @@
       "lastUsed": "Dernière utilisation {when}",
       "loopback": "S'exécute sur cet ordinateur",
       "returnsTo": "Vous renvoie vers {host}",
+      "official": "Officielle",
       "menuItem": "Applications connectées"
     }
   },

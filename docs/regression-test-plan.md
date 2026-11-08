@@ -2483,6 +2483,16 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 A client that registered a loopback redirect (Claude Code, Codex) shows
       "After you allow, you'll return to an app on this computer." instead of a
       host.
+- [ ] 📱 An app registered with `app:register` shows an "Official" badge next
+      to its name on the consent page and in Connected apps, and the consent
+      page has no "Registered by the app itself" line for it.
+- [ ] 📱 An app that registered itself shows no badge. On the consent page a
+      web client (Claude) has the muted line "Registered by the app itself.
+      Econumo doesn't verify its name; check the address below." above the
+      "After you allow, you'll be sent to <host>." line; a loopback client
+      (Claude Code, Codex) has "Registered by the app itself. Econumo doesn't
+      verify its name." (no "check the address below") above the "return to an
+      app on this computer" line. Connected apps shows nothing extra for it.
 - [ ] "Not you? Switch account" signs out and returns to the same consent page
       after signing in as the other user.
 - [ ] Allow sends the browser to the client's callback; the client finishes

@@ -2031,9 +2031,12 @@
     "consent": {
       "title": "Połącz aplikację z Econumo",
       "wantsAccess": "chce uzyskać dostęp do Twojego konta Econumo.",
+      "official": "Oficjalna",
       "redirect": "Po wyrażeniu zgody zostaniesz przekierowany do {host}.",
       "loopback": "Po wyrażeniu zgody wrócisz do aplikacji na tym komputerze.",
       "fullAccess": "Będzie mogła odczytywać i zmieniać wszystkie Twoje dane w Econumo.",
+      "unverified": "Zarejestrowana przez samą aplikację. Econumo nie weryfikuje jej nazwy; sprawdź adres poniżej.",
+      "unverifiedLoopback": "Zarejestrowana przez samą aplikację. Econumo nie weryfikuje jej nazwy.",
       "signedInAs": "Zalogowano jako {email}",
       "switchAccount": "To nie Ty? Zmień konto",
       "allow": "Zezwól",
@@ -2058,6 +2061,7 @@
       "lastUsed": "Ostatnio używana {when}",
       "loopback": "Działa na tym komputerze",
       "returnsTo": "Odsyła Cię do {host}",
+      "official": "Oficjalna",
       "menuItem": "Połączone aplikacje"
     }
   },

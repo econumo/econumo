@@ -15,6 +15,7 @@ export interface AuthorizationRequestResultDto {
   clientName: string
   redirectHost: string
   isLoopback: boolean
+  isOfficial: boolean
   errorRedirectUrl: string
 }
 
@@ -27,6 +28,7 @@ export interface ConnectedAppDto {
   clientName: string
   redirectHost: string
   isLoopback: boolean
+  isOfficial: boolean
   createdAt: string
   lastUsedAt: string
 }
