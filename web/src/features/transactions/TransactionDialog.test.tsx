@@ -1297,6 +1297,8 @@ describe('unfinished new transaction', () => {
     expect(hasDraftContent({ ...empty, type: 'transfer', accountRecipientId: 'a2' })).toBe(true)
     expect(hasDraftContent({ ...empty, type: 'transfer', payeeId: 'p1' })).toBe(false)
     expect(hasDraftContent({ ...empty, payeeId: 'p1' })).toBe(true)
+    expect(hasDraftContent({ ...empty, tagId: 't1' })).toBe(true)
+    expect(hasDraftContent({ ...empty, type: 'income', tagId: 't1', labelIds: ['l1'] })).toBe(false)
   })
 
   it.each([

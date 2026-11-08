@@ -74,7 +74,7 @@ export function hasDraftContent(form: TransactionFormState): boolean {
   if (form.type === 'transfer') {
     return form.accountRecipientId !== null
   }
-  return form.categoryId !== null || form.payeeId !== null || form.tagId !== null || form.labelIds.length > 0
+  return form.categoryId !== null || form.payeeId !== null || (form.type === 'expense' && (form.tagId !== null || form.labelIds.length > 0))
 }
 
 export function useTransactionDraft(form: TransactionFormState, enabled: boolean) {
