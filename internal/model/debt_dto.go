@@ -30,13 +30,16 @@ type CreateDebtRequest struct {
 }
 
 func (r CreateDebtRequest) Validate() error {
-	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate)
+	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate, false)
 	fields = append(fields, debtIDField("currencyId", r.CurrencyId, true)...)
 	return debtValidation(fields)
 }
 
 // UpdateDebtRequest carries the same fields as create. The currency is never
-// changed: CurrencyId is accepted and ignored.
+// changed: CurrencyId is accepted and ignored. Without a balance and a last
+// payment date the terms stay as stored, and a payment or schedule left out
+// keeps the stored one; on a set-up debt a payment or schedule that differs
+// from the stored one is a change of terms and needs both.
 type UpdateDebtRequest struct {
 	Id              string        `json:"id"`
 	Name            string        `json:"name"`
@@ -53,7 +56,7 @@ type UpdateDebtRequest struct {
 }
 
 func (r UpdateDebtRequest) Validate() error {
-	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate)
+	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate, true)
 	fields = append(fields, debtIDField("id", r.Id, true)...)
 	return debtValidation(fields)
 }
@@ -201,7 +204,9 @@ func debtOptionalIDField(key string, v *string) []errs.FieldError {
 	return debtIDField(key, *v, false)
 }
 
-func debtFields(name, categoryID string, payeeID, tagID, labelID, startDate *string, balance, payment vo.FlexString, schedule, lastPaymentDate string) []errs.FieldError {
+// debtFields: with keepable an update may leave out the payment and the
+// schedule, unless it carries terms.
+func debtFields(name, categoryID string, payeeID, tagID, labelID, startDate *string, balance, payment vo.FlexString, schedule, lastPaymentDate string, keepable bool) []errs.FieldError {
 	var fields []errs.FieldError
 	switch n := strings.TrimSpace(name); {
 	case n == "":
@@ -223,9 +228,14 @@ func debtFields(name, categoryID string, payeeID, tagID, labelID, startDate *str
 	if hasBalance || hasLast {
 		fields = append(fields, debtAmountField("balance", balance.String(), true)...)
 	}
-	fields = append(fields, debtAmountField("payment", payment.String(), false)...)
+	keep := keepable && !hasBalance && !hasLast
+	if !keep || strings.TrimSpace(payment.String()) != "" {
+		fields = append(fields, debtAmountField("payment", payment.String(), false)...)
+	}
 	if strings.TrimSpace(schedule) == "" {
-		fields = append(fields, blankField("schedule"))
+		if !keep {
+			fields = append(fields, blankField("schedule"))
+		}
 	} else if _, ok := ParseRecurringSchedule(schedule); !ok {
 		fields = append(fields, errs.FieldError{Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}

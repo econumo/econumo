@@ -32,6 +32,8 @@ function renderScreen() {
   )
 }
 
+const TERM_KEYS = ['balance', 'payment', 'schedule', 'lastPaymentDate']
+
 const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
 
 const details: DebtDetailsDto = {
@@ -253,11 +255,12 @@ it('editing payments-from saves the label', async () => {
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  // the stored terms go back unchanged: no new snapshot
-  expect(bodies[0]).toMatchObject({
-    id: 'd1', name: 'Car loan', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1',
-    balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2050-07-05',
-  })
+  // no terms go along: the server keeps the stored ones, even if another
+  // device changed them after this screen loaded
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' })
+  for (const key of TERM_KEYS) {
+    expect(bodies[0]).not.toHaveProperty(key)
+  }
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull())
 })
@@ -299,10 +302,13 @@ it('Rename in the menu saves a new name', async () => {
   await user.click(within(prompt).getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', balance: '1200', lastPaymentDate: '2050-07-05', labelId: null })
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', labelId: null })
+  for (const key of TERM_KEYS) {
+    expect(bodies[0]).not.toHaveProperty(key)
+  }
 })
 
-it('a rename right after an Edit carries the new terms, not the ones loaded before it', async () => {
+it('a rename right after an Edit sends no terms, so the ones loaded before it cannot come back', async () => {
   let edited = false
   server.use(
     http.get('*/api/v1/debt/get-debt', async () => {
@@ -338,7 +344,10 @@ it('a rename right after an Edit carries the new terms, not the ones loaded befo
   await user.click(within(prompt).getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(2))
-  expect(bodies[1]).toMatchObject({ name: 'Van loan', balance: '600', lastPaymentDate: '2031-03-05', payment: '100', schedule: 'monthly' })
+  expect(bodies[1]).toMatchObject({ name: 'Van loan' })
+  for (const key of TERM_KEYS) {
+    expect(bodies[1]).not.toHaveProperty(key)
+  }
 })
 
 it('menu hides Mark as paid off while not set up', async () => {

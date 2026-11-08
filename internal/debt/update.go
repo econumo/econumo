@@ -9,10 +9,12 @@ import (
 )
 
 // UpdateDebt saves a debt's name, matching filters, start date and terms. A
-// set-up debt needs its terms, and a change to them starts a new snapshot. A
+// change to a set-up debt's terms needs all of them and starts a new
+// snapshot; a body without a balance and a last payment date keeps the stored
+// terms, so a stale screen renaming the debt cannot write old ones back. A
 // debt not set up is set up by a body carrying a balance and a last payment
 // date (its first snapshot, as of today); without them only its payment and
-// schedule change.
+// schedule change, each kept when left out.
 func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.UpdateDebtRequest) (*model.DebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -52,7 +54,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if err != nil {
 			return err
 		}
-		if cur.IsSetUp() && !in.hasTerms {
+		if cur.IsSetUp() && !in.hasTerms && in.changesTerms(*cur.Current, digits) {
 			return missingTerms(true, true)
 		}
 		wasWhole, wasCategory, wasSetUp := isWholeCategory(cur), cur.CategoryID, cur.IsSetUp()
@@ -77,10 +79,15 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 				}
 				cur.SetTerms(terms)
 			}
-		} else {
-			cur.Payment, cur.Schedule = in.payment.Round(digits), in.schedule
-			if err := validatePayment(cur.Payment); err != nil {
-				return err
+		} else if !cur.IsSetUp() {
+			if in.hasPayment {
+				cur.Payment = in.payment.Round(digits)
+				if err := validatePayment(cur.Payment); err != nil {
+					return err
+				}
+			}
+			if in.hasSchedule {
+				cur.Schedule = in.schedule
 			}
 		}
 		cur.UpdatedAt = now

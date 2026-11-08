@@ -21,7 +21,6 @@ import { DebtTermsForm } from './DebtTermsForm'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
 import type { PaymentsFromErrors } from './PaymentsFromEditor'
 import { useDeleteDebt, useDebt, useFetchDebtForEdit, useMarkDebtPaidOff, useUpdateDebt } from './queries'
-import { buildTermsPayload, initialTermsState } from './useDebtForm'
 import type { PaymentsFrom } from './useDebtForm'
 import { useDebtMoney, usePaymentsLeft } from './useDebtMoney'
 
@@ -49,9 +48,19 @@ function Figure({ label, children }: { label: string; children: ReactNode }) {
 
 const filtersOf = (debt: DebtDto): PaymentsFrom => ({ categoryId: debt.categoryId, payeeId: debt.payeeId, tagId: debt.tagId, labelId: debt.labelId })
 
-/** the debt as stored, ready to send back: for a set-up debt the stored snapshot, so
- *  a name or filter change writes no new one */
-const storedPayload = (debt: DebtDto): UpdateDebtDto => buildTermsPayload(initialTermsState(debt), initialTermsState(debt), debt)
+/** the debt's name, filters and start date as stored, with no payment, schedule or
+ *  terms: the server keeps its own, so this screen cannot write back terms another
+ *  device changed after it loaded */
+const storedPayload = (debt: DebtDto): UpdateDebtDto => ({
+  id: debt.id,
+  name: debt.name,
+  currencyId: debt.currencyId,
+  categoryId: debt.categoryId,
+  payeeId: debt.payeeId,
+  tagId: debt.tagId,
+  labelId: debt.labelId,
+  startDate: debt.startDate || null,
+})
 
 type Confirm = 'paid-off' | 'delete' | 'rename' | null
 type Terms = { mode: 'setup' | 'edit'; debt: DebtDto }

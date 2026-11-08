@@ -75,9 +75,14 @@ export interface CreateDebtDto {
   lastPaymentDate?: string
 }
 
-/** the currency never changes after creation; the server ignores currencyId */
-export interface UpdateDebtDto extends CreateDebtDto {
+/** the currency never changes after creation; the server ignores currencyId.
+ *  Without balance and lastPaymentDate the stored terms stay, and a payment or
+ *  schedule left out keeps the stored one (one that differs from a set-up debt's
+ *  terms needs balance and lastPaymentDate too) */
+export interface UpdateDebtDto extends Omit<CreateDebtDto, 'payment' | 'schedule'> {
   id: Id
+  payment?: string
+  schedule?: RecurringSchedule
 }
 
 export interface DeleteDebtForm {

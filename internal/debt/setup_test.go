@@ -83,13 +83,70 @@ func TestUpdateDebt_NotSetUpUpdatesPaymentOnly(t *testing.T) {
 	}
 }
 
+// A changed payment or schedule is a change of terms: without a balance and a
+// last payment date it is refused.
 func TestUpdateDebt_SetUpDebtStillNeedsItsTerms(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
+	for _, mod := range []func(*model.UpdateDebtRequest){
+		func(r *model.UpdateDebtRequest) { r.Payment = vo.NewFlexString("900") },
+		func(r *model.UpdateDebtRequest) { r.Schedule = "weekly" },
+	} {
+		req := e.updateReq(res)
+		req.Balance, req.LastPaymentDate = vo.FlexString{}, ""
+		mod(&req)
+		_, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+		requireField(t, err, "balance", "common.is_blank")
+		requireField(t, err, "lastPaymentDate", "common.is_blank")
+	}
+}
+
+// A rename or filter change from a stale screen sends no terms: the terms
+// another device wrote in the meantime stay, and no snapshot is written.
+func TestUpdateDebt_WithoutTermsKeepsNewerTerms(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	newer := e.updateReq(res)
+	newer.Balance, newer.Payment, newer.LastPaymentDate = vo.NewFlexString("8000"), vo.NewFlexString("900"), "2027-02-01"
+	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), newer); err != nil {
+		t.Fatal(err)
+	}
+	payee := e.newPayee()
+	for i, mod := range []func(*model.UpdateDebtRequest){
+		func(r *model.UpdateDebtRequest) { r.Payment, r.Schedule = vo.FlexString{}, "" },
+		// a payment and schedule sent as stored change nothing either
+		func(r *model.UpdateDebtRequest) { r.Payment, r.Schedule = vo.NewFlexString("900.00"), "monthly" },
+	} {
+		stale := e.updateReq(res)
+		stale.Name, stale.PayeeId = "Renamed", &payee
+		stale.Balance, stale.LastPaymentDate = vo.FlexString{}, ""
+		mod(&stale)
+		got, err := e.svc.UpdateDebt(context.Background(), e.uid(), stale)
+		if err != nil {
+			t.Fatalf("case %d: %v", i, err)
+		}
+		if got.Name != "Renamed" || got.PayeeId == nil || *got.PayeeId != payee || got.Balance != "8000" ||
+			got.Payment != "900" || got.Schedule != "monthly" || got.LastPaymentDate != "2027-02-01" {
+			t.Fatalf("case %d: result = %+v, want the newer terms kept", i, got)
+		}
+		if n := len(e.snapshots(t, res.Id)); n != 2 {
+			t.Fatalf("case %d: snapshots = %d, want 2 (no new one)", i, n)
+		}
+	}
+}
+
+func TestUpdateDebt_NotSetUpKeepsPaymentLeftOut(t *testing.T) {
+	e := newEnv(t)
+	res := e.createWithoutTerms(t, nil)
 	req := e.updateReq(res)
-	req.Balance, req.LastPaymentDate = vo.FlexString{}, ""
-	_, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
-	requireField(t, err, "balance", "common.is_blank")
+	req.Name, req.Payment, req.Schedule = "Renamed", vo.FlexString{}, ""
+	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Name != "Renamed" || got.Payment != res.Payment || got.Schedule != res.Schedule || got.IsSetUp != 0 {
+		t.Fatalf("result = %+v, want payment %s and schedule %s kept", got, res.Payment, res.Schedule)
+	}
 }
 
 // Payments collected before setup carry a provisional zero interest; setup

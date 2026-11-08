@@ -30,7 +30,7 @@ func init() {
 	}
 
 	// debt_crud walks one debt through its life: create, list, get, update the
-	// terms (a new snapshot), mark paid off, delete. A second debt is created
+	// terms (a new snapshot), rename without terms, mark paid off, delete. A second debt is created
 	// without terms, matching by a label, and then set up.
 	register(Scenario{Name: "debt_crud", Calls: func() []Call {
 		var debtID, draftID string
@@ -45,6 +45,9 @@ func init() {
 					"balance": "200", "payment": "104", "schedule": "weekly", "lastPaymentDate": day(14),
 				}},
 			{Label: "get-after-update", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+			// no balance, payment, schedule or last payment date: the terms stay
+			{Label: "rename-keeps-terms", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "name": "Car loan 3", "categoryId": CatFood, "payeeId": PayeeShop}},
 			{Label: "mark-paid-off", Method: "POST", Path: "/api/v1/debt/mark-debt-paid-off", Auth: "owner",
 				Body: map[string]any{"id": &debtID}},
 			{Label: "delete", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",

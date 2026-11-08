@@ -309,16 +309,18 @@ func isNotFound(err error) bool {
 
 // debtInput is a create/update body parsed into domain values; the balance and
 // payment are rounded to the debt currency once its digits are known. Without
-// hasTerms the body carries no balance and no last payment date.
+// hasTerms the body carries no balance and no last payment date; without
+// hasPayment or hasSchedule an update keeps the stored one.
 type debtInput struct {
-	name               string
-	currency, category vo.Id
-	payee, tag, label  *vo.Id
-	start              *time.Time
-	balance, payment   vo.DecimalNumber
-	schedule           model.RecurringSchedule
-	lastPayment        time.Time
-	hasTerms           bool
+	name                    string
+	currency, category      vo.Id
+	payee, tag, label       *vo.Id
+	start                   *time.Time
+	balance, payment        vo.DecimalNumber
+	schedule                model.RecurringSchedule
+	lastPayment             time.Time
+	hasTerms                bool
+	hasPayment, hasSchedule bool
 }
 
 // debtBody is the part of the create and update requests parseInput reads.
@@ -367,12 +369,15 @@ func parseInput(b debtBody) (debtInput, error) {
 		}
 		in.start = &start
 	}
-	sched, ok := model.ParseRecurringSchedule(b.schedule)
-	if !ok {
-		return in, errs.NewValidation("Validation failed", errs.FieldError{
-			Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
+	in.hasPayment = strings.TrimSpace(b.payment.String()) != ""
+	if in.hasSchedule = strings.TrimSpace(b.schedule) != ""; in.hasSchedule {
+		sched, ok := model.ParseRecurringSchedule(b.schedule)
+		if !ok {
+			return in, errs.NewValidation("Validation failed", errs.FieldError{
+				Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
+		}
+		in.schedule = sched
 	}
-	in.schedule = sched
 	// The terms are optional, but only as a pair.
 	hasBalance, hasLast := strings.TrimSpace(b.balance.String()) != "", strings.TrimSpace(b.lastPayment) != ""
 	if !hasBalance && !hasLast {
@@ -381,11 +386,33 @@ func parseInput(b debtBody) (debtInput, error) {
 	if !hasBalance || !hasLast {
 		return in, missingTerms(!hasBalance, !hasLast)
 	}
+	if err := in.requirePaymentAndSchedule(); err != nil {
+		return in, err
+	}
 	if in.lastPayment, err = time.Parse(datetime.DateLayout, b.lastPayment); err != nil {
 		return in, err
 	}
 	in.hasTerms = true
 	return in, nil
+}
+
+func (in debtInput) requirePaymentAndSchedule() error {
+	var missing []errs.FieldError
+	if !in.hasPayment {
+		missing = append(missing, errs.FieldError{Key: "payment", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if !in.hasSchedule {
+		missing = append(missing, errs.FieldError{Key: "schedule", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	return errs.NewValidation("Validation failed", missing...)
+}
+
+// changesTerms: a payment or schedule sent that differs from the stored terms.
+func (in debtInput) changesTerms(t model.DebtTerms, digits int) bool {
+	return (in.hasPayment && !in.payment.Round(digits).Equals(t.Payment)) || (in.hasSchedule && in.schedule != t.Schedule)
 }
 
 func missingTerms(balance, lastPayment bool) error {

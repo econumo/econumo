@@ -80,7 +80,7 @@ func (h *Handlers) CreateDebt(w http.ResponseWriter, r *http.Request) {
 // UpdateDebt handles POST /api/v1/debt/update-debt (auth).
 //
 // @Summary     Update a debt
-// @Description Updates a debt's name, key and terms; changed terms start a new snapshot. A debt not set up is set up by a body carrying balance and lastPaymentDate (its first snapshot, as of today); without them only its payment, schedule and key change. A set-up debt always needs its terms. The currency never changes.
+// @Description Updates a debt's name, key and terms; changed terms start a new snapshot. A body without balance and lastPaymentDate keeps the stored terms (no snapshot), and a payment or schedule left out keeps the stored one; on a set-up debt a payment or schedule that differs from the stored one is a change of terms and needs balance and lastPaymentDate too. A debt not set up is set up by a body carrying balance and lastPaymentDate (its first snapshot, as of today); without them only its payment, schedule and key change. The currency never changes.
 // @Tags        Debt
 // @Accept      json
 // @Produce     json

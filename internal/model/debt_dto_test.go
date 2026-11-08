@@ -156,3 +156,22 @@ func TestUpdateDebtRequest_TermsPair(t *testing.T) {
 		t.Errorf("balance without lastPaymentDate: %v", got)
 	}
 }
+
+// An update may leave out the payment and the schedule (kept as stored), but
+// not alongside a balance and a last payment date.
+func TestUpdateDebtRequest_PaymentAndScheduleOptional(t *testing.T) {
+	up := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000002", Name: "n", CategoryId: "0197c8b2-1111-7000-8000-000000000001"}
+	if err := up.Validate(); err != nil {
+		t.Errorf("update without payment, schedule or terms is valid: %v", err)
+	}
+	bad := up
+	bad.Payment, bad.Schedule = vo.NewFlexString("0"), "daily"
+	if got := debtFieldCodes(t, bad.Validate()); got["payment"] != errs.CodeOutOfRange || got["schedule"] != errs.CodeInvalidChoice {
+		t.Errorf("a payment or schedule sent is still checked: %v", got)
+	}
+	terms := up
+	terms.Balance, terms.LastPaymentDate = vo.NewFlexString("10"), "2027-03-01"
+	if got := debtFieldCodes(t, terms.Validate()); got["payment"] != errs.CodeIsBlank || got["schedule"] != errs.CodeIsBlank || len(got) != 2 {
+		t.Errorf("terms without payment and schedule: %v, want both blank", got)
+	}
+}

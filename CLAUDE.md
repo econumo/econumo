@@ -1719,9 +1719,13 @@ data unreadable. Most are also asserted by the test suite.
   update supplies them. Create with terms makes the first snapshot; finishing setup (the update
   that first supplies the pair, SPA event `appDebtFinishSetup`) writes the first snapshot as of
   today and deletes the debt's provisional zero splits in the same transaction, so the next sync
-  splits the collected payments by the normal rules (backward estimate before the snapshot); a
-  set-up debt's update still needs its terms and writes a new snapshot only when balance, payment,
-  schedule or last payment date differ (a rename does not); `mark-debt-paid-off` writes a
+  splits the collected payments by the normal rules (backward estimate before the snapshot); an
+  update without the pair keeps the stored terms and a `payment`/`schedule` left out keeps the
+  stored one, but on a set-up debt a differing payment or schedule is a change of terms and needs
+  the pair (`common.is_blank` on both otherwise). The review screen's rename and "Payments from"
+  saves send no payment, schedule or terms, so a stale screen never writes back terms another
+  device changed. With the pair, a new snapshot is written only when balance, payment, schedule or
+  last payment date differ (a rename does not); `mark-debt-paid-off` writes a
   balance-0 snapshot and is refused on a debt not set up (`debt.not_set_up`). **Not set up**:
   payments still match and are stored in `debts_payments` with interest 0 (kept between syncs, no
   projection exists); `DebtResult`/the budget rows send `isSetUp` 0 with `balance`,
