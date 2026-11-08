@@ -7,7 +7,7 @@ import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { listenForInstallPrompt, resetInstallStateForTests } from '@/features/install/installPrompt'
 import * as metrics from '@/lib/metrics'
 import { markGettingStartedDone } from './gettingStarted'
-import { HOME_SCREEN_KEY, markHomeScreenDone } from './homeScreen'
+import { HOME_SCREEN_KEY, setHomeScreenState } from './homeScreen'
 import { useOnboardingSteps } from './useOnboardingSteps'
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
@@ -127,7 +127,7 @@ it('a home screen step finished elsewhere updates every mounted hook', async () 
   setDevice(IPHONE)
   const { result } = setup(userWith(''))
   await waitFor(() => expect(result.current.ready).toBe(true))
-  act(() => markHomeScreenDone())
+  act(() => setHomeScreenState('done'))
   expect(result.current.steps.find((s) => s.key === 'home_screen')?.state).toBe('done')
 })
 
@@ -174,6 +174,43 @@ it('markDone writes the option and fires the done metric; a revisited skip turns
   expect(state.posts).toEqual([{ value: 'import' }])
   expect(result.current.steps[0]).toEqual({ key: 'import', state: 'done' })
   expect(track).toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_STEP_DONE, { step: 'import' })
+})
+
+it('skip on a revisited done step keeps it done and writes nothing', async () => {
+  setDevice(IPHONE)
+  localStorage.setItem(HOME_SCREEN_KEY, 'done')
+  const track = vi.spyOn(metrics, 'trackEvent')
+  const { result } = setup(userWith('import'))
+  const state = serveOption('import')
+  await waitFor(() => expect(result.current.ready).toBe(true))
+  await act(() => result.current.skip('import'))
+  await act(() => result.current.skip('home_screen'))
+  expect(state.posts).toEqual([])
+  expect(result.current.steps[0]).toEqual({ key: 'import', state: 'done' })
+  expect(localStorage.getItem(HOME_SCREEN_KEY)).toBe('done')
+  expect(track).not.toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_STEP_SKIP, expect.anything())
+})
+
+it('a registered user without the option is in the flow and has the answer written', async () => {
+  const registered = { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: 'started' } : o)) }
+  const posts: unknown[] = []
+  // the server appends the option on the first write
+  let stored = registered
+  const { result } = setup(registered)
+  server.use(
+    http.get('*/api/v1/user/get-user-data', () => HttpResponse.json({ success: true, message: '', data: { user: stored } })),
+    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
+      const body = (await request.json()) as { value: string }
+      posts.push(body)
+      stored = { ...registered, options: [...registered.options, { name: 'getting_started', value: body.value }] }
+      return HttpResponse.json({ success: true, message: '', data: { user: stored } })
+    }),
+  )
+  await waitFor(() => expect(result.current.ready).toBe(true))
+  expect(result.current.current).toBe('import')
+  await act(() => result.current.skip('import'))
+  expect(posts).toEqual([{ value: '!import' }])
+  await waitFor(() => expect(result.current.steps[0]).toEqual({ key: 'import', state: 'skipped' }))
 })
 
 it('two quick skips keep both', async () => {

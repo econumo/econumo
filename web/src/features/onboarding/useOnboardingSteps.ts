@@ -2,10 +2,10 @@ import { useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useImportSources } from '@/features/imports/queries'
 import { isStandalone, useInstallMode } from '@/features/install/installPrompt'
-import { gettingStartedOption, useUserData } from '@/features/user/queries'
+import { useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isIPhone, isMac } from '@/lib/platform'
-import { markStepsDone, storedStepState, writeStepState, type OnboardingStepKey, type OnboardingStepState, type StoredStepKey } from './gettingStarted'
+import { flowOption, markStepsDone, storedStepState, writeStepState, type OnboardingStepKey, type OnboardingStepState, type StoredStepKey } from './gettingStarted'
 import { setHomeScreenState, useHomeScreenState } from './homeScreen'
 
 export type { OnboardingStepKey, OnboardingStepState } from './gettingStarted'
@@ -33,7 +33,7 @@ export function useOnboardingSteps(): OnboardingSteps {
   const installMode = useInstallMode()
   const homeScreen = useHomeScreenState()
 
-  const option = gettingStartedOption(user)
+  const option = flowOption(user)
   const hasWalletSource = (sources.data ?? []).some((s) => s.provider === 'apple-wallet')
   // A failed source list (routes off with the import providers) only loses
   // the automatic Apple Wallet tick, so its retries are not waited for.
@@ -62,7 +62,9 @@ export function useOnboardingSteps(): OnboardingSteps {
 
   const answer = useCallback(
     async (key: OnboardingStepKey, state: 'done' | 'skipped') => {
-      if (steps.find((s) => s.key === key)?.state === state) return
+      const was = steps.find((s) => s.key === key)?.state
+      // Skip on a revisited done step only moves on: the work stays done
+      if (was === state || (was === 'done' && state === 'skipped')) return
       trackEvent(state === 'done' ? METRICS.ONBOARDING_STEP_DONE : METRICS.ONBOARDING_STEP_SKIP, { step: key })
       if (key === 'home_screen') {
         setHomeScreenState(state)

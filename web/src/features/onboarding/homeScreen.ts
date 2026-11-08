@@ -30,10 +30,6 @@ export function setHomeScreenState(state: Exclude<OnboardingStepState, 'open'>):
   listeners.forEach((l) => l())
 }
 
-export function markHomeScreenDone(): void {
-  setHomeScreenState('done')
-}
-
 export function useHomeScreenState(): OnboardingStepState {
   const state = useSyncExternalStore(subscribe, homeScreenState)
   // an install seen only in this page's memory is written down for the next launch
