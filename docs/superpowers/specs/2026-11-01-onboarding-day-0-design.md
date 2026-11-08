@@ -253,3 +253,48 @@ in-app steps only.
   removing one is blocked once it has transactions from before the current month.
 - First-screen wording agreed for that flow: "Just me" / "Together with someone" ("I'll set
   it up and invite them") / "Someone invited me" ("Enter the code from their invite").
+
+## Revision 2026-11-08: Getting started as one stepper page
+
+Decided with Dmitry after reviewing screenshots of the first version. This section replaces
+"The flow", "The budget page after Day 0" and the cards/Inbox parts of "Skipping" above;
+"Import and the typed balance" still applies.
+
+### Layout
+
+One Getting started page: a stepper with check marks on top, the current step's content
+below. Desktop shows a horizontal stepper (number, label; done = filled check, skipped =
+dashed, current = outlined); phones show "Getting started · N of M" with a thin segmented
+progress bar. Steps can be revisited by clicking them. Visual direction (approved mockup):
+rows grouped in one rounded card with soft dividers, icon tile + name + control on the
+right, no bold, the accent colour only for progress and the primary button.
+
+### Steps, in order
+
+0. **Import (optional).** "Bring in your history": a CSV export creates accounts,
+   categories and transactions (the existing CSV import). "I don't have one" skips it. A
+   successful import marks steps 0, 1 and 2 done and moves to step 3.
+1. **Categories.** The checklist from before, checkbox moved to the right of each row.
+   Existing categories (from an import or a revisit) are listed ticked and locked.
+2. **Accounts and currencies.** As before (today's balances, savings switch, currencies
+   block), in the compact row style. Existing accounts are listed locked. After an import
+   no balance is asked for.
+3. **Budget and plan.** Entering the step creates the budget (all accounts, savings
+   flags, kept categories) if none exists. Then "Plan this month": one amount field per
+   expense category, a running "Planned X of Y in your accounts" line, "Save plan" writes
+   this month's limits. "Skip for now" is allowed.
+4. **Install as an app.** Only where the browser can install (or instructions exist);
+   hidden when already running as an installed app.
+5. **Apple Wallet.** Only on iPhone or Mac; leads to the existing Apple Wallet setup.
+
+### Completion and surfaces
+
+- Every step can be skipped. Onboarding completes when every visible step is done or
+  skipped; then the page and its nav link go away and Home shows the budget. A "Skip
+  setup" link completes everything at once.
+- Steps marked done from elsewhere still count: setting a limit (plan), a CSV import
+  (import), an Apple Wallet source (apple_wallet), installing (home screen).
+- The get-ready cards on the budget page and the Inbox "Next steps" section are removed:
+  this page is the only home of these steps.
+- Phones open Getting started right after sign-up, like desktop. The old install popup and
+  banner stay hidden while onboarding is incomplete (the install step replaces them).
