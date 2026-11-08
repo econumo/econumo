@@ -1288,7 +1288,10 @@
       "save": "保存计划",
       "skip": "暂时跳过",
       "needs_account": "预算至少需要一个账户。请先添加账户。",
-      "add_account": "添加账户"
+      "add_account": "添加账户",
+      "no_categories": "还没有可规划的分类。请先添加几个。",
+      "add_categories": "添加分类",
+      "amount_invalid": "请输入零或更大的金额，例如 250.50"
     }
   },
   "budgets": {

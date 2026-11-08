@@ -1288,7 +1288,10 @@
       "save": "Guardar plan",
       "skip": "Ahora no",
       "needs_account": "Un presupuesto necesita al menos una cuenta. Añade una primero.",
-      "add_account": "Añadir una cuenta"
+      "add_account": "Añadir una cuenta",
+      "no_categories": "Aún no hay categorías que planificar. Añade algunas primero.",
+      "add_categories": "Añadir categorías",
+      "amount_invalid": "Introduce una cantidad de cero o más, por ejemplo 250,50"
     }
   },
   "budgets": {

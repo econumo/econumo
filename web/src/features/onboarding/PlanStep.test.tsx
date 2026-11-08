@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
+import * as metrics from '@/lib/metrics'
 import { PlanStep } from './PlanStep'
 
 const pendingUser = {
@@ -19,20 +20,18 @@ const element = (id: string, type: number, name: string, budgeted: string, posit
   budgeted, isBudgeted: budgeted === '' ? 0 : 1, available: '0', spent: '0', budgetSpent: '0', ownerUserId: 'u1', children: [],
 })
 
-function wireBudget(salary: string) {
+const defaultElements = (salary: string) => [
+  element('cat-food', 1, 'Groceries', '200', 0),
+  element('cat-rent', 1, 'Housing', '', 1),
+  element('env-1', 0, 'An envelope', '50', 2),
+  element('cat-salary', 3, 'Salary', salary, 3),
+]
+
+function wireBudget(id: string, elements: unknown[], periodStartDay = 1) {
   return {
     ...fixtureWireBudget,
-    meta: { ...fixtureWireBudget.meta, id: 'b-new' },
-    structure: {
-      folders: [],
-      labels: [],
-      elements: [
-        element('cat-food', 1, 'Groceries', '200', 0),
-        element('cat-rent', 1, 'Housing', '', 1),
-        element('env-1', 0, 'An envelope', '50', 2),
-        element('cat-salary', 3, 'Salary', salary, 3),
-      ],
-    },
+    meta: { ...fixtureWireBudget.meta, id, periodStartDay },
+    structure: { folders: [], labels: [], elements },
   }
 }
 
@@ -45,19 +44,39 @@ let creates: unknown[]
 let limits: { budgetId: string; elementId: string; period: string; amount: string | null }[]
 let budgetPeriods: string[]
 
-function setup({ salary = '3000', accounts }: { salary?: string; accounts?: unknown[] } = {}) {
+interface Setup {
+  salary?: string
+  accounts?: unknown[]
+  elements?: unknown[]
+  // an existing default budget instead of a fresh one
+  existing?: { id: string; periodStartDay: number }
+}
+
+function setup({ salary = '3000', accounts, elements = defaultElements(salary), existing }: Setup = {}) {
   creates = []
   limits = []
   budgetPeriods = []
-  server.use(...coreHandlers({ user: pendingUser, budgets: [], ...(accounts ? { accounts } : {}) }))
+  const user = existing
+    ? { ...pendingUser, options: pendingUser.options.map((o) => (o.name === 'budget' ? { ...o, value: existing.id } : o)) }
+    : pendingUser
+  const metas = () =>
+    existing
+      ? [wireBudget(existing.id, elements, existing.periodStartDay).meta]
+      : creates.map((c) => wireBudget((c as { id: string }).id, elements).meta)
+  const byId = (id: string) => metas().find((m) => m.id === id)
+  server.use(...coreHandlers({ user, budgets: [], ...(accounts ? { accounts } : {}) }))
   server.use(
+    http.get('*/api/v1/budget/get-budget-list', () => ok({ items: metas() })),
     http.post('*/api/v1/budget/create-budget', async ({ request }) => {
-      creates.push(await request.json())
-      return ok({ item: wireBudget(salary).meta })
+      const body = (await request.json()) as { id: string }
+      creates.push(body)
+      return ok({ item: byId(body.id) })
     }),
     http.get('*/api/v1/budget/get-budget', ({ request }) => {
-      budgetPeriods.push(new URL(request.url).searchParams.get('date') ?? '')
-      return ok({ item: wireBudget(salary) })
+      const url = new URL(request.url)
+      budgetPeriods.push(url.searchParams.get('date') ?? '')
+      const id = url.searchParams.get('id') ?? ''
+      return ok({ item: wireBudget(id, elements, byId(id)?.periodStartDay ?? 1) })
     }),
     http.get('*/api/v1/oauth/get-identity-list', () => ok([])),
     http.post('*/api/v1/budget/set-limit', async ({ request }) => {
@@ -86,6 +105,10 @@ const input = (name: string) => screen.findByRole('textbox', { name }, { timeout
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 it('creates the budget once on entering and loads this month', async () => {
@@ -174,4 +197,54 @@ it('Skip for now skips the step', async () => {
   await input('Groceries')
   await user.click(screen.getByRole('button', { name: 'Skip for now' }))
   expect(onSkip).toHaveBeenCalled()
+})
+
+it('plans the current period of a reused budget whose months start on the 15th', async () => {
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 10, 12) })
+  const user = userEvent.setup()
+  const { onDone } = setup({ existing: { id: 'b-old', periodStartDay: 15 } })
+  await input('Groceries')
+  expect(creates).toHaveLength(0)
+  expect(budgetPeriods).toEqual(expect.arrayContaining(['2026-10-01']))
+  expect(budgetPeriods).not.toContain('2026-11-01')
+  expect(screen.getByText('Expenses · October')).toBeInTheDocument()
+  await user.type(screen.getByRole('textbox', { name: 'Housing' }), '10')
+  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await waitFor(() => expect(onDone).toHaveBeenCalled())
+  expect(limits).toEqual([{ budgetId: 'b-old', elementId: 'cat-rent', period: '2026-10-01', amount: '10' }])
+})
+
+it('refuses a negative amount', async () => {
+  const user = userEvent.setup()
+  setup()
+  await input('Groceries')
+  await user.type(screen.getByRole('textbox', { name: 'Housing' }), '-5')
+  expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
+  expect(screen.getByText('Enter an amount of zero or more, for example 250.50')).toBeInTheDocument()
+})
+
+it('with no categories to plan it points to the Categories step', async () => {
+  const user = userEvent.setup()
+  const { onGoTo } = setup({ elements: [element('env-1', 0, 'An envelope', '50', 0)] })
+  await user.click(await screen.findByRole('button', { name: 'Add categories' }, { timeout: 5000 }))
+  expect(onGoTo).toHaveBeenCalledWith('categories')
+  expect(screen.getByText('There are no categories to plan yet. Add a few first.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
+})
+
+it('reports the plan only once the step is answered', async () => {
+  const user = userEvent.setup()
+  const { onDone } = setup()
+  let resolve = () => {}
+  onDone.mockImplementation(() => new Promise<void>((r) => (resolve = r)))
+  const tracked: unknown[] = []
+  const spy = vi.spyOn(metrics, 'trackEvent').mockImplementation((...args) => void tracked.push(args))
+  await input('Groceries')
+  await user.type(screen.getByRole('textbox', { name: 'Housing' }), '5')
+  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await waitFor(() => expect(onDone).toHaveBeenCalled())
+  expect(tracked).toEqual([])
+  resolve()
+  await waitFor(() => expect(tracked).toEqual([[metrics.METRICS.ONBOARDING_PLAN_COMPLETE, { rows: 1 }]]))
+  spy.mockRestore()
 })

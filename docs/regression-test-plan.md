@@ -333,8 +333,14 @@ navigation (single-pane vs sidebar).
 - [ ] "Save plan" writes only changed rows for this month: a typed 0 is saved
       as a zero plan, a blank row is never written (clearing an existing plan
       here leaves it); the step is then marked done and the next open step
-      opens. An unreadable amount disables Save plan; "Skip for now" skips the
-      step and writes nothing.
+      opens. An unreadable or negative amount shows an inline error and
+      disables Save plan; "Skip for now" skips the step and writes nothing.
+- [ ] Reusing a budget whose months start on another day (e.g. the 15th) plans
+      that budget's current period: its month name heads the cards and the
+      saved plan shows in that period on the budget page.
+- [ ] A budget with no income or expense categories shows a hint and an "Add
+      categories" button that opens the Categories step; Save plan is
+      disabled.
 - [ ] 📱 The budget page never shows get-ready cards (an empty budget shows the
       normal table or the create-budget prompt), and the Inbox has no "Next
       steps" section, for a user still getting started or not.

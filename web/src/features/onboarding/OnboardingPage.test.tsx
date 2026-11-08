@@ -45,11 +45,16 @@ let posts: { path: string; value?: string }[]
 // get-user-data serves the stored option, a getting-started POST replaces it
 function serve(initial: string) {
   posts = []
-  const state = { stored: initial, completed: false, failComplete: false }
+  const state = { stored: initial, completed: false, failComplete: false, budgets: [] as { id: string }[] }
   server.use(...coreHandlers({ budgets: [], categories: [] }))
   // added later, so these answer ahead of the core handlers
   server.use(
-    http.post('*/api/v1/budget/create-budget', () => ok({ item: fixtureWireBudget.meta })),
+    http.get('*/api/v1/budget/get-budget-list', () => ok({ items: state.budgets })),
+    http.post('*/api/v1/budget/create-budget', async ({ request }) => {
+      const { id } = (await request.json()) as { id: string }
+      state.budgets.push({ ...fixtureWireBudget.meta, id })
+      return ok({ item: { ...fixtureWireBudget.meta, id } })
+    }),
     http.get('*/api/v1/budget/get-budget', () => ok({ item: fixtureWireBudget })),
     http.get('*/api/v1/user/get-user-data', () => ok({ user: userWith(state.stored, state.completed ? 'completed' : '') })),
     http.post('*/api/v1/user/update-getting-started', async ({ request }) => {

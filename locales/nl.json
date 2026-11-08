@@ -1288,7 +1288,10 @@
       "save": "Plan opslaan",
       "skip": "Later",
       "needs_account": "Een budget heeft minstens één rekening nodig. Voeg er eerst een toe.",
-      "add_account": "Rekening toevoegen"
+      "add_account": "Rekening toevoegen",
+      "no_categories": "Er zijn nog geen categorieën om te plannen. Voeg er eerst een paar toe.",
+      "add_categories": "Categorieën toevoegen",
+      "amount_invalid": "Voer een bedrag van nul of meer in, bijvoorbeeld 250,50"
     }
   },
   "budgets": {

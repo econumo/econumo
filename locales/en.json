@@ -1288,7 +1288,10 @@
       "save": "Save plan",
       "skip": "Skip for now",
       "needs_account": "A budget needs at least one account. Add one first.",
-      "add_account": "Add an account"
+      "add_account": "Add an account",
+      "no_categories": "There are no categories to plan yet. Add a few first.",
+      "add_categories": "Add categories",
+      "amount_invalid": "Enter an amount of zero or more, for example 250.50"
     }
   },
   "budgets": {

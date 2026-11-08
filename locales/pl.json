@@ -1288,7 +1288,10 @@
       "save": "Zapisz plan",
       "skip": "Nie teraz",
       "needs_account": "Budżet wymaga co najmniej jednego konta. Najpierw dodaj konto.",
-      "add_account": "Dodaj konto"
+      "add_account": "Dodaj konto",
+      "no_categories": "Nie ma jeszcze kategorii do zaplanowania. Najpierw dodaj kilka.",
+      "add_categories": "Dodaj kategorie",
+      "amount_invalid": "Wpisz kwotę równą zero lub większą, na przykład 250,50"
     }
   },
   "budgets": {
