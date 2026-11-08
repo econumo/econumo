@@ -74,30 +74,21 @@ it('an archived budget offers no Track as debt', () => {
 })
 
 describe('the debt row menu', () => {
-  it('the owner gets Details and Edit, both on the debt\'s review screen', () => {
+  it('the owner gets Details alone, which opens the debt\'s review screen', () => {
     const { result } = renderMenus()
     const actions = result.current.debtRowMenu(fixtureDebtRow())
-    expect(labels(actions)).toEqual(['Details', 'Edit'])
+    expect(labels(actions)).toEqual(['Details'])
     act(() => actions[0].onSelect())
-    expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
-    useUiStore.setState({ debtDetailsId: null })
-    act(() => actions[1].onSelect())
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
     expect(useUiStore.getState().debtModal).toBeNull()
   })
 
-  it('the sheet pencil opens the review screen too', () => {
-    const { result } = renderMenus()
-    act(() => result.current.editFromSheet({ kind: 'debt', row: fixtureDebtRow() }))
-    expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
-  })
-
-  it('a guest sees no Edit in the debt row menu', () => {
+  it('a guest sees no Details in the debt row menu', () => {
     const { result } = renderMenus('u2')
     expect(result.current.debtRowMenu(fixtureDebtRow())).toEqual([])
   })
 
-  it('the sheet offers the owner the edit pencil, and nobody else', () => {
+  it('the sheet\'s access check (which gates Details) passes the owner, and nobody else', () => {
     expect(renderMenus('u1').result.current.editAccess({ kind: 'debt', row: fixtureDebtRow() })).toBe(true)
     expect(renderMenus('u2').result.current.editAccess({ kind: 'debt', row: fixtureDebtRow() })).toBeNull()
   })

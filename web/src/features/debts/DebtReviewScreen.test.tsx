@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
@@ -218,7 +218,8 @@ it('Finish setup saves terms and the screen switches to payments left', async ()
 
   await waitFor(() => expect(bodies).toHaveLength(1))
   expect(bodies[0]).toMatchObject({ id: 'd1', balance: '600', payment: '100', schedule: 'monthly' })
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
+  expect(vi.mocked(trackEvent).mock.calls.filter(([event]) => event === METRICS.DEBT_FINISH_SETUP)).toHaveLength(1)
+  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
   expect(await screen.findByText('12 payments left')).toBeInTheDocument()
   expect(screen.queryByLabelText('Balance now')).toBeNull()
 })
@@ -299,6 +300,45 @@ it('Rename in the menu saves a new name', async () => {
 
   await waitFor(() => expect(bodies).toHaveLength(1))
   expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', balance: '1200', lastPaymentDate: '2050-07-05', labelId: null })
+})
+
+it('a rename right after an Edit carries the new terms, not the ones loaded before it', async () => {
+  let edited = false
+  server.use(
+    http.get('*/api/v1/debt/get-debt', async () => {
+      // the refetch after the edit is still on its way when the rename is sent
+      if (edited) {
+        await delay('infinite')
+      }
+      return ok(details)
+    }),
+  )
+  const saved = { ...details.item, balance: '600', currentBalance: '600', lastPaymentDate: '2031-03-05' }
+  const bodies = captureUpdate((body) => {
+    edited = true
+    return body.name === 'Van loan' ? { ...saved, name: 'Van loan' } : saved
+  })
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+
+  await user.click(within(screen.getByRole('region', { name: 'Loan' })).getByRole('button', { name: 'Edit' }))
+  const balance = await screen.findByLabelText('Balance now')
+  await user.clear(balance)
+  await user.type(balance, '600')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  await screen.findByTestId('debt-review-top')
+
+  await openMenu(user)
+  await user.click(screen.getByRole('menuitem', { name: 'Rename' }))
+  const prompt = await screen.findByRole('dialog', { name: 'Rename' })
+  await user.clear(within(prompt).getByLabelText('Name'))
+  await user.type(within(prompt).getByLabelText('Name'), 'Van loan')
+  await user.click(within(prompt).getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(2))
+  expect(bodies[1]).toMatchObject({ name: 'Van loan', balance: '600', lastPaymentDate: '2031-03-05', payment: '100', schedule: 'monthly' })
 })
 
 it('menu hides Mark as paid off while not set up', async () => {

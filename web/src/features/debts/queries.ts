@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as debtApi from '@/api/debt'
-import type { CreateDebtDto, UpdateDebtDto, DeleteDebtForm } from '@/api/dto/debt'
+import type { CreateDebtDto, DebtDetailsDto, DebtDto, UpdateDebtDto, DeleteDebtForm } from '@/api/dto/debt'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -40,6 +40,18 @@ function useInvalidateDebts() {
   }
 }
 
+// The debt a write returns is the debt as stored now. It goes into both caches at
+// once: until the refetch lands, the review screen would otherwise send its next
+// save (a rename, a filter change) with the terms from before this write, and
+// writing those back would revert the write.
+function useStoreSavedDebt() {
+  const queryClient = useQueryClient()
+  return (saved: DebtDto) => {
+    queryClient.setQueryData<DebtDetailsDto>(queryKeys.debt(saved.id), (old) => (old ? { ...old, item: saved } : old))
+    queryClient.setQueryData<DebtDto[]>(queryKeys.debts, (old) => old?.map((d) => (d.id === saved.id ? saved : d)))
+  }
+}
+
 export function useCreateDebt({ fromBudget = false }: { fromBudget?: boolean } = {}) {
   const invalidate = useInvalidateDebts()
   return useMutation({
@@ -55,9 +67,11 @@ export function useCreateDebt({ fromBudget = false }: { fromBudget?: boolean } =
  *  comes back set up is the debt's setup finished, not an edit */
 export function useUpdateDebt({ finishingSetup = false }: { finishingSetup?: boolean } = {}) {
   const invalidate = useInvalidateDebts()
+  const storeSaved = useStoreSavedDebt()
   return useMutation({
     mutationFn: (form: UpdateDebtDto) => debtApi.updateDebt(form),
     onSuccess: (saved) => {
+      storeSaved(saved)
       invalidate()
       trackEvent(finishingSetup && saved.isSetUp === 1 ? METRICS.DEBT_FINISH_SETUP : METRICS.DEBT_UPDATE)
     },
@@ -77,9 +91,11 @@ export function useDeleteDebt() {
 
 export function useMarkDebtPaidOff() {
   const invalidate = useInvalidateDebts()
+  const storeSaved = useStoreSavedDebt()
   return useMutation({
     mutationFn: (id: Id) => debtApi.markDebtPaidOff(id),
-    onSuccess: () => {
+    onSuccess: (saved) => {
+      storeSaved(saved)
       invalidate()
       trackEvent(METRICS.DEBT_MARK_PAID_OFF)
     },

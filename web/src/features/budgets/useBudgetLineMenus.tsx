@@ -145,6 +145,7 @@ export function useBudgetLineMenus({
       // update-label answers anyone but the tag's owner with NotFound
       return !!userId && target.label.ownerUserId === userId
     }
+    // a debt's sheet shows no pencil: this gates its owner's Details (the review screen)
     if (target.kind === 'debt') {
       return ownsDebt(target.row) ? true : null
     }
@@ -282,11 +283,8 @@ export function useBudgetLineMenus({
   const savingsRowMenu = (row: BudgetSavingsElementDto): MenuAction[] => editAction({ kind: 'savings', row })
   const debtRowMenu = (row: DebtRef): MenuAction[] =>
     ownsDebt(row)
-      ? [
-          { label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id) },
-          // the review screen is where a debt is edited: its terms, filters and name
-          { label: t('common.button.edit.label'), onSelect: () => openDebtDetails(row.id) },
-        ]
+      ? // the review screen is the one place a debt is edited: its terms, filters and name
+        [{ label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id) }]
       : []
   const labelMenu = (label: LabelSpendDto): MenuAction[] => editAction({ kind: 'label', label })
   const newEnvelopeAction = (folderId: Id | null, side: BudgetFolderSide): MenuAction => ({

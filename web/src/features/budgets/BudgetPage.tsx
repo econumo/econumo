@@ -942,7 +942,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             : undefined
         }
         onDetails={
-          // a debt's details are its owner's alone, as its Edit is
+          // a debt's review screen is its owner's alone, and its only edit: no pencil
           sheetTarget?.kind === 'debt' && sheetEdit === true
             ? () => {
                 openDebtDetails(sheetTarget.row.id)
@@ -951,7 +951,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             : undefined
         }
         onEdit={
-          sheetTarget && sheetEdit !== null
+          sheetTarget && sheetTarget.kind !== 'debt' && sheetEdit !== null
             ? () => {
                 // the element's own edit dialog replaces the sheet
                 setSheetTarget(null)

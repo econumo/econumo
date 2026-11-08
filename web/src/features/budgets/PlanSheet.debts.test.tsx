@@ -220,14 +220,14 @@ it('debt payments stay in the expense totals and the Balance', async () => {
   }
 })
 
-it('a debt row\'s menu offers its owner Details and Edit', async () => {
+it('a debt row\'s menu offers its owner Details alone', async () => {
   useHandlers()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   renderPage()
   await screen.findByTestId('plan-section-debts')
   await user.click(await screen.findByRole('button', { name: 'menu Mortgage' }))
   const items = await screen.findAllByRole('menuitem')
-  expect(items.map((i) => i.textContent)).toEqual(['Details', 'Edit'])
+  expect(items.map((i) => i.textContent)).toEqual(['Details'])
 })
 
 it('on a tablet a debt cell opens the debt\'s sheet: Planned, Paid, Left and its owner\'s Details', async () => {
@@ -247,4 +247,6 @@ it('on a tablet a debt cell opens the debt\'s sheet: Planned, Paid, Left and its
   expect(within(sheet).getByTestId('sheet-state')).toHaveTextContent('23 payments left')
   expect(within(sheet).getByTestId('debt-extra-effect')).toBeInTheDocument()
   expect(within(sheet).getByRole('button', { name: 'Details' })).toBeInTheDocument()
+  // Details is the one way in: no edit pencil beside it
+  expect(within(screen.getByRole('dialog')).queryByRole('button', { name: 'Edit' })).toBeNull()
 })

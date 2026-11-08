@@ -2183,7 +2183,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             : undefined
         }
         onDetails={
-          // a debt's details are its owner's alone, as its Edit is
+          // a debt's review screen is its owner's alone, and its only edit: no pencil
           sheetPlanTarget?.kind === 'debt' && sheetEdit === true
             ? () => {
                 openDebtDetails(sheetPlanTarget.row.id)
@@ -2192,7 +2192,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             : undefined
         }
         onEdit={
-          sheetPlanTarget && sheetEdit !== null
+          sheetPlanTarget && sheetPlanTarget.kind !== 'debt' && sheetEdit !== null
             ? () => {
                 // the element's own edit dialog replaces the sheet
                 setSheetCellTarget(null)

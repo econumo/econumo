@@ -112,6 +112,22 @@ it('useUpdateDebt fires DEBT_UPDATE and invalidates', async () => {
   expectInvalidated(invalidated)
 })
 
+it('useUpdateDebt writes the saved debt into the details and list caches at once', async () => {
+  const saved = { ...wireDebt, balance: '80', lastPaymentDate: '2027-05-20' }
+  server.use(http.post('*/api/v1/debt/update-debt', () => ok(saved)))
+  const { queryClient, wrapper } = makeWrapper()
+  // the invalidation's refetch must not land first: only the write is under test
+  vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+  const other = { ...wireDebt, id: 'd2', name: 'Phone' }
+  queryClient.setQueryData(queryKeys.debt('d1'), { item: wireDebt, snapshots: [], payments: [] })
+  queryClient.setQueryData(queryKeys.debts, [wireDebt, other])
+  const { result } = renderHook(() => useUpdateDebt(), { wrapper })
+  result.current.mutate({ ...form, id: 'd1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryData(queryKeys.debt('d1'))).toEqual({ item: saved, snapshots: [], payments: [] })
+  expect(queryClient.getQueryData(queryKeys.debts)).toEqual([saved, other])
+})
+
 it('useUpdateDebt finishing setup fires DEBT_FINISH_SETUP instead, once the debt comes back set up', async () => {
   server.use(http.post('*/api/v1/debt/update-debt', () => ok(wireDebt)))
   const { wrapper } = makeWrapper()
