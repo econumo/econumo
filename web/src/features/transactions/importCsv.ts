@@ -294,6 +294,9 @@ export async function runImportKeepingBalance(
   const kept: KeptBalance[] = []
   const notKept: Id[] = snapshot ? [] : [...targets]
   if (snapshot) {
+    // the server snapshots only accounts the caller owns or administers
+    const inSnapshot = new Set(snapshot.items.map((item) => item.accountId))
+    for (const id of targets) if (!inSnapshot.has(id)) notKept.push(id)
     for (const item of snapshot.items) {
       try {
         const restored = await restoreBalance({

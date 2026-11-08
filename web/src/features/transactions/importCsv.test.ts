@@ -293,3 +293,17 @@ it('a failed restore request is notKept; restored:false is neither kept nor notK
   expect(result.kept).toEqual([])
   expect(result.notKept).toEqual(['a1'])
 })
+
+it('a target missing from the snapshot (not owned or administered) is notKept', async () => {
+  const log: string[] = []
+  keepHandlers({}, log)
+  server.use(
+    http.get('*/api/v1/account/get-balance-snapshot', () =>
+      HttpResponse.json({ success: true, message: '', data: { takenAt: '2026-11-07 10:00:00', items: [{ accountId: 'a1', balance: '10', openingCorrectionId: '', fresh: true }] } }),
+    ),
+  )
+  const post = vi.fn(async () => ({ imported: 2, skipped: 0, errors: {} }))
+  const result = await runImportKeepingBalance(twoAccountCsv(), csvSelection(), post, accounts)
+  expect(result.kept).toEqual([{ accountId: 'a1', balance: '10' }])
+  expect(result.notKept).toEqual(['a2'])
+})

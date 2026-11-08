@@ -1528,7 +1528,10 @@ data unreadable. Most are also asserted by the test suite.
   correction, or by adding a "Balance adjustment" transaction; both bump the account's
   transaction revision. The CSV import's "Keep current balance" checkbox snapshots before the
   import and restores afterwards; the result lists accounts whose balance was kept and those
-  where it could not be.
+  where it could not be. The server snapshots only accounts the caller owns or administers
+  (accepted admin), so any import target absent from the snapshot (e.g. a shared account with
+  the user role) is reported as not kept and its balance moves; the checkbox default and
+  visibility consider only accounts present in the snapshot.
 - **Category type matches transaction type**: an income category classifies only income and
   an expense category only expenses. `checkReferences` (create, update, bulk, recurring post,
   MCP, imports) refuses a mismatch with the field error `categoryId` /

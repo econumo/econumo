@@ -466,7 +466,11 @@ navigation (single-pane vs sidebar).
       after importing older rows the account balance is unchanged and the
       result dialog says "Kept today's balance of ..."; also after a partial
       import. Unticked: the balance moves by the imported amounts as before.
-      An account the caller cannot write to does not show the box.
+      Only accounts the caller owns or administers can be kept: the box is
+      hidden when none of the import's target accounts qualifies, and its default
+      looks only at those. A target that is a shared account with the user role
+      is not kept: with the box ticked its balance moves and the result dialog
+      says "Couldn't keep the balance of <account>".
 - [ ] Import with a broken row (bad date/amount) → partial result, failed rows
       detailed, good rows imported.
 - [ ] Category type guard: a category only goes on a transaction of its own
