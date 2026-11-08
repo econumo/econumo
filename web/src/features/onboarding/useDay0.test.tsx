@@ -43,10 +43,10 @@ type Faults = {
 }
 
 let calls: { path: string; body: any }[]
-let srv: { accounts: any[]; categories: any[]; budgets: any[]; ops: Set<string> }
+let srv: { accounts: any[]; categories: any[]; budgets: any[]; folders: any[]; ops: Set<string> }
 
 function mockWrites(f: Faults = {}) {
-  srv = { accounts: [], categories: [], budgets: [], ops: new Set() }
+  srv = { accounts: [], categories: [], budgets: [], folders: [], ops: new Set() }
   let accountCalls = 0
   let accountFault = false
   let categoryFault = false
@@ -57,6 +57,7 @@ function mockWrites(f: Faults = {}) {
       if (f.accountsDelayMs) await delay(f.accountsDelayMs)
       return ok({ items: srv.accounts })
     }),
+    http.get('*/api/v1/account/get-folder-list', () => ok({ items: srv.folders })),
     http.get('*/api/v1/category/get-category-list', () => ok({ items: srv.categories })),
     http.get('*/api/v1/budget/get-budget-list', () => ok({ items: srv.budgets })),
     ...coreHandlers({ user: pendingUser }),
@@ -64,13 +65,17 @@ function mockWrites(f: Faults = {}) {
       const body = (await request.json()) as any
       calls.push({ path: 'create-account', body })
       if (srv.ops.has(body.id)) return locked()
+      if (!body.folderId && srv.folders.length > 0) {
+        return HttpResponse.json({ success: false, message: 'invalid', code: 400, errors: { folderId: ['This value should not be blank.'] } }, { status: 400 })
+      }
       accountCalls++
       if (f.accountResponse === 'http500' && accountCalls === 2 && !accountFault) {
         accountFault = true
         return fail()
       }
       srv.ops.add(body.id)
-      const item = { id: `acc-${srv.accounts.length + 1}`, name: body.name, owner: { id: 'u1' } }
+      if (!body.folderId) srv.folders.push({ id: 'folder-general', name: 'General' })
+      const item = { id: `acc-${srv.accounts.length + 1}`, name: body.name, owner: { id: 'u1' }, folderId: body.folderId || 'folder-general' }
       srv.accounts.push(item)
       if (f.accountResponse === 'lost' && accountCalls === 1 && !accountFault) {
         accountFault = true
@@ -154,6 +159,27 @@ describe('useDay0', () => {
     expect(draft.accountIds).toEqual(['acc-1', 'acc-2'])
     expect(draft.savingsAccountIds).toEqual(['acc-2'])
     expect(draft.mainCurrencyId).toBe('cur-usd')
+  })
+
+  it('three accounts in one save reuse the folder created by the first', async () => {
+    mockWrites()
+    const { result } = await ready()
+    const three = [...rows, { key: 'r3', name: 'Card', balance: '5', currencyId: 'cur-usd', savings: false, icon: 'credit_card' }]
+    await act(() => result.current.saveAccounts(three, [], 'cur-usd'))
+    const creates = calls.filter((c) => c.path === 'create-account').map((c) => c.body.folderId)
+    expect(creates).toEqual([null, 'folder-general', 'folder-general'])
+    expect(loadDraft('u1')!.accountIds).toEqual(['acc-1', 'acc-2', 'acc-3'])
+  })
+
+  it('resuming after the first account was created still sends the folder id', async () => {
+    mockWrites({ accountResponse: 'http500' })
+    const { result } = await ready()
+    await act(async () => {
+      await expect(result.current.saveAccounts(rows, [], 'cur-usd')).rejects.toBeTruthy()
+    })
+    calls = []
+    await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
+    expect(calls.filter((c) => c.path === 'create-account').map((c) => c.body.folderId)).toEqual(['folder-general'])
   })
 
   it('retry after a 500 mid-accounts completes without duplicates', async () => {

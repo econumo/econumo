@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
-import { createAccount, getAccountList } from '@/api/account'
+import { createAccount, getAccountList, getFolderList } from '@/api/account'
 import { createBudget, getBudgetList } from '@/api/budget'
 import { createCategory, getCategoryList } from '@/api/category'
 import { getCurrencyList, hideAllCurrencies, showCurrency } from '@/api/currency'
@@ -109,19 +109,23 @@ export function useDay0() {
         }
         persist(d)
 
+        // The server accepts a blank folder only while the user has none (it then creates "General").
+        let folderId: Id | null = null
         for (const row of rows) {
           if (d.created[row.key]) {
             continue
           }
           try {
+            folderId ??= (await getFolderList())[0]?.id ?? null
             const item = await createAccount({
               id: d.ops[`account:${row.key}`],
               name: row.name,
               currencyId: row.currencyId,
               balance: row.balance === '' ? '0' : row.balance,
               icon: row.icon,
-              folderId: null,
+              folderId,
             })
+            folderId = item.item.folderId ?? folderId
             d.created[row.key] = item.item.id
           } catch (err) {
             // A 400 is the operation guard answering a replay whose first response was lost.

@@ -55,10 +55,14 @@ function mockWrites() {
   server.use(
     http.get('*/api/v1/account/get-account-list', () => ok({ items: accounts })),
     ...coreHandlers({ user: pendingUser, budgets: [], categories: [] }),
+    http.get('*/api/v1/account/get-folder-list', () => ok({ items: accounts.length > 0 ? [{ id: 'folder-general', name: 'General', position: 0 }] : [] })),
     http.post('*/api/v1/account/create-account', async ({ request }) => {
-      const body = (await request.json()) as { id: string; name: string }
+      const body = (await request.json()) as { id: string; name: string; folderId?: string | null }
       calls.push({ path: 'create-account', body })
-      const item = { id: `acc-${accounts.length + 1}`, name: body.name, owner: { id: fixtureUser.id } }
+      if (!body.folderId && accounts.length > 0) {
+        return HttpResponse.json({ success: false, message: 'invalid', code: 400, errors: { folderId: ['This value should not be blank.'] } }, { status: 400 })
+      }
+      const item = { id: `acc-${accounts.length + 1}`, name: body.name, owner: { id: fixtureUser.id }, folderId: 'folder-general' }
       accounts.push(item)
       return ok({ item, transaction: null })
     }),
