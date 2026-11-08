@@ -234,3 +234,62 @@ it('runImportKeepingBalance restores after a partial import with the snapshot va
   expect(result.kept).toEqual([{ accountId: 'a1', balance: '100.5' }])
   expect(restores).toEqual([{ accountId: 'a1', balance: '100.5', openingCorrectionId: 'c1', since: '2026-11-07 10:00:00' }])
 })
+
+function keepHandlers(opts: { snapshot?: 'fail'; restore?: (accountId: string) => Response | Promise<Response> }, log: string[]) {
+  const item = (accountId: string) => ({ accountId, balance: '10', openingCorrectionId: '', fresh: true })
+  server.use(
+    http.get('*/api/v1/account/get-balance-snapshot', () => {
+      log.push('snapshot')
+      if (opts.snapshot === 'fail') return HttpResponse.json({ success: false, message: 'x' }, { status: 500 })
+      return HttpResponse.json({ success: true, message: '', data: { takenAt: '2026-11-07 10:00:00', items: [item('a1'), item('a2')] } })
+    }),
+    http.post('*/api/v1/account/restore-balance', async ({ request }) => {
+      const { accountId } = (await request.json()) as { accountId: string }
+      log.push(`restore:${accountId}`)
+      return opts.restore
+        ? opts.restore(accountId)
+        : HttpResponse.json({ success: true, message: '', data: { item: fixtureAccounts[0], restored: true } })
+    }),
+  )
+}
+const twoAccountCsv = () => analyzeCsv('Account,Amount\nCash,1\nBank,2\n')
+
+it('runImportKeepingBalance order: snapshot, chunk posts, then restores', async () => {
+  const log: string[] = []
+  keepHandlers({}, log)
+  const post = vi.fn(async () => {
+    log.push('post')
+    return { imported: 2, skipped: 0, errors: {} }
+  })
+  const result = await runImportKeepingBalance(twoAccountCsv(), csvSelection(), post, accounts)
+  expect(log).toEqual(['snapshot', 'post', 'restore:a1', 'restore:a2'])
+  expect(result.notKept).toEqual([])
+})
+
+it('a failed snapshot still imports and marks every target notKept', async () => {
+  const log: string[] = []
+  keepHandlers({ snapshot: 'fail' }, log)
+  const post = vi.fn(async () => ({ imported: 2, skipped: 0, errors: {} }))
+  const result = await runImportKeepingBalance(twoAccountCsv(), csvSelection(), post, accounts)
+  expect(post).toHaveBeenCalledTimes(1)
+  expect(result.imported).toBe(2)
+  expect(result.kept).toEqual([])
+  expect(result.notKept).toEqual(['a1', 'a2'])
+  expect(log).toEqual(['snapshot'])
+})
+
+it('a failed restore request is notKept; restored:false is neither kept nor notKept', async () => {
+  keepHandlers(
+    {
+      restore: (id) =>
+        id === 'a1'
+          ? HttpResponse.json({ success: false, message: 'x' }, { status: 500 })
+          : HttpResponse.json({ success: true, message: '', data: { item: fixtureAccounts[1], restored: false } }),
+    },
+    [],
+  )
+  const post = vi.fn(async () => ({ imported: 2, skipped: 0, errors: {} }))
+  const result = await runImportKeepingBalance(twoAccountCsv(), csvSelection(), post, accounts)
+  expect(result.kept).toEqual([])
+  expect(result.notKept).toEqual(['a1'])
+})

@@ -410,7 +410,8 @@
       "keep_balance": {
         "label": "Manter o saldo atual",
         "hint": "O saldo de hoje permanece igual; as transações mais antigas são equilibradas por um ajuste.",
-        "kept": "Saldo de hoje mantido: {amount}"
+        "kept": "Saldo de hoje mantido: {amount}",
+        "not_kept": "Não foi possível manter o saldo de {account}"
       }
     },
     "import_csv": {

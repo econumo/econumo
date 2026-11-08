@@ -410,7 +410,8 @@
       "keep_balance": {
         "label": "保留当前余额",
         "hint": "今天的余额保持不变;较早的交易将通过一笔调整来平衡。",
-        "kept": "已保留今天的余额:{amount}"
+        "kept": "已保留今天的余额:{amount}",
+        "not_kept": "无法保留 {account} 的余额"
       }
     },
     "import_csv": {

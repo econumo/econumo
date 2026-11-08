@@ -410,7 +410,8 @@
       "keep_balance": {
         "label": "Huidig saldo behouden",
         "hint": "Het saldo van vandaag blijft hetzelfde; oudere transacties worden uitgebalanceerd met een correctie.",
-        "kept": "Saldo van vandaag behouden: {amount}"
+        "kept": "Saldo van vandaag behouden: {amount}",
+        "not_kept": "Kon het saldo van {account} niet behouden"
       }
     },
     "import_csv": {

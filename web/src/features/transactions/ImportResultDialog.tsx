@@ -56,6 +56,11 @@ export function ImportResultDialog({ open, result, onClose }: ImportResultDialog
               </p>
             )
           })}
+          {(result.notKept ?? []).map((id) => (
+            <p key={id} className="text-destructive">
+              {t('transactions.import.keep_balance.not_kept', { account: accounts.find((a) => a.id === id)?.name ?? '' })}
+            </p>
+          ))}
         </div>
 
         {shownErrors.length > 0 ? (

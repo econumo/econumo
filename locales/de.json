@@ -410,7 +410,8 @@
       "keep_balance": {
         "label": "Aktuellen Kontostand beibehalten",
         "hint": "Der heutige Kontostand bleibt unverändert; ältere Transaktionen werden durch eine Korrekturbuchung ausgeglichen.",
-        "kept": "Heutiger Kontostand von {amount} beibehalten"
+        "kept": "Heutiger Kontostand von {amount} beibehalten",
+        "not_kept": "Der Kontostand von {account} konnte nicht beibehalten werden"
       }
     },
     "import_csv": {

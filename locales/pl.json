@@ -410,7 +410,8 @@
       "keep_balance": {
         "label": "Zachowaj obecne saldo",
         "hint": "Dzisiejsze saldo pozostaje bez zmian; starsze transakcje są równoważone korektą.",
-        "kept": "Zachowano dzisiejsze saldo: {amount}"
+        "kept": "Zachowano dzisiejsze saldo: {amount}",
+        "not_kept": "Nie udało się zachować salda konta {account}"
       }
     },
     "import_csv": {

@@ -299,8 +299,10 @@ it('ticked submit runs snapshot, import, restore and reports the kept balances',
   await screen.findByRole('checkbox', { name: /Keep current balance/ })
   await user.click(screen.getByRole('button', { name: 'Import' }))
   await waitFor(() => expect(onComplete).toHaveBeenCalled())
-  // the post-import invalidation may refetch the preview snapshot; that is not a restore
-  expect(log.filter((l) => l !== 'snapshot')).toEqual([
+  // preview snapshot, fresh snapshot, import, restores (a trailing refetch from the invalidation may follow)
+  expect(log.slice(0, 5)).toEqual([
+    'snapshot',
+    'snapshot',
     'import',
     'restore:{"accountId":"a1","balance":"100.5","openingCorrectionId":"c1","since":"2026-11-07 10:00:00"}',
     'restore:{"accountId":"a2","balance":"2000","openingCorrectionId":"","since":"2026-11-07 10:00:00"}',
@@ -317,4 +319,22 @@ it('unticked submit never restores', async () => {
   await user.click(screen.getByRole('button', { name: 'Import' }))
   await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ imported: 2, failed: 0, errors: [] }))
   expect(log.slice(before).filter((l) => l !== 'snapshot')).toEqual(['import'])
+})
+
+it('keep balance box is hidden when no account is mapped or the snapshot has no items', async () => {
+  snapshotHandlers([])
+  const first = renderDialog()
+  await uploadCsv()
+  await screen.findByText(/Map the columns/)
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled())
+  expect(screen.queryByRole('checkbox', { name: /Keep current balance/ })).not.toBeInTheDocument()
+  first.unmount()
+
+  const log = snapshotHandlers([{ accountId: 'a1', balance: '1', openingCorrectionId: '', fresh: true }])
+  renderDialog()
+  const user = await uploadCsv()
+  await screen.findByRole('checkbox', { name: /Keep current balance/ })
+  await pickColumn(user, 'Account', '—')
+  await waitFor(() => expect(screen.queryByRole('checkbox', { name: /Keep current balance/ })).not.toBeInTheDocument())
+  expect(log.length).toBeGreaterThan(0)
 })

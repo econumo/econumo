@@ -68,3 +68,8 @@ it('lists one kept-balance line per kept account in the account currency', async
   renderResult({ imported: 2, failed: 0, errors: [], kept: [{ accountId: 'a2', balance: '2340' }] })
   expect(await screen.findByText("Kept today's balance of 2,340.00 $")).toBeInTheDocument()
 })
+
+it('names each account whose balance could not be kept', async () => {
+  renderResult({ imported: 2, failed: 0, errors: [], kept: [], notKept: ['a1'] })
+  expect(await screen.findByText("Couldn't keep the balance of Cash")).toBeInTheDocument()
+})

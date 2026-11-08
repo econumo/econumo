@@ -198,6 +198,7 @@ export interface AggregatedImportResult {
   failed: number
   errors: { message: string; rows: number[] }[]
   kept?: KeptBalance[]
+  notKept?: Id[]
 }
 
 export type ImportPoster = (
@@ -279,7 +280,7 @@ export async function runImportKeepingBalance(
   post: ImportPoster,
   accounts: AccountDto[],
   onProgress?: (done: number, total: number) => void,
-): Promise<AggregatedImportResult & { kept: KeptBalance[] }> {
+): Promise<AggregatedImportResult & { kept: KeptBalance[]; notKept: Id[] }> {
   const targets = targetAccountIds(analysis, selection, accounts)
   let snapshot: Awaited<ReturnType<typeof getBalanceSnapshot>> | null = null
   if (targets.length > 0) {
@@ -291,6 +292,7 @@ export async function runImportKeepingBalance(
   }
   const result = await runImport(analysis, selection, post, onProgress)
   const kept: KeptBalance[] = []
+  const notKept: Id[] = snapshot ? [] : [...targets]
   if (snapshot) {
     for (const item of snapshot.items) {
       try {
@@ -302,9 +304,9 @@ export async function runImportKeepingBalance(
         })
         if (restored.restored) kept.push({ accountId: item.accountId, balance: item.balance })
       } catch {
-        // the import itself stands; the balance can be corrected by hand
+        notKept.push(item.accountId)
       }
     }
   }
-  return { ...result, kept }
+  return { ...result, kept, notKept }
 }
