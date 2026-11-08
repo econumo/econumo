@@ -215,6 +215,14 @@ it('a balance edit is not real data: its adjustment carries a description and ma
   expect(hasRealTransactions([{ ...adjustment, type: 'transfer' }] as never)).toBe(true)
 })
 
+it('a bare row the user described is real; only empty or server-written correction descriptions are not', () => {
+  expect(hasRealTransactions([correction('c1', 'a1')] as never)).toBe(false)
+  expect(hasRealTransactions([{ ...correction('t1', 'a1'), type: 'expense', description: 'Coffee' }] as never)).toBe(true)
+  for (const description of ['Balance adjustment (account deleted)', 'Balance adjustment (deleted transaction)', 'Balance adjustment (edited transaction)']) {
+    expect(hasRealTransactions([{ ...correction('c2', 'a1'), description }] as never)).toBe(false)
+  }
+})
+
 it('withStepState replaces an earlier answer for the same key', () => {
   expect(withStepState('', 'plan', 'done')).toBe('plan')
   expect(withStepState('!plan,import', 'plan', 'done')).toBe('import,plan')

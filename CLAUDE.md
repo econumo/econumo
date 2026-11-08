@@ -411,7 +411,7 @@ steps, accounts (name, balance as of today, currency, Savings switch, plus a use
 block that sets the main currency) then categories, with an automatic "My budget" and a Skip on
 each step; the unsaved draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the
 writes are idempotent so a reload or retry creates nothing twice. Afterwards, until the first
-real transaction (correction-shaped rows, i.e. opening balances and balance-edit adjustments, do not count), the budget page shows "get ready" cards
+real transaction (correction-shaped rows with no description or a server-written "Balance adjustment…" one, i.e. opening balances and balance-edit adjustments, do not count), the budget page shows "get ready" cards
 (phone: add to home screen, Apple Wallet on iPhone; desktop: set the plan, CSV import) and the Inbox
 lists the same items under "Next steps", which is NOT counted in the sidebar badge. Per-user
 progress is the `getting_started` user option (comma-separated keys `plan`/`import`/`apple_wallet`,

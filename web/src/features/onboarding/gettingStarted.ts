@@ -65,11 +65,20 @@ export function dismissGettingStarted(queryClient: QueryClient, key: StoredStepK
   void writeStepState(queryClient, key, 'dismissed')
 }
 
-// A correction-shaped row carries nothing but an amount and a date: an
-// opening balance, or the "Balance adjustment" a balance edit writes (which
-// has a description, and may be the account's second). Neither is the user's
-// own spending, so neither ends the get-ready phase.
-function isCorrectionShaped(t: Pick<TransactionDto, 'type' | 'accountRecipientId' | 'categoryId' | 'payeeId' | 'tagId' | 'labelIds' | 'recurringId'>): boolean {
+// The descriptions the server stores, in English, on the corrections it
+// writes itself (internal/account and internal/transaction usecase.go).
+const CORRECTION_DESCRIPTIONS = new Set([
+  'Balance adjustment',
+  'Balance adjustment (account deleted)',
+  'Balance adjustment (deleted transaction)',
+  'Balance adjustment (edited transaction)',
+])
+
+// An opening balance, or a correction the server wrote (a balance edit, a
+// restored balance), may be one of several on an account. Neither is the
+// user's own spending, so neither ends the get-ready phase; a bare row the
+// user described themselves ("Coffee") is.
+function isCorrection(t: Pick<TransactionDto, 'type' | 'accountRecipientId' | 'categoryId' | 'payeeId' | 'tagId' | 'description' | 'labelIds' | 'recurringId'>): boolean {
   return (
     t.type !== 'transfer' &&
     !t.accountRecipientId &&
@@ -77,10 +86,11 @@ function isCorrectionShaped(t: Pick<TransactionDto, 'type' | 'accountRecipientId
     !t.payeeId &&
     !t.tagId &&
     !t.recurringId &&
-    (t.labelIds ?? []).length === 0
+    (t.labelIds ?? []).length === 0 &&
+    (t.description === '' || CORRECTION_DESCRIPTIONS.has(t.description))
   )
 }
 
 export function hasRealTransactions(transactions: TransactionDto[]): boolean {
-  return transactions.some((t) => !isCorrectionShaped(t))
+  return transactions.some((t) => !isCorrection(t))
 }
