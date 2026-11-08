@@ -44,7 +44,7 @@ func (e *env) debt(id string) *model.Debt {
 	d := &model.Debt{
 		ID: vo.MustParseId(id), OwnerID: vo.MustParseId(e.user), CurrencyID: vo.MustParseId(fixture.USD),
 		CategoryID: vo.MustParseId(e.category), Name: "Car loan",
-		CreatedAt: fixedTime, UpdatedAt: fixedTime,
+		CreatedDay: time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC), CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
 	d.SetTerms(model.DebtTerms{
 		AsOf: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), Balance: vo.NewDecimal("10000.5"), Payment: vo.NewDecimal("250"),
@@ -96,11 +96,15 @@ func TestRepo_SaveGetDebtRoundTrip(t *testing.T) {
 	if !got.CreatedAt.Equal(fixedTime) || !got.UpdatedAt.Equal(fixedTime) {
 		t.Errorf("timestamps = %v / %v", got.CreatedAt, got.UpdatedAt)
 	}
+	if want := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC); !got.CreatedDay.Equal(want) {
+		t.Errorf("created day = %v, want %v", got.CreatedDay, want)
+	}
 
 	// Updating clears the optional keys and rewrites the terms.
 	d.PayeeID, d.TagID, d.StartDate = nil, nil, nil
 	d.Name = "Renamed"
 	d.Current.Balance = vo.NewDecimal("9000")
+	d.CreatedDay = time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC)
 	if err := e.repo.Save(ctx, d); err != nil {
 		t.Fatalf("Save update: %v", err)
 	}
@@ -110,6 +114,10 @@ func TestRepo_SaveGetDebtRoundTrip(t *testing.T) {
 	}
 	if got.Name != "Renamed" || got.PayeeID != nil || got.TagID != nil || got.StartDate != nil || got.Current.Balance.String() != "9000" {
 		t.Errorf("after update: %+v", got)
+	}
+	// the creation day is written once, at insert
+	if want := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC); !got.CreatedDay.Equal(want) {
+		t.Errorf("created day after update = %v, want %v", got.CreatedDay, want)
 	}
 
 	byOwner, err := e.repo.ListByOwners(ctx, []vo.Id{d.OwnerID})

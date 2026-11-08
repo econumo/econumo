@@ -354,6 +354,13 @@ func TestPlanningStart_CreationDayInOwnersTimezone(t *testing.T) {
 			if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
 				t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, want)
 			}
+			stored, err := e.repo.GetByID(context.Background(), vo.MustParseId(res.Id))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !stored.CreatedDay.Equal(c.wantFirst) {
+				t.Fatalf("stored creation day = %v, want %v", stored.CreatedDay, c.wantFirst)
+			}
 			for _, zone := range []string{c.viewerZone, "UTC", "Pacific/Kiritimati"} {
 				loc, err := time.LoadLocation(zone)
 				if err != nil {
@@ -368,6 +375,23 @@ func TestPlanningStart_CreationDayInOwnersTimezone(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// The creation day is stored at creation: an owner who moves to another
+// timezone afterwards does not move the debt's first plannable month.
+func TestPlanningStart_OwnerTimezoneChangeKeepsTheCreationDay(t *testing.T) {
+	e := newEnv(t)
+	// 23:30 UTC on Oct 31 is Nov 1 in Berlin
+	e.clock.now = time.Date(2026, 10, 31, 23, 30, 0, 0, time.UTC)
+	res := e.createWithoutTerms(t, nil)
+	e.owners.zones[e.user] = "Europe/Berlin"
+	views, err := e.svc.Views(context.Background(), []vo.Id{e.uid()})
+	if err != nil || len(views) != 1 {
+		t.Fatalf("views = %+v, %v", views, err)
+	}
+	if v := views[0]; v.ID != res.Id || !v.FirstDay.Equal(ymd(2026, 10, 31)) || !v.StartMonth.Equal(ymd(2026, 10, 1)) {
+		t.Fatalf("view = %+v, want first day 2026-10-31", v)
 	}
 }
 

@@ -16,9 +16,12 @@ type Debt struct {
 	StartDate                           *time.Time
 	// Current is nil until the debt is set up (a balance and a last payment
 	// date entered); Payment and Schedule are held either way.
-	Current              *DebtTerms
-	Payment              vo.DecimalNumber
-	Schedule             RecurringSchedule
+	Current  *DebtTerms
+	Payment  vo.DecimalNumber
+	Schedule RecurringSchedule
+	// CreatedDay is the creation date in the owner's timezone, fixed at
+	// creation so a later timezone change cannot move the planning start.
+	CreatedDay           time.Time
 	CreatedAt, UpdatedAt time.Time
 }
 

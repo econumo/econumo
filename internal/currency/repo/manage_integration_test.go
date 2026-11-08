@@ -251,8 +251,8 @@ func TestManageRepo_UsageCountIncludesDebts(t *testing.T) {
 	cid := f.Currency(fixture.Currency{Code: "PTS", UserID: uid})
 	cat := f.Category(fixture.Category{UserID: uid, Name: "Loan"})
 	db.Exec(t, db.Rebind(`INSERT INTO debts (id, user_id, name, currency_id, category_id, as_of, balance, payment, schedule,
-		last_payment_date, created_at, updated_at) VALUES (?, ?, 'Loan', ?, ?, '2026-03-10', 100, 10, 'monthly', '2027-03-01',
-		'2026-03-10 00:00:00', '2026-03-10 00:00:00')`), fixture.NewID(), uid, cid, cat)
+		last_payment_date, created_day, created_at, updated_at) VALUES (?, ?, 'Loan', ?, ?, '2026-03-10', 100, 10, 'monthly', '2027-03-01',
+		'2026-03-10', '2026-03-10 00:00:00', '2026-03-10 00:00:00')`), fixture.NewID(), uid, cid, cat)
 	if n, _ := r.CountCurrencyUsage(ctx, cid); n != 1 {
 		t.Fatalf("usage = %d, want 1 for the debt", n)
 	}

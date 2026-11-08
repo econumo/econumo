@@ -156,25 +156,17 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 	}
 	today := s.today(ctx)
 	icons := iconCache{}
-	locs := map[vo.Id]*time.Location{}
 	views := make([]model.DebtView, 0, len(states))
 	for _, st := range states {
 		icon, err := s.iconOf(ctx, icons, st.debt)
 		if err != nil {
 			return nil, err
 		}
-		loc, ok := locs[st.debt.OwnerID]
-		if !ok {
-			if loc, err = s.ownerLocation(ctx, st.debt.OwnerID); err != nil {
-				return nil, err
-			}
-			locs[st.debt.OwnerID] = loc
-		}
 		proj := st.project(today, nil, nil)
 		v := st.view
 		v.Icon = icon
 		v.PaidOff = proj.PaidOff
-		v.FirstDay, v.LastDay = planningBounds(st, proj, loc)
+		v.FirstDay, v.LastDay = planningBounds(st, proj)
 		v.StartMonth = monthOf(v.FirstDay)
 		if !v.LastDay.IsZero() {
 			v.EndMonth = monthOf(v.LastDay)
@@ -187,16 +179,17 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 // planningBounds: a debt can be planned from its start date, else from the
 // earliest of its first matched payment, its creation day and its first
 // snapshot, to its last payment date, or its payoff once paid off; a budget
-// plans it in the periods holding those days. The creation day is taken in
-// loc, the owner's timezone, so every viewer sees the same start. Finishing
-// setup later never moves the start, so plans moved at conversion stay in the
-// life. A debt not set up has no end: LastDay is zero.
-func planningBounds(st *debtState, proj model.Projection, loc *time.Location) (first, last time.Time) {
+// plans it in the periods holding those days. The creation day is the stored
+// one, taken in the owner's timezone at creation, so every viewer sees the
+// same start and a later timezone change does not move it. Finishing setup
+// later never moves the start, so plans moved at conversion stay in the life.
+// A debt not set up has no end: LastDay is zero.
+func planningBounds(st *debtState, proj model.Projection) (first, last time.Time) {
 	d := st.debt
 	if d.StartDate != nil {
 		first = debtDate(*d.StartDate)
 	} else {
-		first = debtDate(d.CreatedAt.In(loc))
+		first = debtDate(d.CreatedDay)
 		for _, sn := range st.snaps {
 			if sn.AsOf.Before(first) {
 				first = debtDate(sn.AsOf)

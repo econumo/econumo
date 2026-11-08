@@ -113,7 +113,7 @@ func (q *Queries) DeleteDebt(ctx context.Context, id string) error {
 
 const getDebtByID = `-- name: GetDebtByID :one
 
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE id = ?
 `
@@ -138,6 +138,7 @@ func (q *Queries) GetDebtByID(ctx context.Context, id string) (Debt, error) {
 		&i.Payment,
 		&i.Schedule,
 		&i.LastPaymentDate,
+		&i.CreatedDay,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -228,7 +229,7 @@ func (q *Queries) ListDebtCandidateLabels(ctx context.Context, categoryID *strin
 }
 
 const listDebtsByCategory = `-- name: ListDebtsByCategory :many
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE category_id = ?
 ORDER BY created_at, id
@@ -258,6 +259,7 @@ func (q *Queries) ListDebtsByCategory(ctx context.Context, categoryID string) ([
 			&i.Payment,
 			&i.Schedule,
 			&i.LastPaymentDate,
+			&i.CreatedDay,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -331,10 +333,10 @@ func (q *Queries) ReassignDebtTag(ctx context.Context, arg ReassignDebtTagParams
 }
 
 const upsertDebt = `-- name: UpsertDebt :exec
-INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at)
+INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8,
     CAST(?9 AS TEXT), CAST(?10 AS TEXT), ?11, ?12, ?13,
-    CAST(?14 AS TEXT), ?15, ?16)
+    CAST(?14 AS TEXT), CAST(?15 AS TEXT), ?16, ?17)
 ON CONFLICT (id) DO UPDATE SET
     name              = excluded.name,
     currency_id       = excluded.currency_id,
@@ -366,6 +368,7 @@ type UpsertDebtParams struct {
 	Payment         string
 	Schedule        string
 	LastPaymentDate *string
+	CreatedDay      string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -386,6 +389,7 @@ func (q *Queries) UpsertDebt(ctx context.Context, arg UpsertDebtParams) error {
 		arg.Payment,
 		arg.Schedule,
 		arg.LastPaymentDate,
+		arg.CreatedDay,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

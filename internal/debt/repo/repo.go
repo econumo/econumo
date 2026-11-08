@@ -119,6 +119,7 @@ func (r *Repo) Save(ctx context.Context, d *model.Debt) error {
 		LabelID:    idPtr(d.LabelID),
 		Payment:    d.Payment.String(),
 		Schedule:   string(d.Schedule),
+		CreatedDay: dateText(d.CreatedDay),
 		CreatedAt:  d.CreatedAt,
 		UpdatedAt:  d.UpdatedAt,
 	}
@@ -262,7 +263,7 @@ func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) 
 		var row debtRow
 		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID, &row.LabelID,
 			&row.StartDate, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
-			&row.CreatedAt, &row.UpdatedAt); err != nil {
+			&row.CreatedDay, &row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
 		scanned = append(scanned, row)
@@ -273,7 +274,7 @@ func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) 
 	return hydrateAll(scanned)
 }
 
-const debtCols = "id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at"
+const debtCols = "id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at"
 
 // The id-list reads below are hand-built (variadic IN); only the placeholders
 // differ per engine.
@@ -292,7 +293,7 @@ func (r *Repo) ListByOwners(ctx context.Context, ownerIDs []vo.Id) ([]*model.Deb
 		var row debtRow
 		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID, &row.LabelID,
 			&row.StartDate, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
-			&row.CreatedAt, &row.UpdatedAt); err != nil {
+			&row.CreatedDay, &row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
 		scanned = append(scanned, row)
@@ -426,7 +427,7 @@ func hydrate(row debtRow) (*model.Debt, error) {
 		ID: id, OwnerID: owner, CurrencyID: currency, CategoryID: category, Name: row.Name,
 		PayeeID: payee, TagID: tag, LabelID: label, StartDate: start,
 		Payment: vo.NewDecimal(row.Payment), Schedule: model.RecurringSchedule(row.Schedule),
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		CreatedDay: day(row.CreatedDay), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	if row.AsOf != nil && row.Balance != nil && row.LastPaymentDate != nil {
 		d.Current = &model.DebtTerms{

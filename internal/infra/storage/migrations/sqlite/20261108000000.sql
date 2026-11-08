@@ -3,6 +3,9 @@
 -- latest debts_snapshots row and are written together with every new snapshot;
 -- all three are NULL while the debt is not set up (payment and schedule are
 -- held either way).
+-- created_day is the creation date in the owner's timezone, fixed at creation:
+-- it can start the debt's plannable months, which must not move when the owner
+-- later changes timezone.
 -- The category, payee, tag and label keys keep the default NO ACTION: the coded
 -- in-use check refuses an ordinary delete, and a user deletion cascades to
 -- categories and debts in one statement.
@@ -22,6 +25,7 @@ CREATE TABLE debts
     , payment           NUMERIC(19,8) NOT NULL
     , schedule          TEXT          NOT NULL
     , last_payment_date DATE
+    , created_day       DATE          NOT NULL
     , created_at        DATETIME      NOT NULL
     , updated_at        DATETIME      NOT NULL
     , PRIMARY KEY (id)

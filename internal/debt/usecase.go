@@ -46,11 +46,7 @@ func (s *Service) moveToDebt(ctx context.Context, d *model.Debt) error {
 	if err != nil {
 		return err
 	}
-	loc, err := s.ownerLocation(ctx, d.OwnerID)
-	if err != nil {
-		return err
-	}
-	first, last := planningBounds(st, st.project(s.today(ctx), nil, nil), loc)
+	first, last := planningBounds(st, st.project(s.today(ctx), nil, nil))
 	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
 		FromID: d.CategoryID, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
 		CurrencyID: d.CurrencyID, SumOnClash: true, FirstDay: first, LastDay: last,
@@ -69,11 +65,7 @@ func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt) error {
 	if err != nil {
 		return err
 	}
-	loc, err := s.ownerLocation(ctx, d.OwnerID)
-	if err != nil {
-		return err
-	}
-	_, last := planningBounds(st, st.project(s.today(ctx), nil, nil), loc)
+	_, last := planningBounds(st, st.project(s.today(ctx), nil, nil))
 	if last.IsZero() {
 		return nil
 	}
@@ -120,7 +112,8 @@ func (s *Service) hasData(ctx context.Context, id vo.Id) (bool, error) {
 }
 
 // ownerLocation is the owner's stored timezone, UTC when none (or an unknown
-// one) is stored: a debt's planning start must not depend on who views it.
+// one) is stored: the creation day is taken in it, so a debt's planning start
+// does not depend on who views it.
 func (s *Service) ownerLocation(ctx context.Context, ownerID vo.Id) (*time.Location, error) {
 	tz, err := s.owners.GetTimezone(ctx, ownerID)
 	if err != nil {

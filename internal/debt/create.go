@@ -31,9 +31,14 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 		return nil, err
 	}
 
+	loc, err := s.ownerLocation(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 	now := s.clock.Now()
 	d := &model.Debt{ID: s.repo.NextIdentity(), OwnerID: userID, CurrencyID: in.currency, CategoryID: in.category,
-		Name: in.name, PayeeID: in.payee, TagID: in.tag, LabelID: in.label, StartDate: in.start, CreatedAt: now, UpdatedAt: now}
+		Name: in.name, PayeeID: in.payee, TagID: in.tag, LabelID: in.label, StartDate: in.start,
+		CreatedDay: debtDate(now.In(loc)), CreatedAt: now, UpdatedAt: now}
 	if in.hasTerms {
 		terms := in.terms(s.today(ctx), digits)
 		if err := validateTerms(terms); err != nil {

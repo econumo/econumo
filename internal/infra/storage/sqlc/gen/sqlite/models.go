@@ -192,6 +192,7 @@ type Debt struct {
 	Payment         string
 	Schedule        string
 	LastPaymentDate *time.Time
+	CreatedDay      time.Time
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
