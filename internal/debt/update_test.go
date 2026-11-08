@@ -389,3 +389,101 @@ func TestUpdateDebt_CurrencyChangeOfADebtNotSetUp(t *testing.T) {
 		t.Errorf("budget rows moved to %v", e.budget.currencies)
 	}
 }
+
+// Moving to a currency with fewer digits, the stored terms sent back (or a
+// payment that only differs by that rounding) are no change of terms: no
+// snapshot as of today undoes the payments made since the stored one.
+func TestUpdateDebt_CurrencyChangeRoundingIsNoChangeOfTerms(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	jpy := e.f.Currency(fixture.Currency{Code: "JPY", Symbol: "¥", Name: "Yen"})
+	e.rates.digitsOf = map[string]int{jpy: 0}
+	res := e.create(t, func(r *model.CreateDebtRequest) {
+		r.Balance, r.Payment = vo.NewFlexString("10000.50"), vo.NewFlexString("1000.25")
+	})
+	e.clock.now = ymd(2026, 4, 10)
+
+	req := e.updateReq(res)
+	req.CurrencyId = jpy
+	got, err := e.svc.UpdateDebt(ctx, e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(e.snapshots(t, res.Id)); n != 1 {
+		t.Fatalf("the stored terms in the new currency wrote a snapshot: %d", n)
+	}
+	if got.CurrencyId != jpy || got.Balance != "10000.5" || got.Payment != "1000.25" {
+		t.Fatalf("result = %+v", got)
+	}
+
+	back := e.updateReq(res)
+	back.CurrencyId = fixture.USD
+	back.Balance, back.LastPaymentDate, back.Schedule = vo.FlexString{}, "", ""
+	back.Payment = vo.NewFlexString("1000.25")
+	if _, err := e.svc.UpdateDebt(ctx, e.uid(), back); err != nil {
+		t.Fatalf("a payment equal to the stored one: %v", err)
+	}
+	if n := len(e.snapshots(t, res.Id)); n != 1 {
+		t.Fatalf("snapshots = %d", n)
+	}
+}
+
+func (b *fakeBudget) indexOf(call string) int {
+	for i, c := range b.calls {
+		if c == call {
+			return i
+		}
+	}
+	return -1
+}
+
+// Finishing setup of a whole-category debt in the same save as a currency
+// change hands the months after its end back in the currency the rows are
+// still in, before they switch.
+func TestUpdateDebt_CurrencyChangeAtSetupMovesTheTailInTheOldCurrency(t *testing.T) {
+	e := newEnv(t)
+	eur := e.eur()
+	res := e.createWithoutTerms(t, nil)
+	e.budget.calls, e.budget.transfers = nil, nil
+
+	req := e.updateReq(res)
+	req.CurrencyId = eur
+	req.Balance, req.Payment, req.LastPaymentDate = vo.NewFlexString("9000"), vo.NewFlexString("900"), "2027-04-01"
+	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
+		t.Fatal(err)
+	}
+	if len(e.budget.transfers) != 1 {
+		t.Fatalf("transfers = %+v", e.budget.transfers)
+	}
+	tr := e.budget.transfers[0]
+	if tr.fromType != model.ElementDebt || tr.to != e.category || tr.currency != fixture.USD || tr.after == "" {
+		t.Errorf("tail transfer = %+v, want debt -> category in USD", tr)
+	}
+	if ti, ci := e.budget.indexOf("transfer"), e.budget.indexOf("currency"); ti < 0 || ci < 0 || ti > ci {
+		t.Errorf("calls = %v, want the transfer before the rows' currency", e.budget.calls)
+	}
+}
+
+func TestUpdateDebt_CurrencyChangeWithALaterStartMovesTheHeadInTheOldCurrency(t *testing.T) {
+	e := newEnv(t)
+	eur := e.eur()
+	res := e.create(t, nil)
+	e.budget.calls, e.budget.transfers = nil, nil
+
+	req := e.updateReq(res)
+	req.CurrencyId = eur
+	req.StartDate = ptr("2026-06-01")
+	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
+		t.Fatal(err)
+	}
+	if len(e.budget.transfers) != 1 {
+		t.Fatalf("transfers = %+v", e.budget.transfers)
+	}
+	tr := e.budget.transfers[0]
+	if tr.fromType != model.ElementDebt || tr.to != e.category || tr.currency != fixture.USD || tr.before == "" {
+		t.Errorf("head transfer = %+v, want debt -> category in USD", tr)
+	}
+	if ti, ci := e.budget.indexOf("transfer"), e.budget.indexOf("currency"); ti < 0 || ci < 0 || ti > ci {
+		t.Errorf("calls = %v, want the transfer before the rows' currency", e.budget.calls)
+	}
+}

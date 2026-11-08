@@ -36,18 +36,6 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 	if _, err := s.syncCategory(ctx, d.CategoryID); err != nil {
 		return nil, err
 	}
-	// the amounts in the request are in the currency the debt ends up in
-	currency := d.CurrencyID
-	if !in.currency.IsZero() && !in.currency.Equal(d.CurrencyID) {
-		if err := s.currencies.EnsureUsable(ctx, userID.String(), in.currency.String()); err != nil {
-			return nil, err
-		}
-		currency = in.currency
-	}
-	digits, err := s.rates.FractionDigits(ctx, currency)
-	if err != nil {
-		return nil, err
-	}
 	if err := s.checkClassifications(ctx, userID, in); err != nil {
 		return nil, err
 	}
@@ -63,11 +51,29 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if err != nil {
 			return err
 		}
-		if cur.IsSetUp() && !in.hasTerms && in.changesTerms(*cur.Current, digits) {
+		// the amounts in the request are in the currency the debt ends up in
+		oldCurrency, currency := cur.CurrencyID, cur.CurrencyID
+		if !in.currency.IsZero() && !in.currency.Equal(cur.CurrencyID) {
+			if err := s.currencies.EnsureUsable(ctx, userID.String(), in.currency.String()); err != nil {
+				return err
+			}
+			currency = in.currency
+		}
+		currencyChanged := !currency.Equal(oldCurrency)
+		digits, err := s.rates.FractionDigits(ctx, currency)
+		if err != nil {
+			return err
+		}
+		// the stored terms as the request can state them in that currency:
+		// numbers differing only by its rounding are no change of terms
+		var stored model.DebtTerms
+		if cur.IsSetUp() {
+			stored = roundedTerms(*cur.Current, digits)
+		}
+		if cur.IsSetUp() && !in.hasTerms && in.changesTerms(stored, digits) {
 			return missingTerms(true, true)
 		}
 		wasWhole, wasCategory, wasSetUp := isWholeCategory(cur), cur.CategoryID, cur.IsSetUp()
-		currencyChanged := !cur.CurrencyID.Equal(currency)
 		keyChanged := !cur.CategoryID.Equal(in.category) || !sameIdPtr(cur.PayeeID, in.payee) ||
 			!sameIdPtr(cur.TagID, in.tag) || !sameIdPtr(cur.LabelID, in.label) || !sameDay(cur.StartDate, in.start)
 		// the start of the months the debt row shows, before this update
@@ -92,7 +98,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		changed := false
 		if in.hasTerms {
 			terms := in.terms(today, digits)
-			if changed = !cur.IsSetUp() || termsDiffer(*cur.Current, terms); changed {
+			if changed = !cur.IsSetUp() || termsDiffer(stored, terms); changed {
 				if err := validateTerms(terms, digits); err != nil {
 					return err
 				}
@@ -118,11 +124,6 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 				return err
 			}
 		}
-		if currencyChanged {
-			if err := s.setRowsCurrency(ctx, cur.ID, cur.CurrencyID); err != nil {
-				return err
-			}
-		}
 		// splits are in the debt's currency: the next sync splits again
 		if currencyChanged || (!wasSetUp && cur.IsSetUp()) {
 			if err := s.dropSplits(ctx, cur.ID); err != nil {
@@ -133,13 +134,19 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 			// the debt took every month of its former category before setup,
 			// whatever key the same request gives it now
 			if wasWhole {
-				if err := s.moveTailToCategory(ctx, cur, wasCategory); err != nil {
+				if err := s.moveTailToCategory(ctx, cur, wasCategory, oldCurrency); err != nil {
 					return err
 				}
 			}
 		}
 		if !wasFirst.IsZero() {
-			if err := s.moveHeadToCategory(ctx, cur, wasCategory, wasFirst); err != nil {
+			if err := s.moveHeadToCategory(ctx, cur, wasCategory, wasFirst, oldCurrency); err != nil {
+				return err
+			}
+		}
+		// after the moves back, which find the rows still in the old currency
+		if currencyChanged {
+			if err := s.setRowsCurrency(ctx, cur.ID, cur.CurrencyID); err != nil {
 				return err
 			}
 		}
@@ -250,6 +257,12 @@ func (s *Service) dropSplits(ctx context.Context, id vo.Id) error {
 		txIDs = append(txIDs, sp.TransactionID)
 	}
 	return s.repo.DeleteSplits(ctx, id, txIDs)
+}
+
+// roundedTerms is t with its amounts rounded to digits.
+func roundedTerms(t model.DebtTerms, digits int) model.DebtTerms {
+	t.Balance, t.Payment = t.Balance.Round(digits), t.Payment.Round(digits)
+	return t
 }
 
 // notSetUp refuses an action that needs the debt's terms.

@@ -56,8 +56,9 @@ func (s *Service) moveToDebt(ctx context.Context, d *model.Debt) error {
 
 // moveTailToCategory hands the plans and comments after a debt's end back to
 // category, the whole category the debt covered before setup: it took them
-// with no end, and its row hides every month past the end.
-func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt, category vo.Id) error {
+// with no end, and its row hides every month past the end. currency is the
+// one the debt's rows are in.
+func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt, category, currency vo.Id) error {
 	if s.budget == nil {
 		return nil
 	}
@@ -74,7 +75,7 @@ func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt, categor
 	}
 	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
 		FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
-		CurrencyID: d.CurrencyID, SumOnClash: true, AfterDay: last,
+		CurrencyID: currency, SumOnClash: true, AfterDay: last,
 	})
 	return err
 }
@@ -92,8 +93,9 @@ func (s *Service) firstPlanningDay(ctx context.Context, d *model.Debt) (time.Tim
 // moveHeadToCategory hands the plans and comments before a debt's new first
 // planning day back to category, the whole category the debt covered: it
 // took them from its old first day on, and its row hides every month before
-// its start. A start that did not move later moves nothing.
-func (s *Service) moveHeadToCategory(ctx context.Context, d *model.Debt, category vo.Id, wasFirst time.Time) error {
+// its start. A start that did not move later moves nothing. currency is the
+// one the debt's rows are in.
+func (s *Service) moveHeadToCategory(ctx context.Context, d *model.Debt, category vo.Id, wasFirst time.Time, currency vo.Id) error {
 	if s.budget == nil {
 		return nil
 	}
@@ -109,7 +111,7 @@ func (s *Service) moveHeadToCategory(ctx context.Context, d *model.Debt, categor
 	}
 	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
 		FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
-		CurrencyID: d.CurrencyID, SumOnClash: true, BeforeDay: first,
+		CurrencyID: currency, SumOnClash: true, BeforeDay: first,
 	})
 	return err
 }
