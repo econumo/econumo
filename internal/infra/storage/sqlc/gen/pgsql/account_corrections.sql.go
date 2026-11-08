@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const deleteCorrectionTransaction = `-- name: DeleteCorrectionTransaction :exec
+const deleteCorrectionTransaction = `-- name: DeleteCorrectionTransaction :execrows
 DELETE FROM transactions WHERE id = $1 AND account_id = $2
 `
 
@@ -19,9 +19,12 @@ type DeleteCorrectionTransactionParams struct {
 	AccountID string
 }
 
-func (q *Queries) DeleteCorrectionTransaction(ctx context.Context, arg DeleteCorrectionTransactionParams) error {
-	_, err := q.db.ExecContext(ctx, deleteCorrectionTransaction, arg.ID, arg.AccountID)
-	return err
+func (q *Queries) DeleteCorrectionTransaction(ctx context.Context, arg DeleteCorrectionTransactionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteCorrectionTransaction, arg.ID, arg.AccountID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const getEarliestSpentSince = `-- name: GetEarliestSpentSince :one
@@ -152,7 +155,17 @@ func (q *Queries) InsertCorrectionTransaction(ctx context.Context, arg InsertCor
 	return err
 }
 
-const updateCorrectionTransaction = `-- name: UpdateCorrectionTransaction :exec
+const lockAccountRow = `-- name: LockAccountRow :one
+SELECT id FROM accounts WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockAccountRow(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, lockAccountRow, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
+const updateCorrectionTransaction = `-- name: UpdateCorrectionTransaction :execrows
 UPDATE transactions
 SET type = $1, amount = $2, spent_at = $3, updated_at = $4, sort_key = $5
 WHERE id = $6 AND account_id = $7
@@ -168,8 +181,8 @@ type UpdateCorrectionTransactionParams struct {
 	AccountID string
 }
 
-func (q *Queries) UpdateCorrectionTransaction(ctx context.Context, arg UpdateCorrectionTransactionParams) error {
-	_, err := q.db.ExecContext(ctx, updateCorrectionTransaction,
+func (q *Queries) UpdateCorrectionTransaction(ctx context.Context, arg UpdateCorrectionTransactionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateCorrectionTransaction,
 		arg.Type,
 		arg.Amount,
 		arg.SpentAt,
@@ -178,5 +191,8 @@ func (q *Queries) UpdateCorrectionTransaction(ctx context.Context, arg UpdateCor
 		arg.ID,
 		arg.AccountID,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

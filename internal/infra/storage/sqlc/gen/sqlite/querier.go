@@ -56,7 +56,7 @@ type Querier interface {
 	// ON DELETE SET NULL FK, matching the PHP delete-mode behaviour.
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
-	DeleteCorrectionTransaction(ctx context.Context, arg DeleteCorrectionTransactionParams) error
+	DeleteCorrectionTransaction(ctx context.Context, arg DeleteCorrectionTransactionParams) (int64, error)
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	// The OAuth server's housekeeping purge: oauth tokens live an hour, so they
 	// pile up far faster than sessions and are swept set-based, not per user.
@@ -586,6 +586,9 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// restore-balance serializes on the account row. SQLite's single connection
+	// already serializes writers, so a plain read stands in for FOR UPDATE.
+	LockAccountRow(ctx context.Context, id string) (string, error)
 	// Plain read: SQLite serializes writers, so there is no concurrent limit or
 	// comment for a lock to order against.
 	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
@@ -666,7 +669,7 @@ type Querier interface {
 	// be able to write a stale NULL back.
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
-	UpdateCorrectionTransaction(ctx context.Context, arg UpdateCorrectionTransactionParams) error
+	UpdateCorrectionTransaction(ctx context.Context, arg UpdateCorrectionTransactionParams) (int64, error)
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error

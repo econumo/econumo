@@ -8,12 +8,19 @@ import (
 	"time"
 
 	appaccount "github.com/econumo/econumo/internal/account"
+	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
+	"github.com/econumo/econumo/internal/infra/clock"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 type keepBalanceEnv struct {
@@ -300,5 +307,66 @@ func TestRestoreRequiresWriteAccess(t *testing.T) {
 	}
 	if res := e.snapshot(t, accessUserBID, acct); len(res.Items) != 0 {
 		t.Errorf("snapshot for a stranger = %+v, want empty", res.Items)
+	}
+}
+
+// vanishingCorrectionRepo deletes the correction right after reading it, as a
+// writer that does not take the account lock (a transaction delete) could.
+type vanishingCorrectionRepo struct {
+	*accountrepo.Repo
+	db *dbtest.DB
+}
+
+func (r vanishingCorrectionRepo) GetCorrection(ctx context.Context, id, accountID string) (*model.AccountCorrection, bool, error) {
+	c, ok, err := r.Repo.GetCorrection(ctx, id, accountID)
+	if err != nil || !ok {
+		return c, ok, err
+	}
+	if _, err := r.db.TX.Querier(ctx).ExecContext(ctx, r.db.Rebind(`DELETE FROM transactions WHERE id = ?`), id); err != nil {
+		return nil, false, err
+	}
+	return c, ok, nil
+}
+
+func TestRestoreCorrectionGoneMidRestoreAddsNewCorrection(t *testing.T) {
+	e := newKeepBalanceEnv(t)
+	acct, corrID := e.createAccount(t, accessOwnerID, "100")
+	snap := e.snapshot(t, accessOwnerID, acct)
+	tenDaysAgo := e.today.AddDate(0, 0, -10)
+	e.imported(t, acct, 0, "30", tenDaysAgo)
+
+	txm := e.db.TX
+	repo := accountrepo.NewRepo(e.db.Engine, txm)
+	before := e.revision(t, acct)
+	if gone, err := repo.DeleteCorrection(e.ctx, vo.NewId().String(), acct); err != nil || gone {
+		t.Fatalf("DeleteCorrection(missing) = %v, %v; want false, nil", gone, err)
+	}
+	if after := e.revision(t, acct); after != before {
+		t.Fatalf("revision moved on a zero-row delete: %d -> %d", before, after)
+	}
+
+	svc := appaccount.NewService(vanishingCorrectionRepo{Repo: repo, db: e.db},
+		accountrepo.NewFolderRepo(e.db.Engine, txm), accountrepo.NewAccessRepo(e.db.Engine, txm),
+		server.NewAccountCurrencyLookup(currencyrepo.New(e.db.Engine, txm)),
+		server.NewUserOwnerLookup(userrepo.NewRepo(e.db.Engine, txm)),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(e.db.Engine, txm)),
+		txm, operationrepo.NewGuard(e.db.Engine, txm), clock.New())
+	res, err := svc.RestoreBalance(e.ctx, mustParseID(t, accessOwnerID), model.RestoreBalanceRequest{AccountId: acct, Balance: "100", OpeningCorrectionId: corrID, Since: snap.TakenAt})
+	if err != nil {
+		t.Fatalf("RestoreBalance: %v", err)
+	}
+	if !res.Restored || res.Item.Balance != "100" {
+		t.Fatalf("restore = restored %v balance %s, want true 100", res.Restored, res.Item.Balance)
+	}
+	if _, ok := e.row(t, corrID); ok {
+		t.Fatalf("vanished correction is back")
+	}
+	var id string
+	if err := e.db.Raw.QueryRow(e.db.Rebind(`SELECT id FROM transactions WHERE account_id = ? AND description = ?`), acct, "Balance adjustment").Scan(&id); err != nil {
+		t.Fatalf("find new correction: %v", err)
+	}
+	got, _ := e.row(t, id)
+	if got.typ != 1 || got.amount != "130" || !got.spentAt.Equal(tenDaysAgo.Add(-time.Second)) {
+		t.Errorf("new correction = %+v, want income 130 at %s", got, tenDaysAgo.Add(-time.Second))
 	}
 }

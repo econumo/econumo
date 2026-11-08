@@ -57,10 +57,17 @@ type AccountStore interface {
 	// recurring link, label or description); false otherwise.
 	GetCorrection(ctx context.Context, id, accountID string) (*model.AccountCorrection, bool, error)
 
-	// UpdateCorrection rewrites a correction's type, amount and date.
-	UpdateCorrection(ctx context.Context, c model.AccountCorrection) error
+	// UpdateCorrection rewrites a correction's type, amount and date; false
+	// (nothing written, no bump) when the row is gone.
+	UpdateCorrection(ctx context.Context, c model.AccountCorrection) (bool, error)
 
-	DeleteCorrection(ctx context.Context, id, accountID string) error
+	// DeleteCorrection removes a correction; false when the row is gone.
+	DeleteCorrection(ctx context.Context, id, accountID string) (bool, error)
+
+	// LockRow takes the account row lock for the rest of the transaction
+	// (FOR UPDATE on PostgreSQL; SQLite's single connection already
+	// serializes writers).
+	LockRow(ctx context.Context, id vo.Id) error
 }
 
 // AccessStore persists the per-account grants (accounts_access) plus the two

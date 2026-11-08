@@ -92,6 +92,11 @@ func (s *Service) RestoreBalance(ctx context.Context, userID vo.Id, req model.Re
 		restored bool
 	)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// Two overlapping restores would otherwise read the same balance and
+		// both write the delta.
+		if lerr := s.accounts.LockRow(ctx, id); lerr != nil {
+			return lerr
+		}
 		if aerr := s.requireOwnerAdmin(ctx, userID, id); aerr != nil {
 			return aerr
 		}
@@ -103,13 +108,9 @@ func (s *Service) RestoreBalance(ctx context.Context, userID vo.Id, req model.Re
 			return errs.NewNotFound("Account not found")
 		}
 		acct = a
-		current, berr := s.balances.Balance(ctx, id, s.balanceBefore(ctx))
-		if berr != nil {
-			return berr
-		}
-		delta := requested.Sub(vo.NewDecimal(current))
-		if delta.IsZero() {
-			return nil
+		delta, derr := s.balanceDelta(ctx, id, requested)
+		if derr != nil || delta.IsZero() {
+			return derr
 		}
 		earliest, found, eerr := s.accounts.EarliestSpentSince(ctx, id, since, req.OpeningCorrectionId)
 		if eerr != nil || !found {
@@ -117,7 +118,6 @@ func (s *Service) RestoreBalance(ctx context.Context, userID vo.Id, req model.Re
 		}
 		at := earliest.Add(-time.Second)
 		now := s.clock.Now()
-		restored = true
 
 		if req.OpeningCorrectionId != "" {
 			opening, ok, cerr := s.accounts.GetCorrection(ctx, req.OpeningCorrectionId, id.String())
@@ -130,16 +130,34 @@ func (s *Service) RestoreBalance(ctx context.Context, userID vo.Id, req model.Re
 					signed = vo.NewDecimal("0").Sub(signed)
 				}
 				signed = signed.Add(delta)
+				var written bool
+				var werr error
 				if signed.IsZero() {
-					return s.accounts.DeleteCorrection(ctx, opening.ID.String(), id.String())
+					written, werr = s.accounts.DeleteCorrection(ctx, opening.ID.String(), id.String())
+				} else {
+					opening.Type = correctionType(signed)
+					opening.Amount = signed.Abs().String()
+					opening.SpentAt = at
+					opening.UpdatedAt = now
+					written, werr = s.accounts.UpdateCorrection(ctx, *opening)
 				}
-				opening.Type = correctionType(signed)
-				opening.Amount = signed.Abs().String()
-				opening.SpentAt = at
-				opening.UpdatedAt = now
-				return s.accounts.UpdateCorrection(ctx, *opening)
+				if werr != nil {
+					return werr
+				}
+				if written {
+					restored = true
+					return nil
+				}
+				// A writer that does not take the account lock (e.g. a
+				// transaction delete) removed the correction after it was read,
+				// so the balance read above no longer holds: re-read it and
+				// carry the new difference in a fresh correction.
+				if delta, derr = s.balanceDelta(ctx, id, requested); derr != nil || delta.IsZero() {
+					return derr
+				}
 			}
 		}
+		restored = true
 		return s.accounts.SaveCorrection(ctx, model.AccountCorrection{
 			ID:          s.accounts.NextIdentity(),
 			UserID:      userID,
@@ -159,4 +177,12 @@ func (s *Service) RestoreBalance(ctx context.Context, userID vo.Id, req model.Re
 		return nil, err
 	}
 	return &model.RestoreBalanceResult{Item: item, Restored: restored}, nil
+}
+
+func (s *Service) balanceDelta(ctx context.Context, id vo.Id, requested vo.DecimalNumber) (vo.DecimalNumber, error) {
+	current, err := s.balances.Balance(ctx, id, s.balanceBefore(ctx))
+	if err != nil {
+		return vo.DecimalNumber{}, err
+	}
+	return requested.Sub(vo.NewDecimal(current)), nil
 }

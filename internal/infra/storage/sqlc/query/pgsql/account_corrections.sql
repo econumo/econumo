@@ -30,10 +30,13 @@ WHERE (account_id = $1 OR account_recipient_id = $2) AND created_at >= $3 AND id
 ORDER BY spent_at ASC
 LIMIT 1;
 
--- name: UpdateCorrectionTransaction :exec
+-- name: UpdateCorrectionTransaction :execrows
 UPDATE transactions
 SET type = $1, amount = $2, spent_at = $3, updated_at = $4, sort_key = $5
 WHERE id = $6 AND account_id = $7;
 
--- name: DeleteCorrectionTransaction :exec
+-- name: DeleteCorrectionTransaction :execrows
 DELETE FROM transactions WHERE id = $1 AND account_id = $2;
+
+-- name: LockAccountRow :one
+SELECT id FROM accounts WHERE id = $1 FOR UPDATE;

@@ -93,12 +93,16 @@ func (pgsqlQuerier) GetEarliestSpentSince(ctx context.Context, db backend.DBTX, 
 	return pgsqlgen.New(db).GetEarliestSpentSince(ctx, pgsqlgen.GetEarliestSpentSinceParams(p))
 }
 
-func (pgsqlQuerier) UpdateCorrectionTransaction(ctx context.Context, db backend.DBTX, p updateCorrectionP) error {
+func (pgsqlQuerier) UpdateCorrectionTransaction(ctx context.Context, db backend.DBTX, p updateCorrectionP) (int64, error) {
 	return pgsqlgen.New(db).UpdateCorrectionTransaction(ctx, pgsqlgen.UpdateCorrectionTransactionParams(p))
 }
 
-func (pgsqlQuerier) DeleteCorrectionTransaction(ctx context.Context, db backend.DBTX, p deleteCorrectionP) error {
+func (pgsqlQuerier) DeleteCorrectionTransaction(ctx context.Context, db backend.DBTX, p deleteCorrectionP) (int64, error) {
 	return pgsqlgen.New(db).DeleteCorrectionTransaction(ctx, pgsqlgen.DeleteCorrectionTransactionParams(p))
+}
+
+func (pgsqlQuerier) LockAccountRow(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return pgsqlgen.New(db).LockAccountRow(ctx, id)
 }
 
 // pgsqlBalance builds the DEDUPED pgsql balance params (sqlc.arg names collapse

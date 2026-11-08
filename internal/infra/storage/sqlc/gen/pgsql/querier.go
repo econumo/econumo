@@ -50,7 +50,7 @@ type Querier interface {
 	DeleteBudgetLimitsByBudget(ctx context.Context, budgetID string) error
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
-	DeleteCorrectionTransaction(ctx context.Context, arg DeleteCorrectionTransactionParams) error
+	DeleteCorrectionTransaction(ctx context.Context, arg DeleteCorrectionTransactionParams) (int64, error)
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	// The OAuth server's housekeeping purge: oauth tokens live an hour, so they
 	// pile up far faster than sessions and are swept set-based, not per user.
@@ -425,6 +425,7 @@ type Querier interface {
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	LockAccountRow(ctx context.Context, id string) (string, error)
 	// Locks the savings element a removal is about to drop, before its guard
 	// reads the element's data: a limit or comment writer that share-locked the
 	// row first has committed by the time the guard's EXISTS runs, and one that
@@ -490,7 +491,7 @@ type Querier interface {
 	// See the sqlite sibling.
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
-	UpdateCorrectionTransaction(ctx context.Context, arg UpdateCorrectionTransactionParams) error
+	UpdateCorrectionTransaction(ctx context.Context, arg UpdateCorrectionTransactionParams) (int64, error)
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error

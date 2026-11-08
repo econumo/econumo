@@ -68,12 +68,16 @@ func (sqliteQuerier) GetEarliestSpentSince(ctx context.Context, db backend.DBTX,
 	return sqlitegen.New(db).GetEarliestSpentSince(ctx, p)
 }
 
-func (sqliteQuerier) UpdateCorrectionTransaction(ctx context.Context, db backend.DBTX, p updateCorrectionP) error {
+func (sqliteQuerier) UpdateCorrectionTransaction(ctx context.Context, db backend.DBTX, p updateCorrectionP) (int64, error) {
 	return sqlitegen.New(db).UpdateCorrectionTransaction(ctx, p)
 }
 
-func (sqliteQuerier) DeleteCorrectionTransaction(ctx context.Context, db backend.DBTX, p deleteCorrectionP) error {
+func (sqliteQuerier) DeleteCorrectionTransaction(ctx context.Context, db backend.DBTX, p deleteCorrectionP) (int64, error) {
 	return sqlitegen.New(db).DeleteCorrectionTransaction(ctx, p)
+}
+
+func (sqliteQuerier) LockAccountRow(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return sqlitegen.New(db).LockAccountRow(ctx, id)
 }
 
 // sqliteBalance builds the EXPANDED sqlite balance params (repeated positional

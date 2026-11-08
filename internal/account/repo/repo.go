@@ -67,8 +67,9 @@ type querier interface {
 	GetFirstAccountTransactionID(ctx context.Context, db backend.DBTX, p firstTxIDP) (string, error)
 	GetOpeningCorrection(ctx context.Context, db backend.DBTX, p openingCorrP) (openingCorrRow, error)
 	GetEarliestSpentSince(ctx context.Context, db backend.DBTX, p earliestSinceP) (time.Time, error)
-	UpdateCorrectionTransaction(ctx context.Context, db backend.DBTX, p updateCorrectionP) error
-	DeleteCorrectionTransaction(ctx context.Context, db backend.DBTX, p deleteCorrectionP) error
+	UpdateCorrectionTransaction(ctx context.Context, db backend.DBTX, p updateCorrectionP) (int64, error)
+	DeleteCorrectionTransaction(ctx context.Context, db backend.DBTX, p deleteCorrectionP) (int64, error)
+	LockAccountRow(ctx context.Context, db backend.DBTX, id string) (string, error)
 }
 
 // balanceQuerier is the per-engine balance surface. The two engines' generated
@@ -361,27 +362,40 @@ func (r *Repo) GetCorrection(ctx context.Context, id, accountID string) (*model.
 }
 
 // UpdateCorrection rewrites a correction's type, amount and date, placing it
-// at the top of its new day.
-func (r *Repo) UpdateCorrection(ctx context.Context, c model.AccountCorrection) error {
+// at the top of its new day; false when the row is gone.
+func (r *Repo) UpdateCorrection(ctx context.Context, c model.AccountCorrection) (bool, error) {
 	sortKey, err := r.order.Top(ctx, c.AccountID.String(), c.SpentAt)
 	if err != nil {
-		return err
+		return false, err
 	}
-	if err := r.q.UpdateCorrectionTransaction(ctx, r.db(ctx), updateCorrectionP{
+	n, err := r.q.UpdateCorrectionTransaction(ctx, r.db(ctx), updateCorrectionP{
 		Type: c.Type, Amount: c.Amount, SpentAt: c.SpentAt, UpdatedAt: c.UpdatedAt,
 		SortKey: sortKey, ID: c.ID.String(), AccountID: c.AccountID.String(),
-	}); err != nil {
-		return err
+	})
+	if err != nil || n == 0 {
+		return false, err
 	}
-	return r.rev.Bump(ctx, c.AccountID.String())
+	return true, r.rev.Bump(ctx, c.AccountID.String())
 }
 
-// DeleteCorrection removes a correction transaction of the account.
-func (r *Repo) DeleteCorrection(ctx context.Context, id, accountID string) error {
-	if err := r.q.DeleteCorrectionTransaction(ctx, r.db(ctx), deleteCorrectionP{ID: id, AccountID: accountID}); err != nil {
-		return err
+// DeleteCorrection removes a correction transaction of the account; false
+// when the row is gone.
+func (r *Repo) DeleteCorrection(ctx context.Context, id, accountID string) (bool, error) {
+	n, err := r.q.DeleteCorrectionTransaction(ctx, r.db(ctx), deleteCorrectionP{ID: id, AccountID: accountID})
+	if err != nil || n == 0 {
+		return false, err
 	}
-	return r.rev.Bump(ctx, accountID)
+	return true, r.rev.Bump(ctx, accountID)
+}
+
+// LockRow takes the account row lock (FOR UPDATE on PostgreSQL) for the rest
+// of the caller's transaction.
+func (r *Repo) LockRow(ctx context.Context, id vo.Id) error {
+	_, err := r.q.LockAccountRow(ctx, r.db(ctx), id.String())
+	if errors.Is(err, sql.ErrNoRows) {
+		return errs.NewNotFound("Account not found")
+	}
+	return err
 }
 
 // hydrateAccount reconstitutes an Account from a row.

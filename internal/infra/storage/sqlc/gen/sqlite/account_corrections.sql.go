@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const deleteCorrectionTransaction = `-- name: DeleteCorrectionTransaction :exec
+const deleteCorrectionTransaction = `-- name: DeleteCorrectionTransaction :execrows
 DELETE FROM transactions WHERE id = ? AND account_id = ?
 `
 
@@ -19,9 +19,12 @@ type DeleteCorrectionTransactionParams struct {
 	AccountID string
 }
 
-func (q *Queries) DeleteCorrectionTransaction(ctx context.Context, arg DeleteCorrectionTransactionParams) error {
-	_, err := q.db.ExecContext(ctx, deleteCorrectionTransaction, arg.ID, arg.AccountID)
-	return err
+func (q *Queries) DeleteCorrectionTransaction(ctx context.Context, arg DeleteCorrectionTransactionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteCorrectionTransaction, arg.ID, arg.AccountID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const getEarliestSpentSince = `-- name: GetEarliestSpentSince :one
@@ -163,7 +166,19 @@ func (q *Queries) InsertCorrectionTransaction(ctx context.Context, arg InsertCor
 	return err
 }
 
-const updateCorrectionTransaction = `-- name: UpdateCorrectionTransaction :exec
+const lockAccountRow = `-- name: LockAccountRow :one
+SELECT id FROM accounts WHERE id = ?
+`
+
+// restore-balance serializes on the account row. SQLite's single connection
+// already serializes writers, so a plain read stands in for FOR UPDATE.
+func (q *Queries) LockAccountRow(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, lockAccountRow, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
+const updateCorrectionTransaction = `-- name: UpdateCorrectionTransaction :execrows
 UPDATE transactions
 SET type = ?, amount = ?, spent_at = ?, updated_at = ?, sort_key = ?
 WHERE id = ? AND account_id = ?
@@ -179,8 +194,8 @@ type UpdateCorrectionTransactionParams struct {
 	AccountID string
 }
 
-func (q *Queries) UpdateCorrectionTransaction(ctx context.Context, arg UpdateCorrectionTransactionParams) error {
-	_, err := q.db.ExecContext(ctx, updateCorrectionTransaction,
+func (q *Queries) UpdateCorrectionTransaction(ctx context.Context, arg UpdateCorrectionTransactionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateCorrectionTransaction,
 		arg.Type,
 		arg.Amount,
 		arg.SpentAt,
@@ -189,5 +204,8 @@ func (q *Queries) UpdateCorrectionTransaction(ctx context.Context, arg UpdateCor
 		arg.ID,
 		arg.AccountID,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

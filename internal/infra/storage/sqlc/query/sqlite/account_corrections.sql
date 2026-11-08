@@ -41,10 +41,15 @@ WHERE (account_id = ? OR account_recipient_id = ?) AND created_at >= ? AND id <>
 ORDER BY spent_at ASC
 LIMIT 1;
 
--- name: UpdateCorrectionTransaction :exec
+-- name: UpdateCorrectionTransaction :execrows
 UPDATE transactions
 SET type = ?, amount = ?, spent_at = ?, updated_at = ?, sort_key = ?
 WHERE id = ? AND account_id = ?;
 
--- name: DeleteCorrectionTransaction :exec
+-- name: DeleteCorrectionTransaction :execrows
 DELETE FROM transactions WHERE id = ? AND account_id = ?;
+
+-- restore-balance serializes on the account row. SQLite's single connection
+-- already serializes writers, so a plain read stands in for FOR UPDATE.
+-- name: LockAccountRow :one
+SELECT id FROM accounts WHERE id = ?;
