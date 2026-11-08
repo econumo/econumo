@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { IDBFactory } from 'fake-indexeddb'
@@ -502,6 +502,23 @@ describe('the sync button', () => {
     seen.length = 0
     return { ...view, seen }
   }
+
+  it.each([
+    ['the full footer', false],
+    ['the icon rail', true],
+  ])('offline, %s shows a no-connection icon instead of the button, until the connection returns', async (_, collapsed) => {
+    onTestFinished(() => onlineManager.setOnline(true))
+    useSidebarStore.setState({ collapsed })
+    await bootWarm()
+
+    act(() => onlineManager.setOnline(false))
+    expect(screen.queryByRole('button', { name: 'sync' })).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'No connection' })).toHaveAttribute('title', expect.stringContaining('No connection'))
+
+    act(() => onlineManager.setOnline(true))
+    expect(screen.getByRole('button', { name: 'sync' })).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'No connection' })).not.toBeInTheDocument()
+  })
 
   it('a tap refreshes without downloading transactions whose revisions are unchanged', async () => {
     const { queryClient, seen } = await bootWarm()

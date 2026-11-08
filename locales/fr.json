@@ -296,7 +296,8 @@
       "failing": "Serveur injoignable — nouvelle tentative",
       "full_reload": "Vidage du cache et rechargement…",
       "hold_hint": "Maintenez pour vider le cache et recharger",
-      "full_reload_offline": "Vous êtes hors ligne. Videz le cache et rechargez une fois de nouveau en ligne."
+      "full_reload_offline": "Vous êtes hors ligne. Videz le cache et rechargez une fois de nouveau en ligne.",
+      "offline": "Pas de connexion"
     },
     "data": {
       "reload_all": "Vider le cache et recharger"

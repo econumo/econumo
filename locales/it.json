@@ -296,7 +296,8 @@
       "failing": "Impossibile raggiungere il server — nuovo tentativo in corso",
       "full_reload": "Svuotamento della cache e ricaricamento…",
       "hold_hint": "Tieni premuto per svuotare la cache e ricaricare",
-      "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online."
+      "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online.",
+      "offline": "Nessuna connessione"
     },
     "data": {
       "reload_all": "Svuota la cache e ricarica"

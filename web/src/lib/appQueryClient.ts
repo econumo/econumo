@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { MutationCache, QueryClient } from '@tanstack/react-query'
+import { MutationCache, QueryClient, onlineManager } from '@tanstack/react-query'
 import { queryKeys } from '@/app/queryKeys'
 
 // A leaf module on purpose: queryPersist imports the transaction sync, which
@@ -27,12 +27,18 @@ export function invalidateReports(client: QueryClient): void {
 }
 
 export function createAppQueryClient() {
+  // The manager assumes online until the first browser event, so an app opened
+  // with no network would retry every read forever.
+  onlineManager.setOnline(navigator.onLine !== false)
   const client: QueryClient = new QueryClient({
     mutationCache: new MutationCache({ onSuccess: () => invalidateReports(client) }),
     defaultOptions: {
       // gcTime must outlive the persister's maxAge, or queries get
       // garbage-collected out of the persisted snapshot before it expires.
       queries: { gcTime: CACHE_MAX_AGE_MS, retry: retryPolicy },
+      // A write attempted with no connection fails where the user can see it;
+      // paused, it would leave the form spinning until the network returns.
+      mutations: { networkMode: 'always' },
     },
   })
   return client
