@@ -1238,7 +1238,28 @@
       "cash": "cash | wallet",
       "savings": "savings | saving | reserve | deposit | emergency"
     },
-    "budget_name": "My budget"
+    "budget_name": "My budget",
+    "accounts": {
+      "heading": "Where's your money right now?",
+      "subtext": "Today's balances are enough, no history needed.",
+      "name_label": "Account name",
+      "balance_label": "Balance",
+      "balance_invalid": "Enter a number, for example 1234.50",
+      "savings": "Savings",
+      "remove": "Remove account",
+      "currency_title": "Currency",
+      "continue": "Continue",
+      "skip": "Skip setup"
+    },
+    "currencies": {
+      "title": "Currencies",
+      "main": "Main: {code} · based on your accounts",
+      "main_title": "Main currency",
+      "add": "Add currency",
+      "remove": "Remove {code}",
+      "note": "You can add more currencies later in Settings.",
+      "no_rate": "No exchange rate yet for {codes}. Amounts in it won't be converted until a rate is added."
+    }
   },
   "budgets": {
     "modal": {

@@ -1238,7 +1238,28 @@
       "cash": "现金 | 钱包 | 零钱",
       "savings": "储蓄 | 存款 | 积蓄 | 备用金 | 应急 | 定期"
     },
-    "budget_name": "我的预算"
+    "budget_name": "我的预算",
+    "accounts": {
+      "heading": "您的钱现在在哪里？",
+      "subtext": "只需今天的余额，无需历史记录。",
+      "name_label": "账户名称",
+      "balance_label": "余额",
+      "balance_invalid": "请输入数字，例如 1234.50",
+      "savings": "储蓄",
+      "remove": "移除账户",
+      "currency_title": "币种",
+      "continue": "继续",
+      "skip": "跳过设置"
+    },
+    "currencies": {
+      "title": "币种",
+      "main": "主币种：{code} · 根据您的账户",
+      "main_title": "主币种",
+      "add": "添加币种",
+      "remove": "移除 {code}",
+      "note": "您以后可以在设置中添加更多币种。",
+      "no_rate": "{codes} 还没有汇率。在添加汇率之前，该币种的金额不会被换算。"
+    }
   },
   "budgets": {
     "modal": {

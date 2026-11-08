@@ -1238,7 +1238,28 @@
       "cash": "espèces | liquide | portefeuille | cash",
       "savings": "épargne | livret | réserve | dépôt | urgence | économies | economies"
     },
-    "budget_name": "Mon budget"
+    "budget_name": "Mon budget",
+    "accounts": {
+      "heading": "Où est votre argent en ce moment ?",
+      "subtext": "Les soldes d'aujourd'hui suffisent, pas besoin d'historique.",
+      "name_label": "Nom du compte",
+      "balance_label": "Solde",
+      "balance_invalid": "Saisissez un nombre, par exemple 1234,50",
+      "savings": "Épargne",
+      "remove": "Supprimer le compte",
+      "currency_title": "Devise",
+      "continue": "Continuer",
+      "skip": "Passer la configuration"
+    },
+    "currencies": {
+      "title": "Devises",
+      "main": "Principale : {code} · d'après vos comptes",
+      "main_title": "Devise principale",
+      "add": "Ajouter une devise",
+      "remove": "Retirer {code}",
+      "note": "Vous pourrez ajouter d'autres devises plus tard dans les Paramètres.",
+      "no_rate": "Pas encore de taux de change pour {codes}. Les montants dans cette devise ne seront pas convertis tant qu'un taux n'est pas ajouté."
+    }
   },
   "budgets": {
     "modal": {

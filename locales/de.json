@@ -1238,7 +1238,28 @@
       "cash": "bargeld | geldbeutel | portemonnaie | cash",
       "savings": "sparkonto | sparbuch | sparen | sparschwein | tagesgeld | rücklage | notgroschen | reserve"
     },
-    "budget_name": "Mein Budget"
+    "budget_name": "Mein Budget",
+    "accounts": {
+      "heading": "Wo ist Ihr Geld gerade?",
+      "subtext": "Die heutigen Kontostände genügen, ein Verlauf ist nicht nötig.",
+      "name_label": "Kontoname",
+      "balance_label": "Kontostand",
+      "balance_invalid": "Geben Sie eine Zahl ein, z. B. 1234,50",
+      "savings": "Sparen",
+      "remove": "Konto entfernen",
+      "currency_title": "Währung",
+      "continue": "Weiter",
+      "skip": "Einrichtung überspringen"
+    },
+    "currencies": {
+      "title": "Währungen",
+      "main": "Haupt: {code} · basierend auf Ihren Konten",
+      "main_title": "Hauptwährung",
+      "add": "Währung hinzufügen",
+      "remove": "{code} entfernen",
+      "note": "Weitere Währungen können Sie später in den Einstellungen hinzufügen.",
+      "no_rate": "Für {codes} gibt es noch keinen Wechselkurs. Beträge darin werden erst umgerechnet, wenn ein Kurs hinzugefügt wird."
+    }
   },
   "budgets": {
     "modal": {

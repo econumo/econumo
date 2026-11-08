@@ -1238,7 +1238,28 @@
       "cash": "contanti | contante | portafoglio | cash",
       "savings": "risparmi | risparmio | riserva | deposito | emergenza"
     },
-    "budget_name": "Il mio budget"
+    "budget_name": "Il mio budget",
+    "accounts": {
+      "heading": "Dove sono i tuoi soldi adesso?",
+      "subtext": "Bastano i saldi di oggi, non serve la cronologia.",
+      "name_label": "Nome del conto",
+      "balance_label": "Saldo",
+      "balance_invalid": "Inserisci un numero, ad esempio 1234,50",
+      "savings": "Risparmio",
+      "remove": "Rimuovi conto",
+      "currency_title": "Valuta",
+      "continue": "Continua",
+      "skip": "Salta la configurazione"
+    },
+    "currencies": {
+      "title": "Valute",
+      "main": "Principale: {code} · in base ai tuoi conti",
+      "main_title": "Valuta principale",
+      "add": "Aggiungi valuta",
+      "remove": "Rimuovi {code}",
+      "note": "Potrai aggiungere altre valute più tardi nelle Impostazioni.",
+      "no_rate": "Nessun tasso di cambio per {codes}. Gli importi in questa valuta non verranno convertiti finché non viene aggiunto un tasso."
+    }
   },
   "budgets": {
     "modal": {

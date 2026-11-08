@@ -1238,7 +1238,28 @@
       "cash": "contant | contanten | portemonnee | cash",
       "savings": "spaarrekening | spaargeld | spaarpot | sparen | noodfonds | reserve | deposito"
     },
-    "budget_name": "Mijn budget"
+    "budget_name": "Mijn budget",
+    "accounts": {
+      "heading": "Waar staat je geld op dit moment?",
+      "subtext": "De saldi van vandaag zijn genoeg, geen geschiedenis nodig.",
+      "name_label": "Rekeningnaam",
+      "balance_label": "Saldo",
+      "balance_invalid": "Voer een getal in, bijvoorbeeld 1234,50",
+      "savings": "Sparen",
+      "remove": "Rekening verwijderen",
+      "currency_title": "Valuta",
+      "continue": "Doorgaan",
+      "skip": "Installatie overslaan"
+    },
+    "currencies": {
+      "title": "Valuta's",
+      "main": "Hoofd: {code} · gebaseerd op je rekeningen",
+      "main_title": "Hoofdvaluta",
+      "add": "Valuta toevoegen",
+      "remove": "{code} verwijderen",
+      "note": "Je kunt later in Instellingen meer valuta's toevoegen.",
+      "no_rate": "Nog geen wisselkoers voor {codes}. Bedragen in deze valuta worden pas omgerekend als er een koers is toegevoegd."
+    }
   },
   "budgets": {
     "modal": {

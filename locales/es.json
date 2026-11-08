@@ -1238,7 +1238,28 @@
       "cash": "efectivo | cartera | monedero | cash",
       "savings": "ahorro | ahorros | reserva | depósito | emergencia"
     },
-    "budget_name": "Mi presupuesto"
+    "budget_name": "Mi presupuesto",
+    "accounts": {
+      "heading": "¿Dónde está tu dinero ahora mismo?",
+      "subtext": "Los saldos de hoy bastan, no hace falta historial.",
+      "name_label": "Nombre de la cuenta",
+      "balance_label": "Saldo",
+      "balance_invalid": "Introduce un número, por ejemplo 1234,50",
+      "savings": "Ahorro",
+      "remove": "Quitar cuenta",
+      "currency_title": "Moneda",
+      "continue": "Continuar",
+      "skip": "Omitir configuración"
+    },
+    "currencies": {
+      "title": "Monedas",
+      "main": "Principal: {code} · según tus cuentas",
+      "main_title": "Moneda principal",
+      "add": "Añadir moneda",
+      "remove": "Quitar {code}",
+      "note": "Puedes añadir más monedas más adelante en Ajustes.",
+      "no_rate": "Aún no hay tipo de cambio para {codes}. Los importes en ella no se convertirán hasta que se añada un tipo."
+    }
   },
   "budgets": {
     "modal": {

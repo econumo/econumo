@@ -1238,7 +1238,28 @@
       "cash": "dinheiro | carteira | numerário | cash",
       "savings": "poupança | poupanca | reserva | depósito | emergência | cofrinho"
     },
-    "budget_name": "Meu orçamento"
+    "budget_name": "Meu orçamento",
+    "accounts": {
+      "heading": "Onde está o seu dinheiro agora?",
+      "subtext": "Os saldos de hoje bastam, não é preciso histórico.",
+      "name_label": "Nome da conta",
+      "balance_label": "Saldo",
+      "balance_invalid": "Introduza um número, por exemplo 1234,50",
+      "savings": "Poupança",
+      "remove": "Remover conta",
+      "currency_title": "Moeda",
+      "continue": "Continuar",
+      "skip": "Ignorar configuração"
+    },
+    "currencies": {
+      "title": "Moedas",
+      "main": "Principal: {code} · com base nas suas contas",
+      "main_title": "Moeda principal",
+      "add": "Adicionar moeda",
+      "remove": "Remover {code}",
+      "note": "Pode adicionar mais moedas mais tarde nas Definições.",
+      "no_rate": "Ainda não há taxa de câmbio para {codes}. Os valores nesta moeda não serão convertidos até ser adicionada uma taxa."
+    }
   },
   "budgets": {
     "modal": {

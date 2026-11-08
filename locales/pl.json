@@ -1238,7 +1238,28 @@
       "cash": "gotówka | portfel | cash",
       "savings": "oszczędności | oszczędnościowe | rezerwa | lokata | awaryjne | poduszka"
     },
-    "budget_name": "Mój budżet"
+    "budget_name": "Mój budżet",
+    "accounts": {
+      "heading": "Gdzie są teraz Twoje pieniądze?",
+      "subtext": "Wystarczą dzisiejsze salda, historia nie jest potrzebna.",
+      "name_label": "Nazwa konta",
+      "balance_label": "Saldo",
+      "balance_invalid": "Wpisz liczbę, na przykład 1234,50",
+      "savings": "Oszczędności",
+      "remove": "Usuń konto",
+      "currency_title": "Waluta",
+      "continue": "Dalej",
+      "skip": "Pomiń konfigurację"
+    },
+    "currencies": {
+      "title": "Waluty",
+      "main": "Główna: {code} · na podstawie Twoich kont",
+      "main_title": "Waluta główna",
+      "add": "Dodaj walutę",
+      "remove": "Usuń {code}",
+      "note": "Więcej walut możesz dodać później w Ustawieniach.",
+      "no_rate": "Brak jeszcze kursu wymiany dla {codes}. Kwoty w tej walucie nie będą przeliczane, dopóki nie zostanie dodany kurs."
+    }
   },
   "budgets": {
     "modal": {
