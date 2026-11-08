@@ -27,6 +27,10 @@ it('desktop shows every step with its state and marks the selected one current',
   expect(item('Accounts')).toHaveAttribute('data-state', 'current')
   expect(item('Accounts')).toHaveAttribute('aria-current', 'step')
   expect(item('Budget & plan')).toHaveAttribute('data-state', 'open')
+  // the state is spoken, not only coloured
+  expect(item('Import')).toHaveAccessibleName(/Import.*, done/)
+  expect(item('Categories')).toHaveAccessibleName(/Categories.*, skipped/)
+  expect(item('Accounts')).not.toHaveAccessibleName(/done|skipped/)
   expect(screen.queryByText(/Getting started ·/)).not.toBeInTheDocument()
 })
 
@@ -44,7 +48,10 @@ it('compact shows the position and a segmented bar that also selects', async () 
   render(<Stepper steps={steps} current="accounts" onSelect={onSelect} />)
   expect(screen.getByText('Getting started · 3 of 4')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Accounts' })).toHaveAttribute('data-state', 'current')
-  expect(screen.getByRole('button', { name: 'Import' })).toHaveAttribute('data-state', 'done')
-  await userEvent.click(screen.getByRole('button', { name: 'Import' }))
+  expect(screen.getByRole('button', { name: 'Import, done' })).toHaveAttribute('data-state', 'done')
+  expect(screen.getByRole('button', { name: 'Categories, skipped' })).toHaveAttribute('data-state', 'skipped')
+  // a 24px tall tap target around the thin bar
+  expect(screen.getByRole('button', { name: 'Accounts' })).toHaveClass('h-6')
+  await userEvent.click(screen.getByRole('button', { name: 'Import, done' }))
   expect(onSelect).toHaveBeenCalledWith('import')
 })

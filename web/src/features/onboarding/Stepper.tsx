@@ -32,6 +32,9 @@ export function Stepper({ steps, current, onSelect }: StepperProps) {
   const { t } = useTranslation()
   const isCompact = useIsCompact()
   const label = (key: OnboardingStepKey) => t(`onboarding.steps_nav.${key}`)
+  // the dot and bar colours carry done/skipped for the eye; screen readers get it in words
+  const stateWord = (step: OnboardingStep) => (step.state === 'open' ? null : t(`onboarding.steps_nav.state_${step.state}`))
+  const spoken = (step: OnboardingStep) => [label(step.key), stateWord(step)].filter(Boolean).join(', ')
 
   if (isCompact) {
     const position = steps.findIndex((s) => s.key === current) + 1
@@ -45,11 +48,11 @@ export function Stepper({ steps, current, onSelect }: StepperProps) {
               <button
                 key={step.key}
                 type="button"
-                aria-label={label(step.key)}
+                aria-label={spoken(step)}
                 aria-current={state === 'current' ? 'step' : undefined}
                 data-state={state}
                 onClick={() => onSelect(step.key)}
-                className="flex h-4 flex-1 items-center"
+                className="flex h-6 flex-1 items-center"
               >
                 <span className={`h-1 w-full rounded-full ${SEGMENT[state]}`} />
               </button>
@@ -84,6 +87,7 @@ export function Stepper({ steps, current, onSelect }: StepperProps) {
                   {step.state === 'done' ? <Check className="size-4" data-testid={`step-check-${step.key}`} /> : index + 1}
                 </span>
                 <span>{label(step.key)}</span>
+                {stateWord(step) ? <span className="sr-only">, {stateWord(step)}</span> : null}
                 {step.key === 'import' ? <span className="text-[10px] text-muted-foreground">{t('onboarding.steps_nav.optional')}</span> : null}
               </button>
             </li>

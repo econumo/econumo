@@ -1242,7 +1242,6 @@
       "main_short": "{code} (main)",
       "add_short": "Add"
     },
-    "step_of": "Step {current} of {total}",
     "steps_nav": {
       "title": "Getting started",
       "progress": "Getting started · {current} of {total}",
@@ -1255,7 +1254,9 @@
       "home_screen": "Install app",
       "apple_wallet": "Apple Wallet",
       "menu": "Menu",
-      "finish": "Finish"
+      "finish": "Finish",
+      "state_done": "done",
+      "state_skipped": "skipped"
     },
     "import_step": {
       "heading": "Bring in your history",

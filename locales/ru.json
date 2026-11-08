@@ -1242,7 +1242,6 @@
       "main_short": "{code} (основная)",
       "add_short": "Добавить"
     },
-    "step_of": "Шаг {current} из {total}",
     "steps_nav": {
       "title": "Начало работы",
       "progress": "Начало работы · {current} из {total}",
@@ -1255,7 +1254,9 @@
       "home_screen": "Установить приложение",
       "apple_wallet": "Apple Wallet",
       "menu": "Меню",
-      "finish": "Завершить"
+      "finish": "Завершить",
+      "state_done": "готово",
+      "state_skipped": "пропущено"
     },
     "import_step": {
       "heading": "Перенесите свою историю",

@@ -1242,7 +1242,6 @@
       "main_short": "{code} (principale)",
       "add_short": "Aggiungi"
     },
-    "step_of": "Passaggio {current} di {total}",
     "steps_nav": {
       "title": "Per iniziare",
       "progress": "Per iniziare · {current} di {total}",
@@ -1255,7 +1254,9 @@
       "home_screen": "Installa l'app",
       "apple_wallet": "Apple Wallet",
       "menu": "Menu",
-      "finish": "Fine"
+      "finish": "Fine",
+      "state_done": "fatto",
+      "state_skipped": "saltato"
     },
     "import_step": {
       "heading": "Porta la tua cronologia",

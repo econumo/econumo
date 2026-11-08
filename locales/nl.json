@@ -1242,7 +1242,6 @@
       "main_short": "{code} (hoofd)",
       "add_short": "Toevoegen"
     },
-    "step_of": "Stap {current} van {total}",
     "steps_nav": {
       "title": "Aan de slag",
       "progress": "Aan de slag · {current} van {total}",
@@ -1255,7 +1254,9 @@
       "home_screen": "App installeren",
       "apple_wallet": "Apple Wallet",
       "menu": "Menu",
-      "finish": "Afronden"
+      "finish": "Afronden",
+      "state_done": "klaar",
+      "state_skipped": "overgeslagen"
     },
     "import_step": {
       "heading": "Neem je geschiedenis mee",

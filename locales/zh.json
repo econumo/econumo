@@ -1242,7 +1242,6 @@
       "main_short": "{code}（主）",
       "add_short": "添加"
     },
-    "step_of": "第 {current} 步，共 {total} 步",
     "steps_nav": {
       "title": "开始使用",
       "progress": "开始使用 · 第 {current} 步，共 {total} 步",
@@ -1255,7 +1254,9 @@
       "home_screen": "安装应用",
       "apple_wallet": "Apple Wallet",
       "menu": "菜单",
-      "finish": "完成"
+      "finish": "完成",
+      "state_done": "已完成",
+      "state_skipped": "已跳过"
     },
     "import_step": {
       "heading": "导入你的历史记录",

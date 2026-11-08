@@ -107,6 +107,8 @@ export function OnboardingPage() {
 
   return (
     <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-6 overflow-y-auto p-4 lg:px-8">
+      {/* the page title is spoken; the stepper's own line shows it on a phone */}
+      <h1 className="sr-only">{t('onboarding.steps_nav.title')}</h1>
       <div className="flex items-center justify-between">
         {isCompact ? (
           <Link to="/?menu=1" aria-label={t('onboarding.steps_nav.menu')} className="-ml-2 grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent">

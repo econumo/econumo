@@ -1242,7 +1242,6 @@
       "main_short": "{code} (principal)",
       "add_short": "Añadir"
     },
-    "step_of": "Paso {current} de {total}",
     "steps_nav": {
       "title": "Primeros pasos",
       "progress": "Primeros pasos · {current} de {total}",
@@ -1255,7 +1254,9 @@
       "home_screen": "Instalar la app",
       "apple_wallet": "Apple Wallet",
       "menu": "Menú",
-      "finish": "Finalizar"
+      "finish": "Finalizar",
+      "state_done": "hecho",
+      "state_skipped": "omitido"
     },
     "import_step": {
       "heading": "Trae tu historial",
