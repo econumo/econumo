@@ -11,6 +11,7 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { defaultCategoryIcon } from '@/lib/icons'
 import type { CategoryRow } from './draft'
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from './defaults'
+import { nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 
 type CategoryType = CategoryRow['type']
 
@@ -33,6 +34,9 @@ export function CategoriesStep({ initialRows, createdKeys, onContinue, onSkip, p
   })
   const [drafts, setDrafts] = useState<Record<CategoryType, string>>({ expense: '', income: '' })
   const [pickingKey, setPickingKey] = useState<string | null>(null)
+  // a name still being typed is short on its way to valid, so its error waits for blur
+  const [nameTouched, setNameTouched] = useState<ReadonlySet<string>>(new Set())
+  const touch = (key: string) => setNameTouched((prev) => new Set(prev).add(key))
 
   const isCreated = (row: CategoryRow) => createdKeys?.has(row.key) ?? false
   const update = (key: string, patch: Partial<CategoryRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
@@ -40,7 +44,9 @@ export function CategoriesStep({ initialRows, createdKeys, onContinue, onSkip, p
   const addDraft = (type: CategoryType) => {
     const name = drafts[type].trim()
     if (name === '') return
-    setRows((prev) => [...prev, { key: uuidv7(), name, type, icon: defaultCategoryIcon, checked: true }])
+    const key = uuidv7()
+    setRows((prev) => [...prev, { key, name, type, icon: defaultCategoryIcon, checked: true }])
+    touch(key)
     setDrafts((prev) => ({ ...prev, [type]: '' }))
   }
 
@@ -58,7 +64,10 @@ export function CategoriesStep({ initialRows, createdKeys, onContinue, onSkip, p
     return rows.filter((r) => chosen.has(r.key)).map((r) => ({ ...r, name: r.name.trim(), checked: true }))
   }
 
-  const canContinue = !pending && kept().length > 0
+  const invalidName = new Set(
+    rows.filter((r) => r.checked && !isCreated(r) && r.name.trim() !== '' && !nameLengthValid(r.name)).map((r) => r.key),
+  )
+  const canContinue = !pending && invalidName.size === 0 && kept().length > 0
   const submit = () => {
     if (canContinue) onContinue(kept())
   }
@@ -73,31 +82,39 @@ export function CategoriesStep({ initialRows, createdKeys, onContinue, onSkip, p
           .filter((r) => r.type === type)
           .map((row) => {
             const created = isCreated(row)
+            const showInvalid = invalidName.has(row.key) && nameTouched.has(row.key)
             return (
-              <li key={row.key} className="flex items-center gap-2 rounded-xl border bg-card p-2" data-testid="category-row">
-                <Checkbox
-                  aria-label={row.name}
-                  checked={row.checked || created}
-                  disabled={created}
-                  onCheckedChange={(v) => update(row.key, { checked: v === true })}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t('onboarding.categories_step.icon_label')}
-                  disabled={created}
-                  onClick={() => setPickingKey(row.key)}
-                >
-                  <EntityIcon name={row.icon} className="text-2xl text-muted-foreground" />
-                </Button>
-                <Input
-                  aria-label={t('onboarding.categories_step.name_label')}
-                  maxLength={64}
-                  value={row.name}
-                  readOnly={created}
-                  onChange={(e) => update(row.key, { name: e.target.value })}
-                />
+              <li key={row.key} className="rounded-xl border bg-card p-2" data-testid="category-row">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    aria-label={row.name}
+                    checked={row.checked || created}
+                    disabled={created}
+                    onCheckedChange={(v) => update(row.key, { checked: v === true })}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t('onboarding.categories_step.icon_label')}
+                    disabled={created}
+                    onClick={() => setPickingKey(row.key)}
+                  >
+                    <EntityIcon name={row.icon} className="text-2xl text-muted-foreground" />
+                  </Button>
+                  <Input
+                    aria-label={t('onboarding.categories_step.name_label')}
+                    maxLength={64}
+                    value={row.name}
+                    readOnly={created}
+                    aria-invalid={showInvalid}
+                    onChange={(e) => update(row.key, { name: e.target.value })}
+                    onBlur={() => touch(row.key)}
+                  />
+                </div>
+                {showInvalid && (
+                  <p className="mt-1 text-sm text-destructive">{t('errors.category.name_length', { min: NAME_MIN, max: NAME_MAX })}</p>
+                )}
               </li>
             )
           })}

@@ -74,7 +74,7 @@ it('submits a typed balance as a normalized decimal string and the main currency
   const { onContinue } = renderStep()
   await ready()
   await user.type(nameInputs()[0], 'Card')
-  await user.type(balanceInputs()[0], '1 234,50')
+  await user.type(balanceInputs()[0], '1,234.50')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(onContinue).toHaveBeenCalledTimes(1)
   const [rows, extras, main] = onContinue.mock.calls[0]
@@ -95,6 +95,37 @@ it('treats a blank balance as 0 and rejects garbage', async () => {
   await user.clear(balanceInputs()[0])
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(onContinue.mock.calls[0][0][0].balance).toBe('0')
+})
+
+it('reads a comma as the en group mark, so 2,500 is two and a half thousand', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep()
+  await ready()
+  await user.type(nameInputs()[0], 'Card')
+  await user.type(balanceInputs()[0], '2,500')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][0][0].balance).toBe('2500')
+})
+
+it('flags a name outside 3-64 characters once the field is left and blocks Continue', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep()
+  await ready()
+  await user.type(nameInputs()[0], 'AB')
+  expect(screen.queryByText('Account name must be 3-64 characters')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+  await user.click(balanceInputs()[0])
+  expect(screen.getByText('Account name must be 3-64 characters')).toBeInTheDocument()
+  expect(nameInputs()[0]).toHaveAttribute('aria-invalid', 'true')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue).not.toHaveBeenCalled()
+
+  await user.type(nameInputs()[0], 'C')
+  expect(screen.queryByText('Account name must be 3-64 characters')).not.toBeInTheDocument()
+  await user.clear(nameInputs()[0])
+  await user.type(nameInputs()[0], 'x'.repeat(65))
+  expect(screen.getByText('Account name must be 3-64 characters')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
 })
 
 it('needs one named row to continue', async () => {

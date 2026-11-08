@@ -15,6 +15,7 @@ import type { Id } from '@/api/types'
 import type { AccountRow } from './draft'
 import { guessAccountIcon, looksLikeSavings } from './defaults'
 import { parseBalance } from './balance'
+import { nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import { CurrenciesBlock, CurrencyListSheet } from './CurrenciesBlock'
 
 // currencyId '' = the row follows the default currency until the user picks one
@@ -31,7 +32,7 @@ interface AccountsStepProps {
 }
 
 export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys, onContinue, onSkip, pending, error }: AccountsStepProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: currencies } = useCurrencies()
   const { data: rates } = useCurrencyRates()
   const { data: user } = useUserData()
@@ -45,6 +46,8 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
   const [mainOverride, setMainOverride] = useState<Id | null>(null)
   const [pickingRow, setPickingRow] = useState<string | null>(null)
   const savingsTouched = useRef(new Set<string>())
+  // a name still being typed is short on its way to valid, so its error waits for blur
+  const [nameTouched, setNameTouched] = useState<ReadonlySet<string>>(new Set())
 
   const defaultId = useMemo(() => {
     const list = currencies ?? []
@@ -90,13 +93,15 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
     ? selectedIds.filter((id) => id !== baseId && !rates.some((r) => r.currencyId === id))
     : []
 
-  const invalid = new Set(active.filter((r) => parseBalance(r.balance) === null).map((r) => r.key))
-  const canContinue = active.length > 0 && invalid.size === 0 && mainId !== null && !pending
+  const parse = (raw: string) => parseBalance(raw, i18n.language)
+  const invalid = new Set(active.filter((r) => parse(r.balance) === null).map((r) => r.key))
+  const invalidName = new Set(active.filter((r) => !isCreated(r) && !nameLengthValid(r.name)).map((r) => r.key))
+  const canContinue = active.length > 0 && invalid.size === 0 && invalidName.size === 0 && mainId !== null && !pending
 
   const submit = () => {
     if (!canContinue || !mainId) return
     onContinue(
-      active.map((r) => ({ ...r, name: r.name.trim(), balance: parseBalance(r.balance) ?? '0', currencyId: currencyOf(r) })),
+      active.map((r) => ({ ...r, name: r.name.trim(), balance: parse(r.balance) ?? '0', currencyId: currencyOf(r) })),
       extras,
       mainId,
     )
@@ -125,7 +130,9 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
                   placeholder={t('onboarding.accounts.name_label')}
                   value={row.name}
                   readOnly={created}
+                  aria-invalid={invalidName.has(row.key) && nameTouched.has(row.key)}
                   onChange={(e) => rename(row, e.target.value)}
+                  onBlur={() => setNameTouched((prev) => new Set(prev).add(row.key))}
                 />
                 {!created && !onlyRow && (
                   <Button type="button" variant="ghost" size="icon" aria-label={t('onboarding.accounts.remove')} onClick={() => remove(row.key)}>
@@ -133,6 +140,9 @@ export function AccountsStep({ initialRows, initialExtraCurrencyIds, createdKeys
                   </Button>
                 )}
               </div>
+              {invalidName.has(row.key) && nameTouched.has(row.key) && (
+                <p className="text-sm text-destructive">{t('errors.account.name_length', { min: NAME_MIN, max: NAME_MAX })}</p>
+              )}
               <div className="flex items-center gap-2">
                 <Input
                   aria-label={t('onboarding.accounts.balance_label')}

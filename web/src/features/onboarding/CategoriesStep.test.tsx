@@ -128,3 +128,28 @@ it('submits a created row as checked even when seeded unchecked', async () => {
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(submitted(onContinue)).toEqual([expect.objectContaining({ key: 'made', checked: true })])
 })
+
+it('flags a renamed or added category outside 3-64 characters and blocks Continue until it is fixed or unticked', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep()
+  const first = screen.getAllByTestId('category-row')[0]
+  const input = within(first).getByLabelText('Category name')
+  await user.clear(input)
+  await user.type(input, 'Fo')
+  expect(screen.queryByText('Category name must be 3-64 characters')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+  await user.tab()
+  expect(within(first).getByText('Category name must be 3-64 characters')).toBeInTheDocument()
+  expect(input).toHaveAttribute('aria-invalid', 'true')
+
+  await user.type(input, 'od')
+  expect(screen.queryByText('Category name must be 3-64 characters')).not.toBeInTheDocument()
+
+  await user.type(within(screen.getByTestId('group-income')).getByPlaceholderText('Add your own'), 'Tx{Enter}')
+  const added = screen.getAllByTestId('category-row').at(-1)!
+  expect(within(added).getByText('Category name must be 3-64 characters')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+  await user.click(within(added).getByRole('checkbox'))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(submitted(onContinue).map((r) => r.name)).not.toContain('Tx')
+})
