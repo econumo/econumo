@@ -1,5 +1,5 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
-import { Link, Outlet, useLocation } from 'react-router'
+import { Link, Outlet, useLocation, useSearchParams } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
 import { ChartColumn, RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -83,6 +83,7 @@ function useLastSyncAt(): string {
 export function ApplicationLayout() {
   const { t } = useTranslation()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   // Recorded during render (idempotent per pathname) so children mounting in
   // this same pass can already read their origin via previousPathname().
   recordPathname(location.pathname)
@@ -114,9 +115,11 @@ export function ApplicationLayout() {
   // a user still loading counts as not onboarded, so the install prompts never flash before getting started
   const onboarded = isOnboardingCompleted(user)
   const onboardingPending = user !== undefined && !onboarded
-  // on a phone, `/` is the nav list, except while getting started takes its place
-  const showSidebar = !isCompact || (location.pathname === '/' && !onboardingPending)
-  const showWorkspace = !isCompact || location.pathname !== '/' || onboardingPending
+  // On a phone `/` is the nav list, except while getting started takes its
+  // place; its menu button opens the list at `/?menu=1` without finishing.
+  const homeIsOnboarding = onboardingPending && searchParams.get('menu') !== '1'
+  const showSidebar = !isCompact || (location.pathname === '/' && !homeIsOnboarding)
+  const showWorkspace = !isCompact || location.pathname !== '/' || homeIsOnboarding
   const isFetching = useIsFetching() > 0
   const lastSyncAt = useLastSyncAt()
   const syncFailing = useSyncFailing()

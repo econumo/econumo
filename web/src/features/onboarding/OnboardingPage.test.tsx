@@ -39,7 +39,7 @@ let posts: { path: string; value?: string }[]
 // get-user-data serves the stored option, a getting-started POST replaces it
 function serve(initial: string) {
   posts = []
-  const state = { stored: initial, completed: false }
+  const state = { stored: initial, completed: false, failComplete: false }
   server.use(...coreHandlers({ budgets: [], categories: [] }))
   // added later, so these answer ahead of the core handlers
   server.use(
@@ -51,6 +51,10 @@ function serve(initial: string) {
       return ok({ user: userWith(value) })
     }),
     http.post('*/api/v1/user/complete-onboarding', () => {
+      if (state.failComplete) {
+        state.failComplete = false
+        return HttpResponse.json({ success: false, message: 'Try again', code: 400, errors: {} }, { status: 400 })
+      }
       posts.push({ path: 'complete-onboarding' })
       state.completed = true
       return ok({ user: userWith(state.stored, 'completed') })
@@ -139,4 +143,31 @@ it('/ renders the getting started page for a not-yet-onboarded user', { timeout:
     </QueryClientProvider>,
   )
   expect(await heading('Import')).toBeInTheDocument()
+})
+
+it('completes at once when every step was already answered', async () => {
+  serve('import,!categories,accounts,!plan')
+  renderPage()
+  expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
+  expect(posts).toEqual([{ path: 'complete-onboarding' }])
+})
+
+it('a failed completion shows the error and a Finish button that retries', async () => {
+  const state = serve('import,!categories,accounts,!plan')
+  state.failComplete = true
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByRole('alert')).toHaveTextContent('Try again')
+  expect(posts).toEqual([])
+  await user.click(screen.getByRole('button', { name: 'Finish' }))
+  expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
+  expect(posts).toEqual([{ path: 'complete-onboarding' }])
+})
+
+it('a phone gets a menu button that opens the navigation without finishing', async () => {
+  mockViewport(true)
+  serve('')
+  renderPage()
+  await heading('Import')
+  expect(screen.getByRole('link', { name: 'Menu' })).toHaveAttribute('href', '/?menu=1')
 })

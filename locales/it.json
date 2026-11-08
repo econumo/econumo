@@ -1250,7 +1250,9 @@
       "accounts": "Conti",
       "plan": "Budget e piano",
       "home_screen": "Installa l'app",
-      "apple_wallet": "Apple Wallet"
+      "apple_wallet": "Apple Wallet",
+      "menu": "Menu",
+      "finish": "Fine"
     },
     "placeholder": {
       "text": "Questo passaggio arriverà presto.",

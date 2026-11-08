@@ -1250,7 +1250,9 @@
       "accounts": "Rekeningen",
       "plan": "Budget & plan",
       "home_screen": "App installeren",
-      "apple_wallet": "Apple Wallet"
+      "apple_wallet": "Apple Wallet",
+      "menu": "Menu",
+      "finish": "Afronden"
     },
     "placeholder": {
       "text": "Deze stap komt binnenkort.",

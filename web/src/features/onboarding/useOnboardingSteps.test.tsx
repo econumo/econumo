@@ -220,3 +220,14 @@ it('answering a step already in that state fires no metric and writes nothing', 
   expect(track).not.toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_STEP_DONE, expect.anything())
   expect(track).not.toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_STEP_SKIP, expect.anything())
 })
+
+it('is ready as soon as the import source list fails, without waiting for retries', async () => {
+  server.use(...coreHandlers({ user: userWith('') }))
+  server.use(http.get('*/api/v1/import/get-source-list', () => HttpResponse.json({ success: false, message: 'Not found', code: 404, errors: {} }, { status: 404 })))
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 3 } } })
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  const { result } = renderHook(() => useOnboardingSteps(), { wrapper })
+  // the first retry alone would wait a second
+  await waitFor(() => expect(result.current.ready).toBe(true), { timeout: 800 })
+  expect(result.current.current).toBe('import')
+})

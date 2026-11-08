@@ -275,6 +275,14 @@ navigation (single-pane vs sidebar).
       budget (and on a phone the nav list again).
 - [ ] "Skip setup" (top right) skips every open step, completes onboarding
       and lands on `/budget`.
+- [ ] A user whose every visible step is already done or skipped (answered
+      on another device) is completed on arrival and lands on `/budget`; if
+      that request fails, the error shows with a Finish button that retries.
+- [ ] 📱 On a phone, the menu button at the top left of Getting started opens
+      the navigation list (Settings, accounts, logout reachable) without
+      completing onboarding; its "Getting started" link returns to the page.
+- [ ] With both import providers off, Getting started still opens at once
+      (no wait on the failing import-source request).
 - [ ] 📱 While onboarding is incomplete neither the "Econumo works best as an
       app" banner nor the one-time install popup appears in the app; both
       appear once onboarding is completed.

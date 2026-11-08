@@ -1250,7 +1250,9 @@
       "accounts": "账户",
       "plan": "预算与计划",
       "home_screen": "安装应用",
-      "apple_wallet": "Apple Wallet"
+      "apple_wallet": "Apple Wallet",
+      "menu": "菜单",
+      "finish": "完成"
     },
     "placeholder": {
       "text": "此步骤即将推出。",

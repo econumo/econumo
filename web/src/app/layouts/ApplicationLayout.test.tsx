@@ -657,6 +657,16 @@ it('compact viewport shows the workspace at / while onboarding is incomplete', a
   expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument()
 })
 
+it('compact viewport shows the navigation at /?menu=1 while onboarding is incomplete, Settings and Getting started included', async () => {
+  mockViewport(true)
+  server.use(...coreHandlers({ user: { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: '' } : o)) } }))
+  renderShell('/?menu=1')
+  await waitFor(() => expect(screen.getByTestId('sidebar')).toBeInTheDocument())
+  expect(screen.queryByTestId('workspace')).not.toBeInTheDocument()
+  expect(await screen.findByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings')
+  expect(screen.getByRole('link', { name: 'Getting started' })).toHaveAttribute('href', '/onboarding')
+})
+
 it('compact viewport hides the sidebar on content routes', async () => {
   mockViewport(true)
   renderShell('/account/a1')

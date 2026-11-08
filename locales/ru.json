@@ -1250,7 +1250,9 @@
       "accounts": "Счета",
       "plan": "Бюджет и план",
       "home_screen": "Установить приложение",
-      "apple_wallet": "Apple Wallet"
+      "apple_wallet": "Apple Wallet",
+      "menu": "Меню",
+      "finish": "Завершить"
     },
     "placeholder": {
       "text": "Этот шаг скоро появится.",

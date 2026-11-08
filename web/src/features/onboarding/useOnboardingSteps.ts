@@ -33,8 +33,9 @@ export function useOnboardingSteps(): OnboardingSteps {
 
   const option = gettingStartedOption(user)
   const hasWalletSource = (sources.data ?? []).some((s) => s.provider === 'apple-wallet')
-  // a failed source list only loses the automatic Apple Wallet tick
-  const ready = user !== undefined && !sources.isPending
+  // A failed source list (routes off with the import providers) only loses
+  // the automatic Apple Wallet tick, so its retries are not waited for.
+  const ready = user !== undefined && (!sources.isPending || sources.failureCount > 0)
 
   const steps = useMemo(() => {
     // An install finished on this page leaves no install mode behind; the
