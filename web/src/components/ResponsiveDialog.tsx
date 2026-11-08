@@ -292,44 +292,19 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
       </Drawer>
     )
   }
-  if (size === 'large') {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          ref={contentRef}
-          className="flex h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] flex-col gap-0 p-0 sm:max-w-[90vw]"
-          onInteractOutside={onInteractOutside}
-          onEscapeKeyDown={onEscapeKeyDown}
-          onCloseAutoFocus={onCloseAutoFocus}
-          onOpenAutoFocus={(e) => {
-            if (initialFocus?.current) {
-              e.preventDefault()
-              initialFocus.current.focus()
-            }
-          }}
-          showCloseButton={showCloseButton}
-        >
-          <DialogHeader className={`${headerClass ?? ''} px-6 pt-5 pb-1`}>
-            <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
-            {description ? <DialogDescription>{description}</DialogDescription> : null}
-          </DialogHeader>
-          {headerAction && !hideHeader ? <div className={`absolute top-2 ${cornerActionClass}`}>{headerAction}</div> : null}
-          <div data-slot="dialog-body" className="min-h-0 flex-1 overflow-y-auto px-6 pt-1 pb-6">
-            {children}
-          </div>
-          {footer ? <div className="border-t px-6 pt-3 pb-3 [&_button]:h-11">{footer}</div> : null}
-        </DialogContent>
-      </Dialog>
-    )
-  }
+  const large = size === 'large'
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         ref={contentRef}
         // one column that may shrink below its content's width: a long line (a
         // list of account names) truncates inside the dialog instead of widening
-        // every field past its edge
-        className={`grid-cols-[minmax(0,1fr)] ${size === 'wide' ? 'sm:max-w-2xl' : ''}`}
+        // every field past its edge; `large` is a flex column whose body scrolls
+        className={
+          large
+            ? 'flex h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] flex-col gap-0 p-0 sm:max-w-[90vw]'
+            : `grid-cols-[minmax(0,1fr)] ${size === 'wide' ? 'sm:max-w-2xl' : ''}`
+        }
         onInteractOutside={onInteractOutside}
         onEscapeKeyDown={onEscapeKeyDown}
         onCloseAutoFocus={onCloseAutoFocus}
@@ -342,13 +317,19 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         // a floating X with no header row to anchor it looks stray — unless asked for
         showCloseButton={showCloseButton}
       >
-        <DialogHeader className={headerClass}>
+        <DialogHeader className={large ? `${headerClass ?? ''} px-6 pt-5 pb-1` : headerClass}>
           <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
         {headerAction && !hideHeader ? <div className={`absolute top-2 ${cornerActionClass}`}>{headerAction}</div> : null}
-        {children}
-        {footer}
+        {large ? (
+          <div data-slot="dialog-body" className="min-h-0 flex-1 overflow-y-auto px-6 pt-1 pb-6">
+            {children}
+          </div>
+        ) : (
+          children
+        )}
+        {large && footer ? <div className="border-t px-6 pt-3 pb-3 [&_button]:h-11">{footer}</div> : footer}
       </DialogContent>
     </Dialog>
   )

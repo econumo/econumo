@@ -460,3 +460,25 @@ it('asked to, it focuses the first missing term of a debt not set up', () => {
   renderForm(wireDebtNotSetUp, { focusMissing: true })
   expect(screen.getByLabelText('Balance now')).toHaveFocus()
 })
+
+it('an amount typed with a separator shows how it is read, in the display format', async () => {
+  const user = userEvent.setup()
+  renderForm(wireDebt)
+
+  const balance = screen.getByLabelText('Balance now')
+  await user.clear(balance)
+  await user.type(balance, '1.500')
+  expect(await screen.findByText('= 1.50 $')).toBeInTheDocument()
+  await user.clear(balance)
+  await user.type(balance, '1,500')
+  expect(await screen.findByText('= 1,500.00 $')).toBeInTheDocument()
+  // nothing to tell apart without a separator
+  await user.clear(balance)
+  await user.type(balance, '1500')
+  expect(screen.queryByText(/^= /)).toBeNull()
+
+  const payment = screen.getByLabelText('Payment')
+  await user.clear(payment)
+  await user.type(payment, '2 000,5')
+  expect(await screen.findByText('= 2,000.50 $')).toBeInTheDocument()
+})

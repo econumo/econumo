@@ -1862,7 +1862,8 @@ data unreadable. Most are also asserted by the test suite.
   card). Amounts (payment, balance) are plain `inputMode="decimal"` inputs, no calculator:
   `plainAmount` reads "2000", "2 000", "2,000.50", "1,200" and "1,5" (a lone comma is the decimal
   mark unless exactly three digits follow it, as the app displays amounts) and anything else is
-  `common.validation.invalid_number`. It asks no currency: it sends the converted category row's
+  `common.validation.invalid_number`; while the text holds a "," or "." the field echoes how it
+  is read in the display format (`amountEcho`, "= 1,500.00 $"), so a misread is visible. It asks no currency: it sends the converted category row's
   currency, else the user's default, and shows a Currency row only after a `currencyId` refusal
   (like the start date); the start date field appears only after
   `debt.start_date_taken` (the one refusal a date can resolve; `debt.key_conflict` just shows its
@@ -1882,8 +1883,9 @@ data unreadable. Most are also asserted by the test suite.
   untouched terms are not sent, and an unchanged currency goes as `""`, so the server keeps what
   another device may have changed), then Mark as paid off (set up and not paid off) and Delete.
   The Settings tab stays mounted (edits survive a look at the Overview) and reloads the debt
-  afresh on every visit while it holds no edits (`useFetchDebtForEdit`); a save returns to the
-  Overview. A debt not set up shows "Paid so far" (its payments dated up to the caller's today),
+  afresh on every visit while it holds no edits (`useFetchDebtForEdit`, the app's loader while it
+  loads); a save or Mark as paid off rebuilds the form from the returned debt and returns to the
+  Overview, so a later edit never sends the balance from before it. A debt not set up shows "Paid so far" (its payments dated up to the caller's today),
   a hint and a Finish setup button that switches to Settings and focuses the first missing term
   (no stored rate, so the last payment date is typed, never auto-filled; saving with both terms
   fires `appDebtFinishSetup`); the Settings row, the budget row's Left cell and the item sheet's

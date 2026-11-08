@@ -19,7 +19,7 @@ import { useCreateDebt } from './queries'
 import { PaymentField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
-import { amountError, buildCreatePayload, useDebtCreateForm } from './useDebtForm'
+import { amountEcho, amountError, buildCreatePayload, useDebtCreateForm } from './useDebtForm'
 
 // the fields a server refusal can name; anything else lands in the form's alert
 const SERVER_FIELDS = ['name', 'currencyId', 'categoryId', 'payeeId', 'tagId', 'labelId', 'startDate', 'payment', 'schedule']
@@ -155,6 +155,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
           symbol={currency?.symbol ?? ''}
           schedule={form.schedule}
           error={errors.payment ?? errors.schedule}
+          echo={amountEcho(form.payment, currency)}
           onChange={(payment) => {
             clearError('payment')
             patch({ payment })

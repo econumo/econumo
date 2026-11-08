@@ -5,7 +5,8 @@ import type { RecurringSchedule } from '@/api/dto/recurring'
 import type { Id } from '@/api/types'
 import type { OpenDebtParams } from '@/app/uiStore'
 import { tryNormalize } from '@/lib/decimal'
-import { normalizeNumber } from '@/lib/money'
+import { moneyFormat, normalizeNumber } from '@/lib/money'
+import type { CurrencyLike } from '@/lib/money'
 import { isNotEmpty } from '@/lib/validation'
 import { formatDate } from '@/lib/datetime'
 import { firstDueAfter, projectLastPaymentDate } from './debtMath'
@@ -119,10 +120,18 @@ export function plainAmount(raw: string): string | null {
 }
 
 /** a typed amount as a number, null while it is empty, half-typed or not a number */
-export function amountOf(raw: string): number | null {
+function amountOf(raw: string): number | null {
   const plain = plainAmount(raw)
   const n = plain === null ? NaN : Number(plain)
   return Number.isFinite(n) ? n : null
+}
+
+/** How a typed amount with a "," or "." is read, in the display format ("= 1,500.00 $"):
+    "1,500" and "1.500" read differently, and this shows which. null without a
+    separator or when it is no amount. */
+export function amountEcho(raw: string, currency: CurrencyLike | undefined): string | null {
+  const plain = /[.,]/.test(raw) ? plainAmount(raw) : null
+  return plain === null ? null : `= ${moneyFormat(plain, currency)}`
 }
 
 /** a typed amount as sent: the plain decimal, or the text as typed for the server to refuse */

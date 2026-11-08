@@ -2140,7 +2140,9 @@ out), and add a second budget member account in USD, before running these.
       beside it at the same height, an "every month ▾" card (every week /
       every 2 weeks / every month / every quarter / every year). Amounts
       typed as "2000", "2 000", "2,000.50", "1,200" or "1,5" save as 2000,
-      2000, 2000.50, 1200 and 1.5; "5+5" or letters show "Enter a valid
+      2000, 2000.50, 1200 and 1.5; while the text holds a "," or "." a muted
+      line under the field shows how it is read ("= 1,500.00 $" for "1,500",
+      "= 1.50 $" for "1.500"); "5+5" or letters show "Enter a valid
       number". There is no
       currency line: a debt converted from a budget row takes that row's
       currency, one created in Settings → Debts the user's default currency
@@ -2204,7 +2206,11 @@ out), and add a second budget member account in USD, before running these.
       cannot cover the balance, a last payment date before today, an empty
       name or a refused sentence (key conflict) shows the error next to its
       field. Under the form, set apart, sit Mark as paid off (set-up debts
-      that are not paid off only) and Delete.
+      that are not paid off only) and Delete. While the debt loads the tab
+      shows the loader, not those two buttons alone. After Mark as paid off
+      the screen returns to the Overview; reopening Settings shows Balance
+      now 0, and changing only the payment then saves balance 0 (the debt
+      stays paid off).
 - [ ] 📱 **Change the currency** (Settings tab → Currency, a searchable picker), on a
       set-up debt with a payment and a plan in a budget: leave the other
       fields and save. No snapshot is added (also when moving a balance with

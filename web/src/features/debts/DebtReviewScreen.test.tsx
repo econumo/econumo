@@ -452,6 +452,65 @@ it('marking a debt paid off asks first, then posts', async () => {
   await waitFor(() => expect(called).toBe(1))
 })
 
+it('after Mark as paid off, Settings starts from the paid-off debt, so a later edit does not send the old balance', async () => {
+  let current = details.item
+  server.use(
+    http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: current })),
+    http.post('*/api/v1/debt/mark-debt-paid-off', () => {
+      current = { ...current, currentBalance: '0', isPaidOff: 1, paymentsLeft: 0 }
+      return ok(current)
+    }),
+  )
+  const bodies = captureUpdate(() => current)
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  await openSettings(user)
+  expect(screen.getByLabelText('Balance now')).toHaveValue('1090')
+
+  await user.click(screen.getByRole('button', { name: 'Mark as paid off' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Mark as paid off?' })).getByRole('button', { name: 'Mark as paid off' }))
+  // back on the Overview, like a save
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true'))
+
+  await openSettings(user)
+  await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveValue('0'))
+  const payment = screen.getByLabelText('Payment')
+  await user.clear(payment)
+  await user.type(payment, '120')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ balance: '0', payment: '120' })
+})
+
+it('Settings shows a loader, not just its buttons, while the debt loads', async () => {
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  let release: () => void = () => {}
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  server.use(
+    http.get('*/api/v1/debt/get-debt', async () => {
+      await gate
+      return ok(details)
+    }),
+  )
+
+  await user.click(screen.getByRole('tab', { name: 'Settings' }))
+
+  const panel = screen.getByRole('tabpanel', { name: 'Settings' })
+  expect(within(panel).getByRole('status')).toBeInTheDocument()
+  expect(within(panel).queryByRole('button', { name: 'Delete' })).toBeNull()
+  expect(within(panel).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
+  release()
+  expect(await within(panel).findByLabelText('Name')).toBeInTheDocument()
+  expect(within(panel).queryByRole('status')).toBeNull()
+  expect(within(panel).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+})
+
 it('a removal_unconfirmed answer asks and resends with confirmDataRemoval', async () => {
   const bodies: Record<string, unknown>[] = []
   const refusal = 'This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.'

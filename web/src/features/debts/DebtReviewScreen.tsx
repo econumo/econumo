@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { CoinLoader } from '@/components/CoinLoader'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -101,6 +102,16 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
     }
   }
 
+  // a write from Settings (a save, Mark as paid off) rebuilds the form from the
+  // debt as stored now, so a later edit cannot send the terms from before it,
+  // and shows its result on the Overview
+  const showSaved = (saved: DebtDto) => {
+    dirty.current = false
+    setEditDebt(saved)
+    setFormKey((k) => k + 1)
+    setTab('overview')
+  }
+
   const onDirtyChange = useCallback((value: boolean) => {
     dirty.current = value
   }, [])
@@ -161,30 +172,31 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
             {/* kept mounted: edits survive a look at the Overview */}
             <TabsContent value="settings" forceMount hidden={tab !== 'settings'} className="flex flex-col gap-6">
               {editDebt ? (
-                <DebtSettingsForm
-                  key={formKey}
-                  debt={editDebt}
-                  onDirtyChange={onDirtyChange}
-                  focusMissing={focusMissing && tab === 'settings' && !reloading}
-                  onFocused={() => setFocusMissing(false)}
-                  onSaved={(saved) => {
-                    dirty.current = false
-                    setEditDebt(saved)
-                    setFormKey((k) => k + 1)
-                    setTab('overview')
-                  }}
-                />
-              ) : null}
-              <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row [&_button]:h-11 sm:[&_button]:flex-1">
-                {item.isSetUp === 1 && item.isPaidOff === 0 ? (
-                  <Button type="button" variant="secondary" disabled={markPaidOff.isPending} onClick={() => setConfirm('paid-off')}>
-                    {t('debts.details.mark_paid_off')}
-                  </Button>
-                ) : null}
-                <Button type="button" variant="destructive" onClick={() => setConfirm('delete')}>
-                  {t('common.button.delete.label')}
-                </Button>
-              </div>
+                <>
+                  <DebtSettingsForm
+                    key={formKey}
+                    debt={editDebt}
+                    onDirtyChange={onDirtyChange}
+                    focusMissing={focusMissing && tab === 'settings' && !reloading}
+                    onFocused={() => setFocusMissing(false)}
+                    onSaved={showSaved}
+                  />
+                  <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row [&_button]:h-11 sm:[&_button]:flex-1">
+                    {item.isSetUp === 1 && item.isPaidOff === 0 ? (
+                      <Button type="button" variant="secondary" disabled={markPaidOff.isPending} onClick={() => setConfirm('paid-off')}>
+                        {t('debts.details.mark_paid_off')}
+                      </Button>
+                    ) : null}
+                    <Button type="button" variant="destructive" onClick={() => setConfirm('delete')}>
+                      {t('common.button.delete.label')}
+                    </Button>
+                  </div>
+                </>
+              ) : error ? null : (
+                <div className="flex justify-center py-12">
+                  <CoinLoader />
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         ) : null}
@@ -206,7 +218,7 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
         onConfirm={() => {
           setConfirm(null)
           setError(null)
-          markPaidOff.mutate(debtId, { onError: (err) => setError(apiErrorMessage(err)) })
+          markPaidOff.mutate(debtId, { onSuccess: showSaved, onError: (err) => setError(apiErrorMessage(err)) })
         }}
         title={t('debts.details.paid_off_confirm.title')}
         question={t('debts.details.paid_off_confirm.question')}

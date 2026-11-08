@@ -17,7 +17,7 @@ import { useUpdateDebt } from './queries'
 import { AmountField, PaymentField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
-import { amountError, buildTermsPayload, useDebtTermsForm } from './useDebtForm'
+import { amountEcho, amountError, buildTermsPayload, useDebtTermsForm } from './useDebtForm'
 
 // the fields a server refusal can name here; anything else lands in the form's alert
 const SERVER_FIELDS = ['name', 'categoryId', 'payeeId', 'tagId', 'labelId', 'currencyId', 'balance', 'payment', 'schedule', 'lastPaymentDate', 'startDate']
@@ -161,6 +161,7 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
             value={form.balance}
             symbol={symbol}
             error={errors.balance}
+            echo={amountEcho(form.balance, currency)}
             onChange={(balance) => {
               clearError('balance')
               setBalance(balance)
@@ -173,6 +174,7 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
           symbol={symbol}
           schedule={form.schedule}
           error={errors.payment ?? errors.schedule ?? neverPaysOff}
+          echo={amountEcho(form.payment, currency)}
           onChange={(payment) => {
             clearError('payment')
             setPayment(payment)

@@ -25,6 +25,7 @@ export function AmountField({
   value,
   symbol,
   error,
+  echo,
   onChange,
 }: {
   id: string
@@ -32,18 +33,27 @@ export function AmountField({
   value: string
   symbol: string
   error?: string | null
+  /** how the typed amount is read (`amountEcho`), shown while there is no error */
+  echo?: string | null
   onChange: (value: string) => void
 }) {
   return (
-    <CardField label={label} htmlFor={id} error={error}>
-      <div className="flex items-baseline gap-2">
-        <div className="min-w-0 flex-1">
-          <AmountInput id={id} value={value} onChange={onChange} />
+    <div className="flex flex-col gap-1">
+      <CardField label={label} htmlFor={id} error={error}>
+        <div className="flex items-baseline gap-2">
+          <div className="min-w-0 flex-1">
+            <AmountInput id={id} value={value} onChange={onChange} />
+          </div>
+          <span className="text-sm text-muted-foreground">{symbol}</span>
         </div>
-        <span className="text-sm text-muted-foreground">{symbol}</span>
-      </div>
-    </CardField>
+      </CardField>
+      {!error ? <AmountEcho echo={echo} /> : null}
+    </div>
   )
+}
+
+function AmountEcho({ echo }: { echo?: string | null }) {
+  return echo ? <p className="px-1 text-xs text-muted-foreground">{echo}</p> : null
 }
 
 /** The payment and how often it repeats on one row, on every breakpoint: the
@@ -54,6 +64,7 @@ export function PaymentField({
   symbol,
   schedule,
   error,
+  echo,
   onChange,
   onScheduleChange,
 }: {
@@ -62,6 +73,8 @@ export function PaymentField({
   symbol: string
   schedule: RecurringSchedule
   error?: string | null
+  /** how the typed amount is read (`amountEcho`), shown while there is no error */
+  echo?: string | null
   onChange: (value: string) => void
   onScheduleChange: (value: RecurringSchedule) => void
 }) {
@@ -94,7 +107,7 @@ export function PaymentField({
           />
         </div>
       </div>
-      {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
+      {error ? <p className="px-1 text-sm text-destructive">{error}</p> : <AmountEcho echo={echo} />}
     </div>
   )
 }
