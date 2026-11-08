@@ -368,6 +368,10 @@
       "update_form": {
         "header": "Змінити транзакцію"
       },
+      "draft": {
+        "message": "Не завершена",
+        "restore": "Відновити"
+      },
       "form": {
         "date": {
           "label": "Дата"

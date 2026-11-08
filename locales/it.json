@@ -368,6 +368,10 @@
       "update_form": {
         "header": "Modifica transazione"
       },
+      "draft": {
+        "message": "Non completata",
+        "restore": "Ripristina"
+      },
       "form": {
         "date": {
           "label": "Data"

@@ -368,6 +368,10 @@
       "update_form": {
         "header": "编辑交易"
       },
+      "draft": {
+        "message": "未完成",
+        "restore": "恢复"
+      },
       "form": {
         "date": {
           "label": "日期"

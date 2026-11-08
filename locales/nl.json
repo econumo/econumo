@@ -368,6 +368,10 @@
       "update_form": {
         "header": "Transactie bewerken"
       },
+      "draft": {
+        "message": "Onafgerond",
+        "restore": "Herstellen"
+      },
       "form": {
         "date": {
           "label": "Datum"
