@@ -1,40 +1,32 @@
-import { useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ChevronDown, ChevronRight, MoreVertical } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { EntityIcon } from '@/components/EntityIcon'
-import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { formatDate } from '@/lib/datetime'
 import { add } from '@/lib/decimal'
-import { isNotEmpty } from '@/lib/validation'
 import { useUiStore } from '@/app/uiStore'
-import type { DebtDetailsDto, DebtDto, UpdateDebtDto } from '@/api/dto/debt'
+import type { DebtDetailsTab } from '@/app/uiStore'
+import type { DebtDetailsDto, DebtDto } from '@/api/dto/debt'
 import { useCurrencies } from '@/features/currencies/queries'
 import { debtDay, debtMonth } from './debtDates'
-import { DebtTermsForm } from './DebtTermsForm'
+import { DebtSettingsForm } from './DebtSettingsForm'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
-import type { PaymentsFromErrors } from './PaymentsFromEditor'
-import { useDeleteDebt, useDebt, useFetchDebtForEdit, useMarkDebtPaidOff, useUpdateDebt } from './queries'
-import type { PaymentsFrom } from './useDebtForm'
+import { useDeleteDebt, useDebt, useFetchDebtForEdit, useMarkDebtPaidOff } from './queries'
 import { useDebtMoney, usePaymentsLeft } from './useDebtMoney'
 
-const FILTER_KEYS = ['categoryId', 'payeeId', 'tagId', 'labelId'] as const
-
-function SectionHeading({ id, children, action }: { id?: string; children: ReactNode; action?: ReactNode }) {
+function SectionHeading({ id, children }: { id?: string; children: ReactNode }) {
   return (
-    <div className="mb-2 flex items-center justify-between gap-3">
-      <h3 id={id} className="text-sm uppercase tracking-wide text-muted-foreground">
-        {children}
-      </h3>
-      {action}
-    </div>
+    <h3 id={id} className="mb-2 text-sm uppercase tracking-wide text-muted-foreground">
+      {children}
+    </h3>
   )
 }
 
@@ -47,33 +39,22 @@ function Figure({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-const filtersOf = (debt: DebtDto): PaymentsFrom => ({ categoryId: debt.categoryId, payeeId: debt.payeeId, tagId: debt.tagId, labelId: debt.labelId })
+type Confirm = 'paid-off' | 'delete' | null
 
-/** the debt's name, filters and start date as stored, with no currency, payment,
- *  schedule or terms: the server keeps its own, so this screen cannot write back a
- *  currency or terms another device changed after it loaded */
-const storedPayload = (debt: DebtDto): UpdateDebtDto => ({
-  id: debt.id,
-  name: debt.name,
-  currencyId: '',
-  categoryId: debt.categoryId,
-  payeeId: debt.payeeId,
-  tagId: debt.tagId,
-  labelId: debt.labelId,
-  startDate: debt.startDate || null,
-})
-
-type Confirm = 'paid-off' | 'delete' | 'rename' | null
-type Terms = { mode: 'setup' | 'edit'; debt: DebtDto }
-
-function DebtReview({ debtId, onClose }: { debtId: string; onClose: () => void }) {
+function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTab: DebtDetailsTab; onClose: () => void }) {
   const { t, i18n } = useTranslation()
   const { data, error: loadError } = useDebt(debtId)
   const fetchDebtForEdit = useFetchDebtForEdit()
   const markPaidOff = useMarkDebtPaidOff()
   const deleteDebt = useDeleteDebt()
-  const updateDebt = useUpdateDebt()
-  const [terms, setTerms] = useState<Terms | null>(null)
+  const [tab, setTab] = useState<DebtDetailsTab>(initialTab)
+  // the debt the Settings form was built from, loaded afresh: the form starts
+  // from what is owed now, and a cached balance from before a payment would
+  // store a snapshot that loses that payment's principal
+  const [editDebt, setEditDebt] = useState<DebtDto | null>(null)
+  const [formKey, setFormKey] = useState(0)
+  const dirty = useRef(false)
+  const [focusMissing, setFocusMissing] = useState(initialTab === 'settings')
   const [confirm, setConfirm] = useState<Confirm>(null)
   // the server's own wording of what deleting drops, once it has refused
   const [removalMessage, setRemovalMessage] = useState<string | null>(null)
@@ -81,14 +62,42 @@ function DebtReview({ debtId, onClose }: { debtId: string; onClose: () => void }
 
   const item = data?.item
 
-  const openTerms = (mode: Terms['mode']) => {
+  // Each visit to Settings reloads the debt, unless the form holds edits: those
+  // stay across a look at the Overview
+  const loadSettings = useCallback(() => {
+    if (dirty.current) {
+      return
+    }
     setError(null)
-    // afresh: the form starts from what is owed now, and a cached balance from
-    // before a payment would store a snapshot that loses that payment's principal
     fetchDebtForEdit(debtId)
-      .then((fresh) => setTerms({ mode, debt: fresh.item }))
+      .then((fresh) => {
+        if (dirty.current) {
+          return
+        }
+        setEditDebt(fresh.item)
+        setFormKey((k) => k + 1)
+      })
       .catch((err: unknown) => setError(apiErrorMessage(err)))
+  }, [debtId, fetchDebtForEdit])
+
+  const opened = useRef(false)
+  useEffect(() => {
+    if (!opened.current && initialTab === 'settings') {
+      opened.current = true
+      loadSettings()
+    }
+  }, [initialTab, loadSettings])
+
+  const switchTab = (next: DebtDetailsTab) => {
+    setTab(next)
+    if (next === 'settings') {
+      loadSettings()
+    }
   }
+
+  const onDirtyChange = useCallback((value: boolean) => {
+    dirty.current = value
+  }, [])
 
   const sendDelete = (confirmDataRemoval: boolean) => {
     setError(null)
@@ -109,51 +118,68 @@ function DebtReview({ debtId, onClose }: { debtId: string; onClose: () => void }
     )
   }
 
-  const menuLabel = t('debts.review.menu')
-  const menu =
-    item && !terms ? (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" size="icon-sm" aria-label={menuLabel} title={menuLabel}>
-            <MoreVertical className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-44">
-          <DropdownMenuItem onSelect={() => setConfirm('rename')}>{t('debts.review.rename')}</DropdownMenuItem>
-          {item.isSetUp === 1 && item.isPaidOff === 0 ? (
-            <DropdownMenuItem disabled={markPaidOff.isPending} onSelect={() => setConfirm('paid-off')}>
-              {t('debts.details.mark_paid_off')}
-            </DropdownMenuItem>
-          ) : null}
-          <DropdownMenuItem variant="destructive" onSelect={() => setConfirm('delete')}>
-            {t('common.button.delete.label')}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ) : undefined
-
   return (
     <ResponsiveDialog
       open
       onOpenChange={(o) => !o && onClose()}
       title={item?.name ?? t('debts.form.header')}
       titleIcon={item ? <EntityIcon name={item.icon} className="text-xl text-muted-foreground" /> : undefined}
-      headerAction={menu}
-      fullScreen="always"
+      fullScreen
+      size="large"
     >
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 pb-2">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 pb-2">
         {item && data ? (
-          terms ? (
-            <DebtTermsForm
-              key={`${terms.debt.id}:${terms.debt.isSetUp}`}
-              debt={terms.debt}
-              mode={terms.mode}
-              onSaved={() => setTerms(null)}
-              onCancel={() => setTerms(null)}
-            />
-          ) : (
-            <ReviewContent details={data} lang={i18n.language} onFinishSetup={() => openTerms('setup')} onEdit={() => openTerms('edit')} />
-          )
+          <Tabs value={tab} onValueChange={(v) => switchTab(v as DebtDetailsTab)} className="gap-4">
+            {/* stays in view while the tab scrolls */}
+            <div className="sticky top-0 z-10 -mx-1 bg-popover px-1 pt-1">
+              <TabsList variant="line" className="h-10 w-full justify-start gap-5 rounded-none border-b p-0">
+                <TabsTrigger value="overview" className="flex-none px-0 text-sm">
+                  {t('debts.review.tab.overview')}
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="flex-none px-0 text-sm">
+                  {t('debts.review.tab.settings')}
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="overview" className="flex flex-col gap-5">
+              <ReviewContent
+                details={data}
+                lang={i18n.language}
+                onFinishSetup={() => {
+                  setFocusMissing(true)
+                  switchTab('settings')
+                }}
+              />
+            </TabsContent>
+            {/* kept mounted: edits survive a look at the Overview */}
+            <TabsContent value="settings" forceMount hidden={tab !== 'settings'} className="flex flex-col gap-6">
+              {editDebt ? (
+                <DebtSettingsForm
+                  key={formKey}
+                  debt={editDebt}
+                  onDirtyChange={onDirtyChange}
+                  focusMissing={focusMissing && tab === 'settings'}
+                  onFocused={() => setFocusMissing(false)}
+                  onSaved={(saved) => {
+                    dirty.current = false
+                    setEditDebt(saved)
+                    setFormKey((k) => k + 1)
+                    setTab('overview')
+                  }}
+                />
+              ) : null}
+              <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row [&_button]:h-11 sm:[&_button]:flex-1">
+                {item.isSetUp === 1 && item.isPaidOff === 0 ? (
+                  <Button type="button" variant="secondary" disabled={markPaidOff.isPending} onClick={() => setConfirm('paid-off')}>
+                    {t('debts.details.mark_paid_off')}
+                  </Button>
+                ) : null}
+                <Button type="button" variant="destructive" onClick={() => setConfirm('delete')}>
+                  {t('common.button.delete.label')}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         ) : null}
         {error ? (
           <p role="alert" className="text-sm text-destructive">
@@ -167,23 +193,6 @@ function DebtReview({ debtId, onClose }: { debtId: string; onClose: () => void }
         ) : null}
       </div>
 
-      {item ? (
-        <PromptDialog
-          open={confirm === 'rename'}
-          onClose={() => setConfirm(null)}
-          title={t('debts.review.rename')}
-          inputLabel={t('debts.form.name.label')}
-          initialValue={item.name}
-          validate={(value) => (isNotEmpty(value.trim()) ? null : t('common.validation.required_field'))}
-          onSubmit={(value) => {
-            setConfirm(null)
-            setError(null)
-            updateDebt.mutate({ ...storedPayload(item), name: value.trim() }, { onError: (err) => setError(apiErrorMessage(err)) })
-          }}
-          submitLabel={t('common.button.save.label')}
-          cancelLabel={t('common.button.cancel.label')}
-        />
-      ) : null}
       <ConfirmDialog
         open={confirm === 'paid-off'}
         onClose={() => setConfirm(null)}
@@ -227,7 +236,7 @@ function DebtReview({ debtId, onClose }: { debtId: string; onClose: () => void }
   )
 }
 
-function ReviewContent({ details, lang, onFinishSetup, onEdit }: { details: DebtDetailsDto; lang: string; onFinishSetup: () => void; onEdit: () => void }) {
+function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsDto; lang: string; onFinishSetup: () => void }) {
   const { t } = useTranslation()
   const money = useDebtMoney()
   const paymentsLeft = usePaymentsLeft()
@@ -258,7 +267,8 @@ function ReviewContent({ details, lang, onFinishSetup, onEdit }: { details: Debt
             </p>
             {total > 0 ? (
               <div className="flex flex-col gap-1.5">
-                <Progress value={(item.periodsPaid / total) * 100} aria-label={t('debts.review.progress', { paid: item.periodsPaid, total })} className="h-2" />
+                {/* the track is the whole loan, the filled part what is paid */}
+                <Progress value={(item.periodsPaid / total) * 100} aria-label={t('debts.review.progress', { paid: item.periodsPaid, total })} className="h-2 bg-foreground/15" />
                 <span className="text-xs text-muted-foreground">{t('debts.review.progress', { paid: item.periodsPaid, total })}</span>
               </div>
             ) : null}
@@ -279,16 +289,7 @@ function ReviewContent({ details, lang, onFinishSetup, onEdit }: { details: Debt
       </section>
 
       <section aria-labelledby={loanHeadingId}>
-        <SectionHeading
-          id={loanHeadingId}
-          action={
-            <Button type="button" variant="ghost" size="sm" className="text-econumo-link" onClick={onEdit}>
-              {t('common.button.edit.label')}
-            </Button>
-          }
-        >
-          {t('debts.review.loan')}
-        </SectionHeading>
+        <SectionHeading id={loanHeadingId}>{t('debts.review.loan')}</SectionHeading>
         <dl className="divide-y divide-border rounded-lg bg-econumo-card px-4 py-1.5">
           {setUp ? <Figure label={t('debts.review.owed_now_label')}>{amount(item.currentBalance)}</Figure> : null}
           <Figure label={t('debts.form.payment.label')}>{`${amount(item.payment)} · ${schedule}`}</Figure>
@@ -310,7 +311,11 @@ function ReviewContent({ details, lang, onFinishSetup, onEdit }: { details: Debt
         </dl>
       </section>
 
-      <FiltersEditor debt={item} />
+      <PaymentsFromEditor
+        value={{ categoryId: item.categoryId, payeeId: item.payeeId, tagId: item.tagId, labelId: item.labelId }}
+        onChange={() => {}}
+        readOnly
+      />
 
       <section>
         <SectionHeading>{t('debts.details.payments')}</SectionHeading>
@@ -395,84 +400,16 @@ function ReviewContent({ details, lang, onFinishSetup, onEdit }: { details: Debt
   )
 }
 
-/** Which payments count, edited in place: a Save shows once a pick differs from the debt */
-function FiltersEditor({ debt }: { debt: DebtDto }) {
-  const { t } = useTranslation()
-  const updateDebt = useUpdateDebt()
-  const stored = filtersOf(debt)
-  const [draft, setDraft] = useState<PaymentsFrom | null>(null)
-  const [errors, setErrors] = useState<PaymentsFromErrors>({})
-  const [serverError, setServerError] = useState<string | null>(null)
-  const value = draft ?? stored
-  const changed = FILTER_KEYS.some((key) => value[key] !== stored[key])
-
-  const save = () => {
-    setServerError(null)
-    updateDebt.mutate(
-      // the category is required: its picker has no "any" row
-      { ...storedPayload(debt), ...value, categoryId: value.categoryId ?? debt.categoryId },
-      {
-        onSuccess: () => {
-          setDraft(null)
-          setErrors({})
-        },
-        onError: (err) => {
-          const named = Object.fromEntries(FILTER_KEYS.map((key) => [key, apiFieldErrors(err, key)?.[0]])) as PaymentsFromErrors
-          setErrors(named)
-          if (!Object.values(named).some(Boolean)) {
-            setServerError(apiErrorMessage(err))
-          }
-        },
-      },
-    )
-  }
-
-  return (
-    <section className="flex flex-col gap-2">
-      <PaymentsFromEditor
-        value={value}
-        onChange={(next) => {
-          setErrors({})
-          setServerError(null)
-          setDraft(next)
-        }}
-        errors={errors}
-      />
-      {serverError ? (
-        <p role="alert" className="text-sm text-destructive">
-          {serverError}
-        </p>
-      ) : null}
-      {changed ? (
-        <div className="grid grid-cols-2 gap-3 [&_button]:h-11">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              setDraft(null)
-              setErrors({})
-              setServerError(null)
-            }}
-          >
-            {t('common.button.cancel.label')}
-          </Button>
-          <Button type="button" disabled={updateDebt.isPending} onClick={save}>
-            {t('common.button.save.label')}
-          </Button>
-        </div>
-      ) : null}
-    </section>
-  )
-}
-
-/** The owner's full-screen review of one debt, opened with `useUiStore().openDebtDetails(id)` */
+/** The owner's review of one debt, opened with `useUiStore().openDebtDetails(id, tab?)`:
+ *  a large dialog (full screen on a phone) with an Overview and a Settings tab */
 export function DebtReviewScreen() {
   const debtId = useUiStore((s) => s.debtDetailsId)
+  const tab = useUiStore((s) => s.debtDetailsTab)
   const close = useUiStore((s) => s.closeDebtDetails)
 
   if (!debtId) {
     return null
   }
 
-  return <DebtReview key={debtId} debtId={debtId} onClose={close} />
+  return <DebtReview key={debtId} debtId={debtId} initialTab={tab} onClose={close} />
 }

@@ -52,7 +52,8 @@ export function DebtsSettingsPage() {
                 type="button"
                 data-testid={`debt-${debt.id}`}
                 className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left ${isCompact ? 'active:bg-accent' : 'hover:bg-accent'}`}
-                onClick={() => openDebtDetails(debt.id)}
+                // a debt without terms says Finish setup: the row opens the form for it
+                onClick={() => openDebtDetails(debt.id, debt.isSetUp === 0 ? 'settings' : 'overview')}
               >
                 <EntityIcon name={debt.icon} className="text-xl text-muted-foreground" />
                 <span className="flex min-w-0 flex-1 flex-col">

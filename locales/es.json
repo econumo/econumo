@@ -566,8 +566,6 @@
       "finish_setup": "Terminar configuración"
     },
     "review": {
-      "menu": "Acciones de la deuda",
-      "rename": "Renombrar",
       "progress": "{paid} de {total} pagados",
       "owed_now": "Debes ahora {amount}",
       "owed_now_label": "Debes ahora",
@@ -578,7 +576,11 @@
       "loan_ends": "Fin del préstamo",
       "start_date": "Fecha de inicio",
       "from_first_payment": "Desde el primer pago",
-      "overpayment_to_come": "Sobrecoste por pagar"
+      "overpayment_to_come": "Sobrecoste por pagar",
+      "tab": {
+        "overview": "Resumen",
+        "settings": "Ajustes"
+      }
     }
   },
   "recurring": {

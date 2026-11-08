@@ -58,8 +58,10 @@ interface ResponsiveDialogProps {
   fullScreen?: boolean | 'always'
   /** action row rendered outside the scroll area — pinned to the sheet bottom on mobile */
   footer?: ReactNode
-  /** desktop width: `wide` suits list-heavy dialogs (the global search palette) */
-  size?: 'default' | 'wide'
+  /** desktop width: `wide` suits list-heavy dialogs (the global search palette);
+   *  `large` covers most of the screen (90% of its width and height) and scrolls
+   *  inside, a page-sized view that still reads as a dialog */
+  size?: 'default' | 'wide' | 'large'
   /** the element that takes focus on open (a mobile sheet focuses itself otherwise) */
   initialFocus?: RefObject<HTMLElement | null>
   /** runs as the dialog hands focus back on close; preventDefault() keeps focus
@@ -288,6 +290,36 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
           ) : null}
         </DrawerContent>
       </Drawer>
+    )
+  }
+  if (size === 'large') {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          ref={contentRef}
+          className="flex h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] flex-col gap-0 p-0 sm:max-w-[90vw]"
+          onInteractOutside={onInteractOutside}
+          onEscapeKeyDown={onEscapeKeyDown}
+          onCloseAutoFocus={onCloseAutoFocus}
+          onOpenAutoFocus={(e) => {
+            if (initialFocus?.current) {
+              e.preventDefault()
+              initialFocus.current.focus()
+            }
+          }}
+          showCloseButton={showCloseButton}
+        >
+          <DialogHeader className={`${headerClass ?? ''} px-6 pt-5 pb-1`}>
+            <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
+            {description ? <DialogDescription>{description}</DialogDescription> : null}
+          </DialogHeader>
+          {headerAction && !hideHeader ? <div className={`absolute top-2 ${cornerActionClass}`}>{headerAction}</div> : null}
+          <div data-slot="dialog-body" className="min-h-0 flex-1 overflow-y-auto px-6 pt-1 pb-6">
+            {children}
+          </div>
+          {footer ? <div className="border-t px-6 pt-3 pb-3 [&_button]:h-11">{footer}</div> : null}
+        </DialogContent>
+      </Dialog>
     )
   }
   return (

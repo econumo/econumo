@@ -68,7 +68,7 @@ export function DebtLeft({
   const openDebtDetails = useUiStore((s) => s.openDebtDetails)
   if (row.isSetUp === 0) {
     return !!userId && row.ownerUserId === userId ? (
-      <button type="button" className="text-econumo-link hover:underline" onClick={() => openDebtDetails(row.id)}>
+      <button type="button" className="text-econumo-link hover:underline" onClick={() => openDebtDetails(row.id, 'settings')}>
         {t('debts.terms.finish_setup')}
       </button>
     ) : (

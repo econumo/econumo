@@ -566,8 +566,6 @@
       "finish_setup": "Einrichtung abschließen"
     },
     "review": {
-      "menu": "Aktionen für diese Schuld",
-      "rename": "Umbenennen",
       "progress": "{paid} von {total} bezahlt",
       "owed_now": "Aktuell geschuldet: {amount}",
       "owed_now_label": "Aktuell geschuldet",
@@ -578,7 +576,11 @@
       "loan_ends": "Kredit endet",
       "start_date": "Startdatum",
       "from_first_payment": "Ab der ersten Zahlung",
-      "overpayment_to_come": "Noch anfallende Mehrkosten"
+      "overpayment_to_come": "Noch anfallende Mehrkosten",
+      "tab": {
+        "overview": "Übersicht",
+        "settings": "Einstellungen"
+      }
     }
   },
   "recurring": {

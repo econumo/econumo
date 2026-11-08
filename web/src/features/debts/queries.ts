@@ -18,9 +18,9 @@ export function useDebt(id: Id | undefined) {
   })
 }
 
-/** Loads the debt afresh for Edit: the form pre-fills the balance with the
- *  current one, and a cached balance from before a payment would store a
- *  snapshot that loses the payment's principal. */
+/** Loads the debt afresh for the Settings tab: the form pre-fills the balance
+ *  with the current one, and a cached balance from before a payment would store
+ *  a snapshot that loses the payment's principal. */
 export function useFetchDebtForEdit() {
   const queryClient = useQueryClient()
   return (id: Id) => queryClient.fetchQuery({ queryKey: queryKeys.debt(id), queryFn: () => debtApi.getDebt(id), staleTime: 0 })
@@ -41,9 +41,7 @@ function useInvalidateDebts() {
 }
 
 // The debt a write returns is the debt as stored now. It goes into both caches at
-// once: until the refetch lands, the review screen would otherwise send its next
-// save (a rename, a filter change) with the terms from before this write, and
-// writing those back would revert the write.
+// once, so the Overview shows it before the refetch lands.
 function useStoreSavedDebt() {
   const queryClient = useQueryClient()
   return (saved: DebtDto) => {

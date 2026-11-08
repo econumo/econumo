@@ -33,7 +33,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockMatchMedia()
-  useUiStore.setState({ debtModal: null, debtDetailsId: null })
+  useUiStore.setState({ debtModal: null, debtDetailsId: null, debtDetailsTab: 'overview' })
 })
 
 it('Settings lists debts with payments left', async () => {
@@ -65,6 +65,7 @@ it('Settings list shows Finish setup for a debt without terms', async () => {
   expect(row).not.toHaveTextContent('$')
   await user.click(row)
   expect(useUiStore.getState().debtDetailsId).toBe('d3')
+  expect(useUiStore.getState().debtDetailsTab).toBe('settings')
 })
 
 it('uses the singular for one payment left', async () => {
@@ -81,6 +82,7 @@ it('tapping a debt opens its details', async () => {
   await user.click(await screen.findByTestId('debt-d1'))
 
   expect(useUiStore.getState().debtDetailsId).toBe('d1')
+  expect(useUiStore.getState().debtDetailsTab).toBe('overview')
 })
 
 it('the create button opens an empty debt form', async () => {

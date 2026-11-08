@@ -1,9 +1,11 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { CardField } from '@/components/CardField'
+import { Input } from '@/components/ui/input'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
+import { dialogActionsClass } from '@/components/ResponsiveDialog'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { formatDate } from '@/lib/datetime'
@@ -14,39 +16,62 @@ import { TransactionDatePicker } from '@/features/transactions/TransactionDatePi
 import { useUpdateDebt } from './queries'
 import { AmountField, PaymentField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
+import { PaymentsFromEditor } from './PaymentsFromEditor'
 import { amountError, buildTermsPayload, useDebtTermsForm } from './useDebtForm'
 
 // the fields a server refusal can name here; anything else lands in the form's alert
-const SERVER_FIELDS = ['currencyId', 'balance', 'payment', 'schedule', 'lastPaymentDate', 'startDate']
+const SERVER_FIELDS = ['name', 'categoryId', 'payeeId', 'tagId', 'labelId', 'currencyId', 'balance', 'payment', 'schedule', 'lastPaymentDate', 'startDate']
 
-export interface DebtTermsFormProps {
+export interface DebtSettingsFormProps {
+  /** the debt as just loaded: the form starts from what is owed now */
   debt: DebtDto
-  /** setup: the debt has no terms yet and the save may finish its setup; edit: change the terms */
-  mode: 'setup' | 'edit'
   onSaved: (saved: DebtDto) => void
-  /** shows a Cancel button beside the save */
-  onCancel?: () => void
+  onDirtyChange?: (dirty: boolean) => void
+  /** Finish setup: focus the first term still missing, then report it with onFocused */
+  focusMissing?: boolean
+  onFocused?: () => void
 }
 
 /**
- * What is owed now, payment and repeats, last payment date, start date and
- * currency (the amounts are read in it, never converted). Editing
- * the balance or payment of a set-up debt re-fills the last payment date at the
+ * The debt's Settings tab: name, which payments count, what is owed now, the
+ * payment and its repeats, last payment date, start date and currency (the
+ * amounts are read in it, never converted), saved in ONE update. Editing the
+ * balance or payment of a set-up debt re-fills the last payment date at the
  * debt's own rate; a debt not set up has no rate yet, so its date is typed.
  * Saving a debt not set up with a balance and a last payment date finishes its
- * setup; without them it only updates payment, repeats and start date.
+ * setup; without them the other fields still save.
  */
-export function DebtTermsForm({ debt, mode, onSaved, onCancel }: DebtTermsFormProps) {
+export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = false, onFocused }: DebtSettingsFormProps) {
   const { t } = useTranslation()
   const formId = useId()
   const { data: currencies } = useCurrencies()
   const settingUp = debt.isSetUp !== 1
   const updateDebt = useUpdateDebt({ finishingSetup: settingUp })
-  const { form, initial, patch, setBalance, setPayment, projection } = useDebtTermsForm(debt, (id) => currencies?.find((c) => c.id === id)?.fractionDigits)
+  const { form, initial, patch, setBalance, setPayment, reset, dirty, projection } = useDebtTermsForm(
+    debt,
+    (id) => currencies?.find((c) => c.id === id)?.fractionDigits,
+  )
   const currency = currencies?.find((c) => c.id === form.currencyId)
   const { errors, setErrors, clear: clearError } = useFormErrors<FieldErrors>()
   const [serverError, setServerError] = useState<string | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  const balanceRef = useRef<HTMLDivElement>(null)
+  const lastPaymentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
+
+  useEffect(() => {
+    if (!focusMissing) {
+      return
+    }
+    const target = !isNotEmpty(form.balance) ? balanceRef.current?.querySelector('input') : !form.lastPaymentDate ? lastPaymentRef.current?.querySelector('button') : null
+    target?.focus()
+    onFocused?.()
+    // only when asked: typing must not move the focus
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusMissing])
 
   const symbol = currency?.symbol ?? ''
   const currencyLabel = t('debts.form.currency.label')
@@ -56,6 +81,8 @@ export function DebtTermsForm({ debt, mode, onSaved, onCancel }: DebtTermsFormPr
   const validate = (): boolean => {
     const next: FieldErrors = {}
     const required = t('common.validation.required_field')
+    next.name = isNotEmpty(form.name.trim()) ? undefined : required
+    next.categoryId = form.categoryId ? undefined : required
     next.payment = amountError(form.payment, t, true)
     // a debt not set up may be saved without its terms, never with only one
     const termsAsked = !settingUp || isNotEmpty(form.balance) || form.lastPaymentDate !== ''
@@ -103,17 +130,43 @@ export function DebtTermsForm({ debt, mode, onSaved, onCancel }: DebtTermsFormPr
           void submit()
         }}
       >
-        <AmountField
-          id={`${formId}-balance`}
-          label={t('debts.form.balance.label')}
-          value={form.balance}
-          symbol={symbol}
-          error={errors.balance}
-          onChange={(balance) => {
-            clearError('balance')
-            setBalance(balance)
+        <CardField label={t('debts.form.name.label')} htmlFor={`${formId}-name`} error={errors.name}>
+          <Input
+            id={`${formId}-name`}
+            className={cardFieldControlClass}
+            autoComplete="off"
+            value={form.name}
+            onChange={(e) => {
+              clearError('name')
+              patch({ name: e.target.value })
+            }}
+          />
+        </CardField>
+
+        <PaymentsFromEditor
+          value={{ categoryId: form.categoryId, payeeId: form.payeeId, tagId: form.tagId, labelId: form.labelId }}
+          onChange={(next) => {
+            for (const key of ['categoryId', 'payeeId', 'tagId', 'labelId'] as const) {
+              clearError(key)
+            }
+            patch(next)
           }}
+          errors={{ categoryId: errors.categoryId, payeeId: errors.payeeId, tagId: errors.tagId, labelId: errors.labelId }}
         />
+
+        <div ref={balanceRef}>
+          <AmountField
+            id={`${formId}-balance`}
+            label={t('debts.form.balance.label')}
+            value={form.balance}
+            symbol={symbol}
+            error={errors.balance}
+            onChange={(balance) => {
+              clearError('balance')
+              setBalance(balance)
+            }}
+          />
+        </div>
         <PaymentField
           id={`${formId}-payment`}
           value={form.payment}
@@ -129,20 +182,22 @@ export function DebtTermsForm({ debt, mode, onSaved, onCancel }: DebtTermsFormPr
             patch({ schedule })
           }}
         />
-        <CardField label={lastPaymentLabel} error={errors.lastPaymentDate}>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-muted-foreground">{t('debts.form.last_payment_date.hint')}</span>
-            <TransactionDatePicker
-              ariaLabel={lastPaymentLabel}
-              placeholder={t('debts.form.last_payment_date.choose')}
-              value={form.lastPaymentDate}
-              onChange={(day) => {
-                clearError('lastPaymentDate')
-                patch({ lastPaymentDate: formatDate(day) })
-              }}
-            />
-          </div>
-        </CardField>
+        <div ref={lastPaymentRef}>
+          <CardField label={lastPaymentLabel} error={errors.lastPaymentDate}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">{t('debts.form.last_payment_date.hint')}</span>
+              <TransactionDatePicker
+                ariaLabel={lastPaymentLabel}
+                placeholder={t('debts.form.last_payment_date.choose')}
+                value={form.lastPaymentDate}
+                onChange={(day) => {
+                  clearError('lastPaymentDate')
+                  patch({ lastPaymentDate: formatDate(day) })
+                }}
+              />
+            </div>
+          </CardField>
+        </div>
         <StartDateField
           value={form.startDate}
           error={errors.startDate}
@@ -169,14 +224,20 @@ export function DebtTermsForm({ debt, mode, onSaved, onCancel }: DebtTermsFormPr
           </p>
         ) : null}
 
-        <div className={onCancel ? 'grid grid-cols-2 gap-3 [&_button]:h-11' : 'flex [&_button]:h-11 [&_button]:flex-1'}>
-          {onCancel ? (
-            <Button type="button" variant="secondary" onClick={onCancel}>
-              {t('common.button.cancel.label')}
-            </Button>
-          ) : null}
+        <div className={dialogActionsClass}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              reset()
+              setErrors({})
+              setServerError(null)
+            }}
+          >
+            {t('common.button.cancel.label')}
+          </Button>
           <Button type="submit" disabled={updateDebt.isPending}>
-            {mode === 'setup' && settingUp ? t('debts.terms.finish_setup') : t('common.button.save.label')}
+            {t('common.button.save.label')}
           </Button>
         </div>
       </form>

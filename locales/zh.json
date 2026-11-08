@@ -566,8 +566,6 @@
       "finish_setup": "完成设置"
     },
     "review": {
-      "menu": "债务操作",
-      "rename": "重命名",
       "progress": "已还 {paid}/{total} 期",
       "owed_now": "当前欠款 {amount}",
       "owed_now_label": "当前欠款",
@@ -578,7 +576,11 @@
       "loan_ends": "贷款结束",
       "start_date": "开始日期",
       "from_first_payment": "从第一笔还款起",
-      "overpayment_to_come": "待付利息与费用"
+      "overpayment_to_come": "待付利息与费用",
+      "tab": {
+        "overview": "概览",
+        "settings": "设置"
+      }
     }
   },
   "recurring": {

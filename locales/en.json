@@ -566,8 +566,6 @@
       "finish_setup": "Finish setup"
     },
     "review": {
-      "menu": "Debt actions",
-      "rename": "Rename",
       "progress": "{paid} of {total} paid",
       "owed_now": "Owed now {amount}",
       "owed_now_label": "Owed now",
@@ -578,7 +576,11 @@
       "loan_ends": "Loan ends",
       "start_date": "Start date",
       "from_first_payment": "From the first payment",
-      "overpayment_to_come": "Overpayment still to come"
+      "overpayment_to_come": "Overpayment still to come",
+      "tab": {
+        "overview": "Overview",
+        "settings": "Settings"
+      }
     }
   },
   "recurring": {

@@ -945,7 +945,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           // a debt's review screen is its owner's alone, and its only edit: no pencil
           sheetTarget?.kind === 'debt' && sheetEdit === true
             ? () => {
-                openDebtDetails(sheetTarget.row.id)
+                // its button reads Finish setup while the debt has no terms
+                openDebtDetails(sheetTarget.row.id, sheetTarget.row.isSetUp === 0 ? 'settings' : 'overview')
                 setSheetTarget(null)
               }
             : undefined

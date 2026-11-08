@@ -566,8 +566,6 @@
       "finish_setup": "Instellen voltooien"
     },
     "review": {
-      "menu": "Acties voor deze schuld",
-      "rename": "Hernoemen",
       "progress": "{paid} van {total} betaald",
       "owed_now": "Nu verschuldigd: {amount}",
       "owed_now_label": "Nu verschuldigd",
@@ -578,7 +576,11 @@
       "loan_ends": "Lening loopt af",
       "start_date": "Startdatum",
       "from_first_payment": "Vanaf de eerste betaling",
-      "overpayment_to_come": "Nog te betalen meerkosten"
+      "overpayment_to_come": "Nog te betalen meerkosten",
+      "tab": {
+        "overview": "Overzicht",
+        "settings": "Instellingen"
+      }
     }
   },
   "recurring": {

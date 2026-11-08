@@ -64,7 +64,9 @@ export function useDebtCreateForm(params: OpenDebtParams, categories: CategoryDt
   return { form, patch }
 }
 
-export interface DebtTermsState {
+/** everything the debt's Settings tab edits: its name, which payments count, its terms */
+export interface DebtTermsState extends PaymentsFrom {
+  name: string
   /** the balance and payment are read in this currency, the debt's own until changed */
   currencyId: Id
   balance: string
@@ -78,6 +80,11 @@ export interface DebtTermsState {
 
 export function initialTermsState(debt: DebtDto): DebtTermsState {
   return {
+    name: debt.name,
+    categoryId: debt.categoryId,
+    payeeId: debt.payeeId,
+    tagId: debt.tagId,
+    labelId: debt.labelId,
     currencyId: debt.currencyId,
     // what is owed right now: the stored snapshot's balance is as of its own date
     balance: debt.isSetUp === 1 ? normalizeNumber(debt.currentBalance) : '',
@@ -90,18 +97,20 @@ export function initialTermsState(debt: DebtDto): DebtTermsState {
 
 const SPACES = /[\s\u00a0\u202f]/g
 
-/** A typed amount as a plain decimal string, null when it is not one. Spaces
-    group thousands ("2 000"); a lone "," or "." is the decimal mark ("1,5"),
-    and with both, or with several of one, the repeated one groups thousands
-    ("2,000.50", "2.000,50", "1,000,000"). */
+/** A typed amount as a plain decimal string, null when it is not one. It reads
+    amounts the way the app shows them ("2,000.50") and the usual variants:
+    spaces group thousands ("2 000"); "." is the decimal mark, and so is a lone
+    "," ("1,5"), unless exactly three digits follow it ("1,200", as shown);
+    with both marks, or several of one, the repeated one groups thousands
+    ("2.000,50", "1,000,000"). */
 export function plainAmount(raw: string): string | null {
   const s = raw.replace(SPACES, '')
   let canonical: string
-  if (/^-?\d+([.,]\d+)?$/.test(s)) {
-    canonical = s.replace(',', '.')
-  } else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) {
+  if (/^-?[1-9]\d{0,2}(,\d{3})+(\.\d+)?$/.test(s)) {
     canonical = s.replace(/,/g, '')
-  } else if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
+  } else if (/^-?\d+([.,]\d+)?$/.test(s)) {
+    canonical = s.replace(',', '.')
+  } else if (/^-?[1-9]\d{0,2}(\.\d{3})+(,\d+)?$/.test(s)) {
     canonical = s.replace(/\./g, '').replace(',', '.')
   } else {
     return null
@@ -197,16 +206,19 @@ function withProjection(form: DebtTermsState, initial: DebtTermsState, debt: Deb
   return projection.status === 'date' ? { ...form, lastPaymentDate: projection.date } : form
 }
 
-/** the update that saves the terms and the currency; the debt's name and filters go back as stored */
+/** The one update the Settings tab saves. A currency left as loaded goes as
+    none, so the server keeps the stored one (another device may have changed it
+    since); the same for terms, below. */
 export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState, debt: DebtDto): UpdateDebtDto {
   const base = {
     id: debt.id,
-    name: debt.name,
-    currencyId: form.currencyId,
-    categoryId: debt.categoryId,
-    payeeId: debt.payeeId,
-    tagId: debt.tagId,
-    labelId: debt.labelId,
+    name: form.name.trim(),
+    currencyId: form.currencyId === initial.currencyId ? '' : form.currencyId,
+    // the category is required: its picker has no "any" row
+    categoryId: form.categoryId ?? debt.categoryId,
+    payeeId: form.payeeId,
+    tagId: form.tagId,
+    labelId: form.labelId,
     startDate: form.startDate || null,
   }
   if (debt.isSetUp !== 1) {
@@ -249,6 +261,8 @@ export function useDebtTermsForm(debt: DebtDto, digitsOf: (currencyId: Id) => nu
   const setPayment = (payment: string) => setForm((prev) => reproject({ ...prev, payment }))
 
   const projection = projectTerms(form, debt, digitsOf(form.currencyId))
+  const reset = () => setForm(initial)
+  const dirty = (Object.keys(initial) as (keyof DebtTermsState)[]).some((key) => form[key] !== initial[key])
 
-  return { form, initial, patch, setBalance, setPayment, projection }
+  return { form, initial, patch, setBalance, setPayment, reset, dirty, projection }
 }

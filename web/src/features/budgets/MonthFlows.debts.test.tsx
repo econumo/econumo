@@ -62,13 +62,15 @@ const notSetUpRow = () =>
   fixtureDebtRow({ closingBalance: '', paymentsLeft: 0, scheduledTotal: '0', upcoming: '0', payoffDate: '', basePayoffDate: '', overpaymentLeft: '', baseOverpaymentLeft: '', isSetUp: 0 })
 
 it('debt row offers its owner Finish setup in Left while not set up', async () => {
-  useUiStore.setState({ debtDetailsId: null })
+  useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'overview' })
   renderFlows([notSetUpRow()])
   const row = screen.getByTestId('month-debts-row-debt-1')
   const left = within(row).getByTestId('flow-third')
   expect(left).not.toHaveTextContent('payments left')
   await userEvent.click(within(left).getByRole('button', { name: 'Finish setup' }))
   expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
+  // straight to the form the setup is finished in
+  expect(useUiStore.getState().debtDetailsTab).toBe('settings')
   // Paid still shows; the section's Left sums only the debts set up
   expect(within(row).getByTestId('flow-actual')).toHaveTextContent('900.00')
 })

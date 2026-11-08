@@ -2186,7 +2186,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           // a debt's review screen is its owner's alone, and its only edit: no pencil
           sheetPlanTarget?.kind === 'debt' && sheetEdit === true
             ? () => {
-                openDebtDetails(sheetPlanTarget.row.id)
+                // its button reads Finish setup while the debt has no terms
+                openDebtDetails(sheetPlanTarget.row.id, sheetPlanTarget.row.isSetUp === 0 ? 'settings' : 'overview')
                 setSheetCellTarget(null)
               }
             : undefined

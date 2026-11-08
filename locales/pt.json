@@ -566,8 +566,6 @@
       "finish_setup": "Concluir configuração"
     },
     "review": {
-      "menu": "Ações da dívida",
-      "rename": "Renomear",
       "progress": "{paid} de {total} pagos",
       "owed_now": "Em dívida agora: {amount}",
       "owed_now_label": "Em dívida agora",
@@ -578,7 +576,11 @@
       "loan_ends": "Fim do empréstimo",
       "start_date": "Data de início",
       "from_first_payment": "Desde o primeiro pagamento",
-      "overpayment_to_come": "Custo adicional ainda por pagar"
+      "overpayment_to_come": "Custo adicional ainda por pagar",
+      "tab": {
+        "overview": "Resumo",
+        "settings": "Definições"
+      }
     }
   },
   "recurring": {

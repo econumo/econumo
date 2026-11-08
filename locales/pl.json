@@ -566,8 +566,6 @@
       "finish_setup": "Dokończ konfigurację"
     },
     "review": {
-      "menu": "Działania dla długu",
-      "rename": "Zmień nazwę",
       "progress": "Opłacono {paid} z {total}",
       "owed_now": "Do spłaty teraz: {amount}",
       "owed_now_label": "Do spłaty teraz",
@@ -578,7 +576,11 @@
       "loan_ends": "Koniec pożyczki",
       "start_date": "Data rozpoczęcia",
       "from_first_payment": "Od pierwszej płatności",
-      "overpayment_to_come": "Koszt długu do zapłacenia"
+      "overpayment_to_come": "Koszt długu do zapłacenia",
+      "tab": {
+        "overview": "Przegląd",
+        "settings": "Ustawienia"
+      }
     }
   },
   "recurring": {

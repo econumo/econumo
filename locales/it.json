@@ -566,8 +566,6 @@
       "finish_setup": "Completa la configurazione"
     },
     "review": {
-      "menu": "Azioni del debito",
-      "rename": "Rinomina",
       "progress": "{paid} di {total} pagati",
       "owed_now": "Dovuto ora: {amount}",
       "owed_now_label": "Dovuto ora",
@@ -578,7 +576,11 @@
       "loan_ends": "Fine del prestito",
       "start_date": "Data di inizio",
       "from_first_payment": "Dal primo pagamento",
-      "overpayment_to_come": "Costo aggiuntivo ancora da pagare"
+      "overpayment_to_come": "Costo aggiuntivo ancora da pagare",
+      "tab": {
+        "overview": "Panoramica",
+        "settings": "Impostazioni"
+      }
     }
   },
   "recurring": {

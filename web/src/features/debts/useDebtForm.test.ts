@@ -49,7 +49,10 @@ it('projects from the first due after today when the next due is overdue or toda
 
 it('a debt not set up starts with an empty balance and date, and projects nothing', () => {
   const { result } = renderHook(() => useDebtTermsForm(wireDebtNotSetUp))
-  expect(result.current.form).toEqual({ currencyId: 'cur-usd', balance: '', payment: '100', schedule: 'monthly', lastPaymentDate: '', startDate: '' })
+  expect(result.current.form).toEqual({
+    name: 'Car loan', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null,
+    currencyId: 'cur-usd', balance: '', payment: '100', schedule: 'monthly', lastPaymentDate: '', startDate: '',
+  })
   act(() => result.current.setBalance('600'))
   expect(result.current.form.lastPaymentDate).toBe('')
   expect(result.current.projection).toEqual({ status: 'unknown' })
@@ -58,8 +61,9 @@ it('a debt not set up starts with an empty balance and date, and projects nothin
 it('setup without balance and date sends payment, repeats and start date only', () => {
   const initial = initialTermsState(wireDebtNotSetUp)
   const payload = buildTermsPayload({ ...initial, payment: '120', startDate: '2026-01-01' }, initial, wireDebtNotSetUp)
+  // the currency as loaded goes as none: the server keeps the stored one
   expect(payload).toEqual({
-    id: 'd1', name: 'Car loan', currencyId: 'cur-usd', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null,
+    id: 'd1', name: 'Car loan', currencyId: '', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null,
     startDate: '2026-01-01', payment: '120', schedule: 'monthly',
   })
 })
@@ -89,6 +93,10 @@ it.each([
   ['1,000,000', '1000000'],
   ['2.000,50', '2000.5'],
   ['1,5', '1.5'],
+  ['1,50', '1.5'],
+  ['1,200', '1200'],
+  ['0,125', '0.125'],
+  ['1.500', '1.5'],
   ['0', '0'],
   ['-5', '-5'],
 ])('reads the typed amount %s as %s', (typed, read) => {

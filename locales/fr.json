@@ -566,8 +566,6 @@
       "finish_setup": "Terminer la configuration"
     },
     "review": {
-      "menu": "Actions de la dette",
-      "rename": "Renommer",
       "progress": "{paid} sur {total} payés",
       "owed_now": "Dû actuellement : {amount}",
       "owed_now_label": "Dû actuellement",
@@ -578,7 +576,11 @@
       "loan_ends": "Fin du prêt",
       "start_date": "Date de début",
       "from_first_payment": "Dès le premier paiement",
-      "overpayment_to_come": "Surcoût à venir"
+      "overpayment_to_come": "Surcoût à venir",
+      "tab": {
+        "overview": "Aperçu",
+        "settings": "Paramètres"
+      }
     }
   },
   "recurring": {

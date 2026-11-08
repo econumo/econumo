@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { delay, http, HttpResponse } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
@@ -92,19 +92,32 @@ beforeEach(() => {
   server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt', () => ok(details)))
   mockMatchMedia()
   vi.mocked(trackEvent).mockClear()
-  useUiStore.setState({ debtDetailsId: null, debtModal: null })
+  useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'overview', debtModal: null })
 })
 
-async function openScreen() {
-  useUiStore.getState().openDebtDetails('d1')
+async function openScreen(tab?: 'overview' | 'settings') {
+  useUiStore.getState().openDebtDetails('d1', tab)
   await screen.findByRole('heading', { name: 'Car loan' })
-  await screen.findByTestId('debt-review-top')
+  if (tab !== 'settings') {
+    await screen.findByTestId('debt-review-top')
+  }
 }
 
-async function openMenu(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: 'Debt actions' }))
-  await screen.findByRole('menu')
+async function openSettings(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('tab', { name: 'Settings' }))
+  await screen.findByLabelText('Name')
 }
+
+it('opens on the Overview tab, with a Settings tab beside it and no actions menu', async () => {
+  renderScreen()
+  await openScreen()
+
+  expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'false')
+  expect(screen.queryByRole('button', { name: 'Debt actions' })).toBeNull()
+  expect(screen.queryByRole('menu')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+})
 
 it('set-up debt shows payments left first with an X of Y progress', async () => {
   renderScreen()
@@ -112,12 +125,22 @@ it('set-up debt shows payments left first with an X of Y progress', async () => 
 
   const top = screen.getByTestId('debt-review-top')
   expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('283 payments left')
-  expect(within(top).getByRole('progressbar')).toBeInTheDocument()
   expect(top).toHaveTextContent('77 of 360 paid')
   expect(top).toHaveTextContent('Owed now 1,090.00 $ · Paid off by Jul 2050')
   // the count leads the screen, before the loan's details
   const loan = screen.getByRole('region', { name: 'Loan' })
   expect(top.compareDocumentPosition(loan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('the progress bar shows the whole loan as its track and the paid part filled', async () => {
+  renderScreen()
+  await openScreen()
+
+  const bar = within(screen.getByTestId('debt-review-top')).getByRole('progressbar', { name: '77 of 360 paid' })
+  // a visible track on the card: the full width is every payment
+  expect(bar.className).toContain('bg-foreground/15')
+  // 77 of 360 filled
+  expect(bar.querySelector<HTMLElement>('[data-slot="progress-indicator"]')?.style.transform).toBe(`translateX(-${100 - (77 / 360) * 100}%)`)
 })
 
 it('hides the progress bar while nothing is paid or left', async () => {
@@ -138,7 +161,7 @@ it('a paid-off debt says so instead of counting payments', async () => {
   expect(screen.getByTestId('debt-review-top')).not.toHaveTextContent('Paid off by')
 })
 
-it('the Loan card holds every figure of the debt', async () => {
+it('the Loan card holds every figure of the debt and nothing to edit', async () => {
   renderScreen()
   await openScreen()
 
@@ -153,6 +176,7 @@ it('the Loan card holds every figure of the debt', async () => {
   expect(figure('Overpaid so far')).toHaveTextContent('15.50 $')
   expect(figure('Overpayment still to come')).toHaveTextContent('10.00 $')
   expect(figure('Currency')).toHaveTextContent('USD')
+  expect(within(loan).queryByRole('button')).toBeNull()
 })
 
 it('a debt with a start date shows it in the Loan card', async () => {
@@ -162,6 +186,15 @@ it('a debt with a start date shows it in the Loan card', async () => {
 
   const loan = screen.getByRole('region', { name: 'Loan' })
   expect(within(loan).getByText('Start date').nextElementSibling).toHaveTextContent('Mar 1, 2026')
+})
+
+it('the Overview reads which payments count as a sentence, with no pickers', async () => {
+  renderScreen()
+  await openScreen()
+
+  const sentence = screen.getByRole('group', { name: 'Which payments count' })
+  expect(sentence).toHaveTextContent(/Payments in \w*Food · from any payee · tagged any tag/)
+  expect(within(sentence).queryAllByRole('button')).toHaveLength(0)
 })
 
 it('shows interest and principal per payment, newest first', async () => {
@@ -222,7 +255,28 @@ it('Paid so far counts only payments dated up to today; the list keeps the futur
   expect(screen.getAllByTestId('debt-payment')).toHaveLength(3)
 })
 
-it('Finish setup saves terms and the screen switches to payments left', async () => {
+it('Finish setup switches to Settings with the balance focused', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+
+  await user.click(within(screen.getByTestId('debt-review-top')).getByRole('button', { name: 'Finish setup' }))
+
+  expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
+  await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveFocus())
+})
+
+it('opened for Finish setup, the screen starts on Settings', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
+  renderScreen()
+  await openScreen('settings')
+
+  expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
+  await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveFocus())
+})
+
+it('saving the terms of a debt not set up finishes its setup and goes back to the Overview', async () => {
   let setUp = false
   server.use(http.get('*/api/v1/debt/get-debt', () => ok(setUp ? { ...details, item: { ...details.item, paymentsLeft: 12, periodsPaid: 0 } } : notSetUp)))
   const bodies = captureUpdate(() => {
@@ -236,153 +290,78 @@ it('Finish setup saves terms and the screen switches to payments left', async ()
   await user.click(within(screen.getByTestId('debt-review-top')).getByRole('button', { name: 'Finish setup' }))
   await user.type(await screen.findByLabelText('Balance now'), '600')
   await user.click(screen.getByRole('button', { name: 'Last payment date' }))
-  const now = new Date()
-  const month = new Intl.DateTimeFormat('en', { month: 'long' }).format(now)
-  await user.click(await screen.findByRole('button', { name: new RegExp(`${month} 15th, ${now.getFullYear()}`) }))
-  await user.click(screen.getByRole('button', { name: 'Finish setup' }))
+  await user.click(await screen.findByRole('button', { name: /November 15th, 2026/ }))
+  await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ id: 'd1', balance: '600', payment: '100', schedule: 'monthly' })
+  expect(bodies[0]).toMatchObject({ id: 'd1', balance: '600', payment: '100', schedule: 'monthly', lastPaymentDate: '2026-11-15' })
   expect(vi.mocked(trackEvent).mock.calls.filter(([event]) => event === METRICS.DEBT_FINISH_SETUP)).toHaveLength(1)
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
   expect(await screen.findByText('12 payments left')).toBeInTheDocument()
-  expect(screen.queryByLabelText('Balance now')).toBeNull()
+  expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
 })
 
-it('Edit opens the terms with the debt as it is now, and Cancel goes back', async () => {
+it('Settings loads the debt afresh: the balance is the one after a payment landed', async () => {
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
   // a payment landed since the screen loaded
   server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, currentBalance: '990' } })))
 
-  await user.click(within(screen.getByRole('region', { name: 'Loan' })).getByRole('button', { name: 'Edit' }))
+  await openSettings(user)
 
   expect(await screen.findByLabelText('Balance now')).toHaveValue('990')
-  await user.click(screen.getByRole('button', { name: 'Cancel' }))
-  expect(await screen.findByTestId('debt-review-top')).toBeInTheDocument()
-  expect(screen.queryByLabelText('Balance now')).toBeNull()
 })
 
-it('a debt not set up can be edited from the Loan card too, its currency included', async () => {
-  server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
-  const bodies = captureUpdate(() => ({ ...wireDebtNotSetUp, currencyId: 'cur-eur' }))
+it('Settings saves the name, the payments sentence and the terms in one request', async () => {
+  const bodies = captureUpdate((body) => ({ ...details.item, name: body.name as string, labelId: 'label1' }))
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
+  await openSettings(user)
 
-  await user.click(within(screen.getByRole('region', { name: 'Loan' })).getByRole('button', { name: 'Edit' }))
-  await user.click(await screen.findByRole('button', { name: /^Currency: USD/ }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/EUR/))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ id: 'd1', currencyId: 'cur-eur', payment: '100', schedule: 'monthly' })
-  expect(bodies[0]).not.toHaveProperty('balance')
-})
-
-it('editing payments-from saves the label', async () => {
-  const bodies = captureUpdate(() => ({ ...details.item, labelId: 'label1' }))
-  const user = userEvent.setup()
-  renderScreen()
-  await openScreen()
-
-  // nothing to save until a pick changes
-  expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
-  await user.click(screen.getByRole('button', { name: 'Tag (optional): any tag' }))
-  const sheet = await screen.findByRole('dialog', { name: 'Tag (optional)' })
-  await user.click(within(sheet).getByText('health'))
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  // no terms go along: the server keeps the stored ones, even if another
-  // device changed them after this screen loaded
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', currencyId: '', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' })
-  for (const key of TERM_KEYS) {
-    expect(bodies[0]).not.toHaveProperty(key)
-  }
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
-  await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull())
-})
-
-it('a refused payments-from change shows why under the sentence', async () => {
-  server.use(
-    http.post('*/api/v1/debt/update-debt', () =>
-      HttpResponse.json(
-        { success: false, message: 'Form validation error', code: 400, errors: { categoryId: ['Another debt already counts these payments.'] } },
-        { status: 400 },
-      ),
-    ),
-  )
-  const user = userEvent.setup()
-  renderScreen()
-  await openScreen()
-
+  const name = screen.getByLabelText('Name')
+  await user.clear(name)
+  await user.type(name, 'Van loan')
   await user.click(screen.getByRole('button', { name: 'Tag (optional): any tag' }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Tag (optional)' })).getByText('health'))
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
-  expect(await screen.findByText('Another debt already counts these payments.')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
-})
-
-it('Rename in the menu saves a new name', async () => {
-  const bodies = captureUpdate(() => ({ ...details.item, name: 'Van loan' }))
-  const user = userEvent.setup()
-  renderScreen()
-  await openScreen()
-
-  await openMenu(user)
-  await user.click(screen.getByRole('menuitem', { name: 'Rename' }))
-  const prompt = await screen.findByRole('dialog', { name: 'Rename' })
-  const input = within(prompt).getByLabelText('Name')
-  expect(input).toHaveValue('Car loan')
-  await user.clear(input)
-  await user.type(input, 'Van loan')
-  await user.click(within(prompt).getByRole('button', { name: 'Save' }))
-
   await waitFor(() => expect(bodies).toHaveLength(1))
-  // nor the currency: one changed on another device after this screen loaded stays
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', labelId: null, currencyId: '' })
+  // no terms and no currency go along: the server keeps the stored ones
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', currencyId: '', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' })
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true'))
 })
 
-it('a rename right after an Edit sends no terms, so the ones loaded before it cannot come back', async () => {
-  let edited = false
-  server.use(
-    http.get('*/api/v1/debt/get-debt', async () => {
-      // the refetch after the edit is still on its way when the rename is sent
-      if (edited) {
-        await delay('infinite')
-      }
-      return ok(details)
-    }),
-  )
-  const saved = { ...details.item, balance: '600', currentBalance: '600', lastPaymentDate: '2031-03-05' }
+it('a save after an earlier one starts from the debt as saved, so the earlier terms are not sent again', async () => {
+  let current = details.item
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: current })))
   const bodies = captureUpdate((body) => {
-    edited = true
-    return body.name === 'Van loan' ? { ...saved, name: 'Van loan' } : saved
+    current = body.balance ? { ...current, balance: '600', currentBalance: '600', lastPaymentDate: '2031-03-05' } : { ...current, name: body.name as string }
+    return current
   })
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
 
-  await user.click(within(screen.getByRole('region', { name: 'Loan' })).getByRole('button', { name: 'Edit' }))
-  const balance = await screen.findByLabelText('Balance now')
+  await openSettings(user)
+  const balance = screen.getByLabelText('Balance now')
   await user.clear(balance)
   await user.type(balance, '600')
   await user.click(screen.getByRole('button', { name: 'Save' }))
   await waitFor(() => expect(bodies).toHaveLength(1))
-  await screen.findByTestId('debt-review-top')
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true'))
 
-  await openMenu(user)
-  await user.click(screen.getByRole('menuitem', { name: 'Rename' }))
-  const prompt = await screen.findByRole('dialog', { name: 'Rename' })
-  await user.clear(within(prompt).getByLabelText('Name'))
-  await user.type(within(prompt).getByLabelText('Name'), 'Van loan')
-  await user.click(within(prompt).getByRole('button', { name: 'Save' }))
+  await openSettings(user)
+  await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveValue('600'))
+  const name = screen.getByLabelText('Name')
+  await user.clear(name)
+  await user.type(name, 'Van loan')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(2))
   expect(bodies[1]).toMatchObject({ name: 'Van loan' })
@@ -391,24 +370,54 @@ it('a rename right after an Edit sends no terms, so the ones loaded before it ca
   }
 })
 
-it('menu hides Mark as paid off while not set up', async () => {
+it('edits survive a look at the Overview and back', async () => {
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  await openSettings(user)
+
+  const name = screen.getByLabelText('Name')
+  await user.clear(name)
+  await user.type(name, 'Van loan')
+  await user.click(screen.getByRole('tab', { name: 'Overview' }))
+  await user.click(screen.getByRole('tab', { name: 'Settings' }))
+
+  expect(screen.getByLabelText('Name')).toHaveValue('Van loan')
+})
+
+it('Settings offers Mark as paid off and Delete under the form', async () => {
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  await openSettings(user)
+
+  const panel = screen.getByRole('tabpanel', { name: 'Settings' })
+  const save = within(panel).getByRole('button', { name: 'Save' })
+  const paidOff = within(panel).getByRole('button', { name: 'Mark as paid off' })
+  const del = within(panel).getByRole('button', { name: 'Delete' })
+  expect(save.compareDocumentPosition(paidOff) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(paidOff.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('Settings hides Mark as paid off while not set up', async () => {
   server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
+  await openSettings(user)
 
-  await openMenu(user)
-  expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Rename', 'Delete'])
+  expect(screen.queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
 })
 
-it('menu hides Mark as paid off once the debt is paid off', async () => {
+it('Settings hides Mark as paid off once the debt is paid off', async () => {
   server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, isPaidOff: 1 } })))
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
+  await openSettings(user)
 
-  await openMenu(user)
-  expect(screen.queryByRole('menuitem', { name: 'Mark as paid off' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
 })
 
 it('marking a debt paid off asks first, then posts', async () => {
@@ -417,9 +426,9 @@ it('marking a debt paid off asks first, then posts', async () => {
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
+  await openSettings(user)
 
-  await openMenu(user)
-  await user.click(screen.getByRole('menuitem', { name: 'Mark as paid off' }))
+  await user.click(screen.getByRole('button', { name: 'Mark as paid off' }))
   expect(called).toBe(0)
   const dialog = await screen.findByRole('dialog', { name: 'Mark as paid off?' })
   await user.click(within(dialog).getByRole('button', { name: 'Mark as paid off' }))
@@ -446,9 +455,9 @@ it('a removal_unconfirmed answer asks and resends with confirmDataRemoval', asyn
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
+  await openSettings(user)
 
-  await openMenu(user)
-  await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+  await user.click(screen.getByRole('button', { name: 'Delete' }))
   const first = await screen.findByRole('dialog', { name: 'Delete this debt?' })
   await user.click(within(first).getByRole('button', { name: 'Delete' }))
 
@@ -473,9 +482,9 @@ it('a delete the server accepts closes the screen without a second question', as
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
+  await openSettings(user)
 
-  await openMenu(user)
-  await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+  await user.click(screen.getByRole('button', { name: 'Delete' }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Delete this debt?' })).getByRole('button', { name: 'Delete' }))
 
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBeNull())
@@ -493,17 +502,23 @@ it('a debt that fails to load says why instead of showing an empty screen', asyn
   expect(await screen.findByRole('alert')).toHaveTextContent('Debt not found')
 })
 
-it.each([
-  ['phone', true],
-  ['desktop', false],
-])('the review screen is full screen on %s', async (_name, phone) => {
-  mockMatchMedia(phone)
+it('the review screen is full screen on a phone', async () => {
+  mockMatchMedia(true)
   const { baseElement } = renderScreen()
   await openScreen()
 
   const content = baseElement.querySelector('[data-slot="dialog-content"]')
   expect(content?.className).toContain('h-dvh')
   expect(content?.className).toContain('w-screen')
-  expect(content?.className).toContain('rounded-none')
   expect(baseElement.querySelector('[data-slot="drawer-content"]')).toBeNull()
+})
+
+it('the review screen is a large centred dialog on a desktop, not a full page', async () => {
+  const { baseElement } = renderScreen()
+  await openScreen()
+
+  const content = baseElement.querySelector('[data-slot="dialog-content"]')
+  expect(content?.className).toContain('sm:max-w-[90vw]')
+  expect(content?.className).toContain('h-[90vh]')
+  expect(content?.className).not.toContain('h-dvh')
 })

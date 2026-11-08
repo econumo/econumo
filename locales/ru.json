@@ -566,8 +566,6 @@
       "finish_setup": "Завершить настройку"
     },
     "review": {
-      "menu": "Действия с долгом",
-      "rename": "Переименовать",
       "progress": "Оплачено {paid} из {total}",
       "owed_now": "Долг сейчас: {amount}",
       "owed_now_label": "Долг сейчас",
@@ -578,7 +576,11 @@
       "loan_ends": "Окончание кредита",
       "start_date": "Дата начала",
       "from_first_payment": "С первого платежа",
-      "overpayment_to_come": "Ещё предстоит переплатить"
+      "overpayment_to_come": "Ещё предстоит переплатить",
+      "tab": {
+        "overview": "Обзор",
+        "settings": "Настройки"
+      }
     }
   },
   "recurring": {

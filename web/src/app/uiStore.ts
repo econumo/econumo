@@ -54,6 +54,8 @@ export interface OpenDebtParams {
   fromBudget?: boolean
 }
 
+export type DebtDetailsTab = 'overview' | 'settings'
+
 export interface RulePromptParams {
   link: TransactionImportLinkDto
   diff: RuleDiff
@@ -73,7 +75,9 @@ interface UiState {
   openDebtModal: (params: OpenDebtParams) => void
   closeDebtModal: () => void
   debtDetailsId: Id | null
-  openDebtDetails: (id: Id) => void
+  /** the review screen's tab it opens on: Finish setup opens straight on Settings */
+  debtDetailsTab: DebtDetailsTab
+  openDebtDetails: (id: Id, tab?: DebtDetailsTab) => void
   closeDebtDetails: () => void
   switchAccountPrompt: Id | null
   setSwitchAccountPrompt: (id: Id | null) => void
@@ -108,7 +112,8 @@ export const useUiStore = create<UiState>()((set) => ({
   openDebtModal: (params) => set({ debtModal: params }),
   closeDebtModal: () => set({ debtModal: null }),
   debtDetailsId: null,
-  openDebtDetails: (id) => set({ debtDetailsId: id }),
+  debtDetailsTab: 'overview',
+  openDebtDetails: (id, tab = 'overview') => set({ debtDetailsId: id, debtDetailsTab: tab }),
   closeDebtDetails: () => set({ debtDetailsId: null }),
   switchAccountPrompt: null,
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),

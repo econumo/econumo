@@ -332,3 +332,27 @@ it('focus a closing sheet hands back to a button keeps the page held; a text fie
     }
   }
 })
+
+it('size="large" is a centred dialog covering most of a desktop screen, scrolling inside', () => {
+  mockMatchMedia(false)
+  const { baseElement } = render(
+    <ResponsiveDialog open fullScreen size="large" onOpenChange={() => {}} title="My title">
+      <p>body text</p>
+    </ResponsiveDialog>,
+  )
+  const content = baseElement.querySelector('[data-slot="dialog-content"]')
+  expect(content?.className).toContain('sm:max-w-[90vw]')
+  expect(content?.className).toContain('h-[90vh]')
+  expect(content?.className).not.toContain('h-dvh')
+  expect(baseElement.querySelector('[data-slot="dialog-body"]')?.className).toContain('overflow-y-auto')
+})
+
+it('size="large" with fullScreen stays a full page on a phone', () => {
+  mockMatchMedia(true)
+  const { baseElement } = render(
+    <ResponsiveDialog open fullScreen size="large" onOpenChange={() => {}} title="My title">
+      <p>body text</p>
+    </ResponsiveDialog>,
+  )
+  expect(baseElement.querySelector('[data-slot="dialog-content"]')?.className).toContain('h-dvh')
+})
