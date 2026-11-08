@@ -412,10 +412,10 @@ block that sets the main currency) then categories, with an automatic "My budget
 each step; the unsaved draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the
 writes are idempotent so a reload or retry creates nothing twice. Afterwards, until the first
 real transaction (correction-shaped rows, i.e. opening balances and balance-edit adjustments, do not count), the budget page shows "get ready" cards
-(phone: add to home screen, Apple Wallet on iOS; desktop: set the plan, CSV import) and the Inbox
+(phone: add to home screen, Apple Wallet on iPhone; desktop: set the plan, CSV import) and the Inbox
 lists the same items under "Next steps", which is NOT counted in the sidebar badge. Per-user
 progress is the `getting_started` user option (comma-separated keys `plan`/`import`/`apple_wallet`,
-a `!` suffix = dismissed, `""` = went through Day 0, absent = never in the flow), written by
+a `!` prefix = dismissed (`!plan`), `""` = went through Day 0, absent = never in the flow), written by
 `POST /api/v1/user/update-getting-started`. Migration `20261108000000` marks onboarding complete
 for existing users who own accounts.
 
@@ -1522,7 +1522,7 @@ data unreadable. Most are also asserted by the test suite.
 - **SQLite is the reference engine** — it's the default; PostgreSQL must match it byte-for-byte (enforced by the `enginecompare` suite).
 
 ### Notable behaviours
-- **Keep balance (CSV import and Day 0)**: `GET /api/v1/account/get-balance-snapshot?accountIds=`
+- **Keep balance (CSV import)**: `GET /api/v1/account/get-balance-snapshot?accountIds=`
   returns each account's current balance, and `POST /api/v1/account/restore-balance` (under the
   account row lock) brings it back to a snapshot by moving or resizing the account's opening
   correction, or by adding a "Balance adjustment" transaction; both bump the account's
@@ -1531,7 +1531,8 @@ data unreadable. Most are also asserted by the test suite.
   where it could not be. The server snapshots only accounts the caller owns or administers
   (accepted admin), so any import target absent from the snapshot (e.g. a shared account with
   the user role) is reported as not kept and its balance moves; the checkbox default and
-  visibility consider only accounts present in the snapshot.
+  visibility consider only accounts present in the snapshot. Import stays disabled while the
+  snapshot loads; a failed snapshot shows a note and allows a plain import.
 - **Category type matches transaction type**: an income category classifies only income and
   an expense category only expenses. `checkReferences` (create, update, bulk, recurring post,
   MCP, imports) refuses a mismatch with the field error `categoryId` /
