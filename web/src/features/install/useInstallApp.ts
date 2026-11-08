@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { promptInstall, useInstallMode, type InstallMode, type InstructionMode } from './installPrompt'
 
-export type InstallSource = 'settings' | 'banner' | 'popup'
+export type InstallSource = 'settings' | 'banner' | 'popup' | 'getting_started'
 
 // One entry point for every install surface: Chromium gets its own dialog,
 // the menu-only browsers get the steps.

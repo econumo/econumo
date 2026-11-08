@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureOwner } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { formatDateTime } from '@/lib/datetime'
 import { InboxButton } from './InboxButton'
 import { InboxPage } from './InboxPage'
@@ -367,4 +367,52 @@ it('does not list a due template on an account shared with me read-only', async 
   renderInbox()
   expect(await screen.findByText('All caught up')).toBeInTheDocument()
   expect(screen.queryByTestId('due-r-ro')).toBeNull()
+})
+
+const gettingStartedUser = (value: string) => ({
+  ...fixtureUser,
+  options: [...fixtureUser.options, { name: 'getting_started', value }],
+})
+
+it('lists open next steps last, without counting them toward the badge', async () => {
+  server.use(...coreHandlers({ user: gettingStartedUser('plan'), importQueue: { queued: [queued()], skipped: [], failed: [] } }))
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const router = createMemoryRouter(
+    [{ element: <div><InboxButton variant="row" /><Outlet /></div>, children: [{ path: '/inbox', element: <InboxPage /> }] }],
+    { initialEntries: ['/inbox'] },
+  )
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByText('Bring in transactions')).toBeInTheDocument()
+  expect(screen.queryByText('Set your plan')).toBeNull()
+  const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+  expect(headings.at(-1)).toBe('Next steps')
+  await waitFor(() => expect(screen.getByTestId('inbox-badge')).toHaveTextContent('1'))
+})
+
+it('dismissing a next step posts it and drops the section once nothing is left', async () => {
+  const posts: unknown[] = []
+  server.use(
+    ...coreHandlers({ user: gettingStartedUser('plan') }),
+    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
+      const body = (await request.json()) as { value: string }
+      posts.push(body)
+      return HttpResponse.json({ success: true, message: '', data: { user: gettingStartedUser(body.value) } })
+    }),
+  )
+  renderInbox()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Dismiss: Bring in transactions' }))
+  await waitFor(() => expect(posts).toEqual([{ value: 'plan,!import' }]))
+  expect(screen.queryByText('Next steps')).toBeNull()
+})
+
+it('shows no next steps to a user outside the flow', async () => {
+  server.use(...coreHandlers())
+  renderInbox()
+  expect(await screen.findByText('All caught up')).toBeInTheDocument()
+  expect(screen.queryByText('Next steps')).toBeNull()
 })

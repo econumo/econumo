@@ -32,6 +32,8 @@ export const METRICS = {
   USER_COMPLETE_ONBOARDING: 'appUserCompleteOnboarding',
   ONBOARDING_SKIP: 'appOnboardingSkip',
   ONBOARDING_ACCOUNTS_COMPLETE: 'appOnboardingAccountsComplete',
+  GETTING_STARTED_OPEN: 'appGettingStartedOpen',
+  GETTING_STARTED_DISMISS: 'appGettingStartedDismiss',
   USER_UPDATE_DEFAULT_BUDGET: 'appUserUpdateDefaultBudget',
   USER_UPDATE_LANGUAGE: 'appUserUpdateLanguage',
   USER_REMIND_PASSWORD: 'appUserRemindPassword',

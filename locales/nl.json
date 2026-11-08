@@ -498,7 +498,8 @@
       "sync": "Synchronisatieproblemen",
       "failed": "Mislukte imports",
       "to_review": "Te beoordelen",
-      "skipped": "Overgeslagen ({count})"
+      "skipped": "Overgeslagen ({count})",
+      "next_steps": "Volgende stappen"
     },
     "due": {
       "overdue": "Achterstallig · {date}",
@@ -1230,7 +1231,33 @@
       "note": "Je kunt later in Instellingen meer valuta's toevoegen.",
       "no_rate": "Nog geen wisselkoers voor {codes}. Bedragen in deze valuta worden pas omgerekend als er een koers is toegevoegd."
     },
-    "step_of": "Stap {current} van {total}"
+    "step_of": "Stap {current} van {total}",
+    "cards": {
+      "title": "Aan de slag",
+      "description": "Een paar dingen die vanaf dag één helpen.",
+      "skip": "Overslaan",
+      "dismiss": "Verbergen: {step}",
+      "home_screen": {
+        "title": "Zet Econumo op je beginscherm",
+        "description": "Open het als een app, met één tik.",
+        "action": "Toevoegen"
+      },
+      "apple_wallet": {
+        "title": "Apple Wallet-betalingen importeren",
+        "description": "Kaartbetalingen uit Wallet komen vanzelf in Econumo.",
+        "action": "Instellen"
+      },
+      "plan": {
+        "title": "Stel je plan op",
+        "description": "Bepaal hoeveel er deze maand naar elke categorie gaat.",
+        "action": "Plan openen"
+      },
+      "import": {
+        "title": "Transacties binnenhalen",
+        "description": "Importeer je geschiedenis uit een CSV-bestand.",
+        "action": "CSV importeren"
+      }
+    }
   },
   "budgets": {
     "modal": {

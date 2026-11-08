@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { ImportQueuedEventDto } from '@/api/dto/imports'
@@ -7,18 +7,11 @@ import { Button } from '@/components/ui/button'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { FailedImportsSection, SkippedSection, ToReviewSection } from '@/features/imports/QueueSections'
 import { DueRecurringSection } from './DueRecurringSection'
+import { InboxSection } from './InboxSection'
+import { NextStepsSection } from './NextStepsSection'
 import { SharingSection } from './SharingSection'
 import { SyncProblemsSection } from './SyncProblemsSection'
 import { useInbox } from './useInbox'
-
-export function InboxSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="px-1 text-xs uppercase text-muted-foreground">{title}</h2>
-      {children}
-    </section>
-  )
-}
 
 export function SkippedInboxSection({ skipped }: { skipped: ImportQueuedEventDto[] }) {
   const { t } = useTranslation()
@@ -68,6 +61,7 @@ export function InboxPage() {
         {inbox.invites.length > 0 ? (
           <InboxSection title={t('inbox.sections.sharing')}><SharingSection invites={inbox.invites} /></InboxSection>
         ) : null}
+        <NextStepsSection />
       </div>
     </SettingsShell>
   )

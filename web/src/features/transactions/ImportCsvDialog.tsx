@@ -14,6 +14,7 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { useUserData } from '@/features/user/queries'
 import type { AggregatedImportResult, CsvAnalysis, FieldKey, ImportSelection } from './importCsv'
+import { markGettingStartedDone } from '@/features/onboarding/gettingStarted'
 import { EntitySelect } from './EntitySelect'
 import { analyzeCsv, autoDetect, CHUNK_SIZE, countNewLabels, defaultSelection, runImport, selectionValid } from './importCsv'
 
@@ -268,6 +269,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     try {
       const result = await runImport(analysis, selection, importTransactionList, (done, total) => setProgress({ done, total }))
       trackEvent(METRICS.TRANSACTION_IMPORT)
+      markGettingStartedDone(queryClient, 'import')
       await queryClient.invalidateQueries()
       onClose()
       onComplete(result)

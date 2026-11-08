@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget as wireBudget } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
-import { useBudget, useSetLimit, useMoveBudgetFolder, canUpdateLimits, canEditBudget } from './queries'
+import { useBudget, useSetLimit, usePlanSetLimit, useMoveBudgetFolder, canUpdateLimits, canEditBudget } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetDto, BudgetMetaDto } from '@/api/dto/budget'
 
@@ -85,6 +85,23 @@ it('set-limit patches budgeted optimistically and rolls back on error', async ()
   // rolled back
   const cached = queryClient.getQueryData<BudgetDto>(key)!
   expect(cached.structure.elements[0].budgeted).toBe('200')
+})
+
+it('a saved limit records the getting-started plan step once, in both views', async () => {
+  const posts: unknown[] = []
+  server.use(
+    http.post('*/api/v1/budget/set-limit', () => HttpResponse.json({ success: true, message: '', data: {} })),
+    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
+      posts.push(await request.json())
+      return HttpResponse.json({ success: true, message: '', data: { user: fixtureUser } })
+    }),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.user, { ...fixtureUser, options: [...fixtureUser.options, { name: 'getting_started', value: '!import' }] })
+  const { result } = renderHook(() => ({ budget: useSetLimit(), plan: usePlanSetLimit(['plan-key']) }), { wrapper })
+  await result.current.budget.mutateAsync({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '10' })
+  await result.current.plan.mutateAsync({ budgetId: 'b1', elementId: 'cat-food', period: '2026-08-01', amount: '10', monthIndex: 1 })
+  await waitFor(() => expect(posts).toEqual([{ value: '!import,plan' }]))
 })
 
 it('order-folders patches folder positions optimistically and rolls back on error', async () => {

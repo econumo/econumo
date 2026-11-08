@@ -498,7 +498,8 @@
       "sync": "Synchronisierungsprobleme",
       "failed": "Fehlgeschlagene Importe",
       "to_review": "Zu prüfen",
-      "skipped": "Übersprungen ({count})"
+      "skipped": "Übersprungen ({count})",
+      "next_steps": "Nächste Schritte"
     },
     "due": {
       "overdue": "Überfällig · {date}",
@@ -1230,7 +1231,33 @@
       "note": "Weitere Währungen können Sie später in den Einstellungen hinzufügen.",
       "no_rate": "Für {codes} gibt es noch keinen Wechselkurs. Beträge darin werden erst umgerechnet, wenn ein Kurs hinzugefügt wird."
     },
-    "step_of": "Schritt {current} von {total}"
+    "step_of": "Schritt {current} von {total}",
+    "cards": {
+      "title": "Los geht's",
+      "description": "Ein paar Dinge, die vom ersten Tag an helfen.",
+      "skip": "Überspringen",
+      "dismiss": "Ausblenden: {step}",
+      "home_screen": {
+        "title": "Econumo zum Home-Bildschirm hinzufügen",
+        "description": "Wie eine App öffnen, mit einem Tippen.",
+        "action": "Hinzufügen"
+      },
+      "apple_wallet": {
+        "title": "Apple-Wallet-Zahlungen importieren",
+        "description": "Kartenzahlungen aus Wallet landen automatisch in Econumo.",
+        "action": "Einrichten"
+      },
+      "plan": {
+        "title": "Plan festlegen",
+        "description": "Lege fest, wie viel diesen Monat in jede Kategorie fließt.",
+        "action": "Plan öffnen"
+      },
+      "import": {
+        "title": "Transaktionen übernehmen",
+        "description": "Importiere deinen Verlauf aus einer CSV-Datei.",
+        "action": "CSV importieren"
+      }
+    }
   },
   "budgets": {
     "modal": {
