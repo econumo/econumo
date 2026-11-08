@@ -1,22 +1,22 @@
 -- OAuth authorization server (MCP clients): clients, codes, grants.
 
 -- name: InsertOAuthClient :exec
-INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at)
-VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at, owner_user_id, is_global)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: GetOAuthClient :one
-SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at FROM oauth_clients WHERE id = $1;
+SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at, owner_user_id, is_global FROM oauth_clients WHERE id = $1;
 
 -- name: MarkOAuthClientUsed :exec
 UPDATE oauth_clients SET last_used_at = $1 WHERE id = $2;
 
 -- name: PurgeUnusedOAuthClients :execrows
-DELETE FROM oauth_clients WHERE last_used_at IS NULL AND created_at < $1;
+DELETE FROM oauth_clients WHERE last_used_at IS NULL AND is_global = false AND created_at < $1;
 
 -- name: PurgeExcessUnusedOAuthClients :execrows
 DELETE FROM oauth_clients
-WHERE last_used_at IS NULL AND id NOT IN (
-    SELECT id FROM oauth_clients WHERE last_used_at IS NULL ORDER BY created_at DESC, id DESC LIMIT $1
+WHERE last_used_at IS NULL AND is_global = false AND id NOT IN (
+    SELECT id FROM oauth_clients WHERE last_used_at IS NULL AND is_global = false ORDER BY created_at DESC, id DESC LIMIT $1
 );
 
 -- name: InsertOAuthCode :exec
@@ -69,7 +69,7 @@ UPDATE oauth_grants SET revoked_at = $1 WHERE user_id = $2 AND revoked_at IS NUL
 
 -- name: ListUnrevokedOAuthGrants :many
 SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at,
-       g.created_at, g.last_used_at, g.expires_at, g.revoked_at, c.name, c.redirect_uris
+       g.created_at, g.last_used_at, g.expires_at, g.revoked_at, c.name, c.redirect_uris, c.is_global
 FROM oauth_grants g
 JOIN oauth_clients c ON c.id = g.client_id
 WHERE g.user_id = $1 AND g.revoked_at IS NULL
@@ -87,4 +87,42 @@ WHERE (revoked_at IS NOT NULL AND revoked_at < $1)
 -- their access tokens can be revoked too.
 UPDATE oauth_grants SET revoked_at = $1
 WHERE user_id = $2 AND client_id = $3 AND id <> $4 AND revoked_at IS NULL
+RETURNING id;
+
+-- name: ClaimOAuthClient :execrows
+UPDATE oauth_clients SET owner_user_id = $1 WHERE id = $2 AND is_global = false AND owner_user_id IS NULL;
+
+-- name: ListOAuthClients :many
+SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at, owner_user_id, is_global FROM oauth_clients ORDER BY created_at, id;
+
+-- name: UpdateGlobalOAuthClient :execrows
+UPDATE oauth_clients SET name = $1, redirect_uris = $2 WHERE id = $3 AND is_global = true;
+
+-- name: MakeOAuthClientGlobal :execrows
+UPDATE oauth_clients SET is_global = true, owner_user_id = NULL WHERE id = $1 AND is_global = false;
+
+-- name: SetOAuthClientSecret :execrows
+UPDATE oauth_clients SET secret_hash = $1 WHERE id = $2 AND secret_hash IS NOT NULL;
+
+-- name: LockOAuthClient :one
+-- Plain FOR UPDATE is required: it is the only mode that conflicts with the KEY SHARE
+-- lock a concurrent grant INSERT takes on this row through its foreign key.
+SELECT id FROM oauth_clients WHERE id = $1
+FOR UPDATE;
+
+-- name: DeleteOAuthClient :execrows
+DELETE FROM oauth_clients WHERE id = $1;
+
+-- name: ListOAuthClientGrants :many
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
+FROM oauth_grants WHERE client_id = $1 AND revoked_at IS NULL
+ORDER BY created_at, id;
+
+-- name: ListAllUnrevokedOAuthGrants :many
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
+FROM oauth_grants WHERE revoked_at IS NULL
+ORDER BY client_id, created_at, id;
+
+-- name: RevokeClientOAuthGrants :many
+UPDATE oauth_grants SET revoked_at = $1 WHERE client_id = $2 AND revoked_at IS NULL
 RETURNING id;

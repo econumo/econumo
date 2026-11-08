@@ -30,6 +30,10 @@ type (
 	revokeOtherGrantsParam = sqlitegen.RevokeOtherOAuthGrantsParams
 	deleteDeadParams       = sqlitegen.DeleteDeadOAuthGrantsParams
 	insertSpentParams      = sqlitegen.InsertOAuthSpentRefreshHashParams
+	claimClientParams      = sqlitegen.ClaimOAuthClientParams
+	updateGlobalParams     = sqlitegen.UpdateGlobalOAuthClientParams
+	setClientSecretParams  = sqlitegen.SetOAuthClientSecretParams
+	revokeClientParams     = sqlitegen.RevokeClientOAuthGrantsParams
 )
 
 type querier interface {
@@ -38,6 +42,13 @@ type querier interface {
 	MarkOAuthClientUsed(ctx context.Context, db backend.DBTX, p markClientUsedParams) error
 	PurgeUnusedOAuthClients(ctx context.Context, db backend.DBTX, createdBefore time.Time) (int64, error)
 	PurgeExcessUnusedOAuthClients(ctx context.Context, db backend.DBTX, keep int64) (int64, error)
+	ClaimOAuthClient(ctx context.Context, db backend.DBTX, p claimClientParams) (int64, error)
+	ListOAuthClients(ctx context.Context, db backend.DBTX) ([]clientRow, error)
+	UpdateGlobalOAuthClient(ctx context.Context, db backend.DBTX, p updateGlobalParams) (int64, error)
+	MakeOAuthClientGlobal(ctx context.Context, db backend.DBTX, id string) (int64, error)
+	SetOAuthClientSecret(ctx context.Context, db backend.DBTX, p setClientSecretParams) (int64, error)
+	LockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error)
+	DeleteOAuthClient(ctx context.Context, db backend.DBTX, id string) (int64, error)
 
 	InsertOAuthCode(ctx context.Context, db backend.DBTX, p insertCodeParams) error
 	ConsumeOAuthCode(ctx context.Context, db backend.DBTX, codeHash string) (codeRow, error)
@@ -54,6 +65,9 @@ type querier interface {
 	RevokeOtherOAuthGrants(ctx context.Context, db backend.DBTX, p revokeOtherGrantsParam) ([]string, error)
 	ListUnrevokedOAuthGrants(ctx context.Context, db backend.DBTX, userID string) ([]listGrantRow, error)
 	DeleteDeadOAuthGrants(ctx context.Context, db backend.DBTX, p deleteDeadParams) (int64, error)
+	ListOAuthClientGrants(ctx context.Context, db backend.DBTX, clientID string) ([]grantRow, error)
+	ListAllUnrevokedOAuthGrants(ctx context.Context, db backend.DBTX) ([]grantRow, error)
+	RevokeClientOAuthGrants(ctx context.Context, db backend.DBTX, p revokeClientParams) ([]string, error)
 }
 
 type Repo struct {
@@ -82,6 +96,7 @@ func (r *Repo) InsertClient(ctx context.Context, c *model.OAuthClient) error {
 	return r.q.InsertOAuthClient(ctx, r.db(ctx), insertClientParams{
 		ID: c.ID.String(), Name: c.Name, RedirectUris: string(uris),
 		SecretHash: c.SecretHash, CreatedAt: c.CreatedAt, LastUsedAt: c.LastUsedAt,
+		OwnerUserID: idPtrString(c.OwnerUserID), IsGlobal: c.IsGlobal,
 	})
 }
 
@@ -93,16 +108,58 @@ func (r *Repo) GetClient(ctx context.Context, id vo.Id) (*model.OAuthClient, err
 		}
 		return nil, err
 	}
-	cid, err := vo.ParseId(row.ID)
+	return hydrateClient(row)
+}
+
+func (r *Repo) ListClients(ctx context.Context) ([]model.OAuthClient, error) {
+	rows, err := r.q.ListOAuthClients(ctx, r.db(ctx))
 	if err != nil {
 		return nil, err
 	}
-	uris, err := parseURIs(row.RedirectUris)
-	if err != nil {
-		return nil, err
+	out := make([]model.OAuthClient, 0, len(rows))
+	for _, row := range rows {
+		c, err := hydrateClient(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *c)
 	}
-	return &model.OAuthClient{ID: cid, Name: row.Name, RedirectURIs: uris, SecretHash: row.SecretHash,
-		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt}, nil
+	return out, nil
+}
+
+func (r *Repo) ClaimClient(ctx context.Context, id, userID vo.Id) (int64, error) {
+	owner := userID.String()
+	return r.q.ClaimOAuthClient(ctx, r.db(ctx), claimClientParams{OwnerUserID: &owner, ID: id.String()})
+}
+
+func (r *Repo) UpdateGlobalClient(ctx context.Context, id vo.Id, name string, redirectURIs []string) (int64, error) {
+	uris, err := json.Marshal(redirectURIs)
+	if err != nil {
+		return 0, err
+	}
+	return r.q.UpdateGlobalOAuthClient(ctx, r.db(ctx), updateGlobalParams{Name: name, RedirectUris: string(uris), ID: id.String()})
+}
+
+func (r *Repo) MakeClientGlobal(ctx context.Context, id vo.Id) (int64, error) {
+	return r.q.MakeOAuthClientGlobal(ctx, r.db(ctx), id.String())
+}
+
+func (r *Repo) SetClientSecret(ctx context.Context, id vo.Id, hash string) (int64, error) {
+	return r.q.SetOAuthClientSecret(ctx, r.db(ctx), setClientSecretParams{SecretHash: &hash, ID: id.String()})
+}
+
+func (r *Repo) LockClient(ctx context.Context, id vo.Id) error {
+	if _, err := r.q.LockOAuthClient(ctx, r.db(ctx), id.String()); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errs.NewNotFound("OAuth client not found")
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *Repo) DeleteClient(ctx context.Context, id vo.Id) (int64, error) {
+	return r.q.DeleteOAuthClient(ctx, r.db(ctx), id.String())
 }
 
 func (r *Repo) MarkClientUsed(ctx context.Context, id vo.Id, now time.Time) error {
@@ -201,15 +258,7 @@ func (r *Repo) RevokeOtherGrants(ctx context.Context, userID, clientID, keepID v
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]vo.Id, 0, len(rows))
-	for _, raw := range rows {
-		id, err := vo.ParseId(raw)
-		if err != nil {
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	return ids, nil
+	return parseIDs(rows)
 }
 
 func (r *Repo) ListUnrevokedGrants(ctx context.Context, userID vo.Id) ([]model.ConnectedGrant, error) {
@@ -231,13 +280,90 @@ func (r *Repo) ListUnrevokedGrants(ctx context.Context, userID vo.Id) ([]model.C
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, model.ConnectedGrant{Grant: *g, ClientName: row.Name, RedirectURIs: uris})
+		out = append(out, model.ConnectedGrant{Grant: *g, ClientName: row.Name, RedirectURIs: uris, ClientIsGlobal: row.IsGlobal})
 	}
 	return out, nil
 }
 
+func (r *Repo) ListClientGrants(ctx context.Context, clientID vo.Id) ([]model.OAuthGrant, error) {
+	rows, err := r.q.ListOAuthClientGrants(ctx, r.db(ctx), clientID.String())
+	if err != nil {
+		return nil, err
+	}
+	return hydrateGrants(rows)
+}
+
+func (r *Repo) ListAllUnrevokedGrants(ctx context.Context) ([]model.OAuthGrant, error) {
+	rows, err := r.q.ListAllUnrevokedOAuthGrants(ctx, r.db(ctx))
+	if err != nil {
+		return nil, err
+	}
+	return hydrateGrants(rows)
+}
+
+func (r *Repo) RevokeClientGrants(ctx context.Context, clientID vo.Id, now time.Time) ([]vo.Id, error) {
+	rows, err := r.q.RevokeClientOAuthGrants(ctx, r.db(ctx), revokeClientParams{RevokedAt: &now, ClientID: clientID.String()})
+	if err != nil {
+		return nil, err
+	}
+	return parseIDs(rows)
+}
+
 func (r *Repo) DeleteDeadGrants(ctx context.Context, cutoff time.Time) (int64, error) {
 	return r.q.DeleteDeadOAuthGrants(ctx, r.db(ctx), deleteDeadParams{RevokedAt: &cutoff, ExpiresAt: cutoff})
+}
+
+func hydrateClient(row clientRow) (*model.OAuthClient, error) {
+	cid, err := vo.ParseId(row.ID)
+	if err != nil {
+		return nil, err
+	}
+	uris, err := parseURIs(row.RedirectUris)
+	if err != nil {
+		return nil, err
+	}
+	c := &model.OAuthClient{ID: cid, Name: row.Name, RedirectURIs: uris, SecretHash: row.SecretHash,
+		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, IsGlobal: row.IsGlobal}
+	if row.OwnerUserID != nil {
+		owner, err := vo.ParseId(*row.OwnerUserID)
+		if err != nil {
+			return nil, err
+		}
+		c.OwnerUserID = &owner
+	}
+	return c, nil
+}
+
+func idPtrString(id *vo.Id) *string {
+	if id == nil {
+		return nil
+	}
+	s := id.String()
+	return &s
+}
+
+func parseIDs(raw []string) ([]vo.Id, error) {
+	ids := make([]vo.Id, 0, len(raw))
+	for _, r := range raw {
+		id, err := vo.ParseId(r)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+func hydrateGrants(rows []grantRow) ([]model.OAuthGrant, error) {
+	out := make([]model.OAuthGrant, 0, len(rows))
+	for _, row := range rows {
+		g, err := hydrateGrant(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *g)
+	}
+	return out, nil
 }
 
 func hydrateGrantResult(row grantRow, err error) (*model.OAuthGrant, error) {
