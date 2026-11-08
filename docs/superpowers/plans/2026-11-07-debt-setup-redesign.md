@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Everything in CLAUDE.md applies (features never import features; ports + glue in `internal/server`; GET/POST only; `endpoint.Handle` + swag `@Failure` blocks; ASCII-only `.sql`; sparse comments; regenerate apiparity/mcpparity goldens with `UPDATE_GOLDEN=1` and INSPECT them).
-- The migration `internal/infra/storage/migrations/{sqlite,pgsql}/20261102000000.sql` is unreleased and is EDITED IN PLACE (no new migration): `debts.as_of`, `balance`, `last_payment_date` become nullable; add `label_id TEXT NULL` (pgsql UUID NULL) with `FOREIGN KEY (label_id) REFERENCES labels (id)` (default NO ACTION, like payee/tag) and index `debts_label_idx`. `payment` and `schedule` stay NOT NULL.
+- The migration `internal/infra/storage/migrations/{sqlite,pgsql}/20261108000000.sql` is unreleased and is EDITED IN PLACE (no new migration): `debts.as_of`, `balance`, `last_payment_date` become nullable; add `label_id TEXT NULL` (pgsql UUID NULL) with `FOREIGN KEY (label_id) REFERENCES labels (id)` (default NO ACTION, like payee/tag) and index `debts_label_idx`. `payment` and `schedule` stay NOT NULL.
 - sqlc v1.30.0 (`go generate ./internal/infra/storage/sqlc/...`).
 - Go: `/usr/local/go/bin/go`, `GOTOOLCHAIN=go1.27.1`. Smoke: `make go-test`; PostgreSQL: throwaway `postgres:17` container + `make test-engines` and `make test-repo-pgsql`.
 - Wire additions (additive): `labelId` (string|null) and `isSetUp` (0/1) and `periodsPaid` (int) on `DebtResult`; `labelId` on create/update requests; `isSetUp` (0/1) on the budget's `DebtElementResult` and `PlanDebtElementResult`. When `isSetUp` is 0: `balance`, `lastPaymentDate`, `currentBalance`, `moneyLeft`, `overpaymentLeft`, `overpaidSoFar`, `payoffDate`, `nextDueDate`, `periodRate` are `""`; `paymentsLeft` and `periodsPaid` are 0; budget `closingBalance` `""`, `scheduledTotal` and `upcoming` `"0"`.
@@ -72,7 +72,7 @@
 ### Task 2: Storage — migration, queries, repo
 
 **Files:**
-- Modify: both `20261102000000.sql`, `internal/infra/storage/sqlc/query/{sqlite,pgsql}/debts.sql`, `internal/debt/repository.go`, `internal/debt/repo/*.go`
+- Modify: both `20261108000000.sql`, `internal/infra/storage/sqlc/query/{sqlite,pgsql}/debts.sql`, `internal/debt/repository.go`, `internal/debt/repo/*.go`
 - Test: `internal/debt/repo/repo_test.go`
 
 **Interfaces:**

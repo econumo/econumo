@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Follow `CLAUDE.md` throughout: features never import features, so cross-feature access goes through consumer ports with glue in `internal/server`; there are only two methods, GET and POST; handlers are thin `endpoint.Handle` wrappers with swag blocks (`@Failure 401/402/500` on POST, `401/500` on GET); `.sql` files stay ASCII-only; comments are sparse.
-- Migrations: `internal/infra/storage/migrations/{sqlite,pgsql}/20261102000000.sql`, the same version on both engines (`20261101000000` is taken by the `migration:zero-deleted-accounts` command step; a new migration must sit above every released version, see CLAUDE.md "command steps"). Regenerate sqlc with `go generate ./internal/infra/storage/sqlc/...` (install `sqlc` at the version in `go.mod` if it is missing).
+- Migrations: `internal/infra/storage/migrations/{sqlite,pgsql}/20261108000000.sql`, the same version on both engines (`20261101000000` is taken by the `migration:zero-deleted-accounts` command step; a new migration must sit above every released version, see CLAUDE.md "command steps"). Regenerate sqlc with `go generate ./internal/infra/storage/sqlc/...` (install `sqlc` at the version in `go.mod` if it is missing).
 - Money: `vo.DecimalNumber` strings on the wire and in storage. The math runs in `float64`, and every stored or emitted amount is rounded to the debt currency's fraction digits (`RateProvider.FractionDigits`).
 - The element type value `6` and alias `"debt"` are persisted, so they are frozen.
 - Every new coded error is added to `errs` (constant + `AllCodes`) and has `errors.*` text in all 11 `locales/*.json`. Every new UI key is added to all 11 locales, respecting each locale's register (de Sie, nl u, fr vous, pt European).
@@ -162,7 +162,7 @@ These algorithms are not determined by the signatures, so they are pinned here:
 ### Task 2: Storage — migration, sqlc queries, repo
 
 **Files:**
-- Create: `internal/infra/storage/migrations/{sqlite,pgsql}/20261102000000.sql`, `internal/infra/storage/sqlc/query/{sqlite,pgsql}/debts.sql`, `internal/debt/repository.go`, `internal/debt/repo/{repo.go,sqlite.go,pgsql.go}`
+- Create: `internal/infra/storage/migrations/{sqlite,pgsql}/20261108000000.sql`, `internal/infra/storage/sqlc/query/{sqlite,pgsql}/debts.sql`, `internal/debt/repository.go`, `internal/debt/repo/{repo.go,sqlite.go,pgsql.go}`
 - Test: `internal/debt/repo/repo_test.go`
 
 **Interfaces:**
