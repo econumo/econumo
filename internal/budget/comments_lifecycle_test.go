@@ -100,10 +100,16 @@ func TestCloneBudget_RefusesAnIdAlreadyInUse(t *testing.T) {
 	if !ok {
 		t.Fatalf("err = %v (%T), want a validation error naming newId", err, err)
 	}
+	// The code must say the id is taken, not that the field was blank: a model
+	// told "should not be blank" about an id it did send would retry the same
+	// one.
 	named := false
 	for _, f := range v.Fields {
 		if f.Key == "newId" {
 			named = true
+			if f.Code != errs.CodeBudgetIDInUse {
+				t.Fatalf("newId code = %q, want %q", f.Code, errs.CodeBudgetIDInUse)
+			}
 		}
 	}
 	if !named {

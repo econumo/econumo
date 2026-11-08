@@ -2141,7 +2141,8 @@
       "end_before_start": "Der Endmonat liegt vor dem Budgetbeginn",
       "invalid_period_start_day": "Wählen Sie einen Tag von 1 bis 28",
       "comment_not_found": "Kommentar nicht gefunden",
-      "comment_forbidden": "Du kannst diesen Kommentar nicht ändern"
+      "comment_forbidden": "Du kannst diesen Kommentar nicht ändern",
+      "id_in_use": "Diese Budget-ID ist bereits vergeben"
     },
     "category": {
       "name_length": "Der Kategoriename muss {min}-{max} Zeichen lang sein",

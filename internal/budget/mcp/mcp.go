@@ -36,7 +36,7 @@ type updateBudgetInput struct {
 
 type cloneBudgetInput struct {
 	BudgetID   string `json:"budget_id" jsonschema:"budget id (UUID) to copy, from list_budgets"`
-	NewID      string `json:"new_id" jsonschema:"client-supplied id (UUID) for the copy"`
+	NewID      string `json:"new_id" jsonschema:"client-supplied id (UUID) for the copy; must be a FRESH id that no budget uses yet -- never reuse budget_id or an id from list_budgets, or the call is refused"`
 	Name       string `json:"name" jsonschema:"name for the copy"`
 	StartDate  string `json:"start_date,omitempty" jsonschema:"first budget month YYYY-MM-DD (the day is ignored); omit for a full copy from the source's start"`
 	WithLimits bool   `json:"with_limits" jsonschema:"copy the plans (limits) too"`

@@ -2141,7 +2141,8 @@
       "end_before_start": "Miesiąc końcowy jest wcześniejszy niż początek budżetu",
       "invalid_period_start_day": "Wybierz dzień od 1 do 28",
       "comment_not_found": "Nie znaleziono komentarza",
-      "comment_forbidden": "Nie możesz zmienić tego komentarza"
+      "comment_forbidden": "Nie możesz zmienić tego komentarza",
+      "id_in_use": "Ten identyfikator budżetu jest już używany"
     },
     "category": {
       "name_length": "Nazwa kategorii musi mieć od {min} do {max} znaków.",

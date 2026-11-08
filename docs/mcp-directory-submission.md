@@ -29,7 +29,7 @@ Verified against the code, not assumed:
 | Read/write split, no catch-all | Separate create/update/delete tools; no `api_request`-style tool with a `method` parameter |
 | Actionable errors | `webmcp.MapErr` returns the REST envelope's coded, translated message plus per-field errors — never a bare "Internal Server Error" |
 | Tool titles + hints on all 50 tools | `internal/web/mcp/annotations.go`, guarded by `TestEveryToolIsAnnotated` |
-| `clone_budget` cannot overwrite an existing budget | `internal/budget/clone.go` rejects a `new_id` already in use |
+| `clone_budget` cannot overwrite an existing budget | `internal/budget/clone.go` creates through `InsertIfAbsent` (`INSERT ... ON CONFLICT DO NOTHING`), so a `new_id` already in use is refused atomically |
 
 Two notes on things that look like gaps and are not:
 

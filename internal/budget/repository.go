@@ -19,6 +19,11 @@ type BudgetStore interface {
 	// ListForUser returns budgets the user owns or has (any) access to.
 	ListForUser(ctx context.Context, userID vo.Id) ([]*model.Budget, error)
 	Save(ctx context.Context, b *model.Budget) error
+	// InsertIfAbsent creates the budget only when its id is free, reporting
+	// false when the id is taken. Save upserts, so a client-supplied id needs
+	// an insert that cannot overwrite; a SELECT-then-Save will not do, because
+	// a read that finds no row takes no lock under READ COMMITTED.
+	InsertIfAbsent(ctx context.Context, b *model.Budget) (bool, error)
 	Delete(ctx context.Context, id vo.Id) error
 
 	MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error)

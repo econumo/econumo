@@ -5,12 +5,10 @@ package budget
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
-	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -67,21 +65,19 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		// newID is client-supplied and Save upserts, so an id that is already
 		// taken would overwrite that budget's settings and then layer the
-		// source's folders, envelopes, elements and limits under it. Reject it
-		// instead: a clone only ever creates. Checked inside the transaction so
-		// a concurrent create cannot slip in between the check and the write.
-		_, gerr := s.budgets.GetByID(txCtx, newID)
-		if gerr == nil {
-			return model.ValidateBlank(map[string]string{"newId": ""})
-		}
-		var nf *errs.NotFoundError
-		if !errors.As(gerr, &nf) {
-			return gerr
-		}
+		// source's folders, envelopes, elements and limits under it. The insert
+		// itself is the guard: INSERT ... ON CONFLICT DO NOTHING writes no row
+		// when the id exists, which a read-then-write could not guarantee,
+		// since a SELECT finding no row takes no lock under READ COMMITTED and
+		// two concurrent clones of one id would both pass it.
 		nb := model.NewBudget(newID, userID, req.Name, src.budget.CurrencyID, startDate, now)
 		nb.PeriodStartDay = src.budget.PeriodStartDay
-		if serr := s.budgets.Save(txCtx, nb); serr != nil {
+		inserted, serr := s.budgets.InsertIfAbsent(txCtx, nb)
+		if serr != nil {
 			return serr
+		}
+		if !inserted {
+			return model.BudgetIDInUseError()
 		}
 		// The cloner becomes the copy's owner, so their own grant (if any) is
 		// dropped; when an admin clones, the former owner joins the copy as an
