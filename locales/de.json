@@ -1251,6 +1251,17 @@
       "continue": "Weiter",
       "skip": "Einrichtung überspringen"
     },
+    "categories_step": {
+      "heading": "Wofür geben Sie Geld aus?",
+      "subtext": "Entfernen Sie das Häkchen bei dem, was Sie nicht brauchen. Sie können das später ändern.",
+      "expenses": "Ausgaben",
+      "income": "Einnahmen",
+      "name_label": "Kategoriename",
+      "icon_label": "Symbol ändern",
+      "add_placeholder": "Eigene hinzufügen",
+      "continue": "Weiter",
+      "skip": "Einrichtung überspringen"
+    },
     "currencies": {
       "title": "Währungen",
       "main": "Haupt: {code} · basierend auf Ihren Konten",

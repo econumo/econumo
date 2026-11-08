@@ -1251,6 +1251,17 @@
       "continue": "继续",
       "skip": "跳过设置"
     },
+    "categories_step": {
+      "heading": "你的钱花在哪里？",
+      "subtext": "取消勾选不需要的项目。之后也可以修改。",
+      "expenses": "支出",
+      "income": "收入",
+      "name_label": "分类名称",
+      "icon_label": "更换图标",
+      "add_placeholder": "添加自定义分类",
+      "continue": "继续",
+      "skip": "跳过设置"
+    },
     "currencies": {
       "title": "币种",
       "main": "主币种：{code} · 根据您的账户",

@@ -1251,6 +1251,17 @@
       "continue": "Dalej",
       "skip": "Pomiń konfigurację"
     },
+    "categories_step": {
+      "heading": "Na co wydajesz pieniądze?",
+      "subtext": "Odznacz to, czego nie potrzebujesz. Możesz to zmienić później.",
+      "expenses": "Wydatki",
+      "income": "Przychody",
+      "name_label": "Nazwa kategorii",
+      "icon_label": "Zmień ikonę",
+      "add_placeholder": "Dodaj własną",
+      "continue": "Dalej",
+      "skip": "Pomiń konfigurację"
+    },
     "currencies": {
       "title": "Waluty",
       "main": "Główna: {code} · na podstawie Twoich kont",

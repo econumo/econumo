@@ -1251,6 +1251,17 @@
       "continue": "Continuar",
       "skip": "Omitir configuración"
     },
+    "categories_step": {
+      "heading": "¿En qué gastas?",
+      "subtext": "Desmarca lo que no necesites. Puedes cambiarlo más adelante.",
+      "expenses": "Gastos",
+      "income": "Ingresos",
+      "name_label": "Nombre de la categoría",
+      "icon_label": "Cambiar icono",
+      "add_placeholder": "Añade las tuyas",
+      "continue": "Continuar",
+      "skip": "Omitir configuración"
+    },
     "currencies": {
       "title": "Monedas",
       "main": "Principal: {code} · según tus cuentas",

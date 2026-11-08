@@ -1251,6 +1251,17 @@
       "continue": "Continuer",
       "skip": "Passer la configuration"
     },
+    "categories_step": {
+      "heading": "Où va votre argent ?",
+      "subtext": "Décochez ce dont vous n'avez pas besoin. Vous pourrez modifier cela plus tard.",
+      "expenses": "Dépenses",
+      "income": "Revenus",
+      "name_label": "Nom de la catégorie",
+      "icon_label": "Changer l'icône",
+      "add_placeholder": "Ajouter la vôtre",
+      "continue": "Continuer",
+      "skip": "Passer la configuration"
+    },
     "currencies": {
       "title": "Devises",
       "main": "Principale : {code} · d'après vos comptes",

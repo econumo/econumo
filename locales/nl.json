@@ -1251,6 +1251,17 @@
       "continue": "Doorgaan",
       "skip": "Installatie overslaan"
     },
+    "categories_step": {
+      "heading": "Waar geef je geld aan uit?",
+      "subtext": "Vink uit wat je niet nodig hebt. Je kunt dit later wijzigen.",
+      "expenses": "Uitgaven",
+      "income": "Inkomsten",
+      "name_label": "Categorienaam",
+      "icon_label": "Pictogram wijzigen",
+      "add_placeholder": "Voeg je eigen toe",
+      "continue": "Doorgaan",
+      "skip": "Instellen overslaan"
+    },
     "currencies": {
       "title": "Valuta's",
       "main": "Hoofd: {code} · gebaseerd op je rekeningen",
