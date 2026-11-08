@@ -125,8 +125,8 @@ by later snapshot edits (anti-goal 2).
   interest is not carried. The balance never rises just because a payment
   hasn't been entered yet; the user corrects drift with a new snapshot from
   their statement.
-- Payment in another currency: converted to the debt's currency at that day's
-  rate, as elsewhere.
+- Payment in another currency: converted to the debt's currency with the rates
+  the app uses for that day (the month's average), as elsewhere.
 - **Edits:** a payment whose amount is corrected keeps its stored interest
   (capped at the new amount); the difference goes to the debt (agreed). A
   payment edited so it no longer matches, or deleted, loses its split. A

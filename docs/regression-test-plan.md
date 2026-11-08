@@ -2234,7 +2234,8 @@ out), and add a second budget member account in USD, before running these.
       interest part and a debt part; an extra payment in the same period goes
       entirely to the debt; a period with no payment adds nothing to the
       balance (it never rises on its own); a foreign-currency payment is
-      converted to the debt's currency at its day's rate and shows in the
+      converted to the debt's currency with the rates the app uses for its day
+      (the month's average) and shows in the
       payment list in the debt currency.
 - [ ] **Mark as paid off** (review screen menu → asks first): current balance becomes 0,
       "Paid off" shows in the list and the row, the payment list keeps its

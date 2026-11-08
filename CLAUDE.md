@@ -1749,8 +1749,9 @@ data unreadable. Most are also asserted by the test suite.
   entered later in that window takes only what is left)
   and everything else, an extra payment included, goes fully to the debt; a missed period (or a
   payment below the interest) adds nothing, the balance never rises on its own; payments before
-  the first snapshot are estimated backward with its `r`; foreign payments convert at their day's
-  rate (1:1 when no rate is stored). Every stored or emitted amount is rounded to the debt
+  the first snapshot are estimated backward with its `r`; foreign payments convert with the rates
+  the app uses for their day (the month's average, like every other conversion; 1:1 when no rate
+  is stored). Every stored or emitted amount is rounded to the debt
   currency's fraction digits. **Projection**: current balance = latest snapshot's balance less the
   debt parts after its as-of date (a due is "unpaid" only strictly after the snapshot day);
   payments left, money left, overpayment left and the payoff date amortize the balance forward;
