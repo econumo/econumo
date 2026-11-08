@@ -80,16 +80,19 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const draftRowOf = (accountId: Id) => claims.get(accountId) ?? (initialRows ?? []).find((r) => (r.accountId ?? createdIds?.[r.key]) === accountId)
   const [savingsOverride, setSavingsOverride] = useState<Record<Id, boolean>>({})
   const savingsOf = (a: ExistingAccount) => savingsOverride[a.id] ?? draftRowOf(a.id)?.savings ?? looksLikeSavings(a.name, words().savings)
-  const [allRows, setRows] = useState<AccountRow[]>(() => {
-    const leftover = (initialRows ?? []).filter((r) => !r.accountId && !createdIds?.[r.key] && !claimedKeys.has(r.key))
-    return leftover.length > 0 || existing.length > 0 ? leftover : [emptyRow()]
-  })
+  const leftover = useMemo(
+    () => (initialRows ?? []).filter((r) => !r.accountId && !createdIds?.[r.key] && !claimedKeys.has(r.key)),
+    // read once, at mount, like the rows seeded from it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+  const [allRows, setRows] = useState<AccountRow[]>(() => (leftover.length > 0 || existing.length > 0 ? leftover : [emptyRow()]))
   // a row an earlier (failed) submit created comes back in the server list
   const rows = allRows.filter((r) => !createdIds?.[r.key])
   const [extraIds, setExtraIds] = useState<Id[]>(initialExtraCurrencyIds ?? [])
   const [mainOverride, setMainOverride] = useState<Id | null>(null)
   // the first new row's pick: rows the user has not changed by hand follow it
-  const [sharedId, setSharedId] = useState<Id | null>(null)
+  const [sharedId, setSharedId] = useState<Id | null>(leftover[0]?.currencyId || null)
   const [pickingRow, setPickingRow] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
@@ -118,13 +121,15 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
     setRows((prev) => [...prev, row])
     setFocusKey(row.key)
   }
-  const remove = (key: string) => setRows((prev) => prev.filter((r) => r.key !== key))
+  const remove = (key: string) => {
+    if (key === rows[0]?.key && rows[1]) setSharedId(currencyOf(rows[1]))
+    setRows((prev) => prev.filter((r) => r.key !== key))
+  }
 
   const active = rows.filter((r) => r.name.trim() !== '')
   const counted = [...existing.map((a) => a.currencyId), ...(active.length > 0 || existing.length > 0 ? active : rows).map(currencyOf)].filter(Boolean)
   const usedIds = [...new Set(counted)]
-  const firstRow = active[0] ?? rows[0]
-  const computedMain: Id | null = (firstRow ? currencyOf(firstRow) : existing[0]?.currencyId) || null
+  const computedMain: Id | null = (active[0] ? currencyOf(active[0]) : existing[0]?.currencyId || (rows[0] ? currencyOf(rows[0]) : '')) || null
   const extras = extraIds.filter((id) => !usedIds.includes(id))
   const selectedIds = [...usedIds, ...extras]
   const mainId = mainOverride && selectedIds.includes(mainOverride) ? mainOverride : computedMain

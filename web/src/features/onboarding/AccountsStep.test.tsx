@@ -183,6 +183,39 @@ it('lets an explicit Main pick win over the first row', async () => {
   expect(onContinue.mock.calls[0][2]).toBe('cur-eur')
 })
 
+it('with only EUR accounts and a blank row, Main is the existing currency, not the default', async () => {
+  const user = userEvent.setup()
+  const existing: ExistingAccount[] = [{ id: 'a1', name: 'Wallet', icon: 'payments', balance: '5', currencyId: 'cur-eur' }]
+  const { onContinue } = renderStep({ existing })
+  await ready()
+  await addAccount(user)
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][2]).toBe('cur-eur')
+})
+
+it('resumes with the first draft row currency as the default for rows added later', async () => {
+  const user = userEvent.setup()
+  const initialRows: AccountRow[] = [{ key: 'k1', name: 'Aaa', balance: '1', currencyId: 'cur-eur', savings: false, icon: 'credit_card' }]
+  renderStep({ initialRows })
+  await ready()
+  await addAccount(user)
+  expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['EUR', 'EUR'])
+})
+
+it('removing the first row makes the new first row currency the default', async () => {
+  const user = userEvent.setup()
+  renderStep()
+  await ready()
+  await user.type(nameInputs()[0], 'Aaa')
+  await addAccount(user)
+  await user.type(nameInputs()[1], 'Bbb')
+  await pickCurrency(user, 1, 'EUR')
+  await details(user, 0)
+  await user.click(screen.getByRole('button', { name: 'Remove account' }))
+  await addAccount(user)
+  expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['EUR', 'EUR'])
+})
+
 it('adds an extra currency and passes it on', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep()
