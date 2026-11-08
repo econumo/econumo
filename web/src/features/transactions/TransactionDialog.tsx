@@ -50,7 +50,7 @@ import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TransactionType } from '@/api/dto/transaction'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { TransactionDatePicker } from './TransactionDatePicker'
-import { clearTransactionDraft, useTransactionDraft } from './transactionDraft'
+import { clearTransactionDraftOf, useTransactionDraft } from './transactionDraft'
 
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 
@@ -217,7 +217,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         await postRecurring.mutateAsync({ ...payload, recurringId: params.postRecurring.id })
       } else if (form.isNew) {
         await createTransaction.mutateAsync(payload)
-        clearTransactionDraft()
+        clearTransactionDraftOf(form.id)
         if (isTransfer && payload.accountRecipientId && payload.accountRecipientId !== accountPageId) {
           setSwitchAccountPrompt(payload.accountRecipientId)
         } else if (accountPageId && payload.accountId !== accountPageId && payload.accountRecipientId !== accountPageId) {

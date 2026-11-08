@@ -10,7 +10,8 @@ import { useUiStore } from '@/app/uiStore'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { TransactionDialog } from './TransactionDialog'
-import { DRAFT_TTL_MS } from './transactionDraft'
+import { DRAFT_TTL_MS, hasDraftContent } from './transactionDraft'
+import type { TransactionFormState } from './useTransactionForm'
 
 function mockMatchMedia(phone = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -1268,8 +1269,41 @@ describe('unfinished new transaction', () => {
     expect(localStorage.getItem(draftKey)).toBeNull()
   })
 
-  it('ignores an unreadable stored draft', async () => {
-    localStorage.setItem(draftKey, '{not json')
+  it('leaves a newer draft alone when an earlier add succeeds', async () => {
+    const newer = JSON.stringify({ savedAt: Date.now(), userId: null, form: { id: 'newer', amount: '1', description: '', labelIds: [] } })
+    server.use(
+      http.post('*/api/v1/transaction/create-transaction', () => {
+        localStorage.setItem(draftKey, newer)
+        return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderDialog()
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), '42')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+    expect(localStorage.getItem(draftKey)).toBe(newer)
+  })
+
+  it('counts only what the current type shows as content', () => {
+    const empty: TransactionFormState = {
+      id: 'x', isNew: true, type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '', amountRecipient: '',
+      categoryId: null, payeeId: null, tagId: null, labelIds: [], description: '', date: '2026-07-03 10:00:00',
+    }
+    expect(hasDraftContent(empty)).toBe(false)
+    expect(hasDraftContent({ ...empty, accountRecipientId: 'a2' })).toBe(false)
+    expect(hasDraftContent({ ...empty, type: 'transfer', accountRecipientId: 'a2' })).toBe(true)
+    expect(hasDraftContent({ ...empty, type: 'transfer', payeeId: 'p1' })).toBe(false)
+    expect(hasDraftContent({ ...empty, payeeId: 'p1' })).toBe(true)
+  })
+
+  it.each([
+    ['invalid JSON', () => '{not json'],
+    ['the wrong shape', () => JSON.stringify({ savedAt: Date.now(), userId: null, form: {} })],
+  ])('ignores a stored draft with %s', async (_name, stored) => {
+    localStorage.setItem(draftKey, stored())
     renderDialog()
     await openNew()
     expect(offer()).not.toBeInTheDocument()

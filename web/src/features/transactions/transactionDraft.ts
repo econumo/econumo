@@ -35,14 +35,29 @@ export function clearTransactionDraft(): void {
   }
 }
 
-export function loadTransactionDraft(): TransactionFormState | null {
-  let stored: Partial<StoredDraft> | null = null
+function readDraft(): Partial<StoredDraft> | null {
   try {
-    stored = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as Partial<StoredDraft> | null
+    return JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as Partial<StoredDraft> | null
   } catch {
-    // unreadable, dropped below
+    return null
   }
-  if (typeof stored?.savedAt !== 'number' || !stored.form || stored.userId !== getSessionUserId() || Date.now() - stored.savedAt > DRAFT_TTL_MS) {
+}
+
+// The key may hold a newer draft by now: another tab's, or a form opened while
+// this one's request was still in flight.
+export function clearTransactionDraftOf(id: string): void {
+  if (readDraft()?.form?.id === id) {
+    clearTransactionDraft()
+  }
+}
+
+function isFormShape(form: Partial<TransactionFormState> | undefined): form is TransactionFormState {
+  return typeof form?.amount === 'string' && typeof form.description === 'string' && Array.isArray(form.labelIds)
+}
+
+export function loadTransactionDraft(): TransactionFormState | null {
+  const stored = readDraft()
+  if (typeof stored?.savedAt !== 'number' || !isFormShape(stored.form) || stored.userId !== getSessionUserId() || Date.now() - stored.savedAt > DRAFT_TTL_MS) {
     clearTransactionDraft()
     return null
   }
@@ -50,17 +65,16 @@ export function loadTransactionDraft(): TransactionFormState | null {
 }
 
 // The type, account and date start filled in, so changing only those is not
-// worth asking about later.
+// worth asking about later. Switching type keeps the other type's picks in the
+// state, hidden, so only what the current type shows counts.
 export function hasDraftContent(form: TransactionFormState): boolean {
-  return (
-    form.amount.trim() !== '' ||
-    form.description.trim() !== '' ||
-    form.accountRecipientId !== null ||
-    form.categoryId !== null ||
-    form.payeeId !== null ||
-    form.tagId !== null ||
-    form.labelIds.length > 0
-  )
+  if (form.amount.trim() !== '' || form.description.trim() !== '') {
+    return true
+  }
+  if (form.type === 'transfer') {
+    return form.accountRecipientId !== null
+  }
+  return form.categoryId !== null || form.payeeId !== null || form.tagId !== null || form.labelIds.length > 0
 }
 
 export function useTransactionDraft(form: TransactionFormState, enabled: boolean) {
@@ -82,7 +96,7 @@ export function useTransactionDraft(form: TransactionFormState, enabled: boolean
       // Only a draft this form wrote: an empty form that is still offering the
       // previous one must leave it in place.
       if (savedThisForm.current) {
-        clearTransactionDraft()
+        clearTransactionDraftOf(form.id)
         savedThisForm.current = false
       }
       return
@@ -112,7 +126,7 @@ export function useTransactionDraft(form: TransactionFormState, enabled: boolean
     // however long it sat idle.
     leave: () => {
       if (offer) {
-        clearTransactionDraft()
+        clearTransactionDraftOf(offer.id)
       } else if (enabled && hasDraftContent(form)) {
         saveDraft(form, userId)
       }
