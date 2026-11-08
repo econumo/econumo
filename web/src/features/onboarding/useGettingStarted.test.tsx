@@ -202,9 +202,17 @@ it('hasData is false with only an opening correction and true after a categorize
   const real = { ...correction('t9', 'a1'), categoryId: 'cat-salary' }
   expect(hasRealTransactions([correction('c1', 'a1')] as never)).toBe(false)
   expect(hasRealTransactions([correction('c1', 'a1'), correction('c2', 'a2')] as never)).toBe(false)
-  expect(hasRealTransactions([correction('c1', 'a1'), correction('c2', 'a1')] as never)).toBe(true)
   expect(hasRealTransactions([correction('c1', 'a1'), real] as never)).toBe(true)
-  expect(hasRealTransactions([{ ...correction('c1', 'a1'), description: 'x' }] as never)).toBe(true)
+})
+
+it('a balance edit is not real data: its adjustment carries a description and may be the second on the account', () => {
+  const adjustment = { ...correction('c2', 'a1'), type: 'expense', description: 'Balance adjustment' }
+  expect(hasRealTransactions([correction('c1', 'a1'), adjustment] as never)).toBe(false)
+  for (const field of ['payeeId', 'tagId', 'recurringId', 'accountRecipientId']) {
+    expect(hasRealTransactions([{ ...adjustment, [field]: 'x' }] as never)).toBe(true)
+  }
+  expect(hasRealTransactions([{ ...adjustment, labelIds: ['l1'] }] as never)).toBe(true)
+  expect(hasRealTransactions([{ ...adjustment, type: 'transfer' }] as never)).toBe(true)
 })
 
 it('withStepState replaces an earlier answer for the same key', () => {

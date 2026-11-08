@@ -295,7 +295,8 @@ navigation (single-pane vs sidebar).
       prompt is accepted.
 - [ ] Skip on a card removes it for good (home screen: on this device only);
       once every card is done or skipped, or the first real transaction is
-      added (an opening balance does not count), the normal budget shows.
+      added (an opening balance, or the adjustment a balance edit writes,
+      does not count), the normal budget shows.
       With no budget, the cards sit below the create-budget prompt.
 - [ ] 📱 The Inbox lists the same items under "Next steps", last, plus Set your
       plan and Bring in transactions on a phone; they do not raise the badge,

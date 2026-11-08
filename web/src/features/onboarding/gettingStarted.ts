@@ -65,9 +65,11 @@ export function dismissGettingStarted(queryClient: QueryClient, key: StoredStepK
   void writeStepState(queryClient, key, 'dismissed')
 }
 
-// The same shape the server treats as an untouched opening correction: the
-// account's only transaction, carrying nothing but an amount and a date.
-function isBareCorrection(t: Pick<TransactionDto, 'type' | 'accountRecipientId' | 'categoryId' | 'payeeId' | 'tagId' | 'description' | 'labelIds' | 'recurringId'>): boolean {
+// A correction-shaped row carries nothing but an amount and a date: an
+// opening balance, or the "Balance adjustment" a balance edit writes (which
+// has a description, and may be the account's second). Neither is the user's
+// own spending, so neither ends the get-ready phase.
+function isCorrectionShaped(t: Pick<TransactionDto, 'type' | 'accountRecipientId' | 'categoryId' | 'payeeId' | 'tagId' | 'labelIds' | 'recurringId'>): boolean {
   return (
     t.type !== 'transfer' &&
     !t.accountRecipientId &&
@@ -75,16 +77,10 @@ function isBareCorrection(t: Pick<TransactionDto, 'type' | 'accountRecipientId' 
     !t.payeeId &&
     !t.tagId &&
     !t.recurringId &&
-    t.description === '' &&
     (t.labelIds ?? []).length === 0
   )
 }
 
 export function hasRealTransactions(transactions: TransactionDto[]): boolean {
-  const corrected = new Set<string>()
-  for (const t of transactions) {
-    if (!isBareCorrection(t) || corrected.has(t.accountId)) return true
-    corrected.add(t.accountId)
-  }
-  return false
+  return transactions.some((t) => !isCorrectionShaped(t))
 }
