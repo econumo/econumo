@@ -1767,8 +1767,10 @@ data unreadable. Most are also asserted by the test suite.
   figures with and without the planned extras, `upcoming` = the unpaid scheduled dues, `isPlannable`)
   and on `get-budget-plan` (per-cell figures, `scheduledTotal`, `isPaidOff`). **Planning bounds**:
   a month is plannable from the start month (start date's month, else the earliest of the
-  creation day's month (the day in the CALLER's timezone, so a debt created at 20:00 on 31 Oct in New
-  York plans from October), the first matched payment's and the first snapshot's) to the end
+  creation day's month (the day in the OWNER's stored `users.timezone`, UTC when none, the same for
+  every viewer and for the conversion's plan move, so a debt created at 20:00 on 31 Oct by an owner
+  in New York plans from October; read through the debt feature's `Owners` port, the user repo),
+  the first matched payment's and the first snapshot's) to the end
   month (latest snapshot's last payment date's month, the payoff month once paid off; OPEN while the
   debt is not set up, so any month from the start is plannable); `set-limit` and `create-comment` outside it are refused
   (`budget.debt_period_out_of_range`, field `period`), but clearing a plan (`amount: null`) is

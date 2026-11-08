@@ -31,6 +31,12 @@ type Currencies interface {
 	EnsureUsable(ctx context.Context, userID, currencyID string) error
 }
 
+// Owners is backed by the user repo.
+type Owners interface {
+	// GetTimezone is the user's stored IANA timezone, "" when none is stored.
+	GetTimezone(ctx context.Context, id vo.Id) (string, error)
+}
+
 // BudgetElements is backed by the budget service. It is installed late and
 // the service tolerates its absence.
 type BudgetElements interface {

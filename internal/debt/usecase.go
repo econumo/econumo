@@ -22,11 +22,12 @@ type Service struct {
 	class      Classifications
 	rates      Rates
 	currencies Currencies
+	owners     Owners
 	budget     BudgetElements
 }
 
-func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Classifications, rates Rates, currencies Currencies) *Service {
-	return &Service{repo: repo, tx: tx, clock: clock, class: class, rates: rates, currencies: currencies}
+func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Classifications, rates Rates, currencies Currencies, owners Owners) *Service {
+	return &Service{repo: repo, tx: tx, clock: clock, class: class, rates: rates, currencies: currencies, owners: owners}
 }
 
 // SetBudgetElements installs the budget peer; the budget service is built
@@ -45,7 +46,11 @@ func (s *Service) moveToDebt(ctx context.Context, d *model.Debt) error {
 	if err != nil {
 		return err
 	}
-	first, last := planningBounds(st, st.project(s.today(ctx), nil, nil), reqctx.Location(ctx))
+	loc, err := s.ownerLocation(ctx, d.OwnerID)
+	if err != nil {
+		return err
+	}
+	first, last := planningBounds(st, st.project(s.today(ctx), nil, nil), loc)
 	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
 		FromID: d.CategoryID, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
 		CurrencyID: d.CurrencyID, SumOnClash: true, FirstDay: first, LastDay: last,
@@ -64,7 +69,11 @@ func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt) error {
 	if err != nil {
 		return err
 	}
-	_, last := planningBounds(st, st.project(s.today(ctx), nil, nil), time.UTC)
+	loc, err := s.ownerLocation(ctx, d.OwnerID)
+	if err != nil {
+		return err
+	}
+	_, last := planningBounds(st, st.project(s.today(ctx), nil, nil), loc)
 	if last.IsZero() {
 		return nil
 	}
@@ -108,6 +117,23 @@ func (s *Service) hasData(ctx context.Context, id vo.Id) (bool, error) {
 		return false, nil
 	}
 	return s.budget.HasData(ctx, id, model.ElementDebt)
+}
+
+// ownerLocation is the owner's stored timezone, UTC when none (or an unknown
+// one) is stored: a debt's planning start must not depend on who views it.
+func (s *Service) ownerLocation(ctx context.Context, ownerID vo.Id) (*time.Location, error) {
+	tz, err := s.owners.GetTimezone(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	if tz == "" {
+		return time.UTC, nil
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return time.UTC, nil
+	}
+	return loc, nil
 }
 
 // today is the caller's calendar day as a UTC midnight, the form every debt

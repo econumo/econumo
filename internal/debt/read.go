@@ -7,7 +7,6 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
-	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -157,17 +156,25 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 	}
 	today := s.today(ctx)
 	icons := iconCache{}
+	locs := map[vo.Id]*time.Location{}
 	views := make([]model.DebtView, 0, len(states))
 	for _, st := range states {
 		icon, err := s.iconOf(ctx, icons, st.debt)
 		if err != nil {
 			return nil, err
 		}
+		loc, ok := locs[st.debt.OwnerID]
+		if !ok {
+			if loc, err = s.ownerLocation(ctx, st.debt.OwnerID); err != nil {
+				return nil, err
+			}
+			locs[st.debt.OwnerID] = loc
+		}
 		proj := st.project(today, nil, nil)
 		v := st.view
 		v.Icon = icon
 		v.PaidOff = proj.PaidOff
-		v.FirstDay, v.LastDay = planningBounds(st, proj, reqctx.Location(ctx))
+		v.FirstDay, v.LastDay = planningBounds(st, proj, loc)
 		v.StartMonth = monthOf(v.FirstDay)
 		if !v.LastDay.IsZero() {
 			v.EndMonth = monthOf(v.LastDay)
@@ -181,9 +188,9 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 // earliest of its first matched payment, its creation day and its first
 // snapshot, to its last payment date, or its payoff once paid off; a budget
 // plans it in the periods holding those days. The creation day is taken in
-// loc, the caller's timezone, like today and every snapshot's as-of. Finishing setup later never
-// moves the start, so plans moved at conversion stay in the life. A debt not
-// set up has no end: LastDay is zero.
+// loc, the owner's timezone, so every viewer sees the same start. Finishing
+// setup later never moves the start, so plans moved at conversion stay in the
+// life. A debt not set up has no end: LastDay is zero.
 func planningBounds(st *debtState, proj model.Projection, loc *time.Location) (first, last time.Time) {
 	d := st.debt
 	if d.StartDate != nil {

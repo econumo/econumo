@@ -2345,8 +2345,9 @@ out), and add a second budget member account in USD, before running these.
       Details button reads "Finish setup"); a partner or guest sees a dash and
       no button. The Debts section's Left total skips it. It has no payoff,
       no "N payments left", no projected upcoming payments and no red plan
-      hint; planning works from its creation month (in the caller's timezone:
-      a debt created at 20:00 on 31 Oct in New York plans from October) with
+      hint; planning works from its creation month (in the owner's timezone,
+      the same for every viewer: a debt created at 20:00 on 31 Oct by an owner
+      in New York plans from October, also for a partner in Sydney) with
       no end, so any later month is plannable, and months before it stay
       read-only. After Finish setup the row shows balance, payments left and
       the projection, and the plannable months end at the last payment date's

@@ -132,6 +132,12 @@ func (b *fakeBudget) LockRows(context.Context, vo.Id, model.ElementType) error {
 	return nil
 }
 
+type fakeOwners struct{ zones map[string]string }
+
+func (o *fakeOwners) GetTimezone(_ context.Context, id vo.Id) (string, error) {
+	return o.zones[id.String()], nil
+}
+
 type env struct {
 	svc      *debt.Service
 	repo     *debtrepo.Repo
@@ -142,6 +148,7 @@ type env struct {
 	rates    *fakeRates
 	currency *fakeCurrencies
 	budget   *fakeBudget
+	owners   *fakeOwners
 	user     string
 	category string
 	account  string
@@ -161,10 +168,11 @@ func newEnv(t *testing.T) *env {
 		rates:    &fakeRates{multiplier: map[string]float64{}},
 		currency: &fakeCurrencies{unusable: map[string]bool{}},
 		budget:   &fakeBudget{},
+		owners:   &fakeOwners{zones: map[string]string{}},
 	}
 	e.category = e.newCategory(user, true)
 	e.account = f.Account(fixture.Account{UserID: user})
-	e.svc = debt.NewService(e.repo, db.TX, e.clock, e.class, e.rates, e.currency)
+	e.svc = debt.NewService(e.repo, db.TX, e.clock, e.class, e.rates, e.currency, e.owners)
 	e.svc.SetBudgetElements(e.budget)
 	return e
 }
