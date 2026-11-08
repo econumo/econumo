@@ -560,8 +560,7 @@
       "any_payee": "cualquiera",
       "any_tag": "cualquiera",
       "group_tags": "Etiquetas",
-      "group_labels": "Etiquetas de informes",
-      "explainer": "Econumo encuentra los pagos de este préstamo con estos datos. Pasan de la categoría a esta deuda."
+      "group_labels": "Etiquetas de informes"
     },
     "terms": {
       "finish_setup": "Terminar configuración"

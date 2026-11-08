@@ -560,8 +560,7 @@
       "any_payee": "tous",
       "any_tag": "tous",
       "group_tags": "Tags",
-      "group_labels": "Tags de rapport",
-      "explainer": "Econumo trouve les paiements de ce prêt grâce à ces critères. Ils passent de la catégorie à cette dette."
+      "group_labels": "Tags de rapport"
     },
     "terms": {
       "finish_setup": "Terminer la configuration"

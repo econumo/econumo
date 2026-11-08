@@ -560,8 +560,7 @@
       "any_payee": "elke",
       "any_tag": "elke",
       "group_tags": "Tags",
-      "group_labels": "Rapportagetags",
-      "explainer": "Hiermee vindt Econumo de betalingen van deze lening. Ze gaan van de categorie naar deze schuld."
+      "group_labels": "Rapportagetags"
     },
     "terms": {
       "finish_setup": "Instellen voltooien"

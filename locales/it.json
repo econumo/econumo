@@ -560,8 +560,7 @@
       "any_payee": "qualsiasi",
       "any_tag": "qualsiasi",
       "group_tags": "Tag",
-      "group_labels": "Tag per i report",
-      "explainer": "Econumo trova i pagamenti di questo prestito con questi criteri. Passano dalla categoria a questo debito."
+      "group_labels": "Tag per i report"
     },
     "terms": {
       "finish_setup": "Completa la configurazione"

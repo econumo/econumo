@@ -1,8 +1,9 @@
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { CalculatorInput } from '@/components/CalculatorInput'
+import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { Label } from '@/components/ui/label'
 import { OptionSelect } from '@/components/OptionSelect'
 import { formatDate } from '@/lib/datetime'
 import type { RecurringSchedule } from '@/api/dto/recurring'
@@ -12,6 +13,11 @@ import { SCHEDULE_ORDER } from './useDebtForm'
 export type FieldErrors = Record<string, string | undefined>
 
 const amountInputClass = `${cardFieldControlClass} text-base`
+
+/** a plain amount: the decimal keyboard on phones, no calculator */
+function AmountInput({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
+  return <Input id={id} className={amountInputClass} inputMode="decimal" autoComplete="off" value={value} onChange={(e) => onChange(e.target.value)} />
+}
 
 export function AmountField({
   id,
@@ -30,17 +36,18 @@ export function AmountField({
 }) {
   return (
     <CardField label={label} htmlFor={id} error={error}>
-      <div className="flex items-start gap-2">
+      <div className="flex items-baseline gap-2">
         <div className="min-w-0 flex-1">
-          <CalculatorInput id={id} className={amountInputClass} value={value} onChange={onChange} />
+          <AmountInput id={id} value={value} onChange={onChange} />
         </div>
-        <span className="pt-0.5 text-sm text-muted-foreground">{symbol}</span>
+        <span className="text-sm text-muted-foreground">{symbol}</span>
       </div>
     </CardField>
   )
 }
 
-/** The payment and how often it repeats, read as one line: "2,000.00 $ every month ▾". */
+/** The payment and how often it repeats on one row, on every breakpoint: the
+    amount card and, beside it, the same-height "every month ▾" card. */
 export function PaymentField({
   id,
   value,
@@ -62,25 +69,32 @@ export function PaymentField({
   const label = t('debts.form.payment.label')
   const repeats = t('debts.form.schedule.label')
   return (
-    <div role="group" aria-label={`${label}, ${repeats}`}>
-      <CardField label={label} htmlFor={id} error={error}>
-        {/* on a phone the schedule takes its own line under the amount, so the
-            keypad row keeps the card's width */}
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-          <CalculatorInput id={id} className={amountInputClass} value={value} onChange={onChange} />
-          <span className="pt-0.5 text-sm text-muted-foreground">{symbol}</span>
-          <div className="col-span-2 sm:col-span-1 [&_button]:h-auto [&_button]:gap-1 [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:pt-0.5 [&_button]:text-sm [&_button]:text-econumo-link [&_button]:shadow-none [&_button]:focus-visible:ring-0">
-            <OptionSelect
-              id={`${id}-schedule`}
-              aria-label={repeats}
-              title={repeats}
-              value={schedule}
-              onValueChange={(v) => onScheduleChange(v as RecurringSchedule)}
-              options={SCHEDULE_ORDER.map((s) => ({ value: s, label: t(`debts.form.schedule.every.${s}`) }))}
-            />
+    <div className="flex flex-col gap-1">
+      <div role="group" aria-label={`${label}, ${repeats}`} className="flex items-stretch gap-2">
+        <div className="flex min-w-0 flex-[3] flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5 focus-within:ring-1 focus-within:ring-ring">
+          <Label htmlFor={id} className="text-[11px] font-normal text-muted-foreground">
+            {label}
+          </Label>
+          <div className="flex items-baseline gap-2">
+            <div className="min-w-0 flex-1">
+              <AmountInput id={id} value={value} onChange={onChange} />
+            </div>
+            <span className="text-sm text-muted-foreground">{symbol}</span>
           </div>
         </div>
-      </CardField>
+        <div className="flex min-w-0 flex-[2] items-center rounded-lg bg-econumo-card px-3 focus-within:ring-1 focus-within:ring-ring">
+          <OptionSelect
+            id={`${id}-schedule`}
+            className="h-auto w-full min-w-0 justify-between gap-1 border-0 bg-transparent p-0 text-sm text-econumo-link shadow-none focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent"
+            aria-label={repeats}
+            title={repeats}
+            value={schedule}
+            onValueChange={(v) => onScheduleChange(v as RecurringSchedule)}
+            options={SCHEDULE_ORDER.map((s) => ({ value: s, label: t(`debts.form.schedule.every.${s}`) }))}
+          />
+        </div>
+      </div>
+      {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
     </div>
   )
 }

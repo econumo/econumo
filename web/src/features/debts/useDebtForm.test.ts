@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { buildCreatePayload, buildTermsPayload, initialCreateState, initialTermsState, projectTerms, useDebtTermsForm } from './useDebtForm'
+import { buildCreatePayload, buildTermsPayload, initialCreateState, initialTermsState, plainAmount, projectTerms, useDebtTermsForm } from './useDebtForm'
 import { wireDebt, wireDebtNotSetUp } from './testDebt'
 
 const debt = { ...wireDebt, periodRate: '0.01', currentBalance: '900' }
@@ -79,4 +79,22 @@ it('a new debt is created without terms and keeps its label', () => {
   })
   expect(payload).not.toHaveProperty('balance')
   expect(payload).not.toHaveProperty('lastPaymentDate')
+})
+
+it.each([
+  ['2000', '2000'],
+  ['2 000', '2000'],
+  ['2 000,50', '2000.5'],
+  ['2,000.50', '2000.5'],
+  ['1,000,000', '1000000'],
+  ['2.000,50', '2000.5'],
+  ['1,5', '1.5'],
+  ['0', '0'],
+  ['-5', '-5'],
+])('reads the typed amount %s as %s', (typed, read) => {
+  expect(plainAmount(typed)).toBe(read)
+})
+
+it.each(['', 'abc', '5+5', '2,00,0', '1.2.3', '2.'])('reads %s as no amount', (typed) => {
+  expect(plainAmount(typed)).toBeNull()
 })

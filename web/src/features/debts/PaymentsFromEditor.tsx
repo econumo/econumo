@@ -19,6 +19,8 @@ export interface PaymentsFromEditorProps {
   /** converting a category row: the category is the row's and stays */
   categoryLocked?: boolean
   errors?: PaymentsFromErrors
+  /** the sentence as text: the picks named, nothing to change */
+  readOnly?: boolean
 }
 
 interface Option {
@@ -45,6 +47,7 @@ function SlotPicker({
   placeholder,
   anyLabel,
   disabled,
+  readOnly,
   onPick,
 }: {
   title: string
@@ -53,12 +56,21 @@ function SlotPicker({
   placeholder: string
   anyLabel?: string
   disabled?: boolean
+  readOnly?: boolean
   onPick: (id: string | null) => void
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const selected = groups.flatMap((g) => g.options).find((o) => o.id === value)
   const shown = selected?.name ?? placeholder
+  if (readOnly) {
+    return (
+      <span className={cn('inline-flex max-w-full items-center gap-1', !selected && 'text-muted-foreground')}>
+        {selected?.icon ? <EntityIcon name={selected.icon} className="shrink-0 text-base text-muted-foreground" /> : null}
+        <span className="truncate">{shown}</span>
+      </span>
+    )
+  }
   const pick = (id: string | null) => {
     onPick(id)
     setOpen(false)
@@ -135,7 +147,7 @@ function ownLive<T extends { id: Id; ownerUserId: Id; isArchived: 0 | 1 }>(rows:
  * or a reporting tag, never both. The category is required, the rest narrow
  * it down.
  */
-export function PaymentsFromEditor({ value, onChange, categoryLocked = false, errors = {} }: PaymentsFromEditorProps) {
+export function PaymentsFromEditor({ value, onChange, categoryLocked = false, errors = {}, readOnly = false }: PaymentsFromEditorProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: categories = [] } = useCategories()
@@ -168,28 +180,38 @@ export function PaymentsFromEditor({ value, onChange, categoryLocked = false, er
     <div className="flex flex-col gap-1">
       <div role="group" aria-label={t('debts.payments_from.label')} className="flex flex-col gap-1.5 rounded-lg bg-econumo-card px-4 py-2.5">
         <span className="text-[11px] text-muted-foreground">{t('debts.payments_from.label')}</span>
+        {/* the spaces between the words are for its text; the flex gap spaces them on screen */}
         <p className="flex flex-wrap items-center gap-x-1 gap-y-1.5 text-sm">
           <span>{t('debts.payments_from.in')}</span>
+          {' '}
           <SlotPicker
             title={t('debts.form.category.label')}
             groups={[{ options: categoryRows.map((c) => ({ id: c.id, name: c.name, icon: c.icon || 'pending' })) }]}
             value={value.categoryId}
             placeholder={t('debts.payments_from.choose_category')}
+            readOnly={readOnly}
             disabled={categoryLocked}
             onPick={(categoryId) => set({ categoryId })}
           />
+          {' '}
           <span aria-hidden className="text-muted-foreground">·</span>
+          {' '}
           <span>{t('debts.payments_from.from')}</span>
+          {' '}
           <SlotPicker
             title={t('debts.form.payee.label')}
             groups={[{ options: ownLive(payees, value.payeeId, ownerId).map((p) => ({ id: p.id, name: p.name })) }]}
             value={value.payeeId}
             placeholder={t('debts.payments_from.any_payee')}
+            readOnly={readOnly}
             anyLabel={t('debts.payments_from.any_payee')}
             onPick={(payeeId) => set({ payeeId })}
           />
+          {' '}
           <span aria-hidden className="text-muted-foreground">·</span>
+          {' '}
           <span>{t('debts.payments_from.tagged')}</span>
+          {' '}
           <SlotPicker
             title={t('debts.form.tag.label')}
             groups={[
@@ -204,11 +226,11 @@ export function PaymentsFromEditor({ value, onChange, categoryLocked = false, er
             ]}
             value={tagValue}
             placeholder={t('debts.payments_from.any_tag')}
+            readOnly={readOnly}
             anyLabel={t('debts.payments_from.any_tag')}
             onPick={pickTag}
           />
         </p>
-        <p className="text-xs text-muted-foreground">{t('debts.payments_from.explainer')}</p>
       </div>
       {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
     </div>

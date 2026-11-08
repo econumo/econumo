@@ -560,8 +560,7 @@
       "any_payee": "any payee",
       "any_tag": "any tag",
       "group_tags": "Tags",
-      "group_labels": "Reporting tags",
-      "explainer": "Econumo finds this loan's payments with these. They move from the category to this debt."
+      "group_labels": "Reporting tags"
     },
     "terms": {
       "finish_setup": "Finish setup"

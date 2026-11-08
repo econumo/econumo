@@ -16,7 +16,7 @@ function mockMatchMedia() {
 
 const empty: PaymentsFrom = { categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null }
 
-function renderEditor({ initial = empty, categoryLocked = false, errors = {} }: { initial?: PaymentsFrom; categoryLocked?: boolean; errors?: Record<string, string> } = {}) {
+function renderEditor({ initial = empty, categoryLocked = false, errors = {}, readOnly = false }: { initial?: PaymentsFrom; categoryLocked?: boolean; errors?: Record<string, string>; readOnly?: boolean } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   queryClient.setQueryData(queryKeys.categories, fixtureCategories)
   queryClient.setQueryData(queryKeys.payees, fixturePayees)
@@ -34,6 +34,7 @@ function renderEditor({ initial = empty, categoryLocked = false, errors = {} }: 
         }}
         categoryLocked={categoryLocked}
         errors={errors}
+        readOnly={readOnly}
       />
     )
   }
@@ -52,13 +53,21 @@ beforeEach(() => {
   mockMatchMedia()
 })
 
-it('reads as a sentence with the explainer under it', () => {
+it('reads as a sentence with no explainer under it', () => {
   renderEditor()
   expect(screen.getByText('Payments in')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Category: Food' })).toHaveTextContent('Food')
   expect(screen.getByRole('button', { name: 'Payee (optional): any payee' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Tag (optional): any tag' })).toBeInTheDocument()
-  expect(screen.getByText("Econumo finds this loan's payments with these. They move from the category to this debt.")).toBeInTheDocument()
+  expect(screen.queryByText(/Econumo finds this loan's payments/)).toBeNull()
+})
+
+it('a read-only sentence names the picks without pickers', () => {
+  renderEditor({ initial: { categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' }, readOnly: true })
+  const sentence = screen.getByRole('group', { name: 'Which payments count' })
+  // the icons are ligature text
+  expect(sentence).toHaveTextContent(/Payments in \w*Food · from any payee · tagged \w*health/)
+  expect(within(sentence).queryAllByRole('button')).toHaveLength(0)
 })
 
 it('one tag slot lists tags and reporting tags in two groups', async () => {

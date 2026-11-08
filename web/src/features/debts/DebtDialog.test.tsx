@@ -77,6 +77,50 @@ it('create form asks only name, payments from, payment and repeats', async () =>
   expect(screen.queryByText('Start date (optional)')).toBeNull()
 })
 
+it('the payment is a plain decimal input beside its repeats picker, with no calculator keypad', async () => {
+  renderDialog()
+  await openCreate()
+
+  const payment = screen.getByLabelText('Payment')
+  expect(payment).toHaveAttribute('inputmode', 'decimal')
+  expect(document.querySelector('[data-calculator-keypad]')).toBeNull()
+  const row = screen.getByRole('group', { name: 'Payment, Repeats' })
+  expect(row).toContainElement(payment)
+  expect(row).toContainElement(screen.getByRole('combobox', { name: 'Repeats' }))
+})
+
+it.each([
+  ['2000', '2000'],
+  ['2 000', '2000'],
+  ['2,000.50', '2000.5'],
+  ['1.5', '1.5'],
+  ['1,5', '1.5'],
+])('a payment typed as %s is sent as %s', async (typed, sent) => {
+  const bodies = captureCreate()
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ categoryId: 'cat-food' })
+
+  await user.type(screen.getByLabelText('Payment'), typed)
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0].payment).toBe(sent)
+})
+
+it('a payment that is not a number is refused before sending', async () => {
+  const bodies = captureCreate()
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ categoryId: 'cat-food' })
+
+  await user.type(screen.getByLabelText('Payment'), '5+5')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  expect(await screen.findByText('Enter a valid number')).toBeInTheDocument()
+  expect(bodies).toHaveLength(0)
+})
+
 it('converting from a category locks the category and prefills the name', async () => {
   const bodies = captureCreate()
   const user = userEvent.setup()

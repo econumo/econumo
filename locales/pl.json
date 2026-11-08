@@ -560,8 +560,7 @@
       "any_payee": "dowolny",
       "any_tag": "dowolny",
       "group_tags": "Tagi",
-      "group_labels": "Tagi raportowe",
-      "explainer": "Po tych danych Econumo znajduje płatności tej pożyczki. Przechodzą z kategorii do tego długu."
+      "group_labels": "Tagi raportowe"
     },
     "terms": {
       "finish_setup": "Dokończ konfigurację"

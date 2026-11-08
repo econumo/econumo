@@ -560,8 +560,7 @@
       "any_payee": "任意",
       "any_tag": "任意",
       "group_tags": "标签",
-      "group_labels": "统计标签",
-      "explainer": "Econumo 通过这些条件找到这笔贷款的还款，并把它们从分类转到这笔债务。"
+      "group_labels": "统计标签"
     },
     "terms": {
       "finish_setup": "完成设置"

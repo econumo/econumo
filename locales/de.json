@@ -560,8 +560,7 @@
       "any_payee": "beliebig",
       "any_tag": "beliebig",
       "group_tags": "Tags",
-      "group_labels": "Auswertungs-Tags",
-      "explainer": "Damit findet Econumo die Zahlungen dieses Kredits. Sie wandern von der Kategorie zu dieser Schuld."
+      "group_labels": "Auswertungs-Tags"
     },
     "terms": {
       "finish_setup": "Einrichtung abschließen"

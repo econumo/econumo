@@ -6,8 +6,7 @@ import type { Id } from '@/api/types'
 import type { OpenDebtParams } from '@/app/uiStore'
 import { tryNormalize } from '@/lib/decimal'
 import { normalizeNumber } from '@/lib/money'
-import { isNotEmpty, isValidFormula } from '@/lib/validation'
-import { evaluatedAmount } from '@/features/transactions/useTransactionForm'
+import { isNotEmpty } from '@/lib/validation'
 import { formatDate } from '@/lib/datetime'
 import { firstDueAfter, projectLastPaymentDate } from './debtMath'
 
@@ -54,7 +53,7 @@ export function buildCreatePayload(state: DebtCreateState): CreateDebtDto {
     tagId: state.tagId,
     labelId: state.labelId,
     startDate: state.startDate || null,
-    payment: evaluatedAmount(state.payment),
+    payment: sentAmount(state.payment),
     schedule: state.schedule,
   }
 }
@@ -89,23 +88,43 @@ export function initialTermsState(debt: DebtDto): DebtTermsState {
   }
 }
 
-/** a typed amount as a number, null while it is empty, half-typed or a broken formula */
-export function amountOf(raw: string): number | null {
-  if (!isNotEmpty(raw) || !isValidFormula(raw)) {
+const SPACES = /[\s\u00a0\u202f]/g
+
+/** A typed amount as a plain decimal string, null when it is not one. Spaces
+    group thousands ("2 000"); a lone "," or "." is the decimal mark ("1,5"),
+    and with both, or with several of one, the repeated one groups thousands
+    ("2,000.50", "2.000,50", "1,000,000"). */
+export function plainAmount(raw: string): string | null {
+  const s = raw.replace(SPACES, '')
+  let canonical: string
+  if (/^-?\d+([.,]\d+)?$/.test(s)) {
+    canonical = s.replace(',', '.')
+  } else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) {
+    canonical = s.replace(/,/g, '')
+  } else if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
+    canonical = s.replace(/\./g, '').replace(',', '.')
+  } else {
     return null
   }
-  const normalized = tryNormalize(evaluatedAmount(raw))
-  const n = normalized === null ? NaN : Number(normalized)
+  return tryNormalize(canonical)
+}
+
+/** a typed amount as a number, null while it is empty, half-typed or not a number */
+export function amountOf(raw: string): number | null {
+  const plain = plainAmount(raw)
+  const n = plain === null ? NaN : Number(plain)
   return Number.isFinite(n) ? n : null
 }
 
-/** a required amount's error: blank, a broken formula, not a number, or below the floor */
+/** a typed amount as sent: the plain decimal, or the text as typed for the server to refuse */
+function sentAmount(raw: string): string {
+  return plainAmount(raw) ?? raw.trim()
+}
+
+/** a required amount's error: blank, not a number, or below the floor */
 export function amountError(raw: string, t: (key: string) => string, positive: boolean): string | undefined {
   if (!isNotEmpty(raw)) {
     return t('common.validation.required_field')
-  }
-  if (!isValidFormula(raw)) {
-    return t('common.validation.invalid_formula')
   }
   const n = amountOf(raw)
   if (n === null || n < 0 || (positive && n === 0)) {
@@ -161,8 +180,11 @@ export function projectTerms(form: DebtTermsState, debt: DebtDto, fractionDigits
   return payment <= balance * rate ? { status: 'never' } : { status: 'unknown' }
 }
 
+// "1 090" typed over a stored 1090 is the same amount
+const sameAmount = (a: string, b: string): boolean => sentAmount(a) === sentAmount(b)
+
 function termsUntouched(form: DebtTermsState, initial: DebtTermsState): boolean {
-  return form.balance === initial.balance && form.payment === initial.payment && form.schedule === initial.schedule
+  return sameAmount(form.balance, initial.balance) && sameAmount(form.payment, initial.payment) && form.schedule === initial.schedule
 }
 
 function withProjection(form: DebtTermsState, initial: DebtTermsState, debt: DebtDto, fractionDigits?: number): DebtTermsState {
@@ -192,9 +214,9 @@ export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState,
     const terms = isNotEmpty(form.balance) && form.lastPaymentDate !== ''
     return {
       ...base,
-      payment: evaluatedAmount(form.payment),
+      payment: sentAmount(form.payment),
       schedule: form.schedule,
-      ...(terms ? { balance: evaluatedAmount(form.balance), lastPaymentDate: form.lastPaymentDate } : {}),
+      ...(terms ? { balance: sentAmount(form.balance), lastPaymentDate: form.lastPaymentDate } : {}),
     }
   }
   // The form shows what is owed now, not the stored snapshot: when no term was
@@ -206,8 +228,8 @@ export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState,
   }
   return {
     ...base,
-    balance: evaluatedAmount(form.balance),
-    payment: evaluatedAmount(form.payment),
+    balance: sentAmount(form.balance),
+    payment: sentAmount(form.payment),
     schedule: form.schedule,
     lastPaymentDate: form.lastPaymentDate,
   }

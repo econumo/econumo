@@ -560,8 +560,7 @@
       "any_payee": "qualquer",
       "any_tag": "qualquer",
       "group_tags": "Etiquetas",
-      "group_labels": "Etiquetas de relatório",
-      "explainer": "O Econumo encontra os pagamentos deste empréstimo com estes dados. Passam da categoria para esta dívida."
+      "group_labels": "Etiquetas de relatório"
     },
     "terms": {
       "finish_setup": "Concluir configuração"
