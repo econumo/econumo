@@ -236,6 +236,8 @@ The package name is `imports`
 `debt` (loans the owner pays down through an expense category) exposes six routes under
 `/api/v1/debt/` (`get-debt-list`, `get-debt`, `create-debt`, `update-debt`, `delete-debt`,
 `mark-debt-paid-off`); a debt belongs to its owner alone, so another user gets not-found.
+A debt is created with a name, what counts as its payments, a payment and a schedule; its terms
+(balance, last payment date) are optional and can be added later (see "Budget debts").
 Its ports (classification ownership, rates, the budget's element rows) are wired in
 `internal/server/glue_debt.go` and `glue_budget_debt.go`; budget reads debts through its own `DebtSource` port.
 
@@ -1689,12 +1691,17 @@ data unreadable. Most are also asserted by the test suite.
 - **Budget debts** (`internal/debt`; spec `docs/superpowers/specs/2026-10-29-budget-debts-design.md`):
   a loan paid down through an expense category, deliberately NOT an account (in no account list,
   total or report). **Matching** is by data, never a field on the transaction: an EXPENSE
-  (transfers never) is a payment when its category is the debt's, its payee/tag match when the
-  debt names one, and it is dated inside the debt's range. Debts with the same
-  category/payee/tag are partitioned by start date (a debt owns its start date up to the day
+  (transfers never) is a payment when its category is the debt's, its payee/tag/label match when
+  the debt names one (a debt with a label matches only a transaction carrying that label; a
+  debt with none ignores labels), and it is dated inside the debt's range. Debts with the same
+  category/payee/tag/label are partitioned by start date (a debt owns its start date up to the day
   before the next one's; empty = from the beginning; a shared start date is refused); keys that
-  could both match one transaction (category alone vs category + payee) are refused
-  (`debt.key_conflict`, `debt.start_date_taken`), so a payment belongs to at most one debt.
+  could both match one transaction (category alone vs category + payee, a labelled debt vs an
+  unlabelled one) are refused (`debt.key_conflict`, `debt.start_date_taken`), except that two
+  debts naming DIFFERENT labels never conflict (labels alone tell debts apart). A transaction
+  carrying both debts' labels matches both, and `model.AssignDebt` gives it to the OLDER debt
+  (`created_at`, then `id`), so a payment is still counted on exactly one debt everywhere (sync,
+  budget attribution, templates; real-row drill-downs follow the stored split the sync assigned).
   `debts_payments` (one row per matched transaction: debt and interest; the debt part is the
   amount less the interest, never stored) is materialized by the debt sync on read, in date order, under the owner's user row lock and one
   DB transaction per category: stale splits of payments that stopped matching are deleted, newly
@@ -1705,11 +1712,26 @@ data unreadable. Most are also asserted by the test suite.
   it arrives). **Snapshots** (`debts_snapshots`: balance after the as-of day's payments, payment,
   schedule, last payment date) are append-only history; the debt row also carries a copy of the
   latest snapshot's values ("current terms"), written with every new snapshot in the same
-  transaction. Create makes the first snapshot; an update writes a new one only when balance,
-  payment, schedule or last payment date differ (a rename does not); `mark-debt-paid-off` writes
-  a balance-0 snapshot. Create refuses a currency the user may not use (deleted, or another
+  transaction. **Optional terms**: a debt is created with a name, what counts (category, optional
+  payee/tag/label), payment and schedule only; `balance` and `lastPaymentDate` are an all-or-
+  none pair (one without the other is `common.is_blank` on the missing one), and the debt stays
+  NOT SET UP (`isSetUp` 0, no snapshot, `debts.as_of`/`balance`/`last_payment_date` NULL) until an
+  update supplies them. Create with terms makes the first snapshot; finishing setup (the update
+  that first supplies the pair, SPA event `appDebtFinishSetup`) writes the first snapshot as of
+  today and deletes the debt's provisional zero splits in the same transaction, so the next sync
+  splits the collected payments by the normal rules (backward estimate before the snapshot); a
+  set-up debt's update still needs its terms and writes a new snapshot only when balance, payment,
+  schedule or last payment date differ (a rename does not); `mark-debt-paid-off` writes a
+  balance-0 snapshot and is refused on a debt not set up (`debt.not_set_up`). **Not set up**:
+  payments still match and are stored in `debts_payments` with interest 0 (kept between syncs, no
+  projection exists); `DebtResult`/the budget rows send `isSetUp` 0 with `balance`,
+  `lastPaymentDate`, `currentBalance`, `moneyLeft`, `overpaymentLeft`, `overpaidSoFar`,
+  `payoffDate`, `nextDueDate`, `periodRate` as `""`, `paymentsLeft`/`periodsPaid` 0, budget
+  `closingBalance` `""` and `scheduledTotal`/`upcoming` `"0"` (the SPA keys on `isSetUp`, not on
+  empty strings); `Timelines` leaves such a debt out. `periodsPaid` counts the schedule's due
+  windows holding at least one payment dated up to today (payments from before setup count). Create refuses a currency the user may not use (deleted, or another
   user's custom one: `currency.not_available`, the same `EnsureUsable` check budgets use).
-  Currency is not editable; category, payee, tag and start date are,
+  Currency is not editable; category, payee, tag, label and start date are,
   rechecked by the same key checks. **Splitting is bank-style** (`internal/model/debt_math.go`):
   the implied periodic rate `r` is solved from the snapshot (annuity over the schedule, `r = 0`
   when payment x n = balance, payments that cannot cover the balance are refused, and so is a last
@@ -1740,9 +1762,11 @@ data unreadable. Most are also asserted by the test suite.
   `budgetSpent`, available with the element carry-over, `closingBalance`, payments left, payoff
   figures with and without the planned extras, `upcoming` = the unpaid scheduled dues, `isPlannable`)
   and on `get-budget-plan` (per-cell figures, `scheduledTotal`, `isPaidOff`). **Planning bounds**:
-  a month is plannable from the start month (start date's month, else the earlier of the first
-  matched payment's and the first snapshot's) to the end month (latest snapshot's last payment date's month, the
-  payoff month once paid off); `set-limit` and `create-comment` outside it are refused
+  a month is plannable from the start month (start date's month, else the earliest of the
+  creation day's month (the day in the CALLER's timezone, so a debt created at 20:00 on 31 Oct in New
+  York plans from October), the first matched payment's and the first snapshot's) to the end
+  month (latest snapshot's last payment date's month, the payoff month once paid off; OPEN while the
+  debt is not set up, so any month from the start is plannable); `set-limit` and `create-comment` outside it are refused
   (`budget.debt_period_out_of_range`, field `period`), but clearing a plan (`amount: null`) is
   allowed; stored plans outside the life stay in the database, show as not plannable and never reach
   the projection; a row outside its life is emitted only when something was paid or its available
@@ -1764,8 +1788,8 @@ data unreadable. Most are also asserted by the test suite.
   are read-only (no owner lock, no writes: stale splits ignored, missing ones split in memory),
   which is what `syncElements`, `set-limit` and the transaction lists call, so partners'
   owner-row locks can never invert inside a budget write. **Converting**: "Track as debt" on an
-  expense category row (also inside an envelope) opens the form; creating a WHOLE-category
-  debt (no payee/tag/start date) moves the category row's plans and comments (`TransferData`,
+  expense category row (also inside an envelope) opens the short create form (category locked);
+  creating a WHOLE-category debt (no payee/tag/label/start date) moves the category row's plans and comments (`TransferData`,
   only where the target row's currency matches, only for the months of the debt's planning
   life: the rest stays on the category row, whose Available keeps counting it) to the debt row
   in every budget in the same transaction; an edit that makes a debt whole-category (or moves a
@@ -1780,7 +1804,8 @@ data unreadable. Most are also asserted by the test suite.
   structure sync. Payments are never touched by a delete. **Lock order**: the debt owner's
   user row before any budget row, everywhere; a category/payee/tag merge therefore locks the
   owners of the debts on either side first (`DebtUsage.PrepareMerge`), before it writes. **Classifications**: deleting a
-  category, payee or tag a debt uses is refused (`*.used_by_debt`); a merge moves the debt to
+  category, payee, tag or label a debt uses is refused (`*.used_by_debt`, incl.
+  `label.used_by_debt`); a merge moves the debt to
   the target and refuses with `debt.key_conflict` when that would overlap another debt. No MCP
   tool of its own: `get_budget` lists `structure.debts` and `set_limit` accepts a debt id.
   **Shifted periods**: in a budget whose months start on another day (see "Budget period start
@@ -1793,6 +1818,24 @@ data unreadable. Most are also asserted by the test suite.
   way). Day 1 gives exactly the calendar figures. The debt service's own figures (Settings,
   details) stay calendar-month and today based; the SPA's red debt hint takes the budget's
   start day (`planHint` `startDay`).
+  **Debt SPA flow** (`web/src/features/debts`): create is a short form (name, a "payments from"
+  sentence of chip pickers `PaymentsFromEditor` for category/payee/tag/label with "any ..." rows
+  and expense-only categories, payment and repeats, currency; Payment and Repeats stack on
+  phones, side by side from `sm`); the start date field appears only after
+  `debt.start_date_taken` (the one refusal a date can resolve; `debt.key_conflict` just shows its
+  message) and the form creates a debt with no terms, then opens the review screen. The ONLY way
+  into a debt is its Details entry (Settings row, budget row menu, item sheet; owner only), opening
+  `DebtReviewScreen`, a full-screen dialog on every breakpoint (`ResponsiveDialog`
+  `fullScreen="always"`): payments left in large text with an X-of-Y progress bar (`periodsPaid`
+  of `periodsPaid + paymentsLeft`, hidden at 0), a "Loan" card (owed now, payment, repeats, next
+  payment, loan ends, start date, left to pay, overpaid so far, overpayment still to come,
+  currency) with its Edit button (`DebtTermsForm` mode `edit`), the payments-from editor in
+  place (saves with the stored snapshot, so no new snapshot), rename (header menu), payments
+  and a collapsed "History of terms". A debt not set up shows "Paid so far", a hint and a
+  Finish setup button (`DebtTermsForm` mode `setup`: no stored rate, so the last payment date
+  is typed, never auto-filled); the Settings row, the budget row's Left cell and the item
+  sheet's Details button read "Finish setup" for the owner, a partner sees a dash; Left sums,
+  Plan cells and payoff lines skip it. Mark as paid off hides until set up.
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per
   provider (`create-source` is idempotent on the pair); a Wallet card is keyed by its
   normalized name and starts `unmapped` — its events queue (`import_transaction_links`
