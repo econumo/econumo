@@ -53,6 +53,8 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
   // store a snapshot that loses that payment's principal
   const [editDebt, setEditDebt] = useState<DebtDto | null>(null)
   const [formKey, setFormKey] = useState(0)
+  // a reload on its way replaces the form: Finish setup focuses the new one
+  const [reloading, setReloading] = useState(false)
   const dirty = useRef(false)
   const [focusMissing, setFocusMissing] = useState(initialTab === 'settings')
   const [confirm, setConfirm] = useState<Confirm>(null)
@@ -69,15 +71,16 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
       return
     }
     setError(null)
+    setReloading(true)
     fetchDebtForEdit(debtId)
       .then((fresh) => {
-        if (dirty.current) {
-          return
+        if (!dirty.current) {
+          setEditDebt(fresh.item)
+          setFormKey((k) => k + 1)
         }
-        setEditDebt(fresh.item)
-        setFormKey((k) => k + 1)
       })
       .catch((err: unknown) => setError(apiErrorMessage(err)))
+      .finally(() => setReloading(false))
   }, [debtId, fetchDebtForEdit])
 
   const opened = useRef(false)
@@ -158,7 +161,7 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
                   key={formKey}
                   debt={editDebt}
                   onDirtyChange={onDirtyChange}
-                  focusMissing={focusMissing && tab === 'settings'}
+                  focusMissing={focusMissing && tab === 'settings' && !reloading}
                   onFocused={() => setFocusMissing(false)}
                   onSaved={(saved) => {
                     dirty.current = false

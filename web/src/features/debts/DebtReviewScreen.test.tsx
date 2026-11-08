@@ -267,6 +267,22 @@ it('Finish setup switches to Settings with the balance focused', async () => {
   await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveFocus())
 })
 
+it('Finish setup after a visit to Settings focuses the balance of the reloaded form', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  await openSettings(user)
+  await user.click(screen.getByRole('tab', { name: 'Overview' }))
+
+  await user.click(within(screen.getByTestId('debt-review-top')).getByRole('button', { name: 'Finish setup' }))
+
+  await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveFocus())
+  // still there once the reload has landed
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  expect(screen.getByLabelText('Balance now')).toHaveFocus()
+})
+
 it('opened for Finish setup, the screen starts on Settings', async () => {
   server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
   renderScreen()
