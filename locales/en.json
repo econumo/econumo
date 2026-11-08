@@ -746,9 +746,19 @@
       "header": "Imported from"
     },
     "rules": {
-      "field": { "external_payee": "Payee", "description": "Description" },
-      "type": { "contains": "contains", "prefix": "starts with", "exact": "is exactly" },
-      "action": { "classify": "Classify", "skip": "Skip" },
+      "field": {
+        "external_payee": "Payee",
+        "description": "Description"
+      },
+      "type": {
+        "contains": "contains",
+        "prefix": "starts with",
+        "exact": "is exactly"
+      },
+      "action": {
+        "classify": "Classify",
+        "skip": "Skip"
+      },
       "prompt": {
         "title": "Create an import rule",
         "changed_category": "You set the category to {name}. Create a rule for similar imports?",
@@ -1209,6 +1219,24 @@
       "user_profile": "User guide: user profile",
       "shared_access": "User guide: shared access",
       "budgets": "User guide: budgets"
+    },
+    "categories": {
+      "groceries": "Groceries",
+      "housing": "Housing",
+      "utilities": "Utilities",
+      "transport": "Transport",
+      "eating_out": "Eating out",
+      "health": "Health",
+      "shopping": "Shopping",
+      "entertainment": "Entertainment",
+      "kids": "Kids",
+      "subscriptions": "Subscriptions",
+      "salary": "Salary",
+      "other_income": "Other income"
+    },
+    "words": {
+      "cash": "cash | wallet",
+      "savings": "savings | saving | reserve | deposit | emergency"
     }
   },
   "budgets": {

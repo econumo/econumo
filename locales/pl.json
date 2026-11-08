@@ -746,9 +746,19 @@
       "header": "Zaimportowano z"
     },
     "rules": {
-      "field": { "external_payee": "Odbiorca", "description": "Opis" },
-      "type": { "contains": "zawiera", "prefix": "zaczyna się od", "exact": "jest dokładnie równa" },
-      "action": { "classify": "Klasyfikuj", "skip": "Pomiń" },
+      "field": {
+        "external_payee": "Odbiorca",
+        "description": "Opis"
+      },
+      "type": {
+        "contains": "zawiera",
+        "prefix": "zaczyna się od",
+        "exact": "jest dokładnie równa"
+      },
+      "action": {
+        "classify": "Klasyfikuj",
+        "skip": "Pomiń"
+      },
       "prompt": {
         "title": "Utwórz regułę importu",
         "changed_category": "Kategoria została zmieniona na {name}. Utworzyć regułę dla podobnych importów?",
@@ -1209,6 +1219,24 @@
       "user_profile": "Przewodnik użytkownika: profil użytkownika",
       "shared_access": "Przewodnik użytkownika: wspólny dostęp",
       "budgets": "Przewodnik użytkownika: budżety"
+    },
+    "categories": {
+      "groceries": "Zakupy spożywcze",
+      "housing": "Mieszkanie",
+      "utilities": "Rachunki",
+      "transport": "Transport",
+      "eating_out": "Jedzenie na mieście",
+      "health": "Zdrowie",
+      "shopping": "Zakupy",
+      "entertainment": "Rozrywka",
+      "kids": "Dzieci",
+      "subscriptions": "Subskrypcje",
+      "salary": "Wynagrodzenie",
+      "other_income": "Inne przychody"
+    },
+    "words": {
+      "cash": "gotówka | portfel | kasa | cash",
+      "savings": "oszczędności | oszczędnościowe | rezerwa | lokata | awaryjne | poduszka"
     }
   },
   "budgets": {

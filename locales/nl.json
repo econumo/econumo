@@ -746,9 +746,19 @@
       "header": "Geïmporteerd uit"
     },
     "rules": {
-      "field": { "external_payee": "Begunstigde", "description": "Omschrijving" },
-      "type": { "contains": "bevat", "prefix": "begint met", "exact": "is precies" },
-      "action": { "classify": "Classificeren", "skip": "Overslaan" },
+      "field": {
+        "external_payee": "Begunstigde",
+        "description": "Omschrijving"
+      },
+      "type": {
+        "contains": "bevat",
+        "prefix": "begint met",
+        "exact": "is precies"
+      },
+      "action": {
+        "classify": "Classificeren",
+        "skip": "Overslaan"
+      },
       "prompt": {
         "title": "Importregel maken",
         "changed_category": "Je hebt de categorie ingesteld op {name}. Een regel maken voor vergelijkbare imports?",
@@ -1209,6 +1219,24 @@
       "user_profile": "Handleiding: gebruikersprofiel",
       "shared_access": "Handleiding: gedeelde toegang",
       "budgets": "Handleiding: budgetten"
+    },
+    "categories": {
+      "groceries": "Boodschappen",
+      "housing": "Wonen",
+      "utilities": "Vaste lasten",
+      "transport": "Vervoer",
+      "eating_out": "Uit eten",
+      "health": "Gezondheid",
+      "shopping": "Winkelen",
+      "entertainment": "Entertainment",
+      "kids": "Kinderen",
+      "subscriptions": "Abonnementen",
+      "salary": "Salaris",
+      "other_income": "Overige inkomsten"
+    },
+    "words": {
+      "cash": "contant | contanten | portemonnee | cash",
+      "savings": "spaar | sparen | spaarrekening | reserve | deposito | noodfonds | buffer"
     }
   },
   "budgets": {

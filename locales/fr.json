@@ -746,9 +746,19 @@
       "header": "Importée depuis"
     },
     "rules": {
-      "field": { "external_payee": "Bénéficiaire", "description": "Description" },
-      "type": { "contains": "contient", "prefix": "commence par", "exact": "est exactement" },
-      "action": { "classify": "Classer", "skip": "Ignorer" },
+      "field": {
+        "external_payee": "Bénéficiaire",
+        "description": "Description"
+      },
+      "type": {
+        "contains": "contient",
+        "prefix": "commence par",
+        "exact": "est exactement"
+      },
+      "action": {
+        "classify": "Classer",
+        "skip": "Ignorer"
+      },
       "prompt": {
         "title": "Créer une règle d'import",
         "changed_category": "Vous avez défini la catégorie sur {name}. Créer une règle pour les imports similaires ?",
@@ -1209,6 +1219,24 @@
       "user_profile": "Guide utilisateur : profil",
       "shared_access": "Guide utilisateur : accès partagé",
       "budgets": "Guide utilisateur : budgets"
+    },
+    "categories": {
+      "groceries": "Courses",
+      "housing": "Logement",
+      "utilities": "Factures",
+      "transport": "Transport",
+      "eating_out": "Restaurants",
+      "health": "Santé",
+      "shopping": "Shopping",
+      "entertainment": "Loisirs",
+      "kids": "Enfants",
+      "subscriptions": "Abonnements",
+      "salary": "Salaire",
+      "other_income": "Autres revenus"
+    },
+    "words": {
+      "cash": "espèces | liquide | portefeuille | cash",
+      "savings": "épargne | livret | réserve | dépôt | urgence | economies | économies"
     }
   },
   "budgets": {

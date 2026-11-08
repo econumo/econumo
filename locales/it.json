@@ -746,9 +746,19 @@
       "header": "Importata da"
     },
     "rules": {
-      "field": { "external_payee": "Beneficiario", "description": "Descrizione" },
-      "type": { "contains": "contiene", "prefix": "inizia con", "exact": "è esattamente" },
-      "action": { "classify": "Classifica", "skip": "Salta" },
+      "field": {
+        "external_payee": "Beneficiario",
+        "description": "Descrizione"
+      },
+      "type": {
+        "contains": "contiene",
+        "prefix": "inizia con",
+        "exact": "è esattamente"
+      },
+      "action": {
+        "classify": "Classifica",
+        "skip": "Salta"
+      },
       "prompt": {
         "title": "Crea una regola di importazione",
         "changed_category": "Hai impostato la categoria su {name}. Vuoi creare una regola per importazioni simili?",
@@ -1209,6 +1219,24 @@
       "user_profile": "Guida utente: profilo utente",
       "shared_access": "Guida utente: accesso condiviso",
       "budgets": "Guida utente: budget"
+    },
+    "categories": {
+      "groceries": "Spesa",
+      "housing": "Casa",
+      "utilities": "Utenze",
+      "transport": "Trasporti",
+      "eating_out": "Ristoranti",
+      "health": "Salute",
+      "shopping": "Shopping",
+      "entertainment": "Intrattenimento",
+      "kids": "Figli",
+      "subscriptions": "Abbonamenti",
+      "salary": "Stipendio",
+      "other_income": "Altre entrate"
+    },
+    "words": {
+      "cash": "contanti | contante | portafoglio | cash",
+      "savings": "risparmi | risparmio | riserva | deposito | emergenza | fondo"
     }
   },
   "budgets": {

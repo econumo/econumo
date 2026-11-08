@@ -746,9 +746,19 @@
       "header": "导入自"
     },
     "rules": {
-      "field": { "external_payee": "收款人", "description": "说明" },
-      "type": { "contains": "包含", "prefix": "开头是", "exact": "完全等于" },
-      "action": { "classify": "分类", "skip": "跳过" },
+      "field": {
+        "external_payee": "收款人",
+        "description": "说明"
+      },
+      "type": {
+        "contains": "包含",
+        "prefix": "开头是",
+        "exact": "完全等于"
+      },
+      "action": {
+        "classify": "分类",
+        "skip": "跳过"
+      },
       "prompt": {
         "title": "创建导入规则",
         "changed_category": "分类已设置为“{name}”。是否为类似的导入创建规则？",
@@ -1209,6 +1219,24 @@
       "user_profile": "用户指南：个人资料",
       "shared_access": "用户指南：共享访问",
       "budgets": "用户指南：预算"
+    },
+    "categories": {
+      "groceries": "买菜",
+      "housing": "住房",
+      "utilities": "水电燃气",
+      "transport": "交通",
+      "eating_out": "外出就餐",
+      "health": "医疗健康",
+      "shopping": "购物",
+      "entertainment": "娱乐",
+      "kids": "孩子",
+      "subscriptions": "订阅",
+      "salary": "工资",
+      "other_income": "其他收入"
+    },
+    "words": {
+      "cash": "现金 | 钱包 | 零钱",
+      "savings": "储蓄 | 存款 | 积蓄 | 备用金 | 应急 | 定期"
     }
   },
   "budgets": {

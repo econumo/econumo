@@ -746,9 +746,19 @@
       "header": "Importada de"
     },
     "rules": {
-      "field": { "external_payee": "Beneficiário", "description": "Descrição" },
-      "type": { "contains": "contém", "prefix": "começa com", "exact": "é exatamente" },
-      "action": { "classify": "Classificar", "skip": "Ignorar" },
+      "field": {
+        "external_payee": "Beneficiário",
+        "description": "Descrição"
+      },
+      "type": {
+        "contains": "contém",
+        "prefix": "começa com",
+        "exact": "é exatamente"
+      },
+      "action": {
+        "classify": "Classificar",
+        "skip": "Ignorar"
+      },
       "prompt": {
         "title": "Criar uma regra de importação",
         "changed_category": "Definiu a categoria como {name}. Criar uma regra para importações semelhantes?",
@@ -1209,6 +1219,24 @@
       "user_profile": "Guia do utilizador: perfil",
       "shared_access": "Guia do utilizador: acesso partilhado",
       "budgets": "Guia do utilizador: orçamentos"
+    },
+    "categories": {
+      "groceries": "Supermercado",
+      "housing": "Habitação",
+      "utilities": "Contas da casa",
+      "transport": "Transporte",
+      "eating_out": "Restaurantes",
+      "health": "Saúde",
+      "shopping": "Compras",
+      "entertainment": "Lazer",
+      "kids": "Filhos",
+      "subscriptions": "Subscrições",
+      "salary": "Salário",
+      "other_income": "Outras receitas"
+    },
+    "words": {
+      "cash": "dinheiro | carteira | numerário | cash",
+      "savings": "poupança | poupanca | reserva | depósito | emergência | cofrinho"
     }
   },
   "budgets": {

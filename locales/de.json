@@ -746,9 +746,19 @@
       "header": "Importiert aus"
     },
     "rules": {
-      "field": { "external_payee": "Zahlungsempfänger", "description": "Beschreibung" },
-      "type": { "contains": "enthält", "prefix": "beginnt mit", "exact": "ist genau" },
-      "action": { "classify": "Klassifizieren", "skip": "Überspringen" },
+      "field": {
+        "external_payee": "Zahlungsempfänger",
+        "description": "Beschreibung"
+      },
+      "type": {
+        "contains": "enthält",
+        "prefix": "beginnt mit",
+        "exact": "ist genau"
+      },
+      "action": {
+        "classify": "Klassifizieren",
+        "skip": "Überspringen"
+      },
       "prompt": {
         "title": "Importregel erstellen",
         "changed_category": "Du hast die Kategorie auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
@@ -1209,6 +1219,24 @@
       "user_profile": "Benutzerhandbuch: Benutzerprofil",
       "shared_access": "Benutzerhandbuch: gemeinsamer Zugriff",
       "budgets": "Benutzerhandbuch: Budgets"
+    },
+    "categories": {
+      "groceries": "Lebensmittel",
+      "housing": "Wohnen",
+      "utilities": "Nebenkosten",
+      "transport": "Verkehr",
+      "eating_out": "Restaurants",
+      "health": "Gesundheit",
+      "shopping": "Einkaufen",
+      "entertainment": "Unterhaltung",
+      "kids": "Kinder",
+      "subscriptions": "Abonnements",
+      "salary": "Gehalt",
+      "other_income": "Sonstige Einnahmen"
+    },
+    "words": {
+      "cash": "bargeld | bar | geldbeutel | portemonnaie | cash",
+      "savings": "spar | sparen | sparkonto | rücklage | notgroschen | reserve | tagesgeld"
     }
   },
   "budgets": {
