@@ -1239,7 +1239,24 @@
       "note": "Другие валюты можно добавить позже в Настройках.",
       "no_rate": "Для {codes} пока нет курса. Суммы в этой валюте не будут пересчитываться, пока не добавлен курс."
     },
-    "step_of": "Шаг {current} из {total}"
+    "step_of": "Шаг {current} из {total}",
+    "steps_nav": {
+      "title": "Начало работы",
+      "progress": "Начало работы · {current} из {total}",
+      "skip_setup": "Пропустить настройку",
+      "optional": "необязательно",
+      "import": "Импорт",
+      "categories": "Категории",
+      "accounts": "Счета",
+      "plan": "Бюджет и план",
+      "home_screen": "Установить приложение",
+      "apple_wallet": "Apple Wallet"
+    },
+    "placeholder": {
+      "text": "Этот шаг скоро появится.",
+      "continue": "Продолжить",
+      "skip": "Пропустить"
+    }
   },
   "budgets": {
     "modal": {

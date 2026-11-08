@@ -1239,7 +1239,24 @@
       "note": "Vous pourrez ajouter d'autres devises plus tard dans les Paramètres.",
       "no_rate": "Pas encore de taux de change pour {codes}. Les montants dans cette devise ne seront pas convertis tant qu'un taux n'est pas ajouté."
     },
-    "step_of": "Étape {current} sur {total}"
+    "step_of": "Étape {current} sur {total}",
+    "steps_nav": {
+      "title": "Premiers pas",
+      "progress": "Premiers pas · {current} sur {total}",
+      "skip_setup": "Passer la configuration",
+      "optional": "facultatif",
+      "import": "Importer",
+      "categories": "Catégories",
+      "accounts": "Comptes",
+      "plan": "Budget et plan",
+      "home_screen": "Installer l'app",
+      "apple_wallet": "Apple Wallet"
+    },
+    "placeholder": {
+      "text": "Cette étape arrive bientôt.",
+      "continue": "Continuer",
+      "skip": "Passer"
+    }
   },
   "budgets": {
     "modal": {

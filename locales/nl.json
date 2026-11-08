@@ -1239,7 +1239,24 @@
       "note": "Je kunt later in Instellingen meer valuta's toevoegen.",
       "no_rate": "Nog geen wisselkoers voor {codes}. Bedragen in deze valuta worden pas omgerekend als er een koers is toegevoegd."
     },
-    "step_of": "Stap {current} van {total}"
+    "step_of": "Stap {current} van {total}",
+    "steps_nav": {
+      "title": "Aan de slag",
+      "progress": "Aan de slag · {current} van {total}",
+      "skip_setup": "Instellen overslaan",
+      "optional": "optioneel",
+      "import": "Importeren",
+      "categories": "Categorieën",
+      "accounts": "Rekeningen",
+      "plan": "Budget & plan",
+      "home_screen": "App installeren",
+      "apple_wallet": "Apple Wallet"
+    },
+    "placeholder": {
+      "text": "Deze stap komt binnenkort.",
+      "continue": "Doorgaan",
+      "skip": "Overslaan"
+    }
   },
   "budgets": {
     "modal": {

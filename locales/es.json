@@ -1239,7 +1239,24 @@
       "note": "Puedes añadir más monedas más adelante en Ajustes.",
       "no_rate": "Aún no hay tipo de cambio para {codes}. Los importes en ella no se convertirán hasta que se añada un tipo."
     },
-    "step_of": "Paso {current} de {total}"
+    "step_of": "Paso {current} de {total}",
+    "steps_nav": {
+      "title": "Primeros pasos",
+      "progress": "Primeros pasos · {current} de {total}",
+      "skip_setup": "Omitir configuración",
+      "optional": "opcional",
+      "import": "Importar",
+      "categories": "Categorías",
+      "accounts": "Cuentas",
+      "plan": "Presupuesto y plan",
+      "home_screen": "Instalar la app",
+      "apple_wallet": "Apple Wallet"
+    },
+    "placeholder": {
+      "text": "Este paso llegará pronto.",
+      "continue": "Continuar",
+      "skip": "Omitir"
+    }
   },
   "budgets": {
     "modal": {

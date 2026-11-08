@@ -205,3 +205,18 @@ it('a user fetch answering before the write lands does not bring the step back',
   expect(result.current.steps[0]?.state).toBe('done')
   expect(state.posts).toEqual([{ value: 'import' }])
 })
+
+it('answering a step already in that state fires no metric and writes nothing', async () => {
+  setDevice(IPHONE)
+  localStorage.setItem(HOME_SCREEN_KEY, 'skipped')
+  const track = vi.spyOn(metrics, 'trackEvent')
+  const { result } = setup(userWith('import,!plan'))
+  const state = serveOption('import,!plan')
+  await waitFor(() => expect(result.current.ready).toBe(true))
+  await act(() => result.current.markDone('import'))
+  await act(() => result.current.skip('plan'))
+  await act(() => result.current.skip('home_screen'))
+  expect(state.posts).toEqual([])
+  expect(track).not.toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_STEP_DONE, expect.anything())
+  expect(track).not.toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_STEP_SKIP, expect.anything())
+})

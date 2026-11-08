@@ -1239,7 +1239,24 @@
       "note": "You can add more currencies later in Settings.",
       "no_rate": "No exchange rate yet for {codes}. Amounts in it won't be converted until a rate is added."
     },
-    "step_of": "Step {current} of {total}"
+    "step_of": "Step {current} of {total}",
+    "steps_nav": {
+      "title": "Getting started",
+      "progress": "Getting started · {current} of {total}",
+      "skip_setup": "Skip setup",
+      "optional": "optional",
+      "import": "Import",
+      "categories": "Categories",
+      "accounts": "Accounts",
+      "plan": "Budget & plan",
+      "home_screen": "Install app",
+      "apple_wallet": "Apple Wallet"
+    },
+    "placeholder": {
+      "text": "This step is coming soon.",
+      "continue": "Continue",
+      "skip": "Skip"
+    }
   },
   "budgets": {
     "modal": {

@@ -59,6 +59,7 @@ export function useOnboardingSteps(): OnboardingSteps {
 
   const answer = useCallback(
     async (key: OnboardingStepKey, state: 'done' | 'skipped') => {
+      if (steps.find((s) => s.key === key)?.state === state) return
       trackEvent(state === 'done' ? METRICS.ONBOARDING_STEP_DONE : METRICS.ONBOARDING_STEP_SKIP, { step: key })
       if (key === 'home_screen') {
         setHomeScreenState(state)
@@ -66,7 +67,7 @@ export function useOnboardingSteps(): OnboardingSteps {
       }
       await writeStepState(queryClient, key, state)
     },
-    [queryClient],
+    [queryClient, steps],
   )
   const markDone = useCallback((key: OnboardingStepKey) => answer(key, 'done'), [answer])
   const skip = useCallback((key: OnboardingStepKey) => answer(key, 'skipped'), [answer])

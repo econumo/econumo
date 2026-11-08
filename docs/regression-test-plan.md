@@ -261,15 +261,23 @@ navigation (single-pane vs sidebar).
 
 ## 3. Onboarding (fresh user)
 
-- [ ] 📱 A fresh user lands on onboarding step 1 ("Step 1 of 2"): account rows
-      with name, balance, currency and a Savings switch; a new empty row
-      appears as the last one is typed in.
-- [ ] Continue creates the accounts, sets the main currency and shows only the
-      used currencies, then shows step 2 (default categories, all ticked).
-- [ ] Continue on step 2 creates the ticked categories and a "My budget" budget
-      with the accounts, completes onboarding and lands on `/budget`; the
-      sidebar onboarding link disappears; `/` now renders the budget.
-- [ ] "Skip setup" on either step completes onboarding and lands on `/budget`.
+- [ ] 📱 A fresh user lands on Getting started at `/` (on a phone too, instead
+      of the nav list). Desktop shows a horizontal stepper (Import "optional",
+      Categories, Accounts, Budget & plan, plus Install app where the browser
+      can install and Apple Wallet on an iPhone or Mac): done steps are filled
+      with ✓, skipped ones dashed, the selected one outlined. A phone shows
+      "Getting started · N of M" over a segmented bar.
+- [ ] Clicking a step (or a bar segment on a phone) opens it; Continue or Skip
+      on a step moves to the next open step after it, and the stepper shows
+      the new state.
+- [ ] Answering the last open step completes onboarding and lands on
+      `/budget`; the sidebar onboarding link disappears; `/` now renders the
+      budget (and on a phone the nav list again).
+- [ ] "Skip setup" (top right) skips every open step, completes onboarding
+      and lands on `/budget`.
+- [ ] 📱 While onboarding is incomplete neither the "Econumo works best as an
+      app" banner nor the one-time install popup appears in the app; both
+      appear once onboarding is completed.
 - [ ] Skip on step 1 creates nothing; skip on step 2 keeps the accounts already
       created in step 1 and creates no categories or budget.
 - [ ] 📱 Step 1 and step 2 render usably on a phone, tablet and desktop width
@@ -2656,7 +2664,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       Launched from the Home Screen icon, neither the banner nor the row
       appears.
 - [ ] 📱 Install popup, iOS Safari: on a device that never saw it, the first
-      signed-in page opens the install steps by itself, once; after "Got it"
+      signed-in page once onboarding is complete opens the install steps by
+      itself, once; after "Got it"
       it never opens again on that device (reload, logout and login included),
       and it never opens after the banner was dismissed, in the installed app,
       or in Chrome/Edge (they get the browser's own install dialog instead).

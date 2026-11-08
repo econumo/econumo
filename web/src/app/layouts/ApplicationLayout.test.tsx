@@ -648,6 +648,15 @@ it('compact viewport shows only the sidebar at / and only the workspace elsewher
   expect(screen.queryByTestId('workspace')).not.toBeInTheDocument()
 })
 
+it('compact viewport shows the workspace at / while onboarding is incomplete', async () => {
+  mockViewport(true)
+  server.use(...coreHandlers({ user: { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: '' } : o)) } }))
+  renderShell('/')
+  expect(await screen.findByText('HOME CONTENT')).toBeInTheDocument()
+  expect(screen.getByTestId('workspace')).toBeInTheDocument()
+  expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument()
+})
+
 it('compact viewport hides the sidebar on content routes', async () => {
   mockViewport(true)
   renderShell('/account/a1')

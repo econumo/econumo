@@ -1239,7 +1239,24 @@
       "note": "Інші валюти можна додати пізніше в Налаштуваннях.",
       "no_rate": "Для {codes} ще немає курсу. Суми в цій валюті не перераховуватимуться, доки не додано курс."
     },
-    "step_of": "Крок {current} з {total}"
+    "step_of": "Крок {current} з {total}",
+    "steps_nav": {
+      "title": "Початок роботи",
+      "progress": "Початок роботи · {current} з {total}",
+      "skip_setup": "Пропустити налаштування",
+      "optional": "необов'язково",
+      "import": "Імпорт",
+      "categories": "Категорії",
+      "accounts": "Рахунки",
+      "plan": "Бюджет і план",
+      "home_screen": "Встановити застосунок",
+      "apple_wallet": "Apple Wallet"
+    },
+    "placeholder": {
+      "text": "Цей крок незабаром з'явиться.",
+      "continue": "Продовжити",
+      "skip": "Пропустити"
+    }
   },
   "budgets": {
     "modal": {

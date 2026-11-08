@@ -1239,7 +1239,24 @@
       "note": "您以后可以在设置中添加更多币种。",
       "no_rate": "{codes} 还没有汇率。在添加汇率之前，该币种的金额不会被换算。"
     },
-    "step_of": "第 {current} 步，共 {total} 步"
+    "step_of": "第 {current} 步，共 {total} 步",
+    "steps_nav": {
+      "title": "开始使用",
+      "progress": "开始使用 · 第 {current} 步，共 {total} 步",
+      "skip_setup": "跳过设置",
+      "optional": "可选",
+      "import": "导入",
+      "categories": "分类",
+      "accounts": "账户",
+      "plan": "预算与计划",
+      "home_screen": "安装应用",
+      "apple_wallet": "Apple Wallet"
+    },
+    "placeholder": {
+      "text": "此步骤即将推出。",
+      "continue": "继续",
+      "skip": "跳过"
+    }
   },
   "budgets": {
     "modal": {

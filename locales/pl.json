@@ -1239,7 +1239,24 @@
       "note": "Więcej walut możesz dodać później w Ustawieniach.",
       "no_rate": "Brak jeszcze kursu wymiany dla {codes}. Kwoty w tej walucie nie będą przeliczane, dopóki nie zostanie dodany kurs."
     },
-    "step_of": "Krok {current} z {total}"
+    "step_of": "Krok {current} z {total}",
+    "steps_nav": {
+      "title": "Pierwsze kroki",
+      "progress": "Pierwsze kroki · {current} z {total}",
+      "skip_setup": "Pomiń konfigurację",
+      "optional": "opcjonalnie",
+      "import": "Import",
+      "categories": "Kategorie",
+      "accounts": "Konta",
+      "plan": "Budżet i plan",
+      "home_screen": "Zainstaluj aplikację",
+      "apple_wallet": "Apple Wallet"
+    },
+    "placeholder": {
+      "text": "Ten krok pojawi się wkrótce.",
+      "continue": "Dalej",
+      "skip": "Pomiń"
+    }
   },
   "budgets": {
     "modal": {

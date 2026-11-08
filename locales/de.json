@@ -1239,7 +1239,24 @@
       "note": "Weitere Währungen können Sie später in den Einstellungen hinzufügen.",
       "no_rate": "Für {codes} gibt es noch keinen Wechselkurs. Beträge darin werden erst umgerechnet, wenn ein Kurs hinzugefügt wird."
     },
-    "step_of": "Schritt {current} von {total}"
+    "step_of": "Schritt {current} von {total}",
+    "steps_nav": {
+      "title": "Erste Schritte",
+      "progress": "Erste Schritte · {current} von {total}",
+      "skip_setup": "Einrichtung überspringen",
+      "optional": "optional",
+      "import": "Import",
+      "categories": "Kategorien",
+      "accounts": "Konten",
+      "plan": "Budget & Plan",
+      "home_screen": "App installieren",
+      "apple_wallet": "Apple Wallet"
+    },
+    "placeholder": {
+      "text": "Dieser Schritt kommt bald.",
+      "continue": "Weiter",
+      "skip": "Überspringen"
+    }
   },
   "budgets": {
     "modal": {

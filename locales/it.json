@@ -1239,7 +1239,24 @@
       "note": "Potrai aggiungere altre valute più tardi nelle Impostazioni.",
       "no_rate": "Nessun tasso di cambio per {codes}. Gli importi in questa valuta non verranno convertiti finché non viene aggiunto un tasso."
     },
-    "step_of": "Passaggio {current} di {total}"
+    "step_of": "Passaggio {current} di {total}",
+    "steps_nav": {
+      "title": "Per iniziare",
+      "progress": "Per iniziare · {current} di {total}",
+      "skip_setup": "Salta la configurazione",
+      "optional": "facoltativo",
+      "import": "Importa",
+      "categories": "Categorie",
+      "accounts": "Conti",
+      "plan": "Budget e piano",
+      "home_screen": "Installa l'app",
+      "apple_wallet": "Apple Wallet"
+    },
+    "placeholder": {
+      "text": "Questo passaggio arriverà presto.",
+      "continue": "Continua",
+      "skip": "Salta"
+    }
   },
   "budgets": {
     "modal": {
