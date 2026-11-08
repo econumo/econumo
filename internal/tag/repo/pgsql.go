@@ -47,3 +47,15 @@ func (pgsqlQuerier) ReassignTagTransactions(ctx context.Context, db backend.DBTX
 func (pgsqlQuerier) ReassignTagRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return pgsqlgen.New(db).ReassignTagRecurring(ctx, pgsqlgen.ReassignTagRecurringParams(p))
 }
+
+func (pgsqlQuerier) ListTagsByIDs(ctx context.Context, db backend.DBTX, ids string) ([]tagRow, error) {
+	rows, err := pgsqlgen.New(db).ListTagsByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]tagRow, len(rows))
+	for i, x := range rows {
+		out[i] = tagRow(x)
+	}
+	return out, nil
+}

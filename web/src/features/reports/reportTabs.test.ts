@@ -20,8 +20,11 @@ it('first visit has one list tab, active', () => {
   expect(activeId).toBe(tabs[0].id)
 })
 
-it('defaultParams: the last 3 years', () => {
-  expect(defaultParams('b1')).toEqual({ budgetId: 'b1', period: 'last3y' })
+it('defaultParams: last 3 years by year, over time, expenses by category, bars', () => {
+  expect(defaultParams('b1')).toEqual({
+    budgetId: 'b1', period: 'last3y', step: 'year', mode: 'overTime', side: 'expense', groupBy: 'category',
+    selectedId: null, compare: null,
+  })
 })
 
 it('a new first tab starts in the given scope', () => {
@@ -43,15 +46,15 @@ it('openNew adds a list tab, activates it and inherits the active tab scope', ()
 it('choose turns a tab into a report', () => {
   store().ensureFor('u1')
   const id = store().tabs[0].id
-  store().choose(id, 'networth')
-  expect(store().tabs[0].kind).toBe('networth')
+  store().choose(id, 'spending')
+  expect(store().tabs[0].kind).toBe('spending')
 })
 
 it('rename sets a title; a blank title goes back to the generated one', () => {
   store().ensureFor('u1')
   const id = store().tabs[0].id
-  store().rename(id, '  Family 3y ')
-  expect(store().tabs[0].title).toBe('Family 3y')
+  store().rename(id, '  Groceries 3y ')
+  expect(store().tabs[0].title).toBe('Groceries 3y')
   store().rename(id, '   ')
   expect(store().tabs[0].title).toBeNull()
 })
@@ -84,15 +87,15 @@ it('closing the active tab activates its neighbour', () => {
 it('duplicate copies the tab right after it and activates the copy', () => {
   store().ensureFor('u1')
   const id = store().tabs[0].id
-  store().choose(id, 'networth')
-  store().setParams(id, { period: 'all' })
-  store().rename(id, 'Everything')
+  store().choose(id, 'spending')
+  store().setParams(id, { selectedId: 'cat-food' })
+  store().rename(id, 'Food')
   store().openNew()
   const copy = store().duplicate(id)
   const { tabs, activeId } = store()
   expect(tabs).toHaveLength(3)
   expect(tabs[1].id).toBe(copy)
-  expect(tabs[1]).toMatchObject({ kind: 'networth', title: 'Everything', params: { period: 'all' } })
+  expect(tabs[1]).toMatchObject({ kind: 'spending', title: 'Food', params: { selectedId: 'cat-food' } })
   expect(activeId).toBe(copy)
 })
 
@@ -110,8 +113,8 @@ it('move reorders tabs', () => {
 it('setParams merges a patch into one tab', () => {
   store().ensureFor('u1')
   const id = store().tabs[0].id
-  store().setParams(id, { budgetId: 'b2' })
-  expect(store().tabs[0].params).toEqual({ budgetId: 'b2', period: 'last3y' })
+  store().setParams(id, { step: 'month', budgetId: 'b2' })
+  expect(store().tabs[0].params).toMatchObject({ step: 'month', budgetId: 'b2', mode: 'overTime' })
 })
 
 it('a different user resets the tabs', () => {
@@ -128,8 +131,10 @@ it('a different user resets the tabs', () => {
 it('repairs a tab whose budget is gone', () => {
   store().ensureFor('u1', 'b-gone')
   const id = store().tabs[0].id
+  store().setParams(id, { selectedId: 'el-1' })
   store().repair(id, ['b1', 'b2'])
   expect(store().tabs[0].params.budgetId).toBeNull()
+  expect(store().tabs[0].params.selectedId).toBeNull()
   store().setParams(id, { budgetId: 'b1' })
   store().repair(id, ['b1', 'b2'])
   expect(store().tabs[0].params.budgetId).toBe('b1')
@@ -145,31 +150,52 @@ it('tolerates a malformed stored state', async () => {
   expect(store().activeId).toBe(store().tabs[0].id)
 })
 
-const storedTabs = async (tabs: unknown[]) => {
-  localStorage.setItem('econumo.reportTabs', JSON.stringify({ state: { userId: 'u1', tabs, activeId: 't1' }, version: 0 }))
+it('fills params a stored tab is missing', async () => {
+  localStorage.setItem('econumo.reportTabs', JSON.stringify({
+    state: { userId: 'u1', tabs: [{ id: 't1', kind: 'spending', title: null, params: { budgetId: 'b1' } }], activeId: 't1' },
+    version: 0,
+  }))
   await useReportTabs.persist.rehydrate()
   store().ensureFor('u1')
-  return store().tabs
+  expect(store().tabs[0].params).toEqual({ ...defaultParams('b1') })
+})
+
+const storedParams = async (params: unknown) => {
+  localStorage.setItem('econumo.reportTabs', JSON.stringify({
+    state: { userId: 'u1', tabs: [{ id: 't1', kind: 'spending', title: null, params }], activeId: 't1' },
+    version: 0,
+  }))
+  await useReportTabs.persist.rehydrate()
+  store().ensureFor('u1')
+  return store().tabs[0].params
 }
 
-it('fills params a stored tab is missing and replaces unknown ones', async () => {
-  const tabs = await storedTabs([{ id: 't1', kind: 'networth', title: null, params: { budgetId: 'b1', period: 'forever' } }])
-  expect(tabs[0].params).toEqual(defaultParams('b1'))
+it('replaces unknown enum values with the defaults', async () => {
+  const params = await storedParams({
+    budgetId: 'b1', period: 'forever', step: 'week', mode: 'pie', side: 'both', groupBy: 'account',
+    selectedId: 42, from: 7, to: null,
+  })
+  expect(params).toEqual(defaultParams('b1'))
 })
 
 it('keeps valid stored values', async () => {
-  const tabs = await storedTabs([{ id: 't1', kind: 'networth', title: null, params: { budgetId: null, period: 'all' } }])
-  expect(tabs[0].params).toEqual({ budgetId: null, period: 'all' })
+  const kept = {
+    budgetId: null, period: 'custom', from: '2024-03-01', to: '2025-02-01', step: 'quarter', mode: 'compare',
+    side: 'income', groupBy: 'payee', selectedId: 'cat-1', compare: [2024, 2026],
+  }
+  expect(await storedParams(kept)).toEqual(kept)
 })
 
-// a beta build offered these; the tab goes, the others stay
-it('drops a stored tab of a report that is not offered', async () => {
-  const tabs = await storedTabs([
-    { id: 't1', kind: 'spending', title: null, params: {} },
-    { id: 't2', kind: 'networth', title: null, params: {} },
-  ])
-  expect(tabs.map((t) => t.id)).toEqual(['t2'])
-  expect(store().activeId).toBe('t2')
+it.each([
+  ['a string', '2025,2026'],
+  ['one year', [2025]],
+  ['three years', [2024, 2025, 2026]],
+  ['non-integers', [2025.5, 2026]],
+  ['strings', ['2025', '2026']],
+  ['in the wrong order', [2026, 2025]],
+  ['one year twice', [2025, 2025]],
+])('compare that is %s falls back to none', async (_, compare) => {
+  expect((await storedParams({ compare })).compare).toBeNull()
 })
 
 it(`caps tabs at ${MAX_REPORT_TABS}`, () => {
@@ -181,11 +207,23 @@ it(`caps tabs at ${MAX_REPORT_TABS}`, () => {
   expect(store().tabs).toHaveLength(MAX_REPORT_TABS)
 })
 
-const tab = (over: Partial<ReportTab> = {}): ReportTab => ({ id: 't', kind: 'networth', title: null, params: defaultParams(null), ...over })
+const names = {
+  report: { list: 'New tab', spending: 'Spending', networth: 'Net worth' },
+  rows: { 'cat-food': 'Groceries' } as Record<string, string>,
+  versus: (later: number, earlier: number) => `${later} vs ${earlier}`,
+}
+const tab = (over: Partial<ReportTab> = {}, params: Partial<ReportTab['params']> = {}): ReportTab => ({
+  id: 't', kind: 'spending', title: null, ...over, params: { ...defaultParams(null), ...params },
+})
 
-it('tabTitle: the user title wins, else the report name', () => {
-  const names = { list: 'New tab', networth: 'Net worth' }
+it('tabTitle: user title wins, else generated from the report and its main parameter', () => {
   expect(tabTitle(tab({ title: 'Mine' }), names)).toBe('Mine')
   expect(tabTitle(tab({ kind: 'list' }), names)).toBe('New tab')
-  expect(tabTitle(tab(), names)).toBe('Net worth')
+  expect(tabTitle(tab({ kind: 'networth' }), names)).toBe('Net worth')
+  expect(tabTitle(tab(), names)).toBe('Spending')
+  expect(tabTitle(tab({}, { selectedId: 'cat-food' }), names)).toBe('Groceries')
+  expect(tabTitle(tab({}, { selectedId: 'gone' }), names)).toBe('Spending')
+  expect(tabTitle(tab({}, { mode: 'compare', compare: [2025, 2026] }), names)).toBe('2026 vs 2025')
+  expect(tabTitle(tab({}, { mode: 'compare', compare: [2025, 2026], selectedId: 'cat-food' }), names)).toBe('Groceries · 2026 vs 2025')
+  expect(tabTitle(tab({}, { mode: 'overTime', compare: [2025, 2026] }), names)).toBe('Spending')
 })

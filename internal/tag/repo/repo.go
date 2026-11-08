@@ -7,6 +7,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -29,6 +30,7 @@ type (
 type querier interface {
 	GetTagByID(ctx context.Context, db backend.DBTX, id string) (tagRow, error)
 	ListTagsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]tagRow, error)
+	ListTagsByIDs(ctx context.Context, db backend.DBTX, ids string) ([]tagRow, error)
 	UpsertTag(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteTag(ctx context.Context, db backend.DBTX, id string) error
 	ReassignTagTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error
@@ -75,6 +77,35 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Tag, error) {
 		return nil, err
 	}
 	return hydrate(row)
+}
+
+// ListByIDs loads the given tag rows whoever owns them, in one query;
+// an unknown id is absent from the result.
+func (r *Repo) ListByIDs(ctx context.Context, ids []vo.Id) ([]*model.Tag, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	strs := make([]string, len(ids))
+	for i, id := range ids {
+		strs[i] = id.String()
+	}
+	raw, err := json.Marshal(strs)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.q.ListTagsByIDs(ctx, r.db(ctx), string(raw))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.Tag, 0, len(rows))
+	for _, row := range rows {
+		t, herr := hydrate(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, t)
+	}
+	return out, nil
 }
 
 func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, error) {

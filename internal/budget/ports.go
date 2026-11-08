@@ -43,7 +43,7 @@ type AccountLookup interface {
 	// accept-access membership seeding.
 	OwnedLiveAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 	// OwnedAccountIDs returns every account the user OWNS, soft-deleted
-	// ones included; net worth drops the deleted ones itself.
+	// ones included: their history still belongs in the user's reports.
 	OwnedAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 	// AvailableAccountIDs returns the accounts the user owns or that are
 	// shared with them.
@@ -67,6 +67,12 @@ type MetadataLookup interface {
 	CategoriesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.CategoryMeta, error)
 	TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]model.TagMeta, error)
 	PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.PayeeMeta, error)
+	// The ByIDs forms resolve whichever of the ids exist, whoever owns them
+	// (a partner writes with their own categories on a shared account);
+	// unknown ids are simply absent from the result.
+	CategoriesByIDs(ctx context.Context, ids []vo.Id) ([]model.CategoryMeta, error)
+	TagsByIDs(ctx context.Context, ids []vo.Id) ([]model.TagMeta, error)
+	PayeesByIDs(ctx context.Context, ids []vo.Id) ([]model.PayeeMeta, error)
 }
 
 // Convertor is the currency convertor port; the currency feature's convertor

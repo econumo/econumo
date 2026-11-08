@@ -23,6 +23,7 @@ function retryPolicy(failureCount: number, error: unknown): boolean {
 // is a mutation, so a successful mutation of any kind marks the reports stale;
 // an inactive report only refetches when it is next shown.
 export function invalidateReports(client: QueryClient): void {
+  void client.invalidateQueries({ queryKey: queryKeys.reportFlow })
   void client.invalidateQueries({ queryKey: queryKeys.reportNetWorth })
 }
 

@@ -1,33 +1,48 @@
 import { useEffect, useMemo } from 'react'
+import { useQueries } from '@tanstack/react-query'
+import type { FlowReportDto } from '@/api/dto/report'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { UserOptions } from '@/api/dto/user'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
+import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { ReportList } from './ReportList'
-import { MAX_REPORT_TABS, tabTitle, useReportTabs } from './reportTabs'
+import { MAX_REPORT_TABS, REPORT_QUESTION, tabTitle, useReportTabs } from './reportTabs'
 import type { ReportKind, ReportTab } from './reportTabs'
 import { TabBar } from './TabBar'
-import { useReportBudgets } from './queries'
+import { flowReportQuery, useReportBudgets } from './queries'
+import { flowQueryArgs } from './reportPeriod'
+import { SpendingReport } from './SpendingReport'
 import { NetWorthReport } from './NetWorthReport'
+import { spendingRowNames } from './reportRows'
 
 function ReportBody({ tab }: { tab: ReportTab }) {
+  const { t } = useTranslation()
   const setParams = useReportTabs((s) => s.setParams)
   const choose = useReportTabs((s) => s.choose)
   if (tab.kind === 'list') {
     return (
       <ReportList
         budgetId={tab.params.budgetId}
-        onScope={(budgetId) => setParams(tab.id, { budgetId })}
+        onScope={(budgetId) => setParams(tab.id, { budgetId, selectedId: null })}
         onChoose={(kind) => {
           choose(tab.id, kind)
           trackEvent(METRICS.REPORTS_OPEN_REPORT, { report: kind, scope: tab.params.budgetId ? 'budget' : 'mine' })
         }}
       />
+    )
+  }
+  if (tab.kind === 'spending') {
+    return (
+      <div className="flex flex-col gap-3">
+        <h2 className="text-lg font-normal">{t(REPORT_QUESTION.spending)}</h2>
+        <SpendingReport tab={tab} />
+      </div>
     )
   }
   return <NetWorthReport tab={tab} />
@@ -39,6 +54,9 @@ export function ReportsPage() {
   const isCompact = useIsCompact()
   const { data: user } = useUserData()
   const { data: budgets } = useReportBudgets()
+  const { data: categories } = useCategories()
+  const { data: tags } = useTags()
+  const { data: payees } = usePayees()
   const store = useReportTabs()
   const userId = user?.id
   const ready = !!userId && store.userId === userId && store.tabs.length > 0
@@ -64,10 +82,30 @@ export function ReportsPage() {
     for (const tab of tabs) repair(tab.id, ids)
   }, [ready, budgets, tabIds])
 
-  const names = useMemo(
-    () => ({ list: t('reports.tabs.new'), networth: t('reports.kind.networth') }) satisfies Record<ReportKind, string>,
-    [t],
-  )
+  // titles name a selected row; budget rows (envelopes) are only known from the
+  // report itself, so each spending tab's cached report is read, never fetched
+  const spendingTabs = store.tabs.filter((tab) => tab.kind === 'spending' && tab.params.selectedId)
+  const cached = useQueries({
+    queries: spendingTabs.map((tab) => ({ ...flowReportQuery(flowQueryArgs(tab.params)), enabled: false })),
+  })
+  const reportRows = cached.map((q, i) => {
+    const data = q.data as FlowReportDto | undefined
+    return spendingRowNames(data?.[spendingTabs[i].params.side], t)
+  })
+  const reportRowsKey = JSON.stringify(reportRows)
+
+  const names = useMemo(() => ({
+    report: {
+      list: t('reports.tabs.new'),
+      spending: t('reports.kind.spending'),
+      networth: t('reports.kind.networth'),
+    } satisfies Record<ReportKind, string>,
+    rows: {
+      ...Object.fromEntries([...(categories ?? []), ...(tags ?? []), ...(payees ?? [])].map((r) => [r.id, r.name])),
+      ...Object.assign({}, ...(JSON.parse(reportRowsKey) as Record<string, string>[])),
+    },
+    versus: (later: number, earlier: number) => t('reports.tabs.versus', { later, earlier }),
+  }), [t, categories, tags, payees, reportRowsKey])
 
   const active = store.tabs.find((tab) => tab.id === store.activeId) ?? store.tabs[0]
 

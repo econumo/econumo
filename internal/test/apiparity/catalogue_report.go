@@ -1,6 +1,6 @@
 package apiparity
 
-// report scenario: get-net-worth-report over a fixed 2024
+// report scenario: get-flow-report and get-net-worth-report over a fixed 2024
 // window of explicitly-dated data on OwnerAccount. The shared fixture's own
 // Txn1 (Food, 12.50) and Txn2 (Salary, 1000.00) land in April 2024 through the
 // fixture clock, exactly as in the budget_plan scenario.
@@ -45,9 +45,17 @@ func init() {
 			{Label: "tx-jun-income", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": txJunIncome, "accountId": OwnerAccount, "type": "income", "amount": "50.00", "date": "2024-06-06 08:00:00"}},
 
+			get("flow-my-category", "/api/v1/report/get-flow-report?"+win),
+			get("flow-my-payee", "/api/v1/report/get-flow-report?"+win+"&groupBy=payee"),
+			get("flow-my-tag", "/api/v1/report/get-flow-report?"+win+"&groupBy=tag"),
+			get("flow-budget", "/api/v1/report/get-flow-report?budgetId="+reportBudget+"&"+win),
 			get("net-worth-my", "/api/v1/report/get-net-worth-report?"+win),
 			get("net-worth-budget", "/api/v1/report/get-net-worth-report?budgetId="+reportBudget+"&"+win),
 
+			get("err:window-too-long", "/api/v1/report/get-flow-report?from=2000-01-01&to=2024-06-01"),
+			get("err:bad-group-by", "/api/v1/report/get-flow-report?"+win+"&groupBy=label"),
+			get("err:payee-on-budget-scope", "/api/v1/report/get-flow-report?budgetId="+reportBudget+"&"+win+"&groupBy=payee"),
+			get("err:flow-unknown-budget", "/api/v1/report/get-flow-report?budgetId="+unknownBudg+"&"+win),
 			get("err:net-worth-unknown-budget", "/api/v1/report/get-net-worth-report?budgetId="+unknownBudg+"&"+win),
 			get("err:net-worth-window-too-long", "/api/v1/report/get-net-worth-report?from=2000-01-01&to=2024-06-01"),
 		}

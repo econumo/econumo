@@ -1,6 +1,186 @@
-import type { NetWorthAccountDto, NetWorthReportDto } from '@/api/dto/report'
+import type { NetWorthAccountDto, NetWorthReportDto, ReportRowDto } from '@/api/dto/report'
 import type { Id } from '@/api/types'
-import { add } from '@/lib/decimal'
+import { abs, add, cmp, div, isNegative, isZero, mul, sub } from '@/lib/decimal'
+import { monthDiff } from '@/features/budgets/planMath'
+import { calendarMonth } from './reportPeriod'
+
+export type Step = 'month' | 'quarter' | 'year'
+
+export interface Bucket {
+  key: string
+  /** the calendar bucket's first month (labels); first/last are the months the window actually covers */
+  start: string
+  first: string
+  last: string
+  months: number
+  total: string
+  partial: boolean
+  projected: string
+}
+
+export interface Insight {
+  key: string
+  params: Record<string, string>
+}
+
+const STEP_LENGTH: Record<Step, number> = { month: 1, quarter: 3, year: 12 }
+
+const sum = (xs: string[]): string => xs.reduce((acc, x) => add(acc, x), '0')
+
+function bucketStart(month: string, step: Step): string {
+  const [y, m] = month.split('-')
+  if (step === 'month') return month
+  if (step === 'year') return `${y}-01-01`
+  const q = Math.floor((Number(m) - 1) / 3) * 3 + 1
+  return `${y}-${String(q).padStart(2, '0')}-01`
+}
+
+function daysInMonth(month: string): number {
+  const [y, m] = month.split('-').map(Number)
+  return new Date(y, m, 0).getDate()
+}
+
+export function rollUp(months: string[], amounts: string[], step: Step, today: Date = new Date()): Bucket[] {
+  const len = STEP_LENGTH[step]
+  const cur = calendarMonth(today)
+  const groups = new Map<string, { months: string[]; amounts: string[] }>()
+  months.forEach((m, i) => {
+    const start = bucketStart(m, step)
+    const g = groups.get(start) ?? { months: [], amounts: [] }
+    g.months.push(m)
+    g.amounts.push(amounts[i] ?? '0')
+    groups.set(start, g)
+  })
+  return [...groups.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([start, g]) => {
+      const total = sum(g.amounts)
+      const sinceStart = monthDiff(start, cur)
+      const containsCurrent = sinceStart >= 0 && sinceStart < len
+      const partial = containsCurrent || g.months.length < len
+      // Only the bucket holding the current month is projected, and only when the
+      // window covers it from its first month: scaling a window-cut slice to the
+      // full step would invent spending outside the chosen period.
+      const whole = g.months.filter((m) => m < cur).length
+      const projectable = containsCurrent && g.months.includes(cur) && whole === sinceStart
+      // elapsed months = whole + day/dim, kept as the exact fraction (whole*dim + day)/dim
+      const dim = daysInMonth(cur)
+      const elapsedDays = whole * dim + today.getDate()
+      const projected = projectable ? div(mul(total, len * dim), elapsedDays) : total
+      return { key: start, start, first: g.months[0], last: g.months[g.months.length - 1], months: g.months.length, total, partial, projected }
+    })
+}
+
+export function topGroups(rows: ReportRowDto[], n = 5): { ids: Id[]; otherIds: Id[] } {
+  const ranked = rows
+    .map((r, i) => ({ id: r.id, total: sum(r.amounts), i }))
+    .sort((a, b) => cmp(b.total, a.total) || a.i - b.i)
+  return { ids: ranked.slice(0, n).map((r) => r.id), otherIds: ranked.slice(n).map((r) => r.id) }
+}
+
+export interface YearSlot {
+  month: number
+  earlier: string | null
+  later: string | null
+}
+
+export function compareYears(
+  months: string[],
+  amounts: string[],
+  earlier: number,
+  later: number,
+  today: Date = new Date(),
+): { slots: YearSlot[]; earlierTotal: string; laterTotal: string; throughMonth: number } {
+  const byMonth = new Map<string, string>()
+  months.forEach((m, i) => byMonth.set(m.slice(0, 7), amounts[i] ?? '0'))
+  const throughMonth = later === today.getFullYear() ? today.getMonth() + 1 : 12
+  const at = (year: number, month: number) => byMonth.get(`${year}-${String(month).padStart(2, '0')}`) ?? null
+  const slots: YearSlot[] = []
+  for (let month = 1; month <= throughMonth; month++) {
+    slots.push({ month, earlier: at(earlier, month), later: at(later, month) })
+  }
+  return {
+    slots,
+    earlierTotal: sum(slots.map((s) => s.earlier ?? '0')),
+    laterTotal: sum(slots.map((s) => s.later ?? '0')),
+    throughMonth,
+  }
+}
+
+function rangeSum(row: ReportRowDto, months: string[], range: [string, string]): string {
+  return sum(months.map((m, i) => (m >= range[0] && m <= range[1] ? (row.amounts[i] ?? '0') : '0')))
+}
+
+export interface ChangeRow {
+  id: Id
+  name: string
+  kind: string
+  a: string
+  b: string
+  diff: string
+  pct: number | null
+  monthlyAvg: string
+}
+
+export function changeRows(
+  rows: ReportRowDto[],
+  months: string[],
+  a: [string, string],
+  b: [string, string],
+): ChangeRow[] {
+  const bMonths = Math.max(1, monthDiff(b[0], b[1]) + 1)
+  return rows
+    .map((r) => {
+      const av = rangeSum(r, months, a)
+      const bv = rangeSum(r, months, b)
+      const diff = sub(bv, av)
+      const pct = isZero(av) ? null : Number(div(mul(diff, 100), abs(av)))
+      return { id: r.id, name: r.name, kind: r.kind, a: av, b: bv, diff, pct, monthlyAvg: div(bv, bMonths) }
+    })
+    .sort((x, y) => cmp(abs(y.diff), abs(x.diff)))
+}
+
+export interface BucketChange {
+  earlier: Bucket | null
+  later: Bucket
+  rows: ChangeRow[]
+}
+
+/**
+ * The Over time table: the last bucket against the one before it. A later
+ * quarter or year still in progress is compared through its projection (its own value
+ * stays actual-to-date), so an unfinished year does not read as a drop. An
+ * earlier bucket cut by the window start has nothing like-for-like to offer,
+ * so it is left out and only the later bucket is shown.
+ */
+export function bucketChanges(rows: ReportRowDto[], allMonths: string[], step: Step, today: Date = new Date()): BucketChange | null {
+  // in Month step the running month is too short to compare, even projected
+  // (a bill paid on the 2nd would read as a jump), so the table takes the
+  // last two complete months; the chart still shows the running one
+  const cut = step === 'month' && allMonths[allMonths.length - 1] === calendarMonth(today) ? 1 : 0
+  const months = cut ? allMonths.slice(0, -1) : allMonths
+  if (cut) rows = rows.map((r) => ({ ...r, amounts: r.amounts.slice(0, months.length) }))
+  const totals = rollUp(months, months.map((_, i) => sum(rows.map((r) => r.amounts[i] ?? '0'))), step, today)
+  if (totals.length === 0) return null
+  const later = totals[totals.length - 1]
+  const prev = totals.length > 1 ? totals[totals.length - 2] : null
+  const earlier = prev && prev.months === STEP_LENGTH[step] ? prev : null
+  const list = rows
+    .map((r) => {
+      const b = rollUp(months, r.amounts, step, today)
+      const lb = b[b.length - 1]
+      const eb = earlier ? b[b.length - 2] : undefined
+      const av = eb?.total ?? '0'
+      const diff = sub(lb.projected, av)
+      const pct = earlier === null || isZero(av) ? null : Number(div(mul(diff, 100), abs(av)))
+      return {
+        id: r.id, name: r.name, kind: r.kind, a: av, b: lb.total, diff, pct,
+        monthlyAvg: div(lb.total, Math.max(1, lb.months)),
+      }
+    })
+    .sort((x, y) => (earlier ? cmp(abs(y.diff), abs(x.diff)) : cmp(y.b, x.b)))
+  return { earlier, later, rows: list }
+}
 
 export function netWorthSeries(
   report: NetWorthReportDto,
@@ -41,5 +221,26 @@ export function netWorthGroupOf(g: NetWorthGrouping) {
     const folderId = g.folderOf[a.id]
     const name = folderId ? folderName.get(folderId) : undefined
     return folderId && name !== undefined ? { id: `folder:${folderId}`, name } : { id: 'nofolder', name: g.names.noFolder }
+  }
+}
+
+const EMPTY: Insight = { key: 'reports.insight.empty', params: {} }
+
+export function spendingInsight(rows: ReportRowDto[]): Insight {
+  const totals = rows.map((r) => ({ id: r.id, name: r.name, total: sum(r.amounts) }))
+  const all = sum(totals.map((t) => t.total))
+  if (totals.length === 0 || cmp(all, 0) <= 0) return EMPTY
+  const top = totals.reduce((best, t) => (cmp(t.total, best.total) > 0 ? t : best))
+  const share = Math.round(Number(div(mul(top.total, 100), all)))
+  return { key: 'reports.insight.spending_top', params: { id: top.id, name: top.name, amount: top.total, share: String(share) } }
+}
+
+export function netWorthInsight(total: string[]): Insight {
+  if (total.length < 2) return EMPTY
+  const change = sub(total[total.length - 1], total[0])
+  if (isZero(change)) return { key: 'reports.insight.networth_flat', params: {} }
+  return {
+    key: isNegative(change) ? 'reports.insight.networth_down' : 'reports.insight.networth_up',
+    params: { amount: abs(change) },
   }
 }

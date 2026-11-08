@@ -39,3 +39,9 @@ UPDATE transactions SET payee_id = $1 WHERE payee_id = $2;
 
 -- name: ReassignPayeeRecurring :exec
 UPDATE recurring_transactions SET payee_id = $1 WHERE payee_id = $2;
+
+-- name: ListPayeesByIDs :many
+-- ids is a JSON array of payee ids (see the sqlite variant).
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key
+FROM payees
+WHERE id IN (SELECT CAST(e AS uuid) FROM jsonb_array_elements_text(CAST(sqlc.arg(ids)::text AS jsonb)) e);

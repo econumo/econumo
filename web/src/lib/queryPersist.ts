@@ -166,7 +166,7 @@ function withTransactionRestore(inner: Persister, maxAge: number, buster: string
 const PERSISTED_REPORT_MONTHS = 37
 
 function isLongReport(key: readonly unknown[], data: unknown): boolean {
-  if (key[0] !== queryKeys.reportNetWorth[0]) {
+  if (key[0] !== queryKeys.reportFlow[0] && key[0] !== queryKeys.reportNetWorth[0]) {
     return false
   }
   const months = (data as { months?: unknown } | undefined)?.months

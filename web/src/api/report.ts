@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { NetWorthReportDto } from './dto/report'
+import type { FlowReportDto, GroupBy, NetWorthReportDto } from './dto/report'
 
 interface Envelope<T> {
   data: T
@@ -19,6 +19,13 @@ function query(entries: Record<string, string | null | undefined>): string {
   }
   const s = qs.toString()
   return s ? `?${s}` : ''
+}
+
+export async function getFlowReport(p: ReportParams & { groupBy?: GroupBy }): Promise<FlowReportDto> {
+  const response = await api.get<Envelope<{ item: FlowReportDto }>>(
+    apiUrl(`/api/v1/report/get-flow-report${query({ budgetId: p.budgetId, from: p.from, to: p.to, groupBy: p.groupBy })}`),
+  )
+  return response.data.data.item
 }
 
 export async function getNetWorthReport(p: ReportParams): Promise<NetWorthReportDto> {

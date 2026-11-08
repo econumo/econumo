@@ -1599,10 +1599,12 @@
       "rename": "Renommer",
       "duplicate": "Dupliquer",
       "name_label": "Nom de l’onglet",
-      "limit": "{count} onglets au maximum"
+      "limit": "{count} onglets au maximum",
+      "versus": "{later} vs {earlier}"
     },
     "kind": {
-      "networth": "Patrimoine net"
+      "networth": "Patrimoine net",
+      "spending": "Dépenses"
     },
     "list": {
       "choose": "Choisissez un rapport",
@@ -1614,7 +1616,9 @@
       "networth_caption": "aujourd’hui",
       "networth_up": "+{amount} cette année",
       "networth_down": "−{amount} cette année",
-      "networth_flat": "Aucun changement cette année"
+      "networth_flat": "Aucun changement cette année",
+      "spending_q": "À quoi je dépense mon argent, et comment cela évolue-t-il ?",
+      "spent_caption": "dépensé en {year}"
     },
     "period": {
       "quarter": "T{quarter} {year}"
@@ -1646,9 +1650,72 @@
       "total": "Total"
     },
     "insight": {
-      "empty": "Aucune transaction pour l’instant"
+      "empty": "Aucune transaction pour l’instant",
+      "spending_top": "{name} est le plus important : {amount}, {share} % du total",
+      "networth_up": "+{amount} sur la période",
+      "networth_down": "−{amount} sur la période",
+      "networth_flat": "Aucun changement sur la période"
     },
-    "updated_at": "Mis à jour {time}"
+    "updated_at": "Mis à jour {time}",
+    "filters": {
+      "period": "Période",
+      "period_thisYear": "Cette année",
+      "period_last12": "12 derniers mois",
+      "period_last3y": "3 dernières années",
+      "period_all": "Depuis le début",
+      "period_custom": "Personnalisée",
+      "from": "Du",
+      "to": "Au",
+      "step": "Pas",
+      "step_month": "Mois",
+      "step_quarter": "Trimestre",
+      "step_year": "Année",
+      "group_by": "Regrouper par",
+      "group_category": "Catégorie",
+      "group_payee": "Bénéficiaire",
+      "group_tag": "Étiquette"
+    },
+    "spending": {
+      "headline": "Résumé",
+      "show_transactions": "Voir les transactions",
+      "mode": "Vue",
+      "mode_overTime": "Dans le temps",
+      "mode_compare": "Comparer les années",
+      "side": "Type",
+      "side_expense": "Dépenses",
+      "side_income": "Revenus",
+      "spent_in": "Dépensé en {period}",
+      "earned_in": "Perçu en {period}",
+      "vs": "par rapport à {period}",
+      "on_pace": "Au rythme actuel : {amount} en {period}",
+      "other": "Tout le reste",
+      "no_payee": "Sans bénéficiaire",
+      "no_tag": "Sans étiquette",
+      "total": "Total",
+      "projected": "Projection",
+      "planned": "Prévu",
+      "legend": "Légende",
+      "chart": "Graphique",
+      "show_all": "Afficher toutes les lignes",
+      "later_year": "Année la plus récente",
+      "earlier_year": "Année la plus ancienne",
+      "versus": "vs",
+      "col_name": "Nom",
+      "col_change": "Évolution",
+      "col_avg": "Moyenne mensuelle",
+      "expand": "Afficher le détail de {name}",
+      "collapse": "Masquer le détail de {name}",
+      "show_more": "Afficher {count} de plus",
+      "show_less": "Afficher moins",
+      "projected_note": "* {period} n'est pas terminé : le contour en pointillés indique où il va au rythme actuel.",
+      "compare_note": "Les deux années couvrent uniquement {period}, pour une comparaison équitable.",
+      "hint_select": "Touchez une ligne ou une barre pour n'afficher que cette ligne.",
+      "hint_drill": "Touchez une barre pour voir ses transactions."
+    },
+    "drill": {
+      "unsupported": "Ces transactions ne peuvent pas être listées ici. Ouvrez la page Budget pour les voir.",
+      "deleted_accounts": "Les transactions des comptes supprimés sont comptées dans le rapport mais ne sont pas listées ici."
+    }
   },
   "classifications": {
     "common": {

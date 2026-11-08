@@ -26,11 +26,11 @@ import (
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
-type netWorthClock struct{ t time.Time }
+type reportClock struct{ t time.Time }
 
-func (c netWorthClock) Now() time.Time { return c.t }
+func (c reportClock) Now() time.Time { return c.t }
 
-type netWorthHarness struct {
+type reportHarness struct {
 	ctx      context.Context
 	svc      *appbudget.Service
 	f        *fixture.Builder
@@ -40,7 +40,7 @@ type netWorthHarness struct {
 	tdb      *dbtest.DB
 }
 
-func newNetWorthHarness(t *testing.T) *netWorthHarness {
+func newReportHarness(t *testing.T) *reportHarness {
 	t.Helper()
 	tdb := dbtest.New(t)
 	txm, eng := tdb.TX, tdb.Engine
@@ -56,7 +56,7 @@ func newNetWorthHarness(t *testing.T) *netWorthHarness {
 	payeeRepo := payeerepo.NewRepo(eng, txm)
 	currencyLookup := currencyrepo.New(eng, txm)
 	rateProvider := currencyrepo.NewRateProvider(eng, txm, currencyLookup, fixture.USD)
-	clk := netWorthClock{t: time.Date(2026, 5, 17, 10, 0, 0, 0, time.UTC)}
+	clk := reportClock{t: time.Date(2026, 5, 17, 10, 0, 0, 0, time.UTC)}
 	svc := appbudget.NewService(
 		budgetrepo.NewRepo(eng, txm), budgetrepo.NewReadRepo(eng, txm),
 		domcurrency.NewConvertor(rateProvider), rateProvider,
@@ -68,10 +68,12 @@ func newNetWorthHarness(t *testing.T) *netWorthHarness {
 		operationrepo.NewGuard(eng, txm),
 		txm, clk,
 	)
-	return &netWorthHarness{ctx: context.Background(), svc: svc, f: f, user: user, acct: acct, accounts: accountRepo, tdb: tdb}
+	shifted := rateProvider.Windowed()
+	svc.SetShiftedPeriodRates(domcurrency.NewConvertor(shifted), shifted)
+	return &reportHarness{ctx: context.Background(), svc: svc, f: f, user: user, acct: acct, accounts: accountRepo, tdb: tdb}
 }
 
-func (h *netWorthHarness) tx(typ int, acct, cat, payee, tag, amount, at string) {
+func (h *reportHarness) tx(typ int, acct, cat, payee, tag, amount, at string) {
 	h.f.Transaction(fixture.Transaction{UserID: h.user, AccountID: acct, CategoryID: cat, PayeeID: payee, TagID: tag, Type: typ, Amount: amount, SpentAt: at})
 }
 
@@ -87,14 +89,14 @@ func eqAmounts(t *testing.T, got []string, want ...string) {
 	}
 }
 
-func (h *netWorthHarness) exec(t *testing.T, query string, args ...any) {
+func (h *reportHarness) exec(t *testing.T, query string, args ...any) {
 	t.Helper()
 	if _, err := h.tdb.Raw.ExecContext(h.ctx, h.tdb.Rebind(query), args...); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func (h *netWorthHarness) budget(t *testing.T, startedAt string, accounts ...string) string {
+func (h *reportHarness) budget(t *testing.T, startedAt string, accounts ...string) string {
 	t.Helper()
 	id := h.f.Budget(fixture.Budget{UserID: h.user, StartedAt: startedAt})
 	for _, a := range accounts {
@@ -103,7 +105,7 @@ func (h *netWorthHarness) budget(t *testing.T, startedAt string, accounts ...str
 	return id
 }
 
-func (h *netWorthHarness) netWorth(t *testing.T, req model.GetNetWorthReportRequest) model.NetWorthReportResult {
+func (h *reportHarness) netWorth(t *testing.T, req model.GetNetWorthReportRequest) model.NetWorthReportResult {
 	t.Helper()
 	res, err := h.svc.GetNetWorthReport(h.ctx, vo.MustParseId(h.user), req)
 	if err != nil {
@@ -124,7 +126,7 @@ func accountRow(t *testing.T, r model.NetWorthReportResult, id string) model.Net
 }
 
 func TestNetWorthReport_Personal_RunningBalance(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	h.tx(1, h.acct, "", "", "", "100", "2026-02-10 10:00:00")
 	h.tx(1, h.acct, "", "", "", "50", "2026-03-05 10:00:00")
 	h.tx(0, h.acct, "", "", "", "20", "2026-04-05 10:00:00")
@@ -138,7 +140,7 @@ func TestNetWorthReport_Personal_RunningBalance(t *testing.T) {
 // Months before the first stored rate convert at the earliest rate, not at face
 // value (40,000 RUB is not 40,000 CAD).
 func TestNetWorthReport_BeforeFirstRateUsesEarliestRate(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	cad := h.f.Currency(fixture.Currency{Code: "CAD", Symbol: "CA$"})
 	rub := h.f.Currency(fixture.Currency{Code: "RUB", Symbol: "R"})
 	for _, d := range []string{"2026-03-05", "2026-04-05"} {
@@ -156,7 +158,7 @@ func TestNetWorthReport_BeforeFirstRateUsesEarliestRate(t *testing.T) {
 // Rate histories start and stop at different dates. A month with rates for other
 // currencies only converts RUB at its latest earlier rate, else at its first.
 func TestNetWorthReport_StaggeredRateHistories(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	cad := h.f.Currency(fixture.Currency{Code: "CAD", Symbol: "CA$"})
 	rub := h.f.Currency(fixture.Currency{Code: "RUB", Symbol: "R"})
 	for _, d := range []string{"2026-01-05", "2026-02-05", "2026-03-05", "2026-04-05"} {
@@ -175,7 +177,7 @@ func TestNetWorthReport_StaggeredRateHistories(t *testing.T) {
 
 // The clock says May 17: a May 25 transaction has not happened in a June window.
 func TestNetWorthReport_FutureWindowLeavesOutFutureMoney(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	h.tx(1, h.acct, "", "", "", "100", "2026-05-02 10:00:00")
 	h.tx(1, h.acct, "", "", "", "30", "2026-05-25 10:00:00")
 	r := h.netWorth(t, model.GetNetWorthReportRequest{From: "2026-06-01", To: "2026-06-01"})
@@ -183,7 +185,7 @@ func TestNetWorthReport_FutureWindowLeavesOutFutureMoney(t *testing.T) {
 }
 
 func TestNetWorthReport_TransferMovesBetweenAccounts(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	other := h.f.Account(fixture.Account{UserID: h.user, Name: "Other"})
 	h.tx(1, h.acct, "", "", "", "100", "2026-03-02 10:00:00")
 	h.f.Transaction(fixture.Transaction{UserID: h.user, AccountID: h.acct, AccountRecipientID: other, Type: 2, Amount: "40", AmountRecipient: "40", SpentAt: "2026-04-03 10:00:00"})
@@ -193,7 +195,7 @@ func TestNetWorthReport_TransferMovesBetweenAccounts(t *testing.T) {
 }
 
 func TestNetWorthReport_ForeignCurrencyConverted(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	eur := h.f.Currency(fixture.Currency{Code: "EUR", Symbol: "E"})
 	h.f.Rate(fixture.Rate{CurrencyID: eur, BaseCurrencyID: fixture.USD, Rate: "0.5", PublishedAt: "2026-03-01"})
 	h.f.Rate(fixture.Rate{CurrencyID: eur, BaseCurrencyID: fixture.USD, Rate: "0.25", PublishedAt: "2026-04-01"})
@@ -208,7 +210,7 @@ func TestNetWorthReport_ForeignCurrencyConverted(t *testing.T) {
 }
 
 func TestNetWorthReport_DeletedAccountsLeftOut(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	gone := h.f.Account(fixture.Account{UserID: h.user, Name: "Gone", Deleted: true})
 	h.tx(1, gone, "", "", "", "50", "2016-04-02 10:00:00")
 	err := h.accounts.SaveCorrection(h.ctx, model.AccountCorrection{
@@ -231,7 +233,7 @@ func TestNetWorthReport_DeletedAccountsLeftOut(t *testing.T) {
 }
 
 func TestNetWorthReport_ZeroAccountsOmitted(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	empty := h.f.Account(fixture.Account{UserID: h.user, Name: "Empty"})
 	h.tx(1, h.acct, "", "", "", "5", "2026-05-02 10:00:00")
 	r := h.netWorth(t, model.GetNetWorthReportRequest{})
@@ -243,7 +245,7 @@ func TestNetWorthReport_ZeroAccountsOmitted(t *testing.T) {
 // A partner's savings member is named and shared accounts stay as they are, but
 // their other everyday accounts reach the caller only as one nameless sum.
 func TestNetWorthReport_Budget_PartnerAccounts(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	partner := h.f.User(fixture.User{ID: "ffff0000-0000-7000-8000-0000000000cc", Name: "Partner", Email: "partner@networth.test"})
 	h.f.DefaultOptions(partner)
 	wallet := h.f.Account(fixture.Account{UserID: partner, Name: "Secret wallet"})
@@ -279,7 +281,7 @@ func TestNetWorthReport_Budget_PartnerAccounts(t *testing.T) {
 }
 
 func TestNetWorthReport_Budget_NoAccess(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	other := h.f.User(fixture.User{ID: "ffff0000-0000-7000-8000-0000000000bb", Name: "Other", Email: "other@flow.test"})
 	h.f.DefaultOptions(other)
 	b := h.f.Budget(fixture.Budget{UserID: other})
@@ -291,7 +293,7 @@ func TestNetWorthReport_Budget_NoAccess(t *testing.T) {
 }
 
 func TestNetWorthReport_CurrentMonthStopsAtEndOfToday(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	h.tx(1, h.acct, "", "", "", "100", "2026-04-10 10:00:00")
 	h.tx(1, h.acct, "", "", "", "30", "2026-05-17 23:00:00")
 	h.tx(1, h.acct, "", "", "", "7", "2026-05-18 08:00:00")
@@ -308,7 +310,7 @@ func TestNetWorthReport_CurrentMonthStopsAtEndOfToday(t *testing.T) {
 }
 
 func TestNetWorthReport_AllTimeOpensBeforeFirstMonth(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	h.tx(1, h.acct, "", "", "", "100", "2026-03-10 10:00:00")
 	h.tx(1, h.acct, "", "", "", "20", "2026-04-10 10:00:00")
 	r := h.netWorth(t, model.GetNetWorthReportRequest{})
@@ -319,7 +321,7 @@ func TestNetWorthReport_AllTimeOpensBeforeFirstMonth(t *testing.T) {
 }
 
 func TestNetWorthReport_Budget_FlagsSavingsMembers(t *testing.T) {
-	h := newNetWorthHarness(t)
+	h := newReportHarness(t)
 	sav := h.f.Account(fixture.Account{UserID: h.user, Name: "Deposit"})
 	b := h.budget(t, "2026-01-01 00:00:00", h.acct, sav)
 	h.exec(t, "UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?", true, b, sav)

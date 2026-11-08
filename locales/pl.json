@@ -1599,10 +1599,12 @@
       "rename": "Zmień nazwę",
       "duplicate": "Duplikuj",
       "name_label": "Nazwa karty",
-      "limit": "Maksymalnie {count} kart"
+      "limit": "Maksymalnie {count} kart",
+      "versus": "{later} vs {earlier}"
     },
     "kind": {
-      "networth": "Wartość netto"
+      "networth": "Wartość netto",
+      "spending": "Wydatki"
     },
     "list": {
       "choose": "Wybierz raport",
@@ -1614,7 +1616,9 @@
       "networth_caption": "dziś",
       "networth_up": "Wzrost o {amount} w tym roku",
       "networth_down": "Spadek o {amount} w tym roku",
-      "networth_flat": "Bez zmian w tym roku"
+      "networth_flat": "Bez zmian w tym roku",
+      "spending_q": "Na co wydaję pieniądze i jak to się zmienia?",
+      "spent_caption": "wydano w {year}"
     },
     "period": {
       "quarter": "{quarter} kw. {year}"
@@ -1646,9 +1650,72 @@
       "total": "Razem"
     },
     "insight": {
-      "empty": "Brak transakcji"
+      "empty": "Brak transakcji",
+      "spending_top": "Najwięcej: {name}, {amount}, {share}% całości",
+      "networth_up": "Wzrost o {amount} w okresie",
+      "networth_down": "Spadek o {amount} w okresie",
+      "networth_flat": "Bez zmian w okresie"
     },
-    "updated_at": "Zaktualizowano {time}"
+    "updated_at": "Zaktualizowano {time}",
+    "filters": {
+      "period": "Okres",
+      "period_thisYear": "Ten rok",
+      "period_last12": "Ostatnie 12 miesięcy",
+      "period_last3y": "Ostatnie 3 lata",
+      "period_all": "Cały okres",
+      "period_custom": "Własny",
+      "from": "Od",
+      "to": "Do",
+      "step": "Krok",
+      "step_month": "Miesiąc",
+      "step_quarter": "Kwartał",
+      "step_year": "Rok",
+      "group_by": "Grupuj według",
+      "group_category": "Kategoria",
+      "group_payee": "Odbiorca",
+      "group_tag": "Tag"
+    },
+    "spending": {
+      "headline": "Podsumowanie",
+      "show_transactions": "Pokaż transakcje",
+      "mode": "Widok",
+      "mode_overTime": "W czasie",
+      "mode_compare": "Porównaj lata",
+      "side": "Rodzaj",
+      "side_expense": "Wydatki",
+      "side_income": "Przychody",
+      "spent_in": "Wydano: {period}",
+      "earned_in": "Zarobiono: {period}",
+      "vs": "wobec {period}",
+      "on_pace": "W tym tempie {amount} za {period}",
+      "other": "Wszystko inne",
+      "no_payee": "Bez odbiorcy",
+      "no_tag": "Bez tagu",
+      "total": "Razem",
+      "projected": "Prognoza",
+      "planned": "Plan",
+      "legend": "Legenda",
+      "chart": "Wykres",
+      "show_all": "Pokaż wszystkie wiersze",
+      "later_year": "Późniejszy rok",
+      "earlier_year": "Wcześniejszy rok",
+      "versus": "vs",
+      "col_name": "Nazwa",
+      "col_change": "Zmiana",
+      "col_avg": "Średnio miesięcznie",
+      "expand": "Pokaż, z czego składa się {name}",
+      "collapse": "Ukryj, z czego składa się {name}",
+      "show_more": "Pokaż jeszcze {count}",
+      "show_less": "Pokaż mniej",
+      "projected_note": "* {period} jeszcze trwa: przerywany obrys pokazuje, dokąd zmierza przy obecnym tempie.",
+      "compare_note": "Oba lata obejmują tylko {period}, więc porównanie jest uczciwe.",
+      "hint_select": "Dotknij wiersza lub słupka, aby pokazać tylko ten wiersz.",
+      "hint_drill": "Dotknij słupka, aby zobaczyć jego transakcje."
+    },
+    "drill": {
+      "unsupported": "Tych transakcji nie można tu wyświetlić. Otwórz stronę Budżetu, aby je zobaczyć.",
+      "deleted_accounts": "Transakcje usuniętych kont są uwzględnione w raporcie, ale nie są tu wyświetlane."
+    }
   },
   "classifications": {
     "common": {
