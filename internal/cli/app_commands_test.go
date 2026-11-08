@@ -178,7 +178,7 @@ func TestAppRegister(t *testing.T) {
 	if !strings.Contains(stdout, `App "Claude" registered (official).`) || !strings.Contains(stdout, "The secret is shown only once.") {
 		t.Fatalf("stdout: %q", stdout)
 	}
-	if !strings.Contains(stderr, "warning: the OAuth server is disabled (ECONUMO_URL is not an https origin); the app will work once it is enabled") {
+	if !strings.Contains(stderr, "warning: the OAuth server is disabled (ECONUMO_URL is not an https origin (or an http loopback origin)); the app will work once it is enabled") {
 		t.Fatalf("stderr lacks the disabled warning: %q", stderr)
 	}
 	var global bool

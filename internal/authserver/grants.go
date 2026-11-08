@@ -17,16 +17,21 @@ func grantNotFound() error {
 
 // The user row lock comes first, matching reclaim and deactivate (users, then
 // access_tokens, then oauth_grants); the opposite order deadlocks on PostgreSQL.
-func (s *Service) revokeGrant(ctx context.Context, userID, id vo.Id, now time.Time) error {
-	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+// revokeGrant reports whether this call revoked the grant, as opposed to
+// finding it already revoked.
+func (s *Service) revokeGrant(ctx context.Context, userID, id vo.Id, now time.Time) (bool, error) {
+	var n int64
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if _, err := s.creds.LockForOAuth(ctx, userID); err != nil {
 			return err
 		}
-		if _, err := s.repo.RevokeGrant(ctx, id, now); err != nil {
+		var err error
+		if n, err = s.repo.RevokeGrant(ctx, id, now); err != nil {
 			return err
 		}
 		return s.creds.RevokeOAuthGrantTokens(ctx, id)
 	})
+	return n > 0, err
 }
 
 func (s *Service) ListConnectedApps(ctx context.Context, userID vo.Id) ([]model.ConnectedAppResult, error) {
@@ -64,7 +69,8 @@ func (s *Service) RevokeConnectedApp(ctx context.Context, userID, grantID vo.Id)
 		return grantNotFound()
 	}
 	reqctx.AddLogAttr(ctx, "grant_id", grantID.String())
-	return s.revokeGrant(ctx, g.UserID, grantID, s.clock.Now())
+	_, err = s.revokeGrant(ctx, g.UserID, grantID, s.clock.Now())
+	return err
 }
 
 // RevokeAllForUser runs inside the reclaim/deactivate transaction, whose own

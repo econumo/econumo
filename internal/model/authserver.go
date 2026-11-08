@@ -17,7 +17,7 @@ type OAuthClient struct {
 	IsGlobal     bool
 }
 
-// OAuthApp is a client with its unrevoked grants, for the operator commands.
+// OAuthApp is a client with its live grants, for the operator commands.
 type OAuthApp struct {
 	Client OAuthClient
 	Grants []OAuthGrant

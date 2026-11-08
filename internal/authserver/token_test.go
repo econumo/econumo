@@ -1,7 +1,9 @@
 package authserver
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -541,4 +543,82 @@ func TestRefresh_NonOwnerGrantFromBeforeTheMigration(t *testing.T) {
 	if _, err := s.DescribeAuthorization(ctx, b, authReq(cid)); !hasCode(err, errs.CodeAuthServerAppNotYours) {
 		t.Fatalf("a new consent by the non-owner must be refused: %v", err)
 	}
+}
+
+// deletingRepo has app:delete land between client authentication and the grant
+// INSERT. On SQLite the test cannot commit the DELETE from another connection,
+// so it runs inside the exchange's transaction (giving a real foreign-key
+// failure) and GetClient then reports what the committed DELETE would show.
+type deletingRepo struct {
+	Repository
+	commitDelete bool
+	gone         bool
+}
+
+func (r *deletingRepo) InsertGrant(ctx context.Context, g *model.OAuthGrant) error {
+	if _, err := r.Repository.DeleteClient(ctx, g.ClientID); err != nil {
+		return err
+	}
+	r.gone = r.commitDelete
+	return r.Repository.InsertGrant(ctx, g)
+}
+
+func (r *deletingRepo) GetClient(ctx context.Context, id vo.Id) (*model.OAuthClient, error) {
+	if r.gone {
+		return nil, errs.NewNotFound("OAuth client not found")
+	}
+	return r.Repository.GetClient(ctx, id)
+}
+
+func TestExchange_ClientDeletedMidExchange(t *testing.T) {
+	for _, committed := range []bool{true, false} {
+		t.Run(fmt.Sprint("committed=", committed), func(t *testing.T) {
+			s, creds, clock, db := newTestServiceDB(t)
+			user := newUser(t, db, fixture.User{})
+			cid, code := approve(t, s, user)
+			racing := NewService(&deletingRepo{Repository: s.repo, commitDelete: committed}, creds, s.tx, clock, nil, testURL)
+			_, err := exchange(racing, cid, code)
+			if committed {
+				wantOAuth(t, err, "invalid_grant")
+				return
+			}
+			var oe *OAuthError
+			if err == nil || errors.As(err, &oe) {
+				t.Fatalf("a grant INSERT failure with the client still present must surface as is: %v", err)
+			}
+		})
+	}
+}
+
+func TestDisconnectApp_CountsOnlyGrantsItRevoked(t *testing.T) {
+	s, _, clock, db := newTestServiceDB(t)
+	user := newUser(t, db, fixture.User{})
+	cid, code := approve(t, s, user)
+	if _, err := exchange(s, cid, code); err != nil {
+		t.Fatal(err)
+	}
+	id := vo.MustParseId(cid)
+	grants, err := s.liveGrants(ctx, id)
+	if err != nil || len(grants) != 1 {
+		t.Fatalf("grants %v %v", grants, err)
+	}
+	// Revoked by a concurrent writer after DisconnectApp read the live list.
+	racing := NewService(revokingRepo{Repository: s.repo, grant: grants[0].ID, now: clock.Now()}, &fakeCreds{}, s.tx, clock, nil, testURL)
+	n, err := racing.DisconnectApp(ctx, id, nil)
+	if err != nil || n != 0 {
+		t.Fatalf("DisconnectApp = %d %v, want 0", n, err)
+	}
+}
+
+type revokingRepo struct {
+	Repository
+	grant vo.Id
+	now   time.Time
+}
+
+func (r revokingRepo) RevokeGrant(ctx context.Context, id vo.Id, now time.Time) (int64, error) {
+	if _, err := r.Repository.RevokeGrant(ctx, r.grant, r.now); err != nil {
+		return 0, err
+	}
+	return r.Repository.RevokeGrant(ctx, id, now)
 }

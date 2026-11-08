@@ -201,10 +201,13 @@ func (s *Service) DisconnectApp(ctx context.Context, id vo.Id, userID *vo.Id) (i
 		if userID != nil && !g.UserID.Equal(*userID) {
 			continue
 		}
-		if err := s.revokeGrant(ctx, g.UserID, g.ID, now); err != nil {
+		revoked, err := s.revokeGrant(ctx, g.UserID, g.ID, now)
+		if err != nil {
 			return n, err
 		}
-		n++
+		if revoked {
+			n++
+		}
 	}
 	return n, nil
 }

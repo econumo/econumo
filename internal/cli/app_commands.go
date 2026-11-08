@@ -122,7 +122,7 @@ func runAppRegister(ctx context.Context, c *container, args []string) error {
 		fmt.Println("The secret is shown only once.")
 	}
 	if !c.apps.Enabled() {
-		fmt.Fprintln(os.Stderr, "warning: the OAuth server is disabled (ECONUMO_URL is not an https origin); the app will work once it is enabled")
+		fmt.Fprintln(os.Stderr, "warning: the OAuth server is disabled (ECONUMO_URL is not an https origin (or an http loopback origin)); the app will work once it is enabled")
 	}
 	return nil
 }

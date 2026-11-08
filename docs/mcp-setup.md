@@ -114,7 +114,7 @@ for a user app that several people already share; `econumo app:make-official
 are `app:show`, `app:update` (official apps: name and redirect URIs),
 `app:rotate-secret`, `app:disconnect [--user <user-id>]` and `app:delete`;
 disconnecting or deleting signs the app out at once. They work while the
-OAuth server is off (`ECONUMO_URL` is not an https origin), and `app:register` warns that
+OAuth server is off (`ECONUMO_URL` is not an https origin, or an http loopback origin), and `app:register` warns that
 the app only works once it is on.
 
 ## Alternative: a personal access token
