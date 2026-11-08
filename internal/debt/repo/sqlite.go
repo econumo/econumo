@@ -69,3 +69,16 @@ func (sqliteQuerier) ReassignDebtPayee(ctx context.Context, db backend.DBTX, p r
 func (sqliteQuerier) ReassignDebtTag(ctx context.Context, db backend.DBTX, p reassignTagParam) error {
 	return sqlitegen.New(db).ReassignDebtTag(ctx, p)
 }
+
+func (sqliteQuerier) DebtUsesLabel(ctx context.Context, db backend.DBTX, id *string) (bool, error) {
+	n, err := sqlitegen.New(db).DebtUsesLabel(ctx, id)
+	return n != 0, err
+}
+
+func (sqliteQuerier) ListDebtCandidateLabels(ctx context.Context, db backend.DBTX, categoryID *string) ([]txLabelRow, error) {
+	return sqlitegen.New(db).ListDebtCandidateLabels(ctx, categoryID)
+}
+
+func (sqliteQuerier) ReassignDebtLabel(ctx context.Context, db backend.DBTX, p reassignLblParam) error {
+	return sqlitegen.New(db).ReassignDebtLabel(ctx, p)
+}

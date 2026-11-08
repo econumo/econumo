@@ -28,6 +28,8 @@ type (
 	reassignCatParam = sqlitegen.ReassignDebtCategoryParams
 	reassignPayParam = sqlitegen.ReassignDebtPayeeParams
 	reassignTagParam = sqlitegen.ReassignDebtTagParams
+	reassignLblParam = sqlitegen.ReassignDebtLabelParams
+	txLabelRow       = sqlitegen.TransactionsLabel
 )
 
 type querier interface {
@@ -42,9 +44,12 @@ type querier interface {
 	DebtUsesCategory(ctx context.Context, db backend.DBTX, id string) (bool, error)
 	DebtUsesPayee(ctx context.Context, db backend.DBTX, id *string) (bool, error)
 	DebtUsesTag(ctx context.Context, db backend.DBTX, id *string) (bool, error)
+	DebtUsesLabel(ctx context.Context, db backend.DBTX, id *string) (bool, error)
+	ListDebtCandidateLabels(ctx context.Context, db backend.DBTX, categoryID *string) ([]txLabelRow, error)
 	ReassignDebtCategory(ctx context.Context, db backend.DBTX, p reassignCatParam) error
 	ReassignDebtPayee(ctx context.Context, db backend.DBTX, p reassignPayParam) error
 	ReassignDebtTag(ctx context.Context, db backend.DBTX, p reassignTagParam) error
+	ReassignDebtLabel(ctx context.Context, db backend.DBTX, p reassignLblParam) error
 }
 
 type Repo struct {
@@ -104,20 +109,22 @@ func (r *Repo) ListByCategory(ctx context.Context, categoryID vo.Id) ([]*model.D
 // Save: the caller runs this inside TxManager.WithTx.
 func (r *Repo) Save(ctx context.Context, d *model.Debt) error {
 	p := upsertParams{
-		ID:              d.ID.String(),
-		UserID:          d.OwnerID.String(),
-		Name:            d.Name,
-		CurrencyID:      d.CurrencyID.String(),
-		CategoryID:      d.CategoryID.String(),
-		PayeeID:         idPtr(d.PayeeID),
-		TagID:           idPtr(d.TagID),
-		AsOf:            dateText(d.Current.AsOf),
-		Balance:         d.Current.Balance.String(),
-		Payment:         d.Payment.String(),
-		Schedule:        string(d.Schedule),
-		LastPaymentDate: dateText(d.Current.LastPaymentDate),
-		CreatedAt:       d.CreatedAt,
-		UpdatedAt:       d.UpdatedAt,
+		ID:         d.ID.String(),
+		UserID:     d.OwnerID.String(),
+		Name:       d.Name,
+		CurrencyID: d.CurrencyID.String(),
+		CategoryID: d.CategoryID.String(),
+		PayeeID:    idPtr(d.PayeeID),
+		TagID:      idPtr(d.TagID),
+		LabelID:    idPtr(d.LabelID),
+		Payment:    d.Payment.String(),
+		Schedule:   string(d.Schedule),
+		CreatedAt:  d.CreatedAt,
+		UpdatedAt:  d.UpdatedAt,
+	}
+	if c := d.Current; c != nil {
+		asOf, balance, last := dateText(c.AsOf), c.Balance.String(), dateText(c.LastPaymentDate)
+		p.AsOf, p.Balance, p.LastPaymentDate = &asOf, &balance, &last
 	}
 	if d.StartDate != nil {
 		s := dateText(*d.StartDate)
@@ -157,6 +164,18 @@ func (r *Repo) CandidateTransactions(ctx context.Context, categoryID vo.Id) ([]d
 	if err != nil {
 		return nil, err
 	}
+	labelRows, err := r.q.ListDebtCandidateLabels(ctx, r.db(ctx), &c)
+	if err != nil {
+		return nil, err
+	}
+	labels := make(map[string][]vo.Id, len(labelRows))
+	for _, l := range labelRows {
+		lid, err := vo.ParseId(l.LabelID)
+		if err != nil {
+			return nil, err
+		}
+		labels[l.TransactionID] = append(labels[l.TransactionID], lid)
+	}
 	out := make([]debt.CandidateTx, 0, len(rows))
 	for _, row := range rows {
 		id, err := vo.ParseId(row.ID)
@@ -176,7 +195,7 @@ func (r *Repo) CandidateTransactions(ctx context.Context, categoryID vo.Id) ([]d
 			return nil, err
 		}
 		out = append(out, debt.CandidateTx{ID: id, SpentAt: row.SpentAt, Amount: vo.NewDecimal(row.Amount),
-			CurrencyID: cur, PayeeID: payee, TagID: tag})
+			CurrencyID: cur, PayeeID: payee, TagID: tag, LabelIDs: labels[row.ID]})
 	}
 	return out, nil
 }
@@ -195,6 +214,11 @@ func (r *Repo) UsesTag(ctx context.Context, id vo.Id) (bool, error) {
 	return r.q.DebtUsesTag(ctx, r.db(ctx), &s)
 }
 
+func (r *Repo) UsesLabel(ctx context.Context, id vo.Id) (bool, error) {
+	s := id.String()
+	return r.q.DebtUsesLabel(ctx, r.db(ctx), &s)
+}
+
 func (r *Repo) ReassignCategory(ctx context.Context, oldID, newID vo.Id) error {
 	return r.q.ReassignDebtCategory(ctx, r.db(ctx), reassignCatParam{CategoryID: newID.String(), CategoryID_2: oldID.String()})
 }
@@ -209,7 +233,12 @@ func (r *Repo) ReassignTag(ctx context.Context, oldID, newID vo.Id) error {
 	return r.q.ReassignDebtTag(ctx, r.db(ctx), reassignTagParam{TagID: &n, TagID_2: &o})
 }
 
-// ListByClassification returns the debts keyed on a payee or a tag.
+func (r *Repo) ReassignLabel(ctx context.Context, oldID, newID vo.Id) error {
+	n, o := newID.String(), oldID.String()
+	return r.q.ReassignDebtLabel(ctx, r.db(ctx), reassignLblParam{LabelID: &n, LabelID_2: &o})
+}
+
+// ListByClassification returns the debts keyed on a payee, a tag or a label.
 func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) ([]*model.Debt, error) {
 	var column string
 	switch kind {
@@ -217,6 +246,8 @@ func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) 
 		column = "payee_id"
 	case "tag":
 		column = "tag_id"
+	case "label":
+		column = "label_id"
 	default:
 		return nil, fmt.Errorf("debtrepo: unknown classification kind %q", kind)
 	}
@@ -229,7 +260,7 @@ func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) 
 	var scanned []debtRow
 	for rows.Next() {
 		var row debtRow
-		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID,
+		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID, &row.LabelID,
 			&row.StartDate, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
 			&row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
@@ -242,7 +273,7 @@ func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) 
 	return hydrateAll(scanned)
 }
 
-const debtCols = "id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at"
+const debtCols = "id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at"
 
 // The id-list reads below are hand-built (variadic IN); only the placeholders
 // differ per engine.
@@ -259,7 +290,7 @@ func (r *Repo) ListByOwners(ctx context.Context, ownerIDs []vo.Id) ([]*model.Deb
 	var scanned []debtRow
 	for rows.Next() {
 		var row debtRow
-		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID,
+		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID, &row.LabelID,
 			&row.StartDate, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
 			&row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
@@ -382,24 +413,31 @@ func hydrate(row debtRow) (*model.Debt, error) {
 	if err != nil {
 		return nil, err
 	}
+	label, err := parseIdPtr(row.LabelID)
+	if err != nil {
+		return nil, err
+	}
 	var start *time.Time
 	if row.StartDate != nil {
 		s := day(*row.StartDate)
 		start = &s
 	}
-	return &model.Debt{
+	d := &model.Debt{
 		ID: id, OwnerID: owner, CurrencyID: currency, CategoryID: category, Name: row.Name,
-		PayeeID: payee, TagID: tag, StartDate: start,
+		PayeeID: payee, TagID: tag, LabelID: label, StartDate: start,
 		Payment: vo.NewDecimal(row.Payment), Schedule: model.RecurringSchedule(row.Schedule),
-		Current: &model.DebtTerms{
-			AsOf:            day(row.AsOf),
-			Balance:         vo.NewDecimal(row.Balance),
-			Payment:         vo.NewDecimal(row.Payment),
-			Schedule:        model.RecurringSchedule(row.Schedule),
-			LastPaymentDate: day(row.LastPaymentDate),
-		},
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-	}, nil
+	}
+	if row.AsOf != nil && row.Balance != nil && row.LastPaymentDate != nil {
+		d.Current = &model.DebtTerms{
+			AsOf:            day(*row.AsOf),
+			Balance:         vo.NewDecimal(*row.Balance),
+			Payment:         d.Payment,
+			Schedule:        d.Schedule,
+			LastPaymentDate: day(*row.LastPaymentDate),
+		}
+	}
+	return d, nil
 }
 
 func dateText(t time.Time) string { return t.Format(datetime.DateLayout) }

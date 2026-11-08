@@ -1,7 +1,9 @@
 -- Budget debts. A debt is one loan or credit line the owner pays down through
--- a category. The five term columns (as_of .. last_payment_date) copy the
--- latest debts_snapshots row and are written together with every new snapshot.
--- The category, payee and tag keys keep the default NO ACTION: the coded
+-- a category. The term columns as_of, balance and last_payment_date copy the
+-- latest debts_snapshots row and are written together with every new snapshot;
+-- all three are NULL while the debt is not set up (payment and schedule are
+-- held either way).
+-- The category, payee, tag and label keys keep the default NO ACTION: the coded
 -- in-use check refuses an ordinary delete, and a user deletion cascades to
 -- categories and debts in one statement.
 CREATE TABLE debts
@@ -13,12 +15,13 @@ CREATE TABLE debts
     , category_id       TEXT          NOT NULL
     , payee_id          TEXT
     , tag_id            TEXT
+    , label_id          TEXT
     , start_date        DATE
-    , as_of             DATE          NOT NULL
-    , balance           NUMERIC(19,8) NOT NULL
+    , as_of             DATE
+    , balance           NUMERIC(19,8)
     , payment           NUMERIC(19,8) NOT NULL
     , schedule          TEXT          NOT NULL
-    , last_payment_date DATE          NOT NULL
+    , last_payment_date DATE
     , created_at        DATETIME      NOT NULL
     , updated_at        DATETIME      NOT NULL
     , PRIMARY KEY (id)
@@ -27,11 +30,13 @@ CREATE TABLE debts
     , FOREIGN KEY (category_id) REFERENCES categories (id)
     , FOREIGN KEY (payee_id) REFERENCES payees (id)
     , FOREIGN KEY (tag_id) REFERENCES tags (id)
+    , FOREIGN KEY (label_id) REFERENCES labels (id)
 );
 CREATE INDEX debts_user_idx ON debts (user_id);
 CREATE INDEX debts_category_idx ON debts (category_id);
 CREATE INDEX debts_payee_idx ON debts (payee_id);
 CREATE INDEX debts_tag_idx ON debts (tag_id);
+CREATE INDEX debts_label_idx ON debts (label_id);
 CREATE INDEX debts_currency_idx ON debts (currency_id);
 
 CREATE TABLE debts_snapshots

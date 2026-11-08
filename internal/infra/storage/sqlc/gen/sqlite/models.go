@@ -185,12 +185,13 @@ type Debt struct {
 	CategoryID      string
 	PayeeID         *string
 	TagID           *string
+	LabelID         *string
 	StartDate       *time.Time
-	AsOf            time.Time
-	Balance         string
+	AsOf            *time.Time
+	Balance         *string
 	Payment         string
 	Schedule        string
-	LastPaymentDate time.Time
+	LastPaymentDate *time.Time
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }

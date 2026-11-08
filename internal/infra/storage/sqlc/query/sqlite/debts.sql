@@ -2,27 +2,28 @@
 -- the driver would otherwise store a time part, like currencies_rates.published_at.
 
 -- name: GetDebtByID :one
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
 FROM debts
 WHERE id = ?;
 
 -- name: ListDebtsByCategory :many
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
 FROM debts
 WHERE category_id = ?
 ORDER BY created_at, id;
 
 -- name: UpsertDebt :exec
-INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at)
-VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.arg(currency_id), sqlc.arg(category_id), sqlc.arg(payee_id), sqlc.arg(tag_id),
-    CAST(sqlc.narg(start_date) AS TEXT), CAST(sqlc.arg(as_of) AS TEXT), sqlc.arg(balance), sqlc.arg(payment), sqlc.arg(schedule),
-    CAST(sqlc.arg(last_payment_date) AS TEXT), sqlc.arg(created_at), sqlc.arg(updated_at))
+INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.arg(currency_id), sqlc.arg(category_id), sqlc.arg(payee_id), sqlc.arg(tag_id), sqlc.narg(label_id),
+    CAST(sqlc.narg(start_date) AS TEXT), CAST(sqlc.narg(as_of) AS TEXT), sqlc.narg(balance), sqlc.arg(payment), sqlc.arg(schedule),
+    CAST(sqlc.narg(last_payment_date) AS TEXT), sqlc.arg(created_at), sqlc.arg(updated_at))
 ON CONFLICT (id) DO UPDATE SET
     name              = excluded.name,
     currency_id       = excluded.currency_id,
     category_id       = excluded.category_id,
     payee_id          = excluded.payee_id,
     tag_id            = excluded.tag_id,
+    label_id          = excluded.label_id,
     start_date        = excluded.start_date,
     as_of             = excluded.as_of,
     balance           = excluded.balance,
@@ -55,6 +56,14 @@ JOIN accounts a ON a.id = t.account_id
 WHERE t.category_id = ? AND t.type = 0
 ORDER BY t.spent_at, t.id;
 
+-- name: ListDebtCandidateLabels :many
+-- The labels of the expenses CandidateDebtTransactions returns, in one read.
+SELECT tl.transaction_id, tl.label_id
+FROM transactions_labels tl
+JOIN transactions t ON t.id = tl.transaction_id
+WHERE t.category_id = ? AND t.type = 0
+ORDER BY tl.transaction_id, tl.label_id;
+
 -- name: DebtUsesCategory :one
 SELECT EXISTS (SELECT 1 FROM debts WHERE category_id = ?);
 
@@ -64,6 +73,9 @@ SELECT EXISTS (SELECT 1 FROM debts WHERE payee_id = ?);
 -- name: DebtUsesTag :one
 SELECT EXISTS (SELECT 1 FROM debts WHERE tag_id = ?);
 
+-- name: DebtUsesLabel :one
+SELECT EXISTS (SELECT 1 FROM debts WHERE label_id = ?);
+
 -- name: ReassignDebtCategory :exec
 UPDATE debts SET category_id = ? WHERE category_id = ?;
 
@@ -72,3 +84,6 @@ UPDATE debts SET payee_id = ? WHERE payee_id = ?;
 
 -- name: ReassignDebtTag :exec
 UPDATE debts SET tag_id = ? WHERE tag_id = ?;
+
+-- name: ReassignDebtLabel :exec
+UPDATE debts SET label_id = ? WHERE label_id = ?;

@@ -18,6 +18,7 @@ type CandidateTx struct {
 	CurrencyID vo.Id
 	PayeeID    *vo.Id
 	TagID      *vo.Id
+	LabelIDs   []vo.Id
 }
 
 type Repository interface {
@@ -28,7 +29,7 @@ type Repository interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.Debt, error)
 	ListByOwners(ctx context.Context, ownerIDs []vo.Id) ([]*model.Debt, error)
 	ListByCategory(ctx context.Context, categoryID vo.Id) ([]*model.Debt, error)
-	// ListByClassification: kind is "payee" or "tag".
+	// ListByClassification: kind is "payee", "tag" or "label".
 	ListByClassification(ctx context.Context, kind string, id vo.Id) ([]*model.Debt, error)
 	Save(ctx context.Context, d *model.Debt) error
 	Delete(ctx context.Context, id vo.Id) error
@@ -45,7 +46,9 @@ type Repository interface {
 	UsesCategory(ctx context.Context, id vo.Id) (bool, error)
 	UsesPayee(ctx context.Context, id vo.Id) (bool, error)
 	UsesTag(ctx context.Context, id vo.Id) (bool, error)
+	UsesLabel(ctx context.Context, id vo.Id) (bool, error)
 	ReassignCategory(ctx context.Context, oldID, newID vo.Id) error
 	ReassignPayee(ctx context.Context, oldID, newID vo.Id) error
 	ReassignTag(ctx context.Context, oldID, newID vo.Id) error
+	ReassignLabel(ctx context.Context, oldID, newID vo.Id) error
 }

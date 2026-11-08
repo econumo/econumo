@@ -2,6 +2,7 @@ package repo_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -302,7 +303,7 @@ func TestRepo_UsesAndReassign(t *testing.T) {
 			t.Errorf("ListByClassification(%s) = %v, %v", kind, got, err)
 		}
 	}
-	if _, err := e.repo.ListByClassification(ctx, "label", pid); err == nil {
+	if _, err := e.repo.ListByClassification(ctx, "currency", pid); err == nil {
 		t.Error("an unknown kind must be refused")
 	}
 	newCat := e.f.Category(fixture.Category{UserID: e.user, Name: "Loan 2"})
@@ -371,5 +372,142 @@ func TestRepo_InsertSplitForAGoneTransactionIsANoOp(t *testing.T) {
 	}
 	if got, err := e.repo.Splits(ctx, []vo.Id{d.ID}); err != nil || len(got) != 0 {
 		t.Errorf("Splits = %v, %v; want none", got, err)
+	}
+}
+
+func (e *env) link(t *testing.T, txID string, labelIDs ...string) {
+	t.Helper()
+	for _, l := range labelIDs {
+		if _, err := e.db.Raw.ExecContext(context.Background(), e.db.Rebind("INSERT INTO transactions_labels (transaction_id, label_id) VALUES (?, ?)"), txID, l); err != nil {
+			t.Fatalf("link label: %v", err)
+		}
+	}
+}
+
+func TestRepo_SaveDebtWithoutTerms(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	d := e.debt(fixture.NewID())
+	d.Current = nil
+	d.Payment, d.Schedule = vo.NewDecimal("300"), model.RecurringScheduleWeekly
+	if err := e.repo.Save(ctx, d); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := e.repo.GetByID(ctx, d.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Current != nil || got.IsSetUp() {
+		t.Errorf("Current = %+v, want nil", got.Current)
+	}
+	if got.Payment.String() != "300" || got.Schedule != model.RecurringScheduleWeekly {
+		t.Errorf("payment/schedule = %s / %s", got.Payment, got.Schedule)
+	}
+	byCat, err := e.repo.ListByCategory(ctx, d.CategoryID)
+	if err != nil || len(byCat) != 1 || byCat[0].Current != nil {
+		t.Errorf("ListByCategory = %v, %v", byCat, err)
+	}
+	byOwner, err := e.repo.ListByOwners(ctx, []vo.Id{d.OwnerID})
+	if err != nil || len(byOwner) != 1 || byOwner[0].Current != nil {
+		t.Errorf("ListByOwners = %v, %v", byOwner, err)
+	}
+
+	d.SetTerms(model.DebtTerms{
+		AsOf: time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC), Balance: vo.NewDecimal("900"), Payment: vo.NewDecimal("300"),
+		Schedule: model.RecurringScheduleWeekly, LastPaymentDate: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+	})
+	if err := e.repo.Save(ctx, d); err != nil {
+		t.Fatalf("Save with terms: %v", err)
+	}
+	if got, err = e.repo.GetByID(ctx, d.ID); err != nil || got.Current == nil || got.Current.Balance.String() != "900" {
+		t.Errorf("after setup: %+v, %v", got, err)
+	}
+	d.Current = nil
+	if err := e.repo.Save(ctx, d); err != nil {
+		t.Fatalf("Save back without terms: %v", err)
+	}
+	if got, err = e.repo.GetByID(ctx, d.ID); err != nil || got.Current != nil {
+		t.Errorf("after clearing: %+v, %v", got, err)
+	}
+}
+
+func TestRepo_LabelRoundTripAndReassign(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	label := e.f.Label(fixture.Label{UserID: e.user, Name: "Car"})
+	other := e.f.Label(fixture.Label{UserID: e.user, Name: "House"})
+	lid := vo.MustParseId(label)
+	d := e.debt(fixture.NewID())
+	d.LabelID = &lid
+	if err := e.repo.Save(ctx, d); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := e.repo.GetByID(ctx, d.ID)
+	if err != nil || got.LabelID == nil || *got.LabelID != lid {
+		t.Fatalf("GetByID label = %v, %v", got, err)
+	}
+	byOwner, err := e.repo.ListByOwners(ctx, []vo.Id{d.OwnerID})
+	if err != nil || len(byOwner) != 1 || byOwner[0].LabelID == nil || *byOwner[0].LabelID != lid {
+		t.Errorf("ListByOwners label = %v, %v", byOwner, err)
+	}
+	byLabel, err := e.repo.ListByClassification(ctx, "label", lid)
+	if err != nil || len(byLabel) != 1 || byLabel[0].ID != d.ID {
+		t.Errorf("ListByClassification(label) = %v, %v", byLabel, err)
+	}
+	for id, want := range map[string]bool{label: true, other: false} {
+		if v, err := e.repo.UsesLabel(ctx, vo.MustParseId(id)); err != nil || v != want {
+			t.Errorf("UsesLabel(%s) = %v, %v; want %v", id, v, err, want)
+		}
+	}
+	if err := e.repo.ReassignLabel(ctx, lid, vo.MustParseId(other)); err != nil {
+		t.Fatal(err)
+	}
+	got, err = e.repo.GetByID(ctx, d.ID)
+	if err != nil || got.LabelID == nil || got.LabelID.String() != other {
+		t.Fatalf("after reassign: %v, %v", got, err)
+	}
+	if v, _ := e.repo.UsesLabel(ctx, lid); v {
+		t.Error("the old label is still in use")
+	}
+	d.LabelID = nil
+	if err := e.repo.Save(ctx, d); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = e.repo.GetByID(ctx, d.ID); err != nil || got.LabelID != nil {
+		t.Errorf("after clearing: %v, %v", got, err)
+	}
+}
+
+func TestRepo_CandidateTransactionsCarryLabels(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	a := e.f.Label(fixture.Label{UserID: e.user, Name: "A"})
+	b := e.f.Label(fixture.Label{UserID: e.user, Name: "B"})
+	withTwo := e.expense(t, 0, "10")
+	withOne := e.expense(t, 0, "20")
+	bare := e.expense(t, 0, "30")
+	elsewhere := e.f.Category(fixture.Category{UserID: e.user, Name: "Other"})
+	foreign := e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: e.account, CategoryID: elsewhere, Type: 0, Amount: "5"})
+	e.link(t, withTwo, a, b)
+	e.link(t, withOne, b)
+	e.link(t, foreign, a)
+
+	got, err := e.repo.CandidateTransactions(ctx, vo.MustParseId(e.category))
+	if err != nil || len(got) != 3 {
+		t.Fatalf("CandidateTransactions = %v, %v", got, err)
+	}
+	labels := map[string][]string{}
+	for _, c := range got {
+		ids := []string{}
+		for _, l := range c.LabelIDs {
+			ids = append(ids, l.String())
+		}
+		slices.Sort(ids)
+		labels[c.ID.String()] = ids
+	}
+	wantTwo := []string{a, b}
+	slices.Sort(wantTwo)
+	if !slices.Equal(labels[withTwo], wantTwo) || !slices.Equal(labels[withOne], []string{b}) || len(labels[bare]) != 0 {
+		t.Errorf("labels = %v", labels)
 	}
 }

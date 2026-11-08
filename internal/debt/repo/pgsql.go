@@ -94,3 +94,23 @@ func (pgsqlQuerier) ReassignDebtPayee(ctx context.Context, db backend.DBTX, p re
 func (pgsqlQuerier) ReassignDebtTag(ctx context.Context, db backend.DBTX, p reassignTagParam) error {
 	return pgsqlgen.New(db).ReassignDebtTag(ctx, pgsqlgen.ReassignDebtTagParams(p))
 }
+
+func (pgsqlQuerier) DebtUsesLabel(ctx context.Context, db backend.DBTX, id *string) (bool, error) {
+	return pgsqlgen.New(db).DebtUsesLabel(ctx, id)
+}
+
+func (pgsqlQuerier) ListDebtCandidateLabels(ctx context.Context, db backend.DBTX, categoryID *string) ([]txLabelRow, error) {
+	rows, err := pgsqlgen.New(db).ListDebtCandidateLabels(ctx, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]txLabelRow, len(rows))
+	for i, r := range rows {
+		out[i] = txLabelRow(r)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) ReassignDebtLabel(ctx context.Context, db backend.DBTX, p reassignLblParam) error {
+	return pgsqlgen.New(db).ReassignDebtLabel(ctx, pgsqlgen.ReassignDebtLabelParams(p))
+}

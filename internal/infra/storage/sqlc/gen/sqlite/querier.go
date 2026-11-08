@@ -43,6 +43,7 @@ type Querier interface {
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
 	DebtUsesCategory(ctx context.Context, categoryID string) (int64, error)
+	DebtUsesLabel(ctx context.Context, labelID *string) (int64, error)
 	DebtUsesPayee(ctx context.Context, payeeID *string) (int64, error)
 	DebtUsesTag(ctx context.Context, tagID *string) (int64, error)
 	DeleteAccessToken(ctx context.Context, id string) error
@@ -520,6 +521,8 @@ type Querier interface {
 	// list and the code->id map. Custom (per-user) currencies must never reach the
 	// CLI/OXR path. Mirrors CurrencyRepository::getAll() (code projection only).
 	ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow, error)
+	// The labels of the expenses CandidateDebtTransactions returns, in one read.
+	ListDebtCandidateLabels(ctx context.Context, categoryID *string) ([]TransactionsLabel, error)
 	ListDebtsByCategory(ctx context.Context, categoryID string) ([]Debt, error)
 	ListDeletedAccounts(ctx context.Context) ([]Account, error)
 	ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID string) ([]string, error)
@@ -625,6 +628,7 @@ type Querier interface {
 	// before the old category is deleted (mirrors TransactionRepository::replaceCategory).
 	ReassignCategoryTransactions(ctx context.Context, arg ReassignCategoryTransactionsParams) error
 	ReassignDebtCategory(ctx context.Context, arg ReassignDebtCategoryParams) error
+	ReassignDebtLabel(ctx context.Context, arg ReassignDebtLabelParams) error
 	ReassignDebtPayee(ctx context.Context, arg ReassignDebtPayeeParams) error
 	ReassignDebtTag(ctx context.Context, arg ReassignDebtTagParams) error
 	ReassignPayeeRecurring(ctx context.Context, arg ReassignPayeeRecurringParams) error

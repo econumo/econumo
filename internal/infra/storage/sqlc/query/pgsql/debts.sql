@@ -2,27 +2,28 @@
 -- the generated parameter types match the sqlite variants.
 
 -- name: GetDebtByID :one
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
 FROM debts
 WHERE id = $1;
 
 -- name: ListDebtsByCategory :many
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
 FROM debts
 WHERE category_id = $1
 ORDER BY created_at, id;
 
 -- name: UpsertDebt :exec
-INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at)
-VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.arg(currency_id), sqlc.arg(category_id), sqlc.arg(payee_id), sqlc.arg(tag_id),
-    sqlc.narg(start_date)::text::date, sqlc.arg(as_of)::text::date, sqlc.arg(balance), sqlc.arg(payment), sqlc.arg(schedule),
-    sqlc.arg(last_payment_date)::text::date, sqlc.arg(created_at), sqlc.arg(updated_at))
+INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.arg(currency_id), sqlc.arg(category_id), sqlc.arg(payee_id), sqlc.arg(tag_id), sqlc.narg(label_id),
+    sqlc.narg(start_date)::text::date, sqlc.narg(as_of)::text::date, sqlc.narg(balance), sqlc.arg(payment), sqlc.arg(schedule),
+    sqlc.narg(last_payment_date)::text::date, sqlc.arg(created_at), sqlc.arg(updated_at))
 ON CONFLICT (id) DO UPDATE SET
     name              = excluded.name,
     currency_id       = excluded.currency_id,
     category_id       = excluded.category_id,
     payee_id          = excluded.payee_id,
     tag_id            = excluded.tag_id,
+    label_id          = excluded.label_id,
     start_date        = excluded.start_date,
     as_of             = excluded.as_of,
     balance           = excluded.balance,
@@ -55,6 +56,14 @@ JOIN accounts a ON a.id = t.account_id
 WHERE t.category_id = $1 AND t.type = 0
 ORDER BY t.spent_at, t.id;
 
+-- name: ListDebtCandidateLabels :many
+-- The labels of the expenses CandidateDebtTransactions returns, in one read.
+SELECT tl.transaction_id, tl.label_id
+FROM transactions_labels tl
+JOIN transactions t ON t.id = tl.transaction_id
+WHERE t.category_id = $1 AND t.type = 0
+ORDER BY tl.transaction_id, tl.label_id;
+
 -- name: DebtUsesCategory :one
 SELECT EXISTS (SELECT 1 FROM debts WHERE category_id = $1);
 
@@ -64,6 +73,9 @@ SELECT EXISTS (SELECT 1 FROM debts WHERE payee_id = $1);
 -- name: DebtUsesTag :one
 SELECT EXISTS (SELECT 1 FROM debts WHERE tag_id = $1);
 
+-- name: DebtUsesLabel :one
+SELECT EXISTS (SELECT 1 FROM debts WHERE label_id = $1);
+
 -- name: ReassignDebtCategory :exec
 UPDATE debts SET category_id = $1 WHERE category_id = $2;
 
@@ -72,6 +84,9 @@ UPDATE debts SET payee_id = $1 WHERE payee_id = $2;
 
 -- name: ReassignDebtTag :exec
 UPDATE debts SET tag_id = $1 WHERE tag_id = $2;
+
+-- name: ReassignDebtLabel :exec
+UPDATE debts SET label_id = $1 WHERE label_id = $2;
 
 -- name: LockDebtOwner :one
 SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE;

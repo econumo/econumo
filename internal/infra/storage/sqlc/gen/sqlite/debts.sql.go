@@ -69,6 +69,17 @@ func (q *Queries) DebtUsesCategory(ctx context.Context, categoryID string) (int6
 	return column_1, err
 }
 
+const debtUsesLabel = `-- name: DebtUsesLabel :one
+SELECT EXISTS (SELECT 1 FROM debts WHERE label_id = ?)
+`
+
+func (q *Queries) DebtUsesLabel(ctx context.Context, labelID *string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, debtUsesLabel, labelID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const debtUsesPayee = `-- name: DebtUsesPayee :one
 SELECT EXISTS (SELECT 1 FROM debts WHERE payee_id = ?)
 `
@@ -102,7 +113,7 @@ func (q *Queries) DeleteDebt(ctx context.Context, id string) error {
 
 const getDebtByID = `-- name: GetDebtByID :one
 
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
 FROM debts
 WHERE id = ?
 `
@@ -120,6 +131,7 @@ func (q *Queries) GetDebtByID(ctx context.Context, id string) (Debt, error) {
 		&i.CategoryID,
 		&i.PayeeID,
 		&i.TagID,
+		&i.LabelID,
 		&i.StartDate,
 		&i.AsOf,
 		&i.Balance,
@@ -183,8 +195,40 @@ func (q *Queries) InsertDebtSplit(ctx context.Context, arg InsertDebtSplitParams
 	return err
 }
 
+const listDebtCandidateLabels = `-- name: ListDebtCandidateLabels :many
+SELECT tl.transaction_id, tl.label_id
+FROM transactions_labels tl
+JOIN transactions t ON t.id = tl.transaction_id
+WHERE t.category_id = ? AND t.type = 0
+ORDER BY tl.transaction_id, tl.label_id
+`
+
+// The labels of the expenses CandidateDebtTransactions returns, in one read.
+func (q *Queries) ListDebtCandidateLabels(ctx context.Context, categoryID *string) ([]TransactionsLabel, error) {
+	rows, err := q.db.QueryContext(ctx, listDebtCandidateLabels, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TransactionsLabel{}
+	for rows.Next() {
+		var i TransactionsLabel
+		if err := rows.Scan(&i.TransactionID, &i.LabelID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDebtsByCategory = `-- name: ListDebtsByCategory :many
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at
 FROM debts
 WHERE category_id = ?
 ORDER BY created_at, id
@@ -207,6 +251,7 @@ func (q *Queries) ListDebtsByCategory(ctx context.Context, categoryID string) ([
 			&i.CategoryID,
 			&i.PayeeID,
 			&i.TagID,
+			&i.LabelID,
 			&i.StartDate,
 			&i.AsOf,
 			&i.Balance,
@@ -243,6 +288,20 @@ func (q *Queries) ReassignDebtCategory(ctx context.Context, arg ReassignDebtCate
 	return err
 }
 
+const reassignDebtLabel = `-- name: ReassignDebtLabel :exec
+UPDATE debts SET label_id = ? WHERE label_id = ?
+`
+
+type ReassignDebtLabelParams struct {
+	LabelID   *string
+	LabelID_2 *string
+}
+
+func (q *Queries) ReassignDebtLabel(ctx context.Context, arg ReassignDebtLabelParams) error {
+	_, err := q.db.ExecContext(ctx, reassignDebtLabel, arg.LabelID, arg.LabelID_2)
+	return err
+}
+
 const reassignDebtPayee = `-- name: ReassignDebtPayee :exec
 UPDATE debts SET payee_id = ? WHERE payee_id = ?
 `
@@ -272,16 +331,17 @@ func (q *Queries) ReassignDebtTag(ctx context.Context, arg ReassignDebtTagParams
 }
 
 const upsertDebt = `-- name: UpsertDebt :exec
-INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7,
-    CAST(?8 AS TEXT), CAST(?9 AS TEXT), ?10, ?11, ?12,
-    CAST(?13 AS TEXT), ?14, ?15)
+INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_at, updated_at)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8,
+    CAST(?9 AS TEXT), CAST(?10 AS TEXT), ?11, ?12, ?13,
+    CAST(?14 AS TEXT), ?15, ?16)
 ON CONFLICT (id) DO UPDATE SET
     name              = excluded.name,
     currency_id       = excluded.currency_id,
     category_id       = excluded.category_id,
     payee_id          = excluded.payee_id,
     tag_id            = excluded.tag_id,
+    label_id          = excluded.label_id,
     start_date        = excluded.start_date,
     as_of             = excluded.as_of,
     balance           = excluded.balance,
@@ -299,12 +359,13 @@ type UpsertDebtParams struct {
 	CategoryID      string
 	PayeeID         *string
 	TagID           *string
+	LabelID         *string
 	StartDate       *string
-	AsOf            string
-	Balance         string
+	AsOf            *string
+	Balance         *string
 	Payment         string
 	Schedule        string
-	LastPaymentDate string
+	LastPaymentDate *string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -318,6 +379,7 @@ func (q *Queries) UpsertDebt(ctx context.Context, arg UpsertDebtParams) error {
 		arg.CategoryID,
 		arg.PayeeID,
 		arg.TagID,
+		arg.LabelID,
 		arg.StartDate,
 		arg.AsOf,
 		arg.Balance,
