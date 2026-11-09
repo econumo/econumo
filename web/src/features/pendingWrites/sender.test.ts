@@ -291,6 +291,25 @@ describe('a replay of a transaction change', () => {
     expect(op('k1')).toMatchObject({ attempted: true, status: 'waiting' })
   })
 
+  it('does not take a sync already running for the read back: that sync may predate the write', async () => {
+    serverRows = [row('real')]
+    readBack = () => HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'a1', transactionsRevision: 3, owner: me, sharedAccess: [] }] } })
+    let finishStaleSync: (rows: TransactionDto[]) => void = () => {}
+    void client.fetchQuery({
+      queryKey: queryKeys.transactions,
+      queryFn: () => new Promise<TransactionDto[]>((resolve) => { finishStaleSync = resolve }),
+      staleTime: 0,
+    }).catch(() => {})
+    await add()
+    const draining = kickPendingWrites()
+    await started()
+    await new Promise((r) => setTimeout(r, 50))
+    finishStaleSync([])
+    await draining
+    expect(getOps()).toEqual([])
+    expect(shown().map((t) => t.id)).toEqual(['real'])
+  })
+
   it('gives the change behind an add the real id when it settles', async () => {
     serverRows = [row('real')]
     answerWith((n) => (n === 0 ? replay('real') : undefined))

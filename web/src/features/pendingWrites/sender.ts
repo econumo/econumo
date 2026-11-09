@@ -171,6 +171,8 @@ async function readTransactionsBack(queryClient: QueryClient, key: string, realI
       void mutate((ops) => markLanded(ops, key, realId))
       queryClient.setQueryData(queryKeys.accounts, accounts)
     })
+    // fetchQuery joins a sync already running, and that one may have read the revisions before the write
+    await queryClient.cancelQueries({ queryKey: queryKeys.transactions, exact: true })
     await queryClient.fetchQuery({
       queryKey: queryKeys.transactions,
       queryFn: ({ signal }) => transactionsQueryFn(queryClient, { full: consumeFullReload(), signal }),
