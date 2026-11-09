@@ -535,7 +535,16 @@
         "date": "Fecha",
         "amount": "Pago",
         "interest": "Intereses",
-        "principal": "Capital"
+        "principal": "Capital",
+        "balance": "Saldo"
+      },
+      "forecast": {
+        "show": "Mostrar pagos futuros",
+        "hide": "Ocultar pagos futuros",
+        "title": "Pagos futuros",
+        "with_plan": "Incluye los pagos extra planificados en {budget}",
+        "regular_only": "Solo pagos regulares",
+        "none": "No queda nada por pagar"
       },
       "mark_paid_off": "Marcar como pagada",
       "paid_off_confirm": {

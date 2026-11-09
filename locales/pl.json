@@ -535,7 +535,16 @@
         "date": "Data",
         "amount": "Płatność",
         "interest": "Odsetki",
-        "principal": "Kapitał"
+        "principal": "Kapitał",
+        "balance": "Saldo"
+      },
+      "forecast": {
+        "show": "Pokaż przyszłe płatności",
+        "hide": "Ukryj przyszłe płatności",
+        "title": "Przyszłe płatności",
+        "with_plan": "Uwzględnia dodatkowe płatności zaplanowane w {budget}",
+        "regular_only": "Tylko regularne płatności",
+        "none": "Nie zostało nic do spłaty"
       },
       "mark_paid_off": "Oznacz jako spłacony",
       "paid_off_confirm": {

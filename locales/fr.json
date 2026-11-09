@@ -535,7 +535,16 @@
         "date": "Date",
         "amount": "Paiement",
         "interest": "Intérêts",
-        "principal": "Capital"
+        "principal": "Capital",
+        "balance": "Solde"
+      },
+      "forecast": {
+        "show": "Afficher les paiements à venir",
+        "hide": "Masquer les paiements à venir",
+        "title": "Paiements à venir",
+        "with_plan": "Inclut les paiements supplémentaires prévus dans {budget}",
+        "regular_only": "Paiements réguliers uniquement",
+        "none": "Plus rien à payer"
       },
       "mark_paid_off": "Marquer comme remboursée",
       "paid_off_confirm": {

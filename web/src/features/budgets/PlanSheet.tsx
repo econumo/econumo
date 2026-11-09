@@ -2187,7 +2187,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
           sheetPlanTarget?.kind === 'debt' && sheetEdit === true
             ? () => {
                 // its button reads Finish setup while the debt has no terms
-                openDebtDetails(sheetPlanTarget.row.id, sheetPlanTarget.row.isSetUp === 0 ? 'settings' : 'overview')
+                openDebtDetails(sheetPlanTarget.row.id, sheetPlanTarget.row.isSetUp === 0 ? 'settings' : 'overview', budget.meta.id)
                 setSheetCellTarget(null)
               }
             : undefined

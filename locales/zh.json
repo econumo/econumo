@@ -535,7 +535,16 @@
         "date": "日期",
         "amount": "还款额",
         "interest": "利息",
-        "principal": "本金"
+        "principal": "本金",
+        "balance": "余额"
+      },
+      "forecast": {
+        "show": "显示未来还款",
+        "hide": "隐藏未来还款",
+        "title": "未来还款",
+        "with_plan": "包含在 {budget} 中计划的额外还款",
+        "regular_only": "仅定期还款",
+        "none": "已无需还款"
       },
       "mark_paid_off": "标记为已还清",
       "paid_off_confirm": {

@@ -535,7 +535,16 @@
         "date": "Data",
         "amount": "Pagamento",
         "interest": "Interessi",
-        "principal": "Capitale"
+        "principal": "Capitale",
+        "balance": "Saldo"
+      },
+      "forecast": {
+        "show": "Mostra i pagamenti futuri",
+        "hide": "Nascondi i pagamenti futuri",
+        "title": "Pagamenti futuri",
+        "with_plan": "Include i pagamenti extra pianificati in {budget}",
+        "regular_only": "Solo pagamenti regolari",
+        "none": "Niente più da pagare"
       },
       "mark_paid_off": "Segna come estinto",
       "paid_off_confirm": {

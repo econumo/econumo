@@ -51,8 +51,8 @@ const details: DebtDetailsDto = {
   },
   snapshots: [{ asOf: '2026-10-01', balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05' }],
   payments: [
-    { transactionId: 't1', date: '2026-11-05 00:00:00', amount: '100', interest: '10', principal: '90' },
-    { transactionId: 't2', date: '2026-10-05 00:00:00', amount: '100', interest: '5.5', principal: '94.5' },
+    { transactionId: 't1', date: '2026-11-05 00:00:00', amount: '100', interest: '10', principal: '90', balance: '1090' },
+    { transactionId: 't2', date: '2026-10-05 00:00:00', amount: '100', interest: '5.5', principal: '94.5', balance: '1180' },
   ],
 }
 
@@ -60,8 +60,8 @@ const notSetUp: DebtDetailsDto = {
   item: wireDebtNotSetUp,
   snapshots: [],
   payments: [
-    { transactionId: 't1', date: '2026-11-05 00:00:00', amount: '100', interest: '0', principal: '100' },
-    { transactionId: 't2', date: '2026-10-05 00:00:00', amount: '50.5', interest: '0', principal: '50.5' },
+    { transactionId: 't1', date: '2026-11-05 00:00:00', amount: '100', interest: '0', principal: '100', balance: '' },
+    { transactionId: 't2', date: '2026-10-05 00:00:00', amount: '50.5', interest: '0', principal: '50.5', balance: '' },
   ],
 }
 
@@ -92,7 +92,7 @@ beforeEach(() => {
   server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt', () => ok(details)))
   mockMatchMedia()
   vi.mocked(trackEvent).mockClear()
-  useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'overview', debtModal: null })
+  useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'overview', debtDetailsBudgetId: null, debtModal: null })
 })
 
 async function openScreen(tab?: 'overview' | 'settings') {
@@ -206,16 +206,17 @@ it('the Overview reads which payments count as a sentence, with no pickers', asy
   expect(within(sentence).queryAllByRole('button')).toHaveLength(0)
 })
 
-it('shows interest and principal per payment, newest first', async () => {
+it('shows interest, principal and the balance left after each payment, newest first', async () => {
   renderScreen()
   await openScreen()
 
   expect(screen.getByRole('columnheader', { name: 'Interest' })).toBeInTheDocument()
   expect(screen.getByRole('columnheader', { name: 'Principal' })).toBeInTheDocument()
+  expect(screen.getByRole('columnheader', { name: 'Balance' })).toBeInTheDocument()
   const rows = screen.getAllByTestId('debt-payment')
   expect(rows).toHaveLength(2)
-  expect(within(rows[0]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Nov 5, 2026', '100.00 $', '10.00 $', '90.00 $'])
-  expect(within(rows[1]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Oct 5, 2026', '100.00 $', '5.50 $', '94.50 $'])
+  expect(within(rows[0]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Nov 5, 2026', '100.00 $', '10.00 $', '90.00 $', '1,090.00 $'])
+  expect(within(rows[1]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Oct 5, 2026', '100.00 $', '5.50 $', '94.50 $', '1,180.00 $'])
 })
 
 it('the history of balances is collapsed until asked for', async () => {
@@ -247,13 +248,16 @@ it('not-set-up debt shows Finish setup and no balance', async () => {
   expect(screen.queryByRole('progressbar')).toBeNull()
   // the payments carry no split before the terms exist
   expect(screen.queryByRole('columnheader', { name: 'Interest' })).toBeNull()
+  expect(screen.queryByRole('columnheader', { name: 'Balance' })).toBeNull()
   expect(within(screen.getAllByTestId('debt-payment')[0]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Nov 5, 2026', '100.00 $'])
+  // no terms, no projection
+  expect(screen.queryByRole('button', { name: 'Show future payments' })).toBeNull()
 })
 
 it('Paid so far counts only payments dated up to today; the list keeps the future one', async () => {
   const withFuture: DebtDetailsDto = {
     ...notSetUp,
-    payments: [{ transactionId: 't3', date: '2026-11-20 00:00:00', amount: '70', interest: '0', principal: '70' }, ...notSetUp.payments],
+    payments: [{ transactionId: 't3', date: '2026-11-20 00:00:00', amount: '70', interest: '0', principal: '70', balance: '' }, ...notSetUp.payments],
   }
   server.use(http.get('*/api/v1/debt/get-debt', () => ok(withFuture)))
   renderScreen()
@@ -648,5 +652,78 @@ describe('the header and the tabs are one block above the scrolling content', ()
       expect(tab.className).toContain('h-auto')
       expect(tab.className).toContain('after:hidden')
     }
+  })
+})
+
+describe('future payments', () => {
+  const forecast = {
+    items: [
+      { date: '2026-12-05', payment: '400', interest: '9.08', principal: '390.92', balance: '699.08' },
+      { date: '2027-01-05', payment: '100', interest: '5.83', principal: '94.17', balance: '604.91' },
+    ],
+    budgetId: 'b1',
+    budgetName: 'Family',
+  }
+
+  function captureForecast(answer: unknown = forecast) {
+    const asked: URLSearchParams[] = []
+    server.use(
+      http.get('*/api/v1/debt/get-debt-forecast', ({ request }) => {
+        asked.push(new URL(request.url).searchParams)
+        return ok(answer)
+      }),
+    )
+    return asked
+  }
+
+  it('Show future payments loads the forecast of the budget the screen came from, soonest first, with its plan named', async () => {
+    const asked = captureForecast()
+    const user = userEvent.setup()
+    renderScreen()
+    useUiStore.getState().openDebtDetails('d1', 'overview', 'b1')
+    await screen.findByTestId('debt-review-top', {}, { timeout: 5000 })
+    expect(asked).toHaveLength(0)
+    expect(screen.queryByTestId('debt-forecast-payment')).toBeNull()
+
+    const show = screen.getByRole('button', { name: 'Show future payments' })
+    expect(show).toHaveAttribute('aria-expanded', 'false')
+    await user.click(show)
+
+    const rows = await screen.findAllByTestId('debt-forecast-payment')
+    expect(asked).toHaveLength(1)
+    expect(asked[0].get('id')).toBe('d1')
+    expect(asked[0].get('budgetId')).toBe('b1')
+    expect(screen.getByRole('heading', { name: 'Future payments' })).toBeInTheDocument()
+    expect(within(rows[0]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Dec 5, 2026', '400.00 $', '9.08 $', '390.92 $', '699.08 $'])
+    expect(within(rows[1]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Jan 5, 2027', '100.00 $', '5.83 $', '94.17 $', '604.91 $'])
+    expect(screen.getByText('Includes extra payments planned in Family')).toBeInTheDocument()
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_FORECAST_VIEW)
+
+    const hide = screen.getByRole('button', { name: 'Hide future payments' })
+    expect(hide).toHaveAttribute('aria-expanded', 'true')
+    await user.click(hide)
+    expect(screen.queryByTestId('debt-forecast-payment')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show future payments' })).toBeInTheDocument()
+  })
+
+  it('opened from Settings it asks with no budget, and says when only the regular payments count', async () => {
+    const asked = captureForecast({ ...forecast, budgetId: '', budgetName: '' })
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+
+    await user.click(screen.getByRole('button', { name: 'Show future payments' }))
+
+    await screen.findAllByTestId('debt-forecast-payment')
+    expect(asked[0].get('budgetId')).toBeNull()
+    expect(screen.getByText('Regular payments only')).toBeInTheDocument()
+  })
+
+  it('a paid-off debt offers no future payments', async () => {
+    server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, isPaidOff: 1 } })))
+    renderScreen()
+    await openScreen()
+
+    expect(screen.queryByRole('button', { name: 'Show future payments' })).toBeNull()
   })
 })

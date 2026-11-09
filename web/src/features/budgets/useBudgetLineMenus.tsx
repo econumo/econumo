@@ -157,7 +157,7 @@ export function useBudgetLineMenus({
       return
     }
     if (target.kind === 'debt') {
-      openDebtDetails(target.row.id)
+      openDebtDetails(target.row.id, 'overview', budget?.meta.id)
       return
     }
     const el = sheetElement(target)
@@ -284,7 +284,7 @@ export function useBudgetLineMenus({
   const debtRowMenu = (row: DebtRef): MenuAction[] =>
     ownsDebt(row)
       ? // the review screen is the one place a debt is edited: its terms, filters and name
-        [{ label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id) }]
+        [{ label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id, 'overview', budget?.meta.id) }]
       : []
   const labelMenu = (label: LabelSpendDto): MenuAction[] => editAction({ kind: 'label', label })
   const newEnvelopeAction = (folderId: Id | null, side: BudgetFolderSide): MenuAction => ({

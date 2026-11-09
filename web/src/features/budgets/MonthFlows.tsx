@@ -416,7 +416,7 @@ export function MonthFlows({
       muted={row.isPaidOff === 1}
       planned={planned({ kind: 'debt', row }, row.budgeted, row.currencyId)}
       actual={actualCell({ id: row.id, type: BudgetElementType.DEBT, name: row.name, icon: row.icon, currencyId: row.currencyId }, row.spent, row.currencyId)}
-      third={<DebtLeft row={row} amount={fmt(row.closingBalance, row.currencyId)} userId={userId} />}
+      third={<DebtLeft row={row} amount={fmt(row.closingBalance, row.currencyId)} userId={userId} budgetId={budget.meta.id} />}
       actionsColumn={actionsColumn}
       menu={debtMenu?.(row)}
     />

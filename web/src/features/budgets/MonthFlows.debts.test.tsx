@@ -71,6 +71,8 @@ it('debt row offers its owner Finish setup in Left while not set up', async () =
   expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
   // straight to the form the setup is finished in
   expect(useUiStore.getState().debtDetailsTab).toBe('settings')
+  // from this budget: its plans feed the screen's future payments
+  expect(useUiStore.getState().debtDetailsBudgetId).toBe('b1')
   // Paid still shows; the section's Left sums only the debts set up
   expect(within(row).getByTestId('flow-actual')).toHaveTextContent('900.00')
 })

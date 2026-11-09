@@ -535,7 +535,16 @@
         "date": "Datum",
         "amount": "Zahlung",
         "interest": "Zinsen",
-        "principal": "Tilgung"
+        "principal": "Tilgung",
+        "balance": "Restschuld"
+      },
+      "forecast": {
+        "show": "Künftige Zahlungen anzeigen",
+        "hide": "Künftige Zahlungen ausblenden",
+        "title": "Künftige Zahlungen",
+        "with_plan": "Mit den in {budget} geplanten Sonderzahlungen",
+        "regular_only": "Nur regelmäßige Zahlungen",
+        "none": "Nichts mehr zu zahlen"
       },
       "mark_paid_off": "Als abbezahlt markieren",
       "paid_off_confirm": {

@@ -535,7 +535,16 @@
         "date": "Datum",
         "amount": "Betaling",
         "interest": "Rente",
-        "principal": "Aflossing"
+        "principal": "Aflossing",
+        "balance": "Saldo"
+      },
+      "forecast": {
+        "show": "Toekomstige betalingen tonen",
+        "hide": "Toekomstige betalingen verbergen",
+        "title": "Toekomstige betalingen",
+        "with_plan": "Inclusief de extra betalingen gepland in {budget}",
+        "regular_only": "Alleen vaste betalingen",
+        "none": "Niets meer te betalen"
       },
       "mark_paid_off": "Markeren als afbetaald",
       "paid_off_confirm": {

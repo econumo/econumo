@@ -535,7 +535,16 @@
         "date": "Data",
         "amount": "Pagamento",
         "interest": "Juros",
-        "principal": "Capital"
+        "principal": "Capital",
+        "balance": "Saldo"
+      },
+      "forecast": {
+        "show": "Mostrar pagamentos futuros",
+        "hide": "Ocultar pagamentos futuros",
+        "title": "Pagamentos futuros",
+        "with_plan": "Inclui os pagamentos extra planeados em {budget}",
+        "regular_only": "Apenas pagamentos regulares",
+        "none": "Nada por pagar"
       },
       "mark_paid_off": "Marcar como liquidada",
       "paid_off_confirm": {

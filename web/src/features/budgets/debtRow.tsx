@@ -59,16 +59,19 @@ export function DebtLeft({
   row,
   amount,
   userId,
+  budgetId,
 }: {
   row: Pick<BudgetDebtElementDto, 'id' | 'paymentsLeft' | 'isPaidOff' | 'isSetUp' | 'ownerUserId'>
   amount: string
   userId?: Id
+  /** the budget the row is in: the review screen's future payments follow its plans */
+  budgetId?: Id
 }) {
   const { t, i18n } = useTranslation()
   const openDebtDetails = useUiStore((s) => s.openDebtDetails)
   if (row.isSetUp === 0) {
     return !!userId && row.ownerUserId === userId ? (
-      <button type="button" className="text-econumo-link hover:underline" onClick={() => openDebtDetails(row.id, 'settings')}>
+      <button type="button" className="text-econumo-link hover:underline" onClick={() => openDebtDetails(row.id, 'settings', budgetId)}>
         {t('debts.terms.finish_setup')}
       </button>
     ) : (

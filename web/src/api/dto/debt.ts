@@ -50,6 +50,25 @@ export interface DebtPaymentDto {
   amount: string
   interest: string
   principal: string
+  /** what was owed after the payment; "" while the debt is not set up */
+  balance: string
+}
+
+/** a projected payment; balance is what is owed after it */
+export interface DebtForecastItemDto {
+  date: string
+  payment: string
+  interest: string
+  principal: string
+  balance: string
+}
+
+/** the payments still to come, soonest first; budgetName names the budget whose
+ *  planned extras are included, "" when only the regular payments count */
+export interface DebtForecastDto {
+  items: DebtForecastItemDto[]
+  budgetId: string
+  budgetName: string
 }
 
 export interface DebtDetailsDto {

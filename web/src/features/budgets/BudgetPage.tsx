@@ -946,7 +946,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           sheetTarget?.kind === 'debt' && sheetEdit === true
             ? () => {
                 // its button reads Finish setup while the debt has no terms
-                openDebtDetails(sheetTarget.row.id, sheetTarget.row.isSetUp === 0 ? 'settings' : 'overview')
+                openDebtDetails(sheetTarget.row.id, sheetTarget.row.isSetUp === 0 ? 'settings' : 'overview', budget?.meta.id)
                 setSheetTarget(null)
               }
             : undefined

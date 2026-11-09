@@ -77,7 +77,9 @@ interface UiState {
   debtDetailsId: Id | null
   /** the review screen's tab it opens on: Finish setup opens straight on Settings */
   debtDetailsTab: DebtDetailsTab
-  openDebtDetails: (id: Id, tab?: DebtDetailsTab) => void
+  /** the budget the screen was opened from: its plans feed the future payments */
+  debtDetailsBudgetId: Id | null
+  openDebtDetails: (id: Id, tab?: DebtDetailsTab, budgetId?: Id) => void
   closeDebtDetails: () => void
   switchAccountPrompt: Id | null
   setSwitchAccountPrompt: (id: Id | null) => void
@@ -113,7 +115,8 @@ export const useUiStore = create<UiState>()((set) => ({
   closeDebtModal: () => set({ debtModal: null }),
   debtDetailsId: null,
   debtDetailsTab: 'overview',
-  openDebtDetails: (id, tab = 'overview') => set({ debtDetailsId: id, debtDetailsTab: tab }),
+  debtDetailsBudgetId: null,
+  openDebtDetails: (id, tab = 'overview', budgetId) => set({ debtDetailsId: id, debtDetailsTab: tab, debtDetailsBudgetId: budgetId ?? null }),
   closeDebtDetails: () => set({ debtDetailsId: null }),
   switchAccountPrompt: null,
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),

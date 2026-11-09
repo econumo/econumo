@@ -16,11 +16,12 @@ import { add } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
 import type { DebtDetailsTab } from '@/app/uiStore'
 import type { DebtDetailsDto, DebtDto } from '@/api/dto/debt'
+import type { Id } from '@/api/types'
 import { useCurrencies } from '@/features/currencies/queries'
 import { debtDay, debtMonth } from './debtDates'
 import { DebtSettingsForm } from './DebtSettingsForm'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
-import { useDeleteDebt, useDebt, useFetchDebtForEdit, useMarkDebtPaidOff } from './queries'
+import { useDeleteDebt, useDebt, useDebtForecast, useFetchDebtForEdit, useMarkDebtPaidOff } from './queries'
 import { useDebtMoney, usePaymentsLeft } from './useDebtMoney'
 
 function SectionHeading({ id, children }: { id?: string; children: ReactNode }) {
@@ -96,7 +97,7 @@ const TABS: { value: DebtDetailsTab; label: string }[] = [
   { value: 'danger', label: 'debts.review.danger.title' },
 ]
 
-function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTab: DebtDetailsTab; onClose: () => void }) {
+function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string; budgetId: Id | null; initialTab: DebtDetailsTab; onClose: () => void }) {
   const { t, i18n } = useTranslation()
   const { data, error: loadError } = useDebt(debtId)
   const fetchDebtForEdit = useFetchDebtForEdit()
@@ -217,6 +218,7 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
               <TabsContent value="overview" className="flex flex-col gap-5">
                 <ReviewContent
                   details={data}
+                  budgetId={budgetId}
                   lang={i18n.language}
                   onFinishSetup={() => {
                     setFocusMissing(true)
@@ -307,7 +309,120 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
   )
 }
 
-function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsDto; lang: string; onFinishSetup: () => void }) {
+interface PaymentRow {
+  key: string
+  date: string
+  payment: string
+  interest: string
+  principal: string
+  balance: string
+}
+
+/** payments, booked or projected; `splits` adds the interest, principal and
+ *  balance columns, which need the terms. Principal (payment less interest)
+ *  is left out on a phone, where five amounts do not fit */
+function PaymentsTable({ rows, splits, testId, amount, lang, className = '' }: {
+  rows: PaymentRow[]
+  splits: boolean
+  testId: string
+  amount: (value: string) => string
+  lang: string
+  className?: string
+}) {
+  const { t } = useTranslation()
+  const head = 'py-1 text-right font-normal'
+  return (
+    <div className={`rounded-lg bg-econumo-card px-4 py-1.5 ${className}`}>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-xs text-muted-foreground">
+            <th scope="col" className="py-1 text-left font-normal">
+              {t('debts.details.column.date')}
+            </th>
+            <th scope="col" className={head}>
+              {t('debts.details.column.amount')}
+            </th>
+            {splits ? (
+              <>
+                <th scope="col" className={head}>
+                  {t('debts.details.column.interest')}
+                </th>
+                <th scope="col" className={`${head} hidden sm:table-cell`}>
+                  {t('debts.details.column.principal')}
+                </th>
+                <th scope="col" className={head}>
+                  {t('debts.details.column.balance')}
+                </th>
+              </>
+            ) : null}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.key} data-testid={testId} className="border-t border-border">
+              <td className="py-1.5 text-left">{debtDay(row.date, lang)}</td>
+              <td className="py-1.5 text-right">{amount(row.payment)}</td>
+              {splits ? (
+                <>
+                  <td className="py-1.5 text-right">{amount(row.interest)}</td>
+                  <td className="hidden py-1.5 text-right sm:table-cell">{amount(row.principal)}</td>
+                  <td className="py-1.5 text-right">{row.balance === '' ? '—' : amount(row.balance)}</td>
+                </>
+              ) : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/** the payments still to come, asked for under the booked ones: the regular
+ *  schedule plus the extras the budget the screen came from plans (else the
+ *  active budget's), soonest first and set apart in muted italics */
+function FuturePayments({ debt, budgetId, amount, lang }: { debt: DebtDto; budgetId: Id | null; amount: (value: string) => string; lang: string }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const { data, error, isPending } = useDebtForecast(debt.id, budgetId, open)
+  const headingId = useId()
+  return (
+    <div className="mt-2 flex flex-col gap-2">
+      <button type="button" className="self-start py-1 text-sm text-econumo-link hover:underline" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {open ? t('debts.details.forecast.hide') : t('debts.details.forecast.show')}
+      </button>
+      {!open ? null : isPending ? (
+        <div className="flex justify-center py-6">
+          <CoinLoader />
+        </div>
+      ) : error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {apiErrorMessage(error)}
+        </p>
+      ) : (
+        <section aria-labelledby={headingId} className="flex flex-col gap-1">
+          <SectionHeading id={headingId}>{t('debts.details.forecast.title')}</SectionHeading>
+          <p className="mb-1 text-xs text-muted-foreground">
+            {data.budgetName ? t('debts.details.forecast.with_plan', { budget: data.budgetName }) : t('debts.details.forecast.regular_only')}
+          </p>
+          {data.items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('debts.details.forecast.none')}</p>
+          ) : (
+            <PaymentsTable
+              testId="debt-forecast-payment"
+              splits
+              rows={data.items.map((p, i) => ({ key: `${i}-${p.date}`, ...p }))}
+              amount={amount}
+              lang={lang}
+              className="text-muted-foreground italic"
+            />
+          )}
+        </section>
+      )}
+    </div>
+  )
+}
+
+function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: DebtDetailsDto; budgetId: Id | null; lang: string; onFinishSetup: () => void }) {
   const { t } = useTranslation()
   const money = useDebtMoney()
   const paymentsLeft = usePaymentsLeft()
@@ -393,46 +508,16 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
         {payments.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('debts.details.payments_empty')}</p>
         ) : (
-          <div className="rounded-lg bg-econumo-card px-4 py-1.5">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-muted-foreground">
-                  <th scope="col" className="py-1 text-left font-normal">
-                    {t('debts.details.column.date')}
-                  </th>
-                  <th scope="col" className="py-1 text-right font-normal">
-                    {t('debts.details.column.amount')}
-                  </th>
-                  {/* the interest split needs the terms */}
-                  {setUp ? (
-                    <>
-                      <th scope="col" className="py-1 text-right font-normal">
-                        {t('debts.details.column.interest')}
-                      </th>
-                      <th scope="col" className="py-1 text-right font-normal">
-                        {t('debts.details.column.principal')}
-                      </th>
-                    </>
-                  ) : null}
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((payment) => (
-                  <tr key={payment.transactionId} data-testid="debt-payment" className="border-t border-border">
-                    <td className="py-1.5 text-left">{debtDay(payment.date, lang)}</td>
-                    <td className="py-1.5 text-right">{amount(payment.amount)}</td>
-                    {setUp ? (
-                      <>
-                        <td className="py-1.5 text-right">{amount(payment.interest)}</td>
-                        <td className="py-1.5 text-right">{amount(payment.principal)}</td>
-                      </>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <PaymentsTable
+            testId="debt-payment"
+            splits={setUp}
+            rows={payments.map((p) => ({ key: p.transactionId, date: p.date, payment: p.amount, interest: p.interest, principal: p.principal, balance: p.balance }))}
+            amount={amount}
+            lang={lang}
+          />
         )}
+        {/* the projection needs the terms, and a paid-off debt has nothing to come */}
+        {setUp && item.isPaidOff === 0 ? <FuturePayments debt={item} budgetId={budgetId} amount={amount} lang={lang} /> : null}
       </section>
 
       {snapshots.length > 0 ? (
@@ -471,16 +556,17 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
   )
 }
 
-/** The owner's review of one debt, opened with `useUiStore().openDebtDetails(id, tab?)`:
+/** The owner's review of one debt, opened with `useUiStore().openDebtDetails(id, tab?, budgetId?)`:
  *  a large dialog (full screen on a phone) with Overview, Settings and Danger zone tabs */
 export function DebtReviewScreen() {
   const debtId = useUiStore((s) => s.debtDetailsId)
   const tab = useUiStore((s) => s.debtDetailsTab)
+  const budgetId = useUiStore((s) => s.debtDetailsBudgetId)
   const close = useUiStore((s) => s.closeDebtDetails)
 
   if (!debtId) {
     return null
   }
 
-  return <DebtReview key={debtId} debtId={debtId} initialTab={tab} onClose={close} />
+  return <DebtReview key={debtId} debtId={debtId} budgetId={budgetId} initialTab={tab} onClose={close} />
 }

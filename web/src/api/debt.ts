@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { CreateDebtDto, DebtDetailsDto, DebtDto, DeleteDebtForm, UpdateDebtDto } from './dto/debt'
+import type { CreateDebtDto, DebtDetailsDto, DebtDto, DebtForecastDto, DeleteDebtForm, UpdateDebtDto } from './dto/debt'
 
 interface Envelope<T> {
   data: T
@@ -13,6 +13,16 @@ export async function getDebtList(): Promise<DebtDto[]> {
 
 export async function getDebt(id: Id): Promise<DebtDetailsDto> {
   const response = await api.get<Envelope<DebtDetailsDto>>(apiUrl(`/api/v1/debt/get-debt?id=${encodeURIComponent(id)}`))
+  return response.data.data
+}
+
+/** without a budget the server follows the user's active budget, if it plans the debt */
+export async function getDebtForecast(id: Id, budgetId: Id | null): Promise<DebtForecastDto> {
+  const params = new URLSearchParams({ id })
+  if (budgetId) {
+    params.set('budgetId', budgetId)
+  }
+  const response = await api.get<Envelope<DebtForecastDto>>(apiUrl(`/api/v1/debt/get-debt-forecast?${params}`))
   return response.data.data
 }
 
