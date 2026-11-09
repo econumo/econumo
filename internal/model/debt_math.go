@@ -71,11 +71,11 @@ type Projection struct {
 	Payments []ProjectedPayment
 }
 
-// ProjectedPayment is one payment of the projection; Balance is what is owed
-// after it.
+// ProjectedPayment is one payment of the projection; Extra is the planned
+// extra part of Payment and Balance what is owed after it.
 type ProjectedPayment struct {
-	Date                                  time.Time
-	Payment, Interest, Principal, Balance float64
+	Date                                         time.Time
+	Payment, Interest, Principal, Extra, Balance float64
 }
 
 const (
@@ -462,6 +462,7 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 				run.extraTotal += applied
 				payment.Payment += applied
 				payment.Principal += applied
+				payment.Extra = applied
 				payment.Balance = balance
 				if balance <= eps {
 					balance, run.payoffDate = 0, laterOf(due, today)
@@ -482,7 +483,7 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 				balance = 0
 				run.payoffDate = next.AddDate(0, 0, -1)
 			}
-			run.payments = append(run.payments, ProjectedPayment{Date: next.AddDate(0, 0, -1), Payment: applied, Principal: applied, Balance: balance})
+			run.payments = append(run.payments, ProjectedPayment{Date: next.AddDate(0, 0, -1), Payment: applied, Principal: applied, Extra: applied, Balance: balance})
 		}
 		run.closing[monthKey(month)] = balance
 		month = month.AddDate(0, 1, 0)

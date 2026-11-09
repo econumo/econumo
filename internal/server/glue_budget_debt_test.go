@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -64,5 +65,40 @@ func TestDebtBudgetElements_PassesTheStoredTypes(t *testing.T) {
 	cur := vo.NewId()
 	if err := a.SetRowsCurrency(context.Background(), vo.NewId(), model.ElementDebt, cur); err != nil || rec.currencyType != model.ElementDebt || !rec.currency.Equal(cur) {
 		t.Errorf("SetRowsCurrency = %v, type %d currency %s; want debt %s", err, rec.currencyType, rec.currency, cur)
+	}
+}
+
+type stubDebtRowPlans struct{ asked vo.Id }
+
+func (s *stubDebtRowPlans) DebtRowPlans(_ context.Context, _, budgetID, _ vo.Id) (model.DebtBudgetPlans, bool, error) {
+	s.asked = budgetID
+	return model.DebtBudgetPlans{Name: "Home"}, true, nil
+}
+
+type stubBudgetOwner struct{ user *model.User }
+
+func (s stubBudgetOwner) GetByID(context.Context, vo.Id) (*model.User, error) { return s.user, nil }
+
+func TestDebtBudgetPlans_ActiveBudgetIsTheUsersOption(t *testing.T) {
+	ctx := context.Background()
+	budget := vo.NewId()
+	value := budget.String()
+	u := model.NewUser(vo.NewId(), "u@example.test", "u", "face:sky", "", "", time.Now())
+	u.Options = []model.UserOption{model.NewUserOption(vo.NewId(), model.OptionBudget, &value, time.Now())}
+	rows := &stubDebtRowPlans{}
+	a := NewDebtBudgetPlans(rows, stubBudgetOwner{user: u})
+
+	got, err := a.ActiveBudget(ctx, u.ID)
+	if err != nil || got == nil || !got.Equal(budget) {
+		t.Fatalf("ActiveBudget = %v, %v; want %s", got, err, budget)
+	}
+	if p, ok, err := a.DebtPlans(ctx, u.ID, budget, vo.NewId()); err != nil || !ok || p.Name != "Home" || !rows.asked.Equal(budget) {
+		t.Fatalf("DebtPlans = %+v, %v, %v", p, ok, err)
+	}
+
+	none := model.NewUser(vo.NewId(), "n@example.test", "n", "face:sky", "", "", time.Now())
+	none.Options = []model.UserOption{model.NewUserOption(vo.NewId(), model.OptionBudget, nil, time.Now())}
+	if got, err := NewDebtBudgetPlans(rows, stubBudgetOwner{user: none}).ActiveBudget(ctx, none.ID); err != nil || got != nil {
+		t.Fatalf("no active budget: %v, %v", got, err)
 	}
 }

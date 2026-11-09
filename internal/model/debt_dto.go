@@ -91,6 +91,44 @@ func (r GetDebtRequest) Validate() error {
 	return debtValidation(debtIDField("id", r.Id, true))
 }
 
+// GetDebtForecastRequest asks for a debt's projected payments; BudgetId
+// (optional) is the budget whose plans add the extras.
+type GetDebtForecastRequest struct {
+	Id       string `json:"id"`
+	BudgetId string `json:"budgetId"`
+}
+
+func (r GetDebtForecastRequest) Validate() error {
+	return debtValidation(append(debtIDField("id", r.Id, true), debtIDField("budgetId", r.BudgetId, false)...))
+}
+
+// DebtForecastItem is one projected payment: amounts in the debt's currency,
+// balance what is owed after it.
+type DebtForecastItem struct {
+	Date      string `json:"date"`
+	Payment   string `json:"payment"`
+	Interest  string `json:"interest"`
+	Principal string `json:"principal"`
+	Balance   string `json:"balance"`
+}
+
+// DebtForecastResult lists the payments still to come, soonest first, to the
+// payoff. budgetId/budgetName name the budget whose planned extras it
+// includes, "" when it follows the regular payments alone.
+type DebtForecastResult struct {
+	Items      []DebtForecastItem `json:"items"`
+	BudgetId   string             `json:"budgetId"`
+	BudgetName string             `json:"budgetName"`
+}
+
+// DebtBudgetPlans is one budget's plans of a debt's row: period key
+// "YYYY-MM-01" -> amount, with the budget's name and period start day.
+type DebtBudgetPlans struct {
+	Name           string
+	PeriodStartDay int
+	Plans          map[string]string
+}
+
 // DebtResult is one debt in the API. The terms (balance .. lastPaymentDate)
 // are the latest snapshot's; amounts are decimal strings in the debt's
 // currency, dates "2006-01-02" ("" when none), isPaidOff an int 0/1 and

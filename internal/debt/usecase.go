@@ -24,6 +24,7 @@ type Service struct {
 	currencies Currencies
 	owners     Owners
 	budget     BudgetElements
+	plans      BudgetPlans
 }
 
 func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Classifications, rates Rates, currencies Currencies, owners Owners) *Service {
@@ -33,6 +34,9 @@ func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Class
 // SetBudgetElements installs the budget peer; the budget service is built
 // after this one, so it cannot be a constructor argument.
 func (s *Service) SetBudgetElements(b BudgetElements) { s.budget = b }
+
+// SetBudgetPlans installs the source of the forecast's planned extras.
+func (s *Service) SetBudgetPlans(p BudgetPlans) { s.plans = p }
 
 // moveToDebt hands the category row's plans and comments to a whole-category
 // debt's row, only for the months the debt can be planned in: the rest stays

@@ -281,6 +281,39 @@ func init() {
 		}
 	}})
 
+	// debt_forecast lists a debt's payments still to come. The weekly debt has
+	// one due left, so the golden does not depend on the day the suite runs; a
+	// budget whose row of the debt plans nothing, or one the caller cannot
+	// name, leaves the regular payments and names no budget. Planned extras
+	// are pinned by the debt service's tests, whose clock is fixed.
+	register(Scenario{Name: "debt_forecast", Calls: func() []Call {
+		const unknownDebt = "d0000000-0000-0000-0000-0000000000ff"
+		const unknownBudget = "b0000000-0000-0000-0000-0000000000ff"
+		var debtID, draftID, categoryID string
+		forecast := func(label, auth string, query string, id *string) Call {
+			return Call{Label: label, Method: "GET", Auth: auth, Path: "/api/v1/debt/get-debt-forecast?" + query + "id=", PathID: id}
+		}
+		return []Call{
+			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: debtBody(nil), CaptureIDInto: &debtID},
+			forecast("forecast", "owner", "", &debtID),
+			{Label: "get-budget", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
+			forecast("forecast-from-budget", "owner", "budgetId="+Budget+"&", &debtID),
+			forecast("forecast-unknown-budget", "owner", "budgetId="+unknownBudget+"&", &debtID),
+			{Label: "create-loan-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
+				Body:          map[string]any{"id": "d4000000-0000-0000-0000-0000000000a1", "name": "Student loan", "type": "expense", "icon": "school"},
+				CaptureIDInto: &categoryID},
+			{Label: "create-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: withoutTerms(map[string]any{"name": "Student loan", "categoryId": &categoryID}), CaptureIDInto: &draftID},
+			forecast("forecast-not-set-up", "owner", "", &draftID),
+			forecast("err:guest-forecast", "guest", "", &debtID),
+			{Label: "err:forecast-unknown", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt-forecast?id=" + unknownDebt},
+			{Label: "err:forecast-bad-id", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt-forecast?id=nope"},
+			{Label: "err:forecast-missing-id", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt-forecast"},
+			forecast("err:forecast-bad-budget-id", "owner", "budgetId=nope&", &debtID),
+		}
+	}})
+
 	// debt_readonly: a lapsed-trial user may read but not write.
 	register(Scenario{Name: "debt_readonly", Calls: func() []Call {
 		return []Call{

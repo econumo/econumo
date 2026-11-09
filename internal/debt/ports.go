@@ -54,3 +54,13 @@ type BudgetElements interface {
 	// currencyID, keeping their plans' numbers.
 	SetRowsCurrency(ctx context.Context, externalID vo.Id, typ model.ElementType, currencyID vo.Id) error
 }
+
+// BudgetPlans is backed by the budget service and the user's active-budget
+// option. It is installed late and the service tolerates its absence.
+type BudgetPlans interface {
+	// ActiveBudget is the budget the user last selected, nil when none.
+	ActiveBudget(ctx context.Context, userID vo.Id) (*vo.Id, error)
+	// DebtPlans returns budgetID's plans of the debt's row; ok is false when
+	// the user cannot read the budget or it holds no row for the debt.
+	DebtPlans(ctx context.Context, userID, budgetID, debtID vo.Id) (plans model.DebtBudgetPlans, ok bool, err error)
+}

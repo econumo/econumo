@@ -1258,6 +1258,30 @@ definitions:
       upcoming:
         type: string
     type: object
+  model.DebtForecastItem:
+    properties:
+      balance:
+        type: string
+      date:
+        type: string
+      interest:
+        type: string
+      payment:
+        type: string
+      principal:
+        type: string
+    type: object
+  model.DebtForecastResult:
+    properties:
+      budgetId:
+        type: string
+      budgetName:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/model.DebtForecastItem'
+        type: array
+    type: object
   model.DebtListResult:
     properties:
       items:
@@ -1268,6 +1292,10 @@ definitions:
   model.DebtPaymentResult:
     properties:
       amount:
+        type: string
+      balance:
+        description: Balance is what was owed after the payment, "" while the debt
+          is not set up.
         type: string
       date:
         type: string
@@ -7155,6 +7183,53 @@ paths:
       security:
       - Bearer: []
       summary: Get a debt
+      tags:
+      - Debt
+  /api/v1/debt/get-debt-forecast:
+    get:
+      description: 'Projects the payments still to come, soonest first, to the payoff:
+        the regular schedule plus the extras planned for the debt''s row in budgetId,
+        else in the user''s active budget. A budget the caller cannot read, or one
+        that holds no row for the debt, leaves the regular payments alone; budgetId
+        and budgetName name the budget only when its plans add an extra. A debt not
+        set up has no items. A debt of another user is not found.'
+      parameters:
+      - description: Debt id
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Budget whose plans add the extras
+        in: query
+        name: budgetId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DebtForecastResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get a debt's future payments
       tags:
       - Debt
   /api/v1/debt/get-debt-list:

@@ -23,6 +23,7 @@ type DebtBudgetElements struct{ budget debtBudgetElements }
 
 var (
 	_ debt.BudgetElements  = (*DebtBudgetElements)(nil)
+	_ debt.BudgetPlans     = (*DebtBudgetPlans)(nil)
 	_ appbudget.DebtSource = (*debt.Service)(nil)
 )
 
@@ -48,4 +49,44 @@ func (a *DebtBudgetElements) HasData(ctx context.Context, externalID vo.Id, typ 
 
 func (a *DebtBudgetElements) SetRowsCurrency(ctx context.Context, externalID vo.Id, typ model.ElementType, currencyID vo.Id) error {
 	return a.budget.SetElementsCurrency(ctx, externalID, typ, currencyID)
+}
+
+type debtRowPlans interface {
+	DebtRowPlans(ctx context.Context, userID, budgetID, debtID vo.Id) (model.DebtBudgetPlans, bool, error)
+}
+
+type debtPlanUsers interface {
+	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
+}
+
+// DebtBudgetPlans gives the debt forecast a budget's plans of the debt's row,
+// and the user's active budget from their options.
+type DebtBudgetPlans struct {
+	budget debtRowPlans
+	users  debtPlanUsers
+}
+
+func NewDebtBudgetPlans(budget debtRowPlans, users debtPlanUsers) *DebtBudgetPlans {
+	return &DebtBudgetPlans{budget: budget, users: users}
+}
+
+func (a *DebtBudgetPlans) ActiveBudget(ctx context.Context, userID vo.Id) (*vo.Id, error) {
+	u, err := a.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	o := u.Option(model.OptionBudget)
+	if o == nil || o.Value == nil || *o.Value == "" {
+		return nil, nil
+	}
+	id, err := vo.ParseId(*o.Value)
+	if err != nil {
+		// a stale or malformed option names no budget
+		return nil, nil
+	}
+	return &id, nil
+}
+
+func (a *DebtBudgetPlans) DebtPlans(ctx context.Context, userID, budgetID, debtID vo.Id) (model.DebtBudgetPlans, bool, error) {
+	return a.budget.DebtRowPlans(ctx, userID, budgetID, debtID)
 }

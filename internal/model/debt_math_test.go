@@ -715,6 +715,8 @@ func TestProjectDebt_PaymentsCarryThePlannedExtra(t *testing.T) {
 		t.Fatal("no October payment")
 	}
 	near(t, "October payment", oct.Payment, 2000+3000, 1e-9)
+	near(t, "October extra", oct.Extra, 3000, 1e-9)
+	near(t, "first payment's extra", p.Payments[len(p.Payments)-1].Extra, 0, 1e-9)
 	near(t, "October principal", oct.Principal, oct.Payment-oct.Interest, 1e-9)
 	near(t, "October closing", oct.Balance, p.Months["2026-10-01"].ClosingBalance, 1e-9)
 	if len(p.Payments) != p.PaymentsLeft {
@@ -738,6 +740,7 @@ func TestProjectDebt_PaymentsHoldAnExtraOfAPeriodWithoutADue(t *testing.T) {
 		t.Fatalf("no extra on Feb 28 in %+v", p.Payments[:3])
 	}
 	near(t, "extra", feb.Payment, 500, 1e-9)
+	near(t, "extra part", feb.Extra, 500, 1e-9)
 	near(t, "extra interest", feb.Interest, 0, 1e-9)
 	near(t, "extra principal", feb.Principal, 500, 1e-9)
 	if len(p.Payments) != p.PaymentsLeft+1 {

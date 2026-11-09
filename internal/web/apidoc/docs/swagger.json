@@ -5651,6 +5651,76 @@
                 }
             }
         },
+        "/api/v1/debt/get-debt-forecast": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Projects the payments still to come, soonest first, to the payoff: the regular schedule plus the extras planned for the debt's row in budgetId, else in the user's active budget. A budget the caller cannot read, or one that holds no row for the debt, leaves the regular payments alone; budgetId and budgetName name the budget only when its plans add an extra. A debt not set up has no items. A debt of another user is not found.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Get a debt's future payments",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Debt id",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Budget whose plans add the extras",
+                        "name": "budgetId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtForecastResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/debt/get-debt-list": {
             "get": {
                 "security": [
@@ -15194,6 +15264,43 @@
                 }
             }
         },
+        "model.DebtForecastItem": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "interest": {
+                    "type": "string"
+                },
+                "payment": {
+                    "type": "string"
+                },
+                "principal": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DebtForecastResult": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "budgetName": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.DebtForecastItem"
+                    }
+                }
+            }
+        },
         "model.DebtListResult": {
             "type": "object",
             "properties": {
@@ -15209,6 +15316,10 @@
             "type": "object",
             "properties": {
                 "amount": {
+                    "type": "string"
+                },
+                "balance": {
+                    "description": "Balance is what was owed after the payment, \"\" while the debt is not set up.",
                     "type": "string"
                 },
                 "date": {

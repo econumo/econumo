@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -316,4 +317,37 @@ func transferPeriods(t model.ElementDataTransfer, startDay int) (first, last tim
 
 func inPeriods(first, last, period time.Time) bool {
 	return (first.IsZero() || !period.Before(first)) && (last.IsZero() || !period.After(last))
+}
+
+// DebtRowPlans returns the plans the budget holds for the debt's row, by
+// period key, with the budget's name and period start day; ok is false when
+// the user cannot read the budget or it has no row for the debt.
+func (s *Service) DebtRowPlans(ctx context.Context, userID, budgetID, debtID vo.Id) (model.DebtBudgetPlans, bool, error) {
+	b, err := s.budgets.GetByID(ctx, budgetID)
+	if err != nil {
+		if _, nf := errs.AsNotFound(err); nf {
+			return model.DebtBudgetPlans{}, false, nil
+		}
+		return model.DebtBudgetPlans{}, false, err
+	}
+	access, err := s.access.ListAccess(ctx, budgetID)
+	if err != nil {
+		return model.DebtBudgetPlans{}, false, err
+	}
+	if !s.canRead(&budgetAggregate{budget: b, access: access}, userID) {
+		return model.DebtBudgetPlans{}, false, nil
+	}
+	el, err := s.elementOfType(ctx, budgetID, debtID, model.ElementDebt)
+	if err != nil || el == nil {
+		return model.DebtBudgetPlans{}, false, err
+	}
+	limits, err := s.limits.ListLimitsByElement(ctx, el.ID)
+	if err != nil {
+		return model.DebtBudgetPlans{}, false, err
+	}
+	plans := make(map[string]string, len(limits))
+	for _, l := range limits {
+		plans[l.Period.Format(datetime.DateLayout)] = l.Amount.String()
+	}
+	return model.DebtBudgetPlans{Name: b.Name, PeriodStartDay: b.PeriodStartDay, Plans: plans}, true, nil
 }

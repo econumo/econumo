@@ -719,3 +719,35 @@ func TestSyncElements_DebtRowFollowsTheDebtCurrency(t *testing.T) {
 		t.Errorf("plans = %v, want 100 in May", l)
 	}
 }
+
+// DebtRowPlans feeds the debt forecast: a reader of the budget gets the
+// debt row's plans with the budget's name and period start day; anyone else,
+// or a budget without the row, gets nothing.
+func TestDebtRowPlans(t *testing.T) {
+	h := newDebtHarness(t)
+	own := h.addDebt(h.owner, fixture.USD)
+	h.sync(t)
+	h.mustSetLimit(t, own, "2026-06-01", "250")
+
+	got, ok, err := h.svc.DebtRowPlans(h.ctx, h.owner, h.budgetID, vo.MustParseId(own))
+	if err != nil || !ok {
+		t.Fatalf("owner: ok=%v err=%v", ok, err)
+	}
+	if got.Name == "" || got.PeriodStartDay != model.MinPeriodStartDay || len(got.Plans) != 1 || amount(got.Plans["2026-06-01"]) != amount("250") {
+		t.Fatalf("plans = %+v", got)
+	}
+	if _, ok, err := h.svc.DebtRowPlans(h.ctx, h.guest, h.budgetID, vo.MustParseId(own)); err != nil || !ok {
+		t.Fatalf("a guest reads the budget: ok=%v err=%v", ok, err)
+	}
+	for name, user := range map[string]vo.Id{"pending": h.pending, "stranger": h.stranger} {
+		if _, ok, err := h.svc.DebtRowPlans(h.ctx, user, h.budgetID, vo.MustParseId(own)); err != nil || ok {
+			t.Fatalf("%s: ok=%v err=%v, want nothing", name, ok, err)
+		}
+	}
+	if _, ok, err := h.svc.DebtRowPlans(h.ctx, h.owner, h.budgetID, vo.NewId()); err != nil || ok {
+		t.Fatalf("no row: ok=%v err=%v", ok, err)
+	}
+	if _, ok, err := h.svc.DebtRowPlans(h.ctx, h.owner, vo.NewId(), vo.MustParseId(own)); err != nil || ok {
+		t.Fatalf("unknown budget: ok=%v err=%v", ok, err)
+	}
+}
