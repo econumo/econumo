@@ -1,5 +1,7 @@
 import { arrayMove } from '@dnd-kit/sortable'
 import type { Id } from '@/api/types'
+import { PENDING_SORT_KEY } from '@/features/pendingWrites/overlay'
+import { sideKey } from '@/features/transactions/order'
 import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
 
 export function entryKey(entry: DailyListEntry): string {
@@ -29,10 +31,11 @@ export interface HistoryDrop {
 
 /** Where dropping `activeId` at flat index `overIndex` leaves it: the day group
  *  it lands in (the nearest header above) and the transaction right above it.
- *  Recurring previews are not transactions yet, and a row with an unsent change
- *  may be one the server does not hold, so both are skipped. Null when the drop
- *  changes nothing or lands above the first header. */
-export function resolveDrop(entries: DailyListEntry[], activeId: Id, overIndex: number, hasUnsentChange: (id: Id) => boolean = () => false): HistoryDrop | null {
+ *  Recurring previews are not transactions yet, and a row placed by a waiting
+ *  change (an add, or an edit that moved it here) is not at that position on the
+ *  server, so both are skipped. `accountId` is the account the list belongs to.
+ *  Null when the drop changes nothing or lands above the first header. */
+export function resolveDrop(entries: DailyListEntry[], activeId: Id, overIndex: number, accountId?: Id): HistoryDrop | null {
   const from = entries.findIndex((e) => e.kind === 'transaction' && !e.transaction.recurring && e.transaction.id === activeId)
   if (from < 0 || overIndex < 0 || overIndex >= entries.length || from === overIndex) {
     return null
@@ -52,7 +55,7 @@ export function resolveDrop(entries: DailyListEntry[], activeId: Id, overIndex: 
     if (entry.kind === 'separator') {
       return { fromDate, date: entry.day, aboveId, entries: moved }
     }
-    if (aboveId === null && !entry.transaction.recurring && !hasUnsentChange(entry.transaction.id)) {
+    if (aboveId === null && !entry.transaction.recurring && sideKey(entry.transaction, accountId) !== PENDING_SORT_KEY) {
       aboveId = entry.transaction.id
     }
   }

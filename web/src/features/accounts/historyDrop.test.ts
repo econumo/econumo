@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DailyListEntry, ViewTransaction } from '@/features/transactions/useAccountTransactions'
+import { PENDING_SORT_KEY } from '@/features/pendingWrites/overlay'
 import { acceptsDrop, entryKey, resolveDrop } from './historyDrop'
 
 const sep = (day: string): DailyListEntry => ({ kind: 'separator', day, label: 'date' })
@@ -32,10 +33,26 @@ describe('resolveDrop', () => {
     expect(drop?.entries.map(entryKey)).toEqual(['sep-2024-03-02', 'c', 'a', 'b', 'sep-2024-03-01', 'd', 'e'])
   })
 
-  it('skips a row with an unsent change when naming the row above: the server may not have it', () => {
-    const unsent = (id: string) => id === 'd'
-    expect(resolveDrop(entries, 'a', at('e'), unsent)).toMatchObject({ date: '2024-03-01', aboveId: 'e' })
-    expect(resolveDrop(entries, 'b', at('d'), unsent)).toMatchObject({ date: '2024-03-01', aboveId: null })
+  describe('a row the server does not hold at that position', () => {
+    const waiting = [sep('2024-03-02'), tx('a', '2024-03-02 10:00:00'), sep('2024-03-01'), tx('w', '2024-03-01 11:00:00', { sortKey: PENDING_SORT_KEY }), tx('d', '2024-03-01 10:00:00', { sortKey: 'Zz' }), tx('e', '2024-03-01 09:00:00', { sortKey: 'Zy' })]
+    const pos = (key: string) => waiting.findIndex((e) => entryKey(e) === key)
+
+    it('is skipped when naming the row above', () => {
+      expect(resolveDrop(waiting, 'a', pos('w'))).toMatchObject({ date: '2024-03-01', aboveId: null })
+      expect(resolveDrop(waiting, 'a', pos('d'))).toMatchObject({ date: '2024-03-01', aboveId: 'd' })
+    })
+
+    it('counts a row with a plain waiting edit as the real anchor it is', () => {
+      const edited = [sep('2024-03-02'), tx('a', '2024-03-02 10:00:00'), sep('2024-03-01'), tx('d', '2024-03-01 10:00:00', { sortKey: 'Zz', description: 'edited offline' }), tx('e', '2024-03-01 09:00:00', { sortKey: 'Zy' })]
+      expect(resolveDrop(edited, 'a', edited.findIndex((e) => entryKey(e) === 'd'))).toMatchObject({ aboveId: 'd' })
+    })
+
+    it('reads the key of the side listed on this account', () => {
+      const incoming = (recipientSortKey: string, sortKey: string) => tx('t', '2024-03-01 10:00:00', { accountId: 'other', accountRecipientId: 'mine', sortKey, recipientSortKey })
+      const list = (row: DailyListEntry) => [sep('2024-03-02'), tx('a', '2024-03-02 10:00:00', { accountId: 'mine' }), sep('2024-03-01'), row, tx('e', '2024-03-01 09:00:00', { accountId: 'mine', sortKey: 'Zy' })]
+      expect(resolveDrop(list(incoming(PENDING_SORT_KEY, 'Zz')), 'a', 3, 'mine')).toMatchObject({ aboveId: null })
+      expect(resolveDrop(list(incoming('Zz', PENDING_SORT_KEY)), 'a', 3, 'mine')).toMatchObject({ aboveId: 't' })
+    })
   })
 
   it('ignores a drop that changes nothing', () => {

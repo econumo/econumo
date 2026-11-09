@@ -256,6 +256,7 @@ export function AccountPage() {
       )}
 
       <HistoryDragProvider
+        accountId={account.id}
         entries={entries}
         onDrop={dropTransaction}
         renderOverlay={(tx) => <TransactionRow transaction={tx} pageAccount={account} />}

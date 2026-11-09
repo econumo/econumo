@@ -4,8 +4,8 @@ import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, PointerSensor, To
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import type { Id } from '@/api/types'
 import type { DailyListEntry, ViewTransaction } from '@/features/transactions/useAccountTransactions'
-import { usePendingOps } from '@/features/pendingWrites/hooks'
 import { snapRowToPointer } from '@/lib/dnd'
 import { acceptsDrop, entryKey, resolveDrop } from './historyDrop'
 import type { HistoryDrop } from './historyDrop'
@@ -47,7 +47,8 @@ function groupDayOf(entries: DailyListEntry[], index: number): string | null {
   return null
 }
 
-export function HistoryDragProvider({ entries, onDrop, renderOverlay, children }: {
+export function HistoryDragProvider({ accountId, entries, onDrop, renderOverlay, children }: {
+  accountId: Id
   entries: DailyListEntry[]
   onDrop: (tx: ViewTransaction, drop: HistoryDrop, dayChanged: boolean) => void
   renderOverlay: (tx: ViewTransaction) => ReactNode
@@ -62,7 +63,6 @@ export function HistoryDragProvider({ entries, onDrop, renderOverlay, children }
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const keys = useMemo(() => entries.map(entryKey), [entries])
-  const pendingOps = usePendingOps()
   const [active, setActive] = useState<ViewTransaction | null>(null)
   const [targetDay, setTargetDay] = useState<string | null>(null)
   const droppedAt = useRef(0)
@@ -70,7 +70,7 @@ export function HistoryDragProvider({ entries, onDrop, renderOverlay, children }
 
   const dropFor = (activeId: string, overId: string | number | undefined) => {
     const overIndex = overId === undefined ? -1 : keys.indexOf(String(overId))
-    return resolveDrop(entries, activeId, overIndex, (id) => pendingOps.some((op) => op.kind !== 'limit' && op.txId === id))
+    return resolveDrop(entries, activeId, overIndex, accountId)
   }
 
   const onDragStart = ({ active: a }: DragStartEvent) => {
