@@ -93,3 +93,27 @@ WHERE cr.published_at = (
     WHERE cr2.currency_id = cr.currency_id AND cr2.base_currency_id = cr.base_currency_id
 )
 ORDER BY cr.currency_id ASC, cr.base_currency_id ASC;
+
+-- name: GetCurrencyRateRangeView :many
+-- Rates published within [from, to] (inclusive days) plus, per (currency,
+-- base) pair, the newest rate published before from. published_at is stored
+-- as bare 'Y-m-d' text and the bounds are bound as 'Y-m-d' strings, so the raw
+-- column is compared (no date() wrap) and the published_at indexes stay usable.
+-- The CASTs keep sqlc from typing the bounds as time.Time, which would bind a
+-- 'Y-m-d H:i:s' string and push a rate on from out of the window.
+SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate
+FROM currencies_rates cr
+WHERE cr.published_at >= CAST(sqlc.arg(from_day) AS TEXT)
+  AND cr.published_at <= CAST(sqlc.arg(to_day) AS TEXT)
+UNION ALL
+SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate
+FROM currencies_rates cr
+JOIN (
+    SELECT currency_id, base_currency_id, MAX(published_at) AS published_at
+    FROM currencies_rates
+    WHERE published_at < CAST(sqlc.arg(from_day) AS TEXT)
+    GROUP BY currency_id, base_currency_id
+) latest ON latest.currency_id = cr.currency_id
+    AND latest.base_currency_id = cr.base_currency_id
+    AND latest.published_at = cr.published_at
+ORDER BY currency_id ASC, base_currency_id ASC, published_at ASC;

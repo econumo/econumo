@@ -309,6 +309,8 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 			tok = readonlyTok
 		case "ingest":
 			tok = IngestToken
+		case "read":
+			tok = ReadToken
 		case "":
 			tok = ""
 		default:

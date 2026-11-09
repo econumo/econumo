@@ -26,7 +26,8 @@ type Call struct {
 
 	// Auth selects which seeded user's token to attach: "owner", "guest",
 	// "readonly" (the lapsed-trial user), "ingest" (the owner's ingest-scoped
-	// PAT), or "" (public/no token).
+	// PAT), "read" (the owner's read-scoped OAuth token), or "" (public/no
+	// token).
 	Auth string
 
 	Body any // JSON-marshalled when non-nil

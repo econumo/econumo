@@ -16,10 +16,25 @@ type Repository interface {
 	PurgeUnusedClients(ctx context.Context, createdBefore time.Time) (int64, error)
 	// PurgeExcessUnusedClients keeps only the newest never-approved clients.
 	PurgeExcessUnusedClients(ctx context.Context, keep int64) (int64, error)
+	// ClaimClient sets the owner of a user app that has none yet; 0 rows for an owned or global app.
+	ClaimClient(ctx context.Context, id, userID vo.Id) (int64, error)
+	ListClients(ctx context.Context) ([]model.OAuthClient, error)
+	UpdateGlobalClient(ctx context.Context, id vo.Id, name string, redirectURIs []string) (int64, error)
+	MakeClientGlobal(ctx context.Context, id vo.Id) (int64, error)
+	// SetClientSecret replaces the secret of a confidential client only; a public client matches nothing.
+	SetClientSecret(ctx context.Context, id vo.Id, hash string) (int64, error)
+	// LockClient takes a row lock on the client (errs.NotFound when absent).
+	LockClient(ctx context.Context, id vo.Id) error
+	// ShareLockClient takes a lock that conflicts only with LockClient (errs.NotFound when absent).
+	ShareLockClient(ctx context.Context, id vo.Id) error
+	DeleteClient(ctx context.Context, id vo.Id) (int64, error)
 
 	InsertCode(ctx context.Context, c *model.OAuthAuthorizationCode) error
 	ConsumeCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error) // DELETE ... RETURNING; errs.NotFound when absent
+	GetCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error)     // errs.NotFound when absent
 	PurgeExpiredCodes(ctx context.Context, before time.Time) error
+	// DeleteClientCodes drops the client's outstanding codes, only userID's when it is set.
+	DeleteClientCodes(ctx context.Context, clientID vo.Id, userID *vo.Id) (int64, error)
 
 	InsertGrant(ctx context.Context, g *model.OAuthGrant) error
 	GetGrant(ctx context.Context, id vo.Id) (*model.OAuthGrant, error)
@@ -35,5 +50,9 @@ type Repository interface {
 	// except keepID, returning the ids it revoked.
 	RevokeOtherGrants(ctx context.Context, userID, clientID, keepID vo.Id, now time.Time) ([]vo.Id, error)
 	ListUnrevokedGrants(ctx context.Context, userID vo.Id) ([]model.ConnectedGrant, error)
+	ListClientGrants(ctx context.Context, clientID vo.Id) ([]model.OAuthGrant, error)
+	ListAllUnrevokedGrants(ctx context.Context) ([]model.OAuthGrant, error)
+	// RevokeClientGrants revokes every unrevoked grant of the client, returning the ids it revoked.
+	RevokeClientGrants(ctx context.Context, clientID vo.Id, now time.Time) ([]vo.Id, error)
 	DeleteDeadGrants(ctx context.Context, cutoff time.Time) (int64, error)
 }

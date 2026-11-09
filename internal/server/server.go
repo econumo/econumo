@@ -496,7 +496,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	debtSvc.SetBudgetPlans(NewDebtBudgetPlans(budgetSvc, userRepo))
 	debtHandlers := handlerdebt.NewHandlers(debtSvc)
 
-	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
+	authn := NewReadScopeGate(NewTimezoneTrackingAuthenticator(userSvc, userSvc), authSrv.Enabled())
 
 	// Disabled means unrouted: with SimpleFIN off its credential and sync
 	// routes 404.

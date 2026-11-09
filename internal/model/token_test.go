@@ -104,3 +104,9 @@ func TestParseTokenScope_RejectsMCP(t *testing.T) {
 		t.Fatal("mcp scope must not be user-selectable")
 	}
 }
+
+func TestParseTokenScope_RejectsRead(t *testing.T) {
+	if _, err := ParseTokenScope("read"); err == nil {
+		t.Fatal("read must not be user-selectable")
+	}
+}

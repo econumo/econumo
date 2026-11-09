@@ -68,6 +68,7 @@ func TestRegisterDisabledAndRateLimited(t *testing.T) {
 
 func TestRegisterPurgesUnusedClients(t *testing.T) {
 	s, _, clock, _ := newTestService(t)
+	global := insertGlobalClient(t, s, clock.Now(), "https://a.test/cb")
 	old, err := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://a.test/cb"}})
 	if err != nil {
 		t.Fatal(err)
@@ -90,10 +91,14 @@ func TestRegisterPurgesUnusedClients(t *testing.T) {
 	if _, err := s.DescribeAuthorization(ctx, vo.NewId(), authReq(old.ClientID)); !hasCode(err, errs.CodeAuthServerClientNotFound) {
 		t.Fatalf("unused client must be purged: %v", err)
 	}
+	if _, err := s.repo.GetClient(ctx, global); err != nil {
+		t.Fatalf("an unused global app must never be purged: %v", err)
+	}
 }
 
 func TestRegisterBoundsTheClientsNobodyApproved(t *testing.T) {
 	s, _, _, _ := newTestService(t)
+	global := insertGlobalClient(t, s, s.clock.Now().Add(-365*24*time.Hour), "https://a.test/cb")
 	register := func() model.ClientRegistrationResult {
 		t.Helper()
 		res, err := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://a.test/cb"}})
@@ -120,6 +125,9 @@ func TestRegisterBoundsTheClientsNobodyApproved(t *testing.T) {
 	}
 	if _, err := s.repo.GetClient(ctx, id); err != nil {
 		t.Fatalf("an approved client must never be evicted: %v", err)
+	}
+	if _, err := s.repo.GetClient(ctx, global); err != nil {
+		t.Fatalf("an unused global app must never be evicted: %v", err)
 	}
 }
 

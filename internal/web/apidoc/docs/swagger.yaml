@@ -304,9 +304,14 @@ definitions:
       errorRedirectUrl:
         description: 'non-empty: navigate there instead of showing consent'
         type: string
+      isGlobal:
+        type: boolean
       isLoopback:
         type: boolean
       redirectHost:
+        type: string
+      scope:
+        description: '"mcp" | "read"'
         type: string
     type: object
   model.AverageCurrencyRateResult:
@@ -650,6 +655,8 @@ definitions:
         type: string
       id:
         type: string
+      isGlobal:
+        type: boolean
       isLoopback:
         type: boolean
       lastUsedAt:
@@ -1148,6 +1155,8 @@ definitions:
       baseCurrencyId:
         type: string
       currencyId:
+        type: string
+      date:
         type: string
       rate:
         type: string
@@ -6817,8 +6826,19 @@ paths:
       - Currency
   /api/v1/currency/get-currency-rate-list:
     get:
-      description: Returns all currency rates published on the most-recent available
-        date.
+      description: Returns the latest published rate per currency. With from and to
+        (both, YYYY-MM-DD, at most 366 days) it returns every rate published within
+        that window plus, per currency, the latest one published before it. Each item
+        carries its published day as date.
+      parameters:
+      - description: Start day (YYYY-MM-DD); requires to
+        in: query
+        name: from
+        type: string
+      - description: End day (YYYY-MM-DD), inclusive; requires from
+        in: query
+        name: to
+        type: string
       produces:
       - application/json
       responses:
@@ -6831,6 +6851,10 @@ paths:
                 data:
                   $ref: '#/definitions/model.GetCurrencyRateListResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "401":
           description: Unauthorized
           schema:
@@ -6841,7 +6865,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Get the latest currency rates
+      summary: Get currency rates
       tags:
       - Currency
   /api/v1/currency/hide-all-currencies:

@@ -1,70 +1,11 @@
--- Budget debts. A debt is one loan or credit line the owner pays down through
--- a category. The term columns as_of, balance and last_payment_date copy the
--- latest debts_snapshots row and are written together with every new snapshot;
--- all three are NULL while the debt is not set up (payment and schedule are
--- held either way).
--- created_day is the creation date in the owner's timezone, fixed at creation:
--- it can start the debt's plannable months, which must not move when the owner
--- later changes timezone.
--- The category, payee, tag and label keys keep the default NO ACTION: the coded
--- in-use check refuses an ordinary delete, and a user deletion cascades to
--- categories and debts in one statement.
-CREATE TABLE debts
-(
-    id                  TEXT          NOT NULL
-    , user_id           TEXT          NOT NULL
-    , name              TEXT          NOT NULL
-    , currency_id       TEXT          NOT NULL
-    , category_id       TEXT          NOT NULL
-    , payee_id          TEXT
-    , tag_id            TEXT
-    , label_id          TEXT
-    , start_date        DATE
-    , as_of             DATE
-    , balance           NUMERIC(19,8)
-    , payment           NUMERIC(19,8) NOT NULL
-    , schedule          TEXT          NOT NULL
-    , last_payment_date DATE
-    , created_day       DATE          NOT NULL
-    , created_at        DATETIME      NOT NULL
-    , updated_at        DATETIME      NOT NULL
-    , PRIMARY KEY (id)
-    , FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-    , FOREIGN KEY (currency_id) REFERENCES currencies (id)
-    , FOREIGN KEY (category_id) REFERENCES categories (id)
-    , FOREIGN KEY (payee_id) REFERENCES payees (id)
-    , FOREIGN KEY (tag_id) REFERENCES tags (id)
-    , FOREIGN KEY (label_id) REFERENCES labels (id)
-);
-CREATE INDEX debts_user_idx ON debts (user_id);
-CREATE INDEX debts_category_idx ON debts (category_id);
-CREATE INDEX debts_payee_idx ON debts (payee_id);
-CREATE INDEX debts_tag_idx ON debts (tag_id);
-CREATE INDEX debts_label_idx ON debts (label_id);
-CREATE INDEX debts_currency_idx ON debts (currency_id);
-
-CREATE TABLE debts_snapshots
-(
-    id                  TEXT          NOT NULL
-    , debt_id           TEXT          NOT NULL
-    , as_of             DATE          NOT NULL
-    , balance           NUMERIC(19,8) NOT NULL
-    , payment           NUMERIC(19,8) NOT NULL
-    , schedule          TEXT          NOT NULL
-    , last_payment_date DATE          NOT NULL
-    , created_at        DATETIME      NOT NULL
-    , PRIMARY KEY (id)
-    , FOREIGN KEY (debt_id) REFERENCES debts (id) ON DELETE CASCADE
-);
-CREATE INDEX debts_snapshots_debt_as_of_idx ON debts_snapshots (debt_id, as_of);
-
-CREATE TABLE debts_payments
-(
-    debt_id           TEXT          NOT NULL
-    , transaction_id  TEXT          NOT NULL
-    , interest        NUMERIC(19,8) NOT NULL
-    , PRIMARY KEY (transaction_id)
-    , FOREIGN KEY (debt_id) REFERENCES debts (id) ON DELETE CASCADE
-    , FOREIGN KEY (transaction_id) REFERENCES transactions (id) ON DELETE CASCADE
-);
-CREATE INDEX debts_payments_debt_idx ON debts_payments (debt_id);
+-- Backfill: each existing client is owned by the user of its earliest grant
+-- (revoked ones count), so nobody already connected is cut off; that user is
+-- the one whose client registered it.
+ALTER TABLE oauth_clients ADD COLUMN owner_user_id TEXT DEFAULT NULL REFERENCES users (id) ON DELETE CASCADE;
+ALTER TABLE oauth_clients ADD COLUMN is_global BOOLEAN DEFAULT '0' NOT NULL;
+CREATE INDEX IDX_oauth_clients_owner_user_id ON oauth_clients (owner_user_id);
+DROP INDEX IDX_oauth_clients_unused;
+CREATE INDEX IDX_oauth_clients_unused ON oauth_clients (created_at) WHERE last_used_at IS NULL AND is_global = false;
+UPDATE oauth_clients SET owner_user_id = (
+    SELECT g.user_id FROM oauth_grants g WHERE g.client_id = oauth_clients.id
+    ORDER BY g.created_at, g.id LIMIT 1);

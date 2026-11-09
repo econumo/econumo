@@ -28,7 +28,7 @@ func issueOAuth(t *testing.T, svc *appuser.Service, uid, grantID vo.Id) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, ok, err := svc.IssueOAuthAccessToken(ctx, uid, grantID, "Claude", gen, time.Hour)
+	raw, ok, err := svc.IssueOAuthAccessToken(ctx, uid, grantID, "Claude", model.TokenScopeMCP, gen, time.Hour)
 	if err != nil || !ok {
 		t.Fatalf("issue = %v %v", ok, err)
 	}
@@ -74,7 +74,7 @@ func TestIssueOAuthAccessToken_FencedByGeneration(t *testing.T) {
 	if err := svc.AdminChangePassword(ctx, oauthTestEmail, "n3w-Secret!"); err != nil {
 		t.Fatal(err)
 	}
-	raw, ok, err := svc.IssueOAuthAccessToken(ctx, uid, vo.NewId(), "Claude", gen, time.Hour)
+	raw, ok, err := svc.IssueOAuthAccessToken(ctx, uid, vo.NewId(), "Claude", model.TokenScopeMCP, gen, time.Hour)
 	if err != nil || ok || raw != "" {
 		t.Fatalf("stale generation must mint nothing, raw=%q ok=%v err=%v", raw, ok, err)
 	}
@@ -226,5 +226,25 @@ func TestPurgeDeadOAuthTokens(t *testing.T) {
 	}
 	if _, err := tokens.GetByID(ctx, oldSession); err != nil {
 		t.Fatalf("sessions are not the oauth purge's to delete: %v", err)
+	}
+}
+
+func TestIssueOAuthAccessToken_ReadScope(t *testing.T) {
+	svc, _, _, uid := newAuthEnv(t)
+	ctx := context.Background()
+	gen, err := svc.LockForOAuth(ctx, uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, ok, err := svc.IssueOAuthAccessToken(ctx, uid, vo.NewId(), "Share", model.TokenScopeRead, gen, time.Hour)
+	if err != nil || !ok {
+		t.Fatalf("issue = %v %v", ok, err)
+	}
+	p, err := svc.Authenticate(ctx, raw)
+	if err != nil || p.Scope != model.TokenScopeRead {
+		t.Fatalf("auth = %+v %v", p, err)
+	}
+	if _, _, err := svc.IssueOAuthAccessToken(ctx, uid, vo.NewId(), "x", model.TokenScopeFull, gen, time.Hour); err == nil {
+		t.Fatal("full scope must be refused")
 	}
 }

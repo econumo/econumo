@@ -296,7 +296,8 @@
       "failing": "No se puede conectar con el servidor: reintentando",
       "full_reload": "Borrando la caché y recargando…",
       "hold_hint": "Mantén pulsado para borrar la caché y recargar",
-      "full_reload_offline": "Estás sin conexión. Borra la caché y recarga cuando vuelvas a estar en línea."
+      "full_reload_offline": "Estás sin conexión. Borra la caché y recarga cuando vuelvas a estar en línea.",
+      "offline": "Sin conexión"
     },
     "data": {
       "reload_all": "Borrar la caché y recargar"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Editar la transacción"
+      },
+      "draft": {
+        "message": "Sin terminar",
+        "restore": "Restaurar"
       },
       "form": {
         "date": {
@@ -442,6 +447,7 @@
         "newline": "Salto de línea",
         "custom_label": "Separador personalizado"
       },
+      "tag_hint": "Una transacción solo puede tener una etiqueta de presupuesto. Para varias, usa Etiquetas de informes.",
       "new_labels_count": "Esta importación creará {count} etiqueta nueva | Esta importación creará {count} etiquetas nuevas"
     },
     "import_result": {
@@ -2178,9 +2184,14 @@
     "consent": {
       "title": "Conectar una aplicación a Econumo",
       "wantsAccess": "quiere acceder a tu cuenta de Econumo.",
+      "official": "Oficial",
       "redirect": "Después de permitirlo, serás enviado a {host}.",
       "loopback": "Después de permitirlo, volverás a una aplicación en este ordenador.",
-      "fullAccess": "Podrá leer y modificar todos tus datos de Econumo.",
+      "unverified": "Registrada por la propia aplicación. Econumo no verifica su nombre; comprueba la dirección de abajo.",
+      "unverifiedLoopback": "Registrada por la propia aplicación. Econumo no verifica su nombre.",
+      "wantsRead": "quiere leer tus datos de Econumo.",
+      "readAccess": "No podrá cambiar nada.",
+      "fullAccess": "Podrá leer y modificar tus datos.",
       "signedInAs": "Sesión iniciada como {email}",
       "switchAccount": "¿No eres tú? Cambiar de cuenta",
       "allow": "Permitir",
@@ -2205,6 +2216,7 @@
       "lastUsed": "Último uso {when}",
       "loopback": "Se ejecuta en este ordenador",
       "returnsTo": "Te devuelve a {host}",
+      "official": "Oficial",
       "menuItem": "Aplicaciones conectadas"
     }
   },
@@ -2291,7 +2303,8 @@
       "end_before_start": "El mes final es anterior al inicio del presupuesto",
       "invalid_period_start_day": "Elige un día del 1 al 28",
       "comment_not_found": "Comentario no encontrado",
-      "comment_forbidden": "No puedes modificar este comentario"
+      "comment_forbidden": "No puedes modificar este comentario",
+      "id_in_use": "Ese identificador de presupuesto ya está en uso"
     },
     "category": {
       "name_length": "El nombre de la categoría debe tener entre {min} y {max} caracteres.",
@@ -2318,7 +2331,9 @@
       "not_available": "La moneda no está disponible.",
       "in_use": "La moneda está en uso y no se puede eliminar.",
       "base_immutable": "La moneda base no se puede modificar.",
-      "cannot_be_hidden": "Esta moneda no se puede ocultar."
+      "cannot_be_hidden": "Esta moneda no se puede ocultar.",
+      "rate_range_order": "La fecha de fin no puede ser anterior a la fecha de inicio",
+      "rate_range_too_long": "El intervalo de fechas puede ser de {max} días como máximo"
     },
     "import": {
       "source_not_found": "Apple Wallet no está conectado. Conéctalo primero en Ajustes → Apple Wallet.",
@@ -2353,7 +2368,8 @@
       "disabled": "La conexión de aplicaciones no está disponible en este servidor.",
       "client_not_found": "El registro de esta aplicación ha caducado o es desconocido. Quita Econumo de la aplicación y vuelve a añadirlo.",
       "redirect_uri_mismatch": "Este enlace de inicio de sesión no es válido para esta aplicación. Inicia la conexión de nuevo desde la aplicación.",
-      "grant_not_found": "Aplicación conectada no encontrada."
+      "grant_not_found": "Aplicación conectada no encontrada.",
+      "app_not_yours": "Esta aplicación está conectada a otra cuenta de Econumo. Quita Econumo de la aplicación y vuelve a añadirlo."
     },
     "oauth": {
       "provider_not_configured": "El proveedor de inicio de sesión no está configurado",

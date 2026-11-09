@@ -28,6 +28,11 @@ ON CONFLICT (id) DO UPDATE SET
     period_start_day = excluded.period_start_day,
     updated_at  = excluded.updated_at;
 
+-- name: InsertBudgetIfAbsent :execrows
+INSERT INTO budgets (id, currency_id, user_id, name, started_at, ended_at, is_archived, created_at, updated_at, period_start_day)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (id) DO NOTHING;
+
 -- name: DeleteBudget :exec
 DELETE FROM budgets WHERE id = ?;
 

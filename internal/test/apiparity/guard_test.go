@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/econumo/econumo/internal/web/middleware"
 )
 
 var routePatternRe = regexp.MustCompile(`"((?:GET|POST) /api/v1/[a-z-]+/[a-z-]+)"`)
@@ -147,6 +149,18 @@ func TestGuard_NoOrphanedGoldens(t *testing.T) {
 		name := strings.TrimSuffix(filepath.Base(f), ".golden")
 		if !scenarios[name] {
 			t.Errorf("orphaned golden (scenario renamed or deleted): %s — delete the stale golden or restore the scenario", f)
+		}
+	}
+}
+
+// TestReadScopePathsAreRegisteredGETRoutes fails when a path in
+// middleware.ReadScopePaths is not a registered GET route, e.g. after a rename,
+// which would silently cut read-scoped apps off from it.
+func TestReadScopePathsAreRegisteredGETRoutes(t *testing.T) {
+	routes := registeredRoutes(t)
+	for path := range middleware.ReadScopePaths {
+		if !routes["GET "+path] {
+			t.Errorf("ReadScopePaths has %q, but no registered GET route matches it; the route was likely renamed", path)
 		}
 	}
 }

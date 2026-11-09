@@ -2,11 +2,12 @@ import type { AccountDto } from '@/api/dto/account'
 import type { ImportFailedEventDto, ImportQueuedEventDto, ImportSourceDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { Id } from '@/api/types'
-import { useAccounts } from '@/features/accounts/queries'
+import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { usePendingInvites, type PendingInvite } from '@/features/connections/pendingInvites'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useImportQueue, useImportSources } from '@/features/imports/queries'
 import { useRecurring } from '@/features/recurring/queries'
+import { hiddenFolderAccountIds } from '@/features/transactions/useTransactionForm'
 import { useUserData } from '@/features/user/queries'
 import { isFuture } from '@/lib/datetime'
 
@@ -56,9 +57,15 @@ export function useInbox(): Inbox {
   const sources = useImportSources()
   const recurring = useRecurring()
   const { data: accounts } = useAccounts()
+  const folders = useFolders()
+  const foldersKnown = folders.data !== undefined || folders.isError
   const { data: user } = useUserData()
+  // a hidden folder's accounts are out of the way on purpose, so they don't ask for attention
+  const hiddenAccountIds = hiddenFolderAccountIds(accounts ?? [], folders.data ?? [])
   // useRecurring already sorts by next payment, so the oldest debt leads
-  const dueRecurring = (recurring.data ?? []).filter((rt) => isDueRecurring(rt, accounts, user?.id))
+  const dueRecurring = foldersKnown
+    ? (recurring.data ?? []).filter((rt) => !hiddenAccountIds.has(rt.accountId) && isDueRecurring(rt, accounts, user?.id))
+    : []
   const syncProblems = (sources.data ?? []).filter(isSyncProblem)
   const queued = queue.data?.queued ?? []
   const skipped = queue.data?.skipped ?? []
@@ -74,7 +81,8 @@ export function useInbox(): Inbox {
     isLoaded:
       (queue.data !== undefined || queue.isError) &&
       (sources.data !== undefined || sources.isError) &&
-      (recurring.data !== undefined || recurring.isError),
+      (recurring.data !== undefined || recurring.isError) &&
+      foldersKnown,
     importsError: queue.isError || sources.isError,
     retryImports: () => {
       void queue.refetch()

@@ -34,9 +34,9 @@ func Register(read *appcurrency.ReadService) webmcp.Register {
 			return currenciesDoc{Currencies: list.Items, Rates: rates.Items}, nil
 		}
 
-		sdk.AddTool(s, &sdk.Tool{Name: "list_currencies",
-			Description: "Known currencies plus the latest exchange rates against the instance base currency. " +
-				"Entries with isDeleted 1 are retired and must never be used for a new account or budget."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("list_currencies", "List currencies and rates",
+			"Known currencies plus the latest exchange rates against the instance base currency. "+
+				"Entries with isDeleted 1 are retired and must never be used for a new account or budget."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, currenciesDoc, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_currencies")
 				userID, err := webmcp.UserID(ctx)

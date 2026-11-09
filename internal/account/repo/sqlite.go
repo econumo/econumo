@@ -2,20 +2,12 @@ package repo
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/infra/storage/sqlite"
 )
-
-// formatSQLiteBalance rounds a SQLite float SUM to 8 decimal places: e.g. the
-// summed float 358.34999999999127 becomes "358.35000000", which downstream
-// normalization then trims to "358.35". This is the SQLite-only path;
-// PostgreSQL returns an exact NUMERIC string and needs no float rounding.
-func formatSQLiteBalance(f float64) string {
-	return strconv.FormatFloat(f, 'f', 8, 64)
-}
 
 // sqliteQuerier is the passthrough adapter (the canonical types ARE sqlite's).
 type sqliteQuerier struct{}
@@ -87,7 +79,7 @@ func (sqliteBalance) GetAccountBalance(ctx context.Context, db backend.DBTX, acc
 	if err != nil {
 		return "", err
 	}
-	return formatSQLiteBalance(f), nil
+	return sqlite.FormatSum(f), nil
 }
 
 func (sqliteBalance) GetAccountTransactionsCount(ctx context.Context, db backend.DBTX, accountID string) (int64, error) {
@@ -126,7 +118,7 @@ func (sqliteBalance) ListAccountBalancesForUser(ctx context.Context, db backend.
 	}
 	out := make([]balanceResult, len(rows))
 	for i, r := range rows {
-		out[i] = balanceResult{AccountID: r.AccountID, Balance: formatSQLiteBalance(r.Balance)}
+		out[i] = balanceResult{AccountID: r.AccountID, Balance: sqlite.FormatSum(r.Balance)}
 	}
 	return out, nil
 }

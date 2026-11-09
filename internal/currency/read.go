@@ -5,6 +5,7 @@ package currency
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
@@ -33,6 +34,10 @@ type ReadModel interface {
 	// LatestCurrencyRateListView returns the latest rate row per (currency,
 	// base) pair.
 	LatestCurrencyRateListView(ctx context.Context) ([]model.CurrencyRateViewRow, error)
+	// CurrencyRateRangeView returns the rates published within [from, to]
+	// (inclusive days) plus, per (currency, base) pair, the newest rate
+	// published before from.
+	CurrencyRateRangeView(ctx context.Context, from, to time.Time) ([]model.CurrencyRateViewRow, error)
 }
 
 // ReadService serves both currency read endpoints. base is the boot-resolved
@@ -124,13 +129,36 @@ func (s *ReadService) GetCurrencyRateList(ctx context.Context, userID vo.Id) (*m
 	if err != nil {
 		return nil, err
 	}
-	visibleSet := make(map[string]bool, len(visible))
-	for _, v := range visible {
-		visibleSet[v.ID] = true
-	}
 	rows, err := s.read.LatestCurrencyRateListView(ctx)
 	if err != nil {
 		return nil, err
+	}
+	return s.rateList(visible, rows, nil), nil
+}
+
+// GetCurrencyRateHistory is the ranged form of GetCurrencyRateList: every rate
+// published in [from, to] plus the latest one before from, per currency. A
+// custom currency's fixed rate and the synthetic base row hold on every day of
+// the window, so they are dated from.
+func (s *ReadService) GetCurrencyRateHistory(ctx context.Context, userID vo.Id, from, to time.Time) (*model.GetCurrencyRateListResult, error) {
+	visible, err := s.read.UserCurrencyListView(ctx, userID.String())
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.read.CurrencyRateRangeView(ctx, from, to)
+	if err != nil {
+		return nil, err
+	}
+	return s.rateList(visible, rows, &from), nil
+}
+
+// rateList filters rows to visible currencies and appends the custom-currency
+// and synthetic base rows. fixedAt is the window start for the ranged form;
+// nil means the unranged form, dated by creation day / newest real rate.
+func (s *ReadService) rateList(visible []model.CurrencyViewRow, rows []model.CurrencyRateViewRow, fixedAt *time.Time) *model.GetCurrencyRateListResult {
+	visibleSet := make(map[string]bool, len(visible))
+	for _, v := range visible {
+		visibleSet[v.ID] = true
 	}
 	items := make([]model.CurrencyRateResult, 0, len(rows))
 	baseHasRate := false
@@ -150,18 +178,23 @@ func (s *ReadService) GetCurrencyRateList(ctx context.Context, userID vo.Id) (*m
 			BaseCurrencyId: r.BaseCurrencyID,
 			Rate:           r.Rate,
 			UpdatedAt:      r.UpdatedAt,
+			Date:           r.Date,
 		})
 	}
 	// Custom currencies carry ONE fixed rate on the currency row (no dated
 	// history); serving it here keeps this endpoint every client's single
-	// conversion source. updatedAt is the currency's creation time — cosmetic,
-	// since a fixed rate has no publication date. NULL-rate legacy customs
-	// (created before the rate became mandatory) yield nothing.
+	// conversion source. Unranged, updatedAt is the currency's creation time —
+	// cosmetic, since a fixed rate has no publication date. NULL-rate legacy
+	// customs (created before the rate became mandatory) yield nothing.
 	for _, v := range visible {
 		if v.UserID == nil || v.Rate == nil {
 			continue
 		}
-		updatedAt := v.CreatedAt.Format(datetime.Layout)
+		at := v.CreatedAt
+		if fixedAt != nil {
+			at = *fixedAt
+		}
+		updatedAt := at.Format(datetime.Layout)
 		if updatedAt > latest {
 			latest = updatedAt
 		}
@@ -170,15 +203,21 @@ func (s *ReadService) GetCurrencyRateList(ctx context.Context, userID vo.Id) (*m
 			BaseCurrencyId: s.base.ID,
 			Rate:           vo.NewDecimal(*v.Rate).String(),
 			UpdatedAt:      updatedAt,
+			Date:           at.Format(datetime.DateLayout),
 		})
 	}
 	if !baseHasRate && len(items) > 0 {
+		at := latest
+		if fixedAt != nil {
+			at = fixedAt.Format(datetime.Layout)
+		}
 		items = append(items, model.CurrencyRateResult{
 			CurrencyId:     s.base.ID,
 			BaseCurrencyId: s.base.ID,
 			Rate:           "1",
-			UpdatedAt:      latest,
+			UpdatedAt:      at,
+			Date:           at[:10],
 		})
 	}
-	return &model.GetCurrencyRateListResult{Items: items}, nil
+	return &model.GetCurrencyRateListResult{Items: items}
 }

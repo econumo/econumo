@@ -25,8 +25,8 @@ func Register(svc *appconnection.Service) webmcp.Register {
 			return *result, nil
 		}
 
-		sdk.AddTool(s, &sdk.Tool{Name: "list_connections",
-			Description: "Users connected to the current user and the accounts they share."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("list_connections", "List shared connections",
+			"Users connected to the current user and the accounts they share."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetConnectionListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_connections")
 				userID, err := webmcp.UserID(ctx)

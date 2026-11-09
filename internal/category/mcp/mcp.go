@@ -54,8 +54,8 @@ type mergeCategoryInput struct {
 
 func Register(read *appcategory.ReadService, write *appcategory.Service) webmcp.Register {
 	return func(s *sdk.Server) {
-		sdk.AddTool(s, &sdk.Tool{Name: "list_categories",
-			Description: "The user's transaction categories: id, name, type (expense|income), isArchived (0/1)."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("list_categories", "List categories",
+			"The user's transaction categories: id, name, type (expense|income), isArchived (0/1)."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetCategoryListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_categories")
 				userID, err := webmcp.UserID(ctx)
@@ -69,8 +69,8 @@ func Register(read *appcategory.ReadService, write *appcategory.Service) webmcp.
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "create_category",
-			Description: "Create a new transaction category owned by the caller. See list_categories for existing ids."},
+		sdk.AddTool(s, webmcp.WriteTool("create_category", "Create category",
+			"Create a new transaction category owned by the caller. See list_categories for existing ids."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in createCategoryInput) (*sdk.CallToolResult, model.CreateCategoryResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_category")
 				userID, err := webmcp.UserID(ctx)
@@ -89,8 +89,8 @@ func Register(read *appcategory.ReadService, write *appcategory.Service) webmcp.
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "merge_category",
-			Description: "Merge one category into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."},
+		sdk.AddTool(s, webmcp.DestructiveTool("merge_category", "Merge categories",
+			"Merge one category into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in mergeCategoryInput) (*sdk.CallToolResult, model.MergeCategoryResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "merge_category")
 				userID, err := webmcp.UserID(ctx)
@@ -107,8 +107,8 @@ func Register(read *appcategory.ReadService, write *appcategory.Service) webmcp.
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "update_category",
-			Description: "Rename a category or change its icon; use list_categories to find its id. Type cannot be changed after creation."},
+		sdk.AddTool(s, webmcp.WriteTool("update_category", "Update category",
+			"Rename a category or change its icon; use list_categories to find its id. Type cannot be changed after creation."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateCategoryInput) (*sdk.CallToolResult, model.UpdateCategoryResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_category")
 				userID, err := webmcp.UserID(ctx)
@@ -126,8 +126,8 @@ func Register(read *appcategory.ReadService, write *appcategory.Service) webmcp.
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "set_category_archived",
-			Description: "Hide an unused category (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_categories to find its id."},
+		sdk.AddTool(s, webmcp.WriteTool("set_category_archived", "Archive or restore category",
+			"Hide an unused category (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_categories to find its id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in setArchivedInput) (*sdk.CallToolResult, archivedResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_category_archived")
 				userID, err := webmcp.UserID(ctx)

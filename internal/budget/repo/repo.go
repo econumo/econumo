@@ -27,6 +27,7 @@ type (
 	elementRow  = sqlitegen.BudgetsElement
 	limitRow    = sqlitegen.BudgetsElementsLimit
 	upBudgetP   = sqlitegen.UpsertBudgetParams
+	insBudgetP  = sqlitegen.InsertBudgetIfAbsentParams
 	upAccessP   = sqlitegen.UpsertBudgetAccessParams
 	upFolderP   = sqlitegen.UpsertBudgetFolderParams
 	upEnvelopeP = sqlitegen.UpsertBudgetEnvelopeParams
@@ -91,6 +92,18 @@ func (r *Repo) Save(ctx context.Context, b *model.Budget) error {
 		Name: b.Name, StartedAt: b.StartedAt, EndedAt: b.EndedAt, IsArchived: b.IsArchived,
 		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt, PeriodStartDay: int16(b.PeriodStartDay),
 	})
+}
+
+func (r *Repo) InsertIfAbsent(ctx context.Context, b *model.Budget) (bool, error) {
+	n, err := r.q.InsertBudgetIfAbsent(ctx, r.db(ctx), insBudgetP{
+		ID: b.ID.String(), CurrencyID: b.CurrencyID.String(), UserID: b.UserID.String(),
+		Name: b.Name, StartedAt: b.StartedAt, EndedAt: b.EndedAt, IsArchived: b.IsArchived,
+		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt, PeriodStartDay: int16(b.PeriodStartDay),
+	})
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
 }
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {

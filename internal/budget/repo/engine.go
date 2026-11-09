@@ -18,6 +18,7 @@ type querier interface {
 	GetBudget(ctx context.Context, db backend.DBTX, id string) (budgetRow, error)
 	ListBudgetsForUser(ctx context.Context, db backend.DBTX, userID string) ([]budgetRow, error)
 	UpsertBudget(ctx context.Context, db backend.DBTX, p upBudgetP) error
+	InsertBudgetIfAbsent(ctx context.Context, db backend.DBTX, p insBudgetP) (int64, error)
 	DeleteBudget(ctx context.Context, db backend.DBTX, id string) error
 
 	ListBudgetAccess(ctx context.Context, db backend.DBTX, budgetID string) ([]accessRow, error)
@@ -87,6 +88,9 @@ func (sqliteQuerier) ListBudgetsForUser(ctx context.Context, db backend.DBTX, us
 }
 func (sqliteQuerier) UpsertBudget(ctx context.Context, db backend.DBTX, p upBudgetP) error {
 	return sqlitegen.New(db).UpsertBudget(ctx, p)
+}
+func (sqliteQuerier) InsertBudgetIfAbsent(ctx context.Context, db backend.DBTX, p insBudgetP) (int64, error) {
+	return sqlitegen.New(db).InsertBudgetIfAbsent(ctx, p)
 }
 func (sqliteQuerier) DeleteBudget(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteBudget(ctx, id)
@@ -307,6 +311,9 @@ func (pgsqlQuerier) ListBudgetsForUser(ctx context.Context, db backend.DBTX, use
 }
 func (pgsqlQuerier) UpsertBudget(ctx context.Context, db backend.DBTX, p upBudgetP) error {
 	return pgsqlgen.New(db).UpsertBudget(ctx, pgsqlgen.UpsertBudgetParams(p))
+}
+func (pgsqlQuerier) InsertBudgetIfAbsent(ctx context.Context, db backend.DBTX, p insBudgetP) (int64, error) {
+	return pgsqlgen.New(db).InsertBudgetIfAbsent(ctx, pgsqlgen.InsertBudgetIfAbsentParams(p))
 }
 func (pgsqlQuerier) DeleteBudget(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteBudget(ctx, id)

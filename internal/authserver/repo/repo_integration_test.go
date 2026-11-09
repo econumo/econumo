@@ -203,3 +203,245 @@ func TestRepo_RevokeOtherGrants(t *testing.T) {
 		t.Fatalf("already revoked grants must not be returned again: %v %v", ids, err)
 	}
 }
+
+func TestRepo_ClientOwnershipAndAdmin(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+	r := authrepo.NewRepo(db.Engine, db.TX)
+	f := fixture.New(t, db)
+	f.User(fixture.User{ID: userA, Name: "a"})
+	userB := f.User(fixture.User{})
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	uris := []string{"https://a.test/cb"}
+
+	self := &model.OAuthClient{ID: vo.NewId(), Name: "self", RedirectURIs: uris, CreatedAt: now}
+	global := &model.OAuthClient{ID: vo.NewId(), Name: "global", RedirectURIs: uris, CreatedAt: now.Add(time.Minute), IsGlobal: true}
+	for _, c := range []*model.OAuthClient{self, global} {
+		if err := r.InsertClient(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, _ := r.GetClient(ctx, global.ID); !got.IsGlobal || got.OwnerUserID != nil {
+		t.Fatalf("global client = %+v", got)
+	}
+	a, b := vo.MustParseId(userA), vo.MustParseId(userB)
+
+	if n, err := r.ClaimClient(ctx, self.ID, a); err != nil || n != 1 {
+		t.Fatalf("claim = %d %v", n, err)
+	}
+	if got, _ := r.GetClient(ctx, self.ID); got.OwnerUserID == nil || *got.OwnerUserID != a {
+		t.Fatalf("owner = %+v", got.OwnerUserID)
+	}
+	if n, _ := r.ClaimClient(ctx, self.ID, b); n != 0 {
+		t.Fatal("a claimed client must not be claimable again")
+	}
+	if got, _ := r.GetClient(ctx, self.ID); *got.OwnerUserID != a {
+		t.Fatal("owner changed")
+	}
+	if n, _ := r.ClaimClient(ctx, global.ID, a); n != 0 {
+		t.Fatal("a global client must not be claimable")
+	}
+	if got, _ := r.GetClient(ctx, global.ID); got.OwnerUserID != nil {
+		t.Fatal("global client gained an owner")
+	}
+
+	if n, _ := r.UpdateGlobalClient(ctx, self.ID, "x", uris); n != 0 {
+		t.Fatal("update-global must not touch a user app")
+	}
+	if n, err := r.UpdateGlobalClient(ctx, global.ID, "New", []string{"https://b.test/cb"}); err != nil || n != 1 {
+		t.Fatalf("update-global = %d %v", n, err)
+	}
+	if got, _ := r.GetClient(ctx, global.ID); got.Name != "New" || len(got.RedirectURIs) != 1 || got.RedirectURIs[0] != "https://b.test/cb" {
+		t.Fatalf("updated = %+v", got)
+	}
+
+	if n, err := r.MakeClientGlobal(ctx, self.ID); err != nil || n != 1 {
+		t.Fatalf("make global = %d %v", n, err)
+	}
+	if got, _ := r.GetClient(ctx, self.ID); !got.IsGlobal || got.OwnerUserID != nil {
+		t.Fatalf("made global = %+v", got)
+	}
+	if n, _ := r.MakeClientGlobal(ctx, self.ID); n != 0 {
+		t.Fatal("already global must match nothing")
+	}
+
+	hash := "secret"
+	conf := &model.OAuthClient{ID: vo.NewId(), Name: "conf", RedirectURIs: uris, SecretHash: &hash, CreatedAt: now}
+	public := &model.OAuthClient{ID: vo.NewId(), Name: "pub", RedirectURIs: uris, CreatedAt: now}
+	for _, c := range []*model.OAuthClient{conf, public} {
+		if err := r.InsertClient(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n, _ := r.SetClientSecret(ctx, public.ID, "h"); n != 0 {
+		t.Fatal("a public client must stay public")
+	}
+	if n, err := r.SetClientSecret(ctx, conf.ID, "h2"); err != nil || n != 1 {
+		t.Fatalf("set secret = %d %v", n, err)
+	}
+	if got, _ := r.GetClient(ctx, conf.ID); got.SecretHash == nil || *got.SecretHash != "h2" {
+		t.Fatalf("secret = %+v", got.SecretHash)
+	}
+
+	all, err := r.ListClients(ctx)
+	if err != nil || len(all) != 4 {
+		t.Fatalf("list = %+v %v", all, err)
+	}
+	for i := 1; i < len(all); i++ {
+		if all[i].CreatedAt.Before(all[i-1].CreatedAt) {
+			t.Fatalf("list not ordered by created_at: %+v", all)
+		}
+	}
+
+	if err := r.LockClient(ctx, vo.NewId()); !errors.As(err, new(*errs.NotFoundError)) {
+		t.Fatalf("lock missing: %v", err)
+	}
+	if err := r.LockClient(ctx, conf.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	newGrant := func(user vo.Id, client vo.Id, revoked bool) vo.Id {
+		g := &model.OAuthGrant{ID: vo.NewId(), UserID: user, ClientID: client, RefreshTokenHash: vo.NewId().String(),
+			CreatedAt: now, LastUsedAt: now, ExpiresAt: now.Add(time.Hour)}
+		if revoked {
+			g.RevokedAt = &now
+		}
+		if err := r.InsertGrant(ctx, g); err != nil {
+			t.Fatal(err)
+		}
+		return g.ID
+	}
+	g1, g2 := newGrant(a, conf.ID, false), newGrant(b, conf.ID, true)
+	other := newGrant(a, public.ID, false)
+
+	cg, err := r.ListClientGrants(ctx, conf.ID)
+	if err != nil || len(cg) != 1 || cg[0].ID != g1 {
+		t.Fatalf("client grants = %+v %v", cg, err)
+	}
+	un, err := r.ListAllUnrevokedGrants(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[vo.Id]bool{}
+	for _, g := range un {
+		seen[g.ID] = true
+	}
+	if !seen[g1] || !seen[other] || seen[g2] {
+		t.Fatalf("all unrevoked = %v", seen)
+	}
+
+	ids, err := r.RevokeClientGrants(ctx, conf.ID, now)
+	if err != nil || len(ids) != 1 || ids[0] != g1 {
+		t.Fatalf("revoke client grants = %v %v", ids, err)
+	}
+	if g, _ := r.GetGrant(ctx, other); g.RevokedAt != nil {
+		t.Fatal("another client's grant was revoked")
+	}
+
+	if n, err := r.DeleteClient(ctx, conf.ID); err != nil || n != 1 {
+		t.Fatalf("delete = %d %v", n, err)
+	}
+	if _, err := r.GetClient(ctx, conf.ID); !errors.As(err, new(*errs.NotFoundError)) {
+		t.Fatalf("deleted client: %v", err)
+	}
+	if _, err := r.GetGrant(ctx, g2); !errors.As(err, new(*errs.NotFoundError)) {
+		t.Fatalf("grant must cascade: %v", err)
+	}
+}
+
+func TestRepo_ListUnrevokedGrantsReportsGlobalClient(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+	r := authrepo.NewRepo(db.Engine, db.TX)
+	f := fixture.New(t, db)
+	f.User(fixture.User{ID: userA, Name: "a"})
+	a := vo.MustParseId(userA)
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	for i, global := range []bool{true, false} {
+		c := &model.OAuthClient{ID: vo.NewId(), Name: "c", RedirectURIs: []string{"https://a.test/cb"}, CreatedAt: now, IsGlobal: global}
+		if err := r.InsertClient(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+		g := &model.OAuthGrant{ID: vo.NewId(), UserID: a, ClientID: c.ID, RefreshTokenHash: vo.NewId().String(),
+			CreatedAt: now.Add(time.Duration(i) * time.Minute), LastUsedAt: now, ExpiresAt: now.Add(time.Hour)}
+		if err := r.InsertGrant(ctx, g); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list, err := r.ListUnrevokedGrants(ctx, a)
+	if err != nil || len(list) != 2 || !list[0].ClientIsGlobal || list[1].ClientIsGlobal {
+		t.Fatalf("list = %+v %v", list, err)
+	}
+}
+
+func TestRepo_PurgeSkipsGlobalClients(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+	r := authrepo.NewRepo(db.Engine, db.TX)
+	old := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	global := &model.OAuthClient{ID: vo.NewId(), Name: "g", RedirectURIs: []string{"https://a.test/cb"}, CreatedAt: old, IsGlobal: true}
+	self := &model.OAuthClient{ID: vo.NewId(), Name: "s", RedirectURIs: []string{"https://a.test/cb"}, CreatedAt: old}
+	for _, c := range []*model.OAuthClient{global, self} {
+		if err := r.InsertClient(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n, err := r.PurgeUnusedClients(ctx, old.Add(time.Hour)); err != nil || n != 1 {
+		t.Fatalf("purge = %d %v", n, err)
+	}
+	if _, err := r.GetClient(ctx, global.ID); err != nil {
+		t.Fatalf("global client purged: %v", err)
+	}
+	if n, err := r.PurgeExcessUnusedClients(ctx, 0); err != nil || n != 0 {
+		t.Fatalf("excess purge = %d %v", n, err)
+	}
+	if _, err := r.GetClient(ctx, global.ID); err != nil {
+		t.Fatalf("global client purged by cap: %v", err)
+	}
+}
+
+func TestRepo_Scopes(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+	r := authrepo.NewRepo(db.Engine, db.TX)
+	fixture.New(t, db).User(fixture.User{ID: userA, Name: "u"})
+	userID := vo.MustParseId(userA)
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+
+	c := &model.OAuthClient{ID: vo.NewId(), Name: "Reports", RedirectURIs: []string{"https://reports.test/cb"}, CreatedAt: now}
+	if err := r.InsertClient(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := r.InsertCode(ctx, &model.OAuthAuthorizationCode{CodeHash: "cr", ClientID: c.ID, UserID: userID, RedirectURI: "x",
+		CodeChallenge: "c", Resource: "r", Scope: model.TokenScopeRead, CreatedAt: now, ExpiresAt: now.Add(time.Minute)}); err != nil {
+		t.Fatal(err)
+	}
+	if code, err := r.ConsumeCode(ctx, "cr"); err != nil || code.Scope != model.TokenScopeRead {
+		t.Fatalf("code = %+v %v", code, err)
+	}
+
+	g := &model.OAuthGrant{ID: vo.NewId(), UserID: userID, ClientID: c.ID, RefreshTokenHash: "rr", Scope: model.TokenScopeRead,
+		CreatedAt: now, LastUsedAt: now, ExpiresAt: now.Add(time.Hour)}
+	if err := r.InsertGrant(ctx, g); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := r.GetGrant(ctx, g.ID); err != nil || got.Scope != model.TokenScopeRead {
+		t.Fatalf("grant = %+v %v", got, err)
+	}
+	if got, err := r.GetGrantByRefreshHash(ctx, "rr"); err != nil || got.Scope != model.TokenScopeRead {
+		t.Fatalf("grant by hash = %+v %v", got, err)
+	}
+	if n, _ := r.RotateGrant(ctx, g.ID, "rr", "rr2", now, now.Add(time.Hour)); n != 1 {
+		t.Fatal("rotate")
+	}
+	if err := r.InsertSpentRefreshHash(ctx, g.ID, "rr", now); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := r.GetGrantBySpentRefreshHash(ctx, "rr"); err != nil || got.Scope != model.TokenScopeRead {
+		t.Fatalf("grant by spent = %+v %v", got, err)
+	}
+	if list, err := r.ListUnrevokedGrants(ctx, userID); err != nil || len(list) != 1 || list[0].Grant.Scope != model.TokenScopeRead {
+		t.Fatalf("list = %+v %v", list, err)
+	}
+}

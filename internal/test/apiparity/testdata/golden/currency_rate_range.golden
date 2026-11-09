@@ -1,0 +1,21 @@
+== create-currency POST /api/v1/currency/create-currency [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","code":"PTS","name":"Points","symbol":"pts","fractionDigits":0,"scope":"own","isHidden":0,"isDeleted":0}}}
+
+== plain GET /api/v1/currency/get-currency-rate-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"currencyId":"<generated-uuid>","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"100","updatedAt":"<datetime>","date":"<date>"},{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"1","updatedAt":"<datetime>","date":"<date>"}]}}
+
+== range-31-days GET /api/v1/currency/get-currency-rate-list?from=2026-03-01&to=2026-03-31 [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"currencyId":"<generated-uuid>","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"100","updatedAt":"<datetime>","date":"<date>"},{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"1","updatedAt":"<datetime>","date":"<date>"}]}}
+
+== err:from-only GET /api/v1/currency/get-currency-rate-list?from=2026-03-01 [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"to":["This value should not be blank."]}}
+
+== err:bad-format GET /api/v1/currency/get-currency-rate-list?from=2026-1-5&to=2026-03-01 [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"from":["This value is not valid."]}}
+
+== err:reversed GET /api/v1/currency/get-currency-rate-list?from=2026-03-02&to=2026-03-01 [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"to":["The end date must not be before the start date"]}}
+
+== err:367-days GET /api/v1/currency/get-currency-rate-list?from=2023-01-01&to=2024-01-02 [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"to":["The date range must be at most 366 days"]}}
+

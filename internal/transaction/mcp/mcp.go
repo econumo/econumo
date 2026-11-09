@@ -106,8 +106,8 @@ func (f txFields) toRequestFields() (typ string, amount vo.FlexString, accountID
 
 func Register(svc *apptransaction.Service) webmcp.Register {
 	return func(s *sdk.Server) {
-		sdk.AddTool(s, &sdk.Tool{Name: "list_transactions",
-			Description: "List the user's transactions, optionally filtered by account_id and/or a full period (period_start and period_end together); the filters compose."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("list_transactions", "List transactions",
+			"List the user's transactions, optionally filtered by account_id and/or a full period (period_start and period_end together); the filters compose."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in listInput) (*sdk.CallToolResult, model.GetTransactionListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_transactions")
 				userID, err := webmcp.UserID(ctx)
@@ -132,8 +132,10 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "create_transaction",
-			Description: "Record a new expense, income or transfer. Look up account/category/payee/tag ids with list_accounts/list_categories/list_payees/list_tags first."},
+		sdk.AddTool(s, webmcp.WriteTool("create_transaction", "Record transaction",
+			"Record a new expense, income or transfer in the user's own ledger. Bookkeeping only: this moves no real "+
+				"money, and a transfer is an entry between two of the user's own accounts. Look up account/category/payee/tag "+
+				"ids with list_accounts/list_categories/list_payees/list_tags first."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in createInput) (*sdk.CallToolResult, model.CreateTransactionResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_transaction")
 				userID, err := webmcp.UserID(ctx)
@@ -165,8 +167,8 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "update_transaction",
-			Description: "Update an existing transaction; send the full new field set (type, amount, account_id, date, ...). Omitting label_ids leaves the transaction's existing labels untouched; sending a list (including an empty one) replaces the full label set. Switching type to transfer always clears labels, since a transfer cannot carry them."},
+		sdk.AddTool(s, webmcp.DestructiveTool("update_transaction", "Update transaction",
+			"Update an existing transaction; send the full new field set (type, amount, account_id, date, ...). Omitting label_ids leaves the transaction's existing labels untouched; sending a list (including an empty one) replaces the full label set. Switching type to transfer always clears labels, since a transfer cannot carry them."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateInput) (*sdk.CallToolResult, model.UpdateTransactionResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_transaction")
 				userID, err := webmcp.UserID(ctx)
@@ -203,8 +205,8 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "delete_transaction",
-			Description: "Delete a transaction by id."},
+		sdk.AddTool(s, webmcp.DestructiveTool("delete_transaction", "Delete transaction",
+			"Delete a transaction by id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in deleteInput) (*sdk.CallToolResult, model.DeleteTransactionResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "delete_transaction")
 				userID, err := webmcp.UserID(ctx)
@@ -218,8 +220,8 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "bulk_update_transactions",
-			Description: "Re-classify many transactions at once (set or clear category/payee/tag on an explicit list of transaction ids from list_transactions); amounts/dates/accounts are never changed; max 100 per call."},
+		sdk.AddTool(s, webmcp.DestructiveTool("bulk_update_transactions", "Re-classify many transactions",
+			"Re-classify many transactions at once (set or clear category/payee/tag on an explicit list of transaction ids from list_transactions); amounts/dates/accounts are never changed; max 100 per call."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in bulkUpdateInput) (*sdk.CallToolResult, model.BulkUpdateTransactionsResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "bulk_update_transactions")
 				userID, err := webmcp.UserID(ctx)

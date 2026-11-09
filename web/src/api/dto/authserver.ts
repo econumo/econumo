@@ -15,6 +15,8 @@ export interface AuthorizationRequestResultDto {
   clientName: string
   redirectHost: string
   isLoopback: boolean
+  isGlobal: boolean
+  scope: 'mcp' | 'read'
   errorRedirectUrl: string
 }
 
@@ -27,6 +29,7 @@ export interface ConnectedAppDto {
   clientName: string
   redirectHost: string
   isLoopback: boolean
+  isGlobal: boolean
   createdAt: string
   lastUsedAt: string
 }

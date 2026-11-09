@@ -374,6 +374,14 @@ navigation (single-pane vs sidebar).
       global add button: date picker, amount (formula), category & payee
       selects with **create-on-type** inline creation, tags & labels chips,
       description.
+- [ ] 📱 Add transaction, unsaved work: enter an amount or description, then Cancel
+      or reload the page, and reopen Add transaction within 2 minutes: the form opens
+      empty with a one-line suggestion naming the amount and account. Restore brings
+      every field back; Cancel or Escape while it is still showing drops it and it is
+      not offered again (a reload keeps it); typing into the empty form replaces it.
+      Not offered after 2 minutes, after the transaction
+      was added, after logout, when only the type, account or date were changed,
+      or on Edit, posting a recurring payment or adding a queued import.
 - [ ] 📱 On an account page, add an expense/income after picking a different
       account: a bottom "Switch to <account>" bar appears and opens that
       account. Adding to the open account shows no bar. A transfer shows the
@@ -402,7 +410,18 @@ navigation (single-pane vs sidebar).
 - [ ] Same-currency transfer: single amount; swap from/to button works.
 - [ ] With only one account you can add transactions to (accounts in hidden
       folders and read-only shared ones don't count), the Transfer type is
-      greyed out and cannot be selected; editing an existing transfer keeps it.
+      greyed out and cannot be selected, in Add and in Edit; editing an existing
+      transfer keeps it, even after switching to another type and back.
+- [ ] 📱 Account pickers in Add/Edit transaction and recurring transaction (From
+      and To included) leave out accounts in hidden folders until the search has
+      3 or more characters; then they appear with an eye-off icon and "Hidden
+      folder" (a shorter name is found by typing all of it). Editing one on a
+      hidden-folder account still shows its name, with the eye-off icon in the
+      field. A new form never defaults to a hidden-folder account, unless it was
+      opened from that account's page; read-only accounts can't be picked.
+- [ ] 📱 Settings → Recurring lists templates on hidden-folder accounts under their
+      account, marked "Hidden folder", and they can be edited and deleted; a due
+      payment on such an account does not appear in the Inbox or its badge.
 - [ ] 📱 Transfer with no "To" account: Add/Update shows "Required field" under
       the To select and sends nothing; the API rejects the same body with a
       400 on `accountRecipientId` (create AND update).
@@ -418,6 +437,9 @@ navigation (single-pane vs sidebar).
 - [ ] Future-dated transaction shows above the "today" separator and does not
       count toward "balance as of end of today" — including one dated exactly
       00:00 tomorrow (SQLite AND PostgreSQL).
+- [ ] An account holding one income of `123456789.01` shows exactly that balance
+      in the sidebar and on the account page, with no extra decimals (SQLite AND
+      PostgreSQL).
 - [ ] Transaction list rows carry `isImported` (0/1) in the API response; an
       imported row shows the import glyph (tooltip "Imported"), hand-entered
       rows do not; the preview dialog of an imported row lists "Imported from"
@@ -427,6 +449,17 @@ navigation (single-pane vs sidebar).
       labels with separator), constant-value fields; result dialog shows
       imported/failed counts and per-row errors; imported rows appear with
       correct signs and classifications.
+- [ ] CSV import mapping layout: once a file is picked the dialog widens, every
+      field lines up at one width, and on desktop each column in a picker
+      (name plus sample value) stays on one line. "Change the tag separator"
+      shows under Reporting tags only while a column is mapped there. A note
+      under Budget tag says a transaction has one, and points to Reporting tags
+      for several.
+- [ ] Export transactions to CSV and import that file, with the UI in English
+      and in another language: every column maps by itself, the tags column
+      included, and the imported rows keep their budget tag and reporting tags,
+      also on a transaction with more than 10 reporting tags (the limit is 50,
+      as when entering a transaction).
 - [ ] Import with a broken row (bad date/amount) → partial result, failed rows
       detailed, good rows imported.
 - [ ] Category type guard: a category only goes on a transaction of its own
@@ -1027,10 +1060,10 @@ and on tablet/phone only with a hardware keyboard.
       schedule row opens the template form (search closes).
 - [ ] Keyboard: ↑/↓ move the highlight, Enter opens the highlighted row, Esc
       closes search.
-- [ ] 📱 On a phone the search field reads "Search" with a ✕ to its right, and
-      a full-width Close button sits at the bottom; each closes the search, the
-      ✕ stays reachable while the on-screen keyboard is up, and the list
-      scrolls between the field and the Close button.
+- [ ] 📱 On a phone the search field reads "Search" with a ✕ to its right that
+      closes the search and stays reachable while the on-screen keyboard is up;
+      there is no Close button at the bottom, and the list scrolls below the
+      field down to the bottom of the screen.
 
 ## 8. Currencies
 
@@ -2876,11 +2909,22 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 Signed in, the consent page (`/oauth/authorize?...`) is headed "Connect
       an app to Econumo" and shows the app's name followed by "wants to access
       your Econumo account.", "After you allow, you'll be sent to <host>." for a
-      web client, "It will be able to read and change all of your Econumo data.",
+      web client, "It will be able to read and change your data.",
       "Signed in as <email>" with "Not you? Switch account", and the Allow and
       Deny buttons. Allow stays disabled for about half a second after the page
       appears (or until you move the mouse or press a key); Deny works at once.
       A double-click that lands on the page as it opens does not approve.
+- [ ] The consent page of an app that asks for the `read` scope alone
+      (`&scope=read`) shows "wants to read your Econumo data." and "It can't change
+      anything." (not
+      the read-and-change sentence). No scope, `mcp`, or `mcp read` shows the
+      read-and-change sentence. A read-only (lapsed trial) user can Allow the
+      `read` request, but Allow on an `mcp` one shows the read-only message.
+- [ ] After a `read` app is allowed, it appears under Settings > Profile >
+      Connected apps; revoking it makes its next request fail, and its token
+      answers 401 on any route other than the nine read-only GETs (for example
+      `get-budget`, `/mcp`, or any POST). With the OAuth server turned off
+      (`ECONUMO_URL` unset), its token answers 401 everywhere.
 - [ ] Switching to another window or tab and back (or clicking outside the
       browser window) disables Allow again; it re-enables about half a second
       after the consent page is visible and focused again, or on the next mouse
@@ -2888,11 +2932,34 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 A client that registered a loopback redirect (Claude Code, Codex) shows
       "After you allow, you'll return to an app on this computer." instead of a
       host.
+- [ ] 📱 An app registered with `app:register` shows an "Official" badge next
+      to its name on the consent page and in Connected apps, and the consent
+      page has no "Registered by the app itself" line for it.
+- [ ] 📱 An app that registered itself shows no badge. On the consent page a
+      web client (Claude) has the muted line "Registered by the app itself.
+      Econumo doesn't verify its name; check the address below." above the
+      "After you allow, you'll be sent to <host>." line; a loopback client
+      (Claude Code, Codex) has "Registered by the app itself. Econumo doesn't
+      verify its name." (no "check the address below") above the "return to an
+      app on this computer" line. Connected apps shows nothing extra for it.
 - [ ] "Not you? Switch account" signs out and returns to the same consent page
       after signing in as the other user.
 - [ ] Allow sends the browser to the client's callback; the client finishes
       connecting and its MCP tools (for example listing accounts) return the
       signed-in user's data.
+- [ ] `POST /api/v1/budget/create-budget` and `clone-budget` with an `id` /
+      `newId` that an existing budget already uses (your own or another user's)
+      are refused with the field error "That budget id is already in use"
+      (`budget.id_in_use`), and that budget keeps its name, currency, start day
+      and member accounts. A fresh id still creates normally.
+- [ ] In the connected client, a read tool (`list_accounts`, `get_budget`) runs
+      without asking for per-call confirmation, and a destructive one
+      (`delete_transaction`, `delete_budget_comment`, any `merge_*`,
+      `add_budget_account`, `remove_budget_account`, `bulk_update_transactions`,
+      `update_transaction`, `update_envelope`) prompts every time. Recording an
+      expense with `create_transaction`, renaming a tag or setting a limit does
+      NOT prompt. Each tool shows a readable title rather than its
+      raw `snake_case` name.
 - [ ] Deny sends the browser back to the client with an `access_denied` result;
       the client reports that the sign-in was refused and nothing appears under
       Connected apps.
@@ -2913,6 +2980,14 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       `resource`) shows "This app sent an invalid request" and does
       NOT leave the page until you press "Return to <host>" (or "Return to the
       app" for a loopback client).
+- [ ] Signed in as user B, opening a consent link for an app user A already
+      connected (the same Claude Code or Codex registration) shows "This app is
+      connected to a different Econumo account. Remove Econumo from the app and
+      add it again.", no buttons and no redirect, and the page names nobody. The
+      same happens when the link also carries a redirect URI the app never
+      registered.
+- [ ] User A disconnects the app in Connected apps and connects again from the
+      same client: it works.
 - [ ] Read-only account: pressing Allow shows "Your account is read-only, so apps
       can't be connected." and "Return to the app" sends the client back with an
       `access_denied` result; Deny works on a read-only account too.
@@ -3039,6 +3114,16 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Sync button: spins during refetch; failure (kill the server briefly)
       turns it amber with a tooltip; recovery clears it. App restores from the
       persisted cache on reload without a boot-loader flash.
+- [ ] 📱 No network (airplane mode, or DevTools "Offline"), both while the app
+      is open and when it is opened that way: the sync button is replaced by a
+      no-connection icon that cannot be pressed and does not spin, its tooltip
+      says "No connection" with the last sync time, and the network log shows
+      no retries. When the network returns the button is back and the data
+      refreshes by itself. Something saved while offline waits (the Save
+      button keeps spinning) and is sent when the network returns, as long as
+      the app stays open; nothing waiting is written to local storage. Signing
+      in offline fails at once with an error. A budget cell's transaction list
+      that was never loaded shows a spinner offline, never "List is empty".
 - [ ] Sync button tap = incremental refresh: after an edit made on another
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the
@@ -3052,8 +3137,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 Transactions survive a reload while the server is unreachable: load
       the app, stop the server (or go offline), reload — the account pages,
       the transaction lists and global search still show the previously
-      synced transactions; the sync button shows its failure state instead of
-      an empty list.
+      synced transactions instead of an empty list; the sync button shows its
+      failure state (the no-connection icon when the device itself is offline).
 - [ ] 📱 Offline start more than 24 h after the last visit: use the app, close
       it, wait over a day (or set the device clock forward 25 h), go offline
       and open it — accounts and transactions show at once, with no "Loading

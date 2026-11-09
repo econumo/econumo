@@ -296,7 +296,8 @@
       "failing": "Geen verbinding met de server — opnieuw proberen",
       "full_reload": "Cache wissen en opnieuw laden…",
       "hold_hint": "Houd ingedrukt om de cache te wissen en opnieuw te laden",
-      "full_reload_offline": "Je bent offline. Wis de cache en laad opnieuw zodra je weer online bent."
+      "full_reload_offline": "Je bent offline. Wis de cache en laad opnieuw zodra je weer online bent.",
+      "offline": "Geen verbinding"
     },
     "data": {
       "reload_all": "Cache wissen en opnieuw laden"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Transactie bewerken"
+      },
+      "draft": {
+        "message": "Onafgerond",
+        "restore": "Herstellen"
       },
       "form": {
         "date": {
@@ -442,6 +447,7 @@
         "newline": "Nieuwe regel",
         "custom_label": "Eigen scheidingsteken"
       },
+      "tag_hint": "Een transactie kan maar één budgettag hebben. Gebruik voor meerdere tags Rapportagetags.",
       "new_labels_count": "Deze import maakt {count} nieuwe tag aan | Deze import maakt {count} nieuwe tags aan"
     },
     "import_result": {
@@ -2178,9 +2184,14 @@
     "consent": {
       "title": "Een app met Econumo verbinden",
       "wantsAccess": "wil toegang tot je Econumo-account.",
+      "official": "Officieel",
       "redirect": "Nadat je toestemming geeft, word je doorgestuurd naar {host}.",
       "loopback": "Nadat je toestemming geeft, keer je terug naar een app op deze computer.",
-      "fullAccess": "De app kan al je Econumo-gegevens lezen en wijzigen.",
+      "unverified": "Door de app zelf geregistreerd. Econumo controleert de naam niet; controleer het adres hieronder.",
+      "unverifiedLoopback": "Door de app zelf geregistreerd. Econumo controleert de naam niet.",
+      "wantsRead": "wil je Econumo-gegevens lezen.",
+      "readAccess": "Er kan niets worden gewijzigd.",
+      "fullAccess": "De app kan je gegevens lezen en wijzigen.",
       "signedInAs": "Ingelogd als {email}",
       "switchAccount": "Ben jij het niet? Van account wisselen",
       "allow": "Toestaan",
@@ -2205,6 +2216,7 @@
       "lastUsed": "Laatst gebruikt {when}",
       "loopback": "Draait op deze computer",
       "returnsTo": "Stuurt je terug naar {host}",
+      "official": "Officieel",
       "menuItem": "Gekoppelde apps"
     }
   },
@@ -2291,7 +2303,8 @@
       "end_before_start": "De eindmaand ligt vóór de start van het budget",
       "invalid_period_start_day": "Kies een dag van 1 tot 28",
       "comment_not_found": "Opmerking niet gevonden",
-      "comment_forbidden": "Je kunt deze opmerking niet wijzigen"
+      "comment_forbidden": "Je kunt deze opmerking niet wijzigen",
+      "id_in_use": "Deze budget-id is al in gebruik"
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",
@@ -2318,7 +2331,9 @@
       "not_available": "De valuta is niet beschikbaar.",
       "in_use": "De valuta is in gebruik en kan niet worden verwijderd.",
       "base_immutable": "De basisvaluta kan niet worden gewijzigd.",
-      "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
+      "cannot_be_hidden": "Deze valuta kan niet worden verborgen.",
+      "rate_range_order": "De einddatum mag niet vóór de begindatum liggen",
+      "rate_range_too_long": "Het datumbereik mag maximaal {max} dagen zijn"
     },
     "import": {
       "source_not_found": "Apple Wallet is niet gekoppeld. Koppel het eerst via Instellingen → Apple Wallet.",
@@ -2353,7 +2368,8 @@
       "disabled": "Apps koppelen is niet beschikbaar op deze server.",
       "client_not_found": "De registratie van deze app is verlopen of onbekend. Verwijder Econumo uit de app en voeg het opnieuw toe.",
       "redirect_uri_mismatch": "Deze inloglink is niet geldig voor deze app. Start de koppeling opnieuw vanuit de app.",
-      "grant_not_found": "Gekoppelde app niet gevonden."
+      "grant_not_found": "Gekoppelde app niet gevonden.",
+      "app_not_yours": "Deze app is gekoppeld aan een ander Econumo-account. Verwijder Econumo uit de app en voeg het opnieuw toe."
     },
     "oauth": {
       "provider_not_configured": "De aanmeldprovider is niet geconfigureerd",

@@ -1,7 +1,9 @@
 package authserver
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -10,7 +12,9 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
@@ -21,7 +25,7 @@ func approve(t *testing.T, s *Service, user vo.Id) (clientID, code string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +255,7 @@ func TestRefresh_ExpiryAndClientBinding(t *testing.T) {
 func TestToken_ClientAuth(t *testing.T) {
 	s, _, _, user := newTestService(t)
 	c, _ := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://claude.ai/api/mcp/auth_callback"}, TokenEndpointAuthMethod: "client_secret_post"})
-	res, _ := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	res, _ := s.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID))
 	u, _ := url.Parse(res.RedirectURL)
 	req := model.TokenRequest{GrantType: "authorization_code", ClientID: c.ClientID, Code: u.Query().Get("code"),
 		RedirectURI: "https://claude.ai/api/mcp/auth_callback", CodeVerifier: verifier, ClientSecret: "nope"}
@@ -272,7 +276,7 @@ func TestToken_ConfidentialClientSucceeds(t *testing.T) {
 	if err != nil || c.ClientSecret == "" {
 		t.Fatalf("%+v %v", c, err)
 	}
-	res, _ := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	res, _ := s.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID))
 	u, _ := url.Parse(res.RedirectURL)
 	tr, err := s.Token(ctx, model.TokenRequest{GrantType: "authorization_code", ClientID: c.ClientID, ClientSecret: c.ClientSecret,
 		Code: u.Query().Get("code"), RedirectURI: "https://claude.ai/api/mcp/auth_callback", CodeVerifier: verifier})
@@ -352,7 +356,7 @@ func TestExchange_ReplacesEarlierGrantForSameClient(t *testing.T) {
 		firstGrant = before[1].Grant.ID
 	}
 
-	res, err := s.ApproveAuthorization(ctx, user, session, authReq(cid))
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(cid))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -512,5 +516,148 @@ func TestRefresh_FenceMissLeavesGrantUnrotated(t *testing.T) {
 	// The failed attempt rolled back its rotation: the presented token is still current.
 	if _, err := s.Token(ctx, model.TokenRequest{GrantType: "refresh_token", ClientID: cid, RefreshToken: tr.RefreshToken}); err != nil {
 		t.Fatalf("grant must not have been rotated: %v", err)
+	}
+}
+
+// The ownership backfill gives an app to its earliest approver; any other user
+// who had connected it before keeps a working grant, because exchange and
+// refresh never check the owner. Only a new consent is refused.
+func TestRefresh_NonOwnerGrantFromBeforeTheMigration(t *testing.T) {
+	s, _, clock, db := newTestServiceDB(t)
+	a := newUser(t, db, fixture.User{})
+	b := newUser(t, db, fixture.User{})
+	cid, _ := approve(t, s, a)
+	raw, hash, err := newSecret()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := clock.Now()
+	if err := s.repo.InsertGrant(ctx, &model.OAuthGrant{ID: vo.NewId(), UserID: b, ClientID: vo.MustParseId(cid),
+		RefreshTokenHash: hash, CreatedAt: now, LastUsedAt: now, ExpiresAt: now.Add(24 * time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := refreshWith(s, cid, raw)
+	if err != nil || tr.RefreshToken == "" || tr.RefreshToken == raw {
+		t.Fatalf("a pre-existing non-owner grant must keep refreshing: %+v %v", tr, err)
+	}
+	if _, err := s.DescribeAuthorization(ctx, b, authReq(cid)); !hasCode(err, errs.CodeAuthServerAppNotYours) {
+		t.Fatalf("a new consent by the non-owner must be refused: %v", err)
+	}
+}
+
+// deletingRepo has app:delete land between client authentication and the grant
+// INSERT. On SQLite the test cannot commit the DELETE from another connection,
+// so it runs inside the exchange's transaction (giving a real foreign-key
+// failure) and GetClient then reports what the committed DELETE would show.
+type deletingRepo struct {
+	Repository
+	commitDelete bool
+	gone         bool
+}
+
+func (r *deletingRepo) InsertGrant(ctx context.Context, g *model.OAuthGrant) error {
+	if _, err := r.Repository.DeleteClient(ctx, g.ClientID); err != nil {
+		return err
+	}
+	r.gone = r.commitDelete
+	return r.Repository.InsertGrant(ctx, g)
+}
+
+func (r *deletingRepo) GetClient(ctx context.Context, id vo.Id) (*model.OAuthClient, error) {
+	if r.gone {
+		return nil, errs.NewNotFound("OAuth client not found")
+	}
+	return r.Repository.GetClient(ctx, id)
+}
+
+func TestExchange_ClientDeletedMidExchange(t *testing.T) {
+	for _, committed := range []bool{true, false} {
+		t.Run(fmt.Sprint("committed=", committed), func(t *testing.T) {
+			s, creds, clock, db := newTestServiceDB(t)
+			user := newUser(t, db, fixture.User{})
+			cid, code := approve(t, s, user)
+			racing := NewService(&deletingRepo{Repository: s.repo, commitDelete: committed}, creds, s.tx, clock, nil, testURL)
+			_, err := exchange(racing, cid, code)
+			if committed {
+				wantOAuth(t, err, "invalid_grant")
+				return
+			}
+			var oe *OAuthError
+			if err == nil || errors.As(err, &oe) {
+				t.Fatalf("a grant INSERT failure with the client still present must surface as is: %v", err)
+			}
+		})
+	}
+}
+
+func TestDisconnectApp_CountsOnlyGrantsItRevoked(t *testing.T) {
+	s, _, clock, db := newTestServiceDB(t)
+	user := newUser(t, db, fixture.User{})
+	cid, code := approve(t, s, user)
+	if _, err := exchange(s, cid, code); err != nil {
+		t.Fatal(err)
+	}
+	id := vo.MustParseId(cid)
+	grants, err := s.liveGrants(ctx, id)
+	if err != nil || len(grants) != 1 {
+		t.Fatalf("grants %v %v", grants, err)
+	}
+	// Revoked by a concurrent writer after DisconnectApp read the live list.
+	racing := NewService(revokingRepo{Repository: s.repo, grant: grants[0].ID, now: clock.Now()}, &fakeCreds{}, s.tx, clock, nil, testURL)
+	n, err := racing.DisconnectApp(ctx, id, nil)
+	if err != nil || n != 0 {
+		t.Fatalf("DisconnectApp = %d %v, want 0", n, err)
+	}
+}
+
+type revokingRepo struct {
+	Repository
+	grant vo.Id
+	now   time.Time
+}
+
+func (r revokingRepo) RevokeGrant(ctx context.Context, id vo.Id, now time.Time) (int64, error) {
+	if _, err := r.Repository.RevokeGrant(ctx, r.grant, r.now); err != nil {
+		return 0, err
+	}
+	return r.Repository.RevokeGrant(ctx, id, now)
+}
+
+// peekHookRepo runs after the exchange has read the code and before it takes
+// its locks, where app:disconnect used to slip in between consuming the code
+// and inserting the grant.
+type peekHookRepo struct {
+	Repository
+	after func()
+}
+
+func (r peekHookRepo) GetCode(ctx context.Context, hash string) (*model.OAuthAuthorizationCode, error) {
+	c, err := r.Repository.GetCode(ctx, hash)
+	r.after()
+	return c, err
+}
+
+func TestExchange_DisconnectAfterTheCodeIsRead(t *testing.T) {
+	for _, perUser := range []bool{false, true} {
+		t.Run(fmt.Sprint("perUser=", perUser), func(t *testing.T) {
+			s, creds, clock, db := newTestServiceDB(t)
+			user := newUser(t, db, fixture.User{})
+			cid, code := approve(t, s, user)
+			id := vo.MustParseId(cid)
+			var only *vo.Id
+			if perUser {
+				only = &user
+			}
+			racing := NewService(peekHookRepo{Repository: s.repo, after: func() {
+				if _, err := s.DisconnectApp(ctx, id, only); err != nil {
+					t.Errorf("disconnect: %v", err)
+				}
+			}}, creds, s.tx, clock, nil, testURL)
+			_, err := exchange(racing, cid, code)
+			wantOAuth(t, err, "invalid_grant")
+			if grants, err := s.liveGrants(ctx, id); err != nil || len(grants) != 0 {
+				t.Fatalf("the app must stay disconnected: %v %v", grants, err)
+			}
+		})
 	}
 }

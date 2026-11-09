@@ -296,7 +296,8 @@
       "failing": "Can't reach the server — retrying",
       "full_reload": "Clearing the cache and reloading…",
       "hold_hint": "Hold to clear the cache and reload",
-      "full_reload_offline": "You're offline. Clear the cache and reload when you're back online."
+      "full_reload_offline": "You're offline. Clear the cache and reload when you're back online.",
+      "offline": "No connection"
     },
     "data": {
       "reload_all": "Clear cache and reload"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Edit transaction"
+      },
+      "draft": {
+        "message": "Unfinished",
+        "restore": "Restore"
       },
       "form": {
         "date": {
@@ -442,6 +447,7 @@
         "newline": "New line",
         "custom_label": "Custom separator"
       },
+      "tag_hint": "A transaction can have only one budget tag. For several, use Reporting tags.",
       "new_labels_count": "This import will create {count} new tag | This import will create {count} new tags"
     },
     "import_result": {
@@ -2178,9 +2184,14 @@
     "consent": {
       "title": "Connect an app to Econumo",
       "wantsAccess": "wants to access your Econumo account.",
+      "official": "Official",
       "redirect": "After you allow, you'll be sent to {host}.",
       "loopback": "After you allow, you'll return to an app on this computer.",
-      "fullAccess": "It will be able to read and change all of your Econumo data.",
+      "unverified": "Registered by the app itself. Econumo doesn't verify its name; check the address below.",
+      "unverifiedLoopback": "Registered by the app itself. Econumo doesn't verify its name.",
+      "wantsRead": "wants to read your Econumo data.",
+      "readAccess": "It can't change anything.",
+      "fullAccess": "It will be able to read and change your data.",
       "signedInAs": "Signed in as {email}",
       "switchAccount": "Not you? Switch account",
       "allow": "Allow",
@@ -2205,6 +2216,7 @@
       "lastUsed": "Last used {when}",
       "loopback": "Runs on this computer",
       "returnsTo": "Sends you back to {host}",
+      "official": "Official",
       "menuItem": "Connected apps"
     }
   },
@@ -2291,7 +2303,8 @@
       "end_before_start": "The end month is before the budget start",
       "invalid_period_start_day": "Choose a day from 1 to 28",
       "comment_not_found": "Comment not found",
-      "comment_forbidden": "You can't change this comment"
+      "comment_forbidden": "You can't change this comment",
+      "id_in_use": "That budget id is already in use"
     },
     "category": {
       "name_length": "Category name must be {min}-{max} characters",
@@ -2318,7 +2331,9 @@
       "not_available": "Currency is not available",
       "in_use": "Currency is in use and cannot be deleted",
       "base_immutable": "The base currency cannot be modified",
-      "cannot_be_hidden": "This currency cannot be hidden"
+      "cannot_be_hidden": "This currency cannot be hidden",
+      "rate_range_order": "The end date must not be before the start date",
+      "rate_range_too_long": "The date range must be at most {max} days"
     },
     "import": {
       "source_not_found": "Apple Wallet is not connected. Connect it in Settings → Apple Wallet first.",
@@ -2353,7 +2368,8 @@
       "disabled": "Connecting apps is not available on this server.",
       "client_not_found": "This app's registration has expired or is unknown. Remove Econumo from the app and add it again.",
       "redirect_uri_mismatch": "This sign-in link is not valid for this app. Start the connection again from the app.",
-      "grant_not_found": "Connected app not found."
+      "grant_not_found": "Connected app not found.",
+      "app_not_yours": "This app is connected to a different Econumo account. Remove Econumo from the app and add it again."
     },
     "oauth": {
       "provider_not_configured": "Sign-in provider is not configured",
