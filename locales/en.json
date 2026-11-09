@@ -296,7 +296,8 @@
       "failing": "Can't reach the server — retrying",
       "full_reload": "Clearing the cache and reloading…",
       "hold_hint": "Hold to clear the cache and reload",
-      "full_reload_offline": "You're offline. Clear the cache and reload when you're back online."
+      "full_reload_offline": "You're offline. Clear the cache and reload when you're back online.",
+      "offline": "No connection"
     },
     "data": {
       "reload_all": "Clear cache and reload"

@@ -296,7 +296,8 @@
       "failing": "Brak połączenia z serwerem — ponawianie próby",
       "full_reload": "Czyszczenie pamięci podręcznej i ponowne wczytywanie…",
       "hold_hint": "Przytrzymaj, aby wyczyścić pamięć podręczną i wczytać ponownie",
-      "full_reload_offline": "Jesteś offline. Wyczyść pamięć podręczną i wczytaj ponownie, gdy wrócisz do sieci."
+      "full_reload_offline": "Jesteś offline. Wyczyść pamięć podręczną i wczytaj ponownie, gdy wrócisz do sieci.",
+      "offline": "Brak połączenia"
     },
     "data": {
       "reload_all": "Wyczyść pamięć podręczną i wczytaj ponownie"
