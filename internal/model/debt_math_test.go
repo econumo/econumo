@@ -668,3 +668,79 @@ func TestProjectDebt_ScheduledTotalUsesTheFinalSmallerPayment(t *testing.T) {
 		Today: ymd(2026, time.July, 10), Months: []time.Time{ymd(2026, time.June, 1)}})
 	near(t, "past June scheduled", past.Months["2026-06-01"].ScheduledTotal, 500, 1e-9)
 }
+
+// The projected payments are the run behind the figures: one per regular
+// payment, interest first, the rest off the balance, down to a smaller last one.
+func TestProjectDebt_PaymentsAreTheRunItself(t *testing.T) {
+	asOf := ymd(2026, time.January, 1)
+	snap := MathSnapshot{AsOf: asOf, Balance: 1000, Payment: 300, Schedule: RecurringScheduleMonthly, Last: ymd(2026, time.April, 1), Digits: 2}
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Today: asOf})
+	if len(p.Payments) != p.PaymentsLeft || p.PaymentsLeft == 0 {
+		t.Fatalf("payments = %d, PaymentsLeft = %d", len(p.Payments), p.PaymentsLeft)
+	}
+	rate := PeriodRate(snap)
+	balance, total := 1000.0, 0.0
+	for i, pay := range p.Payments {
+		near(t, "interest", pay.Interest, balance*rate, 1e-9)
+		near(t, "principal", pay.Principal, pay.Payment-pay.Interest, 1e-9)
+		balance -= pay.Principal
+		near(t, "balance", pay.Balance, balance, 1e-9)
+		total += pay.Payment
+		if i > 0 && !pay.Date.After(p.Payments[i-1].Date) {
+			t.Fatalf("payment %d dated %v, not after %v", i, pay.Date, p.Payments[i-1].Date)
+		}
+	}
+	last := p.Payments[len(p.Payments)-1]
+	near(t, "last balance", last.Balance, 0, 1e-9)
+	if last.Payment >= 300 {
+		t.Fatalf("last payment = %v, want the smaller remainder", last.Payment)
+	}
+	if !last.Date.Equal(p.PayoffDate) {
+		t.Fatalf("last payment on %v, payoff %v", last.Date, p.PayoffDate)
+	}
+	near(t, "paid", total, p.MoneyLeft, 1e-9)
+}
+
+// A planned extra rides on its period's first payment, fully to the debt.
+func TestProjectDebt_PaymentsCarryThePlannedExtra(t *testing.T) {
+	p, _ := projectRef(map[string]float64{"2026-10-01": 5000})
+	var oct *ProjectedPayment
+	for i := range p.Payments {
+		if p.Payments[i].Date.Year() == 2026 && p.Payments[i].Date.Month() == time.October {
+			oct = &p.Payments[i]
+			break
+		}
+	}
+	if oct == nil {
+		t.Fatal("no October payment")
+	}
+	near(t, "October payment", oct.Payment, 2000+3000, 1e-9)
+	near(t, "October principal", oct.Principal, oct.Payment-oct.Interest, 1e-9)
+	near(t, "October closing", oct.Balance, p.Months["2026-10-01"].ClosingBalance, 1e-9)
+	if len(p.Payments) != p.PaymentsLeft {
+		t.Fatalf("payments = %d, PaymentsLeft = %d", len(p.Payments), p.PaymentsLeft)
+	}
+}
+
+// A period with an extra but no regular payment pays it at the period's end,
+// as a payment of its own with no interest.
+func TestProjectDebt_PaymentsHoldAnExtraOfAPeriodWithoutADue(t *testing.T) {
+	asOf := ymd(2026, time.January, 1)
+	snap := MathSnapshot{AsOf: asOf, Balance: 10000, Payment: 1000, Schedule: RecurringScheduleQuarterly, Last: ymd(2028, time.October, 1), Digits: 2}
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Today: asOf, Plans: map[string]float64{"2026-02-01": 500}})
+	var feb *ProjectedPayment
+	for i := range p.Payments {
+		if p.Payments[i].Date.Equal(ymd(2026, time.February, 28)) {
+			feb = &p.Payments[i]
+		}
+	}
+	if feb == nil {
+		t.Fatalf("no extra on Feb 28 in %+v", p.Payments[:3])
+	}
+	near(t, "extra", feb.Payment, 500, 1e-9)
+	near(t, "extra interest", feb.Interest, 0, 1e-9)
+	near(t, "extra principal", feb.Principal, 500, 1e-9)
+	if len(p.Payments) != p.PaymentsLeft+1 {
+		t.Fatalf("payments = %d, want the %d regular ones and the extra", len(p.Payments), p.PaymentsLeft)
+	}
+}

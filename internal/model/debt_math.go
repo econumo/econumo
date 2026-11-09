@@ -65,6 +65,17 @@ type Projection struct {
 	PayoffMonth         time.Time
 	// PaidOffAt is the day the debt was paid off (PayoffMonth's day).
 	PaidOffAt time.Time
+	// Payments are the projected payments with the plans, soonest first: the
+	// regular ones (a planned extra riding on its period's first) and, after
+	// them in date order, an extra of a period with no regular payment.
+	Payments []ProjectedPayment
+}
+
+// ProjectedPayment is one payment of the projection; Balance is what is owed
+// after it.
+type ProjectedPayment struct {
+	Date                                  time.Time
+	Payment, Interest, Principal, Balance float64
 }
 
 const (
@@ -399,6 +410,7 @@ type projStep struct {
 
 type projRun struct {
 	steps      []projStep
+	payments   []ProjectedPayment
 	extraTotal float64
 	closing    map[string]float64
 	endBalance float64
@@ -440,17 +452,25 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 			run.steps = append(run.steps, projStep{date: due, pay: pay})
 			if balance <= eps {
 				balance, run.payoffDate = 0, laterOf(due, today)
+				run.payments = append(run.payments, ProjectedPayment{Date: due, Payment: pay, Interest: interest, Principal: pay - interest})
 				break
 			}
+			payment := ProjectedPayment{Date: due, Payment: pay, Interest: interest, Principal: pay - interest, Balance: balance}
 			if !stepped && extra > 0 {
 				applied := math.Min(extra, balance)
 				balance -= applied
 				run.extraTotal += applied
+				payment.Payment += applied
+				payment.Principal += applied
+				payment.Balance = balance
 				if balance <= eps {
 					balance, run.payoffDate = 0, laterOf(due, today)
+					payment.Balance = 0
+					run.payments = append(run.payments, payment)
 					break
 				}
 			}
+			run.payments = append(run.payments, payment)
 			stepped = true
 			due = NextOccurrence(due, s.Schedule, anchor)
 		}
@@ -462,6 +482,7 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 				balance = 0
 				run.payoffDate = next.AddDate(0, 0, -1)
 			}
+			run.payments = append(run.payments, ProjectedPayment{Date: next.AddDate(0, 0, -1), Payment: applied, Principal: applied, Balance: balance})
 		}
 		run.closing[monthKey(month)] = balance
 		month = month.AddDate(0, 1, 0)
@@ -580,6 +601,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 	run := runProjection(latest, rate, current, eps, today, firstDue, extras, sd)
 
 	out.PaymentsLeft = len(run.steps)
+	out.Payments = run.payments
 	out.MoneyLeft = run.moneyLeft()
 	out.OverpaymentLeft = out.MoneyLeft - current
 	out.PayoffDate = run.payoffDate
