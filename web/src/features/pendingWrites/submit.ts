@@ -14,10 +14,13 @@ const nextSeq = (ops: PendingOp[]) => Math.max(0, ...ops.map((op) => op.seq)) + 
 // share, so the server refuses a repeat of an add it already holds.
 const keyOf = (change: OpChange) => (change.kind === 'tx-create' ? change.txId : uuidv7())
 
-function enqueue(change: OpChange, key: string, attempted: boolean): { queued: true } {
-  void mutate((ops) => addChange(ops, change, { key, seq: nextSeq(ops) }, attempted))
+// Settles once the disk has the change, or after the store's time limit: the
+// form must not close on a write that closing the app would still lose.
+async function enqueue(change: OpChange, key: string, attempted: boolean): Promise<{ queued: true }> {
+  const persisted = mutate((ops) => addChange(ops, change, { key, seq: nextSeq(ops) }, attempted))
   trackEvent(METRICS.WRITE_QUEUED, { kind: change.kind })
   void kickPendingWrites()
+  await persisted
   return { queued: true }
 }
 

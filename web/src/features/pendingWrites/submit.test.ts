@@ -5,6 +5,8 @@ import type { AccountDto } from '@/api/dto/account'
 import type { CreateTransactionDto, TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
 import { createAppQueryClient } from '@/lib/appQueryClient'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
+import { delayTransactionCompletion } from '@/test/idbDelay'
 import { getOps, loadPendingWrites, mutate } from './store'
 import { addChange } from './queue'
 import { discardWrite, retryWrite, submitChange } from './submit'
@@ -40,7 +42,33 @@ beforeEach(async () => {
   await loadPendingWrites('u1')
 })
 
-afterEach(() => onlineManager.setOnline(true))
+afterEach(() => {
+  onlineManager.setOnline(true)
+  vi.restoreAllMocks()
+})
+
+const writes = (_stores: string[], mode: IDBTransactionMode | undefined) => mode === 'readwrite'
+
+it('has not resolved until the queued change is on disk, and shows it in memory at once', async () => {
+  onlineManager.setOnline(false)
+  delayTransactionCompletion(200, writes)
+  let resolved = false
+  const submitted = submitChange(client, create, vi.fn()).then(() => { resolved = true })
+  expect(getOps()).toHaveLength(1)
+  await new Promise((r) => setTimeout(r, 100))
+  expect(resolved).toBe(false)
+  await submitted
+  expect(resolved).toBe(true)
+})
+
+it('resolves after the time limit when the disk never answers', async () => {
+  onlineManager.setOnline(false)
+  delayTransactionCompletion(null, writes)
+  const started = Date.now()
+  await expect(submitChange(client, create, vi.fn())).resolves.toEqual({ queued: true })
+  expect(Date.now() - started).toBeGreaterThanOrEqual(STORE_TIMEOUT_MS - 50)
+  expect(getOps()).toHaveLength(1)
+})
 
 it('offline: queues with no request and resolves at once', async () => {
   onlineManager.setOnline(false)
