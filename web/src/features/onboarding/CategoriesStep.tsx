@@ -18,7 +18,7 @@ import { defaultCategoryIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { CategoryRow } from './draft'
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from './defaults'
-import { nameLengthValid, NAME_MAX, NAME_MIN } from './names'
+import { labelled, nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import type { StepBodyProps } from './OnboardingPage'
 import { StepLoadError } from './StepLoadError'
 import { useDay0 } from './useDay0'
@@ -61,16 +61,20 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
   const { t } = useTranslation()
   const isCompact = useIsCompact()
   const taken = new Set(existing.map((c) => nameKey(c.type, c.name)))
-  const [rows, setRows] = useState<CategoryRow[]>(() => {
-    const seeded = (initialRows ?? []).filter((r) => !taken.has(nameKey(r.type, r.name)))
+  const [stored, setRows] = useState<CategoryRow[]>(() => {
+    const seeded = (initialRows ?? []).filter((r) => !taken.has(nameKey(r.type, labelled(r, t).name)))
     if (initialRows && initialRows.length > 0) return seeded
     const build = (list: typeof DEFAULT_EXPENSE_CATEGORIES, type: CategoryType): CategoryRow[] =>
-      list.map((c) => ({ key: uuidv7(), name: t(`onboarding.categories.${c.key}`), type, icon: c.icon, checked: existing.length === 0 }))
+      list.map((c) => {
+        const labelKey = `onboarding.categories.${c.key}`
+        return { key: uuidv7(), name: t(labelKey), labelKey, type, icon: c.icon, checked: existing.length === 0 }
+      })
     const retired = new Set(archived.map((c) => nameKey(c.type, c.name)))
     return [...build(DEFAULT_EXPENSE_CATEGORIES, 'expense'), ...build(DEFAULT_INCOME_CATEGORIES, 'income')].filter(
       (r) => !taken.has(nameKey(r.type, r.name)) && !retired.has(nameKey(r.type, r.name)),
     )
   })
+  const rows = stored.map((r) => labelled(r, t))
   const [order, setOrder] = useState<string[]>(initialOrder ?? [])
   const [reordered, setReordered] = useState(Boolean(initialOrder && initialOrder.length > 0))
   const [drafts, setDrafts] = useState<Record<CategoryType, string>>({ expense: '', income: '' })
@@ -176,7 +180,7 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
             maxLength={64}
             value={row.name}
             aria-invalid={showInvalid}
-            onChange={(e) => update(row.key, { name: e.target.value })}
+            onChange={(e) => update(row.key, { name: e.target.value, labelKey: undefined })}
             onBlur={() => touch(row.key)}
           />
           <Checkbox

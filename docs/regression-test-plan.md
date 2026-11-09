@@ -319,7 +319,13 @@ navigation (single-pane vs sidebar).
       for. A user with no accounts starts with one row named "Cash" (cash
       icon, not savings, blank balance saved as 0, the default currency) that
       can be renamed or removed like any row; a user who already has accounts,
-      or resumes a draft with rows, gets no Cash row. The currencies line reads "USD (main) · + Add"; tapping the main
+      or resumes a draft with rows, gets no Cash row.
+- [ ] Default names follow the UI language: switching the language on
+      Categories or Accounts (or reloading in another language mid-flow)
+      re-labels the default categories and the Cash row that were not
+      renamed, and Continue creates them in that language; a renamed row
+      keeps the typed name; categories and accounts that already exist keep
+      their stored names. The currencies line reads "USD (main) · + Add"; tapping the main
       currency changes it.
 - [ ] Revisiting Accounts after Budget & plan: a new account joins the budget,
       and a changed savings switch moves it to/from the budget's savings

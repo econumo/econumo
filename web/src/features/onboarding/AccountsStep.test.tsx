@@ -1,6 +1,7 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import i18n from '@/app/i18n'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { http, HttpResponse } from 'msw'
@@ -56,6 +57,40 @@ it('starts a user with no accounts on a prefilled Cash row: cash icon, not savin
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(onContinue.mock.calls[0][0]).toEqual([expect.objectContaining({ name: 'Cash', balance: '0', currencyId: 'cur-usd', savings: false, icon: 'payments' })])
   expect(onContinue.mock.calls[0][2]).toBe('cur-usd')
+})
+
+describe('in the UI language', () => {
+  afterEach(async () => {
+    await act(() => i18n.changeLanguage('en'))
+  })
+
+  it('re-labels the untouched Cash row on a language switch and submits the current label', async () => {
+    const user = userEvent.setup()
+    const { onContinue } = renderStep()
+    await ready()
+    await act(() => i18n.changeLanguage('de'))
+    const name = screen.getByLabelText('Kontoname')
+    expect(name).toHaveValue('Bargeld')
+    expect(within(rowsEls()[0]).getByText('payments')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(onContinue.mock.calls[0][0][0]).toMatchObject({ name: 'Bargeld', labelKey: 'onboarding.accounts.default_cash', icon: 'payments', savings: false })
+  })
+
+  it('keeps a renamed Cash row as typed after a language switch', async () => {
+    const user = userEvent.setup()
+    renderStep()
+    await ready()
+    await user.clear(nameInputs()[0])
+    await user.type(nameInputs()[0], 'Wallet')
+    await act(() => i18n.changeLanguage('de'))
+    expect(screen.getByLabelText('Kontoname')).toHaveValue('Wallet')
+  })
+
+  it('a stored draft row with a label key reloads in the current language', async () => {
+    await act(() => i18n.changeLanguage('de'))
+    renderStep({ initialRows: [{ key: 'k1', name: 'Cash', labelKey: 'onboarding.accounts.default_cash', balance: '', currencyId: 'cur-eur', savings: false, icon: 'payments' }] })
+    expect(await screen.findByLabelText('Kontoname')).toHaveValue('Bargeld')
+  })
 })
 
 it('gives no Cash row to a user who already has accounts', () => {

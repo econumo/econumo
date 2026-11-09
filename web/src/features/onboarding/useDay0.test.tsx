@@ -376,6 +376,19 @@ describe('useDay0', () => {
     expect(calls[0].body).toEqual(['cat-2', 'old-1', 'cat-3'])
   })
 
+  it('a lost category create retried after a language switch reconciles by the name it was sent under', async () => {
+    mockWrites({ categoryLost: true })
+    const { result } = await ready()
+    const en: CategoryRow[] = [{ key: 'c1', name: 'Pets', labelKey: 'onboarding.categories.pets', type: 'expense', icon: 'pets', checked: true }]
+    await act(async () => {
+      await expect(result.current.saveCategories(en)).rejects.toBeTruthy()
+    })
+    await act(() => result.current.saveCategories([{ ...en[0], name: 'Haustiere' }]))
+    expect(srv.categories).toHaveLength(1)
+    expect(loadDraft('u1')!.createdCategories).toEqual({ c1: 'cat-1' })
+    expect(loadDraft('u1')!.categoryRows[0].labelKey).toBe('onboarding.categories.pets')
+  })
+
   it('ensureBudget creates one budget over every owned account, savings from the draft', async () => {
     mockWrites()
     srv.accounts.push(

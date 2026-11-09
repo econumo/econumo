@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import i18n from '@/app/i18n'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureCategories } from '@/test/fixtures'
 import { CategoriesStep, CategoriesStepBody, type ExistingCategory } from './CategoriesStep'
@@ -191,6 +192,39 @@ it('shows no drag handles on a phone or tablet width', () => {
   }))
   renderStep({ existing: [food] })
   expect(screen.queryByRole('button', { name: /^Reorder / })).not.toBeInTheDocument()
+})
+
+describe('in the UI language', () => {
+  afterEach(async () => {
+    await act(() => i18n.changeLanguage('en'))
+  })
+
+  it('re-labels untouched defaults on a language switch, keeps a renamed row, and submits the current labels', async () => {
+    const user = userEvent.setup()
+    const { onContinue } = renderStep()
+    const names = () => screen.getAllByLabelText(/Category name|Kategoriename/).map((el) => (el as HTMLInputElement).value)
+    await user.clear(screen.getAllByLabelText('Category name')[1])
+    await user.type(screen.getAllByLabelText('Category name')[1], 'Rent')
+    await act(() => i18n.changeLanguage('de'))
+    expect(names().slice(0, 3)).toEqual(['Lebensmittel', 'Rent', 'Nebenkosten'])
+    expect(names()).toContain('Haustiere')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    const rows = submitted(onContinue)
+    expect(rows[0]).toMatchObject({ name: 'Lebensmittel', labelKey: 'onboarding.categories.groceries' })
+    expect(rows[1].name).toBe('Rent')
+    expect(rows[1].labelKey).toBeUndefined()
+  })
+
+  it('a stored draft with label keys reloads in the current language', async () => {
+    await act(() => i18n.changeLanguage('de'))
+    renderStep({
+      initialRows: [
+        { key: 'k1', name: 'Pets', labelKey: 'onboarding.categories.pets', type: 'expense', icon: 'pets', checked: true },
+        { key: 'k2', name: 'Rent', type: 'expense', icon: 'home', checked: true },
+      ],
+    })
+    expect(screen.getAllByLabelText('Kategoriename').map((el) => (el as HTMLInputElement).value)).toEqual(['Haustiere', 'Rent'])
+  })
 })
 
 describe('CategoriesStepBody', () => {

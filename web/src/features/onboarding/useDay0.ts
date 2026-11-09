@@ -129,6 +129,8 @@ export function useDay0() {
         }
         const d = current()
         const checked = rows.filter((c) => c.checked)
+        // a default re-labelled by a language switch was sent under its earlier name
+        const sentAs = new Map(d.categoryRows.map((c) => [c.key, c.name]))
         d.categoryRows = rows
         d.categoryOrder = order ?? []
         for (const c of checked) {
@@ -150,7 +152,9 @@ export function useDay0() {
                 throw err
               }
               const known = new Set(Object.values(d.createdCategories))
-              const found = (await getCategoryList()).find((x) => !known.has(x.id) && x.type === c.type && sameName(x.name, c.name))
+              const found = (await getCategoryList()).find(
+                (x) => !known.has(x.id) && x.type === c.type && (sameName(x.name, c.name) || sameName(x.name, sentAs.get(c.key) ?? c.name)),
+              )
               if (!found) {
                 throw err
               }
@@ -176,6 +180,7 @@ export function useDay0() {
         }
         const d = current()
         const selected = [...new Set([mainCurrencyId, ...extraCurrencyIds, ...rows.map((r) => r.currencyId)])]
+        const sentAs = new Map(d.rows.map((r) => [r.key, r.name]))
         d.rows = rows
         d.extraCurrencyIds = extraCurrencyIds
         d.mainCurrencyId = mainCurrencyId
@@ -212,7 +217,9 @@ export function useDay0() {
                 throw err
               }
               const known = new Set(Object.values(d.created))
-              const found = (await getAccountList()).find((a) => a.owner.id === userId && !known.has(a.id) && sameName(a.name, row.name))
+              const found = (await getAccountList()).find(
+                (a) => a.owner.id === userId && !known.has(a.id) && (sameName(a.name, row.name) || sameName(a.name, sentAs.get(row.key) ?? row.name)),
+              )
               if (!found) {
                 throw err
               }

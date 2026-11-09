@@ -18,7 +18,7 @@ import type { Id } from '@/api/types'
 import type { AccountRow } from './draft'
 import { guessAccountIcon, looksLikeSavings } from './defaults'
 import { parseBalance } from './balance'
-import { nameLengthValid, NAME_MAX, NAME_MIN } from './names'
+import { labelled, nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import { CurrenciesBlock, CurrencyListSheet } from './CurrenciesBlock'
 import { rowInput, rowTile } from './CategoriesStep'
 import type { StepBodyProps } from './OnboardingPage'
@@ -88,11 +88,11 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   )
   const [allRows, setRows] = useState<AccountRow[]>(() => {
     if (leftover.length > 0 || existing.length > 0) return leftover
-    const name = t('onboarding.accounts.default_cash')
-    return [{ ...emptyRow(), name, icon: guessAccountIcon(name, words()) }]
+    const labelKey = 'onboarding.accounts.default_cash'
+    return [{ ...emptyRow(), name: t(labelKey), labelKey, icon: 'payments' }]
   })
   // a row an earlier (failed) submit created comes back in the server list
-  const rows = allRows.filter((r) => !createdIds?.[r.key])
+  const rows = allRows.filter((r) => !createdIds?.[r.key]).map((r) => labelled(r, t))
   const [extraIds, setExtraIds] = useState<Id[]>(initialExtraCurrencyIds ?? [])
   const [mainOverride, setMainOverride] = useState<Id | null>(null)
   // the first new row's pick: rows the user has not changed by hand follow it
@@ -115,7 +115,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const update = (key: string, patch: Partial<AccountRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
 
   const rename = (row: AccountRow, name: string) => {
-    const patch: Partial<AccountRow> = { name, icon: guessAccountIcon(name, words()) }
+    const patch: Partial<AccountRow> = { name, labelKey: undefined, icon: guessAccountIcon(name, words()) }
     if (!savingsTouched.current.has(row.key)) patch.savings = looksLikeSavings(name, words().savings)
     update(row.key, patch)
   }

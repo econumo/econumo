@@ -1,8 +1,9 @@
 import type { Id } from '@/api/types'
 
 // accountId: the row stands for an account the user already has, so it is never created
-export type AccountRow = { key: string; name: string; balance: string; currencyId: Id; savings: boolean; icon: string; accountId?: Id }
-export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; checked: boolean }
+// labelKey: a default the user has not renamed; its name follows the UI language
+export type AccountRow = { key: string; name: string; balance: string; currencyId: Id; savings: boolean; icon: string; accountId?: Id; labelKey?: string }
+export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; checked: boolean; labelKey?: string }
 export type Day0Draft = {
   // operation ids by `account:<rowKey>` / `category:<rowKey>` / `budget` (the budget's own id)
   ops: Record<string, Id>
