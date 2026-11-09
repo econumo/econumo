@@ -1,5 +1,6 @@
 import { STORE_PENDING_WRITES, dbTransaction } from '@/lib/db'
 import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
+import { replayBehind } from './queue'
 import type { PendingOp } from './types'
 
 type Row = PendingOp & { userId: string }
@@ -8,6 +9,8 @@ const CHANNEL_NAME = 'econumo-pending-writes'
 
 let ops: PendingOp[] = []
 let owner: string | null = null
+// The owner's stored rows are in memory, or will never come (a broken database).
+let loaded = false
 let disabled = false
 let warned = false
 // Moved by a clear and by a change of owner: a load already running must not land.
@@ -129,21 +132,25 @@ function persist(before: PendingOp[], after: PendingOp[]): Promise<void> {
   return timed(write)
 }
 
+function announceLoaded(): void {
+  loaded = true
+  for (const listener of adoptedListeners) {
+    listener()
+  }
+}
+
 // What this page queued before the stored rows arrived goes behind them, and
 // reaches the disk now that the owner is known.
 function adopt(stored: PendingOp[]): void {
   const inMemory = new Map(ops.map((op) => [op.key, op]))
   const onDisk = new Set(stored.map((op) => op.key))
-  const local = ops.filter((op) => !onDisk.has(op.key)).sort((a, b) => a.seq - b.seq)
-  const after = Math.max(0, ...stored.map((op) => op.seq))
-  const moved = local.map((op, i) => ({ ...op, seq: after + 1 + i }))
-  ops = [...stored.map((op) => inMemory.get(op.key) ?? op), ...moved]
+  const restored = stored.map((op) => inMemory.get(op.key) ?? op)
+  const local = ops.filter((op) => !onDisk.has(op.key))
+  ops = replayBehind(restored, local)
   generation++
   notify()
-  void persist(local, moved)
-  for (const listener of adoptedListeners) {
-    listener()
-  }
+  void persist([...restored, ...local], ops)
+  announceLoaded()
 }
 
 function startLoad(userId: string): Promise<void> {
@@ -161,11 +168,20 @@ function startLoad(userId: string): Promise<void> {
     if (at === epoch) {
       adopt(rows.filter((r) => r.userId === userId).map(toOp))
     }
+  }).finally(() => {
+    if (at === epoch && !loaded) {
+      announceLoaded()
+    }
   })
 }
 
 export function queueOwner(): string | null {
   return owner
+}
+
+/** Until this holds, getOps() may be missing older changes that are on their way from the disk. */
+export function isQueueLoaded(userId: string): boolean {
+  return owner === userId && loaded
 }
 
 export function getOps(): PendingOp[] {
@@ -197,6 +213,7 @@ export async function loadPendingWrites(userId: string): Promise<PendingOp[]> {
       notify()
     }
     owner = userId
+    loaded = false
     epoch++
     loading = null
   }
@@ -230,6 +247,7 @@ export async function clearPendingWrites(): Promise<void> {
   epoch++
   generation++
   owner = null
+  loaded = false
   loading = null
   ops = []
   notify()
@@ -243,6 +261,7 @@ export function resetPendingWritesForTests(): void {
   channel = null
   ops = []
   owner = null
+  loaded = false
   disabled = false
   warned = false
   loading = null

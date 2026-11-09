@@ -15,7 +15,7 @@ import { getSessionUserId, hasToken } from '@/lib/storage'
 import { classifyWriteError } from './classify'
 import { applyLimitToBudget, applyLimitToPlan } from './overlay'
 import { markAttempted, nextSendable, resolveTempId, settleDone, settleRefused, settleUnresolved } from './queue'
-import { getOps, loadPendingWrites, mutate, queueOwner, subscribeAdopted, subscribeLeftElsewhere } from './store'
+import { getOps, isQueueLoaded, loadPendingWrites, mutate, queueOwner, subscribeAdopted, subscribeLeftElsewhere } from './store'
 import { rememberRealId } from './tempIds'
 import type { OpChange, PendingOp } from './types'
 
@@ -58,7 +58,7 @@ function wakeIn(ms: number): void {
   }, ms)
 }
 
-function sessionUser(): string | null {
+export function sessionUser(): string | null {
   return hasToken() ? getSessionUserId() : null
 }
 
@@ -264,6 +264,11 @@ async function drain(): Promise<void> {
   }
   if (queueOwner() !== user) {
     await loadPendingWrites(user)
+  }
+  // Stored rows are older than anything queued meanwhile, and the sender must not
+  // get ahead of them. Their arrival runs this again.
+  if (!isQueueLoaded(user)) {
+    return
   }
   if (!onlineManager.isOnline()) {
     return

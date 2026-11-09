@@ -326,6 +326,83 @@ it('sends what a stalled load delivers only after the boot stopped waiting for i
   await vi.waitFor(() => expect(getOps()).toEqual([]))
 })
 
+describe('a change submitted while the stored queue is still loading', () => {
+  const edit = (amount: string): OpChange => ({ kind: 'tx-update', txId: 'real', payload: payload('real', { amount }) })
+
+  // The older change sits on disk, the load is slow, and the page is online.
+  async function reopenWithStored(over: Partial<PendingOp>, delay: number, onlyReads = false) {
+    answerWith(() => undefined)
+    stop()
+    onlineManager.setOnline(false)
+    await mutate((ops) => addChange(ops, edit('1'), { key: 'older', seq: 3 }).map((o) => ({ ...o, ...over }) as PendingOp))
+    resetPendingWritesForTests()
+    onlineManager.setOnline(true)
+    const restore = delayTransactionCompletion(delay, onlyReads ? (_stores, mode) => mode === 'readonly' : undefined)
+    stop = startPendingWrites(client)
+    return restore
+  }
+
+  const newer = vi.fn()
+  beforeEach(() => newer.mockClear())
+
+  it('takes the queue when the load outlasts the wait, and only the newer values go out', async () => {
+    const restore = await reopenWithStored({}, STORE_TIMEOUT_MS + 300)
+    await expect(submitChange(client, edit('9'), newer)).resolves.toEqual({ queued: true })
+    expect(newer).not.toHaveBeenCalled()
+    expect(seen).toEqual([])
+    restore()
+
+    await vi.waitFor(() => expect(getOps()).toEqual([]), { timeout: 5000 })
+    expect(seen).toHaveLength(1)
+    expect(seen[0].body).toMatchObject({ id: 'real', amount: '9' })
+  })
+
+  it('sends a stored attempted change first, so the newer values land last', async () => {
+    const restore = await reopenWithStored({ attempted: true }, STORE_TIMEOUT_MS + 300)
+    await submitChange(client, edit('9'), newer)
+    restore()
+
+    await vi.waitFor(() => expect(getOps()).toEqual([]), { timeout: 5000 })
+    expect(newer).not.toHaveBeenCalled()
+    expect(seen.map((r) => r.body.amount)).toEqual(['1', '9'])
+  })
+
+  it('sends nothing queued meanwhile until the stored rows have arrived', async () => {
+    const restore = await reopenWithStored({ attempted: true }, STORE_TIMEOUT_MS + 1500, true)
+    await submitChange(client, edit('9'), newer)
+    await kickPendingWrites()
+    expect(getOps()).toHaveLength(1)
+    expect(seen).toEqual([])
+    restore()
+    await vi.waitFor(() => expect(seen).toHaveLength(2), { timeout: 5000 })
+  })
+
+  it('waits for a load that settles in time and goes behind what it found', async () => {
+    const restore = await reopenWithStored({}, 200)
+    await expect(submitChange(client, edit('9'), newer)).resolves.toEqual({ queued: true })
+    expect(newer).not.toHaveBeenCalled()
+    restore()
+    await vi.waitFor(() => expect(getOps()).toEqual([]), { timeout: 5000 })
+    expect(seen.map((r) => [r.key, r.body.amount]).at(-1)?.[1]).toBe('9')
+    expect(seen[0].key).toBe('older')
+  })
+
+  it('goes out directly once a load in time found nothing on the target', async () => {
+    const restore = await reopenWithStored({ kind: 'limit', budgetId: 'b1', elementId: 'e1', period: '2026-11-01', amount: '1' } as Partial<PendingOp>, 200)
+    newer.mockResolvedValue({ item: row('real'), accounts })
+    await expect(submitChange(client, edit('9'), newer)).resolves.toMatchObject({ queued: false })
+    expect(newer).toHaveBeenCalledTimes(1)
+    restore()
+  })
+
+  it('does not wait with no user to load for', async () => {
+    await reopenWithStored({}, STORE_TIMEOUT_MS + 300)
+    removeToken()
+    newer.mockResolvedValue({ item: row('real'), accounts })
+    await expect(submitChange(client, edit('9'), newer)).resolves.toMatchObject({ queued: false })
+  })
+})
+
 it('sends nothing offline, and goes on reconnect', async () => {
   answerWith(() => undefined)
   await queue(limit('e1'), 'k1', 1)

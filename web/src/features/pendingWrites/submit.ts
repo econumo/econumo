@@ -3,20 +3,16 @@ import { v7 as uuidv7 } from 'uuid'
 import type { WriteOptions } from '@/api/client'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { classifyWriteError } from './classify'
-import { addChange, discard, retryFailed, targetOf } from './queue'
-import { WRITE_TIMEOUT_MS, confirmChange, kickPendingWrites } from './sender'
-import { getOps, mutate } from './store'
+import { addAsEdit, addChange, discard, nextSeq, retryFailed, targetOf } from './queue'
+import { WRITE_TIMEOUT_MS, confirmChange, kickPendingWrites, sessionUser } from './sender'
+import { getOps, isQueueLoaded, loadPendingWrites, mutate } from './store'
 import type { OpChange, PendingOp } from './types'
 
 type AddChange = Extract<OpChange, { kind: 'tx-create' }>
 
-const nextSeq = (ops: PendingOp[]) => Math.max(0, ...ops.map((op) => op.seq)) + 1
-
 // An add is keyed by its form's id, the one thing a retap and a restored draft
 // share, so the server refuses a repeat of an add it already holds.
 const keyOf = (change: OpChange) => (change.kind === 'tx-create' ? change.txId : uuidv7())
-
-const addAsEdit = (add: AddChange): OpChange => ({ kind: 'tx-update', txId: add.txId, payload: add.payload })
 
 // Settles once the disk has the change, or after the store's time limit: the
 // form must not close on a write that closing the app would still lose.
@@ -46,13 +42,22 @@ function enqueueReplayedAdd(add: AddChange, key: string): Promise<{ queued: true
 /**
  * Online with nothing unsent on the target, the request goes out and its
  * refusal reaches the caller. Otherwise the change waits in the queue, whose
- * order and folding a direct request must not overtake.
+ * order and folding a direct request must not overtake; that includes a queue
+ * still on its way from the disk, which is why the load is waited for.
  */
 export async function submitChange<T>(
   queryClient: QueryClient,
   change: OpChange,
   send: (opts: WriteOptions) => Promise<T>,
 ): Promise<{ queued: boolean; result?: T }> {
+  const user = sessionUser()
+  if (user && !isQueueLoaded(user)) {
+    await loadPendingWrites(user)
+    if (!isQueueLoaded(user)) {
+      // A form's own key might name a stored add, whose row this would overwrite.
+      return enqueueChange(change, uuidv7(), false)
+    }
+  }
   const target = targetOf(change)
   if (getOps().some((op) => targetOf(op) === target)) {
     // The same form again (a draft restored over its own queued add) would

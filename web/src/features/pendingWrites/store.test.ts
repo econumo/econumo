@@ -1,7 +1,7 @@
 import { STORE_PENDING_WRITES, dbRequest } from '@/lib/db'
 import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
 import { delayTransactionCompletion } from '@/test/idbDelay'
-import { clearPendingWrites, getOps, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe, subscribeAdopted, subscribeLeftElsewhere } from './store'
+import { clearPendingWrites, getOps, isQueueLoaded, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe, subscribeAdopted, subscribeLeftElsewhere } from './store'
 import type { PendingOp } from './types'
 
 const op = (key: string, seq: number, over: Partial<PendingOp> = {}): PendingOp => ({
@@ -73,6 +73,99 @@ it('a change made before the load lands after the stored ones and is written', a
   await loadPendingWrites('A')
   expect([...getOps()].sort((a, b) => a.seq - b.seq).map((o) => o.key)).toEqual(['stored', 'early'])
   expect((await rows()).find((r) => r.key === 'early')?.seq).toBe(6)
+})
+
+describe('a change made before the stored rows arrive', () => {
+  const tx = (key: string, seq: number, kind: 'tx-create' | 'tx-update', amount: string, over: Partial<PendingOp> = {}) =>
+    op(key, seq, { kind, txId: 't1', payload: { id: 't1', amount }, ...over } as unknown as Partial<PendingOp>)
+
+  async function storedThen(stored: PendingOp) {
+    await loadPendingWrites('A')
+    await mutate(() => [stored])
+    resetPendingWritesForTests()
+  }
+
+  it('folds into a stored change on its target that was never sent', async () => {
+    await storedThen(tx('stored', 5, 'tx-update', '1'))
+    await mutate(() => [tx('early', 1, 'tx-update', '9')])
+    await loadPendingWrites('A')
+    expect(getOps()).toMatchObject([{ key: 'stored', seq: 5, payload: { amount: '9' } }])
+    expect(await rows()).toMatchObject([{ key: 'stored', payload: { amount: '9' } }])
+  })
+
+  it('stays behind a stored change that may have reached the server', async () => {
+    await storedThen(tx('stored', 5, 'tx-update', '1', { attempted: true }))
+    await mutate(() => [tx('early', 1, 'tx-update', '9')])
+    await loadPendingWrites('A')
+    expect([...getOps()].sort((a, b) => a.seq - b.seq)).toMatchObject([
+      { key: 'stored', seq: 5, payload: { amount: '1' } },
+      { key: 'early', seq: 6, payload: { amount: '9' } },
+    ])
+  })
+
+  it('becomes an edit behind a stored add of the same form, never a second add', async () => {
+    await storedThen(tx('stored', 5, 'tx-create', '1', { attempted: true }))
+    await mutate(() => [tx('early', 1, 'tx-create', '9')])
+    await loadPendingWrites('A')
+    expect([...getOps()].sort((a, b) => a.seq - b.seq)).toMatchObject([
+      { key: 'stored', kind: 'tx-create', payload: { amount: '1' } },
+      { key: 'early', kind: 'tx-update', payload: { amount: '9' } },
+    ])
+  })
+
+  it('drops from the disk once folded away', async () => {
+    await storedThen(tx('stored', 5, 'tx-update', '1'))
+    const restore = delayTransactionCompletion(200)
+    const loading = loadPendingWrites('A')
+    await mutate(() => [tx('early', 1, 'tx-update', '9')])
+    await loading
+    restore()
+    await vi.waitFor(async () => expect((await rows()).map((r) => r.key)).toEqual(['stored']))
+  })
+})
+
+describe('isQueueLoaded', () => {
+  it('is false until the stored rows are in memory, and only for their owner', async () => {
+    await loadPendingWrites('A')
+    await mutate(() => [op('k1', 1)])
+    resetPendingWritesForTests()
+
+    expect(isQueueLoaded('A')).toBe(false)
+    const restore = delayTransactionCompletion(STORE_TIMEOUT_MS + 300)
+    await loadPendingWrites('A')
+    expect(isQueueLoaded('A')).toBe(false)
+    restore()
+    await vi.waitFor(() => expect(isQueueLoaded('A')).toBe(true), { timeout: 5000 })
+    expect(isQueueLoaded('B')).toBe(false)
+  })
+
+  it('is true at the moment the stored rows are announced', async () => {
+    let seen: boolean | undefined
+    subscribeAdopted(() => { seen = isQueueLoaded('A') })
+    await loadPendingWrites('A')
+    expect(seen).toBe(true)
+  })
+
+  it('counts a database that broke as loaded, and says so: its rows will never come', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await loadPendingWrites('A')
+    resetPendingWritesForTests()
+    const heard = vi.fn()
+    subscribeAdopted(heard)
+    const failing = vi.spyOn(IDBDatabase.prototype, 'transaction').mockImplementation(() => {
+      throw new DOMException('broken', 'InvalidStateError')
+    })
+    await loadPendingWrites('A')
+    failing.mockRestore()
+    expect(isQueueLoaded('A')).toBe(true)
+    expect(heard).toHaveBeenCalledTimes(1)
+  })
+
+  it('is false again after a clear', async () => {
+    await loadPendingWrites('A')
+    await clearPendingWrites()
+    expect(isQueueLoaded('A')).toBe(false)
+  })
 })
 
 it('tells subscribers, and an unsubscribed one no longer hears', async () => {

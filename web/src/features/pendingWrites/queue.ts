@@ -6,6 +6,10 @@ export function targetOf(change: OpChange): string {
   return `tx:${change.txId}`
 }
 
+export const nextSeq = (ops: PendingOp[]) => Math.max(0, ...ops.map((op) => op.seq)) + 1
+
+export const addAsEdit = (add: Extract<OpChange, { kind: 'tx-create' }>): OpChange => ({ kind: 'tx-update', txId: add.txId, payload: add.payload })
+
 function bySeq(ops: PendingOp[]): PendingOp[] {
   return [...ops].sort((a, b) => a.seq - b.seq)
 }
@@ -56,6 +60,17 @@ export function addChange(
   const folded = fold(last, change)
   if (!folded) return ops.filter((op) => op !== last)
   return ops.map((op) => (op === last ? { ...folded, key: op.key, seq: op.seq, ...fresh } : op))
+}
+
+/**
+ * What a page queued before the stored rows arrived, taken as if submitted after
+ * them: a stored change is older whatever its seq, and must not be sent last.
+ */
+export function replayBehind(stored: PendingOp[], local: PendingOp[]): PendingOp[] {
+  return bySeq(local).reduce((ops, op) => {
+    const change = op.kind === 'tx-create' && ops.some((o) => targetOf(o) === targetOf(op)) ? addAsEdit(op) : op
+    return addChange(ops, change, { key: op.key, seq: nextSeq(ops) }, op.attempted)
+  }, stored)
 }
 
 export function markAttempted(ops: PendingOp[], key: string): PendingOp[] {

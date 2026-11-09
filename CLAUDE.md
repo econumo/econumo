@@ -552,7 +552,10 @@ Web Lock `econumo-pending-writes`, so only one tab sends. Offline, `submitChange
 once and the dialog closes; online it sends directly (10 s timeout) and a validation refusal
 reaches the dialog as usual, while no answer or no response turns the change into a waiting
 one under the same key. An online change to a target that still has an operation queued goes
-through the queue, so a direct request never overtakes it. Each operation stores one UUIDv7
+through the queue, so a direct request never overtakes it; while the stored queue is still
+loading, `submitChange` waits for it (at most `STORE_TIMEOUT_MS`), and when it has not arrived the
+change is queued anyway, the sender holds until the rows arrive, and the change is replayed behind
+them (`replayBehind`). Each operation stores one UUIDv7
 `Idempotency-Key`, reused on every attempt. A target (a transaction id, or a limit's budget,
 element and period) has at most one operation besides one in flight: editing a waiting change
 replaces it, deleting a transaction added offline drops it with nothing sent, a change sent
