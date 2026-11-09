@@ -95,7 +95,7 @@ export function ConnectionsPage() {
                   </span>
                 </button>
                 {billingEnabled && needsAttention ? (
-                  <Button type="button" size="sm" variant="secondary" disabled={portal.pending} onClick={() => portal.open(connection.user.id)}>
+                  <Button type="button" size="sm" variant="secondary" disabled={portal.disabled} onClick={() => portal.open(connection.user.id)}>
                     {t('subscription.connections.pay_for', { name: connection.user.name })}
                   </Button>
                 ) : null}

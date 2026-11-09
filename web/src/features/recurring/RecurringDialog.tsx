@@ -272,7 +272,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
               <CardField label={t('accounts.page.preview_transaction_modal.tags.label')}>
                 <div className="flex items-center gap-2">
                   <ClassificationChips chips={chips} onToggle={(chip) => patch(toggleClassification(form, chip.kind, chip.id))} />
-                  {canEditData ? (
+                  {canEditData && online ? (
                     <button
                       type="button"
                       aria-label={t('classifications.tags.forms.tag.add_button')}

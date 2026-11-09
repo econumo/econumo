@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest'
 const OFFLINE_EXEMPT: Record<string, string> = {
   'src/features/auth/LoginPage.tsx': 'signed-out flow: nothing to sync, sign-in needs the server anyway',
   'src/features/auth/RegistrationPage.tsx': 'signed-out flow',
-  'src/features/auth/RecoveryDialog.tsx': 'signed-out flow',
   'src/features/auth/VerifyEmailDialog.tsx': 'signed-out flow',
   'src/features/auth/OAuthCallbackPage.tsx': 'signed-out flow, runs on a redirect from the provider',
   'src/features/auth/ProviderButtons.tsx': 'signed-out flow',
@@ -26,7 +25,7 @@ const OFFLINE_VIA_SHARED: Record<string, string[]> = {
   'src/features/imports/ImportRulesPage.tsx': ['<ClassificationList'],
 }
 
-const sources = import.meta.glob('/src/**/*.tsx', {
+const sources = import.meta.glob('/src/**/*.{ts,tsx}', {
   eager: true,
   query: '?raw',
   import: 'default',
@@ -34,7 +33,7 @@ const sources = import.meta.glob('/src/**/*.tsx', {
 
 describe('offline coverage', () => {
   const writers = Object.entries(sources)
-    .filter(([path]) => !/\.test\.tsx$/.test(path) && !path.startsWith('/src/test/'))
+    .filter(([path]) => !/\.test\.tsx?$/.test(path) && !path.startsWith('/src/test/'))
     .filter(([, content]) => /\.mutate(Async)?\(/.test(content))
     .map(([path, content]) => [path.slice(1), content] as const)
 

@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import type { HttpHandler } from 'msw'
@@ -467,4 +467,20 @@ it('a shifted budget shows its dates under the strip months and figures for its 
   } finally {
     vi.useRealTimers()
   }
+})
+
+it('offline: Set budget on the sheet still works, Configure does not', async () => {
+  handlers()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  const row = await screen.findByRole('button', { name: /^Food, budget 200.00/ })
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  expect(screen.getByRole('button', { name: 'Configure' })).toBeDisabled()
+  await user.click(row)
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).getByRole('button', { name: 'Set budget' })).toBeEnabled()
+  await user.click(within(sheet).getByRole('button', { name: 'Set budget' }))
+  expect(await screen.findByLabelText('Budget')).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
 })

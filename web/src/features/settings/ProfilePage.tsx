@@ -232,7 +232,8 @@ export function ProfilePage() {
         ) : (
           <button
             type="button"
-            className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover"
+            className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover disabled:opacity-50"
+            disabled={!online}
             onClick={() => setRecoveryOpen(true)}
           >
             {t('user.page.settings.profile.linked_accounts.set_password.menu_item')}

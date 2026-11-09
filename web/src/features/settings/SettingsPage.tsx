@@ -140,8 +140,9 @@ export function SettingsPage() {
               <MenuRow
                 accent={access.state === 'full_access' ? 'hover' : 'rest'}
                 label={t('subscription.settings.portal')}
+                disabled={portal.disabled}
                 onClick={() => {
-                  if (!portal.pending) portal.open()
+                  if (!portal.disabled) portal.open()
                 }}
                 trailing={
                   access.state === 'trial' ? (

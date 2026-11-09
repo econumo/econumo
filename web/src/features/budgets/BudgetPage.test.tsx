@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -1207,5 +1207,54 @@ describe('a budget whose months start on the 28th', () => {
     expect(await screen.findByTestId('budget-folder-Essentials')).toBeInTheDocument()
     expect(screen.queryAllByTestId('period-strip-dates')).toHaveLength(0)
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')
+  })
+})
+
+describe('offline', () => {
+  const goOffline = () => {
+    act(() => onlineManager.setOnline(false))
+    onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  }
+  const budgetHandlers = () =>
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+    )
+
+  it('the inline limit editor stays enabled', async () => {
+    budgetHandlers()
+    const user = userEvent.setup()
+    renderPage()
+    const food = await screen.findByTestId('element-cat-food')
+    goOffline()
+    await act(async () => {})
+    const limit = within(await screen.findByTestId('element-cat-food')).getByRole('button', { name: 'limit Food' })
+    expect(limit).toBeEnabled()
+    await user.click(limit)
+    expect(await screen.findByLabelText('Budget')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+  })
+
+  it('a non-limit line menu item is disabled, saying why', async () => {
+    budgetHandlers()
+    const user = userEvent.setup()
+    const { queryClient } = renderPage()
+    await screen.findByTestId('element-cat-food')
+    await waitFor(() => expect(queryClient.getQueryData(queryKeys.categories)).toBeTruthy())
+    goOffline()
+    await act(async () => {})
+    await user.click(within(await screen.findByTestId('element-cat-food')).getByRole('button', { name: 'menu Food' }))
+    const change = (await screen.findAllByRole('menuitem')).find((i) => i.textContent?.startsWith('Change currency'))
+    expect(change).toHaveAttribute('aria-disabled', 'true')
+    expect(change).toHaveTextContent('No connection')
+  })
+
+  it('structure controls are off: Configure and drag handles', async () => {
+    budgetHandlers()
+    renderPage()
+    await screen.findByTestId('element-cat-food')
+    goOffline()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Configure' })).toBeDisabled())
   })
 })

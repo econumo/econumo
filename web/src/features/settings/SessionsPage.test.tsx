@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -161,4 +161,17 @@ it('securityFormat helpers parse UA and relative time', () => {
   expect(relativeTime('2026-07-07 12:00:00', { now })).toBe('3 days ago')
   expect(relativeTime('2026-07-10 11:59:30', { now, justNow: 'только что' })).toBe('только что')
   expect(relativeTime('2026-07-07 12:00:00', { now, lang: 'ru' })).toBe('3 дня назад')
+})
+
+it('offline: revoking another session is disabled, signing out still works', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText(/Firefox on Linux/)
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  expect(screen.getByRole('button', { name: 'Revoke' })).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: 'Sign out' }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('button', { name: 'Sign out' }))
+  await waitFor(() => expect(screen.getByTestId('logout-page')).toBeInTheDocument())
 })

@@ -112,6 +112,7 @@ export function SessionsPage() {
             : t('user.page.settings.profile.sessions.revoke')
         }
         cancelLabel={t('common.button.cancel.label')}
+        offlineOk={confirmTarget?.isCurrent === true}
         destructive
       />
       <ConfirmDialog

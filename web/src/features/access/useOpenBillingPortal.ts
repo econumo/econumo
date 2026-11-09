@@ -6,6 +6,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { METRICS, billingAnalyticsFragment, trackEvent } from '@/lib/metrics'
 import { UserOptions } from '@/api/dto/user'
 import { userOption, useUserData } from '@/features/user/queries'
+import { useOnline } from '@/hooks/useOnline'
 
 // The one place that opens the billing portal (banner, settings, connections).
 // window.open must happen synchronously inside the click gesture or popup
@@ -13,8 +14,11 @@ import { userOption, useUserData } from '@/features/user/queries'
 export function useOpenBillingPortal() {
   const mutation = useMutation({ mutationFn: (forUserId?: Id) => createBillingLink(forUserId) })
   const { data: user } = useUserData()
+  const online = useOnline()
   return {
     pending: mutation.isPending,
+    /** the link is minted by the server: not offered offline */
+    disabled: mutation.isPending || !online,
     open: (forUserId?: Id) => {
       const tab = window.open('', '_blank')
       mutation.mutate(forUserId, {
