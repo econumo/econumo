@@ -1226,7 +1226,7 @@ describe('offline', () => {
     budgetHandlers()
     const user = userEvent.setup()
     renderPage()
-    const food = await screen.findByTestId('element-cat-food')
+    await screen.findByTestId('element-cat-food')
     goOffline()
     await act(async () => {})
     const limit = within(await screen.findByTestId('element-cat-food')).getByRole('button', { name: 'limit Food' })
