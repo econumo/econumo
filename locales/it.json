@@ -544,7 +544,8 @@
         "title": "Pagamenti futuri",
         "with_plan": "Include i pagamenti extra pianificati in {budget}",
         "regular_only": "Solo pagamenti regolari",
-        "none": "Niente più da pagare"
+        "none": "Niente più da pagare",
+        "overdue": "scaduto"
       },
       "mark_paid_off": "Segna come estinto",
       "paid_off_confirm": {

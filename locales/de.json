@@ -544,7 +544,8 @@
         "title": "Künftige Zahlungen",
         "with_plan": "Mit den in {budget} geplanten Sonderzahlungen",
         "regular_only": "Nur regelmäßige Zahlungen",
-        "none": "Nichts mehr zu zahlen"
+        "none": "Nichts mehr zu zahlen",
+        "overdue": "überfällig"
       },
       "mark_paid_off": "Als abbezahlt markieren",
       "paid_off_confirm": {

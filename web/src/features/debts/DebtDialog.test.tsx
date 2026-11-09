@@ -151,6 +151,21 @@ it('saving opens the debt\'s review screen', async () => {
 
   await waitFor(() => expect(useUiStore.getState().debtModal).toBeNull())
   expect(useUiStore.getState().debtDetailsId).toBe('d-new')
+  expect(useUiStore.getState().debtDetailsBudgetId).toBeNull()
+})
+
+it('a debt converted from a budget row opens its review screen with that budget', async () => {
+  captureCreate()
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ categoryId: 'cat-food', currencyId: 'cur-eur', fromBudget: true, budgetId: 'b1' })
+
+  await user.type(screen.getByLabelText('Payment'), '50')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
+  // its future payments follow the plans of the budget it came from
+  expect(useUiStore.getState().debtDetailsBudgetId).toBe('b1')
 })
 
 it('a key conflict shows its message under the sentence and keeps the start date hidden', async () => {

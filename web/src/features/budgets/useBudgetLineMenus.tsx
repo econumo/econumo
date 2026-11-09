@@ -225,7 +225,7 @@ export function useBudgetLineMenus({
       ? [
           {
             label: t('budgets.page.debts.track'),
-            onSelect: () => openDebtModal({ categoryId: category.id, currencyId: currencyId ?? budget.meta.currencyId, fromBudget: true }),
+            onSelect: () => openDebtModal({ categoryId: category.id, currencyId: currencyId ?? budget.meta.currencyId, fromBudget: true, budgetId: budget.meta.id }),
           },
         ]
       : []

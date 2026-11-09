@@ -544,7 +544,8 @@
         "title": "Toekomstige betalingen",
         "with_plan": "Inclusief de extra betalingen gepland in {budget}",
         "regular_only": "Alleen vaste betalingen",
-        "none": "Niets meer te betalen"
+        "none": "Niets meer te betalen",
+        "overdue": "achterstallig"
       },
       "mark_paid_off": "Markeren als afbetaald",
       "paid_off_confirm": {

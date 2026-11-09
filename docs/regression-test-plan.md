@@ -2293,7 +2293,15 @@ out), and add a second budget member account in USD, before running these.
       or a budget the user cannot read, the list is the regular schedule and
       the note reads "Regular payments only". A plan outside the debt's
       months is ignored. A debt not set up or paid off shows no link.
-      Loading the list fires its analytics event.
+      Opening the list fires its analytics event once (a refresh does not).
+      A payment recorded with a date after today is not projected again: the
+      list starts after the last recorded payment, its first balance being
+      the newest booked Balance less that row's principal. A projected due
+      dated before today is marked "overdue". Change the debt row's plan in
+      the budget (a cell, Fill or Copy), reopen the screen or hide and show
+      the list: it reflects the new plan at once. Converting a category row
+      ("Track as debt") opens the new debt's screen with that budget, so its
+      future payments follow its plans.
 - [ ] 📱 **Not set up**: a debt created without terms shows "Paid so far" (the
       sum of its payments dated up to today; a future-dated payment is listed
       but not counted), the hint "Add what you owe and when the loan ends

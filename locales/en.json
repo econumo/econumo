@@ -544,7 +544,8 @@
         "title": "Future payments",
         "with_plan": "Includes extra payments planned in {budget}",
         "regular_only": "Regular payments only",
-        "none": "Nothing left to pay"
+        "none": "Nothing left to pay",
+        "overdue": "overdue"
       },
       "mark_paid_off": "Mark as paid off",
       "paid_off_confirm": {

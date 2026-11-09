@@ -544,7 +544,8 @@
         "title": "Paiements à venir",
         "with_plan": "Inclut les paiements supplémentaires prévus dans {budget}",
         "regular_only": "Paiements réguliers uniquement",
-        "none": "Plus rien à payer"
+        "none": "Plus rien à payer",
+        "overdue": "en retard"
       },
       "mark_paid_off": "Marquer comme remboursée",
       "paid_off_confirm": {

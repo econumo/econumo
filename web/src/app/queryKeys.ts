@@ -37,3 +37,7 @@ export const queryKeys = {
 
 export const TEN_MINUTES = 10 * 60_000
 export const ONE_DAY = 24 * 3_600_000
+
+/** every debt's future payments, whatever budget they follow: a plan change in
+ *  any budget may move them */
+export const isDebtForecastKey = (key: readonly unknown[]): boolean => key[0] === queryKeys.debts[0] && key[2] === 'forecast'

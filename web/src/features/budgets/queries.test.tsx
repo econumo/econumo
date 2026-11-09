@@ -700,3 +700,40 @@ function currentMonthKey(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
+
+describe('a plan change refreshes the debts\' future payments', () => {
+  const forecastKey = queryKeys.debtForecast('debt-1', 'b1')
+  const forecast = { items: [], budgetId: '', budgetName: '' }
+  const okEmpty = () => HttpResponse.json({ success: true, message: '', data: {} })
+
+  it('useSetLimit invalidates every cached forecast', async () => {
+    server.use(http.post('*/api/v1/budget/set-limit', okEmpty))
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(forecastKey, forecast)
+    queryClient.setQueryData(queryKeys.debt('debt-1'), { item: {} })
+    const { result } = renderHook(() => useSetLimit(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', elementId: 'debt-1', period: '2026-09-01', amount: '250' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryState(forecastKey)?.isInvalidated).toBe(true)
+    // the debt itself is not planned: its details stay cached
+    expect(queryClient.getQueryState(queryKeys.debt('debt-1'))?.isInvalidated).toBe(false)
+  })
+
+  it('usePlanSetLimit invalidates every cached forecast', async () => {
+    server.use(http.post('*/api/v1/budget/set-limit', okEmpty))
+    const { result, queryClient } = renderPlanSetLimitHarness(fixtureWirePlan)
+    queryClient.setQueryData(forecastKey, forecast)
+    result.current.mutate({ budgetId: 'b1', elementId: 'debt-1', period: '2026-07-01', amount: '400', monthIndex: 2 })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryState(forecastKey)?.isInvalidated).toBe(true)
+  })
+
+  it('useFillPlannedCells (fill and copy) invalidates every cached forecast', async () => {
+    server.use(http.post('*/api/v1/budget/set-limit', okEmpty))
+    const { result, queryClient } = renderFillHarness(fixtureWirePlan)
+    queryClient.setQueryData(forecastKey, forecast)
+    result.current.mutate({ budgetId: 'b1', elementId: 'debt-1', amount: '250', targets: [{ period: '2026-07-01', monthIndex: 2 }] })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    await waitFor(() => expect(queryClient.getQueryState(forecastKey)?.isInvalidated).toBe(true))
+  })
+})

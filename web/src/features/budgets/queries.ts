@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
 import type { BudgetCommentDto, BudgetDto, BudgetMetaDto, BudgetPlanDto, PlanCellDto } from '@/api/dto/budget'
 import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
-import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { isDebtForecastKey, queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { apiErrorMessage } from '@/lib/apiError'
 import { compareNames } from '@/lib/collate'
 import { add, cmp, sub } from '@/lib/decimal'
@@ -160,6 +161,11 @@ export function useBudget() {
   })
 }
 
+// a debt row's plan is an extra payment in its forecast
+function invalidateDebtForecasts(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ predicate: (q) => isDebtForecastKey(q.queryKey) })
+}
+
 export function useSetLimit() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -226,6 +232,7 @@ export function useSetLimit() {
     },
     onSuccess: (_data, form) => {
       trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
+      invalidateDebtForecasts(queryClient)
       // budget-mode edits patch only the budget-page cache above; the plan cache
       // (a different window/query key) must be invalidated too or the plan sheet
       // keeps showing the pre-edit limit until something else happens to refetch it
@@ -321,6 +328,7 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
       // are cumulative, and each phone month switch caches a window of its own
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
+      invalidateDebtForecasts(queryClient)
     },
   })
 }
@@ -353,6 +361,7 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
     onSettled: (_res, _err, form) => {
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
+      invalidateDebtForecasts(queryClient)
     },
   })
 }

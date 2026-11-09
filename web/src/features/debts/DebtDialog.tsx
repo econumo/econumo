@@ -91,7 +91,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
       return
     }
     onDone()
-    openDebtDetails(saved.id)
+    openDebtDetails(saved.id, 'overview', params.budgetId)
   }
 
   return (

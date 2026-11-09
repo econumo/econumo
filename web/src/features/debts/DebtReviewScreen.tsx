@@ -13,6 +13,7 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { formatDate } from '@/lib/datetime'
 import { add } from '@/lib/decimal'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { useUiStore } from '@/app/uiStore'
 import type { DebtDetailsTab } from '@/app/uiStore'
 import type { DebtDetailsDto, DebtDto } from '@/api/dto/debt'
@@ -321,12 +322,14 @@ interface PaymentRow {
 /** payments, booked or projected; `splits` adds the interest, principal and
  *  balance columns, which need the terms. Principal (payment less interest)
  *  is left out on a phone, where five amounts do not fit */
-function PaymentsTable({ rows, splits, testId, amount, lang, className = '' }: {
+function PaymentsTable({ rows, splits, testId, amount, lang, overdueBefore, className = '' }: {
   rows: PaymentRow[]
   splits: boolean
   testId: string
   amount: (value: string) => string
   lang: string
+  /** projected rows dated before this day ("YYYY-MM-DD") are still unpaid dues */
+  overdueBefore?: string
   className?: string
 }) {
   const { t } = useTranslation()
@@ -360,7 +363,12 @@ function PaymentsTable({ rows, splits, testId, amount, lang, className = '' }: {
         <tbody>
           {rows.map((row) => (
             <tr key={row.key} data-testid={testId} className="border-t border-border">
-              <td className="py-1.5 text-left">{debtDay(row.date, lang)}</td>
+              <td className="py-1.5 text-left">
+                {debtDay(row.date, lang)}
+                {overdueBefore && row.date.slice(0, 10) < overdueBefore ? (
+                  <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.details.forecast.overdue')}</span>
+                ) : null}
+              </td>
               <td className="py-1.5 text-right">{amount(row.payment)}</td>
               {splits ? (
                 <>
@@ -385,9 +393,16 @@ function FuturePayments({ debt, budgetId, amount, lang }: { debt: DebtDto; budge
   const [open, setOpen] = useState(false)
   const { data, error, isPending } = useDebtForecast(debt.id, budgetId, open)
   const headingId = useId()
+  // a view is the user opening the list, not each (background) load of it
+  const toggle = () => {
+    if (!open) {
+      trackEvent(METRICS.DEBT_FORECAST_VIEW)
+    }
+    setOpen(!open)
+  }
   return (
     <div className="mt-2 flex flex-col gap-2">
-      <button type="button" className="self-start py-1 text-sm text-econumo-link hover:underline" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="self-start py-1 text-sm text-econumo-link hover:underline" aria-expanded={open} onClick={toggle}>
         {open ? t('debts.details.forecast.hide') : t('debts.details.forecast.show')}
       </button>
       {!open ? null : isPending ? (
@@ -413,6 +428,7 @@ function FuturePayments({ debt, budgetId, amount, lang }: { debt: DebtDto; budge
               rows={data.items.map((p, i) => ({ key: `${i}-${p.date}`, ...p }))}
               amount={amount}
               lang={lang}
+              overdueBefore={formatDate(new Date())}
               className="text-muted-foreground italic"
             />
           )}

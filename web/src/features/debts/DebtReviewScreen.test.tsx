@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
+import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { DebtDetailsDto } from '@/api/dto/debt'
 import { DebtReviewScreen } from './DebtReviewScreen'
@@ -22,14 +23,19 @@ function mockMatchMedia(phone = false) {
   }))
 }
 
-function renderScreen() {
+function renderScreenWithClient() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter([{ path: '/', element: <DebtReviewScreen /> }], { initialEntries: ['/'] })
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
+  return { ...view, queryClient }
+}
+
+function renderScreen() {
+  return renderScreenWithClient()
 }
 
 const TERM_KEYS = ['balance', 'payment', 'schedule', 'lastPaymentDate']
@@ -704,6 +710,45 @@ describe('future payments', () => {
     await user.click(hide)
     expect(screen.queryByTestId('debt-forecast-payment')).toBeNull()
     expect(screen.getByRole('button', { name: 'Show future payments' })).toBeInTheDocument()
+  })
+
+  it('each opening loads the list afresh and counts once; a refetch in the background is no new view', async () => {
+    const asked = captureForecast()
+    const user = userEvent.setup()
+    const { queryClient } = renderScreenWithClient()
+    await openScreen()
+
+    await user.click(screen.getByRole('button', { name: 'Show future payments' }))
+    await screen.findAllByTestId('debt-forecast-payment')
+    expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.DEBT_FORECAST_VIEW)).toHaveLength(1)
+
+    // a plan saved elsewhere invalidates it: refetched, not counted again
+    await queryClient.invalidateQueries({ queryKey: queryKeys.debtForecast('d1', '') })
+    await waitFor(() => expect(asked).toHaveLength(2))
+    expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.DEBT_FORECAST_VIEW)).toHaveLength(1)
+
+    // hidden and shown again: never served from a stale cache
+    await user.click(screen.getByRole('button', { name: 'Hide future payments' }))
+    await user.click(screen.getByRole('button', { name: 'Show future payments' }))
+    await waitFor(() => expect(asked).toHaveLength(3))
+    expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.DEBT_FORECAST_VIEW)).toHaveLength(2)
+  })
+
+  it('a projected payment dated before today is marked overdue', async () => {
+    captureForecast({
+      ...forecast,
+      items: [{ date: '2026-11-05', payment: '100', interest: '9.08', principal: '90.92', balance: '999.08' }, ...forecast.items],
+    })
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+
+    await user.click(screen.getByRole('button', { name: 'Show future payments' }))
+
+    const rows = await screen.findAllByTestId('debt-forecast-payment')
+    // today is pinned to 2026-11-08
+    expect(within(rows[0]).getAllByRole('cell')[0]).toHaveTextContent('Nov 5, 2026overdue')
+    expect(within(rows[1]).getAllByRole('cell')[0]).toHaveTextContent(/^Dec 5, 2026$/)
   })
 
   it('opened from Settings it asks with no budget, and says when only the regular payments count', async () => {

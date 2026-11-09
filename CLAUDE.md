@@ -1892,8 +1892,14 @@ data unreadable. Most are also asserted by the test suite.
   planning life ignored, on that budget's periods), read through the debt feature's `BudgetPlans`
   port (`budget.Service.DebtRowPlans`, which answers nothing for a budget the caller cannot read);
   `budgetId`/`budgetName` name the budget only when its plans add an extra, so the SPA's note
-  reads "Includes extra payments planned in X" or "Regular payments only". It lists the rows
-  soonest first in muted italics. A debt not set up has no items. Settings is ONE
+  reads "Includes extra payments planned in X" or "Regular payments only". The run starts on the
+  later of today and the last recorded payment's day, so a payment recorded ahead of today is not
+  projected again and the first row follows the booked list's last balance. It lists the rows
+  soonest first in muted italics, a due dated before today marked "overdue". The query is never
+  served stale (`staleTime` 0) and every budget plan write (`useSetLimit`, `usePlanSetLimit`,
+  `useFillPlannedCells`) invalidates every forecast (`isDebtForecastKey`); the metric fires on
+  the click that opens the list. "Track as debt" passes the row's budget through
+  `OpenDebtParams.budgetId` to the screen opened after create. A debt not set up has no items. Settings is ONE
   form, `DebtSettingsForm` (name, payments from, balance, payment row, one `DatesRow` of two cards,
   start date first and last payment date second, hints screen-reader only, currency; Cancel resets it, Save sends one `update-debt`, built by `buildTermsPayload`:
   untouched terms are not sent, and an unchanged currency goes as `""`, so the server keeps what
