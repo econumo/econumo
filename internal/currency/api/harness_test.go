@@ -208,6 +208,7 @@ type rateItem struct {
 	BaseCurrencyID string `json:"baseCurrencyId"`
 	Rate           string `json:"rate"`
 	UpdatedAt      string `json:"updatedAt"`
+	Date           string `json:"date"`
 }
 
 func mustUnmarshal[T any](t *testing.T, raw json.RawMessage) T {

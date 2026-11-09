@@ -150,6 +150,9 @@ type Querier interface {
 	// Deleted rows are excluded: an owner may hold a live and a deleted currency with
 	// the same code, and LIMIT 1 would otherwise pick between them arbitrarily.
 	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
+	// Rates published within [from, to] (inclusive days) plus, per (currency,
+	// base) pair, the newest rate published before from. See the sqlite variant.
+	GetCurrencyRateRangeView(ctx context.Context, arg GetCurrencyRateRangeViewParams) ([]GetCurrencyRateRangeViewRow, error)
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)

@@ -75,6 +75,10 @@ const (
 	IngestToken   = "eco_pat_owner-ingest-token-000000000000000000000000"
 	IngestTokenID = "99999999-9999-9999-9999-999999999999"
 
+	// A read-scoped OAuth token of the owner (no grant behind it): valid only on GET of middleware.ReadScopePaths.
+	ReadToken   = "eco_oat_owner-read-token-00000000000000000000000000"
+	ReadTokenID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
 	// One import link on Txn2 so get-transaction-list pins isImported=1 on a
 	// real row (Txn1 stays 0). SimpleFIN's seeded run below adds a SECOND
 	// link on Txn2 (a bank sync "adopting" a push-created row is exactly the
@@ -137,6 +141,8 @@ func Seed(t testing.TB, db *dbtest.DB) {
 		TokenHash: appuser.HashAccessToken(ReadonlyToken), UserAgent: "apiparity", ExpiresAt: &ownerExp})
 	f.AccessToken(fixture.AccessToken{ID: IngestTokenID, UserID: OwnerID, Kind: model.TokenKindPersonal,
 		TokenHash: appuser.HashAccessToken(IngestToken), Name: "Phone shortcut", Scope: string(model.TokenScopeIngest)})
+	f.AccessToken(fixture.AccessToken{ID: ReadTokenID, UserID: OwnerID, Kind: model.TokenKindOAuth,
+		TokenHash: appuser.HashAccessToken(ReadToken), Name: "Reports", Scope: string(model.TokenScopeRead), ExpiresAt: &ownerExp})
 	f.Connect(OwnerID, GuestID)
 
 	f.OAuthClient(fixture.OAuthClient{ID: OAuthClientID, Name: "Claude", RedirectURIs: []string{"https://claude.ai/api/mcp/auth_callback"}})

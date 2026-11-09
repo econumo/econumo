@@ -95,14 +95,14 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 		if err != nil {
 			return err
 		}
-		g := &model.OAuthGrant{ID: vo.NewId(), UserID: code.UserID, ClientID: c.ID, RefreshTokenHash: refreshHash,
+		g := &model.OAuthGrant{ID: vo.NewId(), UserID: code.UserID, ClientID: c.ID, RefreshTokenHash: refreshHash, Scope: code.Scope,
 			CreatedAt: now, LastUsedAt: now, ExpiresAt: now.Add(GrantIdleTTL)}
 		if err := s.repo.InsertGrant(ctx, g); err != nil {
 			return err
 		}
 		// The generation captured at approval, not the current one: a reclaim
 		// that landed since then must make this write nothing.
-		access, ok, err := s.creds.IssueOAuthAccessToken(ctx, code.UserID, g.ID, c.Name, code.CredentialsGeneration, AccessTokenTTL)
+		access, ok, err := s.creds.IssueOAuthAccessToken(ctx, code.UserID, g.ID, c.Name, code.Scope, code.CredentialsGeneration, AccessTokenTTL)
 		if err != nil {
 			return err
 		}
@@ -119,7 +119,7 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 				return err
 			}
 		}
-		resp = tokenResponse(access, rawRefresh)
+		resp = tokenResponse(access, rawRefresh, string(code.Scope))
 		reqctx.AddLogAttr(ctx, "grant_id", g.ID.String())
 		reqctx.AddLogAttr(ctx, "user_id", code.UserID.String())
 		return nil
@@ -132,8 +132,8 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 	return resp, nil
 }
 
-func tokenResponse(access, refresh string) model.TokenResponse {
-	return model.TokenResponse{AccessToken: access, TokenType: "Bearer", ExpiresIn: int(AccessTokenTTL / time.Second), RefreshToken: refresh, Scope: Scope}
+func tokenResponse(access, refresh, scope string) model.TokenResponse {
+	return model.TokenResponse{AccessToken: access, TokenType: "Bearer", ExpiresIn: int(AccessTokenTTL / time.Second), RefreshToken: refresh, Scope: scope}
 }
 
 // housekeepingDue elects at most one caller per HousekeepingInterval; the
@@ -213,14 +213,14 @@ func (s *Service) refresh(ctx context.Context, req model.TokenRequest) (model.To
 		if err := s.repo.InsertSpentRefreshHash(ctx, g.ID, hash, now); err != nil {
 			return err
 		}
-		access, ok, err := s.creds.IssueOAuthAccessToken(ctx, g.UserID, g.ID, c.Name, gen, AccessTokenTTL)
+		access, ok, err := s.creds.IssueOAuthAccessToken(ctx, g.UserID, g.ID, c.Name, g.Scope, gen, AccessTokenTTL)
 		if err != nil {
 			return err
 		}
 		if !ok {
 			return errInvalidGrant
 		}
-		resp = tokenResponse(access, rawRefresh)
+		resp = tokenResponse(access, rawRefresh, string(g.Scope))
 		return nil
 	})
 	if err != nil {

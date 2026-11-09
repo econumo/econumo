@@ -2479,11 +2479,22 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 Signed in, the consent page (`/oauth/authorize?...`) is headed "Connect
       an app to Econumo" and shows the app's name followed by "wants to access
       your Econumo account.", "After you allow, you'll be sent to <host>." for a
-      web client, "It will be able to read and change all of your Econumo data.",
+      web client, "It will be able to read and change your data.",
       "Signed in as <email>" with "Not you? Switch account", and the Allow and
       Deny buttons. Allow stays disabled for about half a second after the page
       appears (or until you move the mouse or press a key); Deny works at once.
       A double-click that lands on the page as it opens does not approve.
+- [ ] The consent page of an app that asks for the `read` scope alone
+      (`&scope=read`) shows "wants to read your Econumo data." and "It can't change
+      anything." (not
+      the read-and-change sentence). No scope, `mcp`, or `mcp read` shows the
+      read-and-change sentence. A read-only (lapsed trial) user can Allow the
+      `read` request, but Allow on an `mcp` one shows the read-only message.
+- [ ] After a `read` app is allowed, it appears under Settings > Profile >
+      Connected apps; revoking it makes its next request fail, and its token
+      answers 401 on any route other than the nine read-only GETs (for example
+      `get-budget`, `/mcp`, or any POST). With the OAuth server turned off
+      (`ECONUMO_URL` unset), its token answers 401 everywhere.
 - [ ] Switching to another window or tab and back (or clicking outside the
       browser window) disables Allow again; it re-enables about half a second
       after the consent page is visible and focused again, or on the next mouse

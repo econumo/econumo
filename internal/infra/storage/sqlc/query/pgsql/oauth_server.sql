@@ -20,32 +20,32 @@ WHERE last_used_at IS NULL AND id NOT IN (
 );
 
 -- name: InsertOAuthCode :exec
-INSERT INTO oauth_authorization_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+INSERT INTO oauth_authorization_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at, scope)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 
 -- name: ConsumeOAuthCode :one
 -- Single use: the DELETE is the read, so two concurrent exchanges of one code
 -- cannot both get a row.
 DELETE FROM oauth_authorization_codes WHERE code_hash = $1
-RETURNING code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at;
+RETURNING code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at, scope;
 
 -- name: PurgeExpiredOAuthCodes :exec
 DELETE FROM oauth_authorization_codes WHERE expires_at < $1;
 
 -- name: InsertOAuthGrant :exec
-INSERT INTO oauth_grants (id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+INSERT INTO oauth_grants (id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 
 -- name: GetOAuthGrant :one
-SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope
 FROM oauth_grants WHERE id = $1;
 
 -- name: GetOAuthGrantByRefreshHash :one
-SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope
 FROM oauth_grants WHERE refresh_token_hash = $1;
 
 -- name: GetOAuthGrantBySpentRefreshHash :one
-SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at, g.created_at, g.last_used_at, g.expires_at, g.revoked_at
+SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at, g.created_at, g.last_used_at, g.expires_at, g.revoked_at, g.scope
 FROM oauth_refresh_tokens_spent s
 JOIN oauth_grants g ON g.id = s.grant_id
 WHERE s.token_hash = $1;
@@ -69,7 +69,7 @@ UPDATE oauth_grants SET revoked_at = $1 WHERE user_id = $2 AND revoked_at IS NUL
 
 -- name: ListUnrevokedOAuthGrants :many
 SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at,
-       g.created_at, g.last_used_at, g.expires_at, g.revoked_at, c.name, c.redirect_uris
+       g.created_at, g.last_used_at, g.expires_at, g.revoked_at, g.scope, c.name, c.redirect_uris
 FROM oauth_grants g
 JOIN oauth_clients c ON c.id = g.client_id
 WHERE g.user_id = $1 AND g.revoked_at IS NULL

@@ -10,6 +10,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -35,6 +36,7 @@ type readQuerier interface {
 	GetUserCurrencyListView(ctx context.Context, db backend.DBTX, userID string) ([]currencyRow, error)
 	GetHiddenCurrencyIDs(ctx context.Context, db backend.DBTX, userID string) ([]string, error)
 	GetLatestCurrencyRateListView(ctx context.Context, db backend.DBTX) ([]rateRow, error)
+	GetCurrencyRateRangeView(ctx context.Context, db backend.DBTX, from, to time.Time) ([]rateRow, error)
 }
 
 // ReadRepo is the currency read model. It shares the TxManager + driver
@@ -97,6 +99,20 @@ func (r *ReadRepo) LatestCurrencyRateListView(ctx context.Context) ([]model.Curr
 	if err != nil {
 		return nil, err
 	}
+	return rateViewRows(rows), nil
+}
+
+// CurrencyRateRangeView returns the rates published within [from, to] plus,
+// per (currency, base) pair, the newest rate published before from.
+func (r *ReadRepo) CurrencyRateRangeView(ctx context.Context, from, to time.Time) ([]model.CurrencyRateViewRow, error) {
+	rows, err := r.q.GetCurrencyRateRangeView(ctx, r.db(ctx), from, to)
+	if err != nil {
+		return nil, err
+	}
+	return rateViewRows(rows), nil
+}
+
+func rateViewRows(rows []rateRow) []model.CurrencyRateViewRow {
 	out := make([]model.CurrencyRateViewRow, 0, len(rows))
 	for _, rt := range rows {
 		out = append(out, model.CurrencyRateViewRow{
@@ -108,9 +124,10 @@ func (r *ReadRepo) LatestCurrencyRateListView(ctx context.Context) ([]model.Curr
 			Rate: vo.NewDecimal(rt.Rate).String(),
 			// PublishedAt is the rate DATE at midnight, rendered Y-m-d H:i:s.
 			UpdatedAt: rt.PublishedAt.Format(datetime.Layout),
+			Date:      rt.PublishedAt.Format(datetime.DateLayout),
 		})
 	}
-	return out, nil
+	return out
 }
 
 type sqliteReadQuerier struct{}
@@ -133,6 +150,12 @@ func (sqliteReadQuerier) GetHiddenCurrencyIDs(ctx context.Context, db backend.DB
 
 func (sqliteReadQuerier) GetLatestCurrencyRateListView(ctx context.Context, db backend.DBTX) ([]rateRow, error) {
 	return sqlitegen.New(db).GetLatestCurrencyRateListView(ctx)
+}
+
+func (sqliteReadQuerier) GetCurrencyRateRangeView(ctx context.Context, db backend.DBTX, from, to time.Time) ([]rateRow, error) {
+	return sqlitegen.New(db).GetCurrencyRateRangeView(ctx, sqlitegen.GetCurrencyRateRangeViewParams{
+		FromDay: from.Format(datetime.DateLayout), ToDay: to.Format(datetime.DateLayout),
+	})
 }
 
 type pgsqlReadQuerier struct{}
@@ -169,6 +192,18 @@ func (pgsqlReadQuerier) GetLatestCurrencyRateListView(ctx context.Context, db ba
 			PublishedAt:    rt.PublishedAt,
 			Rate:           rt.Rate,
 		}
+	}
+	return out, nil
+}
+
+func (pgsqlReadQuerier) GetCurrencyRateRangeView(ctx context.Context, db backend.DBTX, from, to time.Time) ([]rateRow, error) {
+	rows, err := pgsqlgen.New(db).GetCurrencyRateRangeView(ctx, pgsqlgen.GetCurrencyRateRangeViewParams{FromDay: from, ToDay: to})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]rateRow, len(rows))
+	for i, rt := range rows {
+		out[i] = rateRow{ID: rt.ID, CurrencyID: rt.CurrencyID, BaseCurrencyID: rt.BaseCurrencyID, PublishedAt: rt.PublishedAt, Rate: rt.Rate}
 	}
 	return out, nil
 }

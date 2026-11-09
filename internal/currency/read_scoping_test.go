@@ -37,6 +37,28 @@ func (f *fakeReadModel) LatestCurrencyRateListView(ctx context.Context) ([]model
 	return f.rates, nil
 }
 
+func (f *fakeReadModel) CurrencyRateRangeView(ctx context.Context, from, to time.Time) ([]model.CurrencyRateViewRow, error) {
+	lo, hi := from.Format("2006-01-02"), to.Format("2006-01-02")
+	type pair struct{ cur, base string }
+	before := map[pair]model.CurrencyRateViewRow{}
+	var out []model.CurrencyRateViewRow
+	for _, r := range f.rates {
+		switch {
+		case r.Date >= lo && r.Date <= hi:
+			out = append(out, r)
+		case r.Date < lo:
+			k := pair{r.CurrencyID, r.BaseCurrencyID}
+			if cur, ok := before[k]; !ok || r.Date > cur.Date {
+				before[k] = r
+			}
+		}
+	}
+	for _, r := range before {
+		out = append(out, r)
+	}
+	return out, nil
+}
+
 func strPtr(s string) *string { return &s }
 
 func TestReadService_GetCurrencyList_ScopeAndFlags(t *testing.T) {

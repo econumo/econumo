@@ -2038,7 +2038,9 @@
       "wantsAccess": "quer acessar a sua conta do Econumo.",
       "redirect": "Depois de permitir, você será enviado para {host}.",
       "loopback": "Depois de permitir, você voltará para um app neste computador.",
-      "fullAccess": "Ele poderá ler e alterar todos os seus dados do Econumo.",
+      "wantsRead": "quer ler os seus dados do Econumo.",
+      "readAccess": "Não poderá alterar nada.",
+      "fullAccess": "Ele poderá ler e alterar os seus dados.",
       "signedInAs": "Conectado como {email}",
       "switchAccount": "Não é você? Trocar de conta",
       "allow": "Permitir",
@@ -2173,7 +2175,9 @@
       "not_available": "A moeda não está disponível.",
       "in_use": "A moeda está a ser utilizada e não pode ser eliminada.",
       "base_immutable": "A moeda base não pode ser alterada.",
-      "cannot_be_hidden": "Esta moeda não pode ser ocultada."
+      "cannot_be_hidden": "Esta moeda não pode ser ocultada.",
+      "rate_range_order": "A data final não pode ser anterior à data inicial",
+      "rate_range_too_long": "O intervalo de datas pode ter no máximo {max} dias"
     },
     "import": {
       "source_not_found": "A Apple Wallet não está ligada. Ligue-a primeiro em Definições → Apple Wallet.",

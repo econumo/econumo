@@ -90,6 +90,8 @@ const (
 	CodeCurrencyInUse               = "currency.in_use"
 	CodeCurrencyBaseImmutable       = "currency.base_immutable"
 	CodeCurrencyCannotBeHidden      = "currency.cannot_be_hidden"
+	CodeCurrencyRateRangeOrder      = "currency.rate_range_order"
+	CodeCurrencyRateRangeTooLong    = "currency.rate_range_too_long"
 
 	CodeTokenNameLength            = "token.name_length"
 	CodeTokenInvalidExpirationDate = "token.invalid_expiration_date"
@@ -227,6 +229,8 @@ var AllCodes = []string{
 	CodeCurrencyInUse,
 	CodeCurrencyBaseImmutable,
 	CodeCurrencyCannotBeHidden,
+	CodeCurrencyRateRangeOrder,
+	CodeCurrencyRateRangeTooLong,
 
 	CodeTokenNameLength,
 	CodeTokenInvalidExpirationDate,

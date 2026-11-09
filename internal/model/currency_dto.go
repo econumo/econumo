@@ -5,6 +5,7 @@ package model
 
 import (
 	"strings"
+	"time"
 
 	"github.com/econumo/econumo/internal/shared/errs"
 )
@@ -38,12 +39,90 @@ type GetCurrencyListResult struct {
 }
 
 // CurrencyRateResult is one rate in the API. rate is a decimal string; updatedAt
-// is the published date formatted "Y-m-d 00:00:00". Frozen wire shape.
+// is the published date formatted "Y-m-d 00:00:00"; date is the same day as
+// "Y-m-d". Frozen wire shape.
 type CurrencyRateResult struct {
 	CurrencyId     string `json:"currencyId"`
 	BaseCurrencyId string `json:"baseCurrencyId"`
 	Rate           string `json:"rate"`
 	UpdatedAt      string `json:"updatedAt"`
+	Date           string `json:"date"`
+}
+
+// MaxCurrencyRateRangeDays caps the inclusive day span of a ranged rate read.
+const MaxCurrencyRateRangeDays = 366
+
+const rateDayLayout = "2006-01-02"
+
+// CurrencyRateListRequest is the optional from/to window of
+// get-currency-rate-list; both bounds or neither.
+type CurrencyRateListRequest struct {
+	From, To       string
+	HasFrom, HasTo bool
+}
+
+func parseRateDay(s string) (time.Time, bool) {
+	t, err := time.Parse(rateDayLayout, s)
+	if err != nil || t.Format(rateDayLayout) != s {
+		return time.Time{}, false
+	}
+	return t, true
+}
+
+func (r CurrencyRateListRequest) Validate() error {
+	if !r.HasFrom && !r.HasTo {
+		return nil
+	}
+	var fields []errs.FieldError
+	blank := func(key string) {
+		fields = append(fields, errs.FieldError{Key: key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	invalid := func(key string) {
+		fields = append(fields, errs.FieldError{Key: key, Message: "This value is not valid.", Code: errs.CodeInvalidFormat})
+	}
+	if strings.TrimSpace(r.From) == "" {
+		blank("from")
+	}
+	if strings.TrimSpace(r.To) == "" {
+		blank("to")
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	from, okFrom := parseRateDay(r.From)
+	to, okTo := parseRateDay(r.To)
+	if !okFrom {
+		invalid("from")
+	}
+	if !okTo {
+		invalid("to")
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	if to.Before(from) {
+		fields = append(fields, errs.FieldError{Key: "to", Message: "The end date must not be before the start date", Code: errs.CodeCurrencyRateRangeOrder})
+	} else if int(to.Sub(from).Hours()/24)+1 > MaxCurrencyRateRangeDays {
+		fields = append(fields, errs.FieldError{
+			Key: "to", Message: "The date range must be at most 366 days", Code: errs.CodeCurrencyRateRangeTooLong,
+			Params: map[string]any{"max": MaxCurrencyRateRangeDays},
+		})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// Range returns the parsed window; ok is false when no bounds were given.
+// Call it after Validate.
+func (r CurrencyRateListRequest) Range() (from, to time.Time, ok bool) {
+	if !r.HasFrom && !r.HasTo {
+		return time.Time{}, time.Time{}, false
+	}
+	from, _ = parseRateDay(r.From)
+	to, _ = parseRateDay(r.To)
+	return from, to, true
 }
 
 // GetCurrencyRateListResult is the get-currency-rate-list response: {items:
