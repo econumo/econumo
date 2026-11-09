@@ -132,6 +132,12 @@ const sharedWith = (role: string, isAccepted = 1) => ({
   sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role, isAccepted }],
 })
 
+it('leaves a due payment on a hidden-folder account out of the Inbox', async () => {
+  server.use(...coreHandlers({ recurring: [template(), template({ id: 'r-hidden', accountId: 'a-hidden' })] }))
+  const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+  await waitFor(() => expect(result.current.dueRecurring.map((rt) => rt.id)).toEqual(['r1']))
+})
+
 describe('isDueRecurring', () => {
   const accounts = [...fixtureAccounts, sharedWith('user'), { ...sharedWith('guest'), id: 'a-readonly' }] as never
 
