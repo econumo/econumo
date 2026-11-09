@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CurrencyListItemDto } from '@/api/dto/currency'
 import { apiErrorMessage } from '@/lib/apiError'
+import { useOnline } from '@/hooks/useOnline'
 import { ClassificationList, type RowSwitchState } from '@/features/classifications/ClassificationList'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { CurrencyDialog } from './CurrencyDialog'
@@ -29,6 +30,7 @@ const enabledFirst = (a: CurrencyListItemDto, b: CurrencyListItemDto) => a.isHid
 
 export function CurrenciesPage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: user } = useUserData()
   const { data: currencies } = useCurrencies()
   const { data: rates } = useCurrencyRates()
@@ -67,7 +69,8 @@ export function CurrenciesPage() {
     bulkTargets.length === 0 ? null : (
       <button
         type="button"
-        className="cursor-pointer text-sm text-muted-foreground hover:text-foreground hover:underline"
+        disabled={!online}
+        className="cursor-pointer text-sm text-muted-foreground hover:text-foreground hover:underline disabled:cursor-default disabled:opacity-50 disabled:no-underline"
         onClick={() => {
           setError(null)
           ;(anyGlobalEnabled ? hideAllCurrencies : showAllCurrencies).mutate(undefined, {

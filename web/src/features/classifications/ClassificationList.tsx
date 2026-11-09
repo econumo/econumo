@@ -17,6 +17,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { afterIdFromDrop, afterIdInScope } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useOnline } from '@/hooks/useOnline'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 
@@ -140,6 +141,7 @@ export function ClassificationList<T extends ClassificationItem>({
 }: ClassificationListProps<T>) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
+  const online = useOnline()
   const [sortOpen, setSortOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -250,6 +252,7 @@ export function ClassificationList<T extends ClassificationItem>({
       variant="ghost"
       size="sm"
       className="normal-case tracking-normal text-muted-foreground"
+      disabled={!online}
       onClick={() => setSortOpen(true)}
     >
       <ArrowDownUp className="size-4 text-econumo-purple" />
@@ -338,7 +341,7 @@ export function ClassificationList<T extends ClassificationItem>({
           <Switch
             aria-label={rowSwitchState.ariaLabel}
             checked={rowSwitchState.checked}
-            disabled={rowSwitchState.disabled}
+            disabled={rowSwitchState.disabled || !online}
             title={rowSwitchState.title}
             onClick={(e) => e.stopPropagation()}
             onCheckedChange={() => rowSwitchState.onToggle()}
@@ -366,7 +369,7 @@ export function ClassificationList<T extends ClassificationItem>({
                     <DropdownMenuItem
                       key={action.label}
                       variant={action.destructive ? 'destructive' : undefined}
-                      disabled={action.disabled}
+                      disabled={action.disabled || !online}
                       title={action.title}
                       onSelect={action.onSelect}
                     >
@@ -376,13 +379,13 @@ export function ClassificationList<T extends ClassificationItem>({
                 }
                 return (
                   <>
-                    <DropdownMenuItem onSelect={() => onEdit(item)}>{t('common.button.edit.label')}</DropdownMenuItem>
+                    <DropdownMenuItem disabled={!online} onSelect={() => onEdit(item)}>{t('common.button.edit.label')}</DropdownMenuItem>
                     {extraActions?.(item).map((action) => (
-                      <DropdownMenuItem key={action.label} variant={action.destructive ? 'destructive' : undefined} onSelect={action.onSelect}>
+                      <DropdownMenuItem key={action.label} variant={action.destructive ? 'destructive' : undefined} disabled={!online} onSelect={action.onSelect}>
                         {action.label}
                       </DropdownMenuItem>
                     ))}
-                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(item)}>
+                    <DropdownMenuItem variant="destructive" disabled={!online} onSelect={() => setDeleteTarget(item)}>
                       {t('common.button.delete.label')}
                     </DropdownMenuItem>
                   </>
@@ -403,12 +406,12 @@ export function ClassificationList<T extends ClassificationItem>({
       titleAction={isCompact ? undefined : searchToggle}
       actions={
         isCompact ? (
-          <Button type="button" size="icon" aria-label={createLabel} title={createLabel} onClick={onCreate}>
+          <Button type="button" size="icon" aria-label={createLabel} title={createLabel} disabled={!online} onClick={onCreate}>
             <Plus className="size-4" />
           </Button>
         ) : (
           <>
-            <Button type="button" size="sm" onClick={onCreate}>
+            <Button type="button" size="sm" disabled={!online} onClick={onCreate}>
               <Plus className="size-4" />
               {createLabel}
             </Button>
@@ -457,7 +460,7 @@ export function ClassificationList<T extends ClassificationItem>({
               ) : null}
               {onMove ? (
                 // reordering a fuzzy-filtered subset is disorienting — handles return when the query clears
-                <SortableList items={sectionItems} onReorder={commitOrder} renderItem={(item, handle) => renderRow(item, searching ? undefined : handle)} />
+                <SortableList items={sectionItems} onReorder={commitOrder} renderItem={(item, handle) => renderRow(item, searching || !online ? undefined : handle)} />
               ) : (
                 sectionItems.map((item) => <div key={item.id}>{renderRow(item)}</div>)
               )}
@@ -476,7 +479,7 @@ export function ClassificationList<T extends ClassificationItem>({
                 key={action.label}
                 type="button"
                 variant="outline"
-                disabled={action.disabled}
+                disabled={action.disabled || !online}
                 title={action.title}
                 className={action.destructive ? 'text-destructive hover:text-destructive' : undefined}
                 onClick={() => {
@@ -495,6 +498,7 @@ export function ClassificationList<T extends ClassificationItem>({
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={!online}
                   onClick={() => {
                     if (sheetItem) {
                       onEdit(sheetItem)
@@ -509,6 +513,7 @@ export function ClassificationList<T extends ClassificationItem>({
                   type="button"
                   variant="outline"
                   className="text-destructive hover:text-destructive"
+                  disabled={!online}
                   onClick={() => {
                     setDeleteTarget(sheetItem)
                     setSheetItem(null)

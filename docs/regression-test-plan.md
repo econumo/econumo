@@ -2714,10 +2714,21 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       refreshes by itself. A transaction or budget plan saved while offline
       shows at once, the icon carries a badge with the number of changes
       waiting (its tooltip says so too), and they are sent when the network
-      returns. Any other write fails at once with an error and keeps its form
-      open; nothing waiting is written to local storage. Signing
+      returns. Every other write is visibly disabled instead (buttons, menu items,
+      confirm buttons, create rows in the pickers, drag handles); nothing waiting
+      is written to local storage. Signing
       in offline fails at once with an error. A budget cell's transaction list
       that was never loaded shows a spinner offline, never "List is empty".
+- [ ] 📱 Offline, what stays usable and what is off: adding, editing and deleting
+      a transaction, and changing a budget limit (Budget view, phone sheet, Plan grid,
+      fill right) work; the Inbox "Try again" on a refused change works; Sign out works.
+      Off: creating a category, payee or tag from the transaction form (no create row, no
+      "+"), posting a recurring template, make recurring, drag reorder (transactions,
+      budget lines, folders, accounts, lists), the non-limit items of the budget line
+      menus (greyed out, labelled "No connection"), every settings page save, sharing,
+      connections, imports and the import rules; no "save as a rule" prompt appears after
+      editing an imported row. A transaction still waiting or refused cannot be dragged
+      even online.
 - [ ] Sync button tap = incremental refresh: after an edit made on another
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the

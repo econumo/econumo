@@ -169,6 +169,7 @@ export function AppleWalletHistoryPage() {
         confirmLabel={t('common.button.delete.label')}
         cancelLabel={t('common.button.cancel.label')}
         destructive
+        offlineOk
       />
       <ImportedTapDialog row={detail} cardName={detail ? cardName(detail.externalAccountId) : ''} onCreate={createFromDetail} onClose={() => setDetail(null)} />
     </SettingsShell>

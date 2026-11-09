@@ -6,6 +6,7 @@ import { IconPicker } from '@/components/IconPicker'
 import { UserAvatar } from '@/components/UserAvatar'
 import { avatarColors, avatarColorSwatches, avatarIcons, joinAvatar, splitAvatar } from '@/lib/avatars'
 import { cn } from '@/lib/utils'
+import { useOnline } from '@/hooks/useOnline'
 import { useUpdateAvatar, useUserData } from '@/features/user/queries'
 
 interface AvatarPickerDialogProps {
@@ -18,6 +19,7 @@ export function AvatarPickerDialog({ open, onClose }: AvatarPickerDialogProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const updateAvatar = useUpdateAvatar()
+  const online = useOnline()
   const [icon, setIcon] = useState(() => splitAvatar(user?.avatar ?? '').icon)
   const [color, setColor] = useState(() => splitAvatar(user?.avatar ?? '').color)
 
@@ -76,7 +78,7 @@ export function AvatarPickerDialog({ open, onClose }: AvatarPickerDialogProps) {
           <Button type="button" variant="outline" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="button" onClick={save} disabled={updateAvatar.isPending}>
+          <Button type="button" onClick={save} disabled={updateAvatar.isPending || !online}>
             {t('common.button.save.label')}
           </Button>
         </div>

@@ -29,9 +29,11 @@ import { UserAvatar } from '@/components/UserAvatar'
 import { evaluatedAmount } from '../transactions/useTransactionForm'
 import { useAccounts, useCreateAccount, useFolders, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
+import { useOnline } from '@/hooks/useOnline'
 
 export function AccountDialog() {
   const { t } = useTranslation()
+  const online = useOnline()
   const params = useUiStore((s) => s.accountModal)
   const close = useUiStore((s) => s.closeAccountModal)
   const { data: user } = useUserData()
@@ -166,7 +168,7 @@ export function AccountDialog() {
           <Button type="button" variant="secondary" onClick={close}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="account-dialog-form" disabled={pending}>
+          <Button type="submit" form="account-dialog-form" disabled={pending || !online}>
             {isNew ? t('common.button.add.label') : t('common.button.update.label')}
           </Button>
         </div>
@@ -221,6 +223,7 @@ export function AccountDialog() {
             type="button"
             className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
             title={t('settings.accounts.list_actions.access')}
+            disabled={!online}
             onClick={() => setShareOpen(true)}
           >
             <span className="flex min-w-0 flex-col gap-0.5">

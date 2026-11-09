@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
 import { toast } from 'sonner'
+import { onlineManager } from '@tanstack/react-query'
 import { apiErrorMessage } from '@/lib/apiError'
 import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +19,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
 import { tryNormalize } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
+import { useOnline } from '@/hooks/useOnline'
 import type { OpenTransactionParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import {
@@ -72,6 +74,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const exchangeFn = useExchange()
   const setSwitchAccountPrompt = useUiStore((s) => s.setSwitchAccountPrompt)
   const setRulePrompt = useUiStore((s) => s.setRulePrompt)
+  const online = useOnline()
   const isImported = params.transaction?.isImported === 1
   const { data: importLinks = [] } = useTransactionImportLinks(params.transaction?.id ?? '', isImported)
 
@@ -238,7 +241,8 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         // params.transaction is the row as it was BEFORE this edit: only a
         // classification THIS save changed may prompt for a rule
         const diff = link ? ruleDiff(payload, link, params.transaction ?? null) : null
-        if (link && diff) {
+        // the rule editor needs the server
+        if (link && diff && onlineManager.isOnline()) {
           setRulePrompt({ link, diff })
         }
       }
@@ -279,6 +283,8 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     : ''
 
   const dateOnly = dayKey(form.date)
+  // these two post to the server directly: only add/edit of a transaction queues
+  const needsNetwork = Boolean(params.postRecurring || params.importQueued)
   const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending || importQueued.isPending
   // posting a template creates an ordinary transaction (prefilled from it), so
   // it reads as the regular add dialog rather than a mode of its own
@@ -309,7 +315,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           <Button type="button" variant="secondary" onClick={cancel}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="transaction-dialog-form" disabled={pending}>
+          <Button type="submit" form="transaction-dialog-form" disabled={pending || (needsNetwork && !online)}>
             {form.isNew ? t('common.button.add.label') : t('common.button.update.label')}
           </Button>
         </div>
@@ -475,7 +481,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 options={currentCategories.map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
                 clearable
                 onCreate={
-                  canEditData
+                  canEditData && online
                     ? (name) => {
                         createCategory.mutate(
                           { name, type: form.type as 'expense' | 'income', accountId: form.accountId ?? undefined, ownerUserId: ownerId },
@@ -496,7 +502,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 options={currentPayees.map((p) => ({ value: p.id, label: p.name }))}
                 clearable
                 onCreate={
-                  canEditData
+                  canEditData && online
                     ? (name) => {
                         createPayee.mutate(
                           { name, accountId: form.accountId ?? undefined, ownerUserId: ownerId },
@@ -513,7 +519,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
             <CardField label={t('accounts.page.preview_transaction_modal.tags.label')}>
               <div className="flex items-center gap-2">
                 <ClassificationChips chips={chips} onToggle={(chip) => patch(toggleClassification(form, chip.kind, chip.id))} />
-                {canEditData ? (
+                {canEditData && online ? (
                   <button
                     type="button"
                     aria-label={t('classifications.tags.forms.tag.add_button')}

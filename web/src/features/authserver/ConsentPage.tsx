@@ -8,6 +8,7 @@ import { CoinLoader } from '@/components/CoinLoader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { apiErrorMessage } from '@/lib/apiError'
+import { useOnline } from '@/hooks/useOnline'
 import { RouterPage } from '@/app/router-pages'
 import { useUserData } from '@/features/user/queries'
 import { AuthFrame } from '@/app/layouts/AuthFrame'
@@ -120,6 +121,7 @@ export function ConsentPage() {
   const request = useAuthorizationRequest(req)
   const approve = useApproveAuthorization()
   const decline = useDeclineAuthorization()
+  const online = useOnline()
   const { data: user } = useUserData()
 
   const errorStatus = isAxiosError(request.error) ? request.error.response?.status : undefined
@@ -183,7 +185,7 @@ export function ConsentPage() {
         <h1 className="text-lg font-semibold">{result.clientName}</h1>
         <p className="text-sm text-muted-foreground">{t('authserver.consent.readonly')}</p>
         {decline.error && <p className="text-sm text-destructive">{apiErrorMessage(decline.error)}</p>}
-        <Button className={primaryButton} disabled={decline.isPending} onClick={() => decline.mutate(req)}>
+        <Button className={primaryButton} disabled={decline.isPending || !online} onClick={() => decline.mutate(req)}>
           {t('authserver.consent.returnToApp')}
         </Button>
       </Shell>
@@ -191,7 +193,7 @@ export function ConsentPage() {
   }
 
   const readScope = result.scope === 'read'
-  const busy = approve.isPending || approve.isSuccess || decline.isPending || decline.isSuccess
+  const busy = approve.isPending || approve.isSuccess || decline.isPending || decline.isSuccess || !online
   const failure = approve.error ?? decline.error
 
   return (

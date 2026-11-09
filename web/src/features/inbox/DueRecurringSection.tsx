@@ -11,9 +11,11 @@ import { usePostRecurring, useRecurring, useSkipRecurring } from '@/features/rec
 import { ViewRecurringDialog } from '@/features/recurring/ViewRecurringDialog'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { isToday, dayKey, parseDateTime } from '@/lib/datetime'
+import { useOnline } from '@/hooks/useOnline'
 
 export function DueRecurringSection({ items }: { items: RecurringDto[] }) {
   const { t, i18n } = useTranslation()
+  const online = useOnline()
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
@@ -72,8 +74,9 @@ export function DueRecurringSection({ items }: { items: RecurringDto[] }) {
             setPreviewId(null)
             openRecurringModal({ recurring: preview })
           }}
-          // the Inbox only lists templates on accounts the caller can write to
-          canChange
+          // the Inbox only lists templates on accounts the caller can write to;
+          // posting, skipping and editing a template need the server
+          canChange={online}
           skipPending={skipRecurring.isPending}
           postPending={postRecurring.isPending}
         />

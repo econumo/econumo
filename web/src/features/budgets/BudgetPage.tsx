@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useOnline } from '@/hooks/useOnline'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
@@ -94,6 +95,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const isPhone = useIsPhone()
+  // limits queue offline; structure, comments and settings need the server
+  const online = useOnline()
   const { data: user } = useUserData()
   // isPending covers the whole cold boot (incl. the disabled phase while the
   // user record loads); month switches show the previous period as placeholder
@@ -302,14 +305,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         {hasAccounts ? (
           <>
             <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.empty.description')}</p>
-            <Button type="button" onClick={() => setCreateBudgetOpen(true)}>
+            <Button type="button" disabled={!online} onClick={() => setCreateBudgetOpen(true)}>
               {t('budgets.page.budget.empty.create_budget')}
             </Button>
           </>
         ) : (
           <>
             <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.empty.initial_setup')}</p>
-            <Button type="button" onClick={() => openAccountModal({})}>
+            <Button type="button" disabled={!online} onClick={() => openAccountModal({})}>
               {t('budgets.page.budget.empty.create_account')}
             </Button>
           </>
@@ -544,7 +547,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // screen has no hover, so there they show on every line while edit mode is on
   const lineControls: LineControls | null = isCompact ? (editMode ? 'always' : null) : 'hover'
   const hoverMenus = lineControls !== null
-  const dragEnabled = hoverMenus && configure
+  const dragEnabled = hoverMenus && configure && online
   const expenseFolderMenu = (bucket: FolderBucket) =>
     menus.folderActionsFor(bucket.folder ? { id: bucket.folder.id, name: bucket.folder.name } : null, bucket.elements.length === 0, 'expense')
   const incomeFolderMenu = (group: IncomeGroup) =>
@@ -655,6 +658,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             className="uppercase tracking-wide text-muted-foreground"
             aria-label={t('budgets.page.budget.settings.button')}
             title={t('budgets.page.budget.settings.button')}
+            disabled={!online}
             onClick={() => (structureMode ? setConfigureOpen(true) : setUpdateBudgetOpen(true))}
           >
             <Settings2 className="size-4" />

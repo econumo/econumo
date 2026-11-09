@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LoadingDialog } from '@/components/LoadingDialog'
@@ -19,6 +20,7 @@ interface FormErrors {
 
 export function ChangePasswordPage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const updatePassword = useUpdatePassword()
 
   const [oldPassword, setOldPassword] = useState('')
@@ -134,7 +136,7 @@ export function ChangePasswordPage() {
           />
           {errors.newPasswordRetry ? <p className="text-sm text-destructive">{errors.newPasswordRetry}</p> : null}
         </div>
-        <Button type="submit" className="h-10 w-full font-normal lg:w-auto lg:min-w-44 lg:self-start" disabled={updatePassword.isPending}>
+        <Button type="submit" className="h-10 w-full font-normal lg:w-auto lg:min-w-44 lg:self-start" disabled={updatePassword.isPending || !online}>
           {t('user.change_password.form.submit.label')}
         </Button>
       </form>

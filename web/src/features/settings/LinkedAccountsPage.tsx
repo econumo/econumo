@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
@@ -20,6 +21,7 @@ import { parseUtcDateTime } from './securityFormat'
 
 export function LinkedAccountsPage() {
   const { t, i18n } = useTranslation()
+  const online = useOnline()
   const [searchParams, setSearchParams] = useSearchParams()
   const { hash } = useLocation()
   const queryClient = useQueryClient()
@@ -130,7 +132,7 @@ export function LinkedAccountsPage() {
               type="button"
               variant="secondary"
               size="sm"
-              disabled={lastIdentityLocked}
+              disabled={lastIdentityLocked || !online}
               aria-describedby={lastIdentityLocked ? 'linked-accounts-last-identity-hint' : undefined}
               onClick={() => setConfirm(i.provider)}
             >
@@ -152,7 +154,7 @@ export function LinkedAccountsPage() {
             <li key={p.id} className="flex items-center gap-3 rounded-md px-3 py-2.5">
               <ProviderMark id={p.id} />
               <div className="flex-1 text-sm">{p.name}</div>
-              <Button type="button" size="sm" disabled={start.isPending || inFlight} onClick={() => start.mutate({ provider: p.id, intent: 'link' })}>
+              <Button type="button" size="sm" disabled={start.isPending || inFlight || !online} onClick={() => start.mutate({ provider: p.id, intent: 'link' })}>
                 {t('user.page.settings.profile.linked_accounts.link')}
               </Button>
             </li>

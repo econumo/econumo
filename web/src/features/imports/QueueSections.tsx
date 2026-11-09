@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import type { ImportCardDto, ImportFailedEventDto, ImportQueuedEventDto } from '@/api/dto/imports'
 import { useUiStore } from '@/app/uiStore'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { useAccounts } from '@/features/accounts/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { formatDateTime, parseDateTime } from '@/lib/datetime'
@@ -60,6 +61,7 @@ function QueueRow({ row, action, cardName }: { row: ImportQueuedEventDto; action
 
 export function ToReviewSection({ queued }: { queued: ImportQueuedEventDto[] }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: sources = [] } = useImportSources()
   const { data: accounts = [] } = useAccounts()
   const skip = useSkipQueuedEvent()
@@ -87,11 +89,11 @@ export function ToReviewSection({ queued }: { queued: ImportQueuedEventDto[] }) 
               <span className="font-medium">{first.externalAccountId}</span>
               {state === 'unmapped' ? (
                 <span className="flex gap-3">
-                  <button type="button" className="text-econumo-link underline-offset-2 hover:underline" onClick={() => setMapTarget({ sourceId: first.sourceId, card })}>
+                  <button type="button" className="text-econumo-link underline-offset-2 hover:underline" disabled={!online} onClick={() => setMapTarget({ sourceId: first.sourceId, card })}>
                     {t('imports.apple_wallet.cards.map')}
                   </button>
                   <button type="button" className="text-muted-foreground underline-offset-2 hover:underline"
-                    disabled={ignore.isPending && ignore.variables?.sourceId === first.sourceId && ignore.variables?.externalAccountId === first.externalAccountId}
+                    disabled={!online || (ignore.isPending && ignore.variables?.sourceId === first.sourceId && ignore.variables?.externalAccountId === first.externalAccountId)}
                     onClick={() => ignore.mutate({ sourceId: first.sourceId, externalAccountId: first.externalAccountId }, { onError })}>
                     {t('imports.apple_wallet.cards.ignore')}
                   </button>
@@ -110,7 +112,7 @@ export function ToReviewSection({ queued }: { queued: ImportQueuedEventDto[] }) 
                     size="sm"
                     variant="ghost"
                     aria-label={`${t('imports.queue.skip')} ${r.payee}`}
-                    disabled={skip.isPending && skip.variables === r.linkId}
+                    disabled={!online || (skip.isPending && skip.variables === r.linkId)}
                     onClick={() => skip.mutate(r.linkId, { onError })}
                   >
                     {t('imports.queue.skip')}
@@ -133,6 +135,7 @@ export function ToReviewSection({ queued }: { queued: ImportQueuedEventDto[] }) 
 
 export function SkippedSection({ skipped }: { skipped: ImportQueuedEventDto[] }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const unskip = useUnskipQueuedEvent()
   const onError = (err: unknown) => toast.error(apiErrorMessage(err))
   return (
@@ -148,7 +151,7 @@ export function SkippedSection({ skipped }: { skipped: ImportQueuedEventDto[] })
               size="sm"
               variant="ghost"
               aria-label={`${t('imports.queue.unskip')} ${r.payee}`}
-              disabled={unskip.isPending && unskip.variables === r.linkId}
+              disabled={!online || (unskip.isPending && unskip.variables === r.linkId)}
               onClick={() => unskip.mutate(r.linkId, { onError })}
             >
               {t('imports.queue.unskip')}
@@ -162,6 +165,7 @@ export function SkippedSection({ skipped }: { skipped: ImportQueuedEventDto[] })
 
 export function FailedImportsSection({ failed }: { failed: ImportFailedEventDto[] }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const retry = useRetryImportEvent()
   const discard = useDiscardImportEvent()
   const onError = (err: unknown) => toast.error(apiErrorMessage(err))
@@ -196,7 +200,7 @@ export function FailedImportsSection({ failed }: { failed: ImportFailedEventDto[
               size="sm"
               variant="secondary"
               aria-label={`${t('imports.queue.retry')} ${t('imports.queue.received', { date: formatDateTime(parseDateTime(ev.receivedAt)) })}`}
-              disabled={retry.isPending && retry.variables === ev.eventId}
+              disabled={!online || (retry.isPending && retry.variables === ev.eventId)}
               onClick={() => retryEvent(ev)}
             >
               {t('imports.queue.retry')}
@@ -206,7 +210,7 @@ export function FailedImportsSection({ failed }: { failed: ImportFailedEventDto[
               size="sm"
               variant="ghost"
               aria-label={`${t('imports.queue.discard')} ${t('imports.queue.received', { date: formatDateTime(parseDateTime(ev.receivedAt)) })}`}
-              disabled={discard.isPending && discard.variables === ev.eventId}
+              disabled={!online || (discard.isPending && discard.variables === ev.eventId)}
               onClick={() => discard.mutate(ev.eventId, { onError })}
             >
               {t('imports.queue.discard')}

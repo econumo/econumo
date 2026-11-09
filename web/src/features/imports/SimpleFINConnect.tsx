@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Checkbox } from '@/components/ui/checkbox'
 import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { InfoBox } from '@/components/InfoBox'
 import { apiErrorMessage } from '@/lib/apiError'
 import { WrongPassphraseError, createKey, encryptCredential, unlockKey } from '@/lib/importCrypto'
@@ -23,6 +24,7 @@ export function SimpleFINConnect({ keyState, onConnected, reconnect = false }: {
   reconnect?: boolean
 }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const claim = useClaimSetupToken()
   const setKey = useSetImportCredentialKey()
   const create = useCreateImportSource()
@@ -102,7 +104,7 @@ export function SimpleFINConnect({ keyState, onConnected, reconnect = false }: {
         </>
       ) : null}
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-      <Button type="button" className="w-full sm:w-auto" disabled={busy} onClick={() => void submit()}>
+      <Button type="button" className="w-full sm:w-auto" disabled={busy || !online} onClick={() => void submit()}>
         {t(reconnect ? 'imports.simplefin.connect.submit_reconnect' : 'imports.simplefin.connect.submit')}
       </Button>
     </div>

@@ -278,6 +278,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
         confirmLabel={t('common.button.delete.label')}
         cancelLabel={t('common.button.cancel.label')}
         destructive
+        offlineOk
       />
     </>
   )

@@ -234,6 +234,7 @@ export function SettingsPage() {
         question={unsent > 0 ? `${t('auth.sign_out.question')} ${pluralPick(t('settings.logout.pending_warning'), unsent, i18n.language)}` : t('auth.sign_out.question')}
         confirmLabel={t('auth.sign_out.action.logout')}
         cancelLabel={t('auth.sign_out.action.cancel')}
+        offlineOk
       />
     </div>
   )

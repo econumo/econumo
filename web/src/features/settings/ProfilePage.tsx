@@ -14,6 +14,7 @@ import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
 import { apiFieldErrors } from '@/lib/apiError'
 import { useUnsentCount } from '@/features/pendingWrites/hooks'
+import { useOnline } from '@/hooks/useOnline'
 import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNotEmpty, isValidName } from '@/lib/validation'
@@ -32,6 +33,7 @@ import { useTheme } from 'next-themes'
 
 export function ProfilePage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const navigate = useNavigate()
   const { data: user } = useUserData()
   const updateName = useUpdateName()
@@ -140,6 +142,7 @@ export function ProfilePage() {
                 setName(e.target.value)
                 setSavedVisible(false)
               }}
+              disabled={!online}
               onBlur={saveName}
             />
             {/* unobtrusive save confirmation: fades in on success, fades out on its own */}
@@ -164,6 +167,7 @@ export function ProfilePage() {
         <CurrencyField
           label={t('user.page.settings.profile.currency.label')}
           value={currentCurrencyId}
+          disabled={!online}
           onChange={(id) => {
             const currency = currencies?.find((c) => c.id === id)
             if (currency && id !== currentCurrencyId) {
@@ -292,6 +296,7 @@ export function ProfilePage() {
         question={unsent > 0 ? `${t('auth.sign_out.question')} ${pluralPick(t('settings.logout.pending_warning'), unsent, i18n.language)}` : t('auth.sign_out.question')}
         confirmLabel={t('auth.sign_out.action.logout')}
         cancelLabel={t('auth.sign_out.action.cancel')}
+        offlineOk
       />
     </SettingsShell>
   )

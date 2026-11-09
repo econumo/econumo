@@ -206,6 +206,7 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
         confirmLabel={t('common.button.delete.label')}
         cancelLabel={t('common.button.cancel.label')}
         destructive
+        offlineOk
       />
     </>
   )

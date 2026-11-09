@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -27,6 +28,7 @@ type Managed = { kind: 'accounts' | 'budgets'; item: SharedItem }
 
 export function PreviewConnectionDialog({ open, connection, onDelete, onClose }: PreviewConnectionDialogProps) {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
   const { data: budgets = [] } = useBudgets()
@@ -113,7 +115,7 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
             <Button type="button" variant="secondary" onClick={onClose}>
               {t('common.button.ok.label')}
             </Button>
-            <Button type="button" variant="destructive" onClick={() => onDelete(other.id)}>
+            <Button type="button" variant="destructive" disabled={!online} onClick={() => onDelete(other.id)}>
               {t('common.button.delete.label')}
             </Button>
           </div>

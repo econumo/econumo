@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -1442,4 +1442,42 @@ it('an online validation refusal still shows in the dialog', async () => {
   expect(await screen.findByText('Refused by server')).toBeInTheDocument()
   expect(useUiStore.getState().transactionModal).not.toBeNull()
   expect(getOps()).toEqual([])
+})
+
+describe('offline', () => {
+  beforeEach(() => {
+    onlineManager.setOnline(false)
+  })
+  afterEach(() => {
+    act(() => onlineManager.setOnline(true))
+  })
+
+  it('offers no create row in the pickers and no "+" for a tag', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    useUiStore.getState().openTransactionModal({ transaction: wireTxEcho() as unknown as TransactionDto })
+    await screen.findByRole('heading', { name: 'Edit transaction' })
+    // the user query decides the "+" online; wait on a settled picker instead
+    await screen.findByRole('combobox', { name: 'Category' })
+    expect(screen.queryByRole('button', { name: 'Add tag' })).toBeNull()
+
+    await user.click(screen.getByRole('combobox', { name: 'Category' }))
+    expect(await screen.findByPlaceholderText('Search')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Search or enter a new name')).toBeNull()
+  })
+
+  it('keeps adding and updating a transaction enabled, posting a template is not', async () => {
+    renderDialog()
+    useUiStore.getState().openTransactionModal({ type: 'expense' })
+    expect(await screen.findByRole('button', { name: 'Add' })).toBeEnabled()
+    act(() => useUiStore.getState().closeTransactionModal())
+
+    const template: RecurringDto = {
+      id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+      amount: '42.5', categoryId: 'cat-food', payeeId: null, tagId: null, labelIds: [],
+      description: 'rent', schedule: 'monthly', nextPaymentAt: '2026-07-05 00:00:00',
+    }
+    useUiStore.getState().openTransactionModal({ postRecurring: template })
+    expect(await screen.findByRole('button', { name: 'Add' })).toBeDisabled()
+  })
 })

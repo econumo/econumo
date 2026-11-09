@@ -4,6 +4,7 @@ import { Check, ChevronLeft, ChevronRight, Lightbulb } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { UserAvatar } from '@/components/UserAvatar'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { RouterPage } from '@/app/router-pages'
@@ -72,6 +73,7 @@ function Step({
 
 export function OnboardingPage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const openAccountModal = useUiStore((s) => s.openAccountModal)
@@ -141,6 +143,7 @@ export function OnboardingPage() {
               type="button"
               size="sm"
               className="mt-2 bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85"
+              disabled={!online}
               onClick={() => openAccountModal({ folderId: folders[0]?.id ?? null })}
             >
               {t('onboarding.add_account')}
@@ -166,6 +169,7 @@ export function OnboardingPage() {
               type="button"
               size="sm"
               className="mt-2 bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85"
+              disabled={!online}
               onClick={() => setImportOpen(true)}
             >
               {t('onboarding.import_transactions')}
@@ -256,7 +260,7 @@ export function OnboardingPage() {
                 }}
               />
             </p>
-            <Button type="button" size="sm" className="mt-2" disabled={completeOnboarding.isPending} onClick={handleComplete}>
+            <Button type="button" size="sm" className="mt-2" disabled={completeOnboarding.isPending || !online} onClick={handleComplete}>
               {t('onboarding.complete')}
             </Button>
           </Step>

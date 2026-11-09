@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
+import { useOnline } from '@/hooks/useOnline'
 import type { ConnectedAppDto } from '@/api/dto/authserver'
 import { mcpUrl } from '@/lib/config'
 import { useServerConfig } from '@/lib/appConfig'
@@ -19,6 +20,7 @@ export function ConnectedAppsPage() {
   const { t, i18n } = useTranslation()
   const { data: apps } = useConnectedApps()
   const revoke = useRevokeConnectedApp()
+  const online = useOnline()
   const [confirmRevoke, setConfirmRevoke] = useState<ConnectedAppDto | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -94,6 +96,7 @@ export function ConnectedAppsPage() {
               variant="ghost"
               size="sm"
               className="shrink-0 text-econumo-link"
+              disabled={!online}
               onClick={() => setConfirmRevoke(app)}
             >
               {t('authserver.apps.revoke')}

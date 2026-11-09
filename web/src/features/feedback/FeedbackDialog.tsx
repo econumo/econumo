@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { useUiStore } from '@/app/uiStore'
+import { useOnline } from '@/hooks/useOnline'
 import type { FeedbackType } from '@/app/uiStore'
 import { useUserData } from '@/features/user/queries'
 import { submitForm } from '@/lib/analytics'
@@ -28,6 +29,7 @@ export function FeedbackDialog() {
 
 function FeedbackForm({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: user } = useUserData()
   const [type, setType] = useState<FeedbackType>(() => useUiStore.getState().feedbackType)
   const topic = useUiStore((s) => s.feedbackTopic)
@@ -79,7 +81,7 @@ function FeedbackForm({ onDone }: { onDone: () => void }) {
           <Button type="button" variant="secondary" onClick={onDone}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="feedback-form" disabled={send.isPending}>
+          <Button type="submit" form="feedback-form" disabled={send.isPending || !online}>
             {t('feedback.dialog.send')}
           </Button>
         </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, Copy, KeyRound, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -38,6 +39,7 @@ export function expiresAtFrom(choice: ExpiryChoice, customDate: string, now: Dat
 
 export function PersonalTokensPage() {
   const { t, i18n } = useTranslation()
+  const online = useOnline()
   const { data: tokens } = usePersonalTokens()
   const createToken = useCreatePersonalToken()
   const revokeToken = useRevokePersonalToken()
@@ -104,6 +106,7 @@ export function PersonalTokensPage() {
         <Button
           type="button"
           size="sm"
+          disabled={!online}
           onClick={() => setCreateOpen(true)}
           title={t('user.page.settings.profile.tokens.create.label')}
           aria-label={t('user.page.settings.profile.tokens.create.label')}
@@ -134,6 +137,7 @@ export function PersonalTokensPage() {
               </span>
             </div>
             <Button
+              disabled={!online}
               type="button"
               variant="ghost"
               size="sm"
@@ -233,7 +237,7 @@ export function PersonalTokensPage() {
             >
               {t('common.button.cancel.label')}
             </Button>
-            <Button type="submit" disabled={createToken.isPending}>
+            <Button type="submit" disabled={createToken.isPending || !online}>
               {t('user.page.settings.profile.tokens.form.submit.label')}
             </Button>
           </div>

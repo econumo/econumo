@@ -14,6 +14,7 @@ import { decryptCredential } from '@/lib/importCrypto'
 import { syncStartDate } from './syncWindow'
 import { useImportKey } from './useImportKey'
 import { useImportSources, useSyncImportSource } from './queries'
+import { useOnline } from '@/hooks/useOnline'
 
 function ActionRow({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
   return (
@@ -28,6 +29,7 @@ function ActionRow({ label, onClick, disabled }: { label: string; onClick: () =>
 // Settings menu and each provider's history on its own page.
 function TransactionImportRows() {
   const { t } = useTranslation()
+  const online = useOnline()
   const navigate = useNavigate()
   const { data: sources = [] } = useImportSources()
   const { state: keyState } = useImportKey()
@@ -73,7 +75,7 @@ function TransactionImportRows() {
   return (
     <>
       {pullSources.length > 0 ? (
-        <ActionRow label={syncing ? t('imports.simplefin.sync.running') : t('imports.data_page.sync_all')} onClick={() => void syncAll()} disabled={syncing} />
+        <ActionRow label={syncing ? t('imports.simplefin.sync.running') : t('imports.data_page.sync_all')} onClick={() => void syncAll()} disabled={syncing || !online} />
       ) : null}
     </>
   )
@@ -81,6 +83,7 @@ function TransactionImportRows() {
 
 export function ImportsDataPage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const [exportOpen, setExportOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
@@ -91,7 +94,7 @@ export function ImportsDataPage() {
       backTo={RouterPage.SETTINGS}
     >
       <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
-        <ActionRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
+        <ActionRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} disabled={!online} />
         <ActionRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
         <TransactionImportRows />
       </div>
