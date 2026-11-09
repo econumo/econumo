@@ -233,13 +233,14 @@ currency / transaction-creation ports, wired in `internal/server/glue_imports.go
 The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
 
-`debt` (loans the owner pays down through an expense category) exposes six routes under
-`/api/v1/debt/` (`get-debt-list`, `get-debt`, `create-debt`, `update-debt`, `delete-debt`,
-`mark-debt-paid-off`); a debt belongs to its owner alone, so another user gets not-found.
+`debt` (loans the owner pays down through an expense category) exposes seven routes under
+`/api/v1/debt/` (`get-debt-list`, `get-debt`, `get-debt-forecast`, `create-debt`, `update-debt`,
+`delete-debt`, `mark-debt-paid-off`); a debt belongs to its owner alone, so another user gets not-found.
 A debt is created with a name, what counts as its payments, a payment and a schedule; its terms
 (balance, last payment date) are optional and can be added later (see "Budget debts").
-Its ports (classification ownership, rates, the budget's element rows) are wired in
-`internal/server/glue_debt.go` and `glue_budget_debt.go`; budget reads debts through its own `DebtSource` port.
+Its ports (classification ownership, rates, the budget's element rows, a budget's plans of a debt
+row for the forecast) are wired in `internal/server/glue_debt.go` and `glue_budget_debt.go`; budget
+reads debts through its own `DebtSource` port.
 
 ### Dependency rule
 
@@ -1871,19 +1872,34 @@ data unreadable. Most are also asserted by the test suite.
   into a debt is its Details entry (Settings row, budget row menu, item sheet; owner only), opening
   `DebtReviewScreen`: on desktop a centred dialog over 90% of the viewport that scrolls inside
   (`ResponsiveDialog` `size="large"`), full screen on a phone (`fullScreen`). Its header is the
-  icon, name and close X (no menu); under it the tabs **Overview** and **Settings**
-  (`components/ui/tabs`, `openDebtDetails(id, tab)` picks the first; `debtDetailsTab` in
-  `uiStore`). Overview is read-only: payments left in large text with an X-of-Y progress bar whose
+  icon, name and close X (no menu); under it the tabs **Overview**, **Settings** and **Danger
+  zone** (`components/ui/tabs`, `openDebtDetails(id, tab, budgetId)` picks the first; `debtDetailsTab`
+  and `debtDetailsBudgetId`, the budget the screen was opened from, in `uiStore`). The tab bar is
+  the dialog's `subheader`: title and tabs are one opaque, bordered block outside the scrolling
+  body (the Tabs root wraps the dialog, its context reaching both through the portal), each tab's
+  2px underline as wide as its label and overlapping the block's border. Overview is read-only: payments left in large text with an X-of-Y progress bar whose
   visible track is the whole loan (`periodsPaid` of `periodsPaid + paymentsLeft`, hidden at 0), a
   "Loan" card (owed now, payment, repeats, next payment, loan ends, start date, left to pay,
   overpaid so far, overpayment still to come, currency), the payments-from sentence read-only
-  (`PaymentsFromEditor readOnly`), payments and a collapsed "History of terms". Settings is ONE
+  (`PaymentsFromEditor readOnly`), payments (with a Balance column on a set-up debt: `get-debt`'s
+  additive `balance` per payment, what was owed after it, from the snapshots and stored splits,
+  `""` while not set up; Principal is left out on a phone) and a collapsed "History of terms".
+  Under the payments of a set-up debt that is not paid off, "Show future payments" loads
+  `get-debt-forecast?id=&budgetId=` (fires `appDebtForecastView`): the projection's own run
+  (`model.Projection.Payments`, a planned extra riding on its period's first payment, an extra of
+  a period with no due as a payment of its own at the period's end) with the plans the given
+  budget, else the owner's active budget, holds for the debt's row (plans outside the debt's
+  planning life ignored, on that budget's periods), read through the debt feature's `BudgetPlans`
+  port (`budget.Service.DebtRowPlans`, which answers nothing for a budget the caller cannot read);
+  `budgetId`/`budgetName` name the budget only when its plans add an extra, so the SPA's note
+  reads "Includes extra payments planned in X" or "Regular payments only". It lists the rows
+  soonest first in muted italics. A debt not set up has no items. Settings is ONE
   form, `DebtSettingsForm` (name, payments from, balance, payment row, one `DatesRow` of two cards,
   start date first and last payment date second, hints screen-reader only, currency; Cancel resets it, Save sends one `update-debt`, built by `buildTermsPayload`:
   untouched terms are not sent, and an unchanged currency goes as `""`, so the server keeps what
-  another device may have changed), then a "Danger zone" section (destructive-tinted card, a row
-  per action with a one-line description) with Mark as paid off (set up and not paid off) and
-  Delete, each behind its confirm.
+  another device may have changed); it ends at Save/Cancel. The Danger zone tab is a
+  destructive-tinted card, a row per action with a one-line description, with Mark as paid off
+  (set up and not paid off) and Delete, each behind its confirm.
   The Settings tab stays mounted (edits survive a look at the Overview) and reloads the debt
   afresh on every visit while it holds no edits (`useFetchDebtForEdit`, the app's loader while it
   loads); a save or Mark as paid off rebuilds the form from the returned debt and returns to the

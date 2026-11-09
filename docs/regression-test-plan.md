@@ -2207,16 +2207,17 @@ out), and add a second budget member account in USD, before running these.
       under the payment says so and the date stays. Saving a payment that
       cannot cover the balance, a last payment date before today, an empty
       name or a refused sentence (key conflict) shows the error next to its
-      field. Under the form a "Danger zone" card (red-tinted border and
-      background) lists Mark as paid off (set-up debts that are not paid off
-      only; "Sets the balance to 0 and stops the countdown.") and Delete
-      ("Removes the debt. Its payments go back to the category."), each a
-      row with its description and button, both asking first; on a phone
-      the button sits under its description. While the debt loads the tab
-      shows the loader, not those two buttons alone. After Mark as paid off
-      the screen returns to the Overview; reopening Settings shows Balance
-      now 0, and changing only the payment then saves balance 0 (the debt
-      stays paid off).
+      field. The tab ends at Cancel and Save; while the debt loads it shows
+      the loader, not the buttons alone.
+- [ ] 📱 **Danger zone tab** (the third tab): a red-tinted card lists Mark as
+      paid off (set-up debts that are not paid off only; "Sets the balance to
+      0 and stops the countdown.") and Delete ("Removes the debt. Its payments
+      go back to the category."), each a row with its description and button,
+      both asking first; on a phone the button sits under its description.
+      Neither is on the Settings tab. After Mark as paid off the screen
+      returns to the Overview; reopening Settings shows Balance now 0, and
+      changing only the payment then saves balance 0 (the debt stays paid
+      off).
 - [ ] 📱 **Change the currency** (Settings tab → Currency, a searchable picker), on a
       set-up debt with a payment and a plan in a budget: leave the other
       fields and save. No snapshot is added (also when moving a balance with
@@ -2251,8 +2252,14 @@ out), and add a second budget member account in USD, before running these.
       or pencil): on desktop a centred dialog covering about 90% of the
       screen's width and height that scrolls inside; on a phone a full
       page. The header is the debt's icon, name and the close X, with no ⋮
-      menu on any width. Under it two tabs, Overview (selected on open) and
-      Settings, stay in view while the content scrolls. Overview is
+      menu on any width. Under it three tabs, Overview (selected on open),
+      Settings and Danger zone. The header and the tabs are one opaque block
+      with a bottom border that never scrolls: scroll a long Overview (or
+      Settings on a phone) and nothing (no "N payments left", no card title)
+      shows between the header and the tabs or above the tabs; content
+      disappears exactly at the border. The selected tab's underline is
+      exactly as wide as its label and lies on that border, for each of the
+      three tabs, on desktop and on a phone. Overview is
       read-only. Top: "N payments left" in large text (or "Paid off"), a
       progress bar whose grey track is the whole loan and whose filled part
       is what is paid, with "77 of 360 paid" (hidden when both counts are 0),
@@ -2261,7 +2268,10 @@ out), and add a second budget member account in USD, before running these.
       next payment, loan ends, start date (or "From the first payment"),
       left to pay, overpaid so far and overpayment still to come, currency;
       below it "Which payments count" as a plain sentence (no pickers), the
-      payments (Date / Payment / Interest / Principal, newest first) and a
+      payments (Date / Payment / Interest / Principal / Balance, newest
+      first; Balance is what was owed after that payment, the newest one
+      matching "Owed now" when it is not dated after today; on a phone the
+      Principal column is left out) and a
       collapsed "History of terms" that expands on tap (hidden when there
       are no snapshots). The figures
       follow the entered payments with no typing: add a matching expense and
@@ -2269,12 +2279,28 @@ out), and add a second budget member account in USD, before running these.
       the progress moves by one when the payment lands in a new due window
       (several payments in one window count once; payments from before setup
       count).
+- [ ] 📱 **Future payments**: under the payments of a set-up debt that is
+      not paid off, "Show future payments" loads a "Future payments" list
+      (Date / Payment / Interest / Principal / Balance, soonest first, muted
+      italics) running to the payoff, its last payment possibly smaller and
+      its last balance 0; the link turns into "Hide future payments", which
+      hides it again. Opened from a budget (the row's Details, Finish setup,
+      the item sheet's Details), a month whose plan for the debt row is
+      above the regular payments adds the difference to that month's first
+      payment and the note reads "Includes extra payments planned in
+      <budget>"; opened from Settings → Debts the user's active budget is
+      used the same way when it holds the debt's row; with no extra planned,
+      or a budget the user cannot read, the list is the regular schedule and
+      the note reads "Regular payments only". A plan outside the debt's
+      months is ignored. A debt not set up or paid off shows no link.
+      Loading the list fires its analytics event.
 - [ ] 📱 **Not set up**: a debt created without terms shows "Paid so far" (the
       sum of its payments dated up to today; a future-dated payment is listed
       but not counted), the hint "Add what you owe and when the loan ends
       to see payments left" and a "Finish setup" button; there is no balance
       or progress bar, the Loan card is short (payment · repeats, start date,
-      currency) and the payment list shows Date and Payment only. Mark as
+      currency) and the payment list shows Date and Payment only (no
+      Balance column, no "Show future payments"). Mark as
       paid off is not offered (and the server refuses it). Finish setup
       switches to the Settings tab with the Balance now field focused; the
       budget row's "Finish setup", the item sheet's "Finish setup" button and
@@ -2303,12 +2329,12 @@ out), and add a second budget member account in USD, before running these.
       converted to the debt's currency with the rates the app uses for its day
       (the month's average) and shows in the
       payment list in the debt currency.
-- [ ] **Mark as paid off** (review screen's Settings tab, Danger zone → asks first): current balance becomes 0,
+- [ ] **Mark as paid off** (review screen's Danger zone tab → asks first): current balance becomes 0,
       "Paid off" shows in the list and the row, the payment list keeps its
       history. A later matching payment or a new snapshot with a balance
       reopens the debt; marking it paid off again then settles it (a new zero
       snapshot), even when the balance already showed 0.
-- [ ] **Delete** a debt (review screen's Settings tab, Danger zone → asks first): its transactions stay
+- [ ] **Delete** a debt (review screen's Danger zone tab → asks first): its transactions stay
       untouched and return to their category row. When the debt carries plans
       or comments in a budget (it is not a whole-category debt, or the
       category row's plans did not move), a second confirmation names what is
