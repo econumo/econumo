@@ -111,11 +111,33 @@ it('a timeout queues as attempted under the key the request carried', async () =
   expect(getOps()).toMatchObject([{ attempted: true, status: 'waiting', key: send.mock.calls[0][0].idempotencyKey }])
 })
 
-it('resubmitting the same add, a retap after a 5xx, carries the same key: the form id', async () => {
-  const send = vi.fn().mockRejectedValueOnce(httpError(500, envelope)).mockResolvedValueOnce(item)
-  await expect(submitChange(client, create, send)).rejects.toBeDefined()
-  await submitChange(client, create, send)
-  expect(send.mock.calls.map((c) => c[0].idempotencyKey)).toEqual(['temp', 'temp'])
+describe('a 5xx with the app\'s envelope may have committed before it failed', () => {
+  const failing = () => vi.fn().mockRejectedValue(httpError(500, envelope))
+
+  it.each<[string, OpChange]>([
+    ['an add', create],
+    ['an edit', { kind: 'tx-update', txId: 'real', payload: payload('real') }],
+    ['a delete', { kind: 'tx-delete', txId: 'real', previous: null }],
+    ['a limit', { kind: 'limit', budgetId: 'b1', elementId: 'e1', period: '2026-11-01', amount: '5' }],
+  ])('%s queues as attempted under the key the request carried, and the dialog closes', async (_name, change) => {
+    const send = failing()
+    await expect(submitChange(client, change, send)).resolves.toEqual({ queued: true })
+    expect(getOps()).toMatchObject([{ kind: change.kind, attempted: true, status: 'waiting', key: send.mock.calls[0][0].idempotencyKey }])
+  })
+
+  it('a retap of the add goes behind it instead of out again', async () => {
+    const send = failing()
+    await submitChange(client, create, send)
+    await submitChange(client, create, send)
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(getOps()[0]).toMatchObject({ kind: 'tx-create', key: 'temp', attempted: true })
+  })
+})
+
+it('a 402 is a refusal and rejects', async () => {
+  const refusal = httpError(402, envelope)
+  await expect(submitChange(client, create, vi.fn().mockRejectedValue(refusal))).rejects.toBe(refusal)
+  expect(getOps()).toEqual([])
 })
 
 it('an add that waits in the queue is keyed by the form id too', async () => {

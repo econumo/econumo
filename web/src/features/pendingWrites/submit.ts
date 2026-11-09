@@ -1,4 +1,5 @@
 import { onlineManager, type QueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import type { WriteOptions } from '@/api/client'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -78,7 +79,10 @@ export async function submitChange<T>(
     if (outcome === 'done' && change.kind === 'tx-create') {
       return enqueueReplayedAdd(change, key)
     }
-    if (outcome === 'wait' || outcome === 'done') {
+    // A 5xx may have come after the commit, and then the server holds this key:
+    // the retry must carry it too, or a delete answers "not found". Anything that
+    // is not a request failure never left this client and rejects.
+    if (outcome === 'wait' || outcome === 'done' || (outcome === 'retry' && isAxiosError(err))) {
       return enqueueChange(change, key, true)
     }
     throw err

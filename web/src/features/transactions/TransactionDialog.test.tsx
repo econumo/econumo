@@ -1452,14 +1452,12 @@ it('offline Add closes the dialog with no request and queues the change', async 
   }
 })
 
-it('a second tap after a server error resends the add under the same key, with no id', async () => {
+it('a server error closes the dialog and queues the add under the key it was sent with, with no id', async () => {
   const seen: { key: string | null; body: Record<string, unknown> }[] = []
   server.use(
     http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
       seen.push({ key: request.headers.get('idempotency-key'), body: (await request.json()) as Record<string, unknown> })
-      return seen.length === 1
-        ? HttpResponse.json({ success: false, message: 'Boom', code: 0, exceptionType: 'x' }, { status: 500 })
-        : HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+      return HttpResponse.json({ success: false, message: 'Boom', code: 0, exceptionType: 'x' }, { status: 500 })
     }),
   )
   await loadPendingWrites('u1')
@@ -1469,14 +1467,12 @@ it('a second tap after a server error resends the add under the same key, with n
   await screen.findByRole('heading', { name: 'Add transaction' })
   await user.type(await screen.findByLabelText('Amount'), '7')
   await user.click(screen.getByRole('button', { name: 'Add' }))
-  await waitFor(() => expect(seen).toHaveLength(1))
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled())
-  await user.click(screen.getByRole('button', { name: 'Add' }))
   await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
 
+  expect(seen).toHaveLength(1)
   expect(seen[0].key).toMatch(/^[0-9a-f-]{36}$/)
-  expect(seen[1].key).toBe(seen[0].key)
   expect(seen[0].body).not.toHaveProperty('id')
+  expect(getOps()).toMatchObject([{ kind: 'tx-create', key: seen[0].key, attempted: true, status: 'waiting' }])
 })
 
 it('a 402 leaves its toast to the API client', async () => {

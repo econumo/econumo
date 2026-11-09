@@ -1,6 +1,7 @@
 import { createElement, type ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
+import { AxiosError, type AxiosResponse } from 'axios'
 import { onlineManager, QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
@@ -893,6 +894,16 @@ it('a 409 on the direct path ends with one row and nothing left in the queue', a
   expect(seen.slice(0, 2).map((r) => [r.path, r.key])).toEqual([['create-transaction', id], ['create-transaction', id]])
   expect(seen.slice(0, 2).every((r) => !('id' in r.body))).toBe(true)
   expect(overlayTransactions(client.getQueryData<TransactionDto[]>(queryKeys.transactions) ?? [], getOps(), me).map((t) => t.id)).toEqual(['real'])
+})
+
+it('a delete whose direct request got a 5xx after committing is finished by the 409, not shown as failed', async () => {
+  client.setQueryData(queryKeys.transactions, [row('real')])
+  serverRows = []
+  answerWith(() => HttpResponse.json({ success: false, message: 'Operation is locked', code: 409, errors: {} }, { status: 409 }))
+  const failedAfterCommit = new AxiosError('failed', 'ERR_BAD_RESPONSE', undefined, undefined, { status: 500, data: envelope('Boom') } as AxiosResponse)
+  await expect(submitChange(client, { kind: 'tx-delete', txId: 'real', previous: null }, vi.fn().mockRejectedValue(failedAfterCommit))).resolves.toEqual({ queued: true })
+  await vi.waitFor(() => expect(getOps()).toEqual([]))
+  expect(ids()).toEqual([])
 })
 
 it('a 409 on a corrected resubmit ends with the row carrying the later values', async () => {
