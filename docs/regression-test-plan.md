@@ -2729,6 +2729,44 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       connections, imports and the import rules; no "save as a rule" prompt appears after
       editing an imported row. A transaction still waiting or refused cannot be dragged
       even online.
+- [ ] 📱 Offline add: tap Add transaction, fill it in, Add. The dialog closes at once, the row is on
+      top of its day in the list, the account balance moves and the sidebar's no-connection icon
+      counts one change. The row looks like any other row; tapping it opens the preview, which says
+      "Not saved". The category, recipient and tag pickers offer existing entries only (no create
+      row for a name that does not exist, no "+").
+- [ ] 📱 Offline edit: change the amount of a saved transaction. The dialog closes at once and the
+      list and the balance show the new amount. Editing a transaction added offline keeps one
+      waiting change (the badge does not grow) and only the last version is sent.
+- [ ] 📱 Offline delete: delete a saved transaction. It leaves every list at once and the balance
+      moves. Deleting a transaction added offline removes it and sends nothing on reconnect.
+- [ ] 📱 Offline limit: change a plan in the Budget view, the phone sheet, the Plan grid (single
+      cell and fill right). The new number shows at once with a small not-saved icon beside it and
+      Total follows; changing the same cell again keeps one waiting change.
+- [ ] 📱 Budget figures do not guess offline: Spent, Available and the budget cell's transaction
+      list keep the server's numbers for a waiting transaction (an edit or delete of a listed row
+      shows there, a new one only once sent), and update when the server confirms it.
+- [ ] 📱 Reopening with waiting changes: with changes waiting, close the app or reload while
+      still offline. It opens with every change in place: rows, balance, the plan and its icon, the
+      "Not saved" preview and the badge. Open it again with the network back and each change is
+      sent once by itself.
+- [ ] 📱 Back online: each waiting change goes out once, oldest first, the badge and the
+      icons and "Not saved" labels clear, the list shows one row per change (no flash of a
+      duplicate) and the balance stays right. With the network log open, every request of one
+      change carries the same `Idempotency-Key`; a change whose response was lost (no network
+      just as it arrives) is sent again, answered 409 and still leaves one row. With two tabs
+      open, only one of them sends.
+- [ ] A slow server while online: no answer within about 10 seconds closes the dialog and the
+      change waits and goes out later, one row in the end.
+- [ ] 📱 A refused change in the Inbox: go offline, add a transaction on an account, delete that
+      account from another session, come back online. The Inbox badge counts it and its "Not saved"
+      section shows the row with the server's reason; other waiting changes still went through.
+      Tapping a refused add or edit opens the transaction dialog with the entered values and saving
+      sends it again (refused again: it returns to the Inbox with the reason; accepted: it leaves
+      the Inbox and one row is left). A refused delete or plan offers Try again and Discard; Discard
+      brings back the row or the server's number. The preview of a refused row shows the reason.
+- [ ] 📱 Signing out with changes unsent, waiting or refused: the Log out confirmation says how many
+      will be lost; Stay keeps them, Log out drops them and the next user of the device never sees
+      or sends them. Signing back in as the same user keeps them if the session ended by itself.
 - [ ] Sync button tap = incremental refresh: after an edit made on another
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the

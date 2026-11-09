@@ -197,9 +197,11 @@ API sections of `CLAUDE.md`.
 
 ### Older servers
 
-The native app can point at an older self-hosted server, which ignores the key and requires
-`id` on create, so offline adds would be refused there and land in the Inbox. The native app
-is parked, so `minServerVersion` is not raised. *(Author's call.)*
+A client on another origin than an older server cannot reach it at all: that server's CORS
+allow-list does not carry `Idempotency-Key`, so the preflight of every `POST` fails, login
+included. The same-origin web app is unaffected, since it always talks to the server that
+served it. Only the native app can point at an older self-hosted backend, and it is parked, so
+`minServerVersion` is not raised. *(Author's call.)*
 
 ## Left to the builder
 

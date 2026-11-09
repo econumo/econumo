@@ -188,6 +188,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   ├── storage/migrations/ ... SQL migrations per engine ({sqlite,pgsql}); run on boot
 │   │   ├── operation/ ............ shared row-based idempotency guard (operation_requests_ids) for
 │   │   │                          client-supplied operation ids on create endpoints
+│   │   ├── idempotency/ .......... the `Idempotency-Key` rows (idempotency_keys): one per (user, key), see "API conventions"
 │   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
 │   │   ├── ai/ .................. OpenAI-compatible / Anthropic Messages client (AI integration); imports nothing internal
@@ -399,7 +400,7 @@ router, i18n setup), `lib/`, `locales/`, `test/`. The shadcn CLI is not a depend
 brought unpatchable advisories into the lockfile): add components with `pnpm dlx shadcn add`;
 its Tailwind helpers are a copy in `src/shadcn-tailwind.css`. Anything that waits on the
 user (share invites, imported transactions to review, failed imports, failing
-syncs) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
+syncs, changes the server refused) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
 `useInbox()` hook that also drives the sidebar badge; new attention items go
 there, never into a new top banner (that slot is reserved for the subscription
 and server-version notices, and the install-the-app banner,
@@ -479,7 +480,7 @@ or a server already on another build leave the offline copy in place. The hook's
 then lasts until that answer too (at most 60 s).
 
 **Transactions are not in the localStorage query cache; they live in IndexedDB.** One
-database, `econumo` (`web/src/lib/db.ts`), holds three stores: `importKeys` (the SimpleFIN
+database, `econumo` (`web/src/lib/db.ts`), holds four stores: `pendingWrites` (see "Offline writes" below), `importKeys` (the SimpleFIN
 data key, migrated once from the old `econumo-import` database), `accountTransactions`
 (one row per account: its `transactionsRevision` and transactions) and `meta` (`buster`,
 `userId`, `savedAt`, plus a copy of the query-cache snapshot). `web/src/lib/transactionStore.ts` is the only reader/writer: loads
@@ -538,6 +539,50 @@ the Settings page's Data group (not inside Import & export), "Clear cache and re
 The hook ignores a second trigger while its reload runs (until the download lands or fails
 once, or pauses offline), and the row is disabled for that time. Offline it clears nothing,
 only toasting `settings.sync.full_reload_offline`.
+
+**Offline writes** (`web/src/features/pendingWrites`; spec
+`docs/superpowers/specs/2026-11-08-offline-writes-design.md`): adding, editing and deleting a
+transaction and changing a budget limit work with no connection. `queue.ts` holds the pure
+rules, `store.ts` persists the queue in the `pendingWrites` store of the `econumo` IndexedDB
+(one row per operation, tagged with the user id; never in localStorage), `sender.ts` is the
+only sender and `submit.ts` the entry point the hooks call. `startPendingWrites` runs from
+`main.tsx` once the query cache has restored (`onSuccess`/`onError` of the persist provider)
+and sends oldest first, one at a time, on load, on reconnect and after a sign-in, under the
+Web Lock `econumo-pending-writes`, so only one tab sends. Offline, `submitChange` queues at
+once and the dialog closes; online it sends directly (10 s timeout) and a validation refusal
+reaches the dialog as usual, while no answer or no response turns the change into a waiting
+one under the same key. An online change to a target that still has an operation queued goes
+through the queue, so a direct request never overtakes it. Each operation stores one UUIDv7
+`Idempotency-Key`, reused on every attempt. A target (a transaction id, or a limit's budget,
+element and period) has at most one operation besides one in flight: editing a waiting change
+replaces it, deleting a transaction added offline drops it with nothing sent, a change sent
+and unanswered is never altered and the next one queues behind it. A transaction added
+offline has a temporary device-only id, swapped for the server's on success, or from the
+replay's `resourceId` on a 409.
+The caches keep server rows only: the waiting changes are applied at READ time
+(`overlay.ts`, through `select` on the transactions, accounts, budget and plan queries), so a
+sync or a restore cannot erase them; the budget's Spent/Available figures do not move for a
+waiting transaction, the account balance does. A waiting transaction looks like any other
+row and its preview says "Not saved" (a failed one shows the reason), a waiting limit shows
+`NotSavedIcon` next to the number, and the sync area's badge counts what is waiting. Outcomes
+(`classify.ts`): 409 = done; a 4xx with the app's envelope = refused (402 included); a 5xx with
+the envelope retries 5 times with backoff, then is refused, stepping aside meanwhile for
+operations on other targets; no response, a timeout, a 429 or a body that is not the envelope
+(a proxy's page) keeps it waiting with no limit; 401 pauses the queue. A refused change stays
+local, marked failed, and appears in the Inbox's "Not saved" section
+(`features/inbox/FailedWritesSection.tsx`, counted in the Inbox badge): a failed add or edit
+opens the normal transaction dialog with the user's values and saving sends it again, a failed
+delete or limit has Try again, and all have Discard; other changes still go through. Sign-out
+warns while anything is unsent (`useUnsentCount`) because `LogoutPage` clears the queue; a
+login keeps the queue when the same user signs back in, and a different user's rows are
+deleted on load. Everything else is **disabled while offline** through one hook, `useOnline`
+(`web/src/hooks/useOnline.ts`, on `onlineManager`), and fails at once if something slips past
+(`networkMode: 'always'`, no retry). `web/src/lib/offline-coverage.test.ts` fails the suite
+when a source file fires a mutation without reading `useOnline`, unless it is listed with a
+reason in `OFFLINE_EXEMPT` or goes through a shared component in `OFFLINE_VIA_SHARED`. So a new
+write control needs the hook or an entry there. Analytics: the usual create/update/delete/limit
+events fire when the server confirms, `METRICS.WRITE_QUEUED`/`WRITE_RETRIED`/`WRITE_DISCARDED`
+at those points.
 
 **Product analytics rule:** every new user-facing feature/action MUST fire an
 analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
@@ -1106,6 +1151,12 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   `limitPeriodArg`) even though a bound `time.Time` now yields the same bytes:
   that is deliberate belt-and-braces so those comparisons never depend on a
   DSN parameter, not a sign that the driver still needs it.
+- **`idempotency_keys`** (migration `20261109000000`, both engines): one row per
+  `(user_id, idempotency_key)` with a nullable `resource_id` and `created_at`, no foreign keys
+  because the rows are short-lived. `internal/infra/idempotency` owns it, and the middleware
+  writes it (see "Idempotency-Key" under API conventions). Rows older than 7 days are purged
+  after a successful guarded request, at most every 10 minutes per process, set-based and
+  best effort.
 - **Transaction revisions.** `accounts.transactions_revision` is a per-account counter the
   SPA's transaction sync compares to know which accounts to re-download. It moves by exactly
   +1 per committed DB transaction that changes anything the account's downloaded transaction
@@ -1331,6 +1382,21 @@ In the distroless image these run via the binary directly, e.g.
   AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs. One exception:
   `/api/v1/import/list-external-accounts` is a POST *read*, because the bridge access URL
   travels in the body — it must never reach a query string (logs, history, referrers).
+- **`Idempotency-Key`** (`internal/web/middleware/idempotency.go`): the SPA's API client sends a
+  UUIDv7 on every `POST` (one it mints, or the offline queue's own, reused on every attempt). The
+  server guards authenticated `POST`s of a full-scope token outside `/mcp`; public routes have no
+  user. An absent or unparsable key means no guard, so MCP, other clients and the parity
+  catalogues are unchanged. The check reads the table BEFORE the handler, so a replay is refused
+  ahead of any lookup or access check (the replay of a delete that landed would otherwise answer
+  "not found"). The key is written inside the request's own DB transaction through the
+  `BeforeCommit` hook, or right after a 2xx for a handler that opens none; any non-2xx releases it
+  so the operation can be sent again. A replay answers **HTTP 409** with the handled-error
+  envelope, the `common.operation_locked` message and an additive `resourceId` when one was
+  stored (only create-transaction stores one today). A concurrent duplicate loses on the primary
+  key and gets a retryable 5xx with the envelope, not a 409, since the first attempt may still
+  fail. `id` on `create-transaction` is optional: the SPA no longer sends it and the server mints
+  the id; when present (MCP, older clients) it keeps the body-id guard and its 400. The CORS
+  allow-list carries the header. The server never reads a client `X-Request-Id`.
 - **Compression:** every response (API, MCP, OAuth and the SPA files) is gzipped when the
   client sends `Accept-Encoding: gzip` (`middleware.Compress`, wrapping the whole tree in
   `internal/web/router`), except bodies under 1 KB, already-compressed types, `HEAD` and
