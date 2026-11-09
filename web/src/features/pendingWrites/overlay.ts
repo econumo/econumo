@@ -214,9 +214,25 @@ export function overlayPlan(plan: BudgetPlanDto, ops: PendingOp[], budgetId: Id)
   return out
 }
 
-/** Drill-down rows with waiting edits and deletes; a waiting create is absent (it has no row yet).
- *  Category/payee/tag keep their stored name when the id is unchanged, since a name is not in the op. */
-export function overlayBudgetTransactions<T extends BudgetTransactionDto>(rows: T[], ops: PendingOp[]): T[] {
+type Named = { id: Id; name: string }
+
+export interface ClassificationLookups {
+  categories?: (Named & { icon: string })[]
+  payees?: Named[]
+  tags?: Named[]
+}
+
+// A row shows its classification by name, which an op does not carry. An id the
+// list does not hold stays with an empty name: the row falls back on its other text.
+function renamed<T extends Named>(id: Id | null, current: T | null, list: T[] | undefined, blank: (id: Id) => T): T | null {
+  if (id === null) {
+    return null
+  }
+  return current?.id === id ? current : (list?.find((item) => item.id === id) ?? blank(id))
+}
+
+/** Drill-down rows with waiting edits and deletes; a waiting create is absent (it has no row yet). */
+export function overlayBudgetTransactions<T extends BudgetTransactionDto>(rows: T[], ops: PendingOp[], lookups: ClassificationLookups = {}): T[] {
   let out = rows
   for (const op of bySeq(ops)) {
     if (op.kind === 'tx-update') {
@@ -230,9 +246,9 @@ export function overlayBudgetTransactions<T extends BudgetTransactionDto>(rows: 
               description: p.description,
               spentAt: `${day(p.date)}${r.spentAt.slice(10)}`,
               labelIds: [...p.labelIds],
-              category: p.categoryId === null ? null : r.category,
-              payee: p.payeeId === null ? null : r.payee,
-              tag: p.tagId === null ? null : r.tag,
+              category: renamed(p.categoryId, r.category, lookups.categories, (id) => ({ id, name: '', icon: '' })),
+              payee: renamed(p.payeeId, r.payee, lookups.payees, (id) => ({ id, name: '' })),
+              tag: renamed(p.tagId, r.tag, lookups.tags, (id) => ({ id, name: '' })),
             },
       )
     } else if (op.kind === 'tx-delete') {

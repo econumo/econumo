@@ -7,10 +7,13 @@ import { coreHandlers, fixtureBudgets, fixtureOwner, fixtureWireBudget, fixtureW
 import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { mutate } from '@/features/pendingWrites/store'
+import type { PendingOp } from '@/features/pendingWrites/types'
 import { useBudgetPeriodStore } from './budgetStore'
 import {
   useArchiveBudget,
   useBudgetPlan,
+  useBudgetTransactions,
   useBudgets,
   useCloneBudget,
   useCreateBudget,
@@ -670,3 +673,25 @@ function currentMonthKey(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
+
+it('useBudgetTransactions names a waiting edit\'s new category from the cached list, without fetching the list', async () => {
+  let listAsked = false
+  server.use(
+    http.get('*/api/v1/category/get-category-list', () => { listAsked = true; return HttpResponse.json({ success: true, message: '', data: [] }) }),
+    http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [
+      { id: 'x1', author: fixtureOwner, currencyId: 'c', amount: '5', description: '', category: { id: 'c1', name: 'Old', icon: 'a' }, payee: null, tag: null, labelIds: [], spentAt: '2026-11-08 09:00:00' },
+    ], upcoming: [] } })),
+  )
+  const waiting = {
+    key: 'k1', seq: 1, attempted: false, status: 'waiting', retries: 0, notBefore: 0, kind: 'tx-update', txId: 'x1',
+    payload: { id: 'x1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '5', amountRecipient: null, categoryId: 'c2', description: '', payeeId: null, tagId: null, labelIds: [], date: '2026-11-08 10:00:00' },
+  } as PendingOp
+  await mutate(() => [waiting])
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.categories, [{ id: 'c2', name: 'New', icon: 'b' }])
+
+  const { result } = renderHook(() => useBudgetTransactions({ budgetId: 'b1', periodStart: '2026-11-01', accountId: 'a1' }), { wrapper })
+  await waitFor(() => expect(result.current.data?.items).toHaveLength(1))
+  expect(result.current.data?.items[0].category).toEqual({ id: 'c2', name: 'New', icon: 'b' })
+  expect(listAsked).toBe(false)
+})

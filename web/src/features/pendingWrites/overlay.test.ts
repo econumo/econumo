@@ -249,4 +249,35 @@ describe('overlayBudgetTransactions', () => {
     expect(out[0].category?.id).toBe('c1')
     expect(rows[0].amount).toBe('10')
   })
+
+  const row = rows[0]
+  const lookups = {
+    categories: [{ id: 'c2', name: 'Rent', icon: 'home' }],
+    payees: [{ id: 'p2', name: 'Landlord' }],
+    tags: [{ id: 't2', name: 'Flat' }],
+  }
+  const edit = (over: Partial<CreateTransactionDto>) => op({ kind: 'tx-update', txId: 'x1', payload: pay('x1', over) })
+
+  it('names a category, payee and tag changed to another id from the reference lists', () => {
+    const [out] = overlayBudgetTransactions([row], [edit({ categoryId: 'c2', payeeId: 'p2', tagId: 't2' })], lookups)
+    expect(out.category).toEqual({ id: 'c2', name: 'Rent', icon: 'home' })
+    expect(out.payee).toEqual({ id: 'p2', name: 'Landlord' })
+    expect(out.tag).toEqual({ id: 't2', name: 'Flat' })
+  })
+
+  it('keeps the stored object when the id did not change, and clears it when the edit does', () => {
+    const [same] = overlayBudgetTransactions([row], [edit({ categoryId: 'c1' })], { categories: [] })
+    expect(same.category).toBe(row.category)
+    const [cleared] = overlayBudgetTransactions([row], [edit({ categoryId: null })], lookups)
+    expect(cleared.category).toBeNull()
+  })
+
+  it('keeps the new id with an empty name when the list does not know it or was never loaded', () => {
+    const [out] = overlayBudgetTransactions([row], [edit({ categoryId: 'c9', payeeId: 'p9', tagId: 't9' })], lookups)
+    expect(out.category).toEqual({ id: 'c9', name: '', icon: '' })
+    expect(out.payee).toEqual({ id: 'p9', name: '' })
+    expect(out.tag).toEqual({ id: 't9', name: '' })
+    const [none] = overlayBudgetTransactions([row], [edit({ categoryId: 'c2' })])
+    expect(none.category).toEqual({ id: 'c2', name: '', icon: '' })
+  })
 })

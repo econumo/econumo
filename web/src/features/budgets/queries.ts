@@ -5,6 +5,9 @@ import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
 import type { BudgetCommentDto, BudgetDto, BudgetTransactionListDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
+import type { CategoryDto } from '@/api/dto/category'
+import type { PayeeDto } from '@/api/dto/payee'
+import type { TagDto } from '@/api/dto/tag'
 import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
@@ -511,8 +514,17 @@ export function useUpdateBudgetDetail() {
 }
 
 export function useBudgetTransactions(params: budgetApi.BudgetTransactionsParams | null) {
+  const queryClient = useQueryClient()
   const ops = usePendingOps()
-  const select = useCallback((list: BudgetTransactionListDto) => ({ ...list, items: overlayBudgetTransactions(list.items, ops), upcoming: overlayBudgetTransactions(list.upcoming, ops) }), [ops])
+  const select = useCallback((list: BudgetTransactionListDto) => {
+    // read, not observed: subscribing here would need each list's queryFn
+    const lookups = {
+      categories: queryClient.getQueryData<CategoryDto[]>(queryKeys.categories),
+      payees: queryClient.getQueryData<PayeeDto[]>(queryKeys.payees),
+      tags: queryClient.getQueryData<TagDto[]>(queryKeys.tags),
+    }
+    return { ...list, items: overlayBudgetTransactions(list.items, ops, lookups), upcoming: overlayBudgetTransactions(list.upcoming, ops, lookups) }
+  }, [ops, queryClient])
   return useQuery({
     queryKey: [...queryKeys.budgetTransactions, params],
     queryFn: () => budgetApi.getBudgetTransactions(params as budgetApi.BudgetTransactionsParams),

@@ -211,10 +211,10 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
                         ) : (
                           // no note: category and payee share the one line
                           <span className="truncate">
-                            {tx.category?.name || (tx.payee ? null : displayName)}
-                            {tx.payee ? (
+                            {tx.category?.name || (tx.payee?.name ? null : displayName)}
+                            {tx.payee?.name ? (
                               <span className="text-muted-foreground">
-                                {tx.category ? ` · ${tx.payee.name}` : tx.payee.name}
+                                {tx.category?.name ? ` · ${tx.payee.name}` : tx.payee.name}
                               </span>
                             ) : null}
                           </span>
