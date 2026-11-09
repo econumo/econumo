@@ -32,6 +32,21 @@ function useStoredTransactions(enabled: boolean): TransactionDto[] | undefined {
   return useSyncExternalStore(subscribe, () => (enabled ? queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions) : undefined))
 }
 
+/** The balance the server stores, without the waiting changes the list shows. */
+export function useStoredBalance(accountId: string | undefined): string | undefined {
+  const queryClient = useQueryClient()
+  const subscribe = useCallback(
+    (notify: () => void) =>
+      queryClient.getQueryCache().subscribe((event) => {
+        if (event.query.queryKey[0] === queryKeys.accounts[0]) {
+          notify()
+        }
+      }),
+    [queryClient],
+  )
+  return useSyncExternalStore(subscribe, () => queryClient.getQueryData<AccountDto[]>(queryKeys.accounts)?.find((a) => a.id === accountId)?.balance)
+}
+
 export function useAccounts() {
   const { data: user } = useUserData()
   const ops = usePendingOps()

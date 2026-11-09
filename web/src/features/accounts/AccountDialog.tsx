@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import type { AccountDto } from '@/api/dto/account'
-import { queryKeys } from '@/app/queryKeys'
+import { useEffect, useRef, useState } from 'react'
+import type { CurrencyDto } from '@/api/dto/currency'
 import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
@@ -27,9 +25,12 @@ import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections
 import { useConnections } from '@/features/connections/queries'
 import { UserAvatar } from '@/components/UserAvatar'
 import { evaluatedAmount } from '../transactions/useTransactionForm'
-import { useAccounts, useCreateAccount, useFolders, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
+import { useAccounts, useCreateAccount, useFolders, useGrantAccountAccess, useRevokeAccountAccess, useStoredBalance, useUpdateAccount } from './queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { useOnline } from '@/hooks/useOnline'
+
+const balanceText = (balance: string, currency: CurrencyDto) =>
+  moneyFormat(balance, currency, { showCurrency: false, useNativePrecision: false, useThousandSeparator: false })
 
 export function AccountDialog() {
   const { t } = useTranslation()
@@ -45,12 +46,14 @@ export function AccountDialog() {
   const grantAccountAccess = useGrantAccountAccess()
   const revokeAccountAccess = useRevokeAccountAccess()
 
-  const queryClient = useQueryClient()
   const account = params?.account
+  // the list's balance includes waiting changes; a correction is judged against what the server stores
+  const storedBalance = useStoredBalance(account?.id)
   const isNew = !account
 
   const [name, setName] = useState('')
   const [balance, setBalance] = useState('')
+  const balanceTouched = useRef(false)
   const [currencyId, setCurrencyId] = useState<string | null>(null)
   const [icon, setIcon] = useState(defaultAccountIcon)
   const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<{ name?: string; balance?: string }>()
@@ -63,15 +66,7 @@ export function AccountDialog() {
     }
     if (params.account) {
       setName(params.account.name)
-      // the list's balance includes waiting changes; a correction is judged against what the server stores
-      const stored = queryClient.getQueryData<AccountDto[]>(queryKeys.accounts)?.find((a) => a.id === params.account?.id)
-      setBalance(
-        moneyFormat(stored?.balance ?? params.account.balance, params.account.currency, {
-          showCurrency: false,
-          useNativePrecision: false,
-          useThousandSeparator: false,
-        }),
-      )
+      setBalance(balanceText(storedBalance ?? params.account.balance, params.account.currency))
       setCurrencyId(params.account.currency.id)
       setIcon(params.account.icon || defaultAccountIcon)
     } else {
@@ -80,11 +75,20 @@ export function AccountDialog() {
       setCurrencyId(userCurrencyId(user))
       setIcon(defaultAccountIcon)
     }
+    balanceTouched.current = false
     setShareOpen(false)
     setLevelEntry(null)
     resetErrors()
     // re-seed whenever the dialog opens with new params
   }, [params, user])
+
+  // A waiting change confirmed while this is open moves the stored balance; saving
+  // the old one would have the server write a correction undoing that change.
+  useEffect(() => {
+    if (params?.account && storedBalance !== undefined && !balanceTouched.current) {
+      setBalance(balanceText(storedBalance, params.account.currency))
+    }
+  }, [params, storedBalance])
 
   if (!params) {
     return null
@@ -207,6 +211,7 @@ export function AccountDialog() {
             value={balance}
             onChange={(v) => {
               clearError('balance')
+              balanceTouched.current = true
               setBalance(v)
             }}
           />

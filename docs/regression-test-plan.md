@@ -2753,8 +2753,10 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       icons and "Not saved" labels clear, the list shows one row per change (no flash of a
       duplicate) and the balance stays right. With the network log open, every request of one
       change carries the same `Idempotency-Key`; a change whose response was lost (no network
-      just as it arrives) is sent again, answered 409 and still leaves one row. With two tabs
-      open, only one of them sends.
+      just as it arrives) is sent again, answered 409 and still leaves one row, the balance
+      counting it once the whole time. With two tabs open, only one of them sends. Open an
+      account's Edit dialog while a change on it goes out: the Balance field moves to the new
+      stored balance unless you already typed in it, and saving writes no correction.
 - [ ] A slow server while online: no answer within about 10 seconds closes the dialog and the
       change waits and goes out later, one row in the end.
 - [ ] 📱 A refused change in the Inbox: go offline, add a transaction on an account, delete that
