@@ -283,3 +283,55 @@ func TestHandlerWithoutTransactionRecordsAfterSuccess(t *testing.T) {
 	status, resp = h.do(http.MethodPost, "/api/v1/user/update-language", token, key, `{"language":"en"}`)
 	wantReplay(t, status, resp)
 }
+
+func bodyWithoutId(accountID string) string {
+	return fmt.Sprintf(`{"type":"expense","amount":"10","accountId":%q,"date":"2026-01-02 10:00:00"}`, accountID)
+}
+
+func itemID(t *testing.T, body map[string]any) string {
+	t.Helper()
+	data, _ := body["data"].(map[string]any)
+	item, _ := data["item"].(map[string]any)
+	id, _ := item["id"].(string)
+	if id == "" {
+		t.Fatalf("no item.id in %v", body)
+	}
+	return id
+}
+
+func TestCreateWithoutIdMintsAnId(t *testing.T) {
+	h := newIdempotencyHarness(t)
+	token, _, accountID := h.seedUser()
+	status, resp := h.do(http.MethodPost, createTransactionPath, token, "", bodyWithoutId(accountID))
+	wantStatus(t, status, resp, http.StatusOK)
+	itemID(t, resp)
+}
+
+func TestCreateWithIdKeepsItsLockedReplay(t *testing.T) {
+	h := newIdempotencyHarness(t)
+	token, _, accountID := h.seedUser()
+	body := createBody(accountID)
+	status, resp := h.do(http.MethodPost, createTransactionPath, token, "", body)
+	wantStatus(t, status, resp, http.StatusOK)
+	status, resp = h.do(http.MethodPost, createTransactionPath, token, "", body)
+	wantStatus(t, status, resp, http.StatusBadRequest)
+	if resp["message"] != operationLocked {
+		t.Fatalf("message = %v", resp["message"])
+	}
+}
+
+func TestReplayReturnsResourceIdForCreateWithoutBodyId(t *testing.T) {
+	h := newIdempotencyHarness(t)
+	token, _, accountID := h.seedUser()
+	key, body := newKey(t), bodyWithoutId(accountID)
+	status, first := h.do(http.MethodPost, createTransactionPath, token, key, body)
+	wantStatus(t, status, first, http.StatusOK)
+	status, resp := h.do(http.MethodPost, createTransactionPath, token, key, body)
+	wantReplay(t, status, resp)
+	if resp["resourceId"] != itemID(t, first) {
+		t.Fatalf("resourceId = %v, want %s", resp["resourceId"], itemID(t, first))
+	}
+	if n := h.count("SELECT COUNT(*) FROM transactions WHERE account_id = ?", accountID); n != 1 {
+		t.Fatalf("transactions = %d, want 1", n)
+	}
+}

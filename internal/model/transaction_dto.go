@@ -67,12 +67,14 @@ type CreateTransactionRequest struct {
 	LabelIds []string `json:"labelIds"`
 }
 
-// Validate enforces tier-1 NotBlank on id/type/amount/accountId/date.
+// Validate enforces tier-1 NotBlank on type/amount/accountId/date. A blank id
+// is allowed: the server then mints the transaction id and the request is
+// guarded by Idempotency-Key instead of an operation id.
 // categoryId is optional for every transaction type, including non-transfers.
 func (r CreateTransactionRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
-		{"id", r.Id}, {"type", r.Type}, {"amount", r.Amount.String()},
+		{"type", r.Type}, {"amount", r.Amount.String()},
 		{"accountId", r.AccountId}, {"date", r.Date},
 	} {
 		if strings.TrimSpace(f.val) == "" {
@@ -110,11 +112,13 @@ type UpdateTransactionRequest struct {
 	LabelIds []string `json:"labelIds"`
 }
 
-// Validate enforces tier-1 NotBlank on id/type/amount/accountId/date.
+// Validate enforces tier-1 NotBlank on type/amount/accountId/date. A blank id
+// is allowed: the server then mints the transaction id and the request is
+// guarded by Idempotency-Key instead of an operation id.
 func (r UpdateTransactionRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
-		{"id", r.Id}, {"type", r.Type}, {"amount", r.Amount.String()},
+		{"type", r.Type}, {"amount", r.Amount.String()},
 		{"accountId", r.AccountId}, {"date", r.Date},
 	} {
 		if strings.TrimSpace(f.val) == "" {

@@ -2,9 +2,11 @@ package transaction
 
 import (
 	"context"
+	"strings"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -26,9 +28,14 @@ func (s *Service) CreateTransactionFromRecurring(ctx context.Context, userID vo.
 
 func (s *Service) createTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest, recurringID *vo.Id) (*model.CreateTransactionResult, error) {
 	// req.Id is the operation/idempotency id; the entity id is freshly minted.
-	opID, err := vo.ParseId(req.Id)
-	if err != nil {
-		return nil, err
+	// A blank one opts out of the operation guard (Idempotency-Key covers it).
+	var opID vo.Id
+	guarded := strings.TrimSpace(req.Id) != ""
+	if guarded {
+		var perr error
+		if opID, perr = vo.ParseId(req.Id); perr != nil {
+			return nil, perr
+		}
 	}
 	id := vo.NewId()
 	typ, err := parseType(req.Type)
@@ -53,12 +60,14 @@ func (s *Service) createTransaction(ctx context.Context, userID vo.Id, req model
 		if aerr := s.checkWriteAccess(ctx, userID, accountID, "account.account.not_available"); aerr != nil {
 			return aerr
 		}
-		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
-		if cerr != nil {
-			return cerr
-		}
-		if already {
-			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
+		if guarded {
+			already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
+			if cerr != nil {
+				return cerr
+			}
+			if already {
+				return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
+			}
 		}
 		now := s.clock.Now()
 		st, berr := buildState(id, userID, typ, accountID, req.Amount.String(),
@@ -87,9 +96,12 @@ func (s *Service) createTransaction(ctx context.Context, userID vo.Id, req model
 		if lerr := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); lerr != nil {
 			return lerr
 		}
-		if merr := s.ops.MarkHandled(ctx, opID, now); merr != nil {
-			return merr
+		if guarded {
+			if merr := s.ops.MarkHandled(ctx, opID, now); merr != nil {
+				return merr
+			}
 		}
+		reqctx.SetIdempotencyResource(ctx, t.ID.String())
 		created = t
 		return nil
 	}); err != nil {
