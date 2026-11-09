@@ -62,6 +62,8 @@ export interface ElementRowExtras {
 interface BudgetTableProps extends ElementRowExtras {
   budget: BudgetDto
   buckets: BudgetBuckets
+  /** the month `budget` really holds, which a month switch can leave behind the selected one */
+  dataPeriod: string
   /** a month that has not started: Spent reads as a dash and nothing turns red */
   future?: boolean
   /** the caller renders BudgetTotals itself (below the Savings block) */
@@ -152,6 +154,7 @@ function ElementRow({
   currencies,
   accessById,
   extras,
+  dataPeriod,
   actionsColumn = false,
   hideChildren = false,
   future = false,
@@ -163,6 +166,7 @@ function ElementRow({
   currencies: CurrencyDto[]
   accessById: Map<string, UserDto>
   extras: ElementRowExtras
+  dataPeriod: string
   /** the table renders an actions column (edit mode): rows without their own actions pad it */
   actionsColumn?: boolean
   hideChildren?: boolean
@@ -174,7 +178,6 @@ function ElementRow({
   const level = useRowLevel()
   const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[element.id]) && !hideChildren
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
-  const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
 
   const currencyId = element.currencyId ?? budget.meta.currencyId
   const currency = currencies.find((c) => c.id === currencyId)
@@ -268,7 +271,7 @@ function ElementRow({
             </span>
           )}
         </span>
-        {isUncategorized ? null : <PendingLimitMark budgetId={budget.meta.id} elementId={element.id} period={selectedDate} className="ml-1" />}
+        {isUncategorized ? null : <PendingLimitMark budgetId={budget.meta.id} elementId={element.id} period={dataPeriod} className="ml-1" />}
         {extras.renderBudgetCellMarker?.(element)}
       </span>
     )
@@ -615,6 +618,7 @@ function folderSums(stats: BucketStats, currency: CurrencyDto | undefined, futur
 export function BudgetTable({
   budget,
   buckets,
+  dataPeriod,
   future = false,
   renderFolderActions,
   renderFolderHandle,
@@ -659,6 +663,7 @@ export function BudgetTable({
       currencies={currencies}
       accessById={accessById}
       extras={rowExtras}
+      dataPeriod={dataPeriod}
       actionsColumn={actionsColumn}
       hideChildren={collapsedElementId === element.id}
       future={future}

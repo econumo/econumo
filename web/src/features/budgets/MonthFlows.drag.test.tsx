@@ -6,6 +6,8 @@ import type { BudgetPlanDto } from '@/api/dto/budget'
 import { useBudgetPeriodStore } from './budgetStore'
 import { MonthFlows } from './MonthFlows'
 import { planMonthFigures } from './phoneMonth'
+import { addChange } from '@/features/pendingWrites/queue'
+import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
 
 // dnd-kit stand-in: each section's onDragStart/onDragEnd is captured and fired
 // directly, in render order (income first, then savings)
@@ -52,6 +54,7 @@ function renderFlows(adjust?: (p: BudgetPlanDto) => void) {
   render(
     <MonthFlows
       budget={budget}
+      dataPeriod="2026-07-01"
       currencies={[usd, eur]}
       planMonth={planMonthFigures(
         (() => {
@@ -75,6 +78,17 @@ function renderFlows(adjust?: (p: BudgetPlanDto) => void) {
 beforeEach(() => {
   captured = []
   useBudgetPeriodStore.setState({ unfoldedElements: {}, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
+})
+
+it('marks a waiting limit by the month the figures belong to, not the month selected', async () => {
+  resetPendingWritesForTests()
+  await loadPendingWrites('u1')
+  await mutate((ops) => addChange(ops, { kind: 'limit', budgetId: coerceBudgetFixture(fixtureWireBudget).meta.id, elementId: 'acc-s1', period: '2026-07-01', amount: '9' }, { key: 'k', seq: 1 }))
+  useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' })
+  renderFlows()
+  expect(await screen.findAllByRole('img', { name: 'Not saved' })).toHaveLength(1)
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+  resetPendingWritesForTests()
 })
 
 it('income rows and folders carry hover grips; Uncategorized and savings history do not move', () => {

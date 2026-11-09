@@ -175,7 +175,7 @@ export function useBudget() {
   const period = shownPeriod.current
   const { data } = query
   const overlaid = useMemo(() => (data && budgetId ? overlayBudget(data, ops, budgetId, period) : data), [data, ops, budgetId, period])
-  return { ...query, data: overlaid } as typeof query
+  return { ...query, data: overlaid, dataPeriod: period } as typeof query & { dataPeriod: string }
 }
 
 export function useSetLimit() {

@@ -101,7 +101,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // isPending covers the whole cold boot (incl. the disabled phase while the
   // user record loads); month switches show the previous period as placeholder
   // data (isPlaceholderData) while the new one loads
-  const { data: budget, isPending, isPlaceholderData, isFetching, isError, error, refetch } = useBudget()
+  const { data: budget, dataPeriod, isPending, isPlaceholderData, isFetching, isError, error, refetch } = useBudget()
   const { data: budgetList } = useBudgets()
   const showLogoutEscape = useLogoutEscape(isPending)
   const { data: currencies = [] } = useCurrencies()
@@ -682,6 +682,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                 buckets={buckets}
                 currencies={currencies}
                 selectedDate={selectedDate}
+                dataPeriod={dataPeriod}
                 planMonth={planMonth}
                 commentsByCell={commentsByCell}
                 onOpenSheet={setSheetTarget}
@@ -720,6 +721,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                 <div className="flex flex-col">
                   <MonthFlows
                     budget={budget}
+                    dataPeriod={dataPeriod}
                     currencies={currencies}
                     planMonth={planMonth}
                     future={selectedDate > curPeriod}
@@ -769,6 +771,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   >
                   <BudgetTable
                     budget={budget}
+                    dataPeriod={dataPeriod}
                     buckets={buckets}
                     future={selectedDate > curPeriod}
                     hideTotals

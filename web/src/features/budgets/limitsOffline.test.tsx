@@ -190,5 +190,6 @@ describe('limits offline: cache truth and month switches', () => {
     act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' }))
     expect(result.current.budget.isPlaceholderData).toBe(true)
     expect(budgeted(result.current.budget.data)).toBe('250')
+    expect(result.current.budget.dataPeriod).toBe('2026-07-01')
   })
 })

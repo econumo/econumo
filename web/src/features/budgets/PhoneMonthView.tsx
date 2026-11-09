@@ -39,6 +39,8 @@ export interface PhoneMonthViewProps {
   buckets: BudgetBuckets
   currencies: CurrencyDto[]
   selectedDate: string
+  /** the month `budget` really holds, which a month switch can leave behind the selected one */
+  dataPeriod: string
   /** null while get-budget-plan loads, fails, or still shows another window */
   planMonth: PlanMonthFigures | null
   commentsByCell: Map<string, BudgetCommentDto[]>
@@ -283,7 +285,7 @@ function TotalLine({ testId, label, value, negative = false }: { testId: string;
   )
 }
 
-export function PhoneMonthView({ budget, buckets, currencies, selectedDate, planMonth, commentsByCell, onOpenSheet, onShowTransactions }: PhoneMonthViewProps) {
+export function PhoneMonthView({ budget, buckets, currencies, selectedDate, dataPeriod, planMonth, commentsByCell, onOpenSheet, onShowTransactions }: PhoneMonthViewProps) {
   const { t } = useTranslation()
   const unfolded = useBudgetPeriodStore((s) => s.unfoldedElements)
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
@@ -304,7 +306,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     return {
       first: planned === '' ? EMPTY : fmt(planned, currencyId),
       firstClass: planHintClass(hint),
-      ...(elementId ? { pendingLimit: { budgetId: budget.meta.id, elementId, period: selectedDate } } : {}),
+      ...(elementId ? { pendingLimit: { budgetId: budget.meta.id, elementId, period: dataPeriod } } : {}),
     }
   }
   const future = selectedDate > currentPeriod(periodStartDayOf(budget.meta))
