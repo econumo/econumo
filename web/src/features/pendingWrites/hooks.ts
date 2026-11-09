@@ -75,6 +75,11 @@ function useStoredQueueState(): 'loaded' | 'loading' | 'unknown' {
   return gaveUpOn === user ? 'unknown' : 'loading'
 }
 
+/** The stored rows are in memory, or the store's time limit passed without them. */
+export function useStoredQueueSettled(): boolean {
+  return useStoredQueueState() !== 'loading'
+}
+
 export interface SignOutConfirm {
   /** The confirm's question, followed by what signing out would lose. */
   question: string

@@ -7,7 +7,7 @@ import { usePendingInvites, type PendingInvite } from '@/features/connections/pe
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useImportQueue, useImportSources } from '@/features/imports/queries'
 import { useRecurring } from '@/features/recurring/queries'
-import { useFailedWrites } from '@/features/pendingWrites/hooks'
+import { useFailedWrites, useStoredQueueSettled } from '@/features/pendingWrites/hooks'
 import type { PendingOp } from '@/features/pendingWrites/types'
 import { hiddenFolderAccountIds } from '@/features/transactions/useTransactionForm'
 import { useUserData } from '@/features/user/queries'
@@ -25,7 +25,7 @@ export interface Inbox {
   skipped: ImportQueuedEventDto[]
   /** failedWrites + dueRecurring + invites + syncProblems + failed + queued; skipped is never counted */
   count: number
-  /** queue, sources AND recurring have each resolved (success or error) at least once (no "All caught up" flash) */
+  /** the changes stored on this device, the import queue, sources AND recurring have each resolved (success or error) at least once (no "All caught up" flash) */
   isLoaded: boolean
   /** the import queue or the source list request failed; either section may be showing stale/partial data */
   importsError: boolean
@@ -57,6 +57,7 @@ export function formatInboxCount(count: number): string {
 
 export function useInbox(): Inbox {
   const failedWrites = useFailedWrites()
+  const storedQueueSettled = useStoredQueueSettled()
   const { invites } = usePendingInvites()
   const queue = useImportQueue()
   const sources = useImportSources()
@@ -85,6 +86,7 @@ export function useInbox(): Inbox {
     skipped,
     count: failedWrites.length + dueRecurring.length + invites.length + syncProblems.length + failed.length + queued.length,
     isLoaded:
+      storedQueueSettled &&
       (queue.data !== undefined || queue.isError) &&
       (sources.data !== undefined || sources.isError) &&
       (recurring.data !== undefined || recurring.isError) &&
