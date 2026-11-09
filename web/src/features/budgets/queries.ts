@@ -21,7 +21,8 @@ import { useUserData, userOption } from '@/features/user/queries'
 import { followsCurrentPeriod, useBudgetPeriodStore } from './budgetStore'
 import { addMonths, monthDiff } from './planMath'
 import { usePendingOps } from '@/features/pendingWrites/hooks'
-import { applyLimitToBudget, overlayBudget, overlayBudgetTransactions, overlayPlan, patchPlanCells } from '@/features/pendingWrites/overlay'
+import { patchBudgetLimit, patchPlanLimit } from '@/features/pendingWrites/limitPatches'
+import { overlayBudget, overlayBudgetTransactions, overlayPlan } from '@/features/pendingWrites/overlay'
 import { submitChange } from '@/features/pendingWrites/submit'
 import { budgetCurrentPeriod, currentPeriod, periodStartDayOf } from './period'
 import type { OwnErrorHandling } from '@/lib/appQueryClient'
@@ -187,22 +188,18 @@ export function useSetLimit() {
       // optimistic budgeted patch with rollback (Vue parity: instant cell feedback)
       const key = [...queryKeys.budget, form.budgetId, form.period]
       await queryClient.cancelQueries({ queryKey: key })
-      const previous = queryClient.getQueryData<BudgetDto | null>(key)
-      queryClient.setQueryData<BudgetDto | null>(key, (prev) => (prev ? applyLimitToBudget(prev, form) : prev))
-      return { previous, key }
+      return { patch: patchBudgetLimit(queryClient, key, form) }
     },
-    onError: (_err, _form, context) => {
-      if (context) {
-        queryClient.setQueryData(context.key, context.previous)
-      }
-    },
+    onError: (_err, _form, context) => context?.patch.withdraw(),
     // A queued change is not an error: the overlay shows it, so the raw cache
     // goes back to server truth and a discarded change leaves nothing behind.
     // A direct success is confirmed (caches invalidated, metric fired) by
     // submitChange, a queued one by the sender once it lands.
     onSuccess: (res, _form, context) => {
-      if (res.queued && context) {
-        queryClient.setQueryData(context.key, context.previous)
+      if (res.queued) {
+        context?.patch.withdraw()
+      } else {
+        context?.patch.confirm()
       }
     },
   })
@@ -258,21 +255,14 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
       ),
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
-      const previous = queryClient.getQueryData<BudgetPlanDto | null>(planKey)
-      const planned = form.amount === null ? '' : form.amount
-      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) =>
-        patchPlanCells(prev, form.elementId, (c, i) => (i === form.monthIndex ? { ...c, planned } : c)),
-      )
-      return { previous }
+      return { patch: patchPlanLimit(queryClient, planKey, { elementId: form.elementId, monthIndex: form.monthIndex, planned: form.amount ?? '' }) }
     },
-    onError: (_err, _form, context) => {
-      if (context) {
-        queryClient.setQueryData(planKey, context.previous)
-      }
-    },
+    onError: (_err, _form, context) => context?.patch.withdraw(),
     onSuccess: (res, _form, context) => {
-      if (res.queued && context) {
-        queryClient.setQueryData(planKey, context.previous)
+      if (res.queued) {
+        context?.patch.withdraw()
+      } else {
+        context?.patch.confirm()
       }
     },
   })
@@ -294,19 +284,16 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
       ),
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
-      const previous = queryClient.getQueryData<BudgetPlanDto | null>(planKey)
-      const covered = new Set(form.targets.map((t) => t.monthIndex))
-      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) =>
-        patchPlanCells(prev, form.elementId, (c, i) => (covered.has(i) ? { ...c, planned: form.amount } : c)),
-      )
-      return { previous }
+      return { patches: form.targets.map((t) => patchPlanLimit(queryClient, planKey, { elementId: form.elementId, monthIndex: t.monthIndex, planned: form.amount })) }
     },
     onSuccess: (results, _form, context) => {
       trackEvent(METRICS.BUDGET_PLAN_FILL_RIGHT)
       // waiting targets show through the overlay; the raw cache keeps server truth
-      if (results.some((r) => r.queued) && context) {
-        queryClient.setQueryData(planKey, context.previous)
-      }
+      results.forEach((r, i) => {
+        if (r.queued) {
+          context?.patches[i]?.withdraw()
+        }
+      })
     },
     // No partial rollback: any failure means some months may have landed, so both a
     // success and a failure need the same resync — the budget-page caches (every
@@ -314,7 +301,8 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
     // plus every cached plan window of the budget — from the server rather than trusting the
     // optimistic patch. Invalidating here (not split across onSuccess/onError) also
     // means it happens exactly once regardless of outcome.
-    onSettled: (_res, _err, form) => {
+    onSettled: (_res, _err, form, context) => {
+      context?.patches.forEach((patch) => patch.confirm())
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
     },

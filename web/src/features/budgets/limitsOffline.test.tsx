@@ -7,7 +7,8 @@ import { coreHandlers, fixtureUser, fixtureWireBudget, fixtureWirePlan } from '@
 import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import { queryKeys } from '@/app/queryKeys'
 import { NotSavedIcon, PendingLimitMark } from '@/features/pendingWrites/NotSavedIcon'
-import { getOps, loadPendingWrites, resetPendingWritesForTests } from '@/features/pendingWrites/store'
+import { getOps, loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
+import { discardWrite } from '@/features/pendingWrites/submit'
 import { useBudgetPeriodStore } from './budgetStore'
 import { planFetchWindow, useBudget, useBudgetPlan, useFillPlannedCells, usePlanSetLimit, useSetLimit } from './queries'
 
@@ -191,5 +192,198 @@ describe('limits offline: cache truth and month switches', () => {
     expect(result.current.budget.isPlaceholderData).toBe(true)
     expect(budgeted(result.current.budget.data)).toBe('250')
     expect(result.current.budget.dataPeriod).toBe('2026-07-01')
+  })
+})
+
+describe('limits: a queued result gives back only its own cells', () => {
+  type Answer = 'lost' | 'refused' | 'ok'
+  let answers: Map<string, (a: Answer) => void>
+
+  const respond = (a: Answer) =>
+    a === 'lost'
+      ? HttpResponse.error()
+      : a === 'refused'
+        ? HttpResponse.json({ success: false, message: 'no', code: 0, errors: {} }, { status: 400 })
+        : HttpResponse.json({ success: true, message: '', data: {} })
+
+  beforeEach(async () => {
+    localStorage.clear()
+    window.econumoConfig = {}
+    localStorage.setItem('token', 'tok')
+    localStorage.setItem('sessionUserId', 'u1')
+    answers = new Map()
+    server.use(
+      ...coreHandlers(),
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        const body = (await request.json()) as { amount: string | null; period: string }
+        const answer = await new Promise<Answer>((resolve) => answers.set(`${body.period}/${body.amount}`, resolve))
+        return respond(answer)
+      }),
+    )
+    resetPendingWritesForTests()
+    onlineManager.setOnline(true)
+    await loadPendingWrites('u1')
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  const answer = async (name: string, a: Answer) => {
+    await waitFor(() => expect(answers.has(name)).toBe(true))
+    await act(async () => {
+      answers.get(name)!(a)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+  }
+
+  describe('useSetLimit', () => {
+    const key = [...queryKeys.budget, 'b1', '2026-07-01']
+    const food = { budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01' }
+    const rent = { budgetId: 'b1', elementId: 'env-1', period: '2026-07-01' }
+
+    function setUp() {
+      const { queryClient, wrapper } = makeWrapper()
+      queryClient.setQueryData(key, fixtureWireBudget)
+      const server0 = (id: string) => (fixtureWireBudget as unknown as BudgetDto).structure.elements.find((e) => e.id === id)?.budgeted
+      const cell = (id: string) => queryClient.getQueryData<BudgetDto>(key)?.structure.elements.find((e) => e.id === id)?.budgeted
+      const { result } = renderHook(() => useSetLimit(), { wrapper })
+      return { queryClient, wrapper, cell, server0, send: (form: typeof food, amount: string) => { void result.current.mutateAsync({ ...form, amount }).catch(() => undefined) } }
+    }
+
+    it('A queueing leaves the patch of B, sent after it, in place', async () => {
+      const { cell, server0, send } = setUp()
+      send(food, '250')
+      await waitFor(() => expect(cell('cat-food')).toBe('250'))
+      send(rent, '777')
+      await waitFor(() => expect(cell('env-1')).toBe('777'))
+
+      await answer('2026-07-01/250', 'lost')
+
+      expect(getOps()).toHaveLength(1)
+      expect(cell('cat-food')).toBe(server0('cat-food'))
+      expect(cell('env-1')).toBe('777')
+    })
+
+    it('B queueing never writes the unconfirmed A into the cache, so discarding a refused A leaves server truth', async () => {
+      const { queryClient, wrapper, cell, server0, send } = setUp()
+      queryClient.setQueryData(queryKeys.user, { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'budget' ? { ...o, value: 'b1' } : o)) })
+      useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+      const { result: shown } = renderHook(() => useBudget(), { wrapper })
+      send(food, '250')
+      await waitFor(() => expect(cell('cat-food')).toBe('250'))
+      send(rent, '777')
+      await waitFor(() => expect(cell('env-1')).toBe('777'))
+
+      await answer('2026-07-01/250', 'lost')
+      await answer('2026-07-01/777', 'lost')
+      expect(cell('cat-food')).toBe(server0('cat-food'))
+      expect(cell('env-1')).toBe(server0('env-1'))
+
+      const a = getOps().find((op) => op.kind === 'limit' && op.elementId === 'cat-food')!
+      act(() => discardWrite(a.key))
+      await waitFor(() => expect(shown.current.data?.structure.elements.find((e) => e.id === 'cat-food')?.budgeted).toBe(server0('cat-food')))
+      expect(shown.current.data?.structure.elements.find((e) => e.id === 'env-1')?.budgeted).toBe('777')
+    })
+
+    it('two edits of one cell, both queued, leave the server value whichever answers first', async () => {
+      for (const order of [['250', '300'], ['300', '250']]) {
+        answers.clear()
+        const { cell, server0, send } = setUp()
+        send(food, '250')
+        await waitFor(() => expect(cell('cat-food')).toBe('250'))
+        send(food, '300')
+        await waitFor(() => expect(cell('cat-food')).toBe('300'))
+        await answer(`2026-07-01/${order[0]}`, 'lost')
+        await answer(`2026-07-01/${order[1]}`, 'lost')
+        expect(cell('cat-food')).toBe(server0('cat-food'))
+        await act(() => mutate(() => []))
+      }
+    })
+
+    it('an online refusal rolls back only the refused cell', async () => {
+      const { cell, server0, send } = setUp()
+      send(food, '250')
+      await waitFor(() => expect(cell('cat-food')).toBe('250'))
+      send(rent, '777')
+      await waitFor(() => expect(cell('env-1')).toBe('777'))
+
+      await answer('2026-07-01/250', 'refused')
+
+      expect(cell('cat-food')).toBe(server0('cat-food'))
+      expect(cell('env-1')).toBe('777')
+      expect(getOps()).toHaveLength(0)
+    })
+
+    it('a refusal of the earlier edit of a cell leaves the later one, and a refusal of that restores the server value', async () => {
+      const { cell, server0, send } = setUp()
+      send(food, '250')
+      await waitFor(() => expect(cell('cat-food')).toBe('250'))
+      send(food, '300')
+      await waitFor(() => expect(cell('cat-food')).toBe('300'))
+
+      await answer('2026-07-01/250', 'refused')
+      expect(cell('cat-food')).toBe('300')
+
+      await answer('2026-07-01/300', 'refused')
+      expect(cell('cat-food')).toBe(server0('cat-food'))
+    })
+  })
+
+  describe('plan cells', () => {
+    const planKey = [...queryKeys.budgetPlan, 'b1', '2026-05-01', 4] as const
+    const plan = fixtureWirePlan as unknown as BudgetPlanDto
+    const elementId = plan.structure.elements[0]!.id
+    const original = (i: number) => plan.structure.elements[0]!.cells[i]!.planned
+
+    function setUp() {
+      const { queryClient, wrapper } = makeWrapper()
+      queryClient.setQueryData(planKey, fixtureWirePlan)
+      const cell = (i: number) => queryClient.getQueryData<BudgetPlanDto>(planKey)?.structure.elements[0]!.cells[i]!.planned
+      return { wrapper, cell }
+    }
+
+    it('usePlanSetLimit: A queueing keeps B, B queueing brings back nothing of A', async () => {
+      const { wrapper, cell } = setUp()
+      const { result } = renderHook(() => usePlanSetLimit(planKey), { wrapper })
+      void result.current.mutateAsync({ budgetId: 'b1', elementId, period: '2026-06-01', amount: '250', monthIndex: 1 })
+      await waitFor(() => expect(cell(1)).toBe('250'))
+      void result.current.mutateAsync({ budgetId: 'b1', elementId, period: '2026-07-01', amount: '777', monthIndex: 2 })
+      await waitFor(() => expect(cell(2)).toBe('777'))
+
+      await answer('2026-06-01/250', 'lost')
+      expect(cell(1)).toBe(original(1))
+      expect(cell(2)).toBe('777')
+      await answer('2026-07-01/777', 'lost')
+      expect(cell(1)).toBe(original(1))
+      expect(cell(2)).toBe(original(2))
+    })
+
+    it('fill-right gives back the targets that queued and keeps the ones confirmed directly', async () => {
+      const { wrapper, cell } = setUp()
+      const { result } = renderHook(() => useFillPlannedCells(planKey), { wrapper })
+      void result.current.mutateAsync({ budgetId: 'b1', elementId, amount: '40', targets: [{ period: '2026-06-01', monthIndex: 1 }, { period: '2026-07-01', monthIndex: 2 }] })
+      await waitFor(() => expect(cell(1)).toBe('40'))
+      await answer('2026-06-01/40', 'ok')
+      await answer('2026-07-01/40', 'lost')
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+      expect(cell(1)).toBe('40')
+      expect(cell(2)).toBe(original(2))
+    })
+
+    it('fill-right leaves a cell another edit patched while it was out', async () => {
+      const { wrapper, cell } = setUp()
+      const { result } = renderHook(() => ({ fill: useFillPlannedCells(planKey), set: usePlanSetLimit(planKey) }), { wrapper })
+      void result.current.fill.mutateAsync({ budgetId: 'b1', elementId, amount: '40', targets: [{ period: '2026-06-01', monthIndex: 1 }] })
+      await waitFor(() => expect(cell(1)).toBe('40'))
+      void result.current.set.mutateAsync({ budgetId: 'b1', elementId, period: '2026-07-01', amount: '777', monthIndex: 2 })
+      await waitFor(() => expect(cell(2)).toBe('777'))
+
+      await answer('2026-06-01/40', 'lost')
+      await waitFor(() => expect(result.current.fill.isSuccess).toBe(true))
+      expect(cell(1)).toBe(original(1))
+      expect(cell(2)).toBe('777')
+    })
   })
 })
