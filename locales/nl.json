@@ -1587,6 +1587,9 @@
           "header": "Gearchiveerd"
         }
       }
+    },
+    "limit": {
+      "not_saved": "Niet opgeslagen"
     }
   },
   "reports": {

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { PendingLimitMark } from '@/features/pendingWrites/NotSavedIcon'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
 import { moneyFormat } from '@/lib/money'
@@ -56,6 +57,8 @@ interface RowProps {
   first: string
   /** the plan hint's style on `first` */
   firstClass?: string
+  /** marks the plan figure while a change to it waits to be sent */
+  pendingLimit?: { budgetId: Id; elementId: Id; period: string }
   second: string
   secondClass?: string
   progress?: number | null
@@ -89,6 +92,7 @@ function PhoneRow({
   carry,
   first,
   firstClass = '',
+  pendingLimit,
   second,
   secondClass = '',
   progress = null,
@@ -151,6 +155,7 @@ function PhoneRow({
               {carry.text}
             </span>
           ) : null}
+          {pendingLimit ? <PendingLimitMark {...pendingLimit} /> : null}
           <span className={`shrink-0 ${firstClass}`}>{first}</span>
         </span>
         {/* a colour of its own (overspent) replaces the muted grey rather than racing it */}
@@ -295,7 +300,12 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const planFigure = (target: SheetTarget, planned: string, currencyId: Id | null) => {
     const hint = sheetPlanHint(target)
-    return { first: planned === '' ? EMPTY : fmt(planned, currencyId), firstClass: planHintClass(hint) }
+    const elementId = target.kind === 'expense' ? target.element.id : target.kind === 'savings' ? target.row.id : target.kind === 'plan' ? target.cell.element.id : null
+    return {
+      first: planned === '' ? EMPTY : fmt(planned, currencyId),
+      firstClass: planHintClass(hint),
+      ...(elementId ? { pendingLimit: { budgetId: budget.meta.id, elementId, period: selectedDate } } : {}),
+    }
   }
   const future = selectedDate > currentPeriod(periodStartDayOf(budget.meta))
   const commented = (id: Id) => (commentsByCell.get(commentCellKey(id, selectedDate))?.length ?? 0) > 0

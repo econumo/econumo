@@ -264,7 +264,8 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => {
           if (deleteTarget) {
-            // the mutation invalidates the budget + this list, so the numbers refresh
+            // online, the mutation invalidates the budget + this list; offline the delete waits
+            // and the list hides the row until it is sent
             deleteTransaction.mutate(deleteTarget.id, {
               onSuccess: () => setPreview(null),
               onSettled: () => setDeleteTarget(null),

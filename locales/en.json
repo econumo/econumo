@@ -1587,6 +1587,9 @@
           "header": "Archived"
         }
       }
+    },
+    "limit": {
+      "not_saved": "Not saved"
     }
   },
   "reports": {

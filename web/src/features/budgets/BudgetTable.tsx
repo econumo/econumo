@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { ChevronDown, ChevronRight, Info } from 'lucide-react'
+import { PendingLimitMark } from '@/features/pendingWrites/NotSavedIcon'
 import { useTranslation } from 'react-i18next'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -173,6 +174,7 @@ function ElementRow({
   const level = useRowLevel()
   const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[element.id]) && !hideChildren
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
+  const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
 
   const currencyId = element.currencyId ?? budget.meta.currencyId
   const currency = currencies.find((c) => c.id === currencyId)
@@ -266,6 +268,7 @@ function ElementRow({
             </span>
           )}
         </span>
+        {isUncategorized ? null : <PendingLimitMark budgetId={budget.meta.id} elementId={element.id} period={selectedDate} className="ml-1" />}
         {extras.renderBudgetCellMarker?.(element)}
       </span>
     )

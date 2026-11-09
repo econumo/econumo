@@ -1587,6 +1587,9 @@
           "header": "已归档"
         }
       }
+    },
+    "limit": {
+      "not_saved": "未保存"
     }
   },
   "reports": {

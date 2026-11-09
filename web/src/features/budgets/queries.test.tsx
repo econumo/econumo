@@ -177,7 +177,7 @@ it('useSetLimit (budget mode) also invalidates the plan cache so the plan sheet 
   const { result } = renderHook(() => useSetLimit(), { wrapper })
   result.current.mutate({ budgetId: 'b1', elementId: 'cat-food', period: '2026-09-01', amount: '250' })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
-  expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.budgetPlan })
+  expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budgetPlan, 'b1'] })
 })
 
 it('useSetLimit refreshes the budget\'s later months: a changed budget moves what they carry over', async () => {

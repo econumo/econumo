@@ -213,7 +213,7 @@ export function overlayPlan(plan: BudgetPlanDto, ops: PendingOp[], budgetId: Id)
 
 /** Drill-down rows with waiting edits and deletes; a waiting create is absent (it has no row yet).
  *  Category/payee/tag keep their stored name when the id is unchanged, since a name is not in the op. */
-export function overlayBudgetTransactions(rows: BudgetTransactionDto[], ops: PendingOp[]): BudgetTransactionDto[] {
+export function overlayBudgetTransactions<T extends BudgetTransactionDto>(rows: T[], ops: PendingOp[]): T[] {
   let out = rows
   for (const op of bySeq(ops)) {
     if (op.kind === 'tx-update') {

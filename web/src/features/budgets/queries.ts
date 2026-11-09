@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
-import type { BudgetCommentDto, BudgetDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
+import type { BudgetCommentDto, BudgetDto, BudgetTransactionListDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
 import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
@@ -17,7 +17,9 @@ import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { followsCurrentPeriod, useBudgetPeriodStore } from './budgetStore'
 import { addMonths, monthDiff } from './planMath'
-import { applyLimitToBudget, patchPlanCells } from '@/features/pendingWrites/overlay'
+import { usePendingOps } from '@/features/pendingWrites/hooks'
+import { applyLimitToBudget, overlayBudget, overlayBudgetTransactions, overlayPlan, patchPlanCells } from '@/features/pendingWrites/overlay'
+import { submitChange } from '@/features/pendingWrites/submit'
 import { budgetCurrentPeriod, currentPeriod, periodStartDayOf } from './period'
 
 export function useBudgets() {
@@ -143,6 +145,11 @@ export function useBudget() {
   const resetFoldsFor = useBudgetPeriodStore((s) => s.resetFoldsFor)
   const budgetId = userOption(user, UserOptions.BUDGET)
   const periodSettled = useDefaultPeriodSettled(budgetId)
+  const ops = usePendingOps()
+  const select = useCallback(
+    (budget: BudgetDto | null) => (budget && budgetId ? overlayBudget(budget, ops, budgetId, selectedDate) : budget),
+    [ops, budgetId, selectedDate],
+  )
 
   useEffect(() => {
     if (budgetId) {
@@ -157,6 +164,7 @@ export function useBudget() {
     staleTime: TEN_MINUTES,
     // month switches keep showing the previous period instead of a blank page
     placeholderData: keepPreviousData,
+    select,
   })
 }
 
@@ -164,7 +172,7 @@ export function useSetLimit() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (form: { budgetId: Id; elementId: Id; period: string; amount: string | null }) =>
-      budgetApi.setLimit(form),
+      submitChange(queryClient, { kind: 'limit', ...form }, (opts) => budgetApi.setLimit(form, opts)),
     onMutate: async (form) => {
       // optimistic budgeted patch with rollback (Vue parity: instant cell feedback)
       const key = [...queryKeys.budget, form.budgetId, form.period]
@@ -178,16 +186,9 @@ export function useSetLimit() {
         queryClient.setQueryData(context.key, context.previous)
       }
     },
-    onSuccess: (_data, form) => {
-      trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
-      // budget-mode edits patch only the budget-page cache above; the plan cache
-      // (a different window/query key) must be invalidated too or the plan sheet
-      // keeps showing the pre-edit limit until something else happens to refetch it
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
-      // every later month moves too: a budget carries over (what a month shows as
-      // left from earlier months), and a savings plan moves later closing balances
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
-    },
+    // A queued change is not an error and is not rolled back: the overlay keeps
+    // showing it. A direct success is confirmed (caches invalidated, metric
+    // fired) by submitChange, a queued one by the sender once it lands.
   })
 }
 
@@ -213,6 +214,11 @@ export function planFetchWindow(firstMonth: string, visibleMonths: number, start
 export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number, startDay: number) {
   const { from, months } = planFetchWindow(firstMonth, visibleMonths, startDay)
   const planKey = [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const
+  const ops = usePendingOps()
+  const select = useCallback(
+    (plan: BudgetPlanDto | null) => (plan && budgetId ? overlayPlan(plan, ops, budgetId) : plan),
+    [ops, budgetId],
+  )
   const query = useQuery<BudgetPlanDto | null>({
     queryKey: planKey,
     queryFn: () => (budgetId ? budgetApi.getBudgetPlan(budgetId, from, months) : Promise.resolve(null)),
@@ -220,6 +226,7 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
     staleTime: TEN_MINUTES,
     // shifting months keeps showing the previous window instead of a blank sheet
     placeholderData: keepPreviousData,
+    select,
   })
   return { ...query, fetchFrom: from, planKey }
 }
@@ -228,7 +235,11 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (form: { budgetId: Id; elementId: Id; period: string; amount: string | null; monthIndex: number }) =>
-      budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: form.period, amount: form.amount }),
+      submitChange(
+        queryClient,
+        { kind: 'limit', budgetId: form.budgetId, elementId: form.elementId, period: form.period, amount: form.amount },
+        (opts) => budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: form.period, amount: form.amount }, opts),
+      ),
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
       const previous = queryClient.getQueryData<BudgetPlanDto | null>(planKey)
@@ -243,15 +254,6 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
         queryClient.setQueryData(planKey, context.previous)
       }
     },
-    onSuccess: (_res, form) => {
-      trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
-      // the budget-page cache is now stale: that month's figures, and for a savings
-      // row the projected closing balance of every later month. Every cached plan
-      // window of the budget resyncs too, not just this one: later months' balances
-      // are cumulative, and each phone month switch caches a window of its own
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
-    },
   })
 }
 
@@ -260,9 +262,14 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
   return useMutation({
     mutationFn: (form: { budgetId: Id; elementId: Id; amount: string; targets: { period: string; monthIndex: number }[] }) =>
       Promise.all(
-        form.targets.map((t) =>
-          budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: t.period, amount: form.amount === '' ? null : form.amount }),
-        ),
+        form.targets.map((t) => {
+          const amount = form.amount === '' ? null : form.amount
+          return submitChange(
+            queryClient,
+            { kind: 'limit', budgetId: form.budgetId, elementId: form.elementId, period: t.period, amount },
+            (opts) => budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: t.period, amount }, opts),
+          )
+        }),
       ),
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
@@ -482,10 +489,13 @@ export function useUpdateBudgetDetail() {
 }
 
 export function useBudgetTransactions(params: budgetApi.BudgetTransactionsParams | null) {
+  const ops = usePendingOps()
+  const select = useCallback((list: BudgetTransactionListDto) => ({ ...list, items: overlayBudgetTransactions(list.items, ops), upcoming: overlayBudgetTransactions(list.upcoming, ops) }), [ops])
   return useQuery({
     queryKey: [...queryKeys.budgetTransactions, params],
     queryFn: () => budgetApi.getBudgetTransactions(params as budgetApi.BudgetTransactionsParams),
     enabled: params !== null,
+    select,
   })
 }
 

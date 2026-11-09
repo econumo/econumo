@@ -1587,6 +1587,9 @@
           "header": "Archiviati"
         }
       }
+    },
+    "limit": {
+      "not_saved": "Non salvato"
     }
   },
   "reports": {
