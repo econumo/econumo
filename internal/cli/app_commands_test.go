@@ -21,7 +21,9 @@ import (
 
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/storage/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/internal/shared/vo"
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
@@ -502,5 +504,26 @@ func TestAppDeleteKillsLiveTokensOnARunningServer(t *testing.T) {
 	}
 	if code, _, _ := runApp(t, "app:delete", id); code != 1 {
 		t.Fatalf("second delete = %d", code)
+	}
+}
+
+func TestAppConnections(t *testing.T) {
+	owner, other := vo.NewId(), vo.NewId()
+	grants := []model.OAuthGrant{{UserID: owner}, {UserID: other}}
+	for _, tc := range []struct {
+		name   string
+		client model.OAuthClient
+		want   string
+	}{
+		{"official", model.OAuthClient{IsGlobal: true}, "2"},
+		{"unowned user app", model.OAuthClient{}, "2"},
+		{"owned user app", model.OAuthClient{OwnerUserID: &owner}, "2 (1 from other users)"},
+	} {
+		if got := appConnections(model.OAuthApp{Client: tc.client, Grants: grants}); got != tc.want {
+			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
+		}
+	}
+	if got := appConnections(model.OAuthApp{Client: model.OAuthClient{OwnerUserID: &owner}, Grants: grants[:1]}); got != "1" {
+		t.Errorf("owner only: %q", got)
 	}
 }

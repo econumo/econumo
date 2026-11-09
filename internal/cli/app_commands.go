@@ -279,13 +279,10 @@ func runAppDisconnect(ctx context.Context, c *container, args []string) error {
 		attrs = append(attrs, "user_id", u.String())
 	}
 	n, err := c.apps.DisconnectApp(ctx, id, userID)
-	// A failure part-way still revoked n grants, which the audit line records.
-	if err == nil || n > 0 {
-		slog.Info("app-disconnect", append(attrs, "grants", n)...)
-	}
 	if err != nil {
 		return err
 	}
+	slog.Info("app-disconnect", append(attrs, "grants", n)...)
 	fmt.Printf("%d connection(s) revoked.\n", n)
 	return nil
 }
@@ -341,12 +338,12 @@ func appLastUsed(a model.OAuthApp) string {
 // several people share (a candidate for app:make-official).
 func appConnections(a model.OAuthApp) string {
 	n := len(a.Grants)
-	if a.Client.IsGlobal {
+	if a.Client.IsGlobal || a.Client.OwnerUserID == nil {
 		return fmt.Sprint(n)
 	}
 	others := 0
 	for _, g := range a.Grants {
-		if a.Client.OwnerUserID == nil || !g.UserID.Equal(*a.Client.OwnerUserID) {
+		if !g.UserID.Equal(*a.Client.OwnerUserID) {
 			others++
 		}
 	}

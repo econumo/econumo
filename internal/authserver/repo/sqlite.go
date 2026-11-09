@@ -44,6 +44,14 @@ func (sqliteQuerier) PurgeExpiredOAuthCodes(ctx context.Context, db backend.DBTX
 	return sqlitegen.New(db).PurgeExpiredOAuthCodes(ctx, before)
 }
 
+func (sqliteQuerier) DeleteClientOAuthCodes(ctx context.Context, db backend.DBTX, clientID string) (int64, error) {
+	return sqlitegen.New(db).DeleteClientOAuthCodes(ctx, clientID)
+}
+
+func (sqliteQuerier) DeleteClientUserOAuthCodes(ctx context.Context, db backend.DBTX, p deleteUserCodesParams) (int64, error) {
+	return sqlitegen.New(db).DeleteClientUserOAuthCodes(ctx, p)
+}
+
 func (sqliteQuerier) InsertOAuthGrant(ctx context.Context, db backend.DBTX, p insertGrantParams) error {
 	return sqlitegen.New(db).InsertOAuthGrant(ctx, p)
 }

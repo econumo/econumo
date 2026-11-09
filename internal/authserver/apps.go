@@ -92,12 +92,14 @@ func (s *Service) ListApps(ctx context.Context) ([]model.OAuthApp, error) {
 	return out, nil
 }
 
+// GetApp reads the client after its grants, so a client deleted in between is
+// reported as not found rather than with an empty grant list.
 func (s *Service) GetApp(ctx context.Context, id vo.Id) (model.OAuthApp, error) {
-	c, err := s.getApp(ctx, id)
+	grants, err := s.liveGrants(ctx, id)
 	if err != nil {
 		return model.OAuthApp{}, err
 	}
-	grants, err := s.liveGrants(ctx, id)
+	c, err := s.getApp(ctx, id)
 	if err != nil {
 		return model.OAuthApp{}, err
 	}
@@ -208,35 +210,109 @@ func (s *Service) RotateAppSecret(ctx context.Context, id vo.Id) (string, error)
 	return raw, nil
 }
 
-// DisconnectApp revokes the app's live grants, only userID's when it is set,
-// and returns how many it revoked.
+// DisconnectApp revokes the app's grants and drops its outstanding
+// authorization codes, only userID's when it is set, and returns how many live
+// grants it revoked. It locks like DeleteApp: the grants' users, then the
+// client, so neither an exchange nor an approval can connect a user meanwhile.
 func (s *Service) DisconnectApp(ctx context.Context, id vo.Id, userID *vo.Id) (int, error) {
 	if _, err := s.getApp(ctx, id); err != nil {
 		return 0, err
 	}
-	grants, err := s.liveGrants(ctx, id)
-	if err != nil {
-		return 0, err
-	}
-	now := s.clock.Now()
-	n := 0
-	for _, g := range grants {
-		if userID != nil && !g.UserID.Equal(*userID) {
-			continue
-		}
-		revoked, err := s.revokeGrant(ctx, g.UserID, g.ID, now)
+	var users []vo.Id
+	if userID != nil {
+		users = []vo.Id{*userID}
+	} else {
+		grants, err := s.repo.ListClientGrants(ctx, id)
 		if err != nil {
-			return n, err
+			return 0, err
 		}
-		if revoked {
-			n++
-		}
+		users = addGrantUsers(nil, grants)
 	}
-	return n, nil
+	for range deleteAppAttempts {
+		revoked, more, err := s.disconnectApp(ctx, id, users, userID)
+		if !errors.Is(err, errGrantUsersChanged) {
+			return revoked, err
+		}
+		users = addGrantUsers(users, more)
+	}
+	return 0, ErrAppBusy
 }
 
-// deleteAppAttempts bounds how often DeleteApp starts over because a grant for
-// a user it had not locked appeared before it took the client lock.
+func (s *Service) disconnectApp(ctx context.Context, id vo.Id, users []vo.Id, userID *vo.Id) (int, []model.OAuthGrant, error) {
+	revoked := 0
+	var current []model.OAuthGrant
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		revoked, current = 0, nil
+		if err := s.lockUsersAndClient(ctx, id, users); err != nil {
+			return err
+		}
+		if _, err := s.repo.DeleteClientCodes(ctx, id, userID); err != nil {
+			return err
+		}
+		now := s.clock.Now()
+		var err error
+		if current, err = s.repo.ListClientGrants(ctx, id); err != nil {
+			return err
+		}
+		if userID == nil && hasUnlockedUser(current, users) {
+			return errGrantUsersChanged
+		}
+		for _, g := range current {
+			if userID != nil && !g.UserID.Equal(*userID) {
+				continue
+			}
+			n, err := s.repo.RevokeGrant(ctx, g.ID, now)
+			if err != nil {
+				return err
+			}
+			if n == 0 {
+				continue
+			}
+			if err := s.creds.RevokeOAuthGrantTokens(ctx, g.ID); err != nil {
+				return err
+			}
+			if g.IsLive(now) {
+				revoked++
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, current, err
+	}
+	return revoked, current, nil
+}
+
+func (s *Service) lockUsersAndClient(ctx context.Context, id vo.Id, users []vo.Id) error {
+	for _, u := range users {
+		if _, err := s.creds.LockForOAuth(ctx, u); err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				return errs.NewNotFound("user not found")
+			}
+			return err
+		}
+	}
+	if err := s.repo.LockClient(ctx, id); err != nil {
+		if _, ok := errs.AsNotFound(err); ok {
+			return appNotFound()
+		}
+		return err
+	}
+	return nil
+}
+
+func hasUnlockedUser(grants []model.OAuthGrant, users []vo.Id) bool {
+	for _, g := range grants {
+		if !slices.ContainsFunc(users, g.UserID.Equal) {
+			return true
+		}
+	}
+	return false
+}
+
+// deleteAppAttempts bounds how often DeleteApp and DisconnectApp start over
+// because a grant for a user they had not locked appeared before they took the
+// client lock.
 const deleteAppAttempts = 5
 
 var errGrantUsersChanged = errors.New("grants for unlocked users appeared")
@@ -284,15 +360,7 @@ func (s *Service) deleteApp(ctx context.Context, id vo.Id, users []vo.Id) (int, 
 	var current []model.OAuthGrant
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		revoked, current = 0, nil
-		for _, u := range users {
-			if _, err := s.creds.LockForOAuth(ctx, u); err != nil {
-				return err
-			}
-		}
-		if err := s.repo.LockClient(ctx, id); err != nil {
-			if _, ok := errs.AsNotFound(err); ok {
-				return appNotFound()
-			}
+		if err := s.lockUsersAndClient(ctx, id, users); err != nil {
 			return err
 		}
 		now := s.clock.Now()
@@ -301,10 +369,8 @@ func (s *Service) deleteApp(ctx context.Context, id vo.Id, users []vo.Id) (int, 
 		if err != nil {
 			return err
 		}
-		for _, g := range current {
-			if !slices.ContainsFunc(users, g.UserID.Equal) {
-				return errGrantUsersChanged
-			}
+		if hasUnlockedUser(current, users) {
+			return errGrantUsersChanged
 		}
 		ids, err := s.repo.RevokeClientGrants(ctx, id, now)
 		if err != nil {
@@ -325,5 +391,8 @@ func (s *Service) deleteApp(ctx context.Context, id vo.Id, users []vo.Id) (int, 
 		}
 		return nil
 	})
-	return revoked, current, err
+	if err != nil {
+		return 0, current, err
+	}
+	return revoked, current, nil
 }

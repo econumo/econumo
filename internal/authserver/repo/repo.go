@@ -34,6 +34,7 @@ type (
 	updateGlobalParams     = sqlitegen.UpdateGlobalOAuthClientParams
 	setClientSecretParams  = sqlitegen.SetOAuthClientSecretParams
 	revokeClientParams     = sqlitegen.RevokeClientOAuthGrantsParams
+	deleteUserCodesParams  = sqlitegen.DeleteClientUserOAuthCodesParams
 )
 
 type querier interface {
@@ -53,6 +54,8 @@ type querier interface {
 	InsertOAuthCode(ctx context.Context, db backend.DBTX, p insertCodeParams) error
 	ConsumeOAuthCode(ctx context.Context, db backend.DBTX, codeHash string) (codeRow, error)
 	PurgeExpiredOAuthCodes(ctx context.Context, db backend.DBTX, before time.Time) error
+	DeleteClientOAuthCodes(ctx context.Context, db backend.DBTX, clientID string) (int64, error)
+	DeleteClientUserOAuthCodes(ctx context.Context, db backend.DBTX, p deleteUserCodesParams) (int64, error)
 
 	InsertOAuthGrant(ctx context.Context, db backend.DBTX, p insertGrantParams) error
 	GetOAuthGrant(ctx context.Context, db backend.DBTX, id string) (grantRow, error)
@@ -207,6 +210,13 @@ func (r *Repo) ConsumeCode(ctx context.Context, codeHash string) (*model.OAuthAu
 
 func (r *Repo) PurgeExpiredCodes(ctx context.Context, before time.Time) error {
 	return r.q.PurgeExpiredOAuthCodes(ctx, r.db(ctx), before)
+}
+
+func (r *Repo) DeleteClientCodes(ctx context.Context, clientID vo.Id, userID *vo.Id) (int64, error) {
+	if userID == nil {
+		return r.q.DeleteClientOAuthCodes(ctx, r.db(ctx), clientID.String())
+	}
+	return r.q.DeleteClientUserOAuthCodes(ctx, r.db(ctx), deleteUserCodesParams{ClientID: clientID.String(), UserID: userID.String()})
 }
 
 func (r *Repo) InsertGrant(ctx context.Context, g *model.OAuthGrant) error {

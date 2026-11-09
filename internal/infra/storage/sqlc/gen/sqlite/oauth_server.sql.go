@@ -51,6 +51,35 @@ func (q *Queries) ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthA
 	return i, err
 }
 
+const deleteClientOAuthCodes = `-- name: DeleteClientOAuthCodes :execrows
+DELETE FROM oauth_authorization_codes WHERE client_id = ?
+`
+
+func (q *Queries) DeleteClientOAuthCodes(ctx context.Context, clientID string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteClientOAuthCodes, clientID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteClientUserOAuthCodes = `-- name: DeleteClientUserOAuthCodes :execrows
+DELETE FROM oauth_authorization_codes WHERE client_id = ? AND user_id = ?
+`
+
+type DeleteClientUserOAuthCodesParams struct {
+	ClientID string
+	UserID   string
+}
+
+func (q *Queries) DeleteClientUserOAuthCodes(ctx context.Context, arg DeleteClientUserOAuthCodesParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteClientUserOAuthCodes, arg.ClientID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteDeadOAuthGrants = `-- name: DeleteDeadOAuthGrants :execrows
 DELETE FROM oauth_grants
 WHERE (revoked_at IS NOT NULL AND revoked_at < ?)

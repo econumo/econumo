@@ -1181,10 +1181,13 @@ owner, open to every user, never purged), validated like `/oauth/register`; it i
 unless `--public`, and its client secret (like `app:rotate-secret`'s, which invalidates the old
 one at once) is printed once to stdout and never logged. A **user** app is one a client
 registered for itself; `app:list` shows `N (M from other users)` when users other than its
-owner hold live connections (grants from before ownership), and `app:make-official` converts
+owner hold live connections (grants from before ownership; an app with no owner yet shows just
+`N`), and `app:make-official` converts
 such a shared client, one way. `app:update` changes official apps only and refuses a call with
 nothing to change. `app:disconnect` revokes live grants (one user's with `--user`) and their
-access tokens; `app:delete` does the same, then deletes the client (tokens first, since
+access tokens and drops outstanding authorization codes, under the users' row locks and then the
+client row lock, starting over (at most 5 times) when a grant for a user it had not locked
+appears; `app:delete` does the same, then deletes the client (tokens first, since
 `access_tokens.grant_id` has no FK). Running servers notice at once: tokens are read from the
 database per request. The commands work with the OAuth server disabled; `app:register` then
 warns on stderr. Flags may sit anywhere among the positionals; audit lines carry ids only.

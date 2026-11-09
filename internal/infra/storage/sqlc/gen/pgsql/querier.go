@@ -50,6 +50,8 @@ type Querier interface {
 	DeleteBudgetLimit(ctx context.Context, id string) error
 	DeleteBudgetLimitsByBudget(ctx context.Context, budgetID string) error
 	DeleteCategory(ctx context.Context, id string) error
+	DeleteClientOAuthCodes(ctx context.Context, clientID string) (int64, error)
+	DeleteClientUserOAuthCodes(ctx context.Context, arg DeleteClientUserOAuthCodesParams) (int64, error)
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	// The OAuth server's housekeeping purge: oauth tokens live an hour, so they

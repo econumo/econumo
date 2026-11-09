@@ -30,6 +30,8 @@ type Repository interface {
 	InsertCode(ctx context.Context, c *model.OAuthAuthorizationCode) error
 	ConsumeCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error) // DELETE ... RETURNING; errs.NotFound when absent
 	PurgeExpiredCodes(ctx context.Context, before time.Time) error
+	// DeleteClientCodes drops the client's outstanding codes, only userID's when it is set.
+	DeleteClientCodes(ctx context.Context, clientID vo.Id, userID *vo.Id) (int64, error)
 
 	InsertGrant(ctx context.Context, g *model.OAuthGrant) error
 	GetGrant(ctx context.Context, id vo.Id) (*model.OAuthGrant, error)

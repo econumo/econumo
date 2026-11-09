@@ -56,6 +56,8 @@ type Querier interface {
 	// Transactions referencing this category have category_id set to NULL via the
 	// ON DELETE SET NULL FK, matching the PHP delete-mode behaviour.
 	DeleteCategory(ctx context.Context, id string) error
+	DeleteClientOAuthCodes(ctx context.Context, clientID string) (int64, error)
+	DeleteClientUserOAuthCodes(ctx context.Context, arg DeleteClientUserOAuthCodesParams) (int64, error)
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	// The OAuth server's housekeeping purge: oauth tokens live an hour, so they

@@ -32,6 +32,12 @@ RETURNING code_hash, client_id, user_id, redirect_uri, code_challenge, resource,
 -- name: PurgeExpiredOAuthCodes :exec
 DELETE FROM oauth_authorization_codes WHERE expires_at < $1;
 
+-- name: DeleteClientOAuthCodes :execrows
+DELETE FROM oauth_authorization_codes WHERE client_id = $1;
+
+-- name: DeleteClientUserOAuthCodes :execrows
+DELETE FROM oauth_authorization_codes WHERE client_id = $1 AND user_id = $2;
+
 -- name: InsertOAuthGrant :exec
 INSERT INTO oauth_grants (id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);

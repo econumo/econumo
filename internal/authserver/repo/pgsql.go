@@ -46,6 +46,14 @@ func (pgsqlQuerier) PurgeExpiredOAuthCodes(ctx context.Context, db backend.DBTX,
 	return pgsqlgen.New(db).PurgeExpiredOAuthCodes(ctx, before)
 }
 
+func (pgsqlQuerier) DeleteClientOAuthCodes(ctx context.Context, db backend.DBTX, clientID string) (int64, error) {
+	return pgsqlgen.New(db).DeleteClientOAuthCodes(ctx, clientID)
+}
+
+func (pgsqlQuerier) DeleteClientUserOAuthCodes(ctx context.Context, db backend.DBTX, p deleteUserCodesParams) (int64, error) {
+	return pgsqlgen.New(db).DeleteClientUserOAuthCodes(ctx, pgsqlgen.DeleteClientUserOAuthCodesParams(p))
+}
+
 func (pgsqlQuerier) InsertOAuthGrant(ctx context.Context, db backend.DBTX, p insertGrantParams) error {
 	return pgsqlgen.New(db).InsertOAuthGrant(ctx, pgsqlgen.InsertOAuthGrantParams(p))
 }

@@ -548,3 +548,91 @@ func TestMakeOfficialAndRotate_AppDeletedMeanwhile(t *testing.T) {
 		t.Fatalf("want NotFound, got %v", err)
 	}
 }
+
+func TestDisconnectApp_DropsOutstandingCodes(t *testing.T) {
+	s, _, _, db := newTestServiceDB(t)
+	a, b := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
+	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cid := c.ID.String()
+	codeA, codeB := approveCode(t, s, a, cid), approveCode(t, s, b, cid)
+	if n, err := s.DisconnectApp(ctx, c.ID, &a); err != nil || n != 0 {
+		t.Fatalf("--user a: %d %v", n, err)
+	}
+	_, err = exchangeWith(s, cid, "", codeA)
+	wantOAuth(t, err, "invalid_grant")
+	if _, err := exchangeWith(s, cid, "", codeB); err != nil {
+		t.Fatalf("another user's code must still work: %v", err)
+	}
+
+	codeA, codeB = approveCode(t, s, a, cid), approveCode(t, s, b, cid)
+	if n, err := s.DisconnectApp(ctx, c.ID, nil); err != nil || n != 1 {
+		t.Fatalf("all: %d %v", n, err)
+	}
+	for _, code := range []string{codeA, codeB} {
+		_, err = exchangeWith(s, cid, "", code)
+		wantOAuth(t, err, "invalid_grant")
+	}
+	if app, _ := s.GetApp(ctx, c.ID); len(app.Grants) != 0 {
+		t.Fatalf("grants left: %+v", app.Grants)
+	}
+}
+
+func TestDisconnectApp_RetriesWhenAGrantForANewUserAppears(t *testing.T) {
+	s, creds, clock, db := newTestServiceDB(t)
+	a, late := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
+	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	connect(t, s, a, c.ID.String(), "")
+	var lateGrant vo.Id
+	repo := &grantInjectingRepo{Repository: s.repo,
+		afterFirst: func() { lateGrant = insertGrant(t, s, late, c.ID, clock.Now(), nil) },
+		underLock:  func(context.Context) {}}
+	racing := NewService(repo, creds, s.tx, clock, nil, testURL)
+	creds.locked, creds.revoked = nil, nil
+	n, err := racing.DisconnectApp(ctx, c.ID, nil)
+	if err != nil || n != 2 {
+		t.Fatalf("%d %v", n, err)
+	}
+	both := []vo.Id{a, late}
+	slices.SortFunc(both, func(x, y vo.Id) int { return strings.Compare(x.String(), y.String()) })
+	if want := append([]vo.Id{a}, both...); !slices.EqualFunc(creds.locked, want, vo.Id.Equal) {
+		t.Fatalf("locked %v, want %v", creds.locked, want)
+	}
+	if !slices.ContainsFunc(creds.revoked, lateGrant.Equal) {
+		t.Fatal("the late grant's tokens must be revoked")
+	}
+	if app, _ := s.GetApp(ctx, c.ID); len(app.Grants) != 0 {
+		t.Fatalf("grants left: %+v", app.Grants)
+	}
+}
+
+// deletingGrantsRepo deletes the client right after its grants are read, as
+// app:delete committing between GetApp's two reads would.
+type deletingGrantsRepo struct{ Repository }
+
+func (r deletingGrantsRepo) ListClientGrants(ctx context.Context, id vo.Id) ([]model.OAuthGrant, error) {
+	gs, err := r.Repository.ListClientGrants(ctx, id)
+	if _, err := r.Repository.DeleteClient(ctx, id); err != nil {
+		return nil, err
+	}
+	return gs, err
+}
+
+func TestGetApp_ClientDeletedMeanwhile(t *testing.T) {
+	s, creds, clock, _ := newTestService(t)
+	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	racing := NewService(deletingGrantsRepo{s.repo}, creds, s.tx, clock, nil, testURL)
+	if _, err := racing.GetApp(ctx, c.ID); err == nil {
+		t.Fatal("want NotFound")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("want NotFound, got %v", err)
+	}
+}
