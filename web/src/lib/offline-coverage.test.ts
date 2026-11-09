@@ -16,13 +16,16 @@ const OFFLINE_EXEMPT: Record<string, string> = {
 // Files whose every write sits behind a shared component that reads useOnline
 // itself: ConfirmDialog/PromptDialog disable their confirm button offline unless
 // the caller passes offlineOk (a queued write), ClassificationList disables
-// create, reorder, switches and row actions, AccessLevelDialog its choices.
+// create, reorder, switches and row actions, AccessLevelDialog its choices,
+// MonthDrag its drag handles.
 const OFFLINE_VIA_SHARED: Record<string, string[]> = {
   'src/features/accounts/useAccountActions.tsx': ['<ConfirmDialog', '<AccessLevelDialog'],
   'src/features/classifications/CategoriesPage.tsx': ['<ClassificationList'],
   'src/features/classifications/PayeesPage.tsx': ['<ClassificationList'],
   'src/features/classifications/TagsPage.tsx': ['<ClassificationList'],
   'src/features/imports/ImportRulesPage.tsx': ['<ClassificationList'],
+  // limits queue; structure drag goes through MonthDrag, which disables itself offline
+  'src/features/budgets/PlanSheet.tsx': ['DragRow', 'DragFolder'],
 }
 
 const sources = import.meta.glob('/src/**/*.{ts,tsx}', {

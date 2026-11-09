@@ -23,7 +23,6 @@ import { BudgetElementType, isIncomeType, isPlannedType, UNCATEGORIZED_ID } from
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
-import { useOnline } from '@/hooks/useOnline'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
@@ -667,9 +666,8 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   const hoverMenus = lineControls !== null
   // grips show with the menus, for whoever may arrange the budget; an archived
   // budget is read-only whatever the role
-  const online = useOnline()
-  // reordering is a structure write: limits queue offline, this does not
-  const dragEnabled = online && hoverMenus && budget.meta.isArchived === 0 && canConfigureBudget(budget.meta, userId)
+  // offline the wrappers stay (see MonthDrag), only dragging switches off there
+  const dragEnabled = hoverMenus && budget.meta.isArchived === 0 && canConfigureBudget(budget.meta, userId)
   const selectedIndex = monthIndex(selectedDate)
   const rowMenu = hoverMenus ? (el: PlanElementDto) => menus.planRowMenu(el, selectedIndex) : undefined
   const childMenu = hoverMenus ? menus.envelopeChildMenu : undefined

@@ -547,7 +547,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // screen has no hover, so there they show on every line while edit mode is on
   const lineControls: LineControls | null = isCompact ? (editMode ? 'always' : null) : 'hover'
   const hoverMenus = lineControls !== null
-  const dragEnabled = hoverMenus && configure && online
+  const dragEnabled = hoverMenus && configure
   const expenseFolderMenu = (bucket: FolderBucket) =>
     menus.folderActionsFor(bucket.folder ? { id: bucket.folder.id, name: bucket.folder.name } : null, bucket.elements.length === 0, 'expense')
   const incomeFolderMenu = (group: IncomeGroup) =>

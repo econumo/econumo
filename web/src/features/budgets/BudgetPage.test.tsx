@@ -1250,11 +1250,37 @@ describe('offline', () => {
     expect(change).toHaveTextContent('No connection')
   })
 
-  it('structure controls are off: Configure and drag handles', async () => {
+  it('structure controls are off: Configure and the drag grips are disabled, the rows stay', async () => {
     budgetHandlers()
     renderPage()
     await screen.findByTestId('element-cat-food')
+    const grips = () => screen.getAllByRole('button', { name: /^move / })
+    expect(grips().length).toBeGreaterThan(0)
+    grips().forEach((g) => expect(g).toBeEnabled())
     goOffline()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Configure' })).toBeDisabled())
+    await waitFor(() => grips().forEach((g) => expect(g).toBeDisabled()))
+  })
+
+  it('an open limit editor survives the connection dropping: the typed value stays and saving queues it', async () => {
+    const { getOps, loadPendingWrites, resetPendingWritesForTests } = await import('@/features/pendingWrites/store')
+    resetPendingWritesForTests()
+    await loadPendingWrites('u1')
+    onTestFinished(() => resetPendingWritesForTests())
+    budgetHandlers()
+    const user = userEvent.setup()
+    // the app's client sends writes offline into the queue instead of pausing them
+    renderPage('/budget', (qc) => qc.setDefaultOptions({ queries: { retry: false }, mutations: { retry: false, networkMode: 'always' } }))
+    const food = await screen.findByTestId('element-cat-food')
+    await user.click(within(food).getByRole('button', { name: 'limit Food' }))
+    const input = await screen.findByLabelText('Budget')
+    await user.clear(input)
+    await user.type(input, '321')
+    goOffline()
+    await act(async () => {})
+    expect(screen.getByLabelText('Budget')).toHaveValue('321')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByLabelText('Budget')).toBeNull())
+    await waitFor(() => expect(getOps().some((op) => op.kind === 'limit' && op.amount === '321')).toBe(true))
   })
 })
