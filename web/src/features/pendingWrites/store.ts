@@ -1,7 +1,8 @@
+import { v7 as uuidv7 } from 'uuid'
 import { STORE_PENDING_WRITES, dbTransaction } from '@/lib/db'
 import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
-import { replayBehind } from './queue'
-import type { PendingOp } from './types'
+import { changeBehindSent, markAttempted, nextSeq, replayBehind } from './queue'
+import type { OpChange, PendingOp } from './types'
 
 type Row = PendingOp & { userId: string }
 
@@ -80,7 +81,8 @@ async function readRows(): Promise<Row[]> {
   return rows
 }
 
-async function refreshFromDisk(): Promise<void> {
+/** Takes the disk's word for the queue: what another tab wrote, or a write here the disk turned down. */
+export async function refreshFromDisk(): Promise<void> {
   const wanted = owner
   if (!wanted || disabled) {
     return
@@ -118,6 +120,44 @@ function announce(): void {
   openChannel()?.postMessage('changed')
 }
 
+// Everything below runs inside one readwrite transaction, and those serialize
+// across tabs: the row read here is the latest, and nothing lands between the
+// read and the write. A row a tab still took for unsent may have been taken by
+// another tab's sender since; overwritten, the newer values would be lost to a
+// replay of its key, so they queue behind it.
+function writeRows(store: IDBObjectStore, stored: Row[], changed: PendingOp[], removed: PendingOp[], previous: Map<string, PendingOp>, userId: string): boolean {
+  const rows = new Map(stored.map((row) => [row.key, row]))
+  let seq = nextSeq([...stored, ...changed])
+  let turnedDown = false
+  const takenElsewhere = (written: PendingOp | undefined, before: PendingOp | undefined, row: Row | undefined): row is Row =>
+    Boolean(row?.attempted && before && !before.attempted && !written?.attempted)
+  const queueBehind = (change: OpChange | null) => {
+    if (change) {
+      store.put({ ...change, key: uuidv7(), seq: seq++, attempted: false, status: 'waiting', retries: 0, notBefore: 0, userId })
+    }
+  }
+  for (const op of changed) {
+    const row = rows.get(op.key)
+    const before = previous.get(op.key)
+    if (takenElsewhere(op, before, row)) {
+      turnedDown = true
+      queueBehind(changeBehindSent(toOp(row), op, before as PendingOp))
+    } else {
+      store.put({ ...op, userId })
+    }
+  }
+  for (const op of removed) {
+    const row = rows.get(op.key)
+    if (takenElsewhere(undefined, op, row)) {
+      turnedDown = true
+      queueBehind(changeBehindSent(toOp(row), undefined, op))
+    } else {
+      store.delete(op.key)
+    }
+  }
+  return turnedDown
+}
+
 function persist(before: PendingOp[], after: PendingOp[]): Promise<void> {
   const userId = owner
   const previous = new Map(before.map((op) => [op.key, op]))
@@ -127,15 +167,14 @@ function persist(before: PendingOp[], after: PendingOp[]): Promise<void> {
   if (!userId || disabled || changed.length + removed.length === 0) {
     return Promise.resolve()
   }
+  let turnedDown = false
   const write = guarded(undefined, () => dbTransaction([STORE_PENDING_WRITES], 'readwrite', (t) => {
     const store = t.objectStore(STORE_PENDING_WRITES)
-    for (const op of changed) {
-      store.put({ ...op, userId })
+    const all = store.getAll()
+    all.onsuccess = () => {
+      turnedDown = writeRows(store, all.result as Row[], changed, removed, previous, userId)
     }
-    for (const op of removed) {
-      store.delete(op.key)
-    }
-  })).then(announce)
+  })).then(() => (turnedDown ? refreshFromDisk() : undefined)).then(announce)
   return timed(write)
 }
 
@@ -247,6 +286,62 @@ export function mutate(fn: (ops: PendingOp[]) => PendingOp[]): Promise<void> {
   generation++
   notify()
   return persist(before, after)
+}
+
+/**
+ * Marks a row attempted and returns it as stored, which is what must be sent:
+ * another tab may have folded newer values into it since this tab last looked.
+ * Null means the row is no longer there to send. With no word from the database
+ * (broken, stalled) this tab's copy goes out.
+ */
+export async function claimForSend(key: string): Promise<PendingOp | null> {
+  const local = ops.find((op) => op.key === key)
+  if (!local) {
+    return null
+  }
+  // Memory at once: an edit in this tab while the disk answers queues behind it.
+  ops = markAttempted(ops, key)
+  generation++
+  notify()
+  const marked = ops.find((op) => op.key === key)!
+  const userId = owner
+  if (!userId || disabled) {
+    return marked
+  }
+  const at = epoch
+  let verdict: Row | null | undefined
+  const claimed = guarded<Row | null | undefined>(undefined, async () => {
+    let row: Row | null = null
+    await dbTransaction([STORE_PENDING_WRITES], 'readwrite', (t) => {
+      const store = t.objectStore(STORE_PENDING_WRITES)
+      const found = store.get(key)
+      found.onsuccess = () => {
+        const current = found.result as Row | undefined
+        if (current?.userId === userId && current.status === 'waiting') {
+          row = { ...current, attempted: true }
+          store.put(row)
+        }
+      }
+    })
+    return row
+  })
+  await timed(claimed.then((result) => {
+    verdict = result
+    if (result) {
+      announce()
+    }
+  }))
+  if (verdict === undefined) {
+    return marked
+  }
+  if (verdict === null || at !== epoch) {
+    return null
+  }
+  const taken = withLandedMark(toOp(verdict), ops.find((op) => op.key === key)?.landed)
+  ops = ops.map((op) => (op.key === key ? taken : op))
+  generation++
+  notify()
+  return taken
 }
 
 // Attempted even while the store is disabled: a sign-out must not leave data on disk.

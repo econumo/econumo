@@ -73,6 +73,25 @@ export function replayBehind(stored: PendingOp[], local: PendingOp[]): PendingOp
   }, stored)
 }
 
+function changeOf(op: PendingOp): OpChange {
+  const { key: _key, seq: _seq, attempted: _attempted, status: _status, error: _error, retries: _retries, notBefore: _notBefore, landed: _landed, ...change } = op
+  return change as OpChange
+}
+
+/**
+ * A tab that still took a row for unsent folded into it, or cancelled it, after
+ * another tab's sender took it. The row went out as stored, so what the writer
+ * wanted is what is left to do behind it. Null when that adds nothing.
+ */
+export function changeBehindSent(sent: PendingOp, written: PendingOp | undefined, before: PendingOp): OpChange | null {
+  if (!written) {
+    return before.kind === 'tx-create' && before.status === 'waiting' ? { kind: 'tx-delete', txId: before.txId, previous: null } : null
+  }
+  const change = changeOf(written)
+  if (JSON.stringify(change) === JSON.stringify(changeOf(sent))) return null
+  return change.kind === 'tx-create' ? addAsEdit(change) : change
+}
+
 export function markAttempted(ops: PendingOp[], key: string): PendingOp[] {
   return ops.map((op) => (op.key === key ? { ...op, attempted: true } : op))
 }

@@ -867,6 +867,27 @@ describe('with Web Locks', () => {
   })
 })
 
+describe('another tab wrote the row and this tab has not heard yet', () => {
+  it('sends the values on the disk, not the copy in memory', async () => {
+    answerWith(() => undefined)
+    await queue({ kind: 'tx-update', txId: 'real', payload: payload('real', { amount: '1' }) }, 'k1', 1)
+    const stored = await dbRequest<PendingOp>(STORE_PENDING_WRITES, 'readonly', (s) => s.get('k1') as IDBRequest<PendingOp>)
+    await dbRequest(STORE_PENDING_WRITES, 'readwrite', (s) => s.put({ ...stored, payload: payload('real', { amount: '9' }) }))
+    await kickPendingWrites()
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toMatchObject({ key: 'k1', body: { amount: '9' } })
+  })
+
+  it('sends nothing for a row already gone, and leaves no copy to try again', async () => {
+    answerWith(() => undefined)
+    await queue(limit('e1'), 'k1', 1)
+    await dbRequest(STORE_PENDING_WRITES, 'readwrite', (s) => s.delete('k1'))
+    await kickPendingWrites()
+    expect(seen).toEqual([])
+    expect(getOps()).toEqual([])
+  })
+})
+
 it('remembers the server id of an add that landed', async () => {
   answerWith(() => undefined)
   await queue({ kind: 'tx-create', txId: 'temp-accepted', payload: payload('temp-accepted') }, 'k1', 1)

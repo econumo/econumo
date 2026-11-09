@@ -1,7 +1,8 @@
 import { STORE_PENDING_WRITES, dbRequest } from '@/lib/db'
 import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
 import { delayTransactionCompletion } from '@/test/idbDelay'
-import { clearPendingWrites, getOps, isQueueLoaded, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe, subscribeAdopted, subscribeLeftElsewhere } from './store'
+import { addChange } from './queue'
+import { claimForSend, clearPendingWrites, getOps, isQueueLoaded, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe, subscribeAdopted, subscribeLeftElsewhere } from './store'
 import type { PendingOp } from './types'
 
 const op = (key: string, seq: number, over: Partial<PendingOp> = {}): PendingOp => ({
@@ -214,6 +215,150 @@ it('says when stored rows land in memory, even long after the load stopped being
   expect(adopted).not.toHaveBeenCalled()
   await vi.waitFor(() => expect(adopted).toHaveBeenCalledTimes(1), { timeout: 5000 })
   expect(getOps().map((o) => o.key)).toEqual(['k1'])
+})
+
+describe('two tabs: the database decides what a sender took', () => {
+  const tx = (key: string, seq: number, kind: 'tx-create' | 'tx-update', amount: string, over: Partial<PendingOp> = {}) =>
+    op(key, seq, { kind, txId: 't1', payload: { id: 't1', amount }, ...over } as unknown as Partial<PendingOp>)
+  const edit = (amount: string) => ({ kind: 'tx-update', txId: 't1', payload: { id: 't1', amount } }) as unknown as Parameters<typeof addChange>[1]
+  const ordered = async () => (await rows()).sort((a, b) => a.seq - b.seq)
+  const storeRow = (row: PendingOp) => dbRequest(STORE_PENDING_WRITES, 'readwrite', (s) => s.put({ ...row, userId: 'A' }))
+  const held = async (row: PendingOp) => {
+    await loadPendingWrites('A')
+    await mutate(() => [row])
+  }
+
+  describe('claiming a row to send it', () => {
+    it('marks it attempted on the disk and returns the row stored there, not the copy in memory', async () => {
+      await held(tx('k1', 1, 'tx-update', '1'))
+      await storeRow(tx('k1', 1, 'tx-update', '9'))
+      const claimed = await claimForSend('k1')
+      expect(claimed).toMatchObject({ key: 'k1', attempted: true, payload: { amount: '9' } })
+      expect(await rows()).toMatchObject([{ key: 'k1', attempted: true, payload: { amount: '9' } }])
+      expect(getOps()).toMatchObject([{ key: 'k1', attempted: true, payload: { amount: '9' } }])
+    })
+
+    it('marks memory at once, so a fold in this tab queues behind it as before', async () => {
+      await held(tx('k1', 1, 'tx-update', '1'))
+      const claiming = claimForSend('k1')
+      expect(getOps()).toMatchObject([{ key: 'k1', attempted: true }])
+      await claiming
+    })
+
+    it('gives nothing for a row another tab settled or a refusal it recorded', async () => {
+      await held(tx('k1', 1, 'tx-update', '1'))
+      await dbRequest(STORE_PENDING_WRITES, 'readwrite', (s) => s.delete('k1'))
+      expect(await claimForSend('k1')).toBeNull()
+
+      await mutate(() => [tx('k2', 2, 'tx-update', '1')])
+      await storeRow(tx('k2', 2, 'tx-update', '1', { status: 'failed', error: 'No' }))
+      expect(await claimForSend('k2')).toBeNull()
+    })
+
+    it('falls back on memory when the database is broken or stalled', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      await held(tx('k1', 1, 'tx-update', '1'))
+      const restore = delayTransactionCompletion(null)
+      await expect(claimForSend('k1')).resolves.toMatchObject({ key: 'k1', attempted: true })
+      restore()
+      const failing = vi.spyOn(IDBDatabase.prototype, 'transaction').mockImplementation(() => {
+        throw new DOMException('broken', 'InvalidStateError')
+      })
+      await mutate((ops) => [...ops, tx('k2', 2, 'tx-update', '1')])
+      await expect(claimForSend('k2')).resolves.toMatchObject({ key: 'k2', attempted: true })
+      failing.mockRestore()
+    })
+  })
+
+  describe('a tab folding into a row a sender already took', () => {
+    const fold = (amount: string) => mutate((ops) => addChange(ops, edit(amount), { key: 'unused', seq: 99 }))
+
+    it('leaves the sent row alone and lands the newer values behind it, under a key of their own', async () => {
+      await held(tx('k1', 1, 'tx-update', '1'))
+      await storeRow(tx('k1', 1, 'tx-update', '1', { attempted: true }))
+      await fold('9')
+      const stored = await ordered()
+      expect(stored).toMatchObject([
+        { key: 'k1', attempted: true, payload: { amount: '1' } },
+        { kind: 'tx-update', attempted: false, status: 'waiting', payload: { amount: '9' }, seq: 2 },
+      ])
+      expect(stored[1].key).not.toBe('k1')
+      expect(getOps().map((o) => o.key).sort()).toEqual(stored.map((r) => r.key).sort())
+    })
+
+    it('makes the newer values an edit when the sent row is an add', async () => {
+      await held(tx('k1', 1, 'tx-create', '1'))
+      await storeRow(tx('k1', 1, 'tx-create', '1', { attempted: true }))
+      await fold('9')
+      expect(await ordered()).toMatchObject([
+        { key: 'k1', kind: 'tx-create', payload: { amount: '1' } },
+        { kind: 'tx-update', payload: { amount: '9' } },
+      ])
+    })
+
+    it('deleting an add a sender already took queues a delete behind it', async () => {
+      await held(tx('k1', 1, 'tx-create', '1'))
+      await storeRow(tx('k1', 1, 'tx-create', '1', { attempted: true }))
+      await mutate((ops) => addChange(ops, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'unused', seq: 99 }))
+      expect(await ordered()).toMatchObject([
+        { key: 'k1', kind: 'tx-create', attempted: true },
+        { kind: 'tx-delete', txId: 't1', attempted: false },
+      ])
+      expect(getOps()).toHaveLength(2)
+    })
+
+    it('adds nothing when the write changes no value', async () => {
+      await held(tx('k1', 1, 'tx-update', '1', { status: 'failed', error: 'No' }))
+      await storeRow(tx('k1', 1, 'tx-update', '1', { attempted: true, status: 'waiting' }))
+      await mutate((ops) => ops.map((o) => ({ ...o, status: 'waiting' as const })))
+      expect(await ordered()).toMatchObject([{ key: 'k1', attempted: true }])
+      expect(await rows()).toHaveLength(1)
+    })
+
+    it('lets the holder settle a refusal of the row it sent', async () => {
+      await held(tx('k1', 1, 'tx-update', '1', { attempted: true }))
+      await mutate((ops) => ops.map((o) => ({ ...o, attempted: false, status: 'failed' as const, error: 'No' })))
+      expect(await rows()).toMatchObject([{ key: 'k1', attempted: false, status: 'failed' }])
+    })
+
+    it('is unchanged for one tab: a fold into an unsent row replaces it', async () => {
+      await held(tx('k1', 1, 'tx-update', '1'))
+      await fold('9')
+      expect(await rows()).toMatchObject([{ key: 'k1', attempted: false, payload: { amount: '9' } }])
+    })
+  })
+
+  describe('with a second copy of the store, as a second tab has', () => {
+    async function secondTab() {
+      vi.resetModules()
+      const other = await import('./store')
+      await other.loadPendingWrites('A')
+      return other
+    }
+
+    it('a claim that ran first keeps its payload and the fold lands behind it', async () => {
+      await held(tx('k1', 1, 'tx-update', '1'))
+      const b = await secondTab()
+      const claimed = await claimForSend('k1')
+      expect(claimed).toMatchObject({ payload: { amount: '1' } })
+
+      await b.mutate((ops) => addChange(ops, edit('9'), { key: 'unused', seq: 99 }))
+      expect(await ordered()).toMatchObject([
+        { key: 'k1', attempted: true, payload: { amount: '1' } },
+        { attempted: false, payload: { amount: '9' } },
+      ])
+      b.resetPendingWritesForTests()
+    })
+
+    it('a fold that ran first is what the claim sends', async () => {
+      await held(tx('k1', 1, 'tx-update', '1'))
+      const b = await secondTab()
+      await b.mutate((ops) => addChange(ops, edit('9'), { key: 'unused', seq: 99 }))
+      await expect(claimForSend('k1')).resolves.toMatchObject({ attempted: true, payload: { amount: '9' } })
+      expect(await rows()).toHaveLength(1)
+      b.resetPendingWritesForTests()
+    })
+  })
 })
 
 it('another tab announcing a change refreshes this one', async () => {

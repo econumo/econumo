@@ -16,8 +16,8 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { getSessionUserId, hasToken } from '@/lib/storage'
 import { classifyWriteError } from './classify'
 import { applyLimitToBudget, applyLimitToPlan } from './overlay'
-import { markAttempted, markLanded, nextSendable, resolveTempId, settleDone, settleRefused, settleUnresolved } from './queue'
-import { getOps, isQueueLoaded, loadPendingWrites, mutate, queueOwner, subscribe, subscribeAdopted, subscribeLeftElsewhere } from './store'
+import { markLanded, nextSendable, resolveTempId, settleDone, settleRefused, settleUnresolved } from './queue'
+import { claimForSend, getOps, isQueueLoaded, loadPendingWrites, mutate, queueOwner, refreshFromDisk, subscribe, subscribeAdopted, subscribeLeftElsewhere } from './store'
 import { rememberRealId } from './tempIds'
 import type { OpChange, PendingOp } from './types'
 
@@ -259,10 +259,15 @@ async function settleFailure(queryClient: QueryClient, op: PendingOp, err: unkno
   return true
 }
 
-async function sendNext(queryClient: QueryClient, op: PendingOp): Promise<boolean> {
-  // Before the request leaves: a reload after this must not fold new values
-  // under a key the server may already hold.
-  await mutate((ops) => markAttempted(ops, op.key))
+async function sendNext(queryClient: QueryClient, next: PendingOp): Promise<boolean> {
+  // Before the request leaves: a reload after this, or another tab, must not
+  // fold new values under a key the server may already hold.
+  const op = await claimForSend(next.key)
+  if (!op) {
+    // settled or dropped in another tab, whose announcement has not arrived
+    await refreshFromDisk()
+    return true
+  }
   let result: unknown
   try {
     result = await send(op)
