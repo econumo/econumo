@@ -136,12 +136,41 @@ describe('addChange', () => {
     expect(addChange([op(create(), failed)], remove, mint)).toEqual([])
   })
 
-  it('never folds a change whose request may have reached the server', () => {
-    const waiting = op(update('first'))
-    expect(addChange([waiting], update('second'), mint, true)).toEqual([
-      waiting,
-      op(update('second'), { key: 'new-key', seq: 99, attempted: true }),
+  it('puts an attempted change ahead of a waiting edit on its target', () => {
+    const waiting = op(limit('2'))
+    expect(addChange([waiting], limit('1'), mint, true)).toEqual([
+      op(limit('1'), { key: 'new-key', seq: 1, attempted: true }),
+      op(limit('2'), { seq: 99 }),
     ])
+  })
+
+  it('sends an attempted change before the waiting edit it was overtaken by', () => {
+    const ops = addChange([op(limit('2'))], limit('1'), mint, true)
+    expect(nextSendable(ops, 0)).toMatchObject({ key: 'new-key', amount: '1' })
+  })
+
+  it('puts an attempted change ahead of a failed op on its target', () => {
+    const refused = op(update('first'), failed)
+    const ops = addChange([refused], update('second'), mint, true)
+    expect(ops).toEqual([op(update('second'), { key: 'new-key', seq: 1, attempted: true }), { ...refused, seq: 99 }])
+    expect(nextSendable(ops, 1000)).toMatchObject({ key: 'new-key' })
+  })
+
+  it('keeps an attempted change behind one sent earlier and ahead of what waits', () => {
+    const sent = op(limit('1'), { attempted: true })
+    const waiting = op(limit('3'), { key: 'k2', seq: 2 })
+    expect(addChange([sent, waiting], limit('2'), mint, true)).toEqual([
+      sent,
+      op(limit('2'), { key: 'new-key', seq: 2, attempted: true }),
+      op(limit('3'), { key: 'k2', seq: 99 }),
+    ])
+  })
+
+  it('leaves other targets alone when an attempted change moves ahead', () => {
+    const other = op(limit('9', '2026-12-01'), { key: 'k2', seq: 2 })
+    const ops = addChange([op(limit('2')), other], limit('1'), mint, true)
+    expect(ops).toContainEqual(other)
+    expect(new Set(ops.map((o) => o.seq)).size).toBe(3)
   })
 
   it('does not mutate its input', () => {
@@ -168,9 +197,21 @@ describe('settling', () => {
     ])
   })
 
-  it('settleRefused folds the update behind an attempted create into it', () => {
+  it('settleRefused folds the update behind an attempted create in, and it waits again', () => {
     const ops = [op(create(), { attempted: true }), op(update('second'), { key: 'k2', seq: 2 })]
-    expect(settleRefused(ops, 'k1', 'No')).toEqual([op(create('second'), { status: 'failed', error: 'No' })])
+    const settled = settleRefused(ops, 'k1', 'No')
+    expect(settled).toEqual([op(create('second'))])
+    expect(settled[0]).not.toHaveProperty('error')
+  })
+
+  it('settleRefused leaves one waiting delete for a refused update with a delete behind', () => {
+    const ops = [op(update(), { attempted: true }), op(remove, { key: 'k2', seq: 2 })]
+    expect(settleRefused(ops, 'k1', 'No')).toEqual([op(remove)])
+  })
+
+  it('settleRefused leaves one waiting limit with the last amount for a limit behind', () => {
+    const ops = [op(limit('1'), { attempted: true }), op(limit('2'), { key: 'k2', seq: 2 })]
+    expect(settleRefused(ops, 'k1', 'No')).toEqual([op(limit('2'))])
   })
 
   it('settleRefused removes an attempted create and the delete behind it', () => {
@@ -237,6 +278,12 @@ describe('nextSendable', () => {
 
   it('sends an op once its backoff is over', () => {
     expect(nextSendable([{ ...a, notBefore: now }], now)).toEqual({ ...a, notBefore: now })
+  })
+
+  it('never returns an op behind a failed op on its target', () => {
+    const refused = op(update(), { status: 'failed', error: 'No' })
+    const behind = op(update('later'), { key: 'k2', seq: 2 })
+    expect(nextSendable([refused, behind], now)).toBeNull()
   })
 
   it('never returns an op with an earlier op on its target', () => {
