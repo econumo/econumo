@@ -2,6 +2,7 @@ package debt
 
 import (
 	"context"
+	"math"
 	"strconv"
 	"time"
 
@@ -137,13 +138,43 @@ func (s *Service) GetDebt(ctx context.Context, userID vo.Id, req model.GetDebtRe
 		res.Snapshots = append(res.Snapshots, model.DebtSnapshotResult{AsOf: dateString(sn.AsOf), Balance: sn.Balance.String(),
 			Payment: sn.Payment.String(), Schedule: string(sn.Schedule), LastPaymentDate: dateString(sn.LastPaymentDate)})
 	}
+	balances := st.balancesAfter()
 	for i := len(st.pays) - 1; i >= 0; i-- {
 		p := st.pays[i]
-		res.Payments = append(res.Payments, model.DebtPaymentResult{TransactionId: p.txID.String(), Date: dateString(p.date),
+		pay := model.DebtPaymentResult{TransactionId: p.txID.String(), Date: dateString(p.date),
 			Amount: amountString(p.amount, st.digits), Interest: amountString(p.interest, st.digits),
-			Principal: amountString(p.amount-p.interest, st.digits)})
+			Principal: amountString(p.amount-p.interest, st.digits)}
+		if balances != nil {
+			pay.Balance = amountString(balances[i], st.digits)
+		}
+		res.Payments = append(res.Payments, pay)
 	}
 	return res, nil
+}
+
+// balancesAfter is what was owed after each payment (st.pays order), nil for
+// a debt not set up. BalanceAt closes a whole day, so the payments of one day
+// after this one are added back: they had not been made yet.
+func (st *debtState) balancesAfter() []float64 {
+	if !st.debt.IsSetUp() {
+		return nil
+	}
+	snaps := st.mathSnaps()
+	pays, interest := st.mathPays()
+	out := make([]float64, len(st.pays))
+	for i := len(st.pays) - 1; i >= 0; i-- {
+		day := debtDate(st.pays[i].date)
+		if i+1 < len(st.pays) && debtDate(st.pays[i+1].date).Equal(day) {
+			next := st.pays[i+1]
+			out[i] = out[i+1] + next.amount - next.interest
+			continue
+		}
+		out[i] = model.BalanceAt(snaps, pays, interest, day)
+	}
+	for i := range out {
+		out[i] = math.Max(out[i], 0)
+	}
+	return out
 }
 
 // Views returns the matching key, range and planning bounds of the owners'

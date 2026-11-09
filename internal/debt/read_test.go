@@ -161,3 +161,49 @@ func TestViews_StartAtAnEarlierFirstPayment(t *testing.T) {
 		t.Fatalf("start = %v, want January", views[0].StartMonth)
 	}
 }
+
+// Each payment carries the balance left after it, from the snapshots and the
+// stored splits: a later payment on the same day comes off the earlier one's.
+func TestGetDebt_PaymentsCarryTheBalanceAfterThem(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	e.clock.now = ymd(2026, 7, 1)
+	e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	e.expense(t, e.account, ymd(2026, 5, 1), "1000", "")
+	e.expense(t, e.account, ymd(2026, 5, 1), "300", "")
+
+	got, err := e.svc.GetDebt(context.Background(), e.uid(), model.GetDebtRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Payments) != 3 {
+		t.Fatalf("payments = %+v", got.Payments)
+	}
+	// oldest first: the balance falls by each payment's debt part
+	balance := vo.NewDecimal("10000")
+	for i := len(got.Payments) - 1; i >= 0; i-- {
+		p := got.Payments[i]
+		balance = balance.Sub(vo.NewDecimal(p.Principal))
+		if !vo.NewDecimal(p.Balance).Equals(balance) {
+			t.Fatalf("payment %d (%s %s): balance %q, want %s", i, p.Date, p.Amount, p.Balance, balance)
+		}
+	}
+	if !vo.NewDecimal(got.Payments[0].Balance).Equals(vo.NewDecimal(got.Item.CurrentBalance)) {
+		t.Fatalf("latest balance %q, owed now %q", got.Payments[0].Balance, got.Item.CurrentBalance)
+	}
+}
+
+func TestGetDebt_NotSetUpPaymentsHaveNoBalance(t *testing.T) {
+	e := newEnv(t)
+	res := e.createWithoutTerms(t, nil)
+	e.clock.now = ymd(2026, 7, 1)
+	e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+
+	got, err := e.svc.GetDebt(context.Background(), e.uid(), model.GetDebtRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Payments) != 1 || got.Payments[0].Balance != "" {
+		t.Fatalf("payments = %+v", got.Payments)
+	}
+}

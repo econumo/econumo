@@ -141,6 +141,8 @@ type DebtPaymentResult struct {
 	Amount        string `json:"amount"`
 	Interest      string `json:"interest"`
 	Principal     string `json:"principal"`
+	// Balance is what was owed after the payment, "" while the debt is not set up.
+	Balance string `json:"balance"`
 }
 
 type DebtDetailsResult struct {
