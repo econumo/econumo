@@ -23,6 +23,7 @@ const idemKey = "01a1be30-30af-7e10-8b56-9b545fbe3b34"
 
 type fakeIdemStore struct {
 	findErr   error
+	finds     int
 	insertErr error
 	rows      map[string]string
 	inserts   int
@@ -32,6 +33,7 @@ type fakeIdemStore struct {
 }
 
 func (s *fakeIdemStore) Find(_ context.Context, _ vo.Id, key string) (string, bool, error) {
+	s.finds++
 	if s.findErr != nil {
 		return "", false, s.findErr
 	}
@@ -162,12 +164,12 @@ func TestIdempotency_OnlyFullScopePostsOutsideMCPAreGuarded(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			store := &fakeIdemStore{findErr: errors.New("must not be consulted")}
+			store := &fakeIdemStore{}
 			rec := serveIdem(t, idemAuthn{store: store, scope: c.scope}, c.method, c.path, c.key, func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
-			if rec.Code != http.StatusOK || store.inserts != 0 {
-				t.Fatalf("status=%d inserts=%d", rec.Code, store.inserts)
+			if rec.Code != http.StatusOK || store.finds != 0 || store.inserts != 0 {
+				t.Fatalf("status=%d finds=%d inserts=%d, want 200 and an untouched store", rec.Code, store.finds, store.inserts)
 			}
 		})
 	}
