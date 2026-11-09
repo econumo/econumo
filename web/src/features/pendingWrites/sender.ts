@@ -413,6 +413,27 @@ export async function attemptedWritesResolved(): Promise<void> {
   unsubscribeOps()
 }
 
+/**
+ * Holding the refresh does not stop what a mount fetches on its own, and a restored
+ * query past its staleTime would: its balances would count a change the overlay
+ * still applies. So they read as fresh until the held refresh, which is bounded by
+ * attemptedWritesResolved. Await this before the observers mount.
+ */
+export async function holdRestoredReads(queryClient: QueryClient): Promise<void> {
+  const user = sessionUser()
+  if (!user || !onlineManager.isOnline()) {
+    return
+  }
+  await loadPendingWrites(user)
+  if (!getOps().some(awaitsItsOutcome)) {
+    return
+  }
+  const now = Date.now()
+  for (const queryKey of [queryKeys.accounts, queryKeys.transactions]) {
+    queryClient.getQueryCache().find({ queryKey, exact: true })?.setState({ dataUpdatedAt: now, isInvalidated: false })
+  }
+}
+
 export function startPendingWrites(queryClient: QueryClient): () => void {
   if (client !== queryClient) {
     unsubscribe?.()

@@ -2,9 +2,9 @@ import { createElement, type ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { AxiosError, type AxiosResponse } from 'axios'
-import { onlineManager, QueryClientProvider, type QueryClient } from '@tanstack/react-query'
+import { onlineManager, QueryClientProvider, type QueryClient, QueryObserver } from '@tanstack/react-query'
 import { server } from '@/test/msw'
-import { queryKeys } from '@/app/queryKeys'
+import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import type { AccountDto } from '@/api/dto/account'
 import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import type { CreateTransactionDto, TransactionDto } from '@/api/dto/transaction'
@@ -19,7 +19,8 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
 import { overlayAccounts, overlayBudget, overlayPlan, overlayTransactions } from './overlay'
 import { addChange } from './queue'
-import { attemptedWritesResolved, kickPendingWrites, startPendingWrites } from './sender'
+import { refreshRestoredQueries } from '@/lib/queryPersist'
+import { attemptedWritesResolved, holdRestoredReads, kickPendingWrites, startPendingWrites } from './sender'
 import { submitChange } from './submit'
 import { realIdOf } from './tempIds'
 import { getOps, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe } from './store'
@@ -706,6 +707,49 @@ describe('holding the boot refresh for changes a previous run may have sent', ()
     await attemptedWritesResolved()
     release()
     await vi.waitFor(() => expect(getOps()).toEqual([]))
+  })
+
+  describe('restored accounts and transactions older than their staleTime', () => {
+    const TEN_MINUTES_AGO = () => Date.now() - 11 * 60_000
+    // as a restore leaves them, then a screen mounting
+    function restoredAged() {
+      client.setQueryData(queryKeys.accounts, [], { updatedAt: TEN_MINUTES_AGO() })
+      client.setQueryData(queryKeys.transactions, [], { updatedAt: TEN_MINUTES_AGO() })
+    }
+    function mountAccounts() {
+      const queryFn = vi.fn(async () => [])
+      const observer = new QueryObserver(client, { queryKey: queryKeys.accounts, queryFn, staleTime: TEN_MINUTES })
+      onTestFinished(observer.subscribe(() => {}))
+      return queryFn
+    }
+
+    it('are held on mount while a previous run\'s change waits, and read once it is resolved', async () => {
+      let release: () => void = () => {}
+      const held = new Promise<void>((resolve) => { release = resolve })
+      answerWith(async () => { await held; return undefined })
+      await reopen(true)
+      stop = startPendingWrites(client)
+      restoredAged()
+      const resolved = attemptedWritesResolved()
+      await holdRestoredReads(client)
+      expect(client.getQueryState(queryKeys.transactions)?.dataUpdatedAt).toBeGreaterThan(TEN_MINUTES_AGO())
+      const fetched = mountAccounts()
+      await new Promise((r) => setTimeout(r, 30))
+      expect(fetched).not.toHaveBeenCalled()
+
+      release()
+      await resolved
+      refreshRestoredQueries(client)
+      await vi.waitFor(() => expect(fetched).toHaveBeenCalledTimes(1))
+    })
+
+    it('fetch on mount as usual with nothing waiting for its outcome', async () => {
+      answerWith(() => undefined)
+      restoredAged()
+      await holdRestoredReads(client)
+      const fetched = mountAccounts()
+      await vi.waitFor(() => expect(fetched).toHaveBeenCalledTimes(1))
+    })
   })
 
   it('does not wait with an empty queue, offline or with no session', async () => {

@@ -552,7 +552,8 @@ Web Lock `econumo-pending-writes`, so only one tab sends. The lock does not seri
 edits across tabs, IndexedDB transactions do: the sender marks a row attempted in a readwrite
 transaction that returns the row as stored and sends that (`claimForSend`), and a persist that
 would fold into a row another tab's sender has taken leaves it and lands the newer values
-behind it under a key of their own. Offline, `submitChange` queues at
+behind it under a key of their own (a row another tab has already settled and deleted likewise:
+the key is spent, so the newer values take a fresh one, as an edit of an add). Offline, `submitChange` queues at
 once and the dialog closes; online it sends directly (10 s timeout) and a refusal (a 4xx with
 the envelope) reaches the dialog as usual, while no answer, no response or a 5xx with the
 envelope (the server may have committed first) turns the change into a waiting one under the
@@ -572,8 +573,10 @@ never reverts; a read that fails keeps it, attempted, for a retry after a backof
 cancels a sync already running (it may predate the write) instead of joining it, and the `landed`
 mark that stops the balance counting the change again is stored with the row, so a reload does
 not count it twice. At boot, online, with attempted changes in the queue, `refreshRestoredQueries`
-waits for them to resolve (`attemptedWritesResolved`, at most the 10 s write timeout), so a read
-cannot bring a lost-response add before the sender knows about it.
+waits for them to resolve (`attemptedWritesResolved`, at most the 10 s write timeout), and the
+restored accounts and transactions are stamped fresh until then (`holdRestoredReads`, awaited
+before the observers mount), so neither that refresh nor a mount past their staleTime can bring a
+lost-response add before the sender knows about it.
 The caches keep server rows only: the waiting changes are applied at READ time
 (`overlay.ts`, through `select` on the transactions, accounts, budget and plan queries), so a
 sync or a restore cannot erase them; the budget's Spent/Available figures do not move for a

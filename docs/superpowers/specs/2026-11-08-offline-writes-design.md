@@ -205,7 +205,8 @@ Multi-cell fill sends one `set-limit` per cell, each with its own key.
   attempted, and retries after a backoff. The read cancels a sync already running rather than
   joining it, and the mark that the balances already count the change is persisted with the
   operation. At boot, online, the refresh of the restored caches waits for attempted changes
-  to resolve, for at most that timeout. A 409 with no resource id for an add
+  to resolve, for at most that timeout, and the restored accounts and transactions count as
+  fresh until then, so a screen mounting does not fetch them either. A 409 with no resource id for an add
   (the rare crash between commit and storing it, on a handler with no transaction) sends any
   change queued behind it to the Inbox.
 - The 401 path pauses the queue. `clearPersistedQueryCache` runs on every login, and must
