@@ -69,7 +69,9 @@ The user decided this: **the "Not saved" label is shown in the transaction previ
   server's per-cell list) follows the budget figures: a waiting add is absent until
   confirmed, and a waiting edit or delete is applied by id to rows already listed. Placing a
   new row in the right cell would mean rebuilding the server's matching on the client.
-  *(Author's call.)*
+  *(Author's call.)* A row an edit moves out of the listed cell or period leaves the list
+  where the client can tell from the list's own query (date, category, tag, label, type,
+  account); what it cannot tell stays listed. A row moved into a cell appears after confirmation.
 - The sidebar's sync area shows how many changes are waiting.
 
 ### Editing something that is still waiting
@@ -121,7 +123,11 @@ A network failure is never a failure in this sense: the change stays waiting.
 
 ### Signing out
 
-If changes are waiting, sign-out warns first, because signing out discards them.
+If changes are waiting, sign-out warns first, because signing out discards them. Until the
+stored queue has loaded the count is unknown: the confirmation waits for it, briefly and with its
+button disabled, and if the store does not answer in time it says that unsent changes may be
+lost. Every plain link to sign-out asks the same way. The sign-out that follows "Set a password"
+keeps the queue, because the same user signs straight back in.
 
 ## Technical decisions
 

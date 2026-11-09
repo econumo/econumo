@@ -577,7 +577,10 @@ cannot bring a lost-response add before the sender knows about it.
 The caches keep server rows only: the waiting changes are applied at READ time
 (`overlay.ts`, through `select` on the transactions, accounts, budget and plan queries), so a
 sync or a restore cannot erase them; the budget's Spent/Available figures do not move for a
-waiting transaction, the account balance does. A waiting transaction looks like any other
+waiting transaction, the account balance does. A limit's optimistic patch is undone cell by cell
+(`limitPatches.ts`), never from a whole-cache snapshot, which would hold other edits still in flight.
+`overlayBudgetTransactions` also drops a row an edit took out of the listed selector or period, as
+far as the client can judge from `BudgetTransactionsParams` (everything else stays listed). A waiting transaction looks like any other
 row and its preview says "Not saved" (a failed one shows the reason), a waiting limit shows
 `NotSavedIcon` next to the number, and the sync area's badge counts what is waiting. Outcomes
 (`classify.ts`): 409 = done; a 4xx with the app's envelope = refused (402 included); a 5xx with
@@ -588,7 +591,10 @@ local, marked failed, and appears in the Inbox's "Not saved" section
 (`features/inbox/FailedWritesSection.tsx`, counted in the Inbox badge): a failed add or edit
 opens the normal transaction dialog with the user's values and saving sends it again, a failed
 delete or limit has Try again, and all have Discard; other changes still go through. Sign-out,
-the "Log out" link on a stuck loader included, warns while anything is unsent (`useUnsentCount`) because `LogoutPage` clears the queue; a
+the "Log out" link on a stuck loader and the consent page's "Switch account" included, warns while anything is unsent because `LogoutPage` clears the queue
+(`useSignOutConfirm`: until the stored queue has loaded the confirm is disabled, at most `STORE_TIMEOUT_MS`, and if it never arrives the warning says changes may be lost); the
+sign-out after "Set a password" (every session revoked, the same user signs back in) passes
+`{ keepPendingWrites: true }` as router state and keeps it. A
 login keeps the queue when the same user signs back in, and a different user's rows are
 deleted on load. Everything else is **disabled while offline** through one hook, `useOnline`
 (`web/src/hooks/useOnline.ts`, on `onlineManager`), and fails at once if something slips past

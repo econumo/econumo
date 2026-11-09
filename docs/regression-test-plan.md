@@ -2779,7 +2779,12 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 Signing out with changes unsent, waiting or refused: the Log out confirmation (Settings, Profile, and Sign out on this device's row in Sessions) says how many
       will be lost; Stay keeps them, Log out drops them and the next user of the device never sees
       or sends them. Signing back in as the same user keeps them if the session ended by itself.
-      The "Log out" link under a stuck loader asks the same question while anything is unsent, and goes straight to sign-out when nothing is.
+      The "Log out" link under a stuck loader and "Switch account" on the Connected-apps consent page ask the same question while anything is unsent, and go straight to sign-out when nothing is.
+      Reopened with changes waiting, the confirmation names them even if opened at once (its button stays disabled for a moment while they load).
+      "Set a password" with changes waiting: after signing back in as the same user they are still waiting and get sent.
+- [ ] 📱 Budget view with a plan waiting, offline, switching to a month not yet downloaded: the previous month's figures stay on screen and the not-saved icon stays on the cell of that month.
+- [ ] Plan edits in flight on a flaky connection: edit one cell and then another before the first answers; when the requests time out both cells keep their new numbers with the not-saved icon, and discarding one in the Inbox brings back the server's number there and leaves the other.
+- [ ] 📱 Budget transaction list (Spent drill-down and a report's savings drill-down) with a transaction edited offline: a transfer shows the amount of the side listed; a new date within the period moves it under that day with no repeated day heading; a date outside the period, or another category or tag, takes it off the list until it is confirmed; a new category shows its name.
 - [ ] Sync button tap = incremental refresh: after an edit made on another
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the
