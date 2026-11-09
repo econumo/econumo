@@ -74,20 +74,24 @@ export async function submitChange<T>(
     result = await send({ idempotencyKey: key, timeout: WRITE_TIMEOUT_MS })
   } catch (err) {
     const outcome = classifyWriteError(err)
-    // 'done' is an earlier submit of this form that landed: the sender's own
-    // attempt gets the same answer and reads the outcome back.
-    if (outcome === 'done' && change.kind === 'tx-create') {
-      return enqueueReplayedAdd(change, key)
-    }
     // A 5xx may have come after the commit, and then the server holds this key:
     // the retry must carry it too, or a delete answers "not found". Anything that
     // is not a request failure never left this client and rejects.
-    if (outcome === 'wait' || outcome === 'done' || (outcome === 'retry' && isAxiosError(err))) {
-      return enqueueChange(change, key, true)
+    if (outcome !== 'wait' && outcome !== 'done' && !(outcome === 'retry' && isAxiosError(err))) {
+      throw err
     }
-    throw err
+    // Another account signed in meanwhile: the queue is theirs now and this change
+    // is not, and the form that asked for it is gone.
+    if (sessionUser() !== user) {
+      return { queued: true }
+    }
+    // 'done' is an earlier submit of this form that landed: the sender's own
+    // attempt gets the same answer and reads the outcome back.
+    return outcome === 'done' && change.kind === 'tx-create' ? enqueueReplayedAdd(change, key) : enqueueChange(change, key, true)
   }
-  confirmChange(queryClient, change, result)
+  if (sessionUser() === user) {
+    confirmChange(queryClient, change, result)
+  }
   return { queued: false, result }
 }
 

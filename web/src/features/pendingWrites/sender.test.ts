@@ -947,6 +947,60 @@ it('remembers the server id an add replay reports', async () => {
   expect(realIdOf('temp-replayed')).toBe('real-replayed')
 })
 
+describe('the session changing while a direct request is outstanding', () => {
+  const add: OpChange = { kind: 'tx-create', txId: 'temp', payload: payload('temp') }
+  const failedAfterCommit = new AxiosError('failed', 'ERR_BAD_RESPONSE', undefined, undefined, { status: 500, data: envelope('Boom') } as AxiosResponse)
+  const noAnswer = new AxiosError('timeout', AxiosError.ECONNABORTED)
+  const replayed = new AxiosError('locked', 'ERR_BAD_REQUEST', undefined, undefined, { status: 409, data: envelope('Operation is locked') } as AxiosResponse)
+  const switchUser = async () => {
+    setToken('tok2', 'u2')
+    await loadPendingWrites('u2')
+  }
+
+  it.each([['no answer', noAnswer], ['a 5xx', failedAfterCommit], ['a replay', replayed]])('%s does not reach the next user\'s queue', async (_name, failure) => {
+    const send = vi.fn(async () => {
+      await switchUser()
+      throw failure
+    })
+    await expect(submitChange(client, add, send)).resolves.toEqual({ queued: true })
+    expect(getOps()).toEqual([])
+  })
+
+  it('nothing is queued after a sign-out either', async () => {
+    const send = vi.fn(async () => {
+      removeToken()
+      throw noAnswer
+    })
+    await expect(submitChange(client, add, send)).resolves.toEqual({ queued: true })
+    expect(getOps()).toEqual([])
+  })
+
+  it('a refusal still rejects', async () => {
+    const refusal = new AxiosError('refused', 'ERR_BAD_REQUEST', undefined, undefined, { status: 400, data: envelope() } as AxiosResponse)
+    const send = vi.fn(async () => {
+      await switchUser()
+      throw refusal
+    })
+    await expect(submitChange(client, add, send)).rejects.toBe(refusal)
+    expect(getOps()).toEqual([])
+  })
+
+  it('an accepted answer does not reach the next user\'s caches', async () => {
+    const send = vi.fn(async () => {
+      await switchUser()
+      client.setQueryData(queryKeys.transactions, [])
+      return { item: row('real'), accounts }
+    })
+    await submitChange(client, add, send)
+    expect(ids()).toEqual([])
+  })
+
+  it('the same user still queues', async () => {
+    answerWith(() => new Promise<never>(() => {}))
+    await expect(submitChange(client, add, vi.fn().mockRejectedValue(noAnswer))).resolves.toEqual({ queued: true })
+  })
+})
+
 it('a 409 on the direct path ends with one row and nothing left in the queue', async () => {
   const id = '019a0000-0000-7000-8000-000000000001'
   const form = payload(id)
