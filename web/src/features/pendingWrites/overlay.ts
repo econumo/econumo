@@ -285,10 +285,28 @@ function matchesSelector(p: CreateTransactionDto, params: BudgetTransactionsPara
   return envelopeId ? p.categoryId !== null && p.tagId === null : true
 }
 
+// The one account the list is of, if it is of one: a transfers or income list
+// holds rows of several, and only the row itself says which side it shows.
+function listedAccountOf(listing: BudgetListing | undefined): Id | undefined {
+  const accounts = new Set(listing?.params.map((params) => params.accountId))
+  return accounts.size === 1 ? [...accounts][0] : undefined
+}
+
+function sideOf(p: CreateTransactionDto, listedAccount: Id | undefined): 'in' | 'out' | undefined {
+  if (!listedAccount) {
+    return undefined
+  }
+  if (p.accountId === listedAccount) {
+    return p.type === 'income' ? 'in' : 'out'
+  }
+  return p.type === 'transfer' && p.accountRecipientId === listedAccount ? 'in' : undefined
+}
+
 /** Drill-down rows with waiting edits and deletes. A waiting create is absent (it has no row yet), and
  *  so is a row moved into this list by an edit; one an edit moved out of `listing` leaves it. */
 export function overlayBudgetTransactions<T extends BudgetTransactionDto>(rows: T[], ops: PendingOp[], lookups: ClassificationLookups = {}, listing?: BudgetListing): T[] {
   let out = rows
+  const listedAccount = listedAccountOf(listing)
   const edited = new Map<Id, CreateTransactionDto>()
   let dateMoved = false
   for (const op of bySeq(ops)) {
@@ -300,10 +318,12 @@ export function overlayBudgetTransactions<T extends BudgetTransactionDto>(rows: 
         }
         edited.set(r.id, p)
         dateMoved ||= day(r.spentAt) !== day(p.date)
+        const side = sideOf(p, listedAccount) ?? r.direction
         return {
           ...r,
           // a row carries the amount of its own side
-          amount: p.type === 'transfer' && r.direction === 'in' ? (p.amountRecipient ?? p.amount) : p.amount,
+          amount: p.type === 'transfer' && side === 'in' ? (p.amountRecipient ?? p.amount) : p.amount,
+          ...(side ? { direction: side } : {}),
           description: p.description,
           spentAt: `${day(p.date)}${r.spentAt.slice(10)}`,
           labelIds: [...p.labelIds],

@@ -289,6 +289,30 @@ describe('overlayBudgetTransactions', () => {
   }
   const edit = (over: Partial<CreateTransactionDto>) => op({ kind: 'tx-update', txId: 'x1', payload: pay('x1', over) })
 
+  describe('the side a transfer is listed by', () => {
+    const transfer = (accountId: string, accountRecipientId: string) =>
+      edit({ type: 'transfer', accountId, accountRecipientId, amount: '5', amountRecipient: '6' })
+    const listingOf = (accountId: string) => ({ params: [{ budgetId: 'b', periodStart: '2026-11-01', accountId }] })
+
+    it('follows the edited sides, not the row the server sent', () => {
+      const [received] = overlayBudgetTransactions([{ ...row, direction: 'out' }], [transfer('a1', 'a2')], {}, listingOf('a2'))
+      expect(received).toMatchObject({ amount: '6', direction: 'in' })
+      const [sent] = overlayBudgetTransactions([{ ...row, direction: 'in' }], [transfer('a1', 'a2')], {}, listingOf('a1'))
+      expect(sent).toMatchObject({ amount: '5', direction: 'out' })
+    })
+
+    it('an edit into an income or an expense takes that side on the listed account', () => {
+      const [income] = overlayBudgetTransactions([{ ...row, direction: 'out' }], [edit({ type: 'income', accountId: 'a1', amount: '5' })], {}, listingOf('a1'))
+      expect(income).toMatchObject({ amount: '5', direction: 'in' })
+    })
+
+    it('falls back on the row when the listed account is unknown', () => {
+      const withoutAccount = { params: [{ budgetId: 'b', periodStart: '2026-11-01', transfers: true }] }
+      expect(overlayBudgetTransactions([{ ...row, direction: 'in' }], [transfer('a1', 'a2')], {}, withoutAccount)[0]).toMatchObject({ amount: '6', direction: 'in' })
+      expect(overlayBudgetTransactions([{ ...row, direction: 'out' }], [transfer('a1', 'a2')])[0]).toMatchObject({ amount: '5', direction: 'out' })
+    })
+  })
+
   it('names a category, payee and tag changed to another id from the reference lists', () => {
     const [out] = overlayBudgetTransactions([row], [edit({ categoryId: 'c2', payeeId: 'p2', tagId: 't2' })], lookups)
     expect(out.category).toEqual({ id: 'c2', name: 'Rent', icon: 'home' })
