@@ -8,6 +8,8 @@ import type { CreateTransactionDto, TransactionDto } from '@/api/dto/transaction
 import { createTransaction } from '@/api/transaction'
 import { createAppQueryClient } from '@/lib/appQueryClient'
 import { STORE_PENDING_WRITES, dbRequest } from '@/lib/db'
+import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
+import { delayTransactionCompletion } from '@/test/idbDelay'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { removeToken, setToken } from '@/lib/storage'
 import { overlayBudget, overlayPlan, overlayTransactions } from './overlay'
@@ -15,7 +17,7 @@ import { addChange } from './queue'
 import { kickPendingWrites, startPendingWrites } from './sender'
 import { submitChange } from './submit'
 import { realIdOf } from './tempIds'
-import { getOps, loadPendingWrites, mutate, subscribe } from './store'
+import { getOps, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe } from './store'
 import type { OpChange, PendingOp } from './types'
 
 vi.mock('@/app/routerRef', () => ({ navigateTo: vi.fn() }))
@@ -303,6 +305,25 @@ it('sends nothing while the session names no user yet, and keeps the queue', asy
   await kickPendingWrites()
   expect(seen).toHaveLength(0)
   expect(getOps()).toHaveLength(1)
+})
+
+it('sends what a stalled load delivers only after the boot stopped waiting for it', async () => {
+  answerWith(() => undefined)
+  stop()
+  onlineManager.setOnline(false)
+  await queue(limit('e1'), 'k1', 1)
+  resetPendingWritesForTests()
+  onlineManager.setOnline(true)
+
+  const restore = delayTransactionCompletion(STORE_TIMEOUT_MS + 300)
+  stop = startPendingWrites(client)
+  await kickPendingWrites()
+  expect(getOps()).toEqual([])
+  expect(seen).toEqual([])
+  restore()
+
+  await vi.waitFor(() => expect(seen.map((r) => r.key)).toEqual(['k1']), { timeout: 5000 })
+  await vi.waitFor(() => expect(getOps()).toEqual([]))
 })
 
 it('sends nothing offline, and goes on reconnect', async () => {

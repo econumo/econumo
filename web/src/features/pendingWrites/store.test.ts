@@ -1,7 +1,7 @@
 import { STORE_PENDING_WRITES, dbRequest } from '@/lib/db'
 import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
 import { delayTransactionCompletion } from '@/test/idbDelay'
-import { clearPendingWrites, getOps, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe, subscribeLeftElsewhere } from './store'
+import { clearPendingWrites, getOps, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe, subscribeAdopted, subscribeLeftElsewhere } from './store'
 import type { PendingOp } from './types'
 
 const op = (key: string, seq: number, over: Partial<PendingOp> = {}): PendingOp => ({
@@ -107,6 +107,20 @@ it('a stalled database does not hold the load past the limit, and its rows arriv
   delayTransactionCompletion(STORE_TIMEOUT_MS + 300)
   expect(await loadPendingWrites('A')).toEqual([])
   await vi.waitFor(() => expect(getOps().map((o) => o.key)).toEqual(['k1']), { timeout: 5000 })
+})
+
+it('says when stored rows land in memory, even long after the load stopped being waited for', async () => {
+  await loadPendingWrites('A')
+  await mutate(() => [op('k1', 1)])
+  resetPendingWritesForTests()
+
+  const adopted = vi.fn()
+  subscribeAdopted(adopted)
+  delayTransactionCompletion(STORE_TIMEOUT_MS + 300)
+  await loadPendingWrites('A')
+  expect(adopted).not.toHaveBeenCalled()
+  await vi.waitFor(() => expect(adopted).toHaveBeenCalledTimes(1), { timeout: 5000 })
+  expect(getOps().map((o) => o.key)).toEqual(['k1'])
 })
 
 it('another tab announcing a change refreshes this one', async () => {

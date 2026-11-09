@@ -15,7 +15,7 @@ import { getSessionUserId, hasToken } from '@/lib/storage'
 import { classifyWriteError } from './classify'
 import { applyLimitToBudget, applyLimitToPlan } from './overlay'
 import { markAttempted, nextSendable, resolveTempId, settleDone, settleRefused, settleUnresolved } from './queue'
-import { getOps, loadPendingWrites, mutate, queueOwner, subscribeLeftElsewhere } from './store'
+import { getOps, loadPendingWrites, mutate, queueOwner, subscribeAdopted, subscribeLeftElsewhere } from './store'
 import { rememberRealId } from './tempIds'
 import type { OpChange, PendingOp } from './types'
 
@@ -326,10 +326,13 @@ export function startPendingWrites(queryClient: QueryClient): () => void {
       }
     })
     const offElsewhere = subscribeLeftElsewhere(() => refreshAfterOtherTab(queryClient))
+    // The drain that asked for the load may have given up on it and found nothing to send.
+    const offAdopted = subscribeAdopted(() => { void run() })
     unsubscribe = () => {
       offOnline()
       offUser()
       offElsewhere()
+      offAdopted()
     }
   }
   void kickPendingWrites()

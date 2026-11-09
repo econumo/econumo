@@ -18,6 +18,7 @@ let loading: Promise<void> | null = null
 let channel: BroadcastChannel | null = null
 const listeners = new Set<() => void>()
 const leftElsewhereListeners = new Set<() => void>()
+const adoptedListeners = new Set<() => void>()
 
 function notify(): void {
   for (const listener of listeners) {
@@ -140,6 +141,9 @@ function adopt(stored: PendingOp[]): void {
   generation++
   notify()
   void persist(local, moved)
+  for (const listener of adoptedListeners) {
+    listener()
+  }
 }
 
 function startLoad(userId: string): Promise<void> {
@@ -177,6 +181,12 @@ export function subscribe(fn: () => void): () => void {
 export function subscribeLeftElsewhere(fn: () => void): () => void {
   leftElsewhereListeners.add(fn)
   return () => { leftElsewhereListeners.delete(fn) }
+}
+
+/** The stored rows reached memory, which can be long after a timed-out load stopped being waited for. */
+export function subscribeAdopted(fn: () => void): () => void {
+  adoptedListeners.add(fn)
+  return () => { adoptedListeners.delete(fn) }
 }
 
 export async function loadPendingWrites(userId: string): Promise<PendingOp[]> {
@@ -240,4 +250,5 @@ export function resetPendingWritesForTests(): void {
   generation++
   listeners.clear()
   leftElsewhereListeners.clear()
+  adoptedListeners.clear()
 }
