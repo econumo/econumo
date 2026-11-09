@@ -577,6 +577,11 @@
       "start_date": "Start date",
       "from_first_payment": "From the first payment",
       "overpayment_to_come": "Overpayment still to come",
+      "danger": {
+        "title": "Danger zone",
+        "paid_off": "Sets the balance to 0 and stops the countdown.",
+        "delete": "Removes the debt. Its payments go back to the category."
+      },
       "tab": {
         "overview": "Overview",
         "settings": "Settings"

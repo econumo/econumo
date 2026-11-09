@@ -577,6 +577,11 @@
       "start_date": "Data rozpoczęcia",
       "from_first_payment": "Od pierwszej płatności",
       "overpayment_to_come": "Koszt długu do zapłacenia",
+      "danger": {
+        "title": "Strefa zagrożenia",
+        "paid_off": "Ustawia saldo na 0 i zatrzymuje odliczanie.",
+        "delete": "Usuwa dług. Jego płatności wracają do kategorii."
+      },
       "tab": {
         "overview": "Przegląd",
         "settings": "Ustawienia"

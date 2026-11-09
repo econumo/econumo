@@ -8,13 +8,11 @@ import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { dialogActionsClass } from '@/components/ResponsiveDialog'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
-import { formatDate } from '@/lib/datetime'
 import { isNotEmpty } from '@/lib/validation'
 import type { DebtDto } from '@/api/dto/debt'
 import { useCurrencies } from '@/features/currencies/queries'
-import { TransactionDatePicker } from '@/features/transactions/TransactionDatePicker'
 import { useUpdateDebt } from './queries'
-import { AmountField, PaymentField, StartDateField } from './debtFields'
+import { AmountField, DatesRow, PaymentField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
 import { amountEcho, amountError, buildTermsPayload, useDebtTermsForm } from './useDebtForm'
@@ -76,7 +74,6 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
   const symbol = currency?.symbol ?? ''
   const currencyLabel = t('debts.form.currency.label')
   const currencyName = currency ? fullCurrencyLabel(currency) : '—'
-  const lastPaymentLabel = t('debts.form.last_payment_date.label')
 
   const validate = (): boolean => {
     const next: FieldErrors = {}
@@ -184,28 +181,19 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
             patch({ schedule })
           }}
         />
-        <div ref={lastPaymentRef}>
-          <CardField label={lastPaymentLabel} error={errors.lastPaymentDate}>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-muted-foreground">{t('debts.form.last_payment_date.hint')}</span>
-              <TransactionDatePicker
-                ariaLabel={lastPaymentLabel}
-                placeholder={t('debts.form.last_payment_date.choose')}
-                value={form.lastPaymentDate}
-                onChange={(day) => {
-                  clearError('lastPaymentDate')
-                  patch({ lastPaymentDate: formatDate(day) })
-                }}
-              />
-            </div>
-          </CardField>
-        </div>
-        <StartDateField
-          value={form.startDate}
-          error={errors.startDate}
-          onChange={(startDate) => {
+        <DatesRow
+          startDate={form.startDate}
+          lastPaymentDate={form.lastPaymentDate}
+          startError={errors.startDate}
+          lastPaymentError={errors.lastPaymentDate}
+          lastPaymentRef={lastPaymentRef}
+          onStartDateChange={(startDate) => {
             clearError('startDate')
             patch({ startDate })
+          }}
+          onLastPaymentDateChange={(lastPaymentDate) => {
+            clearError('lastPaymentDate')
+            patch({ lastPaymentDate })
           }}
         />
 

@@ -482,3 +482,27 @@ it('an amount typed with a separator shows how it is read, in the display format
   await user.type(payment, '2 000,5')
   expect(await screen.findByText('= 2,000.50 $')).toBeInTheDocument()
 })
+
+it('the dates share one row: Start date first, Last payment date second', () => {
+  renderForm(wireDebt)
+  const row = screen.getByRole('group', { name: 'Start date (optional), Last payment date' })
+  const start = within(row).getByRole('button', { name: 'Start date (optional)' })
+  const last = within(row).getByRole('button', { name: 'Last payment date' })
+  expect(start.compareDocumentPosition(last) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // the hints stay for screen readers, off the narrow cards
+  expect(within(row).getByText("Earlier payments don't count")).toHaveClass('sr-only')
+  expect(within(row).getByText('When the debt ends')).toHaveClass('sr-only')
+})
+
+it('a start date set in the row can be cleared', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm({ ...wireDebt, startDate: '2026-03-01' })
+
+  await user.click(screen.getByRole('button', { name: 'Clear the start date' }))
+  expect(screen.getByRole('button', { name: 'Start date (optional)' })).toHaveTextContent('None')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ startDate: null })
+})

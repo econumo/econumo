@@ -577,6 +577,11 @@
       "start_date": "Fecha de inicio",
       "from_first_payment": "Desde el primer pago",
       "overpayment_to_come": "Sobrecoste por pagar",
+      "danger": {
+        "title": "Zona de peligro",
+        "paid_off": "Pone el saldo a 0 y detiene la cuenta atrás.",
+        "delete": "Elimina la deuda. Sus pagos vuelven a la categoría."
+      },
       "tab": {
         "overview": "Resumen",
         "settings": "Ajustes"

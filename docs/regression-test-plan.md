@@ -2191,8 +2191,10 @@ out), and add a second budget member account in USD, before running these.
       without changes writes no snapshot that undoes the payment.
 - [ ] 📱 **Settings tab** holds one form: Name, the "Payments from"
       sentence, Balance now, the Payment row (amount and its "every month ▾"
-      card, as on the create form), Last payment date, Start date (always
-      shown) and Currency, then Cancel and Save. Save sends one request and
+      card, as on the create form), one row of two same-height date cards
+      (Start date (optional) first, with its clear X once set, then Last
+      payment date; it fits a 360 px phone, the hints are read only by screen
+      readers) and Currency, then Cancel and Save. Save sends one request and
       returns to the Overview with the new figures; Cancel puts back what
       was loaded. Switching to the Overview and back keeps unsaved edits;
       with no edits, each visit reloads the debt. Editing the balance or
@@ -2205,8 +2207,12 @@ out), and add a second budget member account in USD, before running these.
       under the payment says so and the date stays. Saving a payment that
       cannot cover the balance, a last payment date before today, an empty
       name or a refused sentence (key conflict) shows the error next to its
-      field. Under the form, set apart, sit Mark as paid off (set-up debts
-      that are not paid off only) and Delete. While the debt loads the tab
+      field. Under the form a "Danger zone" card (red-tinted border and
+      background) lists Mark as paid off (set-up debts that are not paid off
+      only; "Sets the balance to 0 and stops the countdown.") and Delete
+      ("Removes the debt. Its payments go back to the category."), each a
+      row with its description and button, both asking first; on a phone
+      the button sits under its description. While the debt loads the tab
       shows the loader, not those two buttons alone. After Mark as paid off
       the screen returns to the Overview; reopening Settings shows Balance
       now 0, and changing only the payment then saves balance 0 (the debt
@@ -2297,12 +2303,12 @@ out), and add a second budget member account in USD, before running these.
       converted to the debt's currency with the rates the app uses for its day
       (the month's average) and shows in the
       payment list in the debt currency.
-- [ ] **Mark as paid off** (review screen's Settings tab, under the form → asks first): current balance becomes 0,
+- [ ] **Mark as paid off** (review screen's Settings tab, Danger zone → asks first): current balance becomes 0,
       "Paid off" shows in the list and the row, the payment list keeps its
       history. A later matching payment or a new snapshot with a balance
       reopens the debt; marking it paid off again then settles it (a new zero
       snapshot), even when the balance already showed 0.
-- [ ] **Delete** a debt (review screen's Settings tab, under the form → asks first): its transactions stay
+- [ ] **Delete** a debt (review screen's Settings tab, Danger zone → asks first): its transactions stay
       untouched and return to their category row. When the debt carries plans
       or comments in a budget (it is not a whole-category debt, or the
       category row's plans did not move), a second confirmation names what is

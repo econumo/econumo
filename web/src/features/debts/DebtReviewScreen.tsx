@@ -42,6 +42,52 @@ function Figure({ label, children }: { label: string; children: ReactNode }) {
 
 type Confirm = 'paid-off' | 'delete' | null
 
+function DangerAction({ description, children }: { description: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <p className="text-sm text-muted-foreground">{description}</p>
+      <div className="shrink-0 [&_button]:h-11 [&_button]:w-full sm:[&_button]:w-auto">{children}</div>
+    </div>
+  )
+}
+
+/** the irreversible actions, set apart under the form; each asks first */
+function DangerZone({
+  canMarkPaidOff,
+  markingPaidOff,
+  onMarkPaidOff,
+  onDelete,
+}: {
+  canMarkPaidOff: boolean
+  markingPaidOff: boolean
+  onMarkPaidOff: () => void
+  onDelete: () => void
+}) {
+  const { t } = useTranslation()
+  const headingId = useId()
+  return (
+    <section aria-labelledby={headingId} className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 pt-3 pb-1">
+      <h3 id={headingId} className="text-sm uppercase tracking-wide text-destructive">
+        {t('debts.review.danger.title')}
+      </h3>
+      <div className="divide-y divide-destructive/20">
+        {canMarkPaidOff ? (
+          <DangerAction description={t('debts.review.danger.paid_off')}>
+            <Button type="button" variant="secondary" disabled={markingPaidOff} onClick={onMarkPaidOff}>
+              {t('debts.details.mark_paid_off')}
+            </Button>
+          </DangerAction>
+        ) : null}
+        <DangerAction description={t('debts.review.danger.delete')}>
+          <Button type="button" variant="destructive" onClick={onDelete}>
+            {t('common.button.delete.label')}
+          </Button>
+        </DangerAction>
+      </div>
+    </section>
+  )
+}
+
 const tabClass =
   '-mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 text-sm font-normal text-muted-foreground after:hidden hover:text-foreground data-active:border-foreground data-active:text-foreground dark:data-active:border-foreground'
 
@@ -181,16 +227,12 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
                     onFocused={() => setFocusMissing(false)}
                     onSaved={showSaved}
                   />
-                  <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row [&_button]:h-11 sm:[&_button]:flex-1">
-                    {item.isSetUp === 1 && item.isPaidOff === 0 ? (
-                      <Button type="button" variant="secondary" disabled={markPaidOff.isPending} onClick={() => setConfirm('paid-off')}>
-                        {t('debts.details.mark_paid_off')}
-                      </Button>
-                    ) : null}
-                    <Button type="button" variant="destructive" onClick={() => setConfirm('delete')}>
-                      {t('common.button.delete.label')}
-                    </Button>
-                  </div>
+                  <DangerZone
+                    canMarkPaidOff={item.isSetUp === 1 && item.isPaidOff === 0}
+                    markingPaidOff={markPaidOff.isPending}
+                    onMarkPaidOff={() => setConfirm('paid-off')}
+                    onDelete={() => setConfirm('delete')}
+                  />
                 </>
               ) : error ? null : (
                 <div className="flex justify-center py-12">

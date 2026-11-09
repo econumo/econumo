@@ -97,7 +97,8 @@ beforeEach(() => {
 
 async function openScreen(tab?: 'overview' | 'settings') {
   useUiStore.getState().openDebtDetails('d1', tab)
-  await screen.findByRole('heading', { name: 'Car loan' })
+  // the file's first render pays for the screen's first load: room for a busy host
+  await screen.findByRole('heading', { name: 'Car loan' }, { timeout: 5000 })
   if (tab !== 'settings') {
     await screen.findByTestId('debt-review-top')
   }
@@ -401,18 +402,21 @@ it('edits survive a look at the Overview and back', async () => {
   expect(screen.getByLabelText('Name')).toHaveValue('Van loan')
 })
 
-it('Settings offers Mark as paid off and Delete under the form', async () => {
+it('Settings puts Mark as paid off and Delete in a danger zone under the form, each with what it does', async () => {
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
   await openSettings(user)
 
   const panel = screen.getByRole('tabpanel', { name: 'Settings' })
+  const zone = within(panel).getByRole('region', { name: 'Danger zone' })
   const save = within(panel).getByRole('button', { name: 'Save' })
-  const paidOff = within(panel).getByRole('button', { name: 'Mark as paid off' })
-  const del = within(panel).getByRole('button', { name: 'Delete' })
-  expect(save.compareDocumentPosition(paidOff) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(save.compareDocumentPosition(zone) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const paidOff = within(zone).getByRole('button', { name: 'Mark as paid off' })
+  const del = within(zone).getByRole('button', { name: 'Delete' })
   expect(paidOff.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(zone).toHaveTextContent('Sets the balance to 0 and stops the countdown.')
+  expect(zone).toHaveTextContent('Removes the debt. Its payments go back to the category.')
 })
 
 it('Settings hides Mark as paid off while not set up', async () => {
@@ -423,7 +427,8 @@ it('Settings hides Mark as paid off while not set up', async () => {
   await openSettings(user)
 
   expect(screen.queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
-  expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  expect(screen.queryByText('Sets the balance to 0 and stops the countdown.')).toBeNull()
+  expect(within(screen.getByRole('region', { name: 'Danger zone' })).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
 })
 
 it('Settings hides Mark as paid off once the debt is paid off', async () => {

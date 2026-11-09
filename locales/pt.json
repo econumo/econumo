@@ -577,6 +577,11 @@
       "start_date": "Data de início",
       "from_first_payment": "Desde o primeiro pagamento",
       "overpayment_to_come": "Custo adicional ainda por pagar",
+      "danger": {
+        "title": "Zona de perigo",
+        "paid_off": "Põe o saldo a 0 e para a contagem decrescente.",
+        "delete": "Remove a dívida. Os pagamentos voltam à categoria."
+      },
       "tab": {
         "overview": "Resumo",
         "settings": "Definições"

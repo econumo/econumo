@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import type { Ref } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -129,5 +130,93 @@ export function StartDateField({ value, error, onChange }: { value: string; erro
         </span>
       </div>
     </CardField>
+  )
+}
+
+/** One date in a card of half a row: the label above, the chip under it, the
+    hint for screen readers only (a 360 px phone has no room for it). */
+function DateCard({
+  label,
+  hint,
+  value,
+  placeholder,
+  onChange,
+  onClear,
+  clearLabel,
+}: {
+  label: string
+  hint: string
+  value: string
+  placeholder: string
+  onChange: (value: string) => void
+  onClear?: () => void
+  clearLabel?: string
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-lg bg-econumo-card px-3 py-2.5 focus-within:ring-1 focus-within:ring-ring">
+      <span className="truncate text-[11px] text-muted-foreground" title={hint}>
+        {label}
+      </span>
+      <span className="sr-only">{hint}</span>
+      <span className="flex min-w-0 items-center gap-1">
+        <TransactionDatePicker ariaLabel={label} placeholder={placeholder} value={value} onChange={(day) => onChange(formatDate(day))} />
+        {onClear && value ? (
+          <Button type="button" variant="ghost" size="icon" className="size-7 shrink-0" aria-label={clearLabel} onClick={onClear}>
+            <X className="size-4" />
+          </Button>
+        ) : null}
+      </span>
+    </div>
+  )
+}
+
+/** The start date and the last payment date on one row, on every breakpoint:
+    the start date first, as the loan's dates read. */
+export function DatesRow({
+  startDate,
+  lastPaymentDate,
+  startError,
+  lastPaymentError,
+  lastPaymentRef,
+  onStartDateChange,
+  onLastPaymentDateChange,
+}: {
+  startDate: string
+  lastPaymentDate: string
+  startError?: string
+  lastPaymentError?: string
+  /** holds the last payment date's chip, for Finish setup's focus */
+  lastPaymentRef?: Ref<HTMLDivElement>
+  onStartDateChange: (value: string) => void
+  onLastPaymentDateChange: (value: string) => void
+}) {
+  const { t } = useTranslation()
+  const startLabel = t('debts.form.start_date.label')
+  const lastLabel = t('debts.form.last_payment_date.label')
+  const error = startError ?? lastPaymentError
+  return (
+    <div className="flex flex-col gap-1">
+      <div role="group" aria-label={`${startLabel}, ${lastLabel}`} className="flex items-stretch gap-2">
+        <DateCard
+          label={startLabel}
+          hint={t('debts.form.start_date.hint')}
+          value={startDate}
+          placeholder={t('debts.form.start_date.none')}
+          onChange={onStartDateChange}
+          onClear={() => onStartDateChange('')}
+          clearLabel={t('debts.form.start_date.clear')}
+        />
+        <div ref={lastPaymentRef} className="flex min-w-0 flex-1">
+          <DateCard
+            label={lastLabel}
+            hint={t('debts.form.last_payment_date.hint')}
+            value={lastPaymentDate}
+            placeholder={t('debts.form.last_payment_date.choose')}
+            onChange={onLastPaymentDateChange}
+          />
+        </div>
+      </div>
+      {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
+    </div>
   )
 }

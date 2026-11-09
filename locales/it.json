@@ -577,6 +577,11 @@
       "start_date": "Data di inizio",
       "from_first_payment": "Dal primo pagamento",
       "overpayment_to_come": "Costo aggiuntivo ancora da pagare",
+      "danger": {
+        "title": "Zona pericolosa",
+        "paid_off": "Porta il saldo a 0 e ferma il conto alla rovescia.",
+        "delete": "Elimina il debito. I suoi pagamenti tornano alla categoria."
+      },
       "tab": {
         "overview": "Panoramica",
         "settings": "Impostazioni"

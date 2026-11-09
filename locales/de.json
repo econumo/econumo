@@ -577,6 +577,11 @@
       "start_date": "Startdatum",
       "from_first_payment": "Ab der ersten Zahlung",
       "overpayment_to_come": "Noch anfallende Mehrkosten",
+      "danger": {
+        "title": "Gefahrenbereich",
+        "paid_off": "Setzt den Saldo auf 0 und beendet den Countdown.",
+        "delete": "Entfernt die Schuld. Ihre Zahlungen gehen zurück an die Kategorie."
+      },
       "tab": {
         "overview": "Übersicht",
         "settings": "Einstellungen"

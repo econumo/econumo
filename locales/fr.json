@@ -577,6 +577,11 @@
       "start_date": "Date de début",
       "from_first_payment": "Dès le premier paiement",
       "overpayment_to_come": "Surcoût à venir",
+      "danger": {
+        "title": "Zone de danger",
+        "paid_off": "Met le solde à 0 et arrête le compte à rebours.",
+        "delete": "Supprime la dette. Ses paiements reviennent à la catégorie."
+      },
       "tab": {
         "overview": "Aperçu",
         "settings": "Paramètres"

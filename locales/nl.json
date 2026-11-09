@@ -577,6 +577,11 @@
       "start_date": "Startdatum",
       "from_first_payment": "Vanaf de eerste betaling",
       "overpayment_to_come": "Nog te betalen meerkosten",
+      "danger": {
+        "title": "Gevarenzone",
+        "paid_off": "Zet het saldo op 0 en stopt het aftellen.",
+        "delete": "Verwijdert de schuld. De betalingen gaan terug naar de categorie."
+      },
       "tab": {
         "overview": "Overzicht",
         "settings": "Instellingen"

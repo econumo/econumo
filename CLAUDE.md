@@ -1878,10 +1878,12 @@ data unreadable. Most are also asserted by the test suite.
   "Loan" card (owed now, payment, repeats, next payment, loan ends, start date, left to pay,
   overpaid so far, overpayment still to come, currency), the payments-from sentence read-only
   (`PaymentsFromEditor readOnly`), payments and a collapsed "History of terms". Settings is ONE
-  form, `DebtSettingsForm` (name, payments from, balance, payment row, last payment date, start
-  date, currency; Cancel resets it, Save sends one `update-debt`, built by `buildTermsPayload`:
+  form, `DebtSettingsForm` (name, payments from, balance, payment row, one `DatesRow` of two cards,
+  start date first and last payment date second, hints screen-reader only, currency; Cancel resets it, Save sends one `update-debt`, built by `buildTermsPayload`:
   untouched terms are not sent, and an unchanged currency goes as `""`, so the server keeps what
-  another device may have changed), then Mark as paid off (set up and not paid off) and Delete.
+  another device may have changed), then a "Danger zone" section (destructive-tinted card, a row
+  per action with a one-line description) with Mark as paid off (set up and not paid off) and
+  Delete, each behind its confirm.
   The Settings tab stays mounted (edits survive a look at the Overview) and reloads the debt
   afresh on every visit while it holds no edits (`useFetchDebtForEdit`, the app's loader while it
   loads); a save or Mark as paid off rebuilds the form from the returned debt and returns to the
