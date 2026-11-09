@@ -281,7 +281,8 @@ describe('a replay of a transaction change', () => {
     await add()
     const draining = kickPendingWrites()
     await vi.waitFor(() => expect(timers.mock.calls.some(([, delay]) => delay === 10_000)).toBe(true))
-    ;(timers.mock.calls.findLast(([, delay]) => delay === 10_000)?.[0] as () => void)()
+    const giveUp = timers.mock.calls.findLast(([, delay]) => delay === 10_000)![0] as () => void
+    giveUp()
     await draining
     expect(op('k1')).toMatchObject({ attempted: true, status: 'waiting' })
   })

@@ -2767,6 +2767,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 Signing out with changes unsent, waiting or refused: the Log out confirmation (Settings, Profile, and Sign out on this device's row in Sessions) says how many
       will be lost; Stay keeps them, Log out drops them and the next user of the device never sees
       or sends them. Signing back in as the same user keeps them if the session ended by itself.
+      The "Log out" link under a stuck loader asks the same question while anything is unsent, and goes straight to sign-out when nothing is.
 - [ ] Sync button tap = incremental refresh: after an edit made on another
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the

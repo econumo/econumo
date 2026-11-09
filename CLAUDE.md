@@ -577,8 +577,8 @@ operations on other targets; no response, a timeout, a 429 or a body that is not
 local, marked failed, and appears in the Inbox's "Not saved" section
 (`features/inbox/FailedWritesSection.tsx`, counted in the Inbox badge): a failed add or edit
 opens the normal transaction dialog with the user's values and saving sends it again, a failed
-delete or limit has Try again, and all have Discard; other changes still go through. Sign-out
-warns while anything is unsent (`useUnsentCount`) because `LogoutPage` clears the queue; a
+delete or limit has Try again, and all have Discard; other changes still go through. Sign-out,
+the "Log out" link on a stuck loader included, warns while anything is unsent (`useUnsentCount`) because `LogoutPage` clears the queue; a
 login keeps the queue when the same user signs back in, and a different user's rows are
 deleted on load. Everything else is **disabled while offline** through one hook, `useOnline`
 (`web/src/hooks/useOnline.ts`, on `onlineManager`), and fails at once if something slips past
