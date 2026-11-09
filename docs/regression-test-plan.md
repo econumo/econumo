@@ -408,9 +408,10 @@ navigation (single-pane vs sidebar).
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
-- [ ] With only one account you can add transactions to (accounts in hidden
-      folders and read-only shared ones don't count), the Transfer type is
-      greyed out and cannot be selected; editing an existing transfer keeps it.
+- [ ] With only one account you can add transactions to (read-only shared ones
+      don't count; accounts in hidden folders do, since a search finds them), the
+      Transfer type is greyed out and cannot be selected; editing an existing
+      transfer keeps it.
 - [ ] 📱 Account pickers in Add/Edit transaction and recurring transaction (From
       and To included) leave out accounts in hidden folders until the search has
       3 or more characters; then they appear with an eye-off icon and "Hidden
