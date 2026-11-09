@@ -347,6 +347,34 @@ it('size="large" is a centred dialog covering most of a desktop screen, scrollin
   expect(baseElement.querySelector('[data-slot="dialog-body"]')?.className).toContain('overflow-y-auto')
 })
 
+it('size="column" is a centred dialog as wide as a reading column, 90% of the height, scrolling inside', () => {
+  mockMatchMedia(false)
+  const { baseElement } = render(
+    <ResponsiveDialog open fullScreen size="column" onOpenChange={() => {}} title="My title">
+      <p>body text</p>
+    </ResponsiveDialog>,
+  )
+  const content = baseElement.querySelector('[data-slot="dialog-content"]')
+  expect(content?.className).toContain('sm:max-w-[min(90vw,52rem)]')
+  expect(content?.className).toContain('h-[90vh]')
+  expect(content?.className).not.toContain('max-w-[90vw]')
+  expect(baseElement.querySelector('[data-slot="dialog-body"]')?.className).toContain('overflow-y-auto')
+})
+
+it.each(['large', 'column'] as const)('size="%s" clips its header to the dialog\'s rounded corners', (size) => {
+  mockMatchMedia(false)
+  const { baseElement } = render(
+    <ResponsiveDialog open fullScreen size={size} onOpenChange={() => {}} title="My title" subheader={<div>tabs</div>}>
+      <p>body text</p>
+    </ResponsiveDialog>,
+  )
+  const content = baseElement.querySelector('[data-slot="dialog-content"]')
+  expect(content?.className).toContain('rounded-xl')
+  expect(content?.className).toContain('overflow-hidden')
+  // the body still scrolls inside, so focus rings sit within it
+  expect(baseElement.querySelector('[data-slot="dialog-body"]')?.className).toContain('overflow-y-auto')
+})
+
 it('size="large" with fullScreen stays a full page on a phone', () => {
   mockMatchMedia(true)
   const { baseElement } = render(

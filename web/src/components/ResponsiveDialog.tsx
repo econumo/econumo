@@ -63,8 +63,9 @@ interface ResponsiveDialogProps {
   footer?: ReactNode
   /** desktop width: `wide` suits list-heavy dialogs (the global search palette);
    *  `large` covers most of the screen (90% of its width and height) and scrolls
-   *  inside, a page-sized view that still reads as a dialog */
-  size?: 'default' | 'wide' | 'large'
+   *  inside, a page-sized view that still reads as a dialog; `column` is as tall
+   *  but only as wide as a reading column (52rem, at most 90% of the width) */
+  size?: 'default' | 'wide' | 'large' | 'column'
   /** the element that takes focus on open (a mobile sheet focuses itself otherwise) */
   initialFocus?: RefObject<HTMLElement | null>
   /** runs as the dialog hands focus back on close; preventDefault() keeps focus
@@ -312,7 +313,10 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
       </Drawer>
     )
   }
-  const large = size === 'large'
+  // both page-sized: a flex column whose body scrolls; overflow-hidden keeps
+  // the header block inside the rounded corners (focus rings live in the body)
+  const large = size === 'large' || size === 'column'
+  const largeWidth = size === 'column' ? 'w-[min(90vw,52rem)] max-w-[min(90vw,52rem)] sm:max-w-[min(90vw,52rem)]' : 'w-[90vw] max-w-[90vw] sm:max-w-[90vw]'
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -322,7 +326,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         // every field past its edge; `large` is a flex column whose body scrolls
         className={
           large
-            ? 'flex h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] flex-col gap-0 p-0 sm:max-w-[90vw]'
+            ? `flex h-[90vh] max-h-[90vh] ${largeWidth} flex-col gap-0 overflow-hidden p-0`
             : `grid-cols-[minmax(0,1fr)] ${size === 'wide' ? 'sm:max-w-2xl' : ''}`
         }
         onInteractOutside={onInteractOutside}
@@ -346,9 +350,9 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         )}
         {headerAction && !hideHeader ? <div className={`absolute top-2 ${cornerActionClass}`}>{headerAction}</div> : null}
         {large ? (
-          // a gutter on both edges keeps the body centred under the header's
-          // bar whether or not a scrollbar shows
-          <div data-slot="dialog-body" className={`min-h-0 flex-1 overflow-y-auto px-6 pb-6 ${subheader ? 'pt-4 [scrollbar-gutter:stable_both-edges]' : 'pt-1'}`}>
+          // a reserved scrollbar gutter keeps the body's width, and so its
+          // columns, the same whether or not the content scrolls
+          <div data-slot="dialog-body" className={`min-h-0 flex-1 overflow-y-auto px-6 pb-6 ${subheader ? 'pt-4 [scrollbar-gutter:stable]' : 'pt-1'}`}>
             {children}
           </div>
         ) : (
