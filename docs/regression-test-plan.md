@@ -2764,7 +2764,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       sends it again (refused again: it returns to the Inbox with the reason; accepted: it leaves
       the Inbox and one row is left). A refused delete or plan offers Try again and Discard; Discard
       brings back the row or the server's number. The preview of a refused row shows the reason.
-- [ ] 📱 Signing out with changes unsent, waiting or refused: the Log out confirmation says how many
+- [ ] 📱 Signing out with changes unsent, waiting or refused: the Log out confirmation (Settings, Profile, and Sign out on this device's row in Sessions) says how many
       will be lost; Stay keeps them, Log out drops them and the next user of the device never sees
       or sends them. Signing back in as the same user keeps them if the session ended by itself.
 - [ ] Sync button tap = incremental refresh: after an edit made on another
