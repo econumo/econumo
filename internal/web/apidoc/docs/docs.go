@@ -14480,6 +14480,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "description": "Id is optional: when blank the server mints the transaction id and the\nrequest is guarded by Idempotency-Key instead of an operation id.",
                     "type": "string"
                 },
                 "labelIds": {

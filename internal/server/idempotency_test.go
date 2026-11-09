@@ -335,3 +335,15 @@ func TestReplayReturnsResourceIdForCreateWithoutBodyId(t *testing.T) {
 		t.Fatalf("transactions = %d, want 1", n)
 	}
 }
+
+func TestUpdateWithBlankIdKeepsItsFieldError(t *testing.T) {
+	h := newIdempotencyHarness(t)
+	token, _, accountID := h.seedUser()
+	body := fmt.Sprintf(`{"id":"","type":"expense","amount":"10","accountId":%q,"date":"2026-01-02 10:00:00"}`, accountID)
+	status, resp := h.do(http.MethodPost, "/api/v1/transaction/update-transaction", token, "", body)
+	wantStatus(t, status, resp, http.StatusBadRequest)
+	errors, _ := resp["errors"].(map[string]any)
+	if _, ok := errors["id"]; !ok {
+		t.Fatalf("errors = %v, want a field error on id", resp["errors"])
+	}
+}

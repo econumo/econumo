@@ -50,6 +50,8 @@ type TransactionResult struct {
 // keeps accepting the deprecated JSON-number form from third-party clients (see
 // vo.FlexString's doc).
 type CreateTransactionRequest struct {
+	// Id is optional: when blank the server mints the transaction id and the
+	// request is guarded by Idempotency-Key instead of an operation id.
 	Id                 string         `json:"id"`
 	Type               string         `json:"type"`
 	Amount             vo.FlexString  `json:"amount" swaggertype:"string"`
@@ -112,13 +114,11 @@ type UpdateTransactionRequest struct {
 	LabelIds []string `json:"labelIds"`
 }
 
-// Validate enforces tier-1 NotBlank on type/amount/accountId/date. A blank id
-// is allowed: the server then mints the transaction id and the request is
-// guarded by Idempotency-Key instead of an operation id.
+// Validate enforces tier-1 NotBlank on id/type/amount/accountId/date.
 func (r UpdateTransactionRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
-		{"type", r.Type}, {"amount", r.Amount.String()},
+		{"id", r.Id}, {"type", r.Type}, {"amount", r.Amount.String()},
 		{"accountId", r.AccountId}, {"date", r.Date},
 	} {
 		if strings.TrimSpace(f.val) == "" {
