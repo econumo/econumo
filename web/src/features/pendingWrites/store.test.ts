@@ -1,7 +1,7 @@
 import { STORE_PENDING_WRITES, dbRequest } from '@/lib/db'
 import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
 import { delayTransactionCompletion } from '@/test/idbDelay'
-import { clearPendingWrites, getOps, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe } from './store'
+import { clearPendingWrites, getOps, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe, subscribeLeftElsewhere } from './store'
 import type { PendingOp } from './types'
 
 const op = (key: string, seq: number, over: Partial<PendingOp> = {}): PendingOp => ({
@@ -118,4 +118,29 @@ it('another tab announcing a change refreshes this one', async () => {
   await heard
   otherTab.close()
   expect(getOps().map((o) => o.key)).toEqual(['theirs'])
+})
+
+it('says when a change left in another tab, and not when it left here or one arrived', async () => {
+  await loadPendingWrites('A')
+  await mutate(() => [op('local', 1), op('theirs', 2)])
+  const left = vi.fn()
+  subscribeLeftElsewhere(left)
+  await mutate((ops) => ops.filter((o) => o.key !== 'local'))
+  expect(left).not.toHaveBeenCalled()
+
+  const otherTab = new BroadcastChannel('econumo-pending-writes')
+  const refreshed = () => new Promise<void>((resolve) => { const off = subscribe(() => { off(); resolve() }) })
+  await dbRequest(STORE_PENDING_WRITES, 'readwrite', (s) => s.put({ ...op('new', 3), userId: 'A' }))
+  let heard = refreshed()
+  otherTab.postMessage('changed')
+  await heard
+  expect(left).not.toHaveBeenCalled()
+
+  await dbRequest(STORE_PENDING_WRITES, 'readwrite', (s) => s.delete('theirs'))
+  heard = refreshed()
+  otherTab.postMessage('changed')
+  await heard
+  otherTab.close()
+  expect(left).toHaveBeenCalledTimes(1)
+  expect(getOps().map((o) => o.key)).toEqual(['new'])
 })

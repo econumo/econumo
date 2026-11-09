@@ -17,6 +17,7 @@ let generation = 0
 let loading: Promise<void> | null = null
 let channel: BroadcastChannel | null = null
 const listeners = new Set<() => void>()
+const leftElsewhereListeners = new Set<() => void>()
 
 function notify(): void {
   for (const listener of listeners) {
@@ -81,8 +82,16 @@ async function refreshFromDisk(): Promise<void> {
     rows = await guarded<Row[] | null>(null, readRows)
   } while (rows && seen !== generation && owner === wanted)
   if (rows && owner === wanted) {
-    ops = rows.filter((r) => r.userId === wanted).map(toOp)
+    const next = rows.filter((r) => r.userId === wanted).map(toOp)
+    const kept = new Set(next.map((op) => op.key))
+    const left = ops.some((op) => !kept.has(op.key))
+    ops = next
     notify()
+    if (left) {
+      for (const listener of leftElsewhereListeners) {
+        listener()
+      }
+    }
   }
 }
 
@@ -164,6 +173,12 @@ export function subscribe(fn: () => void): () => void {
   return () => { listeners.delete(fn) }
 }
 
+/** Another tab settled or dropped a change: this tab's caches never saw the outcome. */
+export function subscribeLeftElsewhere(fn: () => void): () => void {
+  leftElsewhereListeners.add(fn)
+  return () => { leftElsewhereListeners.delete(fn) }
+}
+
 export async function loadPendingWrites(userId: string): Promise<PendingOp[]> {
   openChannel()
   if (owner !== userId) {
@@ -224,4 +239,5 @@ export function resetPendingWritesForTests(): void {
   epoch++
   generation++
   listeners.clear()
+  leftElsewhereListeners.clear()
 }

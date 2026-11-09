@@ -328,6 +328,28 @@ it('a limit confirms by refreshing its budget, its plan and the reports', async 
   expect(vi.mocked(trackEvent).mock.calls).toEqual([[METRICS.BUDGET_UPDATE_ELEMENT_LIMIT]])
 })
 
+it('a change another tab confirmed refreshes the data here', async () => {
+  await queue({ kind: 'tx-create', txId: 'temp', payload: payload('temp') }, 'k1', 1)
+  const invalidate = vi.spyOn(client, 'invalidateQueries')
+  await dbRequest(STORE_PENDING_WRITES, 'readwrite', (s) => s.delete('k1'))
+  const otherTab = new BroadcastChannel('econumo-pending-writes')
+  otherTab.postMessage('changed')
+  await vi.waitFor(() => expect(getOps()).toEqual([]))
+  otherTab.close()
+  for (const queryKey of [queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan]) {
+    expect(invalidate).toHaveBeenCalledWith({ queryKey })
+  }
+})
+
+it('a change this tab confirmed does not read the transactions back', async () => {
+  answerWith(() => undefined)
+  await queue({ kind: 'tx-create', txId: 'temp', payload: payload('temp') }, 'k1', 1)
+  const invalidate = vi.spyOn(client, 'invalidateQueries')
+  await kickPendingWrites()
+  expect(getOps()).toEqual([])
+  expect(invalidate).not.toHaveBeenCalledWith({ queryKey: queryKeys.transactions })
+})
+
 describe('with Web Locks', () => {
   afterEach(() => {
     delete (navigator as { locks?: unknown }).locks

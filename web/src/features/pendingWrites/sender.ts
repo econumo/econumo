@@ -13,7 +13,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { getSessionUserId, hasToken } from '@/lib/storage'
 import { classifyWriteError } from './classify'
 import { markAttempted, nextSendable, resolveTempId, settleDone, settleRefused, settleUnresolved } from './queue'
-import { getOps, loadPendingWrites, mutate, queueOwner } from './store'
+import { getOps, loadPendingWrites, mutate, queueOwner, subscribeLeftElsewhere } from './store'
 import type { OpChange, PendingOp } from './types'
 
 export const WRITE_TIMEOUT_MS = 10_000
@@ -92,6 +92,15 @@ export function confirmChange(queryClient: QueryClient, change: OpChange, result
     applyTransactionItem(queryClient, result as TransactionItemDto, APPLY_MODE[change.kind])
   }
   acknowledge(queryClient, change)
+}
+
+// The tab that held the lock applied the server's answer to its own caches
+// only; here the change just left the overlay, so its result must be read back.
+function refreshAfterOtherTab(queryClient: QueryClient): void {
+  for (const queryKey of [queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
+    void queryClient.invalidateQueries({ queryKey })
+  }
+  invalidateReports(queryClient)
 }
 
 function isQueued(op: PendingOp): boolean {
@@ -286,9 +295,11 @@ export function startPendingWrites(queryClient: QueryClient): () => void {
         void run()
       }
     })
+    const offElsewhere = subscribeLeftElsewhere(() => refreshAfterOtherTab(queryClient))
     unsubscribe = () => {
       offOnline()
       offUser()
+      offElsewhere()
     }
   }
   void kickPendingWrites()

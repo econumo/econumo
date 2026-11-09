@@ -1,6 +1,8 @@
 import axios from 'axios'
 import { MutationCache, QueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { queryKeys } from '@/app/queryKeys'
+import { apiErrorMessage } from './apiError'
 
 // A leaf module on purpose: queryPersist imports the transaction sync, which
 // reaches the api client and through it the app's queryClient singleton, so
@@ -28,7 +30,16 @@ export function invalidateReports(client: QueryClient): void {
 
 export function createAppQueryClient() {
   const client: QueryClient = new QueryClient({
-    mutationCache: new MutationCache({ onSuccess: () => invalidateReports(client) }),
+    mutationCache: new MutationCache({
+      onSuccess: () => invalidateReports(client),
+      // With networkMode 'always' an offline write fails at once, and a site
+      // with no error handling of its own would otherwise fail silently.
+      onError: (error, _variables, _result, mutation) => {
+        if (axios.isAxiosError(error) && !error.response && !mutation.options.onError) {
+          toast.error(apiErrorMessage(error))
+        }
+      },
+    }),
     defaultOptions: {
       // gcTime must outlive the persister's maxAge, or queries get
       // garbage-collected out of the persisted snapshot before it expires.
