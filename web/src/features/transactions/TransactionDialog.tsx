@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { isAxiosError } from 'axios'
+import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/apiError'
 import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useMatch, useParams } from 'react-router'
@@ -238,8 +241,11 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         }
       }
       onDone()
-    } catch {
-      // dialog stays open on failure
+    } catch (err) {
+      // dialog stays open on failure; a refusal from the server says why
+      if (isAxiosError(err) && err.response) {
+        toast.error(apiErrorMessage(err))
+      }
     }
   }
 

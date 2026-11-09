@@ -275,3 +275,25 @@ it('has no savings switch and sends no type on create or update', async () => {
   await waitFor(() => expect(bodies).toHaveLength(2))
   expect(bodies[1]).not.toHaveProperty('type')
 })
+
+it('renaming an account with a waiting change sends the stored balance, not the overlaid one', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/account/update-account', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: fixtureAccounts[0], transaction: null } })
+    }),
+  )
+  const user = userEvent.setup()
+  const queryClient = renderDialog()
+  // the cache holds what the server stores; the list handed to the dialog also counts a waiting expense of 10
+  queryClient.setQueryData(queryKeys.accounts, [{ ...fixtureAccounts[0], balance: '100.5' }])
+  useUiStore.getState().openAccountModal({ account: { ...fixtureAccounts[0], balance: '90.5' } as unknown as AccountDto })
+
+  await screen.findByText('Edit account')
+  expect(screen.getByLabelText('Balance')).toHaveValue('100.50')
+  await user.type(screen.getByLabelText('Name'), ' 2')
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(Number(body!.balance)).toBe(100.5)
+})

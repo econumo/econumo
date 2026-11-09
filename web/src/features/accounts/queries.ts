@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import * as accountApi from '@/api/account'
 import type { AccountDto, AccountItemDto, AccountRole } from '@/api/dto/account'
@@ -14,13 +14,30 @@ import { usePendingOps } from '@/features/pendingWrites/hooks'
 import { overlayAccounts } from '@/features/pendingWrites/overlay'
 import { beginLocalWrite, noteOwnWrite } from '@/features/transactions/revisionTracking'
 
+// Reads the stored rows without observing the query: an observer without a queryFn would
+// overwrite the shared query's options on every render and break the sync's retries.
+function useStoredTransactions(enabled: boolean): TransactionDto[] | undefined {
+  const queryClient = useQueryClient()
+  const subscribe = useCallback(
+    (notify: () => void) =>
+      enabled
+        ? queryClient.getQueryCache().subscribe((event) => {
+            if (event.query.queryKey[0] === queryKeys.transactions[0]) {
+              notify()
+            }
+          })
+        : () => {},
+    [queryClient, enabled],
+  )
+  return useSyncExternalStore(subscribe, () => (enabled ? queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions) : undefined))
+}
+
 export function useAccounts() {
   const { data: user } = useUserData()
   const ops = usePendingOps()
-  // an update or delete reverses the stored row's effect, so those need the rows (observed without fetching)
+  // an update or delete reverses the stored row's effect, so those need the rows (read without observing)
   const needsRows = ops.some((op) => op.kind === 'tx-update' || op.kind === 'tx-delete')
-  const { data: rows } = useQuery<TransactionDto[]>({ queryKey: queryKeys.transactions, enabled: false })
-  const serverRows = needsRows ? rows : undefined
+  const serverRows = useStoredTransactions(needsRows)
   const userId = user?.id
   // get-account-list response order differs from order-account-list; position is authoritative.
   // Invites I have not accepted are surfaced by the sharing-requests modal, not the lists.

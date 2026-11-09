@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
+import { Toaster } from '@/components/ui/sonner'
 import { server } from '@/test/msw'
 import { onlineManager } from '@tanstack/react-query'
 import { getOps, loadPendingWrites } from '@/features/pendingWrites/store'
@@ -1349,11 +1350,12 @@ it('an online validation refusal still shows in the dialog', async () => {
   await loadPendingWrites('u1')
   const user = userEvent.setup()
   renderDialog()
+  render(<Toaster />)
   useUiStore.getState().openTransactionModal({ type: 'expense', accountId: 'a1' })
   await screen.findByRole('heading', { name: 'Add transaction' })
   await user.type(await screen.findByLabelText('Amount'), '7')
   await user.click(screen.getByRole('button', { name: 'Add' }))
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled())
+  expect(await screen.findByText('Refused by server')).toBeInTheDocument()
   expect(useUiStore.getState().transactionModal).not.toBeNull()
   expect(getOps()).toEqual([])
 })

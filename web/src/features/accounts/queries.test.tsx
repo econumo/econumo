@@ -1,5 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
+import { loadPendingWrites, mutate } from '@/features/pendingWrites/store'
+import { addChange } from '@/features/pendingWrites/queue'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
@@ -202,4 +204,30 @@ it('useAccounts hides an account pending my acceptance, and shows it once accept
   )
   await result.current.refetch()
   await waitFor(() => expect(result.current.data?.map((a) => a.id)).toEqual(['a-real', 'a-pending']))
+})
+
+it('useAccounts leaves the transaction query\'s queryFn alone, so a retry still reaches it', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, retryDelay: 0 } } })
+  queryClient.setQueryData(queryKeys.accounts, [])
+  await loadPendingWrites('u1')
+  await mutate((ops) => addChange(ops, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'k1', seq: 1 }, false))
+  let calls = 0
+  let rerender: () => void = () => {}
+  const queryFn = vi.fn(async () => {
+    calls += 1
+    if (calls === 1) {
+      // a render of a useAccounts consumer between the attempts
+      rerender()
+      throw new Error('first attempt fails')
+    }
+    return []
+  })
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  const hook = renderHook(
+    () => ({ accounts: useAccounts(), txs: useQuery({ queryKey: queryKeys.transactions, queryFn }) }),
+    { wrapper },
+  )
+  rerender = () => hook.rerender()
+  await waitFor(() => expect(hook.result.current.txs.status).toBe('success'))
+  expect(queryFn).toHaveBeenCalledTimes(2)
 })

@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import type { AccountDto } from '@/api/dto/account'
+import { queryKeys } from '@/app/queryKeys'
 import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
@@ -40,6 +43,7 @@ export function AccountDialog() {
   const grantAccountAccess = useGrantAccountAccess()
   const revokeAccountAccess = useRevokeAccountAccess()
 
+  const queryClient = useQueryClient()
   const account = params?.account
   const isNew = !account
 
@@ -57,8 +61,10 @@ export function AccountDialog() {
     }
     if (params.account) {
       setName(params.account.name)
+      // the list's balance includes waiting changes; a correction is judged against what the server stores
+      const stored = queryClient.getQueryData<AccountDto[]>(queryKeys.accounts)?.find((a) => a.id === params.account?.id)
       setBalance(
-        moneyFormat(params.account.balance, params.account.currency, {
+        moneyFormat(stored?.balance ?? params.account.balance, params.account.currency, {
           showCurrency: false,
           useNativePrecision: false,
           useThousandSeparator: false,
