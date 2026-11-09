@@ -447,6 +447,7 @@
         "newline": "Saut de ligne",
         "custom_label": "Séparateur personnalisé"
       },
+      "tag_hint": "Une transaction ne peut avoir qu’un seul tag budgétaire. Pour en indiquer plusieurs, utilisez Tags de rapport.",
       "new_labels_count": "Cet import créera {count} nouveau tag | Cet import créera {count} nouveaux tags"
     },
     "import_result": {

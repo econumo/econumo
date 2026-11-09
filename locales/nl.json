@@ -447,6 +447,7 @@
         "newline": "Nieuwe regel",
         "custom_label": "Eigen scheidingsteken"
       },
+      "tag_hint": "Een transactie kan maar één budgettag hebben. Gebruik voor meerdere tags Rapportagetags.",
       "new_labels_count": "Deze import maakt {count} nieuwe tag aan | Deze import maakt {count} nieuwe tags aan"
     },
     "import_result": {

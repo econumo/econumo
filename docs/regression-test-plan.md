@@ -449,6 +449,17 @@ navigation (single-pane vs sidebar).
       labels with separator), constant-value fields; result dialog shows
       imported/failed counts and per-row errors; imported rows appear with
       correct signs and classifications.
+- [ ] CSV import mapping layout: once a file is picked the dialog widens, every
+      field lines up at one width, and on desktop each column in a picker
+      (name plus sample value) stays on one line. "Change the tag separator"
+      shows under Reporting tags only while a column is mapped there. A note
+      under Budget tag says a transaction has one, and points to Reporting tags
+      for several.
+- [ ] Export transactions to CSV and import that file, with the UI in English
+      and in another language: every column maps by itself, the tags column
+      included, and the imported rows keep their budget tag and reporting tags,
+      also on a transaction with more than 10 reporting tags (the limit is 50,
+      as when entering a transaction).
 - [ ] Import with a broken row (bad date/amount) → partial result, failed rows
       detailed, good rows imported.
 - [ ] Category type guard: a category only goes on a transaction of its own

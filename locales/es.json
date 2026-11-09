@@ -447,6 +447,7 @@
         "newline": "Salto de línea",
         "custom_label": "Separador personalizado"
       },
+      "tag_hint": "Una transacción solo puede tener una etiqueta de presupuesto. Para varias, usa Etiquetas de informes.",
       "new_labels_count": "Esta importación creará {count} etiqueta nueva | Esta importación creará {count} etiquetas nuevas"
     },
     "import_result": {

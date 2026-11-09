@@ -447,6 +447,7 @@
         "newline": "A capo",
         "custom_label": "Separatore personalizzato"
       },
+      "tag_hint": "Una transazione può avere un solo tag di budget. Per indicarne più di uno, usa Tag per i report.",
       "new_labels_count": "Questa importazione creerà {count} nuovo tag | Questa importazione creerà {count} nuovi tag"
     },
     "import_result": {

@@ -447,6 +447,7 @@
         "newline": "Nova linha",
         "custom_label": "Separador personalizado"
       },
+      "tag_hint": "Uma transação só pode ter uma etiqueta de orçamento. Para várias, use Etiquetas de relatório.",
       "new_labels_count": "Esta importação irá criar {count} nova etiqueta | Esta importação irá criar {count} novas etiquetas"
     },
     "import_result": {
