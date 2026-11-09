@@ -116,6 +116,14 @@ func (sqliteQuerier) SetOAuthClientSecret(ctx context.Context, db backend.DBTX, 
 	return sqlitegen.New(db).SetOAuthClientSecret(ctx, p)
 }
 
+func (sqliteQuerier) ShareLockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return sqlitegen.New(db).ShareLockOAuthClient(ctx, id)
+}
+
+func (sqliteQuerier) GetOAuthCode(ctx context.Context, db backend.DBTX, codeHash string) (codeRow, error) {
+	return sqlitegen.New(db).GetOAuthCode(ctx, codeHash)
+}
+
 func (sqliteQuerier) LockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error) {
 	return sqlitegen.New(db).LockOAuthClient(ctx, id)
 }

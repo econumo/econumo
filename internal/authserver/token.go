@@ -71,25 +71,51 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 		return model.TokenResponse{}, err
 	}
 	now := s.clock.Now()
-	// Consumed in its own statement before any check, so every attempt,
-	// including a failed one, burns the code.
-	code, err := s.repo.ConsumeCode(ctx, hashSecret(req.Code))
+	hash := hashSecret(req.Code)
+	// The code is read here only to learn whose row lock to take; it is
+	// consumed under that lock and the client lock below. A row never changes,
+	// so checking the copy read here is checking the one consumed.
+	code, err := s.repo.GetCode(ctx, hash)
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			return model.TokenResponse{}, errInvalidGrant
 		}
 		return model.TokenResponse{}, err
 	}
+	var bad error
 	if !now.Before(code.ExpiresAt) || !code.ClientID.Equal(c.ID) || code.RedirectURI != req.RedirectURI || !VerifyPKCE(req.CodeVerifier, code.CodeChallenge) {
-		return model.TokenResponse{}, errInvalidGrant
+		bad = errInvalidGrant
+	} else if !s.resourceOK(req.Resource) {
+		bad = &OAuthError{400, "invalid_target", "unknown resource"}
 	}
-	if !s.resourceOK(req.Resource) {
-		return model.TokenResponse{}, &OAuthError{400, "invalid_target", "unknown resource"}
+	if bad != nil {
+		// A failed attempt burns the code too, in its own statement.
+		if _, err := s.repo.ConsumeCode(ctx, hash); err != nil {
+			if _, ok := errs.AsNotFound(err); !ok {
+				return model.TokenResponse{}, err
+			}
+		}
+		return model.TokenResponse{}, bad
 	}
 	var resp model.TokenResponse
 	grantInsertFailed := false
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if _, err := s.creds.LockForOAuth(ctx, code.UserID); err != nil {
+			return err
+		}
+		// Consumed under the client lock, which app:disconnect and app:delete
+		// hold while they drop codes and revoke grants: either they took the
+		// code first, or the grant below commits before they read the grants.
+		if err := s.repo.ShareLockClient(ctx, c.ID); err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				return errInvalidGrant
+			}
+			return err
+		}
+		if _, err := s.repo.ConsumeCode(ctx, hash); err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				return errInvalidGrant
+			}
 			return err
 		}
 		rawRefresh, refreshHash, err := newSecret()

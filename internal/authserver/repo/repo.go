@@ -49,10 +49,12 @@ type querier interface {
 	MakeOAuthClientGlobal(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	SetOAuthClientSecret(ctx context.Context, db backend.DBTX, p setClientSecretParams) (int64, error)
 	LockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error)
+	ShareLockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error)
 	DeleteOAuthClient(ctx context.Context, db backend.DBTX, id string) (int64, error)
 
 	InsertOAuthCode(ctx context.Context, db backend.DBTX, p insertCodeParams) error
 	ConsumeOAuthCode(ctx context.Context, db backend.DBTX, codeHash string) (codeRow, error)
+	GetOAuthCode(ctx context.Context, db backend.DBTX, codeHash string) (codeRow, error)
 	PurgeExpiredOAuthCodes(ctx context.Context, db backend.DBTX, before time.Time) error
 	DeleteClientOAuthCodes(ctx context.Context, db backend.DBTX, clientID string) (int64, error)
 	DeleteClientUserOAuthCodes(ctx context.Context, db backend.DBTX, p deleteUserCodesParams) (int64, error)
@@ -161,6 +163,16 @@ func (r *Repo) LockClient(ctx context.Context, id vo.Id) error {
 	return nil
 }
 
+func (r *Repo) ShareLockClient(ctx context.Context, id vo.Id) error {
+	if _, err := r.q.ShareLockOAuthClient(ctx, r.db(ctx), id.String()); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errs.NewNotFound("OAuth client not found")
+		}
+		return err
+	}
+	return nil
+}
+
 func (r *Repo) DeleteClient(ctx context.Context, id vo.Id) (int64, error) {
 	return r.q.DeleteOAuthClient(ctx, r.db(ctx), id.String())
 }
@@ -186,7 +198,14 @@ func (r *Repo) InsertCode(ctx context.Context, c *model.OAuthAuthorizationCode) 
 }
 
 func (r *Repo) ConsumeCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error) {
-	row, err := r.q.ConsumeOAuthCode(ctx, r.db(ctx), codeHash)
+	return codeFromRow(r.q.ConsumeOAuthCode(ctx, r.db(ctx), codeHash))
+}
+
+func (r *Repo) GetCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error) {
+	return codeFromRow(r.q.GetOAuthCode(ctx, r.db(ctx), codeHash))
+}
+
+func codeFromRow(row codeRow, err error) (*model.OAuthAuthorizationCode, error) {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errs.NewNotFound("Authorization code not found")

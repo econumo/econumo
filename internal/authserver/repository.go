@@ -25,10 +25,13 @@ type Repository interface {
 	SetClientSecret(ctx context.Context, id vo.Id, hash string) (int64, error)
 	// LockClient takes a row lock on the client (errs.NotFound when absent).
 	LockClient(ctx context.Context, id vo.Id) error
+	// ShareLockClient takes a lock that conflicts only with LockClient (errs.NotFound when absent).
+	ShareLockClient(ctx context.Context, id vo.Id) error
 	DeleteClient(ctx context.Context, id vo.Id) (int64, error)
 
 	InsertCode(ctx context.Context, c *model.OAuthAuthorizationCode) error
 	ConsumeCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error) // DELETE ... RETURNING; errs.NotFound when absent
+	GetCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error)     // errs.NotFound when absent
 	PurgeExpiredCodes(ctx context.Context, before time.Time) error
 	// DeleteClientCodes drops the client's outstanding codes, only userID's when it is set.
 	DeleteClientCodes(ctx context.Context, clientID vo.Id, userID *vo.Id) (int64, error)

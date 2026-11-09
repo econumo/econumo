@@ -131,6 +131,28 @@ func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, e
 	return i, err
 }
 
+const getOAuthCode = `-- name: GetOAuthCode :one
+SELECT code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at
+FROM oauth_authorization_codes WHERE code_hash = ?
+`
+
+func (q *Queries) GetOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error) {
+	row := q.db.QueryRowContext(ctx, getOAuthCode, codeHash)
+	var i OauthAuthorizationCode
+	err := row.Scan(
+		&i.CodeHash,
+		&i.ClientID,
+		&i.UserID,
+		&i.RedirectUri,
+		&i.CodeChallenge,
+		&i.Resource,
+		&i.CredentialsGeneration,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const getOAuthGrant = `-- name: GetOAuthGrant :one
 SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
 FROM oauth_grants WHERE id = ?
@@ -724,6 +746,16 @@ func (q *Queries) SetOAuthClientSecret(ctx context.Context, arg SetOAuthClientSe
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const shareLockOAuthClient = `-- name: ShareLockOAuthClient :one
+SELECT id FROM oauth_clients WHERE id = ?
+`
+
+func (q *Queries) ShareLockOAuthClient(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, shareLockOAuthClient, id)
+	err := row.Scan(&id)
+	return id, err
 }
 
 const updateGlobalOAuthClient = `-- name: UpdateGlobalOAuthClient :execrows

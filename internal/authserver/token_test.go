@@ -622,3 +622,42 @@ func (r revokingRepo) RevokeGrant(ctx context.Context, id vo.Id, now time.Time) 
 	}
 	return r.Repository.RevokeGrant(ctx, id, now)
 }
+
+// peekHookRepo runs after the exchange has read the code and before it takes
+// its locks, where app:disconnect used to slip in between consuming the code
+// and inserting the grant.
+type peekHookRepo struct {
+	Repository
+	after func()
+}
+
+func (r peekHookRepo) GetCode(ctx context.Context, hash string) (*model.OAuthAuthorizationCode, error) {
+	c, err := r.Repository.GetCode(ctx, hash)
+	r.after()
+	return c, err
+}
+
+func TestExchange_DisconnectAfterTheCodeIsRead(t *testing.T) {
+	for _, perUser := range []bool{false, true} {
+		t.Run(fmt.Sprint("perUser=", perUser), func(t *testing.T) {
+			s, creds, clock, db := newTestServiceDB(t)
+			user := newUser(t, db, fixture.User{})
+			cid, code := approve(t, s, user)
+			id := vo.MustParseId(cid)
+			var only *vo.Id
+			if perUser {
+				only = &user
+			}
+			racing := NewService(peekHookRepo{Repository: s.repo, after: func() {
+				if _, err := s.DisconnectApp(ctx, id, only); err != nil {
+					t.Errorf("disconnect: %v", err)
+				}
+			}}, creds, s.tx, clock, nil, testURL)
+			_, err := exchange(racing, cid, code)
+			wantOAuth(t, err, "invalid_grant")
+			if grants, err := s.liveGrants(ctx, id); err != nil || len(grants) != 0 {
+				t.Fatalf("the app must stay disconnected: %v %v", grants, err)
+			}
+		})
+	}
+}

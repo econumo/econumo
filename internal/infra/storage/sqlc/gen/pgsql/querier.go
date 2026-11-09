@@ -204,6 +204,7 @@ type Querier interface {
 	GetLatestRateDate(ctx context.Context) (time.Time, error)
 	GetNearestCurrencyRates(ctx context.Context, arg GetNearestCurrencyRatesParams) ([]GetNearestCurrencyRatesRow, error)
 	GetOAuthClient(ctx context.Context, id string) (OauthClient, error)
+	GetOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
 	GetOAuthGrant(ctx context.Context, id string) (OauthGrant, error)
 	GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHash string) (OauthGrant, error)
 	GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash string) (OauthGrant, error)
@@ -492,6 +493,9 @@ type Querier interface {
 	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
 	SetOAuthClientSecret(ctx context.Context, arg SetOAuthClientSecretParams) (int64, error)
 	SetUserEmail(ctx context.Context, arg SetUserEmailParams) error
+	// KEY SHARE conflicts only with the FOR UPDATE of LockOAuthClient (and a
+	// DELETE), so concurrent exchanges of one client do not wait on each other.
+	ShareLockOAuthClient(ctx context.Context, id string) (string, error)
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.

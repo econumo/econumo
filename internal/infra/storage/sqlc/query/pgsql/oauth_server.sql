@@ -29,6 +29,10 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 DELETE FROM oauth_authorization_codes WHERE code_hash = $1
 RETURNING code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at;
 
+-- name: GetOAuthCode :one
+SELECT code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at
+FROM oauth_authorization_codes WHERE code_hash = $1;
+
 -- name: PurgeExpiredOAuthCodes :exec
 DELETE FROM oauth_authorization_codes WHERE expires_at < $1;
 
@@ -115,6 +119,11 @@ UPDATE oauth_clients SET secret_hash = $1 WHERE id = $2 AND secret_hash IS NOT N
 -- lock a concurrent grant INSERT takes on this row through its foreign key.
 SELECT id FROM oauth_clients WHERE id = $1
 FOR UPDATE;
+
+-- name: ShareLockOAuthClient :one
+-- KEY SHARE conflicts only with the FOR UPDATE of LockOAuthClient (and a
+-- DELETE), so concurrent exchanges of one client do not wait on each other.
+SELECT id FROM oauth_clients WHERE id = $1 FOR KEY SHARE;
 
 -- name: DeleteOAuthClient :execrows
 DELETE FROM oauth_clients WHERE id = $1;

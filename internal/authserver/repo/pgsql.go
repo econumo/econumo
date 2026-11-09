@@ -137,6 +137,15 @@ func (pgsqlQuerier) SetOAuthClientSecret(ctx context.Context, db backend.DBTX, p
 	return pgsqlgen.New(db).SetOAuthClientSecret(ctx, pgsqlgen.SetOAuthClientSecretParams(p))
 }
 
+func (pgsqlQuerier) ShareLockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return pgsqlgen.New(db).ShareLockOAuthClient(ctx, id)
+}
+
+func (pgsqlQuerier) GetOAuthCode(ctx context.Context, db backend.DBTX, codeHash string) (codeRow, error) {
+	row, err := pgsqlgen.New(db).GetOAuthCode(ctx, codeHash)
+	return codeRow(row), err
+}
+
 func (pgsqlQuerier) LockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error) {
 	return pgsqlgen.New(db).LockOAuthClient(ctx, id)
 }

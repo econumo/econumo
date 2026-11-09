@@ -213,7 +213,9 @@ func (s *Service) RotateAppSecret(ctx context.Context, id vo.Id) (string, error)
 // DisconnectApp revokes the app's grants and drops its outstanding
 // authorization codes, only userID's when it is set, and returns how many live
 // grants it revoked. It locks like DeleteApp: the grants' users, then the
-// client, so neither an exchange nor an approval can connect a user meanwhile.
+// client. An exchange consumes its code under the client lock too, so a code
+// it read before then is either dropped here or its grant commits first and is
+// revoked here. A consent given after this commits is a new connection.
 func (s *Service) DisconnectApp(ctx context.Context, id vo.Id, userID *vo.Id) (int, error) {
 	if _, err := s.getApp(ctx, id); err != nil {
 		return 0, err

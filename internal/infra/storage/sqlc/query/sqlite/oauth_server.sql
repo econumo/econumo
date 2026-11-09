@@ -29,6 +29,10 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 DELETE FROM oauth_authorization_codes WHERE code_hash = ?
 RETURNING code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at;
 
+-- name: GetOAuthCode :one
+SELECT code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at
+FROM oauth_authorization_codes WHERE code_hash = ?;
+
 -- name: PurgeExpiredOAuthCodes :exec
 DELETE FROM oauth_authorization_codes WHERE expires_at < ?;
 
@@ -110,6 +114,9 @@ UPDATE oauth_clients SET is_global = true, owner_user_id = NULL WHERE id = ? AND
 UPDATE oauth_clients SET secret_hash = ? WHERE id = ? AND secret_hash IS NOT NULL;
 
 -- name: LockOAuthClient :one
+SELECT id FROM oauth_clients WHERE id = ?;
+
+-- name: ShareLockOAuthClient :one
 SELECT id FROM oauth_clients WHERE id = ?;
 
 -- name: DeleteOAuthClient :execrows
