@@ -171,7 +171,7 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
   const { t } = useTranslation()
   const online = useOnline()
   const createToken = useCreatePersonalToken()
-  const revokeToken = useRevokePersonalToken()
+  const revokeToken = useRevokePersonalToken({ handlesOwnErrors: true })
   const tokens = usePersonalTokens()
   const configuringRef = useRef(false)
   // the open step follows the current one as steps complete

@@ -5,6 +5,7 @@ import type { Id } from '@/api/types'
 import type { OAuthProviderId } from '@/api/dto/oauth'
 import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import type { OwnErrorHandling } from '@/lib/appQueryClient'
 
 export function useSessions() {
   return useQuery({ queryKey: queryKeys.sessions, queryFn: userApi.getSessionList })
@@ -39,6 +40,7 @@ export function usePersonalTokens() {
 export function useCreatePersonalToken() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ name, expiresAt, scope }: { name: string; expiresAt: string | null; scope?: 'full' | 'ingest' }) =>
       userApi.createPersonalToken(name, expiresAt, scope),
     onSuccess: () => {
@@ -48,9 +50,10 @@ export function useCreatePersonalToken() {
   })
 }
 
-export function useRevokePersonalToken() {
+export function useRevokePersonalToken({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors },
     mutationFn: (id: Id) => userApi.revokePersonalToken(id),
     onSuccess: () => {
       trackEvent(METRICS.PERSONAL_TOKEN_REVOKE)
@@ -66,6 +69,7 @@ export function useIdentities() {
 export function useCompleteLink() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ code, flow }: { code: string; flow: string }) => oauthApi.completeLink(code, flow),
     onSuccess: ({ provider }) => {
       trackEvent(METRICS.IDENTITY_LINKED, { provider })

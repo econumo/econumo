@@ -24,6 +24,7 @@ import { usePendingOps } from '@/features/pendingWrites/hooks'
 import { applyLimitToBudget, overlayBudget, overlayBudgetTransactions, overlayPlan, patchPlanCells } from '@/features/pendingWrites/overlay'
 import { submitChange } from '@/features/pendingWrites/submit'
 import { budgetCurrentPeriod, currentPeriod, periodStartDayOf } from './period'
+import type { OwnErrorHandling } from '@/lib/appQueryClient'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -41,10 +42,11 @@ export function useBudgets() {
   })
 }
 
-export function useCreateBudget() {
+export function useCreateBudget({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
   return useMutation({
+    meta: { handlesOwnErrors },
     mutationFn: async (form: budgetApi.CreateBudgetForm & { ownerUserId?: Id }) => {
       // Vue guard: a same-name own budget resolves without an API call
       const existing = queryClient
@@ -482,10 +484,11 @@ function sameIdSet(a: Id[], b: Id[]): boolean {
   return set.size === new Set(b).size && b.every((id) => set.has(id))
 }
 
-export function useUpdateBudgetDetail() {
+export function useUpdateBudgetDetail({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
   return useMutation({
+    meta: { handlesOwnErrors },
     // previousSavingsAccountIds is client-only: the set the dialog opened with,
     // so the metric fires only when the request actually changes a flag
     mutationFn: ({ previousSavingsAccountIds: _prev, ...form }: budgetApi.UpdateBudgetForm & { previousSavingsAccountIds?: Id[] }) =>
@@ -533,9 +536,10 @@ export function useBudgetTransactions(params: budgetApi.BudgetTransactionsParams
   })
 }
 
-export function useGrantBudgetAccess() {
+export function useGrantBudgetAccess({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors },
     mutationFn: (form: { budgetId: Id; userId: Id; role: string }) => budgetApi.grantAccess(form),
     onSuccess: (items) => {
       queryClient.setQueryData(queryKeys.budgets, items)

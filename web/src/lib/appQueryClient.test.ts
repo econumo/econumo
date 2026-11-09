@@ -7,8 +7,8 @@ import { createAppQueryClient } from './appQueryClient'
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
 const noResponse = () => new AxiosError('Network Error', AxiosError.ERR_NETWORK)
-const failing = (err: unknown, onError?: () => void) =>
-  (() => { const client = createAppQueryClient(); return client.getMutationCache().build(client, { mutationFn: async () => { throw err }, onError }).execute(undefined) })()
+const failing = (err: unknown, onError?: () => void, meta?: { handlesOwnErrors?: boolean }) =>
+  (() => { const client = createAppQueryClient(); return client.getMutationCache().build(client, { mutationFn: async () => { throw err }, onError, meta }).execute(undefined) })()
 
 beforeEach(() => vi.mocked(toast.error).mockClear())
 
@@ -45,6 +45,20 @@ it('a write with its own onError gets no second toast', async () => {
   await expect(failing(noResponse(), own)).rejects.toThrow()
   expect(own).toHaveBeenCalledTimes(1)
   expect(toast.error).not.toHaveBeenCalled()
+})
+
+it('a write whose callers show the error themselves gets no second toast', async () => {
+  await expect(failing(noResponse(), undefined, { handlesOwnErrors: true })).rejects.toThrow()
+  expect(toast.error).not.toHaveBeenCalled()
+})
+
+it('repeats of the global toast collapse into one', async () => {
+  await expect(failing(noResponse())).rejects.toThrow()
+  await expect(failing(noResponse())).rejects.toThrow()
+  const ids = vi.mocked(toast.error).mock.calls.map(([, options]) => options?.id)
+  expect(ids).toHaveLength(2)
+  expect(ids[0]).toEqual(expect.any(String))
+  expect(ids[1]).toBe(ids[0])
 })
 
 it('a write the server answered shows no global toast', async () => {

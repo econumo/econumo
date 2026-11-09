@@ -12,7 +12,7 @@ import { useOnline } from '@/hooks/useOnline'
 // window.open must happen synchronously inside the click gesture or popup
 // blockers eat it — open a blank tab first, then point it at the minted link.
 export function useOpenBillingPortal() {
-  const mutation = useMutation({ mutationFn: (forUserId?: Id) => createBillingLink(forUserId) })
+  const mutation = useMutation({ meta: { handlesOwnErrors: true }, mutationFn: (forUserId?: Id) => createBillingLink(forUserId) })
   const { data: user } = useUserData()
   const online = useOnline()
   return {

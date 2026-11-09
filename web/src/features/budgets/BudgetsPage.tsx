@@ -61,11 +61,11 @@ export function BudgetsPage() {
   const { data: budgets = [] } = useBudgets();
   const { data: connections = [] } = useConnections();
   const online = useOnline();
-  const createBudget = useCreateBudget();
+  const createBudget = useCreateBudget({ handlesOwnErrors: true });
   const deleteBudget = useDeleteBudget();
   const updateDefaultBudget = useUpdateDefaultBudget();
   const declineAccess = useDeclineBudgetAccess();
-  const grantAccess = useGrantBudgetAccess();
+  const grantAccess = useGrantBudgetAccess({ handlesOwnErrors: true });
   const revokeAccess = useRevokeBudgetAccess();
   const archiveBudget = useArchiveBudget();
   const unarchiveBudget = useUnarchiveBudget();

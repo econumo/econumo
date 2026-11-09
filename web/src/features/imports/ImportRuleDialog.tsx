@@ -51,8 +51,8 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
   const { mutate: runPreview } = preview
   const create = useCreateImportRule()
   const update = useUpdateImportRule()
-  const createCategory = useCreateCategory()
-  const createPayee = useCreatePayee()
+  const createCategory = useCreateCategory({ handlesOwnErrors: true })
+  const createPayee = useCreatePayee({ handlesOwnErrors: true })
   const { data: user } = useUserData()
   const { state: accessState } = useAccessState()
   const [addTagOpen, setAddTagOpen] = useState(false)

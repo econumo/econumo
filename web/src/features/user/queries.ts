@@ -58,6 +58,7 @@ export function isOnboardingCompleted(user: CurrentUserDto | undefined): boolean
 export function useUpdateName() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (name: string) => userApi.updateName(name),
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.user, user)
@@ -83,6 +84,7 @@ export function useUpdateAvatar() {
 
 export function useUpdatePassword() {
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ oldPassword, newPassword }: { oldPassword: string; newPassword: string }) =>
       userApi.updatePassword(oldPassword, newPassword),
     onSuccess: () => trackEvent(METRICS.USER_UPDATE_PASSWORD),
@@ -91,6 +93,7 @@ export function useUpdatePassword() {
 
 export function useRequestEmailChange() {
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ newEmail, password }: { newEmail: string; password: string }) =>
       userApi.requestEmailChange(newEmail, password),
   })
@@ -99,6 +102,7 @@ export function useRequestEmailChange() {
 export function useConfirmEmailChange() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ code }: { code: string }) => userApi.confirmEmailChange(code),
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.user, user)
@@ -109,6 +113,7 @@ export function useConfirmEmailChange() {
 
 export function useResendEmailChangeCode() {
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: () => userApi.resendEmailChangeCode(),
   })
 }

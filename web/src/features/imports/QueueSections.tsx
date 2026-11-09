@@ -167,7 +167,7 @@ export function FailedImportsSection({ failed }: { failed: ImportFailedEventDto[
   const { t } = useTranslation()
   const online = useOnline()
   const retry = useRetryImportEvent()
-  const discard = useDiscardImportEvent()
+  const discard = useDiscardImportEvent({ handlesOwnErrors: true })
   const onError = (err: unknown) => toast.error(apiErrorMessage(err))
 
   const retryResultText = (status: string) =>

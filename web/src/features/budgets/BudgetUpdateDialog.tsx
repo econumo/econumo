@@ -30,7 +30,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const online = useOnline()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
-  const updateBudget = useUpdateBudgetDetail()
+  const updateBudget = useUpdateBudgetDetail({ handlesOwnErrors: true })
 
   const [name, setName] = useState('')
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
