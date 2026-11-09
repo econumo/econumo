@@ -32,6 +32,12 @@ describe('resolveDrop', () => {
     expect(drop?.entries.map(entryKey)).toEqual(['sep-2024-03-02', 'c', 'a', 'b', 'sep-2024-03-01', 'd', 'e'])
   })
 
+  it('skips a row with an unsent change when naming the row above: the server may not have it', () => {
+    const unsent = (id: string) => id === 'd'
+    expect(resolveDrop(entries, 'a', at('e'), unsent)).toMatchObject({ date: '2024-03-01', aboveId: 'e' })
+    expect(resolveDrop(entries, 'b', at('d'), unsent)).toMatchObject({ date: '2024-03-01', aboveId: null })
+  })
+
   it('ignores a drop that changes nothing', () => {
     expect(resolveDrop(entries, 'b', at('b'))).toBeNull()
   })

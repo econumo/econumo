@@ -29,9 +29,10 @@ export interface HistoryDrop {
 
 /** Where dropping `activeId` at flat index `overIndex` leaves it: the day group
  *  it lands in (the nearest header above) and the transaction right above it.
- *  Recurring previews are not transactions yet, so they are skipped. Null when
- *  the drop changes nothing or lands above the first header. */
-export function resolveDrop(entries: DailyListEntry[], activeId: Id, overIndex: number): HistoryDrop | null {
+ *  Recurring previews are not transactions yet, and a row with an unsent change
+ *  may be one the server does not hold, so both are skipped. Null when the drop
+ *  changes nothing or lands above the first header. */
+export function resolveDrop(entries: DailyListEntry[], activeId: Id, overIndex: number, hasUnsentChange: (id: Id) => boolean = () => false): HistoryDrop | null {
   const from = entries.findIndex((e) => e.kind === 'transaction' && !e.transaction.recurring && e.transaction.id === activeId)
   if (from < 0 || overIndex < 0 || overIndex >= entries.length || from === overIndex) {
     return null
@@ -51,7 +52,7 @@ export function resolveDrop(entries: DailyListEntry[], activeId: Id, overIndex: 
     if (entry.kind === 'separator') {
       return { fromDate, date: entry.day, aboveId, entries: moved }
     }
-    if (aboveId === null && !entry.transaction.recurring) {
+    if (aboveId === null && !entry.transaction.recurring && !hasUnsentChange(entry.transaction.id)) {
       aboveId = entry.transaction.id
     }
   }
