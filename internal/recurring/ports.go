@@ -22,8 +22,8 @@ type AccountGrants interface {
 	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
 
-type VisibleAccounts interface {
-	VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
+type AvailableAccounts interface {
+	AvailableAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 type TransactionCreator interface {

@@ -218,11 +218,85 @@ it('the open list adds no box to the dialog it is portaled into', async () => {
   expect(document.querySelector('[data-base-ui-portal]')).toHaveClass('contents')
 })
 
+const WITH_SEARCH_ONLY = [...OPTIONS, { value: 'c4', label: 'Fund', hiddenLabel: 'Hidden folder' }]
+
+it('offers a search-only option from the third typed character', async () => {
+  const user = userEvent.setup()
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={WITH_SEARCH_ONLY} />)
+
+  await user.click(combobox())
+  await screen.findByRole('option', { name: 'Food' })
+  expect(screen.queryByRole('option', { name: /Fund/ })).not.toBeInTheDocument()
+
+  await user.keyboard('fu')
+  await screen.findByRole('option', { name: 'Fuel' })
+  expect(screen.queryByRole('option', { name: /Fund/ })).not.toBeInTheDocument()
+
+  await user.keyboard('n')
+  expect(await screen.findByRole('option', { name: /Fund/ })).toBeInTheDocument()
+})
+
+it('does not count surrounding spaces towards the search-only threshold', async () => {
+  const user = userEvent.setup()
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={WITH_SEARCH_ONLY} />)
+
+  await user.click(combobox())
+  await user.keyboard('fu ')
+  await screen.findByRole('option', { name: 'Fuel' })
+  expect(screen.queryByRole('option', { name: /Fund/ })).not.toBeInTheDocument()
+})
+
+it('keeps a selected search-only option in the field and the list', async () => {
+  const user = userEvent.setup()
+  render(<EntitySelect aria-label="Category" value="c4" onChange={() => {}} options={WITH_SEARCH_ONLY} />)
+  expect(combobox()).toHaveValue('Fund')
+  expect(screen.getByRole('img', { name: 'Hidden folder' })).toBeInTheDocument()
+
+  await user.click(combobox())
+  expect(await screen.findByRole('option', { name: /Fund.*Hidden folder/ })).toBeInTheDocument()
+})
+
+it('finds a hidden option with a short name by typing all of it', async () => {
+  const user = userEvent.setup()
+  const options = [...OPTIONS, { value: 'c5', label: 'BA', hiddenLabel: 'Hidden folder' }, { value: 'c6', label: 'Bank', hiddenLabel: 'Hidden folder' }]
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={options} />)
+
+  await user.click(combobox())
+  await user.keyboard('ba')
+  expect(await screen.findByRole('option', { name: /BA/ })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: /Bank/ })).not.toBeInTheDocument()
+})
+
+it('marks nothing on an ordinary selected option', () => {
+  render(<EntitySelect aria-label="Category" value="c1" onChange={() => {}} options={WITH_SEARCH_ONLY} />)
+  expect(screen.queryByRole('img', { name: 'Hidden folder' })).not.toBeInTheDocument()
+})
+
 describe('on a phone', () => {
   beforeEach(() => {
     window.matchMedia = vi.fn().mockImplementation((q: string) => ({
       matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
     }))
+  })
+
+  it('the sheet offers a search-only option from the third typed character', async () => {
+    const user = userEvent.setup()
+    render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={WITH_SEARCH_ONLY} />)
+
+    await user.click(combobox())
+    const sheet = await screen.findByRole('dialog', { name: 'Category' })
+    expect(within(sheet).queryByRole('option', { name: /Fund/ })).not.toBeInTheDocument()
+
+    await user.keyboard('fu')
+    expect(within(sheet).queryByRole('option', { name: /Fund/ })).not.toBeInTheDocument()
+    await user.keyboard('n')
+    expect(within(sheet).getByRole('option', { name: /Fund.*Hidden folder/ })).toBeInTheDocument()
+  })
+
+  it('the field marks a selected hidden option', () => {
+    render(<EntitySelect aria-label="Category" value="c4" onChange={() => {}} options={WITH_SEARCH_ONLY} />)
+    expect(combobox()).toHaveValue('Fund')
+    expect(screen.getByRole('img', { name: 'Hidden folder' })).toBeInTheDocument()
   })
 
   // a field iOS's ^ / v keys stop on, but one that never raises a keyboard

@@ -16,9 +16,11 @@ import { useUiStore } from '@/app/uiStore'
 import type { OpenRecurringParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
+import { canWriteToAccount } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
 import {
-  accountOptions,
+  hiddenFolderAccountIds,
+  visibleAccountsFirst,
   canChangeAccountData,
   categoryOptions,
   classificationChips,
@@ -52,7 +54,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   const createRecurring = useCreateRecurring()
   const updateRecurring = useUpdateRecurring()
 
-  const { form, patch, setType, setSchedule, account } = useRecurringForm(params, accounts)
+  const { form, patch, setType, setSchedule, account } = useRecurringForm(params, visibleAccountsFirst(accounts, folders))
   const { errors, setErrors, clear: clearError } = useFormErrors<Record<string, string | undefined>>()
   const [addTagOpen, setAddTagOpen] = useState(false)
 
@@ -61,7 +63,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   const ownerId = account?.owner.id
   const canEditData = canChangeAccountData(account, user?.id)
 
-  const selectableAccounts = accountOptions(accounts, folders, form.isNew)
+  const hiddenAccountIds = hiddenFolderAccountIds(accounts, folders)
   const currentCategories = categoryOptions(categories, form.type, ownerId)
   const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
   const chips = classificationChips(tags, labels, form, ownerId)
@@ -71,6 +73,8 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
     label: `${a.name} (${moneyFormat(a.balance, a.currency)})`,
     searchText: a.name,
     icon: a.icon,
+    disabled: !canWriteToAccount(a, user?.id),
+    hiddenLabel: hiddenAccountIds.has(a.id) ? t('search.hidden_folder') : undefined,
   })
 
   const validate = (): boolean => {
@@ -194,7 +198,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
                 title={t('transactions.modal.form.account.label')}
                 value={form.accountId}
                 onChange={(id) => patch({ accountId: id })}
-                options={selectableAccounts.map(accountToOption)}
+                options={accounts.map(accountToOption)}
               />
             </div>
           ) : null}
@@ -224,7 +228,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
                 title={t('transactions.modal.form.from.label')}
                 value={form.accountId}
                 onChange={(id) => patch({ accountId: id })}
-                options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
+                options={accounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
               />
             </SelectCard>
             <SelectCard label={t('transactions.modal.form.to.label')} error={errors.accountRecipientId}>
@@ -236,7 +240,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
                   clearError('accountRecipientId')
                   patch({ accountRecipientId: id })
                 }}
-                options={selectableAccounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
+                options={accounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
               />
             </SelectCard>
           </div>
