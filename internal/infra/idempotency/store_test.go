@@ -90,17 +90,17 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestMaybePurgeRemovesOnlyOlderThanSevenDays(t *testing.T) {
+func TestMaybePurgeRemovesOnlyOlderThanNinetyDays(t *testing.T) {
 	s, _, clock := newStore(t)
 	ctx := context.Background()
 	user := vo.NewId()
 	start := clock.t
 
-	clock.t = start.Add(-8 * 24 * time.Hour)
+	clock.t = start.Add(-91 * 24 * time.Hour)
 	if err := s.Insert(ctx, user, "old", ""); err != nil {
 		t.Fatal(err)
 	}
-	clock.t = start.Add(-6 * 24 * time.Hour)
+	clock.t = start.Add(-89 * 24 * time.Hour)
 	if err := s.Insert(ctx, user, "recent", ""); err != nil {
 		t.Fatal(err)
 	}
@@ -108,15 +108,15 @@ func TestMaybePurgeRemovesOnlyOlderThanSevenDays(t *testing.T) {
 	clock.t = start
 	s.MaybePurge(ctx)
 	if _, found, _ := s.Find(ctx, user, "old"); found {
-		t.Error("8-day-old key survived the purge")
+		t.Error("91-day-old key survived the purge")
 	}
 	if _, found, _ := s.Find(ctx, user, "recent"); !found {
-		t.Error("6-day-old key was purged")
+		t.Error("89-day-old key was purged")
 	}
 
 	// A second call within 10 minutes deletes nothing, even for a row that is
-	// already older than seven days; after 10 minutes it does.
-	clock.t = start.Add(-8 * 24 * time.Hour)
+	// already older than ninety days; after 10 minutes it does.
+	clock.t = start.Add(-91 * 24 * time.Hour)
 	if err := s.Insert(ctx, user, "old2", ""); err != nil {
 		t.Fatal(err)
 	}

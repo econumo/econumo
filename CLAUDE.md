@@ -1154,7 +1154,7 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
 - **`idempotency_keys`** (migration `20261109000000`, both engines): one row per
   `(user_id, idempotency_key)` with a nullable `resource_id` and `created_at`, no foreign keys
   because the rows are short-lived. `internal/infra/idempotency` owns it, and the middleware
-  writes it (see "Idempotency-Key" under API conventions). Rows older than 7 days are purged
+  writes it (see "Idempotency-Key" under API conventions). Rows older than 90 days are purged
   after a successful guarded request, at most every 10 minutes per process, set-based and
   best effort.
 - **Transaction revisions.** `accounts.transactions_revision` is a per-account counter the

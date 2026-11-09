@@ -15,7 +15,7 @@
 - Go is at `/usr/local/go/bin` and needs `GOTOOLCHAIN=go1.27.1`.
 - `Idempotency-Key` is a UUIDv7 from the `uuid` package's `v7`; absent or unparsable means no guard.
 - Replay: HTTP 409, handled-error envelope, message from `common.operation_locked`, additive `resourceId` when stored.
-- Key rows purge after 7 days, at most every 10 minutes per process.
+- Key rows purge after 90 days, at most every 10 minutes per process (a device can sit offline for weeks with an attempted add still queued).
 - Request timeout for a write: 10 seconds.
 - A 5xx with the app's envelope retries 5 times with backoff, then fails.
 - Migration version `20261109000000` on both engines (above every released one).

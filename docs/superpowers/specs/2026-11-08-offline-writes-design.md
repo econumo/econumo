@@ -159,9 +159,10 @@ the database; the frontend assigns no record ids.
 - A replay answers **HTTP 409** with the handled-error envelope, the `common.operation_locked`
   message and an additive `resourceId` field when one was stored. Non-replays keep their
   existing statuses.
-- Rows older than 7 days are purged opportunistically (at most every 10 minutes per process,
-  set-based, best effort, like the other housekeeping). A retry only ever needs a key from a
-  request the server received, so that is long enough.
+- Rows older than 90 days are purged opportunistically (at most every 10 minutes per process,
+  set-based, best effort, like the other housekeeping). An attempted change stays queued with
+  no age limit, so a device offline for weeks retries a key the server must still hold or an
+  add whose response was lost would duplicate; the row count stays negligible.
 
 **Transaction ids stay server-minted.** `id` on `create-transaction` becomes optional and the
 SPA stops sending it. When present (older clients, MCP) it keeps today's body-id guard and

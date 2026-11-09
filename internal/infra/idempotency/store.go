@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	retention     = 7 * 24 * time.Hour
+	retention     = 90 * 24 * time.Hour
 	purgeInterval = 10 * time.Minute
 )
 
@@ -91,7 +91,7 @@ func (s *Store) Delete(ctx context.Context, userID vo.Id, key string) error {
 	return s.q.Delete(ctx, s.tx.Querier(ctx), deleteParams{UserID: userID.String(), IdempotencyKey: key})
 }
 
-// MaybePurge drops rows older than seven days, at most once every ten minutes
+// MaybePurge drops rows older than ninety days, at most once every ten minutes
 // per process. Best-effort: a failure is logged and never reaches the request.
 func (s *Store) MaybePurge(ctx context.Context) {
 	now := s.clock.Now()
