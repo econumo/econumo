@@ -446,7 +446,9 @@ navigation (single-pane vs sidebar).
       for several.
 - [ ] Export transactions to CSV and import that file, with the UI in English
       and in another language: every column maps by itself, the tags column
-      included, and the imported rows keep their budget tag and reporting tags.
+      included, and the imported rows keep their budget tag and reporting tags,
+      also on a transaction with more than 10 reporting tags (the limit is 50,
+      as when entering a transaction).
 - [ ] Import with a broken row (bad date/amount) → partial result, failed rows
       detailed, good rows imported.
 - [ ] Category type guard: a category only goes on a transaction of its own
