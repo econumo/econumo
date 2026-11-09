@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { BudgetTransactionsParams } from '@/api/budget'
 import type { AccountDto } from '@/api/dto/account'
 import type { BudgetDto, BudgetPlanDto, BudgetTransactionDto } from '@/api/dto/budget'
 import type { CreateTransactionDto, TransactionDto } from '@/api/dto/transaction'
@@ -309,5 +310,161 @@ describe('overlayBudgetTransactions', () => {
     expect(out.tag).toEqual({ id: 't9', name: '' })
     const [none] = overlayBudgetTransactions([row], [edit({ categoryId: 'c2' })])
     expect(none.category).toEqual({ id: 'c2', name: '', icon: '' })
+  })
+
+  describe('a waiting transfer', () => {
+    const transfer = (direction: 'in' | 'out') => ({
+      id: 'x1', amount: '10', direction, type: 'transfer', description: '', spentAt: '2026-11-08 09:00:00', category: null, payee: null, tag: null,
+    }) as unknown as BudgetTransactionDto
+    const edited = op({ kind: 'tx-update', txId: 'x1', payload: pay('x1', { type: 'transfer', amount: '20', amountRecipient: '18', accountRecipientId: 'a2' }) })
+
+    it('shows the recipient amount on the incoming side and the amount on the outgoing side', () => {
+      expect(overlayBudgetTransactions([transfer('in')], [edited])[0].amount).toBe('18')
+      expect(overlayBudgetTransactions([transfer('out')], [edited])[0].amount).toBe('20')
+    })
+
+    it('a row without a type is judged by the edit', () => {
+      const bare = { ...transfer('in'), type: undefined } as BudgetTransactionDto
+      expect(overlayBudgetTransactions([bare], [edited])[0].amount).toBe('18')
+    })
+
+    it('money arriving as income is the plain amount', () => {
+      const income = { ...transfer('in'), type: 'income' } as BudgetTransactionDto
+      const out = overlayBudgetTransactions([income], [op({ kind: 'tx-update', txId: 'x1', payload: pay('x1', { type: 'income', amount: '20' }) })])
+      expect(out[0].amount).toBe('20')
+    })
+  })
+
+  describe('a row an edit takes out of the listing', () => {
+    const period = { budgetId: 'b1', periodStart: '2026-11-01' }
+    const meta = { periodStartDay: 1, endedAt: '' }
+    const tagged = { ...row, category: { id: 'c1', name: 'C', icon: '' }, tag: { id: 't1', name: 'T' } } as BudgetTransactionDto
+    const list = (r: BudgetTransactionDto, over: Partial<CreateTransactionDto>, params: BudgetTransactionsParams, m: typeof meta = meta) =>
+      overlayBudgetTransactions([r], [edit({ date: '2026-11-08 00:00:00', categoryId: 'c1', tagId: null, ...over })], {}, { params: [params], meta: m })
+    const expense = { type: 'expense' as const }
+
+    it('drops a date moved outside the period, and keeps one still inside', () => {
+      const params = { ...period, categoryId: 'c1' }
+      expect(list(row, { ...expense, date: '2026-12-01 00:00:00' }, params)).toHaveLength(0)
+      expect(list(row, { ...expense, date: '2026-10-31 00:00:00' }, params)).toHaveLength(0)
+      expect(list(row, { ...expense, date: '2026-11-30 00:00:00' }, params)).toHaveLength(1)
+    })
+
+    it('reads the period on the budget\'s own start day', () => {
+      const params = { ...period, categoryId: 'c1' }
+      const day5 = { periodStartDay: 5, endedAt: '' }
+      expect(list(row, { ...expense, date: '2026-12-04 00:00:00' }, params, day5)).toHaveLength(1)
+      expect(list(row, { ...expense, date: '2026-12-05 00:00:00' }, params, day5)).toHaveLength(0)
+      expect(list(row, { ...expense, date: '2026-11-04 00:00:00' }, params, day5)).toHaveLength(0)
+    })
+
+    it('keeps the row when the period cannot be told', () => {
+      const params = { ...period, categoryId: 'c1' }
+      expect(overlayBudgetTransactions([row], [edit({ ...expense, date: '2027-03-01 00:00:00', categoryId: 'c1' })], {}, { params: [params] })).toHaveLength(1)
+      // a period after the budget's end is served as its last one
+      const ended = { periodStartDay: 1, endedAt: '2026-09-01 00:00:00' }
+      expect(list(row, { ...expense, date: '2026-09-10 00:00:00' }, params, ended)).toHaveLength(1)
+    })
+
+    it('categoryId alone lists that category\'s untagged expenses', () => {
+      const params = { ...period, categoryId: 'c1' }
+      expect(list(row, { ...expense, categoryId: 'c2' }, params)).toHaveLength(0)
+      expect(list(row, { ...expense, categoryId: null }, params)).toHaveLength(0)
+      expect(list(row, { ...expense, tagId: 't1' }, params)).toHaveLength(0)
+      expect(list(row, { type: 'income' }, params)).toHaveLength(0)
+      expect(list(row, expense, params)).toHaveLength(1)
+    })
+
+    it('tagId lists that tag, narrowed by a category or by none', () => {
+      expect(list(row, { ...expense, tagId: 't2' }, { ...period, tagId: 't1' })).toHaveLength(0)
+      expect(list(row, { ...expense, tagId: 't1' }, { ...period, tagId: 't1' })).toHaveLength(1)
+      expect(list(row, { ...expense, tagId: 't1', categoryId: 'c2' }, { ...period, tagId: 't1', categoryId: 'c1' })).toHaveLength(0)
+      expect(list(row, { ...expense, tagId: 't1', categoryId: 'c2' }, { ...period, tagId: 't1', uncategorized: true })).toHaveLength(0)
+      expect(list(row, { ...expense, tagId: 't1', categoryId: null }, { ...period, tagId: 't1', uncategorized: true })).toHaveLength(1)
+    })
+
+    it('uncategorized alone lists rows with neither category nor tag', () => {
+      const params = { ...period, uncategorized: true }
+      expect(list(row, { ...expense, categoryId: 'c1' }, params)).toHaveLength(0)
+      expect(list(row, { ...expense, categoryId: null, tagId: 't1' }, params)).toHaveLength(0)
+      expect(list(row, { ...expense, categoryId: null }, params)).toHaveLength(1)
+    })
+
+    it('labelId follows the row\'s labels, narrowed the way the server narrows it', () => {
+      expect(list(row, { ...expense, labelIds: [] }, { ...period, labelId: 'l1' })).toHaveLength(0)
+      expect(list(row, { ...expense, labelIds: ['l1'] }, { ...period, labelId: 'l1' })).toHaveLength(1)
+      expect(list(row, { ...expense, labelIds: ['l1'], categoryId: 'c2' }, { ...period, labelId: 'l1', categoryId: 'c1' })).toHaveLength(0)
+      expect(list(row, { ...expense, labelIds: ['l1'], categoryId: 'c2' }, { ...period, labelId: 'l1', uncategorized: true })).toHaveLength(0)
+    })
+
+    it('envelopeId keeps a row whose category it cannot look up, and drops what no envelope can hold', () => {
+      const params = { ...period, envelopeId: 'e1' }
+      expect(list(row, { ...expense, categoryId: 'c2' }, params)).toHaveLength(1)
+      expect(list(row, { ...expense, categoryId: null }, params)).toHaveLength(0)
+      expect(list(row, { ...expense, tagId: 't1' }, params)).toHaveLength(0)
+    })
+
+    it('income selectors read the type and, when named, the category', () => {
+      expect(list(row, expense, { ...period, income: true, categoryId: 'c1' })).toHaveLength(0)
+      expect(list(row, { type: 'income', categoryId: 'c2' }, { ...period, income: true, categoryId: 'c1' })).toHaveLength(0)
+      expect(list(row, { type: 'income', categoryId: 'c1', tagId: 't1' }, { ...period, income: true, categoryId: 'c1' })).toHaveLength(1)
+      expect(list(row, { type: 'income', categoryId: 'c2' }, { ...period, income: true, envelopeId: 'e1' })).toHaveLength(1)
+      expect(list(row, expense, { ...period, income: true, uncategorized: true })).toHaveLength(0)
+      expect(list(row, { type: 'income', categoryId: 'c2' }, { ...period, income: true, uncategorized: true })).toHaveLength(1)
+    })
+
+    it('transfers lists transfers, its boundary being the server\'s to judge', () => {
+      expect(list(row, expense, { ...period, transfers: true })).toHaveLength(0)
+      expect(list(row, { type: 'transfer', accountRecipientId: 'a2' }, { ...period, transfers: true })).toHaveLength(1)
+    })
+
+    it('accountId lists either side of the account', () => {
+      const params = { ...period, accountId: 'acc' }
+      expect(list(row, { ...expense, accountId: 'other' }, params)).toHaveLength(0)
+      expect(list(row, { ...expense, accountId: 'acc' }, params)).toHaveLength(1)
+      expect(list(row, { type: 'transfer', accountId: 'other', accountRecipientId: 'acc' }, params)).toHaveLength(1)
+      expect(list(row, { ...expense, accountId: 'other', accountRecipientId: 'acc' }, params)).toHaveLength(0)
+    })
+
+    it('a row is listed while any of a merged list\'s queries still holds it', () => {
+      const months = [{ ...period, accountId: 'acc' }, { budgetId: 'b1', periodStart: '2026-12-01', accountId: 'acc' }]
+      const out = overlayBudgetTransactions([row], [edit({ ...expense, accountId: 'acc', date: '2026-12-08 00:00:00' })], {}, { params: months, meta })
+      expect(out).toHaveLength(1)
+    })
+
+    it('judges the row by the last change waiting on it', () => {
+      const params = { ...period, categoryId: 'c1' }
+      const moved = op({ kind: 'tx-update', txId: 'x1', payload: pay('x1', { ...expense, categoryId: 'c2', date: '2026-11-08 00:00:00' }) })
+      const back = op({ kind: 'tx-update', txId: 'x1', payload: pay('x1', { ...expense, categoryId: 'c1', tagId: null, date: '2026-11-08 00:00:00' }) })
+      expect(overlayBudgetTransactions([row], [moved, back], {}, { params: [params], meta })).toHaveLength(1)
+    })
+
+    it('leaves rows no change touches', () => {
+      const params = { ...period, categoryId: 'c1' }
+      expect(overlayBudgetTransactions(rows, [], {}, { params: [params], meta })).toBe(rows)
+      expect(overlayBudgetTransactions([tagged], [op({ kind: 'tx-delete', txId: 'other', previous: null })], {}, { params: [params], meta })).toEqual([tagged])
+    })
+  })
+
+  describe('a date edit inside the period', () => {
+    const on = (id: string, spentAt: string) => ({ ...row, id, spentAt }) as BudgetTransactionDto
+    const list = [on('a', '2026-11-20 10:00:00'), on('b', '2026-11-15 10:00:00'), on('c', '2026-11-15 09:00:00'), on('d', '2026-11-03 10:00:00')]
+    const editOf = (txId: string, date: string) => op({ kind: 'tx-update', txId, payload: pay(txId, { date, categoryId: 'c1' }) })
+
+    it('puts the row under its new day, newest first', () => {
+      const out = overlayBudgetTransactions(list, [editOf('d', '2026-11-17 00:00:00')])
+      expect(out.map((r) => r.id)).toEqual(['a', 'd', 'b', 'c'])
+    })
+
+    it('keeps the order within a day, not the time of day', () => {
+      const out = overlayBudgetTransactions(list, [editOf('c', '2026-11-15 00:00:00')])
+      expect(out.map((r) => r.id)).toEqual(['a', 'b', 'c', 'd'])
+    })
+
+    it('leaves a list in another order alone when no date moved', () => {
+      const ascending = [on('p', '2026-11-01 00:00:00'), on('q', '2026-11-02 00:00:00')]
+      const out = overlayBudgetTransactions(ascending, [op({ kind: 'tx-update', txId: 'p', payload: pay('p', { date: '2026-11-01 00:00:00', categoryId: 'c1' }) })])
+      expect(out.map((r) => r.id)).toEqual(['p', 'q'])
+    })
   })
 })

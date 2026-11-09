@@ -5,9 +5,6 @@ import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
 import type { BudgetCommentDto, BudgetDto, BudgetTransactionListDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
-import type { CategoryDto } from '@/api/dto/category'
-import type { PayeeDto } from '@/api/dto/payee'
-import type { TagDto } from '@/api/dto/tag'
 import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
@@ -18,6 +15,7 @@ import { applyMove } from '@/lib/ordering'
 import type { ElementMoveItem } from './elementMove'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
+import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { followsCurrentPeriod, useBudgetPeriodStore } from './budgetStore'
 import { addMonths, monthDiff } from './planMath'
 import { usePendingOps } from '@/features/pendingWrites/hooks'
@@ -505,17 +503,17 @@ export function useUpdateBudgetDetail({ handlesOwnErrors = false }: OwnErrorHand
 }
 
 export function useBudgetTransactions(params: budgetApi.BudgetTransactionsParams | null) {
-  const queryClient = useQueryClient()
   const ops = usePendingOps()
+  const { data: categories } = useCategories()
+  const { data: payees } = usePayees()
+  const { data: tags } = useTags()
+  const { data: budgets } = useBudgets()
+  const meta = budgets?.find((b) => b.id === params?.budgetId)
   const select = useCallback((list: BudgetTransactionListDto) => {
-    // read, not observed: subscribing here would need each list's queryFn
-    const lookups = {
-      categories: queryClient.getQueryData<CategoryDto[]>(queryKeys.categories),
-      payees: queryClient.getQueryData<PayeeDto[]>(queryKeys.payees),
-      tags: queryClient.getQueryData<TagDto[]>(queryKeys.tags),
-    }
-    return { ...list, items: overlayBudgetTransactions(list.items, ops, lookups), upcoming: overlayBudgetTransactions(list.upcoming, ops, lookups) }
-  }, [ops, queryClient])
+    const lookups = { categories, payees, tags }
+    const listing = params ? { params: [params], meta } : undefined
+    return { ...list, items: overlayBudgetTransactions(list.items, ops, lookups, listing), upcoming: overlayBudgetTransactions(list.upcoming, ops, lookups, listing) }
+  }, [ops, categories, payees, tags, params, meta])
   return useQuery({
     queryKey: [...queryKeys.budgetTransactions, params],
     queryFn: () => budgetApi.getBudgetTransactions(params as budgetApi.BudgetTransactionsParams),

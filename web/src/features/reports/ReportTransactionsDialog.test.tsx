@@ -134,6 +134,37 @@ it('a transfer between two listed savings accounts is listed once', async () => 
   expect(await screen.findAllByText('between savings')).toHaveLength(1)
 })
 
+describe('a savings drill with an edit moving a row', () => {
+  const editTo = (date: string) => mutate(() => [{
+    key: 'k1', seq: 1, attempted: false, status: 'waiting', retries: 0, notBefore: 0, kind: 'tx-update', txId: 'w-edit', payload: {
+      id: 'w-edit', type: 'expense', accountId: 'b-sav', accountRecipientId: null, amount: '12', amountRecipient: null,
+      categoryId: null, description: 'after the edit', payeeId: null, tagId: null, labelIds: [], date,
+    },
+  }] as PendingOp[])
+  const serve = () => server.use(
+    ...coreHandlers({ accounts, transactions }),
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => HttpResponse.json({ success: true, message: '', data: { items: new URL(request.url).searchParams.get('periodStart') === '2026-07-01' ? [
+      { id: 'w-keep', author: partner, currencyId: 'cur-usd', amount: '1', description: 'kept', category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-06 12:00:00' },
+      { id: 'w-edit', author: partner, currencyId: 'cur-usd', amount: '3', description: 'before the edit', category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-04 12:00:00' },
+    ] : [] } })),
+  )
+
+  it('stays listed when the date moves to another month of the range', async () => {
+    await editTo('2026-08-05 10:00:00')
+    serve()
+    renderDialog({ budgetId: 'b1', row: { id: 'b-sav', kind: 'savings', name: 'Bob savings' }, from: '2026-07-01', to: '2026-08-01' })
+    expect(await screen.findByText('after the edit')).toBeInTheDocument()
+  })
+
+  it('leaves the list when the date moves outside the range', async () => {
+    await editTo('2026-08-05 10:00:00')
+    serve()
+    renderDialog({ budgetId: 'b1', row: { id: 'b-sav', kind: 'savings', name: 'Bob savings' }, from: '2026-07-01', to: '2026-07-01' })
+    expect(await screen.findByText('kept')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('after the edit')).toBeNull())
+  })
+})
+
 it('a savings drill leaves out a transaction whose delete is waiting and shows a waiting edit', async () => {
   const base = { key: 'k', attempted: false, status: 'waiting', retries: 0, notBefore: 0 }
   await mutate(() => [

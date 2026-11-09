@@ -11,6 +11,7 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useAccounts } from '@/features/accounts/queries'
 import { budgetTransactionView } from '@/features/budgets/budgetTransactionView'
 import { addMonths, monthDiff } from '@/features/budgets/planMath'
+import { useBudgets } from '@/features/budgets/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -45,13 +46,13 @@ function monthList(from: string, to: string): string[] {
 
 function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: string) {
   const months = monthList(from, to)
+  const queries: budgetApi.BudgetTransactionsParams[] = (budgetId ? accountIds : []).flatMap((accountId) =>
+    months.map((periodStart) => ({ budgetId: budgetId!, periodStart, accountId })),
+  )
   const results = useQueries({
-    queries: (budgetId ? accountIds : []).flatMap((accountId) => months.map((periodStart) => {
-      const params: budgetApi.BudgetTransactionsParams = { budgetId: budgetId!, periodStart, accountId }
-      return {
-        queryKey: [...queryKeys.budgetTransactions, params],
-        queryFn: () => budgetApi.getBudgetTransactions(params),
-      }
+    queries: queries.map((params) => ({
+      queryKey: [...queryKeys.budgetTransactions, params],
+      queryFn: () => budgetApi.getBudgetTransactions(params),
     })),
   })
   const { data: transactions } = useTransactions()
@@ -63,7 +64,9 @@ function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: 
   const ops = usePendingOps()
   // a transfer between two listed accounts comes back once per account
   const fetched = [...new Map(results.flatMap((r) => r.data?.items ?? []).map((w) => [w.id, w])).values()]
-  const wire = overlayBudgetTransactions(fetched, ops, { categories, payees, tags })
+  const { data: budgets } = useBudgets()
+  const meta = budgets?.find((b) => b.id === budgetId)
+  const wire = overlayBudgetTransactions(fetched, ops, { categories, payees, tags }, { params: queries, meta })
   const rows = wire.map((w) => {
     const view = budgetTransactionView(w, { transactions, accounts, categories, payees, tags })
     const currency = currencies?.find((c) => c.id === w.currencyId)

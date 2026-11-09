@@ -1,11 +1,12 @@
 import type { AccountDto } from '@/api/dto/account'
-import type { BudgetDto, BudgetPlanDto, BudgetTransactionDto, PlanCellDto } from '@/api/dto/budget'
+import type { BudgetTransactionsParams } from '@/api/budget'
+import type { BudgetDto, BudgetMetaDto, BudgetPlanDto, BudgetTransactionDto, PlanCellDto } from '@/api/dto/budget'
 import type { CreateTransactionDto, TransactionDto } from '@/api/dto/transaction'
 import type { UserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { add, cmp, sub } from '@/lib/decimal'
 import { parseDateTime } from '@/lib/datetime'
-import { currentPeriod, periodStartDayOf } from '../budgets/period'
+import { currentPeriod, periodStartDayOf, periodWindow } from '../budgets/period'
 import type { PendingOp } from './types'
 
 /** Sorts above every stored key (base-62 keys are all below '~'), so a waiting row tops its day. */
@@ -233,29 +234,95 @@ function renamed<T extends Named>(id: Id | null, current: T | null, list: T[] | 
   return current?.id === id ? current : (list?.find((item) => item.id === id) ?? blank(id))
 }
 
-/** Drill-down rows with waiting edits and deletes; a waiting create is absent (it has no row yet). */
-export function overlayBudgetTransactions<T extends BudgetTransactionDto>(rows: T[], ops: PendingOp[], lookups: ClassificationLookups = {}): T[] {
+export interface BudgetListing {
+  /** Every query the list was read through; a merged list holds a row while any of them would. */
+  params: BudgetTransactionsParams[]
+  /** The budget of the list; without it the period is not judged. */
+  meta?: Pick<BudgetMetaDto, 'periodStartDay' | 'endedAt'>
+}
+
+// A period past the budget's end is served as its last one, so its key says nothing.
+function inPeriod(date: string, params: BudgetTransactionsParams, meta: BudgetListing['meta']): boolean {
+  if (!meta || (meta.endedAt && params.periodStart.slice(0, 7) > meta.endedAt.slice(0, 7))) {
+    return true
+  }
+  const { start, end } = periodWindow(params.periodStart, periodStartDayOf(meta))
+  return day(date) >= start && day(date) < end
+}
+
+// The server's selectors (internal/budget/txlist.go), in its order. What the client
+// cannot judge passes: which accounts are the budget's everyday ones or cross its
+// boundary, which categories an envelope holds or have an income row of their own.
+function matchesSelector(p: CreateTransactionDto, params: BudgetTransactionsParams): boolean {
+  const { accountId, transfers, income, categoryId, tagId, envelopeId, uncategorized, labelId } = params
+  if (accountId) {
+    return p.accountId === accountId || (p.type === 'transfer' && p.accountRecipientId === accountId)
+  }
+  if (transfers) {
+    return p.type === 'transfer'
+  }
+  if (income) {
+    if (p.type !== 'income') {
+      return false
+    }
+    return categoryId ? p.categoryId === categoryId : envelopeId ? p.categoryId !== null : true
+  }
+  if (p.type !== 'expense') {
+    return false
+  }
+  if (labelId || tagId) {
+    if (labelId ? !p.labelIds.includes(labelId) : p.tagId !== tagId) {
+      return false
+    }
+    return categoryId ? p.categoryId === categoryId : uncategorized ? p.categoryId === null : true
+  }
+  if (categoryId) {
+    return p.categoryId === categoryId && p.tagId === null
+  }
+  if (uncategorized) {
+    return p.categoryId === null && p.tagId === null
+  }
+  return envelopeId ? p.categoryId !== null && p.tagId === null : true
+}
+
+/** Drill-down rows with waiting edits and deletes. A waiting create is absent (it has no row yet), and
+ *  so is a row moved into this list by an edit; one an edit moved out of `listing` leaves it. */
+export function overlayBudgetTransactions<T extends BudgetTransactionDto>(rows: T[], ops: PendingOp[], lookups: ClassificationLookups = {}, listing?: BudgetListing): T[] {
   let out = rows
+  const edited = new Map<Id, CreateTransactionDto>()
+  let dateMoved = false
   for (const op of bySeq(ops)) {
     if (op.kind === 'tx-update') {
       const p = op.payload
-      out = out.map((r) =>
-        r.id !== op.txId
-          ? r
-          : {
-              ...r,
-              ...(r.type === 'transfer' ? {} : { amount: p.amount }),
-              description: p.description,
-              spentAt: `${day(p.date)}${r.spentAt.slice(10)}`,
-              labelIds: [...p.labelIds],
-              category: renamed(p.categoryId, r.category, lookups.categories, (id) => ({ id, name: '', icon: '' })),
-              payee: renamed(p.payeeId, r.payee, lookups.payees, (id) => ({ id, name: '' })),
-              tag: renamed(p.tagId, r.tag, lookups.tags, (id) => ({ id, name: '' })),
-            },
-      )
+      out = out.map((r) => {
+        if (r.id !== op.txId) {
+          return r
+        }
+        edited.set(r.id, p)
+        dateMoved ||= day(r.spentAt) !== day(p.date)
+        return {
+          ...r,
+          // a row carries the amount of its own side
+          amount: p.type === 'transfer' && r.direction === 'in' ? (p.amountRecipient ?? p.amount) : p.amount,
+          description: p.description,
+          spentAt: `${day(p.date)}${r.spentAt.slice(10)}`,
+          labelIds: [...p.labelIds],
+          category: renamed(p.categoryId, r.category, lookups.categories, (id) => ({ id, name: '', icon: '' })),
+          payee: renamed(p.payeeId, r.payee, lookups.payees, (id) => ({ id, name: '' })),
+          tag: renamed(p.tagId, r.tag, lookups.tags, (id) => ({ id, name: '' })),
+        }
+      })
     } else if (op.kind === 'tx-delete') {
       out = out.filter((r) => r.id !== op.txId)
     }
   }
-  return out
+  // Judged on the last change only: an edit behind a sent one may undo its move.
+  if (listing && edited.size > 0) {
+    out = out.filter((r) => {
+      const p = edited.get(r.id)
+      return !p || listing.params.some((params) => matchesSelector(p, params) && inPeriod(p.date, params, listing.meta))
+    })
+  }
+  // The server orders by day (its sort keys within one), and the list heads each run of a day once.
+  return dateMoved ? [...out].sort((a, b) => day(b.spentAt).localeCompare(day(a.spentAt))) : out
 }
