@@ -44,6 +44,8 @@ interface CategoriesStepProps {
   createdKeys?: ReadonlySet<string>
   // the order last submitted after a reorder: existing category ids and row keys
   initialOrder?: string[]
+  // server category id by row key, so a created row keeps its place in the order
+  createdIds?: Record<string, Id>
   // order is passed only once the user has reordered, so an untouched list never re-sorts the server's
   onContinue: (rows: CategoryRow[], order?: string[]) => void
   onSkip: () => void
@@ -57,7 +59,7 @@ export const rowTile = 'grid size-8 shrink-0 place-items-center rounded-lg bg-pr
 export const rowInput =
   'min-w-0 flex-1 rounded-md bg-transparent px-1 py-1 outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:ring-2 aria-invalid:ring-destructive/40'
 
-export function CategoriesStep({ existing, archived = [], initialRows, createdKeys, initialOrder, onContinue, onSkip, pending, error }: CategoriesStepProps) {
+export function CategoriesStep({ existing, archived = [], initialRows, createdKeys, initialOrder, createdIds, onContinue, onSkip, pending, error }: CategoriesStepProps) {
   const { t } = useTranslation()
   const isCompact = useIsCompact()
   const taken = new Set(existing.map((c) => nameKey(c.type, c.name)))
@@ -84,7 +86,7 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
   const touch = (key: string) => setNameTouched((prev) => new Set(prev).add(key))
 
   const shown = rows.filter((r) => !createdKeys?.has(r.key))
-  const rank = new Map(order.map((id, i) => [id, i]))
+  const rank = new Map(order.map((id, i) => [createdIds?.[id] ?? id, i]))
   const byRank = (a: ListItem, b: ListItem) => (rank.get(a.id) ?? order.length) - (rank.get(b.id) ?? order.length)
   const itemsOf = (type: CategoryType): ListItem[] =>
     [
@@ -289,7 +291,8 @@ export function CategoriesStepBody({ onDone, onSkip }: StepBodyProps) {
       archived={own.filter((c) => c.isArchived === 1)}
       initialRows={day0.draft?.categoryRows}
       createdKeys={new Set(Object.keys(day0.draft?.createdCategories ?? {}))}
-      initialOrder={day0.draft?.categoryOrder.map((k) => day0.draft?.createdCategories[k] ?? k)}
+      initialOrder={day0.draft?.categoryOrder}
+      createdIds={day0.draft?.createdCategories}
       pending={day0.pending || skipping}
       error={
         day0.error != null ? (

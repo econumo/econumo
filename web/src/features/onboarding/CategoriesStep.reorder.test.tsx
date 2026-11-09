@@ -135,3 +135,28 @@ it('maps a created row of the stored order to its category, so a revisit keeps t
   await waitFor(() => expect(names('expense')).toEqual(['Fun', 'Food']))
   localStorage.clear()
 })
+
+it('keeps the order once created rows come back as existing categories, and a retry submits it', async () => {
+  const user = userEvent.setup()
+  const onContinue = vi.fn()
+  const initialRows: CategoryRow[] = [
+    { key: 'k1', name: 'Pets', type: 'expense', icon: 'pets', checked: true },
+    { key: 'k2', name: 'Kids', type: 'expense', icon: 'child_care', checked: true },
+  ]
+  const props = { onContinue, onSkip: vi.fn(), pending: false, initialRows }
+  const { rerender } = render(<CategoriesStep existing={[food]} {...props} />)
+  await moveUp(user, 'Kids')
+  await moveUp(user, 'Kids')
+  expect(names('expense')).toEqual(['Kids', 'Groceries', 'Pets'])
+  rerender(
+    <CategoriesStep
+      {...props}
+      existing={[food, { id: 'new-1', name: 'Pets', type: 'expense', icon: 'pets' }, { id: 'new-2', name: 'Kids', type: 'expense', icon: 'child_care' }]}
+      createdKeys={new Set(['k1', 'k2'])}
+      createdIds={{ k1: 'new-1', k2: 'new-2' }}
+    />,
+  )
+  expect(names('expense')).toEqual(['Kids', 'Groceries', 'Pets'])
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][1]).toEqual(['new-2', 'cat-1', 'new-1'])
+})
