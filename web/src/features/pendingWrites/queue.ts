@@ -77,6 +77,10 @@ export function markAttempted(ops: PendingOp[], key: string): PendingOp[] {
   return ops.map((op) => (op.key === key ? { ...op, attempted: true } : op))
 }
 
+export function markLanded(ops: PendingOp[], key: string, realId: Id | undefined): PendingOp[] {
+  return ops.map((op) => (op.key === key ? { ...op, landed: realId ? { realId } : {} } : op))
+}
+
 export function settleDone(ops: PendingOp[], key: string): PendingOp[] {
   return ops.filter((op) => op.key !== key)
 }

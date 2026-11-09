@@ -16,7 +16,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { getSessionUserId, hasToken } from '@/lib/storage'
 import { classifyWriteError } from './classify'
 import { applyLimitToBudget, applyLimitToPlan } from './overlay'
-import { markAttempted, nextSendable, resolveTempId, settleDone, settleRefused, settleUnresolved } from './queue'
+import { markAttempted, markLanded, nextSendable, resolveTempId, settleDone, settleRefused, settleUnresolved } from './queue'
 import { getOps, isQueueLoaded, loadPendingWrites, mutate, queueOwner, subscribeAdopted, subscribeLeftElsewhere } from './store'
 import { rememberRealId } from './tempIds'
 import type { OpChange, PendingOp } from './types'
@@ -150,15 +150,22 @@ function settleAccepted(queryClient: QueryClient, op: PendingOp, result: unknown
 }
 
 // Accounts first: the transaction sync goes by their revisions, and an accounts
-// fetch it would join may predate the write that landed.
-async function readTransactionsBack(queryClient: QueryClient): Promise<boolean> {
+// fetch it would join may predate the write that landed. Their balances count
+// the change, so they arrive in one step with the mark that stops the overlay
+// counting it too. The transactions take the sync's own path, which alone keeps
+// its revision bookkeeping right, while the mark hides the row beside the temporary one.
+async function readTransactionsBack(queryClient: QueryClient, key: string, realId: Id | undefined): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined
   const timedOut = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error('Reading the replayed change back timed out')), WRITE_TIMEOUT_MS)
   })
   const read = (async () => {
     await queryClient.cancelQueries({ queryKey: queryKeys.accounts, exact: true })
-    await queryClient.fetchQuery({ queryKey: queryKeys.accounts, queryFn: getAccountList, staleTime: 0, retry: false })
+    const accounts = await getAccountList()
+    notifyManager.batch(() => {
+      void mutate((ops) => markLanded(ops, key, realId))
+      queryClient.setQueryData(queryKeys.accounts, accounts)
+    })
     await queryClient.fetchQuery({
       queryKey: queryKeys.transactions,
       queryFn: ({ signal }) => transactionsQueryFn(queryClient, { full: consumeFullReload(), signal }),
@@ -194,7 +201,7 @@ async function settleReplayed(queryClient: QueryClient, op: PendingOp, err: unkn
   if (op.kind === 'limit') {
     applyAcceptedLimit(queryClient, op)
   } else {
-    if (!(await readTransactionsBack(queryClient))) {
+    if (!(await readTransactionsBack(queryClient, op.key, op.kind === 'tx-create' ? replayResourceId(err) : undefined))) {
       holdOff()
       return false
     }

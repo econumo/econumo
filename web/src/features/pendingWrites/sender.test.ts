@@ -1,5 +1,7 @@
+import { createElement, type ReactNode } from 'react'
+import { act, renderHook } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { onlineManager, type QueryClient } from '@tanstack/react-query'
+import { onlineManager, QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
 import type { AccountDto } from '@/api/dto/account'
@@ -12,7 +14,9 @@ import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
 import { delayTransactionCompletion } from '@/test/idbDelay'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { removeToken, setToken } from '@/lib/storage'
-import { overlayBudget, overlayPlan, overlayTransactions } from './overlay'
+import { useAccounts } from '@/features/accounts/queries'
+import { useTransactions } from '@/features/transactions/queries'
+import { overlayAccounts, overlayBudget, overlayPlan, overlayTransactions } from './overlay'
 import { addChange } from './queue'
 import { kickPendingWrites, startPendingWrites } from './sender'
 import { submitChange } from './submit'
@@ -299,6 +303,88 @@ describe('a replay of a transaction change', () => {
     await draining
     expect(seen[1].body).toMatchObject({ id: 'real', amount: '9' })
     expect(getOps()).toEqual([])
+  })
+})
+
+describe('the balance and the list while a replay is read back', () => {
+  const account = (balance: string, transactionsRevision: number) =>
+    ({ id: 'a1', balance, transactionsRevision, position: 0, owner: me, sharedAccess: [] }) as unknown as AccountDto
+  const shownBalance = () => overlayAccounts(client.getQueryData<AccountDto[]>(queryKeys.accounts) ?? [], getOps(), [], new Date())[0].balance
+  const shownIds = () => overlayTransactions(client.getQueryData<TransactionDto[]>(queryKeys.transactions) ?? [], getOps(), me).map((t) => t.id)
+  const serverBalance = () => HttpResponse.json({ success: true, message: '', data: { items: [account('95', 3)] } })
+  const add = () => queue({ kind: 'tx-create', txId: 'temp', payload: payload('temp', { date: '2020-01-01 10:00:00' }) }, 'k1', 1)
+
+  beforeEach(() => {
+    answerWith(() => replay('real'))
+    client.setQueryData(queryKeys.accounts, [account('100', 2)])
+    client.setQueryData(queryKeys.transactions, [])
+    serverRows = [row('real')]
+    readBack = serverBalance
+  })
+
+  it('no render counts the money twice or shows the row twice', async () => {
+    const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client }, children)
+    const renders: { balance?: string; ids?: string[] }[] = []
+    renderHook(() => {
+      renders.push({ balance: useAccounts().data?.[0]?.balance, ids: useTransactions().data?.map((t) => t.id) })
+    }, { wrapper })
+    await act(add)
+    renders.length = 0
+    let openRows = () => {}
+    const rowsHeld = new Promise<void>((resolve) => { openRows = resolve })
+    server.use(http.get('*/api/v1/transaction/get-account-transaction-list', async () => {
+      await rowsHeld
+      return HttpResponse.json({ success: true, message: '', data: { revisions: { a1: 3 }, items: serverRows, authors: [] } })
+    }))
+
+    let draining = Promise.resolve()
+    await act(async () => {
+      draining = kickPendingWrites()
+      await vi.waitFor(() => expect(client.getQueryData<AccountDto[]>(queryKeys.accounts)?.[0].balance).toBe('95'))
+    })
+    expect(renders.at(-1)).toEqual({ balance: '95', ids: ['temp'] })
+
+    await act(async () => {
+      openRows()
+      await draining
+    })
+    expect(getOps()).toEqual([])
+    expect(renders.at(-1)).toEqual({ balance: '95', ids: ['real'] })
+    expect(new Set(renders.map((r) => r.balance))).toEqual(new Set(['95']))
+    expect(renders.filter((r) => r.ids?.length !== 1)).toEqual([])
+  })
+
+  it('a failed accounts read leaves the display as it was', async () => {
+    readBack = () => HttpResponse.json(envelope('Boom'), { status: 500 })
+    await add()
+    await kickPendingWrites()
+    expect(shownBalance()).toBe('95')
+    expect(shownIds()).toEqual(['temp'])
+    expect(op('k1')).toMatchObject({ status: 'waiting' })
+  })
+
+  it('a failed transactions read leaves the display as it was, and the next attempt ends it', async () => {
+    server.use(http.get('*/api/v1/transaction/get-account-transaction-list', () => HttpResponse.json(envelope('Boom'), { status: 500 }), { once: true }))
+    await add()
+    await kickPendingWrites()
+    expect(shownBalance()).toBe('95')
+    expect(shownIds()).toEqual(['temp'])
+    expect(op('k1')).toMatchObject({ status: 'waiting' })
+
+    await kickPendingWrites()
+    expect(getOps()).toEqual([])
+    expect(shownBalance()).toBe('95')
+    expect(shownIds()).toEqual(['real'])
+  })
+
+  it('does not store that the change was read back: a reload starts from what is on disk', async () => {
+    server.use(http.get('*/api/v1/transaction/get-account-transaction-list', () => HttpResponse.json(envelope('Boom'), { status: 500 }), { once: true }))
+    await add()
+    await kickPendingWrites()
+    expect(op('k1')?.landed).toEqual({ realId: 'real' })
+    const stored = await dbRequest<PendingOp>(STORE_PENDING_WRITES, 'readonly', (s) => s.get('k1') as IDBRequest<PendingOp>)
+    expect(stored.landed).toBeUndefined()
+    expect(stored.attempted).toBe(true)
   })
 })
 

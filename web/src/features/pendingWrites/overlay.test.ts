@@ -93,6 +93,36 @@ describe('overlayTransactions', () => {
   })
 })
 
+describe('an add the server was found to hold, read back', () => {
+  const landed = op({ kind: 'tx-create', txId: 'temp', payload: pay('temp') }, { landed: { realId: 'real' } })
+
+  it('shows one row, under the temporary id later changes still name', () => {
+    expect(overlayTransactions([row('real')], [landed], me).map((t) => t.id)).toEqual(['temp'])
+  })
+
+  it('does not count its money again', () => {
+    expect(overlayAccounts([account('a1', '90')], [landed], [], new Date())[0].balance).toBe('90')
+  })
+
+  it('still lets a change behind it move the balance from its values', () => {
+    const edit = op({ kind: 'tx-update', txId: 'temp', payload: pay('temp', { amount: '4' }) }, { key: 'k2', seq: 2 })
+    const delta = Number(pay('temp').amount) - 4
+    expect(Number(overlayAccounts([account('a1', '90')], [landed, edit], [], new Date())[0].balance)).toBe(90 + delta)
+  })
+})
+
+describe('an edit or delete the server was found to hold, read back', () => {
+  it('leaves the balance alone: it already counts the edit', () => {
+    const edit = op({ kind: 'tx-update', txId: 't1', payload: pay('t1', { amount: '4' }) }, { landed: {} })
+    expect(overlayAccounts([account('a1', '90')], [edit], [row('t1')], new Date())[0].balance).toBe('90')
+  })
+
+  it('leaves the balance alone: it already counts the delete', () => {
+    const del = op({ kind: 'tx-delete', txId: 't1', previous: row('t1') }, { landed: {} })
+    expect(overlayAccounts([account('a1', '90')], [del], [row('t1')], new Date())[0].balance).toBe('90')
+  })
+})
+
 const NOW = new Date(2026, 10, 8, 12, 0, 0)
 const FUTURE = '2026-11-09 08:00:00'
 

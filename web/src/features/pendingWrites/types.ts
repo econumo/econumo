@@ -10,6 +10,9 @@ type OpBase = {
   error?: string
   retries: number
   notBefore: number
+  /** Memory only. The server was found to hold this change and the accounts cache was read back
+   *  since, so the balances already count it. `realId` names the row a replayed add became. */
+  landed?: { realId?: Id }
 }
 
 export type OpChange =

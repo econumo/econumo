@@ -86,7 +86,8 @@ async function refreshFromDisk(): Promise<void> {
     rows = await guarded<Row[] | null>(null, readRows)
   } while (rows && seen !== generation && owner === wanted)
   if (rows && owner === wanted) {
-    const next = rows.filter((r) => r.userId === wanted).map(toOp)
+    const landed = new Map(ops.filter((op) => op.landed).map((op) => [op.key, op.landed]))
+    const next = rows.filter((r) => r.userId === wanted).map(toOp).map((op) => (landed.has(op.key) ? { ...op, landed: landed.get(op.key) } : op))
     const kept = new Set(next.map((op) => op.key))
     const left = ops.some((op) => !kept.has(op.key))
     ops = next
@@ -122,7 +123,8 @@ function persist(before: PendingOp[], after: PendingOp[]): Promise<void> {
   }
   const write = guarded(undefined, () => dbTransaction([STORE_PENDING_WRITES], 'readwrite', (t) => {
     const store = t.objectStore(STORE_PENDING_WRITES)
-    for (const op of changed) {
+    // landed describes this page's caches, which a reload may not bring back
+    for (const { landed: _landed, ...op } of changed) {
       store.put({ ...op, userId })
     }
     for (const op of removed) {

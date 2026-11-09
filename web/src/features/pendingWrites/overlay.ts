@@ -44,7 +44,8 @@ export function overlayTransactions(rows: TransactionDto[], ops: PendingOp[], me
         sortKey: PENDING_SORT_KEY,
         recipientSortKey: op.payload.type === 'transfer' ? PENDING_SORT_KEY : null,
       }
-      out = [created, ...out.filter((r) => r.id !== op.txId)]
+      // once read back the server's row stands in for it, under the id later changes still name
+      out = [created, ...out.filter((r) => r.id !== op.txId && r.id !== op.landed?.realId)]
     } else if (op.kind === 'tx-update') {
       out = out.map((r) => (r.id === op.txId ? applyPayload(r, op.payload) : r))
     } else if (op.kind === 'tx-delete') {
@@ -79,8 +80,9 @@ export function overlayAccounts(accounts: AccountDto[], ops: PendingOp[], server
   tomorrow.setHours(0, 0, 0, 0)
   tomorrow.setDate(tomorrow.getDate() + 1)
   const deltas = new Map<Id, string>()
-  const addEffect = (tx: Effect, sign: 1 | -1) => {
-    if (parseDateTime(tx.date).getTime() >= tomorrow.getTime()) {
+  const addEffect = (op: PendingOp, tx: Effect, sign: 1 | -1) => {
+    // the raw balance already counts it; the op still tells what the ones behind it start from
+    if (op.landed || parseDateTime(tx.date).getTime() >= tomorrow.getTime()) {
       return
     }
     for (const [id, amount] of effectOf(tx, sign)) {
@@ -97,20 +99,20 @@ export function overlayAccounts(accounts: AccountDto[], ops: PendingOp[], server
   }
   for (const op of bySeq(ops)) {
     if (op.kind === 'tx-create') {
-      addEffect(op.payload, 1)
+      addEffect(op, op.payload, 1)
       current.set(op.txId, op.payload)
     } else if (op.kind === 'tx-update') {
       const prior = stateOf(op.txId)
       // with no known prior state either half alone would double-count or drop money
       if (prior) {
-        addEffect(prior, -1)
-        addEffect(op.payload, 1)
+        addEffect(op, prior, -1)
+        addEffect(op, op.payload, 1)
         current.set(op.txId, op.payload)
       }
     } else if (op.kind === 'tx-delete') {
       const prior = current.has(op.txId) ? stateOf(op.txId) : (stateOf(op.txId) ?? op.previous)
       if (prior) {
-        addEffect(prior, -1)
+        addEffect(op, prior, -1)
       }
       current.set(op.txId, null)
     }
