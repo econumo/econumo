@@ -18,7 +18,7 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
 import { overlayAccounts, overlayBudget, overlayPlan, overlayTransactions } from './overlay'
 import { addChange } from './queue'
-import { kickPendingWrites, startPendingWrites } from './sender'
+import { attemptedWritesResolved, kickPendingWrites, startPendingWrites } from './sender'
 import { submitChange } from './submit'
 import { realIdOf } from './tempIds'
 import { getOps, loadPendingWrites, mutate, resetPendingWritesForTests, subscribe } from './store'
@@ -641,6 +641,86 @@ describe('a change submitted while the stored queue is still loading', () => {
     removeToken()
     newer.mockResolvedValue({ item: row('real'), accounts })
     await expect(submitChange(client, edit('9'), newer)).resolves.toMatchObject({ queued: false })
+  })
+})
+
+describe('holding the boot refresh for changes a previous run may have sent', () => {
+  // The queue as a killed app left it, the page starting over.
+  async function reopen(attempted: boolean) {
+    stop()
+    onlineManager.setOnline(false)
+    await mutate((ops) => addChange(ops, limit('e1'), { key: 'k1', seq: 1 }).map((o) => ({ ...o, attempted })))
+    resetPendingWritesForTests()
+    onlineManager.setOnline(true)
+  }
+  const watch = () => {
+    let resolved = false
+    const done = attemptedWritesResolved().then(() => { resolved = true })
+    return { done, isResolved: () => resolved }
+  }
+
+  it('waits until the attempted change has been resolved', async () => {
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => { release = resolve })
+    answerWith(async () => { await held; return undefined })
+    await reopen(true)
+    stop = startPendingWrites(client)
+    const { done, isResolved } = watch()
+    await vi.waitFor(() => expect(seen).toHaveLength(1))
+    await new Promise((r) => setTimeout(r, 30))
+    expect(isResolved()).toBe(false)
+    release()
+    await done
+    expect(getOps()).toEqual([])
+  })
+
+  it('stops waiting when the attempt cannot finish now', async () => {
+    answerWith(() => HttpResponse.error())
+    await reopen(true)
+    stop = startPendingWrites(client)
+    await attemptedWritesResolved()
+    expect(op('k1')).toMatchObject({ attempted: true, status: 'waiting' })
+  })
+
+  it('is held no longer than the write timeout', async () => {
+    answerWith(() => new Promise<never>(() => {}))
+    await reopen(true)
+    const timers = vi.spyOn(globalThis, 'setTimeout')
+    stop = startPendingWrites(client)
+    const { done, isResolved } = watch()
+    await vi.waitFor(() => expect(seen).toHaveLength(1))
+    expect(isResolved()).toBe(false)
+    const limit10s = timers.mock.calls.find(([, delay]) => delay === 10_000)![0] as () => void
+    limit10s()
+    await done
+    expect(op('k1')).toMatchObject({ attempted: true })
+  })
+
+  it('does not wait for a change that was never sent', async () => {
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => { release = resolve })
+    answerWith(async () => { await held; return undefined })
+    await reopen(false)
+    stop = startPendingWrites(client)
+    await attemptedWritesResolved()
+    release()
+    await vi.waitFor(() => expect(getOps()).toEqual([]))
+  })
+
+  it('does not wait with an empty queue, offline or with no session', async () => {
+    answerWith(() => undefined)
+    await attemptedWritesResolved()
+    expect(seen).toEqual([])
+
+    await reopen(true)
+    onlineManager.setOnline(false)
+    await attemptedWritesResolved()
+    expect(seen).toEqual([])
+
+    onlineManager.setOnline(true)
+    removeToken()
+    await attemptedWritesResolved()
+    expect(seen).toEqual([])
   })
 })
 

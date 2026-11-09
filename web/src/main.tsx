@@ -8,7 +8,7 @@ import { createRouter } from '@/app/routes'
 import { createPersistOptions, refreshRestoredQueries } from '@/lib/queryPersist'
 import { queryClient } from '@/app/queryClient'
 import { bootNativeApp, hideSplash } from '@/lib/appBoot'
-import { startPendingWrites } from '@/features/pendingWrites/sender'
+import { attemptedWritesResolved, startPendingWrites } from '@/features/pendingWrites/sender'
 import { setRouter } from '@/app/routerRef'
 import { registerServiceWorker } from '@/lib/serviceWorker'
 import { listenForInstallPrompt } from '@/features/install/installPrompt'
@@ -25,8 +25,8 @@ void bootNativeApp().then(() => {
         client={queryClient}
         persistOptions={createPersistOptions()}
         onSuccess={() => {
-          refreshRestoredQueries(queryClient)
           startPendingWrites(queryClient)
+          void attemptedWritesResolved().then(() => refreshRestoredQueries(queryClient))
         }}
         onError={() => { startPendingWrites(queryClient) }}
       >

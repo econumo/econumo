@@ -17,7 +17,7 @@ import { getSessionUserId, hasToken } from '@/lib/storage'
 import { classifyWriteError } from './classify'
 import { applyLimitToBudget, applyLimitToPlan } from './overlay'
 import { markAttempted, markLanded, nextSendable, resolveTempId, settleDone, settleRefused, settleUnresolved } from './queue'
-import { getOps, isQueueLoaded, loadPendingWrites, mutate, queueOwner, subscribeAdopted, subscribeLeftElsewhere } from './store'
+import { getOps, isQueueLoaded, loadPendingWrites, mutate, queueOwner, subscribe, subscribeAdopted, subscribeLeftElsewhere } from './store'
 import { rememberRealId } from './tempIds'
 import type { OpChange, PendingOp } from './types'
 
@@ -370,6 +370,42 @@ export function kickPendingWrites(): Promise<void> {
   networkFailures = 0
   blockedUntil = 0
   return run()
+}
+
+const awaitsItsOutcome = (op: PendingOp) => op.attempted && op.status === 'waiting'
+
+/**
+ * The boot refresh goes after this: a change the previous run sent may be on the
+ * server with its answer lost, and a read that brings its row and balance before
+ * the sender has found that out shows the row twice and counts the money twice.
+ * With nothing attempted there is nothing to wait for; never longer than one write.
+ */
+export async function attemptedWritesResolved(): Promise<void> {
+  const user = sessionUser()
+  if (!user || !onlineManager.isOnline()) {
+    return
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let unsubscribeOps = () => {}
+  await Promise.race([
+    new Promise<void>((resolve) => { timer = setTimeout(resolve, WRITE_TIMEOUT_MS) }),
+    (async () => {
+      await loadPendingWrites(user)
+      if (!getOps().some(awaitsItsOutcome)) {
+        return
+      }
+      await new Promise<void>((resolve) => {
+        unsubscribeOps = subscribe(() => {
+          if (!getOps().some(awaitsItsOutcome)) {
+            resolve()
+          }
+        })
+        void kickPendingWrites().then(resolve)
+      })
+    })(),
+  ])
+  clearTimeout(timer)
+  unsubscribeOps()
 }
 
 export function startPendingWrites(queryClient: QueryClient): () => void {
