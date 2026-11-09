@@ -447,6 +447,7 @@
         "newline": "换行",
         "custom_label": "自定义分隔符"
       },
+      "tag_hint": "每笔交易只能有一个预算标签。如需多个，请使用统计标签。",
       "new_labels_count": "本次导入将创建 {count} 个新标签"
     },
     "import_result": {

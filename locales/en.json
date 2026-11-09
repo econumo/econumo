@@ -447,6 +447,7 @@
         "newline": "New line",
         "custom_label": "Custom separator"
       },
+      "tag_hint": "A transaction can have only one budget tag. For several, use Reporting tags.",
       "new_labels_count": "This import will create {count} new tag | This import will create {count} new tags"
     },
     "import_result": {

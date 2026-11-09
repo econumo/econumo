@@ -178,6 +178,15 @@ it('mapping the labels column previews the new-label count and sends the chosen 
   expect(captured.fields().labelsSeparator).toBe('|')
 })
 
+it('maps the tags columns of an Econumo export and says a budget tag is a single tag', async () => {
+  renderDialog()
+  await uploadCsv('transaction_id,account_name,account_currency,category,description,tag,labels,payee,amount,date\n1,Cash,USD,Food,coffee,Trip,a;b,Shop,-5,2026-01-02 10:00:00\n')
+  await screen.findByText(/Map the columns/)
+  expect(screen.getByRole('combobox', { name: 'Budget tag' })).toHaveValue('tag ("Trip")')
+  expect(screen.getByRole('combobox', { name: 'Reporting tags' })).toHaveValue('labels ("a;b")')
+  expect(screen.getByText('A transaction can have only one budget tag. For several, use Reporting tags.')).toBeInTheDocument()
+})
+
 it('offers the separator only once a labels column is mapped', async () => {
   renderDialog()
   const user = await uploadCsv('Account,Date,Amount,Labels\nCash,2026-01-02,-5.5,Kid A\n')

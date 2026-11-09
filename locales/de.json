@@ -447,6 +447,7 @@
         "newline": "Zeilenumbruch",
         "custom_label": "Eigenes Trennzeichen"
       },
+      "tag_hint": "Eine Transaktion kann nur einen Budget-Tag haben. Für mehrere Tags verwenden Sie Auswertungs-Tags.",
       "new_labels_count": "Dieser Import erstellt {count} neues Tag | Dieser Import erstellt {count} neue Tags"
     },
     "import_result": {

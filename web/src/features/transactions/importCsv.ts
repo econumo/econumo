@@ -91,6 +91,18 @@ export function defaultSelection(): ImportSelection {
   }
 }
 
+// the headers an Econumo export writes: fixed English names in every UI language
+const EXPORT_COLUMNS: Partial<Record<FieldKey, string>> = {
+  account: 'account_name',
+  date: 'date',
+  amount: 'amount',
+  category: 'category',
+  description: 'description',
+  payee: 'payee',
+  tag: 'tag',
+  labels: 'labels',
+}
+
 // Vue matches lowercased header names against the translated field labels; a
 // column is claimed once, exact matches win over substring ones.
 export function autoDetect(header: string[], labels: Record<FieldKey, string>): { columns: Record<FieldKey, string | null>; amountMode: AmountMode } {
@@ -111,6 +123,13 @@ export function autoDetect(header: string[], labels: Record<FieldKey, string>): 
     }
   }
 
+  for (const field of FIELD_KEYS) {
+    const exported = EXPORT_COLUMNS[field]
+    if (exported && header.includes(exported)) {
+      columns[field] = exported
+      claimed.add(exported)
+    }
+  }
   for (const field of FIELD_KEYS) {
     claim(field, (col, label) => col === label)
   }

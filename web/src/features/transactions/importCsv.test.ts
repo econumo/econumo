@@ -31,6 +31,17 @@ it('autoDetect maps matching headers and stays in single amount mode', () => {
   expect(detected.amountMode).toBe('single')
 })
 
+it('autoDetect maps every column of an Econumo export whatever the UI language', () => {
+  const german = { ...LABELS, account: 'Konto', date: 'Datum', amount: 'Betrag', category: 'Kategorie', description: 'Beschreibung', payee: 'Empfänger', tag: 'Budget-Tag', labels: 'Auswertungs-Tags' }
+  const header = ['transaction_id', 'account_name', 'account_currency', 'category', 'description', 'tag', 'labels', 'payee', 'amount', 'date']
+  for (const labels of [LABELS, german]) {
+    expect(autoDetect(header, labels)).toMatchObject({
+      amountMode: 'single',
+      columns: { account: 'account_name', date: 'date', amount: 'amount', category: 'category', description: 'description', payee: 'payee', tag: 'tag', labels: 'labels' },
+    })
+  }
+})
+
 it('autoDetect flips to dual mode when inflow+outflow columns match', () => {
   const detected = autoDetect(['Account', 'Date', 'In', 'Out'], LABELS)
   expect(detected.columns.amountInflow).toBe('In')

@@ -447,6 +447,7 @@
         "newline": "Nowa linia",
         "custom_label": "Własny separator"
       },
+      "tag_hint": "Transakcja może mieć tylko jeden tag budżetowy. Aby dodać więcej, użyj pola Tagi raportowe.",
       "new_labels_count": "Ten import utworzy {count} nowy tag | Ten import utworzy {count} nowe tagi | Ten import utworzy {count} nowych tagów"
     },
     "import_result": {

@@ -233,6 +233,9 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     </div>
   )
 
+  // pl-34: the field row's w-32 label plus its gap-2, so it sits under the field
+  const underField = (content: React.ReactNode) => <div className="pl-34">{content}</div>
+
   const fieldRow = (label: string, required: boolean, control: React.ReactNode, toggle?: React.ReactNode) => (
     <div className="flex items-center gap-2">
       <span className="w-32 shrink-0 text-sm">
@@ -399,6 +402,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
                 : entitySelect('tagId', fieldLabels.tag, tags),
               modeToggle('tag', 'existing'),
             )}
+            {underField(<p className="text-xs text-muted-foreground">{t('transactions.import_csv.tag_hint')}</p>)}
 
             {fieldRow(
               fieldLabels.labels,
@@ -407,14 +411,13 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
               modeToggle('labels', 'existing'),
             )}
 
-            {selection.modes.labels === 'csv_column' && selection.columns.labels ? (
-              // pl-34: the field row's w-32 label plus its gap-2, so it sits under the field
-              <div className="pl-34">
-                <Button type="button" variant="link" className="h-auto p-0 text-left text-xs whitespace-normal normal-case! tracking-normal!" onClick={() => setSeparatorDialogOpen(true)}>
-                  {t('transactions.import_csv.labels_separator.button')}
-                </Button>
-              </div>
-            ) : null}
+            {selection.modes.labels === 'csv_column' && selection.columns.labels
+              ? underField(
+                  <Button type="button" variant="link" className="h-auto p-0 text-left text-xs whitespace-normal normal-case! tracking-normal!" onClick={() => setSeparatorDialogOpen(true)}>
+                    {t('transactions.import_csv.labels_separator.button')}
+                  </Button>,
+                )
+              : null}
 
             {newLabelCount > 0 ? (
               <p role="status" className="text-xs text-muted-foreground">
