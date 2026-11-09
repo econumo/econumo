@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
@@ -146,10 +146,9 @@ export function useBudget() {
   const budgetId = userOption(user, UserOptions.BUDGET)
   const periodSettled = useDefaultPeriodSettled(budgetId)
   const ops = usePendingOps()
-  const select = useCallback(
-    (budget: BudgetDto | null) => (budget && budgetId ? overlayBudget(budget, ops, budgetId, selectedDate) : budget),
-    [ops, budgetId, selectedDate],
-  )
+  // Placeholder data is another period's: its waiting limits are matched by the
+  // period it really holds, never the selected one.
+  const shownPeriod = useRef(selectedDate)
 
   useEffect(() => {
     if (budgetId) {
@@ -157,15 +156,21 @@ export function useBudget() {
     }
   }, [budgetId, resetFoldsFor])
 
-  return useQuery<BudgetDto | null>({
+  const query = useQuery<BudgetDto | null>({
     queryKey: [...queryKeys.budget, budgetId ?? 'none', selectedDate],
     queryFn: () => (budgetId ? budgetApi.getBudget(budgetId, selectedDate) : Promise.resolve(null)),
     enabled: user !== undefined && periodSettled,
     staleTime: TEN_MINUTES,
     // month switches keep showing the previous period instead of a blank page
     placeholderData: keepPreviousData,
-    select,
   })
+  if (!query.isPlaceholderData) {
+    shownPeriod.current = selectedDate
+  }
+  const period = shownPeriod.current
+  const { data } = query
+  const overlaid = useMemo(() => (data && budgetId ? overlayBudget(data, ops, budgetId, period) : data), [data, ops, budgetId, period])
+  return { ...query, data: overlaid } as typeof query
 }
 
 export function useSetLimit() {
@@ -186,9 +191,15 @@ export function useSetLimit() {
         queryClient.setQueryData(context.key, context.previous)
       }
     },
-    // A queued change is not an error and is not rolled back: the overlay keeps
-    // showing it. A direct success is confirmed (caches invalidated, metric
-    // fired) by submitChange, a queued one by the sender once it lands.
+    // A queued change is not an error: the overlay shows it, so the raw cache
+    // goes back to server truth and a discarded change leaves nothing behind.
+    // A direct success is confirmed (caches invalidated, metric fired) by
+    // submitChange, a queued one by the sender once it lands.
+    onSuccess: (res, _form, context) => {
+      if (res.queued && context) {
+        queryClient.setQueryData(context.key, context.previous)
+      }
+    },
   })
 }
 
@@ -254,6 +265,11 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
         queryClient.setQueryData(planKey, context.previous)
       }
     },
+    onSuccess: (res, _form, context) => {
+      if (res.queued && context) {
+        queryClient.setQueryData(planKey, context.previous)
+      }
+    },
   })
 }
 
@@ -273,13 +289,19 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
       ),
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
+      const previous = queryClient.getQueryData<BudgetPlanDto | null>(planKey)
       const covered = new Set(form.targets.map((t) => t.monthIndex))
       queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) =>
         patchPlanCells(prev, form.elementId, (c, i) => (covered.has(i) ? { ...c, planned: form.amount } : c)),
       )
+      return { previous }
     },
-    onSuccess: () => {
+    onSuccess: (results, _form, context) => {
       trackEvent(METRICS.BUDGET_PLAN_FILL_RIGHT)
+      // waiting targets show through the overlay; the raw cache keeps server truth
+      if (results.some((r) => r.queued) && context) {
+        queryClient.setQueryData(planKey, context.previous)
+      }
     },
     // No partial rollback: any failure means some months may have landed, so both a
     // success and a failure need the same resync — the budget-page caches (every

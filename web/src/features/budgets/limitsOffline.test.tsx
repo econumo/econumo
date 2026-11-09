@@ -102,13 +102,14 @@ describe('limits offline', () => {
     expect(new Set(ops.map((o) => o.key)).size).toBe(2)
   })
 
-  it('a queued limit is not rolled back', async () => {
+  it('a queued limit is kept as an op and the raw cache returns to server truth', async () => {
     const { queryClient, wrapper } = makeWrapper()
     const key = [...queryKeys.budget, 'b1', '2026-09-01']
     queryClient.setQueryData(key, fixtureWireBudget)
     const { result } = renderHook(() => useSetLimit(), { wrapper })
     await act(() => result.current.mutateAsync({ budgetId: 'b1', elementId: 'cat-food', period: '2026-09-01', amount: '250' }))
-    expect(queryClient.getQueryData<BudgetDto>(key)?.structure.elements.find((e) => e.id === 'cat-food')?.budgeted).toBe('250')
+    expect(getOps()).toHaveLength(1)
+    expect(queryClient.getQueryData<BudgetDto>(key)?.structure.elements.find((e) => e.id === 'cat-food')?.budgeted).toBe('200')
   })
 
   it('an online refusal still rolls the cell back', async () => {
@@ -142,5 +143,52 @@ describe('limits offline', () => {
   it('NotSavedIcon carries the translated label', () => {
     render(<NotSavedIcon />)
     expect(screen.getByRole('img', { name: 'Not saved' })).toBeInTheDocument()
+  })
+})
+
+describe('limits offline: cache truth and month switches', () => {
+  beforeEach(async () => {
+    localStorage.clear()
+    window.econumoConfig = {}
+    server.use(...coreHandlers())
+    resetPendingWritesForTests()
+    onlineManager.setOnline(false)
+    await loadPendingWrites('u1')
+  })
+  afterEach(() => onlineManager.setOnline(true))
+
+  const seed = (queryClient: QueryClient) => {
+    queryClient.setQueryData(queryKeys.user, { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'budget' ? { ...o, value: 'b1' } : o)) })
+    queryClient.setQueryData([...queryKeys.budget, 'b1', '2026-07-01'], fixtureWireBudget)
+  }
+  const budgeted = (b: BudgetDto | null | undefined) => b?.structure.elements.find((e) => e.id === 'cat-food')?.budgeted
+
+  it('a discarded queued limit leaves the server figure, not the optimistic one', async () => {
+    const { queryClient, wrapper } = makeWrapper()
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+    seed(queryClient)
+    const { result } = renderHook(() => ({ budget: useBudget(), set: useSetLimit() }), { wrapper })
+    await act(() => result.current.set.mutateAsync({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '250' }))
+    expect(budgeted(result.current.budget.data)).toBe('250')
+
+    await act(async () => {
+      const { mutate } = await import('@/features/pendingWrites/store')
+      await mutate(() => [])
+    })
+    expect(budgeted(result.current.budget.data)).toBe('200')
+  })
+
+  it('a placeholder from another month keeps its own waiting limit and takes none of the selected month', async () => {
+    const { queryClient, wrapper } = makeWrapper()
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' })
+    seed(queryClient)
+    const { result } = renderHook(() => ({ budget: useBudget(), set: useSetLimit() }), { wrapper })
+    await act(() => result.current.set.mutateAsync({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '250' }))
+    await act(() => result.current.set.mutateAsync({ budgetId: 'b1', elementId: 'cat-food', period: '2026-08-01', amount: '999' }))
+
+    // August is uncached and offline: the query pauses with July as the placeholder
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' }))
+    expect(result.current.budget.isPlaceholderData).toBe(true)
+    expect(budgeted(result.current.budget.data)).toBe('250')
   })
 })

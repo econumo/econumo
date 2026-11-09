@@ -6,6 +6,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-ki
 import { besidePointer, centerRowOnPointer, snapRowToPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { PendingLimitMark } from '@/features/pendingWrites/NotSavedIcon'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
 import { cmp, isZero } from '@/lib/decimal'
@@ -170,9 +171,16 @@ export function MonthFlows({
     const c = currencyOf(currencyId)
     return moneyFormat(amount, c, cellOpts(c))
   }
+  const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const planned = (target: FlowTarget, amount: string, currencyId: Id) => {
     const hint = sheetPlanHint(target)
-    return renderPlanned(target, amount === '' ? EMPTY_CELL : fmt(amount, currencyId), hint)
+    const figure = renderPlanned(target, amount === '' ? EMPTY_CELL : fmt(amount, currencyId), hint)
+    return (
+      <>
+        <PendingLimitMark budgetId={budget.meta.id} elementId={target.kind === 'plan' ? target.cell.element.id : target.row.id} period={selectedDate} className="mr-1 align-middle" />
+        {figure}
+      </>
+    )
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const exchangeFn = makeBudgetExchange(budget, currencies)
