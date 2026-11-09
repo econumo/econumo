@@ -990,6 +990,32 @@ it('a queued import in a foreign currency opens with an empty amount and shows t
   expect(screen.getByLabelText('Amount')).toHaveValue('11')
 })
 
+it('an edit that only queued does not prompt for a rule: the server has not taken it yet', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
+  const importLink = {
+    id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
+    externalTransactionId: 'tap-1', externalPayee: 'BLUE BOTTLE COFFEE #142', externalDescription: '', externalAmount: '9.99',
+    externalCurrency: 'USD', externalPostedAt: '2026-07-03 10:00:00', status: 'created', importedAt: '2026-07-03 10:00:05',
+    appliedCategoryId: 'cat-food', appliedPayeeId: '', appliedTagId: '', appliedLabelIds: [], appliedRuleId: '',
+  }
+  server.use(
+    http.get('*/api/v1/import/get-transaction-import-list', () => HttpResponse.json({ success: true, message: '', data: { items: [importLink] } })),
+    http.post('*/api/v1/transaction/update-transaction', () => HttpResponse.error()),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.setState({ rulePrompt: null })
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ id: 't-imported', isImported: 1 }) as unknown as TransactionDto })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await waitFor(() => expect(chip('health', 'label')).toBeInTheDocument())
+  await user.click(chip('health', 'label'))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+  expect(getOps()).toHaveLength(1)
+  expect(useUiStore.getState().rulePrompt).toBeNull()
+  await mutate(() => [])
+})
+
 it('editing an imported transaction prompts for a rule only when the classification diverges from what the import applied', async () => {
   window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   const seen = captureUpdate()

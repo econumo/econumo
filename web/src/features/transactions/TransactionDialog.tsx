@@ -236,15 +236,15 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           setSwitchAccountPrompt(payload.accountId)
         }
       } else {
-        await updateTransaction.mutateAsync(payload)
+        const { queued } = await updateTransaction.mutateAsync(payload)
         // An account shared with the user takes its owner's rules, which the
         // user cannot write: no prompt there.
         const link = account?.owner.id === user?.id ? latestImportLink(importLinks) : undefined
         // params.transaction is the row as it was BEFORE this edit: only a
         // classification THIS save changed may prompt for a rule
         const diff = link ? ruleDiff(payload, link, params.transaction ?? null) : null
-        // the rule editor needs the server
-        if (link && diff && onlineManager.isOnline()) {
+        // the rule editor needs the server, and the server may yet refuse an edit that only queued
+        if (!queued && link && diff && onlineManager.isOnline()) {
           setRulePrompt({ link, diff })
         }
       }
