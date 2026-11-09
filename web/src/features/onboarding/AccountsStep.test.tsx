@@ -44,6 +44,30 @@ beforeEach(() => {
   }))
 })
 
+it('starts a user with no accounts on a prefilled Cash row: cash icon, not savings, blank balance', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep()
+  await ready()
+  expect(nameInputs()).toHaveLength(1)
+  expect(nameInputs()[0]).toHaveValue('Cash')
+  expect(balanceInputs()[0]).toHaveValue('')
+  expect(within(rowsEls()[0]).getByText('payments')).toBeInTheDocument()
+  expect(within(rowsEls()[0]).queryByText('Savings account')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][0]).toEqual([expect.objectContaining({ name: 'Cash', balance: '0', currencyId: 'cur-usd', savings: false, icon: 'payments' })])
+  expect(onContinue.mock.calls[0][2]).toBe('cur-usd')
+})
+
+it('gives no Cash row to a user who already has accounts', () => {
+  renderStep({ existing: [{ id: 'a1', name: 'Wallet', icon: 'payments', balance: '5', currencyId: 'cur-eur' }] })
+  expect(screen.queryByDisplayValue('Cash')).not.toBeInTheDocument()
+})
+
+it('gives no Cash row to a resumed draft with rows', () => {
+  renderStep({ initialRows: [{ key: 'k1', name: 'Card', balance: '1', currencyId: 'cur-eur', savings: false, icon: 'credit_card' }] })
+  expect(screen.queryByDisplayValue('Cash')).not.toBeInTheDocument()
+})
+
 it('starts with one row and adds another with Add account', async () => {
   const user = userEvent.setup()
   renderStep()
@@ -83,6 +107,7 @@ it('submits a typed balance as a normalized decimal string and the main currency
   const user = userEvent.setup()
   const { onContinue } = renderStep()
   await ready()
+  await user.clear(nameInputs()[0])
   await user.type(nameInputs()[0], 'Card')
   await user.type(balanceInputs()[0], '1,234.50')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
@@ -121,6 +146,7 @@ it('flags a name outside 3-64 characters once the field is left and blocks Conti
   const user = userEvent.setup()
   const { onContinue } = renderStep()
   await ready()
+  await user.clear(nameInputs()[0])
   await user.type(nameInputs()[0], 'AB')
   expect(screen.queryByText('Account name must be 3-64 characters')).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
@@ -139,8 +165,10 @@ it('flags a name outside 3-64 characters once the field is left and blocks Conti
 })
 
 it('needs one named row to continue', async () => {
+  const user = userEvent.setup()
   renderStep()
   await ready()
+  await user.clear(nameInputs()[0])
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
 })
 

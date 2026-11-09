@@ -301,13 +301,25 @@ navigation (single-pane vs sidebar).
       ticked; categories the user already has (after an import, or on a
       revisit) are listed first, ticked and locked, and defaults with the same
       name are not offered again, nor are defaults named like a category the
-      user archived (the archived one is not listed).
+      user archived (the archived one is not listed). The defaults are, for
+      expenses, Groceries, Housing, Utilities, Transport, Eating out, Health,
+      Shopping, Entertainment, Kids, Pets, Subscriptions and, for income,
+      Salary, Bonus, Interest, Other income (translated in every UI language).
+- [ ] Categories on a desktop width: each row has a drag handle, and dragging
+      (or focusing the handle, Space, arrow keys, Space) reorders rows within
+      Expenses or Income, existing locked categories included; a row never
+      moves to the other card. After Continue the Categories settings page
+      lists them in that order; a reload before Continue keeps the order.
+      On a phone or tablet width there are no handles.
 - [ ] Accounts: one card of compact rows (icon, name, balance, currency chip);
       a savings account shows a small "Savings account" label under its name,
       toggled in the row's details (the chevron), where a new row can also be
       removed; "Add account" adds a row. Accounts the user already has are
       listed first and locked, with their balance shown and no balance asked
-      for. The currencies line reads "USD (main) · + Add"; tapping the main
+      for. A user with no accounts starts with one row named "Cash" (cash
+      icon, not savings, blank balance saved as 0, the default currency) that
+      can be renamed or removed like any row; a user who already has accounts,
+      or resumes a draft with rows, gets no Cash row. The currencies line reads "USD (main) · + Add"; tapping the main
       currency changes it.
 - [ ] Revisiting Accounts after Budget & plan: a new account joins the budget,
       and a changed savings switch moves it to/from the budget's savings

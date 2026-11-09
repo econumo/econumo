@@ -1198,8 +1198,11 @@
       "shopping": "Shopping",
       "entertainment": "Loisirs",
       "kids": "Enfants",
+      "pets": "Animaux",
       "subscriptions": "Abonnements",
       "salary": "Salaire",
+      "bonus": "Primes",
+      "interest": "Intérêts",
       "other_income": "Autres revenus"
     },
     "words": {
@@ -1220,7 +1223,8 @@
       "skip": "Passer",
       "add": "Ajouter un compte",
       "savings_label": "Compte d'épargne",
-      "details": "Détails du compte"
+      "details": "Détails du compte",
+      "default_cash": "Espèces"
     },
     "categories_step": {
       "heading": "Où va votre argent ?",
@@ -1229,6 +1233,7 @@
       "income": "Revenus",
       "name_label": "Nom de la catégorie",
       "icon_label": "Changer l'icône",
+      "reorder_label": "Déplacer {name}",
       "add_placeholder": "Ajouter la vôtre",
       "continue": "Continuer",
       "skip": "Passer"

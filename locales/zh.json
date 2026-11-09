@@ -1198,8 +1198,11 @@
       "shopping": "日常购物",
       "entertainment": "休闲娱乐",
       "kids": "子女开销",
+      "pets": "宠物开销",
       "subscriptions": "订阅服务",
       "salary": "工资收入",
+      "bonus": "奖金收入",
+      "interest": "利息收入",
       "other_income": "其他收入"
     },
     "words": {
@@ -1220,7 +1223,8 @@
       "skip": "跳过",
       "add": "添加账户",
       "savings_label": "储蓄账户",
-      "details": "账户详情"
+      "details": "账户详情",
+      "default_cash": "现金账户"
     },
     "categories_step": {
       "heading": "你的钱花在哪里？",
@@ -1229,6 +1233,7 @@
       "income": "收入",
       "name_label": "分类名称",
       "icon_label": "更换图标",
+      "reorder_label": "移动{name}",
       "add_placeholder": "添加自定义分类",
       "continue": "继续",
       "skip": "跳过"

@@ -13,11 +13,14 @@ export const DEFAULT_EXPENSE_CATEGORIES: readonly DefaultCategory[] = [
   { key: 'shopping', icon: 'shopping_bag' },
   { key: 'entertainment', icon: 'movie' },
   { key: 'kids', icon: 'child_care' },
+  { key: 'pets', icon: 'pets' },
   { key: 'subscriptions', icon: 'cloud' },
 ]
 
 export const DEFAULT_INCOME_CATEGORIES: readonly DefaultCategory[] = [
   { key: 'salary', icon: 'payments' },
+  { key: 'bonus', icon: 'redeem' },
+  { key: 'interest', icon: 'trending_up' },
   { key: 'other_income', icon: 'paid' },
 ]
 

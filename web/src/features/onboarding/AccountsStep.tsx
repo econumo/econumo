@@ -86,7 +86,11 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   )
-  const [allRows, setRows] = useState<AccountRow[]>(() => (leftover.length > 0 || existing.length > 0 ? leftover : [emptyRow()]))
+  const [allRows, setRows] = useState<AccountRow[]>(() => {
+    if (leftover.length > 0 || existing.length > 0) return leftover
+    const name = t('onboarding.accounts.default_cash')
+    return [{ ...emptyRow(), name, icon: guessAccountIcon(name, words()) }]
+  })
   // a row an earlier (failed) submit created comes back in the server list
   const rows = allRows.filter((r) => !createdIds?.[r.key])
   const [extraIds, setExtraIds] = useState<Id[]>(initialExtraCurrencyIds ?? [])

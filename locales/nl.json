@@ -1198,8 +1198,11 @@
       "shopping": "Winkelen",
       "entertainment": "Entertainment",
       "kids": "Kinderen",
+      "pets": "Huisdieren",
       "subscriptions": "Abonnementen",
       "salary": "Salaris",
+      "bonus": "Bonus",
+      "interest": "Rente",
       "other_income": "Overige inkomsten"
     },
     "words": {
@@ -1220,7 +1223,8 @@
       "skip": "Overslaan",
       "add": "Rekening toevoegen",
       "savings_label": "Spaarrekening",
-      "details": "Rekeninggegevens"
+      "details": "Rekeninggegevens",
+      "default_cash": "Contant"
     },
     "categories_step": {
       "heading": "Waar geef je geld aan uit?",
@@ -1229,6 +1233,7 @@
       "income": "Inkomsten",
       "name_label": "Categorienaam",
       "icon_label": "Pictogram wijzigen",
+      "reorder_label": "{name} verplaatsen",
       "add_placeholder": "Voeg je eigen toe",
       "continue": "Doorgaan",
       "skip": "Overslaan"

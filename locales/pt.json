@@ -1198,8 +1198,11 @@
       "shopping": "Compras",
       "entertainment": "Lazer",
       "kids": "Filhos",
+      "pets": "Animais",
       "subscriptions": "Subscrições",
       "salary": "Salário",
+      "bonus": "Bónus",
+      "interest": "Juros",
       "other_income": "Outras receitas"
     },
     "words": {
@@ -1220,7 +1223,8 @@
       "skip": "Pular",
       "add": "Adicionar conta",
       "savings_label": "Conta poupança",
-      "details": "Detalhes da conta"
+      "details": "Detalhes da conta",
+      "default_cash": "Dinheiro"
     },
     "categories_step": {
       "heading": "Em que você gasta?",
@@ -1229,6 +1233,7 @@
       "income": "Receitas",
       "name_label": "Nome da categoria",
       "icon_label": "Alterar ícone",
+      "reorder_label": "Reordenar {name}",
       "add_placeholder": "Adicione as suas",
       "continue": "Continuar",
       "skip": "Pular"

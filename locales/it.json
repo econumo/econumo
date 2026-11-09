@@ -1198,8 +1198,11 @@
       "shopping": "Shopping",
       "entertainment": "Intrattenimento",
       "kids": "Figli",
+      "pets": "Animali",
       "subscriptions": "Abbonamenti",
       "salary": "Stipendio",
+      "bonus": "Bonus",
+      "interest": "Interessi",
       "other_income": "Altre entrate"
     },
     "words": {
@@ -1220,7 +1223,8 @@
       "skip": "Salta",
       "add": "Aggiungi conto",
       "savings_label": "Conto di risparmio",
-      "details": "Dettagli del conto"
+      "details": "Dettagli del conto",
+      "default_cash": "Contanti"
     },
     "categories_step": {
       "heading": "In cosa spendi?",
@@ -1229,6 +1233,7 @@
       "income": "Entrate",
       "name_label": "Nome della categoria",
       "icon_label": "Cambia icona",
+      "reorder_label": "Riordina {name}",
       "add_placeholder": "Aggiungi le tue",
       "continue": "Continua",
       "skip": "Salta"

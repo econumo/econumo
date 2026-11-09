@@ -1198,8 +1198,11 @@
       "shopping": "Zakupy",
       "entertainment": "Rozrywka",
       "kids": "Dzieci",
+      "pets": "Zwierzęta",
       "subscriptions": "Subskrypcje",
       "salary": "Wynagrodzenie",
+      "bonus": "Premie",
+      "interest": "Odsetki",
       "other_income": "Inne przychody"
     },
     "words": {
@@ -1220,7 +1223,8 @@
       "skip": "Pomiń",
       "add": "Dodaj konto",
       "savings_label": "Konto oszczędnościowe",
-      "details": "Szczegóły konta"
+      "details": "Szczegóły konta",
+      "default_cash": "Gotówka"
     },
     "categories_step": {
       "heading": "Na co wydajesz pieniądze?",
@@ -1229,6 +1233,7 @@
       "income": "Przychody",
       "name_label": "Nazwa kategorii",
       "icon_label": "Zmień ikonę",
+      "reorder_label": "Przenieś {name}",
       "add_placeholder": "Dodaj własną",
       "continue": "Dalej",
       "skip": "Pomiń"

@@ -1198,8 +1198,11 @@
       "shopping": "Shopping",
       "entertainment": "Entertainment",
       "kids": "Kids",
+      "pets": "Pets",
       "subscriptions": "Subscriptions",
       "salary": "Salary",
+      "bonus": "Bonus",
+      "interest": "Interest",
       "other_income": "Other income"
     },
     "words": {
@@ -1220,7 +1223,8 @@
       "skip": "Skip",
       "add": "Add account",
       "savings_label": "Savings account",
-      "details": "Account details"
+      "details": "Account details",
+      "default_cash": "Cash"
     },
     "categories_step": {
       "heading": "What do you spend on?",
@@ -1229,6 +1233,7 @@
       "income": "Income",
       "name_label": "Category name",
       "icon_label": "Change icon",
+      "reorder_label": "Reorder {name}",
       "add_placeholder": "Add your own",
       "continue": "Continue",
       "skip": "Skip"

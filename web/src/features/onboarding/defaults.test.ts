@@ -31,8 +31,9 @@ describe('onboarding defaults', () => {
   })
 
   it('has the expected keys', () => {
-    expect(DEFAULT_EXPENSE_CATEGORIES.map((c) => c.key)).toHaveLength(10)
-    expect(DEFAULT_INCOME_CATEGORIES.map((c) => c.key)).toEqual(['salary', 'other_income'])
+    expect(DEFAULT_EXPENSE_CATEGORIES.map((c) => c.key)).toHaveLength(11)
+    expect(DEFAULT_EXPENSE_CATEGORIES.map((c) => c.key).slice(8, 10)).toEqual(['kids', 'pets'])
+    expect(DEFAULT_INCOME_CATEGORIES.map((c) => c.key)).toEqual(['salary', 'bonus', 'interest', 'other_income'])
   })
 
   it('detects savings names', () => {

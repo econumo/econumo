@@ -1198,8 +1198,11 @@
       "shopping": "Einkaufen",
       "entertainment": "Unterhaltung",
       "kids": "Kinder",
+      "pets": "Haustiere",
       "subscriptions": "Abonnements",
       "salary": "Gehalt",
+      "bonus": "Bonus",
+      "interest": "Zinsen",
       "other_income": "Sonstige Einnahmen"
     },
     "words": {
@@ -1220,7 +1223,8 @@
       "skip": "Überspringen",
       "add": "Konto hinzufügen",
       "savings_label": "Sparkonto",
-      "details": "Kontodetails"
+      "details": "Kontodetails",
+      "default_cash": "Bargeld"
     },
     "categories_step": {
       "heading": "Wofür geben Sie Geld aus?",
@@ -1229,6 +1233,7 @@
       "income": "Einnahmen",
       "name_label": "Kategoriename",
       "icon_label": "Symbol ändern",
+      "reorder_label": "{name} verschieben",
       "add_placeholder": "Eigene hinzufügen",
       "continue": "Weiter",
       "skip": "Überspringen"

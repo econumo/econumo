@@ -27,19 +27,20 @@ beforeEach(() => {
   }))
 })
 
-it('lists all 12 defaults ticked, checkbox after the name, in one card per type', async () => {
+it('lists all 15 defaults ticked, checkbox after the name, in one card per type', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep()
-  expect(screen.getAllByRole('checkbox')).toHaveLength(12)
+  expect(screen.getAllByRole('checkbox')).toHaveLength(15)
   screen.getAllByRole('checkbox').forEach((c) => expect(c).toBeChecked())
   const first = screen.getAllByTestId('category-row')[0]
   const name = within(first).getByLabelText('Category name')
   expect(name.compareDocumentPosition(within(first).getByRole('checkbox')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(within(screen.getByTestId('group-expense')).getAllByTestId('category-row')).toHaveLength(10)
+  expect(within(screen.getByTestId('group-expense')).getAllByTestId('category-row')).toHaveLength(11)
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   const rows = chosen(onContinue)
-  expect(rows).toHaveLength(12)
-  expect(rows.filter((r) => r.type === 'income').map((r) => r.name)).toEqual(['Salary', 'Other income'])
+  expect(rows).toHaveLength(15)
+  expect(rows.filter((r) => r.type === 'expense').map((r) => r.name).slice(8, 10)).toEqual(['Kids', 'Pets'])
+  expect(rows.filter((r) => r.type === 'income').map((r) => r.name)).toEqual(['Salary', 'Bonus', 'Interest', 'Other income'])
 })
 
 it('submits an unticked category unchecked, so a reload keeps it unticked', async () => {

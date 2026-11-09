@@ -1198,8 +1198,11 @@
       "shopping": "Compras",
       "entertainment": "Ocio",
       "kids": "Hijos",
+      "pets": "Mascotas",
       "subscriptions": "Suscripciones",
       "salary": "Nómina",
+      "bonus": "Bonificaciones",
+      "interest": "Intereses",
       "other_income": "Otros ingresos"
     },
     "words": {
@@ -1220,7 +1223,8 @@
       "skip": "Omitir",
       "add": "Añadir cuenta",
       "savings_label": "Cuenta de ahorro",
-      "details": "Detalles de la cuenta"
+      "details": "Detalles de la cuenta",
+      "default_cash": "Efectivo"
     },
     "categories_step": {
       "heading": "¿En qué gastas?",
@@ -1229,6 +1233,7 @@
       "income": "Ingresos",
       "name_label": "Nombre de la categoría",
       "icon_label": "Cambiar icono",
+      "reorder_label": "Reordenar {name}",
       "add_placeholder": "Añade las tuyas",
       "continue": "Continuar",
       "skip": "Omitir"

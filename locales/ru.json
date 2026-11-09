@@ -1198,8 +1198,11 @@
       "shopping": "Покупки",
       "entertainment": "Развлечения",
       "kids": "Дети",
+      "pets": "Питомцы",
       "subscriptions": "Подписки",
       "salary": "Зарплата",
+      "bonus": "Премии",
+      "interest": "Проценты",
       "other_income": "Прочие доходы"
     },
     "words": {
@@ -1220,7 +1223,8 @@
       "skip": "Пропустить",
       "add": "Добавить счёт",
       "savings_label": "Накопительный счёт",
-      "details": "Параметры счёта"
+      "details": "Параметры счёта",
+      "default_cash": "Наличные"
     },
     "categories_step": {
       "heading": "На что вы тратите?",
@@ -1229,6 +1233,7 @@
       "income": "Доходы",
       "name_label": "Название категории",
       "icon_label": "Сменить значок",
+      "reorder_label": "Переместить {name}",
       "add_placeholder": "Добавьте свою",
       "continue": "Продолжить",
       "skip": "Пропустить"
