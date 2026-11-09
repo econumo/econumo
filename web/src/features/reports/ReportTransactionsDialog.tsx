@@ -14,6 +14,8 @@ import { addMonths, monthDiff } from '@/features/budgets/planMath'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useCurrencies } from '@/features/currencies/queries'
+import { usePendingOps } from '@/features/pendingWrites/hooks'
+import { overlayBudgetTransactions } from '@/features/pendingWrites/overlay'
 import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
 import { compareTransactions } from '@/features/transactions/order'
 import { useDeleteTransaction, useTransactions } from '@/features/transactions/queries'
@@ -58,8 +60,10 @@ function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: 
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
   const { data: currencies } = useCurrencies()
+  const ops = usePendingOps()
   // a transfer between two listed accounts comes back once per account
-  const wire = [...new Map(results.flatMap((r) => r.data?.items ?? []).map((w) => [w.id, w])).values()]
+  const fetched = [...new Map(results.flatMap((r) => r.data?.items ?? []).map((w) => [w.id, w])).values()]
+  const wire = overlayBudgetTransactions(fetched, ops, { categories, payees, tags })
   const rows = wire.map((w) => {
     const view = budgetTransactionView(w, { transactions, accounts, categories, payees, tags })
     const currency = currencies?.find((c) => c.id === w.currencyId)

@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
+import { mutate } from '@/features/pendingWrites/store'
+import type { PendingOp } from '@/features/pendingWrites/types'
 import { ReportTransactionsDialog } from './ReportTransactionsDialog'
 import type { AccountsDrill } from './ReportTransactionsDialog'
 import { setViewport } from './reportsTestUtils'
@@ -130,4 +132,28 @@ it('a transfer between two listed savings accounts is listed once', async () => 
   )
   renderDialog({ budgetId: 'b1', row: { id: 'range', kind: 'accounts', name: 'Family', accountIds: [], savingsIds: ['s1', 's2'] }, from: '2026-07-01', to: '2026-07-01' })
   expect(await screen.findAllByText('between savings')).toHaveLength(1)
+})
+
+it('a savings drill leaves out a transaction whose delete is waiting and shows a waiting edit', async () => {
+  const base = { key: 'k', attempted: false, status: 'waiting', retries: 0, notBefore: 0 }
+  await mutate(() => [
+    { ...base, key: 'k1', seq: 1, kind: 'tx-delete', txId: 'w-gone', previous: null },
+    { ...base, key: 'k2', seq: 2, kind: 'tx-update', txId: 'w-edit', payload: {
+      id: 'w-edit', type: 'expense', accountId: 'b-sav', accountRecipientId: null, amount: '12', amountRecipient: null,
+      categoryId: null, description: 'after the edit', payeeId: null, tagId: null, labelIds: [], date: '2026-07-05 10:00:00',
+    } },
+  ] as PendingOp[])
+  server.use(
+    ...coreHandlers({ accounts, transactions }),
+    http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [
+      { id: 'w-keep', author: partner, currencyId: 'cur-usd', amount: '1', description: 'kept', category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-06 12:00:00' },
+      { id: 'w-gone', author: partner, currencyId: 'cur-usd', amount: '2', description: 'deleted offline', category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-05 12:00:00' },
+      { id: 'w-edit', author: partner, currencyId: 'cur-usd', amount: '3', description: 'before the edit', category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-04 12:00:00' },
+    ] } })),
+  )
+  renderDialog({ budgetId: 'b1', row: { id: 'b-sav', kind: 'savings', name: 'Bob savings' }, from: '2026-07-01', to: '2026-07-01' })
+  expect(await screen.findByText('kept')).toBeInTheDocument()
+  expect(screen.queryByText('deleted offline')).toBeNull()
+  expect(screen.getByText('after the edit')).toBeInTheDocument()
+  expect(screen.queryByText('before the edit')).toBeNull()
 })
