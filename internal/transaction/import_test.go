@@ -37,16 +37,16 @@ func labelsCell(n int) string {
 	return strings.Join(pieces, ";")
 }
 
-// TestImportRejectsRowWithTooManyLabels pins maxLabelsPerImportRow: a row
-// whose mapped labels cell resolves to more than 10 DISTINCT pieces fails as
+// TestImportRejectsRowWithTooManyLabels pins maxTransactionLabels: a row
+// whose mapped labels cell resolves to more than 50 DISTINCT pieces fails as
 // a row-level error (not a silent truncation, and not a whole-import abort),
 // while the count is taken on the deduped list splitLabelCell already
 // produces, not the raw split - dedup collapsing raw pieces below the cap
 // must not trip it.
 func TestImportRejectsRowWithTooManyLabels(t *testing.T) {
-	t.Run("11 distinct pieces -> that row fails, the rest of the import still proceeds", func(t *testing.T) {
+	t.Run("51 distinct pieces -> that row fails, the rest of the import still proceeds", func(t *testing.T) {
 		svc, imp, userID, acctIDStr, dateStr := newLabelCapTestService()
-		csv := "Amount,Labels\n-10," + labelsCell(11) + "\n-20,Solo\n"
+		csv := "Amount,Labels\n-10," + labelsCell(51) + "\n-20,Solo\n"
 		req := model.ImportRequest{
 			File:      []byte(csv),
 			Mapping:   model.ImportMapping{Amount: "Amount", Labels: "Labels"},
@@ -63,23 +63,23 @@ func TestImportRejectsRowWithTooManyLabels(t *testing.T) {
 		}
 		var rows []int
 		for msg, r := range res.Errors {
-			if strings.Contains(msg, "maximum of 10") {
+			if strings.Contains(msg, "maximum of 50") {
 				rows = r
 			}
 		}
 		if len(rows) != 1 || rows[0] != 2 {
 			t.Fatalf("cap error rows = %v, want [2] (the first data row, 1-indexed header + 1); errors=%v", rows, res.Errors)
 		}
-		// Only "Solo" (row 2) should have created a label; none of the 11
+		// Only "Solo" (row 2) should have created a label; none of the 51
 		// pieces from the rejected row 1 must have been partially created.
 		if len(imp.createLabelCalls) != 1 || imp.createLabelCalls[0].name != "Solo" {
 			t.Fatalf("createLabelCalls = %v, want exactly one call for \"Solo\" (row 1's pieces must not be partially created)", imp.createLabelCalls)
 		}
 	})
 
-	t.Run("exactly 10 distinct pieces -> accepted", func(t *testing.T) {
+	t.Run("exactly 50 distinct pieces -> accepted", func(t *testing.T) {
 		svc, imp, userID, acctIDStr, dateStr := newLabelCapTestService()
-		csv := "Amount,Labels\n-10," + labelsCell(10) + "\n"
+		csv := "Amount,Labels\n-10," + labelsCell(50) + "\n"
 		req := model.ImportRequest{
 			File:      []byte(csv),
 			Mapping:   model.ImportMapping{Amount: "Amount", Labels: "Labels"},
@@ -92,9 +92,9 @@ func TestImportRejectsRowWithTooManyLabels(t *testing.T) {
 			t.Fatalf("ImportTransactionList: %v", err)
 		}
 		if res.Imported != 1 || res.Skipped != 0 || len(res.Errors) != 0 {
-			t.Fatalf("imported=%d skipped=%d errors=%v, want 1/0/{} (10 is within the cap)", res.Imported, res.Skipped, res.Errors)
+			t.Fatalf("imported=%d skipped=%d errors=%v, want 1/0/{} (50 is within the cap)", res.Imported, res.Skipped, res.Errors)
 		}
-		if len(imp.createLabelCalls) != 10 {
+		if len(imp.createLabelCalls) != 50 {
 			t.Fatalf("createLabelCalls = %d, want 10", len(imp.createLabelCalls))
 		}
 	})
@@ -121,13 +121,13 @@ func TestImportRejectsRowWithTooManyLabels(t *testing.T) {
 		}
 	})
 
-	t.Run("11 raw pieces that dedupe to 1 distinct label -> accepted", func(t *testing.T) {
-		// A stronger version of the "A;a" case: 11 raw split pieces (over the
+	t.Run("51 raw pieces that dedupe to 1 distinct label -> accepted", func(t *testing.T) {
+		// A stronger version of the "A;a" case: 51 raw split pieces (over the
 		// cap) that all case-fold to the same label. If the cap ever counted
 		// the raw split instead of splitLabelCell's deduped output, this row
 		// would wrongly fail.
 		svc, imp, userID, acctIDStr, dateStr := newLabelCapTestService()
-		pieces := make([]string, 11)
+		pieces := make([]string, 51)
 		for i := range pieces {
 			if i%2 == 0 {
 				pieces[i] = "A"
@@ -148,7 +148,7 @@ func TestImportRejectsRowWithTooManyLabels(t *testing.T) {
 			t.Fatalf("ImportTransactionList: %v", err)
 		}
 		if res.Imported != 1 || res.Skipped != 0 || len(res.Errors) != 0 {
-			t.Fatalf("imported=%d skipped=%d errors=%v, want 1/0/{} (11 raw pieces dedupe to 1)", res.Imported, res.Skipped, res.Errors)
+			t.Fatalf("imported=%d skipped=%d errors=%v, want 1/0/{} (51 raw pieces dedupe to 1)", res.Imported, res.Skipped, res.Errors)
 		}
 		if len(imp.createLabelCalls) != 1 {
 			t.Fatalf("createLabelCalls = %d, want 1", len(imp.createLabelCalls))

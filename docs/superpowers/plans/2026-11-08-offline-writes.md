@@ -18,7 +18,7 @@
 - Key rows purge after 7 days, at most every 10 minutes per process.
 - Request timeout for a write: 10 seconds.
 - A 5xx with the app's envelope retries 5 times with backoff, then fails.
-- Migration version `20261108000000` on both engines (above every released one).
+- Migration version `20261109000000` on both engines (above every released one).
 - Every new `t()` key goes in all 11 `locales/<lang>.json` in the same task (`internal/test/i18ntest` fails otherwise). Registers: de Sie, nl u, fr vous, pt European.
 - No bold for UI hierarchy. Comment only non-obvious rules. `.sql` files ASCII-only.
 - Every new `METRICS` key must be fired (`metrics-coverage.test.ts`).
@@ -37,7 +37,7 @@
 ### Task 1: Idempotency key storage
 
 **Files:**
-- Create: `internal/infra/storage/migrations/sqlite/20261108000000.sql`, `internal/infra/storage/migrations/pgsql/20261108000000.sql`
+- Create: `internal/infra/storage/migrations/sqlite/20261109000000.sql`, `internal/infra/storage/migrations/pgsql/20261109000000.sql`
 - Create: `internal/infra/storage/sqlc/query/sqlite/idempotency.sql`, `internal/infra/storage/sqlc/query/pgsql/idempotency.sql`
 - Create: `internal/infra/idempotency/store.go`, `internal/infra/idempotency/store_test.go`
 - Regenerate: `internal/infra/storage/sqlc/gen/**`

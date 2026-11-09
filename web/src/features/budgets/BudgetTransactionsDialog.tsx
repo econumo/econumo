@@ -87,7 +87,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
 
   const params = element ? budgetTransactionsParams(budget.meta.id, element, selectedDate) : null
-  const { data, isLoading } = useBudgetTransactions(params)
+  const { data, isLoading, fetchStatus } = useBudgetTransactions(params)
+  // paused offline with nothing cached is unknown, not an empty list
+  const waiting = isLoading || (fetchStatus === 'paused' && data === undefined)
   const transactions = data?.items
 
   const openedKind = element ? transactionsKind(element.type) : null
@@ -146,7 +148,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
     <>
       {/* interactions inside the stacked preview/confirm must not dismiss the list */}
       <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={displayName} dismissible={!preview && !deleteTarget}>
-        {isLoading ? (
+        {waiting ? (
           <div className="flex justify-center py-6">
             <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="loading" />
           </div>

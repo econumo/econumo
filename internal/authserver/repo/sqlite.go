@@ -44,6 +44,14 @@ func (sqliteQuerier) PurgeExpiredOAuthCodes(ctx context.Context, db backend.DBTX
 	return sqlitegen.New(db).PurgeExpiredOAuthCodes(ctx, before)
 }
 
+func (sqliteQuerier) DeleteClientOAuthCodes(ctx context.Context, db backend.DBTX, clientID string) (int64, error) {
+	return sqlitegen.New(db).DeleteClientOAuthCodes(ctx, clientID)
+}
+
+func (sqliteQuerier) DeleteClientUserOAuthCodes(ctx context.Context, db backend.DBTX, p deleteUserCodesParams) (int64, error) {
+	return sqlitegen.New(db).DeleteClientUserOAuthCodes(ctx, p)
+}
+
 func (sqliteQuerier) InsertOAuthGrant(ctx context.Context, db backend.DBTX, p insertGrantParams) error {
 	return sqlitegen.New(db).InsertOAuthGrant(ctx, p)
 }
@@ -86,4 +94,52 @@ func (sqliteQuerier) ListUnrevokedOAuthGrants(ctx context.Context, db backend.DB
 
 func (sqliteQuerier) DeleteDeadOAuthGrants(ctx context.Context, db backend.DBTX, p deleteDeadParams) (int64, error) {
 	return sqlitegen.New(db).DeleteDeadOAuthGrants(ctx, p)
+}
+
+func (sqliteQuerier) ClaimOAuthClient(ctx context.Context, db backend.DBTX, p claimClientParams) (int64, error) {
+	return sqlitegen.New(db).ClaimOAuthClient(ctx, p)
+}
+
+func (sqliteQuerier) ListOAuthClients(ctx context.Context, db backend.DBTX) ([]clientRow, error) {
+	return sqlitegen.New(db).ListOAuthClients(ctx)
+}
+
+func (sqliteQuerier) UpdateGlobalOAuthClient(ctx context.Context, db backend.DBTX, p updateGlobalParams) (int64, error) {
+	return sqlitegen.New(db).UpdateGlobalOAuthClient(ctx, p)
+}
+
+func (sqliteQuerier) MakeOAuthClientGlobal(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	return sqlitegen.New(db).MakeOAuthClientGlobal(ctx, id)
+}
+
+func (sqliteQuerier) SetOAuthClientSecret(ctx context.Context, db backend.DBTX, p setClientSecretParams) (int64, error) {
+	return sqlitegen.New(db).SetOAuthClientSecret(ctx, p)
+}
+
+func (sqliteQuerier) ShareLockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return sqlitegen.New(db).ShareLockOAuthClient(ctx, id)
+}
+
+func (sqliteQuerier) GetOAuthCode(ctx context.Context, db backend.DBTX, codeHash string) (codeRow, error) {
+	return sqlitegen.New(db).GetOAuthCode(ctx, codeHash)
+}
+
+func (sqliteQuerier) LockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return sqlitegen.New(db).LockOAuthClient(ctx, id)
+}
+
+func (sqliteQuerier) DeleteOAuthClient(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	return sqlitegen.New(db).DeleteOAuthClient(ctx, id)
+}
+
+func (sqliteQuerier) ListOAuthClientGrants(ctx context.Context, db backend.DBTX, clientID string) ([]grantRow, error) {
+	return sqlitegen.New(db).ListOAuthClientGrants(ctx, clientID)
+}
+
+func (sqliteQuerier) ListAllUnrevokedOAuthGrants(ctx context.Context, db backend.DBTX) ([]grantRow, error) {
+	return sqlitegen.New(db).ListAllUnrevokedOAuthGrants(ctx)
+}
+
+func (sqliteQuerier) RevokeClientOAuthGrants(ctx context.Context, db backend.DBTX, p revokeClientParams) ([]string, error) {
+	return sqlitegen.New(db).RevokeClientOAuthGrants(ctx, p)
 }

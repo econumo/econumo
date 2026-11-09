@@ -98,7 +98,7 @@ func (r *AccessTokenRepo) InsertIfPresenterLive(ctx context.Context, t *model.Ac
 }
 
 func (r *AccessTokenRepo) InsertOAuthIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error) {
-	if t.Kind != model.TokenKindOAuth || t.Scope != model.TokenScopeMCP || t.GrantID == nil {
+	if t.Kind != model.TokenKindOAuth || (t.Scope != model.TokenScopeMCP && t.Scope != model.TokenScopeRead) || t.GrantID == nil {
 		return 0, fmt.Errorf("access token %s: not a well-formed oauth token", t.ID)
 	}
 	grantID := t.GrantID.String()

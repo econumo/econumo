@@ -478,7 +478,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)
 
-	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc, idempotency.NewStore(cfg.DatabaseDriver, txm, clk))
+	authn := NewReadScopeGate(NewTimezoneTrackingAuthenticator(userSvc, userSvc, idempotency.NewStore(cfg.DatabaseDriver, txm, clk)), authSrv.Enabled())
 
 	// Disabled means unrouted: with SimpleFIN off its credential and sync
 	// routes 404.

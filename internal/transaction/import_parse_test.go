@@ -78,15 +78,15 @@ func TestResolveOverrideLabelIDs_DedupesRepeatedIds(t *testing.T) {
 }
 
 // TestResolveOverrideLabelIDs_ExceedsCap_RejectedAsTooMany pins
-// maxLabelsPerImportRow as the bound on the DISTINCT id count (after dedupe):
+// maxTransactionLabels as the bound on the DISTINCT id count (after dedupe):
 // this override fans out to every imported row, so an unbounded value would
 // turn a single bad request into per-row work sized to whatever the caller
 // sent. tooMany must be reported so the caller sees a dedicated message
 // rather than the generic "not found" one.
 func TestResolveOverrideLabelIDs_ExceedsCap_RejectedAsTooMany(t *testing.T) {
-	list := make([]model.ImportNamed, maxLabelsPerImportRow+1)
+	list := make([]model.ImportNamed, maxTransactionLabels+1)
 	ownerID := vo.NewId().String()
-	ids := make([]string, maxLabelsPerImportRow+1)
+	ids := make([]string, maxTransactionLabels+1)
 	for i := range list {
 		id := vo.NewId()
 		list[i] = model.ImportNamed{ID: id.String(), Name: id.String(), OwnerID: ownerID}
@@ -95,7 +95,7 @@ func TestResolveOverrideLabelIDs_ExceedsCap_RejectedAsTooMany(t *testing.T) {
 	csv := strings.Join(ids, ",")
 	resolved, ok, tooMany := resolveOverrideLabelIDs(&csv, list)
 	if ok || !tooMany {
-		t.Fatalf("ok=%v tooMany=%v, want ok=false tooMany=true (%d distinct ids exceeds the cap of %d)", ok, tooMany, len(ids), maxLabelsPerImportRow)
+		t.Fatalf("ok=%v tooMany=%v, want ok=false tooMany=true (%d distinct ids exceeds the cap of %d)", ok, tooMany, len(ids), maxTransactionLabels)
 	}
 	if resolved != nil {
 		t.Fatalf("resolved = %#v, want nil on rejection", resolved)
@@ -105,9 +105,9 @@ func TestResolveOverrideLabelIDs_ExceedsCap_RejectedAsTooMany(t *testing.T) {
 // TestResolveOverrideLabelIDs_ExactlyAtCap_Accepted proves the check is an
 // off-by-one-safe ">", not ">=".
 func TestResolveOverrideLabelIDs_ExactlyAtCap_Accepted(t *testing.T) {
-	list := make([]model.ImportNamed, maxLabelsPerImportRow)
+	list := make([]model.ImportNamed, maxTransactionLabels)
 	ownerID := vo.NewId().String()
-	ids := make([]string, maxLabelsPerImportRow)
+	ids := make([]string, maxTransactionLabels)
 	for i := range list {
 		id := vo.NewId()
 		list[i] = model.ImportNamed{ID: id.String(), Name: id.String(), OwnerID: ownerID}
@@ -118,7 +118,7 @@ func TestResolveOverrideLabelIDs_ExactlyAtCap_Accepted(t *testing.T) {
 	if !ok || tooMany {
 		t.Fatalf("ok=%v tooMany=%v, want ok=true tooMany=false at exactly the cap", ok, tooMany)
 	}
-	if len(resolved) != maxLabelsPerImportRow {
-		t.Fatalf("resolved count = %d, want %d", len(resolved), maxLabelsPerImportRow)
+	if len(resolved) != maxTransactionLabels {
+		t.Fatalf("resolved count = %d, want %d", len(resolved), maxTransactionLabels)
 	}
 }

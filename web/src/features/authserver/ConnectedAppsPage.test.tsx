@@ -17,8 +17,8 @@ vi.mock('@/lib/metrics', async (importOriginal) => ({
 }))
 
 const apps = [
-  { id: 'g1', clientName: 'Claude', redirectHost: 'claude.ai', isLoopback: false, createdAt: '2026-10-01 10:00:00', lastUsedAt: '2026-10-03 09:00:00' },
-  { id: 'g2', clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, createdAt: '2026-10-02 10:00:00', lastUsedAt: '2026-10-02 10:00:00' },
+  { id: 'g1', clientName: 'Claude', redirectHost: 'claude.ai', isLoopback: false, isGlobal: false, createdAt: '2026-10-01 10:00:00', lastUsedAt: '2026-10-03 09:00:00' },
+  { id: 'g2', clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, isGlobal: false, createdAt: '2026-10-02 10:00:00', lastUsedAt: '2026-10-02 10:00:00' },
 ]
 
 function renderPage() {
@@ -51,6 +51,16 @@ test('lists connected apps with where they send you', async () => {
   expect(screen.getByText(/claude\.ai/)).toBeInTheDocument()
   expect(screen.getByText(/this computer/i)).toBeInTheDocument()
   expect(screen.getAllByText(/Last used/)).toHaveLength(2)
+})
+
+test('marks official apps only', async () => {
+  vi.mocked(getConnectedApps).mockResolvedValue([{ ...apps[0], isGlobal: true }, apps[1]])
+  renderPage()
+  await screen.findByText('Claude')
+  const badges = screen.getAllByText('Official')
+  expect(badges).toHaveLength(1)
+  expect(screen.getByTestId('connected-app-g1')).toContainElement(badges[0])
+  expect(screen.getByTestId('connected-app-g2')).not.toHaveTextContent('Official')
 })
 
 test('revoke asks for confirmation, calls the API and fires the metric', async () => {

@@ -15,6 +15,7 @@ type Querier interface {
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
+	ClaimOAuthClient(ctx context.Context, arg ClaimOAuthClientParams) (int64, error)
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
 	ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
@@ -49,6 +50,8 @@ type Querier interface {
 	DeleteBudgetLimit(ctx context.Context, id string) error
 	DeleteBudgetLimitsByBudget(ctx context.Context, budgetID string) error
 	DeleteCategory(ctx context.Context, id string) error
+	DeleteClientOAuthCodes(ctx context.Context, clientID string) (int64, error)
+	DeleteClientUserOAuthCodes(ctx context.Context, arg DeleteClientUserOAuthCodesParams) (int64, error)
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	// The OAuth server's housekeeping purge: oauth tokens live an hour, so they
@@ -69,6 +72,7 @@ type Querier interface {
 	DeleteImportRuleLabels(ctx context.Context, ruleID string) error
 	DeleteImportSource(ctx context.Context, id string) error
 	DeleteLabel(ctx context.Context, id string) error
+	DeleteOAuthClient(ctx context.Context, id string) (int64, error)
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
 	DeleteOAuthHandoffsByUser(ctx context.Context, userID string) (int64, error)
 	DeleteOAuthHandoffsByUserProvider(ctx context.Context, arg DeleteOAuthHandoffsByUserProviderParams) (int64, error)
@@ -151,6 +155,9 @@ type Querier interface {
 	// Deleted rows are excluded: an owner may hold a live and a deleted currency with
 	// the same code, and LIMIT 1 would otherwise pick between them arbitrarily.
 	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
+	// Rates published within [from, to] (inclusive days) plus, per (currency,
+	// base) pair, the newest rate published before from. See the sqlite variant.
+	GetCurrencyRateRangeView(ctx context.Context, arg GetCurrencyRateRangeViewParams) ([]GetCurrencyRateRangeViewRow, error)
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
@@ -202,6 +209,7 @@ type Querier interface {
 	GetLatestRateDate(ctx context.Context) (time.Time, error)
 	GetNearestCurrencyRates(ctx context.Context, arg GetNearestCurrencyRatesParams) ([]GetNearestCurrencyRatesRow, error)
 	GetOAuthClient(ctx context.Context, id string) (OauthClient, error)
+	GetOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
 	GetOAuthGrant(ctx context.Context, id string) (OauthGrant, error)
 	GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHash string) (OauthGrant, error)
 	GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash string) (OauthGrant, error)
@@ -333,6 +341,7 @@ type Querier interface {
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// The same count for every AVAILABLE account (the balance query's set).
 	ListAccountTransactionsCountsForUser(ctx context.Context, userID string) ([]ListAccountTransactionsCountsForUserRow, error)
+	ListAllUnrevokedOAuthGrants(ctx context.Context) ([]OauthGrant, error)
 	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted
 	// (see the sqlite variant, incl. the pending-grant and ORDER BY rationale). $1
 	// is reused for both sides so the param stays single.
@@ -396,6 +405,8 @@ type Querier interface {
 	// The owner's labels ordered by sort key; used by move-label (load, place the
 	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
+	ListOAuthClientGrants(ctx context.Context, clientID string) ([]OauthGrant, error)
+	ListOAuthClients(ctx context.Context) ([]OauthClient, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
@@ -424,6 +435,9 @@ type Querier interface {
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// Plain FOR UPDATE is required: it is the only mode that conflicts with the KEY SHARE
+	// lock a concurrent grant INSERT takes on this row through its foreign key.
+	LockOAuthClient(ctx context.Context, id string) (string, error)
 	// Locks the savings element a removal is about to drop, before its guard
 	// reads the element's data: a limit or comment writer that share-locked the
 	// row first has committed by the time the guard's EXISTS runs, and one that
@@ -439,6 +453,7 @@ type Querier interface {
 	// row belonging to this user. The adapter maps no-rows to success: a missing
 	// user must keep succeeding silently.
 	LockUserRow(ctx context.Context, id string) (string, error)
+	MakeOAuthClientGlobal(ctx context.Context, id string) (int64, error)
 	MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUsedParams) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
@@ -467,6 +482,7 @@ type Querier interface {
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
 	RevokeAccessTokensByGrant(ctx context.Context, arg RevokeAccessTokensByGrantParams) error
+	RevokeClientOAuthGrants(ctx context.Context, arg RevokeClientOAuthGrantsParams) ([]string, error)
 	RevokeOAuthGrant(ctx context.Context, arg RevokeOAuthGrantParams) (int64, error)
 	// Re-authorizing a client replaces the user's earlier connection to it: every
 	// other unrevoked grant for the same (user, client) goes, returning the ids so
@@ -482,7 +498,11 @@ type Querier interface {
 	// comment: dropping the element (flag off or member removed) deletes both.
 	SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (bool, error)
 	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
+	SetOAuthClientSecret(ctx context.Context, arg SetOAuthClientSecretParams) (int64, error)
 	SetUserEmail(ctx context.Context, arg SetUserEmailParams) error
+	// KEY SHARE conflicts only with the FOR UPDATE of LockOAuthClient (and a
+	// DELETE), so concurrent exchanges of one client do not wait on each other.
+	ShareLockOAuthClient(ctx context.Context, id string) (string, error)
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.
@@ -491,6 +511,7 @@ type Querier interface {
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	UpdateGlobalOAuthClient(ctx context.Context, arg UpdateGlobalOAuthClientParams) (int64, error)
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error
 	// Note: sets run_id too so a processed event records the run that consumed it.

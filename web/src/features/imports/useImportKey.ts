@@ -18,7 +18,7 @@ export type ImportKeyState =
 export function useImportKey(): { state: ImportKeyState; refresh: () => void } {
   const queryClient = useQueryClient()
   const remote = useImportCredentialKey()
-  const local = useQuery({ queryKey: queryKeys.importLocalKey, queryFn: loadStoredKey, staleTime: Infinity, gcTime: 0 })
+  const local = useQuery({ queryKey: queryKeys.importLocalKey, queryFn: loadStoredKey, staleTime: Infinity, gcTime: 0, networkMode: 'always' })
   const refresh = () => void queryClient.invalidateQueries({ queryKey: queryKeys.importLocalKey })
   if (remote.isPending || local.isPending) {
     return { state: { status: 'loading' }, refresh }

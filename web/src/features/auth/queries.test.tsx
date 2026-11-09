@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
@@ -15,6 +15,15 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+})
+
+it('a login with no connection fails instead of waiting for the network', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  server.use(http.post('*/api/v1/user/login-user', () => HttpResponse.error()))
+  const { result } = renderHook(() => useLogin(), { wrapper })
+  result.current.mutate({ username: 'a@b', password: 'pw' })
+  await waitFor(() => expect(result.current.isError).toBe(true))
 })
 
 it('stores the token after a successful login', async () => {

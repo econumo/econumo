@@ -335,6 +335,7 @@ type OauthAuthorizationCode struct {
 	CredentialsGeneration int64
 	CreatedAt             time.Time
 	ExpiresAt             time.Time
+	Scope                 string
 }
 
 type OauthClient struct {
@@ -344,6 +345,8 @@ type OauthClient struct {
 	SecretHash   *string
 	CreatedAt    time.Time
 	LastUsedAt   *time.Time
+	OwnerUserID  *string
+	IsGlobal     bool
 }
 
 type OauthGrant struct {
@@ -357,6 +360,7 @@ type OauthGrant struct {
 	LastUsedAt           time.Time
 	ExpiresAt            time.Time
 	RevokedAt            *time.Time
+	Scope                string
 }
 
 type OauthHandoff struct {

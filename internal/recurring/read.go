@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Service) GetRecurringTransactionList(ctx context.Context, userID vo.Id) (*model.GetRecurringTransactionListResult, error) {
-	accountIDs, err := s.visible.VisibleAccountIDs(ctx, userID)
+	accountIDs, err := s.available.AvailableAccountIDs(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useOnline } from '@/lib/online'
+import { useOnline } from '@/hooks/useOnline'
 
 interface ReportQueryState {
   data?: unknown

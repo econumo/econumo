@@ -3,6 +3,7 @@ package api_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"strings"
@@ -483,9 +484,9 @@ func TestImportLabelIdsOverrideRejectsForeignLabel(t *testing.T) {
 }
 
 // maxTestImportLabelOverride mirrors internal/transaction/import.go's
-// unexported maxLabelsPerImportRow (10) -- this test package cannot see it
+// unexported maxTransactionLabels (50) -- this test package cannot see it
 // directly, so the boundary is duplicated here; keep the two in sync.
-const maxTestImportLabelOverride = 10
+const maxTestImportLabelOverride = 50
 
 // TestImportLabelIdsOverrideExceedsCap_Rejected: the labelIds override
 // applies to every imported row, so it is capped at the same width as the
@@ -519,6 +520,34 @@ func TestImportLabelIdsOverrideExceedsCap_Rejected(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("errors=%v want a top-level too-many-labelIds error", res.Errors)
+	}
+}
+
+// An export can carry as many labels as a transaction holds, so importing it
+// back must store them all.
+func TestImportStoresRowWithAsManyLabelsAsATransactionHolds(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	names := make([]string, maxTestImportLabelOverride)
+	for i := range names {
+		names[i] = fmt.Sprintf("Label %d", i)
+	}
+	csv := "Account,Date,Amount,Labels\nCash,2024-03-01,-10," + strings.Join(names, ";") + "\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount","labels":"Labels"}`
+	status, env := h.doImport(t, tok, csv, mapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 1 || len(res.Errors) != 0 {
+		t.Fatalf("imported=%d errors=%v, want 1 and none", res.Imported, res.Errors)
+	}
+	var stored int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM transactions_labels`).Scan(&stored); err != nil {
+		t.Fatalf("count labels: %v", err)
+	}
+	if stored != len(names) {
+		t.Fatalf("stored %d labels, want %d", stored, len(names))
 	}
 }
 

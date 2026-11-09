@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -12,7 +13,7 @@ import (
 type Credentials interface {
 	LockForOAuth(ctx context.Context, userID vo.Id) (int64, error)
 	IsTokenLive(ctx context.Context, userID, tokenID vo.Id) (bool, error)
-	IssueOAuthAccessToken(ctx context.Context, userID, grantID vo.Id, name string, generation int64, ttl time.Duration) (string, bool, error)
+	IssueOAuthAccessToken(ctx context.Context, userID, grantID vo.Id, name string, scope model.TokenScope, generation int64, ttl time.Duration) (string, bool, error)
 	RevokeOAuthGrantTokens(ctx context.Context, grantID vo.Id) error
 	PurgeDeadOAuthTokens(ctx context.Context, cutoff time.Time) (int64, error)
 }

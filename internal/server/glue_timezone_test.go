@@ -10,6 +10,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/authstub"
@@ -68,6 +69,40 @@ func TestTimezoneTrackingAuthenticator(t *testing.T) {
 
 	if _, err := authn.Authenticate(ctx, "not-a-user-id"); err == nil {
 		t.Fatal("want auth error")
+	}
+}
+
+type fixedScopeAuthenticator struct {
+	user  vo.Id
+	scope model.TokenScope
+}
+
+func (a fixedScopeAuthenticator) Authenticate(context.Context, string) (model.Principal, error) {
+	return model.Principal{UserID: a.user, TokenID: a.user, Level: model.AccessLevelFull, Scope: a.scope}, nil
+}
+
+func TestTimezoneTrackingAuthenticator_ReadScopeWritesNothing(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	uid := vo.MustParseId(fixture.New(t, db).User(fixture.User{}))
+	userSvc := newTimezoneTestUserSvc(t, db)
+	loc, err := time.LoadLocation("Europe/Amsterdam")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := reqctx.WithExplicitLocation(context.Background(), loc)
+
+	if _, err := NewTimezoneTrackingAuthenticator(fixedScopeAuthenticator{uid, model.TokenScopeRead}, userSvc, nil).Authenticate(ctx, "t"); err != nil {
+		t.Fatal(err)
+	}
+	if tz, _ := userSvc.GetTimezone(context.Background(), uid); tz != "" {
+		t.Fatalf("a read token persisted timezone %q", tz)
+	}
+
+	if _, err := NewTimezoneTrackingAuthenticator(fixedScopeAuthenticator{uid, model.TokenScopeMCP}, userSvc, nil).Authenticate(ctx, "t"); err != nil {
+		t.Fatal(err)
+	}
+	if tz, _ := userSvc.GetTimezone(context.Background(), uid); tz != "Europe/Amsterdam" {
+		t.Fatalf("mcp scope timezone = %q, want Europe/Amsterdam", tz)
 	}
 }
 

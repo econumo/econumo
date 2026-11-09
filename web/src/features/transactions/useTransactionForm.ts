@@ -289,13 +289,15 @@ export function classificationChips(
   ]
 }
 
-export function accountOptions(accounts: AccountDto[], folders: FolderDto[], isNew: boolean): AccountDto[] {
-  if (!isNew) {
-    return accounts
-  }
-  // creation offers only accounts living in visible folders (Vue parity)
-  const visibleFolderIds = new Set(folders.filter((f) => f.isVisible === 1).map((f) => f.id))
-  return accounts.filter((a) => !a.folderId || visibleFolderIds.has(a.folderId))
+// new forms default to the first account, which must not be a hidden one
+export function visibleAccountsFirst(accounts: AccountDto[], folders: FolderDto[]): AccountDto[] {
+  const hidden = hiddenFolderAccountIds(accounts, folders)
+  return [...accounts.filter((a) => !hidden.has(a.id)), ...accounts.filter((a) => hidden.has(a.id))]
+}
+
+export function hiddenFolderAccountIds(accounts: AccountDto[], folders: FolderDto[]): Set<Id> {
+  const hiddenFolderIds = new Set(folders.filter((f) => f.isVisible === 0).map((f) => f.id))
+  return new Set(accounts.filter((a) => a.folderId && hiddenFolderIds.has(a.folderId)).map((a) => a.id))
 }
 
 export function categoryOptions(categories: CategoryDto[], type: TransactionType, ownerUserId: Id | undefined): CategoryDto[] {

@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import { AxiosError, type AxiosResponse } from 'axios'
 import { toast } from 'sonner'
 import { queryKeys } from '@/app/queryKeys'
@@ -50,4 +51,34 @@ it('a write the server answered shows no global toast', async () => {
   const refused = new AxiosError('Bad', 'ERR_BAD_REQUEST', undefined, undefined, { status: 400, data: {} } as AxiosResponse)
   await expect(failing(refused)).rejects.toThrow()
   expect(toast.error).not.toHaveBeenCalled()
+})
+
+describe('started with no connection', () => {
+  beforeEach(() => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    onTestFinished(() => {
+      vi.restoreAllMocks()
+      onlineManager.setOnline(true)
+    })
+  })
+
+  it('a read waits for the connection instead of retrying', async () => {
+    const client = createAppQueryClient()
+    const queryFn = vi.fn(async () => 'ok')
+    void client.fetchQuery({ queryKey: ['offline-read'], queryFn })
+    await vi.waitFor(() => expect(client.getQueryState(['offline-read'])?.fetchStatus).toBe('paused'))
+    expect(queryFn).not.toHaveBeenCalled()
+    expect(client.isFetching()).toBe(0)
+  })
+
+  it('a write is sent at once and fails where the caller sees it, never pausing', async () => {
+    const client = createAppQueryClient()
+    client.mount()
+    onTestFinished(() => client.unmount())
+    const mutationFn = vi.fn(async () => { throw noResponse() })
+    const mutation = client.getMutationCache().build(client, { mutationFn })
+    await expect(mutation.execute(undefined)).rejects.toThrow('Network Error')
+    expect(mutationFn).toHaveBeenCalledTimes(1)
+    expect(mutation.state.isPaused).toBe(false)
+  })
 })

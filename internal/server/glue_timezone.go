@@ -42,6 +42,11 @@ func (a *timezoneTrackingAuthenticator) Authenticate(ctx context.Context, token 
 	if err != nil || !reqctx.IsLocationExplicit(ctx) {
 		return p, err
 	}
+	// A read token promises to change nothing, and this runs before the scope
+	// check, so it would also write on a request that ends in a 401.
+	if p.Scope == model.TokenScopeRead {
+		return p, nil
+	}
 	tz := reqctx.Location(ctx).String()
 	if prev, ok := a.seen.Load(p.UserID); ok && prev.(string) == tz {
 		return p, nil

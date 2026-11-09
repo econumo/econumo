@@ -70,7 +70,8 @@ func (h *Handlers) GetAuthorizationRequest(w http.ResponseWriter, r *http.Reques
 func (h *Handlers) ApproveAuthorization(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.AuthorizationRequest) (model.AuthorizationDecisionResult, error) {
 		tokenID, _ := middleware.TokenIDFromCtx(ctx)
-		return h.svc.ApproveAuthorization(ctx, userID, tokenID, req)
+		level, _ := middleware.AccessLevelFromCtx(ctx)
+		return h.svc.ApproveAuthorization(ctx, userID, tokenID, level == model.AccessLevelFull, req)
 	})
 }
 

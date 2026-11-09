@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { MutationCache, QueryClient } from '@tanstack/react-query'
+import { MutationCache, QueryClient, onlineManager } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { queryKeys } from '@/app/queryKeys'
 import { apiErrorMessage } from './apiError'
@@ -29,6 +29,9 @@ export function invalidateReports(client: QueryClient): void {
 }
 
 export function createAppQueryClient() {
+  // The manager assumes online until the first browser event, so an app opened
+  // with no network would retry every read forever.
+  onlineManager.setOnline(navigator.onLine !== false)
   const client: QueryClient = new QueryClient({
     mutationCache: new MutationCache({
       onSuccess: () => invalidateReports(client),

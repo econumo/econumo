@@ -52,6 +52,20 @@ it('lists templates as transaction rows', async () => {
   expect(await screen.findByText('rent')).toBeInTheDocument()
 })
 
+it('lists a template on a hidden-folder account under a marked group', async () => {
+  server.use(...coreHandlers({ recurring: [{ ...wireRecurring, accountId: 'a-hidden' }] }))
+  renderPage()
+  expect(await screen.findByText('rent')).toBeInTheDocument()
+  expect(await screen.findByText('Hidden folder')).toBeInTheDocument()
+})
+
+it('does not mark a group on a visible account', async () => {
+  server.use(...coreHandlers({ recurring: [wireRecurring] }))
+  renderPage()
+  await screen.findByText('rent')
+  expect(screen.queryByText('Hidden folder')).not.toBeInTheDocument()
+})
+
 it('shows the interval beside the title and the next payment under the amount', async () => {
   server.use(...coreHandlers({ recurring: [wireRecurring] }))
   renderPage()

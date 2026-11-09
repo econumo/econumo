@@ -16,14 +16,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// maxLabelsPerImportRow caps how many distinct labels one mapped cell may
-// resolve to. A mapped column that isn't really a label list (e.g.
-// description) would otherwise mass-create junk labels — one cell can split
-// into many values, a bigger blast radius than the single-valued
-// category/payee/tag columns. Exceeding it is a row-level error rather than a
-// silent truncation, so the mis-mapping is visible instead of hidden.
-const maxLabelsPerImportRow = 10
-
 // ImportTransactionList runs the CSV import for the user. It returns the result
 // with counts + errors; only an infrastructure error (tx failure, override
 // resolution failure) returns a non-nil error.
@@ -185,7 +177,7 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 	overrideLabelIDs, ok, labelsTooMany := resolveOverrideLabelIDs(req.LabelIds, labels)
 	if !ok {
 		if labelsTooMany {
-			addImportError(result, fmt.Sprintf("Too many labelIds provided, exceeding the maximum of %d", maxLabelsPerImportRow), 0)
+			addImportError(result, fmt.Sprintf("Too many labelIds provided, exceeding the maximum of %d", maxTransactionLabels), 0)
 		} else {
 			addImportError(result, "Label not found for provided labelIds", 0)
 		}
@@ -396,9 +388,11 @@ func (s *Service) importRow(
 		names := splitLabelCell(fieldValue(row, req.Mapping.Labels), labelsSeparator)
 		// names is already deduped (case-insensitively) by splitLabelCell, so
 		// the cap counts distinct labels, not raw split pieces - "Kid A;kid a"
-		// is one label and must not count as two against the limit.
-		if len(names) > maxLabelsPerImportRow {
-			return errs.NewValidation(fmt.Sprintf("Row has %d labels, exceeding the maximum of %d", len(names), maxLabelsPerImportRow))
+		// is one label and must not count as two against the limit. A row
+		// error rather than a silent truncation, so a column mapped here by
+		// mistake (one cell splits into many junk labels) shows up.
+		if len(names) > maxTransactionLabels {
+			return errs.NewValidation(fmt.Sprintf("Row has %d labels, exceeding the maximum of %d", len(names), maxTransactionLabels))
 		}
 		if len(names) > 0 {
 			labelByName, cerr := s.labelCacheForOwner(ctx, labelOwnerID, labelCaches)
@@ -536,12 +530,9 @@ func resolveOverrideNamed(idPtr *string, list []model.ImportNamed) (*model.Impor
 // belongs-to-the-account-owner check, the same way a single tagId override is
 // authorized against the owner-scoped tags list. Duplicate ids collapse to
 // one (first occurrence wins). The deduped count is capped at
-// maxLabelsPerImportRow: this override applies to EVERY imported row (unlike
-// the per-row mapped-cell cap, which only ever bounds one row), so it is a
-// top-level input worth bounding at the same width rather than letting a
-// bad value fan out into per-row work for the whole file - closer in spirit
-// to the per-row cap than to the 50-per-transaction ceiling
-// resolveLabels/write side enforces downstream. Returns (nil, true) when
+// maxTransactionLabels, the most any row could carry anyway; checked here so
+// a bad value is one top-level error rather than a failure on every row.
+// Returns (nil, true) when
 // idsCSV is absent/blank (a blank override is treated as absent, like every
 // other override id); (ids, true) when every piece resolves within the cap;
 // (nil, false, tooMany=false) when any piece is not found; (nil, false,
@@ -586,7 +577,7 @@ func resolveOverrideLabelIDs(idsCSV *string, list []model.ImportNamed) (ids []vo
 		// column still resolves per row instead of being silently suppressed.
 		return nil, true, false
 	}
-	if len(out) > maxLabelsPerImportRow {
+	if len(out) > maxTransactionLabels {
 		return nil, false, true
 	}
 	return out, true, false

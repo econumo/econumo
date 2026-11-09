@@ -11,6 +11,7 @@ import (
 
 const (
 	Scope           = "mcp"
+	ScopeRead       = "read"
 	CodeTTL         = 2 * time.Minute
 	AccessTokenTTL  = time.Hour
 	GrantIdleTTL    = 90 * 24 * time.Hour

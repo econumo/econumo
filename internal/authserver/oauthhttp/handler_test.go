@@ -36,7 +36,7 @@ func (f *fakeCreds) IsTokenLive(context.Context, vo.Id, vo.Id) (bool, error) { r
 func (f *fakeCreds) PurgeDeadOAuthTokens(context.Context, time.Time) (int64, error) {
 	return 0, nil
 }
-func (f *fakeCreds) IssueOAuthAccessToken(context.Context, vo.Id, vo.Id, string, int64, time.Duration) (string, bool, error) {
+func (f *fakeCreds) IssueOAuthAccessToken(context.Context, vo.Id, vo.Id, string, model.TokenScope, int64, time.Duration) (string, bool, error) {
 	f.issued++
 	return fmt.Sprintf("eco_oat_%d", f.issued), true, nil
 }
@@ -67,7 +67,7 @@ func do(h http.Handler, method, path, contentType string, body io.Reader) *httpt
 
 func approveCode(t *testing.T, svc *authserver.Service, user vo.Id, clientID string) string {
 	t.Helper()
-	res, err := svc.ApproveAuthorization(ctx, user, vo.NewId(), model.AuthorizationRequest{
+	res, err := svc.ApproveAuthorization(ctx, user, vo.NewId(), true, model.AuthorizationRequest{
 		ClientID: clientID, RedirectURI: callback, ResponseType: "code",
 		CodeChallenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", CodeChallengeMethod: "S256",
 		Resource: testURL + "/mcp",
@@ -90,6 +90,9 @@ func TestMetadata(t *testing.T) {
 			m["authorization_endpoint"] != testURL+"/oauth/authorize" || m["registration_endpoint"] != testURL+"/oauth/register" {
 			t.Fatalf("%d %v", rec.Code, m)
 		}
+		if got := fmt.Sprint(m["scopes_supported"]); got != "[mcp read]" {
+			t.Fatalf("authorization server scopes_supported = %s", got)
+		}
 		if rec.Header().Get("Access-Control-Allow-Origin") != "*" || rec.Header().Get("Content-Type") != "application/json" {
 			t.Fatal("headers", rec.Header())
 		}
@@ -99,6 +102,10 @@ func TestMetadata(t *testing.T) {
 			_ = json.Unmarshal(rec.Body.Bytes(), &m)
 			if m["resource"] != testURL+"/mcp" || fmt.Sprint(m["authorization_servers"]) != "["+testURL+"]" {
 				t.Fatalf("%s: %v", p, m)
+			}
+			// The resource is /mcp, and read tokens are refused there.
+			if got := fmt.Sprint(m["scopes_supported"]); got != "[mcp]" {
+				t.Fatalf("%s: scopes_supported = %s", p, got)
 			}
 		}
 		want := `Bearer resource_metadata="` + testURL + `/.well-known/oauth-protected-resource/mcp", scope="mcp"`
