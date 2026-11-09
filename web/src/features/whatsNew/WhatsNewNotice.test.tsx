@@ -42,22 +42,22 @@ beforeEach(() => {
 
 it('links to the release notes in a new window after an upgrade', () => {
   render(<WhatsNewNotice />)
-  const link = screen.getByRole('link', { name: /v1\.6\.0/ })
+  const link = screen.getByRole('link', { name: "What's new in v1.6" })
   expect(link).toHaveAttribute('href', 'https://econumo.com/releases/v1.6.0')
   expect(link).toHaveAttribute('target', '_blank')
 })
 
 it.each([
-  ['a new minor line', 'v1.6.4', 'v1.7.2', 'v1.7.0'],
-  ['a new major line', 'v1.9.0', 'v2.0.3', 'v2.0.0'],
-  ['a user with nothing stored', null, 'v1.7.2', 'v1.7.0'],
-])('links %s to its .0 notes', (_, stored, version, notes) => {
+  ['a new minor line', 'v1.6.4', 'v1.7.2', 'v1.7'],
+  ['a new major line', 'v1.9.0', 'v2.0.3', 'v2.0'],
+  ['a user with nothing stored', null, 'v1.7.2', 'v1.7'],
+])('names %s without its patch and links its .0 notes', (_, stored, version, line) => {
   mocks.version = version
   seen(stored)
   render(<WhatsNewNotice />)
   const link = screen.getByRole('link')
-  expect(link).toHaveTextContent(notes)
-  expect(link).toHaveAttribute('href', `https://econumo.com/releases/${notes}`)
+  expect(link.textContent).toBe(`What's new in ${line}`)
+  expect(link).toHaveAttribute('href', `https://econumo.com/releases/${line}.0`)
 })
 
 it('stores the running version, not the notes version', async () => {

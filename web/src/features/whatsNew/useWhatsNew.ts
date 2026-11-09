@@ -9,17 +9,11 @@ const RELEASE_NOTES_URL = 'https://econumo.com/releases/'
 export interface WhatsNew {
   // The running release, stored as seen on open/dismiss.
   version: string
-  // The release whose notes the card links to (see notesVersion).
+  // What the card names, e.g. v1.7.
+  line: string
+  // The release whose notes the card links to, e.g. v1.7.0.
   notesVersion: string
   url: string
-}
-
-// The card announces major and minor releases only, so it names the .0 of the
-// running line, where the big changes are written up (v1.6.x -> v1.7.2 shows
-// v1.7.0).
-function lineRelease(version: string): string {
-  const [, major, minor] = SEMVER.exec(version)!
-  return `v${major}.${minor}.0`
 }
 
 // The running release when the user has not seen its major or minor line yet;
@@ -41,9 +35,14 @@ export function useWhatsNew(): WhatsNew | null {
     return null
   }
   const seen = user.options.find((o) => o.name === UserOptions.LAST_SEEN_VERSION)?.value
-  const notes = lineRelease(version)
+  // The card announces major and minor releases only: it names the running
+  // line and links its .0 notes, where the big changes are written up
+  // (v1.6.x -> v1.7.2 shows v1.7 and links v1.7.0).
+  const [, major, minor] = SEMVER.exec(version)!
+  const line = `v${major}.${minor}`
+  const notes = `${line}.0`
   if (seen && SEMVER.test(seen) && !isNewerVersion(notes, seen)) {
     return null
   }
-  return { version, notesVersion: notes, url: RELEASE_NOTES_URL + notes }
+  return { version, line, notesVersion: notes, url: RELEASE_NOTES_URL + notes }
 }
