@@ -576,7 +576,9 @@ not count it twice. At boot, online, with attempted changes in the queue, `refre
 waits for them to resolve (`attemptedWritesResolved`, at most the 10 s write timeout), and the
 restored accounts and transactions are stamped fresh until then (`holdRestoredReads`, awaited
 before the observers mount), so neither that refresh nor a mount past their staleTime can bring a
-lost-response add before the sender knows about it.
+lost-response add before the sender knows about it. A reconnect with attempted changes holds the
+same two queries the same way (a fetch paused offline is cancelled) and invalidates them once
+`attemptedWritesResolved` settles.
 The caches keep server rows only: the waiting changes are applied at READ time
 (`overlay.ts`, through `select` on the transactions, accounts, budget and plan queries), so a
 sync or a restore cannot erase them; the budget's Spent/Available figures do not move for a

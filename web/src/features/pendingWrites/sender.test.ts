@@ -792,6 +792,103 @@ describe('holding the boot refresh for changes a previous run may have sent', ()
   })
 })
 
+describe('reconnecting with a change whose outcome is unknown', () => {
+  const OLD = () => Date.now() - 11 * 60_000
+  const heldKeys = [queryKeys.accounts, queryKeys.transactions]
+  let release: () => void
+  let held: Promise<void>
+
+  beforeEach(() => {
+    held = new Promise<void>((resolve) => { release = resolve })
+    answerWith(async () => { await held; return undefined })
+    onTestFinished(() => release())
+  })
+
+  // Both observers are up, then the device drops off the network past their staleTime.
+  async function offlineAndStale(attempted: boolean, order: 'client first' | 'sender first' = 'client first') {
+    if (order === 'client first') {
+      stop()
+      client.mount()
+      stop = startPendingWrites(client)
+    } else {
+      client.mount()
+    }
+    onTestFinished(() => client.unmount())
+    const observers = heldKeys.map((queryKey) => {
+      const queryFn = vi.fn(async () => [])
+      const observer = new QueryObserver(client, { queryKey, queryFn, staleTime: TEN_MINUTES })
+      onTestFinished(observer.subscribe(() => {}))
+      return { observer, queryFn }
+    })
+    onlineManager.setOnline(false)
+    await mutate((ops) => addChange(ops, limit('e1'), { key: 'k1', seq: 1 }).map((o) => ({ ...o, attempted })))
+    for (const queryKey of heldKeys) {
+      client.setQueryData(queryKey, [], { updatedAt: OLD() })
+    }
+    return observers
+  }
+  const settle = () => new Promise((r) => setTimeout(r, 30))
+
+  it.each(['client first', 'sender first'] as const)('holds both reads until it is resolved, then reads them (%s)', async (order) => {
+    const observers = await offlineAndStale(true, order)
+    onlineManager.setOnline(true)
+    await vi.waitFor(() => expect(seen).toHaveLength(1))
+    await settle()
+    for (const { queryFn } of observers) {
+      expect(queryFn).not.toHaveBeenCalled()
+    }
+
+    release()
+    await vi.waitFor(() => expect(getOps()).toEqual([]))
+    for (const { queryFn } of observers) {
+      await vi.waitFor(() => expect(queryFn).toHaveBeenCalledTimes(1))
+    }
+  })
+
+  it('does not let a fetch paused offline run ahead of the outcome', async () => {
+    const observers = await offlineAndStale(true)
+    void observers[0].observer.refetch()
+    expect(client.getQueryState(queryKeys.accounts)?.fetchStatus).toBe('paused')
+    onlineManager.setOnline(true)
+    await vi.waitFor(() => expect(seen).toHaveLength(1))
+    await settle()
+    expect(observers[0].queryFn).not.toHaveBeenCalled()
+
+    release()
+    await vi.waitFor(() => expect(observers[0].queryFn).toHaveBeenCalledTimes(1))
+  })
+
+  it('a screen mounting during the hold does not fetch either', async () => {
+    await offlineAndStale(true)
+    onlineManager.setOnline(true)
+    const queryFn = vi.fn(async () => [])
+    onTestFinished(new QueryObserver(client, { queryKey: queryKeys.accounts, queryFn, staleTime: TEN_MINUTES }).subscribe(() => {}))
+    await settle()
+    expect(queryFn).not.toHaveBeenCalled()
+  })
+
+  it('is held no longer than the write timeout', async () => {
+    const observers = await offlineAndStale(true)
+    const timers = vi.spyOn(globalThis, 'setTimeout')
+    onlineManager.setOnline(true)
+    await vi.waitFor(() => expect(seen).toHaveLength(1))
+    ;(timers.mock.calls.find(([, delay]) => delay === 10_000)![0] as () => void)()
+    for (const { queryFn } of observers) {
+      await vi.waitFor(() => expect(queryFn).toHaveBeenCalledTimes(1))
+    }
+    expect(op('k1')).toMatchObject({ attempted: true })
+  })
+
+  it('changes nothing with no attempted change', async () => {
+    const observers = await offlineAndStale(false)
+    onlineManager.setOnline(true)
+    for (const { queryFn } of observers) {
+      await vi.waitFor(() => expect(queryFn).toHaveBeenCalledTimes(1))
+    }
+    expect(getOps()).toHaveLength(1)
+  })
+})
+
 it('sends nothing offline, and goes on reconnect', async () => {
   answerWith(() => undefined)
   await queue(limit('e1'), 'k1', 1)

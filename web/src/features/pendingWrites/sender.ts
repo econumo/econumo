@@ -378,6 +378,14 @@ export function kickPendingWrites(): Promise<void> {
 }
 
 const awaitsItsOutcome = (op: PendingOp) => op.attempted && op.status === 'waiting'
+const HELD_READS = [queryKeys.accounts, queryKeys.transactions]
+
+function stampHeldReadsFresh(queryClient: QueryClient): void {
+  const now = Date.now()
+  for (const queryKey of HELD_READS) {
+    queryClient.getQueryCache().find({ queryKey, exact: true })?.setState({ dataUpdatedAt: now, isInvalidated: false })
+  }
+}
 
 /**
  * The boot refresh goes after this: a change the previous run sent may be on the
@@ -395,7 +403,9 @@ export async function attemptedWritesResolved(): Promise<void> {
   await Promise.race([
     new Promise<void>((resolve) => { timer = setTimeout(resolve, WRITE_TIMEOUT_MS) }),
     (async () => {
-      await loadPendingWrites(user)
+      if (!isQueueLoaded(user)) {
+        await loadPendingWrites(user)
+      }
       if (!getOps().some(awaitsItsOutcome)) {
         return
       }
@@ -428,10 +438,28 @@ export async function holdRestoredReads(queryClient: QueryClient): Promise<void>
   if (!getOps().some(awaitsItsOutcome)) {
     return
   }
-  const now = Date.now()
-  for (const queryKey of [queryKeys.accounts, queryKeys.transactions]) {
-    queryClient.getQueryCache().find({ queryKey, exact: true })?.setState({ dataUpdatedAt: now, isInvalidated: false })
+  stampHeldReadsFresh(queryClient)
+}
+
+// A reconnect refetches what went stale offline and resumes what paused there, the
+// same double count as at boot. Synchronous on purpose: QueryClient awaits the paused
+// mutations before its onOnline, so this is ahead of it whichever subscribed first.
+function holdReadsOverReconnect(queryClient: QueryClient): void {
+  if (!getOps().some(awaitsItsOutcome)) {
+    return
   }
+  for (const queryKey of HELD_READS) {
+    const query = queryClient.getQueryCache().find({ queryKey, exact: true })
+    if (query?.state.fetchStatus === 'paused') {
+      void query.cancel({ revert: true })
+    }
+  }
+  stampHeldReadsFresh(queryClient)
+  void attemptedWritesResolved().then(() => {
+    for (const queryKey of HELD_READS) {
+      void queryClient.invalidateQueries({ queryKey, exact: true })
+    }
+  })
 }
 
 export function startPendingWrites(queryClient: QueryClient): () => void {
@@ -440,6 +468,7 @@ export function startPendingWrites(queryClient: QueryClient): () => void {
     client = queryClient
     const offOnline = onlineManager.subscribe((online) => {
       if (online) {
+        holdReadsOverReconnect(queryClient)
         void kickPendingWrites()
       }
     })
