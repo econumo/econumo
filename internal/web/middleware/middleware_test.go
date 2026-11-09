@@ -150,7 +150,7 @@ func TestCORS_Preflight_ShortCircuits(t *testing.T) {
 	if got := hdr.Get("Access-Control-Allow-Methods"); got != "OPTIONS, POST, GET" {
 		t.Fatalf("Allow-Methods=%q", got)
 	}
-	if got := hdr.Get("Access-Control-Allow-Headers"); got != "Content-Type, Authorization, X-Timezone, X-Request-Id" {
+	if got := hdr.Get("Access-Control-Allow-Headers"); got != "Content-Type, Authorization, X-Timezone, X-Request-Id, Idempotency-Key" {
 		t.Fatalf("Allow-Headers=%q", got)
 	}
 	// Retry-After must stay exposed: a cross-origin SPA cannot read it otherwise,

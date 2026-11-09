@@ -183,7 +183,12 @@ func AuthWith(authn TokenAuthenticator, opts AuthOptions) Middleware {
 			ctx = context.WithValue(ctx, ctxKeyUserID, userID)
 			ctx = context.WithValue(ctx, ctxKeyTokenID, tokenID)
 			reqctx.AddLogAttr(ctx, "user_id", userID.String())
-			next.ServeHTTP(w, r.WithContext(ctx))
+			r = r.WithContext(ctx)
+			if store, key, ok := idempotencyGuard(authn, r, p.Scope); ok {
+				serveIdempotent(w, r, next, store, userID, key)
+				return
+			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }

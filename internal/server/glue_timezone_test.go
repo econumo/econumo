@@ -39,7 +39,7 @@ func TestTimezoneTrackingAuthenticator(t *testing.T) {
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
 	userSvc := newTimezoneTestUserSvc(t, db)
-	authn := NewTimezoneTrackingAuthenticator(authstub.Authenticator{}, userSvc)
+	authn := NewTimezoneTrackingAuthenticator(authstub.Authenticator{}, userSvc, nil)
 
 	loc, err := time.LoadLocation("Europe/Amsterdam")
 	if err != nil {

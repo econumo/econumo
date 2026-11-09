@@ -51,6 +51,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/handoff"
 	"github.com/econumo/econumo/internal/infra/i18n"
+	"github.com/econumo/econumo/internal/infra/idempotency"
 	"github.com/econumo/econumo/internal/infra/instance"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
@@ -477,7 +478,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)
 
-	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
+	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc, idempotency.NewStore(cfg.DatabaseDriver, txm, clk))
 
 	// Disabled means unrouted: with SimpleFIN off its credential and sync
 	// routes 404.
