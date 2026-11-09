@@ -55,8 +55,9 @@ func idempotencyGuard(authn TokenAuthenticator, r *http.Request, scope model.Tok
 // serveIdempotent refuses a request whose key was already used, before any
 // lookup or access check: the replay of a delete that landed would otherwise
 // answer "not found". The key is written inside the handler's own transaction
-// so the two commit together, and any non-2xx releases it so the operation can
-// be sent again.
+// so the two commit together. A non-2xx releases it so the operation can be sent
+// again, unless the handler pinned it: the write is in, and repeating it would
+// duplicate it.
 func serveIdempotent(w http.ResponseWriter, r *http.Request, next http.Handler, store IdempotencyStore, userID vo.Id, key string) {
 	ctx := r.Context()
 	resourceID, found, err := store.Find(ctx, userID, key)
@@ -88,7 +89,7 @@ func serveIdempotent(w http.ResponseWriter, r *http.Request, next http.Handler, 
 			if err := store.Insert(settle, userID, key, reqctx.IdempotencyResource(guarded)); err != nil {
 				slog.WarnContext(settle, "record idempotency key", slog.Any("err", err))
 			}
-		case !succeeded && recorded:
+		case !succeeded && recorded && !reqctx.IdempotencyPinned(guarded):
 			if err := store.Delete(settle, userID, key); err != nil {
 				slog.WarnContext(settle, "release idempotency key", slog.Any("err", err))
 			}

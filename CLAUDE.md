@@ -1389,8 +1389,11 @@ In the distroless image these run via the binary directly, e.g.
   catalogues are unchanged. The check reads the table BEFORE the handler, so a replay is refused
   ahead of any lookup or access check (the replay of a delete that landed would otherwise answer
   "not found"). The key is written inside the request's own DB transaction through the
-  `BeforeCommit` hook, or right after a 2xx for a handler that opens none; any non-2xx releases it
-  so the operation can be sent again. A replay answers **HTTP 409** with the handled-error
+  `BeforeCommit` hook, or right after a 2xx for a handler that opens none. A non-2xx releases it so
+  the operation can be sent again, unless the handler pinned it (`reqctx.PinIdempotency`, called
+  inside the transaction of `create-transaction`, `update-transaction`, `delete-transaction` and
+  `set-limit`): a pinned key stays once it committed, so a failure or a dropped client after COMMIT
+  makes the retry a replay rather than a duplicate. A replay answers **HTTP 409** with the handled-error
   envelope, the `common.operation_locked` message and an additive `resourceId` when one was
   stored (only create-transaction stores one today). A concurrent duplicate loses on the primary
   key and gets a retryable 5xx with the envelope, not a 409, since the first attempt may still

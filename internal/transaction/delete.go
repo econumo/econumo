@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -47,6 +48,7 @@ func (s *Service) DeleteTransaction(ctx context.Context, userID vo.Id, req model
 				return zerr
 			}
 		}
+		reqctx.PinIdempotency(ctx)
 		deleted = t
 		return nil
 	}); err != nil {

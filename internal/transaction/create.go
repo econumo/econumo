@@ -102,6 +102,7 @@ func (s *Service) createTransaction(ctx context.Context, userID vo.Id, req model
 			}
 		}
 		reqctx.SetIdempotencyResource(ctx, t.ID.String())
+		reqctx.PinIdempotency(ctx)
 		created = t
 		return nil
 	}); err != nil {

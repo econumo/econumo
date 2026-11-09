@@ -214,6 +214,70 @@ func TestIdempotency_FailureAfterACommitReleasesTheKey(t *testing.T) {
 	}
 }
 
+func TestIdempotency_PinnedKeySurvivesAClientGoneAfterTheCommit(t *testing.T) {
+	m := dbtest.NewSQLite(t).TX
+	store := &fakeIdemStore{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/x", strings.NewReader(`{}`)).WithContext(ctx)
+	req.Header.Set("Authorization", "Bearer token")
+	req.Header.Set("Idempotency-Key", idemKey)
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		err := m.WithTx(r.Context(), func(txCtx context.Context) error {
+			reqctx.PinIdempotency(txCtx)
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		cancel()
+		httpx.WriteError(r.Context(), w, context.Canceled)
+	})
+	middleware.AuthWith(idemAuthn{store: store}, middleware.AuthOptions{})(next).ServeHTTP(httptest.NewRecorder(), req)
+	if store.inserts != 1 || store.deletes != 0 || len(store.rows) != 1 {
+		t.Fatalf("inserts=%d deletes=%d rows=%v", store.inserts, store.deletes, store.rows)
+	}
+}
+
+func TestIdempotency_PinnedKeySurvivesAPanicAfterTheCommit(t *testing.T) {
+	m := dbtest.NewSQLite(t).TX
+	store := &fakeIdemStore{}
+	defer func() {
+		if recover() == nil {
+			t.Fatal("the panic must keep propagating to Recover")
+		}
+		if store.deletes != 0 {
+			t.Fatalf("deletes=%d, want 0", store.deletes)
+		}
+	}()
+	serveIdem(t, idemAuthn{store: store}, http.MethodPost, "/api/v1/x", idemKey, func(w http.ResponseWriter, r *http.Request) {
+		if err := m.WithTx(r.Context(), func(txCtx context.Context) error {
+			reqctx.PinIdempotency(txCtx)
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		panic("boom")
+	})
+}
+
+// A pin is only a promise about a transaction that commits.
+func TestIdempotency_PinFromARolledBackTransactionRecordsNothing(t *testing.T) {
+	m := dbtest.NewSQLite(t).TX
+	store := &fakeIdemStore{}
+	boom := errors.New("boom")
+	serveIdem(t, idemAuthn{store: store}, http.MethodPost, "/api/v1/x", idemKey, func(w http.ResponseWriter, r *http.Request) {
+		_ = m.WithTx(r.Context(), func(txCtx context.Context) error {
+			reqctx.PinIdempotency(txCtx)
+			return boom
+		})
+		w.WriteHeader(http.StatusBadRequest)
+	})
+	if store.inserts != 0 || store.deletes != 0 || len(store.rows) != 0 {
+		t.Fatalf("inserts=%d deletes=%d rows=%v", store.inserts, store.deletes, store.rows)
+	}
+}
+
 // A duplicate that lost the primary-key race must leave the winner's row alone.
 func TestIdempotency_LostKeyRaceDoesNotReleaseTheKey(t *testing.T) {
 	m := dbtest.NewSQLite(t).TX

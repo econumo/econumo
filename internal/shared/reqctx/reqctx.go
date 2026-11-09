@@ -44,8 +44,9 @@ func ClientIP(ctx context.Context) string {
 // idempotencyResource is a mutable holder: the auth middleware installs it and
 // reads it back, a handler far below fills it in.
 type idempotencyResource struct {
-	mu sync.Mutex
-	id string
+	mu     sync.Mutex
+	id     string
+	pinned bool
 }
 
 // WithIdempotencyResource installs an empty holder for the id of the resource
@@ -74,6 +75,31 @@ func IdempotencyResource(ctx context.Context) string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.id
+}
+
+// PinIdempotency says the request's business write is done: if the transaction
+// it is called in commits, the key stays even when the response then fails, and
+// a retry is told the write landed instead of repeating it. A no-op on a request
+// with no Idempotency-Key.
+func PinIdempotency(ctx context.Context) {
+	h, ok := ctx.Value(idempotencyResourceKey).(*idempotencyResource)
+	if !ok {
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.pinned = true
+}
+
+// IdempotencyPinned reports whether PinIdempotency was called for this request.
+func IdempotencyPinned(ctx context.Context) bool {
+	h, ok := ctx.Value(idempotencyResourceKey).(*idempotencyResource)
+	if !ok {
+		return false
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.pinned
 }
 
 // WithLocation returns a context carrying the request's timezone.

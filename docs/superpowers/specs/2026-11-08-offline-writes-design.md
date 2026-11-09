@@ -146,7 +146,12 @@ the database; the frontend assigns no record ids.
 - The key is written inside the request's own database transaction, through the
   `TxManager.BeforeCommit` hook the revision bumps already use, so it and the write commit
   together. A handler that opens no transaction has the key recorded right after a 2xx, a
-  slightly weaker guarantee. Any non-2xx releases the key so the operation can be sent again.
+  slightly weaker guarantee. A non-2xx releases the key so the operation can be sent again,
+  unless the handler pinned it (`reqctx.PinIdempotency`, called inside the transaction of
+  create-transaction, update-transaction, delete-transaction and set-limit). A pinned key
+  stays once it committed, whatever then happens to the response: a client that hung up right
+  after COMMIT cancels the reads that build the answer, and without the pin its retry would
+  duplicate the transaction, or answer "not found" for a delete.
 - A concurrent duplicate loses on the primary key and gets a retryable 5xx with the envelope,
   not 409, since the first attempt may still fail.
 - A replay answers **HTTP 409** with the handled-error envelope, the `common.operation_locked`

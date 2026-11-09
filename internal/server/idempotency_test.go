@@ -33,7 +33,7 @@ type idempotencyHarness struct {
 
 func newIdempotencyHarness(t *testing.T) idempotencyHarness {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	cfg := config.Config{
 		DatabaseDriver:  db.Engine,
 		CurrencyBase:    "USD",
@@ -345,5 +345,95 @@ func TestUpdateWithBlankIdKeepsItsFieldError(t *testing.T) {
 	errors, _ := resp["errors"].(map[string]any)
 	if _, ok := errors["id"]; !ok {
 		t.Fatalf("errors = %v, want a field error on id", resp["errors"])
+	}
+}
+
+// breakAccountList makes the account list embedded in a transaction response
+// fail while the write itself still works: a stand-in for anything that fails
+// between COMMIT and the response, a client hanging up included.
+func (h idempotencyHarness) breakAccountList() {
+	h.t.Helper()
+	if _, err := h.db.Raw.Exec("DROP TABLE accounts_options"); err != nil {
+		h.t.Fatal(err)
+	}
+}
+
+func TestCreateThatCommittedKeepsItsKeyWhenTheResponseFails(t *testing.T) {
+	h := newIdempotencyHarness(t)
+	token, userID, accountID := h.seedUser()
+	key, body := newKey(t), bodyWithoutId(accountID)
+	h.breakAccountList()
+
+	status, resp := h.do(http.MethodPost, createTransactionPath, token, key, body)
+	wantStatus(t, status, resp, http.StatusInternalServerError)
+	if n := h.count("SELECT COUNT(*) FROM idempotency_keys WHERE user_id = ?", userID); n != 1 {
+		t.Fatalf("keys = %d, want the committed write's", n)
+	}
+
+	status, resp = h.do(http.MethodPost, createTransactionPath, token, key, body)
+	wantReplay(t, status, resp)
+	var id string
+	if err := h.db.Raw.QueryRow(h.db.Rebind("SELECT id FROM transactions WHERE account_id = ?"), accountID).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	if resp["resourceId"] != id {
+		t.Fatalf("resourceId = %v, want %s", resp["resourceId"], id)
+	}
+	if n := h.count("SELECT COUNT(*) FROM transactions WHERE account_id = ?", accountID); n != 1 {
+		t.Fatalf("transactions = %d, want 1", n)
+	}
+}
+
+func TestUpdateThatCommittedKeepsItsKeyWhenTheResponseFails(t *testing.T) {
+	h := newIdempotencyHarness(t)
+	token, userID, accountID := h.seedUser()
+	txID := h.f.Transaction(fixture.Transaction{UserID: userID, AccountID: accountID, Amount: "5.00000000"})
+	key := newKey(t)
+	body := fmt.Sprintf(`{"id":%q,"type":"expense","amount":"7","accountId":%q,"date":"2026-01-02 10:00:00"}`, txID, accountID)
+	h.breakAccountList()
+
+	status, resp := h.do(http.MethodPost, "/api/v1/transaction/update-transaction", token, key, body)
+	wantStatus(t, status, resp, http.StatusInternalServerError)
+
+	status, resp = h.do(http.MethodPost, "/api/v1/transaction/update-transaction", token, key, body)
+	wantReplay(t, status, resp)
+}
+
+func TestDeleteThatCommittedKeepsItsKeyWhenTheResponseFails(t *testing.T) {
+	h := newIdempotencyHarness(t)
+	token, userID, accountID := h.seedUser()
+	txID := h.f.Transaction(fixture.Transaction{UserID: userID, AccountID: accountID, Amount: "5.00000000"})
+	key, body := newKey(t), fmt.Sprintf(`{"id":%q}`, txID)
+	h.breakAccountList()
+
+	status, resp := h.do(http.MethodPost, "/api/v1/transaction/delete-transaction", token, key, body)
+	wantStatus(t, status, resp, http.StatusInternalServerError)
+	if n := h.count("SELECT COUNT(*) FROM transactions WHERE id = ?", txID); n != 0 {
+		t.Fatalf("transactions = %d, want the delete committed", n)
+	}
+
+	status, resp = h.do(http.MethodPost, "/api/v1/transaction/delete-transaction", token, key, body)
+	wantReplay(t, status, resp)
+}
+
+// The category check runs inside create-transaction's database transaction.
+func TestFailureInsideTheTransactionReleasesTheKey(t *testing.T) {
+	h := newIdempotencyHarness(t)
+	token, userID, accountID := h.seedUser()
+	key := newKey(t)
+	bad := fmt.Sprintf(`{"type":"expense","amount":"10","accountId":%q,"categoryId":%q,"date":"2026-01-02 10:00:00"}`, accountID, uuid.NewString())
+
+	status, resp := h.do(http.MethodPost, createTransactionPath, token, key, bad)
+	if status < 400 {
+		t.Fatalf("status = %d, want a refusal; body: %v", status, resp)
+	}
+	if n := h.count("SELECT COUNT(*) FROM idempotency_keys WHERE user_id = ?", userID); n != 0 {
+		t.Fatalf("keys = %d, want 0", n)
+	}
+
+	status, resp = h.do(http.MethodPost, createTransactionPath, token, key, bodyWithoutId(accountID))
+	wantStatus(t, status, resp, http.StatusOK)
+	if n := h.count("SELECT COUNT(*) FROM transactions WHERE account_id = ?", accountID); n != 1 {
+		t.Fatalf("transactions = %d, want 1", n)
 	}
 }
