@@ -548,10 +548,15 @@ rules, `store.ts` persists the queue in the `pendingWrites` store of the `econum
 only sender and `submit.ts` the entry point the hooks call. `startPendingWrites` runs from
 `main.tsx` once the query cache has restored (`onSuccess`/`onError` of the persist provider)
 and sends oldest first, one at a time, on load, on reconnect and after a sign-in, under the
-Web Lock `econumo-pending-writes`, so only one tab sends. Offline, `submitChange` queues at
-once and the dialog closes; online it sends directly (10 s timeout) and a validation refusal
-reaches the dialog as usual, while no answer or no response turns the change into a waiting
-one under the same key. An online change to a target that still has an operation queued goes
+Web Lock `econumo-pending-writes`, so only one tab sends. The lock does not serialize queue
+edits across tabs, IndexedDB transactions do: the sender marks a row attempted in a readwrite
+transaction that returns the row as stored and sends that (`claimForSend`), and a persist that
+would fold into a row another tab's sender has taken leaves it and lands the newer values
+behind it under a key of their own. Offline, `submitChange` queues at
+once and the dialog closes; online it sends directly (10 s timeout) and a refusal (a 4xx with
+the envelope) reaches the dialog as usual, while no answer, no response or a 5xx with the
+envelope (the server may have committed first) turns the change into a waiting one under the
+same key and the dialog closes. An online change to a target that still has an operation queued goes
 through the queue, so a direct request never overtakes it; while the stored queue is still
 loading, `submitChange` waits for it (at most `STORE_TIMEOUT_MS`), and when it has not arrived the
 change is queued anyway, the sender holds until the rows arrive, and the change is replayed behind
@@ -563,7 +568,12 @@ and unanswered is never altered and the next one queues behind it. A transaction
 offline has a temporary device-only id, swapped for the server's on success, or from the
 replay's `resourceId` on a 409. On a replay of a transaction change the operation stays overlaid
 until accounts and transactions have been read back (at most the 10 s write timeout), so the row
-never reverts; a read that fails keeps it, attempted, for a retry after a backoff.
+never reverts; a read that fails keeps it, attempted, for a retry after a backoff. That read
+cancels a sync already running (it may predate the write) instead of joining it, and the `landed`
+mark that stops the balance counting the change again is stored with the row, so a reload does
+not count it twice. At boot, online, with attempted changes in the queue, `refreshRestoredQueries`
+waits for them to resolve (`attemptedWritesResolved`, at most the 10 s write timeout), so a read
+cannot bring a lost-response add before the sender knows about it.
 The caches keep server rows only: the waiting changes are applied at READ time
 (`overlay.ts`, through `select` on the transactions, accounts, budget and plan queries), so a
 sync or a restore cannot erase them; the budget's Spent/Available figures do not move for a
@@ -582,7 +592,10 @@ the "Log out" link on a stuck loader included, warns while anything is unsent (`
 login keeps the queue when the same user signs back in, and a different user's rows are
 deleted on load. Everything else is **disabled while offline** through one hook, `useOnline`
 (`web/src/hooks/useOnline.ts`, on `onlineManager`), and fails at once if something slips past
-(`networkMode: 'always'`, no retry). `web/src/lib/offline-coverage.test.ts` fails the suite
+(`networkMode: 'always'`, no retry) with one global no-response toast (fixed id, so repeats
+collapse) unless the mutation has its own `onError` or sets `meta: { handlesOwnErrors: true }`,
+which a hook needs when its callers show the failure themselves (a per-call `onError`, a try
+around `mutateAsync`, an inline `isError`); a hook with mixed callers takes it as an option. `web/src/lib/offline-coverage.test.ts` fails the suite
 when a source file fires a mutation without reading `useOnline`, unless it is listed with a
 reason in `OFFLINE_EXEMPT` or goes through a shared component in `OFFLINE_VIA_SHARED`. So a new
 write control needs the hook or an entry there. Analytics: the usual create/update/delete/limit

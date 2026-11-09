@@ -48,8 +48,10 @@ but does nothing.
 
 - **Offline:** Add/Save closes the dialog at once and the change is applied locally.
 - **Online:** the dialog waits for the server as today, and a validation refusal shows in
-  the dialog as today. If there is no answer within about 10 seconds, or the request fails
-  with no response, the change becomes a waiting change and the dialog closes.
+  the dialog as today. If there is no answer within about 10 seconds, the request fails with
+  no response, or the server answers a 5xx with the app's envelope (it may have committed
+  before it failed), the change becomes a waiting change under the same key and the dialog
+  closes.
 
 ### How a waiting change looks
 
@@ -177,7 +179,10 @@ Multi-cell fill sends one `set-limit` per cell, each with its own key.
 - One queue, the only sender of these writes, persisted in a new IndexedDB store in the
   `econumo` database and tagged with the user id.
 - Sent one at a time, oldest first, with backoff on network failures. Starts on load and
-  on reconnect. Only one tab may send at a time.
+  on reconnect. Only one tab may send at a time. A Web Lock serializes the senders;
+  IndexedDB transactions serialize the queue edits: an attempt marks the row in a readwrite
+  transaction and sends the row as stored, and a change folded into a row a sender has taken
+  lands behind it as a new operation with its own key.
 - **Overlay, not cache mutation.** The caches keep holding server rows; the waiting changes
   are applied on top when read (`select` on the transactions, accounts, budget and plan
   queries, or an equivalent). A sync or a restore therefore cannot erase them. The revision
@@ -191,14 +196,18 @@ Multi-cell fill sends one `set-limit` per cell, each with its own key.
   id is swapped for the server's. On 409 the operation is done: its `resourceId` resolves a
   temporary id. A transaction change stays overlaid until accounts and transactions have been
   read back (bounded by the 10 s write timeout); if that read fails the change stays waiting,
-  attempted, and retries after a backoff. A 409 with no resource id for an add
+  attempted, and retries after a backoff. The read cancels a sync already running rather than
+  joining it, and the mark that the balances already count the change is persisted with the
+  operation. At boot, online, the refresh of the restored caches waits for attempted changes
+  to resolve, for at most that timeout. A 409 with no resource id for an add
   (the rare crash between commit and storing it, on a handler with no transaction) sends any
   change queued behind it to the Inbox.
 - The 401 path pauses the queue. `clearPersistedQueryCache` runs on every login, and must
   keep the queue when the same user signs back in, and clear it for a different user.
 - A 402 (read-only access) is a failure like any other refusal.
 - Mutations outside the queue use `networkMode: 'always'` with no retry, so anything the
-  disabling sweep misses fails at once with a toast instead of freezing.
+  disabling sweep misses fails at once with one toast instead of freezing; a hook whose
+  callers show the failure themselves sets `meta.handlesOwnErrors`, so they do not get two.
 - Disabling goes through one shared online hook built on `onlineManager`.
 - Analytics: the existing create/update/delete/limit events fire when the server confirms.
   New `METRICS` keys for queued, retried and discarded.

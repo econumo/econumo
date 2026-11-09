@@ -2758,7 +2758,17 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       account's Edit dialog while a change on it goes out: the Balance field moves to the new
       stored balance unless you already typed in it, and saving writes no correction.
 - [ ] A slow server while online: no answer within about 10 seconds closes the dialog and the
-      change waits and goes out later, one row in the end.
+      change waits and goes out later, one row in the end. The same for a 5xx from the app: the
+      dialog closes and the change is retried under the same key, one row in the end; a delete
+      whose server failed after committing does not come back as a failure.
+- [ ] 📱 A change whose response was lost, app killed: add a transaction with the response cut
+      off, kill the app, reopen it online. The row appears once and the balance counts it once,
+      at every moment, including while the app refreshes after opening.
+- [ ] With two tabs open and the network off, edit the same waiting transaction in the second
+      tab just as the first reconnects: the row ends with the last values on the server, and
+      nothing is left waiting.
+- [ ] Dropped connection on a screen with its own error (add a tag, delete a currency, skip an
+      import row): one message appears, not two. Two failures in a row collapse into one toast.
 - [ ] 📱 A refused change in the Inbox: go offline, add a transaction on an account, delete that
       account from another session, come back online. The Inbox badge counts it and its "Not saved"
       section shows the row with the server's reason; other waiting changes still went through.
