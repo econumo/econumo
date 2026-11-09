@@ -8,6 +8,8 @@ import { server } from '@/test/msw'
 import { approveAuthorization, declineAuthorization, getAuthorizationRequest } from '@/api/authserver'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { takePostLoginRedirect } from './postLoginRedirect'
+import { addChange } from '@/features/pendingWrites/queue'
+import { loadPendingWrites, mutate } from '@/features/pendingWrites/store'
 import { ConsentPage } from './ConsentPage'
 
 vi.mock('@/api/authserver', async (importOriginal) => ({
@@ -75,6 +77,9 @@ beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   window.econumoConfig = {}
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: false, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
   assign = vi.fn()
   Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
   vi.mocked(getAuthorizationRequest).mockReset()
@@ -251,6 +256,28 @@ it('remembers its URL for after login and links to switch account', async () => 
   await screen.findByText('Claude')
   expect(takePostLoginRedirect()).toBe(`/oauth/authorize${SEARCH}`)
   expect(screen.getByRole('link', { name: /switch account/i })).toHaveAttribute('href', '/logout')
+})
+
+it('switching account with unsent changes asks first, and goes on only when confirmed', async () => {
+  await loadPendingWrites('u1')
+  await mutate((ops) => addChange(ops, { kind: 'limit', budgetId: 'b', elementId: 'e', period: '2026-11-01', amount: '1' }, { key: 'k', seq: 1 }))
+  vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
+  const user = userEvent.setup()
+  const router = renderPage()
+  await user.click(await screen.findByRole('link', { name: /switch account/i }))
+
+  expect(router.state.location.pathname).toBe('/oauth/authorize')
+  expect(await screen.findByText(/has not been sent yet/)).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Log out' }))
+  await waitFor(() => expect(router.state.location.pathname).toBe('/logout'))
+})
+
+it('switching account with nothing unsent goes straight to sign-out', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
+  const user = userEvent.setup()
+  const router = renderPage()
+  await user.click(await screen.findByRole('link', { name: /switch account/i }))
+  await waitFor(() => expect(router.state.location.pathname).toBe('/logout'))
 })
 
 describe('double-clickjacking guard', () => {
