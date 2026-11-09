@@ -6,6 +6,7 @@ import type { FolderDto } from '@/api/dto/folder'
 import type { Id } from '@/api/types'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { useLocalDay } from '@/hooks/useLocalDay'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyMove } from '@/lib/ordering'
 import { isPendingForMe } from '@/features/connections/shared'
@@ -54,6 +55,8 @@ export function useAccounts() {
   const needsRows = ops.some((op) => op.kind === 'tx-update' || op.kind === 'tx-delete')
   const serverRows = useStoredTransactions(needsRows)
   const userId = user?.id
+  // a waiting row counts from its day on, so midnight has to reach the memoized select
+  const today = useLocalDay()
   // get-account-list response order differs from order-account-list; position is authoritative.
   // Invites I have not accepted are surfaced by the sharing-requests modal, not the lists.
   const select = useCallback(
@@ -62,9 +65,9 @@ export function useAccounts() {
         items.filter((a) => !isPendingForMe(a, userId)).sort((a, b) => a.position - b.position),
         ops,
         serverRows ?? [],
-        new Date(),
+        today,
       ),
-    [userId, ops, serverRows],
+    [userId, ops, serverRows, today],
   )
   return useQuery({
     queryKey: queryKeys.accounts,

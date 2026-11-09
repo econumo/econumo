@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { loadPendingWrites, mutate } from '@/features/pendingWrites/store'
 import { addChange } from '@/features/pendingWrites/queue'
@@ -230,4 +230,25 @@ it('useAccounts leaves the transaction query\'s queryFn alone, so a retry still 
   rerender = () => hook.rerender()
   await waitFor(() => expect(hook.result.current.txs.status).toBe('success'))
   expect(queryFn).toHaveBeenCalledTimes(2)
+})
+
+it('useAccounts counts a waiting row dated tomorrow once midnight passes with the app open', async () => {
+  await loadPendingWrites('u1')
+  await mutate((ops) =>
+    addChange(ops, {
+      kind: 'tx-create',
+      txId: 't1',
+      payload: { id: 't1', type: 'expense', accountId: 'a-real', accountRecipientId: null, amount: '10', amountRecipient: null, categoryId: null, description: '', payeeId: null, tagId: null, labelIds: [], date: '2026-11-10 08:00:00' },
+    }, { key: 'k1', seq: 1 }),
+  )
+  vi.useFakeTimers({ now: new Date(2026, 10, 9, 23, 59, 30) })
+  onTestFinished(() => { vi.useRealTimers() })
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.user, wireUser)
+  queryClient.setQueryData(queryKeys.accounts, [wireAccount])
+  const { result } = renderHook(() => useAccounts(), { wrapper })
+  expect(result.current.data?.[0]?.balance).toBe('100.5')
+
+  await act(async () => { await vi.advanceTimersByTimeAsync(31_000) })
+  expect(result.current.data?.[0]?.balance).toBe('90.5')
 })
