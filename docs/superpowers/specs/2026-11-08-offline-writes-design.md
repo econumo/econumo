@@ -128,9 +128,18 @@ If changes are waiting, sign-out warns first, because signing out discards them.
 Decided by the owner: a UUID per operation, with handled operations refused.
 
 - `create-transaction`: the existing `id` is the operation id.
-- `update-transaction`, `delete-transaction`, `set-limit`: a new optional `operationId`
-  (additive; absent means no guard, so MCP and older clients are unchanged). A malformed
-  value is a field error.
+- `update-transaction`, `delete-transaction`, `set-limit`: the operation id is the
+  `X-Request-Id` header the SPA already sends with every request (`web/src/api/client.ts`,
+  a fresh UUIDv7 per request, allowed by CORS). The owner pointed this out; no new body
+  field. The server ignores that header today: `middleware.RequestID` always mints its own.
+  It keeps minting its own id for logs and the response, and additionally stashes a
+  client-sent value that parses as a UUID in the request context, where these three writes
+  claim it. Absent or malformed means no guard, so MCP and other clients are unchanged.
+- The interceptor mints an id only when the request has none, and the queue sets the
+  operation's stored id on every attempt.
+- A proxy that overwrites `X-Request-Id` would cost only the dedup of these three, whose
+  replay is harmless (same values; a repeated delete answers not found and lands in the
+  Inbox). Create is guarded by its body id regardless.
 - Multi-cell fill sends one `set-limit` per cell, each with its own id.
 - All four claim through the existing `OperationGuard` (`operation_requests_ids`) inside the
   write's transaction, so a refused or failed attempt rolls the claim back and can be sent
@@ -178,7 +187,7 @@ API sections of `CLAUDE.md`.
 
 ### Older servers
 
-The native app can point at an older self-hosted server, which ignores `operationId` and
+The native app can point at an older self-hosted server, which ignores the header and
 mints its own ids, so a waiting edit of a waiting add would fail into the Inbox there. The
 native app is parked, so `minServerVersion` is not raised. *(Author's call.)*
 
