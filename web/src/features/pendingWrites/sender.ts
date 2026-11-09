@@ -160,8 +160,13 @@ async function readTransactionsBack(queryClient: QueryClient, key: string, realI
     timer = setTimeout(() => reject(new Error('Reading the replayed change back timed out')), WRITE_TIMEOUT_MS)
   })
   const read = (async () => {
+    const owner = sessionUser()
     await queryClient.cancelQueries({ queryKey: queryKeys.accounts, exact: true })
     const accounts = await getAccountList()
+    // the read ran outside the query lifecycle, so a sign-out's cache purge cannot discard it
+    if (sessionUser() !== owner || !getOps().some((op) => op.key === key)) {
+      throw new Error('The queue changed while reading the replayed change back')
+    }
     notifyManager.batch(() => {
       void mutate((ops) => markLanded(ops, key, realId))
       queryClient.setQueryData(queryKeys.accounts, accounts)

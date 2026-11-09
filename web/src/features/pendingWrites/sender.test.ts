@@ -322,6 +322,16 @@ describe('the balance and the list while a replay is read back', () => {
     readBack = serverBalance
   })
 
+  it('drops the read if another user signed in while it ran', async () => {
+    await add()
+    readBack = () => {
+      setToken('tok', 'u2')
+      return serverBalance()
+    }
+    await kickPendingWrites()
+    expect(client.getQueryData<AccountDto[]>(queryKeys.accounts)?.[0].balance).toBe('100')
+  })
+
   it('no render counts the money twice or shows the row twice', async () => {
     const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client }, children)
     const renders: { balance?: string; ids?: string[] }[] = []
