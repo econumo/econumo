@@ -1,4 +1,4 @@
-import { ChevronRight, Download, ExternalLink, MessageSquare, RefreshCw } from 'lucide-react'
+import { ChevronRight, Download, MessageSquare, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -18,7 +18,6 @@ import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { useFullReload, useFullReloadPending } from '@/features/transactions/useFullReload'
 import { useInstallApp } from '@/features/install/useInstallApp'
 import { InstallInstructionsDialog } from '@/features/install/InstallInstructionsDialog'
-import { openSharedReports, sharedReportsUrl } from '@/features/share/shareLinks'
 import { useUiStore } from '@/app/uiStore'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
@@ -182,13 +181,6 @@ export function SettingsPage() {
             <MenuRow label={t('imports.apple_wallet.menu_item')} to={RouterPage.SETTINGS_APPLE_WALLET} />
             {isSimpleFINImportEnabled() ? <MenuRow label={t('imports.simplefin.menu_item')} to={RouterPage.SETTINGS_SIMPLEFIN} /> : null}
             <MenuRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} />
-            {sharedReportsUrl() !== '' ? (
-              <MenuRow
-                label={t('share.settings_row')}
-                trailing={<ExternalLink className="size-4 shrink-0 text-muted-foreground" />}
-                onClick={openSharedReports}
-              />
-            ) : null}
             <MenuRow
               label={t('settings.data.reload_all')}
               trailing={<RefreshCw className={`size-4 shrink-0 text-muted-foreground ${reloading ? 'animate-spin' : ''}`} />}

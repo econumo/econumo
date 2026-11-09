@@ -266,10 +266,8 @@ func New(deps Deps) http.Handler {
 		// Present even when empty: the backend decides whether create-billing-link
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.
-		"BILLING_URL": deps.Cfg.BillingURL,
-		"MCP_URL":     deps.MCPURL,
-		// Present even when empty: an empty value hides the share entry points.
-		"SHARE_URL":         deps.Cfg.ShareURL,
+		"BILLING_URL":       deps.Cfg.BillingURL,
+		"MCP_URL":           deps.MCPURL,
 		"ALLOW_CUSTOM_API":  allowCustomAPI,
 		"LILTAG_CONFIG_URL": liltagConfigURL,
 		"LILTAG_CACHE_TTL":  liltagCacheTTL,

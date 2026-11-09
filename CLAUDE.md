@@ -819,10 +819,6 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   always treated as trusted (every Apple ID address is verified) but Google's `email_verified`
   claim is honoured, not trusted blindly — Google always sends it and documents `false` for
   unverified addresses. See `docs/oidc-setup.md`.
-- `ECONUMO_SHARE_URL` — the companion share-reports app's origin (absolute https, plain http
-  only for loopback; no credentials, query or fragment; trailing `/` trimmed), served as
-  `SHARE_URL`; empty (default) hides every share link in the SPA. The app signs in as an
-  ordinary OAuth client asking for the `read` scope (see "The `read` scope").
 - `ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` — the mobile apps allowed to claim
   `<ECONUMO_URL>/oauth/app-return` as a verified Universal Link / App Link, which is how the
   OAuth app flow returns without the globally claimable private scheme. iOS: comma-separated
@@ -1011,16 +1007,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`, `SHARE_URL`,
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `BILLING_URL`, `MCP_URL`,
   `IMPORT_SIMPLEFIN` and `FEEDBACK` are always present (server truth). `MCP_URL` is the MCP OAuth resource
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
-  backend on another origin; the app uses the merged per-server value as is. `SHARE_URL`
-  (`""` when unset) follows the same rule through `shareUrl()` (`web/src/lib/config.ts`): on
-  the web it is `""` when the SPA is pointed at a custom backend on another origin; the SPA
-  shows "Share as trip page" (Tags page and budget tag menu, never labels or categories) and
-  Settings > Data > "Shared reports" only when it is non-empty.
+  backend on another origin; the app uses the merged per-server value as is.
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,

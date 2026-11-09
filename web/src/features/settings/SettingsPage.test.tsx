@@ -149,22 +149,6 @@ it('shows SimpleFIN while it is on', async () => {
   expect(screen.getByText('Apple Wallet')).toBeInTheDocument()
 })
 
-it('the Data group shows Shared reports only while a share url is set, and opens it', async () => {
-  renderPage()
-  expect(await screen.findByText('Apple Wallet')).toBeInTheDocument()
-  expect(screen.queryByText('Shared reports')).not.toBeInTheDocument()
-  cleanup()
-
-  window.econumoConfig = { SHARE_URL: 'https://share.example.test' }
-  const open = vi.spyOn(window, 'open').mockReturnValue(null)
-  const user = userEvent.setup()
-  renderPage()
-  await user.click(await screen.findByText('Shared reports'))
-  expect(open).toHaveBeenCalledWith('https://share.example.test/app', '_blank', 'noopener,noreferrer')
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.SHARED_REPORTS_OPEN)
-  open.mockRestore()
-})
-
 it('the Data group links to the Apple Wallet page', async () => {
   window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   const user = userEvent.setup()

@@ -2039,8 +2039,8 @@
       "redirect": "Après votre autorisation, vous serez redirigé vers {host}.",
       "loopback": "Après votre autorisation, vous reviendrez à une application sur cet ordinateur.",
       "wantsRead": "souhaite lire vos données Econumo.",
-      "readAccess": "Elle pourra voir votre profil (nom et e-mail), vos comptes, transactions, catégories, tags, libellés et devises. Les comptes et transactions incluent les noms des personnes avec qui vous les partagez. Elle ne pourra rien modifier.",
-      "fullAccess": "Elle pourra lire et modifier toutes vos données Econumo.",
+      "readAccess": "Elle ne pourra rien modifier.",
+      "fullAccess": "Elle pourra lire et modifier vos données.",
       "signedInAs": "Connecté en tant que {email}",
       "switchAccount": "Ce n'est pas vous ? Changer de compte",
       "allow": "Autoriser",
@@ -2282,9 +2282,5 @@
       "subject": "Méthode de connexion supprimée",
       "body": "Bonjour {name},\n\nVotre compte {provider} vient d’être dissocié de votre compte Econumo et ne peut plus servir à vous connecter.\n\nSi ce n’était pas vous, changez votre mot de passe et vérifiez les comptes associés dans les Paramètres.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
     }
-  },
-  "share": {
-    "tag_action": "Partager comme page de voyage",
-    "settings_row": "Rapports partagés"
   }
 }

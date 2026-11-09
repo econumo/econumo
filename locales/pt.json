@@ -2039,8 +2039,8 @@
       "redirect": "Depois de permitir, você será enviado para {host}.",
       "loopback": "Depois de permitir, você voltará para um app neste computador.",
       "wantsRead": "quer ler os seus dados do Econumo.",
-      "readAccess": "Ele poderá ver o seu perfil (nome e e-mail), as suas contas, transações, categorias, tags, etiquetas e moedas. As contas e transações incluem os nomes das pessoas com quem as partilha. Não poderá alterar nada.",
-      "fullAccess": "Ele poderá ler e alterar todos os seus dados do Econumo.",
+      "readAccess": "Não poderá alterar nada.",
+      "fullAccess": "Ele poderá ler e alterar os seus dados.",
       "signedInAs": "Conectado como {email}",
       "switchAccount": "Não é você? Trocar de conta",
       "allow": "Permitir",
@@ -2282,9 +2282,5 @@
       "subject": "Método de início de sessão removido",
       "body": "Olá {name},\n\nA sua conta {provider} acabou de ser desassociada da sua conta Econumo e já não pode ser usada para iniciar sessão.\n\nSe não foi você, altere a sua palavra-passe e verifique as contas associadas nas Definições.\n\n--\nEconumo — Faça a gestão do dinheiro. Em conjunto.\n"
     }
-  },
-  "share": {
-    "tag_action": "Partilhar como página de viagem",
-    "settings_row": "Relatórios partilhados"
   }
 }

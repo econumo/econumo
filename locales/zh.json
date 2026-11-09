@@ -2039,8 +2039,8 @@
       "redirect": "允许后，您将被转到 {host}。",
       "loopback": "允许后，您将返回此电脑上的应用。",
       "wantsRead": "请求读取您的 Econumo 数据。",
-      "readAccess": "它将能够查看您的个人资料（姓名和邮箱）、账户、交易、分类、标签、标记和货币。账户和交易包含与您共享它们的人的姓名。它无法更改任何内容。",
-      "fullAccess": "它将能够读取并更改您所有的 Econumo 数据。",
+      "readAccess": "它无法更改任何内容。",
+      "fullAccess": "它将能够读取并更改您的数据。",
       "signedInAs": "当前登录账户：{email}",
       "switchAccount": "不是您？切换账户",
       "allow": "允许",
@@ -2282,9 +2282,5 @@
       "subject": "已移除登录方式",
       "body": "您好，{name}：\n\n您的 {provider} 账户刚刚已与您的 Econumo 账户解除关联，现在无法再用于登录。\n\n如果这不是您本人的操作，请修改密码并在设置中检查已关联的账户。\n\n--\nEconumo — 一起管理财务。\n"
     }
-  },
-  "share": {
-    "tag_action": "分享为旅行页面",
-    "settings_row": "共享报告"
   }
 }

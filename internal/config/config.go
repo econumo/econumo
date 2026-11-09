@@ -66,9 +66,6 @@ type Config struct {
 	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
 	AppURL     string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
 
-	// The separate share app (share.econumo.com) that reads a user's data over OAuth.
-	ShareURL string // ECONUMO_SHARE_URL: the share app's origin, trailing "/" trimmed; empty = no share app
-
 	// Verified Universal / App Links for the mobile app (RFC 8252 §7). Set
 	// either one and the OAuth app flow returns through an https URL on AppURL
 	// that only the associated app may claim, instead of the private scheme any
@@ -378,10 +375,6 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
-	if err := loadShare(&c); err != nil {
-		return Config{}, err
-	}
-
 	if err := loadAppLinks(&c); err != nil {
 		return Config{}, err
 	}
@@ -535,19 +528,6 @@ func loadAppLinks(c *Config) error {
 	if err != nil || u.Scheme != "https" || u.Host == "" {
 		return fmt.Errorf("ECONUMO_APP_LINKS_IOS/ECONUMO_APP_LINKS_ANDROID require ECONUMO_URL to be an https URL, got %q", c.AppURL)
 	}
-	return nil
-}
-
-func loadShare(c *Config) error {
-	if v := os.Getenv("ECONUMO_SHARE_URL"); v != "" {
-		u, err := url.Parse(v)
-		if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" ||
-			(u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
-			return fmt.Errorf("ECONUMO_SHARE_URL: must be an absolute https URL without credentials, query or fragment (http only for loopback hosts): %q", v)
-		}
-		c.ShareURL = strings.TrimRight(v, "/")
-	}
-
 	return nil
 }
 

@@ -2039,8 +2039,8 @@
       "redirect": "After you allow, you'll be sent to {host}.",
       "loopback": "After you allow, you'll return to an app on this computer.",
       "wantsRead": "wants to read your Econumo data.",
-      "readAccess": "It will be able to see your profile (name and email), accounts, transactions, categories, tags, labels and currencies. Accounts and transactions include the names of people you share them with. It can't change anything.",
-      "fullAccess": "It will be able to read and change all of your Econumo data.",
+      "readAccess": "It can't change anything.",
+      "fullAccess": "It will be able to read and change your data.",
       "signedInAs": "Signed in as {email}",
       "switchAccount": "Not you? Switch account",
       "allow": "Allow",
@@ -2282,9 +2282,5 @@
       "subject": "A sign-in method was removed",
       "body": "Hi {name},\n\nYour {provider} account was just unlinked from your Econumo account and can no longer be used to sign in.\n\nIf this wasn't you, change your password and review the linked accounts in Settings.\n\n--\nEconumo — Manage money. Together.\n"
     }
-  },
-  "share": {
-    "tag_action": "Share as trip page",
-    "settings_row": "Shared reports"
   }
 }

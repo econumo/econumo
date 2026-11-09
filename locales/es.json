@@ -2039,8 +2039,8 @@
       "redirect": "Después de permitirlo, serás enviado a {host}.",
       "loopback": "Después de permitirlo, volverás a una aplicación en este ordenador.",
       "wantsRead": "quiere leer tus datos de Econumo.",
-      "readAccess": "Podrá ver tu perfil (nombre y correo electrónico), tus cuentas, transacciones, categorías, etiquetas, rótulos y monedas. Las cuentas y transacciones incluyen los nombres de las personas con las que las compartes. No podrá cambiar nada.",
-      "fullAccess": "Podrá leer y modificar todos tus datos de Econumo.",
+      "readAccess": "No podrá cambiar nada.",
+      "fullAccess": "Podrá leer y modificar tus datos.",
       "signedInAs": "Sesión iniciada como {email}",
       "switchAccount": "¿No eres tú? Cambiar de cuenta",
       "allow": "Permitir",
@@ -2282,9 +2282,5 @@
       "subject": "Se eliminó un método de inicio de sesión",
       "body": "Hola {name}:\n\nTu cuenta de {provider} acaba de desvincularse de tu cuenta de Econumo y ya no puede usarse para iniciar sesión.\n\nSi no fuiste tú, cambia tu contraseña y revisa las cuentas vinculadas en Configuración.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
     }
-  },
-  "share": {
-    "tag_action": "Compartir como página de viaje",
-    "settings_row": "Informes compartidos"
   }
 }

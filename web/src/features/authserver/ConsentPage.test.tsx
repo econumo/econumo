@@ -419,14 +419,12 @@ it('a read-scoped client says it only reads, with no verified line', async () =>
   expect(await screen.findByText('Reports')).toBeInTheDocument()
   expect(screen.getByText('wants to read your Econumo data.')).toBeInTheDocument()
   expect(screen.getByText(/It can't change anything\./)).toBeInTheDocument()
-  expect(screen.getByText(/your profile \(name and email\)/)).toBeInTheDocument()
-  expect(screen.getByText(/names of people you share them with/)).toBeInTheDocument()
   expect(screen.queryByText(/made by|verified/i)).not.toBeInTheDocument()
-  expect(screen.queryByText('It will be able to read and change all of your Econumo data.')).not.toBeInTheDocument()
+  expect(screen.queryByText('It will be able to read and change your data.')).not.toBeInTheDocument()
 })
 
 it('an mcp-scoped third-party client keeps the full-access texts', async () => {
   vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
   renderPage()
-  expect(await screen.findByText('It will be able to read and change all of your Econumo data.')).toBeInTheDocument()
+  expect(await screen.findByText('It will be able to read and change your data.')).toBeInTheDocument()
 })

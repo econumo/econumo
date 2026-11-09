@@ -16,7 +16,6 @@ window.econumoConfig = {
   INSTANCE_ID: '',
   BILLING_URL: '',
   MCP_URL: '',
-  SHARE_URL: '',
   AI_ENABLED: false,
   IMPORT_SIMPLEFIN: false,
   FEEDBACK: true,

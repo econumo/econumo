@@ -2039,8 +2039,8 @@
       "redirect": "Po wyrażeniu zgody zostaniesz przekierowany do {host}.",
       "loopback": "Po wyrażeniu zgody wrócisz do aplikacji na tym komputerze.",
       "wantsRead": "chce odczytać Twoje dane w Econumo.",
-      "readAccess": "Będzie mogła zobaczyć Twój profil (imię i adres e-mail), konta, transakcje, kategorie, tagi, etykiety i waluty. Konta i transakcje zawierają imiona osób, którym je udostępniasz. Niczego nie zmieni.",
-      "fullAccess": "Będzie mogła odczytywać i zmieniać wszystkie Twoje dane w Econumo.",
+      "readAccess": "Niczego nie zmieni.",
+      "fullAccess": "Będzie mogła odczytywać i zmieniać Twoje dane.",
       "signedInAs": "Zalogowano jako {email}",
       "switchAccount": "To nie Ty? Zmień konto",
       "allow": "Zezwól",
@@ -2282,9 +2282,5 @@
       "subject": "Usunięto metodę logowania",
       "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie odłączone od konta Econumo i nie może już służyć do logowania.\n\nJeśli to nie Ty, zmień hasło i sprawdź powiązane konta w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
     }
-  },
-  "share": {
-    "tag_action": "Udostępnij jako stronę podróży",
-    "settings_row": "Udostępnione raporty"
   }
 }

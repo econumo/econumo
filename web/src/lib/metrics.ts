@@ -22,8 +22,6 @@ export const METRICS = {
   USER_UPDATE_CURRENCY: 'appUserUpdateCurrency',
   USER_UPDATE_ANALYTICS: 'appUserUpdateAnalytics',
   USER_ANALYTICS_SETTINGS_OPEN: 'appUserAnalyticsSettingsOpen',
-  SHARE_TRIP_OPEN: 'appShareTripOpen',
-  SHARED_REPORTS_OPEN: 'appSharedReportsOpen',
   CURRENCY_CREATE: 'appCurrencyCreate',
   CURRENCY_UPDATE: 'appCurrencyUpdate',
   CURRENCY_DELETE: 'appCurrencyDelete',
