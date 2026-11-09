@@ -587,6 +587,9 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// A no-op UPDATE so the operator transaction takes the write lock before it
+	// reads: a read first would leave it holding SHARED while a token exchange
+	// holds RESERVED, and neither could commit (database is locked).
 	LockOAuthClient(ctx context.Context, id string) (string, error)
 	// Plain read: SQLite serializes writers, so there is no concurrent limit or
 	// comment for a lock to order against.

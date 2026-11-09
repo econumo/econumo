@@ -114,7 +114,10 @@ UPDATE oauth_clients SET is_global = true, owner_user_id = NULL WHERE id = ? AND
 UPDATE oauth_clients SET secret_hash = ? WHERE id = ? AND secret_hash IS NOT NULL;
 
 -- name: LockOAuthClient :one
-SELECT id FROM oauth_clients WHERE id = ?;
+-- A no-op UPDATE so the operator transaction takes the write lock before it
+-- reads: a read first would leave it holding SHARED while a token exchange
+-- holds RESERVED, and neither could commit (database is locked).
+UPDATE oauth_clients SET last_used_at = last_used_at WHERE id = ? RETURNING id;
 
 -- name: ShareLockOAuthClient :one
 SELECT id FROM oauth_clients WHERE id = ?;
