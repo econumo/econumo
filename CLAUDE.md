@@ -430,14 +430,15 @@ IS a real version, used by the mobile app where no server config is present;
 `ECONUMO_COMMIT` (the build arg and env var of the same name, set by both publish
 workflows and the Makefile from the checked-out sha) is inlined the same way as the
 bundle's own `VERSION_REF`.
-The sidebar's "What's new in vX.Y.Z" card (`web/src/features/whatsNew`) shows when the
-running `VERSION` is a release newer than the user's `last_seen_version` option (absent =
+The sidebar's "What's new in vX.Y" card (`web/src/features/whatsNew`) shows when the
+running `VERSION` is a release in a newer major or minor line than the user's
+`last_seen_version` option (absent =
 an existing user who upgraded; new accounts are seeded with the running release, a `dev`
 build seeds and shows nothing; the option only moves forward; web only, never in the native
 app); opening `https://econumo.com/releases/<version>` or
-dismissing it writes the running version through `update-last-seen-version`. An upgrade
-into a new minor line links that line's `.0` notes (v1.6.x -> v1.7.2 shows v1.7.0), a patch
-upgrade within the line the running patch. Hidden until onboarding is completed.
+dismissing it writes the running version through `update-last-seen-version`. The card
+names the line and links its `.0` notes (v1.6.x -> v1.7.2 shows v1.7, links v1.7.0); a patch
+upgrade within a line shows no card. Hidden until onboarding is completed.
 Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the

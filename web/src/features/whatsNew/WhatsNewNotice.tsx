@@ -30,7 +30,7 @@ export function WhatsNewNotice() {
         className="min-w-0 flex-1 truncate font-medium hover:text-foreground"
         onClick={() => close(METRICS.WHATS_NEW_OPEN)}
       >
-        {t('whatsNew.notice', { version: whatsNew.notesVersion })}
+        {t('whatsNew.notice', { version: whatsNew.line })}
       </a>
       <button
         type="button"
