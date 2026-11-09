@@ -356,6 +356,7 @@
     }
   },
   "transactions": {
+    "not_saved": "Não guardada",
     "modal": {
       "transaction_type": {
         "expense": "Despesa",

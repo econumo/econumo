@@ -356,6 +356,7 @@
     }
   },
   "transactions": {
+    "not_saved": "Not saved",
     "modal": {
       "transaction_type": {
         "expense": "Expense",

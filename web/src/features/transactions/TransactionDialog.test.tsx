@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
+import { onlineManager } from '@tanstack/react-query'
+import { getOps, loadPendingWrites } from '@/features/pendingWrites/store'
 import { coreHandlers, fixtureAccounts, fixtureCategories, fixtureLabels, fixtureOwner, fixtureUsd } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
@@ -20,7 +22,7 @@ function mockMatchMedia(phone = false) {
 }
 
 function renderDialog(routePath = '/account/a1') {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false, networkMode: 'always' } } })
   const router = createMemoryRouter(
     [{ path: '/account/:id', element: <TransactionDialog /> }, { path: '/', element: <TransactionDialog /> }],
     { initialEntries: [routePath] },
@@ -1311,4 +1313,47 @@ describe('unfinished new transaction', () => {
     expect(offer()).not.toBeInTheDocument()
     expect(localStorage.getItem(draftKey)).toBeNull()
   })
+})
+
+it('offline Add closes the dialog with no request and queues the change', async () => {
+  let called = false
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () => {
+      called = true
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+    }),
+  )
+  onlineManager.setOnline(false)
+  try {
+    await loadPendingWrites('u1')
+    const user = userEvent.setup()
+    renderDialog()
+    useUiStore.getState().openTransactionModal({ type: 'expense', accountId: 'a1' })
+    await screen.findByRole('heading', { name: 'Add transaction' })
+    await user.type(await screen.findByLabelText('Amount'), '7')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+    expect(called).toBe(false)
+    expect(getOps()).toMatchObject([{ kind: 'tx-create', payload: { amount: '7', accountId: 'a1' } }])
+  } finally {
+    onlineManager.setOnline(true)
+  }
+})
+
+it('an online validation refusal still shows in the dialog', async () => {
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () =>
+      HttpResponse.json({ success: false, message: 'Refused by server', code: 0, errors: {} }, { status: 400 }),
+    ),
+  )
+  await loadPendingWrites('u1')
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense', accountId: 'a1' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '7')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled())
+  expect(useUiStore.getState().transactionModal).not.toBeNull()
+  expect(getOps()).toEqual([])
 })

@@ -356,6 +356,7 @@
     }
   },
   "transactions": {
+    "not_saved": "未保存",
     "modal": {
       "transaction_type": {
         "expense": "支出",

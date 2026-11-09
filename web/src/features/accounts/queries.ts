@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import * as accountApi from '@/api/account'
 import type { AccountDto, AccountItemDto, AccountRole } from '@/api/dto/account'
@@ -9,20 +10,35 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyMove } from '@/lib/ordering'
 import { isPendingForMe } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
+import { usePendingOps } from '@/features/pendingWrites/hooks'
+import { overlayAccounts } from '@/features/pendingWrites/overlay'
 import { beginLocalWrite, noteOwnWrite } from '@/features/transactions/revisionTracking'
 
 export function useAccounts() {
   const { data: user } = useUserData()
+  const ops = usePendingOps()
+  // an update or delete reverses the stored row's effect, so those need the rows (observed without fetching)
+  const needsRows = ops.some((op) => op.kind === 'tx-update' || op.kind === 'tx-delete')
+  const { data: rows } = useQuery<TransactionDto[]>({ queryKey: queryKeys.transactions, enabled: false })
+  const serverRows = needsRows ? rows : undefined
+  const userId = user?.id
+  // get-account-list response order differs from order-account-list; position is authoritative.
+  // Invites I have not accepted are surfaced by the sharing-requests modal, not the lists.
+  const select = useCallback(
+    (items: AccountDto[]) =>
+      overlayAccounts(
+        items.filter((a) => !isPendingForMe(a, userId)).sort((a, b) => a.position - b.position),
+        ops,
+        serverRows ?? [],
+        new Date(),
+      ),
+    [userId, ops, serverRows],
+  )
   return useQuery({
     queryKey: queryKeys.accounts,
     queryFn: accountApi.getAccountList,
     staleTime: TEN_MINUTES,
-    // get-account-list response order differs from order-account-list; position is authoritative.
-    // Invites I have not accepted are surfaced by the sharing-requests modal, not the lists.
-    select: (items) =>
-      items
-        .filter((a) => !isPendingForMe(a, user?.id))
-        .sort((a, b) => a.position - b.position),
+    select,
   })
 }
 
