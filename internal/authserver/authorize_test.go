@@ -2,6 +2,7 @@ package authserver
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -421,5 +422,51 @@ func TestApprove_ConcurrentApprovalsOneWins(t *testing.T) {
 	}
 	if n := codeCount(t, db, users[1-winner]); n != 0 {
 		t.Fatalf("the loser must get no code: %d", n)
+	}
+}
+
+// codeDeletingRepo has app:delete land between validate and the code INSERT of
+// an official app, whose claim returns early. As in deletingRepo, the DELETE
+// runs inside the approval's transaction on SQLite and GetClient then reports
+// what the committed DELETE would show.
+type codeDeletingRepo struct {
+	Repository
+	commitDelete bool
+	gone         bool
+}
+
+func (r *codeDeletingRepo) InsertCode(ctx context.Context, c *model.OAuthAuthorizationCode) error {
+	if _, err := r.Repository.DeleteClient(ctx, c.ClientID); err != nil {
+		return err
+	}
+	r.gone = r.commitDelete
+	return r.Repository.InsertCode(ctx, c)
+}
+
+func (r *codeDeletingRepo) GetClient(ctx context.Context, id vo.Id) (*model.OAuthClient, error) {
+	if r.gone {
+		return nil, errs.NewNotFound("OAuth client not found")
+	}
+	return r.Repository.GetClient(ctx, id)
+}
+
+func TestApprove_ClientDeletedMidApproval(t *testing.T) {
+	for _, committed := range []bool{true, false} {
+		t.Run(fmt.Sprint("committed=", committed), func(t *testing.T) {
+			s, creds, clock, db := newTestServiceDB(t)
+			user := newUser(t, db, fixture.User{})
+			id := insertOfficialClient(t, s, clock.Now(), claudeCallback)
+			racing := NewService(&codeDeletingRepo{Repository: s.repo, commitDelete: committed}, creds, s.tx, clock, nil, testURL)
+			_, err := racing.ApproveAuthorization(ctx, user, session, authReq(id.String()))
+			if committed {
+				if !hasCode(err, errs.CodeAuthServerClientNotFound) {
+					t.Fatalf("want client_not_found, got %v", err)
+				}
+				return
+			}
+			if err == nil || hasCode(err, errs.CodeAuthServerClientNotFound) {
+				t.Fatalf("a code INSERT failure with the client still present must surface as is: %v", err)
+			}
+		})
 	}
 }

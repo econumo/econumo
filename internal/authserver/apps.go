@@ -16,6 +16,7 @@ var (
 	ErrAppAlreadyOfficial = errors.New("the app is already official")
 	ErrAppPublic          = errors.New("the app is public: it has no secret to rotate")
 	ErrAppNameRequired    = errors.New("name is required")
+	ErrAppBusy            = errors.New("the app keeps getting new connections; try again")
 )
 
 func appNotFound() error { return errs.NewNotFound("OAuth app not found") }
@@ -113,17 +114,12 @@ func (s *Service) liveGrants(ctx context.Context, clientID vo.Id) ([]model.OAuth
 }
 
 // UpdateOfficialApp leaves the name unchanged when name is nil and the redirect
-// URIs when redirectURIs is empty.
+// URIs when redirectURIs is empty. The read and the write share the client row
+// lock, so a concurrent change to the field left alone is not overwritten.
 func (s *Service) UpdateOfficialApp(ctx context.Context, id vo.Id, name *string, redirectURIs []string) error {
-	c, err := s.getApp(ctx, id)
-	if err != nil {
-		return err
-	}
-	if !c.IsGlobal {
-		return ErrAppNotOfficial
-	}
-	newName, uris := c.Name, c.RedirectURIs
+	var newName string
 	if name != nil {
+		var err error
 		if newName, err = officialName(*name); err != nil {
 			return err
 		}
@@ -132,16 +128,37 @@ func (s *Service) UpdateOfficialApp(ctx context.Context, id vo.Id, name *string,
 		if oe := checkRedirectURIs(redirectURIs); oe != nil {
 			return plain(oe)
 		}
-		uris = slices.Clone(redirectURIs)
 	}
-	n, err := s.repo.UpdateGlobalClient(ctx, id, newName, uris)
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return appNotFound()
-	}
-	return nil
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.repo.LockClient(ctx, id); err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				return appNotFound()
+			}
+			return err
+		}
+		c, err := s.getApp(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !c.IsGlobal {
+			return ErrAppNotOfficial
+		}
+		if name == nil {
+			newName = c.Name
+		}
+		uris := c.RedirectURIs
+		if len(redirectURIs) > 0 {
+			uris = slices.Clone(redirectURIs)
+		}
+		n, err := s.repo.UpdateGlobalClient(ctx, id, newName, uris)
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return appNotFound()
+		}
+		return nil
+	})
 }
 
 func (s *Service) MakeAppOfficial(ctx context.Context, id vo.Id) error {
@@ -157,6 +174,9 @@ func (s *Service) MakeAppOfficial(ctx context.Context, id vo.Id) error {
 		return err
 	}
 	if n == 0 {
+		if _, err := s.getApp(ctx, id); err != nil {
+			return err
+		}
 		return ErrAppAlreadyOfficial
 	}
 	return nil
@@ -180,6 +200,9 @@ func (s *Service) RotateAppSecret(ctx context.Context, id vo.Id) (string, error)
 		return "", err
 	}
 	if n == 0 {
+		if _, err := s.getApp(ctx, id); err != nil {
+			return "", err
+		}
 		return "", ErrAppPublic
 	}
 	return raw, nil
@@ -212,25 +235,55 @@ func (s *Service) DisconnectApp(ctx context.Context, id vo.Id, userID *vo.Id) (i
 	return n, nil
 }
 
+// deleteAppAttempts bounds how often DeleteApp starts over because a grant for
+// a user it had not locked appeared before it took the client lock.
+const deleteAppAttempts = 5
+
+var errGrantUsersChanged = errors.New("grants for unlocked users appeared")
+
 // DeleteApp revokes every grant and its access tokens, then deletes the client.
 // The client row lock closes the race with a concurrent code exchange: its
 // grant INSERT either commits before the lock and is revoked here, or fails its
 // foreign key once the client is gone.
+//
+// Revoking a grant's tokens needs its user's row lock, taken before the client
+// lock (the order approve and exchange use). A grant committed for another user
+// after the users were read cannot have its user locked once the client lock is
+// held without inverting that order, so the attempt rolls back and starts over
+// with that user locked too.
 func (s *Service) DeleteApp(ctx context.Context, id vo.Id) (int, error) {
 	grants, err := s.repo.ListClientGrants(ctx, id)
 	if err != nil {
 		return 0, err
 	}
-	var users []vo.Id
+	users := addGrantUsers(nil, grants)
+	for range deleteAppAttempts {
+		revoked, more, err := s.deleteApp(ctx, id, users)
+		if !errors.Is(err, errGrantUsersChanged) {
+			return revoked, err
+		}
+		users = addGrantUsers(users, more)
+	}
+	return 0, ErrAppBusy
+}
+
+func addGrantUsers(users []vo.Id, grants []model.OAuthGrant) []vo.Id {
 	for _, g := range grants {
 		if !slices.ContainsFunc(users, g.UserID.Equal) {
 			users = append(users, g.UserID)
 		}
 	}
 	slices.SortFunc(users, func(a, b vo.Id) int { return strings.Compare(a.String(), b.String()) })
+	return users
+}
+
+// deleteApp returns errGrantUsersChanged with the grants read under the client
+// lock when one of them belongs to a user outside users.
+func (s *Service) deleteApp(ctx context.Context, id vo.Id, users []vo.Id) (int, []model.OAuthGrant, error) {
 	revoked := 0
-	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		revoked = 0
+	var current []model.OAuthGrant
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		revoked, current = 0, nil
 		for _, u := range users {
 			if _, err := s.creds.LockForOAuth(ctx, u); err != nil {
 				return err
@@ -243,9 +296,15 @@ func (s *Service) DeleteApp(ctx context.Context, id vo.Id) (int, error) {
 			return err
 		}
 		now := s.clock.Now()
-		current, err := s.repo.ListClientGrants(ctx, id)
+		var err error
+		current, err = s.repo.ListClientGrants(ctx, id)
 		if err != nil {
 			return err
+		}
+		for _, g := range current {
+			if !slices.ContainsFunc(users, g.UserID.Equal) {
+				return errGrantUsersChanged
+			}
 		}
 		ids, err := s.repo.RevokeClientGrants(ctx, id, now)
 		if err != nil {
@@ -266,5 +325,5 @@ func (s *Service) DeleteApp(ctx context.Context, id vo.Id) (int, error) {
 		}
 		return nil
 	})
-	return revoked, err
+	return revoked, current, err
 }

@@ -198,7 +198,7 @@ export function ConsentPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-sm text-muted-foreground">{t('authserver.consent.title')}</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xl font-bold break-words">{result.clientName}</p>
+          <p className="min-w-0 text-xl font-bold [overflow-wrap:anywhere]">{result.clientName}</p>
           {result.isOfficial && <Badge variant="secondary">{t('authserver.consent.official')}</Badge>}
         </div>
         <p>{t('authserver.consent.wantsAccess')}</p>

@@ -1,6 +1,7 @@
 package authserver
 
 import (
+	"context"
 	"errors"
 	"net/url"
 	"slices"
@@ -425,4 +426,125 @@ func TestDeleteApp_RefreshAndCodeFailAfterwards(t *testing.T) {
 	wantOAuth(t, err, "invalid_client")
 	_, err = exchange(s, cid, outstanding)
 	wantOAuth(t, err, "invalid_client")
+}
+
+// grantInjectingRepo adds grants for users DeleteApp has not locked: after the
+// snapshot read (committed between the snapshot and the client lock), or on
+// each read under the client lock (a stream of new connections).
+type grantInjectingRepo struct {
+	Repository
+	afterFirst func()
+	underLock  func(ctx context.Context)
+	reads      int
+}
+
+func (r *grantInjectingRepo) ListClientGrants(ctx context.Context, id vo.Id) ([]model.OAuthGrant, error) {
+	r.reads++
+	if r.reads == 1 {
+		gs, err := r.Repository.ListClientGrants(ctx, id)
+		r.afterFirst()
+		return gs, err
+	}
+	r.underLock(ctx)
+	return r.Repository.ListClientGrants(ctx, id)
+}
+
+func TestDeleteApp_RetriesWhenAGrantForANewUserAppears(t *testing.T) {
+	s, creds, clock, db := newTestServiceDB(t)
+	a, late := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
+	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	connect(t, s, a, c.ID.String(), "")
+	var lateGrant vo.Id
+	repo := &grantInjectingRepo{Repository: s.repo,
+		afterFirst: func() { lateGrant = insertGrant(t, s, late, c.ID, clock.Now(), nil) },
+		underLock:  func(context.Context) {}}
+	racing := NewService(repo, creds, s.tx, clock, nil, testURL)
+	creds.locked, creds.revoked = nil, nil
+	n, err := racing.DeleteApp(ctx, c.ID)
+	if err != nil || n != 2 {
+		t.Fatalf("%d %v", n, err)
+	}
+	both := []vo.Id{a, late}
+	slices.SortFunc(both, func(x, y vo.Id) int { return strings.Compare(x.String(), y.String()) })
+	want := append([]vo.Id{a}, both...)
+	if !slices.EqualFunc(creds.locked, want, vo.Id.Equal) {
+		t.Fatalf("locked %v, want %v: the retry must lock the late user too, in id order", creds.locked, want)
+	}
+	if !slices.ContainsFunc(creds.revoked, lateGrant.Equal) {
+		t.Fatal("the late grant's tokens must be revoked")
+	}
+	if _, err := s.repo.GetClient(ctx, c.ID); err == nil {
+		t.Fatal("client still there")
+	}
+}
+
+func TestDeleteApp_GivesUpWhenNewUsersKeepConnecting(t *testing.T) {
+	s, creds, clock, db := newTestServiceDB(t)
+	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fresh []vo.Id
+	for range deleteAppAttempts {
+		fresh = append(fresh, newUser(t, db, fixture.User{}))
+	}
+	next := 0
+	repo := &grantInjectingRepo{Repository: s.repo, afterFirst: func() {},
+		underLock: func(ctx context.Context) {
+			g := &model.OAuthGrant{ID: vo.NewId(), UserID: fresh[next], ClientID: c.ID, RefreshTokenHash: hashSecret(vo.NewId().String()),
+				CreatedAt: clock.Now(), LastUsedAt: clock.Now(), ExpiresAt: clock.Now().Add(GrantIdleTTL)}
+			next++
+			if err := s.repo.InsertGrant(ctx, g); err != nil {
+				t.Fatal(err)
+			}
+		}}
+	racing := NewService(repo, creds, s.tx, clock, nil, testURL)
+	if _, err := racing.DeleteApp(ctx, c.ID); !errors.Is(err, ErrAppBusy) {
+		t.Fatalf("err = %v, want ErrAppBusy", err)
+	}
+	if next != deleteAppAttempts {
+		t.Fatalf("attempts = %d", next)
+	}
+	if _, err := s.repo.GetClient(ctx, c.ID); err != nil {
+		t.Fatalf("the app must stay: %v", err)
+	}
+}
+
+// vanishingRepo deletes the client just before the conditional UPDATE, so it
+// matches no row because the app is gone rather than because of its state.
+type vanishingRepo struct{ Repository }
+
+func (r vanishingRepo) MakeClientGlobal(ctx context.Context, id vo.Id) (int64, error) {
+	if _, err := r.Repository.DeleteClient(ctx, id); err != nil {
+		return 0, err
+	}
+	return r.Repository.MakeClientGlobal(ctx, id)
+}
+
+func (r vanishingRepo) SetClientSecret(ctx context.Context, id vo.Id, hash string) (int64, error) {
+	if _, err := r.Repository.DeleteClient(ctx, id); err != nil {
+		return 0, err
+	}
+	return r.Repository.SetClientSecret(ctx, id, hash)
+}
+
+func TestMakeOfficialAndRotate_AppDeletedMeanwhile(t *testing.T) {
+	s, creds, clock, _ := newTestService(t)
+	racing := NewService(vanishingRepo{s.repo}, creds, s.tx, clock, nil, testURL)
+	user := register(t, s, "Claude", appCallback)
+	if _, ok := errs.AsNotFound(racing.MakeAppOfficial(ctx, vo.MustParseId(user.ClientID))); !ok {
+		t.Fatal("make-official of a deleted app must be NotFound")
+	}
+	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := racing.RotateAppSecret(ctx, c.ID); err == nil {
+		t.Fatal("rotating a deleted app must fail")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("want NotFound, got %v", err)
+	}
 }

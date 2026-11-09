@@ -142,6 +142,7 @@ func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.I
 		return model.AuthorizationDecisionResult{}, err
 	}
 	now := s.clock.Now().UTC()
+	codeInsertFailed := false
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		gen, err := s.creds.LockForOAuth(ctx, userID)
 		if err != nil {
@@ -163,11 +164,18 @@ func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.I
 			CredentialsGeneration: gen, CreatedAt: now, ExpiresAt: now.Add(CodeTTL),
 		}
 		if err := s.repo.InsertCode(ctx, code); err != nil {
+			codeInsertFailed = true
 			return err
 		}
 		return s.repo.MarkClientUsed(ctx, c.ID, now)
 	})
 	if err != nil {
+		// app:delete removing the client after validate makes the code INSERT
+		// fail its foreign key. Checked after the rollback: an aborted
+		// PostgreSQL transaction runs no further statements.
+		if codeInsertFailed && s.clientGone(ctx, c.ID) {
+			return model.AuthorizationDecisionResult{}, clientNotFound()
+		}
 		return model.AuthorizationDecisionResult{}, err
 	}
 	reqctx.AddLogAttr(ctx, "client_id", c.ID.String())
