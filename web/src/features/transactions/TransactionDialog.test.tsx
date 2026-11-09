@@ -678,10 +678,10 @@ it('editing offers a hidden-folder account only to a search of three characters'
 
   const picker = await screen.findByRole('combobox', { name: 'account' })
   await waitFor(() => expect((picker as HTMLInputElement).value).toContain('Cash'))
-  // the folder list arrives on its own request; until then every foldered account looks hidden
   await user.click(picker)
   await screen.findByRole('option', { name: /Bank/ })
-  expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument()
+  // the folder list arrives on its own request
+  await waitFor(() => expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument())
 
   await user.keyboard('und')
   expect(await screen.findByRole('option', { name: /Under the mattress.*Hidden folder/ })).toBeInTheDocument()
@@ -704,25 +704,37 @@ it('adding reaches a hidden-folder account through a search too', async () => {
 
   await user.click(await screen.findByRole('combobox', { name: 'account' }))
   await screen.findByRole('option', { name: /Bank/ })
-  expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument()
+  // the folder list arrives on its own request
+  await waitFor(() => expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument())
 
   await user.keyboard('und')
   expect(await screen.findByRole('option', { name: /Under the mattress/ })).toBeInTheDocument()
 })
 
-it('Transfer stays available when the only other writable account sits in a hidden folder', async () => {
+it.each([
+  ['adding', { type: 'expense' as const }, 'Add transaction'],
+  ['editing', { transaction: wireTxEcho() as unknown as TransactionDto }, 'Edit transaction'],
+])('%s: Transfer is unavailable when the only other writable account sits in a hidden folder', async (_mode, params, heading) => {
   const hidden = fixtureAccounts.find((a) => a.id === 'a-hidden')!
   server.use(...coreHandlers({ accounts: [fixtureAccounts[0], hidden] }))
+  renderDialog()
+  useUiStore.getState().openTransactionModal(params)
+  await screen.findByRole('heading', { name: heading })
+
+  await waitFor(() => expect(screen.getByRole('radio', { name: 'Transfer' })).toBeDisabled())
+})
+
+it('a transfer reaches a hidden-folder account through a search in the To field', async () => {
   const user = userEvent.setup()
   renderDialog()
-  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  useUiStore.getState().openTransactionModal({ type: 'transfer', accountId: 'a1' })
   await screen.findByRole('heading', { name: 'Add transaction' })
-  await screen.findByRole('combobox', { name: 'account' })
 
-  const transfer = screen.getByRole('radio', { name: 'Transfer' })
-  await waitFor(() => expect(transfer).toBeEnabled())
-  await user.click(transfer)
   await user.click(await screen.findByRole('combobox', { name: 'to account' }))
+  await screen.findByRole('option', { name: /Bank/ })
+  // the folder list arrives on its own request
+  await waitFor(() => expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument())
+
   await user.keyboard('und')
   expect(await screen.findByRole('option', { name: /Under the mattress.*Hidden folder/ })).toBeInTheDocument()
 })

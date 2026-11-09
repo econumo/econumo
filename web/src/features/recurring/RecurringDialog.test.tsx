@@ -84,7 +84,8 @@ it('edit mode prefills the amount and schedule, under the mode-less header', asy
   expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('Weekly')
 })
 
-it('editing offers a hidden-folder account only to a search of three characters', async () => {
+// the recurring list leaves out templates on hidden accounts, so moving one there would lose it
+it('never offers another hidden-folder account, even to a search', async () => {
   const user = userEvent.setup()
   renderDialog()
   useUiStore.getState().openRecurringModal({ recurring: wireRecurringAsDto })
@@ -95,7 +96,17 @@ it('editing offers a hidden-folder account only to a search of three characters'
   expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument()
 
   await user.keyboard('und')
-  expect(await screen.findByRole('option', { name: /Under the mattress.*Hidden folder/ })).toBeInTheDocument()
+  await waitFor(() => expect(screen.queryByRole('option', { name: /Bank/ })).not.toBeInTheDocument())
+  expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument()
+})
+
+it('a template already on a hidden-folder account keeps it, marked', async () => {
+  renderDialog()
+  useUiStore.getState().openRecurringModal({ recurring: { ...wireRecurringAsDto, accountId: 'a-hidden' } })
+  await screen.findByRole('heading', { name: 'Recurring transaction' })
+
+  expect(screen.getByRole<HTMLInputElement>('combobox', { name: 'account' }).value).toContain('Under the mattress')
+  expect(screen.getByRole('img', { name: 'Hidden folder' })).toBeInTheDocument()
 })
 
 it('the next payment is the header date chip, not a separate row', async () => {

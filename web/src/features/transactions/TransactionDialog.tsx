@@ -124,9 +124,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }, [ownerId, categories, payees, tags, labels, form, patch])
 
   const hiddenAccountIds = hiddenFolderAccountIds(accounts, folders)
-  // a transfer needs two accounts the user can write to; an existing transfer
-  // keeps its type so it stays editable
-  const transferUnavailable = !isTransfer && accounts.filter((a) => canWriteToAccount(a, user?.id)).length < 2
+  // a transfer needs two accounts the user can write to, outside hidden folders;
+  // an existing transfer keeps its type so it stays editable
+  const transferUnavailable = !isTransfer && accounts.filter((a) => !hiddenAccountIds.has(a.id) && canWriteToAccount(a, user?.id)).length < 2
   const currentCategories = categoryOptions(categories, form.type, ownerId)
   const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
   const chips = classificationChips(tags, labels, form, ownerId)

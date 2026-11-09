@@ -62,6 +62,11 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   const canEditData = canChangeAccountData(account, user?.id)
 
   const hiddenAccountIds = hiddenFolderAccountIds(accounts, folders)
+  // the recurring list only returns templates on visible accounts: one moved
+  // into a hidden folder would vanish, so only its current accounts stay offered
+  const selectableAccounts = accounts.filter(
+    (a) => !hiddenAccountIds.has(a.id) || a.id === form.accountId || a.id === form.accountRecipientId,
+  )
   const currentCategories = categoryOptions(categories, form.type, ownerId)
   const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
   const chips = classificationChips(tags, labels, form, ownerId)
@@ -195,7 +200,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
                 title={t('transactions.modal.form.account.label')}
                 value={form.accountId}
                 onChange={(id) => patch({ accountId: id })}
-                options={accounts.map(accountToOption)}
+                options={selectableAccounts.map(accountToOption)}
               />
             </div>
           ) : null}
@@ -225,7 +230,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
                 title={t('transactions.modal.form.from.label')}
                 value={form.accountId}
                 onChange={(id) => patch({ accountId: id })}
-                options={accounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
+                options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
               />
             </SelectCard>
             <SelectCard label={t('transactions.modal.form.to.label')} error={errors.accountRecipientId}>
@@ -237,7 +242,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
                   clearError('accountRecipientId')
                   patch({ accountRecipientId: id })
                 }}
-                options={accounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
+                options={selectableAccounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
               />
             </SelectCard>
           </div>

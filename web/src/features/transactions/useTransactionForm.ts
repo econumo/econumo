@@ -290,8 +290,8 @@ export function classificationChips(
 }
 
 export function hiddenFolderAccountIds(accounts: AccountDto[], folders: FolderDto[]): Set<Id> {
-  const visibleFolderIds = new Set(folders.filter((f) => f.isVisible === 1).map((f) => f.id))
-  return new Set(accounts.filter((a) => a.folderId && !visibleFolderIds.has(a.folderId)).map((a) => a.id))
+  const hiddenFolderIds = new Set(folders.filter((f) => f.isVisible === 0).map((f) => f.id))
+  return new Set(accounts.filter((a) => a.folderId && hiddenFolderIds.has(a.folderId)).map((a) => a.id))
 }
 
 export function categoryOptions(categories: CategoryDto[], type: TransactionType, ownerUserId: Id | undefined): CategoryDto[] {

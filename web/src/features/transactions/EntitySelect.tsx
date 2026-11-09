@@ -77,13 +77,19 @@ function RowContent({ row }: { row: Row }) {
       ) : row.icon ? (
         <EntityIcon name={row.icon} className="text-base text-muted-foreground" />
       ) : null}
-      {row.create ? `${t('common.button.add.label')} «${row.label}»` : row.label}
       {row.hiddenLabel ? (
-        <span className="ml-auto flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-          <EyeOff className="size-3.5" aria-hidden />
-          {row.hiddenLabel}
-        </span>
-      ) : null}
+        <>
+          <span className="min-w-0 flex-1">{row.label}</span>
+          <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+            <EyeOff className="size-3.5" aria-hidden />
+            {row.hiddenLabel}
+          </span>
+        </>
+      ) : row.create ? (
+        `${t('common.button.add.label')} «${row.label}»`
+      ) : (
+        row.label
+      )}
     </>
   )
 }

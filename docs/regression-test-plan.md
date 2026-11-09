@@ -408,15 +408,17 @@ navigation (single-pane vs sidebar).
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
-- [ ] With only one account you can add transactions to (read-only shared ones
-      don't count; accounts in hidden folders do, since a search finds them), the
-      Transfer type is greyed out and cannot be selected; editing an existing
+- [ ] With only one account you can add transactions to (accounts in hidden
+      folders and read-only shared ones don't count), the Transfer type is
+      greyed out and cannot be selected, in Add and in Edit; editing an existing
       transfer keeps it.
-- [ ] 📱 Account pickers in Add/Edit transaction and recurring transaction (From
-      and To included) leave out accounts in hidden folders until the search has
-      3 or more characters; then they appear with an eye-off icon and "Hidden
-      folder". Editing a transaction on a hidden-folder account still shows its
-      name, with the eye-off icon in the field.
+- [ ] 📱 Account pickers in Add/Edit transaction (From and To included) leave out
+      accounts in hidden folders until the search has 3 or more characters; then
+      they appear with an eye-off icon and "Hidden folder". Editing a transaction
+      on a hidden-folder account still shows its name, with the eye-off icon in
+      the field.
+- [ ] 📱 Add/Edit recurring transaction never offers a hidden-folder account, even
+      to a search; a template already on one keeps it, marked with the eye-off icon.
 - [ ] 📱 Transfer with no "To" account: Add/Update shows "Required field" under
       the To select and sends nothing; the API rejects the same body with a
       400 on `accountRecipientId` (create AND update).
