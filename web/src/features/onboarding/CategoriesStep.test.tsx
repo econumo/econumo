@@ -6,7 +6,13 @@ import i18n from '@/app/i18n'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureCategories } from '@/test/fixtures'
 import { CategoriesStep, CategoriesStepBody, type ExistingCategory } from './CategoriesStep'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { emptyDraft, loadDraft, saveDraft, type CategoryRow } from './draft'
+
+vi.mock('@/lib/metrics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/metrics')>()
+  return { ...actual, trackEvent: vi.fn() }
+})
 
 function renderStep(props: Partial<React.ComponentProps<typeof CategoriesStep>> = {}) {
   const onContinue = vi.fn()
@@ -289,7 +295,34 @@ describe('CategoriesStepBody', () => {
     return { onDone, onSkip }
   }
 
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => {
+    localStorage.clear()
+    vi.mocked(trackEvent).mockClear()
+  })
+
+  it('reports removed, renamed and custom categories by catalogue key once the save lands', async () => {
+    const user = userEvent.setup()
+    const { onDone } = renderBody([])
+    await screen.findByRole('heading', { name: 'What do you spend on?' })
+    await user.click(screen.getByRole('button', { name: 'Remove Kids' }))
+    const groceries = screen.getByDisplayValue('Groceries')
+    await user.clear(groceries)
+    await user.type(groceries, 'Food')
+    await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'Gym{Enter}')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    const calls = vi.mocked(trackEvent).mock.calls.filter(([name]) => name === METRICS.ONBOARDING_CATEGORIES_COMPLETE)
+    expect(calls).toEqual([[METRICS.ONBOARDING_CATEGORIES_COMPLETE, { removed: 'kids', renamed: 'groceries', custom: 1, offered: 14 }]])
+  })
+
+  it('reports an empty removed list when nothing was changed', async () => {
+    const user = userEvent.setup()
+    const { onDone } = renderBody([])
+    await screen.findByRole('heading', { name: 'What do you spend on?' })
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, { removed: '', renamed: '', custom: 0, offered: 14 })
+  })
 
   it('a stored draft with some rows created resumes without duplicates, then moves on', async () => {
     const rows: CategoryRow[] = [

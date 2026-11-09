@@ -110,7 +110,7 @@ export function useDay0() {
   }, [])
 
   const saveCategories = useCallback(
-    (rows: CategoryRow[], order?: string[]) =>
+    (rows: CategoryRow[], order?: string[], offered?: string[]) =>
       run(async () => {
         if (!userId) {
           return
@@ -120,6 +120,7 @@ export function useDay0() {
         const sentAs = new Map(d.categoryRows.map((c) => [c.key, c.name]))
         d.categoryRows = rows
         d.categoryOrder = order ?? []
+        d.offeredDefaults ??= offered ?? []
         for (const c of rows) {
           opId(d, `category:${c.key}`)
         }
@@ -155,6 +156,14 @@ export function useDay0() {
         } finally {
           void queryClient.invalidateQueries({ queryKey: queryKeys.categories })
         }
+        // a default removed and re-added under its own name counts as removed plus custom
+        const kept = new Set(rows.flatMap((r) => (r.defaultKey ? [r.defaultKey] : [])))
+        trackEvent(METRICS.ONBOARDING_CATEGORIES_COMPLETE, {
+          removed: d.offeredDefaults.filter((k) => !kept.has(k)).join(','),
+          renamed: rows.filter((r) => r.defaultKey && !r.labelKey).map((r) => r.defaultKey).join(','),
+          custom: rows.filter((r) => !r.defaultKey).length,
+          offered: d.offeredDefaults.length,
+        })
       }),
     [run, current, persist, userId, queryClient],
   )

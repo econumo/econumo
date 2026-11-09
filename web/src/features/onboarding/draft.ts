@@ -13,7 +13,7 @@ export type AccountRow = {
   labelKey?: string
   iconPicked?: boolean
 }
-export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; labelKey?: string }
+export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; labelKey?: string; defaultKey?: string }
 export type Day0Draft = {
   // operation ids by `account:<rowKey>` / `category:<rowKey>` / `budget` (the budget's own id)
   ops: Record<string, Id>
@@ -27,6 +27,8 @@ export type Day0Draft = {
   categoryRows: CategoryRow[]
   // set once the user reorders categories: existing category ids and row keys, both groups in display order
   categoryOrder: string[]
+  // catalogue keys of the defaults the first submit offered, kept across retries for the analytics event
+  offeredDefaults?: string[]
   // the currency selection last applied, so a revisit that changes it applies it again
   currenciesApplied: string | null
   budgetDone: boolean

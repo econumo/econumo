@@ -46,7 +46,7 @@ interface CategoriesStepProps {
   // server category id by row key, so a created row keeps its place in the order
   createdIds?: Record<string, Id>
   // order is passed only once the user has reordered, so an untouched list never re-sorts the server's
-  onContinue: (rows: CategoryRow[], order?: string[]) => void
+  onContinue: (rows: CategoryRow[], order?: string[], offered?: string[]) => void
   onSkip: () => void
   pending: boolean
   error?: ReactNode
@@ -72,13 +72,17 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
     const build = (list: typeof DEFAULT_EXPENSE_CATEGORIES, type: CategoryType): CategoryRow[] =>
       list.map((c) => {
         const labelKey = `onboarding.categories.${c.key}`
-        return { key: uuidv7(), name: t(labelKey), labelKey, type, icon: c.icon }
+        return { key: uuidv7(), name: t(labelKey), labelKey, defaultKey: c.key, type, icon: c.icon }
       })
     const retired = new Set(archived.map((c) => nameKey(c.type, c.name)))
     return [...build(DEFAULT_EXPENSE_CATEGORIES, 'expense'), ...build(DEFAULT_INCOME_CATEGORIES, 'income')].filter(
       (r) => !taken.has(nameKey(r.type, r.name)) && !retired.has(nameKey(r.type, r.name)),
     )
   })
+  // the defaults this form offered; a resumed draft no longer knows, so useDay0 keeps the first submit's list
+  const [offered] = useState<string[]>(() =>
+    initialRows && initialRows.length > 0 ? [] : stored.flatMap((r) => (r.defaultKey ? [r.defaultKey] : [])),
+  )
   const rows = stored.map((r) => labelled(r, t))
   const [order, setOrder] = useState<string[]>(initialOrder ?? [])
   const [reordered, setReordered] = useState(Boolean(initialOrder && initialOrder.length > 0))
@@ -133,7 +137,7 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
     const ids = fullOrder()
     const at = new Map(ids.map((id, i) => [id, i]))
     const sorted = normalized().sort((a, b) => (at.get(a.key) ?? ids.length) - (at.get(b.key) ?? ids.length))
-    onContinue(sorted, reordered ? ids : undefined)
+    onContinue(sorted, reordered ? ids : undefined, offered)
   }
 
   const editing = rows.find((r) => r.key === pickingKey)
@@ -306,9 +310,9 @@ export function CategoriesStepBody({ onDone, onSkip }: StepBodyProps) {
           </p>
         ) : undefined
       }
-      onContinue={(rows, order) => {
+      onContinue={(rows, order, offered) => {
         void day0
-          .saveCategories(rows, order)
+          .saveCategories(rows, order, offered)
           .then(() => onDone())
           .catch(() => undefined)
       }}
