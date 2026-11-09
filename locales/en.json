@@ -296,6 +296,7 @@
       "failing": "Can't reach the server — retrying",
       "full_reload": "Clearing the cache and reloading…",
       "hold_hint": "Hold to clear the cache and reload",
+      "waiting": "{count} change waiting to be sent | {count} changes waiting to be sent",
       "full_reload_offline": "You're offline. Clear the cache and reload when you're back online."
     },
     "data": {
@@ -353,6 +354,9 @@
     },
     "update": {
       "available": "New version {version} available"
+    },
+    "logout": {
+      "pending_warning": "{count} change has not been sent yet and will be lost. | {count} changes have not been sent yet and will be lost."
     }
   },
   "transactions": {
@@ -497,12 +501,26 @@
     "title": "Inbox",
     "open": "Inbox, {count} waiting",
     "empty": "All caught up",
+    "failed_writes": {
+      "kind_create": "New",
+      "kind_update": "Edit",
+      "kind_delete": "Delete",
+      "delete_generic": "Deleted transaction",
+      "limit": "Plan for {name}: {amount} ({period})",
+      "limit_generic": "Plan: {amount} ({period})",
+      "limit_cleared": "Plan for {name} removed ({period})",
+      "limit_cleared_generic": "Plan removed ({period})",
+      "retry": "Try again",
+      "discard": "Discard",
+      "reason_unknown": "The server did not accept this change."
+    },
     "sections": {
       "due": "Scheduled transactions",
       "sharing": "Sharing",
       "sync": "Sync problems",
       "failed": "Failed imports",
       "to_review": "To review",
+      "failed_writes": "Not saved",
       "skipped": "Skipped ({count})"
     },
     "due": {

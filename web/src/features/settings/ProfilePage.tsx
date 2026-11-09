@@ -13,6 +13,8 @@ import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
 import { apiFieldErrors } from '@/lib/apiError'
+import { useUnsentCount } from '@/features/pendingWrites/hooks'
+import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
@@ -44,6 +46,7 @@ export function ProfilePage() {
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
+  const unsent = useUnsentCount()
   const [languageOpen, setLanguageOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
@@ -286,7 +289,7 @@ export function ProfilePage() {
         onClose={() => setLogoutOpen(false)}
         onConfirm={() => navigate(RouterPage.LOGOUT)}
         title={t('auth.sign_out.title')}
-        question={t('auth.sign_out.question')}
+        question={unsent > 0 ? `${t('auth.sign_out.question')} ${pluralPick(t('settings.logout.pending_warning'), unsent, i18n.language)}` : t('auth.sign_out.question')}
         confirmLabel={t('auth.sign_out.action.logout')}
         cancelLabel={t('auth.sign_out.action.cancel')}
       />

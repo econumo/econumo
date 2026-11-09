@@ -7,10 +7,14 @@ import { usePendingInvites, type PendingInvite } from '@/features/connections/pe
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useImportQueue, useImportSources } from '@/features/imports/queries'
 import { useRecurring } from '@/features/recurring/queries'
+import { useFailedWrites } from '@/features/pendingWrites/hooks'
+import type { PendingOp } from '@/features/pendingWrites/types'
 import { useUserData } from '@/features/user/queries'
 import { isFuture } from '@/lib/datetime'
 
 export interface Inbox {
+  /** changes made on this device that the server refused */
+  failedWrites: PendingOp[]
   /** templates due today or earlier on an account I can post to, oldest first */
   dueRecurring: RecurringDto[]
   invites: PendingInvite[]
@@ -18,7 +22,7 @@ export interface Inbox {
   failed: ImportFailedEventDto[]
   queued: ImportQueuedEventDto[]
   skipped: ImportQueuedEventDto[]
-  /** dueRecurring + invites + syncProblems + failed + queued; skipped is never counted */
+  /** failedWrites + dueRecurring + invites + syncProblems + failed + queued; skipped is never counted */
   count: number
   /** queue, sources AND recurring have each resolved (success or error) at least once (no "All caught up" flash) */
   isLoaded: boolean
@@ -51,6 +55,7 @@ export function formatInboxCount(count: number): string {
 }
 
 export function useInbox(): Inbox {
+  const failedWrites = useFailedWrites()
   const { invites } = usePendingInvites()
   const queue = useImportQueue()
   const sources = useImportSources()
@@ -64,13 +69,14 @@ export function useInbox(): Inbox {
   const skipped = queue.data?.skipped ?? []
   const failed = queue.data?.failed ?? []
   return {
+    failedWrites,
     dueRecurring,
     invites,
     syncProblems,
     failed,
     queued,
     skipped,
-    count: dueRecurring.length + invites.length + syncProblems.length + failed.length + queued.length,
+    count: failedWrites.length + dueRecurring.length + invites.length + syncProblems.length + failed.length + queued.length,
     isLoaded:
       (queue.data !== undefined || queue.isError) &&
       (sources.data !== undefined || sources.isError) &&

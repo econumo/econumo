@@ -296,6 +296,7 @@
       "failing": "Server nicht erreichbar — wird erneut versucht",
       "full_reload": "Cache wird geleert und neu geladen…",
       "hold_hint": "Gedrückt halten, um den Cache zu leeren und neu zu laden",
+      "waiting": "{count} Änderung wartet auf das Senden | {count} Änderungen warten auf das Senden",
       "full_reload_offline": "Sie sind offline. Leeren Sie den Cache und laden Sie neu, sobald Sie wieder online sind."
     },
     "data": {
@@ -353,6 +354,9 @@
     },
     "update": {
       "available": "Neue Version {version} verfügbar"
+    },
+    "logout": {
+      "pending_warning": "{count} Änderung wurde noch nicht gesendet und geht verloren. | {count} Änderungen wurden noch nicht gesendet und gehen verloren."
     }
   },
   "transactions": {
@@ -497,12 +501,26 @@
     "title": "Posteingang",
     "open": "Posteingang, {count} ausstehend",
     "empty": "Keine neuen Benachrichtigungen",
+    "failed_writes": {
+      "kind_create": "Neu",
+      "kind_update": "Bearbeiten",
+      "kind_delete": "Löschen",
+      "delete_generic": "Gelöschte Transaktion",
+      "limit": "Plan für {name}: {amount} ({period})",
+      "limit_generic": "Plan: {amount} ({period})",
+      "limit_cleared": "Plan für {name} entfernt ({period})",
+      "limit_cleared_generic": "Plan entfernt ({period})",
+      "retry": "Erneut versuchen",
+      "discard": "Verwerfen",
+      "reason_unknown": "Der Server hat diese Änderung nicht akzeptiert."
+    },
     "sections": {
       "due": "Geplante Transaktionen",
       "sharing": "Freigaben",
       "sync": "Synchronisierungsprobleme",
       "failed": "Fehlgeschlagene Importe",
       "to_review": "Zu prüfen",
+      "failed_writes": "Nicht gespeichert",
       "skipped": "Übersprungen ({count})"
     },
     "due": {

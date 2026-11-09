@@ -296,6 +296,7 @@
       "failing": "Serveur injoignable — nouvelle tentative",
       "full_reload": "Vidage du cache et rechargement…",
       "hold_hint": "Maintenez pour vider le cache et recharger",
+      "waiting": "{count} modification en attente d'envoi | {count} modifications en attente d'envoi",
       "full_reload_offline": "Vous êtes hors ligne. Videz le cache et rechargez une fois de nouveau en ligne."
     },
     "data": {
@@ -353,6 +354,9 @@
     },
     "update": {
       "available": "Nouvelle version {version} disponible"
+    },
+    "logout": {
+      "pending_warning": "{count} modification n'a pas encore été envoyée et sera perdue. | {count} modifications n'ont pas encore été envoyées et seront perdues."
     }
   },
   "transactions": {
@@ -497,12 +501,26 @@
     "title": "Boîte de réception",
     "open": "Boîte de réception, {count} en attente",
     "empty": "Aucune nouvelle notification",
+    "failed_writes": {
+      "kind_create": "Nouvelle",
+      "kind_update": "Modifier",
+      "kind_delete": "Supprimer",
+      "delete_generic": "Transaction supprimée",
+      "limit": "Plan pour {name} : {amount} ({period})",
+      "limit_generic": "Plan : {amount} ({period})",
+      "limit_cleared": "Plan pour {name} supprimé ({period})",
+      "limit_cleared_generic": "Plan supprimé ({period})",
+      "retry": "Réessayer",
+      "discard": "Abandonner",
+      "reason_unknown": "Le serveur n'a pas accepté cette modification."
+    },
     "sections": {
       "due": "Transactions planifiées",
       "sharing": "Partages",
       "sync": "Problèmes de synchronisation",
       "failed": "Importations échouées",
       "to_review": "À vérifier",
+      "failed_writes": "Non enregistré",
       "skipped": "Ignorés ({count})"
     },
     "due": {

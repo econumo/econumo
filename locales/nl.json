@@ -296,6 +296,7 @@
       "failing": "Geen verbinding met de server — opnieuw proberen",
       "full_reload": "Cache wissen en opnieuw laden…",
       "hold_hint": "Houd ingedrukt om de cache te wissen en opnieuw te laden",
+      "waiting": "{count} wijziging wacht om verzonden te worden | {count} wijzigingen wachten om verzonden te worden",
       "full_reload_offline": "Je bent offline. Wis de cache en laad opnieuw zodra je weer online bent."
     },
     "data": {
@@ -353,6 +354,9 @@
     },
     "update": {
       "available": "Nieuwe versie {version} beschikbaar"
+    },
+    "logout": {
+      "pending_warning": "{count} wijziging is nog niet verzonden en gaat verloren. | {count} wijzigingen zijn nog niet verzonden en gaan verloren."
     }
   },
   "transactions": {
@@ -497,12 +501,26 @@
     "title": "Postvak IN",
     "open": "Postvak IN, {count} wachtend",
     "empty": "Geen nieuwe meldingen",
+    "failed_writes": {
+      "kind_create": "Nieuw",
+      "kind_update": "Bewerken",
+      "kind_delete": "Verwijderen",
+      "delete_generic": "Verwijderde transactie",
+      "limit": "Plan voor {name}: {amount} ({period})",
+      "limit_generic": "Plan: {amount} ({period})",
+      "limit_cleared": "Plan voor {name} verwijderd ({period})",
+      "limit_cleared_generic": "Plan verwijderd ({period})",
+      "retry": "Opnieuw proberen",
+      "discard": "Verwerpen",
+      "reason_unknown": "De server heeft deze wijziging niet geaccepteerd."
+    },
     "sections": {
       "due": "Geplande transacties",
       "sharing": "Gedeeld",
       "sync": "Synchronisatieproblemen",
       "failed": "Mislukte imports",
       "to_review": "Te beoordelen",
+      "failed_writes": "Niet opgeslagen",
       "skipped": "Overgeslagen ({count})"
     },
     "due": {

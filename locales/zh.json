@@ -296,6 +296,7 @@
       "failing": "无法连接到服务器——正在重试",
       "full_reload": "正在清除缓存并重新加载…",
       "hold_hint": "长按可清除缓存并重新加载",
+      "waiting": "{count} 项更改等待发送",
       "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。"
     },
     "data": {
@@ -353,6 +354,9 @@
     },
     "update": {
       "available": "有新版本 {version} 可用"
+    },
+    "logout": {
+      "pending_warning": "{count} 项更改尚未发送，退出后将丢失。"
     }
   },
   "transactions": {
@@ -497,12 +501,26 @@
     "title": "收件箱",
     "open": "收件箱，{count} 项待处理",
     "empty": "没有新通知",
+    "failed_writes": {
+      "kind_create": "新增",
+      "kind_update": "编辑",
+      "kind_delete": "删除",
+      "delete_generic": "已删除的交易",
+      "limit": "{name} 的计划：{amount}（{period}）",
+      "limit_generic": "计划：{amount}（{period}）",
+      "limit_cleared": "{name} 的计划已移除（{period}）",
+      "limit_cleared_generic": "计划已移除（{period}）",
+      "retry": "重试",
+      "discard": "放弃",
+      "reason_unknown": "服务器未接受此更改。"
+    },
     "sections": {
       "due": "计划交易",
       "sharing": "共享",
       "sync": "同步问题",
       "failed": "导入失败",
       "to_review": "待审核",
+      "failed_writes": "未保存",
       "skipped": "已跳过（{count}）"
     },
     "due": {

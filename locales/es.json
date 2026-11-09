@@ -296,6 +296,7 @@
       "failing": "No se puede conectar con el servidor: reintentando",
       "full_reload": "Borrando la caché y recargando…",
       "hold_hint": "Mantén pulsado para borrar la caché y recargar",
+      "waiting": "{count} cambio en espera de envío | {count} cambios en espera de envío",
       "full_reload_offline": "Estás sin conexión. Borra la caché y recarga cuando vuelvas a estar en línea."
     },
     "data": {
@@ -353,6 +354,9 @@
     },
     "update": {
       "available": "Nueva versión {version} disponible"
+    },
+    "logout": {
+      "pending_warning": "{count} cambio aún no se ha enviado y se perderá. | {count} cambios aún no se han enviado y se perderán."
     }
   },
   "transactions": {
@@ -497,12 +501,26 @@
     "title": "Bandeja de entrada",
     "open": "Bandeja de entrada: {count} por revisar",
     "empty": "No hay notificaciones nuevas",
+    "failed_writes": {
+      "kind_create": "Nueva",
+      "kind_update": "Editar",
+      "kind_delete": "Eliminar",
+      "delete_generic": "Transacción eliminada",
+      "limit": "Plan de {name}: {amount} ({period})",
+      "limit_generic": "Plan: {amount} ({period})",
+      "limit_cleared": "Plan de {name} eliminado ({period})",
+      "limit_cleared_generic": "Plan eliminado ({period})",
+      "retry": "Reintentar",
+      "discard": "Descartar",
+      "reason_unknown": "El servidor no aceptó este cambio."
+    },
     "sections": {
       "due": "Transacciones programadas",
       "sharing": "Compartidos",
       "sync": "Problemas de sincronización",
       "failed": "Importaciones fallidas",
       "to_review": "Para revisar",
+      "failed_writes": "No guardado",
       "skipped": "Omitidos ({count})"
     },
     "due": {

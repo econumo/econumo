@@ -24,3 +24,12 @@ export function useFailedWrites(): PendingOp[] {
   const ops = usePendingOps()
   return useMemo(() => ops.filter((op) => op.status === 'failed'), [ops])
 }
+
+export function useWaitingCount(): number {
+  return usePendingOps().filter((op) => op.status === 'waiting').length
+}
+
+/** Everything sign-out would throw away: changes still waiting and refused ones alike. */
+export function useUnsentCount(): number {
+  return usePendingOps().length
+}

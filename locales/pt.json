@@ -296,6 +296,7 @@
       "failing": "Não é possível contactar o servidor — a tentar novamente",
       "full_reload": "A limpar a cache e a recarregar…",
       "hold_hint": "Mantenha premido para limpar a cache e recarregar",
+      "waiting": "{count} alteração à espera de ser enviada | {count} alterações à espera de serem enviadas",
       "full_reload_offline": "Está offline. Limpe a cache e recarregue quando voltar a estar online."
     },
     "data": {
@@ -353,6 +354,9 @@
     },
     "update": {
       "available": "Nova versão {version} disponível"
+    },
+    "logout": {
+      "pending_warning": "{count} alteração ainda não foi enviada e será perdida. | {count} alterações ainda não foram enviadas e serão perdidas."
     }
   },
   "transactions": {
@@ -497,12 +501,26 @@
     "title": "Caixa de entrada",
     "open": "Caixa de entrada: {count} por rever",
     "empty": "Sem novas notificações",
+    "failed_writes": {
+      "kind_create": "Nova",
+      "kind_update": "Editar",
+      "kind_delete": "Eliminar",
+      "delete_generic": "Transação eliminada",
+      "limit": "Plano de {name}: {amount} ({period})",
+      "limit_generic": "Plano: {amount} ({period})",
+      "limit_cleared": "Plano de {name} removido ({period})",
+      "limit_cleared_generic": "Plano removido ({period})",
+      "retry": "Tentar novamente",
+      "discard": "Descartar",
+      "reason_unknown": "O servidor não aceitou esta alteração."
+    },
     "sections": {
       "due": "Transações agendadas",
       "sharing": "Partilhas",
       "sync": "Problemas de sincronização",
       "failed": "Importações falhadas",
       "to_review": "Para rever",
+      "failed_writes": "Não guardado",
       "skipped": "Ignorados ({count})"
     },
     "due": {

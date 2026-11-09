@@ -25,6 +25,9 @@ import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { InboxButton } from '@/features/inbox/InboxButton'
+import { formatInboxCount } from '@/features/inbox/useInbox'
+import { useWaitingCount } from '@/features/pendingWrites/hooks'
+import { pluralPick } from '@/lib/plural'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
@@ -81,7 +84,7 @@ function useLastSyncAt(): string {
 }
 
 export function ApplicationLayout() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const location = useLocation()
   // Recorded during render (idempotent per pathname) so children mounting in
   // this same pass can already read their origin via previousPathname().
@@ -116,7 +119,17 @@ export function ApplicationLayout() {
   const isFetching = useIsFetching() > 0
   const lastSyncAt = useLastSyncAt()
   const syncFailing = useSyncFailing()
-  const syncTitle = `${t(syncFailing ? 'settings.sync.failing' : 'settings.sync.menu_item')} — ${lastSyncAt}\n${t('settings.sync.hold_hint')}`
+  const waiting = useWaitingCount()
+  const waitingText = waiting > 0 ? `\n${pluralPick(t('settings.sync.waiting'), waiting, i18n.language)}` : ''
+  const syncTitle = `${t(syncFailing ? 'settings.sync.failing' : 'settings.sync.menu_item')} — ${lastSyncAt}${waitingText}\n${t('settings.sync.hold_hint')}`
+  const waitingBadge = waiting > 0 ? (
+    <span
+      data-testid="sync-waiting"
+      className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 text-primary-foreground"
+    >
+      {formatInboxCount(waiting)}
+    </span>
+  ) : null
   const fullReload = useFullReload()
   const syncPress = useLongPress({
     onClick: () => void queryClient.invalidateQueries(),
@@ -267,10 +280,11 @@ export function ApplicationLayout() {
                   type="button"
                   aria-label="sync"
                   title={syncTitle}
-                  className={`${syncClass} select-none [-webkit-touch-callout:none]`}
+                  className={`relative ${syncClass} select-none [-webkit-touch-callout:none]`}
                   {...syncPress}
                 >
                   <RefreshCw className={`size-5 ${isFetching ? 'animate-spin' : ''}`} />
+                  {waitingBadge}
                 </button>
               </footer>
             ) : (
@@ -296,10 +310,11 @@ export function ApplicationLayout() {
                     type="button"
                     aria-label="sync"
                     title={syncTitle}
-                    className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
+                    className={`relative ${syncClassFull} select-none [-webkit-touch-callout:none]`}
                     {...syncPress}
                   >
                     <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
+                    {waitingBadge}
                   </button>
                 </div>
               </footer>

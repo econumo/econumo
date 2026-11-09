@@ -296,6 +296,7 @@
       "failing": "Brak połączenia z serwerem — ponawianie próby",
       "full_reload": "Czyszczenie pamięci podręcznej i ponowne wczytywanie…",
       "hold_hint": "Przytrzymaj, aby wyczyścić pamięć podręczną i wczytać ponownie",
+      "waiting": "{count} zmiana czeka na wysłanie | {count} zmiany czekają na wysłanie | {count} zmian czeka na wysłanie",
       "full_reload_offline": "Jesteś offline. Wyczyść pamięć podręczną i wczytaj ponownie, gdy wrócisz do sieci."
     },
     "data": {
@@ -353,6 +354,9 @@
     },
     "update": {
       "available": "Dostępna jest nowa wersja {version}"
+    },
+    "logout": {
+      "pending_warning": "{count} zmiana nie została jeszcze wysłana i zostanie utracona. | {count} zmiany nie zostały jeszcze wysłane i zostaną utracone. | {count} zmian nie zostało jeszcze wysłanych i zostanie utraconych."
     }
   },
   "transactions": {
@@ -497,12 +501,26 @@
     "title": "Skrzynka odbiorcza",
     "open": "Skrzynka: do przejrzenia {count}",
     "empty": "Brak nowych powiadomień",
+    "failed_writes": {
+      "kind_create": "Nowa",
+      "kind_update": "Edycja",
+      "kind_delete": "Usunięcie",
+      "delete_generic": "Usunięta transakcja",
+      "limit": "Plan dla {name}: {amount} ({period})",
+      "limit_generic": "Plan: {amount} ({period})",
+      "limit_cleared": "Plan dla {name} usunięty ({period})",
+      "limit_cleared_generic": "Plan usunięty ({period})",
+      "retry": "Spróbuj ponownie",
+      "discard": "Odrzuć",
+      "reason_unknown": "Serwer nie przyjął tej zmiany."
+    },
     "sections": {
       "due": "Zaplanowane transakcje",
       "sharing": "Udostępnianie",
       "sync": "Problemy z synchronizacją",
       "failed": "Nieudane importy",
       "to_review": "Do przejrzenia",
+      "failed_writes": "Niezapisane",
       "skipped": "Pominięte ({count})"
     },
     "due": {

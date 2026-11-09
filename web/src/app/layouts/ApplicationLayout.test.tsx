@@ -13,6 +13,8 @@ import { STORE_ACCOUNT_TRANSACTIONS, resetDbForTests } from '@/lib/db'
 import { loadBuckets, putBuckets, resetTransactionStoreForTests, tryLoadStored } from '@/lib/transactionStore'
 import { queryKeys } from '@/app/queryKeys'
 import type { TransactionDto } from '@/api/dto/transaction'
+import { addChange } from '@/features/pendingWrites/queue'
+import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
 import { useTransactions } from '@/features/transactions/queries'
 import { installTransactionTracking, resetRevisions } from '@/features/transactions/revisionTracking'
 import { econumoPackage } from '@/lib/package'
@@ -132,6 +134,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  resetPendingWritesForTests()
   server.events.removeAllListeners()
   uninstalls.splice(0).forEach((u) => u())
   vi.restoreAllMocks()
@@ -143,6 +146,20 @@ it('the Budget & Plan link opens the budget view last opened on this device', as
   expect(await screen.findByRole('link', { name: 'Budget & Plan' })).toHaveAttribute('href', '/budget')
   useBudgetPeriodStore.setState({ lastMode: 'plan' })
   await waitFor(() => expect(screen.getByRole('link', { name: 'Budget & Plan' })).toHaveAttribute('href', '/plan'))
+})
+
+it('the sync control shows how many changes are waiting, and says so in its title', async () => {
+  mockViewport(false)
+  resetPendingWritesForTests()
+  await loadPendingWrites('u1')
+  // backed off far into the future, so the sender leaves it waiting
+  await mutate((ops) =>
+    addChange(ops, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'k1', seq: 1 }).map((op) => ({ ...op, notBefore: Date.now() + 3_600_000 })),
+  )
+  renderShell('/')
+  const sync = await screen.findByRole('button', { name: 'sync' })
+  expect(within(sync).getByTestId('sync-waiting')).toHaveTextContent('1')
+  expect(sync.title).toContain('1 change waiting to be sent')
 })
 
 it('Reports is an icon next to sync in the footer, expanded and collapsed', async () => {

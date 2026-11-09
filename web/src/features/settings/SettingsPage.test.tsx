@@ -11,6 +11,8 @@ import { useTransactions } from '@/features/transactions/queries'
 import { resetRevisions } from '@/features/transactions/revisionTracking'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { loadBuckets } from '@/lib/transactionStore'
+import { addChange } from '@/features/pendingWrites/queue'
+import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
 import { useUiStore } from '@/app/uiStore'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { SettingsPage } from './SettingsPage'
@@ -226,6 +228,23 @@ it('the Log out button opens the confirm dialog and confirming navigates to the 
   expect(screen.getByRole('button', { name: 'Stay' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Log out' }))
   expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
+})
+
+afterEach(() => resetPendingWritesForTests())
+
+it('the Log out confirm warns about unsent changes only when there are some', async () => {
+  const user = userEvent.setup()
+  resetPendingWritesForTests()
+  await loadPendingWrites('u1')
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Log out' }))
+  expect(await screen.findByText('Are you sure you want to log out?')).toBeInTheDocument()
+  expect(screen.queryByText(/not been sent yet/)).toBeNull()
+  cleanup()
+  await mutate((ops) => addChange(ops, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'k1', seq: 1 }))
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Log out' }))
+  expect(await screen.findByText(/Are you sure you want to log out\? 1 change has not been sent yet and will be lost\./)).toBeInTheDocument()
 })
 
 describe('Clear cache and reload', () => {

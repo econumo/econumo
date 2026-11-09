@@ -296,6 +296,7 @@
       "failing": "Impossibile raggiungere il server — nuovo tentativo in corso",
       "full_reload": "Svuotamento della cache e ricaricamento…",
       "hold_hint": "Tieni premuto per svuotare la cache e ricaricare",
+      "waiting": "{count} modifica in attesa di invio | {count} modifiche in attesa di invio",
       "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online."
     },
     "data": {
@@ -353,6 +354,9 @@
     },
     "update": {
       "available": "Nuova versione {version} disponibile"
+    },
+    "logout": {
+      "pending_warning": "{count} modifica non è stata ancora inviata e andrà persa. | {count} modifiche non sono state ancora inviate e andranno perse."
     }
   },
   "transactions": {
@@ -497,12 +501,26 @@
     "title": "Posta in arrivo",
     "open": "Posta in arrivo, {count} in attesa",
     "empty": "Nessuna nuova notifica",
+    "failed_writes": {
+      "kind_create": "Nuova",
+      "kind_update": "Modifica",
+      "kind_delete": "Elimina",
+      "delete_generic": "Transazione eliminata",
+      "limit": "Piano per {name}: {amount} ({period})",
+      "limit_generic": "Piano: {amount} ({period})",
+      "limit_cleared": "Piano per {name} rimosso ({period})",
+      "limit_cleared_generic": "Piano rimosso ({period})",
+      "retry": "Riprova",
+      "discard": "Scarta",
+      "reason_unknown": "Il server non ha accettato questa modifica."
+    },
     "sections": {
       "due": "Transazioni programmate",
       "sharing": "Condivisioni",
       "sync": "Problemi di sincronizzazione",
       "failed": "Importazioni non riuscite",
       "to_review": "Da rivedere",
+      "failed_writes": "Non salvato",
       "skipped": "Saltati ({count})"
     },
     "due": {

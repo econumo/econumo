@@ -5,6 +5,8 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
 import { formatDateTime } from '@/lib/datetime'
+import { addChange } from '@/features/pendingWrites/queue'
+import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
 import { formatInboxCount, isDueRecurring, isSyncProblem, useInbox } from './useInbox'
 
 const owner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
@@ -183,4 +185,20 @@ it('is not loaded until the recurring list resolves', async () => {
   // the import queries settle, the recurring one never does
   await new Promise((r) => setTimeout(r, 50))
   expect(result.current.isLoaded).toBe(false)
+})
+
+it('counts refused changes made on this device, and not the ones still waiting', async () => {
+  const wrapper = makeWrapper()
+  server.use(...coreHandlers())
+  resetPendingWritesForTests()
+  await loadPendingWrites('u1')
+  await mutate((ops) => {
+    const refused = addChange(ops, { kind: 'limit', budgetId: 'b1', elementId: 'e1', period: '2026-07-01', amount: '5' }, { key: 'k1', seq: 1 })
+    const both = addChange(refused, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'k2', seq: 2 })
+    return both.map((op) => (op.key === 'k1' ? { ...op, status: 'failed' as const, error: 'no' } : op))
+  })
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  expect(result.current.failedWrites.map((op) => op.key)).toEqual(['k1'])
+  expect(result.current.count).toBe(1)
 })

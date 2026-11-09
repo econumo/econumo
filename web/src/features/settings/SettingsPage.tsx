@@ -11,6 +11,8 @@ import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
+import { useUnsentCount } from '@/features/pendingWrites/hooks'
+import { pluralPick } from '@/lib/plural'
 import { SEMVER } from '@/lib/version'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { useUserData, useAccessState } from '@/features/user/queries'
@@ -80,6 +82,7 @@ export function SettingsPage() {
   const access = useAccessState()
   const portal = useOpenBillingPortal()
   const [logoutOpen, setLogoutOpen] = useState(false)
+  const unsent = useUnsentCount()
   const fullReload = useFullReload()
   const reloading = useFullReloadPending()
   const install = useInstallApp()
@@ -228,7 +231,7 @@ export function SettingsPage() {
         onClose={() => setLogoutOpen(false)}
         onConfirm={() => navigate(RouterPage.LOGOUT)}
         title={t('auth.sign_out.title')}
-        question={t('auth.sign_out.question')}
+        question={unsent > 0 ? `${t('auth.sign_out.question')} ${pluralPick(t('settings.logout.pending_warning'), unsent, i18n.language)}` : t('auth.sign_out.question')}
         confirmLabel={t('auth.sign_out.action.logout')}
         cancelLabel={t('auth.sign_out.action.cancel')}
       />

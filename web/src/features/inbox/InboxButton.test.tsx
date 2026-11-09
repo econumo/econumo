@@ -19,6 +19,7 @@ vi.mock('./useInbox', async (importOriginal) => ({
 
 function makeInbox(over: Partial<Inbox> = {}): Inbox {
   return {
+    failedWrites: [],
     dueRecurring: [],
     invites: [],
     syncProblems: [],
