@@ -1207,7 +1207,8 @@ one at once) is printed once to stdout and never logged. A **user** app is one a
 registered for itself; `app:list` shows `N (M from other users)` when users other than its
 owner hold live connections (grants from before ownership; an app with no owner yet shows just
 `N`), and `app:make-official` converts
-such a shared client, one way. `app:update` changes official apps only and refuses a call with
+such a shared client, one way. `app:show` lists each live connection with its user id, scope
+(`mcp`/`read`), connected and last-used times. `app:update` changes official apps only and refuses a call with
 nothing to change. `app:disconnect` revokes live grants (one user's with `--user`) and their
 access tokens and drops outstanding authorization codes, under the users' row locks and then the
 client row lock, starting over (at most 5 times) when a grant for a user it had not locked

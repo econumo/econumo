@@ -195,9 +195,9 @@ func runAppShow(ctx context.Context, c *container, args []string) error {
 	}
 	fmt.Println()
 	w = tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "USER\tCONNECTED\tLAST USED")
+	fmt.Fprintln(w, "USER\tSCOPE\tCONNECTED\tLAST USED")
 	for _, g := range a.Grants {
-		fmt.Fprintf(w, "%s\t%s\t%s\n", g.UserID, formatTime(g.CreatedAt), formatTime(g.LastUsedAt))
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", g.UserID, g.Scope, formatTime(g.CreatedAt), formatTime(g.LastUsedAt))
 	}
 	return w.Flush()
 }

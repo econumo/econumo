@@ -242,6 +242,9 @@ func TestAppListAndShow(t *testing.T) {
 	}
 	official := clientID(t, stdout)
 	seedUserApp(t, db, a, nil, a, b)
+	if _, err := db.Exec(`UPDATE oauth_grants SET scope = 'read' WHERE id = ?`, seedGrantB); err != nil {
+		t.Fatal(err)
+	}
 
 	code, stdout, _ = runApp(t, "app:list")
 	if code != 0 {
@@ -291,6 +294,15 @@ func TestAppListAndShow(t *testing.T) {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("app:show lacks %q:\n%s", want, stdout)
 		}
+	}
+	scopes := map[string]string{}
+	for _, l := range strings.Split(stdout, "\n") {
+		if f := strings.Fields(l); len(f) >= 2 && (f[0] == "USER" || f[0] == a || f[0] == b) {
+			scopes[f[0]] = f[1]
+		}
+	}
+	if scopes["USER"] != "SCOPE" || scopes[a] != "mcp" || scopes[b] != "read" {
+		t.Fatalf("app:show connection scopes = %v:\n%s", scopes, stdout)
 	}
 	code, stdout, _ = runApp(t, "app:show", " "+official+" ")
 	if code != 0 || !strings.Contains(stdout, "confidential") || !strings.Contains(stdout, "official") || !strings.Contains(stdout, "never") {
