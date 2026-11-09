@@ -14,22 +14,19 @@ export interface WhatsNew {
   url: string
 }
 
-// An upgrade into a new minor line links to its .0 notes, where the big
-// changes are announced (v1.6.x -> v1.7.2 shows v1.7.0); a patch upgrade
-// within the line links to the running patch.
-function notesVersion(version: string, seen: string | null | undefined): string {
-  const cur = SEMVER.exec(version)!
-  const prev = seen ? SEMVER.exec(seen) : null
-  if (prev && prev[1] === cur[1] && prev[2] === cur[2]) {
-    return version
-  }
-  return `v${cur[1]}.${cur[2]}.0`
+// The card announces major and minor releases only, so it names the .0 of the
+// running line, where the big changes are written up (v1.6.x -> v1.7.2 shows
+// v1.7.0).
+function lineRelease(version: string): string {
+  const [, major, minor] = SEMVER.exec(version)!
+  return `v${major}.${minor}.0`
 }
 
-// The running release when the user has not seen its notes yet; null for a
-// non-release build (dev, a custom label) or when they already have. A user
-// with no stored version predates the option, so they did upgrade: new
-// accounts get the running version seeded server-side and never see this.
+// The running release when the user has not seen its major or minor line yet;
+// null for a non-release build (dev, a custom label), after a patch upgrade
+// within a seen line, or when they already have. A user with no stored version
+// predates the option, so they did upgrade: new accounts get the running
+// version seeded server-side and never see this.
 // Web only: the app compares its bundled version, not the server's that the
 // seed uses, and may talk to a server without update-last-seen-version.
 export function useWhatsNew(): WhatsNew | null {
@@ -44,9 +41,9 @@ export function useWhatsNew(): WhatsNew | null {
     return null
   }
   const seen = user.options.find((o) => o.name === UserOptions.LAST_SEEN_VERSION)?.value
-  if (seen && SEMVER.test(seen) && !isNewerVersion(version, seen)) {
+  const notes = lineRelease(version)
+  if (seen && SEMVER.test(seen) && !isNewerVersion(notes, seen)) {
     return null
   }
-  const notes = notesVersion(version, seen)
   return { version, notesVersion: notes, url: RELEASE_NOTES_URL + notes }
 }
