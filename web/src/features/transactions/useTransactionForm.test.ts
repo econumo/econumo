@@ -3,6 +3,7 @@ import {
   buildPayload,
   evaluatedAmount,
   hiddenFolderAccountIds,
+  visibleAccountsFirst,
   categoryOptions,
   canChangeAccountData,
   classificationChips,
@@ -217,6 +218,15 @@ it('falls back to the primary amount when the recipient amount is unparseable', 
   const base = initialFormState({}, [account({})], 'a1')
   const transfer = buildPayload({ ...base, type: 'transfer', amount: '10', accountRecipientId: 'a2', amountRecipient: 'garbage' })
   expect(transfer.amountRecipient).toBe('10')
+})
+
+it('a new form defaults to the first visible account', () => {
+  const accounts = [account({ id: 'a-h', folderId: 'f-hidden' }), account({ id: 'a-v', folderId: 'f-visible' })]
+  const folders = [
+    { id: 'f-visible', name: 'V', position: 0, isVisible: 1 as const },
+    { id: 'f-hidden', name: 'H', position: 1, isVisible: 0 as const },
+  ]
+  expect(initialFormState({}, visibleAccountsFirst(accounts, folders), null).accountId).toBe('a-v')
 })
 
 it('finds the accounts living in hidden folders', () => {

@@ -16,9 +16,11 @@ import { useUiStore } from '@/app/uiStore'
 import type { OpenRecurringParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
+import { canWriteToAccount } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
 import {
   hiddenFolderAccountIds,
+  visibleAccountsFirst,
   canChangeAccountData,
   categoryOptions,
   classificationChips,
@@ -52,7 +54,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   const createRecurring = useCreateRecurring()
   const updateRecurring = useUpdateRecurring()
 
-  const { form, patch, setType, setSchedule, account } = useRecurringForm(params, accounts)
+  const { form, patch, setType, setSchedule, account } = useRecurringForm(params, visibleAccountsFirst(accounts, folders))
   const { errors, setErrors, clear: clearError } = useFormErrors<Record<string, string | undefined>>()
   const [addTagOpen, setAddTagOpen] = useState(false)
 
@@ -71,6 +73,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
     label: `${a.name} (${moneyFormat(a.balance, a.currency)})`,
     searchText: a.name,
     icon: a.icon,
+    disabled: !canWriteToAccount(a, user?.id),
     hiddenLabel: hiddenAccountIds.has(a.id) ? t('search.hidden_folder') : undefined,
   })
 

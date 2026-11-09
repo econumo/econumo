@@ -724,6 +724,21 @@ it.each([
   await waitFor(() => expect(screen.getByRole('radio', { name: 'Transfer' })).toBeDisabled())
 })
 
+it('an existing transfer can go back to Transfer after trying another type', async () => {
+  const hidden = fixtureAccounts.find((a) => a.id === 'a-hidden')!
+  server.use(...coreHandlers({ accounts: [fixtureAccounts[0], hidden] }))
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: wireTxEcho({ type: 'transfer', accountId: 'a1', accountRecipientId: 'a-hidden', categoryId: null }) as unknown as TransactionDto,
+  })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await screen.findByRole('combobox', { name: 'to account' })
+
+  await user.click(screen.getByRole('radio', { name: 'Expense' }))
+  expect(screen.getByRole('radio', { name: 'Transfer' })).toBeEnabled()
+})
+
 it('a transfer reaches a hidden-folder account through a search in the To field', async () => {
   const user = userEvent.setup()
   renderDialog()

@@ -98,6 +98,23 @@ it('editing offers a hidden-folder account only to a search of three characters'
   expect(await screen.findByRole('option', { name: /Under the mattress.*Hidden folder/ })).toBeInTheDocument()
 })
 
+it('disables an account the user can only read', async () => {
+  const user = userEvent.setup()
+  const queryClient = renderDialog()
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  const owner = fixtureAccounts[0].owner
+  queryClient.setQueryData(queryKeys.accounts, [
+    ...fixtureAccounts,
+    { ...fixtureAccounts[1], id: 'a-ro', name: 'Partner cash', owner: partner, sharedAccess: [{ user: owner, role: 'guest', isAccepted: 1 }] },
+  ])
+  useUiStore.getState().openRecurringModal({ recurring: wireRecurringAsDto })
+  await screen.findByRole('heading', { name: 'Recurring transaction' })
+
+  await user.click(screen.getByRole('combobox', { name: 'account' }))
+  await waitFor(() => expect(screen.getByRole('option', { name: /Bank/ })).not.toHaveAttribute('aria-disabled', 'true'))
+  expect(screen.getByRole('option', { name: /Partner cash/ })).toHaveAttribute('aria-disabled', 'true')
+})
+
 it('a template already on a hidden-folder account keeps it, marked', async () => {
   renderDialog()
   useUiStore.getState().openRecurringModal({ recurring: { ...wireRecurringAsDto, accountId: 'a-hidden' } })

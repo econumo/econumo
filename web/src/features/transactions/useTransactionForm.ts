@@ -289,6 +289,12 @@ export function classificationChips(
   ]
 }
 
+// new forms default to the first account, which must not be a hidden one
+export function visibleAccountsFirst(accounts: AccountDto[], folders: FolderDto[]): AccountDto[] {
+  const hidden = hiddenFolderAccountIds(accounts, folders)
+  return [...accounts.filter((a) => !hidden.has(a.id)), ...accounts.filter((a) => hidden.has(a.id))]
+}
+
 export function hiddenFolderAccountIds(accounts: AccountDto[], folders: FolderDto[]): Set<Id> {
   const hiddenFolderIds = new Set(folders.filter((f) => f.isVisible === 0).map((f) => f.id))
   return new Set(accounts.filter((a) => a.folderId && hiddenFolderIds.has(a.folderId)).map((a) => a.id))

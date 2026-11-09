@@ -54,8 +54,14 @@ const HIDDEN_OPTION_MIN_SEARCH = 3
 function buildRows({ options, value, search, clearable, onCreate, createValidator }: Pick<EntitySelectProps, 'options' | 'value' | 'clearable' | 'onCreate' | 'createValidator'> & { search: string }) {
   // the created name is trimmed, so it is also what must be new and valid
   const name = search.trim()
-  // the current value stays listed: it is already in use, search or no search
-  const offered = name.length >= HIDDEN_OPTION_MIN_SEARCH ? options : options.filter((o) => !o.hiddenLabel || o.value === value)
+  // the current value stays listed: it is already in use, search or no search.
+  // A name shorter than the threshold can only be found by typing all of it.
+  const offered = options.filter(
+    (o) =>
+      !o.hiddenLabel ||
+      o.value === value ||
+      (name !== '' && name.length >= Math.min(HIDDEN_OPTION_MIN_SEARCH, (o.searchText ?? o.label).length)),
+  )
   const filtered = rankByName(offered, (o) => o.searchText ?? o.label, search)
   const exactMatch = options.some((o) => o.label.toLowerCase() === name.toLowerCase())
   const canCreate = !!onCreate && name !== '' && !exactMatch && (createValidator ? createValidator(name) : true)

@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
 import { formatDateTime } from '@/lib/datetime'
@@ -136,6 +136,18 @@ it('leaves a due payment on a hidden-folder account out of the Inbox', async () 
   server.use(...coreHandlers({ recurring: [template(), template({ id: 'r-hidden', accountId: 'a-hidden' })] }))
   const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
   await waitFor(() => expect(result.current.dueRecurring.map((rt) => rt.id)).toEqual(['r1']))
+})
+
+it('waits for the folder list before showing due payments', async () => {
+  server.use(...coreHandlers({ recurring: [template({ id: 'r-hidden', accountId: 'a-hidden' })] }))
+  server.use(http.get('*/api/v1/account/get-folder-list', async () => {
+    await delay('infinite')
+    return HttpResponse.json({})
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  expect(result.current.dueRecurring).toEqual([])
+  expect(result.current.isLoaded).toBe(false)
 })
 
 describe('isDueRecurring', () => {

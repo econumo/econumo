@@ -57,12 +57,15 @@ export function useInbox(): Inbox {
   const sources = useImportSources()
   const recurring = useRecurring()
   const { data: accounts } = useAccounts()
-  const { data: folders } = useFolders()
+  const folders = useFolders()
+  const foldersKnown = folders.data !== undefined || folders.isError
   const { data: user } = useUserData()
   // a hidden folder's accounts are out of the way on purpose, so they don't ask for attention
-  const hiddenAccountIds = hiddenFolderAccountIds(accounts ?? [], folders ?? [])
+  const hiddenAccountIds = hiddenFolderAccountIds(accounts ?? [], folders.data ?? [])
   // useRecurring already sorts by next payment, so the oldest debt leads
-  const dueRecurring = (recurring.data ?? []).filter((rt) => !hiddenAccountIds.has(rt.accountId) && isDueRecurring(rt, accounts, user?.id))
+  const dueRecurring = foldersKnown
+    ? (recurring.data ?? []).filter((rt) => !hiddenAccountIds.has(rt.accountId) && isDueRecurring(rt, accounts, user?.id))
+    : []
   const syncProblems = (sources.data ?? []).filter(isSyncProblem)
   const queued = queue.data?.queued ?? []
   const skipped = queue.data?.skipped ?? []
@@ -78,7 +81,8 @@ export function useInbox(): Inbox {
     isLoaded:
       (queue.data !== undefined || queue.isError) &&
       (sources.data !== undefined || sources.isError) &&
-      (recurring.data !== undefined || recurring.isError),
+      (recurring.data !== undefined || recurring.isError) &&
+      foldersKnown,
     importsError: queue.isError || sources.isError,
     retryImports: () => {
       void queue.refetch()

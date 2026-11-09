@@ -256,6 +256,17 @@ it('keeps a selected search-only option in the field and the list', async () => 
   expect(await screen.findByRole('option', { name: /Fund.*Hidden folder/ })).toBeInTheDocument()
 })
 
+it('finds a hidden option with a short name by typing all of it', async () => {
+  const user = userEvent.setup()
+  const options = [...OPTIONS, { value: 'c5', label: 'BA', hiddenLabel: 'Hidden folder' }, { value: 'c6', label: 'Bank', hiddenLabel: 'Hidden folder' }]
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={options} />)
+
+  await user.click(combobox())
+  await user.keyboard('ba')
+  expect(await screen.findByRole('option', { name: /BA/ })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: /Bank/ })).not.toBeInTheDocument()
+})
+
 it('marks nothing on an ordinary selected option', () => {
   render(<EntitySelect aria-label="Category" value="c1" onChange={() => {}} options={WITH_SEARCH_ONLY} />)
   expect(screen.queryByRole('img', { name: 'Hidden folder' })).not.toBeInTheDocument()

@@ -411,12 +411,14 @@ navigation (single-pane vs sidebar).
 - [ ] With only one account you can add transactions to (accounts in hidden
       folders and read-only shared ones don't count), the Transfer type is
       greyed out and cannot be selected, in Add and in Edit; editing an existing
-      transfer keeps it.
+      transfer keeps it, even after switching to another type and back.
 - [ ] 📱 Account pickers in Add/Edit transaction and recurring transaction (From
       and To included) leave out accounts in hidden folders until the search has
       3 or more characters; then they appear with an eye-off icon and "Hidden
-      folder". Editing one on a hidden-folder account still shows its name, with
-      the eye-off icon in the field.
+      folder" (a shorter name is found by typing all of it). Editing one on a
+      hidden-folder account still shows its name, with the eye-off icon in the
+      field. A new form never defaults to a hidden-folder account, unless it was
+      opened from that account's page; read-only accounts can't be picked.
 - [ ] 📱 Settings → Recurring lists templates on hidden-folder accounts under their
       account, marked "Hidden folder", and they can be edited and deleted; a due
       payment on such an account does not appear in the Inbox or its badge.
