@@ -2479,11 +2479,22 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 Signed in, the consent page (`/oauth/authorize?...`) is headed "Connect
       an app to Econumo" and shows the app's name followed by "wants to access
       your Econumo account.", "After you allow, you'll be sent to <host>." for a
-      web client, "It will be able to read and change all of your Econumo data.",
+      web client, "It will be able to read and change your data.",
       "Signed in as <email>" with "Not you? Switch account", and the Allow and
       Deny buttons. Allow stays disabled for about half a second after the page
       appears (or until you move the mouse or press a key); Deny works at once.
       A double-click that lands on the page as it opens does not approve.
+- [ ] The consent page of an app that asks for the `read` scope alone
+      (`&scope=read`) shows "wants to read your Econumo data." and "It can't change
+      anything." (not
+      the read-and-change sentence). No scope, `mcp`, or `mcp read` shows the
+      read-and-change sentence. A read-only (lapsed trial) user can Allow the
+      `read` request, but Allow on an `mcp` one shows the read-only message.
+- [ ] After a `read` app is allowed, it appears under Settings > Profile >
+      Connected apps; revoking it makes its next request fail, and its token
+      answers 401 on any route other than the nine read-only GETs (for example
+      `get-budget`, `/mcp`, or any POST). With the OAuth server turned off
+      (`ECONUMO_URL` unset), its token answers 401 everywhere.
 - [ ] Switching to another window or tab and back (or clicking outside the
       browser window) disables Allow again; it re-enables about half a second
       after the consent page is visible and focused again, or on the next mouse
@@ -2673,6 +2684,16 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Sync button: spins during refetch; failure (kill the server briefly)
       turns it amber with a tooltip; recovery clears it. App restores from the
       persisted cache on reload without a boot-loader flash.
+- [ ] 📱 No network (airplane mode, or DevTools "Offline"), both while the app
+      is open and when it is opened that way: the sync button is replaced by a
+      no-connection icon that cannot be pressed and does not spin, its tooltip
+      says "No connection" with the last sync time, and the network log shows
+      no retries. When the network returns the button is back and the data
+      refreshes by itself. Something saved while offline waits (the Save
+      button keeps spinning) and is sent when the network returns, as long as
+      the app stays open; nothing waiting is written to local storage. Signing
+      in offline fails at once with an error. A budget cell's transaction list
+      that was never loaded shows a spinner offline, never "List is empty".
 - [ ] Sync button tap = incremental refresh: after an edit made on another
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the
@@ -2686,8 +2707,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 Transactions survive a reload while the server is unreachable: load
       the app, stop the server (or go offline), reload — the account pages,
       the transaction lists and global search still show the previously
-      synced transactions; the sync button shows its failure state instead of
-      an empty list.
+      synced transactions instead of an empty list; the sync button shows its
+      failure state (the no-connection icon when the device itself is offline).
 - [ ] 📱 Offline start more than 24 h after the last visit: use the app, close
       it, wait over a day (or set the device clock forward 25 h), go offline
       and open it — accounts and transactions show at once, with no "Loading

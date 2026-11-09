@@ -3,6 +3,7 @@ package authserver
 import (
 	"context"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/econumo/econumo/internal/model"
@@ -119,7 +120,8 @@ func (s *Service) DescribeAuthorization(ctx context.Context, userID vo.Id, req m
 		return model.AuthorizationRequestResult{}, err
 	}
 	host, loopback := RedirectHost(req.RedirectURI)
-	res := model.AuthorizationRequestResult{ClientName: c.Name, RedirectHost: host, IsLoopback: loopback, IsOfficial: c.IsGlobal}
+	res := model.AuthorizationRequestResult{ClientName: c.Name, RedirectHost: host, IsLoopback: loopback,
+		IsOfficial: c.IsGlobal, Scope: string(grantedScope(req.Scope))}
 	if re != nil {
 		res.ErrorRedirectURL = s.errorRedirect(req, *re)
 	}
@@ -129,10 +131,13 @@ func (s *Service) DescribeAuthorization(ctx context.Context, userID vo.Id, req m
 // The generation is read under the user row lock, together with a check that
 // the presenting session is still live: a reclaim that committed after the
 // auth middleware accepted the session has revoked it, so no code is issued.
-func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.Id, req model.AuthorizationRequest) (model.AuthorizationDecisionResult, error) {
+func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.Id, fullAccess bool, req model.AuthorizationRequest) (model.AuthorizationDecisionResult, error) {
 	c, re, err := s.validate(ctx, userID, req)
 	if err != nil {
 		return model.AuthorizationDecisionResult{}, err
+	}
+	if !fullAccess && grantedScope(req.Scope) != model.TokenScopeRead {
+		return model.AuthorizationDecisionResult{}, &errs.PaymentRequiredError{Msg: "Read-only access. Write operations are disabled.", Code: errs.CodeReadonlyAccess}
 	}
 	if re != nil {
 		return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, *re)}, nil
@@ -161,7 +166,7 @@ func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.I
 		code := &model.OAuthAuthorizationCode{
 			CodeHash: hash, ClientID: c.ID, UserID: userID,
 			RedirectURI: req.RedirectURI, CodeChallenge: req.CodeChallenge, Resource: s.ResourceURL(),
-			CredentialsGeneration: gen, CreatedAt: now, ExpiresAt: now.Add(CodeTTL),
+			Scope: grantedScope(req.Scope), CredentialsGeneration: gen, CreatedAt: now, ExpiresAt: now.Add(CodeTTL),
 		}
 		if err := s.repo.InsertCode(ctx, code); err != nil {
 			codeInsertFailed = true
@@ -219,4 +224,14 @@ func (s *Service) DeclineAuthorization(ctx context.Context, userID vo.Id, req mo
 		return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, *re)}, nil
 	}
 	return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, redirectErr{code: "access_denied"})}, nil
+}
+
+// A client asking for mcp, alone or next to read, keeps full access, so a client
+// that requests everything the discovery document lists still reaches /mcp.
+func grantedScope(requested string) model.TokenScope {
+	fields := strings.Fields(requested)
+	if !slices.Contains(fields, ScopeRead) || slices.Contains(fields, Scope) {
+		return model.TokenScopeMCP
+	}
+	return model.TokenScopeRead
 }

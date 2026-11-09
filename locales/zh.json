@@ -296,7 +296,8 @@
       "failing": "无法连接到服务器——正在重试",
       "full_reload": "正在清除缓存并重新加载…",
       "hold_hint": "长按可清除缓存并重新加载",
-      "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。"
+      "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。",
+      "offline": "无网络连接"
     },
     "data": {
       "reload_all": "清除缓存并重新加载"
@@ -2038,9 +2039,11 @@
       "official": "官方",
       "redirect": "允许后，您将被转到 {host}。",
       "loopback": "允许后，您将返回此电脑上的应用。",
-      "fullAccess": "它将能够读取并更改您所有的 Econumo 数据。",
       "unverified": "由应用自行注册。Econumo 不验证其名称，请核对下方的地址。",
       "unverifiedLoopback": "由应用自行注册。Econumo 不验证其名称。",
+      "wantsRead": "请求读取您的 Econumo 数据。",
+      "readAccess": "它无法更改任何内容。",
+      "fullAccess": "它将能够读取并更改您的数据。",
       "signedInAs": "当前登录账户：{email}",
       "switchAccount": "不是您？切换账户",
       "allow": "允许",
@@ -2176,7 +2179,9 @@
       "not_available": "该货币不可用。",
       "in_use": "该货币正在使用中，无法删除。",
       "base_immutable": "基准货币无法修改。",
-      "cannot_be_hidden": "该货币无法隐藏。"
+      "cannot_be_hidden": "该货币无法隐藏。",
+      "rate_range_order": "结束日期不能早于开始日期",
+      "rate_range_too_long": "日期范围最多为 {max} 天"
     },
     "import": {
       "source_not_found": "尚未连接 Apple Wallet。请先在 设置 → Apple Wallet 中连接。",

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureOwner, fixtureWireBudget } from '@/test/fixtures'
@@ -67,6 +67,15 @@ beforeEach(() => {
     // the analytics auth-method probe fired once the user data lands
     http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: [] })),
   )
+})
+
+it('offline with nothing cached, it does not claim the list is empty', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  const queryClient = renderDialog()
+  await waitFor(() => expect(queryClient.getQueryCache().find({ queryKey: queryKeys.budgetTransactions, exact: false })?.state.fetchStatus).toBe('paused'))
+  expect(screen.getByLabelText('loading')).toBeInTheDocument()
+  expect(screen.queryByText('List is empty')).not.toBeInTheDocument()
 })
 
 it('every row opens the preview; a foreign transaction shows disabled Edit/Delete', async () => {

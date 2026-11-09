@@ -29,7 +29,7 @@ func (q *Queries) ClaimOAuthClient(ctx context.Context, arg ClaimOAuthClientPara
 
 const consumeOAuthCode = `-- name: ConsumeOAuthCode :one
 DELETE FROM oauth_authorization_codes WHERE code_hash = ?
-RETURNING code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at
+RETURNING code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at, scope
 `
 
 // Single use: the DELETE is the read, so two concurrent exchanges of one code
@@ -47,6 +47,7 @@ func (q *Queries) ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthA
 		&i.CredentialsGeneration,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.Scope,
 	)
 	return i, err
 }
@@ -132,7 +133,7 @@ func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, e
 }
 
 const getOAuthCode = `-- name: GetOAuthCode :one
-SELECT code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at
+SELECT code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at, scope
 FROM oauth_authorization_codes WHERE code_hash = ?
 `
 
@@ -149,12 +150,13 @@ func (q *Queries) GetOAuthCode(ctx context.Context, codeHash string) (OauthAutho
 		&i.CredentialsGeneration,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.Scope,
 	)
 	return i, err
 }
 
 const getOAuthGrant = `-- name: GetOAuthGrant :one
-SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope
 FROM oauth_grants WHERE id = ?
 `
 
@@ -172,12 +174,13 @@ func (q *Queries) GetOAuthGrant(ctx context.Context, id string) (OauthGrant, err
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.Scope,
 	)
 	return i, err
 }
 
 const getOAuthGrantByRefreshHash = `-- name: GetOAuthGrantByRefreshHash :one
-SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope
 FROM oauth_grants WHERE refresh_token_hash = ?
 `
 
@@ -195,12 +198,13 @@ func (q *Queries) GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHa
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.Scope,
 	)
 	return i, err
 }
 
 const getOAuthGrantBySpentRefreshHash = `-- name: GetOAuthGrantBySpentRefreshHash :one
-SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at, g.created_at, g.last_used_at, g.expires_at, g.revoked_at
+SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at, g.created_at, g.last_used_at, g.expires_at, g.revoked_at, g.scope
 FROM oauth_refresh_tokens_spent s
 JOIN oauth_grants g ON g.id = s.grant_id
 WHERE s.token_hash = ?
@@ -220,6 +224,7 @@ func (q *Queries) GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.Scope,
 	)
 	return i, err
 }
@@ -257,8 +262,8 @@ func (q *Queries) InsertOAuthClient(ctx context.Context, arg InsertOAuthClientPa
 }
 
 const insertOAuthCode = `-- name: InsertOAuthCode :exec
-INSERT INTO oauth_authorization_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO oauth_authorization_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at, scope)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertOAuthCodeParams struct {
@@ -271,6 +276,7 @@ type InsertOAuthCodeParams struct {
 	CredentialsGeneration int64
 	CreatedAt             time.Time
 	ExpiresAt             time.Time
+	Scope                 string
 }
 
 func (q *Queries) InsertOAuthCode(ctx context.Context, arg InsertOAuthCodeParams) error {
@@ -284,13 +290,14 @@ func (q *Queries) InsertOAuthCode(ctx context.Context, arg InsertOAuthCodeParams
 		arg.CredentialsGeneration,
 		arg.CreatedAt,
 		arg.ExpiresAt,
+		arg.Scope,
 	)
 	return err
 }
 
 const insertOAuthGrant = `-- name: InsertOAuthGrant :exec
-INSERT INTO oauth_grants (id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO oauth_grants (id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertOAuthGrantParams struct {
@@ -304,6 +311,7 @@ type InsertOAuthGrantParams struct {
 	LastUsedAt           time.Time
 	ExpiresAt            time.Time
 	RevokedAt            *time.Time
+	Scope                string
 }
 
 func (q *Queries) InsertOAuthGrant(ctx context.Context, arg InsertOAuthGrantParams) error {
@@ -318,6 +326,7 @@ func (q *Queries) InsertOAuthGrant(ctx context.Context, arg InsertOAuthGrantPara
 		arg.LastUsedAt,
 		arg.ExpiresAt,
 		arg.RevokedAt,
+		arg.Scope,
 	)
 	return err
 }
@@ -339,7 +348,7 @@ func (q *Queries) InsertOAuthSpentRefreshHash(ctx context.Context, arg InsertOAu
 }
 
 const listAllUnrevokedOAuthGrants = `-- name: ListAllUnrevokedOAuthGrants :many
-SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope
 FROM oauth_grants WHERE revoked_at IS NULL
 ORDER BY client_id, created_at, id
 `
@@ -364,6 +373,7 @@ func (q *Queries) ListAllUnrevokedOAuthGrants(ctx context.Context) ([]OauthGrant
 			&i.LastUsedAt,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.Scope,
 		); err != nil {
 			return nil, err
 		}
@@ -379,7 +389,7 @@ func (q *Queries) ListAllUnrevokedOAuthGrants(ctx context.Context) ([]OauthGrant
 }
 
 const listOAuthClientGrants = `-- name: ListOAuthClientGrants :many
-SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope
 FROM oauth_grants WHERE client_id = ? AND revoked_at IS NULL
 ORDER BY created_at, id
 `
@@ -404,6 +414,7 @@ func (q *Queries) ListOAuthClientGrants(ctx context.Context, clientID string) ([
 			&i.LastUsedAt,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.Scope,
 		); err != nil {
 			return nil, err
 		}
@@ -456,7 +467,7 @@ func (q *Queries) ListOAuthClients(ctx context.Context) ([]OauthClient, error) {
 
 const listUnrevokedOAuthGrants = `-- name: ListUnrevokedOAuthGrants :many
 SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at,
-       g.created_at, g.last_used_at, g.expires_at, g.revoked_at, c.name, c.redirect_uris, c.is_global
+       g.created_at, g.last_used_at, g.expires_at, g.revoked_at, g.scope, c.name, c.redirect_uris, c.is_global
 FROM oauth_grants g
 JOIN oauth_clients c ON c.id = g.client_id
 WHERE g.user_id = ? AND g.revoked_at IS NULL
@@ -474,6 +485,7 @@ type ListUnrevokedOAuthGrantsRow struct {
 	LastUsedAt           time.Time
 	ExpiresAt            time.Time
 	RevokedAt            *time.Time
+	Scope                string
 	Name                 string
 	RedirectUris         string
 	IsGlobal             bool
@@ -499,6 +511,7 @@ func (q *Queries) ListUnrevokedOAuthGrants(ctx context.Context, userID string) (
 			&i.LastUsedAt,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.Scope,
 			&i.Name,
 			&i.RedirectUris,
 			&i.IsGlobal,

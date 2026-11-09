@@ -296,7 +296,8 @@
       "failing": "Can't reach the server — retrying",
       "full_reload": "Clearing the cache and reloading…",
       "hold_hint": "Hold to clear the cache and reload",
-      "full_reload_offline": "You're offline. Clear the cache and reload when you're back online."
+      "full_reload_offline": "You're offline. Clear the cache and reload when you're back online.",
+      "offline": "No connection"
     },
     "data": {
       "reload_all": "Clear cache and reload"
@@ -2038,9 +2039,11 @@
       "official": "Official",
       "redirect": "After you allow, you'll be sent to {host}.",
       "loopback": "After you allow, you'll return to an app on this computer.",
-      "fullAccess": "It will be able to read and change all of your Econumo data.",
       "unverified": "Registered by the app itself. Econumo doesn't verify its name; check the address below.",
       "unverifiedLoopback": "Registered by the app itself. Econumo doesn't verify its name.",
+      "wantsRead": "wants to read your Econumo data.",
+      "readAccess": "It can't change anything.",
+      "fullAccess": "It will be able to read and change your data.",
       "signedInAs": "Signed in as {email}",
       "switchAccount": "Not you? Switch account",
       "allow": "Allow",
@@ -2176,7 +2179,9 @@
       "not_available": "Currency is not available",
       "in_use": "Currency is in use and cannot be deleted",
       "base_immutable": "The base currency cannot be modified",
-      "cannot_be_hidden": "This currency cannot be hidden"
+      "cannot_be_hidden": "This currency cannot be hidden",
+      "rate_range_order": "The end date must not be before the start date",
+      "rate_range_too_long": "The date range must be at most {max} days"
     },
     "import": {
       "source_not_found": "Apple Wallet is not connected. Connect it in Settings → Apple Wallet first.",

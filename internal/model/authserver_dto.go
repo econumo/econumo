@@ -49,6 +49,7 @@ type AuthorizationRequestResult struct {
 	RedirectHost     string `json:"redirectHost"`
 	IsLoopback       bool   `json:"isLoopback"`
 	IsOfficial       bool   `json:"isOfficial"`
+	Scope            string `json:"scope"`            // "mcp" | "read"
 	ErrorRedirectURL string `json:"errorRedirectUrl"` // non-empty: navigate there instead of showing consent
 }
 

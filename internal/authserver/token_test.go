@@ -25,7 +25,7 @@ func approve(t *testing.T, s *Service, user vo.Id) (clientID, code string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestRefresh_ExpiryAndClientBinding(t *testing.T) {
 func TestToken_ClientAuth(t *testing.T) {
 	s, _, _, user := newTestService(t)
 	c, _ := s.Register(ctx, model.ClientRegistrationRequest{RedirectURIs: []string{"https://claude.ai/api/mcp/auth_callback"}, TokenEndpointAuthMethod: "client_secret_post"})
-	res, _ := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	res, _ := s.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID))
 	u, _ := url.Parse(res.RedirectURL)
 	req := model.TokenRequest{GrantType: "authorization_code", ClientID: c.ClientID, Code: u.Query().Get("code"),
 		RedirectURI: "https://claude.ai/api/mcp/auth_callback", CodeVerifier: verifier, ClientSecret: "nope"}
@@ -276,7 +276,7 @@ func TestToken_ConfidentialClientSucceeds(t *testing.T) {
 	if err != nil || c.ClientSecret == "" {
 		t.Fatalf("%+v %v", c, err)
 	}
-	res, _ := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	res, _ := s.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID))
 	u, _ := url.Parse(res.RedirectURL)
 	tr, err := s.Token(ctx, model.TokenRequest{GrantType: "authorization_code", ClientID: c.ClientID, ClientSecret: c.ClientSecret,
 		Code: u.Query().Get("code"), RedirectURI: "https://claude.ai/api/mcp/auth_callback", CodeVerifier: verifier})
@@ -356,7 +356,7 @@ func TestExchange_ReplacesEarlierGrantForSameClient(t *testing.T) {
 		firstGrant = before[1].Grant.ID
 	}
 
-	res, err := s.ApproveAuthorization(ctx, user, session, authReq(cid))
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(cid))
 	if err != nil {
 		t.Fatal(err)
 	}

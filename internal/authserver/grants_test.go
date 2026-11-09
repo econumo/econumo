@@ -50,7 +50,7 @@ func TestConnectedApps_IsOfficial(t *testing.T) {
 		t.Fatal(err)
 	}
 	official := insertOfficialClient(t, s, clock.Now(), "https://claude.ai/api/mcp/auth_callback")
-	res, err := s.ApproveAuthorization(ctx, user, session, authReq(official.String()))
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(official.String()))
 	if err != nil {
 		t.Fatal(err)
 	}

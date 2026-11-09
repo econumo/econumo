@@ -296,7 +296,8 @@
       "failing": "Impossibile raggiungere il server — nuovo tentativo in corso",
       "full_reload": "Svuotamento della cache e ricaricamento…",
       "hold_hint": "Tieni premuto per svuotare la cache e ricaricare",
-      "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online."
+      "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online.",
+      "offline": "Nessuna connessione"
     },
     "data": {
       "reload_all": "Svuota la cache e ricarica"
@@ -2038,9 +2039,11 @@
       "official": "Ufficiale",
       "redirect": "Dopo il tuo consenso verrai reindirizzato a {host}.",
       "loopback": "Dopo il tuo consenso tornerai a un'app su questo computer.",
-      "fullAccess": "Potrà leggere e modificare tutti i tuoi dati di Econumo.",
       "unverified": "Registrata dall'app stessa. Econumo non verifica il suo nome; controlla l'indirizzo qui sotto.",
       "unverifiedLoopback": "Registrata dall'app stessa. Econumo non verifica il suo nome.",
+      "wantsRead": "vuole leggere i tuoi dati di Econumo.",
+      "readAccess": "Non potrà modificare nulla.",
+      "fullAccess": "Potrà leggere e modificare i tuoi dati.",
       "signedInAs": "Accesso effettuato come {email}",
       "switchAccount": "Non sei tu? Cambia account",
       "allow": "Consenti",
@@ -2176,7 +2179,9 @@
       "not_available": "La valuta non è disponibile",
       "in_use": "La valuta è in uso e non può essere eliminata",
       "base_immutable": "La valuta di base non può essere modificata",
-      "cannot_be_hidden": "Questa valuta non può essere nascosta"
+      "cannot_be_hidden": "Questa valuta non può essere nascosta",
+      "rate_range_order": "La data di fine non può precedere la data di inizio",
+      "rate_range_too_long": "L'intervallo di date può essere al massimo di {max} giorni"
     },
     "import": {
       "source_not_found": "Apple Wallet non è collegato. Collegalo prima in Impostazioni → Apple Wallet.",

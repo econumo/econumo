@@ -94,7 +94,7 @@ func TestApproveAndDecline(t *testing.T) {
 	s, creds, _, user := newTestService(t)
 	creds.gen = 7
 	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
-	res, err := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestApproveAndDecline(t *testing.T) {
 
 	bad := authReq(c.ClientID)
 	bad.CodeChallengeMethod = "plain"
-	r, err := s.ApproveAuthorization(ctx, user, session, bad)
+	r, err := s.ApproveAuthorization(ctx, user, session, true, bad)
 	if err != nil || !strings.Contains(r.RedirectURL, "error=invalid_request") || strings.Contains(r.RedirectURL, "code=") {
 		t.Fatalf("invalid request must redirect with an error, not a code: %+v %v", r, err)
 	}
@@ -128,7 +128,7 @@ func TestApproveAndDecline(t *testing.T) {
 	}
 
 	off := NewService(s.repo, creds, s.tx, s.clock, nil, "")
-	if _, err := off.ApproveAuthorization(ctx, user, session, authReq(c.ClientID)); !hasCode(err, errs.CodeAuthServerDisabled) {
+	if _, err := off.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID)); !hasCode(err, errs.CodeAuthServerDisabled) {
 		t.Fatal(err)
 	}
 }
@@ -140,7 +140,7 @@ func TestApprove_RevokedPresenterGetsNoCode(t *testing.T) {
 	s, creds, _, user := newTestService(t)
 	c := register(t, s, "Claude", "https://claude.ai/api/mcp/auth_callback")
 	creds.deadTokens = map[vo.Id]bool{session: true}
-	res, err := s.ApproveAuthorization(ctx, user, session, authReq(c.ClientID))
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(c.ClientID))
 	if _, ok := errs.AsUnauthorized(err); !ok || res.RedirectURL != "" {
 		t.Fatalf("want unauthorized and no redirect, got %+v %v", res, err)
 	}
@@ -158,7 +158,7 @@ func TestRedirectKeepsExistingQuery(t *testing.T) {
 	c := register(t, s, "", "https://a.test/cb?app=1")
 	q := authReq(c.ClientID)
 	q.RedirectURI = "https://a.test/cb?app=1"
-	res, err := s.ApproveAuthorization(ctx, user, session, q)
+	res, err := s.ApproveAuthorization(ctx, user, session, true, q)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +246,7 @@ func TestApprove_ClaimsUnownedClient(t *testing.T) {
 	if o := owner(t, s, c.ClientID); o != nil {
 		t.Fatalf("a fresh user app has no owner: %v", o)
 	}
-	if _, err := s.ApproveAuthorization(ctx, a, session, authReq(c.ClientID)); err != nil {
+	if _, err := s.ApproveAuthorization(ctx, a, session, true, authReq(c.ClientID)); err != nil {
 		t.Fatal(err)
 	}
 	if o := owner(t, s, c.ClientID); o == nil || !o.Equal(a) {
@@ -260,7 +260,7 @@ func TestOtherUserIsRefused(t *testing.T) {
 	a := newUser(t, db, fixture.User{Email: ownerEmail})
 	b := newUser(t, db, fixture.User{})
 	c := register(t, s, "Claude", claudeCallback)
-	if _, err := s.ApproveAuthorization(ctx, a, session, authReq(c.ClientID)); err != nil {
+	if _, err := s.ApproveAuthorization(ctx, a, session, true, authReq(c.ClientID)); err != nil {
 		t.Fatal(err)
 	}
 	mismatched := authReq(c.ClientID)
@@ -280,7 +280,7 @@ func TestOtherUserIsRefused(t *testing.T) {
 		if d.ErrorRedirectURL != "" {
 			t.Fatalf("%s describe must not redirect: %+v", name, d)
 		}
-		r, err := s.ApproveAuthorization(ctx, b, session, q)
+		r, err := s.ApproveAuthorization(ctx, b, session, true, q)
 		checkErr("approve", err)
 		if r.RedirectURL != "" {
 			t.Fatalf("%s approve must not redirect: %+v", name, r)
@@ -304,7 +304,7 @@ func TestOwnerReconnects(t *testing.T) {
 	a := newUser(t, db, fixture.User{})
 	c := register(t, s, "Claude", claudeCallback)
 	for i := range 2 {
-		if _, err := s.ApproveAuthorization(ctx, a, session, authReq(c.ClientID)); err != nil {
+		if _, err := s.ApproveAuthorization(ctx, a, session, true, authReq(c.ClientID)); err != nil {
 			t.Fatalf("approval %d: %v", i, err)
 		}
 	}
@@ -324,7 +324,7 @@ func TestDecline_DoesNotClaim(t *testing.T) {
 	if o := owner(t, s, c.ClientID); o != nil {
 		t.Fatalf("a decline must not claim the app: %v", o)
 	}
-	if _, err := s.ApproveAuthorization(ctx, b, session, authReq(c.ClientID)); err != nil {
+	if _, err := s.ApproveAuthorization(ctx, b, session, true, authReq(c.ClientID)); err != nil {
 		t.Fatal(err)
 	}
 	if o := owner(t, s, c.ClientID); o == nil || !o.Equal(b) {
@@ -342,7 +342,7 @@ func TestOfficialApp_UsableByEveryone(t *testing.T) {
 		if err != nil || !d.IsOfficial {
 			t.Fatalf("describe: %+v %v", d, err)
 		}
-		if _, err := s.ApproveAuthorization(ctx, u, session, authReq(id.String())); err != nil {
+		if _, err := s.ApproveAuthorization(ctx, u, session, true, authReq(id.String())); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -378,7 +378,7 @@ func TestApprove_LosesClaimRace(t *testing.T) {
 			t.Errorf("rival claim: %d %v", n, err)
 		}
 	}}, creds, s.tx, clock, nil, testURL)
-	res, err := racing.ApproveAuthorization(ctx, a, session, authReq(c.ClientID))
+	res, err := racing.ApproveAuthorization(ctx, a, session, true, authReq(c.ClientID))
 	if !hasCode(err, errs.CodeAuthServerAppNotYours) || res.RedirectURL != "" {
 		t.Fatalf("the loser must get app_not_yours and no redirect: %+v %v", res, err)
 	}
@@ -398,7 +398,7 @@ func TestApprove_ConcurrentApprovalsOneWins(t *testing.T) {
 	var wg sync.WaitGroup
 	for i, u := range users {
 		wg.Go(func() {
-			_, errsOut[i] = s.ApproveAuthorization(ctx, u, session, authReq(c.ClientID))
+			_, errsOut[i] = s.ApproveAuthorization(ctx, u, session, true, authReq(c.ClientID))
 		})
 	}
 	wg.Wait()
@@ -457,7 +457,7 @@ func TestApprove_ClientDeletedMidApproval(t *testing.T) {
 			user := newUser(t, db, fixture.User{})
 			id := insertOfficialClient(t, s, clock.Now(), claudeCallback)
 			racing := NewService(&codeDeletingRepo{Repository: s.repo, commitDelete: committed}, creds, s.tx, clock, nil, testURL)
-			_, err := racing.ApproveAuthorization(ctx, user, session, authReq(id.String()))
+			_, err := racing.ApproveAuthorization(ctx, user, session, true, authReq(id.String()))
 			if committed {
 				if !hasCode(err, errs.CodeAuthServerClientNotFound) {
 					t.Fatalf("want client_not_found, got %v", err)

@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -318,6 +319,46 @@ func TestCurrencyReadRepo_LatestRateListView(t *testing.T) {
 	}
 	if rows[0].UpdatedAt != "2026-01-20 00:00:00" {
 		t.Errorf("publishedAt format mismatch: %q", rows[0].UpdatedAt)
+	}
+}
+
+func TestCurrencyReadRepo_RateRangeView(t *testing.T) {
+	db := dbtest.New(t)
+	read := currencyrepo.NewReadRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	eur := "1ae5bfd5-03e8-412b-80d2-c0ecf3ce32fe"
+	gbp := "2be5bfd5-03e8-412b-80d2-c0ecf3ce32ff"
+	f.Currency(fixture.Currency{ID: eur, Code: "EUR", Symbol: "E"})
+	f.Currency(fixture.Currency{ID: gbp, Code: "GBP", Symbol: "G"})
+	// 03-01 and 03-31 sit exactly on the bounds (both in the window, and 03-01
+	// must not count as "before from"); 04-01 is the day after to.
+	for i, day := range []string{"2026-02-20", "2026-02-27", "2026-03-01", "2026-03-03", "2026-03-31", "2026-04-01", "2026-04-02"} {
+		f.Rate(fixture.Rate{ID: "10000000-0000-7000-8000-00000000010" + string(rune('0'+i)), CurrencyID: eur, BaseCurrencyID: seededUSD, Rate: "0.92000000", PublishedAt: day})
+	}
+	f.Rate(fixture.Rate{ID: "10000000-0000-7000-8000-000000000110", CurrencyID: gbp, BaseCurrencyID: seededUSD, Rate: "0.80000000", PublishedAt: "2026-01-10"})
+
+	from := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 3, 31, 0, 0, 0, 0, time.UTC)
+	rows, err := read.CurrencyRateRangeView(ctx, from, to)
+	if err != nil {
+		t.Fatalf("CurrencyRateRangeView: %v", err)
+	}
+	var got []string
+	for _, r := range rows {
+		got = append(got, r.CurrencyID[:2]+" "+r.Date)
+	}
+	want := []string{"1a 2026-02-27", "1a 2026-03-01", "1a 2026-03-03", "1a 2026-03-31", "2b 2026-01-10"}
+	if len(got) != len(want) {
+		t.Fatalf("rows = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("rows = %v, want %v", got, want)
+		}
+	}
+	if rows[0].Rate != "0.92" || rows[0].UpdatedAt != "2026-02-27 00:00:00" {
+		t.Errorf("row 0 = %+v", rows[0])
 	}
 }
 

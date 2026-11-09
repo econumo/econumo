@@ -19,8 +19,12 @@ func init() {
 			"&responseType=code&codeChallenge=" + challenge + "&codeChallengeMethod=S256&state=s1"
 	}
 
+	readBody := authBody(OAuthGlobalClientID, globalCallback)
+	readBody["scope"] = "read"
 	register(Scenario{Name: "authserver_consent", Calls: func() []Call {
 		return []Call{
+			{Label: "get-authorization-request-read-scope", Method: "GET", Path: query(OAuthClientID, callback, challenge) + "&scope=read", Auth: "owner"},
+			{Label: "approve-authorization-read-scope-readonly", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "readonly", Body: readBody},
 			{Label: "get-authorization-request", Method: "GET", Path: query(OAuthClientID, callback, challenge), Auth: "owner"},
 			{Label: "get-authorization-request-bad-challenge-redirects-the-error", Method: "GET", Path: query(OAuthClientID, callback, "short"), Auth: "owner"},
 			{Label: "err:get-authorization-request-unknown-client", Method: "GET", Path: query("00000000-0000-0000-0000-00000000dead", callback, challenge), Auth: "owner"},
@@ -29,7 +33,7 @@ func init() {
 			{Label: "decline-authorization-readonly", Method: "POST", Path: "/api/v1/authserver/decline-authorization", Auth: "readonly", Body: authBody(OAuthGlobalClientID, globalCallback)},
 			{Label: "approve-authorization", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "owner", Body: authBody(OAuthClientID, callback)},
 			{Label: "err:approve-authorization-unknown-client", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "owner", Body: authBody("00000000-0000-0000-0000-00000000dead", callback)},
-			{Label: "err:approve-authorization-readonly", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "readonly", Body: authBody(OAuthClientID, callback)},
+			{Label: "err:approve-authorization-readonly", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "readonly", Body: authBody(OAuthGlobalClientID, globalCallback)},
 			{Label: "decline-authorization", Method: "POST", Path: "/api/v1/authserver/decline-authorization", Auth: "owner", Body: authBody(OAuthClientID, callback)},
 			{Label: "err:get-authorization-request-not-yours", Method: "GET", Path: query(OAuthClientID, callback, challenge), Auth: "guest"},
 			{Label: "err:approve-authorization-not-yours", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "guest", Body: authBody(OAuthClientID, callback)},
@@ -52,6 +56,28 @@ func init() {
 			{Label: "revoke-connected-app", Method: "POST", Path: revoke, Auth: "owner", Body: map[string]any{"id": OAuthGrantID}},
 			{Label: "err:revoke-connected-app-again", Method: "POST", Path: revoke, Auth: "owner", Body: map[string]any{"id": OAuthGrantID}},
 			{Label: "get-connected-app-list-after", Method: "GET", Path: "/api/v1/authserver/get-connected-app-list", Auth: "owner"},
+		}
+	}})
+
+	// A read-scoped token through the real handler: every
+	// allowlisted GET answers; anything else (a write, a non-allowlisted read)
+	// gets the frozen 401, never a 402 or 200.
+	register(Scenario{Name: "read_scope", Calls: func() []Call {
+		return []Call{
+			{Label: "get-user-data", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "read"},
+			{Label: "get-account-list", Method: "GET", Path: "/api/v1/account/get-account-list", Auth: "read"},
+			{Label: "get-category-list", Method: "GET", Path: "/api/v1/category/get-category-list", Auth: "read"},
+			{Label: "get-tag-list", Method: "GET", Path: "/api/v1/tag/get-tag-list", Auth: "read"},
+			{Label: "get-label-list", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "read"},
+			{Label: "get-currency-list", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "read"},
+			{Label: "get-currency-rate-list", Method: "GET", Path: "/api/v1/currency/get-currency-rate-list", Auth: "read"},
+			{Label: "get-currency-rate-list-ranged", Method: "GET", Path: "/api/v1/currency/get-currency-rate-list?from=2026-03-01&to=2026-03-31", Auth: "read"},
+			{Label: "get-account-transaction-list", Method: "GET", Path: "/api/v1/transaction/get-account-transaction-list", Auth: "read"},
+			{Label: "get-transaction-list", Method: "GET", Path: "/api/v1/transaction/get-transaction-list", Auth: "read"},
+			{Label: "err:get-session-list", Method: "GET", Path: "/api/v1/user/get-session-list", Auth: "read"},
+			{Label: "err:create-tag", Method: "POST", Path: "/api/v1/tag/create-tag", Auth: "read", Body: map[string]any{"id": "10000000-0000-0000-0000-0000000000fe", "name": "Urgent"}},
+			{Label: "err:update-name", Method: "POST", Path: "/api/v1/user/update-name", Auth: "read", Body: map[string]any{"name": "Renamed"}},
+			{Label: "err:get-budget-list", Method: "GET", Path: "/api/v1/budget/get-budget-list", Auth: "read"},
 		}
 	}})
 }

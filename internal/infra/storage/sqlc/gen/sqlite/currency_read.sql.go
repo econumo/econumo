@@ -85,6 +85,65 @@ func (q *Queries) GetCurrencyByIDView(ctx context.Context, id string) (GetCurren
 	return i, err
 }
 
+const getCurrencyRateRangeView = `-- name: GetCurrencyRateRangeView :many
+SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate
+FROM currencies_rates cr
+WHERE cr.published_at >= CAST(?1 AS TEXT)
+  AND cr.published_at <= CAST(?2 AS TEXT)
+UNION ALL
+SELECT cr.id, cr.currency_id, cr.base_currency_id, cr.published_at, cr.rate
+FROM currencies_rates cr
+JOIN (
+    SELECT currency_id, base_currency_id, MAX(published_at) AS published_at
+    FROM currencies_rates
+    WHERE published_at < CAST(?1 AS TEXT)
+    GROUP BY currency_id, base_currency_id
+) latest ON latest.currency_id = cr.currency_id
+    AND latest.base_currency_id = cr.base_currency_id
+    AND latest.published_at = cr.published_at
+ORDER BY currency_id ASC, base_currency_id ASC, published_at ASC
+`
+
+type GetCurrencyRateRangeViewParams struct {
+	FromDay string
+	ToDay   string
+}
+
+// Rates published within [from, to] (inclusive days) plus, per (currency,
+// base) pair, the newest rate published before from. published_at is stored
+// as bare 'Y-m-d' text and the bounds are bound as 'Y-m-d' strings, so the raw
+// column is compared (no date() wrap) and the published_at indexes stay usable.
+// The CASTs keep sqlc from typing the bounds as time.Time, which would bind a
+// 'Y-m-d H:i:s' string and push a rate on from out of the window.
+func (q *Queries) GetCurrencyRateRangeView(ctx context.Context, arg GetCurrencyRateRangeViewParams) ([]CurrenciesRate, error) {
+	rows, err := q.db.QueryContext(ctx, getCurrencyRateRangeView, arg.FromDay, arg.ToDay)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CurrenciesRate{}
+	for rows.Next() {
+		var i CurrenciesRate
+		if err := rows.Scan(
+			&i.ID,
+			&i.CurrencyID,
+			&i.BaseCurrencyID,
+			&i.PublishedAt,
+			&i.Rate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getEarliestCurrencyRateDate = `-- name: GetEarliestCurrencyRateDate :one
 SELECT published_at FROM currencies_rates
 WHERE base_currency_id = ?

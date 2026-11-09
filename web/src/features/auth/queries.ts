@@ -5,9 +5,14 @@ import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { setToken } from '@/lib/storage'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
+// Signing in must fail where the user can see it: paused, the form would stay
+// locked until the network returned and then send whatever was typed first.
+const authNetworkMode = 'always'
+
 export function useLogin() {
   const queryClient = useQueryClient()
   return useMutation({
+    networkMode: authNetworkMode,
     mutationFn: ({ username, password }: { username: string; password: string }) => userApi.login(username, password),
     onSuccess: async (data) => {
       // The new session may belong to a different user: neither the persisted
@@ -28,6 +33,7 @@ export function useLogin() {
 
 export function useConfirmEmail() {
   return useMutation({
+    networkMode: authNetworkMode,
     mutationFn: ({ username, code }: { username: string; code: string }) => userApi.confirmEmail(username, code),
     onSuccess: () => trackEvent(METRICS.EMAIL_VERIFICATION_COMPLETED),
   })
@@ -35,6 +41,7 @@ export function useConfirmEmail() {
 
 export function useResendVerification() {
   return useMutation({
+    networkMode: authNetworkMode,
     mutationFn: ({ username }: { username: string }) => userApi.resendVerificationCode(username),
     onSuccess: () => trackEvent(METRICS.EMAIL_VERIFICATION_RESENT),
   })
@@ -42,6 +49,7 @@ export function useResendVerification() {
 
 export function useRegister() {
   return useMutation({
+    networkMode: authNetworkMode,
     mutationFn: ({ email, password, name }: { email: string; password: string; name: string }) =>
       userApi.register(email, password, name),
     onSuccess: () => trackEvent(METRICS.USER_REGISTRATION),
@@ -50,6 +58,7 @@ export function useRegister() {
 
 export function useRemindPassword() {
   return useMutation({
+    networkMode: authNetworkMode,
     mutationFn: ({ username }: { username: string }) => userApi.remindPassword(username),
     onSuccess: () => trackEvent(METRICS.USER_REMIND_PASSWORD),
   })
@@ -57,6 +66,7 @@ export function useRemindPassword() {
 
 export function useResetPassword() {
   return useMutation({
+    networkMode: authNetworkMode,
     mutationFn: ({ username, code, password }: { username: string; code: string; password: string }) =>
       userApi.resetPassword(username, code, password),
     onSuccess: () => trackEvent(METRICS.USER_RESET_PASSWORD),

@@ -21,7 +21,7 @@ const appCallback = "https://claude.ai/api/mcp/auth_callback"
 
 func approveCode(t *testing.T, s *Service, user vo.Id, clientID string) string {
 	t.Helper()
-	res, err := s.ApproveAuthorization(ctx, user, session, authReq(clientID))
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(clientID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func TestMakeAppOfficial_OwnerKeepsGrantOthersCanApprove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.ApproveAuthorization(ctx, b, session, authReq(cid)); !hasCode(err, errs.CodeAuthServerAppNotYours) {
+	if _, err := s.ApproveAuthorization(ctx, b, session, true, authReq(cid)); !hasCode(err, errs.CodeAuthServerAppNotYours) {
 		t.Fatalf("before: %v", err)
 	}
 	id := vo.MustParseId(cid)
@@ -265,7 +265,7 @@ func TestMakeAppOfficial_OwnerKeepsGrantOthersCanApprove(t *testing.T) {
 	if _, err := refreshWith(s, cid, tr.RefreshToken); err != nil {
 		t.Fatalf("owner's grant must keep refreshing: %v", err)
 	}
-	if _, err := s.ApproveAuthorization(ctx, b, session, authReq(cid)); err != nil {
+	if _, err := s.ApproveAuthorization(ctx, b, session, true, authReq(cid)); err != nil {
 		t.Fatalf("another user must be able to approve: %v", err)
 	}
 	if err := s.MakeAppOfficial(ctx, id); !errors.Is(err, ErrAppAlreadyOfficial) {

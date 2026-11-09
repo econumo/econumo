@@ -190,6 +190,7 @@ export function ConsentPage() {
     )
   }
 
+  const readScope = result.scope === 'read'
   const busy = approve.isPending || approve.isSuccess || decline.isPending || decline.isSuccess
   const failure = approve.error ?? decline.error
 
@@ -201,10 +202,10 @@ export function ConsentPage() {
           <p className="min-w-0 text-xl font-bold [overflow-wrap:anywhere]">{result.clientName}</p>
           {result.isOfficial && <Badge variant="secondary">{t('authserver.consent.official')}</Badge>}
         </div>
-        <p>{t('authserver.consent.wantsAccess')}</p>
+        <p>{t(readScope ? 'authserver.consent.wantsRead' : 'authserver.consent.wantsAccess')}</p>
       </div>
       <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-        <p>{t('authserver.consent.fullAccess')}</p>
+        <p>{t(readScope ? 'authserver.consent.readAccess' : 'authserver.consent.fullAccess')}</p>
         {!result.isOfficial && (
           <p className="text-xs text-muted-foreground">
             {result.isLoopback ? t('authserver.consent.unverifiedLoopback') : t('authserver.consent.unverified')}
