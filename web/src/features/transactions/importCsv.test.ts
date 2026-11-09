@@ -42,6 +42,12 @@ it('autoDetect maps every column of an Econumo export whatever the UI language',
   }
 })
 
+it('autoDetect keeps the best match in a file that is not an Econumo export', () => {
+  const detected = autoDetect(['Account', 'tag', 'Budget tag', 'labels'], { ...LABELS, tag: 'Budget tag', labels: 'Reporting tags' })
+  expect(detected.columns.tag).toBe('Budget tag')
+  expect(detected.columns.labels).toBeNull()
+})
+
 it('autoDetect flips to dual mode when inflow+outflow columns match', () => {
   const detected = autoDetect(['Account', 'Date', 'In', 'Out'], LABELS)
   expect(detected.columns.amountInflow).toBe('In')

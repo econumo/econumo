@@ -102,6 +102,7 @@ const EXPORT_COLUMNS: Partial<Record<FieldKey, string>> = {
   tag: 'tag',
   labels: 'labels',
 }
+const EXPORT_HEADER = [...Object.values(EXPORT_COLUMNS), 'transaction_id', 'account_currency']
 
 // Vue matches lowercased header names against the translated field labels; a
 // column is claimed once, exact matches win over substring ones.
@@ -123,11 +124,15 @@ export function autoDetect(header: string[], labels: Record<FieldKey, string>): 
     }
   }
 
-  for (const field of FIELD_KEYS) {
-    const exported = EXPORT_COLUMNS[field]
-    if (exported && header.includes(exported)) {
-      columns[field] = exported
-      claimed.add(exported)
+  // the whole header must match: alone, a name like "tag" says nothing about
+  // the file and must not beat a better match in someone else's CSV
+  if (EXPORT_HEADER.every((column) => header.includes(column))) {
+    for (const field of FIELD_KEYS) {
+      const exported = EXPORT_COLUMNS[field]
+      if (exported) {
+        columns[field] = exported
+        claimed.add(exported)
+      }
     }
   }
   for (const field of FIELD_KEYS) {
