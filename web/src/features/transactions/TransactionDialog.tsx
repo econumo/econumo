@@ -32,6 +32,7 @@ import {
 } from '@/features/classifications/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useExchange } from '@/features/currencies/useExchange'
+import { usePendingOpForTransaction } from '@/features/pendingWrites/hooks'
 import { usePostRecurring } from '@/features/recurring/queries'
 import { useImportQueuedEvent, useTransactionImportLinks } from '@/features/imports/queries'
 import { latestImportLink, ruleDiff } from '@/lib/importMatch'
@@ -81,6 +82,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const createTransaction = useCreateTransaction()
   const updateTransaction = useUpdateTransaction()
   const postRecurring = usePostRecurring()
+  const queuedOp = usePendingOpForTransaction(params.transaction?.id ?? '')
   const importQueued = useImportQueuedEvent()
   const createCategory = useCreateCategory()
   const createPayee = useCreatePayee()
@@ -249,7 +251,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       onDone()
     } catch (err) {
       // dialog stays open on failure; a refusal from the server says why
-      if (isAxiosError(err) && err.response) {
+      if (isAxiosError(err) && err.response && err.response.status !== 402) {
         toast.error(apiErrorMessage(err))
       }
     }
@@ -260,8 +262,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     onDone()
   }
 
-  // The draft keeps its id: if its first submit reached the server and only
-  // the response was lost, the server refuses the repeat instead of duplicating.
+  // The draft keeps its id, which keys the add: if its first submit reached the
+  // server and only the response was lost, the server refuses the repeat instead
+  // of duplicating.
   const restoreDraft = () => {
     if (draft.offer) {
       patch(draft.offer)
@@ -288,7 +291,8 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending || importQueued.isPending
   // posting a template creates an ordinary transaction (prefilled from it), so
   // it reads as the regular add dialog rather than a mode of its own
-  const title = form.isNew
+  const addsARow = form.isNew || queuedOp?.kind === 'tx-create'
+  const title = addsARow
     ? t('transactions.modal.create_form.header')
     : t('transactions.modal.update_form.header')
 
@@ -316,7 +320,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
             {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="transaction-dialog-form" disabled={pending || (needsNetwork && !online)}>
-            {form.isNew ? t('common.button.add.label') : t('common.button.update.label')}
+            {addsARow ? t('common.button.add.label') : t('common.button.update.label')}
           </Button>
         </div>
       }

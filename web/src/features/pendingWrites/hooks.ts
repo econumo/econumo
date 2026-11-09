@@ -1,6 +1,7 @@
 import { useMemo, useSyncExternalStore } from 'react'
 import type { Id } from '@/api/types'
 import { getOps, subscribe } from './store'
+import { realIdOf } from './tempIds'
 import type { PendingOp } from './types'
 
 export function usePendingOps(): PendingOp[] {
@@ -13,7 +14,8 @@ function latest(ops: PendingOp[]): PendingOp | undefined {
 }
 
 export function usePendingOpForTransaction(id: Id): PendingOp | undefined {
-  return latest(usePendingOps().filter((op) => op.kind !== 'limit' && op.txId === id))
+  const current = realIdOf(id)
+  return latest(usePendingOps().filter((op) => op.kind !== 'limit' && op.txId === current))
 }
 
 export function usePendingLimit(budgetId: Id, elementId: Id, period: string): PendingOp | undefined {

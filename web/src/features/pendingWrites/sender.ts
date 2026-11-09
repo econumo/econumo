@@ -14,6 +14,7 @@ import { getSessionUserId, hasToken } from '@/lib/storage'
 import { classifyWriteError } from './classify'
 import { markAttempted, nextSendable, resolveTempId, settleDone, settleRefused, settleUnresolved } from './queue'
 import { getOps, loadPendingWrites, mutate, queueOwner, subscribeLeftElsewhere } from './store'
+import { rememberRealId } from './tempIds'
 import type { OpChange, PendingOp } from './types'
 
 export const WRITE_TIMEOUT_MS = 10_000
@@ -107,6 +108,11 @@ function isQueued(op: PendingOp): boolean {
   return getOps().some((queued) => queued.key === op.key)
 }
 
+function resolveAdded(ops: PendingOp[], tempId: Id, realId: Id): PendingOp[] {
+  rememberRealId(tempId, realId)
+  return resolveTempId(ops, tempId, realId)
+}
+
 function settleAccepted(queryClient: QueryClient, op: PendingOp, result: unknown): Promise<void> {
   if (!isQueued(op)) {
     return Promise.resolve()
@@ -117,7 +123,7 @@ function settleAccepted(queryClient: QueryClient, op: PendingOp, result: unknown
     confirmChange(queryClient, op, result)
     return mutate((ops) => {
       const remaining = settleDone(ops, op.key)
-      return op.kind === 'tx-create' ? resolveTempId(remaining, op.txId, (result as TransactionItemDto).item.id) : remaining
+      return op.kind === 'tx-create' ? resolveAdded(remaining, op.txId, (result as TransactionItemDto).item.id) : remaining
     })
   })
 }
@@ -133,7 +139,7 @@ function settleReplayed(queryClient: QueryClient, op: PendingOp, err: unknown): 
       return settleDone(ops, op.key)
     }
     const realId = replayResourceId(err)
-    return realId ? resolveTempId(settleDone(ops, op.key), op.txId, realId) : settleUnresolved(ops, op.key, apiErrorMessage(err))
+    return realId ? resolveAdded(settleDone(ops, op.key), op.txId, realId) : settleUnresolved(ops, op.key, apiErrorMessage(err))
   })
   if (op.kind !== 'limit') {
     void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
@@ -258,19 +264,21 @@ function run(): Promise<void> {
     rerun = true
     return running
   }
-  const started = (async () => {
-    do {
-      rerun = false
-      await drain()
-    } while (rerun)
-  })().catch((e: unknown) => {
-    console.warn('Sending waiting changes failed', (e as Error | undefined)?.name)
-    wakeIn(BACKOFF_MAX_MS)
-  }).finally(() => {
-    running = null
-  })
-  running = started
-  return started
+  running = (async () => {
+    try {
+      do {
+        rerun = false
+        await drain()
+      } while (rerun)
+    } catch (e) {
+      console.warn('Sending waiting changes failed', (e as Error | undefined)?.name)
+      wakeIn(BACKOFF_MAX_MS)
+    } finally {
+      // In the same step as the last look at rerun: a kick after it starts a new run.
+      running = null
+    }
+  })()
+  return running
 }
 
 /** An explicit reason to try now (a reconnect, a new or retried change): any backoff is over. */

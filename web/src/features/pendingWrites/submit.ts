@@ -10,6 +10,10 @@ import type { OpChange, PendingOp } from './types'
 
 const nextSeq = (ops: PendingOp[]) => Math.max(0, ...ops.map((op) => op.seq)) + 1
 
+// An add is keyed by its form's id, the one thing a retap and a restored draft
+// share, so the server refuses a repeat of an add it already holds.
+const keyOf = (change: OpChange) => (change.kind === 'tx-create' ? change.txId : uuidv7())
+
 function enqueue(change: OpChange, key: string, attempted: boolean): { queued: true } {
   void mutate((ops) => addChange(ops, change, { key, seq: nextSeq(ops) }, attempted))
   trackEvent(METRICS.WRITE_QUEUED, { kind: change.kind })
@@ -28,15 +32,24 @@ export async function submitChange<T>(
   send: (opts: WriteOptions) => Promise<T>,
 ): Promise<{ queued: boolean; result?: T }> {
   const target = targetOf(change)
-  if (!onlineManager.isOnline() || getOps().some((op) => targetOf(op) === target)) {
-    return enqueue(change, uuidv7(), false)
+  if (getOps().some((op) => targetOf(op) === target)) {
+    // The same form again (a draft restored over its own queued add) would
+    // otherwise hold a second op under the first one's key.
+    const behind: OpChange = change.kind === 'tx-create' ? { kind: 'tx-update', txId: change.txId, payload: change.payload } : change
+    return enqueue(behind, uuidv7(), false)
   }
-  const key = uuidv7()
+  const key = keyOf(change)
+  if (!onlineManager.isOnline()) {
+    return enqueue(change, key, false)
+  }
   let result: T
   try {
     result = await send({ idempotencyKey: key, timeout: WRITE_TIMEOUT_MS })
   } catch (err) {
-    if (classifyWriteError(err) === 'wait') {
+    const outcome = classifyWriteError(err)
+    // 'done' is an earlier submit of this form that landed: the sender's own
+    // attempt gets the same answer and reads the outcome back.
+    if (outcome === 'wait' || outcome === 'done') {
       return enqueue(change, key, true)
     }
     throw err

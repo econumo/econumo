@@ -6,7 +6,8 @@ import { http, HttpResponse } from 'msw'
 import { Toaster } from '@/components/ui/sonner'
 import { server } from '@/test/msw'
 import { onlineManager } from '@tanstack/react-query'
-import { getOps, loadPendingWrites } from '@/features/pendingWrites/store'
+import { getOps, loadPendingWrites, mutate } from '@/features/pendingWrites/store'
+import { addChange } from '@/features/pendingWrites/queue'
 import { coreHandlers, fixtureAccounts, fixtureCategories, fixtureLabels, fixtureOwner, fixtureUsd } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
@@ -1423,6 +1424,63 @@ it('offline Add closes the dialog with no request and queues the change', async 
   } finally {
     onlineManager.setOnline(true)
   }
+})
+
+it('a second tap after a server error resends the add under the same key, with no id', async () => {
+  const seen: { key: string | null; body: Record<string, unknown> }[] = []
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
+      seen.push({ key: request.headers.get('idempotency-key'), body: (await request.json()) as Record<string, unknown> })
+      return seen.length === 1
+        ? HttpResponse.json({ success: false, message: 'Boom', code: 0, exceptionType: 'x' }, { status: 500 })
+        : HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+    }),
+  )
+  await loadPendingWrites('u1')
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense', accountId: 'a1' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '7')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(seen).toHaveLength(1))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled())
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+
+  expect(seen[0].key).toMatch(/^[0-9a-f-]{36}$/)
+  expect(seen[1].key).toBe(seen[0].key)
+  expect(seen[0].body).not.toHaveProperty('id')
+})
+
+it('a 402 leaves its toast to the API client', async () => {
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () =>
+      HttpResponse.json({ success: false, message: 'Read only envelope', code: 402, errors: {} }, { status: 402 }),
+    ),
+  )
+  await loadPendingWrites('u1')
+  const user = userEvent.setup()
+  renderDialog()
+  render(<Toaster />)
+  useUiStore.getState().openTransactionModal({ type: 'expense', accountId: 'a1' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '7')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled())
+  expect(screen.queryByText('Read only envelope')).not.toBeInTheDocument()
+})
+
+it('a refused add reads as the add it still is', async () => {
+  await loadPendingWrites('u1')
+  const change = { kind: 'tx-create' as const, txId: 't-queued', payload: { id: 't-queued', type: 'expense' as const, accountId: 'a1', accountRecipientId: null, amount: '7', amountRecipient: null, categoryId: null, description: '', payeeId: null, tagId: null, labelIds: [], date: '2026-07-03 10:00:00' } }
+  await mutate((ops) => addChange(ops, change, { key: 't-queued', seq: 1 }).map((o) => ({ ...o, status: 'failed' as const, error: 'No' })))
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ id: 't-queued', amount: '7' }) as unknown as TransactionDto })
+  expect(await screen.findByRole('heading', { name: 'Add transaction' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument()
+  await mutate(() => [])
 })
 
 it('an online validation refusal still shows in the dialog', async () => {

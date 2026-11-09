@@ -61,7 +61,7 @@ it('online success returns the result, applies it, queues nothing and fires the 
 
 it('passes a key and the 10 second timeout to the request', async () => {
   const send = vi.fn().mockResolvedValue(item)
-  await submitChange(client, create, send)
+  await submitChange(client, { kind: 'limit', budgetId: 'b1', elementId: 'e1', period: '2026-11-01', amount: '5' }, send)
   expect(send.mock.calls[0][0]).toEqual({ idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/), timeout: 10000 })
 })
 
@@ -81,6 +81,45 @@ it('a timeout queues as attempted under the key the request carried', async () =
   const send = vi.fn().mockRejectedValue(new AxiosError('timeout', AxiosError.ECONNABORTED))
   await expect(submitChange(client, create, send)).resolves.toEqual({ queued: true })
   expect(getOps()).toMatchObject([{ attempted: true, status: 'waiting', key: send.mock.calls[0][0].idempotencyKey }])
+})
+
+it('resubmitting the same add, a retap after a 5xx, carries the same key: the form id', async () => {
+  const send = vi.fn().mockRejectedValueOnce(httpError(500, envelope)).mockResolvedValueOnce(item)
+  await expect(submitChange(client, create, send)).rejects.toBeDefined()
+  await submitChange(client, create, send)
+  expect(send.mock.calls.map((c) => c[0].idempotencyKey)).toEqual(['temp', 'temp'])
+})
+
+it('an add that waits in the queue is keyed by the form id too', async () => {
+  onlineManager.setOnline(false)
+  await submitChange(client, create, vi.fn())
+  expect(getOps()).toMatchObject([{ key: 'temp', attempted: false }])
+})
+
+it('edits and deletes get a key of their own', async () => {
+  const send = vi.fn().mockResolvedValue(item)
+  await submitChange(client, { kind: 'tx-update', txId: 'real', payload: payload('real') }, send)
+  await submitChange(client, { kind: 'tx-update', txId: 'real', payload: payload('real') }, send)
+  const [first, second] = send.mock.calls.map((c) => c[0].idempotencyKey)
+  expect(first).toMatch(/^[0-9a-f-]{36}$/)
+  expect(second).not.toBe(first)
+})
+
+it('a 409 on the direct path queues as attempted under the same key instead of rejecting', async () => {
+  const send = vi.fn().mockRejectedValue(httpError(409, { ...envelope, code: 409, resourceId: 'real' }))
+  await expect(submitChange(client, create, send)).resolves.toEqual({ queued: true })
+  expect(getOps()).toMatchObject([{ kind: 'tx-create', key: 'temp', attempted: true, status: 'waiting' }])
+})
+
+it('the same add again while the first is in the queue goes behind it as an edit, under a key of its own', async () => {
+  await mutate((ops) => addChange(ops, create, { key: 'temp', seq: 1 }, true))
+  const send = vi.fn()
+  await submitChange(client, { ...create, payload: { ...payload('temp'), amount: '9' } } as OpChange, send)
+  expect(send).not.toHaveBeenCalled()
+  expect(getOps()).toHaveLength(2)
+  expect(getOps()[0]).toMatchObject({ kind: 'tx-create', key: 'temp' })
+  expect(getOps()[1]).toMatchObject({ kind: 'tx-update', txId: 'temp', payload: { amount: '9' } })
+  expect(getOps()[1].key).not.toBe('temp')
 })
 
 it('a timed-out change takes its seq from the queue as it stands then, and goes ahead of a later edit', async () => {

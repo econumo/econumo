@@ -1383,7 +1383,8 @@ In the distroless image these run via the binary directly, e.g.
   `/api/v1/import/list-external-accounts` is a POST *read*, because the bridge access URL
   travels in the body — it must never reach a query string (logs, history, referrers).
 - **`Idempotency-Key`** (`internal/web/middleware/idempotency.go`): the SPA's API client sends a
-  UUIDv7 on every `POST` (one it mints, or the offline queue's own, reused on every attempt). The
+  UUIDv7 on every `POST` (one it mints, the offline queue's own, reused on every attempt, or for an
+  add the form's id, the same for a retap and a restored draft). The
   server guards authenticated `POST`s of a full-scope token outside `/mcp`; public routes have no
   user. An absent or unparsable key means no guard, so MCP, other clients and the parity
   catalogues are unchanged. The check reads the table BEFORE the handler, so a replay is refused

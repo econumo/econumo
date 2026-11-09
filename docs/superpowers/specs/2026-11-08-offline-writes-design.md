@@ -133,7 +133,9 @@ the database; the frontend assigns no record ids.
   never read: the header leaves `web/src/api/client.ts` and the CORS allow-list gains
   `Idempotency-Key`. The server still mints its own `X-Request-Id` for logs and the response.
 - The API client mints a key when a request has none; the queue stores one per operation and
-  reuses it on every attempt. This key is the only id the frontend creates, because only the
+  reuses it on every attempt. An add is keyed by its form's id instead, stable across a retap
+  and a restored draft, so resubmitting the same form cannot duplicate it. A 409 on the direct
+  path queues the add as attempted and the sender reads it back. This key is the only id the frontend creates, because only the
   sender can tell a retry from a new request.
 - One shared server check covers every authenticated `POST`. Public routes (login, sign-up)
   have no user and are left out. Absent or malformed key means no guard, so MCP, older clients
@@ -181,6 +183,9 @@ Multi-cell fill sends one `set-limit` per cell, each with its own key.
   sync's rules (`noteOwnWrite`, `RELOAD_REVISION`, the epoch fence) stay intact.
 - A transaction added offline has a temporary id that exists only on the device and is never
   sent. Queued changes to it wait for the add's answer, then use the real id.
+  A dialog still open on the row when the add lands holds the temporary id, so the sender also
+  keeps a tempId -> realId map for the session, and the writes those dialogs reach (edit, delete,
+  move, make-recurring) send the real id.
 - On success the response is applied as today (`useApplyTransactionItem`) and the temporary
   id is swapped for the server's. On 409 the operation is done: its `resourceId` resolves a
   temporary id, and the queue refreshes from the server. A 409 with no resource id for an add

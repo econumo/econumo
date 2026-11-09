@@ -4,6 +4,7 @@ import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
 import type { AccountDto } from '@/api/dto/account'
 import type { CreateTransactionDto, TransactionDto } from '@/api/dto/transaction'
+import { createTransaction } from '@/api/transaction'
 import { createAppQueryClient } from '@/lib/appQueryClient'
 import { STORE_PENDING_WRITES, dbRequest } from '@/lib/db'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -11,6 +12,8 @@ import { removeToken, setToken } from '@/lib/storage'
 import { overlayTransactions } from './overlay'
 import { addChange } from './queue'
 import { kickPendingWrites, startPendingWrites } from './sender'
+import { submitChange } from './submit'
+import { realIdOf } from './tempIds'
 import { getOps, loadPendingWrites, mutate, subscribe } from './store'
 import type { OpChange, PendingOp } from './types'
 
@@ -378,4 +381,51 @@ describe('with Web Locks', () => {
     expect(seen).toHaveLength(0)
     expect(getOps()).toHaveLength(1)
   })
+})
+
+const replay = (resourceId: string) =>
+  HttpResponse.json({ success: false, message: 'Operation is locked', code: 409, errors: {}, resourceId }, { status: 409 })
+
+it('remembers the server id of an add that landed', async () => {
+  answerWith(() => undefined)
+  await queue({ kind: 'tx-create', txId: 'temp-accepted', payload: payload('temp-accepted') }, 'k1', 1)
+  await kickPendingWrites()
+  expect(realIdOf('temp-accepted')).toBe('real')
+  expect(realIdOf('unrelated')).toBe('unrelated')
+})
+
+it('remembers the server id an add replay reports', async () => {
+  answerWith(() => replay('real-replayed'))
+  await queue({ kind: 'tx-create', txId: 'temp-replayed', payload: payload('temp-replayed') }, 'k1', 1)
+  await kickPendingWrites()
+  expect(realIdOf('temp-replayed')).toBe('real-replayed')
+})
+
+it('a 409 on the direct path ends with one row and nothing left in the queue', async () => {
+  const id = '019a0000-0000-7000-8000-000000000001'
+  const form = payload(id)
+  client.setQueryData(queryKeys.transactions, [row('real')])
+  answerWith(() => replay('real'))
+
+  await expect(submitChange(client, { kind: 'tx-create', txId: id, payload: form }, (opts) => createTransaction(form, opts))).resolves.toEqual({ queued: true })
+  await vi.waitFor(() => expect(getOps()).toEqual([]))
+
+  expect(seen.map((r) => r.key)).toEqual([id, id])
+  expect(seen.every((r) => !('id' in r.body))).toBe(true)
+  expect(overlayTransactions(client.getQueryData<TransactionDto[]>(queryKeys.transactions) ?? [], getOps(), me).map((t) => t.id)).toEqual(['real'])
+})
+
+// The drain ends a few microtasks after its last check of the flag: a kick in
+// that gap must start a new one. Every offset is tried, the gap moves with the engine.
+it.each(Array.from({ length: 12 }, (_, ticks) => ticks))('a kick %i microtasks into a drain is honoured', async (ticks) => {
+  answerWith(() => undefined)
+  await queue(limit('e1'), 'k1', 1)
+  onlineManager.setOnline(false)
+  void kickPendingWrites()
+  for (let i = 0; i < ticks; i++) {
+    await Promise.resolve()
+  }
+  onlineManager.setOnline(true)
+  await vi.waitFor(() => expect(getOps()).toEqual([]))
+  expect(seen).toHaveLength(1)
 })

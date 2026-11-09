@@ -10,6 +10,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { usePendingOps } from '@/features/pendingWrites/hooks'
 import { overlayTransactions } from '@/features/pendingWrites/overlay'
 import { submitChange } from '@/features/pendingWrites/submit'
+import { realIdOf } from '@/features/pendingWrites/tempIds'
 import { useUserData } from '@/features/user/queries'
 import { compareTransactions } from './order'
 import { beginLocalWrite, consumeFullReload, noteOwnWrite, transactionsQueryFn } from './revisionTracking'
@@ -75,15 +76,18 @@ export function useCreateTransaction() {
 export function useUpdateTransaction() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (form: CreateTransactionDto) =>
-      submitChange(queryClient, { kind: 'tx-update', txId: form.id, payload: form }, (opts) => transactionApi.updateTransaction(form, opts)),
+    mutationFn: (held: CreateTransactionDto) => {
+      const form = { ...held, id: realIdOf(held.id) }
+      return submitChange(queryClient, { kind: 'tx-update', txId: form.id, payload: form }, (opts) => transactionApi.updateTransaction(form, opts))
+    },
   })
 }
 
 export function useDeleteTransaction() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: Id) => {
+    mutationFn: (heldId: Id) => {
+      const id = realIdOf(heldId)
       const previous = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)?.find((t) => t.id === id) ?? null
       return submitChange(queryClient, { kind: 'tx-delete', txId: id, previous }, (opts) => transactionApi.deleteTransaction(id, opts))
     },
@@ -97,7 +101,8 @@ export function useDeleteTransaction() {
 export function useMoveTransaction() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: transactionApi.moveTransaction,
+    mutationFn: (req: MoveTransactionDto) =>
+      transactionApi.moveTransaction({ ...req, id: realIdOf(req.id), aboveId: req.aboveId === null ? null : realIdOf(req.aboveId) }),
     onSuccess: (result, req: MoveTransactionDto) => {
       const patch = beginLocalWrite(queryClient)
       if (patch) {
