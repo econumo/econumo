@@ -13,13 +13,12 @@ const pendingUser = {
 }
 
 const rows: AccountRow[] = [
-  { key: 'r1', name: 'Cash', balance: '', currencyId: 'cur-usd', savings: false, icon: 'payments' },
-  { key: 'r2', name: 'Savings', balance: '100', currencyId: 'cur-eur', savings: true, icon: 'savings' },
+  { key: 'r1', name: 'Cash', balance: '', currencyId: 'cur-usd', icon: 'payments' },
+  { key: 'r2', name: 'Savings', balance: '100', currencyId: 'cur-eur', icon: 'savings' },
 ]
 const cats: CategoryRow[] = [
-  { key: 'c1', name: 'Food', type: 'expense', icon: 'restaurant', checked: true },
-  { key: 'c2', name: 'Salary', type: 'income', icon: 'work', checked: true },
-  { key: 'c3', name: 'Skipped', type: 'expense', icon: 'x', checked: false },
+  { key: 'c1', name: 'Food', type: 'expense', icon: 'restaurant' },
+  { key: 'c2', name: 'Salary', type: 'income', icon: 'work' },
 ]
 
 function setup() {
@@ -42,10 +41,10 @@ type Faults = {
 }
 
 let calls: { path: string; body: any }[]
-let srv: { accounts: any[]; categories: any[]; budgets: any[]; folders: any[]; ops: Set<string>; savingsPlans: Set<string> }
+let srv: { accounts: any[]; categories: any[]; budgets: any[]; folders: any[]; ops: Set<string> }
 
 function mockWrites(f: Faults = {}) {
-  srv = { accounts: [], categories: [], budgets: [], folders: [], ops: new Set(), savingsPlans: new Set() }
+  srv = { accounts: [], categories: [], budgets: [], folders: [], ops: new Set() }
   let accountCalls = 0
   let accountFault = false
   let categoryFault = false
@@ -117,7 +116,7 @@ function mockWrites(f: Faults = {}) {
       const body = (await request.json()) as any
       calls.push({ path: 'create-budget', body })
       if (srv.budgets.some((b) => b.id === body.id)) return HttpResponse.json({ success: false, message: 'in use', code: 400, errors: { id: ['x'] } }, { status: 400 })
-      srv.budgets.push({ id: body.id, ownerUserId: 'u1', access: [], members: body.accountIds.map((id: string) => ({ id, isSavings: body.savingsAccountIds.includes(id) })) })
+      srv.budgets.push({ id: body.id, ownerUserId: 'u1', access: [], members: [...body.accountIds] })
       if (f.budgetLost && !budgetFault) {
         budgetFault = true
         return HttpResponse.error()
@@ -129,28 +128,15 @@ function mockWrites(f: Faults = {}) {
       const id = new URL(request.url).searchParams.get('id')
       const b = srv.budgets.find((x) => x.id === id)
       if (!b) return HttpResponse.json({ success: false, message: 'Budget not found', code: 0, errors: {} }, { status: 400 })
-      const accounts = (b.members ?? []).map((m: any) => ({ id: m.id, removable: true, isSavings: m.isSavings }))
+      const accounts = (b.members ?? []).map((id: string) => ({ id, removable: true, isSavings: false }))
       return ok({ item: { meta: b, filters: { periodStart: '2026-11-01 00:00:00', periodEnd: '2026-12-01 00:00:00', accounts }, balances: [], currencyRates: [], structure: { folders: [], elements: [] } } })
     }),
-    // add-account: idempotent, sets the flag of an existing member, refuses
-    // turning off a savings member with plans unless confirmed (server wording)
     http.post('*/api/v1/budget/add-account', async ({ request }) => {
       const body = (await request.json()) as any
       calls.push({ path: 'add-account', body })
       const b = srv.budgets.find((x) => x.id === body.id)
       b.members ??= []
-      const member = b.members.find((m: any) => m.id === body.accountId)
-      if (member) {
-        if (member.isSavings && body.isSavings === false && srv.savingsPlans.has(body.accountId) && !body.confirmSavingsRemoval) {
-          return HttpResponse.json(
-            { success: false, message: 'Form validation error', code: 400, errors: { confirmSavingsRemoval: ['This deletes the planned amounts and comments of savings accounts you turned off or removed from this budget; confirm to continue'] } },
-            { status: 400 },
-          )
-        }
-        if (body.isSavings !== undefined) member.isSavings = body.isSavings
-      } else {
-        b.members.push({ id: body.accountId, isSavings: body.isSavings === true })
-      }
+      if (!b.members.includes(body.accountId)) b.members.push(body.accountId)
       return ok({ item: { id: b.id, ownerUserId: 'u1', name: 'My budget', startedAt: '2026-11-01 00:00:00', endedAt: '', currencyId: 'cur-usd', isArchived: 0, periodStartDay: 1, access: [] } })
     }),
   )
@@ -177,21 +163,18 @@ describe('useDay0', () => {
     expect(calls[0].body).toMatchObject({ name: 'Cash', balance: '0', folderId: null, currencyId: 'cur-usd' })
     expect(calls[2].body).toEqual({ currency: 'USD' })
     const draft = loadDraft('u1')!
-    expect(draft.accountIds).toEqual(['acc-1', 'acc-2'])
-    expect(draft.savingsAccountIds).toEqual(['acc-2'])
+    expect(draft.created).toEqual({ r1: 'acc-1', r2: 'acc-2' })
     expect(draft.mainCurrencyId).toBe('cur-usd')
   })
 
   it('saveAccounts never creates a row that stands for an existing account', async () => {
     mockWrites()
     const { result } = await ready()
-    const existing: AccountRow = { key: 'e1', name: 'Imported', balance: '', currencyId: 'cur-eur', savings: true, icon: 'savings', accountId: 'acc-imp' }
+    const existing: AccountRow = { key: 'e1', name: 'Imported', balance: '', currencyId: 'cur-eur', icon: 'savings', accountId: 'acc-imp' }
     await act(() => result.current.saveAccounts([existing, rows[0]], [], 'cur-usd'))
     expect(calls.filter((c) => c.path === 'create-account').map((c) => c.body.name)).toEqual(['Cash'])
     expect(calls.filter((c) => c.path === 'show-currency').map((c) => c.body.id).sort()).toEqual(['cur-eur', 'cur-usd'])
-    const d = loadDraft('u1')!
-    expect(d.accountIds).toEqual(['acc-imp', 'acc-1'])
-    expect(d.savingsAccountIds).toEqual(['acc-imp'])
+    expect(loadDraft('u1')!.created).toEqual({ e1: 'acc-imp', r1: 'acc-1' })
   })
 
   it('a second save with the same currencies does not apply them again, a changed main does', async () => {
@@ -208,11 +191,11 @@ describe('useDay0', () => {
   it('three accounts in one save reuse the folder created by the first', async () => {
     mockWrites()
     const { result } = await ready()
-    const three = [...rows, { key: 'r3', name: 'Card', balance: '5', currencyId: 'cur-usd', savings: false, icon: 'credit_card' }]
+    const three = [...rows, { key: 'r3', name: 'Card', balance: '5', currencyId: 'cur-usd', icon: 'credit_card' }]
     await act(() => result.current.saveAccounts(three, [], 'cur-usd'))
     const creates = calls.filter((c) => c.path === 'create-account').map((c) => c.body.folderId)
     expect(creates).toEqual([null, 'folder-general', 'folder-general'])
-    expect(loadDraft('u1')!.accountIds).toEqual(['acc-1', 'acc-2', 'acc-3'])
+    expect(Object.values(loadDraft('u1')!.created)).toEqual(['acc-1', 'acc-2', 'acc-3'])
   })
 
   it('resuming after the first account was created still sends the folder id', async () => {
@@ -236,7 +219,7 @@ describe('useDay0', () => {
     await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
     expect(srv.accounts.map((a) => a.name)).toEqual(['Cash', 'Savings'])
     expect(calls.filter((c) => c.path === 'create-account')).toHaveLength(3)
-    expect(loadDraft('u1')!.accountIds).toEqual(['acc-1', 'acc-2'])
+    expect(loadDraft('u1')!.created).toEqual({ r1: 'acc-1', r2: 'acc-2' })
   })
 
   it('retry after a lost response reconciles by name without duplicates', async () => {
@@ -249,7 +232,6 @@ describe('useDay0', () => {
     expect(srv.accounts.map((a) => a.name)).toEqual(['Cash', 'Savings'])
     const d = loadDraft('u1')!
     expect(d.created).toEqual({ r1: 'acc-1', r2: 'acc-2' })
-    expect(d.savingsAccountIds).toEqual(['acc-2'])
   })
 
   it('a reloaded hook reuses the persisted rows and keys', async () => {
@@ -283,7 +265,7 @@ describe('useDay0', () => {
     }
   })
 
-  it('saveCategories creates only the checked categories and touches nothing else', async () => {
+  it('saveCategories creates every submitted category in order and touches nothing else', async () => {
     mockWrites()
     const { result } = await ready()
     await act(() => result.current.saveCategories(cats))
@@ -379,7 +361,7 @@ describe('useDay0', () => {
   it('a lost category create retried after a language switch reconciles by the name it was sent under', async () => {
     mockWrites({ categoryLost: true })
     const { result } = await ready()
-    const en: CategoryRow[] = [{ key: 'c1', name: 'Pets', labelKey: 'onboarding.categories.pets', type: 'expense', icon: 'pets', checked: true }]
+    const en: CategoryRow[] = [{ key: 'c1', name: 'Pets', labelKey: 'onboarding.categories.pets', type: 'expense', icon: 'pets' }]
     await act(async () => {
       await expect(result.current.saveCategories(en)).rejects.toBeTruthy()
     })
@@ -389,14 +371,14 @@ describe('useDay0', () => {
     expect(loadDraft('u1')!.categoryRows[0].labelKey).toBe('onboarding.categories.pets')
   })
 
-  it('ensureBudget creates one budget over every owned account, savings from the draft', async () => {
+  it('ensureBudget creates one budget over every owned account, with no savings members', async () => {
     mockWrites()
     srv.accounts.push(
       { id: 'acc-imp', name: 'Imported', owner: { id: 'u1' } },
       { id: 'acc-sav', name: 'Savings', owner: { id: 'u1' } },
       { id: 'acc-other', name: 'Shared', owner: { id: 'u2' } },
     )
-    saveDraft('u1', { ...emptyDraft(), savingsAccountIds: ['acc-sav', 'acc-gone'], mainCurrencyId: 'cur-eur' })
+    saveDraft('u1', { ...emptyDraft(), mainCurrencyId: 'cur-eur' })
     const { result } = await ready()
     let id = ''
     await act(async () => {
@@ -409,8 +391,8 @@ describe('useDay0', () => {
       startDate: '',
       currencyId: 'cur-eur',
       accountIds: ['acc-imp', 'acc-sav'],
-      savingsAccountIds: ['acc-sav'],
     })
+    expect(calls[0].body).not.toHaveProperty('savingsAccountIds')
     let again = ''
     await act(async () => {
       again = await result.current.ensureBudget()
@@ -469,13 +451,13 @@ describe('useDay0', () => {
   })
 
   // the rows AccountsStep submits on a revisit: earlier creates come back as existing accounts, keeping their keys
-  const revisit = (savings: Record<string, boolean>, extra: AccountRow[] = []): AccountRow[] => [
-    { ...rows[0], accountId: 'acc-1', balance: '', savings: savings['acc-1'] ?? false },
-    { ...rows[1], accountId: 'acc-2', balance: '', savings: savings['acc-2'] ?? true },
+  const revisit = (extra: AccountRow[] = []): AccountRow[] => [
+    { ...rows[0], accountId: 'acc-1', balance: '' },
+    { ...rows[1], accountId: 'acc-2', balance: '' },
     ...extra,
   ]
 
-  it('accounts saved after the budget exists join it, and a changed savings switch is applied', async () => {
+  it('accounts saved after the budget exists join it, with no savings flag', async () => {
     mockWrites()
     const { result } = await ready()
     await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
@@ -484,54 +466,29 @@ describe('useDay0', () => {
       budgetId = await result.current.ensureBudget()
     })
     calls = []
-    const wallet: AccountRow = { key: 'r3', name: 'Piggy bank', balance: '5', currencyId: 'cur-usd', savings: true, icon: 'savings' }
-    await act(() => result.current.saveAccounts(revisit({ 'acc-2': false }, [wallet]), [], 'cur-usd'))
-    expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body)).toEqual([
-      { id: budgetId, accountId: 'acc-2', isSavings: false },
-      { id: budgetId, accountId: 'acc-3', isSavings: true },
-    ])
-    expect(srv.budgets[0].members).toEqual([
-      { id: 'acc-1', isSavings: false },
-      { id: 'acc-2', isSavings: false },
-      { id: 'acc-3', isSavings: true },
-    ])
-    // nothing changed: nothing written
+    const piggy: AccountRow = { key: 'r3', name: 'Piggy bank', balance: '5', currencyId: 'cur-usd', icon: 'savings' }
+    await act(() => result.current.saveAccounts(revisit([piggy]), [], 'cur-usd'))
+    expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body)).toEqual([{ id: budgetId, accountId: 'acc-3' }])
+    expect(srv.budgets[0].members).toEqual(['acc-1', 'acc-2', 'acc-3'])
+    // nothing new: nothing written
     calls = []
-    await act(() => result.current.saveAccounts(revisit({ 'acc-2': false }, []).concat({ ...wallet, accountId: 'acc-3', balance: '' }), [], 'cur-usd'))
+    await act(() => result.current.saveAccounts(revisit([{ ...piggy, accountId: 'acc-3', balance: '' }]), [], 'cur-usd'))
     expect(paths().filter((p) => p === 'add-account')).toEqual([])
   })
 
-  it('a reused budget gets only the accounts the flow created, never a guessed flag', async () => {
+  it('a reused budget gets only the accounts the flow created', async () => {
     mockWrites()
-    srv.accounts.push({ id: 'acc-old', name: 'Savings', owner: { id: 'u1' }, folderId: 'f1' })
+    srv.accounts.push({ id: 'acc-old', name: 'Savings', owner: { id: 'u1' }, folderId: 'f1' }, { id: 'acc-out', name: 'Card', owner: { id: 'u1' }, folderId: 'f1' })
     srv.folders.push({ id: 'f1', name: 'General' })
-    srv.budgets.push({ id: 'b-old', ownerUserId: 'u1', access: [], members: [{ id: 'acc-old', isSavings: false }] })
+    srv.budgets.push({ id: 'b-old', ownerUserId: 'u1', access: [], members: ['acc-old'] })
     const { result } = await ready()
     await act(async () => {
       await result.current.ensureBudget()
     })
-    const old: AccountRow = { key: 'account:acc-old', name: 'Savings', balance: '', currencyId: 'cur-usd', savings: true, icon: 'savings', accountId: 'acc-old' }
-    await act(() => result.current.saveAccounts([old, rows[0]], [], 'cur-usd'))
-    expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body)).toEqual([{ id: 'b-old', accountId: 'acc-2', isSavings: false }])
-  })
-
-  it('turning savings off on a member with plans shows the server refusal and retries it next time', async () => {
-    mockWrites()
-    const { result } = await ready()
-    await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
-    await act(async () => {
-      await result.current.ensureBudget()
-    })
-    srv.savingsPlans.add('acc-2')
-    await act(async () => {
-      await expect(result.current.saveAccounts(revisit({ 'acc-2': false }), [], 'cur-usd')).rejects.toBeTruthy()
-    })
-    expect(result.current.error).toBeTruthy()
-    srv.savingsPlans.delete('acc-2')
-    calls = []
-    await act(() => result.current.saveAccounts(revisit({ 'acc-2': false }), [], 'cur-usd'))
-    expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body.accountId)).toEqual(['acc-2'])
-    expect(srv.budgets[0].members.find((m: any) => m.id === 'acc-2').isSavings).toBe(false)
+    const old: AccountRow = { key: 'account:acc-old', name: 'Savings', balance: '', currencyId: 'cur-usd', icon: 'savings', accountId: 'acc-old' }
+    const out: AccountRow = { key: 'account:acc-out', name: 'Card', balance: '', currencyId: 'cur-usd', icon: 'credit_card', accountId: 'acc-out' }
+    await act(() => result.current.saveAccounts([old, out, rows[0]], [], 'cur-usd'))
+    expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body)).toEqual([{ id: 'b-old', accountId: 'acc-3' }])
   })
 
   it('ready waits for the accounts query', async () => {

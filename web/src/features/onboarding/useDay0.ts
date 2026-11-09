@@ -42,25 +42,13 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// Accounts saved once the budget exists reach it: an account the flow created
-// joins it, and a savings switch the user changed is applied. A switch on an
-// account the user already had is applied only once they change it, so a
-// guessed flag never overrides a reused budget. Turning savings off on a member
-// with plans or comments is refused by the server, and that error is shown.
+// Accounts the flow created after the budget exists join it; the user's other
+// accounts keep whatever membership that budget gives them.
 async function syncBudgetAccounts(d: Day0Draft, rows: AccountRow[], budgetId: Id): Promise<void> {
-  const members = new Map(((await getBudget(budgetId, today())).filters.accounts ?? []).map((a) => [a.id, a.isSavings === true]))
-  const submitted = new Set(d.accountIds)
-  const wasSavings = new Set(d.savingsAccountIds)
+  const members = new Set(((await getBudget(budgetId, today())).filters.accounts ?? []).map((a) => a.id))
   for (const row of rows) {
     const id = d.created[row.key]
-    const byFlow = Boolean(d.ops[`account:${row.key}`])
-    const member = members.get(id)
-    if (member === undefined) {
-      if (byFlow) await addAccount(budgetId, id, row.savings)
-      continue
-    }
-    const changed = byFlow || (submitted.has(id) && wasSavings.has(id) !== row.savings)
-    if (changed && member !== row.savings) await addAccount(budgetId, id, row.savings)
+    if (d.ops[`account:${row.key}`] && !members.has(id)) await addAccount(budgetId, id)
   }
 }
 
@@ -128,18 +116,17 @@ export function useDay0() {
           return
         }
         const d = current()
-        const checked = rows.filter((c) => c.checked)
         // a default re-labelled by a language switch was sent under its earlier name
         const sentAs = new Map(d.categoryRows.map((c) => [c.key, c.name]))
         d.categoryRows = rows
         d.categoryOrder = order ?? []
-        for (const c of checked) {
+        for (const c of rows) {
           opId(d, `category:${c.key}`)
         }
         persist(d)
 
         try {
-          for (const c of checked) {
+          for (const c of rows) {
             if (d.createdCategories[c.key]) {
               continue
             }
@@ -254,9 +241,6 @@ export function useDay0() {
           void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
         }
 
-        d.accountIds = rows.map((r) => d.created[r.key])
-        d.savingsAccountIds = rows.filter((r) => r.savings).map((r) => d.created[r.key])
-        persist(d)
         trackEvent(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, { accounts: rows.filter((r) => !r.accountId).length, currencies: selected.length })
       }),
     [run, current, persist, userId, queryClient],
@@ -299,7 +283,6 @@ export function useDay0() {
               startDate: '',
               currencyId,
               accountIds: owned,
-              savingsAccountIds: d.savingsAccountIds.filter((id) => owned.includes(id)),
             })
           } catch (err) {
             if (!isBadRequest(err) || !(await getBudgetList()).some((b) => b.id === budgetId)) {

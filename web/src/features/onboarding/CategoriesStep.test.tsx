@@ -16,7 +16,7 @@ function renderStep(props: Partial<React.ComponentProps<typeof CategoriesStep>> 
 }
 
 const submitted = (fn: ReturnType<typeof vi.fn>) => fn.mock.calls[0][0] as CategoryRow[]
-const chosen = (fn: ReturnType<typeof vi.fn>) => submitted(fn).filter((r) => r.checked)
+const removeButtons = () => screen.queryAllByRole('button', { name: /^Remove / })
 
 const food: ExistingCategory = { id: 'cat-1', name: 'Groceries', type: 'expense', icon: 'cake' }
 const pay: ExistingCategory = { id: 'cat-2', name: 'Paycheck', type: 'income', icon: 'work' }
@@ -28,29 +28,43 @@ beforeEach(() => {
   }))
 })
 
-it('lists all 14 defaults ticked, checkbox after the name, in one card per type', async () => {
+it('lists all 14 defaults with a remove button after the name, in one card per type', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep()
-  expect(screen.getAllByRole('checkbox')).toHaveLength(14)
-  screen.getAllByRole('checkbox').forEach((c) => expect(c).toBeChecked())
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  expect(removeButtons()).toHaveLength(14)
   const first = screen.getAllByTestId('category-row')[0]
   const name = within(first).getByLabelText('Category name')
-  expect(name.compareDocumentPosition(within(first).getByRole('checkbox')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(name.compareDocumentPosition(within(first).getByRole('button', { name: 'Remove Groceries' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(within(screen.getByTestId('group-expense')).getAllByTestId('category-row')).toHaveLength(11)
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  const rows = chosen(onContinue)
+  const rows = submitted(onContinue)
   expect(rows).toHaveLength(14)
   expect(rows.filter((r) => r.type === 'expense').map((r) => r.name).slice(8, 10)).toEqual(['Kids', 'Pets'])
   expect(rows.filter((r) => r.type === 'income').map((r) => r.name)).toEqual(['Salary', 'Bonus', 'Other income'])
 })
 
-it('submits an unticked category unchecked, so a reload keeps it unticked', async () => {
+it('a removed category leaves the list and is not submitted; the rest go out in display order', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep()
-  await user.click(screen.getByRole('checkbox', { name: 'Kids' }))
+  await user.click(screen.getByRole('button', { name: 'Remove Kids' }))
+  expect(screen.queryByDisplayValue('Kids')).not.toBeInTheDocument()
+  expect(screen.getAllByTestId('category-row')).toHaveLength(13)
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(chosen(onContinue).map((r) => r.name)).not.toContain('Kids')
-  expect(submitted(onContinue).find((r) => r.name === 'Kids')).toMatchObject({ checked: false })
+  const names = submitted(onContinue).map((r) => r.name)
+  expect(names).toHaveLength(13)
+  expect(names).not.toContain('Kids')
+  expect(names.slice(7, 9)).toEqual(['Entertainment', 'Pets'])
+})
+
+it('a removed category typed again under Add your own comes back as a normal row', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep()
+  await user.click(screen.getByRole('button', { name: 'Remove Kids' }))
+  await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'Kids{Enter}')
+  expect(screen.getByRole('button', { name: 'Remove Kids' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(submitted(onContinue).filter((r) => r.name === 'Kids')).toHaveLength(1)
 })
 
 it('passes a rename and an icon change through', async () => {
@@ -64,7 +78,7 @@ it('passes a rename and an icon change through', async () => {
   const dialog = await screen.findByRole('dialog')
   await user.click(within(dialog).getByRole('option', { name: 'account_balance_wallet' }))
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(chosen(onContinue)[0]).toMatchObject({ name: 'Food', icon: 'account_balance_wallet', type: 'expense', checked: true })
+  expect(submitted(onContinue)[0]).toMatchObject({ name: 'Food', icon: 'account_balance_wallet', type: 'expense' })
 })
 
 it('adds your own expense and income rows on Enter and blur', async () => {
@@ -73,9 +87,9 @@ it('adds your own expense and income rows on Enter and blur', async () => {
   await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'Pets{Enter}')
   await user.type(within(screen.getByTestId('group-income')).getByPlaceholderText('Add your own'), 'Gifts')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  const rows = chosen(onContinue)
-  expect(rows.find((r) => r.name === 'Pets')).toMatchObject({ type: 'expense', checked: true })
-  expect(rows.find((r) => r.name === 'Gifts')).toMatchObject({ type: 'income', checked: true })
+  const rows = submitted(onContinue)
+  expect(rows.find((r) => r.name === 'Pets')).toMatchObject({ type: 'expense' })
+  expect(rows.find((r) => r.name === 'Gifts')).toMatchObject({ type: 'income' })
 })
 
 it('merges duplicate names within a type, case-insensitively', async () => {
@@ -83,41 +97,52 @@ it('merges duplicate names within a type, case-insensitively', async () => {
   const { onContinue } = renderStep()
   await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'groceries{Enter}')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(chosen(onContinue).filter((r) => r.name.toLowerCase() === 'groceries')).toHaveLength(1)
+  expect(submitted(onContinue).filter((r) => r.name.toLowerCase() === 'groceries')).toHaveLength(1)
 })
 
-it('disables Continue when nothing is ticked on a fresh account', async () => {
+it('disables Continue only once every category is removed on a fresh account', async () => {
   const user = userEvent.setup()
   renderStep()
-  for (const c of screen.getAllByRole('checkbox')) await user.click(c)
+  const buttons = removeButtons()
+  for (const b of buttons.slice(0, -1)) await user.click(b)
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
+  await user.click(buttons.at(-1)!)
+  expect(screen.queryAllByTestId('category-row')).toHaveLength(0)
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
 })
 
-it('lists existing categories first, ticked and locked, and omits defaults they already cover', async () => {
+it('keeps Continue enabled with every new row removed while the user has categories', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep({ existing: [food], initialRows: [{ key: 'k1', name: 'Fun', type: 'expense', icon: 'movie' }] })
+  await user.click(screen.getByRole('button', { name: 'Remove Fun' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(submitted(onContinue)).toEqual([])
+})
+
+it('lists existing categories read-only, with no remove button, and offers no defaults on top of them', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep({ existing: [food, pay] })
   const expense = within(screen.getByTestId('group-expense')).getAllByTestId('category-row')
+  expect(expense).toHaveLength(1)
   expect(expense[0]).toHaveTextContent('Groceries')
   expect(within(expense[0]).queryByLabelText('Category name')).not.toBeInTheDocument()
-  expect(within(expense[0]).getByRole('checkbox')).toBeChecked()
-  expect(within(expense[0]).getByRole('checkbox')).toBeDisabled()
+  expect(within(expense[0]).queryByRole('checkbox')).not.toBeInTheDocument()
+  expect(within(expense[0]).queryByRole('button', { name: /^Remove / })).not.toBeInTheDocument()
   expect(within(expense[0]).queryByRole('button', { name: 'Change icon' })).not.toBeInTheDocument()
-  expect(screen.getAllByText('Groceries')).toHaveLength(1)
   expect(within(screen.getByTestId('group-income')).getAllByTestId('category-row')[0]).toHaveTextContent('Paycheck')
-  // with categories already there the remaining defaults are offered, not pre-ticked
-  expect(screen.getByRole('checkbox', { name: 'Housing' })).not.toBeChecked()
+  expect(screen.queryByDisplayValue('Housing')).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(chosen(onContinue)).toEqual([])
+  expect(submitted(onContinue)).toEqual([])
 })
 
 it('does not offer a default named like an archived category, nor list the archived one', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep({ archived: [{ id: 'cat-9', name: 'groceries', type: 'expense', icon: 'cake' }] })
-  expect(screen.queryByRole('checkbox', { name: 'Groceries' })).not.toBeInTheDocument()
-  expect(screen.getByRole('checkbox', { name: 'Housing' })).toBeChecked()
+  expect(screen.queryByDisplayValue('Groceries')).not.toBeInTheDocument()
+  expect(screen.getByDisplayValue('Housing')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(chosen(onContinue).map((r) => r.name)).not.toContain('Groceries')
+  expect(submitted(onContinue).map((r) => r.name)).not.toContain('Groceries')
 })
 
 it('never submits a new row named like an existing category', async () => {
@@ -125,21 +150,32 @@ it('never submits a new row named like an existing category', async () => {
   const { onContinue } = renderStep({ existing: [food] })
   await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'GROCERIES{Enter}')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(chosen(onContinue)).toEqual([])
+  expect(submitted(onContinue)).toEqual([])
 })
 
 it('reseeds from a stored draft keeping keys, showing created ones as existing only', async () => {
   const user = userEvent.setup()
-  const rows: CategoryRow[] = [
-    { key: 'k1', name: 'Groceries', type: 'expense', icon: 'cake', checked: true },
-    { key: 'k2', name: 'Fun', type: 'expense', icon: 'movie', checked: true },
-    { key: 'k3', name: 'Kids', type: 'expense', icon: 'child_care', checked: false },
-  ]
+  const rows = [
+    { key: 'k1', name: 'Groceries', type: 'expense', icon: 'cake' },
+    { key: 'k2', name: 'Fun', type: 'expense', icon: 'movie' },
+    { key: 'k4', name: 'Books', type: 'expense', icon: 'book' },
+  ] as CategoryRow[]
   const { onContinue } = renderStep({ initialRows: rows, existing: [food] })
   expect(screen.getAllByTestId('category-row')).toHaveLength(3)
-  expect(screen.getByRole('checkbox', { name: 'Kids' })).not.toBeChecked()
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(chosen(onContinue).map((r) => r.key)).toEqual(['k2'])
+  expect(submitted(onContinue).map((r) => r.key)).toEqual(['k2', 'k4'])
+})
+
+it('treats an unticked row of an older draft as removed', async () => {
+  const user = userEvent.setup()
+  const rows = [
+    { key: 'k2', name: 'Fun', type: 'expense', icon: 'movie', checked: true },
+    { key: 'k3', name: 'Kids', type: 'expense', icon: 'child_care', checked: false },
+  ] as unknown as CategoryRow[]
+  const { onContinue } = renderStep({ initialRows: rows })
+  expect(screen.queryByDisplayValue('Kids')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(submitted(onContinue).map((r) => r.key)).toEqual(['k2'])
 })
 
 it('Skip calls onSkip', async () => {
@@ -155,7 +191,7 @@ it('is inert while pending', () => {
   expect(screen.getByRole('button', { name: 'Skip' })).toBeDisabled()
 })
 
-it('flags a renamed or added category outside 3-64 characters and blocks Continue until it is fixed or unticked', async () => {
+it('flags a renamed or added category outside 3-64 characters and blocks Continue until it is fixed or removed', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep()
   const first = screen.getAllByTestId('category-row')[0]
@@ -175,13 +211,13 @@ it('flags a renamed or added category outside 3-64 characters and blocks Continu
   const added = screen.getAllByTestId('category-row').at(-1)!
   expect(within(added).getByText('Category name must be 3-64 characters')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
-  await user.click(within(added).getByRole('checkbox'))
+  await user.click(within(added).getByRole('button', { name: 'Remove Tx' }))
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(chosen(onContinue).map((r) => r.name)).not.toContain('Tx')
+  expect(submitted(onContinue).map((r) => r.name)).not.toContain('Tx')
 })
 
 it('gives every row a keyboard-reachable drag handle on a desktop width, none on a phone', () => {
-  renderStep({ existing: [food] })
+  renderStep({ existing: [food], initialRows: [{ key: 'k1', name: 'Pets', type: 'expense', icon: 'pets' }] })
   expect(screen.getByRole('button', { name: 'Reorder Groceries' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Reorder Pets' })).toHaveAttribute('tabindex', '0')
 })
@@ -219,8 +255,8 @@ describe('in the UI language', () => {
     await act(() => i18n.changeLanguage('de'))
     renderStep({
       initialRows: [
-        { key: 'k1', name: 'Pets', labelKey: 'onboarding.categories.pets', type: 'expense', icon: 'pets', checked: true },
-        { key: 'k2', name: 'Rent', type: 'expense', icon: 'home', checked: true },
+        { key: 'k1', name: 'Pets', labelKey: 'onboarding.categories.pets', type: 'expense', icon: 'pets' },
+        { key: 'k2', name: 'Rent', type: 'expense', icon: 'home' },
       ],
     })
     expect(screen.getAllByLabelText('Kategoriename').map((el) => (el as HTMLInputElement).value)).toEqual(['Haustiere', 'Rent'])
@@ -257,15 +293,15 @@ describe('CategoriesStepBody', () => {
 
   it('a stored draft with some rows created resumes without duplicates, then moves on', async () => {
     const rows: CategoryRow[] = [
-      { key: 'k1', name: 'Food', type: 'expense', icon: 'restaurant', checked: true },
-      { key: 'k2', name: 'Fun', type: 'expense', icon: 'movie', checked: true },
+      { key: 'k1', name: 'Food', type: 'expense', icon: 'restaurant' },
+      { key: 'k2', name: 'Fun', type: 'expense', icon: 'movie' },
     ]
     saveDraft('u1', { ...emptyDraft(), ops: { 'category:k1': 'op1', 'category:k2': 'op2' }, categoryRows: rows, createdCategories: { k1: 'cat-food' } })
     const user = userEvent.setup()
     const { onDone } = renderBody(fixtureCategories)
     await screen.findByRole('heading', { name: 'What do you spend on?' })
     expect(screen.getAllByText('Food')).toHaveLength(1)
-    expect(screen.getByRole('checkbox', { name: 'Food' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Remove Food' })).not.toBeInTheDocument()
     expect(screen.queryByText('Old')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
@@ -277,8 +313,8 @@ describe('CategoriesStepBody', () => {
     // get-category-list as the server sends it: archived categories are included, isArchived 1
     renderBody([{ id: 'cat-a', ownerUserId: 'u1', name: 'Groceries', position: 0, type: 'expense', icon: 'shopping_cart', isArchived: 1, createdAt: '2026-11-08 21:37:17', updatedAt: '2026-11-08 21:37:17' }])
     await screen.findByRole('heading', { name: 'What do you spend on?' })
-    expect(screen.queryByRole('checkbox', { name: 'Groceries' })).not.toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Housing' })).toBeChecked()
+    expect(screen.queryByDisplayValue('Groceries')).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('Housing')).toBeInTheDocument()
   })
 
   it('a failed save shows the error and stays on the step', async () => {
@@ -291,7 +327,7 @@ describe('CategoriesStepBody', () => {
     expect(onDone).not.toHaveBeenCalled()
   })
 
-  it('a failed category list shows the error with a retry instead of ticked defaults', async () => {
+  it('a failed category list shows the error with a retry instead of the defaults', async () => {
     let fail = true
     renderBody([], [
       http.get('*/api/v1/category/get-category-list', () =>
@@ -300,10 +336,11 @@ describe('CategoriesStepBody', () => {
     ])
     const user = userEvent.setup()
     expect(await screen.findByRole('alert')).toBeInTheDocument()
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Remove / })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(await screen.findByRole('checkbox', { name: 'Food' })).toBeDisabled()
+    expect(await screen.findByText('Food')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remove Food' })).not.toBeInTheDocument()
   })
 })

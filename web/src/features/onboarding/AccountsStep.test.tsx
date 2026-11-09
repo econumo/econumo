@@ -26,7 +26,7 @@ const nameInputs = () => screen.getAllByLabelText('Account name')
 const balanceInputs = () => screen.getAllByLabelText('Balance')
 const rowsEls = () => screen.getAllByTestId('account-row')
 const addAccount = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Add account' }))
-const details = (user: ReturnType<typeof userEvent.setup>, i: number) => user.click(within(rowsEls()[i]).getByRole('button', { name: 'Account details' }))
+const removeRow = (user: ReturnType<typeof userEvent.setup>, i: number) => user.click(within(rowsEls()[i]).getByRole('button', { name: 'Remove account' }))
 
 async function ready() {
   // the default currency resolves once the currency list and profile load
@@ -45,7 +45,7 @@ beforeEach(() => {
   }))
 })
 
-it('starts a user with no accounts on a prefilled Cash row: cash icon, not savings, blank balance', async () => {
+it('starts a user with no accounts on a prefilled Cash row: cash icon, blank balance, no savings switch', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep()
   await ready()
@@ -53,8 +53,11 @@ it('starts a user with no accounts on a prefilled Cash row: cash icon, not savin
   expect(nameInputs()[0]).toHaveValue('Cash')
   expect(balanceInputs()[0]).toHaveValue('')
   expect(within(rowsEls()[0]).getByText('payments')).toBeInTheDocument()
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Account details' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(onContinue.mock.calls[0][0]).toEqual([expect.objectContaining({ name: 'Cash', balance: '0', currencyId: 'cur-usd', savings: false, icon: 'payments' })])
+  expect(onContinue.mock.calls[0][0][0]).not.toHaveProperty('savings')
+  expect(onContinue.mock.calls[0][0]).toEqual([expect.objectContaining({ name: 'Cash', balance: '0', currencyId: 'cur-usd', icon: 'payments' })])
   expect(onContinue.mock.calls[0][2]).toBe('cur-usd')
 })
 
@@ -72,7 +75,7 @@ describe('in the UI language', () => {
     expect(name).toHaveValue('Bargeld')
     expect(within(rowsEls()[0]).getByText('payments')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    expect(onContinue.mock.calls[0][0][0]).toMatchObject({ name: 'Bargeld', labelKey: 'onboarding.accounts.default_cash', icon: 'payments', savings: false })
+    expect(onContinue.mock.calls[0][0][0]).toMatchObject({ name: 'Bargeld', labelKey: 'onboarding.accounts.default_cash', icon: 'payments' })
   })
 
   it('keeps a renamed Cash row as typed after a language switch', async () => {
@@ -87,7 +90,7 @@ describe('in the UI language', () => {
 
   it('a stored draft row with a label key reloads in the current language', async () => {
     await act(() => i18n.changeLanguage('de'))
-    renderStep({ initialRows: [{ key: 'k1', name: 'Cash', labelKey: 'onboarding.accounts.default_cash', balance: '', currencyId: 'cur-eur', savings: false, icon: 'payments' }] })
+    renderStep({ initialRows: [{ key: 'k1', name: 'Cash', labelKey: 'onboarding.accounts.default_cash', balance: '', currencyId: 'cur-eur', icon: 'payments' }] })
     expect(await screen.findByLabelText('Kontoname')).toHaveValue('Bargeld')
   })
 })
@@ -98,7 +101,7 @@ it('gives no Cash row to a user who already has accounts', () => {
 })
 
 it('gives no Cash row to a resumed draft with rows', () => {
-  renderStep({ initialRows: [{ key: 'k1', name: 'Card', balance: '1', currencyId: 'cur-eur', savings: false, icon: 'credit_card' }] })
+  renderStep({ initialRows: [{ key: 'k1', name: 'Card', balance: '1', currencyId: 'cur-eur', icon: 'credit_card' }] })
   expect(screen.queryByDisplayValue('Cash')).not.toBeInTheDocument()
 })
 
@@ -112,27 +115,27 @@ it('starts with one row and adds another with Add account', async () => {
   expect(nameInputs()[1]).toHaveFocus()
 })
 
-it('picks the cash icon for Cash and marks a savings name as a savings account', async () => {
+it('picks the cash icon for Cash and the piggy bank for a savings name', async () => {
   const user = userEvent.setup()
   renderStep()
   await ready()
+  await user.clear(nameInputs()[0])
   await user.type(nameInputs()[0], 'Cash')
   expect(within(rowsEls()[0]).getByText('payments')).toBeInTheDocument()
   await addAccount(user)
   await user.type(nameInputs()[1], 'Savings')
-  expect(within(rowsEls()[1]).queryByText('Savings account')).not.toBeInTheDocument()
-  await details(user, 1)
-  expect(within(rowsEls()[1]).getByRole('switch')).toBeChecked()
+  expect(within(rowsEls()[1]).getByText('savings')).toBeInTheDocument()
 })
 
-it('stops following the name once the savings switch is toggled', async () => {
+it('removes a new row with its inline remove button', async () => {
   const user = userEvent.setup()
   renderStep()
   await ready()
-  await details(user, 0)
-  await user.click(within(rowsEls()[0]).getByRole('switch'))
-  await user.type(nameInputs()[0], 'Cash')
-  expect(within(rowsEls()[0]).getByRole('switch')).toBeChecked()
+  await addAccount(user)
+  await user.type(nameInputs()[1], 'Card')
+  await removeRow(user, 1)
+  expect(nameInputs()).toHaveLength(1)
+  expect(nameInputs()[0]).toHaveValue('Cash')
 })
 
 it('submits a typed balance as a normalized decimal string and the main currency', async () => {
@@ -256,8 +259,8 @@ it('with only EUR accounts and a blank row, Main is the existing currency, not t
 it('resumes with the first draft row currency as the default for rows added later', async () => {
   const user = userEvent.setup()
   const initialRows: AccountRow[] = [
-    { key: 'k1', name: 'Aaa', balance: '1', currencyId: 'cur-eur', savings: false, icon: 'credit_card' },
-    { key: 'k2', name: 'Bbb', balance: '1', currencyId: 'cur-usd', savings: false, icon: 'credit_card' },
+    { key: 'k1', name: 'Aaa', balance: '1', currencyId: 'cur-eur', icon: 'credit_card' },
+    { key: 'k2', name: 'Bbb', balance: '1', currencyId: 'cur-usd', icon: 'credit_card' },
   ]
   renderStep({ initialRows })
   await ready()
@@ -273,8 +276,7 @@ it('removing the first row makes the new first row currency the default', async 
   await addAccount(user)
   await user.type(nameInputs()[1], 'Bbb')
   await pickCurrency(user, 1, 'EUR')
-  await details(user, 0)
-  await user.click(screen.getByRole('button', { name: 'Remove account' }))
+  await removeRow(user, 0)
   await addAccount(user)
   expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['EUR', 'EUR'])
 })
@@ -291,10 +293,8 @@ it("Main follows the first row's pick even while that row is blank, and clears w
   expect(main()).toHaveTextContent('EUR (main)')
   await user.type(nameInputs()[0], 'Aaa')
   expect(main()).toHaveTextContent('EUR (main)')
-  await details(user, 1)
-  await user.click(screen.getByRole('button', { name: 'Remove account' }))
-  await details(user, 0)
-  await user.click(screen.getByRole('button', { name: 'Remove account' }))
+  await removeRow(user, 1)
+  await removeRow(user, 0)
   await addAccount(user)
   expect(screen.getAllByLabelText('Currency').map((el) => el.textContent)).toEqual(['USD'])
 })
@@ -342,7 +342,7 @@ it('changes a new row\'s icon through the icon picker and keeps it when the name
   await user.type(nameInputs()[0], 'Savings')
   expect(within(rowsEls()[0]).getByText('account_balance_wallet')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(onContinue.mock.calls[0][0]).toEqual([expect.objectContaining({ name: 'Savings', icon: 'account_balance_wallet', savings: true })])
+  expect(onContinue.mock.calls[0][0]).toEqual([expect.objectContaining({ name: 'Savings', icon: 'account_balance_wallet' })])
 })
 
 it('keeps the icon of an existing account read-only', async () => {
@@ -371,27 +371,24 @@ it('lists existing accounts first, locked with their balance, and passes them on
   expect(within(first).queryByLabelText('Account name')).not.toBeInTheDocument()
   expect(within(first).queryByLabelText('Balance')).not.toBeInTheDocument()
   expect(within(first).getByText('EUR')).toBeInTheDocument()
-  // existing accounts need no new row; their savings flag is guessed from the name
+  // existing accounts need no new row, and have no remove button or savings switch
   expect(nameInputs).toThrow()
-  await details(user, 1)
-  expect(within(rowsEls()[1]).getByRole('switch')).toBeChecked()
-  await details(user, 0)
   expect(within(rowsEls()[0]).queryByRole('button', { name: 'Remove account' })).not.toBeInTheDocument()
-  await user.click(within(rowsEls()[0]).getByRole('switch'))
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   const [out] = onContinue.mock.calls[0]
   expect(out).toEqual([
-    expect.objectContaining({ accountId: 'acc-imp', currencyId: 'cur-eur', savings: true }),
-    expect.objectContaining({ accountId: 'acc-sav', currencyId: 'cur-usd', savings: true }),
+    expect.objectContaining({ accountId: 'acc-imp', currencyId: 'cur-eur' }),
+    expect.objectContaining({ accountId: 'acc-sav', currencyId: 'cur-usd' }),
   ])
 })
 
 it('reseeds from a stored draft: created rows show as existing under their keys, the rest stay editable', async () => {
   const user = userEvent.setup()
   const rows: AccountRow[] = [
-    { key: 'k1', name: 'Imported card', balance: '10.00', currencyId: 'cur-eur', savings: false, icon: 'payments' },
-    { key: 'k2', name: 'Pending', balance: '5', currencyId: 'cur-eur', savings: false, icon: 'credit_card' },
+    { key: 'k1', name: 'Imported card', balance: '10.00', currencyId: 'cur-eur', icon: 'payments' },
+    { key: 'k2', name: 'Pending', balance: '5', currencyId: 'cur-eur', icon: 'credit_card' },
   ]
   const { onContinue } = renderStep({ existing: [imported], initialRows: rows, createdIds: { k1: 'acc-imp' } })
   await ready()
@@ -427,8 +424,8 @@ describe('AccountsStepBody', () => {
   it('a stored draft with one account created resumes without creating it again, then moves on', async () => {
     localStorage.clear()
     const rows: AccountRow[] = [
-      { key: 'k1', name: 'Cash', balance: '100.5', currencyId: 'cur-usd', savings: false, icon: 'payments' },
-      { key: 'k2', name: 'Travel fund', balance: '20', currencyId: 'cur-usd', savings: true, icon: 'savings' },
+      { key: 'k1', name: 'Cash', balance: '100.5', currencyId: 'cur-usd', icon: 'payments' },
+      { key: 'k2', name: 'Travel fund', balance: '20', currencyId: 'cur-usd', icon: 'savings' },
     ]
     saveDraft('u1', { ...emptyDraft(), ops: { 'account:k1': 'op1', 'account:k2': 'op2' }, rows, created: { k1: 'a1' } })
     const created: string[] = []
@@ -458,9 +455,7 @@ describe('AccountsStepBody', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(created).toEqual(['Travel fund'])
-    const d = loadDraft('u1')!
-    expect(d.accountIds).toEqual(['a1', 'a-new'])
-    expect(d.savingsAccountIds).toEqual(['a-new'])
+    expect(loadDraft('u1')!.created).toEqual({ k1: 'a1', k2: 'a-new' })
   })
 })
 
@@ -469,7 +464,7 @@ describe('AccountsStepBody recovery', () => {
 
   it('a draft row whose create landed but whose response was lost shows once and continues', async () => {
     localStorage.clear()
-    const rows: AccountRow[] = [{ key: 'k1', name: 'Cash', balance: '100.5', currencyId: 'cur-usd', savings: true, icon: 'payments' }]
+    const rows: AccountRow[] = [{ key: 'k1', name: 'Cash', balance: '100.5', currencyId: 'cur-usd', icon: 'payments' }]
     saveDraft('u1', { ...emptyDraft(), ops: { 'account:k1': 'op1' }, rows })
     const creates: string[] = []
     server.use(
@@ -493,14 +488,11 @@ describe('AccountsStepBody recovery', () => {
     await ready()
     expect(screen.getAllByTestId('account-row')).toHaveLength(1)
     expect(screen.queryByLabelText('Account name')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Account details' }))
-    expect(within(screen.getByTestId('account-row')).getByRole('switch')).toBeChecked()
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(creates).toEqual([])
     const d = loadDraft('u1')!
     expect(d.created).toEqual({ k1: 'a1' })
-    expect(d.savingsAccountIds).toEqual(['a1'])
   })
 
   it('a failed account list shows the error with a retry instead of an empty form', async () => {

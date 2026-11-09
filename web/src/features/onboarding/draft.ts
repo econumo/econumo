@@ -8,13 +8,12 @@ export type AccountRow = {
   name: string
   balance: string
   currencyId: Id
-  savings: boolean
   icon: string
   accountId?: Id
   labelKey?: string
   iconPicked?: boolean
 }
-export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; checked: boolean; labelKey?: string }
+export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; labelKey?: string }
 export type Day0Draft = {
   // operation ids by `account:<rowKey>` / `category:<rowKey>` / `budget` (the budget's own id)
   ops: Record<string, Id>
@@ -33,8 +32,6 @@ export type Day0Draft = {
   budgetDone: boolean
   // the budget the plan step planned, created or reused; accounts saved later join it
   budgetId: Id | null
-  accountIds: Id[]
-  savingsAccountIds: Id[]
   mainCurrencyId: Id | null
 }
 
@@ -50,8 +47,6 @@ export function emptyDraft(): Day0Draft {
     currenciesApplied: null,
     budgetDone: false,
     budgetId: null,
-    accountIds: [],
-    savingsAccountIds: [],
     mainCurrencyId: null,
   }
 }

@@ -35,6 +35,11 @@ export function Stepper({ steps, current, onSelect }: StepperProps) {
   // the dot and bar colours carry done/skipped for the eye; screen readers get it in words
   const stateWord = (step: OnboardingStep) => (step.state === 'open' ? null : t(`onboarding.steps_nav.state_${step.state}`))
   const spoken = (step: OnboardingStep) => [label(step.key), stateWord(step)].filter(Boolean).join(', ')
+  // a finished step is read-only: its work is saved and is changed from the app itself
+  const locked = (step: OnboardingStep) => step.state === 'done'
+  const select = (step: OnboardingStep) => {
+    if (!locked(step)) onSelect(step.key)
+  }
 
   if (isCompact) {
     const position = steps.findIndex((s) => s.key === current) + 1
@@ -50,9 +55,10 @@ export function Stepper({ steps, current, onSelect }: StepperProps) {
                 type="button"
                 aria-label={spoken(step)}
                 aria-current={state === 'current' ? 'step' : undefined}
+                aria-disabled={locked(step) || undefined}
                 data-state={state}
-                onClick={() => onSelect(step.key)}
-                className="flex h-6 flex-1 items-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                onClick={() => select(step)}
+                className={`flex h-6 flex-1 items-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${locked(step) ? 'cursor-default' : ''}`}
               >
                 <span className={`h-1 w-full rounded-full ${SEGMENT[state]}`} />
               </button>
@@ -79,9 +85,10 @@ export function Stepper({ steps, current, onSelect }: StepperProps) {
               <button
                 type="button"
                 aria-current={state === 'current' ? 'step' : undefined}
+                aria-disabled={locked(step) || undefined}
                 data-state={state}
-                onClick={() => onSelect(step.key)}
-                className={`flex flex-col items-center gap-1.5 rounded-md px-1 text-center text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${state === 'current' ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground`}
+                onClick={() => select(step)}
+                className={`flex flex-col items-center gap-1.5 rounded-md px-1 text-center text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${state === 'current' ? 'text-foreground' : 'text-muted-foreground'} ${locked(step) ? 'cursor-default' : 'hover:text-foreground'}`}
               >
                 <span className={`z-10 grid size-7 place-items-center rounded-full border-2 text-xs ${DOT[state]}`}>
                   {step.state === 'done' ? <Check className="size-4" data-testid={`step-check-${step.key}`} /> : index + 1}

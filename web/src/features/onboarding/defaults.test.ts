@@ -4,7 +4,6 @@ import {
   DEFAULT_EXPENSE_CATEGORIES,
   DEFAULT_INCOME_CATEGORIES,
   guessAccountIcon,
-  looksLikeSavings,
 } from './defaults'
 
 const words = { cash: 'cash | wallet', savings: 'savings | reserve' }
@@ -17,7 +16,6 @@ const de = {
 describe('onboarding defaults', () => {
   it('does not mistake bank names for savings or cash', () => {
     for (const name of ['Sparkasse', 'Sparda-Bank', 'Barclays']) {
-      expect(looksLikeSavings(name, de.savings)).toBe(false)
       expect(guessAccountIcon(name, de)).toBe('credit_card')
     }
     expect(guessAccountIcon('Sparkonto', de)).toBe('savings')
@@ -36,15 +34,10 @@ describe('onboarding defaults', () => {
     expect(DEFAULT_INCOME_CATEGORIES.map((c) => c.key)).toEqual(['salary', 'bonus', 'other_income'])
   })
 
-  it('detects savings names', () => {
-    expect(looksLikeSavings('My Savings', 'savings | reserve')).toBe(true)
-    expect(looksLikeSavings('Chase', 'savings | reserve')).toBe(false)
-    expect(looksLikeSavings('Chase', '')).toBe(false)
-  })
-
   it('guesses the account icon', () => {
     expect(guessAccountIcon('Cash', words)).toBe('payments')
     expect(guessAccountIcon('Rainy reserve', words)).toBe('savings')
     expect(guessAccountIcon('Chase', words)).toBe('credit_card')
+    expect(guessAccountIcon('Chase', { cash: '', savings: '' })).toBe('credit_card')
   })
 })

@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { GripVertical, Plus } from 'lucide-react'
+import { GripVertical, Plus, Trash2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { EntityIcon } from '@/components/EntityIcon'
 import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
@@ -34,7 +33,7 @@ export interface ExistingCategory {
 }
 
 interface CategoriesStepProps {
-  // the user's own categories: listed first, ticked and locked
+  // the user's own categories: listed read-only among the new rows
   existing: ExistingCategory[]
   // the user's own archived categories: never listed, but a default named like one is not offered again
   archived?: ExistingCategory[]
@@ -64,12 +63,16 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
   const isCompact = useIsCompact()
   const taken = new Set(existing.map((c) => nameKey(c.type, c.name)))
   const [stored, setRows] = useState<CategoryRow[]>(() => {
-    const seeded = (initialRows ?? []).filter((r) => !taken.has(nameKey(r.type, labelled(r, t).name)))
+    // a draft from before rows could be removed kept unticked rows as `checked: false`
+    const kept = (initialRows ?? []).filter((r) => (r as { checked?: boolean }).checked !== false)
+    const seeded = kept.filter((r) => !taken.has(nameKey(r.type, labelled(r, t).name)))
     if (initialRows && initialRows.length > 0) return seeded
+    // every offered row is created unless removed, so a user who already has categories is offered none
+    if (existing.length > 0) return []
     const build = (list: typeof DEFAULT_EXPENSE_CATEGORIES, type: CategoryType): CategoryRow[] =>
       list.map((c) => {
         const labelKey = `onboarding.categories.${c.key}`
-        return { key: uuidv7(), name: t(labelKey), labelKey, type, icon: c.icon, checked: existing.length === 0 }
+        return { key: uuidv7(), name: t(labelKey), labelKey, type, icon: c.icon }
       })
     const retired = new Set(archived.map((c) => nameKey(c.type, c.name)))
     return [...build(DEFAULT_EXPENSE_CATEGORIES, 'expense'), ...build(DEFAULT_INCOME_CATEGORIES, 'income')].filter(
@@ -100,30 +103,31 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
     setReordered(true)
   }
   const update = (key: string, patch: Partial<CategoryRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+  const remove = (key: string) => setRows((prev) => prev.filter((r) => r.key !== key))
 
   const addDraft = (type: CategoryType) => {
     const name = drafts[type].trim()
     if (name === '') return
     const key = uuidv7()
-    setRows((prev) => [...prev, { key, name, type, icon: defaultCategoryIcon, checked: true }])
+    setRows((prev) => [...prev, { key, name, type, icon: defaultCategoryIcon }])
     touch(key)
     setDrafts((prev) => ({ ...prev, [type]: '' }))
   }
 
-  // every row goes out, unticked ones unchecked: the draft keeps them so a revisit shows them as left
+  // a blank row or a second row of the same name is left out
   const normalized = () => {
     const seen = new Set(taken)
-    return rows.map((r) => {
+    return rows.flatMap((r) => {
       const name = r.name.trim()
       const id = nameKey(r.type, name)
-      const checked = r.checked && name !== '' && !seen.has(id)
-      if (checked) seen.add(id)
-      return { ...r, name, checked }
+      if (name === '' || seen.has(id)) return []
+      seen.add(id)
+      return [{ ...r, name }]
     })
   }
 
-  const invalidName = new Set(rows.filter((r) => r.checked && r.name.trim() !== '' && !nameLengthValid(r.name)).map((r) => r.key))
-  const canContinue = !pending && invalidName.size === 0 && (existing.length > 0 || normalized().some((r) => r.checked))
+  const invalidName = new Set(rows.filter((r) => r.name.trim() !== '' && !nameLengthValid(r.name)).map((r) => r.key))
+  const canContinue = !pending && invalidName.size === 0 && existing.length + normalized().length > 0
   const submit = () => {
     if (!canContinue) return
     const ids = fullOrder()
@@ -157,7 +161,6 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
             <EntityIcon name={c.icon} className="text-lg" />
           </span>
           <span className="min-w-0 flex-1 truncate px-1">{c.name}</span>
-          <Checkbox aria-label={c.name} className="size-5 rounded-md" checked disabled />
         </div>
       )
     }
@@ -177,7 +180,7 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
             <EntityIcon name={row.icon} className="text-lg" />
           </button>
           <input
-            className={cn(rowInput, !row.checked && 'text-muted-foreground')}
+            className={rowInput}
             aria-label={t('onboarding.categories_step.name_label')}
             maxLength={64}
             value={row.name}
@@ -185,12 +188,14 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
             onChange={(e) => update(row.key, { name: e.target.value, labelKey: undefined })}
             onBlur={() => touch(row.key)}
           />
-          <Checkbox
-            aria-label={row.name}
-            className="size-5 rounded-md"
-            checked={row.checked}
-            onCheckedChange={(v) => update(row.key, { checked: v === true })}
-          />
+          <button
+            type="button"
+            aria-label={t('onboarding.categories_step.remove_label', { name: row.name })}
+            className="-mr-1 grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+            onClick={() => remove(row.key)}
+          >
+            <Trash2 className="size-4" />
+          </button>
         </div>
         {showInvalid && (
           <p className={cn('mt-1 text-sm text-destructive', isCompact ? 'pl-11' : 'pl-[4.75rem]')}>

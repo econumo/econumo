@@ -32,10 +32,6 @@ function matchesWords(name: string, words: string): boolean {
     .some((w) => haystack.includes(w))
 }
 
-export function looksLikeSavings(name: string, savingsWords: string): boolean {
-  return matchesWords(name, savingsWords)
-}
-
 export function guessAccountIcon(name: string, words: { cash: string; savings: string }): string {
   if (matchesWords(name, words.savings)) return 'savings'
   if (matchesWords(name, words.cash)) return 'payments'

@@ -42,6 +42,20 @@ it('selecting a step reports its key', async () => {
   expect(onSelect).toHaveBeenCalledWith('categories')
 })
 
+it('a done step is read-only: it keeps its tick and says done, but cannot be selected', async () => {
+  mockViewport(false)
+  const onSelect = vi.fn()
+  render(<Stepper steps={steps} current="accounts" onSelect={onSelect} />)
+  const done = screen.getByRole('button', { name: /Import/ })
+  expect(done).toHaveAttribute('aria-disabled', 'true')
+  expect(done).not.toHaveClass('hover:text-foreground')
+  expect(done).toHaveAccessibleName(/, done/)
+  expect(screen.getByTestId('step-check-import')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Categories/ })).not.toHaveAttribute('aria-disabled')
+  await userEvent.click(done)
+  expect(onSelect).not.toHaveBeenCalled()
+})
+
 it('compact shows the position and a segmented bar that also selects', async () => {
   mockViewport(true)
   const onSelect = vi.fn()
@@ -53,5 +67,7 @@ it('compact shows the position and a segmented bar that also selects', async () 
   // a 24px tall tap target around the thin bar
   expect(screen.getByRole('button', { name: 'Accounts' })).toHaveClass('h-6')
   await userEvent.click(screen.getByRole('button', { name: 'Import, done' }))
-  expect(onSelect).toHaveBeenCalledWith('import')
+  expect(onSelect).not.toHaveBeenCalled()
+  await userEvent.click(screen.getByRole('button', { name: 'Categories, skipped' }))
+  expect(onSelect).toHaveBeenCalledWith('categories')
 })

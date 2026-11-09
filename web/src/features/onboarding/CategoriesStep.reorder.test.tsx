@@ -50,7 +50,7 @@ function renderStep(props: Partial<React.ComponentProps<typeof CategoriesStep>> 
 
 const food: ExistingCategory = { id: 'cat-1', name: 'Groceries', type: 'expense', icon: 'cake' }
 const rowsOf = (type: 'expense' | 'income') => within(screen.getByTestId(`group-${type}`)).getAllByTestId('category-row')
-const nameOf = (row: HTMLElement) => within(row).getByRole('checkbox').getAttribute('aria-label')
+const nameOf = (row: HTMLElement) => within(row).getByRole('button', { name: /^Reorder / }).getAttribute('aria-label')!.replace(/^Reorder /, '')
 const names = (type: 'expense' | 'income') => rowsOf(type).map(nameOf)
 const keyOf = (rows: CategoryRow[], name: string) => rows.find((r) => r.name === name)!.key
 const moveUp = (user: ReturnType<typeof userEvent.setup>, rowName: string) => {
@@ -78,16 +78,28 @@ it('moves a row within its group and submits rows and the full order in that ord
   expect(order.indexOf(keyOf(rows, 'Pets'))).toBeLessThan(order.indexOf(keyOf(rows, 'Kids')))
 })
 
-it('moves a new row above an existing locked category', async () => {
+it('moves a new row above an existing read-only category', async () => {
   const user = userEvent.setup()
-  const { onContinue } = renderStep({ existing: [food] })
+  const initialRows = [{ key: 'k1', name: 'Housing', type: 'expense', icon: 'home' }] as CategoryRow[]
+  const { onContinue } = renderStep({ existing: [food], initialRows })
   expect(names('expense')[0]).toBe('Groceries')
   await moveUp(user, 'Housing')
   expect(names('expense').slice(0, 2)).toEqual(['Housing', 'Groceries'])
-  await user.click(screen.getByRole('checkbox', { name: 'Housing' }))
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   const [rows, order] = onContinue.mock.calls[0] as [CategoryRow[], string[]]
   expect(order.slice(0, 2)).toEqual([keyOf(rows, 'Housing'), 'cat-1'])
+})
+
+it('a removed row drops out of the submitted rows but the rest keep the moved order', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep()
+  await moveUp(user, 'Pets')
+  await user.click(screen.getByRole('button', { name: 'Remove Kids' }))
+  expect(names('expense').slice(7, 9)).toEqual(['Entertainment', 'Pets'])
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  const [rows, order] = onContinue.mock.calls[0] as [CategoryRow[], string[]]
+  expect(rows.map((r) => r.name)).not.toContain('Kids')
+  expect(order).toEqual(rows.map((r) => r.key))
 })
 
 it('passes no order when nothing was moved', async () => {
@@ -107,7 +119,7 @@ it('offers no reordering on a phone or tablet width', () => {
 
 it('restores a stored order and submits it again', async () => {
   const user = userEvent.setup()
-  const initialRows: CategoryRow[] = [{ key: 'k1', name: 'Pets', type: 'expense', icon: 'pets', checked: true }]
+  const initialRows: CategoryRow[] = [{ key: 'k1', name: 'Pets', type: 'expense', icon: 'pets' }]
   const { onContinue } = renderStep({ existing: [food], initialRows, initialOrder: ['k1', 'cat-1'] })
   expect(names('expense')).toEqual(['Pets', 'Groceries'])
   await user.click(screen.getByRole('button', { name: 'Continue' }))
@@ -118,8 +130,8 @@ it('maps a created row of the stored order to its category, so a revisit keeps t
   saveDraft('u1', {
     ...emptyDraft(),
     categoryRows: [
-      { key: 'k1', name: 'Food', type: 'expense', icon: 'restaurant', checked: true },
-      { key: 'k2', name: 'Fun', type: 'expense', icon: 'movie', checked: true },
+      { key: 'k1', name: 'Food', type: 'expense', icon: 'restaurant' },
+      { key: 'k2', name: 'Fun', type: 'expense', icon: 'movie' },
     ],
     createdCategories: { k1: 'cat-food' },
     categoryOrder: ['k2', 'k1'],
@@ -140,8 +152,8 @@ it('keeps the order once created rows come back as existing categories, and a re
   const user = userEvent.setup()
   const onContinue = vi.fn()
   const initialRows: CategoryRow[] = [
-    { key: 'k1', name: 'Pets', type: 'expense', icon: 'pets', checked: true },
-    { key: 'k2', name: 'Kids', type: 'expense', icon: 'child_care', checked: true },
+    { key: 'k1', name: 'Pets', type: 'expense', icon: 'pets' },
+    { key: 'k2', name: 'Kids', type: 'expense', icon: 'child_care' },
   ]
   const props = { onContinue, onSkip: vi.fn(), pending: false, initialRows }
   const { rerender } = render(<CategoriesStep existing={[food]} {...props} />)

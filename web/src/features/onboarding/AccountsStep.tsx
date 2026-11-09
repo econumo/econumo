@@ -1,10 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ChevronDown, Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { EntityIcon } from '@/components/EntityIcon'
 import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
@@ -18,7 +17,7 @@ import { guessCurrencyCode } from '@/lib/regionCurrency'
 import { cn } from '@/lib/utils'
 import type { Id } from '@/api/types'
 import type { AccountRow } from './draft'
-import { guessAccountIcon, looksLikeSavings } from './defaults'
+import { guessAccountIcon } from './defaults'
 import { parseBalance } from './balance'
 import { labelled, nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import { CurrenciesBlock, CurrencyListSheet } from './CurrenciesBlock'
@@ -49,7 +48,7 @@ interface AccountsStepProps {
 }
 
 // currencyId '' = the row follows the default currency until the user picks one
-const emptyRow = (): AccountRow => ({ key: uuidv7(), name: '', balance: '', currencyId: '', savings: false, icon: 'credit_card' })
+const emptyRow = (): AccountRow => ({ key: uuidv7(), name: '', balance: '', currencyId: '', icon: 'credit_card' })
 
 export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, createdIds, onContinue, onSkip, pending, error }: AccountsStepProps) {
   const { t, i18n } = useTranslation()
@@ -79,8 +78,6 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   }, [])
   const claimedKeys = new Set([...claims.values()].map((r) => r.key))
   const draftRowOf = (accountId: Id) => claims.get(accountId) ?? (initialRows ?? []).find((r) => (r.accountId ?? createdIds?.[r.key]) === accountId)
-  const [savingsOverride, setSavingsOverride] = useState<Record<Id, boolean>>({})
-  const savingsOf = (a: ExistingAccount) => savingsOverride[a.id] ?? draftRowOf(a.id)?.savings ?? looksLikeSavings(a.name, words().savings)
   const leftover = useMemo(
     () => (initialRows ?? []).filter((r) => !r.accountId && !createdIds?.[r.key] && !claimedKeys.has(r.key)),
     // read once, at mount, like the rows seeded from it
@@ -100,9 +97,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const [sharedId, setSharedId] = useState<Id | null>(leftover[0]?.currencyId || null)
   const [pickingRow, setPickingRow] = useState<string | null>(null)
   const [iconRowKey, setIconRowKey] = useState<string | null>(null)
-  const [open, setOpen] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
-  const savingsTouched = useRef(new Set<string>())
   // a name still being typed is short on its way to valid, so its error waits for blur
   const [nameTouched, setNameTouched] = useState<ReadonlySet<string>>(new Set())
 
@@ -119,7 +114,6 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const rename = (row: AccountRow, name: string) => {
     const patch: Partial<AccountRow> = { name, labelKey: undefined }
     if (!row.iconPicked) patch.icon = guessAccountIcon(name, words())
-    if (!savingsTouched.current.has(row.key)) patch.savings = looksLikeSavings(name, words().savings)
     update(row.key, patch)
   }
 
@@ -159,7 +153,6 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
           name: a.name,
           balance: '',
           currencyId: a.currencyId,
-          savings: savingsOf(a),
           icon: a.icon,
           accountId: a.id,
         })),
@@ -175,23 +168,6 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const codeOf = (id: Id) => currencies?.find((c) => c.id === id)?.code ?? ''
   const chip = 'shrink-0 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground'
 
-  const toggle = (key: string) => (
-    <button
-      type="button"
-      aria-label={t('onboarding.accounts.details')}
-      aria-expanded={open === key}
-      className="-mr-1 grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent"
-      onClick={() => setOpen((o) => (o === key ? null : key))}
-    >
-      <ChevronDown className={cn('size-4 transition-transform', open === key && 'rotate-180')} />
-    </button>
-  )
-  const savingsSwitch = (checked: boolean, onChange: (v: boolean) => void) => (
-    <label className="flex items-center gap-2 text-sm text-muted-foreground">
-      {t('onboarding.accounts.savings')}
-      <Switch checked={checked} onCheckedChange={onChange} />
-    </label>
-  )
 
   return (
     <section className="flex flex-col gap-2">
@@ -201,7 +177,6 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
       <ul className="mt-4 divide-y divide-border/60 overflow-hidden rounded-xl border bg-card">
         {existing.map((a) => {
           const cur = currencies?.find((c) => c.id === a.currencyId)
-          const savings = savingsOf(a)
           return (
             <li key={a.id} className="px-3 py-2" data-testid="account-row">
               <div className="flex items-center gap-2 sm:gap-3">
@@ -213,13 +188,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
                   {addThousandSeparators(formatNumber(a.balance, cur?.fractionDigits ?? 2, true)).join('.')}
                 </span>
                 <span className={chip}>{cur?.code ?? ''}</span>
-                {toggle(a.id)}
               </div>
-              {open === a.id && (
-                <div className="mt-2 flex items-center pl-11">
-                  {savingsSwitch(savings, (v) => setSavingsOverride((prev) => ({ ...prev, [a.id]: v })))}
-                </div>
-              )}
             </li>
           )
         })}
@@ -263,21 +232,17 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
                 >
                   {codeOf(currencyOf(row))}
                 </button>
-                {toggle(row.key)}
+                <button
+                  type="button"
+                  aria-label={t('onboarding.accounts.remove')}
+                  className="-mr-1 grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                  onClick={() => remove(row.key)}
+                >
+                  <X className="size-4" />
+                </button>
               </div>
               {showName && <p className="mt-1 pl-11 text-sm text-destructive">{t('errors.account.name_length', { min: NAME_MIN, max: NAME_MAX })}</p>}
               {invalid.has(row.key) && <p className="mt-1 pl-11 text-sm text-destructive">{t('onboarding.accounts.balance_invalid')}</p>}
-              {open === row.key && (
-                <div className="mt-2 flex items-center justify-between gap-2 pl-11">
-                  {savingsSwitch(row.savings, (v) => {
-                    savingsTouched.current.add(row.key)
-                    update(row.key, { savings: v })
-                  })}
-                  <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => remove(row.key)}>
-                    {t('onboarding.accounts.remove')}
-                  </Button>
-                </div>
-              )}
             </li>
           )
         })}

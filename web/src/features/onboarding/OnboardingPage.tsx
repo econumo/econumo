@@ -34,6 +34,11 @@ const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
   apple_wallet: AppleWalletStep,
 }
 
+const DONE_STEP_PAGES: Partial<Record<OnboardingStepKey, string>> = {
+  categories: RouterPage.SETTINGS_CATEGORIES,
+  accounts: RouterPage.SETTINGS_ACCOUNTS,
+}
+
 export function OnboardingPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -72,7 +77,8 @@ export function OnboardingPage() {
     return null
   }
 
-  const active = steps.find((s) => s.key === selected)?.key ?? current ?? steps[0].key
+  // a done step is read-only, so a selection that became done falls back to the first open step
+  const active = steps.find((s) => s.key === selected && s.state !== 'done')?.key ?? current ?? steps[0].key
 
   // The steps read here are the ones rendered, so the answered step still
   // counts as open in them and is excluded by key.
@@ -89,7 +95,7 @@ export function OnboardingPage() {
     setSelected((after ?? open[0]).key)
   }
 
-  const skipSetup = async () => {
+  const completeSetup = async () => {
     setSkippingAll(true)
     trackEvent(METRICS.ONBOARDING_SKIP, { step: active })
     try {
@@ -101,6 +107,13 @@ export function OnboardingPage() {
     } finally {
       setSkippingAll(false)
     }
+  }
+
+  // a done step cannot be reopened, so a link to it opens the settings page holding its data
+  const goTo = (key: OnboardingStepKey) => {
+    const settings = DONE_STEP_PAGES[key]
+    if (steps.find((s) => s.key === key)?.state === 'done' && settings) navigate(settings)
+    else setSelected(key)
   }
 
   const Body = STEP_BODIES[active]
@@ -117,8 +130,8 @@ export function OnboardingPage() {
         ) : (
           <span />
         )}
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={skippingAll} onClick={() => void skipSetup()}>
-          {t('onboarding.steps_nav.skip_setup')}
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={skippingAll} onClick={() => void completeSetup()}>
+          {t('onboarding.steps_nav.complete_setup')}
         </Button>
       </div>
       <Stepper steps={steps} current={active} onSelect={setSelected} />
@@ -134,7 +147,7 @@ export function OnboardingPage() {
           ) : null}
         </div>
       ) : null}
-      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={setSelected} />}
+      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} />}
     </div>
   )
 }

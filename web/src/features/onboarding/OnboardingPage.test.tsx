@@ -28,6 +28,7 @@ function renderPage() {
     [
       { path: '/onboarding', element: <OnboardingPage /> },
       { path: '/budget', element: <div>BUDGET ROUTE</div> },
+      { path: '/settings/categories', element: <div>CATEGORIES SETTINGS</div> },
     ],
     { initialEntries: ['/onboarding'] },
   )
@@ -97,7 +98,7 @@ it('opens on the first open step with the stepper above it', async () => {
   expect(await heading('What do you spend on?')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Categories/ })).toHaveAttribute('aria-current', 'step')
   expect(screen.getByRole('button', { name: /Import/ })).toHaveAttribute('data-state', 'done')
-  expect(screen.getByRole('button', { name: 'Skip setup' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Complete setup' })).toBeInTheDocument()
 })
 
 it('skipping a step records it and moves to the next open step', async () => {
@@ -120,6 +121,37 @@ it('a revisited step moves on to the next open step after it', async () => {
   await user.click(screen.getByRole('button', { name: 'Skip' }))
   expect(await heading('Plan this month')).toBeInTheDocument()
   expect(posts).toEqual([{ path: 'update-getting-started', value: '!accounts' }])
+})
+
+it('a done step cannot be opened again', async () => {
+  serve('import')
+  const user = userEvent.setup()
+  renderPage()
+  await heading('What do you spend on?')
+  await user.click(screen.getByRole('button', { name: /Import/ }))
+  expect(screen.getByRole('heading', { name: 'What do you spend on?' })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Bring in your history' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Categories/ })).toHaveAttribute('aria-current', 'step')
+})
+
+it('a link from Budget & plan to a done Categories step opens the categories settings instead', async () => {
+  serve('import,categories,accounts')
+  server.use(
+    http.get('*/api/v1/budget/get-budget-plan', ({ request }) => {
+      const from = new URL(request.url).searchParams.get('from') ?? ''
+      return ok({
+        item: {
+          meta: fixtureWireBudget.meta, months: [from], openingBalances: [], savingsOpeningBalances: [], currencyRates: [{ period: from, rates: [] }], transfers: [{ period: from, items: [] }],
+          savingsFlows: [], savingsIncomeExpense: [], structure: { folders: [], savings: [], elements: [] },
+        },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await heading('Plan this month')
+  await user.click(await screen.findByRole('button', { name: 'Add categories' }, { timeout: 5000 }))
+  expect(await screen.findByText('CATEGORIES SETTINGS')).toBeInTheDocument()
 })
 
 it('resolving the last open step completes onboarding and lands on the budget', async () => {
@@ -153,12 +185,12 @@ it('resolving the last open step completes onboarding and lands on the budget', 
   ])
 })
 
-it('Skip setup skips every open step, then completes onboarding', async () => {
+it('Complete setup skips every open step, then completes onboarding', async () => {
   const state = serve('import')
   const user = userEvent.setup()
   renderPage()
   await heading('What do you spend on?')
-  await user.click(screen.getByRole('button', { name: 'Skip setup' }))
+  await user.click(screen.getByRole('button', { name: 'Complete setup' }))
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
   expect(posts.at(-1)).toEqual({ path: 'complete-onboarding' })
   await waitFor(() => expect(state.stored.split(',').sort()).toEqual(['!accounts', '!categories', '!plan', 'import']))

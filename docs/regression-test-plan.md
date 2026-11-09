@@ -269,9 +269,14 @@ navigation (single-pane vs sidebar).
       "Getting started · N of M" over a segmented bar.
 - [ ] The stepper shows no focus outline after page load or a click; Tab
       onto a step shows a focus ring.
-- [ ] Clicking a step (or a bar segment on a phone) opens it; Continue or Skip
-      on a step moves to the next open step after it, and the stepper shows
-      the new state. Skip on a revisited done step moves on and leaves it done.
+- [ ] Clicking an open or skipped step (or its bar segment on a phone) opens
+      it; Continue or Skip on a step moves to the next open step after it, and
+      the stepper shows the new state. A done step is read-only: it keeps its
+      ✓, shows no hover, cannot be opened (clicking or tapping it changes
+      nothing) and is still announced as done.
+- [ ] On Budget & plan, "Add categories" / "Add an account" open the
+      Categories / Accounts step while it is open or skipped, and the
+      Categories / Accounts settings page once that step is done.
 - [ ] A freshly registered user's answers are saved: after Skip on Import and
       Continue on Categories and Accounts, a reload keeps those steps checked
       and opens Budget & plan; finishing it completes onboarding.
@@ -281,8 +286,8 @@ navigation (single-pane vs sidebar).
 - [ ] Answering the last open step completes onboarding and lands on
       `/budget`; the sidebar onboarding link disappears; `/` now renders the
       budget (and on a phone the nav list again).
-- [ ] "Skip setup" (top right) skips every open step, completes onboarding
-      and lands on `/budget`.
+- [ ] "Complete setup" (top right) skips every open step, completes
+      onboarding and lands on `/budget`.
 - [ ] A user whose every visible step is already done or skipped (answered
       on another device) is completed on arrival and lands on `/budget`; if
       that request fails, the error shows with a Finish button that retries.
@@ -295,15 +300,18 @@ navigation (single-pane vs sidebar).
       app" banner nor the one-time install popup appears in the app; both
       appear once onboarding is completed.
 - [ ] Skip on Categories or Accounts creates nothing; Continue on Categories
-      creates only the ticked categories, Continue on Accounts only the new
+      creates every category still listed (in the listed order), Continue on Accounts only the new
       accounts (and sets the main currency and visible currencies). Neither
       step creates a budget.
-- [ ] Categories: one card per type, a checkbox on the right of each row, an
-      "Add your own" row at the end. On a fresh account every default is
-      ticked; categories the user already has (after an import, or on a
-      revisit) are listed first, ticked and locked, and defaults with the same
-      name are not offered again, nor are defaults named like a category the
-      user archived (the archived one is not listed). The defaults are, for
+- [ ] Categories: one card per type, a trash button on the right of each new
+      row ("Remove {name}" for a screen reader), an "Add your own" row at the
+      end. On a fresh account every default is listed; the trash button drops
+      a row from the list, and a removed name typed again under "Add your own"
+      comes back as a normal row. Continue is disabled only when no category
+      would be left at all. Categories the user already has (after an import)
+      are listed read-only (no trash button, no checkbox), and then no
+      defaults are offered; defaults named like a category the user archived
+      are not offered either (the archived one is not listed). The defaults are, for
       expenses, Groceries, Housing, Utilities, Transport, Eating out, Health,
       Shopping, Entertainment, Kids, Pets, Subscriptions and, for income,
       Salary, Bonus, Other income (translated in every UI language).
@@ -312,20 +320,19 @@ navigation (single-pane vs sidebar).
       its own.
 - [ ] Categories on a desktop width: each row has a drag handle, and dragging
       (or focusing the handle, Space, arrow keys, Space) reorders rows within
-      Expenses or Income, existing locked categories included; a row never
+      Expenses or Income, existing read-only categories included; a row never
       moves to the other card. After Continue the Categories settings page
       lists them in that order; a reload before Continue keeps the order.
       On a phone or tablet width there are no handles.
-- [ ] Accounts: one card of compact rows (icon, name, balance, currency chip),
-      with no label under the name; savings is toggled in the row's details
-      (the chevron), where a new row can also be removed (a savings-like name
-      turns it on until it is toggled by hand); tapping a new row's icon opens
-      the icon picker, the chosen icon is kept when the name changes and is
+- [ ] Accounts: one card of compact rows (icon, name, balance, currency chip,
+      and on a new row an ✕ that removes it), with no label under the name and
+      no savings switch or details expander (a savings-like name only picks
+      the piggy-bank icon); tapping a new row's icon opens the icon picker, the chosen icon is kept when the name changes and is
       used for the created account, and an existing account's icon is not
       tappable; "Add account" adds a row. Accounts the user already has are
       listed first and locked, with their balance shown and no balance asked
       for. A user with no accounts starts with one row named "Cash" (cash
-      icon, not savings, blank balance saved as 0, the default currency) that
+      icon, blank balance saved as 0, the default currency) that
       can be renamed or removed like any row; a user who already has accounts,
       or resumes a draft with rows, gets no Cash row. Under the Currencies
       label a hint reads "Select the currencies you use most often. You can
@@ -338,10 +345,9 @@ navigation (single-pane vs sidebar).
       renamed, and Continue creates them in that language; a renamed row
       keeps the typed name; categories and accounts that already exist keep
       their stored names.
-- [ ] Revisiting Accounts after Budget & plan: a new account joins the budget,
-      and a changed savings switch moves it to/from the budget's savings
-      accounts; turning savings off on an account whose savings row has plans
-      or comments shows the server's message and changes nothing.
+- [ ] Accounts skipped, then opened again after Budget & plan: a new account
+      joins the budget as an everyday (not savings) account; the user's other
+      accounts keep their budget membership.
 - [ ] 📱 Categories and Accounts render usably on a phone, tablet and desktop
       width (each account row stays on one line; no horizontal scroll;
       Continue and Skip reachable).
@@ -373,10 +379,10 @@ navigation (single-pane vs sidebar).
       (e.g. "2.500" in Russian) shows the "Enter a number" error.
 - [ ] An account or category name shorter than 3 or longer than 64 characters
       shows the server's length message under the row once the field is left,
-      and Continue stays disabled until it is fixed (or, for a category,
-      unticked). In Chinese every default category saves without an error.
+      and Continue stays disabled until it is fixed (or, for a new row,
+      removed). In Chinese every default category saves without an error.
 - [ ] 📱 Opening "Budget & plan" creates the budget once (over every own
-      account, savings flags kept) when the user has none, or uses the
+      account, none of them marked savings) when the user has none, or uses the
       default/first budget they already have; reopening the step creates
       nothing more. With no own account it says a budget needs one and
       "Add an account" opens the Accounts step.

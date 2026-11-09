@@ -415,7 +415,11 @@ and plan: Income/Expenses cards of the user's own categories prefilled from `get
 since `get-budget` lists expense categories only; the budget's own period; set-limit writes
 only changed rows),
 then the device-dependent `home_screen` (client-only install step, never sent to the server)
-and `apple_wallet`. Categories and accounts the user already has are shown locked; the unsaved
+and `apple_wallet`. A done step is read-only (the stepper will not open it; a link to it from
+another step opens its settings page instead); skipped steps can be reopened, and "Complete
+setup" skips every open step. New category rows are created unless removed (trash button);
+onboarding sets no budget savings membership. Categories and accounts the user already has are
+shown read-only; the unsaved
 draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the writes are idempotent, so
 a reload or retry creates nothing twice. Onboarding completes automatically once every visible
 step is done or skipped (also when answered on another device). The install banner and popup
