@@ -410,7 +410,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
             {selection.modes.labels === 'csv_column' && selection.columns.labels ? (
               // pl-34: the field row's w-32 label plus its gap-2, so it sits under the field
               <div className="pl-34">
-                <Button type="button" variant="link" className="h-auto p-0 text-xs normal-case! tracking-normal!" onClick={() => setSeparatorDialogOpen(true)}>
+                <Button type="button" variant="link" className="h-auto p-0 text-left text-xs whitespace-normal normal-case! tracking-normal!" onClick={() => setSeparatorDialogOpen(true)}>
                   {t('transactions.import_csv.labels_separator.button')}
                 </Button>
               </div>
