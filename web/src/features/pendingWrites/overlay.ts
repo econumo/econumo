@@ -195,18 +195,21 @@ export function patchPlanCells(
   }
 }
 
+export function applyLimitToPlan(plan: BudgetPlanDto, form: { elementId: Id; period: string; amount: string | null }): BudgetPlanDto {
+  const index = plan.months.indexOf(form.period)
+  if (index === -1) {
+    return plan
+  }
+  const planned = form.amount ?? ''
+  return patchPlanCells(plan, form.elementId, (c, i) => (i === index ? { ...c, planned } : c)) ?? plan
+}
+
 export function overlayPlan(plan: BudgetPlanDto, ops: PendingOp[], budgetId: Id): BudgetPlanDto {
   let out = plan
   for (const op of bySeq(ops)) {
-    if (op.kind !== 'limit' || op.budgetId !== budgetId) {
-      continue
+    if (op.kind === 'limit' && op.budgetId === budgetId) {
+      out = applyLimitToPlan(out, op)
     }
-    const index = out.months.indexOf(op.period)
-    if (index === -1) {
-      continue
-    }
-    const planned = op.amount ?? ''
-    out = patchPlanCells(out, op.elementId, (c, i) => (i === index ? { ...c, planned } : c)) ?? out
   }
   return out
 }

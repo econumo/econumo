@@ -3,6 +3,7 @@ import { isAxiosError } from 'axios'
 import { setLimit } from '@/api/budget'
 import { createTransaction, deleteTransaction, updateTransaction } from '@/api/transaction'
 import type { WriteOptions } from '@/api/client'
+import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import type { TransactionItemDto } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
@@ -12,6 +13,7 @@ import { invalidateReports } from '@/lib/appQueryClient'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { getSessionUserId, hasToken } from '@/lib/storage'
 import { classifyWriteError } from './classify'
+import { applyLimitToBudget, applyLimitToPlan } from './overlay'
 import { markAttempted, nextSendable, resolveTempId, settleDone, settleRefused, settleUnresolved } from './queue'
 import { getOps, loadPendingWrites, mutate, queueOwner, subscribeLeftElsewhere } from './store'
 import { rememberRealId } from './tempIds'
@@ -31,6 +33,8 @@ const CONFIRM_METRIC = {
   'tx-delete': METRICS.TRANSACTION_DELETE,
   limit: METRICS.BUDGET_UPDATE_ELEMENT_LIMIT,
 } as const
+
+type LimitChange = Extract<OpChange, { kind: 'limit' }>
 
 const APPLY_MODE = { 'tx-create': 'add', 'tx-update': 'update', 'tx-delete': 'delete' } as const
 
@@ -79,6 +83,20 @@ function invalidateChange(queryClient: QueryClient, change: OpChange): void {
   }
 }
 
+// The overlay stops showing a limit the moment its op leaves, while queueing put
+// the raw caches back to the old value: they take the new one first. Before any
+// invalidation of them, since a cache write clears that flag.
+function applyAcceptedLimit(queryClient: QueryClient, change: LimitChange): void {
+  queryClient.setQueriesData<BudgetDto | null>(
+    { queryKey: [...queryKeys.budget, change.budgetId, change.period] },
+    (budget) => (budget ? applyLimitToBudget(budget, change) : budget),
+  )
+  queryClient.setQueriesData<BudgetPlanDto | null>(
+    { queryKey: [...queryKeys.budgetPlan, change.budgetId] },
+    (plan) => (plan ? applyLimitToPlan(plan, change) : plan),
+  )
+}
+
 // The queue is not a mutation, so the MutationCache's report invalidation does not see it.
 function acknowledge(queryClient: QueryClient, change: OpChange): void {
   invalidateReports(queryClient)
@@ -88,6 +106,7 @@ function acknowledge(queryClient: QueryClient, change: OpChange): void {
 /** The one place a write the server accepted reaches the caches and the analytics. */
 export function confirmChange(queryClient: QueryClient, change: OpChange, result: unknown): void {
   if (change.kind === 'limit') {
+    applyAcceptedLimit(queryClient, change)
     invalidateChange(queryClient, change)
   } else {
     applyTransactionItem(queryClient, result as TransactionItemDto, APPLY_MODE[change.kind])
@@ -133,6 +152,9 @@ function settleAccepted(queryClient: QueryClient, op: PendingOp, result: unknown
 function settleReplayed(queryClient: QueryClient, op: PendingOp, err: unknown): Promise<void> {
   if (!isQueued(op)) {
     return Promise.resolve()
+  }
+  if (op.kind === 'limit') {
+    applyAcceptedLimit(queryClient, op)
   }
   const written = mutate((ops) => {
     if (op.kind !== 'tx-create') {

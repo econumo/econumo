@@ -3,13 +3,14 @@ import { onlineManager, type QueryClient } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
 import type { AccountDto } from '@/api/dto/account'
+import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import type { CreateTransactionDto, TransactionDto } from '@/api/dto/transaction'
 import { createTransaction } from '@/api/transaction'
 import { createAppQueryClient } from '@/lib/appQueryClient'
 import { STORE_PENDING_WRITES, dbRequest } from '@/lib/db'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { removeToken, setToken } from '@/lib/storage'
-import { overlayTransactions } from './overlay'
+import { overlayBudget, overlayPlan, overlayTransactions } from './overlay'
 import { addChange } from './queue'
 import { kickPendingWrites, startPendingWrites } from './sender'
 import { submitChange } from './submit'
@@ -320,8 +321,8 @@ it('a limit confirms by refreshing its budget, its plan and the reports', async 
   const budget = [...queryKeys.budget, 'b1', '2026-11-01']
   const plan = [...queryKeys.budgetPlan, 'b1', 'x']
   const reports = [...queryKeys.reportNetWorth, 'mine']
-  client.setQueryData(budget, {})
-  client.setQueryData(plan, {})
+  client.setQueryData(budget, { meta: {}, structure: { elements: [] } })
+  client.setQueryData(plan, { months: [], structure: { elements: [] } })
   client.setQueryData(reports, {})
   await queue(limit('e1'), 'k1', 1)
   await kickPendingWrites()
@@ -329,6 +330,69 @@ it('a limit confirms by refreshing its budget, its plan and the reports', async 
   expect(invalidated(plan)).toBe(true)
   expect(invalidated(reports)).toBe(true)
   expect(vi.mocked(trackEvent).mock.calls).toEqual([[METRICS.BUDGET_UPDATE_ELEMENT_LIMIT]])
+})
+
+describe('a confirmed queued limit', () => {
+  const period = '2026-11-01'
+  const budget = (budgeted: string) => ({ meta: {}, structure: { elements: [{ id: 'e1', budgeted, isBudgeted: 1 }, { id: 'e2', budgeted: '1', isBudgeted: 1 }] } }) as unknown as BudgetDto
+  const plan = (months: string[], planned: string) => ({
+    months,
+    structure: { elements: [{ id: 'e1', cells: months.map(() => ({ planned })) }] },
+  }) as unknown as BudgetPlanDto
+  const budgetKey = [...queryKeys.budget, 'b1', period]
+  const planKey = [...queryKeys.budgetPlan, 'b1', '2026-10-01', 2]
+  const shown = () => ({
+    budget: overlayBudget(client.getQueryData<BudgetDto>(budgetKey)!, getOps(), 'b1', period).structure.elements[0].budgeted,
+    plan: overlayPlan(client.getQueryData<BudgetPlanDto>(planKey)!, getOps(), 'b1').structure.elements[0].cells[1].planned,
+  })
+
+  async function confirmWatching(answer: () => Response | undefined) {
+    client.setQueryData(budgetKey, budget('200'))
+    client.setQueryData(planKey, plan(['2026-10-01', period], '200'))
+    answerWith(answer)
+    await queue({ kind: 'limit', budgetId: 'b1', elementId: 'e1', period, amount: '250' }, 'k1', 1)
+    const seenViews: unknown[] = []
+    const look = () => seenViews.push(shown())
+    const offStore = subscribe(look)
+    const offCache = client.getQueryCache().subscribe(look)
+    await kickPendingWrites()
+    offStore()
+    offCache()
+    expect(getOps()).toEqual([])
+    expect(seenViews.length).toBeGreaterThan(0)
+    for (const view of seenViews) {
+      expect(view).toEqual({ budget: '250', plan: '250' })
+    }
+  }
+
+  it('keeps its value in the raw caches, so the view never goes back to the old one', async () => {
+    await confirmWatching(() => undefined)
+    expect(client.getQueryData<BudgetDto>(budgetKey)?.structure.elements.map((e) => e.budgeted)).toEqual(['250', '1'])
+    expect(client.getQueryData<BudgetPlanDto>(planKey)?.structure.elements[0].cells.map((c) => c.planned)).toEqual(['200', '250'])
+    expect(invalidated(budgetKey)).toBe(true)
+    expect(invalidated(planKey)).toBe(true)
+  })
+
+  it('does the same for a replay, whose response was lost', async () => {
+    await confirmWatching(() => HttpResponse.json({ success: false, message: 'Operation is locked', code: 409, errors: {} }, { status: 409 }))
+    expect(client.getQueryData<BudgetDto>(budgetKey)?.structure.elements[0].budgeted).toBe('250')
+    expect(invalidated(budgetKey)).toBe(true)
+  })
+
+  it('leaves another period, another budget and a window without the month alone', async () => {
+    const otherPeriod = [...queryKeys.budget, 'b1', '2026-10-01']
+    const otherBudget = [...queryKeys.budget, 'b2', period]
+    const otherWindow = [...queryKeys.budgetPlan, 'b1', '2026-01-01', 2]
+    client.setQueryData(otherPeriod, budget('200'))
+    client.setQueryData(otherBudget, budget('200'))
+    client.setQueryData(otherWindow, plan(['2026-01-01', '2026-02-01'], '200'))
+    answerWith(() => undefined)
+    await queue({ kind: 'limit', budgetId: 'b1', elementId: 'e1', period, amount: '250' }, 'k1', 1)
+    await kickPendingWrites()
+    expect(client.getQueryData<BudgetDto>(otherPeriod)?.structure.elements[0].budgeted).toBe('200')
+    expect(client.getQueryData<BudgetDto>(otherBudget)?.structure.elements[0].budgeted).toBe('200')
+    expect(client.getQueryData<BudgetPlanDto>(otherWindow)?.structure.elements[0].cells.map((c) => c.planned)).toEqual(['200', '200'])
+  })
 })
 
 it('a change another tab confirmed refreshes the data here', async () => {
