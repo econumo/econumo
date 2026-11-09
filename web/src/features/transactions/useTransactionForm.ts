@@ -289,13 +289,9 @@ export function classificationChips(
   ]
 }
 
-export function accountOptions(accounts: AccountDto[], folders: FolderDto[], isNew: boolean): AccountDto[] {
-  if (!isNew) {
-    return accounts
-  }
-  // creation offers only accounts living in visible folders (Vue parity)
+export function hiddenFolderAccountIds(accounts: AccountDto[], folders: FolderDto[]): Set<Id> {
   const visibleFolderIds = new Set(folders.filter((f) => f.isVisible === 1).map((f) => f.id))
-  return accounts.filter((a) => !a.folderId || visibleFolderIds.has(a.folderId))
+  return new Set(accounts.filter((a) => a.folderId && !visibleFolderIds.has(a.folderId)).map((a) => a.id))
 }
 
 export function categoryOptions(categories: CategoryDto[], type: TransactionType, ownerUserId: Id | undefined): CategoryDto[] {

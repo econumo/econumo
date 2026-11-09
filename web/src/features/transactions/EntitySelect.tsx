@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { ChevronsUpDown, Plus } from 'lucide-react'
+import { ChevronsUpDown, EyeOff, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Combobox as ComboboxPrimitive } from '@base-ui/react'
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
@@ -20,6 +20,8 @@ export interface EntityOption {
   /** what a screen reader announces when the row says more than its text
       (e.g. a hidden folder, marked only by an icon) */
   ariaLabel?: string
+  /** marks the option as hidden: only a search offers it, and it carries these words */
+  hiddenLabel?: string
 }
 
 interface Row extends EntityOption {
@@ -43,14 +45,18 @@ interface EntitySelectProps {
   createValidator?: (name: string) => boolean
 }
 
+const HIDDEN_OPTION_MIN_SEARCH = 3
+
 // Filter-as-you-type entity picker (category/payee) with optional create-on-the-fly,
 // mirroring the Vue q-select use-input + @new-value behavior. The field is a real
 // <input> (not a button-triggered popover): macOS Safari's plain Tab only reaches
 // text fields, so a button trigger would be unreachable by keyboard there.
 function buildRows({ options, value, search, clearable, onCreate, createValidator }: Pick<EntitySelectProps, 'options' | 'value' | 'clearable' | 'onCreate' | 'createValidator'> & { search: string }) {
-  const filtered = rankByName(options, (o) => o.searchText ?? o.label, search)
   // the created name is trimmed, so it is also what must be new and valid
   const name = search.trim()
+  // the current value stays listed: it is already in use, search or no search
+  const offered = name.length >= HIDDEN_OPTION_MIN_SEARCH ? options : options.filter((o) => !o.hiddenLabel || o.value === value)
+  const filtered = rankByName(offered, (o) => o.searchText ?? o.label, search)
   const exactMatch = options.some((o) => o.label.toLowerCase() === name.toLowerCase())
   const canCreate = !!onCreate && name !== '' && !exactMatch && (createValidator ? createValidator(name) : true)
   const rows: Row[] = [
@@ -72,7 +78,21 @@ function RowContent({ row }: { row: Row }) {
         <EntityIcon name={row.icon} className="text-base text-muted-foreground" />
       ) : null}
       {row.create ? `${t('common.button.add.label')} «${row.label}»` : row.label}
+      {row.hiddenLabel ? (
+        <span className="ml-auto flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+          <EyeOff className="size-3.5" aria-hidden />
+          {row.hiddenLabel}
+        </span>
+      ) : null}
     </>
+  )
+}
+
+function HiddenFieldMark({ label }: { label: string }) {
+  return (
+    <span title={label} className="flex shrink-0 items-center text-muted-foreground">
+      <EyeOff className="size-3.5" role="img" aria-label={label} />
+    </span>
   )
 }
 
@@ -215,6 +235,7 @@ function PhoneEntitySelect({
           }}
           className="h-full w-full min-w-0 flex-1 truncate bg-transparent caret-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
         />
+        {selected?.hiddenLabel ? <HiddenFieldMark label={selected.hiddenLabel} /> : null}
         <ChevronsUpDown className="pointer-events-none size-4 shrink-0 opacity-50" />
       </div>
       <PickerSheet
@@ -345,6 +366,7 @@ function InlineEntitySelect({
             }
           }}
         />
+        {selected?.hiddenLabel && !open ? <HiddenFieldMark label={selected.hiddenLabel} /> : null}
         <ChevronsUpDown className="pointer-events-none size-4 shrink-0 opacity-50" />
       </div>
       <ComboboxContent container={portalContainer}>

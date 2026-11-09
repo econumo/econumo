@@ -670,6 +670,56 @@ it('editing an existing transfer keeps the Transfer type with one writable accou
   expect(transfer).toHaveAttribute('aria-checked', 'true')
 })
 
+it('editing offers a hidden-folder account only to a search of three characters', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho() as unknown as TransactionDto })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+
+  const picker = await screen.findByRole('combobox', { name: 'account' })
+  await waitFor(() => expect((picker as HTMLInputElement).value).toContain('Cash'))
+  // the folder list arrives on its own request; until then every foldered account looks hidden
+  await user.click(picker)
+  await screen.findByRole('option', { name: /Bank/ })
+  expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument()
+
+  await user.keyboard('und')
+  expect(await screen.findByRole('option', { name: /Under the mattress.*Hidden folder/ })).toBeInTheDocument()
+})
+
+it('editing a transaction of a hidden-folder account still names that account', async () => {
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ accountId: 'a-hidden' }) as unknown as TransactionDto })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+
+  await waitFor(() => expect(screen.getByRole<HTMLInputElement>('combobox', { name: 'account' }).value).toContain('Under the mattress'))
+  expect(await screen.findByRole('img', { name: 'Hidden folder' })).toBeInTheDocument()
+})
+
+it('adding reaches a hidden-folder account through a search too', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  await user.click(await screen.findByRole('combobox', { name: 'account' }))
+  await screen.findByRole('option', { name: /Bank/ })
+  expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument()
+
+  await user.keyboard('und')
+  expect(await screen.findByRole('option', { name: /Under the mattress/ })).toBeInTheDocument()
+})
+
+it('Transfer is unavailable when the only other writable account sits in a hidden folder', async () => {
+  const hidden = fixtureAccounts.find((a) => a.id === 'a-hidden')!
+  server.use(...coreHandlers({ accounts: [fixtureAccounts[0], hidden] }))
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  await waitFor(() => expect(screen.getByRole('radio', { name: 'Transfer' })).toBeDisabled())
+})
+
 it('editing a transaction round-trips its existing labels', async () => {
   // update-transaction REPLACES the label set: an edit that forgets to resend
   // the attached ids deletes them, which is what this asserts against

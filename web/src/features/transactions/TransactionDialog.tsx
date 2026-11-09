@@ -36,7 +36,7 @@ import {
   useTransactionForm,
   buildPayload,
   scrubForeignClassifications,
-  accountOptions,
+  hiddenFolderAccountIds,
   categoryOptions,
   canChangeAccountData,
   classificationChips,
@@ -123,10 +123,10 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     }
   }, [ownerId, categories, payees, tags, labels, form, patch])
 
-  const selectableAccounts = accountOptions(accounts, folders, form.isNew)
-  // a transfer needs two accounts the user can write to; an existing transfer
-  // keeps its type so it stays editable
-  const transferUnavailable = !isTransfer && selectableAccounts.filter((a) => canWriteToAccount(a, user?.id)).length < 2
+  const hiddenAccountIds = hiddenFolderAccountIds(accounts, folders)
+  // a transfer needs two accounts the user can write to, outside hidden folders;
+  // an existing transfer keeps its type so it stays editable
+  const transferUnavailable = !isTransfer && accounts.filter((a) => !hiddenAccountIds.has(a.id) && canWriteToAccount(a, user?.id)).length < 2
   const currentCategories = categoryOptions(categories, form.type, ownerId)
   const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
   const chips = classificationChips(tags, labels, form, ownerId)
@@ -284,6 +284,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     searchText: a.name,
     icon: a.icon,
     disabled: !canWriteToAccount(a, user?.id),
+    hiddenLabel: hiddenAccountIds.has(a.id) ? t('search.hidden_folder') : undefined,
   })
 
   return (
@@ -379,7 +380,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
               title={t('transactions.modal.form.account.label')}
               value={form.accountId}
               onChange={(id) => patch({ accountId: id })}
-              options={selectableAccounts.map(accountToOption)}
+              options={accounts.map(accountToOption)}
             />
           </div>
         ) : null}
@@ -430,7 +431,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                     title={t('transactions.modal.form.from.label')}
                     value={form.accountId}
                     onChange={setSenderAccount}
-                    options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
+                    options={accounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
                   />
                 </SelectCard>
               </div>
@@ -451,7 +452,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 title={t('transactions.modal.form.to.label')}
                 value={form.accountRecipientId}
                 onChange={setRecipientAccount}
-                options={selectableAccounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
+                options={accounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
               />
             </SelectCard>
           </div>

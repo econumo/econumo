@@ -411,6 +411,11 @@ navigation (single-pane vs sidebar).
 - [ ] With only one account you can add transactions to (accounts in hidden
       folders and read-only shared ones don't count), the Transfer type is
       greyed out and cannot be selected; editing an existing transfer keeps it.
+- [ ] 📱 Account pickers in Add/Edit transaction and recurring transaction (From
+      and To included) leave out accounts in hidden folders until the search has
+      3 or more characters; then they appear with an eye-off icon and "Hidden
+      folder". Editing a transaction on a hidden-folder account still shows its
+      name, with the eye-off icon in the field.
 - [ ] 📱 Transfer with no "To" account: Add/Update shows "Required field" under
       the To select and sends nothing; the API rejects the same body with a
       400 on `accountRecipientId` (create AND update).

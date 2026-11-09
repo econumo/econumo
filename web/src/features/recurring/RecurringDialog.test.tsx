@@ -84,6 +84,20 @@ it('edit mode prefills the amount and schedule, under the mode-less header', asy
   expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('Weekly')
 })
 
+it('editing offers a hidden-folder account only to a search of three characters', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openRecurringModal({ recurring: wireRecurringAsDto })
+  await screen.findByRole('heading', { name: 'Recurring transaction' })
+
+  await user.click(screen.getByRole('combobox', { name: 'account' }))
+  await screen.findByRole('option', { name: /Bank/ })
+  expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument()
+
+  await user.keyboard('und')
+  expect(await screen.findByRole('option', { name: /Under the mattress.*Hidden folder/ })).toBeInTheDocument()
+})
+
 it('the next payment is the header date chip, not a separate row', async () => {
   renderDialog()
   useUiStore.getState().openRecurringModal({ recurring: wireRecurringAsDto })
