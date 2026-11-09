@@ -1,5 +1,7 @@
 import { useMemo, useSyncExternalStore } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Id } from '@/api/types'
+import { pluralPick } from '@/lib/plural'
 import { getOps, subscribe } from './store'
 import { realIdOf } from './tempIds'
 import type { PendingOp } from './types'
@@ -34,4 +36,11 @@ export function useWaitingCount(): number {
 /** Everything sign-out would throw away: changes still waiting and refused ones alike. */
 export function useUnsentCount(): number {
   return usePendingOps().length
+}
+
+/** A sign-out confirm's `question`, followed by what signing out would lose when there is anything. */
+export function useSignOutQuestion(question: string): string {
+  const { t, i18n } = useTranslation()
+  const unsent = useUnsentCount()
+  return unsent > 0 ? `${question} ${pluralPick(t('settings.logout.pending_warning'), unsent, i18n.language)}` : question
 }
