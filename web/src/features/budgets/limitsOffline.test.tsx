@@ -12,8 +12,11 @@ import { discardWrite } from '@/features/pendingWrites/submit'
 import { useBudgetPeriodStore } from './budgetStore'
 import { planFetchWindow, useBudget, useBudgetPlan, useFillPlannedCells, usePlanSetLimit, useSetLimit } from './queries'
 
+let latestClient: QueryClient
+
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, networkMode: 'always' }, mutations: { retry: false, networkMode: 'always' } } })
+  latestClient = queryClient
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   return { queryClient, wrapper }
 }
@@ -198,6 +201,7 @@ describe('limits offline: cache truth and month switches', () => {
 describe('limits: a queued result gives back only its own cells', () => {
   type Answer = 'lost' | 'refused' | 'ok'
   let answers: Map<string, (a: Answer) => void>
+  let answered: Set<string>
 
   const respond = (a: Answer) =>
     a === 'lost'
@@ -212,6 +216,7 @@ describe('limits: a queued result gives back only its own cells', () => {
     localStorage.setItem('token', 'tok')
     localStorage.setItem('sessionUserId', 'u1')
     answers = new Map()
+    answered = new Set()
     server.use(
       ...coreHandlers(),
       http.post('*/api/v1/budget/set-limit', async ({ request }) => {
@@ -229,11 +234,20 @@ describe('limits: a queued result gives back only its own cells', () => {
     localStorage.clear()
   })
 
+  type LimitForm = { amount: string | null; period?: string; targets?: { period: string }[] }
+  const requestsOf = ({ amount, period, targets }: LimitForm) => (targets?.map((t) => t.period) ?? [period]).map((p) => `${p}/${amount}`)
+
+  // A queued answer reaches the cache only after the disk has the change, so it is
+  // over when its mutation is. A fill is over once all of its targets are answered.
   const answer = async (name: string, a: Answer) => {
     await waitFor(() => expect(answers.has(name)).toBe(true))
+    answered.add(name)
     await act(async () => {
       answers.get(name)!(a)
-      await new Promise((resolve) => setTimeout(resolve, 20))
+      await vi.waitFor(() => {
+        const open = latestClient.getMutationCache().getAll().filter((m) => m.state.status === 'pending' && requestsOf(m.state.variables as LimitForm).every((r) => answered.has(r)))
+        expect(open).toHaveLength(0)
+      })
     })
   }
 
@@ -289,6 +303,7 @@ describe('limits: a queued result gives back only its own cells', () => {
     it('two edits of one cell, both queued, leave the server value whichever answers first', async () => {
       for (const order of [['250', '300'], ['300', '250']]) {
         answers.clear()
+        answered.clear()
         const { cell, server0, send } = setUp()
         send(food, '250')
         await waitFor(() => expect(cell('cat-food')).toBe('250'))
