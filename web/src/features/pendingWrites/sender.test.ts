@@ -410,9 +410,27 @@ it('a 409 on the direct path ends with one row and nothing left in the queue', a
   await expect(submitChange(client, { kind: 'tx-create', txId: id, payload: form }, (opts) => createTransaction(form, opts))).resolves.toEqual({ queued: true })
   await vi.waitFor(() => expect(getOps()).toEqual([]))
 
-  expect(seen.map((r) => r.key)).toEqual([id, id])
-  expect(seen.every((r) => !('id' in r.body))).toBe(true)
+  expect(seen.slice(0, 2).map((r) => [r.path, r.key])).toEqual([['create-transaction', id], ['create-transaction', id]])
+  expect(seen.slice(0, 2).every((r) => !('id' in r.body))).toBe(true)
   expect(overlayTransactions(client.getQueryData<TransactionDto[]>(queryKeys.transactions) ?? [], getOps(), me).map((t) => t.id)).toEqual(['real'])
+})
+
+it('a 409 on a corrected resubmit ends with the row carrying the later values', async () => {
+  const id = '019a0000-0000-7000-8000-000000000002'
+  const corrected = payload(id, { amount: '9' })
+  client.setQueryData(queryKeys.transactions, [row('real')])
+  answerWith((_n, r) => {
+    if (r.path === 'create-transaction') return replay('real')
+    return HttpResponse.json({ success: true, message: '', data: { item: { ...row('real'), amount: r.body.amount }, accounts } })
+  })
+
+  await submitChange(client, { kind: 'tx-create', txId: id, payload: corrected }, (opts) => createTransaction(corrected, opts))
+  await vi.waitFor(() => expect(getOps()).toEqual([]))
+
+  expect(seen.map((r) => r.path)).toEqual(['create-transaction', 'create-transaction', 'update-transaction'])
+  expect(seen[2].key).not.toBe(id)
+  expect(seen[2].body).toMatchObject({ id: 'real', amount: '9' })
+  expect(client.getQueryData<TransactionDto[]>(queryKeys.transactions)).toMatchObject([{ id: 'real', amount: '9' }])
 })
 
 // The drain ends a few microtasks after its last check of the flag: a kick in

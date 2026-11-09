@@ -133,10 +133,42 @@ it('edits and deletes get a key of their own', async () => {
   expect(second).not.toBe(first)
 })
 
+const replayed = httpError(409, { ...envelope, code: 409, resourceId: 'real' })
+
 it('a 409 on the direct path queues as attempted under the same key instead of rejecting', async () => {
-  const send = vi.fn().mockRejectedValue(httpError(409, { ...envelope, code: 409, resourceId: 'real' }))
+  const send = vi.fn().mockRejectedValue(replayed)
   await expect(submitChange(client, create, send)).resolves.toEqual({ queued: true })
-  expect(getOps()).toMatchObject([{ kind: 'tx-create', key: 'temp', attempted: true, status: 'waiting' }])
+  expect(getOps()[0]).toMatchObject({ kind: 'tx-create', key: 'temp', attempted: true, status: 'waiting' })
+})
+
+it('a 409 on an add queues the values just submitted as an edit behind it, counted as one change', async () => {
+  const corrected = { ...create, payload: { ...payload('temp'), amount: '9' } } as OpChange
+  await submitChange(client, corrected, vi.fn().mockRejectedValue(replayed))
+  const ordered = [...getOps()].sort((a, b) => a.seq - b.seq)
+  expect(ordered).toMatchObject([
+    { kind: 'tx-create', key: 'temp', attempted: true },
+    { kind: 'tx-update', txId: 'temp', attempted: false, payload: { amount: '9' } },
+  ])
+  expect(ordered[1].key).not.toBe('temp')
+  expect(vi.mocked(trackEvent).mock.calls).toEqual([[METRICS.WRITE_QUEUED, { kind: 'tx-create' }]])
+})
+
+it('a 409 on an add leaves an edit made while the request hung as the last word', async () => {
+  let fail: (e: unknown) => void = () => {}
+  const submitted = submitChange(client, create, () => new Promise<never>((_, reject) => { fail = reject }))
+  await mutate((ops) => addChange(ops, { kind: 'tx-update', txId: 'temp', payload: { ...payload('temp'), amount: '7' } }, { key: 'later', seq: 7 }))
+  fail(replayed)
+  await submitted
+  expect([...getOps()].sort((a, b) => a.seq - b.seq)).toMatchObject([
+    { kind: 'tx-create', key: 'temp' },
+    { kind: 'tx-update', key: 'later', payload: { amount: '7' } },
+  ])
+})
+
+it('a 409 on anything but an add queues no extra edit', async () => {
+  const change: OpChange = { kind: 'limit', budgetId: 'b1', elementId: 'e1', period: '2026-11-01', amount: '5' }
+  await submitChange(client, change, vi.fn().mockRejectedValue(replayed))
+  expect(getOps()).toHaveLength(1)
 })
 
 it('the same add again while the first is in the queue goes behind it as an edit, under a key of its own', async () => {
