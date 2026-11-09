@@ -14,6 +14,8 @@ export type Day0Draft = {
   createdCategories: Record<string, Id>
   // the categories last submitted by saveCategories, so a retry after a failure reseeds the form with the same keys
   categoryRows: CategoryRow[]
+  // set once the user reorders categories: existing category ids and row keys, both groups in display order
+  categoryOrder: string[]
   // the currency selection last applied, so a revisit that changes it applies it again
   currenciesApplied: string | null
   budgetDone: boolean
@@ -32,6 +34,7 @@ export function emptyDraft(): Day0Draft {
     created: {},
     createdCategories: {},
     categoryRows: [],
+    categoryOrder: [],
     currenciesApplied: null,
     budgetDone: false,
     budgetId: null,

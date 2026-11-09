@@ -39,6 +39,7 @@ interface SortableListProps<T extends { id: string }> {
   onReorder: (orderedIds: string[], movedId: string) => void
   renderItem: (item: T, handleProps: SortableHandleProps) => ReactNode
   disabled?: boolean
+  className?: string
 }
 
 // Render order for an in-flight/awaiting-server preview: preview ids first
@@ -55,7 +56,7 @@ export function orderByPreview<T extends { id: string }>(items: T[], previewIds:
 
 // Single-container vertical sortable list; dragging starts from the handle
 // (spread handleProps.attributes + handleProps.listeners onto the grip).
-export function SortableList<T extends { id: string }>({ items, onReorder, renderItem, disabled }: SortableListProps<T>) {
+export function SortableList<T extends { id: string }>({ items, onReorder, renderItem, disabled, className }: SortableListProps<T>) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -90,13 +91,13 @@ export function SortableList<T extends { id: string }>({ items, onReorder, rende
   }
 
   if (disabled) {
-    return <ul>{items.map((item) => <li key={item.id}>{renderItem(item, { attributes: {}, listeners: undefined })}</li>)}</ul>
+    return <ul className={className}>{items.map((item) => <li key={item.id}>{renderItem(item, { attributes: {}, listeners: undefined })}</li>)}</ul>
   }
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={shown.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <ul>
+        <ul className={className}>
           {shown.map((item) => (
             <SortableRow key={item.id} item={item} renderItem={renderItem} />
           ))}

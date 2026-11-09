@@ -98,13 +98,20 @@ function mockWrites(f: Faults = {}) {
       calls.push({ path: 'create-category', body })
       if (srv.ops.has(body.id)) return locked()
       srv.ops.add(body.id)
-      const item = { id: `cat-${srv.categories.length + 1}`, name: body.name, type: body.type }
+      const item = { id: `cat-${srv.categories.length + 1}`, name: body.name, type: body.type, ownerUserId: 'u1', isArchived: 0 }
       srv.categories.push(item)
       if (f.categoryLost && !categoryFault) {
         categoryFault = true
         return HttpResponse.error()
       }
       return ok({ item })
+    }),
+    http.post('*/api/v1/category/sort-category-list', async ({ request }) => {
+      const body = (await request.json()) as any
+      calls.push({ path: 'sort-category-list', body: body.ids })
+      const byId = new Map(srv.categories.map((c) => [c.id, c]))
+      srv.categories = [...body.ids.map((id: string) => byId.get(id)), ...srv.categories.filter((c) => !body.ids.includes(c.id))]
+      return ok({ items: srv.categories })
     }),
     http.post('*/api/v1/budget/create-budget', async ({ request }) => {
       const body = (await request.json()) as any
@@ -313,6 +320,60 @@ describe('useDay0', () => {
     const { result } = await ready()
     await act(() => result.current.saveCategories(cats))
     expect(calls.map((c) => c.body.name)).toEqual(['Salary'])
+  })
+
+  it('saveCategories applies a reordered list once, keeping archived and shared rows in place', async () => {
+    mockWrites()
+    srv.categories.push(
+      { id: 'old-1', name: 'Rent', type: 'expense', ownerUserId: 'u1', isArchived: 0 },
+      { id: 'old-arch', name: 'Gym', type: 'expense', ownerUserId: 'u1', isArchived: 1 },
+      { id: 'shared', name: 'Theirs', type: 'expense', ownerUserId: 'u2', isArchived: 0 },
+    )
+    const { result } = await ready()
+    const order = ['c1', 'old-1', 'c3', 'c2']
+    await act(() => result.current.saveCategories(cats, order))
+    expect(paths()).toEqual(['create-category', 'create-category', 'sort-category-list'])
+    expect(calls[2].body).toEqual(['cat-4', 'old-arch', 'old-1', 'cat-5'])
+    expect(loadDraft('u1')!.categoryOrder).toEqual(order)
+
+    calls = []
+    await act(() => result.current.saveCategories(cats, order))
+    expect(paths()).toEqual([])
+  })
+
+  it('saveCategories sorts nothing when the list was not reordered', async () => {
+    mockWrites()
+    const { result } = await ready()
+    await act(() => result.current.saveCategories(cats))
+    expect(paths()).not.toContain('sort-category-list')
+    expect(loadDraft('u1')!.categoryOrder).toEqual([])
+  })
+
+  it('a failed sort is retried after the categories exist, without creating them again', async () => {
+    mockWrites()
+    let failSort = true
+    server.use(
+      http.post('*/api/v1/category/sort-category-list', async ({ request }) => {
+        const body = (await request.json()) as any
+        calls.push({ path: 'sort-category-list', body: body.ids })
+        if (failSort) {
+          failSort = false
+          return fail()
+        }
+        return ok({ items: srv.categories })
+      }),
+    )
+    srv.categories.push({ id: 'old-1', name: 'Rent', type: 'expense', ownerUserId: 'u1', isArchived: 0 })
+    const { result } = await ready()
+    const order = ['c1', 'old-1', 'c2']
+    await act(async () => {
+      await expect(result.current.saveCategories(cats, order)).rejects.toBeTruthy()
+    })
+    expect(paths()).toEqual(['create-category', 'create-category', 'sort-category-list'])
+    calls = []
+    await act(() => result.current.saveCategories(cats, order))
+    expect(paths()).toEqual(['sort-category-list'])
+    expect(calls[0].body).toEqual(['cat-2', 'old-1', 'cat-3'])
   })
 
   it('ensureBudget creates one budget over every owned account, savings from the draft', async () => {

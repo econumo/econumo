@@ -179,6 +179,20 @@ it('flags a renamed or added category outside 3-64 characters and blocks Continu
   expect(chosen(onContinue).map((r) => r.name)).not.toContain('Tx')
 })
 
+it('gives every row a keyboard-reachable drag handle on a desktop width, none on a phone', () => {
+  renderStep({ existing: [food] })
+  expect(screen.getByRole('button', { name: 'Reorder Groceries' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Reorder Pets' })).toHaveAttribute('tabindex', '0')
+})
+
+it('shows no drag handles on a phone or tablet width', () => {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  renderStep({ existing: [food] })
+  expect(screen.queryByRole('button', { name: /^Reorder / })).not.toBeInTheDocument()
+})
+
 describe('CategoriesStepBody', () => {
   const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
   let created: string[]

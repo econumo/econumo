@@ -5,7 +5,7 @@ import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import { createAccount, getAccountList, getFolderList } from '@/api/account'
 import { addAccount, createBudget, getBudget, getBudgetList } from '@/api/budget'
-import { createCategory, getCategoryList } from '@/api/category'
+import { createCategory, getCategoryList, sortCategoryList } from '@/api/category'
 import { getCurrencyList, hideAllCurrencies, showCurrency } from '@/api/currency'
 import { UserOptions } from '@/api/dto/user'
 import { updateCurrency } from '@/api/user'
@@ -64,6 +64,23 @@ async function syncBudgetAccounts(d: Day0Draft, rows: AccountRow[], budgetId: Id
   }
 }
 
+// The step orders each type on its own, so the wanted ids take the slots their type's
+// rows hold in the server list; archived and other rows keep their place. Re-sorting an
+// already applied order sends nothing, which makes a retry safe.
+async function applyCategoryOrder(userId: Id, wanted: Id[]): Promise<void> {
+  const own = (await getCategoryList()).filter((c) => c.ownerUserId === userId)
+  const typeOf = new Map(own.map((c) => [c.id, c.type]))
+  const known = wanted.filter((id) => typeOf.has(id))
+  const queue = { expense: known.filter((id) => typeOf.get(id) === 'expense'), income: known.filter((id) => typeOf.get(id) === 'income') }
+  const placed = new Set(known)
+  const next = own.map((c) => (placed.has(c.id) ? (queue[c.type].shift() ?? c.id) : c.id))
+  if (next.every((id, i) => id === own[i].id)) {
+    return
+  }
+  await sortCategoryList(next)
+  trackEvent(METRICS.CATEGORY_ORDER_LIST)
+}
+
 export function useDay0() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -105,7 +122,7 @@ export function useDay0() {
   }, [])
 
   const saveCategories = useCallback(
-    (rows: CategoryRow[]) =>
+    (rows: CategoryRow[], order?: string[]) =>
       run(async () => {
         if (!userId) {
           return
@@ -113,6 +130,7 @@ export function useDay0() {
         const d = current()
         const checked = rows.filter((c) => c.checked)
         d.categoryRows = rows
+        d.categoryOrder = order ?? []
         for (const c of checked) {
           opId(d, `category:${c.key}`)
         }
@@ -139,6 +157,9 @@ export function useDay0() {
               d.createdCategories[c.key] = found.id
             }
             persist(d)
+          }
+          if (order && order.length > 0) {
+            await applyCategoryOrder(userId, order.map((k) => d.createdCategories[k] ?? k))
           }
         } finally {
           void queryClient.invalidateQueries({ queryKey: queryKeys.categories })

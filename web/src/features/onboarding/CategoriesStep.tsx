@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus } from 'lucide-react'
+import { GripVertical, Plus } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { EntityIcon } from '@/components/EntityIcon'
 import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { SortableList, type SortableHandleProps } from '@/components/SortableList'
 import type { Id } from '@/api/types'
 import { useCategories } from '@/features/classifications/queries'
 import { useUserData } from '@/features/user/queries'
+import { useIsCompact } from '@/hooks/useIsCompact'
 import { apiErrorMessage } from '@/lib/apiError'
 import { defaultCategoryIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -22,6 +24,7 @@ import { StepLoadError } from './StepLoadError'
 import { useDay0 } from './useDay0'
 
 type CategoryType = CategoryRow['type']
+type ListItem = { id: string; existing?: ExistingCategory; row?: CategoryRow }
 
 export interface ExistingCategory {
   id: Id
@@ -39,7 +42,10 @@ interface CategoriesStepProps {
   initialRows?: CategoryRow[]
   // rows created by an earlier submit: the server list shows them, so they leave the form
   createdKeys?: ReadonlySet<string>
-  onContinue: (rows: CategoryRow[]) => void
+  // the order last submitted after a reorder: existing category ids and row keys
+  initialOrder?: string[]
+  // order is passed only once the user has reordered, so an untouched list never re-sorts the server's
+  onContinue: (rows: CategoryRow[], order?: string[]) => void
   onSkip: () => void
   pending: boolean
   error?: ReactNode
@@ -51,8 +57,9 @@ export const rowTile = 'grid size-8 shrink-0 place-items-center rounded-lg bg-pr
 export const rowInput =
   'min-w-0 flex-1 rounded-md bg-transparent px-1 py-1 outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:ring-2 aria-invalid:ring-destructive/40'
 
-export function CategoriesStep({ existing, archived = [], initialRows, createdKeys, onContinue, onSkip, pending, error }: CategoriesStepProps) {
+export function CategoriesStep({ existing, archived = [], initialRows, createdKeys, initialOrder, onContinue, onSkip, pending, error }: CategoriesStepProps) {
   const { t } = useTranslation()
+  const isCompact = useIsCompact()
   const taken = new Set(existing.map((c) => nameKey(c.type, c.name)))
   const [rows, setRows] = useState<CategoryRow[]>(() => {
     const seeded = (initialRows ?? []).filter((r) => !taken.has(nameKey(r.type, r.name)))
@@ -64,6 +71,8 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
       (r) => !taken.has(nameKey(r.type, r.name)) && !retired.has(nameKey(r.type, r.name)),
     )
   })
+  const [order, setOrder] = useState<string[]>(initialOrder ?? [])
+  const [reordered, setReordered] = useState(Boolean(initialOrder && initialOrder.length > 0))
   const [drafts, setDrafts] = useState<Record<CategoryType, string>>({ expense: '', income: '' })
   const [pickingKey, setPickingKey] = useState<string | null>(null)
   // a name still being typed is short on its way to valid, so its error waits for blur
@@ -71,6 +80,19 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
   const touch = (key: string) => setNameTouched((prev) => new Set(prev).add(key))
 
   const shown = rows.filter((r) => !createdKeys?.has(r.key))
+  const rank = new Map(order.map((id, i) => [id, i]))
+  const byRank = (a: ListItem, b: ListItem) => (rank.get(a.id) ?? order.length) - (rank.get(b.id) ?? order.length)
+  const itemsOf = (type: CategoryType): ListItem[] =>
+    [
+      ...existing.filter((c) => c.type === type).map((c) => ({ id: c.id, existing: c })),
+      ...shown.filter((r) => r.type === type).map((r) => ({ id: r.key, row: r })),
+    ].sort(byRank)
+  const fullOrder = (type?: CategoryType, ids?: string[]) =>
+    (['expense', 'income'] as const).flatMap((g) => (g === type && ids ? ids : itemsOf(g).map((i) => i.id)))
+  const reorder = (type: CategoryType, ids: string[]) => {
+    setOrder(fullOrder(type, ids))
+    setReordered(true)
+  }
   const update = (key: string, patch: Partial<CategoryRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
 
   const addDraft = (type: CategoryType) => {
@@ -97,86 +119,119 @@ export function CategoriesStep({ existing, archived = [], initialRows, createdKe
   const invalidName = new Set(rows.filter((r) => r.checked && r.name.trim() !== '' && !nameLengthValid(r.name)).map((r) => r.key))
   const canContinue = !pending && invalidName.size === 0 && (existing.length > 0 || normalized().some((r) => r.checked))
   const submit = () => {
-    if (canContinue) onContinue(normalized())
+    if (!canContinue) return
+    const ids = fullOrder()
+    const at = new Map(ids.map((id, i) => [id, i]))
+    const sorted = normalized().sort((a, b) => (at.get(a.key) ?? ids.length) - (at.get(b.key) ?? ids.length))
+    onContinue(sorted, reordered ? ids : undefined)
   }
 
   const editing = rows.find((r) => r.key === pickingKey)
 
-  const group = (type: CategoryType, title: string) => (
-    <section data-testid={`group-${type}`}>
-      <h3 className="mt-4 mb-1.5 text-xs tracking-wider text-muted-foreground uppercase">{title}</h3>
-      <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border bg-card">
-        {existing
-          .filter((c) => c.type === type)
-          .map((c) => (
-            <li key={c.id} className="flex items-center gap-3 px-3 py-2" data-testid="category-row">
-              <span className={rowTile}>
-                <EntityIcon name={c.icon} className="text-lg" />
-              </span>
-              <span className="min-w-0 flex-1 truncate px-1">{c.name}</span>
-              <Checkbox aria-label={c.name} className="size-5 rounded-md" checked disabled />
-            </li>
-          ))}
-        {shown
-          .filter((r) => r.type === type)
-          .map((row) => {
-            const showInvalid = invalidName.has(row.key) && nameTouched.has(row.key)
-            return (
-              <li key={row.key} className="px-3 py-2" data-testid="category-row">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    className={cn(rowTile, 'hover:bg-primary/15')}
-                    aria-label={t('onboarding.categories_step.icon_label')}
-                    onClick={() => setPickingKey(row.key)}
-                  >
-                    <EntityIcon name={row.icon} className="text-lg" />
-                  </button>
-                  <input
-                    className={cn(rowInput, !row.checked && 'text-muted-foreground')}
-                    aria-label={t('onboarding.categories_step.name_label')}
-                    maxLength={64}
-                    value={row.name}
-                    aria-invalid={showInvalid}
-                    onChange={(e) => update(row.key, { name: e.target.value })}
-                    onBlur={() => touch(row.key)}
-                  />
-                  <Checkbox
-                    aria-label={row.name}
-                    className="size-5 rounded-md"
-                    checked={row.checked}
-                    onCheckedChange={(v) => update(row.key, { checked: v === true })}
-                  />
-                </div>
-                {showInvalid && (
-                  <p className="mt-1 pl-11 text-sm text-destructive">{t('errors.category.name_length', { min: NAME_MIN, max: NAME_MAX })}</p>
-                )}
-              </li>
-            )
-          })}
-        <li className="flex items-center gap-3 px-3 py-2">
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-            <Plus className="size-4" />
+  const handle = (name: string, props: SortableHandleProps) =>
+    isCompact ? null : (
+      <button
+        type="button"
+        aria-label={t('onboarding.categories_step.reorder_label', { name })}
+        className="-ml-1 grid size-6 shrink-0 cursor-grab touch-none place-items-center rounded-md text-muted-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+        {...props.attributes}
+        {...(props.listeners ?? {})}
+      >
+        <GripVertical className="size-4" />
+      </button>
+    )
+
+  const renderItem = (item: ListItem, props: SortableHandleProps) => {
+    if (item.existing) {
+      const c = item.existing
+      return (
+        <div className="flex items-center gap-3 bg-card px-3 py-2" data-testid="category-row">
+          {handle(c.name, props)}
+          <span className={rowTile}>
+            <EntityIcon name={c.icon} className="text-lg" />
           </span>
+          <span className="min-w-0 flex-1 truncate px-1">{c.name}</span>
+          <Checkbox aria-label={c.name} className="size-5 rounded-md" checked disabled />
+        </div>
+      )
+    }
+    const row = item.row
+    if (!row) return null
+    const showInvalid = invalidName.has(row.key) && nameTouched.has(row.key)
+    return (
+      <div className="bg-card px-3 py-2" data-testid="category-row">
+        <div className="flex items-center gap-3">
+          {handle(row.name, props)}
+          <button
+            type="button"
+            className={cn(rowTile, 'hover:bg-primary/15')}
+            aria-label={t('onboarding.categories_step.icon_label')}
+            onClick={() => setPickingKey(row.key)}
+          >
+            <EntityIcon name={row.icon} className="text-lg" />
+          </button>
           <input
-            className={rowInput}
-            aria-label={`${title}: ${t('onboarding.categories_step.add_placeholder')}`}
-            placeholder={t('onboarding.categories_step.add_placeholder')}
+            className={cn(rowInput, !row.checked && 'text-muted-foreground')}
+            aria-label={t('onboarding.categories_step.name_label')}
             maxLength={64}
-            value={drafts[type]}
-            onChange={(e) => setDrafts((prev) => ({ ...prev, [type]: e.target.value }))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addDraft(type)
-              }
-            }}
-            onBlur={() => addDraft(type)}
+            value={row.name}
+            aria-invalid={showInvalid}
+            onChange={(e) => update(row.key, { name: e.target.value })}
+            onBlur={() => touch(row.key)}
           />
-        </li>
-      </ul>
-    </section>
-  )
+          <Checkbox
+            aria-label={row.name}
+            className="size-5 rounded-md"
+            checked={row.checked}
+            onCheckedChange={(v) => update(row.key, { checked: v === true })}
+          />
+        </div>
+        {showInvalid && (
+          <p className={cn('mt-1 text-sm text-destructive', isCompact ? 'pl-11' : 'pl-[4.75rem]')}>
+            {t('errors.category.name_length', { min: NAME_MIN, max: NAME_MAX })}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  const group = (type: CategoryType, title: string) => {
+    const items = itemsOf(type)
+    return (
+      <section data-testid={`group-${type}`}>
+        <h3 className="mt-4 mb-1.5 text-xs tracking-wider text-muted-foreground uppercase">{title}</h3>
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <SortableList
+            items={items}
+            disabled={isCompact}
+            className="divide-y divide-border/60"
+            onReorder={(ids) => reorder(type, ids)}
+            renderItem={renderItem}
+          />
+          <div className={cn('flex items-center gap-3 px-3 py-2', items.length > 0 && 'border-t border-border/60')}>
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+              <Plus className="size-4" />
+            </span>
+            <input
+              className={rowInput}
+              aria-label={`${title}: ${t('onboarding.categories_step.add_placeholder')}`}
+              placeholder={t('onboarding.categories_step.add_placeholder')}
+              maxLength={64}
+              value={drafts[type]}
+              onChange={(e) => setDrafts((prev) => ({ ...prev, [type]: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addDraft(type)
+                }
+              }}
+              onBlur={() => addDraft(type)}
+            />
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="flex flex-col gap-2">
@@ -230,6 +285,7 @@ export function CategoriesStepBody({ onDone, onSkip }: StepBodyProps) {
       archived={own.filter((c) => c.isArchived === 1)}
       initialRows={day0.draft?.categoryRows}
       createdKeys={new Set(Object.keys(day0.draft?.createdCategories ?? {}))}
+      initialOrder={day0.draft?.categoryOrder.map((k) => day0.draft?.createdCategories[k] ?? k)}
       pending={day0.pending || skipping}
       error={
         day0.error != null ? (
@@ -238,9 +294,9 @@ export function CategoriesStepBody({ onDone, onSkip }: StepBodyProps) {
           </p>
         ) : undefined
       }
-      onContinue={(rows) => {
+      onContinue={(rows, order) => {
         void day0
-          .saveCategories(rows)
+          .saveCategories(rows, order)
           .then(() => onDone())
           .catch(() => undefined)
       }}
