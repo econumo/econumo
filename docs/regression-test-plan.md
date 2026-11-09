@@ -2249,9 +2249,10 @@ out), and add a second budget member account in USD, before running these.
 - [ ] 📱 **Review screen** (one entry, "Details": the Settings row, the
       budget row's ⋮ menu, the desktop row, or on a phone/tablet the item
       sheet's "Details" button; owner only, there is no separate Edit entry
-      or pencil): on desktop a centred dialog covering about 90% of the
-      screen's width and height that scrolls inside; on a phone a full
-      page. The header is the debt's icon, name and the close X, with no ⋮
+      or pencil): on desktop a centred dialog about 90% of the screen's
+      height and only as wide as its content (about 52rem, narrower on a
+      small window) that scrolls inside, its four corners rounded (the
+      header never squares the top ones); on a phone a full page. The header is the debt's icon, name and the close X, with no ⋮
       menu on any width. Under it three tabs, Overview (selected on open),
       Settings and Danger zone. The header and the tabs are one opaque block
       with a bottom border that never scrolls: scroll a long Overview (or
@@ -2279,12 +2280,18 @@ out), and add a second budget member account in USD, before running these.
       the progress moves by one when the payment lands in a new due window
       (several payments in one window count once; payments from before setup
       count).
-- [ ] 📱 **Future payments**: under the payments of a set-up debt that is
-      not paid off, "Show future payments" loads a "Future payments" list
-      (Date / Payment / Interest / Principal / Balance, soonest first, muted
-      italics) running to the payoff, its last payment possibly smaller and
-      its last balance 0; the link turns into "Hide future payments", which
-      hides it again. Opened from a budget (the row's Details, Finish setup,
+- [ ] 📱 **Future payments**: on a set-up debt that is not paid off, "Show
+      future payments" sits beside the PAYMENTS heading. It adds the
+      projected payments to the TOP of the same payments table (one table,
+      same columns, newest first): the last projected payment (balance 0,
+      possibly smaller) on top, down to the next due, in muted italics, then
+      a "Recorded" line, then the booked payments (a booked payment dated
+      after today stays below it). Over 24 projected rows the
+      table shows the 3 at the payoff end and the 12 nearest today, with
+      "Show N more payments" between them opening the rest. The note of which
+      plan they follow sits under the heading, above the table; the link
+      turns into "Hide future payments", which takes the projected rows, the
+      Recorded line and the note away again. Opened from a budget (the row's Details, Finish setup,
       the item sheet's Details), a month whose plan for the debt row is
       above the regular payments adds the difference to that month's first
       payment and the note reads "Includes extra payments planned in

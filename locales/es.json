@@ -541,11 +541,11 @@
       "forecast": {
         "show": "Mostrar pagos futuros",
         "hide": "Ocultar pagos futuros",
-        "title": "Pagos futuros",
         "with_plan": "Incluye los pagos extra planificados en {budget}",
         "regular_only": "Solo pagos regulares",
-        "none": "No queda nada por pagar",
-        "overdue": "vencido"
+        "overdue": "vencido",
+        "recorded": "Registrados",
+        "more": "Mostrar {count} pago más | Mostrar {count} pagos más"
       },
       "mark_paid_off": "Marcar como pagada",
       "paid_off_confirm": {

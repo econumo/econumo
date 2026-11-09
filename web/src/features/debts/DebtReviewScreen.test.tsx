@@ -614,8 +614,10 @@ it('the review screen is a large centred dialog on a desktop, not a full page', 
   await openScreen()
 
   const content = baseElement.querySelector('[data-slot="dialog-content"]')
-  expect(content?.className).toContain('sm:max-w-[90vw]')
+  // as wide as its content column, not most of the screen
+  expect(content?.className).toContain('sm:max-w-[min(90vw,52rem)]')
   expect(content?.className).toContain('h-[90vh]')
+  expect(content?.className).toContain('overflow-hidden')
   expect(content?.className).not.toContain('h-dvh')
 })
 
@@ -682,7 +684,7 @@ describe('future payments', () => {
     return asked
   }
 
-  it('Show future payments loads the forecast of the budget the screen came from, soonest first, with its plan named', async () => {
+  it('Show future payments loads the forecast of the budget the screen came from into the top of the payments table, with its plan named', async () => {
     const asked = captureForecast()
     const user = userEvent.setup()
     renderScreen()
@@ -699,17 +701,61 @@ describe('future payments', () => {
     expect(asked).toHaveLength(1)
     expect(asked[0].get('id')).toBe('d1')
     expect(asked[0].get('budgetId')).toBe('b1')
-    expect(screen.getByRole('heading', { name: 'Future payments' })).toBeInTheDocument()
-    expect(within(rows[0]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Dec 5, 2026', '400.00 $', '9.08 $', '390.92 $', '699.08 $'])
-    expect(within(rows[1]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Jan 5, 2027', '100.00 $', '5.83 $', '94.17 $', '604.91 $'])
-    expect(screen.getByText('Includes extra payments planned in Family')).toBeInTheDocument()
+    // one table, newest first: the latest projected payment on top, down to
+    // the next due, a Recorded line, then the booked payments
+    expect(screen.getAllByRole('table')).toHaveLength(1)
+    expect(screen.queryByRole('heading', { name: 'Future payments' })).toBeNull()
+    expect(within(rows[0]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Jan 5, 2027', '100.00 $', '5.83 $', '94.17 $', '604.91 $'])
+    expect(within(rows[1]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Dec 5, 2026', '400.00 $', '9.08 $', '390.92 $', '699.08 $'])
+    const today = screen.getByTestId('debt-payments-recorded')
+    expect(today).toHaveTextContent('Recorded')
+    const booked = screen.getAllByTestId('debt-payment')
+    expect(rows[1].compareDocumentPosition(today) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(today.compareDocumentPosition(booked[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // projected rows read apart from the booked ones
+    expect(rows[0].className).toContain('italic')
+    expect(rows[0].className).toContain('text-muted-foreground')
+    expect(booked[0].className).not.toContain('italic')
+    // the toggle and the note sit above the table, next to the heading
+    const note = screen.getByText('Includes extra payments planned in Family')
+    const table = screen.getByRole('table')
+    expect(note.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Hide future payments' }).compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_FORECAST_VIEW)
 
     const hide = screen.getByRole('button', { name: 'Hide future payments' })
     expect(hide).toHaveAttribute('aria-expanded', 'true')
     await user.click(hide)
     expect(screen.queryByTestId('debt-forecast-payment')).toBeNull()
+    expect(screen.queryByTestId('debt-payments-recorded')).toBeNull()
+    expect(screen.queryByText('Includes extra payments planned in Family')).toBeNull()
     expect(screen.getByRole('button', { name: 'Show future payments' })).toBeInTheDocument()
+  })
+
+  it('a long forecast shows its payoff end and the payments nearest today, the middle behind "Show N more payments"', async () => {
+    const items = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(Date.UTC(2026, 11 + i, 5)).toISOString().slice(0, 10)
+      return { date: d, payment: '100', interest: '1', principal: '99', balance: String(3000 - 99 * (i + 1)) }
+    })
+    captureForecast({ items, budgetId: '', budgetName: '' })
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+
+    await user.click(screen.getByRole('button', { name: 'Show future payments' }))
+
+    const rows = await screen.findAllByTestId('debt-forecast-payment')
+    // 3 at the payoff end, then the 12 nearest today
+    expect(rows).toHaveLength(15)
+    expect(rows[0]).toHaveTextContent('May 5, 2029')
+    expect(rows[2]).toHaveTextContent('Mar 5, 2029')
+    expect(rows[3]).toHaveTextContent('Nov 5, 2027')
+    expect(rows[14]).toHaveTextContent('Dec 5, 2026')
+    const more = screen.getByRole('button', { name: 'Show 15 more payments' })
+    expect(rows[2].compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await user.click(more)
+    expect(screen.getAllByTestId('debt-forecast-payment')).toHaveLength(30)
+    expect(screen.queryByRole('button', { name: /more payments/ })).toBeNull()
   })
 
   it('each opening loads the list afresh and counts once; a refetch in the background is no new view', async () => {
@@ -746,8 +792,8 @@ describe('future payments', () => {
     await user.click(screen.getByRole('button', { name: 'Show future payments' }))
 
     const rows = await screen.findAllByTestId('debt-forecast-payment')
-    // today is pinned to 2026-11-08
-    expect(within(rows[0]).getAllByRole('cell')[0]).toHaveTextContent('Nov 5, 2026overdue')
+    // today is pinned to 2026-11-08; the overdue due is the one nearest the Recorded line
+    expect(within(rows[2]).getAllByRole('cell')[0]).toHaveTextContent('Nov 5, 2026overdue')
     expect(within(rows[1]).getAllByRole('cell')[0]).toHaveTextContent(/^Dec 5, 2026$/)
   })
 

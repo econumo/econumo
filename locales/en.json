@@ -541,11 +541,11 @@
       "forecast": {
         "show": "Show future payments",
         "hide": "Hide future payments",
-        "title": "Future payments",
         "with_plan": "Includes extra payments planned in {budget}",
         "regular_only": "Regular payments only",
-        "none": "Nothing left to pay",
-        "overdue": "overdue"
+        "overdue": "overdue",
+        "recorded": "Recorded",
+        "more": "Show {count} more payment | Show {count} more payments"
       },
       "mark_paid_off": "Mark as paid off",
       "paid_off_confirm": {

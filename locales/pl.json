@@ -541,11 +541,11 @@
       "forecast": {
         "show": "Pokaż przyszłe płatności",
         "hide": "Ukryj przyszłe płatności",
-        "title": "Przyszłe płatności",
         "with_plan": "Uwzględnia dodatkowe płatności zaplanowane w {budget}",
         "regular_only": "Tylko regularne płatności",
-        "none": "Nie zostało nic do spłaty",
-        "overdue": "zaległe"
+        "overdue": "zaległe",
+        "recorded": "Zarejestrowane",
+        "more": "Pokaż {count} kolejną płatność | Pokaż {count} kolejne płatności | Pokaż {count} kolejnych płatności"
       },
       "mark_paid_off": "Oznacz jako spłacony",
       "paid_off_confirm": {

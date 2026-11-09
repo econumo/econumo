@@ -541,11 +541,11 @@
       "forecast": {
         "show": "Toekomstige betalingen tonen",
         "hide": "Toekomstige betalingen verbergen",
-        "title": "Toekomstige betalingen",
         "with_plan": "Inclusief de extra betalingen gepland in {budget}",
         "regular_only": "Alleen vaste betalingen",
-        "none": "Niets meer te betalen",
-        "overdue": "achterstallig"
+        "overdue": "achterstallig",
+        "recorded": "Geregistreerd",
+        "more": "Nog {count} betaling tonen | Nog {count} betalingen tonen"
       },
       "mark_paid_off": "Markeren als afbetaald",
       "paid_off_confirm": {

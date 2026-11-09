@@ -1870,8 +1870,9 @@ data unreadable. Most are also asserted by the test suite.
   `debt.start_date_taken` (the one refusal a date can resolve; `debt.key_conflict` just shows its
   message) and the form creates a debt with no terms, then opens the review screen. The ONLY way
   into a debt is its Details entry (Settings row, budget row menu, item sheet; owner only), opening
-  `DebtReviewScreen`: on desktop a centred dialog over 90% of the viewport that scrolls inside
-  (`ResponsiveDialog` `size="large"`), full screen on a phone (`fullScreen`). Its header is the
+  `DebtReviewScreen`: on desktop a centred dialog 90% of the viewport high and a reading column
+  wide (min(90vw, 52rem)) that scrolls inside (`ResponsiveDialog` `size="column"`; the page-sized
+  sizes clip to their rounded corners with `overflow-hidden`), full screen on a phone (`fullScreen`). Its header is the
   icon, name and close X (no menu); under it the tabs **Overview**, **Settings** and **Danger
   zone** (`components/ui/tabs`, `openDebtDetails(id, tab, budgetId)` picks the first; `debtDetailsTab`
   and `debtDetailsBudgetId`, the budget the screen was opened from, in `uiStore`). The tab bar is
@@ -1884,7 +1885,7 @@ data unreadable. Most are also asserted by the test suite.
   (`PaymentsFromEditor readOnly`), payments (with a Balance column on a set-up debt: `get-debt`'s
   additive `balance` per payment, what was owed after it, from the snapshots and stored splits,
   `""` while not set up; Principal is left out on a phone) and a collapsed "History of terms".
-  Under the payments of a set-up debt that is not paid off, "Show future payments" loads
+  Beside the Payments heading of a set-up debt that is not paid off, "Show future payments" loads
   `get-debt-forecast?id=&budgetId=` (fires `appDebtForecastView`): the projection's own run
   (`model.Projection.Payments`, a planned extra riding on its period's first payment, an extra of
   a period with no due as a payment of its own at the period's end) with the plans the given
@@ -1894,8 +1895,11 @@ data unreadable. Most are also asserted by the test suite.
   `budgetId`/`budgetName` name the budget only when its plans add an extra, so the SPA's note
   reads "Includes extra payments planned in X" or "Regular payments only". The run starts on the
   later of today and the last recorded payment's day, so a payment recorded ahead of today is not
-  projected again and the first row follows the booked list's last balance. It lists the rows
-  soonest first in muted italics, a due dated before today marked "overdue". The query is never
+  projected again and the first row follows the booked list's last balance. The projected rows
+  join the TOP of the same payments table, latest first down to the next due, in muted italics
+  (a due dated before today marked "overdue"), then a "Recorded" line and the booked rows; over 24
+  of them only the 3 at the payoff end and the 12 nearest today show, "Show N more payments"
+  opening the middle; the note sits under the heading, above the table. The query is never
   served stale (`staleTime` 0) and every budget plan write (`useSetLimit`, `usePlanSetLimit`,
   `useFillPlannedCells`) invalidates every forecast (`isDebtForecastKey`); the metric fires on
   the click that opens the list. "Track as debt" passes the row's budget through

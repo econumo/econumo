@@ -541,11 +541,11 @@
       "forecast": {
         "show": "Afficher les paiements à venir",
         "hide": "Masquer les paiements à venir",
-        "title": "Paiements à venir",
         "with_plan": "Inclut les paiements supplémentaires prévus dans {budget}",
         "regular_only": "Paiements réguliers uniquement",
-        "none": "Plus rien à payer",
-        "overdue": "en retard"
+        "overdue": "en retard",
+        "recorded": "Enregistrés",
+        "more": "Afficher {count} paiement de plus | Afficher {count} paiements de plus"
       },
       "mark_paid_off": "Marquer comme remboursée",
       "paid_off_confirm": {

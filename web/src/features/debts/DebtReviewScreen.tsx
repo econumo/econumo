@@ -12,6 +12,7 @@ import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { formatDate } from '@/lib/datetime'
+import { pluralPick } from '@/lib/plural'
 import { add } from '@/lib/decimal'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useUiStore } from '@/app/uiStore'
@@ -191,7 +192,7 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
   // the tab bar sits in the dialog's header block, outside the scrolling body;
   // the Tabs root wraps the dialog so its context reaches both through the portal
   const tabBar = item ? (
-    <div className="mx-auto w-full max-w-3xl">
+    <div className="w-full">
       <TabsList variant="line" className="h-auto w-full items-end justify-start gap-5 rounded-none bg-transparent p-0">
         {TABS.map(({ value, label }) => (
           <TabsTrigger key={value} value={value} className={tabClass}>
@@ -211,9 +212,9 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
         titleIcon={item ? <EntityIcon name={item.icon} className="text-xl text-muted-foreground" /> : undefined}
         subheader={tabBar}
         fullScreen
-        size="large"
+        size="column"
       >
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 pb-2">
+        <div className="flex w-full flex-col gap-5 pb-2">
           {item && data ? (
             <>
               <TabsContent value="overview" className="flex flex-col gap-5">
@@ -319,23 +320,62 @@ interface PaymentRow {
   balance: string
 }
 
-/** payments, booked or projected; `splits` adds the interest, principal and
- *  balance columns, which need the terms. Principal (payment less interest)
- *  is left out on a phone, where five amounts do not fit */
-function PaymentsTable({ rows, splits, testId, amount, lang, overdueBefore, className = '' }: {
-  rows: PaymentRow[]
+// a long forecast (a mortgage runs to hundreds of payments) keeps its payoff
+// end and the payments nearest today; the middle opens on request
+const FORECAST_FOLD_ABOVE = 24
+const FORECAST_KEEP_END = 3
+const FORECAST_KEEP_NEAR = 12
+
+function PaymentCells({ row, splits, amount, lang, overdue }: { row: PaymentRow; splits: boolean; amount: (value: string) => string; lang: string; overdue?: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <>
+      <td className="py-1.5 text-left">
+        {debtDay(row.date, lang)}
+        {overdue ? <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.details.forecast.overdue')}</span> : null}
+      </td>
+      <td className="py-1.5 text-right">{amount(row.payment)}</td>
+      {splits ? (
+        <>
+          <td className="py-1.5 text-right">{amount(row.interest)}</td>
+          <td className="hidden py-1.5 text-right sm:table-cell">{amount(row.principal)}</td>
+          <td className="py-1.5 text-right">{row.balance === '' ? '—' : amount(row.balance)}</td>
+        </>
+      ) : null}
+    </>
+  )
+}
+
+/** One table, newest first: the projected payments (when shown) on top, latest
+ *  first down to the next due, muted and italic, then a "Recorded" line and
+ *  the booked payments (not "Today": a booked payment may be dated ahead, and
+ *  an overdue projected due behind). `splits` adds the interest, principal and balance columns,
+ *  which need the terms; Principal (payment less interest) is left out on a
+ *  phone, where five amounts do not fit */
+function PaymentsTable({ booked, projected, splits, amount, lang, today }: {
+  booked: PaymentRow[]
+  /** soonest first, as the server sends them; null while not shown */
+  projected: PaymentRow[] | null
   splits: boolean
-  testId: string
   amount: (value: string) => string
   lang: string
-  /** projected rows dated before this day ("YYYY-MM-DD") are still unpaid dues */
-  overdueBefore?: string
-  className?: string
+  /** "YYYY-MM-DD": a projected due before it is still unpaid */
+  today: string
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const [unfolded, setUnfolded] = useState(false)
+  const columns = splits ? 5 : 2
   const head = 'py-1 text-right font-normal'
+  const latestFirst = projected ? [...projected].reverse() : []
+  const folded = !unfolded && latestFirst.length > FORECAST_FOLD_ABOVE
+  const hidden = folded ? latestFirst.length - FORECAST_KEEP_END - FORECAST_KEEP_NEAR : 0
+  const projectedRow = (row: PaymentRow) => (
+    <tr key={row.key} data-testid="debt-forecast-payment" className="border-t border-border text-muted-foreground italic">
+      <PaymentCells row={row} splits={splits} amount={amount} lang={lang} overdue={row.date.slice(0, 10) < today} />
+    </tr>
+  )
   return (
-    <div className={`rounded-lg bg-econumo-card px-4 py-1.5 ${className}`}>
+    <div className="rounded-lg bg-econumo-card px-4 py-1.5">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-xs text-muted-foreground">
@@ -361,22 +401,31 @@ function PaymentsTable({ rows, splits, testId, amount, lang, overdueBefore, clas
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.key} data-testid={testId} className="border-t border-border">
-              <td className="py-1.5 text-left">
-                {debtDay(row.date, lang)}
-                {overdueBefore && row.date.slice(0, 10) < overdueBefore ? (
-                  <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.details.forecast.overdue')}</span>
-                ) : null}
+          {folded ? (
+            <>
+              {latestFirst.slice(0, FORECAST_KEEP_END).map(projectedRow)}
+              <tr className="border-t border-border">
+                <td colSpan={columns} className="py-1 text-center">
+                  <button type="button" className="text-xs text-econumo-link hover:underline" onClick={() => setUnfolded(true)}>
+                    {pluralPick(t('debts.details.forecast.more'), hidden, i18n.language)}
+                  </button>
+                </td>
+              </tr>
+              {latestFirst.slice(latestFirst.length - FORECAST_KEEP_NEAR).map(projectedRow)}
+            </>
+          ) : (
+            latestFirst.map(projectedRow)
+          )}
+          {projected ? (
+            <tr data-testid="debt-payments-recorded" className="border-t border-foreground/30">
+              <td colSpan={columns} className="pt-1 pb-0.5 text-xs uppercase tracking-wide text-muted-foreground">
+                {t('debts.details.forecast.recorded')}
               </td>
-              <td className="py-1.5 text-right">{amount(row.payment)}</td>
-              {splits ? (
-                <>
-                  <td className="py-1.5 text-right">{amount(row.interest)}</td>
-                  <td className="hidden py-1.5 text-right sm:table-cell">{amount(row.principal)}</td>
-                  <td className="py-1.5 text-right">{row.balance === '' ? '—' : amount(row.balance)}</td>
-                </>
-              ) : null}
+            </tr>
+          ) : null}
+          {booked.map((row) => (
+            <tr key={row.key} data-testid="debt-payment" className="border-t border-border">
+              <PaymentCells row={row} splits={splits} amount={amount} lang={lang} />
             </tr>
           ))}
         </tbody>
@@ -385,14 +434,23 @@ function PaymentsTable({ rows, splits, testId, amount, lang, overdueBefore, clas
   )
 }
 
-/** the payments still to come, asked for under the booked ones: the regular
- *  schedule plus the extras the budget the screen came from plans (else the
- *  active budget's), soonest first and set apart in muted italics */
-function FuturePayments({ debt, budgetId, amount, lang }: { debt: DebtDto; budgetId: Id | null; amount: (value: string) => string; lang: string }) {
+/** The Payments heading with, for a set-up debt that is not paid off, the
+ *  future-payments toggle beside it and the note of which plan they follow
+ *  under it: the projected rows join the top of the table */
+function PaymentsSection({ debt, payments, splits, budgetId, amount, lang }: {
+  debt: DebtDto
+  payments: DebtDetailsDto['payments']
+  splits: boolean
+  budgetId: Id | null
+  amount: (value: string) => string
+  lang: string
+}) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const { data, error, isPending } = useDebtForecast(debt.id, budgetId, open)
   const headingId = useId()
+  const [open, setOpen] = useState(false)
+  // the projection needs the terms, and a paid-off debt has nothing to come
+  const canForecast = splits && debt.isPaidOff === 0
+  const { data, error, isPending } = useDebtForecast(debt.id, budgetId, open && canForecast)
   // a view is the user opening the list, not each (background) load of it
   const toggle = () => {
     if (!open) {
@@ -400,41 +458,50 @@ function FuturePayments({ debt, budgetId, amount, lang }: { debt: DebtDto; budge
     }
     setOpen(!open)
   }
+  const shown = open && canForecast && data ? data : null
+  const booked = payments.map((p) => ({ key: p.transactionId, date: p.date, payment: p.amount, interest: p.interest, principal: p.principal, balance: p.balance }))
   return (
-    <div className="mt-2 flex flex-col gap-2">
-      <button type="button" className="self-start py-1 text-sm text-econumo-link hover:underline" aria-expanded={open} onClick={toggle}>
-        {open ? t('debts.details.forecast.hide') : t('debts.details.forecast.show')}
-      </button>
-      {!open ? null : isPending ? (
-        <div className="flex justify-center py-6">
-          <CoinLoader />
-        </div>
-      ) : error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {apiErrorMessage(error)}
-        </p>
-      ) : (
-        <section aria-labelledby={headingId} className="flex flex-col gap-1">
-          <SectionHeading id={headingId}>{t('debts.details.forecast.title')}</SectionHeading>
-          <p className="mb-1 text-xs text-muted-foreground">
-            {data.budgetName ? t('debts.details.forecast.with_plan', { budget: data.budgetName }) : t('debts.details.forecast.regular_only')}
+    <section aria-labelledby={headingId}>
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h3 id={headingId} className="text-sm uppercase tracking-wide text-muted-foreground">
+          {t('debts.details.payments')}
+        </h3>
+        {canForecast ? (
+          <button type="button" className="text-sm text-econumo-link hover:underline" aria-expanded={open} onClick={toggle}>
+            {open ? t('debts.details.forecast.hide') : t('debts.details.forecast.show')}
+          </button>
+        ) : null}
+      </div>
+      {open && canForecast ? (
+        isPending ? (
+          <div className="flex justify-center py-3">
+            <CoinLoader />
+          </div>
+        ) : error ? (
+          <p role="alert" className="mb-2 text-sm text-destructive">
+            {apiErrorMessage(error)}
           </p>
-          {data.items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('debts.details.forecast.none')}</p>
-          ) : (
-            <PaymentsTable
-              testId="debt-forecast-payment"
-              splits
-              rows={data.items.map((p, i) => ({ key: `${i}-${p.date}`, ...p }))}
-              amount={amount}
-              lang={lang}
-              overdueBefore={formatDate(new Date())}
-              className="text-muted-foreground italic"
-            />
-          )}
-        </section>
+        ) : shown ? (
+          <p className="mb-2 text-xs text-muted-foreground">
+            {shown.budgetName ? t('debts.details.forecast.with_plan', { budget: shown.budgetName }) : t('debts.details.forecast.regular_only')}
+          </p>
+        ) : null
+      ) : null}
+      {booked.length === 0 && !shown ? (
+        <p className="text-sm text-muted-foreground">{t('debts.details.payments_empty')}</p>
+      ) : (
+        <PaymentsTable
+          // a fresh opening starts folded again
+          key={shown ? 'forecast' : 'booked'}
+          booked={booked}
+          projected={shown ? shown.items.map((p, i) => ({ key: `f${i}-${p.date}`, ...p })) : null}
+          splits={splits}
+          amount={amount}
+          lang={lang}
+          today={formatDate(new Date())}
+        />
       )}
-    </div>
+    </section>
   )
 }
 
@@ -519,22 +586,7 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
         readOnly
       />
 
-      <section>
-        <SectionHeading>{t('debts.details.payments')}</SectionHeading>
-        {payments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('debts.details.payments_empty')}</p>
-        ) : (
-          <PaymentsTable
-            testId="debt-payment"
-            splits={setUp}
-            rows={payments.map((p) => ({ key: p.transactionId, date: p.date, payment: p.amount, interest: p.interest, principal: p.principal, balance: p.balance }))}
-            amount={amount}
-            lang={lang}
-          />
-        )}
-        {/* the projection needs the terms, and a paid-off debt has nothing to come */}
-        {setUp && item.isPaidOff === 0 ? <FuturePayments debt={item} budgetId={budgetId} amount={amount} lang={lang} /> : null}
-      </section>
+      <PaymentsSection debt={item} payments={payments} splits={setUp} budgetId={budgetId} amount={amount} lang={lang} />
 
       {snapshots.length > 0 ? (
         <section>
