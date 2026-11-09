@@ -52,7 +52,7 @@ export function Stepper({ steps, current, onSelect }: StepperProps) {
                 aria-current={state === 'current' ? 'step' : undefined}
                 data-state={state}
                 onClick={() => onSelect(step.key)}
-                className="flex h-6 flex-1 items-center"
+                className="flex h-6 flex-1 items-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <span className={`h-1 w-full rounded-full ${SEGMENT[state]}`} />
               </button>
@@ -81,7 +81,7 @@ export function Stepper({ steps, current, onSelect }: StepperProps) {
                 aria-current={state === 'current' ? 'step' : undefined}
                 data-state={state}
                 onClick={() => onSelect(step.key)}
-                className={`flex flex-col items-center gap-1.5 rounded-md px-1 text-center text-xs ${state === 'current' ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground`}
+                className={`flex flex-col items-center gap-1.5 rounded-md px-1 text-center text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${state === 'current' ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground`}
               >
                 <span className={`z-10 grid size-7 place-items-center rounded-full border-2 text-xs ${DOT[state]}`}>
                   {step.state === 'done' ? <Check className="size-4" data-testid={`step-check-${step.key}`} /> : index + 1}

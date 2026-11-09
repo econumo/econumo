@@ -6,8 +6,10 @@ import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { EntityIcon } from '@/components/EntityIcon'
+import { IconPicker } from '@/components/IconPicker'
+import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCurrencies, useCurrencyRates } from '@/features/currencies/queries'
+import { useCurrencies } from '@/features/currencies/queries'
 import { selectableCurrencies } from '@/features/currencies/selectable'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -52,7 +54,6 @@ const emptyRow = (): AccountRow => ({ key: uuidv7(), name: '', balance: '', curr
 export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, createdIds, onContinue, onSkip, pending, error }: AccountsStepProps) {
   const { t, i18n } = useTranslation()
   const { data: currencies } = useCurrencies()
-  const { data: rates } = useCurrencyRates()
   const { data: user } = useUserData()
   const words = () => ({ cash: t('onboarding.words.cash'), savings: t('onboarding.words.savings') })
 
@@ -98,6 +99,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   // the first new row's pick: rows the user has not changed by hand follow it
   const [sharedId, setSharedId] = useState<Id | null>(leftover[0]?.currencyId || null)
   const [pickingRow, setPickingRow] = useState<string | null>(null)
+  const [iconRowKey, setIconRowKey] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
   const savingsTouched = useRef(new Set<string>())
@@ -115,7 +117,8 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const update = (key: string, patch: Partial<AccountRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
 
   const rename = (row: AccountRow, name: string) => {
-    const patch: Partial<AccountRow> = { name, labelKey: undefined, icon: guessAccountIcon(name, words()) }
+    const patch: Partial<AccountRow> = { name, labelKey: undefined }
+    if (!row.iconPicked) patch.icon = guessAccountIcon(name, words())
     if (!savingsTouched.current.has(row.key)) patch.savings = looksLikeSavings(name, words().savings)
     update(row.key, patch)
   }
@@ -141,9 +144,6 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const extras = extraIds.filter((id) => !usedIds.includes(id))
   const selectedIds = [...usedIds, ...extras]
   const mainId = mainOverride && selectedIds.includes(mainOverride) ? mainOverride : computedMain
-
-  const baseId = rates?.[0]?.baseCurrencyId ?? userCurrencyId(user)
-  const missingRateIds = rates ? selectedIds.filter((id) => id !== baseId && !rates.some((r) => r.currencyId === id)) : []
 
   const parse = (raw: string) => parseBalance(raw, i18n.language)
   const invalid = new Set(active.filter((r) => parse(r.balance) === null).map((r) => r.key))
@@ -171,6 +171,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   }
 
   const editing = rows.find((r) => r.key === pickingRow)
+  const editingIcon = rows.find((r) => r.key === iconRowKey)
   const codeOf = (id: Id) => currencies?.find((c) => c.id === id)?.code ?? ''
   const chip = 'shrink-0 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground'
 
@@ -185,7 +186,6 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
       <ChevronDown className={cn('size-4 transition-transform', open === key && 'rotate-180')} />
     </button>
   )
-  const savingsLabel = <div className="px-1 text-[11px] leading-tight text-primary">{t('onboarding.accounts.savings_label')}</div>
   const savingsSwitch = (checked: boolean, onChange: (v: boolean) => void) => (
     <label className="flex items-center gap-2 text-sm text-muted-foreground">
       {t('onboarding.accounts.savings')}
@@ -208,10 +208,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
                 <span className={rowTile}>
                   <EntityIcon name={a.icon} className="text-lg" />
                 </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate px-1">{a.name}</div>
-                  {savings && savingsLabel}
-                </div>
+                <div className="min-w-0 flex-1 truncate px-1">{a.name}</div>
                 <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                   {addThousandSeparators(formatNumber(a.balance, cur?.fractionDigits ?? 2, true)).join('.')}
                 </span>
@@ -231,22 +228,24 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
           return (
             <li key={row.key} className="px-3 py-2" data-testid="account-row">
               <div className="flex items-center gap-2 sm:gap-3">
-                <span className={rowTile}>
+                <button
+                  type="button"
+                  className={cn(rowTile, 'hover:bg-primary/15')}
+                  aria-label={t('onboarding.categories_step.icon_label')}
+                  onClick={() => setIconRowKey(row.key)}
+                >
                   <EntityIcon name={row.icon} className="text-lg" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <input
-                    className={cn(rowInput, 'w-full')}
-                    aria-label={t('onboarding.accounts.name_label')}
-                    placeholder={t('onboarding.accounts.name_label')}
-                    autoFocus={row.key === focusKey}
-                    value={row.name}
-                    aria-invalid={showName}
-                    onChange={(e) => rename(row, e.target.value)}
-                    onBlur={() => setNameTouched((prev) => new Set(prev).add(row.key))}
-                  />
-                  {row.savings && savingsLabel}
-                </div>
+                </button>
+                <input
+                  className={rowInput}
+                  aria-label={t('onboarding.accounts.name_label')}
+                  placeholder={t('onboarding.accounts.name_label')}
+                  autoFocus={row.key === focusKey}
+                  value={row.name}
+                  aria-invalid={showName}
+                  onChange={(e) => rename(row, e.target.value)}
+                  onBlur={() => setNameTouched((prev) => new Set(prev).add(row.key))}
+                />
                 <input
                   className="w-20 shrink-0 rounded-lg border bg-transparent px-2 py-1.5 text-right text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:border-destructive sm:w-28"
                   aria-label={t('onboarding.accounts.balance_label')}
@@ -298,7 +297,6 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
         usedIds={usedIds}
         extraIds={extras}
         mainId={mainId}
-        missingRateIds={missingRateIds}
         onAddExtra={(id) => setExtraIds((prev) => (prev.includes(id) ? prev : [...prev, id]))}
         onRemoveExtra={(id) => setExtraIds((prev) => prev.filter((x) => x !== id))}
         onMainChange={setMainOverride}
@@ -313,6 +311,23 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
           {t('onboarding.accounts.continue')}
         </Button>
       </div>
+
+      <ResponsiveDialog
+        open={editingIcon !== undefined}
+        onOpenChange={(o) => !o && setIconRowKey(null)}
+        title={t('onboarding.categories_step.icon_label')}
+      >
+        {editingIcon && (
+          <IconPicker
+            value={editingIcon.icon}
+            onChange={(icon) => {
+              update(editingIcon.key, { icon, iconPicked: true })
+              setIconRowKey(null)
+            }}
+            aria-label={t('onboarding.categories_step.icon_label')}
+          />
+        )}
+      </ResponsiveDialog>
 
       <CurrencyListSheet
         open={editing !== undefined}

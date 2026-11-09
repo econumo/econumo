@@ -70,7 +70,7 @@ it('moves a row within its group and submits rows and the full order in that ord
   const { onContinue } = renderStep()
   await moveUp(user, 'Pets')
   expect(names('expense').slice(7, 10)).toEqual(['Entertainment', 'Pets', 'Kids'])
-  expect(names('income')).toEqual(['Salary', 'Bonus', 'Interest', 'Other income'])
+  expect(names('income')).toEqual(['Salary', 'Bonus', 'Other income'])
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   const [rows, order] = onContinue.mock.calls[0] as [CategoryRow[], string[]]
   expect(rows.filter((r) => r.type === 'expense').map((r) => r.name).slice(7, 10)).toEqual(['Entertainment', 'Pets', 'Kids'])

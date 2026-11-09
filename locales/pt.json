@@ -1202,7 +1202,6 @@
       "subscriptions": "Subscrições",
       "salary": "Salário",
       "bonus": "Bónus",
-      "interest": "Juros",
       "other_income": "Outras receitas"
     },
     "words": {
@@ -1222,7 +1221,6 @@
       "continue": "Continuar",
       "skip": "Pular",
       "add": "Adicionar conta",
-      "savings_label": "Conta poupança",
       "details": "Detalhes da conta",
       "default_cash": "Dinheiro"
     },
@@ -1243,9 +1241,9 @@
       "main_title": "Moeda principal",
       "add": "Adicionar moeda",
       "remove": "Remover {code}",
-      "no_rate": "Ainda não há taxa de câmbio para {codes}. Os valores nesta moeda não serão convertidos até ser adicionada uma taxa.",
       "main_short": "{code} (principal)",
-      "add_short": "Adicionar"
+      "add_short": "Adicionar",
+      "hint": "Selecione as moedas que usa com mais frequência. Pode adicionar mais tarde nas Definições."
     },
     "steps_nav": {
       "title": "Primeiros passos",
@@ -1268,7 +1266,9 @@
       "text": "Tem uma exportação CSV do seu banco ou de outra app? Ela cria contas, categorias e transações de uma só vez.",
       "choose": "Escolher um ficheiro CSV",
       "skip": "Não tenho",
-      "import": "Importar"
+      "import": "Importar",
+      "drop_here": "ou largue-o aqui",
+      "not_csv": "Aqui só é possível importar ficheiros CSV."
     },
     "install_step": {
       "heading": "Econumo a um toque",
@@ -1281,8 +1281,8 @@
       "heading": "Pagamentos com cartão, registados por si",
       "text": "Ligue o Apple Wallet e cada pagamento com o cartão aparece sozinho no Econumo.",
       "setup": "Configurar",
-      "tile": "Configurar o atalho",
-      "skip": "Ignorar"
+      "skip": "Ignorar",
+      "later": "Pode configurar a integração com o Apple Wallet a qualquer momento nas Definições."
     },
     "retry": "Tentar novamente",
     "plan_step": {

@@ -62,6 +62,17 @@ it('parsing a file reveals the mapping UI with auto-detected columns and samples
   expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled()
 })
 
+it('parses an initial file without a pick in the dialog', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <ImportCsvDialog open onClose={() => {}} onComplete={vi.fn()} initialFile={new File([CSV], 'dropped.csv', { type: 'text/csv' })} />
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByText(/Map the columns from your CSV file/)).toBeInTheDocument()
+  expect(screen.getByText('dropped.csv')).toBeInTheDocument()
+})
+
 it('rejects files above 10 MB', async () => {
   renderDialog()
   const user = userEvent.setup()

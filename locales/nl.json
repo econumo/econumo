@@ -1202,7 +1202,6 @@
       "subscriptions": "Abonnementen",
       "salary": "Salaris",
       "bonus": "Bonus",
-      "interest": "Rente",
       "other_income": "Overige inkomsten"
     },
     "words": {
@@ -1222,7 +1221,6 @@
       "continue": "Doorgaan",
       "skip": "Overslaan",
       "add": "Rekening toevoegen",
-      "savings_label": "Spaarrekening",
       "details": "Rekeninggegevens",
       "default_cash": "Contant"
     },
@@ -1243,9 +1241,9 @@
       "main_title": "Hoofdvaluta",
       "add": "Valuta toevoegen",
       "remove": "{code} verwijderen",
-      "no_rate": "Nog geen wisselkoers voor {codes}. Bedragen in deze valuta worden pas omgerekend als er een koers is toegevoegd.",
       "main_short": "{code} (hoofd)",
-      "add_short": "Toevoegen"
+      "add_short": "Toevoegen",
+      "hint": "Kies de valuta's die je het vaakst gebruikt. Je kunt er later meer toevoegen in Instellingen."
     },
     "steps_nav": {
       "title": "Aan de slag",
@@ -1268,7 +1266,9 @@
       "text": "Heb je een CSV-export van je bank of een andere app? Die maakt rekeningen, categorieën en transacties in één keer aan.",
       "choose": "Kies een CSV-bestand",
       "skip": "Ik heb er geen",
-      "import": "Importeren"
+      "import": "Importeren",
+      "drop_here": "of sleep het hierheen",
+      "not_csv": "Hier kunnen alleen CSV-bestanden worden geïmporteerd."
     },
     "install_step": {
       "heading": "Econumo altijd binnen handbereik",
@@ -1281,8 +1281,8 @@
       "heading": "Kaartbetalingen, vanzelf vastgelegd",
       "text": "Koppel Apple Wallet en elke betaling met je kaart verschijnt vanzelf in Econumo.",
       "setup": "Instellen",
-      "tile": "Snelcommando instellen",
-      "skip": "Overslaan"
+      "skip": "Overslaan",
+      "later": "Je kunt de Apple Wallet-koppeling op elk moment later instellen in Instellingen."
     },
     "retry": "Opnieuw proberen",
     "plan_step": {

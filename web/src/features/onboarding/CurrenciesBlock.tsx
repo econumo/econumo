@@ -49,7 +49,6 @@ interface CurrenciesBlockProps {
   usedIds: Id[]
   extraIds: Id[]
   mainId: Id | null
-  missingRateIds: Id[]
   onAddExtra: (id: Id) => void
   onRemoveExtra: (id: Id) => void
   onMainChange: (id: Id) => void
@@ -61,7 +60,6 @@ export function CurrenciesBlock({
   usedIds,
   extraIds,
   mainId,
-  missingRateIds,
   onAddExtra,
   onRemoveExtra,
   onMainChange,
@@ -74,12 +72,12 @@ export function CurrenciesBlock({
   const extras = extraIds.filter((id) => !usedIds.includes(id))
   const selected = [...usedIds, ...extras]
   const addable = selectableOptions.filter((c) => !selected.includes(c.id))
-  const missingCodes = missingRateIds.map(code).filter(Boolean).join(', ')
   const dot = <span aria-hidden>·</span>
 
   return (
     <section>
-      <h3 className="mt-4 mb-1.5 text-xs tracking-wider text-muted-foreground uppercase">{t('onboarding.currencies.title')}</h3>
+      <h3 className="mt-4 mb-1 text-xs tracking-wider text-muted-foreground uppercase">{t('onboarding.currencies.title')}</h3>
+      <p className="mb-1.5 text-sm text-muted-foreground">{t('onboarding.currencies.hint')}</p>
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
         {mainId && (
           <button
@@ -122,11 +120,6 @@ export function CurrenciesBlock({
           + {t('onboarding.currencies.add_short')}
         </button>
       </div>
-      {missingCodes && (
-        <p role="note" className="mt-2 text-sm text-amber-600 dark:text-amber-400">
-          {t('onboarding.currencies.no_rate', { codes: missingCodes })}
-        </p>
-      )}
       <CurrencyListSheet open={adding} title={t('onboarding.currencies.add')} options={addable} onClose={() => setAdding(false)} onPick={onAddExtra} />
       <CurrencyListSheet
         open={pickingMain}

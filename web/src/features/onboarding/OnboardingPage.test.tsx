@@ -343,7 +343,7 @@ it('a registered user without the option walks every step and the answers and co
 
   expect(await heading('Plan this month')).toBeInTheDocument()
   const salary = await screen.findByRole('textbox', { name: 'Salary' }, { timeout: 5000 })
-  expect(within(screen.getByTestId('group-income')).getAllByRole('textbox').map((i) => i.getAttribute('aria-label'))).toEqual(['Salary', 'Bonus', 'Interest', 'Other income'])
+  expect(within(screen.getByTestId('group-income')).getAllByRole('textbox').map((i) => i.getAttribute('aria-label'))).toEqual(['Salary', 'Bonus', 'Other income'])
   expect(salary).toHaveValue('')
   expect(screen.getByRole('textbox', { name: 'Groceries' })).toHaveValue('')
   await user.type(salary, '3000')
@@ -357,7 +357,7 @@ it('a registered user without the option walks every step and the answers and co
     { path: 'update-getting-started', body: '!import' },
     { path: 'update-getting-started', body: '!import,categories' },
     { path: 'update-getting-started', body: '!import,categories,accounts' },
-    { path: 'create-budget', body: ['acc-16'] },
+    { path: 'create-budget', body: ['acc-15'] },
     { path: 'set-limit', body: [salaryId, '3000'] },
     { path: 'set-limit', body: [groceriesId, '400'] },
     { path: 'update-getting-started', body: '!import,categories,accounts,plan' },

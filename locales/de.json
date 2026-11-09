@@ -1202,7 +1202,6 @@
       "subscriptions": "Abonnements",
       "salary": "Gehalt",
       "bonus": "Bonus",
-      "interest": "Zinsen",
       "other_income": "Sonstige Einnahmen"
     },
     "words": {
@@ -1222,7 +1221,6 @@
       "continue": "Weiter",
       "skip": "Überspringen",
       "add": "Konto hinzufügen",
-      "savings_label": "Sparkonto",
       "details": "Kontodetails",
       "default_cash": "Bargeld"
     },
@@ -1243,9 +1241,9 @@
       "main_title": "Hauptwährung",
       "add": "Währung hinzufügen",
       "remove": "{code} entfernen",
-      "no_rate": "Für {codes} gibt es noch keinen Wechselkurs. Beträge darin werden erst umgerechnet, wenn ein Kurs hinzugefügt wird.",
       "main_short": "{code} (Haupt)",
-      "add_short": "Hinzufügen"
+      "add_short": "Hinzufügen",
+      "hint": "Wähle die Währungen, die du am häufigsten nutzt. Weitere kannst du später in den Einstellungen hinzufügen."
     },
     "steps_nav": {
       "title": "Erste Schritte",
@@ -1268,7 +1266,9 @@
       "text": "Hast du einen CSV-Export von deiner Bank oder einer anderen App? Er legt Konten, Kategorien und Buchungen in einem Schritt an.",
       "choose": "CSV-Datei auswählen",
       "skip": "Ich habe keine",
-      "import": "Importieren"
+      "import": "Importieren",
+      "drop_here": "oder hier ablegen",
+      "not_csv": "Hier können nur CSV-Dateien importiert werden."
     },
     "install_step": {
       "heading": "Econumo immer griffbereit",
@@ -1281,8 +1281,8 @@
       "heading": "Kartenzahlungen, automatisch erfasst",
       "text": "Verbinde Apple Wallet, und jede Kartenzahlung erscheint von selbst in Econumo.",
       "setup": "Einrichten",
-      "tile": "Kurzbefehl einrichten",
-      "skip": "Überspringen"
+      "skip": "Überspringen",
+      "later": "Du kannst die Apple-Wallet-Integration jederzeit später in den Einstellungen einrichten."
     },
     "retry": "Erneut versuchen",
     "plan_step": {

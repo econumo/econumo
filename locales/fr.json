@@ -1202,7 +1202,6 @@
       "subscriptions": "Abonnements",
       "salary": "Salaire",
       "bonus": "Primes",
-      "interest": "Intérêts",
       "other_income": "Autres revenus"
     },
     "words": {
@@ -1222,7 +1221,6 @@
       "continue": "Continuer",
       "skip": "Passer",
       "add": "Ajouter un compte",
-      "savings_label": "Compte d'épargne",
       "details": "Détails du compte",
       "default_cash": "Espèces"
     },
@@ -1243,9 +1241,9 @@
       "main_title": "Devise principale",
       "add": "Ajouter une devise",
       "remove": "Retirer {code}",
-      "no_rate": "Pas encore de taux de change pour {codes}. Les montants dans cette devise ne seront pas convertis tant qu'un taux n'est pas ajouté.",
       "main_short": "{code} (principale)",
-      "add_short": "Ajouter"
+      "add_short": "Ajouter",
+      "hint": "Sélectionnez les devises que vous utilisez le plus souvent. Vous pourrez en ajouter d'autres plus tard dans les Paramètres."
     },
     "steps_nav": {
       "title": "Premiers pas",
@@ -1268,7 +1266,9 @@
       "text": "Vous avez un export CSV de votre banque ou d'une autre appli ? Il crée comptes, catégories et transactions en une seule fois.",
       "choose": "Choisir un fichier CSV",
       "skip": "Je n'en ai pas",
-      "import": "Importer"
+      "import": "Importer",
+      "drop_here": "ou déposez-le ici",
+      "not_csv": "Seuls les fichiers CSV peuvent être importés ici."
     },
     "install_step": {
       "heading": "Econumo à portée de main",
@@ -1281,8 +1281,8 @@
       "heading": "Paiements par carte, saisis pour vous",
       "text": "Connectez Apple Wallet et chaque paiement par carte apparaît tout seul dans Econumo.",
       "setup": "Configurer",
-      "tile": "Configurer le raccourci",
-      "skip": "Passer"
+      "skip": "Passer",
+      "later": "Vous pourrez configurer l'intégration Apple Wallet à tout moment dans les Paramètres."
     },
     "retry": "Réessayer",
     "plan_step": {

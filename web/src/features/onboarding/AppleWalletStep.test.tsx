@@ -20,15 +20,9 @@ it('Set up opens the Apple Wallet settings; Skip skips', async () => {
   expect(await screen.findByText('WALLET SETTINGS')).toBeInTheDocument()
 })
 
-it('the Shortcut tile opens the Apple Wallet settings', async () => {
-  const router = createMemoryRouter(
-    [
-      { path: '/', element: <AppleWalletStep onDone={vi.fn()} onSkip={vi.fn()} /> },
-      { path: '/settings/apple-wallet', element: <div>WALLET SETTINGS</div> },
-    ],
-    { initialEntries: ['/'] },
-  )
+it('says the integration can be set up later in Settings', () => {
+  const router = createMemoryRouter([{ path: '/', element: <AppleWalletStep onDone={vi.fn()} onSkip={vi.fn()} /> }], { initialEntries: ['/'] })
   render(<RouterProvider router={router} />)
-  await userEvent.setup().click(screen.getByRole('button', { name: 'Set up the Shortcut' }))
-  expect(await screen.findByText('WALLET SETTINGS')).toBeInTheDocument()
+  expect(screen.getByText('You can set up the Apple Wallet integration any time later in Settings.')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Set up the Shortcut' })).not.toBeInTheDocument()
 })

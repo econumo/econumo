@@ -33,9 +33,11 @@ interface ImportCsvDialogProps {
   open: boolean
   onClose: () => void
   onComplete: (result: AggregatedImportResult) => void
+  // a file dropped before the dialog opened, parsed as if picked in it
+  initialFile?: File
 }
 
-export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogProps) {
+export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: ImportCsvDialogProps) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const { data: user } = useUserData()
@@ -66,8 +68,10 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
   useEffect(() => {
     if (open) {
       reset()
+      if (initialFile) void handleFile(initialFile)
     }
-  }, [open])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialFile])
 
   const meId = user?.id
   // accounts I can write transactions into: mine, or shared to me above view-only

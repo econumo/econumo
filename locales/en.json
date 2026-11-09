@@ -1202,7 +1202,6 @@
       "subscriptions": "Subscriptions",
       "salary": "Salary",
       "bonus": "Bonus",
-      "interest": "Interest",
       "other_income": "Other income"
     },
     "words": {
@@ -1222,7 +1221,6 @@
       "continue": "Continue",
       "skip": "Skip",
       "add": "Add account",
-      "savings_label": "Savings account",
       "details": "Account details",
       "default_cash": "Cash"
     },
@@ -1243,9 +1241,9 @@
       "main_title": "Main currency",
       "add": "Add currency",
       "remove": "Remove {code}",
-      "no_rate": "No exchange rate yet for {codes}. Amounts in it won't be converted until a rate is added.",
       "main_short": "{code} (main)",
-      "add_short": "Add"
+      "add_short": "Add",
+      "hint": "Select the currencies you use most often. You can add more later in Settings."
     },
     "steps_nav": {
       "title": "Getting started",
@@ -1268,7 +1266,9 @@
       "text": "Have a CSV export from your bank or another app? It creates accounts, categories and transactions in one go.",
       "choose": "Choose a CSV file",
       "skip": "I don't have one",
-      "import": "Import"
+      "import": "Import",
+      "drop_here": "or drop it here",
+      "not_csv": "Only CSV files can be imported here."
     },
     "install_step": {
       "heading": "Keep Econumo one tap away",
@@ -1281,8 +1281,8 @@
       "heading": "Card payments, logged for you",
       "text": "Connect Apple Wallet and every tap with your card appears in Econumo on its own.",
       "setup": "Set up",
-      "tile": "Set up the Shortcut",
-      "skip": "Skip"
+      "skip": "Skip",
+      "later": "You can set up the Apple Wallet integration any time later in Settings."
     },
     "retry": "Try again",
     "plan_step": {

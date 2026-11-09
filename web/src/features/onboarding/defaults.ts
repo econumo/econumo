@@ -20,7 +20,6 @@ export const DEFAULT_EXPENSE_CATEGORIES: readonly DefaultCategory[] = [
 export const DEFAULT_INCOME_CATEGORIES: readonly DefaultCategory[] = [
   { key: 'salary', icon: 'payments' },
   { key: 'bonus', icon: 'redeem' },
-  { key: 'interest', icon: 'trending_up' },
   { key: 'other_income', icon: 'paid' },
 ]
 

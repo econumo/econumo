@@ -30,7 +30,7 @@ const details = (user: ReturnType<typeof userEvent.setup>, i: number) => user.cl
 
 async function ready() {
   // the default currency resolves once the currency list and profile load
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent(/[A-Z]{3} \(main\)/))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent(/[A-Z]{3} \(main\)/), { timeout: 3000 })
 }
 
 async function pickCurrency(user: ReturnType<typeof userEvent.setup>, rowIndex: number, code: string) {
@@ -53,7 +53,6 @@ it('starts a user with no accounts on a prefilled Cash row: cash icon, not savin
   expect(nameInputs()[0]).toHaveValue('Cash')
   expect(balanceInputs()[0]).toHaveValue('')
   expect(within(rowsEls()[0]).getByText('payments')).toBeInTheDocument()
-  expect(within(rowsEls()[0]).queryByText('Savings account')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(onContinue.mock.calls[0][0]).toEqual([expect.objectContaining({ name: 'Cash', balance: '0', currencyId: 'cur-usd', savings: false, icon: 'payments' })])
   expect(onContinue.mock.calls[0][2]).toBe('cur-usd')
@@ -119,10 +118,9 @@ it('picks the cash icon for Cash and marks a savings name as a savings account',
   await ready()
   await user.type(nameInputs()[0], 'Cash')
   expect(within(rowsEls()[0]).getByText('payments')).toBeInTheDocument()
-  expect(within(rowsEls()[0]).queryByText('Savings account')).not.toBeInTheDocument()
   await addAccount(user)
   await user.type(nameInputs()[1], 'Savings')
-  expect(within(rowsEls()[1]).getByText('Savings account')).toBeInTheDocument()
+  expect(within(rowsEls()[1]).queryByText('Savings account')).not.toBeInTheDocument()
   await details(user, 1)
   expect(within(rowsEls()[1]).getByRole('switch')).toBeChecked()
 })
@@ -135,7 +133,6 @@ it('stops following the name once the savings switch is toggled', async () => {
   await user.click(within(rowsEls()[0]).getByRole('switch'))
   await user.type(nameInputs()[0], 'Cash')
   expect(within(rowsEls()[0]).getByRole('switch')).toBeChecked()
-  expect(within(rowsEls()[0]).getByText('Savings account')).toBeInTheDocument()
 })
 
 it('submits a typed balance as a normalized decimal string and the main currency', async () => {
@@ -326,15 +323,32 @@ it('lets the user pick another selected currency as Main', async () => {
   expect(onContinue.mock.calls[0][2]).toBe('cur-eur')
 })
 
-it('notes a selected currency that has no rate', async () => {
-  const user = userEvent.setup()
-  renderStep({}, { rates: [{ currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', updatedAt: '2026-07-01 00:00:00' }] })
+it('says which currencies to pick under the Currencies label', async () => {
+  renderStep()
   await ready()
-  await user.type(nameInputs()[0], 'Card')
-  expect(screen.queryByText(/No exchange rate yet/)).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: /Add currency/ }))
-  await user.click(await screen.findByRole('option', { name: /^EUR/ }))
-  expect(screen.getByText(/No exchange rate yet for EUR/)).toBeInTheDocument()
+  expect(screen.getByText('Select the currencies you use most often. You can add more later in Settings.')).toBeInTheDocument()
+})
+
+it('changes a new row\'s icon through the icon picker and keeps it when the name changes', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep()
+  await ready()
+  await user.click(within(rowsEls()[0]).getByRole('button', { name: 'Change icon' }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('option', { name: 'account_balance_wallet' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(within(rowsEls()[0]).getByText('account_balance_wallet')).toBeInTheDocument()
+  await user.clear(nameInputs()[0])
+  await user.type(nameInputs()[0], 'Savings')
+  expect(within(rowsEls()[0]).getByText('account_balance_wallet')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][0]).toEqual([expect.objectContaining({ name: 'Savings', icon: 'account_balance_wallet', savings: true })])
+})
+
+it('keeps the icon of an existing account read-only', async () => {
+  renderStep({ existing: [imported] })
+  await ready()
+  expect(within(rowsEls()[0]).queryByRole('button', { name: 'Change icon' })).not.toBeInTheDocument()
 })
 
 it('calls onSkip', async () => {
@@ -359,7 +373,8 @@ it('lists existing accounts first, locked with their balance, and passes them on
   expect(within(first).getByText('EUR')).toBeInTheDocument()
   // existing accounts need no new row; their savings flag is guessed from the name
   expect(nameInputs).toThrow()
-  expect(within(rowsEls()[1]).getByText('Savings account')).toBeInTheDocument()
+  await details(user, 1)
+  expect(within(rowsEls()[1]).getByRole('switch')).toBeChecked()
   await details(user, 0)
   expect(within(rowsEls()[0]).queryByRole('button', { name: 'Remove account' })).not.toBeInTheDocument()
   await user.click(within(rowsEls()[0]).getByRole('switch'))
@@ -478,7 +493,8 @@ describe('AccountsStepBody recovery', () => {
     await ready()
     expect(screen.getAllByTestId('account-row')).toHaveLength(1)
     expect(screen.queryByLabelText('Account name')).not.toBeInTheDocument()
-    expect(within(screen.getByTestId('account-row')).getByText('Savings account')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Account details' }))
+    expect(within(screen.getByTestId('account-row')).getByRole('switch')).toBeChecked()
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(creates).toEqual([])

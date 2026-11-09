@@ -1202,7 +1202,6 @@
       "subscriptions": "Subskrypcje",
       "salary": "Wynagrodzenie",
       "bonus": "Premie",
-      "interest": "Odsetki",
       "other_income": "Inne przychody"
     },
     "words": {
@@ -1222,7 +1221,6 @@
       "continue": "Dalej",
       "skip": "Pomiń",
       "add": "Dodaj konto",
-      "savings_label": "Konto oszczędnościowe",
       "details": "Szczegóły konta",
       "default_cash": "Gotówka"
     },
@@ -1243,9 +1241,9 @@
       "main_title": "Waluta główna",
       "add": "Dodaj walutę",
       "remove": "Usuń {code}",
-      "no_rate": "Brak jeszcze kursu wymiany dla {codes}. Kwoty w tej walucie nie będą przeliczane, dopóki nie zostanie dodany kurs.",
       "main_short": "{code} (główna)",
-      "add_short": "Dodaj"
+      "add_short": "Dodaj",
+      "hint": "Wybierz waluty, których używasz najczęściej. Kolejne możesz dodać później w Ustawieniach."
     },
     "steps_nav": {
       "title": "Pierwsze kroki",
@@ -1268,7 +1266,9 @@
       "text": "Masz eksport CSV z banku lub innej aplikacji? Utworzy konta, kategorie i transakcje za jednym razem.",
       "choose": "Wybierz plik CSV",
       "skip": "Nie mam",
-      "import": "Importuj"
+      "import": "Importuj",
+      "drop_here": "lub upuść go tutaj",
+      "not_csv": "Tutaj można importować tylko pliki CSV."
     },
     "install_step": {
       "heading": "Econumo zawsze pod ręką",
@@ -1281,8 +1281,8 @@
       "heading": "Płatności kartą zapisują się same",
       "text": "Połącz Apple Wallet, a każda płatność kartą pojawi się w Econumo automatycznie.",
       "setup": "Skonfiguruj",
-      "tile": "Skonfiguruj skrót",
-      "skip": "Pomiń"
+      "skip": "Pomiń",
+      "later": "Integrację z Apple Wallet możesz skonfigurować w dowolnym momencie później w Ustawieniach."
     },
     "retry": "Spróbuj ponownie",
     "plan_step": {

@@ -267,6 +267,8 @@ navigation (single-pane vs sidebar).
       can install and Apple Wallet on an iPhone or Mac): done steps are filled
       with ✓, skipped ones dashed, the selected one outlined. A phone shows
       "Getting started · N of M" over a segmented bar.
+- [ ] The stepper shows no focus outline after page load or a click; Tab
+      onto a step shows a focus ring.
 - [ ] Clicking a step (or a bar segment on a phone) opens it; Continue or Skip
       on a step moves to the next open step after it, and the stepper shows
       the new state. Skip on a revisited done step moves on and leaves it done.
@@ -304,23 +306,32 @@ navigation (single-pane vs sidebar).
       user archived (the archived one is not listed). The defaults are, for
       expenses, Groceries, Housing, Utilities, Transport, Eating out, Health,
       Shopping, Entertainment, Kids, Pets, Subscriptions and, for income,
-      Salary, Bonus, Interest, Other income (translated in every UI language).
+      Salary, Bonus, Other income (translated in every UI language).
+- [ ] 📱 In dark mode the Getting started page scrolls with a thin, dark
+      scrollbar (no bright default one), and the list has no scroll box of
+      its own.
 - [ ] Categories on a desktop width: each row has a drag handle, and dragging
       (or focusing the handle, Space, arrow keys, Space) reorders rows within
       Expenses or Income, existing locked categories included; a row never
       moves to the other card. After Continue the Categories settings page
       lists them in that order; a reload before Continue keeps the order.
       On a phone or tablet width there are no handles.
-- [ ] Accounts: one card of compact rows (icon, name, balance, currency chip);
-      a savings account shows a small "Savings account" label under its name,
-      toggled in the row's details (the chevron), where a new row can also be
-      removed; "Add account" adds a row. Accounts the user already has are
+- [ ] Accounts: one card of compact rows (icon, name, balance, currency chip),
+      with no label under the name; savings is toggled in the row's details
+      (the chevron), where a new row can also be removed (a savings-like name
+      turns it on until it is toggled by hand); tapping a new row's icon opens
+      the icon picker, the chosen icon is kept when the name changes and is
+      used for the created account, and an existing account's icon is not
+      tappable; "Add account" adds a row. Accounts the user already has are
       listed first and locked, with their balance shown and no balance asked
       for. A user with no accounts starts with one row named "Cash" (cash
       icon, not savings, blank balance saved as 0, the default currency) that
       can be renamed or removed like any row; a user who already has accounts,
-      or resumes a draft with rows, gets no Cash row. The currencies line
-      reads "USD (main) · + Add"; tapping the main currency changes it.
+      or resumes a draft with rows, gets no Cash row. Under the Currencies
+      label a hint reads "Select the currencies you use most often. You can
+      add more later in Settings."; the line reads "USD (main) · + Add";
+      tapping the main currency changes it. No note about missing exchange
+      rates appears.
 - [ ] Default names follow the UI language: switching the language on
       Categories or Accounts (or reloading in another language mid-flow)
       re-labels the default categories and the Cash row that were not
@@ -335,16 +346,20 @@ navigation (single-pane vs sidebar).
       width (each account row stays on one line; no horizontal scroll;
       Continue and Skip reachable).
 - [ ] Import step: "Choose a CSV file" (a dashed, accent-tinted area) and
-      Import open the CSV import dialog; a successful import marks Categories
+      Import open the CSV import dialog. On a desktop the area also reads "or
+      drop it here": dragging a file over it highlights it, dropping a .csv
+      opens the dialog with that file already read (column mapping shown),
+      and dropping another kind of file opens nothing and shows "Only CSV
+      files can be imported here."; a successful import marks Categories
       and Accounts done and opens the next open step (normally Budget & plan); closing
       the dialog or importing nothing leaves the step open; Skip skips only
       Import.
 - [ ] Steps per device: Install app appears only where the browser can
       install or show home-screen instructions (a standalone PWA shows
       none); the Install button or "Done" marks it done and Skip skips it. On
-      an iPhone or Mac, Apple Wallet appears: its
-      "Set up the Shortcut" tile and Set up open the Apple Wallet settings,
-      Skip skips it. Install instructions render as a grouped rounded card
+      an iPhone or Mac, Apple Wallet appears with a line saying it can be set
+      up any time later in Settings (no Shortcut tile); Set up opens the Apple
+      Wallet settings, Skip skips it. Install instructions render as a grouped rounded card
       with dividers and icon tiles.
 - [ ] An existing user who owns accounts (upgraded instance) is not sent to
       onboarding.

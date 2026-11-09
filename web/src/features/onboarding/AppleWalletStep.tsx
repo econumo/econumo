@@ -13,13 +13,7 @@ export function AppleWalletStep({ onSkip }: StepBodyProps) {
     <section className="flex flex-col gap-2">
       <h2 className="text-2xl font-normal">{t('onboarding.wallet_step.heading')}</h2>
       <p className="text-sm text-muted-foreground">{t('onboarding.wallet_step.text')}</p>
-      <button
-        type="button"
-        className="mt-4 flex items-center justify-center rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-6 text-sm text-muted-foreground hover:bg-primary/10"
-        onClick={() => navigate(RouterPage.SETTINGS_APPLE_WALLET)}
-      >
-        {t('onboarding.wallet_step.tile')}
-      </button>
+      <p className="text-sm text-muted-foreground">{t('onboarding.wallet_step.later')}</p>
       <div className="mt-6 flex items-center justify-between">
         <Button
           type="button"

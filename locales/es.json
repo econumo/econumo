@@ -1202,7 +1202,6 @@
       "subscriptions": "Suscripciones",
       "salary": "Nómina",
       "bonus": "Bonificaciones",
-      "interest": "Intereses",
       "other_income": "Otros ingresos"
     },
     "words": {
@@ -1222,7 +1221,6 @@
       "continue": "Continuar",
       "skip": "Omitir",
       "add": "Añadir cuenta",
-      "savings_label": "Cuenta de ahorro",
       "details": "Detalles de la cuenta",
       "default_cash": "Efectivo"
     },
@@ -1243,9 +1241,9 @@
       "main_title": "Moneda principal",
       "add": "Añadir moneda",
       "remove": "Quitar {code}",
-      "no_rate": "Aún no hay tipo de cambio para {codes}. Los importes en ella no se convertirán hasta que se añada un tipo.",
       "main_short": "{code} (principal)",
-      "add_short": "Añadir"
+      "add_short": "Añadir",
+      "hint": "Selecciona las monedas que más usas. Puedes añadir más después en Ajustes."
     },
     "steps_nav": {
       "title": "Primeros pasos",
@@ -1268,7 +1266,9 @@
       "text": "¿Tienes una exportación CSV de tu banco u otra app? Crea cuentas, categorías y transacciones de una sola vez.",
       "choose": "Elegir un archivo CSV",
       "skip": "No tengo ninguno",
-      "import": "Importar"
+      "import": "Importar",
+      "drop_here": "o suéltalo aquí",
+      "not_csv": "Aquí solo se pueden importar archivos CSV."
     },
     "install_step": {
       "heading": "Econumo a un toque",
@@ -1281,8 +1281,8 @@
       "heading": "Pagos con tarjeta, registrados por ti",
       "text": "Conecta Apple Wallet y cada pago con tu tarjeta aparece en Econumo por sí solo.",
       "setup": "Configurar",
-      "tile": "Configurar el atajo",
-      "skip": "Omitir"
+      "skip": "Omitir",
+      "later": "Puedes configurar la integración con Apple Wallet en cualquier momento desde Ajustes."
     },
     "retry": "Reintentar",
     "plan_step": {
