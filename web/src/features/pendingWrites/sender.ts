@@ -1,5 +1,6 @@
 import { notifyManager, onlineManager, type QueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
+import { getAccountList } from '@/api/account'
 import { setLimit } from '@/api/budget'
 import { createTransaction, deleteTransaction, updateTransaction } from '@/api/transaction'
 import type { WriteOptions } from '@/api/client'
@@ -8,6 +9,7 @@ import type { TransactionItemDto } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
 import { applyTransactionItem } from '@/features/transactions/queries'
+import { consumeFullReload, transactionsQueryFn } from '@/features/transactions/revisionTracking'
 import { apiErrorMessage } from '@/lib/apiError'
 import { invalidateReports } from '@/lib/appQueryClient'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -147,15 +149,60 @@ function settleAccepted(queryClient: QueryClient, op: PendingOp, result: unknown
   })
 }
 
+// Accounts first: the transaction sync goes by their revisions, and an accounts
+// fetch it would join may predate the write that landed.
+async function readTransactionsBack(queryClient: QueryClient): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timedOut = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Reading the replayed change back timed out')), WRITE_TIMEOUT_MS)
+  })
+  const read = (async () => {
+    await queryClient.cancelQueries({ queryKey: queryKeys.accounts, exact: true })
+    await queryClient.fetchQuery({ queryKey: queryKeys.accounts, queryFn: getAccountList, staleTime: 0, retry: false })
+    await queryClient.fetchQuery({
+      queryKey: queryKeys.transactions,
+      queryFn: ({ signal }) => transactionsQueryFn(queryClient, { full: consumeFullReload(), signal }),
+      staleTime: 0,
+      retry: false,
+    })
+  })()
+  try {
+    await Promise.race([read, timedOut])
+    return true
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+function holdOff(): void {
+  blockedUntil = Date.now() + backoff(networkFailures)
+  wakeIn(backoff(networkFailures))
+  networkFailures++
+}
+
 // A replay proves an earlier attempt landed, but its response was lost, so all
-// that is left is to read the outcome back from the server.
-function settleReplayed(queryClient: QueryClient, op: PendingOp, err: unknown): Promise<void> {
+// that is left is to read the outcome back from the server. A transaction change
+// stays in the overlay until that read has landed: settled sooner, an add would
+// vanish and a delete or an edit revert in the meantime, for as long as the read
+// cannot finish. False means it could not, and the attempt is repeated later.
+async function settleReplayed(queryClient: QueryClient, op: PendingOp, err: unknown): Promise<boolean> {
   if (!isQueued(op)) {
-    return Promise.resolve()
+    return true
   }
   if (op.kind === 'limit') {
     applyAcceptedLimit(queryClient, op)
+  } else {
+    if (!(await readTransactionsBack(queryClient))) {
+      holdOff()
+      return false
+    }
+    if (!isQueued(op)) {
+      return true
+    }
   }
+  networkFailures = 0
   const written = mutate((ops) => {
     if (op.kind !== 'tx-create') {
       return settleDone(ops, op.key)
@@ -163,13 +210,10 @@ function settleReplayed(queryClient: QueryClient, op: PendingOp, err: unknown): 
     const realId = replayResourceId(err)
     return realId ? resolveAdded(settleDone(ops, op.key), op.txId, realId) : settleUnresolved(ops, op.key, apiErrorMessage(err))
   })
-  if (op.kind !== 'limit') {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
-    void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
-  }
   invalidateChange(queryClient, op)
   acknowledge(queryClient, op)
-  return written
+  await written
+  return true
 }
 
 function replayResourceId(err: unknown): Id | undefined {
@@ -183,18 +227,17 @@ function retryLater(ops: PendingOp[], key: string, retries: number): PendingOp[]
 async function settleFailure(queryClient: QueryClient, op: PendingOp, err: unknown): Promise<boolean> {
   const outcome = classifyWriteError(err)
   if (outcome === 'wait') {
-    blockedUntil = Date.now() + backoff(networkFailures)
-    wakeIn(backoff(networkFailures))
-    networkFailures++
+    holdOff()
     return false
+  }
+  if (outcome === 'done') {
+    return settleReplayed(queryClient, op, err)
   }
   networkFailures = 0
   if (outcome === 'pause') {
     return false
   }
-  if (outcome === 'done') {
-    await settleReplayed(queryClient, op, err)
-  } else if (outcome === 'refused' || op.retries >= MAX_RETRIES) {
+  if (outcome === 'refused' || op.retries >= MAX_RETRIES) {
     await mutate((ops) => settleRefused(ops, op.key, apiErrorMessage(err)))
   } else {
     await mutate((ops) => retryLater(ops, op.key, op.retries + 1))

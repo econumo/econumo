@@ -189,7 +189,9 @@ Multi-cell fill sends one `set-limit` per cell, each with its own key.
   move, make-recurring) send the real id.
 - On success the response is applied as today (`useApplyTransactionItem`) and the temporary
   id is swapped for the server's. On 409 the operation is done: its `resourceId` resolves a
-  temporary id, and the queue refreshes from the server. A 409 with no resource id for an add
+  temporary id. A transaction change stays overlaid until accounts and transactions have been
+  read back (bounded by the 10 s write timeout); if that read fails the change stays waiting,
+  attempted, and retries after a backoff. A 409 with no resource id for an add
   (the rare crash between commit and storing it, on a handler with no transaction) sends any
   change queued behind it to the Inbox.
 - The 401 path pauses the queue. `clearPersistedQueryCache` runs on every login, and must

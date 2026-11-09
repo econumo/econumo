@@ -41,9 +41,19 @@ let seen: Seen[]
 let client: QueryClient
 let stop: () => void
 
+// What the server holds when a replay reads the outcome back.
+let serverRows: TransactionDto[]
+let readBack: () => Response | undefined | Promise<Response | undefined>
+
 // answer: what the server says to the n-th request (0-based); undefined is a normal success
 function answerWith(answer: (n: number, r: Seen) => Response | undefined | Promise<Response | undefined>) {
   server.use(
+    http.get('*/api/v1/account/get-account-list', async () => (
+      (await readBack()) ?? HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'a1', transactionsRevision: 3, owner: me, sharedAccess: [] }] } })
+    )),
+    http.get('*/api/v1/transaction/get-account-transaction-list', () => (
+      HttpResponse.json({ success: true, message: '', data: { revisions: { a1: 3 }, items: serverRows, authors: [] } })
+    )),
     http.post('*/api/v1/:module/:action', async ({ request, params }) => {
       const r: Seen = { path: String(params.action), key: request.headers.get('idempotency-key'), body: (await request.json()) as Record<string, unknown> }
       seen.push(r)
@@ -54,6 +64,9 @@ function answerWith(answer: (n: number, r: Seen) => Response | undefined | Promi
     }),
   )
 }
+
+const replay = (resourceId: string) =>
+  HttpResponse.json({ success: false, message: 'Operation is locked', code: 409, errors: {}, resourceId }, { status: 409 })
 
 const queue = (change: OpChange, key: string, seq: number) => mutate((ops) => addChange(ops, change, { key, seq }))
 const ids = () => client.getQueryData<TransactionDto[]>(queryKeys.transactions)?.map((t) => t.id)
@@ -68,10 +81,13 @@ const addThenHold = async () => {
 
 beforeEach(async () => {
   seen = []
+  serverRows = []
+  readBack = () => undefined
   setToken('tok', 'u1')
   onlineManager.setOnline(true)
   vi.mocked(trackEvent).mockClear()
   client = createAppQueryClient()
+  client.setQueryData(queryKeys.user, me)
   client.setQueryData(queryKeys.accounts, [])
   client.setQueryData(queryKeys.transactions, [])
   await loadPendingWrites('u1')
@@ -159,9 +175,8 @@ it('a confirmed add gives the change behind it the real id', async () => {
   expect(getOps()).toEqual([])
 })
 
-it('a replay resolves the temporary id, refreshes the data and leaves one row', async () => {
-  client.setQueryData(queryKeys.transactions, [row('real')])
-  const invalidate = vi.spyOn(client, 'invalidateQueries')
+it('a replay resolves the temporary id, reads the data back and leaves one row', async () => {
+  serverRows = [row('real')]
   let release: () => void = () => {}
   const held = new Promise<void>((resolve) => { release = resolve })
   answerWith(async (n) => {
@@ -176,9 +191,114 @@ it('a replay resolves the temporary id, refreshes the data and leaves one row', 
 
   expect(seen[1].body).toMatchObject({ id: 'real', amount: '9' })
   expect(ids()).toEqual(['real'])
-  expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.transactions })
-  expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.accounts })
   expect(getOps()).toEqual([])
+})
+
+describe('a replay of a transaction change', () => {
+  const shown = () => overlayTransactions(client.getQueryData<TransactionDto[]>(queryKeys.transactions) ?? [], getOps(), me)
+  const heldReads = () => {
+    let open: () => void = () => {}
+    const gate = new Promise<void>((resolve) => { open = resolve })
+    readBack = async () => { await gate; return undefined }
+    return open
+  }
+  const started = () => vi.waitFor(() => expect(seen.length).toBeGreaterThan(0))
+  const add = () => queue({ kind: 'tx-create', txId: 'temp', payload: payload('temp') }, 'k1', 1)
+
+  beforeEach(() => answerWith(() => replay('real')))
+
+  it('keeps an add on screen through the read, and ends as exactly one row', async () => {
+    serverRows = [row('real')]
+    const open = heldReads()
+    await add()
+    const draining = kickPendingWrites()
+    await started()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(op('k1')).toMatchObject({ attempted: true })
+    expect(shown().map((t) => t.id)).toEqual(['temp'])
+    open()
+    await draining
+    expect(getOps()).toEqual([])
+    expect(shown().map((t) => t.id)).toEqual(['real'])
+  })
+
+  it('does not bring a deleted row back while the read runs', async () => {
+    client.setQueryData(queryKeys.transactions, [row('real')])
+    const open = heldReads()
+    await queue({ kind: 'tx-delete', txId: 'real', previous: null }, 'k1', 1)
+    const draining = kickPendingWrites()
+    await started()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(shown()).toEqual([])
+    open()
+    await draining
+    expect(getOps()).toEqual([])
+    expect(shown()).toEqual([])
+  })
+
+  it('keeps showing an edit while the read runs, then shows the server row', async () => {
+    client.setQueryData(queryKeys.transactions, [row('real')])
+    serverRows = [{ ...row('real'), amount: '9' }]
+    const open = heldReads()
+    await queue({ kind: 'tx-update', txId: 'real', payload: payload('real', { amount: '9' }) }, 'k1', 1)
+    const draining = kickPendingWrites()
+    await started()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(shown()).toMatchObject([{ id: 'real', amount: '9' }])
+    open()
+    await draining
+    expect(getOps()).toEqual([])
+    expect(shown()).toMatchObject([{ id: 'real', amount: '9' }])
+  })
+
+  it('a read that fails keeps the change for a later attempt, which repeats this', async () => {
+    serverRows = [row('real')]
+    readBack = () => HttpResponse.json(envelope('Boom'), { status: 500 })
+    await add()
+    await kickPendingWrites()
+    expect(op('k1')).toMatchObject({ attempted: true, status: 'waiting' })
+    expect(shown().map((t) => t.id)).toEqual(['temp'])
+
+    readBack = () => undefined
+    await kickPendingWrites()
+    expect(seen).toHaveLength(2)
+    expect(getOps()).toEqual([])
+    expect(shown().map((t) => t.id)).toEqual(['real'])
+  })
+
+  it('a read that fails backs off before trying again', async () => {
+    readBack = () => HttpResponse.json(envelope('Boom'), { status: 500 })
+    const timers = vi.spyOn(globalThis, 'setTimeout')
+    await add()
+    await kickPendingWrites()
+    expect(seen).toHaveLength(1)
+    expect(timers.mock.calls.some(([, delay]) => delay === 2000)).toBe(true)
+  })
+
+  it('a read that never ends stops being waited for after the write timeout', async () => {
+    heldReads()
+    const timers = vi.spyOn(globalThis, 'setTimeout')
+    await add()
+    const draining = kickPendingWrites()
+    await vi.waitFor(() => expect(timers.mock.calls.some(([, delay]) => delay === 10_000)).toBe(true))
+    ;(timers.mock.calls.findLast(([, delay]) => delay === 10_000)?.[0] as () => void)()
+    await draining
+    expect(op('k1')).toMatchObject({ attempted: true, status: 'waiting' })
+  })
+
+  it('gives the change behind an add the real id when it settles', async () => {
+    serverRows = [row('real')]
+    answerWith((n) => (n === 0 ? replay('real') : undefined))
+    const open = heldReads()
+    await add()
+    const draining = kickPendingWrites()
+    await started()
+    await queue({ kind: 'tx-update', txId: 'temp', payload: payload('temp', { amount: '9' }) }, 'k2', 2)
+    open()
+    await draining
+    expect(seen[1].body).toMatchObject({ id: 'real', amount: '9' })
+    expect(getOps()).toEqual([])
+  })
 })
 
 it('a replay of an add with no resource id sends the change behind it to the Inbox', async () => {
@@ -545,9 +665,6 @@ describe('with Web Locks', () => {
   })
 })
 
-const replay = (resourceId: string) =>
-  HttpResponse.json({ success: false, message: 'Operation is locked', code: 409, errors: {}, resourceId }, { status: 409 })
-
 it('remembers the server id of an add that landed', async () => {
   answerWith(() => undefined)
   await queue({ kind: 'tx-create', txId: 'temp-accepted', payload: payload('temp-accepted') }, 'k1', 1)
@@ -566,7 +683,7 @@ it('remembers the server id an add replay reports', async () => {
 it('a 409 on the direct path ends with one row and nothing left in the queue', async () => {
   const id = '019a0000-0000-7000-8000-000000000001'
   const form = payload(id)
-  client.setQueryData(queryKeys.transactions, [row('real')])
+  serverRows = [row('real')]
   answerWith(() => replay('real'))
 
   await expect(submitChange(client, { kind: 'tx-create', txId: id, payload: form }, (opts) => createTransaction(form, opts))).resolves.toEqual({ queued: true })
@@ -580,7 +697,7 @@ it('a 409 on the direct path ends with one row and nothing left in the queue', a
 it('a 409 on a corrected resubmit ends with the row carrying the later values', async () => {
   const id = '019a0000-0000-7000-8000-000000000002'
   const corrected = payload(id, { amount: '9' })
-  client.setQueryData(queryKeys.transactions, [row('real')])
+  serverRows = [row('real')]
   answerWith((_n, r) => {
     if (r.path === 'create-transaction') return replay('real')
     return HttpResponse.json({ success: true, message: '', data: { item: { ...row('real'), amount: r.body.amount }, accounts } })

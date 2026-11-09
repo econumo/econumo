@@ -561,7 +561,9 @@ element and period) has at most one operation besides one in flight: editing a w
 replaces it, deleting a transaction added offline drops it with nothing sent, a change sent
 and unanswered is never altered and the next one queues behind it. A transaction added
 offline has a temporary device-only id, swapped for the server's on success, or from the
-replay's `resourceId` on a 409.
+replay's `resourceId` on a 409. On a replay of a transaction change the operation stays overlaid
+until accounts and transactions have been read back (at most the 10 s write timeout), so the row
+never reverts; a read that fails keeps it, attempted, for a retry after a backoff.
 The caches keep server rows only: the waiting changes are applied at READ time
 (`overlay.ts`, through `select` on the transactions, accounts, budget and plan queries), so a
 sync or a restore cannot erase them; the budget's Spent/Available figures do not move for a
