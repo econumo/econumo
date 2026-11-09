@@ -2,6 +2,7 @@ import { v7 as uuidv7 } from 'uuid'
 import { STORE_PENDING_WRITES, dbTransaction } from '@/lib/db'
 import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
 import { changeBehindSent, markAttempted, nextSeq, replayBehind } from './queue'
+import { realIdOf } from './tempIds'
 import type { OpChange, PendingOp } from './types'
 
 type Row = PendingOp & { userId: string }
@@ -9,6 +10,10 @@ type Row = PendingOp & { userId: string }
 const CHANNEL_NAME = 'econumo-pending-writes'
 
 let ops: PendingOp[] = []
+// Keys this page has read from the disk or written there. A key missing from the
+// disk was settled in another tab only if it was ever there: a change queued
+// before the owner was known simply has not been written yet.
+let storedKeys = new Set<string>()
 let owner: string | null = null
 // The owner's stored rows are in memory, or will never come (a broken database).
 let loaded = false
@@ -99,6 +104,7 @@ export async function refreshFromDisk(): Promise<void> {
     const kept = new Set(next.map((op) => op.key))
     const left = ops.some((op) => !kept.has(op.key))
     ops = next
+    storedKeys = kept
     notify()
     if (left) {
       for (const listener of leftElsewhereListeners) {
@@ -124,16 +130,28 @@ function announce(): void {
 // across tabs: the row read here is the latest, and nothing lands between the
 // read and the write. A row a tab still took for unsent may have been taken by
 // another tab's sender since; overwritten, the newer values would be lost to a
-// replay of its key, so they queue behind it.
+// replay of its key, so they queue behind it. A row gone from the disk was settled
+// over there: its key is spent, and rewritten it would be answered as a replay, so
+// the newer values take a fresh one.
+function underRealId(change: OpChange): OpChange {
+  if (change.kind === 'limit') {
+    return change
+  }
+  const txId = realIdOf(change.txId)
+  return change.kind === 'tx-delete' ? { ...change, txId } : { ...change, txId, payload: { ...change.payload, id: txId } }
+}
+
 function writeRows(store: IDBObjectStore, stored: Row[], changed: PendingOp[], removed: PendingOp[], previous: Map<string, PendingOp>, userId: string): boolean {
   const rows = new Map(stored.map((row) => [row.key, row]))
   let seq = nextSeq([...stored, ...changed])
   let turnedDown = false
   const takenElsewhere = (written: PendingOp | undefined, before: PendingOp | undefined, row: Row | undefined): row is Row =>
     Boolean(row?.attempted && before && !before.attempted && !written?.attempted)
+  const settledElsewhere = (before: PendingOp | undefined, row: Row | undefined): before is PendingOp =>
+    Boolean(before && !row && storedKeys.has(before.key))
   const queueBehind = (change: OpChange | null) => {
     if (change) {
-      store.put({ ...change, key: uuidv7(), seq: seq++, attempted: false, status: 'waiting', retries: 0, notBefore: 0, userId })
+      store.put({ ...underRealId(change), key: uuidv7(), seq: seq++, attempted: false, status: 'waiting', retries: 0, notBefore: 0, userId })
     }
   }
   for (const op of changed) {
@@ -142,8 +160,15 @@ function writeRows(store: IDBObjectStore, stored: Row[], changed: PendingOp[], r
     if (takenElsewhere(op, before, row)) {
       turnedDown = true
       queueBehind(changeBehindSent(toOp(row), op, before as PendingOp))
+    } else if (settledElsewhere(before, row)) {
+      turnedDown = true
+      storedKeys.delete(op.key)
+      if (!before.attempted) {
+        queueBehind(changeBehindSent(before, op, before))
+      }
     } else {
       store.put({ ...op, userId })
+      storedKeys.add(op.key)
     }
   }
   for (const op of removed) {
@@ -152,7 +177,14 @@ function writeRows(store: IDBObjectStore, stored: Row[], changed: PendingOp[], r
       turnedDown = true
       queueBehind(changeBehindSent(toOp(row), undefined, op))
     } else {
+      // an add cancelled here that the other tab had already sent still needs its delete
+      if (settledElsewhere(op, row) && !op.attempted) {
+        const behind = changeBehindSent(op, undefined, op)
+        turnedDown ||= behind !== null
+        queueBehind(behind)
+      }
       store.delete(op.key)
+      storedKeys.delete(op.key)
     }
   }
   return turnedDown
@@ -190,6 +222,7 @@ function announceLoaded(): void {
 function adopt(stored: PendingOp[]): void {
   const inMemory = new Map(ops.map((op) => [op.key, op]))
   const onDisk = new Set(stored.map((op) => op.key))
+  storedKeys = new Set(onDisk)
   const restored = stored.map((op) => inMemory.get(op.key) ?? op)
   const local = ops.filter((op) => !onDisk.has(op.key))
   ops = replayBehind(restored, local)
@@ -258,6 +291,7 @@ export async function loadPendingWrites(userId: string): Promise<PendingOp[]> {
       ops = []
       notify()
     }
+    storedKeys = new Set()
     owner = userId
     loaded = false
     epoch++
@@ -337,6 +371,7 @@ export async function claimForSend(key: string): Promise<PendingOp | null> {
   if (verdict === null || at !== epoch) {
     return null
   }
+  storedKeys.add(key)
   const taken = withLandedMark(toOp(verdict), ops.find((op) => op.key === key)?.landed)
   ops = ops.map((op) => (op.key === key ? taken : op))
   generation++
@@ -352,6 +387,7 @@ export async function clearPendingWrites(): Promise<void> {
   loaded = false
   loading = null
   ops = []
+  storedKeys = new Set()
   notify()
   await timed(guarded(undefined, () => dbTransaction([STORE_PENDING_WRITES], 'readwrite', (t) => {
     t.objectStore(STORE_PENDING_WRITES).clear()
@@ -362,6 +398,7 @@ export function resetPendingWritesForTests(): void {
   channel?.close()
   channel = null
   ops = []
+  storedKeys = new Set()
   owner = null
   loaded = false
   disabled = false

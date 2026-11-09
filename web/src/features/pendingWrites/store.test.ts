@@ -350,6 +350,72 @@ describe('two tabs: the database decides what a sender took', () => {
       b.resetPendingWritesForTests()
     })
 
+    describe('a change to a row the other tab has just settled', () => {
+      // the settling tab's broadcast has not reached the writer yet
+      async function settledElsewhere(row: PendingOp) {
+        await held(row)
+        const b = await secondTab()
+        const silent = vi.spyOn(BroadcastChannel.prototype, 'postMessage').mockImplementation(() => {})
+        await mutate((ops) => ops.filter((o) => o.key !== row.key))
+        silent.mockRestore()
+        expect(await rows()).toEqual([])
+        expect(b.getOps().map((o) => o.key)).toEqual([row.key])
+        return b
+      }
+      const foldIn = (b: typeof import('./store'), amount: string) => b.mutate((ops) => addChange(ops, edit(amount), { key: 'unused', seq: 99 }))
+
+      it('writes the newer values under a fresh key, never the spent one', async () => {
+        const b = await settledElsewhere(tx('k1', 1, 'tx-update', '1'))
+        await foldIn(b, '9')
+        const stored = await rows()
+        expect(stored).toMatchObject([{ kind: 'tx-update', attempted: false, status: 'waiting', payload: { amount: '9' } }])
+        expect(stored[0].key).not.toBe('k1')
+        await vi.waitFor(() => expect(b.getOps().map((o) => o.key)).toEqual([stored[0].key]))
+        b.resetPendingWritesForTests()
+      })
+
+      it('makes the newer values an edit of an add, under its real id once known', async () => {
+        const b = await settledElsewhere(tx('k1', 1, 'tx-create', '1'))
+        const { rememberRealId } = await import('./tempIds')
+        rememberRealId('t1', 'real')
+        await foldIn(b, '9')
+        expect(await rows()).toMatchObject([{ kind: 'tx-update', txId: 'real', payload: { id: 'real', amount: '9' } }])
+        b.resetPendingWritesForTests()
+      })
+
+      it('keeps the temporary id when the real one is not known, so the edit is refused where it shows', async () => {
+        const b = await settledElsewhere(tx('k1', 1, 'tx-create', '1'))
+        await foldIn(b, '9')
+        expect(await rows()).toMatchObject([{ kind: 'tx-update', txId: 't1', attempted: false, payload: { amount: '9' } }])
+        b.resetPendingWritesForTests()
+      })
+
+      it('a cancelled add the other tab sent still gets its delete', async () => {
+        const b = await settledElsewhere(tx('k1', 1, 'tx-create', '1'))
+        await b.mutate((ops) => addChange(ops, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'unused', seq: 99 }))
+        expect(await rows()).toMatchObject([{ kind: 'tx-delete', txId: 't1', attempted: false }])
+        b.resetPendingWritesForTests()
+      })
+
+      it('a change that adds no value does not bring the row back', async () => {
+        const b = await settledElsewhere(tx('k1', 1, 'tx-update', '1'))
+        await b.mutate((ops) => ops.map((o) => ({ ...o, retries: 1 })))
+        expect(await rows()).toEqual([])
+        await vi.waitFor(() => expect(b.getOps()).toEqual([]))
+        b.resetPendingWritesForTests()
+      })
+    })
+
+    it('a row this page has not stored yet is written, not taken for a settled one', async () => {
+      await mutate(() => [tx('early', 1, 'tx-update', '1')])
+      const delayed = delayTransactionCompletion(100)
+      const loading = loadPendingWrites('A')
+      await mutate((ops) => addChange(ops, edit('9'), { key: 'unused', seq: 99 }))
+      await loading
+      delayed()
+      await vi.waitFor(async () => expect(await rows()).toMatchObject([{ key: 'early', attempted: false, payload: { amount: '9' } }]))
+    })
+
     it('a fold that ran first is what the claim sends', async () => {
       await held(tx('k1', 1, 'tx-update', '1'))
       const b = await secondTab()
