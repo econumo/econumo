@@ -296,7 +296,8 @@
       "failing": "Serveur injoignable — nouvelle tentative",
       "full_reload": "Vidage du cache et rechargement…",
       "hold_hint": "Maintenez pour vider le cache et recharger",
-      "full_reload_offline": "Vous êtes hors ligne. Videz le cache et rechargez une fois de nouveau en ligne."
+      "full_reload_offline": "Vous êtes hors ligne. Videz le cache et rechargez une fois de nouveau en ligne.",
+      "offline": "Pas de connexion"
     },
     "data": {
       "reload_all": "Vider le cache et recharger"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Modifier la transaction"
+      },
+      "draft": {
+        "message": "Non terminée",
+        "restore": "Restaurer"
       },
       "form": {
         "date": {
@@ -2143,7 +2148,8 @@
       "end_before_start": "Le mois de fin est antérieur au début du budget",
       "invalid_period_start_day": "Choisissez un jour de 1 à 28",
       "comment_not_found": "Commentaire introuvable",
-      "comment_forbidden": "Vous ne pouvez pas modifier ce commentaire"
+      "comment_forbidden": "Vous ne pouvez pas modifier ce commentaire",
+      "id_in_use": "Cet identifiant de budget est déjà utilisé"
     },
     "category": {
       "name_length": "Le nom de la catégorie doit contenir de {min} à {max} caractères.",

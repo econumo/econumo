@@ -296,7 +296,8 @@
       "failing": "Impossibile raggiungere il server — nuovo tentativo in corso",
       "full_reload": "Svuotamento della cache e ricaricamento…",
       "hold_hint": "Tieni premuto per svuotare la cache e ricaricare",
-      "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online."
+      "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online.",
+      "offline": "Nessuna connessione"
     },
     "data": {
       "reload_all": "Svuota la cache e ricarica"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Modifica transazione"
+      },
+      "draft": {
+        "message": "Non completata",
+        "restore": "Ripristina"
       },
       "form": {
         "date": {
@@ -2143,7 +2148,8 @@
       "end_before_start": "Il mese finale precede l'inizio del budget",
       "invalid_period_start_day": "Scegli un giorno da 1 a 28",
       "comment_not_found": "Commento non trovato",
-      "comment_forbidden": "Non puoi modificare questo commento"
+      "comment_forbidden": "Non puoi modificare questo commento",
+      "id_in_use": "Questo identificativo di budget è già in uso"
     },
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",

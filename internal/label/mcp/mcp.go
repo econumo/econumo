@@ -44,8 +44,8 @@ type mergeLabelInput struct {
 
 func Register(read *applabel.ReadService, write *applabel.Service) webmcp.Register {
 	return func(s *sdk.Server) {
-		sdk.AddTool(s, &sdk.Tool{Name: "list_labels",
-			Description: "The user's reporting labels (cross-cutting, budget-independent classifications): id, name, isArchived (0/1)."},
+		sdk.AddTool(s, webmcp.ReadOnlyTool("list_labels", "List labels",
+			"The user's reporting labels (cross-cutting, budget-independent classifications): id, name, isArchived (0/1)."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetLabelListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_labels")
 				userID, err := webmcp.UserID(ctx)
@@ -59,8 +59,8 @@ func Register(read *applabel.ReadService, write *applabel.Service) webmcp.Regist
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "create_label",
-			Description: "Create a new reporting label owned by the caller. See list_labels for existing ids."},
+		sdk.AddTool(s, webmcp.WriteTool("create_label", "Create label",
+			"Create a new reporting label owned by the caller. See list_labels for existing ids."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in createLabelInput) (*sdk.CallToolResult, model.CreateLabelResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_label")
 				userID, err := webmcp.UserID(ctx)
@@ -77,8 +77,8 @@ func Register(read *applabel.ReadService, write *applabel.Service) webmcp.Regist
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "merge_label",
-			Description: "Merge one reporting tag into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."},
+		sdk.AddTool(s, webmcp.DestructiveTool("merge_label", "Merge labels",
+			"Merge one reporting tag into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in mergeLabelInput) (*sdk.CallToolResult, model.MergeLabelResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "merge_label")
 				userID, err := webmcp.UserID(ctx)
@@ -95,8 +95,8 @@ func Register(read *applabel.ReadService, write *applabel.Service) webmcp.Regist
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "update_label",
-			Description: "Rename a label; use list_labels to find its id."},
+		sdk.AddTool(s, webmcp.WriteTool("update_label", "Rename label",
+			"Rename a label; use list_labels to find its id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateLabelInput) (*sdk.CallToolResult, model.UpdateLabelResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_label")
 				userID, err := webmcp.UserID(ctx)
@@ -113,8 +113,8 @@ func Register(read *applabel.ReadService, write *applabel.Service) webmcp.Regist
 				return nil, *res, nil
 			})
 
-		sdk.AddTool(s, &sdk.Tool{Name: "set_label_archived",
-			Description: "Hide an unused label (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_labels to find its id."},
+		sdk.AddTool(s, webmcp.WriteTool("set_label_archived", "Archive or restore label",
+			"Hide an unused label (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_labels to find its id."),
 			func(ctx context.Context, req *sdk.CallToolRequest, in setArchivedInput) (*sdk.CallToolResult, archivedResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_label_archived")
 				userID, err := webmcp.UserID(ctx)

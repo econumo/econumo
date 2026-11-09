@@ -296,7 +296,8 @@
       "failing": "Can't reach the server — retrying",
       "full_reload": "Clearing the cache and reloading…",
       "hold_hint": "Hold to clear the cache and reload",
-      "full_reload_offline": "You're offline. Clear the cache and reload when you're back online."
+      "full_reload_offline": "You're offline. Clear the cache and reload when you're back online.",
+      "offline": "No connection"
     },
     "data": {
       "reload_all": "Clear cache and reload"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Edit transaction"
+      },
+      "draft": {
+        "message": "Unfinished",
+        "restore": "Restore"
       },
       "form": {
         "date": {
@@ -2143,7 +2148,8 @@
       "end_before_start": "The end month is before the budget start",
       "invalid_period_start_day": "Choose a day from 1 to 28",
       "comment_not_found": "Comment not found",
-      "comment_forbidden": "You can't change this comment"
+      "comment_forbidden": "You can't change this comment",
+      "id_in_use": "That budget id is already in use"
     },
     "category": {
       "name_length": "Category name must be {min}-{max} characters",

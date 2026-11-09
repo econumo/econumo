@@ -296,7 +296,8 @@
       "failing": "无法连接到服务器——正在重试",
       "full_reload": "正在清除缓存并重新加载…",
       "hold_hint": "长按可清除缓存并重新加载",
-      "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。"
+      "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。",
+      "offline": "无网络连接"
     },
     "data": {
       "reload_all": "清除缓存并重新加载"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "编辑交易"
+      },
+      "draft": {
+        "message": "未完成",
+        "restore": "恢复"
       },
       "form": {
         "date": {
@@ -2143,7 +2148,8 @@
       "end_before_start": "结束月份早于预算开始时间",
       "invalid_period_start_day": "请选择1到28之间的日期",
       "comment_not_found": "未找到评论",
-      "comment_forbidden": "您无法修改此评论"
+      "comment_forbidden": "您无法修改此评论",
+      "id_in_use": "该预算 ID 已被占用"
     },
     "category": {
       "name_length": "分类名称需为 {min}-{max} 个字符。",

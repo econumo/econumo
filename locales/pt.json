@@ -296,7 +296,8 @@
       "failing": "Não é possível contactar o servidor — a tentar novamente",
       "full_reload": "A limpar a cache e a recarregar…",
       "hold_hint": "Mantenha premido para limpar a cache e recarregar",
-      "full_reload_offline": "Está offline. Limpe a cache e recarregue quando voltar a estar online."
+      "full_reload_offline": "Está offline. Limpe a cache e recarregue quando voltar a estar online.",
+      "offline": "Sem ligação"
     },
     "data": {
       "reload_all": "Limpar a cache e recarregar"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Editar transação"
+      },
+      "draft": {
+        "message": "Não concluída",
+        "restore": "Restaurar"
       },
       "form": {
         "date": {
@@ -2143,7 +2148,8 @@
       "end_before_start": "O mês final é anterior ao início do orçamento",
       "invalid_period_start_day": "Escolha um dia de 1 a 28",
       "comment_not_found": "Comentário não encontrado",
-      "comment_forbidden": "Você não pode alterar este comentário"
+      "comment_forbidden": "Você não pode alterar este comentário",
+      "id_in_use": "Esse identificador de orçamento já está em uso"
     },
     "category": {
       "name_length": "O nome da categoria deve ter entre {min} e {max} caracteres.",

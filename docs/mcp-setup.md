@@ -9,6 +9,12 @@ Under the hood this is OAuth 2.1 (authorization code with PKCE, dynamic client
 registration, resource indicators), so any client that implements the MCP
 authorization spec can connect the same way.
 
+Econumo's hosted instance is also submitted to Claude's connector directory,
+where it appears as a one-click connector for `app.econumo.com`. A self-hosted
+instance is added by URL as described below; see
+`docs/mcp-directory-submission.md` for why the directory listing covers the
+hosted instance only.
+
 ## Prerequisites
 
 - Set `ECONUMO_URL` to the public https origin of your instance, with no path

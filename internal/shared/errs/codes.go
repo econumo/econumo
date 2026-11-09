@@ -52,6 +52,7 @@ const (
 	CodeBudgetInvalidPeriodStartDay     = "budget.invalid_period_start_day"
 	CodeBudgetCommentNotFound           = "budget.comment_not_found"
 	CodeBudgetCommentForbidden          = "budget.comment_forbidden"
+	CodeBudgetIDInUse                   = "budget.id_in_use"
 
 	CodeCategoryNameLength     = "category.name_length"
 	CodeCategoryTypeInvalid    = "category.type_invalid"
@@ -190,6 +191,7 @@ var AllCodes = []string{
 	CodeBudgetInvalidPeriodStartDay,
 	CodeBudgetCommentNotFound,
 	CodeBudgetCommentForbidden,
+	CodeBudgetIDInUse,
 
 	CodeCategoryNameLength,
 	CodeCategoryTypeInvalid,

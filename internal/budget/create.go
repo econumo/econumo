@@ -76,8 +76,20 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		budget := model.NewBudget(budgetID, userID, req.Name, curID, startDate, now)
 		budget.PeriodStartDay = startDay
-		if serr := s.budgets.Save(txCtx, budget); serr != nil {
+		// req.Id is the budget's primary key here (unlike every other create,
+		// where it is only the operation id and the entity id is minted
+		// server-side), and Save upserts. Creating through InsertIfAbsent is
+		// what stops a caller who knows an existing budget's id - a participant
+		// whose access was later revoked still knows it - from rewriting that
+		// budget's settings and then having their own accounts seeded onto it as
+		// member accounts. The insert is the gate, so a concurrent create of the
+		// same id cannot pass it either.
+		inserted, serr := s.budgets.InsertIfAbsent(txCtx, budget)
+		if serr != nil {
 			return serr
+		}
+		if !inserted {
+			return model.BudgetIDInUseError("id")
 		}
 		change := newMemberChange(budgetID, nil)
 		for _, raw := range req.AccountIds {

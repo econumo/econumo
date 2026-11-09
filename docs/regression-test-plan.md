@@ -374,6 +374,14 @@ navigation (single-pane vs sidebar).
       global add button: date picker, amount (formula), category & payee
       selects with **create-on-type** inline creation, tags & labels chips,
       description.
+- [ ] 📱 Add transaction, unsaved work: enter an amount or description, then Cancel
+      or reload the page, and reopen Add transaction within 2 minutes: the form opens
+      empty with a one-line suggestion naming the amount and account. Restore brings
+      every field back; Cancel or Escape while it is still showing drops it and it is
+      not offered again (a reload keeps it); typing into the empty form replaces it.
+      Not offered after 2 minutes, after the transaction
+      was added, after logout, when only the type, account or date were changed,
+      or on Edit, posting a recurring payment or adding a queued import.
 - [ ] 📱 On an account page, add an expense/income after picking a different
       account: a bottom "Switch to <account>" bar appears and opens that
       account. Adding to the open account shows no bar. A transfer shows the
@@ -418,6 +426,9 @@ navigation (single-pane vs sidebar).
 - [ ] Future-dated transaction shows above the "today" separator and does not
       count toward "balance as of end of today" — including one dated exactly
       00:00 tomorrow (SQLite AND PostgreSQL).
+- [ ] An account holding one income of `123456789.01` shows exactly that balance
+      in the sidebar and on the account page, with no extra decimals (SQLite AND
+      PostgreSQL).
 - [ ] Transaction list rows carry `isImported` (0/1) in the API response; an
       imported row shows the import glyph (tooltip "Imported"), hand-entered
       rows do not; the preview dialog of an imported row lists "Imported from"
@@ -1033,10 +1044,10 @@ and on tablet/phone only with a hardware keyboard.
       schedule row opens the template form (search closes).
 - [ ] Keyboard: ↑/↓ move the highlight, Enter opens the highlighted row, Esc
       closes search.
-- [ ] 📱 On a phone the search field reads "Search" with a ✕ to its right, and
-      a full-width Close button sits at the bottom; each closes the search, the
-      ✕ stays reachable while the on-screen keyboard is up, and the list
-      scrolls between the field and the Close button.
+- [ ] 📱 On a phone the search field reads "Search" with a ✕ to its right that
+      closes the search and stays reachable while the on-screen keyboard is up;
+      there is no Close button at the bottom, and the list scrolls below the
+      field down to the bottom of the screen.
 
 ## 8. Currencies
 
@@ -2504,6 +2515,19 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Allow sends the browser to the client's callback; the client finishes
       connecting and its MCP tools (for example listing accounts) return the
       signed-in user's data.
+- [ ] `POST /api/v1/budget/create-budget` and `clone-budget` with an `id` /
+      `newId` that an existing budget already uses (your own or another user's)
+      are refused with the field error "That budget id is already in use"
+      (`budget.id_in_use`), and that budget keeps its name, currency, start day
+      and member accounts. A fresh id still creates normally.
+- [ ] In the connected client, a read tool (`list_accounts`, `get_budget`) runs
+      without asking for per-call confirmation, and a destructive one
+      (`delete_transaction`, `delete_budget_comment`, any `merge_*`,
+      `add_budget_account`, `remove_budget_account`, `bulk_update_transactions`,
+      `update_transaction`, `update_envelope`) prompts every time. Recording an
+      expense with `create_transaction`, renaming a tag or setting a limit does
+      NOT prompt. Each tool shows a readable title rather than its
+      raw `snake_case` name.
 - [ ] Deny sends the browser back to the client with an `access_denied` result;
       the client reports that the sign-in was refused and nothing appears under
       Connected apps.
@@ -2650,6 +2674,16 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] Sync button: spins during refetch; failure (kill the server briefly)
       turns it amber with a tooltip; recovery clears it. App restores from the
       persisted cache on reload without a boot-loader flash.
+- [ ] 📱 No network (airplane mode, or DevTools "Offline"), both while the app
+      is open and when it is opened that way: the sync button is replaced by a
+      no-connection icon that cannot be pressed and does not spin, its tooltip
+      says "No connection" with the last sync time, and the network log shows
+      no retries. When the network returns the button is back and the data
+      refreshes by itself. Something saved while offline waits (the Save
+      button keeps spinning) and is sent when the network returns, as long as
+      the app stays open; nothing waiting is written to local storage. Signing
+      in offline fails at once with an error. A budget cell's transaction list
+      that was never loaded shows a spinner offline, never "List is empty".
 - [ ] Sync button tap = incremental refresh: after an edit made on another
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the
@@ -2663,8 +2697,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 Transactions survive a reload while the server is unreachable: load
       the app, stop the server (or go offline), reload — the account pages,
       the transaction lists and global search still show the previously
-      synced transactions; the sync button shows its failure state instead of
-      an empty list.
+      synced transactions instead of an empty list; the sync button shows its
+      failure state (the no-connection icon when the device itself is offline).
 - [ ] 📱 Offline start more than 24 h after the last visit: use the app, close
       it, wait over a day (or set the device clock forward 25 h), go offline
       and open it — accounts and transactions show at once, with no "Loading

@@ -296,7 +296,8 @@
       "failing": "Server nicht erreichbar — wird erneut versucht",
       "full_reload": "Cache wird geleert und neu geladen…",
       "hold_hint": "Gedrückt halten, um den Cache zu leeren und neu zu laden",
-      "full_reload_offline": "Sie sind offline. Leeren Sie den Cache und laden Sie neu, sobald Sie wieder online sind."
+      "full_reload_offline": "Sie sind offline. Leeren Sie den Cache und laden Sie neu, sobald Sie wieder online sind.",
+      "offline": "Keine Verbindung"
     },
     "data": {
       "reload_all": "Cache leeren und neu laden"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Transaktion bearbeiten"
+      },
+      "draft": {
+        "message": "Nicht abgeschlossen",
+        "restore": "Wiederherstellen"
       },
       "form": {
         "date": {
@@ -2143,7 +2148,8 @@
       "end_before_start": "Der Endmonat liegt vor dem Budgetbeginn",
       "invalid_period_start_day": "Wählen Sie einen Tag von 1 bis 28",
       "comment_not_found": "Kommentar nicht gefunden",
-      "comment_forbidden": "Du kannst diesen Kommentar nicht ändern"
+      "comment_forbidden": "Du kannst diesen Kommentar nicht ändern",
+      "id_in_use": "Diese Budget-ID ist bereits vergeben"
     },
     "category": {
       "name_length": "Der Kategoriename muss {min}-{max} Zeichen lang sein",

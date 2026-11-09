@@ -24,7 +24,10 @@ func Compose(fns ...Register) Register {
 	}
 }
 
-const instructions = "Econumo personal-finance server. Read reference data with the list_accounts, " +
+const instructions = "Econumo personal bookkeeping and budgeting server. It records money the user has " +
+	"already spent, earned or moved between their OWN accounts: it never moves real money and has no " +
+	"payment, transfer-out or trading capability, so a \"transfer\" here is a ledger entry between two " +
+	"of the user's own accounts. Read reference data with the list_accounts, " +
 	"list_categories, list_tags, list_labels, list_payees, list_currencies, list_budgets and get_user tools; " +
 	"query monthly budget state with get_budget and transactions with list_transactions; log " +
 	"changes with create_transaction / update_transaction / delete_transaction. Manage accounts " +

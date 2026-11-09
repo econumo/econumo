@@ -399,6 +399,44 @@ func (q *Queries) InsertBudgetComment(ctx context.Context, arg InsertBudgetComme
 	return err
 }
 
+const insertBudgetIfAbsent = `-- name: InsertBudgetIfAbsent :execrows
+INSERT INTO budgets (id, currency_id, user_id, name, started_at, ended_at, is_archived, created_at, updated_at, period_start_day)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (id) DO NOTHING
+`
+
+type InsertBudgetIfAbsentParams struct {
+	ID             string
+	CurrencyID     string
+	UserID         string
+	Name           string
+	StartedAt      time.Time
+	EndedAt        *time.Time
+	IsArchived     bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	PeriodStartDay int16
+}
+
+func (q *Queries) InsertBudgetIfAbsent(ctx context.Context, arg InsertBudgetIfAbsentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertBudgetIfAbsent,
+		arg.ID,
+		arg.CurrencyID,
+		arg.UserID,
+		arg.Name,
+		arg.StartedAt,
+		arg.EndedAt,
+		arg.IsArchived,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.PeriodStartDay,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listBudgetAccess = `-- name: ListBudgetAccess :many
 SELECT budget_id, user_id, role, is_accepted, created_at, updated_at
 FROM budgets_access WHERE budget_id = ?

@@ -296,7 +296,8 @@
       "failing": "No se puede conectar con el servidor: reintentando",
       "full_reload": "Borrando la caché y recargando…",
       "hold_hint": "Mantén pulsado para borrar la caché y recargar",
-      "full_reload_offline": "Estás sin conexión. Borra la caché y recarga cuando vuelvas a estar en línea."
+      "full_reload_offline": "Estás sin conexión. Borra la caché y recarga cuando vuelvas a estar en línea.",
+      "offline": "Sin conexión"
     },
     "data": {
       "reload_all": "Borrar la caché y recargar"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Editar la transacción"
+      },
+      "draft": {
+        "message": "Sin terminar",
+        "restore": "Restaurar"
       },
       "form": {
         "date": {
@@ -2143,7 +2148,8 @@
       "end_before_start": "El mes final es anterior al inicio del presupuesto",
       "invalid_period_start_day": "Elige un día del 1 al 28",
       "comment_not_found": "Comentario no encontrado",
-      "comment_forbidden": "No puedes modificar este comentario"
+      "comment_forbidden": "No puedes modificar este comentario",
+      "id_in_use": "Ese identificador de presupuesto ya está en uso"
     },
     "category": {
       "name_length": "El nombre de la categoría debe tener entre {min} y {max} caracteres.",

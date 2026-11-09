@@ -296,7 +296,8 @@
       "failing": "Geen verbinding met de server — opnieuw proberen",
       "full_reload": "Cache wissen en opnieuw laden…",
       "hold_hint": "Houd ingedrukt om de cache te wissen en opnieuw te laden",
-      "full_reload_offline": "Je bent offline. Wis de cache en laad opnieuw zodra je weer online bent."
+      "full_reload_offline": "Je bent offline. Wis de cache en laad opnieuw zodra je weer online bent.",
+      "offline": "Geen verbinding"
     },
     "data": {
       "reload_all": "Cache wissen en opnieuw laden"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Transactie bewerken"
+      },
+      "draft": {
+        "message": "Onafgerond",
+        "restore": "Herstellen"
       },
       "form": {
         "date": {
@@ -2143,7 +2148,8 @@
       "end_before_start": "De eindmaand ligt vóór de start van het budget",
       "invalid_period_start_day": "Kies een dag van 1 tot 28",
       "comment_not_found": "Opmerking niet gevonden",
-      "comment_forbidden": "Je kunt deze opmerking niet wijzigen"
+      "comment_forbidden": "Je kunt deze opmerking niet wijzigen",
+      "id_in_use": "Deze budget-id is al in gebruik"
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",
