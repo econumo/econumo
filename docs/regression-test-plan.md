@@ -438,6 +438,10 @@ navigation (single-pane vs sidebar).
       labels with separator), constant-value fields; result dialog shows
       imported/failed counts and per-row errors; imported rows appear with
       correct signs and classifications.
+- [ ] CSV import mapping layout: once a file is picked the dialog widens, every
+      field lines up at one width, and on desktop each column in a picker
+      (name plus sample value) stays on one line. "Change the tag separator"
+      shows under Reporting tags only while a column is mapped there.
 - [ ] Import with a broken row (bad date/amount) → partial result, failed rows
       detailed, good rows imported.
 - [ ] Category type guard: a category only goes on a transaction of its own

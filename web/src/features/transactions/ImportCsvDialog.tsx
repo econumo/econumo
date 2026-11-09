@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeftRight, Split, SlidersHorizontal } from 'lucide-react'
+import { ArrowLeftRight, Split } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -233,22 +233,6 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     </div>
   )
 
-  const labelsSeparatorControl = (
-    <div className="flex items-center gap-2">
-      <div className="min-w-0 flex-1">{columnSelect('labels', selection.columns.labels)}</div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={t('transactions.import_csv.labels_separator.button')}
-        title={t('transactions.import_csv.labels_separator.button')}
-        onClick={() => setSeparatorDialogOpen(true)}
-      >
-        <SlidersHorizontal className="size-4" />
-      </Button>
-    </div>
-  )
-
   const fieldRow = (label: string, required: boolean, control: React.ReactNode, toggle?: React.ReactNode) => (
     <div className="flex items-center gap-2">
       <span className="w-32 shrink-0 text-sm">
@@ -277,7 +261,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
   }
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && !submitting && onClose()} title={t('transactions.import_csv.header')}>
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && !submitting && onClose()} title={t('transactions.import_csv.header')} size={file ? 'wide' : 'default'}>
       <div className="flex flex-col gap-3">
         {!file ? (
           <div className="flex flex-col gap-1.5">
@@ -419,9 +403,18 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
             {fieldRow(
               fieldLabels.labels,
               false,
-              selection.modes.labels === 'csv_column' ? labelsSeparatorControl : labelMultiSelect,
+              selection.modes.labels === 'csv_column' ? columnSelect('labels', selection.columns.labels) : labelMultiSelect,
               modeToggle('labels', 'existing'),
             )}
+
+            {selection.modes.labels === 'csv_column' && selection.columns.labels ? (
+              // pl-34: the field row's w-32 label plus its gap-2, so it sits under the field
+              <div className="pl-34">
+                <Button type="button" variant="link" className="h-auto p-0 text-xs normal-case! tracking-normal!" onClick={() => setSeparatorDialogOpen(true)}>
+                  {t('transactions.import_csv.labels_separator.button')}
+                </Button>
+              </div>
+            ) : null}
 
             {newLabelCount > 0 ? (
               <p role="status" className="text-xs text-muted-foreground">

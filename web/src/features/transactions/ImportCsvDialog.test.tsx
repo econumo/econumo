@@ -178,6 +178,15 @@ it('mapping the labels column previews the new-label count and sends the chosen 
   expect(captured.fields().labelsSeparator).toBe('|')
 })
 
+it('offers the separator only once a labels column is mapped', async () => {
+  renderDialog()
+  const user = await uploadCsv('Account,Date,Amount,Labels\nCash,2026-01-02,-5.5,Kid A\n')
+  await screen.findByText(/Map the columns/)
+  expect(screen.queryByRole('button', { name: /separator/i })).not.toBeInTheDocument()
+  await pickColumn(user, /reporting tags/i, /^Labels/)
+  expect(screen.getByRole('button', { name: /separator/i })).toBeInTheDocument()
+})
+
 it('a custom separator overrides the presets', async () => {
   const captured = spyOnImportPost()
   renderDialog()
