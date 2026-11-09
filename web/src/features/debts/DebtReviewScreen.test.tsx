@@ -109,12 +109,20 @@ async function openSettings(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByLabelText('Name')
 }
 
-it('opens on the Overview tab, with a Settings tab beside it and no actions menu', async () => {
+async function openDanger(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('tab', { name: 'Danger zone' }))
+  return screen.getByRole('tabpanel', { name: 'Danger zone' })
+}
+
+it('opens on the Overview tab, with Settings and Danger zone tabs beside it and no actions menu', async () => {
   renderScreen()
   await openScreen()
 
+  const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent)
+  expect(tabs).toEqual(['Overview', 'Settings', 'Danger zone'])
   expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
   expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'false')
+  expect(screen.getByRole('tab', { name: 'Danger zone' })).toHaveAttribute('aria-selected', 'false')
   expect(screen.queryByRole('button', { name: 'Debt actions' })).toBeNull()
   expect(screen.queryByRole('menu')).toBeNull()
   expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
@@ -402,16 +410,19 @@ it('edits survive a look at the Overview and back', async () => {
   expect(screen.getByLabelText('Name')).toHaveValue('Van loan')
 })
 
-it('Settings puts Mark as paid off and Delete in a danger zone under the form, each with what it does', async () => {
+it('the Danger zone tab holds Mark as paid off and Delete, each with what it does; Settings ends at Save', async () => {
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
   await openSettings(user)
 
-  const panel = screen.getByRole('tabpanel', { name: 'Settings' })
-  const zone = within(panel).getByRole('region', { name: 'Danger zone' })
-  const save = within(panel).getByRole('button', { name: 'Save' })
-  expect(save.compareDocumentPosition(zone) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const settings = screen.getByRole('tabpanel', { name: 'Settings' })
+  expect(within(settings).getByRole('button', { name: 'Save' })).toBeInTheDocument()
+  expect(within(settings).queryByRole('button', { name: 'Delete' })).toBeNull()
+  expect(within(settings).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
+  expect(within(settings).queryByText('Danger zone')).toBeNull()
+
+  const zone = await openDanger(user)
   const paidOff = within(zone).getByRole('button', { name: 'Mark as paid off' })
   const del = within(zone).getByRole('button', { name: 'Delete' })
   expect(paidOff.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -419,26 +430,26 @@ it('Settings puts Mark as paid off and Delete in a danger zone under the form, e
   expect(zone).toHaveTextContent('Removes the debt. Its payments go back to the category.')
 })
 
-it('Settings hides Mark as paid off while not set up', async () => {
+it('Danger zone hides Mark as paid off while not set up', async () => {
   server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
-  await openSettings(user)
+  const zone = await openDanger(user)
 
-  expect(screen.queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
-  expect(screen.queryByText('Sets the balance to 0 and stops the countdown.')).toBeNull()
-  expect(within(screen.getByRole('region', { name: 'Danger zone' })).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  expect(within(zone).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
+  expect(within(zone).queryByText('Sets the balance to 0 and stops the countdown.')).toBeNull()
+  expect(within(zone).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
 })
 
-it('Settings hides Mark as paid off once the debt is paid off', async () => {
+it('Danger zone hides Mark as paid off once the debt is paid off', async () => {
   server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, isPaidOff: 1 } })))
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
-  await openSettings(user)
+  const zone = await openDanger(user)
 
-  expect(screen.queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
+  expect(within(zone).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
 })
 
 it('marking a debt paid off asks first, then posts', async () => {
@@ -447,9 +458,9 @@ it('marking a debt paid off asks first, then posts', async () => {
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
-  await openSettings(user)
+  const zone = await openDanger(user)
 
-  await user.click(screen.getByRole('button', { name: 'Mark as paid off' }))
+  await user.click(within(zone).getByRole('button', { name: 'Mark as paid off' }))
   expect(called).toBe(0)
   const dialog = await screen.findByRole('dialog', { name: 'Mark as paid off?' })
   await user.click(within(dialog).getByRole('button', { name: 'Mark as paid off' }))
@@ -473,7 +484,7 @@ it('after Mark as paid off, Settings starts from the paid-off debt, so a later e
   await openSettings(user)
   expect(screen.getByLabelText('Balance now')).toHaveValue('1090')
 
-  await user.click(screen.getByRole('button', { name: 'Mark as paid off' }))
+  await user.click(within(await openDanger(user)).getByRole('button', { name: 'Mark as paid off' }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Mark as paid off?' })).getByRole('button', { name: 'Mark as paid off' }))
   // back on the Overview, like a save
   await waitFor(() => expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true'))
@@ -508,12 +519,11 @@ it('Settings shows a loader, not just its buttons, while the debt loads', async 
 
   const panel = screen.getByRole('tabpanel', { name: 'Settings' })
   expect(within(panel).getByRole('status')).toBeInTheDocument()
-  expect(within(panel).queryByRole('button', { name: 'Delete' })).toBeNull()
-  expect(within(panel).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
+  expect(within(panel).queryByRole('button', { name: 'Save' })).toBeNull()
   release()
   expect(await within(panel).findByLabelText('Name')).toBeInTheDocument()
   expect(within(panel).queryByRole('status')).toBeNull()
-  expect(within(panel).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  expect(within(panel).getByRole('button', { name: 'Save' })).toBeInTheDocument()
 })
 
 it('a removal_unconfirmed answer asks and resends with confirmDataRemoval', async () => {
@@ -535,9 +545,7 @@ it('a removal_unconfirmed answer asks and resends with confirmDataRemoval', asyn
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
-  await openSettings(user)
-
-  await user.click(screen.getByRole('button', { name: 'Delete' }))
+  await user.click(within(await openDanger(user)).getByRole('button', { name: 'Delete' }))
   const first = await screen.findByRole('dialog', { name: 'Delete this debt?' })
   await user.click(within(first).getByRole('button', { name: 'Delete' }))
 
@@ -562,9 +570,7 @@ it('a delete the server accepts closes the screen without a second question', as
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
-  await openSettings(user)
-
-  await user.click(screen.getByRole('button', { name: 'Delete' }))
+  await user.click(within(await openDanger(user)).getByRole('button', { name: 'Delete' }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Delete this debt?' })).getByRole('button', { name: 'Delete' }))
 
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBeNull())
@@ -601,4 +607,46 @@ it('the review screen is a large centred dialog on a desktop, not a full page', 
   expect(content?.className).toContain('sm:max-w-[90vw]')
   expect(content?.className).toContain('h-[90vh]')
   expect(content?.className).not.toContain('h-dvh')
+})
+
+describe('the header and the tabs are one block above the scrolling content', () => {
+  it.each([
+    ['desktop', false],
+    ['phone', true],
+  ])('on a %s the tab bar sits in the opaque, bordered header block, outside the scrolling body', async (_, phone) => {
+    mockMatchMedia(phone)
+    const { baseElement } = renderScreen()
+    await openScreen()
+
+    const tablist = screen.getByRole('tablist')
+    const block = baseElement.querySelector('[data-slot="dialog-sticky-header"]')
+    const body = baseElement.querySelector('[data-slot="dialog-body"]')
+    expect(block).not.toBeNull()
+    expect(block).toContainElement(screen.getByRole('heading', { name: 'Car loan' }))
+    expect(block).toContainElement(tablist)
+    expect(body).not.toContainElement(tablist)
+    expect(block?.className).toContain('border-b')
+    expect(block?.className).toContain('bg-popover')
+    expect(block?.className).toContain('shrink-0')
+  })
+
+  it('every tab carries its own underline on the block border, as wide as its label', async () => {
+    renderScreen()
+    await openScreen()
+
+    // the list hugs its triggers and lines them up at the bottom: no fixed
+    // height for a taller trigger to overflow
+    const tablist = screen.getByRole('tablist')
+    expect(tablist.className).toContain('items-end')
+    expect(tablist.className).toContain('h-auto')
+    expect(tablist.className).not.toMatch(/(^|\s)border-b(\s|$)/)
+    for (const tab of screen.getAllByRole('tab')) {
+      // the 2px rule overlaps the block's 1px border; no side padding widens it
+      expect(tab.className).toContain('-mb-px')
+      expect(tab.className).toContain('border-b-2')
+      expect(tab.className).toContain('px-0')
+      expect(tab.className).toContain('h-auto')
+      expect(tab.className).toContain('after:hidden')
+    }
+  })
 })

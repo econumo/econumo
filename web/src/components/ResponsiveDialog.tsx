@@ -44,6 +44,9 @@ interface ResponsiveDialogProps {
   titleIcon?: ReactNode
   /** a compact icon button at the header's end (beside the desktop corner X) */
   headerAction?: ReactNode
+  /** a bar under the title (a tab list): with it the header is one opaque,
+   *  bordered block that stays put while the content scrolls below it */
+  subheader?: ReactNode
   description?: string
   children: ReactNode
   dismissible?: boolean
@@ -69,7 +72,7 @@ interface ResponsiveDialogProps {
   onCloseAutoFocus?: (e: Event) => void
 }
 
-export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerAction, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus, initialFocus, size = 'default' }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerAction, subheader, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus, initialFocus, size = 'default' }: ResponsiveDialogProps) {
   // full-screen / bottom-sheet layouts kick in only below sm (640px); at 640px
   // and up dialogs stay centred like on desktop
   const isMobile = useIsPhone()
@@ -177,7 +180,18 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
   // the home indicator itself; a pinned footer carries its own inset instead
   // the keyboard covers the home indicator, so its inset is dead space then
   const keyboardUp = keyboard.height > 0
-  const bodyClass = `flex-1 overflow-y-auto px-4 pt-1 ${footer || keyboardUp ? 'pb-4' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`
+  const bodyClass = `flex-1 overflow-y-auto px-4 ${subheader ? 'pt-4' : 'pt-1'} ${footer || keyboardUp ? 'pb-4' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`
+  // the header and its bar as one block: not positioned, so the corner X
+  // (absolute, later in the DOM) still paints above it
+  const stickyHeader = (header: ReactNode, barClass: string) =>
+    subheader ? (
+      <div data-slot="dialog-sticky-header" className="shrink-0 border-b bg-popover">
+        {header}
+        <div className={barClass}>{subheader}</div>
+      </div>
+    ) : (
+      header
+    )
   const footerClass = `border-t px-4 pt-3 ${keyboardUp ? 'pb-3' : 'pb-[max(env(safe-area-inset-bottom),0.75rem)]'} [&_button]:h-11`
 
   // An open combobox popup (Base UI, not a Radix layer, so Radix's document-
@@ -232,10 +246,13 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
           showCloseButton={showCloseButton}
         >
           {/* the full-viewport page sits under the status bar — keep the header (and the corner X above) clear of it */}
-          <DialogHeader className={`${headerClass ?? ''} px-4 pt-[max(env(safe-area-inset-top),1rem)]`}>
-            <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
-            {description ? <DialogDescription>{description}</DialogDescription> : null}
-          </DialogHeader>
+          {stickyHeader(
+            <DialogHeader className={`${headerClass ?? ''} px-4 pt-[max(env(safe-area-inset-top),1rem)]`}>
+              <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
+              {description ? <DialogDescription>{description}</DialogDescription> : null}
+            </DialogHeader>,
+            'px-4',
+          )}
           {headerAction && !hideHeader ? <div className={`absolute top-[max(env(safe-area-inset-top),0.5rem)] ${cornerActionClass}`}>{headerAction}</div> : null}
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
           <CoverPage.Provider value={cover}>
@@ -278,11 +295,14 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         >
           {/* the drawer has no corner X, so it never needs the pr-8 clearance */}
           {/* a header action is pinned to the end; the matching start inset keeps the title centred */}
-          <DrawerHeader className={hideHeader ? 'sr-only' : headerAction ? 'relative px-12' : undefined}>
-            <DrawerTitle className={`${titleClass ?? ''} ${titleIcon ? `${titleRowClass} justify-center` : ''}`}>{titleContent}</DrawerTitle>
-            {description ? <DrawerDescription>{description}</DrawerDescription> : null}
-            {headerAction && !hideHeader ? <div className="absolute top-1/2 right-3 -translate-y-1/2">{headerAction}</div> : null}
-          </DrawerHeader>
+          {stickyHeader(
+            <DrawerHeader className={hideHeader ? 'sr-only' : headerAction ? 'relative px-12' : undefined}>
+              <DrawerTitle className={`${titleClass ?? ''} ${titleIcon ? `${titleRowClass} justify-center` : ''}`}>{titleContent}</DrawerTitle>
+              {description ? <DrawerDescription>{description}</DrawerDescription> : null}
+              {headerAction && !hideHeader ? <div className="absolute top-1/2 right-3 -translate-y-1/2">{headerAction}</div> : null}
+            </DrawerHeader>,
+            'px-4',
+          )}
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
           <div className={bodyClass}>{children}</div>
           {footer ? (
@@ -317,13 +337,18 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         // a floating X with no header row to anchor it looks stray — unless asked for
         showCloseButton={showCloseButton}
       >
-        <DialogHeader className={large ? `${headerClass ?? ''} px-6 pt-5 pb-1` : headerClass}>
-          <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
-          {description ? <DialogDescription>{description}</DialogDescription> : null}
-        </DialogHeader>
+        {stickyHeader(
+          <DialogHeader className={large ? `${headerClass ?? ''} px-6 pt-5 pb-1` : headerClass}>
+            <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
+            {description ? <DialogDescription>{description}</DialogDescription> : null}
+          </DialogHeader>,
+          large ? 'px-6' : '',
+        )}
         {headerAction && !hideHeader ? <div className={`absolute top-2 ${cornerActionClass}`}>{headerAction}</div> : null}
         {large ? (
-          <div data-slot="dialog-body" className="min-h-0 flex-1 overflow-y-auto px-6 pt-1 pb-6">
+          // a gutter on both edges keeps the body centred under the header's
+          // bar whether or not a scrollbar shows
+          <div data-slot="dialog-body" className={`min-h-0 flex-1 overflow-y-auto px-6 pb-6 ${subheader ? 'pt-4 [scrollbar-gutter:stable_both-edges]' : 'pt-1'}`}>
             {children}
           </div>
         ) : (

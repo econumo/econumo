@@ -54,7 +54,7 @@ export interface OpenDebtParams {
   fromBudget?: boolean
 }
 
-export type DebtDetailsTab = 'overview' | 'settings'
+export type DebtDetailsTab = 'overview' | 'settings' | 'danger'
 
 export interface RulePromptParams {
   link: TransactionImportLinkDto

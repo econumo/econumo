@@ -51,7 +51,7 @@ function DangerAction({ description, children }: { description: string; children
   )
 }
 
-/** the irreversible actions, set apart under the form; each asks first */
+/** the irreversible actions, on a tab of their own; each asks first */
 function DangerZone({
   canMarkPaidOff,
   markingPaidOff,
@@ -64,12 +64,9 @@ function DangerZone({
   onDelete: () => void
 }) {
   const { t } = useTranslation()
-  const headingId = useId()
+  // the tab names the zone: the card needs no heading of its own
   return (
-    <section aria-labelledby={headingId} className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 pt-3 pb-1">
-      <h3 id={headingId} className="text-sm uppercase tracking-wide text-destructive">
-        {t('debts.review.danger.title')}
-      </h3>
+    <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-1">
       <div className="divide-y divide-destructive/20">
         {canMarkPaidOff ? (
           <DangerAction description={t('debts.review.danger.paid_off')}>
@@ -84,12 +81,20 @@ function DangerZone({
           </Button>
         </DangerAction>
       </div>
-    </section>
+    </div>
   )
 }
 
+// underlined like the Reports tabs: the selected tab carries a 2px rule as
+// wide as its label, overlapping the header block's 1px border (-mb-px)
 const tabClass =
-  '-mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 text-sm font-normal text-muted-foreground after:hidden hover:text-foreground data-active:border-foreground data-active:text-foreground dark:data-active:border-foreground'
+  '-mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 text-sm font-normal text-muted-foreground shadow-none after:hidden hover:text-foreground focus-visible:ring-0 focus-visible:outline-none focus-visible:underline data-active:border-foreground data-active:bg-transparent data-active:text-foreground dark:data-active:border-foreground dark:data-active:bg-transparent'
+
+const TABS: { value: DebtDetailsTab; label: string }[] = [
+  { value: 'overview', label: 'debts.review.tab.overview' },
+  { value: 'settings', label: 'debts.review.tab.settings' },
+  { value: 'danger', label: 'debts.review.danger.title' },
+]
 
 function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTab: DebtDetailsTab; onClose: () => void }) {
   const { t, i18n } = useTranslation()
@@ -181,44 +186,47 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
     )
   }
 
+  // the tab bar sits in the dialog's header block, outside the scrolling body;
+  // the Tabs root wraps the dialog so its context reaches both through the portal
+  const tabBar = item ? (
+    <div className="mx-auto w-full max-w-3xl">
+      <TabsList variant="line" className="h-auto w-full items-end justify-start gap-5 rounded-none bg-transparent p-0">
+        {TABS.map(({ value, label }) => (
+          <TabsTrigger key={value} value={value} className={tabClass}>
+            {t(label)}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </div>
+  ) : undefined
+
   return (
-    <ResponsiveDialog
-      open
-      onOpenChange={(o) => !o && onClose()}
-      title={item?.name ?? t('debts.form.header')}
-      titleIcon={item ? <EntityIcon name={item.icon} className="text-xl text-muted-foreground" /> : undefined}
-      fullScreen
-      size="large"
-    >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 pb-2">
-        {item && data ? (
-          <Tabs value={tab} onValueChange={(v) => switchTab(v as DebtDetailsTab)} className="gap-4">
-            {/* stays in view while the tab scrolls */}
-            <div className="sticky top-0 z-10 -mx-1 bg-popover px-1 pt-1">
-              {/* underlined like the Reports tabs: the selected tab carries the rule */}
-              <TabsList variant="line" className="h-auto w-full justify-start gap-5 rounded-none border-b p-0">
-                <TabsTrigger value="overview" className={tabClass}>
-                  {t('debts.review.tab.overview')}
-                </TabsTrigger>
-                <TabsTrigger value="settings" className={tabClass}>
-                  {t('debts.review.tab.settings')}
-                </TabsTrigger>
-              </TabsList>
-            </div>
-            <TabsContent value="overview" className="flex flex-col gap-5">
-              <ReviewContent
-                details={data}
-                lang={i18n.language}
-                onFinishSetup={() => {
-                  setFocusMissing(true)
-                  switchTab('settings')
-                }}
-              />
-            </TabsContent>
-            {/* kept mounted: edits survive a look at the Overview */}
-            <TabsContent value="settings" forceMount hidden={tab !== 'settings'} className="flex flex-col gap-6">
-              {editDebt ? (
-                <>
+    <Tabs value={tab} onValueChange={(v) => switchTab(v as DebtDetailsTab)} className="contents">
+      <ResponsiveDialog
+        open
+        onOpenChange={(o) => !o && onClose()}
+        title={item?.name ?? t('debts.form.header')}
+        titleIcon={item ? <EntityIcon name={item.icon} className="text-xl text-muted-foreground" /> : undefined}
+        subheader={tabBar}
+        fullScreen
+        size="large"
+      >
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 pb-2">
+          {item && data ? (
+            <>
+              <TabsContent value="overview" className="flex flex-col gap-5">
+                <ReviewContent
+                  details={data}
+                  lang={i18n.language}
+                  onFinishSetup={() => {
+                    setFocusMissing(true)
+                    switchTab('settings')
+                  }}
+                />
+              </TabsContent>
+              {/* kept mounted: edits survive a look at the Overview */}
+              <TabsContent value="settings" forceMount hidden={tab !== 'settings'} className="flex flex-col gap-6">
+                {editDebt ? (
                   <DebtSettingsForm
                     key={formKey}
                     debt={editDebt}
@@ -227,73 +235,75 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
                     onFocused={() => setFocusMissing(false)}
                     onSaved={showSaved}
                   />
-                  <DangerZone
-                    canMarkPaidOff={item.isSetUp === 1 && item.isPaidOff === 0}
-                    markingPaidOff={markPaidOff.isPending}
-                    onMarkPaidOff={() => setConfirm('paid-off')}
-                    onDelete={() => setConfirm('delete')}
-                  />
-                </>
-              ) : error ? null : (
-                <div className="flex justify-center py-12">
-                  <CoinLoader />
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        ) : null}
-        {error ? (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        ) : null}
-        {!data && loadError ? (
-          <p role="alert" className="text-sm text-destructive">
-            {apiErrorMessage(loadError)}
-          </p>
-        ) : null}
-      </div>
+                ) : error ? null : (
+                  <div className="flex justify-center py-12">
+                    <CoinLoader />
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="danger" className="flex flex-col gap-5">
+                <DangerZone
+                  canMarkPaidOff={item.isSetUp === 1 && item.isPaidOff === 0}
+                  markingPaidOff={markPaidOff.isPending}
+                  onMarkPaidOff={() => setConfirm('paid-off')}
+                  onDelete={() => setConfirm('delete')}
+                />
+              </TabsContent>
+            </>
+          ) : null}
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+          {!data && loadError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {apiErrorMessage(loadError)}
+            </p>
+          ) : null}
+        </div>
 
-      <ConfirmDialog
-        open={confirm === 'paid-off'}
-        onClose={() => setConfirm(null)}
-        onConfirm={() => {
-          setConfirm(null)
-          setError(null)
-          markPaidOff.mutate(debtId, { onSuccess: showSaved, onError: (err) => setError(apiErrorMessage(err)) })
-        }}
-        title={t('debts.details.paid_off_confirm.title')}
-        question={t('debts.details.paid_off_confirm.question')}
-        confirmLabel={t('debts.details.mark_paid_off')}
-        cancelLabel={t('common.button.cancel.label')}
-      />
-      <ConfirmDialog
-        open={confirm === 'delete'}
-        onClose={() => setConfirm(null)}
-        onConfirm={() => {
-          setConfirm(null)
-          sendDelete(false)
-        }}
-        title={t('debts.details.delete_confirm.title')}
-        question={t('debts.details.delete_confirm.question')}
-        confirmLabel={t('common.button.delete.label')}
-        cancelLabel={t('common.button.cancel.label')}
-        destructive
-      />
-      <ConfirmDialog
-        open={removalMessage !== null}
-        onClose={() => setRemovalMessage(null)}
-        onConfirm={() => {
-          setRemovalMessage(null)
-          sendDelete(true)
-        }}
-        title={t('debts.details.removal_confirm.title')}
-        question={removalMessage ?? ''}
-        confirmLabel={t('debts.details.removal_confirm.action')}
-        cancelLabel={t('common.button.cancel.label')}
-        destructive
-      />
-    </ResponsiveDialog>
+        <ConfirmDialog
+          open={confirm === 'paid-off'}
+          onClose={() => setConfirm(null)}
+          onConfirm={() => {
+            setConfirm(null)
+            setError(null)
+            markPaidOff.mutate(debtId, { onSuccess: showSaved, onError: (err) => setError(apiErrorMessage(err)) })
+          }}
+          title={t('debts.details.paid_off_confirm.title')}
+          question={t('debts.details.paid_off_confirm.question')}
+          confirmLabel={t('debts.details.mark_paid_off')}
+          cancelLabel={t('common.button.cancel.label')}
+        />
+        <ConfirmDialog
+          open={confirm === 'delete'}
+          onClose={() => setConfirm(null)}
+          onConfirm={() => {
+            setConfirm(null)
+            sendDelete(false)
+          }}
+          title={t('debts.details.delete_confirm.title')}
+          question={t('debts.details.delete_confirm.question')}
+          confirmLabel={t('common.button.delete.label')}
+          cancelLabel={t('common.button.cancel.label')}
+          destructive
+        />
+        <ConfirmDialog
+          open={removalMessage !== null}
+          onClose={() => setRemovalMessage(null)}
+          onConfirm={() => {
+            setRemovalMessage(null)
+            sendDelete(true)
+          }}
+          title={t('debts.details.removal_confirm.title')}
+          question={removalMessage ?? ''}
+          confirmLabel={t('debts.details.removal_confirm.action')}
+          cancelLabel={t('common.button.cancel.label')}
+          destructive
+        />
+      </ResponsiveDialog>
+    </Tabs>
   )
 }
 
@@ -462,7 +472,7 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
 }
 
 /** The owner's review of one debt, opened with `useUiStore().openDebtDetails(id, tab?)`:
- *  a large dialog (full screen on a phone) with an Overview and a Settings tab */
+ *  a large dialog (full screen on a phone) with Overview, Settings and Danger zone tabs */
 export function DebtReviewScreen() {
   const debtId = useUiStore((s) => s.debtDetailsId)
   const tab = useUiStore((s) => s.debtDetailsTab)
