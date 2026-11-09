@@ -4,9 +4,8 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
-import type { CurrentUserDto } from '@/api/dto/user'
 import { queryKeys } from '@/app/queryKeys'
-import { useUpdateName, useUpdateAvatar, useUpdateDefaultBudget, useUpdatePassword, useAccessState, gettingStartedOption } from './queries'
+import { useUpdateName, useUpdateAvatar, useUpdateDefaultBudget, useUpdatePassword, useAccessState } from './queries'
 
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -123,10 +122,4 @@ describe('useAccessState', () => {
     const { result } = renderHook(() => useAccessState(), { wrapper })
     await waitFor(() => expect(result.current.state).toBe('readonly'))
   })
-})
-
-it('gettingStartedOption is null when the option is absent and keeps an empty value', () => {
-  expect(gettingStartedOption(undefined)).toBeNull()
-  expect(gettingStartedOption(fixtureUser as unknown as CurrentUserDto)).toBeNull()
-  expect(gettingStartedOption({ ...fixtureUser, options: [{ name: 'getting_started', value: '' }] } as unknown as CurrentUserDto)).toBe('')
 })

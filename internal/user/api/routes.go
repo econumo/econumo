@@ -45,8 +45,8 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/user/update-report-period", auth(h.UpdateReportPeriod))
 		mux.Handle("POST /api/v1/user/update-language", auth(h.UpdateLanguage))
 		mux.Handle("POST /api/v1/user/update-analytics", auth(h.UpdateAnalytics))
-		mux.Handle("POST /api/v1/user/update-getting-started", auth(h.UpdateGettingStarted))
 		mux.Handle("POST /api/v1/user/update-last-seen-version", auth(h.UpdateLastSeenVersion))
+		mux.Handle("POST /api/v1/user/update-onboarding", auth(h.UpdateOnboarding))
 		mux.Handle("POST /api/v1/user/complete-onboarding", auth(h.CompleteOnboarding))
 	}
 }

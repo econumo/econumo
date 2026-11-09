@@ -3260,16 +3260,6 @@ definitions:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
     type: object
-  model.UpdateGettingStartedRequest:
-    properties:
-      value:
-        type: string
-    type: object
-  model.UpdateGettingStartedResult:
-    properties:
-      user:
-        $ref: '#/definitions/model.CurrentUserResult'
-    type: object
   model.UpdateImportAccountResult:
     properties:
       item:
@@ -3345,6 +3335,16 @@ definitions:
         type: string
     type: object
   model.UpdateNameResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateOnboardingRequest:
+    properties:
+      value:
+        type: string
+    type: object
+  model.UpdateOnboardingResult:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
@@ -11151,52 +11151,6 @@ paths:
       summary: Update currency
       tags:
       - User
-  /api/v1/user/update-getting-started:
-    post:
-      consumes:
-      - application/json
-      description: Stores which get-ready steps the authenticated user finished or
-        dismissed and returns the refreshed user.
-      parameters:
-      - description: Update getting-started request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.UpdateGettingStartedRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.UpdateGettingStartedResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "402":
-          description: Payment Required
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Update getting-started progress
-      tags:
-      - User
   /api/v1/user/update-language:
     post:
       consumes:
@@ -11329,6 +11283,53 @@ paths:
       security:
       - Bearer: []
       summary: Update name
+      tags:
+      - User
+  /api/v1/user/update-onboarding:
+    post:
+      consumes:
+      - application/json
+      description: Stores which onboarding steps the authenticated user finished or
+        skipped ("started" = none yet) and returns the refreshed user. A completed
+        onboarding is left unchanged.
+      parameters:
+      - description: Update onboarding request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateOnboardingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateOnboardingResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update onboarding progress
       tags:
       - User
   /api/v1/user/update-password:

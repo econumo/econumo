@@ -1,11 +1,11 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { UserOptions, type CurrentUserDto } from '@/api/dto/user'
-import { updateGettingStarted } from '@/api/user'
+import { updateOnboarding } from '@/api/user'
 import { queryKeys } from '@/app/queryKeys'
-import { gettingStartedOption, isOnboardingCompleted } from '@/features/user/queries'
+import { isOnboardingCompleted, userOption } from '@/features/user/queries'
 
 export type OnboardingStepKey = 'import' | 'categories' | 'accounts' | 'plan' | 'home_screen' | 'apple_wallet'
-// the steps whose state lives in the users_options value; add to home screen is per device
+// the steps whose state lives in the onboarding option; add to home screen is per device
 export type StoredStepKey = Exclude<OnboardingStepKey, 'home_screen'>
 
 export type OnboardingStepState = 'open' | 'done' | 'skipped'
@@ -24,14 +24,15 @@ export function withStepState(option: string | null, key: StoredStepKey, state: 
   return [...rest, state === 'done' ? key : `!${key}`].join(',')
 }
 
-// Registration seeds no getting_started option, so for a user still in the
-// flow an absent option reads as "nothing answered yet". Once onboarding is
-// complete an absent option means the user predates the stepper: null, and
-// nothing is ever written for them.
-export function flowOption(user: CurrentUserDto | undefined): string | null {
-  const option = gettingStartedOption(user)
-  if (option !== null) return option
-  return user !== undefined && !isOnboardingCompleted(user) ? '' : null
+const ONBOARDING_STARTED = 'started'
+
+// While onboarding is in progress the onboarding option holds "started"
+// (nothing answered) or the answered step list; "completed" (or an absent
+// option, a user predating onboarding) is terminal: null, nothing is written.
+export function onboardingProgress(user: CurrentUserDto | undefined): string | null {
+  if (user === undefined || isOnboardingCompleted(user)) return null
+  const value = userOption(user, UserOptions.ONBOARDING)
+  return value === null || value === ONBOARDING_STARTED ? '' : value
 }
 
 let writesInFlight = 0
@@ -54,21 +55,18 @@ export async function markStepsDone(queryClient: QueryClient, keys: StoredStepKe
 async function writeStepStates(queryClient: QueryClient, keys: StoredStepKey[], state: Answer): Promise<void> {
   await queryClient.cancelQueries({ queryKey: queryKeys.user })
   const user = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
-  const option = flowOption(user)
+  const option = onboardingProgress(user)
   if (!user || option === null) return
   const changing = keys.filter((key) => storedStepState(option, key) !== state)
   if (changing.length === 0) return
   const value = changing.reduce((acc, key) => withStepState(acc, key, state), option)
-  const stored = user.options.some((o) => o.name === UserOptions.GETTING_STARTED)
   queryClient.setQueryData<CurrentUserDto>(queryKeys.user, {
     ...user,
-    options: stored
-      ? user.options.map((o) => (o.name === UserOptions.GETTING_STARTED ? { ...o, value } : o))
-      : [...user.options, { name: UserOptions.GETTING_STARTED, value }],
+    options: user.options.map((o) => (o.name === UserOptions.ONBOARDING ? { ...o, value } : o)),
   })
   writesInFlight++
   try {
-    const saved = await updateGettingStarted(value)
+    const saved = await updateOnboarding(value)
     if (writesInFlight === 1) queryClient.setQueryData(queryKeys.user, saved)
   } catch {
     // the refetch below restores the stored value
@@ -80,8 +78,8 @@ async function writeStepStates(queryClient: QueryClient, keys: StoredStepKey[], 
 
 // Callable from the budget mutations without a hook of their own: nothing is
 // sent outside the flow or once the step has an answer.
-export function markGettingStartedDone(queryClient: QueryClient, key: StoredStepKey): void {
-  const option = flowOption(queryClient.getQueryData<CurrentUserDto>(queryKeys.user))
+export function markOnboardingStepDone(queryClient: QueryClient, key: StoredStepKey): void {
+  const option = onboardingProgress(queryClient.getQueryData<CurrentUserDto>(queryKeys.user))
   if (option === null || storedStepState(option, key) !== 'open') return
   void writeStepState(queryClient, key, 'done')
 }

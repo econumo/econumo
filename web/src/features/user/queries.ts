@@ -41,10 +41,6 @@ export function userOption(user: CurrentUserDto | undefined, name: UserOptions):
   return user?.options.find((o) => o.name === name)?.value ?? null
 }
 
-export function gettingStartedOption(user: CurrentUserDto | undefined): string | null {
-  return userOption(user, UserOptions.GETTING_STARTED)
-}
-
 export function userCurrencyId(user: CurrentUserDto | undefined): string | null {
   return userOption(user, UserOptions.CURRENCY_ID)
 }

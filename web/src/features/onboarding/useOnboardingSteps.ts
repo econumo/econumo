@@ -5,10 +5,10 @@ import { isStandalone, useInstallMode } from '@/features/install/installPrompt'
 import { useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isIPhone, isMac } from '@/lib/platform'
-import { flowOption, markStepsDone, storedStepState, writeStepState, type OnboardingStepKey, type OnboardingStepState, type StoredStepKey } from './gettingStarted'
+import { onboardingProgress, markStepsDone, storedStepState, writeStepState, type OnboardingStepKey, type OnboardingStepState, type StoredStepKey } from './onboardingProgress'
 import { setHomeScreenState, useHomeScreenState } from './homeScreen'
 
-export type { OnboardingStepKey, OnboardingStepState } from './gettingStarted'
+export type { OnboardingStepKey, OnboardingStepState } from './onboardingProgress'
 
 export interface OnboardingStep {
   key: OnboardingStepKey
@@ -33,7 +33,7 @@ export function useOnboardingSteps(): OnboardingSteps {
   const installMode = useInstallMode()
   const homeScreen = useHomeScreenState()
 
-  const option = flowOption(user)
+  const option = onboardingProgress(user)
   const hasWalletSource = (sources.data ?? []).some((s) => s.provider === 'apple-wallet')
   // A failed source list (routes off with the import providers) only loses
   // the automatic Apple Wallet tick, so its retries are not waited for.

@@ -241,38 +241,41 @@ type UpdateAnalyticsResult struct {
 }
 
 // ---------------------------------------------------------------------------
-// update-getting-started
+// update-onboarding
 // ---------------------------------------------------------------------------
 
-// UpdateGettingStartedRequest is the update-getting-started request body. Value
-// is a comma-separated list of steps (plan, import, apple_wallet, categories, accounts), each with an
-// optional "!" prefix meaning dismissed; "" is valid (Day 0 done, nothing else).
-type UpdateGettingStartedRequest struct {
+// UpdateOnboardingRequest is the update-onboarding request body. Value is
+// "started" (nothing answered) or a comma-separated list of steps (import,
+// categories, accounts, plan, apple_wallet), each at most once with an optional
+// "!" prefix meaning skipped. "completed" is refused: completion goes through
+// complete-onboarding.
+type UpdateOnboardingRequest struct {
 	Value *string `json:"value"`
 }
 
-var gettingStartedSteps = map[string]bool{"plan": true, "import": true, "apple_wallet": true, "categories": true, "accounts": true}
+var onboardingSteps = map[string]bool{"plan": true, "import": true, "apple_wallet": true, "categories": true, "accounts": true}
 
-func (r UpdateGettingStartedRequest) Validate() error {
-	if r.Value == nil {
+func (r UpdateOnboardingRequest) Validate() error {
+	if r.Value == nil || *r.Value == "" {
 		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
-	if *r.Value == "" {
+	if *r.Value == OnboardingStarted {
 		return nil
 	}
+	invalid := errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	seen := map[string]bool{}
 	for _, item := range strings.Split(*r.Value, ",") {
 		key := strings.TrimPrefix(item, "!")
-		if !gettingStartedSteps[key] || seen[key] {
-			return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
+		if !onboardingSteps[key] || seen[key] {
+			return invalid
 		}
 		seen[key] = true
 	}
 	return nil
 }
 
-// UpdateGettingStartedResult is the update-getting-started response.
-type UpdateGettingStartedResult struct {
+// UpdateOnboardingResult is the update-onboarding response.
+type UpdateOnboardingResult struct {
 	User CurrentUserResult `json:"user"`
 }
 

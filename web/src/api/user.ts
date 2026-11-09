@@ -88,8 +88,8 @@ export async function updateAnalytics(enabled: boolean): Promise<CurrentUserDto>
   return response.data.data.user
 }
 
-export async function updateGettingStarted(value: string): Promise<CurrentUserDto> {
-  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-getting-started'), { value })
+export async function updateOnboarding(value: string): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-onboarding'), { value })
   return response.data.data.user
 }
 

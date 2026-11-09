@@ -1,8 +1,8 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { isAppInstalled, isStandalone, subscribeInstallState } from '@/features/install/installPrompt'
-import type { OnboardingStepState } from './gettingStarted'
+import type { OnboardingStepState } from './onboardingProgress'
 
-export const HOME_SCREEN_KEY = 'econumo-getting-started-home-screen'
+export const HOME_SCREEN_KEY = 'econumo-onboarding-home-screen'
 
 // Per device and shared by every hook instance: the install dialog that
 // finishes the step may be opened from another component.

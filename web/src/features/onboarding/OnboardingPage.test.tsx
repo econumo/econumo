@@ -14,12 +14,10 @@ vi.mock('@/features/transactions/ImportCsvDialog', () => ({
     open ? <button onClick={() => onComplete({ imported: importedRows })}>finish import</button> : null,
 }))
 
-const userWith = (gettingStarted: string, onboarding = '') => ({
+// the onboarding option: "completed", else the answered steps ("" = none yet, stored as "started")
+const userWith = (steps: string, completed = false) => ({
   ...fixtureUser,
-  options: [
-    ...fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: onboarding } : o)),
-    { name: 'getting_started', value: gettingStarted },
-  ],
+  options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: completed ? 'completed' : steps || 'started' } : o)),
 })
 
 function renderPage() {
@@ -44,7 +42,7 @@ const ok = (data: unknown = {}) => HttpResponse.json({ success: true, message: '
 
 let posts: { path: string; value?: string }[]
 
-// get-user-data serves the stored option, a getting-started POST replaces it
+// get-user-data serves the stored option, an update-onboarding POST replaces it
 function serve(initial: string) {
   posts = []
   const state = { stored: initial, completed: false, failComplete: false, budgets: [] as { id: string }[] }
@@ -58,10 +56,10 @@ function serve(initial: string) {
       return ok({ item: { ...fixtureWireBudget.meta, id } })
     }),
     http.get('*/api/v1/budget/get-budget', () => ok({ item: fixtureWireBudget })),
-    http.get('*/api/v1/user/get-user-data', () => ok({ user: userWith(state.stored, state.completed ? 'completed' : '') })),
-    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
+    http.get('*/api/v1/user/get-user-data', () => ok({ user: userWith(state.stored, state.completed) })),
+    http.post('*/api/v1/user/update-onboarding', async ({ request }) => {
       const { value } = (await request.json()) as { value: string }
-      posts.push({ path: 'update-getting-started', value })
+      posts.push({ path: 'update-onboarding', value })
       state.stored = value
       return ok({ user: userWith(value) })
     }),
@@ -72,7 +70,7 @@ function serve(initial: string) {
       }
       posts.push({ path: 'complete-onboarding' })
       state.completed = true
-      return ok({ user: userWith(state.stored, 'completed') })
+      return ok({ user: userWith(state.stored, true) })
     }),
   )
   return state
@@ -109,7 +107,7 @@ it('skipping a step records it and moves to the next open step', async () => {
   expect(await heading('Bring in your history')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: "I don't have one" }))
   expect(await heading('What do you spend on?')).toBeInTheDocument()
-  expect(posts).toEqual([{ path: 'update-getting-started', value: '!import' }])
+  expect(posts).toEqual([{ path: 'update-onboarding', value: '!import' }])
 })
 
 it('a revisited step moves on to the next open step after it', async () => {
@@ -121,7 +119,7 @@ it('a revisited step moves on to the next open step after it', async () => {
   expect(await heading("Where's your money right now?")).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Skip' }))
   expect(await heading('Plan this month')).toBeInTheDocument()
-  expect(posts).toEqual([{ path: 'update-getting-started', value: '!accounts' }])
+  expect(posts).toEqual([{ path: 'update-onboarding', value: '!accounts' }])
 })
 
 it('a done step cannot be opened again', async () => {
@@ -181,7 +179,7 @@ it('resolving the last open step completes onboarding and lands on the budget', 
   await user.click(screen.getByRole('button', { name: 'Save plan' }))
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
   expect(posts).toEqual([
-    { path: 'update-getting-started', value: 'import,!categories,accounts,plan' },
+    { path: 'update-onboarding', value: 'import,!categories,accounts,plan' },
     { path: 'complete-onboarding' },
   ])
 })
@@ -252,7 +250,7 @@ it('an import with rows settles import, categories and accounts in one request',
   await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
   await user.click(await screen.findByRole('button', { name: 'finish import' }))
   expect(await heading('Plan this month')).toBeInTheDocument()
-  expect(posts).toEqual([{ path: 'update-getting-started', value: 'import,categories,accounts' }])
+  expect(posts).toEqual([{ path: 'update-onboarding', value: 'import,categories,accounts' }])
 })
 
 it('an import that brought nothing in marks nothing', async () => {
@@ -307,8 +305,7 @@ it('a phone gets a menu button that opens the navigation without finishing', asy
   expect(screen.getByRole('link', { name: 'Menu' })).toHaveAttribute('href', '/?menu=1')
 })
 
-// A user exactly as registration leaves them: onboarding "started" and no
-// getting_started option. Every handler answers in the server's shape and keeps
+// A user exactly as registration leaves them: onboarding "started". Every handler answers in the server's shape and keeps
 // its state, so the walk below exercises what a real new user goes through.
 function serveRegisteredUser() {
   const log: { path: string; body?: unknown }[] = []
@@ -332,10 +329,10 @@ function serveRegisteredUser() {
   server.use(...coreHandlers({ user: user(), budgets: [], categories: [], accounts: [], folders: [] }))
   server.use(
     http.get('*/api/v1/user/get-user-data', () => ok({ user: user() })),
-    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
+    http.post('*/api/v1/user/update-onboarding', async ({ request }) => {
       const { value } = (await request.json()) as { value: string }
-      log.push({ path: 'update-getting-started', body: value })
-      setOption('getting_started', value)
+      log.push({ path: 'update-onboarding', body: value })
+      setOption('onboarding', value)
       return ok({ user: user() })
     }),
     http.post('*/api/v1/user/complete-onboarding', () => {
@@ -433,13 +430,13 @@ it('a registered user without the option walks every step and the answers and co
   const salaryId = state.categories.find((c) => c.name === 'Salary')?.id
   const groceriesId = state.categories.find((c) => c.name === 'Groceries')?.id
   expect(log).toEqual([
-    { path: 'update-getting-started', body: '!import' },
-    { path: 'update-getting-started', body: '!import,categories' },
-    { path: 'update-getting-started', body: '!import,categories,accounts' },
+    { path: 'update-onboarding', body: '!import' },
+    { path: 'update-onboarding', body: '!import,categories' },
+    { path: 'update-onboarding', body: '!import,categories,accounts' },
     { path: 'create-budget', body: ['acc-15'] },
     { path: 'set-limit', body: [salaryId, '3000'] },
     { path: 'set-limit', body: [groceriesId, '400'] },
-    { path: 'update-getting-started', body: '!import,categories,accounts,plan' },
+    { path: 'update-onboarding', body: '!import,categories,accounts,plan' },
     { path: 'complete-onboarding' },
   ])
   expect(state.options.find((o) => o.name === 'onboarding')?.value).toBe('completed')

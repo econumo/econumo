@@ -16,7 +16,7 @@ import { applyMove } from '@/lib/ordering'
 import type { ElementMoveItem } from './elementMove'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
-import { markGettingStartedDone } from '@/features/onboarding/gettingStarted'
+import { markOnboardingStepDone } from '@/features/onboarding/onboardingProgress'
 import { followsCurrentPeriod, useBudgetPeriodStore } from './budgetStore'
 import { addMonths, monthDiff } from './planMath'
 import { budgetCurrentPeriod, currentPeriod, periodStartDayOf } from './period'
@@ -217,7 +217,7 @@ export function useSetLimit() {
     },
     onSuccess: (_data, form) => {
       trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
-      markGettingStartedDone(queryClient, 'plan')
+      markOnboardingStepDone(queryClient, 'plan')
       // budget-mode edits patch only the budget-page cache above; the plan cache
       // (a different window/query key) must be invalidated too or the plan sheet
       // keeps showing the pre-edit limit until something else happens to refetch it
@@ -306,7 +306,7 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
     },
     onSuccess: (_res, form) => {
       trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
-      markGettingStartedDone(queryClient, 'plan')
+      markOnboardingStepDone(queryClient, 'plan')
       // the budget-page cache is now stale: that month's figures, and for a savings
       // row the projected closing balance of every later month. Every cached plan
       // window of the budget resyncs too, not just this one: later months' balances
@@ -335,7 +335,7 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
     },
     onSuccess: () => {
       trackEvent(METRICS.BUDGET_PLAN_FILL_RIGHT)
-      markGettingStartedDone(queryClient, 'plan')
+      markOnboardingStepDone(queryClient, 'plan')
     },
     // No partial rollback: any failure means some months may have landed, so both a
     // success and a failure need the same resync — the budget-page caches (every

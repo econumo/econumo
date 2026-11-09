@@ -425,12 +425,15 @@ draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the writes ar
 a reload or retry creates nothing twice. Onboarding completes automatically once every visible
 step is done or skipped (also when answered on another device). The install banner and popup
 stay hidden until it is complete. There are no budget-page "get ready" cards and no Inbox "Next
-steps" section any more. Per-user progress is the `getting_started` user option
-(comma-separated keys `import`/`categories`/`accounts`/`plan`/`apple_wallet`, a `!` prefix =
-dismissed (`!plan`); registration seeds no such option, so while `onboarding` is not
-`completed` an absent option reads as `""`, nothing answered yet, and the first answer creates
-it; absent once onboarding is complete = an existing user never in the flow, written nothing), written by
-`POST /api/v1/user/update-getting-started`. Migration `20261108000000` marks onboarding
+steps" section any more. Per-user progress lives in the `onboarding` user option itself: registration seeds
+`started` (nothing answered), each answer replaces it with the comma-separated step states
+(keys `import`/`categories`/`accounts`/`plan`/`apple_wallet`, each at most once, a `!` prefix =
+skipped (`!plan`)), written by `POST /api/v1/user/update-onboarding` (`web/src/features/onboarding/onboardingProgress.ts`,
+optimistic, cancel-in-flight, last write reconciles). `completed` is terminal: only
+`complete-onboarding` writes it, `update-onboarding` refuses the value (`common.invalid_choice`)
+and is a no-op returning the current user once onboarding is complete (or the option is absent,
+a user predating onboarding). Older clients check only `!== 'completed'`, so they still route an
+in-progress user into onboarding. Migration `20261108000000` marks onboarding
 complete for existing users who own accounts.
 
 **Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the

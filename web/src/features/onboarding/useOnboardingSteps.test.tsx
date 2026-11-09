@@ -6,7 +6,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { listenForInstallPrompt, resetInstallStateForTests } from '@/features/install/installPrompt'
 import * as metrics from '@/lib/metrics'
-import { markGettingStartedDone } from './gettingStarted'
+import { markOnboardingStepDone } from './onboardingProgress'
 import { HOME_SCREEN_KEY, setHomeScreenState } from './homeScreen'
 import { useOnboardingSteps } from './useOnboardingSteps'
 
@@ -15,9 +15,10 @@ const MAC_SAFARI = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/
 const ANDROID_FIREFOX = 'Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0'
 const DESKTOP = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 
-const userWith = (value: string | null) => ({
+// onboarding in progress with these answers ("" = none yet, stored as "started")
+const userWith = (value: string) => ({
   ...fixtureUser,
-  options: value === null ? fixtureUser.options : [...fixtureUser.options, { name: 'getting_started', value }],
+  options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: value || 'started' } : o)),
 })
 
 function setDevice(ua: string, standalone = false) {
@@ -135,7 +136,7 @@ it('skipping home screen stays on this device, sends nothing and fires the skip 
   setDevice(IPHONE)
   const track = vi.spyOn(metrics, 'trackEvent')
   const posts: unknown[] = []
-  server.use(http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
+  server.use(http.post('*/api/v1/user/update-onboarding', async ({ request }) => {
     posts.push(await request.json())
     return HttpResponse.json({ success: true, message: '', data: { user: userWith('') } })
   }))
@@ -154,7 +155,7 @@ function serveOption(initial: string, postDelayMs = 0) {
   const state = { stored: initial, posts: [] as unknown[] }
   server.use(
     http.get('*/api/v1/user/get-user-data', () => HttpResponse.json({ success: true, message: '', data: { user: userWith(state.stored) } })),
-    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
+    http.post('*/api/v1/user/update-onboarding', async ({ request }) => {
       const body = (await request.json()) as { value: string }
       state.posts.push(body)
       await new Promise((r) => setTimeout(r, postDelayMs))
@@ -191,18 +192,17 @@ it('skip on a revisited done step keeps it done and writes nothing', async () =>
   expect(track).not.toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_STEP_SKIP, expect.anything())
 })
 
-it('a registered user without the option is in the flow and has the answer written', async () => {
-  const registered = { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: 'started' } : o)) }
+it('a registered user ("started") is in the flow and has the answer written into the onboarding option', async () => {
+  const registered = userWith('')
   const posts: unknown[] = []
-  // the server appends the option on the first write
   let stored = registered
   const { result } = setup(registered)
   server.use(
     http.get('*/api/v1/user/get-user-data', () => HttpResponse.json({ success: true, message: '', data: { user: stored } })),
-    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
+    http.post('*/api/v1/user/update-onboarding', async ({ request }) => {
       const body = (await request.json()) as { value: string }
       posts.push(body)
-      stored = { ...registered, options: [...registered.options, { name: 'getting_started', value: body.value }] }
+      stored = userWith(body.value)
       return HttpResponse.json({ success: true, message: '', data: { user: stored } })
     }),
   )
@@ -211,6 +211,18 @@ it('a registered user without the option is in the flow and has the answer writt
   await act(() => result.current.skip('import'))
   expect(posts).toEqual([{ value: '!import' }])
   await waitFor(() => expect(result.current.steps[0]).toEqual({ key: 'import', state: 'skipped' }))
+})
+
+it('a completed onboarding writes nothing', async () => {
+  const posts: unknown[] = []
+  server.use(http.post('*/api/v1/user/update-onboarding', async ({ request }) => {
+    posts.push(await request.json())
+    return HttpResponse.json({ success: true, message: '', data: { user: fixtureUser } })
+  }))
+  const { result } = setup(fixtureUser)
+  await waitFor(() => expect(result.current.ready).toBe(true))
+  await act(() => result.current.markDone('import'))
+  expect(posts).toEqual([])
 })
 
 it('two quick skips keep both', async () => {
@@ -232,7 +244,7 @@ it('a user fetch answering before the write lands does not bring the step back',
   const state = serveOption('', 100)
   await waitFor(() => expect(result.current.ready).toBe(true))
   act(() => {
-    markGettingStartedDone(queryClient, 'import')
+    markOnboardingStepDone(queryClient, 'import')
     // what the CSV import does right after: refetch everything, the user included
     void queryClient.invalidateQueries()
   })

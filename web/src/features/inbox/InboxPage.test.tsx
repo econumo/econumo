@@ -369,8 +369,8 @@ it('does not list a due template on an account shared with me read-only', async 
   expect(screen.queryByTestId('due-r-ro')).toBeNull()
 })
 
-it('lists no next steps, even for a user still getting started', async () => {
-  server.use(...coreHandlers({ user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'getting_started', value: '' }] } }))
+it('lists no next steps, even for a user still in onboarding', async () => {
+  server.use(...coreHandlers({ user: { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: 'started' } : o)) } }))
   renderInbox()
   expect(await screen.findByText('All caught up')).toBeInTheDocument()
   expect(screen.queryByText('Next steps')).toBeNull()

@@ -87,18 +87,18 @@ it('set-limit patches budgeted optimistically and rolls back on error', async ()
   expect(cached.structure.elements[0].budgeted).toBe('200')
 })
 
-it('a saved limit records the getting-started plan step once, in both views', async () => {
+it('a saved limit records the onboarding plan step once, in both views', async () => {
   const posts: unknown[] = []
   server.use(
     http.post('*/api/v1/budget/set-limit', () => HttpResponse.json({ success: true, message: '', data: {} })),
-    http.post('*/api/v1/user/update-getting-started', async ({ request }) => {
+    http.post('*/api/v1/user/update-onboarding', async ({ request }) => {
       const body = (await request.json()) as { value: string }
       posts.push(body)
-      return HttpResponse.json({ success: true, message: '', data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'getting_started', value: body.value }] } } })
+      return HttpResponse.json({ success: true, message: '', data: { user: { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: body.value } : o)) } } })
     }),
   )
   const { queryClient, wrapper } = makeWrapper()
-  queryClient.setQueryData(queryKeys.user, { ...fixtureUser, options: [...fixtureUser.options, { name: 'getting_started', value: '!import' }] })
+  queryClient.setQueryData(queryKeys.user, { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: '!import' } : o)) })
   const { result } = renderHook(() => ({ budget: useSetLimit(), plan: usePlanSetLimit(['plan-key']) }), { wrapper })
   await result.current.budget.mutateAsync({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '10' })
   await result.current.plan.mutateAsync({ budgetId: 'b1', elementId: 'cat-food', period: '2026-08-01', amount: '10', monthIndex: 1 })

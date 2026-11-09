@@ -91,11 +91,13 @@ func (s *Service) UpdateAnalytics(ctx context.Context, userID vo.Id, req model.U
 	return &model.UpdateAnalyticsResult{User: cur}, nil
 }
 
-// UpdateGettingStarted writes the caller's get-ready progress and returns the
-// refreshed current user.
-func (s *Service) UpdateGettingStarted(ctx context.Context, userID vo.Id, req model.UpdateGettingStartedRequest) (*model.UpdateGettingStartedResult, error) {
+// UpdateOnboarding stores the step states of the caller's onboarding and
+// returns the refreshed current user. Once onboarding is completed the write is
+// a no-op: completion is terminal, so a late write from another tab cannot
+// reopen it.
+func (s *Service) UpdateOnboarding(ctx context.Context, userID vo.Id, req model.UpdateOnboardingRequest) (*model.UpdateOnboardingResult, error) {
 	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
-		u.SetGettingStarted(*req.Value, s.repo.NextIdentity(), now)
+		u.SetOnboardingProgress(*req.Value, now)
 		return nil
 	})
 	if err != nil {
@@ -105,7 +107,7 @@ func (s *Service) UpdateGettingStarted(ctx context.Context, userID vo.Id, req mo
 	if err != nil {
 		return nil, err
 	}
-	return &model.UpdateGettingStartedResult{User: cur}, nil
+	return &model.UpdateOnboardingResult{User: cur}, nil
 }
 
 // UpdateLastSeenVersion records the release whose "what's new" notice the

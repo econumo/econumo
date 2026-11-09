@@ -7,7 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 )
 
-func TestUpdateGettingStartedRequestValidate(t *testing.T) {
+func TestUpdateOnboardingRequestValidate(t *testing.T) {
 	str := func(s string) *string { return &s }
 	cases := []struct {
 		name     string
@@ -15,19 +15,20 @@ func TestUpdateGettingStartedRequestValidate(t *testing.T) {
 		wantCode string
 	}{
 		{"nil", nil, errs.CodeIsBlank},
+		{"empty", str(""), errs.CodeIsBlank},
+		{"started", str("started"), ""},
+		{"completed", str("completed"), errs.CodeInvalidChoice},
 		{"mixed", str("plan,!import"), ""},
-		{"empty", str(""), ""},
-		{"all", str("plan,import,!apple_wallet"), ""},
-		{"new steps", str("import,categories,!accounts,plan"), ""},
-		{"duplicate new", str("categories,categories"), errs.CodeInvalidChoice},
+		{"all", str("import,categories,!accounts,plan,!apple_wallet"), ""},
 		{"duplicate", str("plan,plan"), errs.CodeInvalidChoice},
-		{"duplicate dismissed", str("plan,!plan"), errs.CodeInvalidChoice},
+		{"duplicate skipped", str("plan,!plan"), errs.CodeInvalidChoice},
 		{"unknown", str("foo"), errs.CodeInvalidChoice},
+		{"started in list", str("started,plan"), errs.CodeInvalidChoice},
 		{"empty item", str("plan,"), errs.CodeInvalidChoice},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := model.UpdateGettingStartedRequest{Value: tc.value}.Validate()
+			err := model.UpdateOnboardingRequest{Value: tc.value}.Validate()
 			if tc.wantCode == "" {
 				if err != nil {
 					t.Fatalf("Validate() = %v, want nil", err)

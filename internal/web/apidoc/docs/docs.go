@@ -12567,81 +12567,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/user/update-getting-started": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Stores which get-ready steps the authenticated user finished or dismissed and returns the refreshed user.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User"
-                ],
-                "summary": "Update getting-started progress",
-                "parameters": [
-                    {
-                        "description": "Update getting-started request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.UpdateGettingStartedRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.UpdateGettingStartedResult"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
-                        }
-                    },
-                    "402": {
-                        "description": "Payment Required",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseException"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/user/update-language": {
             "post": {
                 "security": [
@@ -12828,6 +12753,81 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/model.UpdateNameResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/update-onboarding": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Stores which onboarding steps the authenticated user finished or skipped (\"started\" = none yet) and returns the refreshed user. A completed onboarding is left unchanged.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update onboarding progress",
+                "parameters": [
+                    {
+                        "description": "Update onboarding request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateOnboardingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UpdateOnboardingResult"
                                         }
                                     }
                                 }
@@ -17893,22 +17893,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UpdateGettingStartedRequest": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.UpdateGettingStartedResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/model.CurrentUserResult"
-                }
-            }
-        },
         "model.UpdateImportAccountResult": {
             "type": "object",
             "properties": {
@@ -18025,6 +18009,22 @@ const docTemplate = `{
             }
         },
         "model.UpdateNameResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UpdateOnboardingRequest": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateOnboardingResult": {
             "type": "object",
             "properties": {
                 "user": {

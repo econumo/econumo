@@ -146,6 +146,8 @@ budget. They are not banners. Which cards show depends on the device and the ser
   Each can be dismissed for good. They show only to users who went through this flow, which
   a new `users_options` value records. Done and dismissed state lives there too, except add
   to home screen, which is per device.
+  (2026-11-08: no separate option; step state lives in the `onboarding` option, `started`
+  or the step list until `completed`, written by `update-onboarding`.)
 
 ## Import and the typed balance
 

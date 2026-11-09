@@ -14,7 +14,7 @@ export function InstallStep({ onDone, onSkip }: StepBodyProps) {
     void action().finally(() => setPending(false))
   }
   const install = async () => {
-    if (await start('getting_started')) await onDone()
+    if (await start('onboarding')) await onDone()
   }
   return (
     <section className="flex flex-col gap-2">
