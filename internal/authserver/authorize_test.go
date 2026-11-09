@@ -332,14 +332,14 @@ func TestDecline_DoesNotClaim(t *testing.T) {
 	}
 }
 
-func TestOfficialApp_UsableByEveryone(t *testing.T) {
+func TestGlobalApp_UsableByEveryone(t *testing.T) {
 	s, _, clock, db := newTestServiceDB(t)
 	a := newUser(t, db, fixture.User{})
 	b := newUser(t, db, fixture.User{})
-	id := insertOfficialClient(t, s, clock.Now(), claudeCallback)
+	id := insertGlobalClient(t, s, clock.Now(), claudeCallback)
 	for _, u := range []vo.Id{a, b} {
 		d, err := s.DescribeAuthorization(ctx, u, authReq(id.String()))
-		if err != nil || !d.IsOfficial {
+		if err != nil || !d.IsGlobal {
 			t.Fatalf("describe: %+v %v", d, err)
 		}
 		if _, err := s.ApproveAuthorization(ctx, u, session, true, authReq(id.String())); err != nil {
@@ -347,11 +347,11 @@ func TestOfficialApp_UsableByEveryone(t *testing.T) {
 		}
 	}
 	if o := owner(t, s, id.String()); o != nil {
-		t.Fatalf("an official app never gets an owner: %v", o)
+		t.Fatalf("a global app never gets an owner: %v", o)
 	}
 	c := register(t, s, "Claude", claudeCallback)
-	if d, err := s.DescribeAuthorization(ctx, a, authReq(c.ClientID)); err != nil || d.IsOfficial {
-		t.Fatalf("a user app is not official: %+v %v", d, err)
+	if d, err := s.DescribeAuthorization(ctx, a, authReq(c.ClientID)); err != nil || d.IsGlobal {
+		t.Fatalf("a user app is not global: %+v %v", d, err)
 	}
 }
 
@@ -426,7 +426,7 @@ func TestApprove_ConcurrentApprovalsOneWins(t *testing.T) {
 }
 
 // codeDeletingRepo has app:delete land between validate and the code INSERT of
-// an official app, whose claim returns early. As in deletingRepo, the DELETE
+// a global app, whose claim returns early. As in deletingRepo, the DELETE
 // runs inside the approval's transaction on SQLite and GetClient then reports
 // what the committed DELETE would show.
 type codeDeletingRepo struct {
@@ -455,7 +455,7 @@ func TestApprove_ClientDeletedMidApproval(t *testing.T) {
 		t.Run(fmt.Sprint("committed=", committed), func(t *testing.T) {
 			s, creds, clock, db := newTestServiceDB(t)
 			user := newUser(t, db, fixture.User{})
-			id := insertOfficialClient(t, s, clock.Now(), claudeCallback)
+			id := insertGlobalClient(t, s, clock.Now(), claudeCallback)
 			racing := NewService(&codeDeletingRepo{Repository: s.repo, commitDelete: committed}, creds, s.tx, clock, nil, testURL)
 			_, err := racing.ApproveAuthorization(ctx, user, session, true, authReq(id.String()))
 			if committed {

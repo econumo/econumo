@@ -47,9 +47,9 @@ func connect(t *testing.T, s *Service, user vo.Id, clientID, secret string) mode
 	return tr
 }
 
-func TestRegisterOfficialApp(t *testing.T) {
+func TestRegisterGlobalApp(t *testing.T) {
 	s, _, _, user := newTestService(t)
-	c, secret, err := s.RegisterOfficialApp(ctx, " Claude ", []string{appCallback}, false)
+	c, secret, err := s.RegisterGlobalApp(ctx, " Claude ", []string{appCallback}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,14 +65,14 @@ func TestRegisterOfficialApp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pub, secret, err := s.RegisterOfficialApp(ctx, "Public", []string{appCallback}, true)
+	pub, secret, err := s.RegisterGlobalApp(ctx, "Public", []string{appCallback}, true)
 	if err != nil || pub.SecretHash != nil || secret != "" || !pub.IsGlobal {
 		t.Fatalf("%+v %q %v", pub, secret, err)
 	}
 	connect(t, s, user, pub.ID.String(), "")
 }
 
-func TestRegisterOfficialApp_Validation(t *testing.T) {
+func TestRegisterGlobalApp_Validation(t *testing.T) {
 	db := dbtest.New(t)
 	// Disabled server: the operator commands work without ECONUMO_URL.
 	s := NewService(authrepo.NewRepo(db.Engine, db.TX), &fakeCreds{}, db.TX, &fixedClock{t: time.Now().UTC()}, nil, "")
@@ -92,7 +92,7 @@ func TestRegisterOfficialApp_Validation(t *testing.T) {
 		{"App", []string{"http://example.com/cb"}, nil},
 	}
 	for i, tc := range cases {
-		_, secret, err := s.RegisterOfficialApp(ctx, tc.name, tc.uris, false)
+		_, secret, err := s.RegisterGlobalApp(ctx, tc.name, tc.uris, false)
 		if err == nil || secret != "" {
 			t.Errorf("case %d: err = %v", i, err)
 			continue
@@ -108,7 +108,7 @@ func TestRegisterOfficialApp_Validation(t *testing.T) {
 	if apps, err := s.ListApps(ctx); err != nil || len(apps) != 0 {
 		t.Fatalf("nothing may be inserted: %+v %v", apps, err)
 	}
-	c, _, err := s.RegisterOfficialApp(ctx, strings.Repeat("é", 100), slices.Repeat(ok, 10), true)
+	c, _, err := s.RegisterGlobalApp(ctx, strings.Repeat("é", 100), slices.Repeat(ok, 10), true)
 	if err != nil || !c.IsGlobal {
 		t.Fatalf("limits are inclusive: %+v %v", c, err)
 	}
@@ -117,7 +117,7 @@ func TestRegisterOfficialApp_Validation(t *testing.T) {
 func TestListAndGetApps(t *testing.T) {
 	s, _, clock, db := newTestServiceDB(t)
 	a, b := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
-	official, _, err := s.RegisterOfficialApp(ctx, "Official", []string{appCallback}, true)
+	global, _, err := s.RegisterGlobalApp(ctx, "Global", []string{appCallback}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestListAndGetApps(t *testing.T) {
 		t.Fatalf("%+v", app)
 	}
 	apps, err := s.ListApps(ctx)
-	if err != nil || len(apps) != 2 || !apps[0].Client.ID.Equal(official.ID) || !apps[1].Client.ID.Equal(userApp) {
+	if err != nil || len(apps) != 2 || !apps[0].Client.ID.Equal(global.ID) || !apps[1].Client.ID.Equal(userApp) {
 		t.Fatalf("%+v %v", apps, err)
 	}
 	if len(apps[0].Grants) != 0 || len(apps[1].Grants) != 2 {
@@ -172,29 +172,29 @@ func insertGrant(t *testing.T, s *Service, user, client vo.Id, now time.Time, re
 	return g.ID
 }
 
-func TestUpdateOfficialApp(t *testing.T) {
+func TestUpdateGlobalApp(t *testing.T) {
 	s, _, _, user := newTestService(t)
-	c, _, err := s.RegisterOfficialApp(ctx, "Old", []string{appCallback}, true)
+	c, _, err := s.RegisterGlobalApp(ctx, "Old", []string{appCallback}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	connect(t, s, user, c.ID.String(), "")
 	name := "New"
-	if err := s.UpdateOfficialApp(ctx, c.ID, &name, nil); err != nil {
+	if err := s.UpdateGlobalApp(ctx, c.ID, &name, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := s.repo.GetClient(ctx, c.ID); got.Name != "New" || !slices.Equal(got.RedirectURIs, []string{appCallback}) {
 		t.Fatalf("%+v", got)
 	}
 	uris := []string{"https://a.test/cb", "http://127.0.0.1/cb"}
-	if err := s.UpdateOfficialApp(ctx, c.ID, nil, uris); err != nil {
+	if err := s.UpdateGlobalApp(ctx, c.ID, nil, uris); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := s.repo.GetClient(ctx, c.ID); got.Name != "New" || !slices.Equal(got.RedirectURIs, uris) {
 		t.Fatalf("%+v", got)
 	}
 	name = "Both"
-	if err := s.UpdateOfficialApp(ctx, c.ID, &name, []string{appCallback}); err != nil {
+	if err := s.UpdateGlobalApp(ctx, c.ID, &name, []string{appCallback}); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := s.repo.GetClient(ctx, c.ID); got.Name != "Both" || !slices.Equal(got.RedirectURIs, []string{appCallback}) {
@@ -210,7 +210,7 @@ func TestUpdateOfficialApp(t *testing.T) {
 		{[]string{tooLong}, "redirect URI is too long"},
 		{[]string{"http://example.com/cb"}, wantInsecure.Error()},
 	} {
-		if err := s.UpdateOfficialApp(ctx, c.ID, nil, tc.uris); err == nil || err.Error() != tc.want {
+		if err := s.UpdateGlobalApp(ctx, c.ID, nil, tc.uris); err == nil || err.Error() != tc.want {
 			t.Errorf("case %d: err = %v, want %q", i, err, tc.want)
 		}
 	}
@@ -219,7 +219,7 @@ func TestUpdateOfficialApp(t *testing.T) {
 		name *string
 		want error
 	}{{&long, errors.New("client_name is too long")}, {&blank, ErrAppNameRequired}} {
-		if err := s.UpdateOfficialApp(ctx, c.ID, tc.name, nil); err == nil || err.Error() != tc.want.Error() {
+		if err := s.UpdateGlobalApp(ctx, c.ID, tc.name, nil); err == nil || err.Error() != tc.want.Error() {
 			t.Errorf("name %q: err = %v, want %v", *tc.name, err, tc.want)
 		}
 	}
@@ -232,18 +232,18 @@ func TestUpdateOfficialApp(t *testing.T) {
 
 	cid, _ := approve(t, s, user)
 	name = "Hijack"
-	if err := s.UpdateOfficialApp(ctx, vo.MustParseId(cid), &name, []string{"https://evil.test/cb"}); !errors.Is(err, ErrAppNotOfficial) {
+	if err := s.UpdateGlobalApp(ctx, vo.MustParseId(cid), &name, []string{"https://evil.test/cb"}); !errors.Is(err, ErrAppNotGlobal) {
 		t.Fatalf("err = %v", err)
 	}
 	if got, _ := s.repo.GetClient(ctx, vo.MustParseId(cid)); got.Name != "Claude" || !slices.Equal(got.RedirectURIs, []string{appCallback}) {
 		t.Fatalf("user app changed: %+v", got)
 	}
-	if _, ok := errs.AsNotFound(s.UpdateOfficialApp(ctx, vo.NewId(), &name, nil)); !ok {
+	if _, ok := errs.AsNotFound(s.UpdateGlobalApp(ctx, vo.NewId(), &name, nil)); !ok {
 		t.Fatal("unknown id must be NotFound")
 	}
 }
 
-func TestMakeAppOfficial_OwnerKeepsGrantOthersCanApprove(t *testing.T) {
+func TestMakeAppGlobal_OwnerKeepsGrantOthersCanApprove(t *testing.T) {
 	s, _, _, db := newTestServiceDB(t)
 	a, b := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
 	cid, code := approve(t, s, a)
@@ -255,7 +255,7 @@ func TestMakeAppOfficial_OwnerKeepsGrantOthersCanApprove(t *testing.T) {
 		t.Fatalf("before: %v", err)
 	}
 	id := vo.MustParseId(cid)
-	if err := s.MakeAppOfficial(ctx, id); err != nil {
+	if err := s.MakeAppGlobal(ctx, id); err != nil {
 		t.Fatal(err)
 	}
 	c, _ := s.repo.GetClient(ctx, id)
@@ -268,17 +268,17 @@ func TestMakeAppOfficial_OwnerKeepsGrantOthersCanApprove(t *testing.T) {
 	if _, err := s.ApproveAuthorization(ctx, b, session, true, authReq(cid)); err != nil {
 		t.Fatalf("another user must be able to approve: %v", err)
 	}
-	if err := s.MakeAppOfficial(ctx, id); !errors.Is(err, ErrAppAlreadyOfficial) {
+	if err := s.MakeAppGlobal(ctx, id); !errors.Is(err, ErrAppAlreadyGlobal) {
 		t.Fatalf("err = %v", err)
 	}
-	if _, ok := errs.AsNotFound(s.MakeAppOfficial(ctx, vo.NewId())); !ok {
+	if _, ok := errs.AsNotFound(s.MakeAppGlobal(ctx, vo.NewId())); !ok {
 		t.Fatal("unknown id must be NotFound")
 	}
 }
 
 func TestRotateAppSecret(t *testing.T) {
 	s, _, _, user := newTestService(t)
-	c, old, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, false)
+	c, old, err := s.RegisterGlobalApp(ctx, "App", []string{appCallback}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +298,7 @@ func TestRotateAppSecret(t *testing.T) {
 	}
 	connect(t, s, user, cid, fresh)
 
-	pub, _, err := s.RegisterOfficialApp(ctx, "Public", []string{appCallback}, true)
+	pub, _, err := s.RegisterGlobalApp(ctx, "Public", []string{appCallback}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,7 +318,7 @@ func TestRotateAppSecret(t *testing.T) {
 func TestDisconnectApp(t *testing.T) {
 	s, creds, _, db := newTestServiceDB(t)
 	a, b := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
-	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	c, _, err := s.RegisterGlobalApp(ctx, "App", []string{appCallback}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +367,7 @@ func TestDisconnectApp(t *testing.T) {
 func TestDeleteApp(t *testing.T) {
 	s, creds, clock, db := newTestServiceDB(t)
 	a, b := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
-	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	c, _, err := s.RegisterGlobalApp(ctx, "App", []string{appCallback}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -452,7 +452,7 @@ func (r *grantInjectingRepo) ListClientGrants(ctx context.Context, id vo.Id) ([]
 func TestDeleteApp_RetriesWhenAGrantForANewUserAppears(t *testing.T) {
 	s, creds, clock, db := newTestServiceDB(t)
 	a, late := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
-	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	c, _, err := s.RegisterGlobalApp(ctx, "App", []string{appCallback}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -483,7 +483,7 @@ func TestDeleteApp_RetriesWhenAGrantForANewUserAppears(t *testing.T) {
 
 func TestDeleteApp_GivesUpWhenNewUsersKeepConnecting(t *testing.T) {
 	s, creds, clock, db := newTestServiceDB(t)
-	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	c, _, err := s.RegisterGlobalApp(ctx, "App", []string{appCallback}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -531,14 +531,14 @@ func (r vanishingRepo) SetClientSecret(ctx context.Context, id vo.Id, hash strin
 	return r.Repository.SetClientSecret(ctx, id, hash)
 }
 
-func TestMakeOfficialAndRotate_AppDeletedMeanwhile(t *testing.T) {
+func TestMakeGlobalAndRotate_AppDeletedMeanwhile(t *testing.T) {
 	s, creds, clock, _ := newTestService(t)
 	racing := NewService(vanishingRepo{s.repo}, creds, s.tx, clock, nil, testURL)
 	user := register(t, s, "Claude", appCallback)
-	if _, ok := errs.AsNotFound(racing.MakeAppOfficial(ctx, vo.MustParseId(user.ClientID))); !ok {
-		t.Fatal("make-official of a deleted app must be NotFound")
+	if _, ok := errs.AsNotFound(racing.MakeAppGlobal(ctx, vo.MustParseId(user.ClientID))); !ok {
+		t.Fatal("make-global of a deleted app must be NotFound")
 	}
-	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, false)
+	c, _, err := s.RegisterGlobalApp(ctx, "App", []string{appCallback}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -552,7 +552,7 @@ func TestMakeOfficialAndRotate_AppDeletedMeanwhile(t *testing.T) {
 func TestDisconnectApp_DropsOutstandingCodes(t *testing.T) {
 	s, _, _, db := newTestServiceDB(t)
 	a, b := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
-	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	c, _, err := s.RegisterGlobalApp(ctx, "App", []string{appCallback}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -583,7 +583,7 @@ func TestDisconnectApp_DropsOutstandingCodes(t *testing.T) {
 func TestDisconnectApp_RetriesWhenAGrantForANewUserAppears(t *testing.T) {
 	s, creds, clock, db := newTestServiceDB(t)
 	a, late := newUser(t, db, fixture.User{}), newUser(t, db, fixture.User{})
-	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	c, _, err := s.RegisterGlobalApp(ctx, "App", []string{appCallback}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -625,7 +625,7 @@ func (r deletingGrantsRepo) ListClientGrants(ctx context.Context, id vo.Id) ([]m
 
 func TestGetApp_ClientDeletedMeanwhile(t *testing.T) {
 	s, creds, clock, _ := newTestService(t)
-	c, _, err := s.RegisterOfficialApp(ctx, "App", []string{appCallback}, true)
+	c, _, err := s.RegisterGlobalApp(ctx, "App", []string{appCallback}, true)
 	if err != nil {
 		t.Fatal(err)
 	}

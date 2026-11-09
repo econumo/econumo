@@ -304,9 +304,9 @@ definitions:
       errorRedirectUrl:
         description: 'non-empty: navigate there instead of showing consent'
         type: string
-      isLoopback:
+      isGlobal:
         type: boolean
-      isOfficial:
+      isLoopback:
         type: boolean
       redirectHost:
         type: string
@@ -655,9 +655,9 @@ definitions:
         type: string
       id:
         type: string
-      isLoopback:
+      isGlobal:
         type: boolean
-      isOfficial:
+      isLoopback:
         type: boolean
       lastUsedAt:
         type: string

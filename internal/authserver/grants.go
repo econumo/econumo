@@ -50,7 +50,7 @@ func (s *Service) ListConnectedApps(ctx context.Context, userID vo.Id) ([]model.
 			host, loopback = RedirectHost(r.RedirectURIs[0])
 		}
 		out = append(out, model.ConnectedAppResult{
-			ID: r.Grant.ID.String(), ClientName: r.ClientName, RedirectHost: host, IsLoopback: loopback, IsOfficial: r.ClientIsGlobal,
+			ID: r.Grant.ID.String(), ClientName: r.ClientName, RedirectHost: host, IsLoopback: loopback, IsGlobal: r.ClientIsGlobal,
 			CreatedAt: r.Grant.CreatedAt.UTC().Format(datetime.Layout), LastUsedAt: r.Grant.LastUsedAt.UTC().Format(datetime.Layout),
 		})
 	}

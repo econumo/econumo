@@ -13404,10 +13404,10 @@ const docTemplate = `{
                     "description": "non-empty: navigate there instead of showing consent",
                     "type": "string"
                 },
-                "isLoopback": {
+                "isGlobal": {
                     "type": "boolean"
                 },
-                "isOfficial": {
+                "isLoopback": {
                     "type": "boolean"
                 },
                 "redirectHost": {
@@ -13905,10 +13905,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "isLoopback": {
+                "isGlobal": {
                     "type": "boolean"
                 },
-                "isOfficial": {
+                "isLoopback": {
                     "type": "boolean"
                 },
                 "lastUsedAt": {

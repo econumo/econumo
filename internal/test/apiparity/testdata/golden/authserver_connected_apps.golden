@@ -1,5 +1,5 @@
 == get-connected-app-list GET /api/v1/authserver/get-connected-app-list [owner] -> 200
-{"success":true,"message":"","data":[{"id":"e2000000-0000-0000-0000-000000000001","clientName":"Claude","redirectHost":"claude.ai","isLoopback":false,"isOfficial":false,"createdAt":"<datetime>","lastUsedAt":"<datetime>"}]}
+{"success":true,"message":"","data":[{"id":"e2000000-0000-0000-0000-000000000001","clientName":"Claude","redirectHost":"claude.ai","isLoopback":false,"isGlobal":false,"createdAt":"<datetime>","lastUsedAt":"<datetime>"}]}
 
 == get-connected-app-list-guest-empty GET /api/v1/authserver/get-connected-app-list [guest] -> 200
 {"success":true,"message":"","data":[]}

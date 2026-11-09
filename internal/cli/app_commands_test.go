@@ -177,7 +177,7 @@ func TestAppRegister(t *testing.T) {
 		t.Fatalf("no 43-char secret in %q", stdout)
 	}
 	secret := m[1]
-	if !strings.Contains(stdout, `App "Claude" registered (official).`) || !strings.Contains(stdout, "The secret is shown only once.") {
+	if !strings.Contains(stdout, `App "Claude" registered (global).`) || !strings.Contains(stdout, "The secret is shown only once.") {
 		t.Fatalf("stdout: %q", stdout)
 	}
 	if !strings.Contains(stderr, "warning: the OAuth server is disabled (ECONUMO_URL is not an https origin (or an http loopback origin)); the app will work once it is enabled") {
@@ -240,7 +240,7 @@ func TestAppListAndShow(t *testing.T) {
 	if code != 0 {
 		t.Fatal("register")
 	}
-	official := clientID(t, stdout)
+	global := clientID(t, stdout)
 	seedUserApp(t, db, a, nil, a, b)
 	if _, err := db.Exec(`UPDATE oauth_grants SET scope = 'read' WHERE id = ?`, seedGrantB); err != nil {
 		t.Fatal(err)
@@ -256,7 +256,7 @@ func TestAppListAndShow(t *testing.T) {
 	}
 	var offLine, userLine string
 	for _, l := range lines[1:] {
-		if strings.HasPrefix(l, official) {
+		if strings.HasPrefix(l, global) {
 			offLine = l
 		}
 		if strings.HasPrefix(l, seedUserAppID) {
@@ -264,25 +264,25 @@ func TestAppListAndShow(t *testing.T) {
 		}
 	}
 	offFields := strings.Fields(offLine)
-	if len(offFields) < 3 || offFields[1] != "official" || !strings.Contains(offLine, "share.example.test") ||
+	if len(offFields) < 3 || offFields[1] != "global" || !strings.Contains(offLine, "share.example.test") ||
 		!strings.Contains(offLine, "never") || offFields[len(offFields)-1] != "0" {
-		t.Fatalf("official row: %q", offLine)
+		t.Fatalf("global row: %q", offLine)
 	}
 	if !strings.Contains(userLine, " user ") || !strings.Contains(userLine, a) || !strings.Contains(userLine, "127.0.0.1") ||
 		!strings.HasSuffix(userLine, "2 (1 from other users)") || !strings.Contains(userLine, "2026-11-04 10:00:00") {
 		t.Fatalf("user row: %q", userLine)
 	}
 
-	_, stdout, _ = runApp(t, "app:list", "--official")
-	if !strings.Contains(stdout, official) || strings.Contains(stdout, seedUserAppID) {
-		t.Fatalf("--official: %q", stdout)
+	_, stdout, _ = runApp(t, "app:list", "--global")
+	if !strings.Contains(stdout, global) || strings.Contains(stdout, seedUserAppID) {
+		t.Fatalf("--global: %q", stdout)
 	}
 	_, stdout, _ = runApp(t, "app:list", "--user")
-	if strings.Contains(stdout, official) || !strings.Contains(stdout, seedUserAppID) {
+	if strings.Contains(stdout, global) || !strings.Contains(stdout, seedUserAppID) {
 		t.Fatalf("--user: %q", stdout)
 	}
-	_, stdout, _ = runApp(t, "app:list", "--user", "--official")
-	if !strings.Contains(stdout, official) || !strings.Contains(stdout, seedUserAppID) {
+	_, stdout, _ = runApp(t, "app:list", "--user", "--global")
+	if !strings.Contains(stdout, global) || !strings.Contains(stdout, seedUserAppID) {
 		t.Fatalf("both flags: %q", stdout)
 	}
 
@@ -304,9 +304,9 @@ func TestAppListAndShow(t *testing.T) {
 	if scopes["USER"] != "SCOPE" || scopes[a] != "mcp" || scopes[b] != "read" {
 		t.Fatalf("app:show connection scopes = %v:\n%s", scopes, stdout)
 	}
-	code, stdout, _ = runApp(t, "app:show", " "+official+" ")
-	if code != 0 || !strings.Contains(stdout, "confidential") || !strings.Contains(stdout, "official") || !strings.Contains(stdout, "never") {
-		t.Fatalf("app:show official: %d %q", code, stdout)
+	code, stdout, _ = runApp(t, "app:show", " "+global+" ")
+	if code != 0 || !strings.Contains(stdout, "confidential") || !strings.Contains(stdout, "global") || !strings.Contains(stdout, "never") {
+		t.Fatalf("app:show global: %d %q", code, stdout)
 	}
 	if code, _, _ := runApp(t, "app:show", "019a0000-0000-7000-8000-00000000ffff"); code != 1 {
 		t.Fatalf("unknown id = %d", code)
@@ -321,7 +321,7 @@ func TestAppUpdateRefusals(t *testing.T) {
 	a := createCLIUser(t, db, "a@example.test")
 	seedUserApp(t, db, a, nil, a)
 	_, stdout, _ := runApp(t, "app:register", "Share", "https://share.example.test/cb")
-	official := clientID(t, stdout)
+	global := clientID(t, stdout)
 
 	row := func(id string) string {
 		var name, uris string
@@ -330,41 +330,41 @@ func TestAppUpdateRefusals(t *testing.T) {
 		}
 		return name + "|" + uris
 	}
-	offBefore, userBefore := row(official), row(seedUserAppID)
-	if code, _, _ := runApp(t, "app:update", official); code != 1 {
+	offBefore, userBefore := row(global), row(seedUserAppID)
+	if code, _, _ := runApp(t, "app:update", global); code != 1 {
 		t.Fatalf("no options = %d", code)
 	}
 	if code, _, _ := runApp(t, "app:update", seedUserAppID, "--name", "Renamed"); code != 1 {
 		t.Fatalf("user app = %d", code)
 	}
-	if row(official) != offBefore || row(seedUserAppID) != userBefore {
+	if row(global) != offBefore || row(seedUserAppID) != userBefore {
 		t.Fatal("a refused update changed a row")
 	}
 
-	code, stdout, stderr := runApp(t, "app:update", "--redirect-uri=https://share.example.test/a", official, "--name", "Econumo Share", "--redirect-uri", "https://share.example.test/b")
-	if code != 0 || !strings.Contains(stdout, "App "+official+" updated.") {
+	code, stdout, stderr := runApp(t, "app:update", "--redirect-uri=https://share.example.test/a", global, "--name", "Econumo Share", "--redirect-uri", "https://share.example.test/b")
+	if code != 0 || !strings.Contains(stdout, "App "+global+" updated.") {
 		t.Fatalf("update = %d %q %q", code, stdout, stderr)
 	}
-	if got := row(official); got != `Econumo Share|["https://share.example.test/a","https://share.example.test/b"]` {
+	if got := row(global); got != `Econumo Share|["https://share.example.test/a","https://share.example.test/b"]` {
 		t.Fatalf("stored: %s", got)
 	}
 }
 
-func TestAppMakeOfficialAndRotate(t *testing.T) {
+func TestAppMakeGlobalAndRotate(t *testing.T) {
 	db := appDB(t, cliEnvDB(t))
 	a := createCLIUser(t, db, "a@example.test")
 	seedUserApp(t, db, a, "old-hash", a)
 
-	if code, stdout, _ := runApp(t, "app:make-official", seedUserAppID); code != 0 || !strings.Contains(stdout, "App "+seedUserAppID+" is now official.") {
-		t.Fatalf("make-official = %d %q", code, stdout)
+	if code, stdout, _ := runApp(t, "app:make-global", seedUserAppID); code != 0 || !strings.Contains(stdout, "App "+seedUserAppID+" is now global.") {
+		t.Fatalf("make-global = %d %q", code, stdout)
 	}
 	var global bool
 	var owner sql.NullString
 	if err := db.QueryRow(`SELECT is_global, owner_user_id FROM oauth_clients WHERE id = ?`, seedUserAppID).Scan(&global, &owner); err != nil || !global || owner.Valid {
-		t.Fatalf("after make-official: %v %v %v", global, owner, err)
+		t.Fatalf("after make-global: %v %v %v", global, owner, err)
 	}
-	if code, _, _ := runApp(t, "app:make-official", seedUserAppID); code != 1 {
-		t.Fatalf("second make-official = %d", code)
+	if code, _, _ := runApp(t, "app:make-global", seedUserAppID); code != 1 {
+		t.Fatalf("second make-global = %d", code)
 	}
 
 	code, stdout, _ := runApp(t, "app:rotate-secret", seedUserAppID)
@@ -527,7 +527,7 @@ func TestAppConnections(t *testing.T) {
 		client model.OAuthClient
 		want   string
 	}{
-		{"official", model.OAuthClient{IsGlobal: true}, "2"},
+		{"global", model.OAuthClient{IsGlobal: true}, "2"},
 		{"unowned user app", model.OAuthClient{}, "2"},
 		{"owned user app", model.OAuthClient{OwnerUserID: &owner}, "2 (1 from other users)"},
 	} {

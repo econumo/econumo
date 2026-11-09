@@ -17,8 +17,8 @@ vi.mock('@/lib/metrics', async (importOriginal) => ({
 }))
 
 const apps = [
-  { id: 'g1', clientName: 'Claude', redirectHost: 'claude.ai', isLoopback: false, isOfficial: false, createdAt: '2026-10-01 10:00:00', lastUsedAt: '2026-10-03 09:00:00' },
-  { id: 'g2', clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, isOfficial: false, createdAt: '2026-10-02 10:00:00', lastUsedAt: '2026-10-02 10:00:00' },
+  { id: 'g1', clientName: 'Claude', redirectHost: 'claude.ai', isLoopback: false, isGlobal: false, createdAt: '2026-10-01 10:00:00', lastUsedAt: '2026-10-03 09:00:00' },
+  { id: 'g2', clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, isGlobal: false, createdAt: '2026-10-02 10:00:00', lastUsedAt: '2026-10-02 10:00:00' },
 ]
 
 function renderPage() {
@@ -54,7 +54,7 @@ test('lists connected apps with where they send you', async () => {
 })
 
 test('marks official apps only', async () => {
-  vi.mocked(getConnectedApps).mockResolvedValue([{ ...apps[0], isOfficial: true }, apps[1]])
+  vi.mocked(getConnectedApps).mockResolvedValue([{ ...apps[0], isGlobal: true }, apps[1]])
   renderPage()
   await screen.findByText('Claude')
   const badges = screen.getAllByText('Official')

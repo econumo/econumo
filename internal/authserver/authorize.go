@@ -121,7 +121,7 @@ func (s *Service) DescribeAuthorization(ctx context.Context, userID vo.Id, req m
 	}
 	host, loopback := RedirectHost(req.RedirectURI)
 	res := model.AuthorizationRequestResult{ClientName: c.Name, RedirectHost: host, IsLoopback: loopback,
-		IsOfficial: c.IsGlobal, Scope: string(grantedScope(req.Scope))}
+		IsGlobal: c.IsGlobal, Scope: string(grantedScope(req.Scope))}
 	if re != nil {
 		res.ErrorRedirectURL = s.errorRedirect(req, *re)
 	}

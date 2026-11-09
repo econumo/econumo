@@ -103,10 +103,10 @@ func codeCount(t *testing.T, db *dbtest.DB, user vo.Id) int {
 	return n
 }
 
-func insertOfficialClient(t *testing.T, s *Service, createdAt time.Time, uris ...string) vo.Id {
+func insertGlobalClient(t *testing.T, s *Service, createdAt time.Time, uris ...string) vo.Id {
 	t.Helper()
 	id := vo.NewId()
-	if err := s.repo.InsertClient(ctx, &model.OAuthClient{ID: id, Name: "Official", RedirectURIs: uris, CreatedAt: createdAt, IsGlobal: true}); err != nil {
+	if err := s.repo.InsertClient(ctx, &model.OAuthClient{ID: id, Name: "Global", RedirectURIs: uris, CreatedAt: createdAt, IsGlobal: true}); err != nil {
 		t.Fatal(err)
 	}
 	return id

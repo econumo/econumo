@@ -12,11 +12,11 @@ import (
 )
 
 var (
-	ErrAppNotOfficial     = errors.New("only an official app can be changed; a user app's redirect URIs belong to its user's client")
-	ErrAppAlreadyOfficial = errors.New("the app is already official")
-	ErrAppPublic          = errors.New("the app is public: it has no secret to rotate")
-	ErrAppNameRequired    = errors.New("name is required")
-	ErrAppBusy            = errors.New("the app keeps getting new connections; try again")
+	ErrAppNotGlobal     = errors.New("only a global app can be changed; a user app's redirect URIs belong to its user's client")
+	ErrAppAlreadyGlobal = errors.New("the app is already global")
+	ErrAppPublic        = errors.New("the app is public: it has no secret to rotate")
+	ErrAppNameRequired  = errors.New("name is required")
+	ErrAppBusy          = errors.New("the app keeps getting new connections; try again")
 )
 
 func appNotFound() error { return errs.NewNotFound("OAuth app not found") }
@@ -34,7 +34,7 @@ func (s *Service) getApp(ctx context.Context, id vo.Id) (*model.OAuthClient, err
 	return c, nil
 }
 
-func officialName(raw string) (string, error) {
+func globalName(raw string) (string, error) {
 	name, oe := cleanClientName(raw)
 	if oe != nil {
 		return "", plain(oe)
@@ -45,9 +45,9 @@ func officialName(raw string) (string, error) {
 	return name, nil
 }
 
-// RegisterOfficialApp returns the raw secret, "" for a public app.
-func (s *Service) RegisterOfficialApp(ctx context.Context, name string, redirectURIs []string, public bool) (model.OAuthClient, string, error) {
-	name, err := officialName(name)
+// RegisterGlobalApp returns the raw secret, "" for a public app.
+func (s *Service) RegisterGlobalApp(ctx context.Context, name string, redirectURIs []string, public bool) (model.OAuthClient, string, error) {
+	name, err := globalName(name)
 	if err != nil {
 		return model.OAuthClient{}, "", err
 	}
@@ -115,14 +115,14 @@ func (s *Service) liveGrants(ctx context.Context, clientID vo.Id) ([]model.OAuth
 	return slices.DeleteFunc(all, func(g model.OAuthGrant) bool { return !g.IsLive(now) }), nil
 }
 
-// UpdateOfficialApp leaves the name unchanged when name is nil and the redirect
+// UpdateGlobalApp leaves the name unchanged when name is nil and the redirect
 // URIs when redirectURIs is empty. The read and the write share the client row
 // lock, so a concurrent change to the field left alone is not overwritten.
-func (s *Service) UpdateOfficialApp(ctx context.Context, id vo.Id, name *string, redirectURIs []string) error {
+func (s *Service) UpdateGlobalApp(ctx context.Context, id vo.Id, name *string, redirectURIs []string) error {
 	var newName string
 	if name != nil {
 		var err error
-		if newName, err = officialName(*name); err != nil {
+		if newName, err = globalName(*name); err != nil {
 			return err
 		}
 	}
@@ -143,7 +143,7 @@ func (s *Service) UpdateOfficialApp(ctx context.Context, id vo.Id, name *string,
 			return err
 		}
 		if !c.IsGlobal {
-			return ErrAppNotOfficial
+			return ErrAppNotGlobal
 		}
 		if name == nil {
 			newName = c.Name
@@ -163,13 +163,13 @@ func (s *Service) UpdateOfficialApp(ctx context.Context, id vo.Id, name *string,
 	})
 }
 
-func (s *Service) MakeAppOfficial(ctx context.Context, id vo.Id) error {
+func (s *Service) MakeAppGlobal(ctx context.Context, id vo.Id) error {
 	c, err := s.getApp(ctx, id)
 	if err != nil {
 		return err
 	}
 	if c.IsGlobal {
-		return ErrAppAlreadyOfficial
+		return ErrAppAlreadyGlobal
 	}
 	n, err := s.repo.MakeClientGlobal(ctx, id)
 	if err != nil {
@@ -179,7 +179,7 @@ func (s *Service) MakeAppOfficial(ctx context.Context, id vo.Id) error {
 		if _, err := s.getApp(ctx, id); err != nil {
 			return err
 		}
-		return ErrAppAlreadyOfficial
+		return ErrAppAlreadyGlobal
 	}
 	return nil
 }

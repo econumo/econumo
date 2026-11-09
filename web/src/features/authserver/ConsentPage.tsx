@@ -200,13 +200,13 @@ export function ConsentPage() {
         <h1 className="text-sm text-muted-foreground">{t('authserver.consent.title')}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <p className="min-w-0 text-xl font-bold [overflow-wrap:anywhere]">{result.clientName}</p>
-          {result.isOfficial && <Badge variant="secondary">{t('authserver.consent.official')}</Badge>}
+          {result.isGlobal && <Badge variant="secondary">{t('authserver.consent.official')}</Badge>}
         </div>
         <p>{t(readScope ? 'authserver.consent.wantsRead' : 'authserver.consent.wantsAccess')}</p>
       </div>
       <div className="flex flex-col gap-2 text-sm text-muted-foreground">
         <p>{t(readScope ? 'authserver.consent.readAccess' : 'authserver.consent.fullAccess')}</p>
-        {!result.isOfficial && (
+        {!result.isGlobal && (
           <p className="text-xs text-muted-foreground">
             {result.isLoopback ? t('authserver.consent.unverifiedLoopback') : t('authserver.consent.unverified')}
           </p>

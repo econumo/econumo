@@ -43,19 +43,19 @@ func TestConnectedApps(t *testing.T) {
 	}
 }
 
-func TestConnectedApps_IsOfficial(t *testing.T) {
+func TestConnectedApps_IsGlobal(t *testing.T) {
 	s, _, clock, user := newTestService(t)
 	cid, code := approve(t, s, user)
 	if _, err := exchange(s, cid, code); err != nil {
 		t.Fatal(err)
 	}
-	official := insertOfficialClient(t, s, clock.Now(), "https://claude.ai/api/mcp/auth_callback")
-	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(official.String()))
+	global := insertGlobalClient(t, s, clock.Now(), "https://claude.ai/api/mcp/auth_callback")
+	res, err := s.ApproveAuthorization(ctx, user, session, true, authReq(global.String()))
 	if err != nil {
 		t.Fatal(err)
 	}
 	u, _ := url.Parse(res.RedirectURL)
-	if _, err := exchange(s, official.String(), u.Query().Get("code")); err != nil {
+	if _, err := exchange(s, global.String(), u.Query().Get("code")); err != nil {
 		t.Fatal(err)
 	}
 	list, err := s.ListConnectedApps(ctx, user)
@@ -63,8 +63,8 @@ func TestConnectedApps_IsOfficial(t *testing.T) {
 		t.Fatalf("%+v %v", list, err)
 	}
 	for _, app := range list {
-		if want := app.ClientName == "Official"; app.IsOfficial != want {
-			t.Errorf("%s: isOfficial = %v", app.ClientName, app.IsOfficial)
+		if want := app.ClientName == "Global"; app.IsGlobal != want {
+			t.Errorf("%s: isGlobal = %v", app.ClientName, app.IsGlobal)
 		}
 	}
 }

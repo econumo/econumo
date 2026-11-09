@@ -16,7 +16,7 @@ type Repository interface {
 	PurgeUnusedClients(ctx context.Context, createdBefore time.Time) (int64, error)
 	// PurgeExcessUnusedClients keeps only the newest never-approved clients.
 	PurgeExcessUnusedClients(ctx context.Context, keep int64) (int64, error)
-	// ClaimClient sets the owner of a user app that has none yet; 0 rows for an owned or official app.
+	// ClaimClient sets the owner of a user app that has none yet; 0 rows for an owned or global app.
 	ClaimClient(ctx context.Context, id, userID vo.Id) (int64, error)
 	ListClients(ctx context.Context) ([]model.OAuthClient, error)
 	UpdateGlobalClient(ctx context.Context, id vo.Id, name string, redirectURIs []string) (int64, error)
