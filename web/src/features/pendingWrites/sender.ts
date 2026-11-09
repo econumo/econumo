@@ -405,7 +405,7 @@ export async function attemptedWritesResolved(): Promise<void> {
             resolve()
           }
         })
-        void kickPendingWrites().then(resolve)
+        void kickPendingWrites()
       })
     })(),
   ])

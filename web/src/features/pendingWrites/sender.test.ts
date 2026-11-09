@@ -676,12 +676,35 @@ describe('holding the boot refresh for changes a previous run may have sent', ()
     expect(getOps()).toEqual([])
   })
 
-  it('stops waiting when the attempt cannot finish now', async () => {
+  const fireWriteLimit = (timers: { mock: { calls: unknown[][] } }) => {
+    (timers.mock.calls.find(([, delay]) => delay === 10_000)![0] as () => void)()
+  }
+
+  it('keeps waiting when the first attempt ends in a network error, until the write timeout', async () => {
     answerWith(() => HttpResponse.error())
     await reopen(true)
+    const timers = vi.spyOn(globalThis, 'setTimeout')
     stop = startPendingWrites(client)
-    await attemptedWritesResolved()
+    const { done, isResolved } = watch()
+    await vi.waitFor(() => expect(seen).toHaveLength(1))
+    await new Promise((r) => setTimeout(r, 30))
+    expect(isResolved()).toBe(false)
+    fireWriteLimit(timers)
+    await done
     expect(op('k1')).toMatchObject({ attempted: true, status: 'waiting' })
+  })
+
+  it('resolves when a retry after a network error settles the change', async () => {
+    answerWith((n) => (n === 0 ? HttpResponse.error() : undefined))
+    await reopen(true)
+    stop = startPendingWrites(client)
+    const { done, isResolved } = watch()
+    await vi.waitFor(() => expect(seen).toHaveLength(1))
+    await new Promise((r) => setTimeout(r, 30))
+    expect(isResolved()).toBe(false)
+    await kickPendingWrites()
+    await done
+    expect(getOps()).toEqual([])
   })
 
   it('is held no longer than the write timeout', async () => {
