@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import * as transactionApi from '@/api/transaction'
 import { toast } from 'sonner'
 import type { MoveTransactionDto, TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
@@ -21,31 +21,34 @@ export function useTransactions() {
   })
 }
 
+export function applyTransactionItem(queryClient: QueryClient, result: TransactionItemDto, mode: 'add' | 'update' | 'delete'): void {
+  const patch = beginLocalWrite(queryClient)
+  if (patch) {
+    const replaced = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)?.find((t) => t.id === result.item.id)
+    noteOwnWrite(result.accounts, [result.item.accountId, result.item.accountRecipientId, replaced?.accountId, replaced?.accountRecipientId])
+  }
+  queryClient.setQueryData(queryKeys.accounts, result.accounts)
+  if (patch) {
+    queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => {
+      const items = prev ?? []
+      if (mode === 'add') {
+        // a sync may have brought the row in while its response was on the way
+        return [result.item, ...items.filter((t) => t.id !== result.item.id)]
+      }
+      if (mode === 'update') {
+        return items.map((t) => (t.id === result.item.id ? result.item : t))
+      }
+      return items.filter((t) => t.id !== result.item.id)
+    })
+  }
+  void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+  void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+  void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
+}
+
 export function useApplyTransactionItem() {
   const queryClient = useQueryClient()
-  return (result: TransactionItemDto, mode: 'add' | 'update' | 'delete') => {
-    const patch = beginLocalWrite(queryClient)
-    if (patch) {
-      const replaced = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)?.find((t) => t.id === result.item.id)
-      noteOwnWrite(result.accounts, [result.item.accountId, result.item.accountRecipientId, replaced?.accountId, replaced?.accountRecipientId])
-    }
-    queryClient.setQueryData(queryKeys.accounts, result.accounts)
-    if (patch) {
-      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => {
-        const items = prev ?? []
-        if (mode === 'add') {
-          return [result.item, ...items]
-        }
-        if (mode === 'update') {
-          return items.map((t) => (t.id === result.item.id ? result.item : t))
-        }
-        return items.filter((t) => t.id !== result.item.id)
-      })
-    }
-    void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
-    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
-    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
-  }
+  return (result: TransactionItemDto, mode: 'add' | 'update' | 'delete') => applyTransactionItem(queryClient, result, mode)
 }
 
 export function useCreateTransaction() {

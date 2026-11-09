@@ -18,3 +18,8 @@ it('a failed write leaves the reports alone', async () => {
   ).rejects.toThrow('no')
   expect(client.getQueryState([...queryKeys.reportNetWorth, 'mine'])?.isInvalidated).toBe(false)
 })
+
+it('a mutation fails at once when offline instead of pausing, with no retry', () => {
+  const { mutations } = createAppQueryClient().getDefaultOptions()
+  expect(mutations).toMatchObject({ networkMode: 'always', retry: false })
+})

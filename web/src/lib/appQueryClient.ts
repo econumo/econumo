@@ -33,6 +33,8 @@ export function createAppQueryClient() {
       // gcTime must outlive the persister's maxAge, or queries get
       // garbage-collected out of the persisted snapshot before it expires.
       queries: { gcTime: CACHE_MAX_AGE_MS, retry: retryPolicy },
+      // A write outside the queue fails at once offline rather than pausing with its form open.
+      mutations: { networkMode: 'always', retry: false },
     },
   })
   return client

@@ -91,6 +91,20 @@ export function settleRefused(ops: PendingOp[], key: string, message: string): P
   )
 }
 
+// The add landed but its id is lost, so what queued behind it has no row to
+// reach: it goes to the Inbox instead of being sent under the temporary id.
+export function settleUnresolved(ops: PendingOp[], key: string, message: string): PendingOp[] {
+  const done = ops.find((op) => op.key === key)
+  if (!done) return ops
+
+  const target = targetOf(done)
+  return ops
+    .filter((op) => op !== done)
+    .map((op) =>
+      targetOf(op) === target ? { ...op, attempted: false, status: 'failed', error: message, retries: 0, notBefore: 0 } : op,
+    )
+}
+
 export function retryFailed(ops: PendingOp[], key: string): PendingOp[] {
   return ops.map((op) => {
     if (op.key !== key || op.status !== 'failed') return op

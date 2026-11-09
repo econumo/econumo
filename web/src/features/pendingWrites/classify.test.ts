@@ -23,6 +23,7 @@ describe('classifyWriteError', () => {
     ['an empty body', respond(400, null), 'wait'],
     ['401 with envelope', respond(401, envelope), 'pause'],
     ['401 with HTML', respond(401, html), 'pause'],
+    ['a programming error', new TypeError('x is not a function'), 'retry'],
   ])('%s', (_name, err, expected) => {
     expect(classifyWriteError(err)).toBe(expected)
   })

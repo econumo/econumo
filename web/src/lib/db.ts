@@ -1,9 +1,10 @@
 export const STORE_IMPORT_KEYS = 'importKeys'
 export const STORE_ACCOUNT_TRANSACTIONS = 'accountTransactions'
 export const STORE_META = 'meta'
+export const STORE_PENDING_WRITES = 'pendingWrites'
 
 const DB_NAME = 'econumo'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const LEGACY_DB_NAME = 'econumo-import'
 const LEGACY_STORE = 'keys'
 const DATA_KEY_RECORD = 'dataKey'
@@ -11,16 +12,21 @@ const DATA_KEY_RECORD = 'dataKey'
 let cached: Promise<IDBDatabase> | null = null
 let current: IDBDatabase | null = null
 
-function upgrade(db: IDBDatabase): void {
-  db.createObjectStore(STORE_IMPORT_KEYS)
-  db.createObjectStore(STORE_ACCOUNT_TRANSACTIONS, { keyPath: 'accountId' })
-  db.createObjectStore(STORE_META)
+function upgrade(db: IDBDatabase, oldVersion: number): void {
+  if (oldVersion < 1) {
+    db.createObjectStore(STORE_IMPORT_KEYS)
+    db.createObjectStore(STORE_ACCOUNT_TRANSACTIONS, { keyPath: 'accountId' })
+    db.createObjectStore(STORE_META)
+  }
+  if (oldVersion < 2) {
+    db.createObjectStore(STORE_PENDING_WRITES, { keyPath: 'key' })
+  }
 }
 
 function openRaw(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => upgrade(req.result)
+    req.onupgradeneeded = (event) => upgrade(req.result, event.oldVersion)
     req.onsuccess = () => {
       const db = req.result
       // Another tab upgrading (or deleting) the database must never wait on this connection.

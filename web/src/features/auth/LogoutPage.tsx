@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { logout } from '@/api/user'
+import { clearPendingWrites } from '@/features/pendingWrites/store'
 import { resetAnalyticsIdentity } from '@/lib/analytics'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNativeApp } from '@/lib/platform'
@@ -29,7 +30,7 @@ export function LogoutPage() {
         // must run after the logout event above, so it still carries the outgoing identity
         resetAnalyticsIdentity()
         removeToken()
-        await clearPersistedQueryCache()
+        await Promise.all([clearPersistedQueryCache(), clearPendingWrites()])
         // The IdP redirect is web-only: an IdP logout page in the app's browser
         // sheet leaves the user with no clean way back. A provider that
         // publishes no end-session endpoint (Google, Apple) yields no url, so
@@ -40,7 +41,7 @@ export function LogoutPage() {
         }
       } else {
         removeToken()
-        await clearPersistedQueryCache()
+        await Promise.all([clearPersistedQueryCache(), clearPendingWrites()])
       }
       window.location.assign(RouterPage.LOGIN)
     }

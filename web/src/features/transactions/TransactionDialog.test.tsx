@@ -1069,7 +1069,7 @@ describe('unfinished new transaction', () => {
 
   afterEach(() => vi.restoreAllMocks())
 
-  it('offers a cancelled form and restores it with the same id', async () => {
+  it('offers a cancelled form and restores it, sending no id', async () => {
     let body: Record<string, unknown> | undefined
     server.use(
       http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
@@ -1080,7 +1080,6 @@ describe('unfinished new transaction', () => {
     const user = userEvent.setup()
     renderDialog()
     await typeAmountAndCancel(user)
-    const savedId = (JSON.parse(localStorage.getItem(draftKey)!) as { form: { id: string } }).form.id
 
     await openNew()
     expect(offer()).toBeInTheDocument()
@@ -1092,7 +1091,8 @@ describe('unfinished new transaction', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add' }))
     await waitFor(() => expect(body).toBeDefined())
-    expect(body!.id).toBe(savedId)
+    expect(body).toMatchObject({ amount: '42' })
+    expect(body).not.toHaveProperty('id')
     await waitFor(() => expect(localStorage.getItem(draftKey)).toBeNull())
   })
 

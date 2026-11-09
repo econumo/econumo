@@ -1,19 +1,11 @@
-import { useCallback, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { onlineManager } from '@tanstack/react-query'
+import { useOnline } from '@/lib/online'
 
 interface ReportQueryState {
   data?: unknown
   isError: boolean
   fetchStatus: string
   dataUpdatedAt: number
-}
-
-function useOnline(): boolean {
-  return useSyncExternalStore(
-    useCallback((onChange: () => void) => onlineManager.subscribe(onChange), []),
-    () => onlineManager.isOnline(),
-  )
 }
 
 // Cached figures shown while they cannot be refreshed (offline, or the last
