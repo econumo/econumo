@@ -4,6 +4,7 @@ import type { CreateTransactionDto, TransactionDto } from '@/api/dto/transaction
 import type { UserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { add, cmp, sub } from '@/lib/decimal'
+import { parseDateTime } from '@/lib/datetime'
 import { currentPeriod, periodStartDayOf } from '../budgets/period'
 import type { PendingOp } from './types'
 
@@ -53,7 +54,7 @@ export function overlayTransactions(rows: TransactionDto[], ops: PendingOp[], me
   return out
 }
 
-type Effect = Pick<CreateTransactionDto, 'type' | 'accountId' | 'accountRecipientId' | 'amount' | 'amountRecipient'>
+type Effect = Pick<CreateTransactionDto, 'type' | 'accountId' | 'accountRecipientId' | 'amount' | 'amountRecipient' | 'date'>
 
 function effectOf(tx: Effect, sign: 1 | -1): Map<Id, string> {
   const deltas = new Map<Id, string>()
@@ -71,10 +72,17 @@ function effectOf(tx: Effect, sign: 1 | -1): Map<Id, string> {
 }
 
 /** Account balances with the waiting transactions' effect applied; `serverRows` are the stored rows
- *  whose effect an update or delete reverses. Never mutates its input. */
-export function overlayAccounts(accounts: AccountDto[], ops: PendingOp[], serverRows: TransactionDto[]): AccountDto[] {
+ *  whose effect an update or delete reverses. The server balance counts only rows through the end of
+ *  the caller's today, so a row dated after `now`'s day has no effect. Never mutates its input. */
+export function overlayAccounts(accounts: AccountDto[], ops: PendingOp[], serverRows: TransactionDto[], now: Date): AccountDto[] {
+  const tomorrow = new Date(now)
+  tomorrow.setHours(0, 0, 0, 0)
+  tomorrow.setDate(tomorrow.getDate() + 1)
   const deltas = new Map<Id, string>()
   const addEffect = (tx: Effect, sign: 1 | -1) => {
+    if (parseDateTime(tx.date).getTime() >= tomorrow.getTime()) {
+      return
+    }
     for (const [id, amount] of effectOf(tx, sign)) {
       deltas.set(id, add(deltas.get(id) ?? '0', amount))
     }
@@ -93,13 +101,14 @@ export function overlayAccounts(accounts: AccountDto[], ops: PendingOp[], server
       current.set(op.txId, op.payload)
     } else if (op.kind === 'tx-update') {
       const prior = stateOf(op.txId)
+      // with no known prior state either half alone would double-count or drop money
       if (prior) {
         addEffect(prior, -1)
+        addEffect(op.payload, 1)
+        current.set(op.txId, op.payload)
       }
-      addEffect(op.payload, 1)
-      current.set(op.txId, op.payload)
     } else if (op.kind === 'tx-delete') {
-      const prior = stateOf(op.txId)
+      const prior = current.has(op.txId) ? stateOf(op.txId) : (stateOf(op.txId) ?? op.previous)
       if (prior) {
         addEffect(prior, -1)
       }

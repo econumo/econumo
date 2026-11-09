@@ -93,6 +93,9 @@ describe('overlayTransactions', () => {
   })
 })
 
+const NOW = new Date(2026, 10, 8, 12, 0, 0)
+const FUTURE = '2026-11-09 08:00:00'
+
 describe('overlayAccounts', () => {
   const accounts = [account('a1', '100'), account('a2', '50')]
 
@@ -102,7 +105,7 @@ describe('overlayAccounts', () => {
       op({ kind: 'tx-create', txId: 't2', payload: pay('t2', { type: 'income', amount: '3' }) }),
       op({ kind: 'tx-create', txId: 't3', payload: pay('t3', { type: 'transfer', amount: '20', accountRecipientId: 'a2', amountRecipient: '25' }) }),
     ]
-    const out = overlayAccounts(accounts, ops, [])
+    const out = overlayAccounts(accounts, ops, [], NOW)
     expect(out.map((a) => a.balance)).toEqual(['73', '75'])
     expect(accounts.map((a) => a.balance)).toEqual(['100', '50'])
   })
@@ -113,22 +116,66 @@ describe('overlayAccounts', () => {
       accounts,
       [op({ kind: 'tx-update', txId: 's1', payload: pay('s1', { amount: '15' }) }), op({ kind: 'tx-delete', txId: 's2', previous: null })],
       server,
+      NOW,
     )
     expect(out[0].balance).toBe('99')
   })
 
-  it('replaces an attempted waiting add rather than reversing a server row', () => {
+  it('an update or delete of an already-attempted waiting add replaces its effect', () => {
     const ops = [
       op({ kind: 'tx-create', txId: 't1', payload: pay('t1', { amount: '10' }) }, { attempted: true }),
       op({ kind: 'tx-update', txId: 't1', payload: pay('t1', { amount: '12' }) }),
     ]
-    expect(overlayAccounts(accounts, ops, [])[0].balance).toBe('88')
-    expect(overlayAccounts(accounts, [...ops, op({ kind: 'tx-delete', txId: 't1', previous: null })], [])[0].balance).toBe('100')
+    expect(overlayAccounts(accounts, ops, [], NOW)[0].balance).toBe('88')
+    expect(overlayAccounts(accounts, [...ops, op({ kind: 'tx-delete', txId: 't1', previous: null })], [], NOW)[0].balance).toBe('100')
   })
 
   it('ignores a row on an account missing from the list', () => {
-    const out = overlayAccounts(accounts, [op({ kind: 'tx-create', txId: 't1', payload: pay('t1', { accountId: 'gone' }) })], [])
+    const out = overlayAccounts(accounts, [op({ kind: 'tx-create', txId: 't1', payload: pay('t1', { accountId: 'gone' }) })], [], NOW)
     expect(out.map((a) => a.balance)).toEqual(['100', '50'])
+  })
+
+  const bal = (out: AccountDto[]) => out.map((a) => a.balance)
+
+  it('ignores a future-dated add and a deleted future server row', () => {
+    expect(bal(overlayAccounts(accounts, [op({ kind: 'tx-create', txId: 't1', payload: pay('t1', { date: FUTURE }) })], [], NOW))).toEqual(['100', '50'])
+    const server = [row('s1', { date: FUTURE })]
+    expect(bal(overlayAccounts(accounts, [op({ kind: 'tx-delete', txId: 's1', previous: null })], server, NOW))).toEqual(['100', '50'])
+  })
+
+  it('handles an edit crossing the end of today in both directions', () => {
+    const past = row('s1', { amount: '10' })
+    // past -> future: the stored effect is reversed, the new one not applied
+    expect(bal(overlayAccounts(accounts, [op({ kind: 'tx-update', txId: 's1', payload: pay('s1', { date: FUTURE }) })], [past], NOW))[0]).toBe('110')
+    // future -> past: nothing to reverse, the new one applies
+    const future = row('s2', { amount: '10', date: FUTURE })
+    expect(bal(overlayAccounts(accounts, [op({ kind: 'tx-update', txId: 's2', payload: pay('s2') })], [future], NOW))[0]).toBe('90')
+  })
+
+  it('falls back to the delete previous and skips an update with no known row', () => {
+    const previous = row('s1', { amount: '10' })
+    expect(bal(overlayAccounts(accounts, [op({ kind: 'tx-delete', txId: 's1', previous })], [], NOW))[0]).toBe('110')
+    expect(bal(overlayAccounts(accounts, [op({ kind: 'tx-update', txId: 's1', payload: pay('s1', { amount: '15' }) })], [], NOW))).toEqual(['100', '50'])
+  })
+
+  it('moves an edit between accounts', () => {
+    const out = overlayAccounts(accounts, [op({ kind: 'tx-update', txId: 's1', payload: pay('s1', { accountId: 'a2', amount: '10' }) })], [row('s1')], NOW)
+    expect(bal(out)).toEqual(['110', '40'])
+  })
+
+  it('handles type changes between expense, income and transfer', () => {
+    const upd = (payload: CreateTransactionDto, server: TransactionDto) => bal(overlayAccounts(accounts, [op({ kind: 'tx-update', txId: 's1', payload })], [server], NOW))
+    expect(upd(pay('s1', { type: 'income', amount: '10' }), row('s1'))).toEqual(['120', '50'])
+    expect(upd(pay('s1', { type: 'transfer', amount: '10', accountRecipientId: 'a2', amountRecipient: '12' }), row('s1'))).toEqual(['100', '62'])
+    const stored = row('s1', { type: 'transfer', amount: '20', accountRecipientId: 'a2', amountRecipient: '25' })
+    expect(upd(pay('s1', { amount: '10' }), stored)).toEqual(['110', '25'])
+  })
+
+  it('reverses a stored transfer on update and on delete, on both accounts', () => {
+    const stored = row('s1', { type: 'transfer', amount: '20', accountRecipientId: 'a2', amountRecipient: '25' })
+    expect(bal(overlayAccounts(accounts, [op({ kind: 'tx-delete', txId: 's1', previous: null })], [stored], NOW))).toEqual(['120', '25'])
+    const updated = pay('s1', { type: 'transfer', amount: '5', accountRecipientId: 'a2', amountRecipient: '6' })
+    expect(bal(overlayAccounts(accounts, [op({ kind: 'tx-update', txId: 's1', payload: updated })], [stored], NOW))).toEqual(['115', '31'])
   })
 })
 

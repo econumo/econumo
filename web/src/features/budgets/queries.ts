@@ -17,7 +17,7 @@ import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { followsCurrentPeriod, useBudgetPeriodStore } from './budgetStore'
 import { addMonths, monthDiff } from './planMath'
-import { applyLimitToBudget, patchPlanCells } from '../pendingWrites/overlay'
+import { applyLimitToBudget, patchPlanCells } from '@/features/pendingWrites/overlay'
 import { budgetCurrentPeriod, currentPeriod, periodStartDayOf } from './period'
 
 export function useBudgets() {
