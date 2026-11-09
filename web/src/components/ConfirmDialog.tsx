@@ -13,9 +13,11 @@ interface ConfirmDialogProps {
   destructive?: boolean
   /** The confirmed action works without a connection (a queued write, signing out). */
   offlineOk?: boolean
+  /** The answer the dialog gives is not ready yet. */
+  confirmDisabled?: boolean
 }
 
-export function ConfirmDialog({ open, onClose, onConfirm, title, question, confirmLabel, cancelLabel, destructive = false, offlineOk = false }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onClose, onConfirm, title, question, confirmLabel, cancelLabel, destructive = false, offlineOk = false, confirmDisabled = false }: ConfirmDialogProps) {
   const online = useOnline()
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={title ?? question} description={title ? question : undefined}>
@@ -23,7 +25,7 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, question, confi
         <Button type="button" variant="secondary" onClick={onClose}>
           {cancelLabel}
         </Button>
-        <Button type="button" variant={destructive ? 'destructive' : 'default'} disabled={!online && !offlineOk} onClick={onConfirm}>
+        <Button type="button" variant={destructive ? 'destructive' : 'default'} disabled={confirmDisabled || (!online && !offlineOk)} onClick={onConfirm}>
           {confirmLabel}
         </Button>
       </div>

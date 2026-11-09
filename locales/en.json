@@ -357,6 +357,7 @@
       "available": "New version {version} available"
     },
     "logout": {
+      "pending_unknown": "Changes not sent yet from this device, if there are any, will be lost.",
       "pending_warning": "{count} change has not been sent yet and will be lost. | {count} changes have not been sent yet and will be lost."
     }
   },

@@ -1,8 +1,9 @@
-import { useMemo, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Id } from '@/api/types'
 import { pluralPick } from '@/lib/plural'
-import { getOps, subscribe } from './store'
+import { getSessionUserId, hasToken } from '@/lib/storage'
+import { getOps, isQueueLoaded, loadPendingWrites, subscribe, subscribeAdopted } from './store'
 import { realIdOf } from './tempIds'
 import type { PendingOp } from './types'
 
@@ -38,9 +39,61 @@ export function useUnsentCount(): number {
   return usePendingOps().length
 }
 
-/** A sign-out confirm's `question`, followed by what signing out would lose when there is anything. */
-export function useSignOutQuestion(question: string): string {
+const subscribeQueueState = (fn: () => void) => {
+  const offOps = subscribe(fn)
+  const offAdopted = subscribeAdopted(fn)
+  return () => {
+    offOps()
+    offAdopted()
+  }
+}
+
+// A session with no user id has never had a queue on the disk: the sender and the
+// store need that id. Otherwise a count of 0 means nothing until the rows arrived.
+function useStoredQueueState(): 'loaded' | 'loading' | 'unknown' {
+  const user = hasToken() ? getSessionUserId() : null
+  const loaded = useSyncExternalStore(subscribeQueueState, () => !user || isQueueLoaded(user))
+  const [gaveUpOn, setGaveUpOn] = useState<string | null>(null)
+  useEffect(() => {
+    if (!user || loaded) {
+      return
+    }
+    let current = true
+    // bounded by the store's own time limit; rows arriving later still flip `loaded`
+    void loadPendingWrites(user).then(() => {
+      if (current) {
+        setGaveUpOn(user)
+      }
+    })
+    return () => {
+      current = false
+    }
+  }, [user, loaded])
+  if (loaded) {
+    return 'loaded'
+  }
+  return gaveUpOn === user ? 'unknown' : 'loading'
+}
+
+export interface SignOutConfirm {
+  /** The confirm's question, followed by what signing out would lose. */
+  question: string
+  /** The stored queue is still on its way, so the question is not final. */
+  confirmDisabled: boolean
+  /** A link straight to sign-out must stop and ask. */
+  mustAsk: boolean
+}
+
+export function useSignOutConfirm(question: string): SignOutConfirm {
   const { t, i18n } = useTranslation()
   const unsent = useUnsentCount()
-  return unsent > 0 ? `${question} ${pluralPick(t('settings.logout.pending_warning'), unsent, i18n.language)}` : question
+  const queue = useStoredQueueState()
+  const warning = unsent > 0
+    ? pluralPick(t('settings.logout.pending_warning'), unsent, i18n.language)
+    : queue === 'unknown' ? t('settings.logout.pending_unknown') : ''
+  return {
+    question: warning ? `${question} ${warning}` : question,
+    confirmDisabled: queue === 'loading',
+    mustAsk: unsent > 0 || queue !== 'loaded',
+  }
 }

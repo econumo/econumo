@@ -357,6 +357,7 @@
       "available": "Nieuwe versie {version} beschikbaar"
     },
     "logout": {
+      "pending_unknown": "Wijzigingen die vanaf dit apparaat nog niet zijn verzonden, gaan verloren als die er zijn.",
       "pending_warning": "{count} wijziging is nog niet verzonden en gaat verloren. | {count} wijzigingen zijn nog niet verzonden en gaan verloren."
     }
   },

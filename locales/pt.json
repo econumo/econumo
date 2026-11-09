@@ -357,6 +357,7 @@
       "available": "Nova versão {version} disponível"
     },
     "logout": {
+      "pending_unknown": "As alterações ainda não enviadas deste dispositivo, se existirem, serão perdidas.",
       "pending_warning": "{count} alteração ainda não foi enviada e será perdida. | {count} alterações ainda não foram enviadas e serão perdidas."
     }
   },

@@ -357,6 +357,7 @@
       "available": "有新版本 {version} 可用"
     },
     "logout": {
+      "pending_unknown": "此设备上尚未发送的更改（如有）将会丢失。",
       "pending_warning": "{count} 项更改尚未发送，退出后将丢失。"
     }
   },

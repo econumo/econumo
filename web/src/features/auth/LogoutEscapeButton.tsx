@@ -1,10 +1,8 @@
-import { useState, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { RouterPage } from '@/app/router-pages'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { useSignOutQuestion, useUnsentCount } from '@/features/pendingWrites/hooks'
+import { useSignOutLink } from './useSignOutLink'
 
 // Floats over the loader it escapes from so its appearance never shifts
 // layout.
@@ -21,29 +19,8 @@ import { useSignOutQuestion, useUnsentCount } from '@/features/pendingWrites/hoo
 // to the sidebar), so the caption stays on the spinner's own axis.
 export function LogoutEscapeButton({ placement = 'screen' }: { placement?: 'screen' | 'container' }) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const unsent = useUnsentCount()
-  const question = useSignOutQuestion(t('auth.sign_out.question'))
-  const [confirming, setConfirming] = useState(false)
   // LogoutPage clears the queue, and a backend too far gone to load is when it holds the most.
-  const askFirst = (e: MouseEvent) => {
-    if (unsent > 0) {
-      e.preventDefault()
-      setConfirming(true)
-    }
-  }
-  const confirm = (
-    <ConfirmDialog
-      open={confirming}
-      onClose={() => setConfirming(false)}
-      onConfirm={() => void navigate(RouterPage.LOGOUT)}
-      title={t('auth.sign_out.title')}
-      question={question}
-      confirmLabel={t('auth.sign_out.action.logout')}
-      cancelLabel={t('auth.sign_out.action.cancel')}
-      offlineOk
-    />
-  )
+  const { askFirst, confirm, confirming } = useSignOutLink()
   // Its strip sits above the dialog's layer, right where a phone's sheet has its buttons.
   const caption = confirming ? null : (
     <span className="text-xs text-muted-foreground">

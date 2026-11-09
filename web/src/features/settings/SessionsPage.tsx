@@ -9,7 +9,7 @@ import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { SessionDto } from '@/api/dto/user'
 import { providerDisplayName, useProviders } from '@/features/auth/oauthQueries'
-import { useSignOutQuestion } from '@/features/pendingWrites/hooks'
+import { useSignOutConfirm } from '@/features/pendingWrites/hooks'
 import { useRevokeOtherSessions, useRevokeSession, useSessions } from './security'
 import { describeUserAgent, relativeTime } from './securityFormat'
 import { SettingsShell } from './SettingsShell'
@@ -22,7 +22,7 @@ export function SessionsPage() {
   const providers = useProviders()
   const revokeSession = useRevokeSession()
   const revokeOthers = useRevokeOtherSessions()
-  const signOutQuestion = useSignOutQuestion(t('user.page.settings.profile.sessions.confirm_sign_out'))
+  const signOut = useSignOutConfirm(t('user.page.settings.profile.sessions.confirm_sign_out'))
 
   const [confirmTarget, setConfirmTarget] = useState<SessionDto | null>(null)
   const [confirmOthers, setConfirmOthers] = useState(false)
@@ -105,7 +105,7 @@ export function SessionsPage() {
         onConfirm={() => confirmTarget && revoke(confirmTarget)}
         question={
           confirmTarget?.isCurrent
-            ? signOutQuestion
+            ? signOut.question
             : t('user.page.settings.profile.sessions.confirm_revoke')
         }
         confirmLabel={
@@ -114,6 +114,7 @@ export function SessionsPage() {
             : t('user.page.settings.profile.sessions.revoke')
         }
         cancelLabel={t('common.button.cancel.label')}
+        confirmDisabled={confirmTarget?.isCurrent === true && signOut.confirmDisabled}
         offlineOk={confirmTarget?.isCurrent === true}
         destructive
       />

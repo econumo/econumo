@@ -13,7 +13,7 @@ import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
 import { apiFieldErrors } from '@/lib/apiError'
-import { useSignOutQuestion } from '@/features/pendingWrites/hooks'
+import { useSignOutConfirm } from '@/features/pendingWrites/hooks'
 import { useOnline } from '@/hooks/useOnline'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNotEmpty, isValidName } from '@/lib/validation'
@@ -47,7 +47,7 @@ export function ProfilePage() {
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
-  const signOutQuestion = useSignOutQuestion(t('auth.sign_out.question'))
+  const signOut = useSignOutConfirm(t('auth.sign_out.question'))
   const [languageOpen, setLanguageOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
@@ -285,7 +285,7 @@ export function ProfilePage() {
       <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
 
       {recoveryOpen ? (
-        <RecoveryDialog open onClose={() => setRecoveryOpen(false)} onSuccess={() => navigate(RouterPage.LOGOUT)} email={user?.email} />
+        <RecoveryDialog open onClose={() => setRecoveryOpen(false)} onSuccess={() => navigate(RouterPage.LOGOUT, { state: { keepPendingWrites: true } })} email={user?.email} />
       ) : null}
 
       <ConfirmDialog
@@ -293,7 +293,8 @@ export function ProfilePage() {
         onClose={() => setLogoutOpen(false)}
         onConfirm={() => navigate(RouterPage.LOGOUT)}
         title={t('auth.sign_out.title')}
-        question={signOutQuestion}
+        question={signOut.question}
+        confirmDisabled={signOut.confirmDisabled}
         confirmLabel={t('auth.sign_out.action.logout')}
         cancelLabel={t('auth.sign_out.action.cancel')}
         offlineOk
