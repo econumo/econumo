@@ -319,7 +319,8 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   ignored when matching), at most 2048 bytes; clients never approved are purged
   on the next registration once 30 days old, and at most 1000 are kept, oldest out first, so
   anonymous registration cannot grow the database without bound. Registration is behind the per-IP per-endpoint rate cap; the token
-  endpoint has no limiter of its own.
+  endpoint has no limiter of its own. It creates user apps only; global apps come from the
+  CLI's `app:register` (see "CLI / management commands").
 - Consent lives at the SPA route `/oauth/authorize`. The session is a localStorage
   bearer token, so the browser cannot carry it to a Go-rendered page: the SPA calls
   `get-authorization-request` and then `POST /api/v1/authserver/approve-authorization`
@@ -374,6 +375,16 @@ routes answer a JSON 404 and `/mcp` sends no `WWW-Authenticate`.
   refreshes, at most once every 10 minutes per process, it purges, best-effort and outside
   the transaction, expired codes and grants and `oauth` access tokens revoked/expired more
   than 30 days ago.
+- Ownership: a self-registered (user) app belongs to its first approver. Approve claims
+  an unowned client (`ClaimClient`) under the user row lock, in the transaction that stores
+  the code; a claim matching no row re-reads the client and fails unless the caller now owns
+  it or it has since become global. Describe, approve and decline refuse anyone else with the coded
+  `authserver.app_not_yours` (which names no owner) BEFORE the redirect-URI check, so a
+  stranger cannot probe registered URIs; decline never claims; exchange and refresh never
+  re-check the owner (grants from before the ownership backfill keep working). Global
+  apps (`is_global`, registered by the operator) have no owner, are open to every user, and
+  are never purged. `get-authorization-request` and `get-connected-app-list` carry
+  `isGlobal`.
 - Revocation: `revoke-connected-app` takes the user row lock first. The reclaim
   (`reset-password`, CLI `user:change-password`) and `user:deactivate` revoke every grant and
   every `oauth` token in their own transaction (through the user feature's
@@ -1178,7 +1189,33 @@ migration:normalize-sqlite-datetimes
 migration:seed-transaction-sort-keys
 migration:copy-access-tokens
 migration:normalize-emails
+app:register <name> <redirect-uri>... [--public]
+app:list [--global] [--user]
+app:show <id>
+app:update <id> [--name <name>] [--redirect-uri <uri>]...
+app:make-global <id>
+app:rotate-secret <id>
+app:disconnect <id> [--user <user-id>]
+app:delete <id>
 ```
+
+The `app:*` commands manage the MCP OAuth server's clients (`internal/authserver/apps.go`,
+`internal/cli/app_commands.go`). `app:register` creates a **global** app (`is_global`, no
+owner, open to every user, never purged; users see it as "Official"), validated like `/oauth/register`; it is confidential
+unless `--public`, and its client secret (like `app:rotate-secret`'s, which invalidates the old
+one at once) is printed once to stdout and never logged. A **user** app is one a client
+registered for itself; `app:list` shows `N (M from other users)` when users other than its
+owner hold live connections (grants from before ownership; an app with no owner yet shows just
+`N`), and `app:make-global` converts
+such a shared client, one way. `app:show` lists each live connection with its user id, scope
+(`mcp`/`read`), connected and last-used times. `app:update` changes global apps only and refuses a call with
+nothing to change. `app:disconnect` revokes live grants (one user's with `--user`) and their
+access tokens and drops outstanding authorization codes, under the users' row locks and then the
+client row lock, starting over (at most 5 times) when a grant for a user it had not locked
+appears; `app:delete` does the same, then deletes the client (tokens first, since
+`access_tokens.grant_id` has no FK). Running servers notice at once: tokens are read from the
+database per request. The commands work with the OAuth server disabled; `app:register` then
+warns on stderr. Flags may sit anywhere among the positionals; audit lines carry ids only.
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
 back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `email` is the

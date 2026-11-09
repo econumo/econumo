@@ -90,8 +90,9 @@ const (
 
 	// A registered MCP client and one live grant of the owner's on it, for the
 	// authserver scenarios (non-v7 ids, so they survive normalization).
-	OAuthClientID = "e1000000-0000-0000-0000-000000000001"
-	OAuthGrantID  = "e2000000-0000-0000-0000-000000000001"
+	OAuthClientID       = "e1000000-0000-0000-0000-000000000001"
+	OAuthGlobalClientID = "e1000000-0000-0000-0000-000000000002"
+	OAuthGrantID        = "e2000000-0000-0000-0000-000000000001"
 
 	ImportEventQueued = "0e000000-0000-0000-0000-000000000001" // processed event behind ImportLinkQueued
 	ImportLinkQueued  = "0d000000-0000-0000-0000-000000000002" // "wallet" tap-2, queued (card unmapped)
@@ -145,7 +146,8 @@ func Seed(t testing.TB, db *dbtest.DB) {
 		TokenHash: appuser.HashAccessToken(ReadToken), Name: "Reports", Scope: string(model.TokenScopeRead), ExpiresAt: &ownerExp})
 	f.Connect(OwnerID, GuestID)
 
-	f.OAuthClient(fixture.OAuthClient{ID: OAuthClientID, Name: "Claude", RedirectURIs: []string{"https://claude.ai/api/mcp/auth_callback"}})
+	f.OAuthClient(fixture.OAuthClient{ID: OAuthClientID, Name: "Claude", RedirectURIs: []string{"https://claude.ai/api/mcp/auth_callback"}, OwnerUserID: OwnerID})
+	f.OAuthClient(fixture.OAuthClient{ID: OAuthGlobalClientID, Name: "Econumo Share", RedirectURIs: []string{"https://share.example.test/auth/callback"}, IsGlobal: true})
 	f.OAuthGrant(fixture.OAuthGrant{ID: OAuthGrantID, UserID: OwnerID, ClientID: OAuthClientID, RefreshHash: "seeded-refresh-hash"})
 
 	// Folders.

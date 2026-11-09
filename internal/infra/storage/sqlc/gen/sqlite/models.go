@@ -338,6 +338,8 @@ type OauthClient struct {
 	SecretHash   *string
 	CreatedAt    time.Time
 	LastUsedAt   *time.Time
+	OwnerUserID  *string
+	IsGlobal     bool
 }
 
 type OauthGrant struct {

@@ -13404,6 +13404,9 @@ const docTemplate = `{
                     "description": "non-empty: navigate there instead of showing consent",
                     "type": "string"
                 },
+                "isGlobal": {
+                    "type": "boolean"
+                },
                 "isLoopback": {
                     "type": "boolean"
                 },
@@ -13901,6 +13904,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "isGlobal": {
+                    "type": "boolean"
                 },
                 "isLoopback": {
                     "type": "boolean"

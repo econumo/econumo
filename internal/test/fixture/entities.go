@@ -759,6 +759,8 @@ type OAuthClient struct {
 	ID           string
 	Name         string
 	RedirectURIs []string
+	OwnerUserID  string
+	IsGlobal     bool
 }
 
 func (b *Builder) OAuthClient(c OAuthClient) string {
@@ -768,8 +770,8 @@ func (b *Builder) OAuthClient(c OAuthClient) string {
 	if err != nil {
 		b.t.Fatalf("fixture oauth client: %v", err)
 	}
-	b.insert(`INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at) VALUES (?, ?, ?, NULL, ?, NULL)`,
-		id, c.Name, string(uris), b.now())
+	b.insert(`INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at, owner_user_id, is_global) VALUES (?, ?, ?, NULL, ?, NULL, ?, ?)`,
+		id, c.Name, string(uris), b.now(), nullable(c.OwnerUserID), c.IsGlobal)
 	return id
 }
 

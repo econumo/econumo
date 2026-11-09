@@ -1,14 +1,14 @@
 == get-authorization-request-read-scope GET /api/v1/authserver/get-authorization-request?clientId=e1000000-0000-0000-0000-000000000001&redirectUri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&responseType=code&codeChallenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&codeChallengeMethod=S256&state=s1&scope=read [owner] -> 200
-{"success":true,"message":"","data":{"clientName":"Claude","redirectHost":"claude.ai","isLoopback":false,"scope":"read","errorRedirectUrl":""}}
+{"success":true,"message":"","data":{"clientName":"Claude","redirectHost":"claude.ai","isLoopback":false,"isGlobal":false,"scope":"read","errorRedirectUrl":""}}
 
 == approve-authorization-read-scope-readonly POST /api/v1/authserver/approve-authorization [readonly] -> 200
-{"success":true,"message":"","data":{"redirectUrl":"https://claude.ai/api/mcp/auth_callback?code=<random>&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
+{"success":true,"message":"","data":{"redirectUrl":"https://share.example.test/auth/callback?code=<random>&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
 
 == get-authorization-request GET /api/v1/authserver/get-authorization-request?clientId=e1000000-0000-0000-0000-000000000001&redirectUri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&responseType=code&codeChallenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&codeChallengeMethod=S256&state=s1 [owner] -> 200
-{"success":true,"message":"","data":{"clientName":"Claude","redirectHost":"claude.ai","isLoopback":false,"scope":"mcp","errorRedirectUrl":""}}
+{"success":true,"message":"","data":{"clientName":"Claude","redirectHost":"claude.ai","isLoopback":false,"isGlobal":false,"scope":"mcp","errorRedirectUrl":""}}
 
 == get-authorization-request-bad-challenge-redirects-the-error GET /api/v1/authserver/get-authorization-request?clientId=e1000000-0000-0000-0000-000000000001&redirectUri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&responseType=code&codeChallenge=short&codeChallengeMethod=S256&state=s1 [owner] -> 200
-{"success":true,"message":"","data":{"clientName":"Claude","redirectHost":"claude.ai","isLoopback":false,"scope":"mcp","errorRedirectUrl":"https://claude.ai/api/mcp/auth_callback?error=invalid_request&error_description=PKCE+with+S256+is+required&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
+{"success":true,"message":"","data":{"clientName":"Claude","redirectHost":"claude.ai","isLoopback":false,"isGlobal":false,"scope":"mcp","errorRedirectUrl":"https://claude.ai/api/mcp/auth_callback?error=invalid_request&error_description=PKCE+with+S256+is+required&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
 
 == err:get-authorization-request-unknown-client GET /api/v1/authserver/get-authorization-request?clientId=00000000-0000-0000-0000-00000000dead&redirectUri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&responseType=code&codeChallenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&codeChallengeMethod=S256&state=s1 [owner] -> 400
 {"success":false,"message":"This app's registration has expired or is unknown. Remove Econumo from the app and add it again.","code":400,"errors":{}}
@@ -18,6 +18,9 @@
 
 == err:get-authorization-request-unauthenticated GET /api/v1/authserver/get-authorization-request?clientId=e1000000-0000-0000-0000-000000000001&redirectUri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&responseType=code&codeChallenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&codeChallengeMethod=S256&state=s1 [] -> 401
 {"success":false,"message":"Access token not found","code":0,"errors":{}}
+
+== decline-authorization-readonly POST /api/v1/authserver/decline-authorization [readonly] -> 200
+{"success":true,"message":"","data":{"redirectUrl":"https://share.example.test/auth/callback?error=access_denied&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
 
 == approve-authorization POST /api/v1/authserver/approve-authorization [owner] -> 200
 {"success":true,"message":"","data":{"redirectUrl":"https://claude.ai/api/mcp/auth_callback?code=<random>&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
@@ -31,8 +34,20 @@
 == decline-authorization POST /api/v1/authserver/decline-authorization [owner] -> 200
 {"success":true,"message":"","data":{"redirectUrl":"https://claude.ai/api/mcp/auth_callback?error=access_denied&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
 
-== decline-authorization-readonly POST /api/v1/authserver/decline-authorization [readonly] -> 200
-{"success":true,"message":"","data":{"redirectUrl":"https://claude.ai/api/mcp/auth_callback?error=access_denied&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
+== err:get-authorization-request-not-yours GET /api/v1/authserver/get-authorization-request?clientId=e1000000-0000-0000-0000-000000000001&redirectUri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&responseType=code&codeChallenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&codeChallengeMethod=S256&state=s1 [guest] -> 400
+{"success":false,"message":"This app is connected to a different Econumo account. Remove Econumo from the app and add it again.","code":400,"errors":{}}
+
+== err:approve-authorization-not-yours POST /api/v1/authserver/approve-authorization [guest] -> 400
+{"success":false,"message":"This app is connected to a different Econumo account. Remove Econumo from the app and add it again.","code":400,"errors":{}}
+
+== err:decline-authorization-not-yours POST /api/v1/authserver/decline-authorization [readonly] -> 400
+{"success":false,"message":"This app is connected to a different Econumo account. Remove Econumo from the app and add it again.","code":400,"errors":{}}
+
+== get-authorization-request-global-app GET /api/v1/authserver/get-authorization-request?clientId=e1000000-0000-0000-0000-000000000002&redirectUri=https%3A%2F%2Fshare.example.test%2Fauth%2Fcallback&responseType=code&codeChallenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&codeChallengeMethod=S256&state=s1 [guest] -> 200
+{"success":true,"message":"","data":{"clientName":"Econumo Share","redirectHost":"share.example.test","isLoopback":false,"isGlobal":true,"scope":"mcp","errorRedirectUrl":""}}
+
+== approve-authorization-global-app POST /api/v1/authserver/approve-authorization [guest] -> 200
+{"success":true,"message":"","data":{"redirectUrl":"https://share.example.test/auth/callback?code=<random>&iss=https%3A%2F%2Fapp.example.test&state=s1"}}
 
 == err:decline-authorization-redirect-mismatch POST /api/v1/authserver/decline-authorization [owner] -> 400
 {"success":false,"message":"This sign-in link is not valid for this app. Start the connection again from the app.","code":400,"errors":{}}

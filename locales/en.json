@@ -2037,8 +2037,11 @@
     "consent": {
       "title": "Connect an app to Econumo",
       "wantsAccess": "wants to access your Econumo account.",
+      "official": "Official",
       "redirect": "After you allow, you'll be sent to {host}.",
       "loopback": "After you allow, you'll return to an app on this computer.",
+      "unverified": "Registered by the app itself. Econumo doesn't verify its name; check the address below.",
+      "unverifiedLoopback": "Registered by the app itself. Econumo doesn't verify its name.",
       "wantsRead": "wants to read your Econumo data.",
       "readAccess": "It can't change anything.",
       "fullAccess": "It will be able to read and change your data.",
@@ -2066,6 +2069,7 @@
       "lastUsed": "Last used {when}",
       "loopback": "Runs on this computer",
       "returnsTo": "Sends you back to {host}",
+      "official": "Official",
       "menuItem": "Connected apps"
     }
   },
@@ -2203,7 +2207,8 @@
       "disabled": "Connecting apps is not available on this server.",
       "client_not_found": "This app's registration has expired or is unknown. Remove Econumo from the app and add it again.",
       "redirect_uri_mismatch": "This sign-in link is not valid for this app. Start the connection again from the app.",
-      "grant_not_found": "Connected app not found."
+      "grant_not_found": "Connected app not found.",
+      "app_not_yours": "This app is connected to a different Econumo account. Remove Econumo from the app and add it again."
     },
     "oauth": {
       "provider_not_configured": "Sign-in provider is not configured",

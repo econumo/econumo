@@ -70,6 +70,14 @@ rotating refresh token. A connection expires 90 days after its last refresh (cli
 refresh at least hourly while in use), and the app then asks you to sign in
 again.
 
+An app that registered itself (Claude, Codex, Claude Code) belongs to the
+Econumo account that approves it first. If someone else opens its consent link,
+Econumo shows "This app is connected to a different Econumo account" and
+connects nothing; that person adds Econumo in their own client, which registers
+a separate app for them. Disconnecting the app does not release it: the owner
+can always connect it again. Apps the server operator registered with the CLI
+(global apps) are open to every user.
+
 ## Read-only connections
 
 An app can ask for the `read` scope instead, by requesting `read` and not `mcp`
@@ -109,6 +117,34 @@ replaces its earlier connection instead of adding a second one.
 Resetting your password through the emailed link (or an operator changing it
 with `user:change-password`) disconnects every app, as does deactivating the
 account. Changing your password from Settings keeps them connected.
+
+## For operators: global apps
+
+An app a client registers for itself belongs to the one Econumo account that
+approves it first. To offer an app to every user of your instance, register it
+as a global app with the CLI (`docker exec <container> /app/econumo ...` in
+the image):
+
+```bash
+econumo app:register "Claude" https://claude.ai/api/mcp/auth_callback
+econumo app:register "Econumo Share" https://share.econumo.com/auth/callback
+```
+
+The first is for a Claude directory listing whose credentials Anthropic holds,
+or for your organization's own OAuth client; the second for the share-reports
+app. Each prints a `client_id` and a `client_secret` (shown only once; add
+`--public` for a client with no secret that relies on PKCE alone). Users see
+a global app as official: it carries an "Official" badge on the consent page and in Connected apps.
+
+A client registered with `curl` against `/oauth/register` is a user app and
+works for one account only. `econumo app:list` shows `N (M from other users)`
+for a user app that several people already share; `econumo app:make-global
+<id>` makes it open to everyone (this cannot be undone). The other commands
+are `app:show`, `app:update` (global apps: name and redirect URIs),
+`app:rotate-secret`, `app:disconnect [--user <user-id>]` and `app:delete`;
+disconnecting or deleting signs the app out at once. They work while the
+OAuth server is off (`ECONUMO_URL` is not an https origin, or an http loopback origin), and `app:register` warns that
+the app only works once it is on.
 
 ## Alternative: a personal access token
 

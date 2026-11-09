@@ -46,6 +46,14 @@ func (pgsqlQuerier) PurgeExpiredOAuthCodes(ctx context.Context, db backend.DBTX,
 	return pgsqlgen.New(db).PurgeExpiredOAuthCodes(ctx, before)
 }
 
+func (pgsqlQuerier) DeleteClientOAuthCodes(ctx context.Context, db backend.DBTX, clientID string) (int64, error) {
+	return pgsqlgen.New(db).DeleteClientOAuthCodes(ctx, clientID)
+}
+
+func (pgsqlQuerier) DeleteClientUserOAuthCodes(ctx context.Context, db backend.DBTX, p deleteUserCodesParams) (int64, error) {
+	return pgsqlgen.New(db).DeleteClientUserOAuthCodes(ctx, pgsqlgen.DeleteClientUserOAuthCodesParams(p))
+}
+
 func (pgsqlQuerier) InsertOAuthGrant(ctx context.Context, db backend.DBTX, p insertGrantParams) error {
 	return pgsqlgen.New(db).InsertOAuthGrant(ctx, pgsqlgen.InsertOAuthGrantParams(p))
 }
@@ -99,4 +107,77 @@ func (pgsqlQuerier) ListUnrevokedOAuthGrants(ctx context.Context, db backend.DBT
 
 func (pgsqlQuerier) DeleteDeadOAuthGrants(ctx context.Context, db backend.DBTX, p deleteDeadParams) (int64, error) {
 	return pgsqlgen.New(db).DeleteDeadOAuthGrants(ctx, pgsqlgen.DeleteDeadOAuthGrantsParams(p))
+}
+
+func (pgsqlQuerier) ClaimOAuthClient(ctx context.Context, db backend.DBTX, p claimClientParams) (int64, error) {
+	return pgsqlgen.New(db).ClaimOAuthClient(ctx, pgsqlgen.ClaimOAuthClientParams(p))
+}
+
+func (pgsqlQuerier) ListOAuthClients(ctx context.Context, db backend.DBTX) ([]clientRow, error) {
+	rows, err := pgsqlgen.New(db).ListOAuthClients(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]clientRow, len(rows))
+	for i, row := range rows {
+		out[i] = clientRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) UpdateGlobalOAuthClient(ctx context.Context, db backend.DBTX, p updateGlobalParams) (int64, error) {
+	return pgsqlgen.New(db).UpdateGlobalOAuthClient(ctx, pgsqlgen.UpdateGlobalOAuthClientParams(p))
+}
+
+func (pgsqlQuerier) MakeOAuthClientGlobal(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	return pgsqlgen.New(db).MakeOAuthClientGlobal(ctx, id)
+}
+
+func (pgsqlQuerier) SetOAuthClientSecret(ctx context.Context, db backend.DBTX, p setClientSecretParams) (int64, error) {
+	return pgsqlgen.New(db).SetOAuthClientSecret(ctx, pgsqlgen.SetOAuthClientSecretParams(p))
+}
+
+func (pgsqlQuerier) ShareLockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return pgsqlgen.New(db).ShareLockOAuthClient(ctx, id)
+}
+
+func (pgsqlQuerier) GetOAuthCode(ctx context.Context, db backend.DBTX, codeHash string) (codeRow, error) {
+	row, err := pgsqlgen.New(db).GetOAuthCode(ctx, codeHash)
+	return codeRow(row), err
+}
+
+func (pgsqlQuerier) LockOAuthClient(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return pgsqlgen.New(db).LockOAuthClient(ctx, id)
+}
+
+func (pgsqlQuerier) DeleteOAuthClient(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	return pgsqlgen.New(db).DeleteOAuthClient(ctx, id)
+}
+
+func (pgsqlQuerier) ListOAuthClientGrants(ctx context.Context, db backend.DBTX, clientID string) ([]grantRow, error) {
+	rows, err := pgsqlgen.New(db).ListOAuthClientGrants(ctx, clientID)
+	if err != nil {
+		return nil, err
+	}
+	return convertGrantRows(rows), nil
+}
+
+func (pgsqlQuerier) ListAllUnrevokedOAuthGrants(ctx context.Context, db backend.DBTX) ([]grantRow, error) {
+	rows, err := pgsqlgen.New(db).ListAllUnrevokedOAuthGrants(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return convertGrantRows(rows), nil
+}
+
+func (pgsqlQuerier) RevokeClientOAuthGrants(ctx context.Context, db backend.DBTX, p revokeClientParams) ([]string, error) {
+	return pgsqlgen.New(db).RevokeClientOAuthGrants(ctx, pgsqlgen.RevokeClientOAuthGrantsParams(p))
+}
+
+func convertGrantRows(rows []pgsqlgen.OauthGrant) []grantRow {
+	out := make([]grantRow, len(rows))
+	for i, row := range rows {
+		out[i] = grantRow(row)
+	}
+	return out
 }

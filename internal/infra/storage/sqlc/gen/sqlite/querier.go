@@ -15,6 +15,7 @@ type Querier interface {
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
+	ClaimOAuthClient(ctx context.Context, arg ClaimOAuthClientParams) (int64, error)
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
 	ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
@@ -55,6 +56,8 @@ type Querier interface {
 	// Transactions referencing this category have category_id set to NULL via the
 	// ON DELETE SET NULL FK, matching the PHP delete-mode behaviour.
 	DeleteCategory(ctx context.Context, id string) error
+	DeleteClientOAuthCodes(ctx context.Context, clientID string) (int64, error)
+	DeleteClientUserOAuthCodes(ctx context.Context, arg DeleteClientUserOAuthCodesParams) (int64, error)
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	// The OAuth server's housekeeping purge: oauth tokens live an hour, so they
@@ -76,6 +79,7 @@ type Querier interface {
 	// transactions_labels rows for this label are removed by ON DELETE CASCADE;
 	// unlike tags there is no SET NULL, because the link is a join table.
 	DeleteLabel(ctx context.Context, id string) error
+	DeleteOAuthClient(ctx context.Context, id string) (int64, error)
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
 	DeleteOAuthHandoffsByUser(ctx context.Context, userID string) (int64, error)
 	DeleteOAuthHandoffsByUserProvider(ctx context.Context, arg DeleteOAuthHandoffsByUserProviderParams) (int64, error)
@@ -281,6 +285,7 @@ type Querier interface {
 	// Fills a period's gaps, since rate histories start and stop at different dates.
 	GetNearestCurrencyRates(ctx context.Context, arg GetNearestCurrencyRatesParams) ([]GetNearestCurrencyRatesRow, error)
 	GetOAuthClient(ctx context.Context, id string) (OauthClient, error)
+	GetOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error)
 	GetOAuthGrant(ctx context.Context, id string) (OauthGrant, error)
 	GetOAuthGrantByRefreshHash(ctx context.Context, refreshTokenHash string) (OauthGrant, error)
 	GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash string) (OauthGrant, error)
@@ -454,6 +459,7 @@ type Querier interface {
 	// The same count for every AVAILABLE account (the balance query's set).
 	// Args: user_id (own), user_id (shared).
 	ListAccountTransactionsCountsForUser(ctx context.Context, arg ListAccountTransactionsCountsForUserParams) ([]ListAccountTransactionsCountsForUserRow, error)
+	ListAllUnrevokedOAuthGrants(ctx context.Context) ([]OauthGrant, error)
 	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted.
 	// A pending (not yet accepted) grant confers no access here -- it only rides
 	// get-account-list as an inert entry appended separately (see
@@ -551,6 +557,8 @@ type Querier interface {
 	// The owner's labels ordered by sort key; used by move-label (load, place the
 	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
+	ListOAuthClientGrants(ctx context.Context, clientID string) ([]OauthGrant, error)
+	ListOAuthClients(ctx context.Context) ([]OauthClient, error)
 	// The owner's payees ordered by sort key; used by move-payee (load,
 	// place the moved row, save it) and as the basis for the returned list.
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
@@ -586,6 +594,10 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// A no-op UPDATE so the operator transaction takes the write lock before it
+	// reads: a read first would leave it holding SHARED while a token exchange
+	// holds RESERVED, and neither could commit (database is locked).
+	LockOAuthClient(ctx context.Context, id string) (string, error)
 	// Plain read: SQLite serializes writers, so there is no concurrent limit or
 	// comment for a lock to order against.
 	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
@@ -596,6 +608,7 @@ type Querier interface {
 	// this writes per call is not worth chasing here (unlike PostgreSQL, which
 	// uses SELECT ... FOR NO KEY UPDATE instead, see the pgsql query).
 	LockUserRow(ctx context.Context, id string) error
+	MakeOAuthClientGlobal(ctx context.Context, id string) (int64, error)
 	MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUsedParams) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
@@ -639,6 +652,7 @@ type Querier interface {
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
 	RevokeAccessTokensByGrant(ctx context.Context, arg RevokeAccessTokensByGrantParams) error
+	RevokeClientOAuthGrants(ctx context.Context, arg RevokeClientOAuthGrantsParams) ([]string, error)
 	RevokeOAuthGrant(ctx context.Context, arg RevokeOAuthGrantParams) (int64, error)
 	// Re-authorizing a client replaces the user's earlier connection to it: every
 	// other unrevoked grant for the same (user, client) goes, returning the ids so
@@ -656,7 +670,9 @@ type Querier interface {
 	// comment: dropping the element (flag off or member removed) deletes both.
 	SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (int64, error)
 	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
+	SetOAuthClientSecret(ctx context.Context, arg SetOAuthClientSecretParams) (int64, error)
 	SetUserEmail(ctx context.Context, arg SetUserEmailParams) error
+	ShareLockOAuthClient(ctx context.Context, id string) (string, error)
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.
@@ -667,6 +683,7 @@ type Querier interface {
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	UpdateGlobalOAuthClient(ctx context.Context, arg UpdateGlobalOAuthClientParams) (int64, error)
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error
 	// Note: sets run_id too so a processed event records the run that consumed it.

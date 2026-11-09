@@ -2037,8 +2037,11 @@
     "consent": {
       "title": "Connecter une application à Econumo",
       "wantsAccess": "souhaite accéder à votre compte Econumo.",
+      "official": "Officielle",
       "redirect": "Après votre autorisation, vous serez redirigé vers {host}.",
       "loopback": "Après votre autorisation, vous reviendrez à une application sur cet ordinateur.",
+      "unverified": "Enregistrée par l'application elle-même. Econumo ne vérifie pas son nom ; vérifiez l'adresse ci-dessous.",
+      "unverifiedLoopback": "Enregistrée par l'application elle-même. Econumo ne vérifie pas son nom.",
       "wantsRead": "souhaite lire vos données Econumo.",
       "readAccess": "Elle ne pourra rien modifier.",
       "fullAccess": "Elle pourra lire et modifier vos données.",
@@ -2066,6 +2069,7 @@
       "lastUsed": "Dernière utilisation {when}",
       "loopback": "S'exécute sur cet ordinateur",
       "returnsTo": "Vous renvoie vers {host}",
+      "official": "Officielle",
       "menuItem": "Applications connectées"
     }
   },
@@ -2203,7 +2207,8 @@
       "disabled": "La connexion d'applications n'est pas disponible sur ce serveur.",
       "client_not_found": "L'enregistrement de cette application a expiré ou est inconnu. Retirez Econumo de l'application, puis ajoutez-le à nouveau.",
       "redirect_uri_mismatch": "Ce lien de connexion n'est pas valide pour cette application. Relancez la connexion depuis l'application.",
-      "grant_not_found": "Application connectée introuvable."
+      "grant_not_found": "Application connectée introuvable.",
+      "app_not_yours": "Cette application est connectée à un autre compte Econumo. Retirez Econumo de l'application, puis ajoutez-le à nouveau."
     },
     "oauth": {
       "provider_not_configured": "Le fournisseur de connexion n'est pas configuré",

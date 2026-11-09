@@ -44,6 +44,8 @@ func TestCommandRegistry(t *testing.T) {
 		"currency:show-rate-gaps", "currency:backfill-rates",
 		"token:purge",
 		"data:remove-salt",
+		"app:register", "app:list", "app:show", "app:update",
+		"app:make-global", "app:rotate-secret", "app:disconnect", "app:delete",
 	}
 	for _, name := range want {
 		if !seen[name] {

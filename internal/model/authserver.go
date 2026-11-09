@@ -13,6 +13,14 @@ type OAuthClient struct {
 	SecretHash   *string
 	CreatedAt    time.Time
 	LastUsedAt   *time.Time
+	OwnerUserID  *vo.Id
+	IsGlobal     bool
+}
+
+// OAuthApp is a client with its live grants, for the operator commands.
+type OAuthApp struct {
+	Client OAuthClient
+	Grants []OAuthGrant
 }
 
 type OAuthAuthorizationCode struct {
@@ -44,7 +52,8 @@ func (g *OAuthGrant) IsLive(now time.Time) bool { return g.RevokedAt == nil && g
 
 // ConnectedGrant is a grant joined with its client, for the Settings list.
 type ConnectedGrant struct {
-	Grant        OAuthGrant
-	ClientName   string
-	RedirectURIs []string
+	Grant          OAuthGrant
+	ClientName     string
+	RedirectURIs   []string
+	ClientIsGlobal bool
 }

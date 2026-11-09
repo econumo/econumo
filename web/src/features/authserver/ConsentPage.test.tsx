@@ -25,7 +25,7 @@ const SEARCH =
   '?client_id=abc&redirect_uri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&response_type=code&code_challenge=x&code_challenge_method=S256&state=s'
 const CALLBACK = 'https://claude.ai/api/mcp/auth_callback?code=c&state=s'
 
-const claude = { clientName: 'Claude', redirectHost: 'claude.ai', isLoopback: false, scope: 'mcp' as const, errorRedirectUrl: '' }
+const claude = { clientName: 'Claude', redirectHost: 'claude.ai', isLoopback: false, isGlobal: false, scope: 'mcp' as const, errorRedirectUrl: '' }
 
 function httpError(status: number, message: string) {
   return new AxiosError('failed', String(status), undefined, undefined, {
@@ -109,11 +109,40 @@ it('shows the client and where it will send the user, then approves', async () =
 })
 
 it('reads a loopback client as an app on this computer', async () => {
-  vi.mocked(getAuthorizationRequest).mockResolvedValue({ clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, scope: 'mcp', errorRedirectUrl: '' })
+  vi.mocked(getAuthorizationRequest).mockResolvedValue({ clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, isGlobal: false, scope: 'mcp', errorRedirectUrl: '' })
   renderPage()
   expect(await screen.findByText('Codex')).toBeInTheDocument()
   expect(screen.getByText(/app on this computer/)).toBeInTheDocument()
   expect(screen.queryByText(/127\.0\.0\.1/)).not.toBeInTheDocument()
+})
+
+it('marks an official app and adds no unverified-name line', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue({ ...claude, isGlobal: true })
+  renderPage()
+  expect(await screen.findByText('Claude')).toBeInTheDocument()
+  expect(screen.getByText('Official')).toBeInTheDocument()
+  expect(screen.queryByText(/Econumo doesn't verify its name/)).toBeNull()
+})
+
+it('warns that a user app named itself, above the address line', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
+  renderPage()
+  expect(await screen.findByText('Claude')).toBeInTheDocument()
+  expect(screen.queryByText('Official')).toBeNull()
+  const warning = screen.getByText("Registered by the app itself. Econumo doesn't verify its name; check the address below.")
+  const address = screen.getByText("After you allow, you'll be sent to claude.ai.")
+  expect(warning.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('warns a loopback user app without pointing at an address it does not show', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue({ clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, isGlobal: false, scope: 'mcp', errorRedirectUrl: '' })
+  renderPage()
+  expect(await screen.findByText('Codex')).toBeInTheDocument()
+  expect(screen.queryByText('Official')).toBeNull()
+  const warning = screen.getByText("Registered by the app itself. Econumo doesn't verify its name.")
+  const address = screen.getByText(/app on this computer/)
+  expect(warning.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByText(/check the address below/)).toBeNull()
 })
 
 it('deny navigates to the access_denied redirect', async () => {
@@ -143,7 +172,7 @@ it('an invalid request shows an error card and only navigates when the user asks
 
 it('an invalid request from a loopback client offers a return to the app', async () => {
   vi.mocked(getAuthorizationRequest).mockResolvedValue({
-    clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, scope: 'mcp',
+    clientName: 'Codex', redirectHost: '127.0.0.1', isLoopback: true, isGlobal: false, scope: 'mcp',
     errorRedirectUrl: 'http://127.0.0.1:1455/cb?error=invalid_request',
   })
   renderPage()
@@ -413,7 +442,7 @@ describe('double-clickjacking guard', () => {
 
 it('a read-scoped client says it only reads, with no verified line', async () => {
   vi.mocked(getAuthorizationRequest).mockResolvedValue({
-    clientName: 'Reports', redirectHost: 'reports.example.test', isLoopback: false, scope: 'read', errorRedirectUrl: '',
+    clientName: 'Reports', redirectHost: 'reports.example.test', isLoopback: false, isGlobal: false, scope: 'read', errorRedirectUrl: '',
   })
   renderPage()
   expect(await screen.findByText('Reports')).toBeInTheDocument()

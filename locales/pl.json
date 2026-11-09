@@ -2037,8 +2037,11 @@
     "consent": {
       "title": "Połącz aplikację z Econumo",
       "wantsAccess": "chce uzyskać dostęp do Twojego konta Econumo.",
+      "official": "Oficjalna",
       "redirect": "Po wyrażeniu zgody zostaniesz przekierowany do {host}.",
       "loopback": "Po wyrażeniu zgody wrócisz do aplikacji na tym komputerze.",
+      "unverified": "Zarejestrowana przez samą aplikację. Econumo nie weryfikuje jej nazwy; sprawdź adres poniżej.",
+      "unverifiedLoopback": "Zarejestrowana przez samą aplikację. Econumo nie weryfikuje jej nazwy.",
       "wantsRead": "chce odczytać Twoje dane w Econumo.",
       "readAccess": "Niczego nie zmieni.",
       "fullAccess": "Będzie mogła odczytywać i zmieniać Twoje dane.",
@@ -2066,6 +2069,7 @@
       "lastUsed": "Ostatnio używana {when}",
       "loopback": "Działa na tym komputerze",
       "returnsTo": "Odsyła Cię do {host}",
+      "official": "Oficjalna",
       "menuItem": "Połączone aplikacje"
     }
   },
@@ -2203,7 +2207,8 @@
       "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",
       "client_not_found": "Rejestracja tej aplikacji wygasła lub jest nieznana. Usuń Econumo z aplikacji i dodaj je ponownie.",
       "redirect_uri_mismatch": "Ten link logowania jest nieprawidłowy dla tej aplikacji. Rozpocznij połączenie ponownie z poziomu aplikacji.",
-      "grant_not_found": "Nie znaleziono połączonej aplikacji."
+      "grant_not_found": "Nie znaleziono połączonej aplikacji.",
+      "app_not_yours": "Ta aplikacja jest połączona z innym kontem Econumo. Usuń Econumo z aplikacji i dodaj je ponownie."
     },
     "oauth": {
       "provider_not_configured": "Dostawca logowania nie jest skonfigurowany",

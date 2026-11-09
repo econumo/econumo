@@ -2037,8 +2037,11 @@
     "consent": {
       "title": "Collega un'app a Econumo",
       "wantsAccess": "vuole accedere al tuo account Econumo.",
+      "official": "Ufficiale",
       "redirect": "Dopo il tuo consenso verrai reindirizzato a {host}.",
       "loopback": "Dopo il tuo consenso tornerai a un'app su questo computer.",
+      "unverified": "Registrata dall'app stessa. Econumo non verifica il suo nome; controlla l'indirizzo qui sotto.",
+      "unverifiedLoopback": "Registrata dall'app stessa. Econumo non verifica il suo nome.",
       "wantsRead": "vuole leggere i tuoi dati di Econumo.",
       "readAccess": "Non potrà modificare nulla.",
       "fullAccess": "Potrà leggere e modificare i tuoi dati.",
@@ -2066,6 +2069,7 @@
       "lastUsed": "Ultimo utilizzo {when}",
       "loopback": "Funziona su questo computer",
       "returnsTo": "Ti riporta a {host}",
+      "official": "Ufficiale",
       "menuItem": "App connesse"
     }
   },
@@ -2203,7 +2207,8 @@
       "disabled": "Il collegamento di app non è disponibile su questo server.",
       "client_not_found": "La registrazione di questa app è scaduta o non è riconosciuta. Rimuovi Econumo dall'app e aggiungilo di nuovo.",
       "redirect_uri_mismatch": "Questo link di accesso non è valido per questa app. Avvia di nuovo la connessione dall'app.",
-      "grant_not_found": "App collegata non trovata."
+      "grant_not_found": "App collegata non trovata.",
+      "app_not_yours": "Questa app è collegata a un altro account Econumo. Rimuovi Econumo dall'app e aggiungilo di nuovo."
     },
     "oauth": {
       "provider_not_configured": "Il provider di accesso non è configurato",

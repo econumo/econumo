@@ -71,24 +71,51 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 		return model.TokenResponse{}, err
 	}
 	now := s.clock.Now()
-	// Consumed in its own statement before any check, so every attempt,
-	// including a failed one, burns the code.
-	code, err := s.repo.ConsumeCode(ctx, hashSecret(req.Code))
+	hash := hashSecret(req.Code)
+	// The code is read here only to learn whose row lock to take; it is
+	// consumed under that lock and the client lock below. A row never changes,
+	// so checking the copy read here is checking the one consumed.
+	code, err := s.repo.GetCode(ctx, hash)
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			return model.TokenResponse{}, errInvalidGrant
 		}
 		return model.TokenResponse{}, err
 	}
+	var bad error
 	if !now.Before(code.ExpiresAt) || !code.ClientID.Equal(c.ID) || code.RedirectURI != req.RedirectURI || !VerifyPKCE(req.CodeVerifier, code.CodeChallenge) {
-		return model.TokenResponse{}, errInvalidGrant
+		bad = errInvalidGrant
+	} else if !s.resourceOK(req.Resource) {
+		bad = &OAuthError{400, "invalid_target", "unknown resource"}
 	}
-	if !s.resourceOK(req.Resource) {
-		return model.TokenResponse{}, &OAuthError{400, "invalid_target", "unknown resource"}
+	if bad != nil {
+		// A failed attempt burns the code too, in its own statement.
+		if _, err := s.repo.ConsumeCode(ctx, hash); err != nil {
+			if _, ok := errs.AsNotFound(err); !ok {
+				return model.TokenResponse{}, err
+			}
+		}
+		return model.TokenResponse{}, bad
 	}
 	var resp model.TokenResponse
+	grantInsertFailed := false
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if _, err := s.creds.LockForOAuth(ctx, code.UserID); err != nil {
+			return err
+		}
+		// Consumed under the client lock, which app:disconnect and app:delete
+		// hold while they drop codes and revoke grants: either they took the
+		// code first, or the grant below commits before they read the grants.
+		if err := s.repo.ShareLockClient(ctx, c.ID); err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				return errInvalidGrant
+			}
+			return err
+		}
+		if _, err := s.repo.ConsumeCode(ctx, hash); err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				return errInvalidGrant
+			}
 			return err
 		}
 		rawRefresh, refreshHash, err := newSecret()
@@ -98,6 +125,7 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 		g := &model.OAuthGrant{ID: vo.NewId(), UserID: code.UserID, ClientID: c.ID, RefreshTokenHash: refreshHash, Scope: code.Scope,
 			CreatedAt: now, LastUsedAt: now, ExpiresAt: now.Add(GrantIdleTTL)}
 		if err := s.repo.InsertGrant(ctx, g); err != nil {
+			grantInsertFailed = true
 			return err
 		}
 		// The generation captured at approval, not the current one: a reclaim
@@ -125,6 +153,12 @@ func (s *Service) exchange(ctx context.Context, req model.TokenRequest) (model.T
 		return nil
 	})
 	if err != nil {
+		// app:delete removing the client after authentication makes the grant
+		// INSERT fail its foreign key. Checked after the rollback: an aborted
+		// PostgreSQL transaction runs no further statements.
+		if grantInsertFailed && s.clientGone(ctx, c.ID) {
+			return model.TokenResponse{}, errInvalidGrant
+		}
 		return model.TokenResponse{}, err
 	}
 	reqctx.AddLogAttr(ctx, "client_id", c.ID.String())
@@ -265,9 +299,15 @@ func (s *Service) handleRotatedRefresh(ctx context.Context, hash string, clientI
 		slog.WarnContext(ctx, "oauth-refresh-reuse", "grant_id", g.ID.String(), "revoked", false)
 		return errInvalidGrant
 	}
-	if err := s.revokeGrant(ctx, g.UserID, g.ID, now); err != nil {
+	if _, err := s.revokeGrant(ctx, g.UserID, g.ID, now); err != nil {
 		return err
 	}
 	slog.WarnContext(ctx, "oauth-refresh-reuse", "grant_id", g.ID.String(), "revoked", true)
 	return errInvalidGrant
+}
+
+func (s *Service) clientGone(ctx context.Context, id vo.Id) bool {
+	_, err := s.repo.GetClient(ctx, id)
+	_, ok := errs.AsNotFound(err)
+	return ok
 }

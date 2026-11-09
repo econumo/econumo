@@ -145,6 +145,7 @@ const (
 	CodeAuthServerClientNotFound   = "authserver.client_not_found"
 	CodeAuthServerRedirectMismatch = "authserver.redirect_uri_mismatch"
 	CodeAuthServerGrantNotFound    = "authserver.grant_not_found"
+	CodeAuthServerAppNotYours      = "authserver.app_not_yours"
 )
 
 var AllCodes = []string{
@@ -284,4 +285,5 @@ var AllCodes = []string{
 	CodeAuthServerClientNotFound,
 	CodeAuthServerRedirectMismatch,
 	CodeAuthServerGrantNotFound,
+	CodeAuthServerAppNotYours,
 }

@@ -8,6 +8,7 @@ import "net/url"
 // redirect is redacted by the normalizer.
 func init() {
 	const callback = "https://claude.ai/api/mcp/auth_callback"
+	const globalCallback = "https://share.example.test/auth/callback"
 	const challenge = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
 	authBody := func(clientID, redirect string) map[string]any {
 		return map[string]any{"clientId": clientID, "redirectUri": redirect, "responseType": "code",
@@ -18,7 +19,7 @@ func init() {
 			"&responseType=code&codeChallenge=" + challenge + "&codeChallengeMethod=S256&state=s1"
 	}
 
-	readBody := authBody(OAuthClientID, callback)
+	readBody := authBody(OAuthGlobalClientID, globalCallback)
 	readBody["scope"] = "read"
 	register(Scenario{Name: "authserver_consent", Calls: func() []Call {
 		return []Call{
@@ -29,11 +30,16 @@ func init() {
 			{Label: "err:get-authorization-request-unknown-client", Method: "GET", Path: query("00000000-0000-0000-0000-00000000dead", callback, challenge), Auth: "owner"},
 			{Label: "err:get-authorization-request-redirect-mismatch", Method: "GET", Path: query(OAuthClientID, "https://evil.example.test/cb", challenge), Auth: "owner"},
 			{Label: "err:get-authorization-request-unauthenticated", Method: "GET", Path: query(OAuthClientID, callback, challenge)},
+			{Label: "decline-authorization-readonly", Method: "POST", Path: "/api/v1/authserver/decline-authorization", Auth: "readonly", Body: authBody(OAuthGlobalClientID, globalCallback)},
 			{Label: "approve-authorization", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "owner", Body: authBody(OAuthClientID, callback)},
 			{Label: "err:approve-authorization-unknown-client", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "owner", Body: authBody("00000000-0000-0000-0000-00000000dead", callback)},
-			{Label: "err:approve-authorization-readonly", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "readonly", Body: authBody(OAuthClientID, callback)},
+			{Label: "err:approve-authorization-readonly", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "readonly", Body: authBody(OAuthGlobalClientID, globalCallback)},
 			{Label: "decline-authorization", Method: "POST", Path: "/api/v1/authserver/decline-authorization", Auth: "owner", Body: authBody(OAuthClientID, callback)},
-			{Label: "decline-authorization-readonly", Method: "POST", Path: "/api/v1/authserver/decline-authorization", Auth: "readonly", Body: authBody(OAuthClientID, callback)},
+			{Label: "err:get-authorization-request-not-yours", Method: "GET", Path: query(OAuthClientID, callback, challenge), Auth: "guest"},
+			{Label: "err:approve-authorization-not-yours", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "guest", Body: authBody(OAuthClientID, callback)},
+			{Label: "err:decline-authorization-not-yours", Method: "POST", Path: "/api/v1/authserver/decline-authorization", Auth: "readonly", Body: authBody(OAuthClientID, callback)},
+			{Label: "get-authorization-request-global-app", Method: "GET", Path: query(OAuthGlobalClientID, globalCallback, challenge), Auth: "guest"},
+			{Label: "approve-authorization-global-app", Method: "POST", Path: "/api/v1/authserver/approve-authorization", Auth: "guest", Body: authBody(OAuthGlobalClientID, globalCallback)},
 			{Label: "err:decline-authorization-redirect-mismatch", Method: "POST", Path: "/api/v1/authserver/decline-authorization", Auth: "owner", Body: authBody(OAuthClientID, "https://evil.example.test/cb")},
 		}
 	}})

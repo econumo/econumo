@@ -10,6 +10,23 @@ import (
 	"time"
 )
 
+const claimOAuthClient = `-- name: ClaimOAuthClient :execrows
+UPDATE oauth_clients SET owner_user_id = $1 WHERE id = $2 AND is_global = false AND owner_user_id IS NULL
+`
+
+type ClaimOAuthClientParams struct {
+	OwnerUserID *string
+	ID          string
+}
+
+func (q *Queries) ClaimOAuthClient(ctx context.Context, arg ClaimOAuthClientParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, claimOAuthClient, arg.OwnerUserID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const consumeOAuthCode = `-- name: ConsumeOAuthCode :one
 DELETE FROM oauth_authorization_codes WHERE code_hash = $1
 RETURNING code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at, scope
@@ -35,6 +52,35 @@ func (q *Queries) ConsumeOAuthCode(ctx context.Context, codeHash string) (OauthA
 	return i, err
 }
 
+const deleteClientOAuthCodes = `-- name: DeleteClientOAuthCodes :execrows
+DELETE FROM oauth_authorization_codes WHERE client_id = $1
+`
+
+func (q *Queries) DeleteClientOAuthCodes(ctx context.Context, clientID string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteClientOAuthCodes, clientID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteClientUserOAuthCodes = `-- name: DeleteClientUserOAuthCodes :execrows
+DELETE FROM oauth_authorization_codes WHERE client_id = $1 AND user_id = $2
+`
+
+type DeleteClientUserOAuthCodesParams struct {
+	ClientID string
+	UserID   string
+}
+
+func (q *Queries) DeleteClientUserOAuthCodes(ctx context.Context, arg DeleteClientUserOAuthCodesParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteClientUserOAuthCodes, arg.ClientID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteDeadOAuthGrants = `-- name: DeleteDeadOAuthGrants :execrows
 DELETE FROM oauth_grants
 WHERE (revoked_at IS NOT NULL AND revoked_at < $1)
@@ -54,8 +100,20 @@ func (q *Queries) DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuth
 	return result.RowsAffected()
 }
 
+const deleteOAuthClient = `-- name: DeleteOAuthClient :execrows
+DELETE FROM oauth_clients WHERE id = $1
+`
+
+func (q *Queries) DeleteOAuthClient(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteOAuthClient, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getOAuthClient = `-- name: GetOAuthClient :one
-SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at FROM oauth_clients WHERE id = $1
+SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at, owner_user_id, is_global FROM oauth_clients WHERE id = $1
 `
 
 func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, error) {
@@ -68,6 +126,31 @@ func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, e
 		&i.SecretHash,
 		&i.CreatedAt,
 		&i.LastUsedAt,
+		&i.OwnerUserID,
+		&i.IsGlobal,
+	)
+	return i, err
+}
+
+const getOAuthCode = `-- name: GetOAuthCode :one
+SELECT code_hash, client_id, user_id, redirect_uri, code_challenge, resource, credentials_generation, created_at, expires_at, scope
+FROM oauth_authorization_codes WHERE code_hash = $1
+`
+
+func (q *Queries) GetOAuthCode(ctx context.Context, codeHash string) (OauthAuthorizationCode, error) {
+	row := q.db.QueryRowContext(ctx, getOAuthCode, codeHash)
+	var i OauthAuthorizationCode
+	err := row.Scan(
+		&i.CodeHash,
+		&i.ClientID,
+		&i.UserID,
+		&i.RedirectUri,
+		&i.CodeChallenge,
+		&i.Resource,
+		&i.CredentialsGeneration,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.Scope,
 	)
 	return i, err
 }
@@ -148,8 +231,8 @@ func (q *Queries) GetOAuthGrantBySpentRefreshHash(ctx context.Context, tokenHash
 
 const insertOAuthClient = `-- name: InsertOAuthClient :exec
 
-INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO oauth_clients (id, name, redirect_uris, secret_hash, created_at, last_used_at, owner_user_id, is_global)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type InsertOAuthClientParams struct {
@@ -159,6 +242,8 @@ type InsertOAuthClientParams struct {
 	SecretHash   *string
 	CreatedAt    time.Time
 	LastUsedAt   *time.Time
+	OwnerUserID  *string
+	IsGlobal     bool
 }
 
 // OAuth authorization server (MCP clients): clients, codes, grants.
@@ -170,6 +255,8 @@ func (q *Queries) InsertOAuthClient(ctx context.Context, arg InsertOAuthClientPa
 		arg.SecretHash,
 		arg.CreatedAt,
 		arg.LastUsedAt,
+		arg.OwnerUserID,
+		arg.IsGlobal,
 	)
 	return err
 }
@@ -260,9 +347,127 @@ func (q *Queries) InsertOAuthSpentRefreshHash(ctx context.Context, arg InsertOAu
 	return err
 }
 
+const listAllUnrevokedOAuthGrants = `-- name: ListAllUnrevokedOAuthGrants :many
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope
+FROM oauth_grants WHERE revoked_at IS NULL
+ORDER BY client_id, created_at, id
+`
+
+func (q *Queries) ListAllUnrevokedOAuthGrants(ctx context.Context) ([]OauthGrant, error) {
+	rows, err := q.db.QueryContext(ctx, listAllUnrevokedOAuthGrants)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OauthGrant{}
+	for rows.Next() {
+		var i OauthGrant
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ClientID,
+			&i.RefreshTokenHash,
+			&i.PrevRefreshTokenHash,
+			&i.RotatedAt,
+			&i.CreatedAt,
+			&i.LastUsedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.Scope,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOAuthClientGrants = `-- name: ListOAuthClientGrants :many
+SELECT id, user_id, client_id, refresh_token_hash, prev_refresh_token_hash, rotated_at, created_at, last_used_at, expires_at, revoked_at, scope
+FROM oauth_grants WHERE client_id = $1 AND revoked_at IS NULL
+ORDER BY created_at, id
+`
+
+func (q *Queries) ListOAuthClientGrants(ctx context.Context, clientID string) ([]OauthGrant, error) {
+	rows, err := q.db.QueryContext(ctx, listOAuthClientGrants, clientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OauthGrant{}
+	for rows.Next() {
+		var i OauthGrant
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ClientID,
+			&i.RefreshTokenHash,
+			&i.PrevRefreshTokenHash,
+			&i.RotatedAt,
+			&i.CreatedAt,
+			&i.LastUsedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.Scope,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOAuthClients = `-- name: ListOAuthClients :many
+SELECT id, name, redirect_uris, secret_hash, created_at, last_used_at, owner_user_id, is_global FROM oauth_clients ORDER BY created_at, id
+`
+
+func (q *Queries) ListOAuthClients(ctx context.Context) ([]OauthClient, error) {
+	rows, err := q.db.QueryContext(ctx, listOAuthClients)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OauthClient{}
+	for rows.Next() {
+		var i OauthClient
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.RedirectUris,
+			&i.SecretHash,
+			&i.CreatedAt,
+			&i.LastUsedAt,
+			&i.OwnerUserID,
+			&i.IsGlobal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnrevokedOAuthGrants = `-- name: ListUnrevokedOAuthGrants :many
 SELECT g.id, g.user_id, g.client_id, g.refresh_token_hash, g.prev_refresh_token_hash, g.rotated_at,
-       g.created_at, g.last_used_at, g.expires_at, g.revoked_at, g.scope, c.name, c.redirect_uris
+       g.created_at, g.last_used_at, g.expires_at, g.revoked_at, g.scope, c.name, c.redirect_uris, c.is_global
 FROM oauth_grants g
 JOIN oauth_clients c ON c.id = g.client_id
 WHERE g.user_id = $1 AND g.revoked_at IS NULL
@@ -283,6 +488,7 @@ type ListUnrevokedOAuthGrantsRow struct {
 	Scope                string
 	Name                 string
 	RedirectUris         string
+	IsGlobal             bool
 }
 
 func (q *Queries) ListUnrevokedOAuthGrants(ctx context.Context, userID string) ([]ListUnrevokedOAuthGrantsRow, error) {
@@ -308,6 +514,7 @@ func (q *Queries) ListUnrevokedOAuthGrants(ctx context.Context, userID string) (
 			&i.Scope,
 			&i.Name,
 			&i.RedirectUris,
+			&i.IsGlobal,
 		); err != nil {
 			return nil, err
 		}
@@ -320,6 +527,31 @@ func (q *Queries) ListUnrevokedOAuthGrants(ctx context.Context, userID string) (
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockOAuthClient = `-- name: LockOAuthClient :one
+SELECT id FROM oauth_clients WHERE id = $1
+FOR UPDATE
+`
+
+// Plain FOR UPDATE is required: it is the only mode that conflicts with the KEY SHARE
+// lock a concurrent grant INSERT takes on this row through its foreign key.
+func (q *Queries) LockOAuthClient(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, lockOAuthClient, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
+const makeOAuthClientGlobal = `-- name: MakeOAuthClientGlobal :execrows
+UPDATE oauth_clients SET is_global = true, owner_user_id = NULL WHERE id = $1 AND is_global = false
+`
+
+func (q *Queries) MakeOAuthClientGlobal(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, makeOAuthClientGlobal, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const markOAuthClientUsed = `-- name: MarkOAuthClientUsed :exec
@@ -338,8 +570,8 @@ func (q *Queries) MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUs
 
 const purgeExcessUnusedOAuthClients = `-- name: PurgeExcessUnusedOAuthClients :execrows
 DELETE FROM oauth_clients
-WHERE last_used_at IS NULL AND id NOT IN (
-    SELECT id FROM oauth_clients WHERE last_used_at IS NULL ORDER BY created_at DESC, id DESC LIMIT $1
+WHERE last_used_at IS NULL AND is_global = false AND id NOT IN (
+    SELECT id FROM oauth_clients WHERE last_used_at IS NULL AND is_global = false ORDER BY created_at DESC, id DESC LIMIT $1
 )
 `
 
@@ -361,7 +593,7 @@ func (q *Queries) PurgeExpiredOAuthCodes(ctx context.Context, expiresAt time.Tim
 }
 
 const purgeUnusedOAuthClients = `-- name: PurgeUnusedOAuthClients :execrows
-DELETE FROM oauth_clients WHERE last_used_at IS NULL AND created_at < $1
+DELETE FROM oauth_clients WHERE last_used_at IS NULL AND is_global = false AND created_at < $1
 `
 
 func (q *Queries) PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Time) (int64, error) {
@@ -370,6 +602,39 @@ func (q *Queries) PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Ti
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const revokeClientOAuthGrants = `-- name: RevokeClientOAuthGrants :many
+UPDATE oauth_grants SET revoked_at = $1 WHERE client_id = $2 AND revoked_at IS NULL
+RETURNING id
+`
+
+type RevokeClientOAuthGrantsParams struct {
+	RevokedAt *time.Time
+	ClientID  string
+}
+
+func (q *Queries) RevokeClientOAuthGrants(ctx context.Context, arg RevokeClientOAuthGrantsParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, revokeClientOAuthGrants, arg.RevokedAt, arg.ClientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const revokeOAuthGrant = `-- name: RevokeOAuthGrant :execrows
@@ -476,6 +741,53 @@ func (q *Queries) RotateOAuthGrant(ctx context.Context, arg RotateOAuthGrantPara
 		arg.ID,
 		arg.RefreshTokenHash_2,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setOAuthClientSecret = `-- name: SetOAuthClientSecret :execrows
+UPDATE oauth_clients SET secret_hash = $1 WHERE id = $2 AND secret_hash IS NOT NULL
+`
+
+type SetOAuthClientSecretParams struct {
+	SecretHash *string
+	ID         string
+}
+
+func (q *Queries) SetOAuthClientSecret(ctx context.Context, arg SetOAuthClientSecretParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setOAuthClientSecret, arg.SecretHash, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const shareLockOAuthClient = `-- name: ShareLockOAuthClient :one
+SELECT id FROM oauth_clients WHERE id = $1 FOR KEY SHARE
+`
+
+// KEY SHARE conflicts only with the FOR UPDATE of LockOAuthClient (and a
+// DELETE), so concurrent exchanges of one client do not wait on each other.
+func (q *Queries) ShareLockOAuthClient(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, shareLockOAuthClient, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
+const updateGlobalOAuthClient = `-- name: UpdateGlobalOAuthClient :execrows
+UPDATE oauth_clients SET name = $1, redirect_uris = $2 WHERE id = $3 AND is_global = true
+`
+
+type UpdateGlobalOAuthClientParams struct {
+	Name         string
+	RedirectUris string
+	ID           string
+}
+
+func (q *Queries) UpdateGlobalOAuthClient(ctx context.Context, arg UpdateGlobalOAuthClientParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateGlobalOAuthClient, arg.Name, arg.RedirectUris, arg.ID)
 	if err != nil {
 		return 0, err
 	}
