@@ -58,11 +58,16 @@ The user decided this: **the "Not saved" label is shown in the transaction previ
 
 - A waiting added or edited transaction appears in every list with its new values and looks
   like any other row. Its preview shows the "Not saved" label; a failed one shows the reason.
-- A waiting deleted transaction disappears from lists at once. *(Builder's-call note: the
-  earlier idea of a crossed-out row was dropped because the list carries no marker.)*
+- A waiting deleted transaction disappears from lists at once. *(Author's call: the earlier
+  idea of a crossed-out row was dropped because the list carries no marker.)*
 - A limit cell shows the new number with a small not-saved icon, because a limit has no
   preview. *(Author's call.)*
 - The account balance includes waiting transactions.
+- The budget drill-down (`BudgetTransactionsDialog`, `UpcomingPaymentsPanel`, fed by the
+  server's per-cell list) follows the budget figures: a waiting add is absent until
+  confirmed, and a waiting edit or delete is applied by id to rows already listed. Placing a
+  new row in the right cell would mean rebuilding the server's matching on the client.
+  *(Author's call.)*
 - The sidebar's sync area shows how many changes are waiting.
 
 ### Editing something that is still waiting
@@ -73,13 +78,27 @@ The user decided this: **the "Not saved" label is shown in the transaction previ
 - Setting the same limit (budget, element, period) again keeps only the last value.
 - An operation already sent and not yet answered is never altered; the later change queues
   behind it.
+- So a target (a transaction id, or a limit's budget, element and period) has at most one
+  operation besides one in flight. *(Author's call.)*
 
 ### Failure
 
-A change the server refuses with an HTTP error stays local, is marked failed and appears in
-a new Inbox section, counted in the Inbox badge, with the server's reason. Other waiting
-changes still go through. Later changes to the same transaction or the same limit wait with
-the failed one rather than failing after it.
+A change the server refuses stays local, is marked failed and appears in a new Inbox section,
+counted in the Inbox badge, with the server's reason. Other waiting changes still go through.
+
+What counts as refused *(author's call)*:
+
+- A 4xx answered with the app's JSON envelope (409 aside) is a refusal.
+- A 5xx with the app's envelope is retried a few times with backoff, then fails, so a
+  repeatable server bug cannot block the queue. While retrying it steps aside for the
+  operations behind it unless they share its target.
+- No response, a timeout, or a response that is not the app's envelope (a proxy's error page
+  during a deploy) is not a refusal: the change stays waiting, with no limit.
+
+A later change to a failed target replaces the failed operation and makes it waiting again,
+whether it came from the Inbox or from a list, so nothing queues behind a failure. Deleting
+a failed add drops it with nothing sent. The dialog always shows the latest values.
+*(Author's call.)*
 
 - Failed add or edit: tapping opens the normal transaction dialog with the user's values;
   saving sends it again. The user can also discard it, which drops the local change.
