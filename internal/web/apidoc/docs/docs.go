@@ -439,70 +439,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/account/get-balance-snapshot": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Returns each requested account's balance and whether it holds nothing but its opening correction. Accounts the caller may not edit are omitted.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Account"
-                ],
-                "summary": "Snapshot account balances before an import",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Comma-separated account ids (max 200)",
-                        "name": "accountIds",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.BalanceSnapshotResult"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseException"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/account/get-folder-list": {
             "get": {
                 "security": [
@@ -894,81 +830,6 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/model.ReplaceFolderResult"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
-                        }
-                    },
-                    "402": {
-                        "description": "Payment Required",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseException"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/account/restore-balance": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Brings the account back to the snapshot balance by moving its opening correction, or adding a correction, just before the earliest transaction created since the snapshot. Requires ownership or admin access.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Account"
-                ],
-                "summary": "Restore an account balance after an import",
-                "parameters": [
-                    {
-                        "description": "Restore balance request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.RestoreBalanceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.RestoreBalanceResult"
                                         }
                                     }
                                 }
@@ -13626,37 +13487,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.BalanceSnapshotItem": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "balance": {
-                    "type": "string"
-                },
-                "fresh": {
-                    "type": "boolean"
-                },
-                "openingCorrectionId": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.BalanceSnapshotResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.BalanceSnapshotItem"
-                    }
-                },
-                "takenAt": {
-                    "type": "string"
-                }
-            }
-        },
         "model.BudgetAccountFilter": {
             "type": "object",
             "properties": {
@@ -17106,34 +16936,6 @@ const docTemplate = `{
         },
         "model.ResetPasswordResult": {
             "type": "object"
-        },
-        "model.RestoreBalanceRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "balance": {
-                    "type": "string"
-                },
-                "openingCorrectionId": {
-                    "type": "string"
-                },
-                "since": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.RestoreBalanceResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/model.AccountResult"
-                },
-                "restored": {
-                    "type": "boolean"
-                }
-            }
         },
         "model.RetryImportEventRequest": {
             "type": "object",

@@ -56,30 +56,6 @@ func (sqliteQuerier) InsertCorrectionTransaction(ctx context.Context, db backend
 	return sqlitegen.New(db).InsertCorrectionTransaction(ctx, p)
 }
 
-func (sqliteQuerier) GetFirstAccountTransactionID(ctx context.Context, db backend.DBTX, p firstTxIDP) (string, error) {
-	return sqlitegen.New(db).GetFirstAccountTransactionID(ctx, p)
-}
-
-func (sqliteQuerier) GetOpeningCorrection(ctx context.Context, db backend.DBTX, p openingCorrP) (openingCorrRow, error) {
-	return sqlitegen.New(db).GetOpeningCorrection(ctx, p)
-}
-
-func (sqliteQuerier) GetEarliestSpentSince(ctx context.Context, db backend.DBTX, p earliestSinceP) (time.Time, error) {
-	return sqlitegen.New(db).GetEarliestSpentSince(ctx, p)
-}
-
-func (sqliteQuerier) UpdateCorrectionTransaction(ctx context.Context, db backend.DBTX, p updateCorrectionP) (int64, error) {
-	return sqlitegen.New(db).UpdateCorrectionTransaction(ctx, p)
-}
-
-func (sqliteQuerier) DeleteCorrectionTransaction(ctx context.Context, db backend.DBTX, p deleteCorrectionP) (int64, error) {
-	return sqlitegen.New(db).DeleteCorrectionTransaction(ctx, p)
-}
-
-func (sqliteQuerier) LockAccountRow(ctx context.Context, db backend.DBTX, id string) (string, error) {
-	return sqlitegen.New(db).LockAccountRow(ctx, id)
-}
-
 // sqliteBalance builds the EXPANDED sqlite balance params (repeated positional
 // args). The single-balance query references the account id 4× (the 4th is the
 // recipient subquery, typed *string) and spent_at 4×; the bulk query references

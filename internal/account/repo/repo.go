@@ -34,12 +34,6 @@ type (
 	getOptionP        = sqlitegen.GetAccountOptionParams
 	upsertOptionP     = sqlitegen.UpsertAccountOptionParams
 	insertCorrectionP = sqlitegen.InsertCorrectionTransactionParams
-	firstTxIDP        = sqlitegen.GetFirstAccountTransactionIDParams
-	openingCorrP      = sqlitegen.GetOpeningCorrectionParams
-	openingCorrRow    = sqlitegen.GetOpeningCorrectionRow
-	earliestSinceP    = sqlitegen.GetEarliestSpentSinceParams
-	updateCorrectionP = sqlitegen.UpdateCorrectionTransactionParams
-	deleteCorrectionP = sqlitegen.DeleteCorrectionTransactionParams
 )
 
 // balanceResult is one account's balance already rendered to a decimal STRING.
@@ -64,12 +58,6 @@ type querier interface {
 	ListAccountOptionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertAccountOption(ctx context.Context, db backend.DBTX, p upsertOptionP) error
 	InsertCorrectionTransaction(ctx context.Context, db backend.DBTX, p insertCorrectionP) error
-	GetFirstAccountTransactionID(ctx context.Context, db backend.DBTX, p firstTxIDP) (string, error)
-	GetOpeningCorrection(ctx context.Context, db backend.DBTX, p openingCorrP) (openingCorrRow, error)
-	GetEarliestSpentSince(ctx context.Context, db backend.DBTX, p earliestSinceP) (time.Time, error)
-	UpdateCorrectionTransaction(ctx context.Context, db backend.DBTX, p updateCorrectionP) (int64, error)
-	DeleteCorrectionTransaction(ctx context.Context, db backend.DBTX, p deleteCorrectionP) (int64, error)
-	LockAccountRow(ctx context.Context, db backend.DBTX, id string) (string, error)
 }
 
 // balanceQuerier is the per-engine balance surface. The two engines' generated
@@ -287,115 +275,6 @@ func (r *Repo) SaveCorrection(ctx context.Context, c model.AccountCorrection) er
 		return err
 	}
 	return r.rev.Bump(ctx, c.AccountID.String())
-}
-
-// AccountTransactionShape reports how many transactions the account's list
-// holds and, when exactly one, its id and whether it is an untouched opening
-// correction.
-func (r *Repo) AccountTransactionShape(ctx context.Context, accountID vo.Id) (int, string, bool, error) {
-	count, err := r.TransactionsCount(ctx, accountID)
-	if err != nil {
-		return 0, "", false, err
-	}
-	if count != 1 {
-		return int(count), "", false, nil
-	}
-	acc := accountID.String()
-	onlyID, err := r.q.GetFirstAccountTransactionID(ctx, r.db(ctx), firstTxIDP{AccountID: acc, AccountRecipientID: &acc})
-	if err != nil {
-		return 0, "", false, err
-	}
-	_, isCorrection, err := r.GetCorrection(ctx, onlyID, acc)
-	if err != nil {
-		return 0, "", false, err
-	}
-	return 1, onlyID, isCorrection, nil
-}
-
-// EarliestSpentSince returns the earliest spent_at among the account's
-// transactions created at or after since, excluding excludeID.
-func (r *Repo) EarliestSpentSince(ctx context.Context, accountID vo.Id, since time.Time, excludeID string) (time.Time, bool, error) {
-	acc := accountID.String()
-	if excludeID == "" {
-		// transactions.id is a uuid column on PostgreSQL, so "" cannot be bound.
-		excludeID = "00000000-0000-0000-0000-000000000000"
-	}
-	at, err := r.q.GetEarliestSpentSince(ctx, r.db(ctx), earliestSinceP{
-		AccountID: acc, AccountRecipientID: &acc, CreatedAt: since, ID: excludeID,
-	})
-	if errors.Is(err, sql.ErrNoRows) {
-		return time.Time{}, false, nil
-	}
-	if err != nil {
-		return time.Time{}, false, err
-	}
-	return at, true, nil
-}
-
-// GetCorrection loads a correction-shaped transaction of the account; false
-// when it is missing or no longer has that shape.
-func (r *Repo) GetCorrection(ctx context.Context, id, accountID string) (*model.AccountCorrection, bool, error) {
-	row, err := r.q.GetOpeningCorrection(ctx, r.db(ctx), openingCorrP{ID: id, AccountID: accountID})
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, err
-	}
-	cid, err := vo.ParseId(row.ID)
-	if err != nil {
-		return nil, false, err
-	}
-	uid, err := vo.ParseId(row.UserID)
-	if err != nil {
-		return nil, false, err
-	}
-	aid, err := vo.ParseId(row.AccountID)
-	if err != nil {
-		return nil, false, err
-	}
-	return &model.AccountCorrection{
-		ID: cid, UserID: uid, AccountID: aid, Description: row.Description,
-		Type: row.Type, Amount: vo.NewDecimal(row.Amount).String(),
-		SpentAt: row.SpentAt, CreatedAt: row.CreatedAt,
-	}, true, nil
-}
-
-// UpdateCorrection rewrites a correction's type, amount and date, placing it
-// at the top of its new day; false when the row is gone.
-func (r *Repo) UpdateCorrection(ctx context.Context, c model.AccountCorrection) (bool, error) {
-	sortKey, err := r.order.Top(ctx, c.AccountID.String(), c.SpentAt)
-	if err != nil {
-		return false, err
-	}
-	n, err := r.q.UpdateCorrectionTransaction(ctx, r.db(ctx), updateCorrectionP{
-		Type: c.Type, Amount: c.Amount, SpentAt: c.SpentAt, UpdatedAt: c.UpdatedAt,
-		SortKey: sortKey, ID: c.ID.String(), AccountID: c.AccountID.String(),
-	})
-	if err != nil || n == 0 {
-		return false, err
-	}
-	return true, r.rev.Bump(ctx, c.AccountID.String())
-}
-
-// DeleteCorrection removes a correction transaction of the account; false
-// when the row is gone.
-func (r *Repo) DeleteCorrection(ctx context.Context, id, accountID string) (bool, error) {
-	n, err := r.q.DeleteCorrectionTransaction(ctx, r.db(ctx), deleteCorrectionP{ID: id, AccountID: accountID})
-	if err != nil || n == 0 {
-		return false, err
-	}
-	return true, r.rev.Bump(ctx, accountID)
-}
-
-// LockRow takes the account row lock (FOR UPDATE on PostgreSQL) for the rest
-// of the caller's transaction.
-func (r *Repo) LockRow(ctx context.Context, id vo.Id) error {
-	_, err := r.q.LockAccountRow(ctx, r.db(ctx), id.String())
-	if errors.Is(err, sql.ErrNoRows) {
-		return errs.NewNotFound("Account not found")
-	}
-	return err
 }
 
 // hydrateAccount reconstitutes an Account from a row.

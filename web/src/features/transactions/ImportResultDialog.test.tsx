@@ -1,12 +1,8 @@
 import { render, screen } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
 import { ImportResultDialog } from './ImportResultDialog'
 import type { AggregatedImportResult } from './importCsv'
 
 beforeEach(() => {
-  server.use(...coreHandlers())
   window.econumoConfig = {}
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
@@ -14,11 +10,7 @@ beforeEach(() => {
 })
 
 const renderResult = (result: AggregatedImportResult) =>
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <ImportResultDialog open result={result} onClose={() => {}} />
-    </QueryClientProvider>,
-  )
+  render(<ImportResultDialog open result={result} onClose={() => {}} />)
 
 it('full success: title + pluralized imported count', () => {
   renderResult({ imported: 3, failed: 0, errors: [] })
@@ -62,14 +54,4 @@ it('total failure: error title, long row lists truncated, extra error groups cou
   // only 5 error groups shown, remainder summarized
   expect(screen.queryByText('e6')).not.toBeInTheDocument()
   expect(screen.getByText('and 2 more error(s)')).toBeInTheDocument()
-})
-
-it('lists one kept-balance line per kept account in the account currency', async () => {
-  renderResult({ imported: 2, failed: 0, errors: [], kept: [{ accountId: 'a2', balance: '2340' }] })
-  expect(await screen.findByText("Kept today's balance of 2,340.00 $")).toBeInTheDocument()
-})
-
-it('names each account whose balance could not be kept', async () => {
-  renderResult({ imported: 2, failed: 0, errors: [], kept: [], notKept: ['a1'] })
-  expect(await screen.findByText("Couldn't keep the balance of Cash")).toBeInTheDocument()
 })

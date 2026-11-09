@@ -1,9 +1,6 @@
 import { apiErrorMessage } from '@/lib/apiError'
 import { buildCsvText, chunkRows, parseCsv, remapRow } from '@/lib/csv'
 import type { ImportResultDto } from '@/api/transaction'
-import type { Id } from '@/api/types'
-import type { AccountDto } from '@/api/dto/account'
-import { getBalanceSnapshot, restoreBalance } from '@/api/account'
 
 export const CHUNK_SIZE = 500
 
@@ -197,8 +194,6 @@ export interface AggregatedImportResult {
   imported: number
   failed: number
   errors: { message: string; rows: number[] }[]
-  kept?: KeptBalance[]
-  notKept?: Id[]
 }
 
 export type ImportPoster = (
@@ -248,68 +243,4 @@ export async function runImport(
     failed,
     errors: [...errorMap.entries()].map(([message, rows]) => ({ message, rows: [...rows].sort((a, b) => a - b) })),
   }
-}
-
-export function targetAccountIds(analysis: CsvAnalysis, sel: ImportSelection, accounts: AccountDto[]): Id[] {
-  if (sel.modes.account === 'existing') return sel.fixed.accountId ? [sel.fixed.accountId] : []
-  const columnIndex = sel.columns.account ? analysis.header.indexOf(sel.columns.account) : -1
-  if (columnIndex === -1) return []
-  const names = new Set<string>()
-  for (const row of analysis.rows) {
-    const name = (row[columnIndex] ?? '').trim().toLowerCase()
-    if (name) names.add(name)
-  }
-  const ids = new Set<Id>()
-  for (const account of accounts) {
-    if (names.has(account.name.trim().toLowerCase())) ids.add(account.id)
-  }
-  return [...ids]
-}
-
-export interface KeptBalance {
-  accountId: Id
-  balance: string
-}
-
-// The snapshot is taken right before the upload and each account is restored
-// afterwards, partial imports included; a failed restore leaves that account
-// out of `kept` rather than failing the import that already landed.
-export async function runImportKeepingBalance(
-  analysis: CsvAnalysis,
-  selection: ImportSelection,
-  post: ImportPoster,
-  accounts: AccountDto[],
-  onProgress?: (done: number, total: number) => void,
-): Promise<AggregatedImportResult & { kept: KeptBalance[]; notKept: Id[] }> {
-  const targets = targetAccountIds(analysis, selection, accounts)
-  let snapshot: Awaited<ReturnType<typeof getBalanceSnapshot>> | null = null
-  if (targets.length > 0) {
-    try {
-      snapshot = await getBalanceSnapshot(targets)
-    } catch {
-      snapshot = null
-    }
-  }
-  const result = await runImport(analysis, selection, post, onProgress)
-  const kept: KeptBalance[] = []
-  const notKept: Id[] = snapshot ? [] : [...targets]
-  if (snapshot) {
-    // the server snapshots only accounts the caller owns or administers
-    const inSnapshot = new Set(snapshot.items.map((item) => item.accountId))
-    for (const id of targets) if (!inSnapshot.has(id)) notKept.push(id)
-    for (const item of snapshot.items) {
-      try {
-        const restored = await restoreBalance({
-          accountId: item.accountId,
-          balance: item.balance,
-          openingCorrectionId: item.openingCorrectionId,
-          since: snapshot.takenAt,
-        })
-        if (restored.restored) kept.push({ accountId: item.accountId, balance: item.balance })
-      } catch {
-        notKept.push(item.accountId)
-      }
-    }
-  }
-  return { ...result, kept, notKept }
 }

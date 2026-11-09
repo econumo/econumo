@@ -170,7 +170,6 @@ export const METRICS = {
   IMPORT_SETUP_GUIDE_OPEN: 'appImportSetupGuideOpen',
   IMPORT_SETUP_SHORTCUTS_OPEN: 'appImportSetupShortcutsOpen',
   IMPORT_SYNC: 'appImportSync',
-  IMPORT_KEEP_BALANCE: 'appImportKeepBalance',
   IMPORT_RULE_CREATE: 'appImportRuleCreate',
   IMPORT_RULE_APPLY: 'appImportRuleApply',
   DATA_FULL_RELOAD: 'appDataFullReload',

@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeftRight, Split, SlidersHorizontal } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
-import { getBalanceSnapshot } from '@/api/account'
 import { importTransactionList } from '@/api/transaction'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { pluralPick } from '@/lib/plural'
@@ -18,7 +16,7 @@ import { useUserData } from '@/features/user/queries'
 import type { AggregatedImportResult, CsvAnalysis, FieldKey, ImportSelection } from './importCsv'
 import { markGettingStartedDone } from '@/features/onboarding/gettingStarted'
 import { EntitySelect } from './EntitySelect'
-import { analyzeCsv, autoDetect, CHUNK_SIZE, countNewLabels, defaultSelection, runImport, runImportKeepingBalance, selectionValid, targetAccountIds } from './importCsv'
+import { analyzeCsv, autoDetect, CHUNK_SIZE, countNewLabels, defaultSelection, runImport, selectionValid } from './importCsv'
 
 const MAX_FILE_SIZE = 10485760
 
@@ -53,7 +51,6 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
   const [submitting, setSubmitting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [separatorDialogOpen, setSeparatorDialogOpen] = useState(false)
-  const [keepBalanceChoice, setKeepBalanceChoice] = useState<boolean | null>(null)
 
   const reset = () => {
     setFile(null)
@@ -62,7 +59,6 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
     setSubmitting(false)
     setProgress(null)
     setSeparatorDialogOpen(false)
-    setKeepBalanceChoice(null)
   }
 
   useEffect(() => {
@@ -84,34 +80,6 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
       }),
     [accounts, meId],
   )
-
-  const targetIds = useMemo(
-    () => (analysis ? targetAccountIds(analysis, selection, writableAccounts) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [analysis, selection.modes.account, selection.columns.account, selection.fixed.accountId, writableAccounts],
-  )
-  const targetKey = [...targetIds].sort().join(',')
-  const {
-    data: snapshot,
-    isPending: snapshotPending,
-    isPlaceholderData: snapshotStale,
-    isError: snapshotFailed,
-  } = useQuery({
-    queryKey: ['balance-snapshot', targetKey],
-    queryFn: () => getBalanceSnapshot(targetIds),
-    enabled: open && targetIds.length > 0,
-    staleTime: 0,
-    gcTime: 0,
-    retry: false,
-    // the previous target's answer keeps the box in place while the new one loads
-    placeholderData: keepPreviousData,
-  })
-  // Importing before the snapshot answers would run a plain import and move a
-  // balance the user meant to keep; a failed snapshot allows a plain import.
-  const snapshotLoading = targetIds.length > 0 && !snapshotFailed && (snapshotPending || snapshotStale)
-  const snapshotItems = snapshotFailed ? [] : (snapshot?.items ?? [])
-  const showKeepBalance = targetIds.length > 0 && snapshotItems.length > 0
-  const keepBalance = keepBalanceChoice ?? (snapshotItems.length > 0 && snapshotItems.every((item) => item.fresh))
 
   const targetUserId = useMemo(() => {
     if (selection.modes.account === 'existing' && selection.fixed.accountId) {
@@ -303,12 +271,7 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
     if (!analysis || !selectionValid(selection)) return
     setSubmitting(true)
     try {
-      const onProgress = (done: number, total: number) => setProgress({ done, total })
-      const result =
-        showKeepBalance && !snapshotStale && keepBalance
-          ? await runImportKeepingBalance(analysis, selection, importTransactionList, writableAccounts, onProgress)
-          : await runImport(analysis, selection, importTransactionList, onProgress)
-      if (result.kept) trackEvent(METRICS.IMPORT_KEEP_BALANCE, { accounts: result.kept.length })
+      const result = await runImport(analysis, selection, importTransactionList, (done, total) => setProgress({ done, total }))
       trackEvent(METRICS.TRANSACTION_IMPORT)
       markGettingStartedDone(queryClient, 'import')
       await queryClient.invalidateQueries()
@@ -474,24 +437,6 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
           </div>
         ) : null}
 
-        {showKeepBalance ? (
-          <label className="flex items-start gap-2 text-sm">
-            <Checkbox
-              className="mt-0.5"
-              checked={keepBalance}
-              disabled={submitting}
-              onCheckedChange={(checked) => setKeepBalanceChoice(checked === true)}
-            />
-            <span className="flex flex-col">
-              {t('transactions.import.keep_balance.label')}
-              <span className="text-xs text-muted-foreground">{t('transactions.import.keep_balance.hint')}</span>
-            </span>
-          </label>
-        ) : null}
-        {targetIds.length > 0 && snapshotFailed ? (
-          <p className="text-xs text-muted-foreground">{t('transactions.import.keep_balance.unavailable')}</p>
-        ) : null}
-
         {submitting && progress && chunkCount > 1 ? (
           <Progress value={(progress.done / progress.total) * 100} aria-label="import progress" />
         ) : null}
@@ -500,7 +445,7 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
           <Button type="button" variant="secondary" disabled={submitting} onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="button" disabled={!analysis || !selectionValid(selection) || submitting || snapshotLoading} onClick={() => void handleSubmit()}>
+          <Button type="button" disabled={!analysis || !selectionValid(selection) || submitting} onClick={() => void handleSubmit()}>
             {t('common.button.import.label')}
           </Button>
         </div>

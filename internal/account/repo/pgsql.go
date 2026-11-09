@@ -80,31 +80,6 @@ func (pgsqlQuerier) InsertCorrectionTransaction(ctx context.Context, db backend.
 	return pgsqlgen.New(db).InsertCorrectionTransaction(ctx, pgsqlgen.InsertCorrectionTransactionParams(p))
 }
 
-func (pgsqlQuerier) GetFirstAccountTransactionID(ctx context.Context, db backend.DBTX, p firstTxIDP) (string, error) {
-	return pgsqlgen.New(db).GetFirstAccountTransactionID(ctx, pgsqlgen.GetFirstAccountTransactionIDParams(p))
-}
-
-func (pgsqlQuerier) GetOpeningCorrection(ctx context.Context, db backend.DBTX, p openingCorrP) (openingCorrRow, error) {
-	row, err := pgsqlgen.New(db).GetOpeningCorrection(ctx, pgsqlgen.GetOpeningCorrectionParams(p))
-	return openingCorrRow(row), err
-}
-
-func (pgsqlQuerier) GetEarliestSpentSince(ctx context.Context, db backend.DBTX, p earliestSinceP) (time.Time, error) {
-	return pgsqlgen.New(db).GetEarliestSpentSince(ctx, pgsqlgen.GetEarliestSpentSinceParams(p))
-}
-
-func (pgsqlQuerier) UpdateCorrectionTransaction(ctx context.Context, db backend.DBTX, p updateCorrectionP) (int64, error) {
-	return pgsqlgen.New(db).UpdateCorrectionTransaction(ctx, pgsqlgen.UpdateCorrectionTransactionParams(p))
-}
-
-func (pgsqlQuerier) DeleteCorrectionTransaction(ctx context.Context, db backend.DBTX, p deleteCorrectionP) (int64, error) {
-	return pgsqlgen.New(db).DeleteCorrectionTransaction(ctx, pgsqlgen.DeleteCorrectionTransactionParams(p))
-}
-
-func (pgsqlQuerier) LockAccountRow(ctx context.Context, db backend.DBTX, id string) (string, error) {
-	return pgsqlgen.New(db).LockAccountRow(ctx, id)
-}
-
 // pgsqlBalance builds the DEDUPED pgsql balance params (sqlc.arg names collapse
 // repeated references to a single field each).
 type pgsqlBalance struct{}

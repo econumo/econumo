@@ -406,15 +406,6 @@
         }
       }
     },
-    "import": {
-      "keep_balance": {
-        "label": "Manter o saldo atual",
-        "hint": "O saldo de hoje permanece igual; as transações mais antigas são equilibradas por um ajuste.",
-        "kept": "Saldo de hoje mantido: {amount}",
-        "not_kept": "Não foi possível manter o saldo de {account}",
-        "unavailable": "Não foi possível verificar os saldos atuais, por isso esta importação não os manterá."
-      }
-    },
     "import_csv": {
       "header": "Importar CSV",
       "none": "Nenhum",

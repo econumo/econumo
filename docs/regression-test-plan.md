@@ -573,20 +573,6 @@ navigation (single-pane vs sidebar).
       labels with separator), constant-value fields; result dialog shows
       imported/failed counts and per-row errors; imported rows appear with
       correct signs and classifications.
-- [ ] **Keep current balance** (CSV import) 📱: with a mapped account that holds
-      only its opening balance (or nothing), the "Keep current balance" box is
-      ticked; once the account has other transactions it is unticked. Ticked:
-      after importing older rows the account balance is unchanged and the
-      result dialog says "Kept today's balance of ..."; also after a partial
-      import. Unticked: the balance moves by the imported amounts as before.
-      Only accounts the caller owns or administers can be kept: the box is
-      hidden when none of the import's target accounts qualifies, and its default
-      looks only at those. A target that is a shared account with the user role
-      is not kept: with the box ticked its balance moves and the result dialog
-      says "Couldn't keep the balance of <account>". Import stays disabled
-      while the balance check for a newly picked account loads (the box stays
-      in place meanwhile); if the check fails, a note says the balance won't
-      be kept and Import runs a plain import.
 - [ ] Import with a broken row (bad date/amount) → partial result, failed rows
       detailed, good rows imported.
 - [ ] Category type guard: a category only goes on a transaction of its own

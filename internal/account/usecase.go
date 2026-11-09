@@ -434,35 +434,3 @@ func (s *Service) folderIndex(ctx context.Context, userID, folderID vo.Id) (int,
 	}
 	return 0, nil
 }
-
-// freshAccountResult builds one account's result after a write: read outside
-// the write tx so it sees the committed rows, with the revision and count read
-// anew (acct predates any correction the write added).
-func (s *Service) freshAccountResult(ctx context.Context, userID vo.Id, acct *model.Account) (model.AccountResult, error) {
-	folders, err := s.sortedFolders(ctx, userID)
-	if err != nil {
-		return model.AccountResult{}, err
-	}
-	memberships, err := s.memberships.MembershipsByUser(ctx, userID)
-	if err != nil {
-		return model.AccountResult{}, err
-	}
-	bal, err := s.balances.Balance(ctx, acct.ID, s.balanceBefore(ctx))
-	if err != nil {
-		return model.AccountResult{}, err
-	}
-	item, err := s.buildAccountResult(ctx, userID, acct, bal, folders, memberships, nil)
-	if err != nil {
-		return model.AccountResult{}, err
-	}
-	if item.TransactionsRevision, err = s.accounts.TransactionsRevision(ctx, acct.ID); err != nil {
-		return model.AccountResult{}, err
-	}
-	if item.TransactionsCount, err = s.balances.TransactionsCount(ctx, acct.ID); err != nil {
-		return model.AccountResult{}, err
-	}
-	if item.Position, err = s.accountIndex(ctx, userID, acct.ID); err != nil {
-		return model.AccountResult{}, err
-	}
-	return item, nil
-}

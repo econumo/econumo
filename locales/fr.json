@@ -406,15 +406,6 @@
         }
       }
     },
-    "import": {
-      "keep_balance": {
-        "label": "Conserver le solde actuel",
-        "hint": "Le solde d'aujourd'hui reste inchangé ; les transactions plus anciennes sont équilibrées par un ajustement.",
-        "kept": "Solde du jour conservé : {amount}",
-        "not_kept": "Impossible de conserver le solde de {account}",
-        "unavailable": "Impossible de vérifier les soldes actuels : cette importation ne les conservera pas."
-      }
-    },
     "import_csv": {
       "header": "Importer un CSV",
       "none": "Aucun",

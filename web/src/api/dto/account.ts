@@ -40,27 +40,3 @@ export interface AccountItemDto {
 
 /** The correction's wire shape lacks the list's provenance fields; a correction never has any. */
 export type CorrectionDto = Omit<TransactionDto, 'labelIds' | 'recurringId' | 'isImported'>
-
-export interface BalanceSnapshotItemDto {
-  accountId: Id
-  balance: string
-  openingCorrectionId: Id | ''
-  fresh: boolean
-}
-
-export interface BalanceSnapshotDto {
-  takenAt: string
-  items: BalanceSnapshotItemDto[]
-}
-
-export interface RestoreBalanceRequestDto {
-  accountId: Id
-  balance: string
-  openingCorrectionId: Id | ''
-  since: string
-}
-
-export interface RestoreBalanceResultDto {
-  item: AccountDto
-  restored: boolean
-}

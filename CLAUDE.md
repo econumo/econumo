@@ -1110,7 +1110,7 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   COMMIT as one UPDATE per account in sorted id order (a stable lock order, so concurrent
   writers cannot deadlock on it); outside a transaction they apply immediately. Sites:
   the transaction repo (`Save`, `ReplaceLabels`, `LinkRecurring`, `Delete`, `SetSideKey`), account
-  `SaveCorrection` / `UpdateCorrection` / `DeleteCorrection`, category/payee/tag merge and delete, label merge and delete, recurring
+  `SaveCorrection`, category/payee/tag merge and delete, label merge and delete, recurring
   delete, imports `InsertLink` / `UpdateLink` (only when its `transaction_id` changes) /
   `DeleteSource`, and the user `Save` when the name or avatar changes. The account DTO
   carries it as `transactionsRevision` (additive), next to `transactionsCount`, how many rows
@@ -1536,17 +1536,6 @@ data unreadable. Most are also asserted by the test suite.
 - **SQLite is the reference engine** — it's the default; PostgreSQL must match it byte-for-byte (enforced by the `enginecompare` suite).
 
 ### Notable behaviours
-- **Keep balance (CSV import)**: `GET /api/v1/account/get-balance-snapshot?accountIds=`
-  returns each account's current balance, and `POST /api/v1/account/restore-balance` (under the
-  account row lock) brings it back to a snapshot by moving or resizing the account's opening
-  correction, or by adding a "Balance adjustment" transaction; both bump the account's
-  transaction revision. The CSV import's "Keep current balance" checkbox snapshots before the
-  import and restores afterwards; the result lists accounts whose balance was kept and those
-  where it could not be. The server snapshots only accounts the caller owns or administers
-  (accepted admin), so any import target absent from the snapshot (e.g. a shared account with
-  the user role) is reported as not kept and its balance moves; the checkbox default and
-  visibility consider only accounts present in the snapshot. Import stays disabled while the
-  snapshot loads; a failed snapshot shows a note and allows a plain import.
 - **Category type matches transaction type**: an income category classifies only income and
   an expense category only expenses. `checkReferences` (create, update, bulk, recurring post,
   MCP, imports) refuses a mismatch with the field error `categoryId` /

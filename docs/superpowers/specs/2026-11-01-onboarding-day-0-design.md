@@ -149,6 +149,9 @@ budget. They are not banners. Which cards show depends on the device and the ser
 
 ## Import and the typed balance
 
+> Dropped on 2026-11-08: Getting started now puts Import before the balances, so the
+> "Keep current balance" option was removed. The section below is kept as history.
+
 A balance entered on an account is stored as a correction transaction dated today
 (`internal/account/create.go`). Importing older transactions into that account would
 then move today's balance.

@@ -41,33 +41,6 @@ type AccountStore interface {
 	// SaveCorrection inserts a balance-correction transaction (type income/expense
 	// by sign; amount is the absolute value).
 	SaveCorrection(ctx context.Context, c model.AccountCorrection) error
-
-	// AccountTransactionShape returns how many rows the account's transaction
-	// list holds and, when exactly one, its id and whether it still has the
-	// opening-correction shape (see GetCorrection).
-	AccountTransactionShape(ctx context.Context, accountID vo.Id) (count int, onlyID string, onlyIsCorrection bool, err error)
-
-	// EarliestSpentSince returns the earliest spent_at among the account's
-	// transactions created at or after since, excluding excludeID; false when
-	// there are none.
-	EarliestSpentSince(ctx context.Context, accountID vo.Id, since time.Time, excludeID string) (time.Time, bool, error)
-
-	// GetCorrection loads the account's transaction id when it is an untouched
-	// correction (income/expense with no recipient, category, payee, tag,
-	// recurring link, label or description); false otherwise.
-	GetCorrection(ctx context.Context, id, accountID string) (*model.AccountCorrection, bool, error)
-
-	// UpdateCorrection rewrites a correction's type, amount and date; false
-	// (nothing written, no bump) when the row is gone.
-	UpdateCorrection(ctx context.Context, c model.AccountCorrection) (bool, error)
-
-	// DeleteCorrection removes a correction; false when the row is gone.
-	DeleteCorrection(ctx context.Context, id, accountID string) (bool, error)
-
-	// LockRow takes the account row lock for the rest of the transaction
-	// (FOR UPDATE on PostgreSQL; SQLite's single connection already
-	// serializes writers).
-	LockRow(ctx context.Context, id vo.Id) error
 }
 
 // AccessStore persists the per-account grants (accounts_access) plus the two
