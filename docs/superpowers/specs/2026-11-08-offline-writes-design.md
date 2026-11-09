@@ -141,10 +141,18 @@ Decided by the owner: a UUID per operation, with handled operations refused.
   replay is harmless (same values; a repeated delete answers not found and lands in the
   Inbox). Create is guarded by its body id regardless.
 - Multi-cell fill sends one `set-limit` per cell, each with its own id.
-- All four claim through the existing `OperationGuard` (`operation_requests_ids`) inside the
-  write's transaction, so a refused or failed attempt rolls the claim back and can be sent
-  again with the same id.
-- The claim runs **before** any lookup or access check, in create as well (it currently
+- Create keeps the existing database guard (`OperationGuard`, `operation_requests_ids`) inside
+  its transaction: a duplicate transaction is the one replay that does real damage.
+- Update, delete and set-limit use an in-memory guard, decided by the owner: at most 10,000
+  ids per server instance, oldest evicted first, keyed by user and id so one user cannot
+  claim another's. No table, no migration, no extra database write. Losing it on a restart
+  is acceptable because replaying these three is harmless: an update or limit writes the
+  same values, and a repeated delete answers not found and lands in the Inbox.
+- An id is reserved before the write, kept only if the write commits, and released on any
+  error, so a refused attempt can be sent again with the same id. A duplicate arriving while
+  the first is still running gets a retryable answer (5xx with the envelope), not 409, since
+  the first may yet fail.
+- The check runs **before** any lookup or access check, in create as well (it currently
   follows the access check). Otherwise the replay of a delete that already landed would
   answer "not found" and be shown as a failure.
 - A replay answers **HTTP 409** with the handled-error envelope and the existing
