@@ -16,8 +16,8 @@ but does nothing.
 - Changes appear immediately and are identifiable as not saved yet.
 - Waiting changes survive closing the app or restarting the phone, and send by themselves,
   in order, when the app is open and the server is reachable.
-- Each operation carries a client-generated UUID, and the server refuses one it has already
-  handled, so a retry can never apply a change twice.
+- Each operation carries an `Idempotency-Key` (UUIDv7), and the server refuses one it has
+  already handled, so a retry can never apply a change twice.
 - A change the server refuses appears in the Inbox, where tapping it lets the user save
   again.
 - Everything that cannot work offline is disabled in the UI.
@@ -125,47 +125,44 @@ If changes are waiting, sign-out warns first, because signing out discards them.
 
 ### Server
 
-Decided by the owner: a UUID per operation, with handled operations refused.
+Decided by the owner: one universal `Idempotency-Key` header, a UUIDv7 per operation, kept in
+the database; the frontend assigns no record ids.
 
-- `create-transaction`: the existing `id` is the operation id.
-- `update-transaction`, `delete-transaction`, `set-limit`: the operation id is the
-  `X-Request-Id` header the SPA already sends with every request (`web/src/api/client.ts`,
-  a fresh UUIDv7 per request, allowed by CORS). The owner pointed this out; no new body
-  field. The server ignores that header today: `middleware.RequestID` always mints its own.
-  It keeps minting its own id for logs and the response, and additionally stashes a
-  client-sent value that parses as a UUID in the request context, where these three writes
-  claim it. Absent or malformed means no guard, so MCP and other clients are unchanged.
-- The interceptor mints an id only when the request has none, and the queue sets the
-  operation's stored id on every attempt.
-- A proxy that overwrites `X-Request-Id` would cost only the dedup of these three, whose
-  replay is harmless (same values; a repeated delete answers not found and lands in the
-  Inbox). Create is guarded by its body id regardless.
-- Multi-cell fill sends one `set-limit` per cell, each with its own id.
-- Create keeps the existing database guard (`OperationGuard`, `operation_requests_ids`) inside
-  its transaction: a duplicate transaction is the one replay that does real damage.
-- Update, delete and set-limit use an in-memory guard, decided by the owner: at most 10,000
-  ids per server instance, oldest evicted first, keyed by user and id so one user cannot
-  claim another's. No table, no migration, no extra database write. Losing it on a restart
-  is acceptable because replaying these three is harmless: an update or limit writes the
-  same values, and a repeated delete answers not found and lands in the Inbox.
-- An id is reserved before the write, kept only if the write commits, and released on any
-  error, so a refused attempt can be sent again with the same id. A duplicate arriving while
-  the first is still running gets a retryable answer (5xx with the envelope), not 409, since
-  the first may yet fail.
-- The check runs **before** any lookup or access check, in create as well (it currently
-  follows the access check). Otherwise the replay of a delete that already landed would
-  answer "not found" and be shown as a failure.
-- A replay answers **HTTP 409** with the handled-error envelope and the existing
-  `common.operation_locked` message. Today it is a 400, indistinguishable from a real
-  refusal because the envelope has no string code and messages are translated. The client
-  treats 409 as "already done".
+- The app sends `Idempotency-Key` (UUIDv7, the generator already in use) on every
+  authenticated write. It replaces the `X-Request-Id` the SPA sends today, which the server
+  never read: the header leaves `web/src/api/client.ts` and the CORS allow-list gains
+  `Idempotency-Key`. The server still mints its own `X-Request-Id` for logs and the response.
+- The API client mints a key when a request has none; the queue stores one per operation and
+  reuses it on every attempt. This key is the only id the frontend creates, because only the
+  sender can tell a retry from a new request.
+- One shared server check covers every authenticated `POST`. Public routes (login, sign-up)
+  have no user and are left out. Absent or malformed key means no guard, so MCP, older clients
+  and the parity catalogues are unchanged.
+- New table, on both engines, keyed by (user id, key): `created_at` and a nullable resource
+  id. The migration's version must be above every released one.
+- The check reads the table **before** the handler, so a replay is refused ahead of any lookup
+  or access check (otherwise the replay of a delete that already landed would answer "not
+  found" and show as a failure).
+- The key is written inside the request's own database transaction, through the
+  `TxManager.BeforeCommit` hook the revision bumps already use, so it and the write commit
+  together. A handler that opens no transaction has the key recorded right after a 2xx, a
+  slightly weaker guarantee. Any non-2xx releases the key so the operation can be sent again.
+- A concurrent duplicate loses on the primary key and gets a retryable 5xx with the envelope,
+  not 409, since the first attempt may still fail.
+- A replay answers **HTTP 409** with the handled-error envelope, the `common.operation_locked`
+  message and an additive `resourceId` field when one was stored. Non-replays keep their
+  existing statuses.
+- Rows older than 7 days are purged opportunistically (at most every 10 minutes per process,
+  set-based, best effort, like the other housekeeping). A retry only ever needs a key from a
+  request the server received, so that is long enough.
 
-**The created transaction takes the operation id as its own id.** The server currently mints
-a new id, so a waiting edit or delete of a waiting add would have nothing to reference, and
-a lost response would leave the client unable to learn the id. This must not become a way
-to overwrite someone's row (the budget-id IDOR fixed in #443 was this shape): a create whose
-id already names a transaction is refused, not saved over. `Repo.Save` upserts, so create
-needs an explicit existence check or insert-only path inside the claim's transaction.
+**Transaction ids stay server-minted.** `id` on `create-transaction` becomes optional and the
+SPA stops sending it. When present (older clients, MCP) it keeps today's body-id guard and
+today's 400. The create handler stores the new transaction's id as the key's resource id, so
+a lost response can still be resolved through the 409. Other create endpoints keep their
+`id` for now.
+
+Multi-cell fill sends one `set-limit` per cell, each with its own key.
 
 ### Client
 
@@ -177,8 +174,13 @@ needs an explicit existence check or insert-only path inside the claim's transac
   are applied on top when read (`select` on the transactions, accounts, budget and plan
   queries, or an equivalent). A sync or a restore therefore cannot erase them. The revision
   sync's rules (`noteOwnWrite`, `RELOAD_REVISION`, the epoch fence) stay intact.
-- On success the response is applied as today (`useApplyTransactionItem`). On 409, nothing
-  is known about the row, so the queue removes the operation and refreshes from the server.
+- A transaction added offline has a temporary id that exists only on the device and is never
+  sent. Queued changes to it wait for the add's answer, then use the real id.
+- On success the response is applied as today (`useApplyTransactionItem`) and the temporary
+  id is swapped for the server's. On 409 the operation is done: its `resourceId` resolves a
+  temporary id, and the queue refreshes from the server. A 409 with no resource id for an add
+  (the rare crash between commit and storing it, on a handler with no transaction) sends any
+  change queued behind it to the Inbox.
 - The 401 path pauses the queue. `clearPersistedQueryCache` runs on every login, and must
   keep the queue when the same user signs back in, and clear it for a different user.
 - A 402 (read-only access) is a failure like any other refusal.
@@ -195,9 +197,9 @@ API sections of `CLAUDE.md`.
 
 ### Older servers
 
-The native app can point at an older self-hosted server, which ignores the header and
-mints its own ids, so a waiting edit of a waiting add would fail into the Inbox there. The
-native app is parked, so `minServerVersion` is not raised. *(Author's call.)*
+The native app can point at an older self-hosted server, which ignores the key and requires
+`id` on create, so offline adds would be refused there and land in the Inbox. The native app
+is parked, so `minServerVersion` is not raised. *(Author's call.)*
 
 ## Left to the builder
 
