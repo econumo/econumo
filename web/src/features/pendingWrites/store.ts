@@ -63,6 +63,12 @@ function toOp({ userId: _userId, ...op }: Row): PendingOp {
   return op as PendingOp
 }
 
+// A row read from another tab's write: its mark says what that tab's caches
+// hold, and this tab's caches only count the change if this tab marked it.
+function withLandedMark({ landed: _stored, ...op }: PendingOp, mine: PendingOp['landed']): PendingOp {
+  return (mine ? { ...op, landed: mine } : op) as PendingOp
+}
+
 async function readRows(): Promise<Row[]> {
   let rows: Row[] = []
   await dbTransaction([STORE_PENDING_WRITES], 'readonly', (t) => {
@@ -86,8 +92,8 @@ async function refreshFromDisk(): Promise<void> {
     rows = await guarded<Row[] | null>(null, readRows)
   } while (rows && seen !== generation && owner === wanted)
   if (rows && owner === wanted) {
-    const landed = new Map(ops.filter((op) => op.landed).map((op) => [op.key, op.landed]))
-    const next = rows.filter((r) => r.userId === wanted).map(toOp).map((op) => (landed.has(op.key) ? { ...op, landed: landed.get(op.key) } : op))
+    const landed = new Map(ops.map((op) => [op.key, op.landed]))
+    const next = rows.filter((r) => r.userId === wanted).map(toOp).map((op) => withLandedMark(op, landed.get(op.key)))
     const kept = new Set(next.map((op) => op.key))
     const left = ops.some((op) => !kept.has(op.key))
     ops = next
@@ -123,8 +129,7 @@ function persist(before: PendingOp[], after: PendingOp[]): Promise<void> {
   }
   const write = guarded(undefined, () => dbTransaction([STORE_PENDING_WRITES], 'readwrite', (t) => {
     const store = t.objectStore(STORE_PENDING_WRITES)
-    // landed describes this page's caches, which a reload may not bring back
-    for (const { landed: _landed, ...op } of changed) {
+    for (const op of changed) {
       store.put({ ...op, userId })
     }
     for (const op of removed) {

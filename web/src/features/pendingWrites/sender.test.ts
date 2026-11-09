@@ -406,14 +406,19 @@ describe('the balance and the list while a replay is read back', () => {
     expect(shownIds()).toEqual(['real'])
   })
 
-  it('does not store that the change was read back: a reload starts from what is on disk', async () => {
+  it('stores that the change was read back and its real id: a reload must not count it again', async () => {
     server.use(http.get('*/api/v1/transaction/get-account-transaction-list', () => HttpResponse.json(envelope('Boom'), { status: 500 }), { once: true }))
     await add()
     await kickPendingWrites()
     expect(op('k1')?.landed).toEqual({ realId: 'real' })
     const stored = await dbRequest<PendingOp>(STORE_PENDING_WRITES, 'readonly', (s) => s.get('k1') as IDBRequest<PendingOp>)
-    expect(stored.landed).toBeUndefined()
+    expect(stored.landed).toEqual({ realId: 'real' })
     expect(stored.attempted).toBe(true)
+
+    resetPendingWritesForTests()
+    await loadPendingWrites('u1')
+    expect(op('k1')?.landed).toEqual({ realId: 'real' })
+    expect(shownBalance()).toBe('95')
   })
 })
 

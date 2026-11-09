@@ -227,6 +227,19 @@ it('another tab announcing a change refreshes this one', async () => {
   expect(getOps().map((o) => o.key)).toEqual(['theirs'])
 })
 
+it('a read-back mark another tab stored does not describe the caches of this one', async () => {
+  await loadPendingWrites('A')
+  await mutate(() => [op('mine', 1, { attempted: true, landed: { realId: 'r1' } }), op('theirs', 2, { attempted: true })])
+  await dbRequest(STORE_PENDING_WRITES, 'readwrite', (s) => s.put({ ...op('theirs', 2, { attempted: true, landed: { realId: 'r2' } }), userId: 'A' }))
+  const heard = new Promise<void>((resolve) => { const off = subscribe(() => { off(); resolve() }) })
+  const otherTab = new BroadcastChannel('econumo-pending-writes')
+  otherTab.postMessage('changed')
+  await heard
+  otherTab.close()
+  expect(getOps().find((o) => o.key === 'mine')?.landed).toEqual({ realId: 'r1' })
+  expect(getOps().find((o) => o.key === 'theirs')?.landed).toBeUndefined()
+})
+
 it('says when a change left in another tab, and not when it left here or one arrived', async () => {
   await loadPendingWrites('A')
   await mutate(() => [op('local', 1), op('theirs', 2)])
