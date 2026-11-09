@@ -89,10 +89,10 @@ export function ToReviewSection({ queued }: { queued: ImportQueuedEventDto[] }) 
               <span className="font-medium">{first.externalAccountId}</span>
               {state === 'unmapped' ? (
                 <span className="flex gap-3">
-                  <button type="button" className="text-econumo-link underline-offset-2 hover:underline" disabled={!online} onClick={() => setMapTarget({ sourceId: first.sourceId, card })}>
+                  <button type="button" className="text-econumo-link underline-offset-2 hover:underline disabled:opacity-50" disabled={!online} onClick={() => setMapTarget({ sourceId: first.sourceId, card })}>
                     {t('imports.apple_wallet.cards.map')}
                   </button>
-                  <button type="button" className="text-muted-foreground underline-offset-2 hover:underline"
+                  <button type="button" className="text-muted-foreground underline-offset-2 hover:underline disabled:opacity-50"
                     disabled={!online || (ignore.isPending && ignore.variables?.sourceId === first.sourceId && ignore.variables?.externalAccountId === first.externalAccountId)}
                     onClick={() => ignore.mutate({ sourceId: first.sourceId, externalAccountId: first.externalAccountId }, { onError })}>
                     {t('imports.apple_wallet.cards.ignore')}

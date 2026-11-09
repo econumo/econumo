@@ -221,7 +221,7 @@ export function AccountDialog() {
         {canShare && liveAccount ? (
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
+            className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover disabled:opacity-50"
             title={t('settings.accounts.list_actions.access')}
             disabled={!online}
             onClick={() => setShareOpen(true)}

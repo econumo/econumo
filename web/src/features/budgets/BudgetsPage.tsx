@@ -125,7 +125,7 @@ export function BudgetsPage() {
               : `set default ${budget.name}`
           }
           disabled={isDefault || !accepted || budget.isArchived === 1 || !online}
-          className="text-muted-foreground disabled:opacity-100"
+          className={`text-muted-foreground ${isDefault ? "disabled:opacity-100" : "disabled:opacity-50"}`}
           onClick={() => updateDefaultBudget.mutate(budget.id)}
         >
           <Bookmark
