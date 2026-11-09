@@ -365,7 +365,10 @@ navigation (single-pane vs sidebar).
       none); the Install button or "Done" marks it done and Skip skips it. On
       an iPhone or Mac, Apple Wallet appears with a line saying it can be set
       up any time later in Settings (no Shortcut tile); Set up opens the Apple
-      Wallet settings, Skip skips it. Install instructions render as a grouped rounded card
+      Wallet settings, Skip skips it. When Categories and Accounts are both done, Set up first
+      skips every other open step and completes onboarding, then opens the Apple Wallet settings
+      (not `/budget`); if completing fails, the error shows, nothing navigates, and Finish then
+      opens the Apple Wallet settings. Install instructions render as a grouped rounded card
       with dividers and icon tiles.
 - [ ] An existing user who owns accounts (upgraded instance) is not sent to
       onboarding.

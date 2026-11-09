@@ -26,3 +26,15 @@ it('says the integration can be set up later in Settings', () => {
   expect(screen.getByText('You can set up the Apple Wallet integration any time later in Settings.')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Set up the Shortcut' })).not.toBeInTheDocument()
 })
+
+it('Set up hands over to onCompleteSetup once Categories and Accounts are done', async () => {
+  const onCompleteSetup = vi.fn().mockResolvedValue(undefined)
+  const router = createMemoryRouter(
+    [{ path: '/', element: <AppleWalletStep onDone={vi.fn()} onSkip={vi.fn()} coreStepsDone onCompleteSetup={onCompleteSetup} /> }],
+    { initialEntries: ['/'] },
+  )
+  render(<RouterProvider router={router} />)
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Set up' }))
+  expect(onCompleteSetup).toHaveBeenCalledWith('/settings/apple-wallet')
+  expect(router.state.location.pathname).toBe('/')
+})

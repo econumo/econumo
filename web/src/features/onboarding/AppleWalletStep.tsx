@@ -5,7 +5,7 @@ import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
 import type { StepBodyProps } from './OnboardingPage'
 
-export function AppleWalletStep({ onSkip }: StepBodyProps) {
+export function AppleWalletStep({ onSkip, coreStepsDone, onCompleteSetup }: StepBodyProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [pending, setPending] = useState(false)
@@ -26,7 +26,18 @@ export function AppleWalletStep({ onSkip }: StepBodyProps) {
         >
           {t('onboarding.wallet_step.skip')}
         </Button>
-        <Button type="button" disabled={pending} onClick={() => navigate(RouterPage.SETTINGS_APPLE_WALLET)}>
+        <Button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            if (!coreStepsDone || !onCompleteSetup) {
+              navigate(RouterPage.SETTINGS_APPLE_WALLET)
+              return
+            }
+            setPending(true)
+            void onCompleteSetup(RouterPage.SETTINGS_APPLE_WALLET).finally(() => setPending(false))
+          }}
+        >
           {t('onboarding.wallet_step.setup')}
         </Button>
       </div>

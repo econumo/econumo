@@ -23,6 +23,10 @@ export interface StepBodyProps {
   onDone: (also?: OnboardingStepKey[]) => Promise<void>
   onSkip: () => Promise<void>
   onGoTo?: (key: OnboardingStepKey) => void
+  // categories and accounts are done, so the rest of the guide may be wrapped up from this step
+  coreStepsDone?: boolean
+  // skips every open step, completes onboarding and lands on `to` instead of the budget
+  onCompleteSetup?: (to: string) => Promise<void>
 }
 
 const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
@@ -51,6 +55,8 @@ export function OnboardingPage() {
   const [skippingAll, setSkippingAll] = useState(false)
   const completing = useRef(false)
   const autoCompleted = useRef(false)
+  // where a completion lands, kept so the Finish retry after a failure goes there too
+  const landing = useRef<string>(RouterPage.BUDGET)
 
   const finish = useCallback(async () => {
     if (completing.current) return
@@ -58,7 +64,7 @@ export function OnboardingPage() {
     try {
       await complete.mutateAsync()
       if (userId) clearDraft(userId)
-      navigate(RouterPage.BUDGET)
+      navigate(landing.current)
     } finally {
       completing.current = false
     }
@@ -95,9 +101,10 @@ export function OnboardingPage() {
     setSelected((after ?? open[0]).key)
   }
 
-  const completeSetup = async () => {
+  const completeSetup = async (to?: string) => {
     setSkippingAll(true)
-    trackEvent(METRICS.ONBOARDING_SKIP, { step: active })
+    if (to) landing.current = to
+    else trackEvent(METRICS.ONBOARDING_SKIP, { step: active })
     try {
       await Promise.all(steps.filter((s) => s.state === 'open').map((s) => skip(s.key)))
       autoCompleted.current = true
@@ -117,6 +124,7 @@ export function OnboardingPage() {
   }
 
   const Body = STEP_BODIES[active]
+  const coreStepsDone = steps.filter((s) => s.key === 'categories' || s.key === 'accounts').every((s) => s.state === 'done')
 
   return (
     <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-6 overflow-y-auto p-4 scrollbar-slim lg:px-8">
@@ -147,7 +155,7 @@ export function OnboardingPage() {
           ) : null}
         </div>
       ) : null}
-      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} />}
+      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} coreStepsDone={coreStepsDone} onCompleteSetup={completeSetup} />}
     </div>
   )
 }

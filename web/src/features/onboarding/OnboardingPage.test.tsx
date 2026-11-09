@@ -29,6 +29,7 @@ function renderPage() {
       { path: '/onboarding', element: <OnboardingPage /> },
       { path: '/budget', element: <div>BUDGET ROUTE</div> },
       { path: '/settings/categories', element: <div>CATEGORIES SETTINGS</div> },
+      { path: '/settings/apple-wallet', element: <div>WALLET SETTINGS</div> },
     ],
     { initialEntries: ['/onboarding'] },
   )
@@ -194,6 +195,52 @@ it('Complete setup skips every open step, then completes onboarding', async () =
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
   expect(posts.at(-1)).toEqual({ path: 'complete-onboarding' })
   await waitFor(() => expect(state.stored.split(',').sort()).toEqual(['!accounts', '!categories', '!plan', 'import']))
+})
+
+describe('Apple Wallet Set up', () => {
+  const MAC_CHROME = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+  beforeEach(() => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(MAC_CHROME)
+  })
+  afterEach(() => vi.restoreAllMocks())
+  const walletHeading = () => heading('Card payments, logged for you')
+
+  it('with Categories and Accounts done, skips the open steps, completes onboarding and opens the Wallet settings', async () => {
+    const state = serve('import,categories,accounts')
+    const user = userEvent.setup()
+    renderPage()
+    await heading('Plan this month')
+    await user.click(screen.getByRole('button', { name: /Apple Wallet/ }))
+    await walletHeading()
+    await user.click(screen.getByRole('button', { name: 'Set up' }))
+    expect(await screen.findByText('WALLET SETTINGS')).toBeInTheDocument()
+    expect(screen.queryByText('BUDGET ROUTE')).not.toBeInTheDocument()
+    expect(posts.at(-1)).toEqual({ path: 'complete-onboarding' })
+    expect(state.stored.split(',').sort()).toEqual(['!apple_wallet', '!plan', 'accounts', 'categories', 'import'])
+  })
+
+  it('with Categories not done, only opens the Wallet settings and leaves onboarding open', async () => {
+    serve('import,!categories,accounts,plan')
+    const user = userEvent.setup()
+    renderPage()
+    await walletHeading()
+    await user.click(screen.getByRole('button', { name: 'Set up' }))
+    expect(await screen.findByText('WALLET SETTINGS')).toBeInTheDocument()
+    expect(posts).toEqual([])
+  })
+
+  it('a failed completion shows the error and stays; Finish then lands on the Wallet settings', async () => {
+    const state = serve('import,categories,accounts,plan')
+    state.failComplete = true
+    const user = userEvent.setup()
+    renderPage()
+    await walletHeading()
+    await user.click(screen.getByRole('button', { name: 'Set up' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Try again')
+    expect(screen.queryByText('WALLET SETTINGS')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Finish' }))
+    expect(await screen.findByText('WALLET SETTINGS')).toBeInTheDocument()
+  })
 })
 
 it('an import with rows settles import, categories and accounts in one request', async () => {
