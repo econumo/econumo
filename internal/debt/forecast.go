@@ -15,7 +15,8 @@ import (
 // budget is the one asked for, else the owner's active budget; one the caller
 // cannot read, or that holds no row for the debt, leaves the schedule alone,
 // and so does a budget whose plans add no extra (the result then names none).
-// It is the projection behind the debt's own figures, on that budget's periods.
+// It is the projection behind the debt's own figures, on that budget's periods,
+// run from the later of today and the last recorded payment's day.
 func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.GetDebtForecastRequest) (*model.DebtForecastResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -44,7 +45,14 @@ func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.G
 		startDay = bp.PeriodStartDay
 		plans = plannedInLife(st, st.project(today, nil, nil), bp)
 	}
-	proj := st.projectPeriods(today, nil, plans, startDay)
+	// A payment recorded ahead of today is booked, not still to come: the run
+	// starts on the last recorded payment's day, so its due is paid and the
+	// first row follows the balance the booked list ends on.
+	from := today
+	if n := len(st.pays); n > 0 && debtDate(st.pays[n-1].date).After(from) {
+		from = debtDate(st.pays[n-1].date)
+	}
+	proj := st.projectPeriods(from, nil, plans, startDay)
 	digits := st.digits
 	extra := false
 	for _, p := range proj.Payments {

@@ -164,3 +164,54 @@ func TestGetDebtForecast_IgnoresPlansOutsideTheLife(t *testing.T) {
 		t.Fatalf("forecast = %q with %d items, want the schedule's %d", got.BudgetId, len(got.Items), res.PaymentsLeft)
 	}
 }
+
+// A payment recorded ahead of today is not projected again: the forecast starts
+// after the last recorded payment, from the balance that payment leaves.
+func TestGetDebtForecast_StartsAfterAFutureDatedPayment(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+
+	details, err := e.svc.GetDebt(context.Background(), e.uid(), model.GetDebtRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if details.Item.NextDueDate != "2026-04-01" {
+		t.Fatalf("next due = %s: the figures still count the April due as unpaid today", details.Item.NextDueDate)
+	}
+	got := e.forecast(t, res.Id, "")
+	first := got.Items[0]
+	if first.Date != "2026-05-01" {
+		t.Fatalf("first = %+v, want the May due: April is recorded", first)
+	}
+	top := vo.NewDecimal(details.Payments[0].Balance)
+	if want := top.Sub(vo.NewDecimal(first.Principal)); !vo.NewDecimal(first.Balance).Equals(want) {
+		t.Fatalf("first balance %s, want %s (the recorded payment's %s less %s)", first.Balance, want, top, first.Principal)
+	}
+	if last := got.Items[len(got.Items)-1]; last.Balance != "0" {
+		t.Fatalf("last = %+v", last)
+	}
+}
+
+// On a budget whose periods start on the 15th, the period keyed May runs from
+// May 15 to June 14: its extra rides on the June 1 payment, not May's.
+func TestGetDebtForecast_FollowsTheBudgetsPeriods(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	budget := fixture.NewID()
+	e.svc.SetBudgetPlans(&fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
+		budget: {Name: "Shifted", PeriodStartDay: 15, Plans: map[string]string{"2026-05-01": "3000"}},
+	}})
+
+	got := e.forecast(t, res.Id, budget)
+	if got.BudgetName != "Shifted" {
+		t.Fatalf("budget = %q", got.BudgetName)
+	}
+	byDate := map[string]string{}
+	for _, it := range got.Items {
+		byDate[it.Date] = it.Payment
+	}
+	if byDate["2026-05-01"] != "1000" || byDate["2026-06-01"] != "3000" {
+		t.Fatalf("May %q, June %q; want the extra on June 1", byDate["2026-05-01"], byDate["2026-06-01"])
+	}
+}

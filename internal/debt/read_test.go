@@ -207,3 +207,29 @@ func TestGetDebt_NotSetUpPaymentsHaveNoBalance(t *testing.T) {
 		t.Fatalf("payments = %+v", got.Payments)
 	}
 }
+
+// The snapshot holds the balance after its day's payments: a payment on that
+// day leaves the snapshot's balance, and one before it the balance plus the
+// later payment's debt part.
+func TestGetDebt_BalanceAroundTheSnapshotDay(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil) // snapshot as of March 10: 10000
+	e.clock.now = ymd(2026, 3, 20)
+	e.expense(t, e.account, ymd(2026, 3, 1), "500", "")
+	e.expense(t, e.account, ymd(2026, 3, 10), "1000", "")
+
+	got, err := e.svc.GetDebt(context.Background(), e.uid(), model.GetDebtRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Payments) != 2 || got.Payments[0].Date != "2026-03-10" {
+		t.Fatalf("payments = %+v", got.Payments)
+	}
+	onDay, before := got.Payments[0], got.Payments[1]
+	if !vo.NewDecimal(onDay.Balance).Equals(vo.NewDecimal("10000")) {
+		t.Fatalf("on the snapshot's day: %q, want 10000", onDay.Balance)
+	}
+	if want := vo.NewDecimal("10000").Add(vo.NewDecimal(onDay.Principal)); !vo.NewDecimal(before.Balance).Equals(want) {
+		t.Fatalf("before the snapshot: %q, want %s", before.Balance, want)
+	}
+}
