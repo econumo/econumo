@@ -64,6 +64,8 @@ import (
 	appoauth "github.com/econumo/econumo/internal/oauth"
 	handleroauth "github.com/econumo/econumo/internal/oauth/api"
 	oauthrepo "github.com/econumo/econumo/internal/oauth/repo"
+	apponboarding "github.com/econumo/econumo/internal/onboarding"
+	handleronboarding "github.com/econumo/econumo/internal/onboarding/api"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeemcp "github.com/econumo/econumo/internal/payee/mcp"
@@ -204,6 +206,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
 		appimports.RateScopeSync:            cfg.RateLimitSync,
 		appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
+		// Each onboarding classification is a paid AI round trip; Day 0 needs a handful.
+		apponboarding.RateScopeClassify: 20,
 		// No per-key cap: the caller of start-login/start-link is anonymous
 		// until the provider answers. The per-IP per-minute cap applies.
 		appoauth.RateScopeOAuthStart: 0,
@@ -216,6 +220,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		// their effects stay inside the caller's account.
 		appimports.RateScopeIngest:      true,
 		appimports.RateScopePreviewRule: true,
+		apponboarding.RateScopeClassify: true,
 	}
 	// Ceilings per email address across all client IPs, above the per-address-and-IP
 	// limits. Reset and confirm-email take a 6-digit code, so their guess budget stays
@@ -373,6 +378,19 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	accountSvc := appaccount.NewService(
 		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, accountAccessResolver, txm, opGuard, clk,
 	)
+	// One completion client shared by every feature that declares a Completer
+	// port; nil (no ECONUMO_AI_DSN) leaves those features without AI.
+	var aiClient *ai.Client
+	if cfg.AIEnabled {
+		aiCfg := ai.Config{Dialect: cfg.AIDialect, Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel}
+		if cfg.AIDialect == config.AIDialectEconumo {
+			// An econumo AI gateway: each call carries a short-lived
+			// token naming the user, signed with the admin token both sides share.
+			aiSigner := handoff.NewSigner(cfg.AdminToken)
+			aiCfg.Sign = func(uid string) (string, error) { return aiSigner.SignAI(uid, clk.Now()) }
+		}
+		aiClient = ai.New(aiCfg)
+	}
 	accountHandlers := handleraccount.NewHandlers(accountSvc)
 
 	// Budget service is built before connection: delete-connection's unwind
@@ -393,6 +411,12 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	shiftedRates := rateProvider.Windowed()
 	budgetSvc.SetShiftedPeriodRates(appcurrency.NewConvertor(shiftedRates), shiftedRates)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
+
+	onboardingSvc := apponboarding.NewService(budgetSvc, NewOnboardingAccountReader(accountRepo, accountCurrencyLookup), NewOnboardingTimezones(userRepo))
+	if aiClient != nil {
+		onboardingSvc.SetAdvisor(aiClient, authLimiter)
+	}
+	onboardingHandlers := handleronboarding.NewHandlers(onboardingSvc)
 
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
@@ -458,15 +482,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	}
 	// The completion client is injected here, never imported by the feature:
 	// internal/imports declares the Completer interface and nothing more.
-	if cfg.AIEnabled {
-		aiCfg := ai.Config{Dialect: cfg.AIDialect, Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel}
-		if cfg.AIDialect == config.AIDialectEconumo {
-			// An econumo AI gateway: each call carries a short-lived
-			// token naming the user, signed with the admin token both sides share.
-			aiSigner := handoff.NewSigner(cfg.AdminToken)
-			aiCfg.Sign = func(uid string) (string, error) { return aiSigner.SignAI(uid, clk.Now()) }
-		}
-		importsSvc.SetCompleter(ai.New(aiCfg))
+	if aiClient != nil {
+		importsSvc.SetCompleter(aiClient)
 	}
 	importsHandlers := handlerimports.NewHandlers(importsSvc)
 
@@ -499,6 +516,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handlerrecurring.RegisterAPI(recurringHandlers, authn),
 		handlerconnection.RegisterAPI(connectionHandlers, authn),
 		handlerbudget.RegisterAPI(budgetHandlers, authn),
+		handleronboarding.RegisterAPI(onboardingHandlers, authn),
 		handlerbudget.RegisterReportAPI(budgetHandlers, authn),
 		importsAPI,
 		handlersystem.RegisterAPI(systemHandlers, authn),

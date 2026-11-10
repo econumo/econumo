@@ -32,10 +32,8 @@ function matchesWords(name: string, words: string): boolean {
     .some((w) => haystack.includes(w))
 }
 
-export const SAVINGS_ICON = 'savings'
-
-export function guessAccountIcon(name: string, words: { cash: string; savings: string }): string {
-  if (matchesWords(name, words.savings)) return SAVINGS_ICON
+// Only cash is guessed from the name; savings is never guessed (the AI may flag it in the budget).
+export function guessAccountIcon(name: string, words: { cash: string }): string {
   if (matchesWords(name, words.cash)) return 'payments'
   return 'credit_card'
 }

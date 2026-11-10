@@ -326,8 +326,9 @@ navigation (single-pane vs sidebar).
       On a phone or tablet width there are no handles.
 - [ ] Accounts: one card of compact rows (icon, name, balance, currency chip,
       and on a new row an ✕ that removes it), with no label under the name and
-      no savings switch or details expander (a savings-like name only picks
-      the piggy-bank icon, which also makes the account a budget savings account); tapping a new row's icon opens the icon picker, the chosen icon is kept when the name changes and is
+      no savings switch or details expander (a cash-like name picks the cash
+      icon; a savings-like name picks nothing special, and no icon makes the
+      account a savings account); tapping a new row's icon opens the icon picker, the chosen icon is kept when the name changes and is
       used for the created account, and an existing account's icon is not
       tappable; "Add account" adds a row. Accounts the user already has are
       listed first and locked, with their balance shown and no balance asked
@@ -346,8 +347,10 @@ navigation (single-pane vs sidebar).
       keeps the typed name; categories and accounts that already exist keep
       their stored names.
 - [ ] Accounts skipped, then opened again after Budget & plan: a new account
-      joins the budget, as a savings account when its icon is the piggy bank
-      and as an everyday account otherwise; the user's other accounts keep
+      joins the budget at once: without AI as an everyday account, whatever
+      its name or icon; with AI (`ECONUMO_AI_DSN` set) it turns into a savings
+      account a few seconds later when the AI judges it one (e.g. "Emergency
+      fund"; reload the budget to see it); the user's other accounts keep
       their budget membership and savings flags.
 - [ ] 📱 Categories and Accounts render usably on a phone, tablet and desktop
       width (each account row stays on one line; no horizontal scroll;
@@ -386,9 +389,12 @@ navigation (single-pane vs sidebar).
       and Continue stays disabled until it is fixed (or, for a new row,
       removed). In Chinese every default category saves without an error.
 - [ ] 📱 Opening "Budget & plan" creates the budget once (over every own
-      account; the accounts created in this flow with the piggy-bank icon
-      (auto-guessed from a savings-like name or picked by hand) are savings
-      members, the others everyday) when the user has none, or uses the
+      account; without AI none of them is savings, even one named "Savings"
+      with the piggy-bank icon; with AI the step opens without waiting for
+      the AI, and a few seconds later the accounts it judges savings (e.g.
+      "Tagesgeld" for a German user) become savings members, never accounts
+      the user does not own; an AI failure or timeout leaves them all
+      everyday) when the user has none, or uses the
       default/first budget they already have (its savings flags are left
       alone); reopening the step creates
       nothing more. With no own account it says a budget needs one and

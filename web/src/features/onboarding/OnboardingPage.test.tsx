@@ -50,7 +50,7 @@ function serve(initial: string) {
   // added later, so these answer ahead of the core handlers
   server.use(
     http.get('*/api/v1/budget/get-budget-list', () => ok({ items: state.budgets })),
-    http.post('*/api/v1/budget/create-budget', async ({ request }) => {
+    http.post('*/api/v1/onboarding/create-budget', async ({ request }) => {
       const { id } = (await request.json()) as { id: string }
       state.budgets.push({ ...fixtureWireBudget.meta, id })
       return ok({ item: { ...fixtureWireBudget.meta, id } })
@@ -366,7 +366,7 @@ function serveRegisteredUser() {
     http.post('*/api/v1/currency/hide-all-currencies', () => ok()),
     http.post('*/api/v1/currency/show-currency', () => ok()),
     http.get('*/api/v1/budget/get-budget-list', () => ok({ items: state.budgets })),
-    http.post('*/api/v1/budget/create-budget', async ({ request }) => {
+    http.post('*/api/v1/onboarding/create-budget', async ({ request }) => {
       const body = (await request.json()) as { id: string; name: string; currencyId: string; accountIds: string[] }
       log.push({ path: 'create-budget', body: body.accountIds })
       const meta = { id: body.id, ownerUserId: 'u1', name: body.name, startedAt: '2026-11-01 00:00:00', endedAt: '', currencyId: body.currencyId, isArchived: 0, periodStartDay: 1, access: [{ user: owner, role: 'owner', isAccepted: 1 }] }

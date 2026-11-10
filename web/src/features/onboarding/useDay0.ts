@@ -4,17 +4,17 @@ import { useTranslation } from 'react-i18next'
 import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import { createAccount, getAccountList, getFolderList } from '@/api/account'
-import { addAccount, createBudget, getBudget, getBudgetList } from '@/api/budget'
+import { getBudget, getBudgetList } from '@/api/budget'
 import { createCategory, getCategoryList, sortCategoryList } from '@/api/category'
 import { getCurrencyList, hideAllCurrencies, showCurrency } from '@/api/currency'
 import { UserOptions } from '@/api/dto/user'
+import { addOnboardingBudgetAccounts, createOnboardingBudget } from '@/api/onboarding'
 import { updateCurrency } from '@/api/user'
 import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
 import { useAccounts } from '@/features/accounts/queries'
 import { userCurrencyId, userOption, useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { SAVINGS_ICON } from './defaults'
 import { emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft } from './draft'
 
 const isBadRequest = (err: unknown) => isAxiosError(err) && err.response?.status === 400
@@ -43,17 +43,16 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// The piggy-bank icon is what marks a flow-created account as savings in the budget.
-const isSavingsRow = (row: AccountRow) => row.icon === SAVINGS_ICON
+const flowCreatedIds = (d: Day0Draft, rows: AccountRow[]) =>
+  rows.flatMap((r) => (d.ops[`account:${r.key}`] && d.created[r.key] ? [d.created[r.key]] : []))
 
-// Accounts the flow created after the budget exists join it (savings when they carry the
-// savings icon); the user's other accounts keep whatever membership that budget gives them.
+// Accounts the flow created after the budget exists join it; the user's other accounts
+// keep whatever membership that budget gives them. Savings is never decided here: the
+// server flags savings accounts in the background when it has an AI provider.
 async function syncBudgetAccounts(d: Day0Draft, rows: AccountRow[], budgetId: Id): Promise<void> {
   const members = new Set(((await getBudget(budgetId, today())).filters.accounts ?? []).map((a) => a.id))
-  for (const row of rows) {
-    const id = d.created[row.key]
-    if (d.ops[`account:${row.key}`] && !members.has(id)) await addAccount(budgetId, id, isSavingsRow(row) ? true : undefined)
-  }
+  const joining = flowCreatedIds(d, rows).filter((id) => !members.has(id))
+  if (joining.length > 0) await addOnboardingBudgetAccounts(budgetId, joining)
 }
 
 // The step orders each type on its own, so the wanted ids take the slots their type's
@@ -289,17 +288,15 @@ export function useDay0() {
           if (owned.length === 0 || !currencyId) {
             throw new Error('Day 0 budget needs accounts and a main currency')
           }
-          const savingsAccountIds = d.rows.filter(isSavingsRow).flatMap((r) => (d.created[r.key] && owned.includes(d.created[r.key]) ? [d.created[r.key]] : []))
           const budgetId = opId(d, 'budget')
           persist(d)
           try {
-            await createBudget({
+            await createOnboardingBudget({
               id: budgetId,
               name: t('onboarding.budget_name'),
               startDate: '',
               currencyId,
               accountIds: owned,
-              ...(savingsAccountIds.length > 0 ? { savingsAccountIds } : {}),
             })
           } catch (err) {
             if (!isBadRequest(err) || !(await getBudgetList()).some((b) => b.id === budgetId)) {

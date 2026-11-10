@@ -152,8 +152,8 @@ release branches cut before ship still publish. Local use needs `ship` installed
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the sixteen features (`account`, `admin`, `authserver`, `budget`, `category`, `connection`,
-`currency`, `imports`, `label`, `oauth`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the seventeen features (`account`, `admin`, `authserver`, `budget`, `category`, `connection`,
+`currency`, `imports`, `label`, `oauth`, `onboarding`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree (`internal/version` is a build-info leaf that archtest also auto-detects, not a slice) holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -171,7 +171,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │                                one file per feature (account.go, account_dto.go, ...); imports only
 │   │                                the shared kernel; part of the archtest kernel alongside `shared`
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
-│   │   │                            currency, imports, payee, system, tag, transaction, user); root package holds only
+│   │   │                            currency, imports, onboarding, payee, system, tag, transaction, user); root package holds only
 │   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
 │   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
 │   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
@@ -455,7 +455,7 @@ and `apple_wallet`. A done step is read-only (the stepper will not open it; a li
 another step opens its settings page instead); skipped steps can be reopened, and "Complete
 setup" skips every open step (so does Apple Wallet's Set up once categories and accounts are
 done, landing on the Apple Wallet settings instead of the budget). New category rows are created unless removed (trash button);
-there is no savings toggle: an account the flow creates with the piggy-bank icon (`SAVINGS_ICON`, guessed from a savings-like name or picked by hand) is a savings member of the budget — `savingsAccountIds` when `ensureBudget` creates the budget, `isSavings` on `add-account` for accounts created after it; a reused budget and the user's pre-existing accounts keep their flags. Categories and accounts the user already has are
+there is no savings toggle and no name-based savings guess (the icon guess covers cash only; the user picks any icon freely and the icon never decides savings), and the client sends no savings at all. The budget writes go through the `internal/onboarding` feature: `POST /api/v1/onboarding/create-budget` (`ensureBudget`; the budget create-budget fields minus savings, run through the budget feature's own create path, so validation and id idempotency match) and `POST /api/v1/onboarding/add-budget-accounts` (`{budgetId, accountIds}` 1..50, for accounts the flow created after the budget exists; each added like budget add-account as an everyday member). Both answer at once. When the server has an AI provider (`ECONUMO_AI_DSN`), each then starts a background job (goroutine, fresh context, 15 s timeout, panics recovered; the runner is injectable so tests run it inline) that sends the caller's own non-deleted accounts among those ids (id, name, the account's own currency code) plus the caller's timezone (header, else stored) and UI language, never the profile currency, asks for `{"savings":[ids]}`, and flags the chosen accounts that are still members through the budget feature's `MarkSavingsMembers` (add-account's access rules, never adds a member). A failure, a timeout or an unusable reply changes nothing and logs a WARN with `user_id` + `err_type` only. The job is capped at 20 per user per rate-limit window (over the cap the write still succeeds, unclassified). Without AI nothing is ever marked savings. The SPA invalidates the budget queries after the write and does not poll, so savings show up on the next budget fetch after the job lands. A reused budget and the user's pre-existing accounts keep their flags. Categories and accounts the user already has are
 shown read-only; the unsaved
 draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the writes are idempotent, so
 a reload or retry creates nothing twice. Onboarding completes automatically once every visible
@@ -956,7 +956,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   so behind an `HTTPS_PROXY` it inspects the proxy, not the bridge: a private proxy needs
   the guard lifted, and a public proxy resolves the bridge host itself, outside the guard.
 - `ECONUMO_AI_DSN` — `openai://<api-key>@<host>[:port][/prefix]?model=<model>` configures the
-  AI client integration retained for future features. Bulk import-rule suggestions are removed.
+  AI client integration. Its one consumer today is onboarding savings detection (see the Day 0
+  paragraph): when onboarding creates the budget or adds accounts to it, a background job sends
+  those accounts' names and their own currencies, plus the user's timezone and UI language, to the
+  configured provider. Bulk import-rule suggestions are removed.
   The key is optional for local servers (`openai://localhost:11434?model=llama3.1`).
   Unset (default) leaves the provider disabled. A bad scheme/missing host/missing `model`
   fails at boot.

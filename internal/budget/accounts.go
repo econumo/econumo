@@ -92,6 +92,36 @@ func (s *Service) AddAccount(ctx context.Context, userID vo.Id, req model.AddAcc
 	return &model.AddAccountResult{Item: meta}, nil
 }
 
+// MarkSavingsMembers flags accounts that are ALREADY members of the budget as
+// savings, under the same rules as add-account (the caller owns the account and
+// can update an unarchived budget). It never adds a member: an account the user
+// removed, or one they may not flag, is skipped. Used by the onboarding
+// background classification, which runs after the user may have changed things.
+func (s *Service) MarkSavingsMembers(ctx context.Context, userID, budgetID vo.Id, accountIDs []vo.Id) error {
+	var allowed []vo.Id
+	var firstErr error
+	for _, id := range accountIDs {
+		if _, _, _, err := s.membershipPrelude(ctx, userID, budgetID.String(), id.String()); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		allowed = append(allowed, id)
+	}
+	if len(allowed) == 0 {
+		return firstErr
+	}
+	return s.writeMemberChange(ctx, budgetID, false, func(_ context.Context, c *memberChange) error {
+		for _, id := range allowed {
+			if c.isMember(id) {
+				c.setFlag(id, true)
+			}
+		}
+		return nil
+	})
+}
+
 // RemoveAccount drops a member account the caller owns, unless its history in
 // closed months has locked it in place.
 func (s *Service) RemoveAccount(ctx context.Context, userID vo.Id, req model.RemoveAccountRequest) (*model.RemoveAccountResult, error) {

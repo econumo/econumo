@@ -1202,8 +1202,7 @@
       "other_income": "Otros ingresos"
     },
     "words": {
-      "cash": "efectivo | cartera | monedero | cash",
-      "savings": "ahorro | ahorros | reserva | depósito | emergencia"
+      "cash": "efectivo | cartera | monedero | cash"
     },
     "budget_name": "Mi presupuesto",
     "accounts": {

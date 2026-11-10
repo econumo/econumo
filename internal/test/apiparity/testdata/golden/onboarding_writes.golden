@@ -1,0 +1,30 @@
+== create-budget POST /api/v1/onboarding/create-budget [owner] -> 200
+{"success":true,"message":"","data":{"item":{"meta":{"id":"b0000000-0000-0000-0000-0000000000d0","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"My budget","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"periodStartDay":1,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]},"filters":{"periodStart":"<datetime>","periodEnd":"<datetime>","accounts":[{"id":"a0000000-0000-0000-0000-000000000001","removable":true,"isSavings":false}]},"balances":[{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startBalance":"987.5","endBalance":null,"income":"0","expenses":"0","exchanges":"0","holdings":"0"}],"currencyRates":[],"structure":{"folders":[],"elements":[{"id":"c0000000-0000-0000-0000-000000000001","type":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":0,"budgeted":"0","isBudgeted":0,"available":"0","spent":"0","budgetSpent":"0","children":[],"ownerUserId":"11111111-1111-1111-1111-111111111111","upcoming":"0","budgetUpcoming":"0"}],"labels":[],"savings":[]}}}}
+
+== err:create-budget-again POST /api/v1/onboarding/create-budget [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["That budget id is already in use"]}}
+
+== err:create-budget-blank POST /api/v1/onboarding/create-budget [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."],"name":["This value should not be blank."]}}
+
+== err:create-budget-too-many POST /api/v1/onboarding/create-budget [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"accountIds":["This value is too long."]}}
+
+== add-budget-accounts POST /api/v1/onboarding/add-budget-accounts [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"b0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Budget","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"periodStartDay":1,"access":[{"user":{"id":"22222222-2222-2222-2222-222222222222","avatar":"diamond:sky","name":"User 2222"},"role":"user","isAccepted":0},{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]}}}
+
+== err:add-budget-accounts-foreign POST /api/v1/onboarding/add-budget-accounts [owner] -> 403
+{"success":false,"message":"Access denied","code":0,"errors":[]}
+
+== err:add-budget-accounts-blank POST /api/v1/onboarding/add-budget-accounts [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"budgetId":["This value should not be blank."]}}
+
+== err:add-budget-accounts-not-uuid POST /api/v1/onboarding/add-budget-accounts [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"accountIds":["This value is not a valid UUID."]}}
+
+== err:add-budget-accounts-too-many POST /api/v1/onboarding/add-budget-accounts [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"accountIds":["This value is too long."]}}
+
+== get-budget-after GET /api/v1/budget/get-budget?id=b0000000-0000-0000-0000-0000000000d0 [owner] -> 200
+{"success":true,"message":"","data":{"item":{"meta":{"id":"b0000000-0000-0000-0000-0000000000d0","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"My budget","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"periodStartDay":1,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]},"filters":{"periodStart":"<datetime>","periodEnd":"<datetime>","accounts":[{"id":"a0000000-0000-0000-0000-000000000001","removable":true,"isSavings":false}]},"balances":[{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startBalance":"987.5","endBalance":null,"income":"0","expenses":"0","exchanges":"0","holdings":"0"}],"currencyRates":[],"structure":{"folders":[],"elements":[{"id":"c0000000-0000-0000-0000-000000000001","type":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":0,"budgeted":"0","isBudgeted":0,"available":"0","spent":"0","budgetSpent":"0","children":[],"ownerUserId":"11111111-1111-1111-1111-111111111111","upcoming":"0","budgetUpcoming":"0"}],"labels":[],"savings":[]}}}}
+

@@ -1202,8 +1202,7 @@
       "other_income": "Other income"
     },
     "words": {
-      "cash": "cash | wallet",
-      "savings": "savings | saving | reserve | deposit | emergency"
+      "cash": "cash | wallet"
     },
     "budget_name": "My budget",
     "accounts": {

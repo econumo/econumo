@@ -115,7 +115,7 @@ it('starts with one row and adds another with Add account', async () => {
   expect(nameInputs()[1]).toHaveFocus()
 })
 
-it('picks the cash icon for Cash and the piggy bank for a savings name', async () => {
+it('picks the cash icon for Cash and never guesses the piggy bank from a savings name', async () => {
   const user = userEvent.setup()
   renderStep()
   await ready()
@@ -124,7 +124,8 @@ it('picks the cash icon for Cash and the piggy bank for a savings name', async (
   expect(within(rowsEls()[0]).getByText('payments')).toBeInTheDocument()
   await addAccount(user)
   await user.type(nameInputs()[1], 'Savings')
-  expect(within(rowsEls()[1]).getByText('savings')).toBeInTheDocument()
+  expect(within(rowsEls()[1]).getByText('credit_card')).toBeInTheDocument()
+  expect(within(rowsEls()[1]).queryByText('savings')).not.toBeInTheDocument()
 })
 
 it('removes a new row with its inline remove button', async () => {

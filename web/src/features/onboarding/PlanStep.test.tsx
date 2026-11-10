@@ -107,7 +107,7 @@ function setup({ salary = '3000', accounts, categories = defaultCategories(), pl
       listCalls++
       return ok({ items: listOnce && listCalls > 1 ? [] : metas() })
     }),
-    http.post('*/api/v1/budget/create-budget', async ({ request }) => {
+    http.post('*/api/v1/onboarding/create-budget', async ({ request }) => {
       const body = (await request.json()) as { id: string }
       creates.push(body)
       return ok({ item: byId(body.id) })

@@ -54,7 +54,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
   const { t, i18n } = useTranslation()
   const { data: currencies } = useCurrencies()
   const { data: user } = useUserData()
-  const words = () => ({ cash: t('onboarding.words.cash'), savings: t('onboarding.words.savings') })
+  const words = () => ({ cash: t('onboarding.words.cash') })
 
   // A draft row whose create landed but whose response was lost has no created id; the
   // account it made is matched by name, so it is shown once and its op id is never replayed.
