@@ -67,8 +67,8 @@ balances are enough and no history is needed.
   savings, in the user's language. The user can flip it.
 - *Superseded (2026-11-09):* there is no Savings switch and no name-based savings guess; the
   icon guess covers cash only. Savings membership comes only from the server's AI provider
-  when `ECONUMO_AI_DSN` is set: `onboarding/create-budget` and `onboarding/add-budget-accounts`
-  answer at once and classify the accounts in a background job (names, account currencies,
+  when `ECONUMO_AI_DSN` is set: `onboarding/save-accounts` answers at once and, after its
+  commit, classifies the accounts it created in a background job (names, account currencies,
   timezone, language; never the profile currency). Without AI, no account is savings.
 - At least one account is needed to continue. A blank balance counts as 0.
 - There is no import on this screen. Import writes to the server immediately and creates

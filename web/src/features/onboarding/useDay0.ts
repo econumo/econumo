@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient, type Query } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import type { CurrentUserDto } from '@/api/dto/user'
 import { saveOnboardingAccounts, saveOnboardingCategories, saveOnboardingPlan } from '@/api/onboarding'
@@ -12,6 +13,10 @@ import { emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, ty
 
 // The user query is answered by the step itself, so it is never refetched over that answer.
 const notUser = (q: Query) => q.queryKey[0] !== queryKeys.user[0]
+
+// A 400 on `id`: the operation id was claimed by another write.
+const claimedElsewhere = (err: unknown) =>
+  isAxiosError(err) && err.response?.status === 400 && Boolean((err.response.data as { errors?: Record<string, unknown> } | undefined)?.errors?.id)
 
 // Each step is one server call that writes everything and marks the step done.
 // The client only keeps the submitted form and the operation id in the draft:
@@ -49,7 +54,7 @@ export function useDay0() {
       step: Day0Step,
       submit: (d: Day0Draft) => void,
       call: (id: Id) => Promise<T>,
-      answered: (d: Day0Draft, result: T) => void,
+      answered?: (d: Day0Draft, result: T) => void,
     ): Promise<T | undefined> => {
       if (!userId) {
         return undefined
@@ -65,13 +70,20 @@ export function useDay0() {
         try {
           result = await call(opId)
         } catch (err) {
-          // a response lost on the way back may still have marked the step: the refetched user shows it
-          void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+          // the step may have committed with its answer lost: every list it writes is refetched,
+          // and the refetched user shows the step done
+          void queryClient.invalidateQueries()
+          if (claimedElsewhere(err)) {
+            // the id was taken by another write, so replaying it would be refused forever
+            const d2 = current()
+            delete d2.ops[step]
+            persist(d2)
+          }
           throw err
         }
         queryClient.setQueryData(queryKeys.user, result.user)
         const done = current()
-        answered(done, result)
+        answered?.(done, result)
         delete done.ops[step]
         persist(done)
         return result
@@ -103,7 +115,6 @@ export function useDay0() {
             ...(order && order.length > 0 ? { order } : {}),
           }),
         (d, res) => {
-          d.createdCategories = { ...d.createdCategories, ...res.categories }
           d.budgetId = res.budgetId || d.budgetId
         },
       )
@@ -151,7 +162,6 @@ export function useDay0() {
             mainCurrencyId,
           }),
         (d, res) => {
-          d.created = { ...d.created, ...res.accounts }
           d.budgetId = res.budgetId || d.budgetId
         },
       )

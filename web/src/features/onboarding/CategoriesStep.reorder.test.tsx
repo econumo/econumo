@@ -126,14 +126,13 @@ it('restores a stored order and submits it again', async () => {
   expect(onContinue.mock.calls[0][1]).toEqual(['k1', 'cat-1'])
 })
 
-it('maps a created row of the stored order to its category, so a revisit keeps the order', async () => {
+it('a stored order reseeds the rows of a failed submit in that order', async () => {
   saveDraft('u1', {
     ...emptyDraft(),
     categoryRows: [
-      { key: 'k1', name: 'Food', type: 'expense', icon: 'restaurant' },
+      { key: 'k1', name: 'Gifts', type: 'expense', icon: 'redeem' },
       { key: 'k2', name: 'Fun', type: 'expense', icon: 'movie' },
     ],
-    createdCategories: { k1: 'cat-food' },
     categoryOrder: ['k2', 'k1'],
   })
   server.use(...coreHandlers({ categories: fixtureCategories }))
@@ -144,31 +143,6 @@ it('maps a created row of the stored order to its category, so a revisit keeps t
     </QueryClientProvider>,
   )
   await screen.findByRole('heading', { name: 'What do you spend on?' })
-  await waitFor(() => expect(names('expense')).toEqual(['Fun', 'Food']))
+  await waitFor(() => expect(names('expense').filter((n) => n === 'Gifts' || n === 'Fun')).toEqual(['Fun', 'Gifts']))
   localStorage.clear()
-})
-
-it('keeps the order once created rows come back as existing categories, and a retry submits it', async () => {
-  const user = userEvent.setup()
-  const onContinue = vi.fn()
-  const initialRows: CategoryRow[] = [
-    { key: 'k1', name: 'Pets', type: 'expense', icon: 'pets' },
-    { key: 'k2', name: 'Kids', type: 'expense', icon: 'child_care' },
-  ]
-  const props = { onContinue, onSkip: vi.fn(), pending: false, initialRows }
-  const { rerender } = render(<CategoriesStep existing={[food]} {...props} />)
-  await moveUp(user, 'Kids')
-  await moveUp(user, 'Kids')
-  expect(names('expense')).toEqual(['Kids', 'Groceries', 'Pets'])
-  rerender(
-    <CategoriesStep
-      {...props}
-      existing={[food, { id: 'new-1', name: 'Pets', type: 'expense', icon: 'pets' }, { id: 'new-2', name: 'Kids', type: 'expense', icon: 'child_care' }]}
-      createdKeys={new Set(['k1', 'k2'])}
-      createdIds={{ k1: 'new-1', k2: 'new-2' }}
-    />,
-  )
-  expect(names('expense')).toEqual(['Kids', 'Groceries', 'Pets'])
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(onContinue.mock.calls[0][1]).toEqual(['new-2', 'cat-1', 'new-1'])
 })

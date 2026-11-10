@@ -23,9 +23,6 @@ export type Day0Draft = {
   rows: AccountRow[]
   extraCurrencyIds: Id[]
   mainCurrencyId: Id | null
-  // server account id by row key / server category id by row key, from the step's answer
-  created: Record<string, Id>
-  createdCategories: Record<string, Id>
   // the categories last submitted by saveCategories, so a retry after a failure reseeds the form with the same keys
   categoryRows: CategoryRow[]
   // set once the user reorders categories: existing category ids and row keys, both groups in display order
@@ -42,8 +39,6 @@ export function emptyDraft(): Day0Draft {
     rows: [],
     extraCurrencyIds: [],
     mainCurrencyId: null,
-    created: {},
-    createdCategories: {},
     categoryRows: [],
     categoryOrder: [],
     budgetId: null,

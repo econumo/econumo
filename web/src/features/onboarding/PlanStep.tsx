@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories } from '@/features/classifications/queries'
-import { useBudgets } from '@/features/budgets/queries'
+import { canEditBudget, useBudgets } from '@/features/budgets/queries'
 import { budgetCurrentPeriod, localDate } from '@/features/budgets/period'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useExchange } from '@/features/currencies/useExchange'
@@ -40,14 +40,18 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
   const [saveError, setSaveError] = useState<unknown>(null)
 
   // The budget the categories or accounts step answered with, else the user's default one
-  // (the budget option, else the first own or accepted budget). A user who skipped the
+  // (the budget option, else the first own or accepted budget the user may edit). A user who skipped the
   // accounts step may have none: the server creates the budget once there is an account.
   // a cached list may predate the budget a step (or another device) just created
   useEffect(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
   }, [queryClient])
+  // save-plan needs update access, so a budget shared read-only (guest) is never planned here
   const usable = (budgets.data ?? []).filter(
-    (b) => b.isArchived === 0 && (b.ownerUserId === user?.id || b.access.some((a) => a.user.id === user?.id && a.isAccepted === 1)),
+    (b) =>
+      b.isArchived === 0 &&
+      canEditBudget(b, user?.id) &&
+      (b.ownerUserId === user?.id || b.access.some((a) => a.user.id === user?.id && a.isAccepted === 1)),
   )
   const meta =
     usable.find((b) => b.id === day0.draft?.budgetId) ?? usable.find((b) => b.id === userOption(user, UserOptions.BUDGET)) ?? usable[0]

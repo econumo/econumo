@@ -83,7 +83,7 @@ interface Setup {
   categories?: ReturnType<typeof category>[]
   plans?: Record<string, string>
   // the user's default budget; null = none (the accounts step was skipped)
-  budget?: { id: string; periodStartDay: number } | null
+  budget?: { id: string; periodStartDay: number; sharedAs?: 'guest' | 'user' } | null
   // a budget list already cached (fresh) when the step opens
   cachedBudgets?: unknown[]
 }
@@ -95,7 +95,16 @@ function setup({ salary = '3000', accounts, categories = defaultCategories(), pl
   const user = budget
     ? { ...pendingUser, options: pendingUser.options.map((o) => (o.name === 'budget' ? { ...o, value: budget.id } : o)) }
     : pendingUser
-  const metas = budget ? [{ ...fixtureWireBudget.meta, id: budget.id, periodStartDay: budget.periodStartDay }] : []
+  const shared = (role: 'guest' | 'user') => ({
+    ownerUserId: 'u2',
+    access: [
+      { user: { id: 'u2', name: 'Partner', avatar: 'face:emerald' }, role: 'owner', isAccepted: 1 },
+      { user: { id: 'u1', name: 'Ada', avatar: 'face:emerald' }, role, isAccepted: 1 },
+    ],
+  })
+  const metas = budget
+    ? [{ ...fixtureWireBudget.meta, id: budget.id, periodStartDay: budget.periodStartDay, ...(budget.sharedAs ? shared(budget.sharedAs) : {}) }]
+    : []
   server.use(...coreHandlers({ user, budgets: metas, categories, ...(accounts ? { accounts } : {}) }))
   server.use(
     http.get('*/api/v1/budget/get-budget-list', () => ok({ items: metas })),
@@ -237,6 +246,17 @@ it('without a budget it asks for an account and opens the Accounts step, and Ski
   await user.click(screen.getByRole('button', { name: 'Skip for now' }))
   expect(onSkip).toHaveBeenCalled()
   expect(routes.srv.calls).toEqual([])
+})
+
+it('a budget shared read-only is not planned: it asks for an account instead', async () => {
+  setup({ budget: { id: 'b-shared', periodStartDay: 1, sharedAs: 'guest' } })
+  expect(await screen.findByRole('button', { name: 'Add an account' }, { timeout: 5000 })).toBeInTheDocument()
+  expect(budgetPeriods).toEqual([])
+})
+
+it('a budget shared with edit rights is planned', async () => {
+  setup({ budget: { id: 'b-shared', periodStartDay: 1, sharedAs: 'user' } })
+  expect(await input('Groceries')).toBeInTheDocument()
 })
 
 it('Skip for now skips the step', async () => {

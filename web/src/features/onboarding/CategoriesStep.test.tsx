@@ -335,7 +335,7 @@ describe('CategoriesStepBody', () => {
     expect(body.order).toBeUndefined()
     expect(body.categories).toHaveLength(14)
     expect(body.categories[0]).toEqual({ key: expect.any(String), name: 'Groceries', type: 'expense', icon: expect.any(String) })
-    expect(Object.keys(loadDraft('u1')!.createdCategories)).toHaveLength(14)
+    expect(loadDraft('u1')!.ops.categories).toBeUndefined()
   })
 
   it('a user who already has categories continues with no new rows', async () => {
@@ -361,7 +361,7 @@ describe('CategoriesStepBody', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(routes.srv.calls.map((c) => [c.body.id, c.body.categories.map((r: CategoryRow) => r.key)])).toEqual([['op-cats', ['k1', 'k2']]])
-    expect(loadDraft('u1')!.createdCategories).toEqual({ k1: 'cat-1', k2: 'cat-2' })
+    expect(loadDraft('u1')!.ops.categories).toBeUndefined()
   })
 
   it('an archived category of the user keeps its default name out of the list', async () => {

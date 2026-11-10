@@ -386,13 +386,13 @@ it('lists existing accounts first, locked with their balance, and passes them on
   ])
 })
 
-it('reseeds from a stored draft: created rows show as existing under their keys, the rest stay editable', async () => {
+it('reseeds from a stored draft: rows standing for existing accounts stay locked, the rest stay editable', async () => {
   const user = userEvent.setup()
   const rows: AccountRow[] = [
-    { key: 'k1', name: 'Imported card', balance: '10.00', currencyId: 'cur-eur', icon: 'payments' },
+    { key: 'k1', name: 'Imported card', balance: '10.00', currencyId: 'cur-eur', icon: 'payments', accountId: 'acc-imp' },
     { key: 'k2', name: 'Pending', balance: '5', currencyId: 'cur-eur', icon: 'credit_card' },
   ]
-  const { onContinue } = renderStep({ existing: [imported], initialRows: rows, createdIds: { k1: 'acc-imp' } })
+  const { onContinue } = renderStep({ existing: [imported], initialRows: rows })
   await ready()
   expect(rowsEls()).toHaveLength(2)
   expect(within(rowsEls()[0]).queryByLabelText('Account name')).not.toBeInTheDocument()
@@ -400,7 +400,7 @@ it('reseeds from a stored draft: created rows show as existing under their keys,
   expect(nameInputs()[0]).toHaveValue('Pending')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   const [out] = onContinue.mock.calls[0]
-  expect(out.map((r: AccountRow) => [r.key, r.accountId])).toEqual([['k1', 'acc-imp'], ['k2', undefined]])
+  expect(out.map((r: AccountRow) => [r.key, r.accountId])).toEqual([['account:acc-imp', 'acc-imp'], ['k2', undefined]])
 })
 
 it('ignores a bad balance on a row with no name', async () => {
@@ -447,7 +447,7 @@ describe('AccountsStepBody', () => {
     const body = routes.srv.calls[0].body
     expect(body.accounts).toEqual([{ key: expect.any(String), name: 'Travel fund', balance: '20', currencyId: body.mainCurrencyId, icon: expect.any(String) }])
     expect(body.currencyIds).toEqual(expect.arrayContaining([fixtureAccounts[0].currency.id, body.mainCurrencyId]))
-    expect(Object.values(loadDraft('u1')!.created)).toEqual(['acc-1'])
+    expect(loadDraft('u1')!.budgetId).toBe('b-onb')
   })
 
   it('a stored draft from a failed submit reseeds the form and replays its operation id', async () => {
@@ -464,7 +464,6 @@ describe('AccountsStepBody', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(routes.srv.calls.map((c) => [c.body.id, c.body.accounts.map((a: AccountRow) => a.key)])).toEqual([['op-acc', ['k2']]])
-    expect(loadDraft('u1')!.created).toEqual({ k2: 'acc-1' })
     expect(loadDraft('u1')!.ops.accounts).toBeUndefined()
   })
 

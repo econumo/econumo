@@ -39,8 +39,6 @@ interface AccountsStepProps {
   existing: ExistingAccount[]
   initialRows?: AccountRow[]
   initialExtraCurrencyIds?: Id[]
-  // server account id by draft row key, for rows an earlier submit created
-  createdIds?: Record<string, Id>
   onContinue: (rows: AccountRow[], extraCurrencyIds: Id[], mainCurrencyId: Id) => void
   onSkip: () => void
   pending: boolean
@@ -50,36 +48,15 @@ interface AccountsStepProps {
 // currencyId '' = the row follows the default currency until the user picks one
 const emptyRow = (): AccountRow => ({ key: uuidv7(), name: '', balance: '', currencyId: '', icon: 'credit_card' })
 
-export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, createdIds, onContinue, onSkip, pending, error }: AccountsStepProps) {
+export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, onContinue, onSkip, pending, error }: AccountsStepProps) {
   const { t, i18n } = useTranslation()
   const { data: currencies } = useCurrencies()
   const { data: user } = useUserData()
   const words = () => ({ cash: t('onboarding.words.cash') })
 
-  // A draft row whose create landed but whose response was lost has no created id; the
-  // account it made is matched by name, so it is shown once and its op id is never replayed.
-  const claims = useMemo(() => {
-    const byAccount = new Map<Id, AccountRow>()
-    const draft = initialRows ?? []
-    for (const r of draft) {
-      const id = r.accountId ?? createdIds?.[r.key]
-      if (id) byAccount.set(id, r)
-    }
-    for (const a of existing) {
-      if (byAccount.has(a.id)) continue
-      const name = a.name.trim().toLowerCase()
-      const taken = new Set([...byAccount.values()].map((r) => r.key))
-      const row = draft.find((r) => !taken.has(r.key) && !r.accountId && !createdIds?.[r.key] && r.name.trim().toLowerCase() === name)
-      if (row) byAccount.set(a.id, row)
-    }
-    return byAccount
-    // the draft and the list are read once, at mount, like the rows seeded from them
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  const claimedKeys = new Set([...claims.values()].map((r) => r.key))
-  const draftRowOf = (accountId: Id) => claims.get(accountId) ?? (initialRows ?? []).find((r) => (r.accountId ?? createdIds?.[r.key]) === accountId)
+  // rows of a submit that failed come back editable; the user's accounts are listed apart
   const leftover = useMemo(
-    () => (initialRows ?? []).filter((r) => !r.accountId && !createdIds?.[r.key] && !claimedKeys.has(r.key)),
+    () => (initialRows ?? []).filter((r) => !r.accountId),
     // read once, at mount, like the rows seeded from it
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -89,8 +66,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
     const labelKey = 'onboarding.accounts.default_cash'
     return [{ ...emptyRow(), name: t(labelKey), labelKey, icon: 'payments' }]
   })
-  // a row an earlier (failed) submit created comes back in the server list
-  const rows = allRows.filter((r) => !createdIds?.[r.key]).map((r) => labelled(r, t))
+  const rows = allRows.map((r) => labelled(r, t))
   const [extraIds, setExtraIds] = useState<Id[]>(initialExtraCurrencyIds ?? [])
   const [mainOverride, setMainOverride] = useState<Id | null>(null)
   // the first new row's pick: rows the user has not changed by hand follow it
@@ -149,7 +125,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, c
     onContinue(
       [
         ...existing.map((a) => ({
-          key: draftRowOf(a.id)?.key ?? `account:${a.id}`,
+          key: `account:${a.id}`,
           name: a.name,
           balance: '',
           currencyId: a.currencyId,
@@ -327,7 +303,6 @@ export function AccountsStepBody({ onDone, onSkip }: StepBodyProps) {
       existing={existing}
       initialRows={day0.draft?.rows}
       initialExtraCurrencyIds={day0.draft?.extraCurrencyIds}
-      createdIds={day0.draft?.created}
       pending={day0.pending || skipping}
       error={
         day0.error != null ? (

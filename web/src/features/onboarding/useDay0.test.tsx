@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { http } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import type { CurrentUserDto } from '@/api/dto/user'
@@ -51,6 +51,7 @@ const ready = async (option = '') => {
   await waitFor(() => expect(hook.result.current.ready).toBe(true))
   return hook
 }
+const calledTimes = (event: string) => vi.mocked(trackEvent).mock.calls.filter(([name]) => name === event).length
 const onboardingOf = () => queryClient.getQueryData<CurrentUserDto>(queryKeys.user)?.options.find((o) => o.name === 'onboarding')?.value
 
 beforeEach(() => {
@@ -77,7 +78,6 @@ describe('useDay0', () => {
     })
     expect(onboardingOf()).toBe('categories')
     const draft = loadDraft('u1')!
-    expect(draft.createdCategories).toEqual({ c1: 'cat-1', c2: 'cat-2' })
     expect(draft.budgetId).toBe('b-onb')
     expect(draft.ops.categories).toBeUndefined()
     expect(draft.categoryOrder).toEqual(order)
@@ -94,6 +94,8 @@ describe('useDay0', () => {
     await act(() => result.current.saveCategories(cats, undefined, ['food', 'rent']))
     expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORY_REMOVED, { category: 'rent' })
     expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: '', custom: 1, offered: 2 })
+    expect(calledTimes(METRICS.ONBOARDING_CATEGORIES_COMPLETE)).toBe(1)
+    expect(calledTimes(METRICS.ONBOARDING_CATEGORY_REMOVED)).toBe(1)
   })
 
   it('a failed save-categories fires nothing, and the retry re-sends the same operation id', async () => {
@@ -119,7 +121,38 @@ describe('useDay0', () => {
     })
     await act(() => result.current.saveCategories(cats))
     expect(srv.calls[1].body.id).toBe(srv.calls[0].body.id)
-    expect(loadDraft('u1')!.createdCategories).toEqual({ c1: 'cat-1', c2: 'cat-2' })
+    expect(loadDraft('u1')!.ops.categories).toBeUndefined()
+  })
+
+  it('a failed save refetches every query: the step may have committed with its answer lost', async () => {
+    const { result } = await ready()
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    srv.failNext.categories = 'lost'
+    await act(async () => {
+      await expect(result.current.saveCategories(cats)).rejects.toBeTruthy()
+    })
+    expect(invalidate).toHaveBeenCalledWith()
+  })
+
+  it('an operation id another write claimed is dropped, so the next Continue mints a fresh one', async () => {
+    const { result } = await ready()
+    server.use(
+      http.post('*/api/v1/onboarding/save-categories', async ({ request }) => {
+        srv.calls.push({ path: 'save-categories', body: await request.json() })
+        return HttpResponse.json(
+          { success: false, message: 'Validation failed', code: 400, errors: { id: ['The value you selected is not a valid choice.'] } },
+          { status: 400 },
+        )
+      }, { once: true }),
+    )
+    await act(async () => {
+      await expect(result.current.saveCategories(cats)).rejects.toBeTruthy()
+    })
+    expect(loadDraft('u1')!.ops.categories).toBeUndefined()
+    await act(() => result.current.saveCategories(cats))
+    expect(srv.calls).toHaveLength(2)
+    expect(srv.calls[1].body.id).not.toBe(srv.calls[0].body.id)
+    expect(onboardingOf()).toBe('categories')
   })
 
   it('a reloaded hook replays the operation id persisted by the failed submit', async () => {
@@ -153,11 +186,11 @@ describe('useDay0', () => {
     })
     expect(onboardingOf()).toBe('categories,accounts')
     const draft = loadDraft('u1')!
-    expect(draft.created).toEqual({ r1: 'acc-1', r2: 'acc-2' })
     expect(draft.rows).toHaveLength(3)
     expect(draft.mainCurrencyId).toBe('cur-usd')
     expect(draft.budgetId).toBe('b-onb')
     expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, { accounts: 2, currencies: 4 })
+    expect(calledTimes(METRICS.ONBOARDING_ACCOUNTS_COMPLETE)).toBe(1)
   })
 
   it('a network failure on save-accounts keeps the id, and the retry re-sends it', async () => {
@@ -178,13 +211,14 @@ describe('useDay0', () => {
     expect(srv.calls).toEqual([{ path: 'save-plan', body: { id: expect.any(String), budgetId: 'b1', amounts: [{ categoryId: 'cat-1', amount: '300' }] } }])
     expect(onboardingOf()).toBe('categories,accounts,plan')
     expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_PLAN_COMPLETE, { rows: 1 })
+    expect(calledTimes(METRICS.ONBOARDING_PLAN_COMPLETE)).toBe(1)
   })
 
   it('a step the server already marked answers with the current state and changes nothing', async () => {
     const { result } = await ready('categories')
     await act(() => result.current.saveCategories(cats))
     expect(onboardingOf()).toBe('categories')
-    expect(loadDraft('u1')!.createdCategories).toEqual({})
+    expect(loadDraft('u1')!.budgetId).toBeNull()
   })
 
   it('ready waits for the accounts query', async () => {
