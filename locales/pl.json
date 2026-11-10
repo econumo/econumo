@@ -166,7 +166,7 @@
       "title": "Nie zapisano na tym urządzeniu",
       "text": "Te dane nie są zapisane na tym urządzeniu. Połącz się z internetem, aby je wczytać."
     },
-    "offline_notice": "Jesteś offline. Możesz przeglądać, ale zmiany tutaj wymagają połączenia."
+    "offline_notice": "Jesteś offline. Tutaj możesz tylko przeglądać — zmiany wprowadzisz po połączeniu z internetem."
   },
   "accounts": {
     "folders": {
@@ -362,8 +362,8 @@
       "available": "Dostępna jest nowa wersja {version}"
     },
     "logout": {
-      "pending_unknown": "Niewysłane jeszcze zmiany z tego urządzenia, jeśli istnieją, zostaną utracone.",
-      "pending_warning": "{count} zmiana nie została jeszcze wysłana i zostanie utracona. | {count} zmiany nie zostały jeszcze wysłane i zostaną utracone. | {count} zmian nie zostało jeszcze wysłanych i zostanie utraconych."
+      "pending_unknown": "Jeśli na tym urządzeniu są niewysłane zmiany, zostaną utracone.",
+      "pending_warning": "{count} zmiana nie została jeszcze wysłana i przepadnie. | {count} zmiany nie zostały jeszcze wysłane i przepadną. | {count} zmian nie zostało jeszcze wysłanych i przepadnie."
     }
   },
   "transactions": {
@@ -510,17 +510,17 @@
     "open": "Skrzynka: do przejrzenia {count}",
     "empty": "Brak nowych powiadomień",
     "failed_writes": {
-      "kind_create": "Nowa",
-      "kind_update": "Edycja",
+      "kind_create": "Dodanie",
+      "kind_update": "Zmiana",
       "kind_delete": "Usunięcie",
       "delete_generic": "Usunięta transakcja",
-      "limit": "Plan dla {name}: {amount} ({period})",
-      "limit_generic": "Plan: {amount} ({period})",
-      "limit_cleared": "Plan dla {name} usunięty ({period})",
+      "limit": "{name}: plan {amount} ({period})",
+      "limit_generic": "Plan {amount} ({period})",
+      "limit_cleared": "{name}: plan usunięty ({period})",
       "limit_cleared_generic": "Plan usunięty ({period})",
       "retry": "Spróbuj ponownie",
       "discard": "Odrzuć",
-      "reason_unknown": "Serwer nie przyjął tej zmiany."
+      "reason_unknown": "Serwer odrzucił tę zmianę."
     },
     "sections": {
       "due": "Zaplanowane transakcje",

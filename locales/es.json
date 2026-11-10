@@ -166,7 +166,7 @@
       "title": "No guardado en este dispositivo",
       "text": "Estos datos no están guardados en este dispositivo. Conéctate a internet para cargarlos."
     },
-    "offline_notice": "Estás sin conexión. Puedes echar un vistazo, pero los cambios aquí necesitan conexión."
+    "offline_notice": "Estás sin conexión. Aquí solo puedes consultar; para hacer cambios necesitas conexión."
   },
   "accounts": {
     "folders": {
@@ -301,7 +301,7 @@
       "failing": "No se puede conectar con el servidor: reintentando",
       "full_reload": "Borrando la caché y recargando…",
       "hold_hint": "Mantén pulsado para borrar la caché y recargar",
-      "waiting": "{count} cambio en espera de envío | {count} cambios en espera de envío",
+      "waiting": "{count} cambio pendiente de enviar | {count} cambios pendientes de enviar",
       "full_reload_offline": "Estás sin conexión. Borra la caché y recarga cuando vuelvas a estar en línea.",
       "offline": "Sin conexión"
     },
@@ -362,7 +362,7 @@
       "available": "Nueva versión {version} disponible"
     },
     "logout": {
-      "pending_unknown": "Los cambios aún no enviados desde este dispositivo, si los hay, se perderán.",
+      "pending_unknown": "Si hay cambios sin enviar en este dispositivo, se perderán.",
       "pending_warning": "{count} cambio aún no se ha enviado y se perderá. | {count} cambios aún no se han enviado y se perderán."
     }
   },
@@ -511,16 +511,16 @@
     "empty": "No hay notificaciones nuevas",
     "failed_writes": {
       "kind_create": "Nueva",
-      "kind_update": "Editar",
-      "kind_delete": "Eliminar",
+      "kind_update": "Modificada",
+      "kind_delete": "Eliminada",
       "delete_generic": "Transacción eliminada",
-      "limit": "Plan de {name}: {amount} ({period})",
-      "limit_generic": "Plan: {amount} ({period})",
-      "limit_cleared": "Plan de {name} eliminado ({period})",
+      "limit": "{name}: plan de {amount} ({period})",
+      "limit_generic": "Plan de {amount} ({period})",
+      "limit_cleared": "{name}: plan eliminado ({period})",
       "limit_cleared_generic": "Plan eliminado ({period})",
       "retry": "Reintentar",
       "discard": "Descartar",
-      "reason_unknown": "El servidor no aceptó este cambio."
+      "reason_unknown": "El servidor rechazó este cambio."
     },
     "sections": {
       "due": "Transacciones programadas",
@@ -528,7 +528,7 @@
       "sync": "Problemas de sincronización",
       "failed": "Importaciones fallidas",
       "to_review": "Para revisar",
-      "failed_writes": "No guardado",
+      "failed_writes": "Sin guardar",
       "skipped": "Omitidos ({count})"
     },
     "due": {

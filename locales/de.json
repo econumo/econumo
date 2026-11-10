@@ -166,7 +166,7 @@
       "title": "Nicht auf diesem Gerät gespeichert",
       "text": "Diese Daten sind auf diesem Gerät nicht gespeichert. Stellen Sie eine Internetverbindung her, um sie zu laden."
     },
-    "offline_notice": "Sie sind offline. Sie können sich umsehen, aber Änderungen hier benötigen eine Verbindung."
+    "offline_notice": "Sie sind offline. Hier können Sie sich alles ansehen, Änderungen sind aber erst mit Internetverbindung möglich."
   },
   "accounts": {
     "folders": {
@@ -301,7 +301,7 @@
       "failing": "Server nicht erreichbar — wird erneut versucht",
       "full_reload": "Cache wird geleert und neu geladen…",
       "hold_hint": "Gedrückt halten, um den Cache zu leeren und neu zu laden",
-      "waiting": "{count} Änderung wartet auf das Senden | {count} Änderungen warten auf das Senden",
+      "waiting": "{count} Änderung noch nicht gesendet | {count} Änderungen noch nicht gesendet",
       "full_reload_offline": "Sie sind offline. Leeren Sie den Cache und laden Sie neu, sobald Sie wieder online sind.",
       "offline": "Keine Verbindung"
     },
@@ -362,7 +362,7 @@
       "available": "Neue Version {version} verfügbar"
     },
     "logout": {
-      "pending_unknown": "Noch nicht gesendete Änderungen auf diesem Gerät gehen dabei verloren, falls es welche gibt.",
+      "pending_unknown": "Falls auf diesem Gerät noch nicht gesendete Änderungen vorhanden sind, gehen sie verloren.",
       "pending_warning": "{count} Änderung wurde noch nicht gesendet und geht verloren. | {count} Änderungen wurden noch nicht gesendet und gehen verloren."
     }
   },
@@ -511,16 +511,16 @@
     "empty": "Keine neuen Benachrichtigungen",
     "failed_writes": {
       "kind_create": "Neu",
-      "kind_update": "Bearbeiten",
-      "kind_delete": "Löschen",
+      "kind_update": "Geändert",
+      "kind_delete": "Gelöscht",
       "delete_generic": "Gelöschte Transaktion",
-      "limit": "Plan für {name}: {amount} ({period})",
-      "limit_generic": "Plan: {amount} ({period})",
-      "limit_cleared": "Plan für {name} entfernt ({period})",
+      "limit": "{name}: Plan {amount} ({period})",
+      "limit_generic": "Plan {amount} ({period})",
+      "limit_cleared": "{name}: Plan entfernt ({period})",
       "limit_cleared_generic": "Plan entfernt ({period})",
       "retry": "Erneut versuchen",
       "discard": "Verwerfen",
-      "reason_unknown": "Der Server hat diese Änderung nicht akzeptiert."
+      "reason_unknown": "Der Server hat diese Änderung abgelehnt."
     },
     "sections": {
       "due": "Geplante Transaktionen",

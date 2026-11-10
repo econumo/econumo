@@ -163,10 +163,10 @@
       "blockedServer": "此应用需要 {min} 或更新版本的 Econumo 服务器，而您的服务器为 {version}。请更新服务器后继续。"
     },
     "offline_unavailable": {
-      "title": "未保存在此设备上",
-      "text": "这些数据未保存在此设备上。请连接互联网以加载。"
+      "title": "未保存到此设备",
+      "text": "这些数据未保存到此设备。请联网后加载。"
     },
-    "offline_notice": "您当前处于离线状态。可以浏览，但在此处进行更改需要联网。"
+    "offline_notice": "当前处于离线状态。此页面仅可查看，联网后才能修改。"
   },
   "accounts": {
     "folders": {
@@ -301,7 +301,7 @@
       "failing": "无法连接到服务器——正在重试",
       "full_reload": "正在清除缓存并重新加载…",
       "hold_hint": "长按可清除缓存并重新加载",
-      "waiting": "{count} 项更改等待发送",
+      "waiting": "{count} 项更改待发送",
       "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。",
       "offline": "无网络连接"
     },
@@ -362,8 +362,8 @@
       "available": "有新版本 {version} 可用"
     },
     "logout": {
-      "pending_unknown": "此设备上尚未发送的更改（如有）将会丢失。",
-      "pending_warning": "{count} 项更改尚未发送，退出后将丢失。"
+      "pending_unknown": "如果此设备上有尚未发送的更改，退出登录后将丢失。",
+      "pending_warning": "{count} 项更改尚未发送，退出登录后将丢失。"
     }
   },
   "transactions": {
@@ -511,16 +511,16 @@
     "empty": "没有新通知",
     "failed_writes": {
       "kind_create": "新增",
-      "kind_update": "编辑",
+      "kind_update": "修改",
       "kind_delete": "删除",
       "delete_generic": "已删除的交易",
-      "limit": "{name} 的计划：{amount}（{period}）",
-      "limit_generic": "计划：{amount}（{period}）",
-      "limit_cleared": "{name} 的计划已移除（{period}）",
-      "limit_cleared_generic": "计划已移除（{period}）",
+      "limit": "{name}：计划 {amount}（{period}）",
+      "limit_generic": "计划 {amount}（{period}）",
+      "limit_cleared": "{name}：计划已删除（{period}）",
+      "limit_cleared_generic": "计划已删除（{period}）",
       "retry": "重试",
       "discard": "放弃",
-      "reason_unknown": "服务器未接受此更改。"
+      "reason_unknown": "服务器拒绝了此更改。"
     },
     "sections": {
       "due": "计划交易",
