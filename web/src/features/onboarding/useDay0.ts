@@ -158,8 +158,10 @@ export function useDay0() {
         }
         // a default removed and re-added under its own name counts as removed plus custom
         const kept = new Set(rows.flatMap((r) => (r.defaultKey ? [r.defaultKey] : [])))
+        for (const category of d.offeredDefaults.filter((k) => !kept.has(k))) {
+          trackEvent(METRICS.ONBOARDING_CATEGORY_REMOVED, { category })
+        }
         trackEvent(METRICS.ONBOARDING_CATEGORIES_COMPLETE, {
-          removed: d.offeredDefaults.filter((k) => !kept.has(k)).join(','),
           renamed: rows.filter((r) => r.defaultKey && !r.labelKey).map((r) => r.defaultKey).join(','),
           custom: rows.filter((r) => !r.defaultKey).length,
           offered: d.offeredDefaults.length,

@@ -305,6 +305,7 @@ describe('CategoriesStepBody', () => {
     const { onDone } = renderBody([])
     await screen.findByRole('heading', { name: 'What do you spend on?' })
     await user.click(screen.getByRole('button', { name: 'Remove Kids' }))
+    await user.click(screen.getByRole('button', { name: 'Remove Pets' }))
     const groceries = screen.getByDisplayValue('Groceries')
     await user.clear(groceries)
     await user.type(groceries, 'Food')
@@ -312,16 +313,22 @@ describe('CategoriesStepBody', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     const calls = vi.mocked(trackEvent).mock.calls.filter(([name]) => name === METRICS.ONBOARDING_CATEGORIES_COMPLETE)
-    expect(calls).toEqual([[METRICS.ONBOARDING_CATEGORIES_COMPLETE, { removed: 'kids', renamed: 'groceries', custom: 1, offered: 14 }]])
+    expect(calls).toEqual([[METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: 'groceries', custom: 1, offered: 14 }]])
+    const removed = vi.mocked(trackEvent).mock.calls.filter(([name]) => name === METRICS.ONBOARDING_CATEGORY_REMOVED)
+    expect(removed).toEqual([
+      [METRICS.ONBOARDING_CATEGORY_REMOVED, { category: 'kids' }],
+      [METRICS.ONBOARDING_CATEGORY_REMOVED, { category: 'pets' }],
+    ])
   })
 
-  it('reports an empty removed list when nothing was changed', async () => {
+  it('sends no removal events when nothing was changed', async () => {
     const user = userEvent.setup()
     const { onDone } = renderBody([])
     await screen.findByRole('heading', { name: 'What do you spend on?' })
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
-    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, { removed: '', renamed: '', custom: 0, offered: 14 })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: '', custom: 0, offered: 14 })
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORY_REMOVED, expect.anything())
   })
 
   it('a stored draft with some rows created resumes without duplicates, then moves on', async () => {
