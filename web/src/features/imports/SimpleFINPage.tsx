@@ -9,6 +9,7 @@ import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
 import { OfflineUnavailable } from '@/components/OfflineUnavailable'
 import { useOnline } from '@/hooks/useOnline'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { InfoBox } from '@/components/InfoBox'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -26,8 +27,11 @@ export function SimpleFINPage() {
   const { t } = useTranslation()
   const online = useOnline()
   const queryClient = useQueryClient()
-  const { data: sources = [], isPending: sourcesPending } = useImportSources()
-  const { state: keyState, refresh: refreshKey } = useImportKey()
+  const sourcesQuery = useImportSources()
+  const { data: sources = [], isPending: sourcesPending } = sourcesQuery
+  const { state: keyState, refresh: refreshKey, remote: remoteKey } = useImportKey()
+  // only network data counts: the local key read settles offline too
+  const unavailableOffline = useUnavailableOffline(sourcesQuery, remoteKey)
   const source = sources.find((s) => s.provider === 'simplefin') ?? null
   const [accessUrl, setAccessUrl] = useState<string | null>(null)
   const [reconnecting, setReconnecting] = useState(false)
@@ -108,8 +112,7 @@ export function SimpleFINPage() {
 
   const body = () => {
     if (sourcesPending || keyState.status === 'loading') {
-      // offline these wait for the connection instead of loading
-      if (!online) {
+      if (unavailableOffline) {
         return <OfflineUnavailable />
       }
       return <p className="text-sm text-muted-foreground">{t('common.app.modal.loading.data_loading')}</p>

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { queryKeys } from '@/app/queryKeys'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { IDBFactory } from 'fake-indexeddb'
 import { resetDbForTests } from '@/lib/db'
@@ -147,4 +148,40 @@ it('unlocked device: Sync now posts the decrypted access URL and shows the run s
   await waitFor(() => expect(syncBody).toEqual({ sourceId: 's2', accessUrl: ACCESS_URL, startDate: '2026-09-02' }))
   expect(await screen.findByText('Completed with errors')).toBeInTheDocument()
   expect(screen.getByText(/ACT-SAV: unsupported currency/)).toBeInTheDocument()
+})
+
+describe('offline', () => {
+  function renderCached(seed: (qc: QueryClient) => void) {
+    onlineManager.setOnline(false)
+    onTestFinished(() => onlineManager.setOnline(true))
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    seed(queryClient)
+    const router = createMemoryRouter([{ path: '/settings/simplefin', element: <SimpleFINPage /> }], { initialEntries: ['/settings/simplefin'] })
+    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>)
+  }
+
+  it('with the source and key cached, reading the device key never flashes the offline state', async () => {
+    const wrapped = await createKey('pw')
+    const ciphertext = await encryptCredential(ACCESS_URL)
+    renderCached((qc) => {
+      qc.setQueryData(queryKeys.importSources, [source({ credentialCiphertext: ciphertext, lastSyncedAt: '2026-09-05 08:00:00' })])
+      qc.setQueryData(queryKeys.importCredentialKey, { ...wrapped, updatedAt: '2026-09-07 10:00:00' })
+    })
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+    expect(screen.getByText('Loading your data')).toBeInTheDocument()
+    expect(await screen.findByText('Last synced 2026-09-05 08:00:00')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+  })
+
+  it('with nothing cached, it says the page is not saved on this device', async () => {
+    renderCached(() => {})
+    expect(await screen.findByTestId('offline-unavailable')).toBeInTheDocument()
+  })
+
+  it('with the sources cached but the remote key never loaded, it says so', async () => {
+    renderCached((qc) => {
+      qc.setQueryData(queryKeys.importSources, [source({ credentialCiphertext: 'v1:x' })])
+    })
+    expect(await screen.findByTestId('offline-unavailable')).toBeInTheDocument()
+  })
 })
