@@ -3197,6 +3197,9 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       once with the not-saved icon and the row's Available moves by the change; Left and payments
       left keep the server's figures until the change is sent, then update, and the debt screen's
       future payments reflect the extra payment.
+- [ ] 📱 Offline, debts need the server: the debt form's Add, the debt screen's Settings Save and
+      its Danger zone's Mark as paid off and Delete are disabled under the offline notice, and a
+      budget row's Track as debt and Details menu items are greyed out.
 - [ ] 📱 Budget figures do not guess offline: Spent, Available and the budget cell's transaction
       list keep the server's numbers for a waiting transaction (an edit or delete of a listed row
       shows there, a new one only once sent), and update when the server confirms it.

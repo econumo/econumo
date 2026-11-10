@@ -6,7 +6,9 @@ import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { dialogActionsClass } from '@/components/ResponsiveDialog'
+import { OfflineNotice } from '@/components/OfflineNotice'
 import { useFormErrors } from '@/hooks/useFormErrors'
+import { useOnline } from '@/hooks/useOnline'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { isNotEmpty } from '@/lib/validation'
 import type { DebtDto } from '@/api/dto/debt'
@@ -41,6 +43,7 @@ export interface DebtSettingsFormProps {
  */
 export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = false, onFocused }: DebtSettingsFormProps) {
   const { t } = useTranslation()
+  const online = useOnline()
   const formId = useId()
   const { data: currencies } = useCurrencies()
   const settingUp = debt.isSetUp !== 1
@@ -127,6 +130,7 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
           void submit()
         }}
       >
+        <OfflineNotice />
         <CardField label={t('debts.form.name.label')} htmlFor={`${formId}-name`} error={errors.name}>
           <Input
             id={`${formId}-name`}
@@ -226,7 +230,7 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
           >
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" disabled={updateDebt.isPending}>
+          <Button type="submit" disabled={updateDebt.isPending || !online}>
             {t('common.button.save.label')}
           </Button>
         </div>

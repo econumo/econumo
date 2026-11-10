@@ -1,6 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -281,4 +281,16 @@ it('a refused currency reveals the currency row, and the pick is resent', async 
   expect(bodies[0].currencyId).toBe('cur-gone')
   expect(bodies[1].currencyId).toBe('cur-eur')
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
+})
+
+it('cannot add a debt offline, and says why', async () => {
+  renderDialog()
+  await openCreate()
+  act(() => onlineManager.setOnline(false))
+  try {
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
+    expect(screen.getByTestId('offline-notice')).toBeInTheDocument()
+  } finally {
+    act(() => onlineManager.setOnline(true))
+  }
 })

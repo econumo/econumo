@@ -9,7 +9,9 @@ import { CoinLoader } from '@/components/CoinLoader'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { EntityIcon } from '@/components/EntityIcon'
+import { OfflineNotice } from '@/components/OfflineNotice'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { useOnline } from '@/hooks/useOnline'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { formatDate } from '@/lib/datetime'
 import { pluralPick } from '@/lib/plural'
@@ -67,19 +69,21 @@ function DangerZone({
   onDelete: () => void
 }) {
   const { t } = useTranslation()
+  // both need the server: offline they stay listed, greyed out
+  const online = useOnline()
   // the tab names the zone: the card needs no heading of its own
   return (
     <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-1">
       <div className="divide-y divide-destructive/20">
         {canMarkPaidOff ? (
           <DangerAction description={t('debts.review.danger.paid_off')}>
-            <Button type="button" variant="secondary" disabled={markingPaidOff} onClick={onMarkPaidOff}>
+            <Button type="button" variant="secondary" disabled={markingPaidOff || !online} onClick={onMarkPaidOff}>
               {t('debts.details.mark_paid_off')}
             </Button>
           </DangerAction>
         ) : null}
         <DangerAction description={t('debts.review.danger.delete')}>
-          <Button type="button" variant="destructive" onClick={onDelete}>
+          <Button type="button" variant="destructive" disabled={!online} onClick={onDelete}>
             {t('common.button.delete.label')}
           </Button>
         </DangerAction>
@@ -246,6 +250,7 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
                 )}
               </TabsContent>
               <TabsContent value="danger" className="flex flex-col gap-5">
+                <OfflineNotice />
                 <DangerZone
                   canMarkPaidOff={item.isSetUp === 1 && item.isPaidOff === 0}
                   markingPaidOff={markPaidOff.isPending}

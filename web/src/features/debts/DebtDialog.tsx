@@ -6,7 +6,9 @@ import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { OfflineNotice } from '@/components/OfflineNotice'
 import { useFormErrors } from '@/hooks/useFormErrors'
+import { useOnline } from '@/hooks/useOnline'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { isNotEmpty } from '@/lib/validation'
 import { useUiStore } from '@/app/uiStore'
@@ -31,6 +33,7 @@ const SERVER_FIELDS = ['name', 'currencyId', 'categoryId', 'payeeId', 'tagId', '
     shared) brings up a currency row to pick another. */
 function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: () => void }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: user } = useUserData()
   const { data: categories = [] } = useCategories()
   const { data: currencies } = useCurrencies()
@@ -107,7 +110,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
           <Button type="button" variant="secondary" onClick={onDone}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="debt-dialog-form" disabled={createDebt.isPending}>
+          <Button type="submit" form="debt-dialog-form" disabled={createDebt.isPending || !online}>
             {t('common.button.add.label')}
           </Button>
         </div>
@@ -122,6 +125,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
           void submit()
         }}
       >
+        <OfflineNotice />
         <p className="text-sm text-muted-foreground">{t('debts.form.intro')}</p>
 
         <CardField label={t('debts.form.name.label')} htmlFor="debt-name" error={errors.name}>
