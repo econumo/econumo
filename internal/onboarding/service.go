@@ -18,7 +18,13 @@ import (
 // is a paid round trip. Over the cap the write still succeeds, unclassified.
 const RateScopeClassify = "onboarding-ai"
 
-const classifyTimeout = 15 * time.Second
+// classifyTimeout bounds the savings-only job; reviewTimeout the import review,
+// whose reply (an icon per category and account, chosen from the whole
+// catalogue) takes real providers far longer. Both run in the background.
+const (
+	classifyTimeout = 15 * time.Second
+	reviewTimeout   = 90 * time.Second
+)
 
 // Runner starts a background job. Production runs it on a goroutine; tests
 // run it inline.
@@ -64,16 +70,21 @@ func (s *Service) schedule(ctx context.Context, userID, budgetID vo.Id, accountI
 	})
 }
 
-// The static log messages of each background job.
-type jobLogs struct{ skipped, panicked, failed string }
+// jobSpec is a background job's time budget and static log messages.
+type jobSpec struct {
+	timeout                   time.Duration
+	skipped, panicked, failed string
+}
 
 var (
-	jobClassify = jobLogs{
+	jobClassify = jobSpec{
+		timeout:  classifyTimeout,
 		skipped:  "onboarding savings classification skipped",
 		panicked: "onboarding savings classification panicked",
 		failed:   "onboarding savings classification failed",
 	}
-	jobReview = jobLogs{
+	jobReview = jobSpec{
+		timeout:  reviewTimeout,
 		skipped:  "onboarding import review skipped",
 		panicked: "onboarding import review panicked",
 		failed:   "onboarding import review failed",
@@ -83,7 +94,7 @@ var (
 // startJob runs one background AI job for the user, unless AI is off or the
 // user is over the cap (every job counts against it). The job gets a fresh
 // context: the request's is cancelled the moment the response is written.
-func (s *Service) startJob(ctx context.Context, userID vo.Id, logs jobLogs, job func(context.Context, promptFacts) error) {
+func (s *Service) startJob(ctx context.Context, userID vo.Id, logs jobSpec, job func(context.Context, promptFacts) error) {
 	if s.completer == nil {
 		return
 	}
@@ -103,7 +114,7 @@ func (s *Service) startJob(ctx context.Context, userID vo.Id, logs jobLogs, job 
 				slog.Error(logs.panicked, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", r))
 			}
 		}()
-		jobCtx, cancel := context.WithTimeout(context.Background(), classifyTimeout)
+		jobCtx, cancel := context.WithTimeout(context.Background(), logs.timeout)
 		defer cancel()
 		if err := job(jobCtx, facts); err != nil {
 			// Never log the prompt, the reply or the error text: they can carry names.

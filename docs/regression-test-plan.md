@@ -389,8 +389,8 @@ navigation (single-pane vs sidebar).
       Skip skips only Import. A failed finish-import shows the error with
       "Try again", which resends the same operation id.
 - [ ] With AI (`ECONUMO_AI_DSN` set), after an import the imported categories
-      and accounts get matching icons a few seconds later without a reload
-      (the review screens refetch once about 8 s after the import), the
+      and accounts get matching icons later without a reload (the review
+      screens refetch about 10 s, 30 s and 90 s after the import), the
       budget the import created flags the accounts the AI judges savings, and
       an icon the user changed meanwhile is kept. Without AI the icons stay
       as imported.

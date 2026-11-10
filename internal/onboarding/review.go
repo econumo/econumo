@@ -96,11 +96,20 @@ type reviewReply struct {
 	Savings    []string          `json:"savings"`
 }
 
-// review asks the AI for an icon per active own category and live own account,
-// and which accounts are savings, then applies the answer: an icon only when it
-// is in the catalogue and the item still has the icon it had when the job read
-// it (a change the user made since wins), savings only in savingsBudget and only
-// for accounts that are still members. An unusable reply changes nothing.
+// repaintable are the icons an item still has when nobody chose one: the
+// create-time default and the icons the CSV import gives what it creates. Only
+// such items get an AI icon; an icon the user picked is never replaced.
+var (
+	repaintableCategory = map[string]bool{model.DefaultIcon: true, model.ImportCategoryIcon: true}
+	repaintableAccount  = map[string]bool{model.ImportAccountIcon: true}
+)
+
+// review asks the AI for an icon per active own category and live own account
+// still on a default icon, and which accounts are savings (every live own
+// account is asked about), then applies the answer: an icon only when it is in
+// the catalogue and the item still has the icon it had when the job read it (a
+// change the user made since wins), savings only in savingsBudget and only for
+// accounts that are still members. An unusable reply changes nothing.
 func (s *Service) review(ctx context.Context, userID vo.Id, savingsBudget *vo.Id, facts promptFacts) error {
 	categories, err := s.steps.Categories.OwnCategories(ctx, userID)
 	if err != nil {
@@ -113,15 +122,19 @@ func (s *Service) review(ctx context.Context, userID vo.Id, savingsBudget *vo.Id
 	prompt := reviewFacts{Timezone: facts.Timezone, Language: facts.Language, Categories: []reviewCategory{}, Accounts: []promptAccount{}}
 	catIcon := map[string]string{}
 	for _, c := range categories {
-		if c.IsArchived == 0 {
+		if c.IsArchived == 0 && repaintableCategory[c.Icon] {
 			prompt.Categories = append(prompt.Categories, reviewCategory{ID: c.Id, Name: c.Name, Type: c.Type})
 			catIcon[strings.ToLower(c.Id)] = c.Icon
 		}
 	}
 	accIcon := map[string]string{}
+	repaint := map[string]bool{}
 	for _, a := range accounts {
 		prompt.Accounts = append(prompt.Accounts, promptAccount{ID: a.ID, Name: a.Name, Currency: a.CurrencyCode})
 		accIcon[strings.ToLower(a.ID)] = a.Icon
+		if repaintableAccount[a.Icon] {
+			repaint[strings.ToLower(a.ID)] = true
+		}
 	}
 	if len(prompt.Categories) == 0 && len(prompt.Accounts) == 0 {
 		return nil
@@ -151,7 +164,7 @@ func (s *Service) review(ctx context.Context, userID vo.Id, savingsBudget *vo.Id
 		}
 	}
 	for id, icon := range reply.Accounts {
-		if from, asked := accIcon[id]; asked && iconSet[icon] && icon != from {
+		if from, asked := accIcon[id]; asked && repaint[id] && iconSet[icon] && icon != from {
 			_, rerr := s.steps.Accounts.ReplaceIcon(ctx, userID, vo.MustParseId(id), from, icon)
 			keep(rerr)
 		}

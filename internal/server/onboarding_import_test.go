@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
@@ -56,6 +58,8 @@ func (e *onbEnv) setProfileCurrency(currencyID string) {
 
 type importWorld struct {
 	food, salary, old string
+	rent              string // an icon the user picked
+	savingsCard       string // an account icon the user picked
 	card, deposit     string
 	stash             string // in a hidden folder
 }
@@ -64,13 +68,16 @@ func seedImport(e *onbEnv) importWorld {
 	folder := e.f.Folder(fixture.Folder{UserID: e.user, Name: "Main"})
 	hidden := e.f.Folder(fixture.Folder{UserID: e.user, Name: "Old stuff", Hidden: true, Position: 1})
 	w := importWorld{
-		food:    e.f.Category(fixture.Category{UserID: e.user, Name: "Lebensmittel", Type: 0, Icon: "home"}),
-		salary:  e.f.Category(fixture.Category{UserID: e.user, Name: "Gehalt", Type: 1, Icon: "home"}),
-		old:     e.f.Category(fixture.Category{UserID: e.user, Name: "Altes", Type: 0, Icon: "home", Archived: true}),
+		food:    e.f.Category(fixture.Category{UserID: e.user, Name: "Lebensmittel", Type: 0, Icon: model.ImportCategoryIcon}),
+		salary:  e.f.Category(fixture.Category{UserID: e.user, Name: "Gehalt", Type: 1, Icon: model.DefaultIcon}),
+		old:     e.f.Category(fixture.Category{UserID: e.user, Name: "Altes", Type: 0, Icon: model.ImportCategoryIcon, Archived: true}),
+		rent:    e.f.Category(fixture.Category{UserID: e.user, Name: "Miete", Type: 0, Icon: "home"}),
 		card:    e.f.Account(fixture.Account{UserID: e.user, Name: "Girokonto", CurrencyID: e.eur, Icon: "wallet"}),
 		deposit: e.f.Account(fixture.Account{UserID: e.user, Name: "Tagesgeld", CurrencyID: e.eur, Icon: "wallet"}),
 		stash:   e.f.Account(fixture.Account{UserID: e.user, Name: "Versteck", Icon: "wallet"}),
 	}
+	w.savingsCard = e.f.Account(fixture.Account{UserID: e.user, Name: "Sparbuch", CurrencyID: e.eur, Icon: "pets"})
+	e.f.AccountInFolder(folder, w.savingsCard)
 	e.f.AccountInFolder(folder, w.card)
 	e.f.AccountInFolder(folder, w.deposit)
 	e.f.AccountInFolder(hidden, w.stash)
@@ -82,8 +89,8 @@ func TestFinishImport_CreatesTheBudgetOnceAndOnlyMarksImport(t *testing.T) {
 	w := seedImport(e)
 	e.setProfileCurrency(e.f.Currency(fixture.Currency{Code: "CHF", Symbol: "Fr", Name: "Franc"}))
 	e.ai.reply = func() (string, error) {
-		return "```json\n" + `{"categories":{"` + strings.ToUpper(w.food) + `":"shopping_cart","` + w.salary + `":"not_an_icon","` + w.old + `":"payments"},` +
-			`"accounts":{"` + w.card + `":"credit_card","` + w.deposit + `":"savings"},"savings":["` + w.deposit + `","` + fixture.NewID() + `"]}` + "\n```", nil
+		return "```json\n" + `{"categories":{"` + strings.ToUpper(w.food) + `":"shopping_cart","` + w.salary + `":"not_an_icon","` + w.old + `":"payments","` + w.rent + `":"payments"},` +
+			`"accounts":{"` + w.card + `":"credit_card","` + w.deposit + `":"savings","` + w.savingsCard + `":"savings"},"savings":["` + w.deposit + `","` + fixture.NewID() + `"]}` + "\n```", nil
 	}
 	if _, err := e.db.Raw.Exec(e.db.Rebind(`UPDATE users SET timezone = ? WHERE id = ?`), "Europe/Berlin", e.user); err != nil {
 		t.Fatal(err)
@@ -103,7 +110,7 @@ func TestFinishImport_CreatesTheBudgetOnceAndOnlyMarksImport(t *testing.T) {
 	if cur := e.str(`SELECT c.code FROM budgets b JOIN currencies c ON c.id = b.currency_id WHERE b.id = ?`, budget); cur != "CHF" {
 		t.Fatalf("budget currency = %s", cur)
 	}
-	if !e.member(budget, w.card) || !e.member(budget, w.deposit) || e.member(budget, w.stash) {
+	if !e.member(budget, w.card) || !e.member(budget, w.deposit) || !e.member(budget, w.savingsCard) || e.member(budget, w.stash) {
 		t.Fatal("members: want the two visible accounts only")
 	}
 	if n := e.count(`SELECT COUNT(*) FROM budgets_elements WHERE budget_id = ? AND external_id IN (?, ?)`, budget, w.food, w.salary); n != 2 {
@@ -130,20 +137,24 @@ func TestFinishImport_CreatesTheBudgetOnceAndOnlyMarksImport(t *testing.T) {
 	if err := json.Unmarshal([]byte(e.ai.prompts[0]), &prompt); err != nil {
 		t.Fatal(err)
 	}
-	if prompt.Language != "de" || prompt.Timezone != "Europe/Berlin" || len(prompt.Categories) != 2 || len(prompt.Accounts) != 3 {
+	if prompt.Language != "de" || prompt.Timezone != "Europe/Berlin" || len(prompt.Categories) != 2 || len(prompt.Accounts) != 4 {
 		t.Fatalf("prompt = %+v", prompt)
 	}
-	if strings.Contains(e.ai.prompts[0], "CHF") || strings.Contains(e.ai.prompts[0], "Altes") || !strings.Contains(e.ai.prompts[0], `"type":"income"`) {
+	if strings.Contains(e.ai.prompts[0], "CHF") || strings.Contains(e.ai.prompts[0], "Altes") || strings.Contains(e.ai.prompts[0], "Miete") || !strings.Contains(e.ai.prompts[0], `"type":"income"`) {
 		t.Fatalf("prompt = %s", e.ai.prompts[0])
 	}
 	if !strings.Contains(e.ai.systems[0], "shopping_cart") {
 		t.Fatal("the system prompt does not list the icon catalogue")
 	}
-	if e.icon("categories", w.food) != "shopping_cart" || e.icon("categories", w.salary) != "home" || e.icon("categories", w.old) != "home" {
+	if e.icon("categories", w.food) != "shopping_cart" || e.icon("categories", w.salary) != model.DefaultIcon ||
+		e.icon("categories", w.old) != model.ImportCategoryIcon || e.icon("categories", w.rent) != "home" || e.icon("accounts", w.savingsCard) != "pets" {
 		t.Fatalf("category icons: food %s, salary %s, archived %s", e.icon("categories", w.food), e.icon("categories", w.salary), e.icon("categories", w.old))
 	}
 	if e.icon("accounts", w.card) != "credit_card" || e.icon("accounts", w.deposit) != "savings" {
 		t.Fatal("account icons not applied")
+	}
+	if left := time.Until(e.ai.deadlines[0]); left < 60*time.Second {
+		t.Fatalf("the review job has %s left, want its own 90 s budget", left)
 	}
 	if !e.isSavings(budget, w.deposit) || e.isSavings(budget, w.card) {
 		t.Fatal("savings flags")
@@ -166,7 +177,7 @@ func TestFinishImport_UserEditsWinOverTheAI(t *testing.T) {
 	w := seedImport(e)
 	e.ai.reply = func() (string, error) {
 		// the user changes these while the AI is thinking
-		for _, q := range []string{`UPDATE categories SET icon = 'pets' WHERE id = ?`, `UPDATE accounts SET icon = 'face' WHERE id = ?`} {
+		for _, q := range []string{`UPDATE categories SET icon = 'pets', updated_at = '2001-01-01 00:00:00' WHERE id = ?`, `UPDATE accounts SET icon = 'face', updated_at = '2001-01-01 00:00:00' WHERE id = ?`} {
 			id := w.food
 			if strings.Contains(q, "accounts") {
 				id = w.card
@@ -182,6 +193,16 @@ func TestFinishImport_UserEditsWinOverTheAI(t *testing.T) {
 	}
 	if e.icon("categories", w.food) != "pets" || e.icon("accounts", w.card) != "face" || e.icon("categories", w.salary) != "payments" {
 		t.Fatalf("icons: food %s, card %s, salary %s", e.icon("categories", w.food), e.icon("accounts", w.card), e.icon("categories", w.salary))
+	}
+	// a failed compare writes nothing at all
+	for _, table := range []string{"categories", "accounts"} {
+		id := w.food
+		if table == "accounts" {
+			id = w.card
+		}
+		if got := e.str(`SELECT updated_at FROM `+table+` WHERE id = ?`, id); !strings.HasPrefix(got, "2001-01-01") {
+			t.Fatalf("%s updated_at = %s", table, got)
+		}
 	}
 }
 
@@ -199,7 +220,7 @@ func TestFinishImport_AIFailuresChangeNothing(t *testing.T) {
 				t.Fatalf("status %d: %v", status, data)
 			}
 			budget := data["budgetId"].(string)
-			if len(e.ai.prompts) != 1 || e.icon("categories", w.food) != "home" || e.icon("accounts", w.deposit) != "wallet" || e.isSavings(budget, w.deposit) {
+			if len(e.ai.prompts) != 1 || e.icon("categories", w.food) != model.ImportCategoryIcon || e.icon("accounts", w.deposit) != "wallet" || e.isSavings(budget, w.deposit) {
 				t.Fatal("a failed job changed something")
 			}
 		})
@@ -501,5 +522,62 @@ func TestGetPlanSuggestions_NoBudgetAndAccess(t *testing.T) {
 	}
 	if status, _ := e.get("/api/v1/onboarding/get-plan-suggestions?budgetId=nope"); status != 400 {
 		t.Fatalf("bad id %d", status)
+	}
+}
+
+// A savings member carrying a plan is not removed by a hide: the removal is
+// never confirmed, so the plan survives and the account stays a member.
+func TestSaveAccounts_HideKeepsASavingsMemberWithPlans(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	main := e.f.Folder(fixture.Folder{UserID: e.user, Name: "Main"})
+	saver := e.f.Account(fixture.Account{UserID: e.user, Name: "Saver"})
+	e.f.AccountInFolder(main, saver)
+	budget := e.f.Budget(fixture.Budget{UserID: e.user})
+	e.f.BudgetAccount(budget, saver)
+	if _, err := e.db.Raw.Exec(e.db.Rebind(`UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ?`), true, budget); err != nil {
+		t.Fatal(err)
+	}
+	el := e.f.BudgetElement(fixture.BudgetElement{BudgetID: budget, ExternalID: saver, Type: int(model.ElementSavings)})
+	e.f.BudgetLimit(fixture.BudgetLimit{ElementID: el, Period: "2026-03-01", Amount: "100"})
+	status, data := e.post("/api/v1/onboarding/save-accounts", map[string]any{"id": fixture.NewID(), "mainCurrencyId": fixture.USD, "hide": []string{saver}})
+	if status != 200 {
+		t.Fatalf("status %d: %v", status, data)
+	}
+	if !e.member(budget, saver) || e.count(`SELECT COUNT(*) FROM budgets_elements_limits WHERE element_id = ?`, el) != 1 {
+		t.Fatal("the savings member or its plan was dropped")
+	}
+	if e.count(`SELECT COUNT(*) FROM folders WHERE user_id = ? AND name = 'Archiv' AND is_visible = ?`, e.user, false) != 1 {
+		t.Fatal("not moved to the archive folder")
+	}
+}
+
+// A visible folder that happens to carry the archive name is the user's own:
+// it stays visible and the archive gets a numbered name, reused next time.
+func TestSaveAccounts_NeverHidesAVisibleFolderOfTheArchiveName(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	mine := e.f.Folder(fixture.Folder{UserID: e.user, Name: "Archiv"})
+	acc := e.f.Account(fixture.Account{UserID: e.user, Name: "Card"})
+	e.f.AccountInFolder(mine, acc)
+	status, data := e.post("/api/v1/onboarding/save-accounts", map[string]any{"id": fixture.NewID(), "mainCurrencyId": fixture.USD, "hide": []string{acc}})
+	if status != 200 {
+		t.Fatalf("status %d: %v", status, data)
+	}
+	if e.count(`SELECT COUNT(*) FROM folders WHERE id = ? AND is_visible = ?`, mine, true) != 1 {
+		t.Fatal("the user's visible folder was hidden")
+	}
+	archive := e.str(`SELECT id FROM folders WHERE user_id = ? AND name = 'Archiv 2' AND is_visible = ?`, e.user, false)
+	if e.str(`SELECT folder_id FROM accounts_folders WHERE account_id = ?`, acc) != archive {
+		t.Fatal("not moved to the numbered archive folder")
+	}
+}
+
+func TestGetPlanSuggestions_ADefaultBudgetTheUserCannotPlanSuggestsNothing(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	other := e.f.User(fixture.User{Name: "Other", Email: "other@onboarding.test"})
+	theirs := e.f.Budget(fixture.Budget{UserID: other})
+	e.f.BudgetAccess(theirs, e.user, 2, true) // guest: readable, not plannable
+	status, data := e.get("/api/v1/onboarding/get-plan-suggestions")
+	if status != 200 || data["budgetId"] != "" || len(data["items"].([]any)) != 0 {
+		t.Fatalf("status %d: %v", status, data)
 	}
 }

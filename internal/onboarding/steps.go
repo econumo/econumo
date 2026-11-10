@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/econumo/econumo/internal/infra/i18n"
@@ -482,34 +483,48 @@ func (s *Service) visibleFolderID(ctx context.Context, userID vo.Id, create bool
 // creates for a user's first account.
 const generalFolderName = "General"
 
-// archiveFolderID is the user's folder named onboarding.archive_folder in the
-// request language, created when missing and hidden when visible.
+// isArchiveName matches the archive folder's name, plain or numbered.
+func isArchiveName(folder, name string) bool {
+	if folder == name {
+		return true
+	}
+	n, ok := strings.CutPrefix(folder, name+" ")
+	if !ok {
+		return false
+	}
+	_, err := strconv.Atoi(n)
+	return err == nil
+}
+
+// archiveFolderID is the user's hidden folder named onboarding.archive_folder
+// in the request language, created (hidden) when there is none.
 func (s *Service) archiveFolderID(ctx context.Context, userID vo.Id) (string, error) {
 	name := i18n.T(reqctx.Language(ctx), "onboarding.archive_folder", nil)
 	folders, err := s.steps.Accounts.GetFolderList(ctx, userID)
 	if err != nil {
 		return "", err
 	}
-	id, visible := "", false
+	taken := map[string]bool{}
 	for _, f := range folders.Items {
-		if f.Name == name {
-			id, visible = f.Id, f.IsVisible == 1
-			break
+		if f.IsVisible == 0 && isArchiveName(f.Name, name) {
+			return f.Id, nil
 		}
+		taken[f.Name] = true
 	}
-	if id == "" {
-		res, cerr := s.steps.Accounts.CreateFolder(ctx, userID, model.CreateFolderRequest{Name: name})
-		if cerr != nil {
-			return "", cerr
-		}
-		id, visible = res.Item.Id, true
+	// A visible folder of that name is the user's own and is never hidden: the
+	// archive gets the first free numbered name instead.
+	candidate := name
+	for n := 2; taken[candidate]; n++ {
+		candidate = name + " " + strconv.Itoa(n)
 	}
-	if visible {
-		if _, err := s.steps.Accounts.HideFolder(ctx, userID, model.HideFolderRequest{Id: id}); err != nil {
-			return "", err
-		}
+	res, err := s.steps.Accounts.CreateFolder(ctx, userID, model.CreateFolderRequest{Name: candidate})
+	if err != nil {
+		return "", err
 	}
-	return id, nil
+	if _, err := s.steps.Accounts.HideFolder(ctx, userID, model.HideFolderRequest{Id: res.Item.Id}); err != nil {
+		return "", err
+	}
+	return res.Item.Id, nil
 }
 
 // moveAccounts moves the accounts to hide into the archive folder and the
@@ -564,14 +579,14 @@ func (s *Service) moveAccounts(ctx context.Context, userID vo.Id, own []model.On
 }
 
 // syncMembership takes the hidden accounts out of the budget and puts the
-// unhidden ones back. An account whose history in past periods locks it in the
-// budget stays a member: hiding it still succeeds.
+// unhidden ones back. Hiding still succeeds, with the account left a member,
+// when remove-account refuses it: history in past periods locks it in the
+// budget, or it is a savings member carrying plans or comments. The removal is
+// never confirmed, so hiding never deletes a plan or comment the user wrote.
 func (s *Service) syncMembership(ctx context.Context, userID, budgetID vo.Id, hidden, shown []string) error {
 	for _, id := range hidden {
-		_, err := s.steps.Budgets.RemoveAccount(ctx, userID, model.RemoveAccountRequest{
-			BudgetId: budgetID.String(), AccountId: id, ConfirmSavingsRemoval: true,
-		})
-		if err != nil && !hasFieldCode(err, errs.CodeBudgetAccountNotRemovable) {
+		_, err := s.steps.Budgets.RemoveAccount(ctx, userID, model.RemoveAccountRequest{BudgetId: budgetID.String(), AccountId: id})
+		if err != nil && !hasFieldCode(err, errs.CodeBudgetAccountNotRemovable) && !hasFieldCode(err, errs.CodeBudgetSavingsRemovalUnconfirmed) {
 			return err
 		}
 	}

@@ -17,8 +17,8 @@ const (
 )
 
 // GetPlanSuggestions proposes a plan for the current period of the budget
-// (budgetId, else the user's default one; the caller must be able to update
-// it): for each of the user's own active categories, income and expense, the
+// (budgetId, which the caller must be able to update; else the user's default
+// budget when they may plan it, otherwise none): for each of the user's own active categories, income and expense, the
 // average monthly amount over the last three complete periods, rounded to the
 // element currency's fraction digits. A category with transactions in fewer
 // than two of those periods, or with no positive average, gets no suggestion.
@@ -29,12 +29,16 @@ func (s *Service) GetPlanSuggestions(ctx context.Context, userID vo.Id, req mode
 		if err != nil {
 			return nil, err
 		}
-		if out.BudgetId, err = s.defaultBudgetID(ctx, userID, user); err != nil {
+		id, writable, found, err := s.steps.Budgets.DefaultBudget(ctx, userID, preferredBudget(user))
+		if err != nil {
 			return nil, err
 		}
-		if out.BudgetId == "" {
+		// Without a budget to plan, there is nothing to suggest; a named
+		// budget the caller may not plan is a 403 instead.
+		if !found || !writable {
 			return out, nil
 		}
+		out.BudgetId = id.String()
 	}
 	history, err := s.steps.Budgets.CategoryHistory(ctx, userID, vo.MustParseId(out.BudgetId), suggestMonths)
 	if err != nil {

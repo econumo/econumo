@@ -69,3 +69,9 @@ ON CONFLICT (account_id, user_id) DO UPDATE SET
 -- name: ListAccountIDsByOwner :many
 -- Every account the user owns, soft-deleted ones included (the reports).
 SELECT id FROM accounts WHERE user_id = ? ORDER BY id;
+
+-- name: ReplaceAccountIcon :execrows
+-- A compare-and-set on the icon of a live account: one whose icon changed since
+-- it was read, or that was deleted, is left alone and nothing is written.
+UPDATE accounts SET icon = ?, updated_at = ?
+WHERE id = ? AND user_id = ? AND icon = ? AND is_deleted = FALSE;

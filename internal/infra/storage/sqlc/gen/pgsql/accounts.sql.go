@@ -235,6 +235,35 @@ func (q *Queries) ListDeletedAccounts(ctx context.Context) ([]Account, error) {
 	return items, nil
 }
 
+const replaceAccountIcon = `-- name: ReplaceAccountIcon :execrows
+UPDATE accounts SET icon = $1, updated_at = $2
+WHERE id = $3 AND user_id = $4 AND icon = $5 AND is_deleted = FALSE
+`
+
+type ReplaceAccountIconParams struct {
+	Icon      string
+	UpdatedAt time.Time
+	ID        string
+	UserID    string
+	Icon_2    string
+}
+
+// A compare-and-set on the icon of a live account: one whose icon changed since
+// it was read, or that was deleted, is left alone and nothing is written.
+func (q *Queries) ReplaceAccountIcon(ctx context.Context, arg ReplaceAccountIconParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, replaceAccountIcon,
+		arg.Icon,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.UserID,
+		arg.Icon_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const upsertAccount = `-- name: UpsertAccount :exec
 INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)

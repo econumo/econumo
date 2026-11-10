@@ -23,15 +23,18 @@ type stepClock struct{ t time.Time }
 func (c stepClock) Now() time.Time { return c.t }
 
 type recordingCompleter struct {
-	mu      sync.Mutex
-	prompts []string
-	systems []string
+	mu        sync.Mutex
+	prompts   []string
+	systems   []string
+	deadlines []time.Time
 	// reply, when set, answers instead of the empty savings list.
 	reply func() (string, error)
 }
 
-func (c *recordingCompleter) Complete(_ context.Context, _, system, user string) (string, error) {
+func (c *recordingCompleter) Complete(ctx context.Context, _, system, user string) (string, error) {
 	c.mu.Lock()
+	deadline, _ := ctx.Deadline()
+	c.deadlines = append(c.deadlines, deadline)
 	c.prompts = append(c.prompts, user)
 	c.systems = append(c.systems, system)
 	reply := c.reply

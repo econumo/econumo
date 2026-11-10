@@ -187,7 +187,7 @@ func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo
 		CurrencyId: currencyID,
 		FolderId:   folderID,
 		Balance:    vo.NewFlexString("0"),
-		Icon:       "wallet",
+		Icon:       model.ImportAccountIcon,
 	})
 	if err != nil {
 		return model.ImportAccount{}, err
@@ -235,7 +235,7 @@ func (c *TransactionImportCategories) CreateCategory(ctx context.Context, ownerI
 	if income {
 		typ = "income"
 	}
-	icon := "category"
+	icon := model.ImportCategoryIcon
 	res, err := c.svc.CreateCategory(ctx, ownerID, model.CreateCategoryRequest{
 		Id: vo.NewId().String(), Name: name, Type: typ, Icon: &icon,
 	})
