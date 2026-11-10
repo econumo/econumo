@@ -93,7 +93,7 @@ describe('useDay0', () => {
     const { result } = await ready()
     await act(() => result.current.saveCategories(cats, undefined, ['food', 'rent']))
     expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORY_REMOVED, { category: 'rent' })
-    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: '', custom: 1, offered: 2 })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: '', custom: 1, offered: 2, archived: 0, restored: 0 })
     expect(calledTimes(METRICS.ONBOARDING_CATEGORIES_COMPLETE)).toBe(1)
     expect(calledTimes(METRICS.ONBOARDING_CATEGORY_REMOVED)).toBe(1)
   })
@@ -189,7 +189,7 @@ describe('useDay0', () => {
     expect(draft.rows).toHaveLength(3)
     expect(draft.mainCurrencyId).toBe('cur-usd')
     expect(draft.budgetId).toBe('b-onb')
-    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, { accounts: 2, currencies: 4 })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, { accounts: 2, currencies: 4, hidden: 0, shown: 0 })
     expect(calledTimes(METRICS.ONBOARDING_ACCOUNTS_COMPLETE)).toBe(1)
   })
 
@@ -219,6 +219,41 @@ describe('useDay0', () => {
     await act(() => result.current.saveCategories(cats))
     expect(onboardingOf()).toBe('categories')
     expect(loadDraft('u1')!.budgetId).toBeNull()
+  })
+
+  it('finishImport marks only the import step, keeps the budget for the plan step and invalidates the lists', async () => {
+    const { result } = await ready('')
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    await act(() => result.current.finishImport())
+    expect(srv.calls).toEqual([{ path: 'finish-import', body: { id: expect.any(String) } }])
+    expect(onboardingOf()).toBe('import')
+    expect(loadDraft('u1')!.budgetId).toBe('b-onb')
+    expect(loadDraft('u1')!.ops.import).toBeUndefined()
+    expect(invalidate).toHaveBeenCalledWith({ predicate: expect.any(Function) })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_IMPORT_FINISHED, { budget: true })
+  })
+
+  it('a lost finish-import answer is retried under the same operation id', async () => {
+    const { result } = await ready('')
+    srv.failNext.import = 'lost'
+    await act(() => expect(result.current.finishImport()).rejects.toBeDefined())
+    const first = loadDraft('u1')!.ops.import
+    expect(first).toEqual(expect.any(String))
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.ONBOARDING_IMPORT_FINISHED, expect.anything())
+    await act(() => result.current.finishImport())
+    expect(srv.calls.map((c) => c.body.id)).toEqual([first, first])
+    expect(onboardingOf()).toBe('import')
+  })
+
+  it('saveCategories and saveAccounts send the review diffs and count them', async () => {
+    const { result } = await ready('import')
+    await act(() => result.current.saveCategories([], undefined, [], { archive: ['cat-1', 'cat-2'], restore: ['cat-3'] }))
+    await act(() => result.current.saveAccounts([], [], 'cur-usd', { hide: ['a1'], unhide: [] }))
+    expect(srv.calls[0].body).toMatchObject({ categories: [], archive: ['cat-1', 'cat-2'], restore: ['cat-3'] })
+    expect(srv.calls[1].body).toMatchObject({ accounts: [], hide: ['a1'] })
+    expect(srv.calls[1].body.unhide).toBeUndefined()
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, expect.objectContaining({ archived: 2, restored: 1 }))
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, expect.objectContaining({ hidden: 1, shown: 0 }))
   })
 
   it('ready waits for the accounts query', async () => {

@@ -1217,7 +1217,13 @@
       "continue": "Продолжить",
       "skip": "Пропустить",
       "add": "Добавить счёт",
-      "default_cash": "Наличные"
+      "default_cash": "Наличные",
+      "hide": "Скрыть",
+      "show": "Показать",
+      "hide_label": "Скрыть {name}",
+      "show_label": "Показать {name}",
+      "hidden": "Скрыт",
+      "hidden_hint": "Скрытые счета переносятся в папку «Архив» и выходят из бюджета."
     },
     "categories_step": {
       "heading": "На что вы тратите?",
@@ -1230,7 +1236,12 @@
       "remove_label": "Удалить {name}",
       "add_placeholder": "Добавьте свою",
       "continue": "Продолжить",
-      "skip": "Пропустить"
+      "skip": "Пропустить",
+      "archive": "В архив",
+      "restore": "Вернуть",
+      "archive_label": "Отправить {name} в архив",
+      "restore_label": "Вернуть {name} из архива",
+      "archived": "В архиве"
     },
     "currencies": {
       "title": "Валюты",

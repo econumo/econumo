@@ -1217,7 +1217,13 @@
       "continue": "继续",
       "skip": "跳过",
       "add": "添加账户",
-      "default_cash": "现金账户"
+      "default_cash": "现金账户",
+      "hide": "隐藏",
+      "show": "显示",
+      "hide_label": "隐藏 {name}",
+      "show_label": "显示 {name}",
+      "hidden": "已隐藏",
+      "hidden_hint": "隐藏的账户会移到“已归档”文件夹，并移出预算。"
     },
     "categories_step": {
       "heading": "你的钱花在哪里？",
@@ -1230,7 +1236,12 @@
       "remove_label": "移除{name}",
       "add_placeholder": "添加自定义分类",
       "continue": "继续",
-      "skip": "跳过"
+      "skip": "跳过",
+      "archive": "归档",
+      "restore": "恢复",
+      "archive_label": "归档 {name}",
+      "restore_label": "恢复 {name}",
+      "archived": "已归档"
     },
     "currencies": {
       "title": "币种",

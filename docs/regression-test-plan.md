@@ -312,10 +312,18 @@ navigation (single-pane vs sidebar).
       end. On a fresh account every default is listed; the trash button drops
       a row from the list, and a removed name typed again under "Add your own"
       comes back as a normal row. Continue is disabled only when no category
-      would be left at all. Categories the user already has (after an import)
-      are listed read-only (no trash button, no checkbox), and then no
-      defaults are offered; defaults named like a category the user archived
-      are not offered either (the archived one is not listed). The defaults are, for
+      would be left at all (every row archived or removed and nothing new).
+      Categories the user already has (after an import) are listed with their
+      name read-only (no trash button, no checkbox) and an Archive button
+      ("Archive {name}"; icon only on a phone, "Archive" next to it from a
+      tablet width up); archived ones (also the user's earlier archived
+      categories) read muted, "Archived" next to the name from a tablet width,
+      with a "Restore" button. Then no defaults are offered; defaults named
+      like any category the user has, archived ones included, are not offered
+      either. Continue sends `archive`/`restore` in `save-categories` only for
+      the rows flipped against the server (flipping a row twice sends
+      nothing); after it the archived ones are gone from the category pickers
+      and restored ones are back. The defaults are, for
       expenses, Groceries, Housing, Utilities, Transport, Eating out, Health,
       Shopping, Entertainment, Kids, Pets, Subscriptions and, for income,
       Salary, Bonus, Other income (translated in every UI language).
@@ -336,7 +344,16 @@ navigation (single-pane vs sidebar).
       used for the created account, and an existing account's icon is not
       tappable; "Add account" adds a row. Accounts the user already has are
       listed first and locked, with their balance shown and no balance asked
-      for. A user with no accounts starts with one row named "Cash" (cash
+      for, each with a Hide button (an eye; "Hide" next to it from a tablet
+      width up); a hidden one (also an account already in a hidden folder)
+      reads muted with "Hidden" instead of its balance and a Show button, and
+      under the list a hint reads "Hidden accounts move to the Archive folder
+      and leave the budget." Continue sends `hide`/`unhide` in `save-accounts`
+      for the flipped rows only: a hidden account then sits in the hidden
+      "Archive" folder (translated) and is gone from the budget (unless it has
+      history in an earlier month, then it stays a member); a shown one moves
+      back to a visible folder and into the budget. Continue is disabled while
+      every account is hidden and no new row has a name. A user with no accounts starts with one row named "Cash" (cash
       icon, blank balance saved as 0, the default currency) that
       can be renamed or removed like any row; a user who already has accounts,
       or resumes a draft with rows, gets no Cash row. Under the Currencies
@@ -364,10 +381,19 @@ navigation (single-pane vs sidebar).
       drop it here": dragging a file over it highlights it, dropping a .csv
       opens the dialog with that file already read (column mapping shown),
       and dropping another kind of file opens nothing and shows "Only CSV
-      files can be imported here."; a successful import marks Categories
-      and Accounts done and opens the next open step (normally Budget & plan); closing
-      the dialog or importing nothing leaves the step open; Skip skips only
-      Import.
+      files can be imported here."; a successful import sends one
+      `onboarding/finish-import` (it creates the budget when the user has
+      none), ticks Import only and opens Categories: Categories and Accounts
+      stay open as review steps of what the import brought in (they are not
+      ticked); closing the dialog or importing nothing leaves the step open;
+      Skip skips only Import. A failed finish-import shows the error with
+      "Try again", which resends the same operation id.
+- [ ] With AI (`ECONUMO_AI_DSN` set), after an import the imported categories
+      and accounts get matching icons a few seconds later without a reload
+      (the review screens refetch once about 8 s after the import), the
+      budget the import created flags the accounts the AI judges savings, and
+      an icon the user changed meanwhile is kept. Without AI the icons stay
+      as imported.
 - [ ] Steps per device: Install app appears only where the browser can
       install or show home-screen instructions (a standalone PWA shows
       none); the Install button or "Done" marks it done and Skip skips it. On
@@ -410,7 +436,14 @@ navigation (single-pane vs sidebar).
       income categories, e.g. Salary right after Day 0) and an "Expenses ·
       {month}" card (own expense categories, not archived ones nor those inside
       an envelope), one amount per row, prefilled with this month's existing
-      plan exactly as stored; a row with no plan is blank, not 0. The line below reads
+      plan exactly as stored; a row with no plan is blank, not 0. With history
+      (e.g. after an import) a blank row is then prefilled with the suggestion from the last
+      three complete months (`onboarding/get-plan-suggestions`: only a
+      category with transactions in at least 2 of those 3 months, the total
+      divided by 3, rounded to the currency's digits, in the budget currency);
+      a stored plan is never replaced, and an amount typed (or a row cleared)
+      before the suggestions arrive is kept. A prefilled amount is saved by
+      Save plan like a typed one; an archived category is never listed. The line below reads
       "Planned X of Y expected income" once any income is entered, otherwise
       "Planned X of Y in your accounts" (own accounts converted to the budget
       currency), and updates while typing.

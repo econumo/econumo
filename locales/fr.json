@@ -1217,7 +1217,13 @@
       "continue": "Continuer",
       "skip": "Passer",
       "add": "Ajouter un compte",
-      "default_cash": "Espèces"
+      "default_cash": "Espèces",
+      "hide": "Masquer",
+      "show": "Afficher",
+      "hide_label": "Masquer {name}",
+      "show_label": "Afficher {name}",
+      "hidden": "Masqué",
+      "hidden_hint": "Les comptes masqués vont dans le dossier Archives et sortent du budget."
     },
     "categories_step": {
       "heading": "Où va votre argent ?",
@@ -1230,7 +1236,12 @@
       "remove_label": "Supprimer {name}",
       "add_placeholder": "Ajouter la vôtre",
       "continue": "Continuer",
-      "skip": "Passer"
+      "skip": "Passer",
+      "archive": "Archiver",
+      "restore": "Restaurer",
+      "archive_label": "Archiver {name}",
+      "restore_label": "Restaurer {name}",
+      "archived": "Archivée"
     },
     "currencies": {
       "title": "Devises",

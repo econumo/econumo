@@ -1217,7 +1217,13 @@
       "continue": "Dalej",
       "skip": "Pomiń",
       "add": "Dodaj konto",
-      "default_cash": "Gotówka"
+      "default_cash": "Gotówka",
+      "hide": "Ukryj",
+      "show": "Pokaż",
+      "hide_label": "Ukryj {name}",
+      "show_label": "Pokaż {name}",
+      "hidden": "Ukryte",
+      "hidden_hint": "Ukryte konta trafiają do folderu Archiwum i wypadają z budżetu."
     },
     "categories_step": {
       "heading": "Na co wydajesz pieniądze?",
@@ -1230,7 +1236,12 @@
       "remove_label": "Usuń {name}",
       "add_placeholder": "Dodaj własną",
       "continue": "Dalej",
-      "skip": "Pomiń"
+      "skip": "Pomiń",
+      "archive": "Archiwizuj",
+      "restore": "Przywróć",
+      "archive_label": "Archiwizuj {name}",
+      "restore_label": "Przywróć {name}",
+      "archived": "Zarchiwizowana"
     },
     "currencies": {
       "title": "Waluty",

@@ -1217,7 +1217,13 @@
       "continue": "Weiter",
       "skip": "Überspringen",
       "add": "Konto hinzufügen",
-      "default_cash": "Bargeld"
+      "default_cash": "Bargeld",
+      "hide": "Ausblenden",
+      "show": "Einblenden",
+      "hide_label": "{name} ausblenden",
+      "show_label": "{name} einblenden",
+      "hidden": "Ausgeblendet",
+      "hidden_hint": "Ausgeblendete Konten kommen in den Ordner „Archiv“ und zählen nicht mehr zum Budget."
     },
     "categories_step": {
       "heading": "Wofür geben Sie Geld aus?",
@@ -1230,7 +1236,12 @@
       "remove_label": "{name} entfernen",
       "add_placeholder": "Eigene hinzufügen",
       "continue": "Weiter",
-      "skip": "Überspringen"
+      "skip": "Überspringen",
+      "archive": "Archivieren",
+      "restore": "Wiederherstellen",
+      "archive_label": "{name} archivieren",
+      "restore_label": "{name} wiederherstellen",
+      "archived": "Archiviert"
     },
     "currencies": {
       "title": "Währungen",

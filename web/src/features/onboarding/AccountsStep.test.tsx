@@ -6,6 +6,7 @@ import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { http, HttpResponse } from 'msw'
 import { fixtureAccounts } from '@/test/fixtures'
+import * as metrics from '@/lib/metrics'
 import { AccountsStep, AccountsStepBody, type ExistingAccount } from './AccountsStep'
 import { emptyDraft, loadDraft, saveDraft, type AccountRow } from './draft'
 import { stepRoutes, userWith } from './onboardingRoutes.test-utils'
@@ -386,6 +387,34 @@ it('lists existing accounts first, locked with their balance, and passes them on
   ])
 })
 
+it('reviews existing accounts: Hide and Show flip rows, hidden ones read muted, and Continue sends the diff', async () => {
+  const user = userEvent.setup()
+  const archived: ExistingAccount = { id: 'acc-old', name: 'Old card', icon: 'credit_card', balance: '0', currencyId: 'cur-usd', hidden: true }
+  const { onContinue } = renderStep({ existing: [imported, rainy, archived] })
+  await ready()
+  expect(screen.getByText('Hidden accounts move to the Archive folder and leave the budget.')).toBeInTheDocument()
+  const oldRow = rowsEls()[2]
+  expect(oldRow).toHaveAttribute('data-hidden', 'true')
+  expect(within(oldRow).getByText('Hidden')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Hide Imported card' }))
+  expect(rowsEls()[0]).toHaveAttribute('data-hidden', 'true')
+  await user.click(screen.getByRole('button', { name: 'Show Old card' }))
+  expect(rowsEls()[2]).not.toHaveAttribute('data-hidden')
+  // flipped twice is no change
+  await user.click(screen.getByRole('button', { name: 'Hide Rainy day savings' }))
+  await user.click(screen.getByRole('button', { name: 'Show Rainy day savings' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][3]).toEqual({ hide: ['acc-imp'], unhide: ['acc-old'] })
+})
+
+it('cannot continue with every account hidden and no new row', async () => {
+  const user = userEvent.setup()
+  renderStep({ existing: [imported] })
+  await ready()
+  await user.click(screen.getByRole('button', { name: 'Hide Imported card' }))
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+})
+
 it('reseeds from a stored draft: rows standing for existing accounts stay locked, the rest stay editable', async () => {
   const user = userEvent.setup()
   const rows: AccountRow[] = [
@@ -448,6 +477,27 @@ describe('AccountsStepBody', () => {
     expect(body.accounts).toEqual([{ key: expect.any(String), name: 'Travel fund', balance: '20', currencyId: body.mainCurrencyId, icon: expect.any(String) }])
     expect(body.currencyIds).toEqual(expect.arrayContaining([fixtureAccounts[0].currency.id, body.mainCurrencyId]))
     expect(loadDraft('u1')!.budgetId).toBe('b-onb')
+    expect(body.hide).toBeUndefined()
+    expect(body.unhide).toBeUndefined()
+  })
+
+  it('an account in a hidden folder shows as hidden; Show and Hide go out as unhide and hide', async () => {
+    localStorage.clear()
+    const routes = stepRoutes({ option: 'categories' })
+    const inHidden = { ...fixtureAccounts[1], id: 'a-hid', name: 'Old savings', folderId: 'f-hidden' }
+    server.use(...coreHandlers({ accounts: [fixtureAccounts[0], inHidden], user: userWith('categories') }), ...routes.handlers)
+    const track = vi.spyOn(metrics, 'trackEvent').mockImplementation(() => undefined)
+    const user = userEvent.setup()
+    const { onDone } = renderBody()
+    await ready()
+    expect(rowsEls()[1]).toHaveAttribute('data-hidden', 'true')
+    await user.click(screen.getByRole('button', { name: 'Show Old savings' }))
+    await user.click(screen.getByRole('button', { name: `Hide ${fixtureAccounts[0].name}` }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(routes.srv.calls[0].body).toMatchObject({ accounts: [], hide: [fixtureAccounts[0].id], unhide: ['a-hid'] })
+    expect(track).toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_ACCOUNTS_COMPLETE, expect.objectContaining({ accounts: 0, hidden: 1, shown: 1 }))
+    track.mockRestore()
   })
 
   it('a stored draft from a failed submit reseeds the form and replays its operation id', async () => {

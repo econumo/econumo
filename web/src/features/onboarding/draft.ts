@@ -14,7 +14,7 @@ export type AccountRow = {
   iconPicked?: boolean
 }
 export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; labelKey?: string; defaultKey?: string }
-export type Day0Step = 'categories' | 'accounts' | 'plan'
+export type Day0Step = 'import' | 'categories' | 'accounts' | 'plan'
 export type Day0Draft = {
   // the operation id of a step's submit, minted on its first Continue and kept until the
   // server answers, so a retry after a lost response replays the same id
@@ -29,7 +29,7 @@ export type Day0Draft = {
   categoryOrder: string[]
   // catalogue keys of the defaults the first submit offered, kept across retries for the analytics event
   offeredDefaults?: string[]
-  // the budget the categories or accounts step answered with; the plan step plans it
+  // the budget the import, categories or accounts step answered with; the plan step plans it
   budgetId: Id | null
 }
 
@@ -45,7 +45,7 @@ export function emptyDraft(): Day0Draft {
   }
 }
 
-const STEPS: Day0Step[] = ['categories', 'accounts', 'plan']
+const STEPS: Day0Step[] = ['import', 'categories', 'accounts', 'plan']
 
 const storageKey = (userId: Id) => `econumo-day0:${userId}`
 

@@ -1217,7 +1217,13 @@
       "continue": "Continuar",
       "skip": "Omitir",
       "add": "Añadir cuenta",
-      "default_cash": "Efectivo"
+      "default_cash": "Efectivo",
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "hide_label": "Ocultar {name}",
+      "show_label": "Mostrar {name}",
+      "hidden": "Oculta",
+      "hidden_hint": "Las cuentas ocultas pasan a la carpeta Archivo y salen del presupuesto."
     },
     "categories_step": {
       "heading": "¿En qué gastas?",
@@ -1230,7 +1236,12 @@
       "remove_label": "Quitar {name}",
       "add_placeholder": "Añade las tuyas",
       "continue": "Continuar",
-      "skip": "Omitir"
+      "skip": "Omitir",
+      "archive": "Archivar",
+      "restore": "Restaurar",
+      "archive_label": "Archivar {name}",
+      "restore_label": "Restaurar {name}",
+      "archived": "Archivada"
     },
     "currencies": {
       "title": "Monedas",

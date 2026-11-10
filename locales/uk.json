@@ -1217,7 +1217,13 @@
       "continue": "Продовжити",
       "skip": "Пропустити",
       "add": "Додати рахунок",
-      "default_cash": "Готівка"
+      "default_cash": "Готівка",
+      "hide": "Приховати",
+      "show": "Показати",
+      "hide_label": "Приховати {name}",
+      "show_label": "Показати {name}",
+      "hidden": "Прихований",
+      "hidden_hint": "Приховані рахунки переносяться до теки «Архів» і виходять з бюджету."
     },
     "categories_step": {
       "heading": "На що ви витрачаєте?",
@@ -1230,7 +1236,12 @@
       "remove_label": "Видалити {name}",
       "add_placeholder": "Додайте свою",
       "continue": "Продовжити",
-      "skip": "Пропустити"
+      "skip": "Пропустити",
+      "archive": "В архів",
+      "restore": "Повернути",
+      "archive_label": "Перенести {name} в архів",
+      "restore_label": "Повернути {name} з архіву",
+      "archived": "В архіві"
     },
     "currencies": {
       "title": "Валюти",

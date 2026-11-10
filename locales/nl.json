@@ -1217,7 +1217,13 @@
       "continue": "Doorgaan",
       "skip": "Overslaan",
       "add": "Rekening toevoegen",
-      "default_cash": "Contant"
+      "default_cash": "Contant",
+      "hide": "Verbergen",
+      "show": "Tonen",
+      "hide_label": "{name} verbergen",
+      "show_label": "{name} tonen",
+      "hidden": "Verborgen",
+      "hidden_hint": "Verborgen rekeningen gaan naar de map Archief en tellen niet meer mee in het budget."
     },
     "categories_step": {
       "heading": "Waar geef je geld aan uit?",
@@ -1230,7 +1236,12 @@
       "remove_label": "{name} verwijderen",
       "add_placeholder": "Voeg je eigen toe",
       "continue": "Doorgaan",
-      "skip": "Overslaan"
+      "skip": "Overslaan",
+      "archive": "Archiveren",
+      "restore": "Herstellen",
+      "archive_label": "{name} archiveren",
+      "restore_label": "{name} herstellen",
+      "archived": "Gearchiveerd"
     },
     "currencies": {
       "title": "Valuta's",

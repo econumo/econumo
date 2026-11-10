@@ -1217,7 +1217,13 @@
       "continue": "Continuar",
       "skip": "Pular",
       "add": "Adicionar conta",
-      "default_cash": "Dinheiro"
+      "default_cash": "Dinheiro",
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "hide_label": "Ocultar {name}",
+      "show_label": "Mostrar {name}",
+      "hidden": "Oculta",
+      "hidden_hint": "Contas ocultas vão para a pasta Arquivo e saem do orçamento."
     },
     "categories_step": {
       "heading": "Em que você gasta?",
@@ -1230,7 +1236,12 @@
       "remove_label": "Remover {name}",
       "add_placeholder": "Adicione as suas",
       "continue": "Continuar",
-      "skip": "Pular"
+      "skip": "Pular",
+      "archive": "Arquivar",
+      "restore": "Restaurar",
+      "archive_label": "Arquivar {name}",
+      "restore_label": "Restaurar {name}",
+      "archived": "Arquivada"
     },
     "currencies": {
       "title": "Moedas",

@@ -4,13 +4,16 @@ import { useTranslation } from 'react-i18next'
 import { FileUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
+import { apiErrorMessage } from '@/lib/apiError'
 import { cn } from '@/lib/utils'
 import type { StepBodyProps } from './OnboardingPage'
+import { useDay0 } from './useDay0'
 
 const isCsv = (file: File) => file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv'
 
-export function ImportStep({ onDone, onSkip }: StepBodyProps) {
+export function ImportStep({ onDone, onSkip, onImportFinished }: StepBodyProps) {
   const { t } = useTranslation()
+  const day0 = useDay0()
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [dropped, setDropped] = useState<File | undefined>(undefined)
@@ -19,6 +22,16 @@ export function ImportStep({ onDone, onSkip }: StepBodyProps) {
   const skip = () => {
     setPending(true)
     void onSkip().finally(() => setPending(false))
+  }
+  // categories and accounts stay open: the import's rows are reviewed there next
+  const finish = () => {
+    void day0
+      .finishImport()
+      .then(() => {
+        onImportFinished?.()
+        return onDone()
+      })
+      .catch(() => undefined)
   }
   const choose = () => {
     setDropped(undefined)
@@ -68,16 +81,26 @@ export function ImportStep({ onDone, onSkip }: StepBodyProps) {
         <span className="pointer-events-none">{t('onboarding.import_step.choose')}</span>
         <span aria-hidden className="pointer-events-none hidden text-xs sm:block">{t('onboarding.import_step.drop_here')}</span>
       </button>
+      {day0.error != null && (
+        <div className="flex items-center justify-between gap-4">
+          <p role="alert" className="text-sm text-destructive">
+            {apiErrorMessage(day0.error)}
+          </p>
+          <Button type="button" variant="outline" disabled={day0.pending} onClick={finish}>
+            {t('onboarding.retry')}
+          </Button>
+        </div>
+      )}
       {notCsv && (
         <p role="alert" className="text-sm text-destructive">
           {t('onboarding.import_step.not_csv')}
         </p>
       )}
       <div className="mt-6 flex items-center justify-between">
-        <Button type="button" variant="ghost" disabled={pending} onClick={skip}>
+        <Button type="button" variant="ghost" disabled={pending || day0.pending} onClick={skip}>
           {t('onboarding.import_step.skip')}
         </Button>
-        <Button type="button" disabled={pending} onClick={choose}>
+        <Button type="button" disabled={pending || day0.pending} onClick={choose}>
           {t('onboarding.import_step.import')}
         </Button>
       </div>
@@ -86,7 +109,7 @@ export function ImportStep({ onDone, onSkip }: StepBodyProps) {
         initialFile={dropped}
         onClose={() => setOpen(false)}
         onComplete={(result) => {
-          if (result.imported > 0) void onDone(['categories', 'accounts'])
+          if (result.imported > 0) finish()
         }}
       />
     </section>

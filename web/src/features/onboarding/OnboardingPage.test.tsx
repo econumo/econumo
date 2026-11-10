@@ -6,7 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureCategories, fixtureEur, fixtureUser, fixtureUsd, fixtureWireBudget } from '@/test/fixtures'
 import { HomePage } from '@/features/home/HomePage'
-import { OnboardingPage } from './OnboardingPage'
+import { AI_REFRESH_DELAY_MS, OnboardingPage } from './OnboardingPage'
 
 let importedRows = 0
 vi.mock('@/features/transactions/ImportCsvDialog', () => ({
@@ -48,7 +48,7 @@ const markStep = (stored: string, step: string) =>
 // get-user-data serves the stored option, an update-onboarding POST replaces it
 function serve(initial: string) {
   posts = []
-  const state = { stored: initial, completed: false, failComplete: false, budgets: [fixtureWireBudget.meta] as { id: string }[] }
+  const state = { stored: initial, completed: false, failComplete: false, budgets: [fixtureWireBudget.meta] as { id: string }[], categoryListCalls: 0, imported: false }
   server.use(...coreHandlers({ budgets: [], categories: [] }))
   // added later, so these answer ahead of the core handlers
   server.use(
@@ -62,6 +62,19 @@ function serve(initial: string) {
         return ok({ user: userWith(state.stored), budgetId: 'b1', ...(step === 'plan' ? {} : { [step]: {} }) })
       }),
     ),
+    // finish-import as the server answers it: only `import` is marked, the budget is the existing one
+    http.post('*/api/v1/onboarding/finish-import', async ({ request }) => {
+      const body = await request.json()
+      posts.push({ path: 'finish-import', body })
+      state.stored = markStep(state.stored, 'import')
+      state.imported = true
+      return ok({ user: userWith(state.stored), budgetId: fixtureWireBudget.meta.id })
+    }),
+    // the CSV import brought these categories in
+    http.get('*/api/v1/category/get-category-list', () => {
+      state.categoryListCalls++
+      return ok({ items: state.imported ? fixtureCategories : [] })
+    }),
     http.get('*/api/v1/budget/get-budget', () => ok({ item: fixtureWireBudget })),
     http.get('*/api/v1/user/get-user-data', () => ok({ user: userWith(state.stored, state.completed) })),
     http.post('*/api/v1/user/update-onboarding', async ({ request }) => {
@@ -262,7 +275,7 @@ describe('Apple Wallet Set up', () => {
   })
 })
 
-it('an import with rows settles import, categories and accounts in one request', async () => {
+it('an import with rows finishes it on the server and opens Categories and Accounts as review steps, ticking neither', async () => {
   serve('')
   importedRows = 12
   const user = userEvent.setup()
@@ -270,8 +283,74 @@ it('an import with rows settles import, categories and accounts in one request',
   await heading('Bring in your history')
   await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
   await user.click(await screen.findByRole('button', { name: 'finish import' }))
+  expect(await heading('What do you spend on?')).toBeInTheDocument()
+  expect(posts).toEqual([{ path: 'finish-import', body: { id: expect.any(String) } }])
+  expect(screen.getByRole('button', { name: /Import/ })).toHaveAttribute('data-state', 'done')
+  expect(screen.getByRole('button', { name: /Categories/ })).toHaveAttribute('aria-current', 'step')
+  expect(screen.getByRole('button', { name: /Accounts/ })).not.toHaveAttribute('data-state', 'done')
+
+  // the imported categories are reviewed: archive one, the archived one stays archived
+  await user.click(await screen.findByRole('button', { name: 'Archive Food' }))
+  expect(screen.getByRole('button', { name: 'Restore Old' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(await heading("Where's your money right now?")).toBeInTheDocument()
+  expect(posts[1]).toMatchObject({ path: 'save-categories', body: { categories: [], archive: ['cat-food'] } })
+  expect((posts[1].body as Record<string, unknown>).restore).toBeUndefined()
+
+  // the accounts the import created are reviewed: one goes to the hidden Archive folder
+  await user.click(await screen.findByRole('button', { name: 'Hide Cash' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(await heading('Plan this month')).toBeInTheDocument()
-  expect(posts).toEqual([{ path: 'update-onboarding', value: 'import,categories,accounts' }])
+  expect(posts[2]).toMatchObject({ path: 'save-accounts', body: { accounts: [], hide: ['a1'] } })
+  expect(posts.filter((p) => p.path === 'update-onboarding')).toEqual([])
+})
+
+it('a failed finish-import stays on the import step with a retry that replays the same operation id', async () => {
+  serve('')
+  importedRows = 5
+  let fail = true
+  const ids: string[] = []
+  server.use(
+    http.post('*/api/v1/onboarding/finish-import', async ({ request }) => {
+      ids.push(((await request.json()) as { id: string }).id)
+      if (fail) {
+        fail = false
+        return HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'Error' }, { status: 500 })
+      }
+      return ok({ user: userWith('import'), budgetId: fixtureWireBudget.meta.id })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await heading('Bring in your history')
+  await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
+  await user.click(await screen.findByRole('button', { name: 'finish import' }))
+  expect(await screen.findByRole('alert')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Bring in your history' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Try again' }))
+  expect(await heading('What do you spend on?')).toBeInTheDocument()
+  expect(ids).toHaveLength(2)
+  expect(ids[1]).toBe(ids[0])
+})
+
+it('refetches the categories once more a few seconds after the import, for the icons the AI sets', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    const state = serve('')
+    importedRows = 3
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPage()
+    await heading('Bring in your history')
+    await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
+    await user.click(await screen.findByRole('button', { name: 'finish import' }))
+    expect(await heading('What do you spend on?')).toBeInTheDocument()
+    await screen.findByRole('button', { name: 'Archive Food' })
+    const before = state.categoryListCalls
+    await vi.advanceTimersByTimeAsync(AI_REFRESH_DELAY_MS)
+    await waitFor(() => expect(state.categoryListCalls).toBe(before + 1))
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 it('an import that brought nothing in marks nothing', async () => {

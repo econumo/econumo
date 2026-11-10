@@ -143,13 +143,42 @@ it('lists existing categories read-only, with no remove button, and offers no de
   expect(submitted(onContinue)).toEqual([])
 })
 
-it('does not offer a default named like an archived category, nor list the archived one', async () => {
+it('does not offer a default named like an archived category, and lists the archived one muted with Restore', async () => {
   const user = userEvent.setup()
-  const { onContinue } = renderStep({ archived: [{ id: 'cat-9', name: 'groceries', type: 'expense', icon: 'cake' }] })
+  const { onContinue } = renderStep({ existing: [{ id: 'cat-9', name: 'groceries', type: 'expense', icon: 'cake', archived: true }] })
   expect(screen.queryByDisplayValue('Groceries')).not.toBeInTheDocument()
   expect(screen.getByDisplayValue('Housing')).toBeInTheDocument()
+  const archivedRow = screen.getByText('groceries').closest('[data-testid="category-row"]') as HTMLElement
+  expect(archivedRow).toHaveAttribute('data-archived', 'true')
+  expect(within(archivedRow).getByRole('button', { name: 'Restore groceries' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(submitted(onContinue).map((r) => r.name)).not.toContain('Groceries')
+  expect(onContinue.mock.calls[0][3]).toEqual({ archive: [], restore: [] })
+})
+
+it('reviews existing categories: Archive and Restore flip rows, and Continue sends the diff against the server', async () => {
+  const user = userEvent.setup()
+  const old: ExistingCategory = { id: 'cat-3', name: 'Old hobby', type: 'expense', icon: 'cake', archived: true }
+  const { onContinue } = renderStep({ existing: [food, pay, old] })
+  // a user with categories is offered no defaults, and an existing name is not editable
+  expect(removeButtons()).toHaveLength(0)
+  expect(screen.queryByLabelText('Category name')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Archive Groceries' }))
+  const row = screen.getByText('Groceries').closest('[data-testid="category-row"]') as HTMLElement
+  expect(row).toHaveAttribute('data-archived', 'true')
+  await user.click(screen.getByRole('button', { name: 'Restore Old hobby' }))
+  // flipped back and forth is no change
+  await user.click(screen.getByRole('button', { name: 'Archive Paycheck' }))
+  await user.click(screen.getByRole('button', { name: 'Restore Paycheck' }))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][3]).toEqual({ archive: ['cat-1'], restore: ['cat-3'] })
+})
+
+it('cannot continue with every category archived and nothing new', async () => {
+  const user = userEvent.setup()
+  renderStep({ existing: [food] })
+  await user.click(screen.getByRole('button', { name: 'Archive Groceries' }))
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
 })
 
 it('never submits a new row named like an existing category', async () => {
@@ -306,7 +335,7 @@ describe('CategoriesStepBody', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     const calls = vi.mocked(trackEvent).mock.calls.filter(([name]) => name === METRICS.ONBOARDING_CATEGORIES_COMPLETE)
-    expect(calls).toEqual([[METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: 'groceries', custom: 1, offered: 14 }]])
+    expect(calls).toEqual([[METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: 'groceries', custom: 1, offered: 14, archived: 0, restored: 0 }]])
     const removed = vi.mocked(trackEvent).mock.calls.filter(([name]) => name === METRICS.ONBOARDING_CATEGORY_REMOVED)
     expect(removed).toEqual([
       [METRICS.ONBOARDING_CATEGORY_REMOVED, { category: 'kids' }],
@@ -320,7 +349,7 @@ describe('CategoriesStepBody', () => {
     await screen.findByRole('heading', { name: 'What do you spend on?' })
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
-    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: '', custom: 0, offered: 14 })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: '', custom: 0, offered: 14, archived: 0, restored: 0 })
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORY_REMOVED, expect.anything())
   })
 
@@ -345,6 +374,22 @@ describe('CategoriesStepBody', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(routes.srv.calls.map((c) => c.body.categories)).toEqual([[]])
+    expect(routes.srv.calls[0].body.archive).toBeUndefined()
+    expect(routes.srv.calls[0].body.restore).toBeUndefined()
+  })
+
+  it('the review sends archive and restore for the flipped categories, leaves them out when untouched, and counts them', async () => {
+    const user = userEvent.setup()
+    const archived = { id: 'cat-old', ownerUserId: 'u1', name: 'Old hobby', position: 9, type: 'expense', icon: 'cake', isArchived: 1, createdAt: '2026-11-08 21:37:17', updatedAt: '2026-11-08 21:37:17' }
+    const { onDone } = renderBody([...fixtureCategories, archived])
+    await screen.findByRole('heading', { name: 'What do you spend on?' })
+    const live = fixtureCategories.find((c) => c.isArchived === 0)!
+    await user.click(screen.getByRole('button', { name: `Archive ${live.name}` }))
+    await user.click(screen.getByRole('button', { name: 'Restore Old hobby' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(routes.srv.calls[0].body).toMatchObject({ categories: [], archive: [live.id], restore: ['cat-old'] })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: '', custom: 0, offered: 0, archived: 1, restored: 1 })
   })
 
   it('a stored draft from a failed submit reseeds the form and replays its operation id', async () => {
@@ -364,12 +409,13 @@ describe('CategoriesStepBody', () => {
     expect(loadDraft('u1')!.ops.categories).toBeUndefined()
   })
 
-  it('an archived category of the user keeps its default name out of the list', async () => {
+  it('an archived category of the user keeps its default name out of the offered rows and is listed as archived', async () => {
     // get-category-list as the server sends it: archived categories are included, isArchived 1
     renderBody([{ id: 'cat-a', ownerUserId: 'u1', name: 'Groceries', position: 0, type: 'expense', icon: 'shopping_cart', isArchived: 1, createdAt: '2026-11-08 21:37:17', updatedAt: '2026-11-08 21:37:17' }])
     await screen.findByRole('heading', { name: 'What do you spend on?' })
     expect(screen.queryByDisplayValue('Groceries')).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('Housing')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Restore Groceries' })).toBeInTheDocument()
   })
 
   it('a failed save shows the error and stays on the step', async () => {

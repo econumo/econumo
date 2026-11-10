@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Menu } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
+import { queryKeys } from '@/app/queryKeys'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
 import { useCompleteOnboarding, useUserData } from '@/features/user/queries'
@@ -19,15 +21,19 @@ import { Stepper } from './Stepper'
 import { useOnboardingSteps, type OnboardingStepKey } from './useOnboardingSteps'
 
 export interface StepBodyProps {
-  // `also`: further steps the same action settled, written together with this one
-  onDone: (also?: OnboardingStepKey[]) => Promise<void>
+  onDone: () => Promise<void>
   onSkip: () => Promise<void>
   onGoTo?: (key: OnboardingStepKey) => void
   // categories and accounts are done, so the rest of the guide may be wrapped up from this step
   coreStepsDone?: boolean
   // skips every open step, completes onboarding and lands on `to` instead of the budget
   onCompleteSetup?: (to: string) => Promise<void>
+  // the import finished: the server's background AI job sets icons and savings flags a few seconds later
+  onImportFinished?: () => void
 }
+
+// how long after finish-import the lists are refetched once to show the AI's icons
+export const AI_REFRESH_DELAY_MS = 8000
 
 const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
   import: ImportStep,
@@ -47,7 +53,8 @@ export function OnboardingPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
-  const { steps, current, allResolved, markDone, markManyDone, skip, ready } = useOnboardingSteps()
+  const queryClient = useQueryClient()
+  const { steps, current, allResolved, markDone, skip, ready } = useOnboardingSteps()
   const complete = useCompleteOnboarding()
   const { data: user } = useUserData()
   const userId = user?.id
@@ -57,6 +64,17 @@ export function OnboardingPage() {
   const autoCompleted = useRef(false)
   // where a completion lands, kept so the Finish retry after a failure goes there too
   const landing = useRef<string>(RouterPage.BUDGET)
+  // outlives the import step's body, which unmounts as the flow moves on to Categories
+  const aiRefresh = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(aiRefresh.current), [])
+  const scheduleAiRefresh = useCallback(() => {
+    clearTimeout(aiRefresh.current)
+    aiRefresh.current = setTimeout(() => {
+      for (const queryKey of [queryKeys.categories, queryKeys.accounts, queryKeys.budgets, queryKeys.budget]) {
+        void queryClient.invalidateQueries({ queryKey })
+      }
+    }, AI_REFRESH_DELAY_MS)
+  }, [queryClient])
 
   const finish = useCallback(async () => {
     if (completing.current) return
@@ -88,10 +106,9 @@ export function OnboardingPage() {
 
   // The steps read here are the ones rendered, so the answered step still
   // counts as open in them and is excluded by key.
-  const answer = (act: (key: OnboardingStepKey) => Promise<void>) => async (also: OnboardingStepKey[] = []) => {
-    if (also.length > 0) await markManyDone([active, ...also])
-    else await act(active)
-    const open = steps.filter((s) => s.key !== active && !also.includes(s.key) && s.state === 'open')
+  const answer = (act: (key: OnboardingStepKey) => Promise<void>) => async () => {
+    await act(active)
+    const open = steps.filter((s) => s.key !== active && s.state === 'open')
     if (open.length === 0) {
       autoCompleted.current = true
       await finish().catch(() => undefined)
@@ -155,7 +172,7 @@ export function OnboardingPage() {
           ) : null}
         </div>
       ) : null}
-      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} coreStepsDone={coreStepsDone} onCompleteSetup={completeSetup} />}
+      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} coreStepsDone={coreStepsDone} onCompleteSetup={completeSetup} onImportFinished={scheduleAiRefresh} />}
     </div>
   )
 }

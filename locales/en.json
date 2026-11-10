@@ -1217,7 +1217,13 @@
       "continue": "Continue",
       "skip": "Skip",
       "add": "Add account",
-      "default_cash": "Cash"
+      "default_cash": "Cash",
+      "hide": "Hide",
+      "show": "Show",
+      "hide_label": "Hide {name}",
+      "show_label": "Show {name}",
+      "hidden": "Hidden",
+      "hidden_hint": "Hidden accounts move to the Archive folder and leave the budget."
     },
     "categories_step": {
       "heading": "What do you spend on?",
@@ -1230,7 +1236,12 @@
       "remove_label": "Remove {name}",
       "add_placeholder": "Add your own",
       "continue": "Continue",
-      "skip": "Skip"
+      "skip": "Skip",
+      "archive": "Archive",
+      "restore": "Restore",
+      "archive_label": "Archive {name}",
+      "restore_label": "Restore {name}",
+      "archived": "Archived"
     },
     "currencies": {
       "title": "Currencies",

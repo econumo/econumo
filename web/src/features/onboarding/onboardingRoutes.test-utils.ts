@@ -1,12 +1,12 @@
 import { http, HttpResponse } from 'msw'
 import { fixtureUser } from '@/test/fixtures'
 
-// The three Day 0 step routes as the server answers them: each marks its step
+// The Day 0 step routes (finish-import and the three step saves) as the server answers them: each marks its step
 // in the onboarding option and answers {user, <key->id map>, budgetId}; a replay
 // of an operation id or a call for a step already done writes nothing and
 // answers with the current state.
 
-type Step = 'categories' | 'accounts' | 'plan'
+type Step = 'import' | 'categories' | 'accounts' | 'plan'
 
 export interface StepServer {
   calls: { path: string; body: any }[]
@@ -55,6 +55,7 @@ export function stepRoutes(init: { option?: string; budgetId?: string; base?: ty
       return HttpResponse.json({ success: true, message: '', data })
     })
   const handlers = [
+    handle('import', 'finish-import', () => [], 'imp'),
     handle('categories', 'save-categories', (b) => b.categories ?? [], 'cat', 'categories'),
     handle('accounts', 'save-accounts', (b) => b.accounts ?? [], 'acc', 'accounts'),
     handle('plan', 'save-plan', () => [], 'plan'),

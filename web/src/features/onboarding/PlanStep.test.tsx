@@ -86,9 +86,12 @@ interface Setup {
   budget?: { id: string; periodStartDay: number; sharedAs?: 'guest' | 'user' } | null
   // a budget list already cached (fresh) when the step opens
   cachedBudgets?: unknown[]
+  // get-plan-suggestions items; `gate` holds the answer until it resolves
+  suggestions?: { categoryId: string; amount: string }[]
+  gate?: Promise<void>
 }
 
-function setup({ salary = '3000', accounts, categories = defaultCategories(), plans = defaultPlans(salary), budget = { id: 'b1', periodStartDay: 1 }, cachedBudgets }: Setup = {}) {
+function setup({ salary = '3000', accounts, categories = defaultCategories(), plans = defaultPlans(salary), budget = { id: 'b1', periodStartDay: 1 }, cachedBudgets, suggestions = [], gate }: Setup = {}) {
   budgetPeriods = []
   routes = stepRoutes({ option: 'categories,accounts', budgetId: budget?.id })
   saves = []
@@ -116,6 +119,11 @@ function setup({ salary = '3000', accounts, categories = defaultCategories(), pl
       return ok({ item: wirePlan(id, categories, plans, from, metas.find((m) => m.id === id)?.periodStartDay ?? 1) })
     }),
     http.get('*/api/v1/oauth/get-identity-list', () => ok([])),
+    // as the server answers: the budget asked for and a decimal string per category
+    http.get('*/api/v1/onboarding/get-plan-suggestions', async ({ request }) => {
+      await gate
+      return ok({ budgetId: new URL(request.url).searchParams.get('budgetId') ?? '', items: suggestions })
+    }),
     ...routes.handlers,
   )
   const onDone = vi.fn(() => {
@@ -326,4 +334,49 @@ it('a cached budget list without the budget is refetched before planning', async
   setup({ cachedBudgets: [] })
   expect(await input('Groceries')).toBeInTheDocument()
   expect(budgetPeriods).toContain(period)
+})
+
+describe('plan suggestions', () => {
+  const suggestions = [
+    { categoryId: 'cat-food', amount: '40' },
+    { categoryId: 'cat-rent', amount: '6.67' },
+    { categoryId: 'cat-old', amount: '99' },
+    { categoryId: 'cat-salary', amount: '2500' },
+  ]
+
+  it('prefill only the empty inputs, never over a stored plan, and are saved as typed amounts', async () => {
+    const user = userEvent.setup()
+    const { onDone } = setup({ suggestions })
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Housing' })).toHaveValue('6.67'), { timeout: 5000 })
+    expect(screen.getByRole('textbox', { name: 'Groceries' })).toHaveValue('200')
+    expect(screen.getByRole('textbox', { name: 'Salary' })).toHaveValue('3000')
+    // an archived category is never planned, suggested or not
+    expect(screen.queryByRole('textbox', { name: 'Old' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Save plan' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalled())
+    expect(saves.map((b) => b.amounts)).toEqual([[{ categoryId: 'cat-rent', amount: '6.67' }]])
+  })
+
+  it('arriving late, they leave what the user already typed or cleared alone', async () => {
+    const user = userEvent.setup()
+    let release = () => undefined as void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { onDone } = setup({ suggestions, gate, plans: { 'cat-food': '', 'cat-rent': '', 'cat-salary': '' } })
+    await input('Groceries')
+    await user.type(screen.getByRole('textbox', { name: 'Housing' }), '5')
+    await user.type(screen.getByRole('textbox', { name: 'Groceries' }), '1')
+    await user.clear(screen.getByRole('textbox', { name: 'Groceries' }))
+    release()
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Salary' })).toHaveValue('2500'))
+    expect(screen.getByRole('textbox', { name: 'Housing' })).toHaveValue('5')
+    expect(screen.getByRole('textbox', { name: 'Groceries' })).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'Save plan' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalled())
+    expect(saves.map((b) => b.amounts)).toEqual([[
+      { categoryId: 'cat-salary', amount: '2500' },
+      { categoryId: 'cat-rent', amount: '5' },
+    ]])
+  })
 })

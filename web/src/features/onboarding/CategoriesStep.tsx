@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { GripVertical, Plus, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, GripVertical, Plus, Trash2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -20,7 +20,7 @@ import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from './default
 import { labelled, nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import type { StepBodyProps } from './OnboardingPage'
 import { StepLoadError } from './StepLoadError'
-import { useDay0 } from './useDay0'
+import { useDay0, type CategoryReview } from './useDay0'
 
 type CategoryType = CategoryRow['type']
 type ListItem = { id: string; existing?: ExistingCategory; row?: CategoryRow }
@@ -30,19 +30,20 @@ export interface ExistingCategory {
   name: string
   type: CategoryType
   icon: string
+  // archived on the server; the review may flip it
+  archived?: boolean
 }
 
 interface CategoriesStepProps {
-  // the user's own categories: listed read-only among the new rows
+  // the user's own categories, archived ones too: listed name-read-only among the new rows, each
+  // with an Archive / Restore toggle. A default named like any of them is not offered.
   existing: ExistingCategory[]
-  // the user's own archived categories: never listed, but a default named like one is not offered again
-  archived?: ExistingCategory[]
   // the rows last submitted, so a retry keeps their keys (and their operation ids)
   initialRows?: CategoryRow[]
   // the order last submitted after a reorder: existing category ids and row keys
   initialOrder?: string[]
   // order is passed only once the user has reordered, so an untouched list never re-sorts the server's
-  onContinue: (rows: CategoryRow[], order?: string[], offered?: string[]) => void
+  onContinue: (rows: CategoryRow[], order?: string[], offered?: string[], review?: CategoryReview) => void
   onSkip: () => void
   pending: boolean
   error?: ReactNode
@@ -54,25 +55,25 @@ export const rowTile = 'grid size-8 shrink-0 place-items-center rounded-lg bg-pr
 export const rowInput =
   'min-w-0 flex-1 rounded-md bg-transparent px-1 py-1 outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:ring-2 aria-invalid:ring-destructive/40'
 
-export function CategoriesStep({ existing, archived = [], initialRows, initialOrder, onContinue, onSkip, pending, error }: CategoriesStepProps) {
+export function CategoriesStep({ existing, initialRows, initialOrder, onContinue, onSkip, pending, error }: CategoriesStepProps) {
   const { t } = useTranslation()
   const isCompact = useIsCompact()
   const taken = new Set(existing.map((c) => nameKey(c.type, c.name)))
+  const live = existing.filter((c) => !c.archived)
   const [stored, setRows] = useState<CategoryRow[]>(() => {
     // a draft from before rows could be removed kept unticked rows as `checked: false`
     const kept = (initialRows ?? []).filter((r) => (r as { checked?: boolean }).checked !== false)
     const seeded = kept.filter((r) => !taken.has(nameKey(r.type, labelled(r, t).name)))
     if (initialRows && initialRows.length > 0) return seeded
     // every offered row is created unless removed, so a user who already has categories is offered none
-    if (existing.length > 0) return []
+    if (live.length > 0) return []
     const build = (list: typeof DEFAULT_EXPENSE_CATEGORIES, type: CategoryType): CategoryRow[] =>
       list.map((c) => {
         const labelKey = `onboarding.categories.${c.key}`
         return { key: uuidv7(), name: t(labelKey), labelKey, defaultKey: c.key, type, icon: c.icon }
       })
-    const retired = new Set(archived.map((c) => nameKey(c.type, c.name)))
     return [...build(DEFAULT_EXPENSE_CATEGORIES, 'expense'), ...build(DEFAULT_INCOME_CATEGORIES, 'income')].filter(
-      (r) => !taken.has(nameKey(r.type, r.name)) && !retired.has(nameKey(r.type, r.name)),
+      (r) => !taken.has(nameKey(r.type, r.name)),
     )
   })
   // the defaults this form offered; a resumed draft no longer knows, so useDay0 keeps the first submit's list
@@ -84,6 +85,15 @@ export function CategoriesStep({ existing, archived = [], initialRows, initialOr
   const [reordered, setReordered] = useState(Boolean(initialOrder && initialOrder.length > 0))
   const [drafts, setDrafts] = useState<Record<CategoryType, string>>({ expense: '', income: '' })
   const [pickingKey, setPickingKey] = useState<string | null>(null)
+  // existing categories whose archived state differs from the server's
+  const [flipped, setFlipped] = useState<ReadonlySet<Id>>(new Set())
+  const isArchived = (c: ExistingCategory) => Boolean(c.archived) !== flipped.has(c.id)
+  const toggleArchived = (id: Id) =>
+    setFlipped((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
   // a name still being typed is short on its way to valid, so its error waits for blur
   const [nameTouched, setNameTouched] = useState<ReadonlySet<string>>(new Set())
   const touch = (key: string) => setNameTouched((prev) => new Set(prev).add(key))
@@ -127,13 +137,18 @@ export function CategoriesStep({ existing, archived = [], initialRows, initialOr
   }
 
   const invalidName = new Set(rows.filter((r) => r.name.trim() !== '' && !nameLengthValid(r.name)).map((r) => r.key))
-  const canContinue = !pending && invalidName.size === 0 && existing.length + normalized().length > 0
+  const keptExisting = existing.filter((c) => !isArchived(c)).length
+  const canContinue = !pending && invalidName.size === 0 && keptExisting + normalized().length > 0
   const submit = () => {
     if (!canContinue) return
     const ids = fullOrder()
     const at = new Map(ids.map((id, i) => [id, i]))
     const sorted = normalized().sort((a, b) => (at.get(a.key) ?? ids.length) - (at.get(b.key) ?? ids.length))
-    onContinue(sorted, reordered ? ids : undefined, offered)
+    const changed = existing.filter((c) => flipped.has(c.id))
+    onContinue(sorted, reordered ? ids : undefined, offered, {
+      archive: changed.filter((c) => !c.archived).map((c) => c.id),
+      restore: changed.filter((c) => c.archived).map((c) => c.id),
+    })
   }
 
   const editing = rows.find((r) => r.key === pickingKey)
@@ -154,13 +169,27 @@ export function CategoriesStep({ existing, archived = [], initialRows, initialOr
   const renderItem = (item: ListItem, props: SortableHandleProps) => {
     if (item.existing) {
       const c = item.existing
+      const off = isArchived(c)
       return (
-        <div className="flex items-center gap-3 bg-card px-3 py-2" data-testid="category-row">
+        <div className="flex items-center gap-3 bg-card px-3 py-2" data-testid="category-row" data-archived={off || undefined}>
           {handle(c.name, props)}
-          <span className={rowTile}>
+          <span className={cn(rowTile, off && 'bg-muted text-muted-foreground')}>
             <EntityIcon name={c.icon} className="text-lg" />
           </span>
-          <span className="min-w-0 flex-1 truncate px-1">{c.name}</span>
+          <span className={cn('min-w-0 flex-1 truncate px-1', off && 'text-muted-foreground')}>{c.name}</span>
+          {off && <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">{t('onboarding.categories_step.archived')}</span>}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="-mr-1 shrink-0 text-muted-foreground"
+            aria-label={t(off ? 'onboarding.categories_step.restore_label' : 'onboarding.categories_step.archive_label', { name: c.name })}
+            onClick={() => toggleArchived(c.id)}
+          >
+            {off ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
+            {/* on a phone a live row shows the icon alone; Restore keeps its word so an archived row reads as one */}
+            <span className={off ? undefined : 'hidden sm:inline'}>{t(off ? 'onboarding.categories_step.restore' : 'onboarding.categories_step.archive')}</span>
+          </Button>
         </div>
       )
     }
@@ -292,8 +321,7 @@ export function CategoriesStepBody({ onDone, onSkip }: StepBodyProps) {
   const own = (categories.data ?? []).filter((c) => c.ownerUserId === user?.id)
   return (
     <CategoriesStep
-      existing={own.filter((c) => c.isArchived === 0)}
-      archived={own.filter((c) => c.isArchived === 1)}
+      existing={own.map((c) => ({ id: c.id, name: c.name, type: c.type, icon: c.icon, archived: c.isArchived === 1 }))}
       initialRows={day0.draft?.categoryRows}
       initialOrder={day0.draft?.categoryOrder}
       pending={day0.pending || skipping}
@@ -304,9 +332,9 @@ export function CategoriesStepBody({ onDone, onSkip }: StepBodyProps) {
           </p>
         ) : undefined
       }
-      onContinue={(rows, order, offered) => {
+      onContinue={(rows, order, offered, review) => {
         void day0
-          .saveCategories(rows, order, offered)
+          .saveCategories(rows, order, offered, review)
           .then(() => onDone())
           .catch(() => undefined)
       }}

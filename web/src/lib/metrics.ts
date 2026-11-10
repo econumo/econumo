@@ -35,6 +35,7 @@ export const METRICS = {
   ONBOARDING_CATEGORIES_COMPLETE: 'appOnboardingCategoriesComplete',
   ONBOARDING_CATEGORY_REMOVED: 'appOnboardingCategoryRemoved',
   ONBOARDING_PLAN_COMPLETE: 'appOnboardingPlanComplete',
+  ONBOARDING_IMPORT_FINISHED: 'appOnboardingImportFinished',
   ONBOARDING_STEP_DONE: 'appOnboardingStepDone',
   ONBOARDING_STEP_SKIP: 'appOnboardingStepSkip',
   USER_UPDATE_DEFAULT_BUDGET: 'appUserUpdateDefaultBudget',

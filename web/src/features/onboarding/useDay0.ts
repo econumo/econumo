@@ -3,13 +3,16 @@ import { useQueryClient, type Query } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import type { CurrentUserDto } from '@/api/dto/user'
-import { saveOnboardingAccounts, saveOnboardingCategories, saveOnboardingPlan } from '@/api/onboarding'
+import { finishOnboardingImport, saveOnboardingAccounts, saveOnboardingCategories, saveOnboardingPlan } from '@/api/onboarding'
 import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
 import { useAccounts } from '@/features/accounts/queries'
 import { useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft, type Day0Step } from './draft'
+
+export type CategoryReview = { archive: Id[]; restore: Id[] }
+export type AccountReview = { hide: Id[]; unhide: Id[] }
 
 // The user query is answered by the step itself, so it is never refetched over that answer.
 const notUser = (q: Query) => q.queryKey[0] !== queryKeys.user[0]
@@ -97,8 +100,27 @@ export function useDay0() {
     [userId, current, persist, queryClient],
   )
 
+  // A CSV import that brought rows in: the server marks the import step and creates the
+  // budget when there is none; categories and accounts stay open for review.
+  const finishImport = useCallback(async () => {
+    const result = await runStep(
+      'import',
+      () => undefined,
+      (id) => finishOnboardingImport(id),
+      (d, res) => {
+        d.budgetId = res.budgetId || d.budgetId
+      },
+    )
+    if (!result) {
+      return
+    }
+    void queryClient.invalidateQueries({ predicate: notUser })
+    trackEvent(METRICS.ONBOARDING_IMPORT_FINISHED, { budget: result.budgetId !== '' })
+  }, [runStep, queryClient])
+
+  // `review` holds existing categories whose archived state the user flipped.
   const saveCategories = useCallback(
-    async (rows: CategoryRow[], order?: string[], offered?: string[]) => {
+    async (rows: CategoryRow[], order?: string[], offered?: string[], review: CategoryReview = { archive: [], restore: [] }) => {
       let offeredDefaults: string[] = []
       const result = await runStep(
         'categories',
@@ -113,6 +135,8 @@ export function useDay0() {
             id,
             categories: rows.map((r) => ({ key: r.key, name: r.name, type: r.type, icon: r.icon })),
             ...(order && order.length > 0 ? { order } : {}),
+            ...(review.archive.length > 0 ? { archive: review.archive } : {}),
+            ...(review.restore.length > 0 ? { restore: review.restore } : {}),
           }),
         (d, res) => {
           d.budgetId = res.budgetId || d.budgetId
@@ -137,6 +161,8 @@ export function useDay0() {
         renamed: rows.filter((r) => r.defaultKey && !r.labelKey).map((r) => r.defaultKey).join(','),
         custom: rows.filter((r) => !r.defaultKey).length,
         offered: offeredDefaults.length,
+        archived: review.archive.length,
+        restored: review.restore.length,
       })
     },
     [runStep, queryClient],
@@ -145,7 +171,7 @@ export function useDay0() {
   // `rows` lists the user's existing accounts too (with accountId): their currencies stay
   // visible, but only the new rows are created.
   const saveAccounts = useCallback(
-    async (rows: AccountRow[], extraCurrencyIds: Id[], mainCurrencyId: Id) => {
+    async (rows: AccountRow[], extraCurrencyIds: Id[], mainCurrencyId: Id, review: AccountReview = { hide: [], unhide: [] }) => {
       const fresh = rows.filter((r) => !r.accountId)
       const result = await runStep(
         'accounts',
@@ -160,6 +186,8 @@ export function useDay0() {
             accounts: fresh.map((r) => ({ key: r.key, name: r.name, balance: r.balance, currencyId: r.currencyId, icon: r.icon })),
             currencyIds: [...new Set([...extraCurrencyIds, ...rows.map((r) => r.currencyId)])],
             mainCurrencyId,
+            ...(review.hide.length > 0 ? { hide: review.hide } : {}),
+            ...(review.unhide.length > 0 ? { unhide: review.unhide } : {}),
           }),
         (d, res) => {
           d.budgetId = res.budgetId || d.budgetId
@@ -171,7 +199,12 @@ export function useDay0() {
       // accounts, folders, visible currencies, the profile currency and the budget all moved
       void queryClient.invalidateQueries({ predicate: notUser })
       const selected = new Set([mainCurrencyId, ...extraCurrencyIds, ...rows.map((r) => r.currencyId)])
-      trackEvent(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, { accounts: fresh.length, currencies: selected.size })
+      trackEvent(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, {
+        accounts: fresh.length,
+        currencies: selected.size,
+        hidden: review.hide.length,
+        shown: review.unhide.length,
+      })
     },
     [runStep, queryClient],
   )
@@ -199,5 +232,5 @@ export function useDay0() {
     [runStep, queryClient],
   )
 
-  return { draft, ready: Boolean(user) && !accountsQuery.isPending, saveCategories, saveAccounts, savePlan, pending, error }
+  return { draft, ready: Boolean(user) && !accountsQuery.isPending, finishImport, saveCategories, saveAccounts, savePlan, pending, error }
 }

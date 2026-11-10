@@ -1217,7 +1217,13 @@
       "continue": "Continua",
       "skip": "Salta",
       "add": "Aggiungi conto",
-      "default_cash": "Contanti"
+      "default_cash": "Contanti",
+      "hide": "Nascondi",
+      "show": "Mostra",
+      "hide_label": "Nascondi {name}",
+      "show_label": "Mostra {name}",
+      "hidden": "Nascosto",
+      "hidden_hint": "I conti nascosti finiscono nella cartella Archivio ed escono dal budget."
     },
     "categories_step": {
       "heading": "In cosa spendi?",
@@ -1230,7 +1236,12 @@
       "remove_label": "Rimuovi {name}",
       "add_placeholder": "Aggiungi le tue",
       "continue": "Continua",
-      "skip": "Salta"
+      "skip": "Salta",
+      "archive": "Archivia",
+      "restore": "Ripristina",
+      "archive_label": "Archivia {name}",
+      "restore_label": "Ripristina {name}",
+      "archived": "Archiviata"
     },
     "currencies": {
       "title": "Valute",

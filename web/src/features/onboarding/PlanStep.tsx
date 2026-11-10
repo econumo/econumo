@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { getBudgetPlan } from '@/api/budget'
+import { getOnboardingPlanSuggestions } from '@/api/onboarding'
 import type { CategoryDto } from '@/api/dto/category'
 import { UserOptions } from '@/api/dto/user'
 import type { Id } from '@/api/types'
@@ -65,6 +66,20 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
     queryFn: () => getBudgetPlan(budgetId as Id, period as string, 1),
     enabled: budgetId !== null && period !== null,
   })
+  // what the last three months suggest per category; a failure only loses the prefill
+  const suggestions = useQuery({
+    queryKey: [...queryKeys.budgetPlan, 'suggestions', budgetId ?? 'none'],
+    queryFn: () => getOnboardingPlanSuggestions(budgetId as Id),
+    enabled: budgetId !== null,
+    retry: false,
+  })
+  // taken once, the first time they arrive for this budget, so a later refetch never moves a prefilled input
+  const [prefill, setPrefill] = useState<{ budgetId: Id; amounts: Map<Id, string> } | null>(null)
+  useEffect(() => {
+    const data = suggestions.data
+    if (!data || budgetId === null || data.budgetId !== budgetId || prefill?.budgetId === budgetId) return
+    setPrefill({ budgetId, amounts: new Map(data.items.map((i) => [i.categoryId, i.amount])) })
+  }, [suggestions.data, budgetId, prefill])
 
   const pending = saving || skipping
   // every state keeps Skip reachable, so a step that cannot load never traps the user
@@ -116,7 +131,9 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
   const rows = [...income, ...expenses]
 
   const stored = (c: CategoryDto) => planned.get(c.id) ?? ''
-  const valueOf = (c: CategoryDto) => edits[c.id] ?? decimalInput(stored(c), i18n.language)
+  // a stored plan wins over a suggestion, and anything typed wins over both, even if typed before they loaded
+  const suggested = (c: CategoryDto) => (prefill?.budgetId === budgetId ? (prefill.amounts.get(c.id) ?? '') : '')
+  const valueOf = (c: CategoryDto) => edits[c.id] ?? decimalInput(stored(c) !== '' ? stored(c) : suggested(c), i18n.language)
   const parsed = (c: CategoryDto): string | null => {
     const raw = valueOf(c).trim()
     if (raw === '') return ''

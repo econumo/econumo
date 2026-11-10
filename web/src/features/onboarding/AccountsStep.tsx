@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Plus, X } from 'lucide-react'
+import { Eye, EyeOff, Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
 import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
-import { useAccounts } from '@/features/accounts/queries'
+import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { selectableCurrencies } from '@/features/currencies/selectable'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
@@ -24,7 +24,7 @@ import { CurrenciesBlock, CurrencyListSheet } from './CurrenciesBlock'
 import { rowInput, rowTile } from './CategoriesStep'
 import type { StepBodyProps } from './OnboardingPage'
 import { StepLoadError } from './StepLoadError'
-import { useDay0 } from './useDay0'
+import { useDay0, type AccountReview } from './useDay0'
 
 export interface ExistingAccount {
   id: Id
@@ -32,14 +32,16 @@ export interface ExistingAccount {
   icon: string
   balance: string
   currencyId: Id
+  // in a hidden folder on the server; the review may flip it
+  hidden?: boolean
 }
 
 interface AccountsStepProps {
-  // the user's own accounts: listed first and locked, no balance asked for
+  // the user's own accounts: listed first, name and balance locked, each with a Hide / Show toggle
   existing: ExistingAccount[]
   initialRows?: AccountRow[]
   initialExtraCurrencyIds?: Id[]
-  onContinue: (rows: AccountRow[], extraCurrencyIds: Id[], mainCurrencyId: Id) => void
+  onContinue: (rows: AccountRow[], extraCurrencyIds: Id[], mainCurrencyId: Id, review?: AccountReview) => void
   onSkip: () => void
   pending: boolean
   error?: ReactNode
@@ -76,6 +78,15 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   const [focusKey, setFocusKey] = useState<string | null>(null)
   // a name still being typed is short on its way to valid, so its error waits for blur
   const [nameTouched, setNameTouched] = useState<ReadonlySet<string>>(new Set())
+  // existing accounts whose hidden state differs from the server's
+  const [flipped, setFlipped] = useState<ReadonlySet<Id>>(new Set())
+  const isHidden = (a: ExistingAccount) => Boolean(a.hidden) !== flipped.has(a.id)
+  const toggleHidden = (id: Id) =>
+    setFlipped((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
 
   const defaultId = useMemo(() => {
     const list = currencies ?? []
@@ -118,7 +129,8 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   const parse = (raw: string) => parseBalance(raw, i18n.language)
   const invalid = new Set(active.filter((r) => parse(r.balance) === null).map((r) => r.key))
   const invalidName = new Set(active.filter((r) => !nameLengthValid(r.name)).map((r) => r.key))
-  const canContinue = active.length + existing.length > 0 && invalid.size === 0 && invalidName.size === 0 && mainId !== null && !pending
+  const shownExisting = existing.filter((a) => !isHidden(a)).length
+  const canContinue = active.length + shownExisting > 0 && invalid.size === 0 && invalidName.size === 0 && mainId !== null && !pending
 
   const submit = () => {
     if (!canContinue || !mainId) return
@@ -136,6 +148,10 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
       ],
       extras,
       mainId,
+      {
+        hide: existing.filter((a) => flipped.has(a.id) && !a.hidden).map((a) => a.id),
+        unhide: existing.filter((a) => flipped.has(a.id) && a.hidden).map((a) => a.id),
+      },
     )
   }
 
@@ -153,17 +169,35 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
       <ul className="mt-4 divide-y divide-border/60 overflow-hidden rounded-xl border bg-card">
         {existing.map((a) => {
           const cur = currencies?.find((c) => c.id === a.currencyId)
+          const off = isHidden(a)
           return (
-            <li key={a.id} className="px-3 py-2" data-testid="account-row">
+            <li key={a.id} className="px-3 py-2" data-testid="account-row" data-hidden={off || undefined}>
               <div className="flex items-center gap-2 sm:gap-3">
-                <span className={rowTile}>
+                <span className={cn(rowTile, off && 'bg-muted text-muted-foreground')}>
                   <EntityIcon name={a.icon} className="text-lg" />
                 </span>
-                <div className="min-w-0 flex-1 truncate px-1">{a.name}</div>
-                <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                  {addThousandSeparators(formatNumber(a.balance, cur?.fractionDigits ?? 2, true)).join('.')}
-                </span>
-                <span className={chip}>{cur?.code ?? ''}</span>
+                <div className={cn('min-w-0 flex-1 truncate px-1', off && 'text-muted-foreground')}>{a.name}</div>
+                {off ? (
+                  <span className="shrink-0 text-xs text-muted-foreground">{t('onboarding.accounts.hidden')}</span>
+                ) : (
+                  <>
+                    <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                      {addThousandSeparators(formatNumber(a.balance, cur?.fractionDigits ?? 2, true)).join('.')}
+                    </span>
+                    <span className={chip}>{cur?.code ?? ''}</span>
+                  </>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="-mr-1 shrink-0 text-muted-foreground"
+                  aria-label={t(off ? 'onboarding.accounts.show_label' : 'onboarding.accounts.hide_label', { name: a.name })}
+                  onClick={() => toggleHidden(a.id)}
+                >
+                  {off ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                  <span className="hidden sm:inline">{t(off ? 'onboarding.accounts.show' : 'onboarding.accounts.hide')}</span>
+                </Button>
               </div>
             </li>
           )
@@ -231,6 +265,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
           </button>
         </li>
       </ul>
+      {existing.length > 0 && <p className="text-xs text-muted-foreground">{t('onboarding.accounts.hidden_hint')}</p>}
 
       <CurrenciesBlock
         currencies={currencies ?? []}
@@ -291,13 +326,23 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
 export function AccountsStepBody({ onDone, onSkip }: StepBodyProps) {
   const { data: user } = useUserData()
   const accounts = useAccounts()
+  const folders = useFolders()
   const day0 = useDay0()
   const [skipping, setSkipping] = useState(false)
   if (accounts.isError) return <StepLoadError error={accounts.error} onRetry={() => void accounts.refetch()} />
-  if (!day0.ready) return null
+  if (folders.isError) return <StepLoadError error={folders.error} onRetry={() => void folders.refetch()} />
+  if (!day0.ready || folders.isPending) return null
+  const hiddenFolders = new Set((folders.data ?? []).filter((f) => f.isVisible === 0).map((f) => f.id))
   const existing = (accounts.data ?? [])
     .filter((a) => a.owner.id === user?.id)
-    .map((a) => ({ id: a.id, name: a.name, icon: a.icon, balance: a.balance, currencyId: a.currency.id }))
+    .map((a) => ({
+      id: a.id,
+      name: a.name,
+      icon: a.icon,
+      balance: a.balance,
+      currencyId: a.currency.id,
+      hidden: a.folderId !== null && hiddenFolders.has(a.folderId),
+    }))
   return (
     <AccountsStep
       existing={existing}
@@ -311,9 +356,9 @@ export function AccountsStepBody({ onDone, onSkip }: StepBodyProps) {
           </p>
         ) : undefined
       }
-      onContinue={(rows, extras, main) => {
+      onContinue={(rows, extras, main, review) => {
         void day0
-          .saveAccounts(rows, extras, main)
+          .saveAccounts(rows, extras, main, review)
           .then(() => onDone())
           .catch(() => undefined)
       }}
