@@ -165,6 +165,10 @@ export function useBudget() {
     queryFn: () => (budgetId ? budgetApi.getBudget(budgetId, selectedDate) : Promise.resolve(null)),
     enabled: user !== undefined && periodSettled,
     staleTime: TEN_MINUTES,
+    // no default budget needs no server: offline, 'online' would pause the
+    // query and the page would say the month is not saved instead of offering
+    // to create a budget
+    networkMode: budgetId ? 'online' : 'always',
     // month switches keep showing the previous period instead of a blank page
     placeholderData: keepPreviousData,
   })
