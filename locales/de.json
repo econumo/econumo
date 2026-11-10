@@ -161,7 +161,12 @@
       "title": "Aktualisierung erforderlich",
       "blockedApp": "Diese App ist zu alt für deinen Econumo-Server: erforderlich ist App-Version {version} oder neuer. Bitte aktualisiere die App, um fortzufahren.",
       "blockedServer": "Diese App benötigt Econumo-Server {min} oder neuer, dein Server ist {version}. Bitte aktualisiere den Server, um fortzufahren."
-    }
+    },
+    "offline_unavailable": {
+      "title": "Offline nicht verfügbar",
+      "text": "Diese Daten sind ohne Internetverbindung nicht verfügbar."
+    },
+    "offline_notice": "Keine Internetverbindung. Daten können nur angesehen werden."
   },
   "accounts": {
     "folders": {
@@ -296,6 +301,7 @@
       "failing": "Server nicht erreichbar — wird erneut versucht",
       "full_reload": "Cache wird geleert und neu geladen…",
       "hold_hint": "Gedrückt halten, um den Cache zu leeren und neu zu laden",
+      "waiting": "{count} Änderung wartet auf eine Internetverbindung | {count} Änderungen warten auf eine Internetverbindung",
       "full_reload_offline": "Sie sind offline. Leeren Sie den Cache und laden Sie neu, sobald Sie wieder online sind.",
       "offline": "Keine Verbindung"
     },
@@ -357,6 +363,7 @@
     }
   },
   "transactions": {
+    "not_saved": "Nicht gespeichert",
     "modal": {
       "transaction_type": {
         "expense": "Ausgabe",
@@ -631,12 +638,26 @@
     "title": "Posteingang",
     "open": "Posteingang, {count} ausstehend",
     "empty": "Keine neuen Benachrichtigungen",
+    "failed_writes": {
+      "kind_create": "Neu",
+      "kind_update": "Geändert",
+      "kind_delete": "Gelöscht",
+      "delete_generic": "Gelöschte Transaktion",
+      "limit": "{name}: Plan {amount} ({period})",
+      "limit_generic": "Plan {amount} ({period})",
+      "limit_cleared": "{name}: Plan entfernt ({period})",
+      "limit_cleared_generic": "Plan entfernt ({period})",
+      "retry": "Erneut versuchen",
+      "discard": "Verwerfen",
+      "reason_unknown": "Der Server hat diese Änderung abgelehnt."
+    },
     "sections": {
       "due": "Geplante Transaktionen",
       "sharing": "Freigaben",
       "sync": "Synchronisierungsprobleme",
       "failed": "Fehlgeschlagene Importe",
       "to_review": "Zu prüfen",
+      "failed_writes": "Nicht gespeichert",
       "skipped": "Übersprungen ({count})"
     },
     "due": {
@@ -1735,6 +1756,9 @@
           "header": "Archiviert"
         }
       }
+    },
+    "limit": {
+      "not_saved": "Nicht gespeichert"
     }
   },
   "reports": {

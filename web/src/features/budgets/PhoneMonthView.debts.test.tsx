@@ -20,6 +20,7 @@ function renderView(debts: BudgetDebtElementDto[], adjust?: (b: BudgetDto) => vo
     buckets: bucketElements(budget, makeBudgetExchange(budget, [usd, eur])),
     currencies: [usd, eur],
     selectedDate: '2026-07-01',
+    dataPeriod: '2026-07-01',
     planMonth: null,
     commentsByCell: new Map(),
     onOpenSheet: vi.fn(),

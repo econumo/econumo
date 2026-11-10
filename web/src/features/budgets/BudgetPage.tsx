@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useOnline } from '@/hooks/useOnline'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
@@ -31,6 +32,7 @@ import {
   useBudget,
   useBudgets,
   useBudgetComments,
+  monthPlanSpan,
   useBudgetPlan,
   usePlanSetLimit,
   useSetLimit,
@@ -48,7 +50,6 @@ import type { BudgetMode } from './budgetStore'
 import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange, totalsWithDebts } from './budgetMath'
 import { DebtExtraNote } from './debtRow'
 import type { FolderBucket } from './budgetMath'
-import { monthDiff } from './planMath'
 import { currentPeriod, periodStartDayOf } from './period'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
@@ -81,6 +82,8 @@ import { applyArrangement, arrangementFromBuckets, arrangementItem, dropIndicato
 import type { DropIndicator } from './elementMove'
 import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
 import { CoinLoader } from '@/components/CoinLoader'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
 type CellTarget = Pick<BudgetElementDto, 'id' | 'name' | 'budgeted'>
@@ -95,11 +98,16 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const isPhone = useIsPhone()
+  // limits queue offline; structure, comments and settings need the server
+  const online = useOnline()
   const { data: user } = useUserData()
   // isPending covers the whole cold boot (incl. the disabled phase while the
   // user record loads); month switches show the previous period as placeholder
   // data (isPlaceholderData) while the new one loads
-  const { data: budget, isPending, isPlaceholderData, isFetching, isError, error, refetch } = useBudget()
+  const budgetQuery = useBudget()
+  const { data: budget, dataPeriod, isPending, isPlaceholderData, isFetching, isError, error, refetch } = budgetQuery
+  // offline, a month this device never loaded would hold the loader forever
+  const monthOffline = useUnavailableOffline(budgetQuery)
   const { data: budgetList } = useBudgets()
   const showLogoutEscape = useLogoutEscape(isPending)
   const { data: currencies = [] } = useCurrencies()
@@ -149,8 +157,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // The window starts no later than the current period: the server books only
   // what precedes the window, so a future month's Balance needs every unmet plan
   // from the current period on inside it.
-  const monthPlanFirst = selectedDate < curPeriod ? selectedDate : curPeriod
-  const monthPlan = useBudgetPlan(monthBudgetId, monthPlanFirst, monthDiff(monthPlanFirst, selectedDate) + 1, startDay)
+  const monthPlanWindow = monthPlanSpan(selectedDate, curPeriod)
+  const monthPlan = useBudgetPlan(monthBudgetId, monthPlanWindow.first, monthPlanWindow.visible, startDay)
   const planSetLimit = usePlanSetLimit(monthPlan.planKey)
   const planMonth = useMemo(
     () => (monthPlan.data && !monthPlan.isPlaceholderData ? planMonthFigures(monthPlan.data, currencies, selectedDate) : null),
@@ -268,6 +276,21 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const structureMode = isCompact
   const configureVisible = editDetails || (structureMode && configure)
 
+  // on a phone the back button is the only way out of this page
+  const budgetTitleParts = (name: string) => (
+    <>
+      {isCompact ? (
+        <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
+          <ChevronLeft className="size-5" />
+        </Button>
+      ) : null}
+      <h1 className={isPhone ? 'min-w-0 shrink truncate text-lg font-medium' : 'min-w-0 shrink truncate text-xl'} title={name}>
+        {name}
+      </h1>
+    </>
+  )
+  const budgetTitle = (name: string) => <header className="flex items-center gap-2">{budgetTitleParts(name)}</header>
+
   // The default budget can 403/404 while still being the stored option: access
   // was revoked or the budget deleted. keepPreviousData would otherwise pin
   // isPlaceholderData forever (the fetch never succeeds), so the error must be
@@ -288,7 +311,24 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       </div>
     )
   }
-  if (isError && !budgetUnavailable) {
+  // Nothing to show yet: the page opened on a month never loaded. The header
+  // and the month strip come from the budget list's meta, so a month the
+  // device has stays one tap away; only without that meta is the page bare.
+  if (monthOffline && !budget) {
+    const listMeta = budgetList?.find((b) => b.id === budgetId)
+    return (
+      <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
+        {listMeta || isCompact ? budgetTitle(listMeta?.name ?? '') : null}
+        {listMeta && (isPhone || mode === 'budget') ? (
+          <PeriodStrip startedAt={listMeta.startedAt} endedAt={listMeta.endedAt} startDay={periodStartDayOf(listMeta)} leading={viewSwitch} />
+        ) : listMeta ? (
+          viewSwitch
+        ) : null}
+        <OfflineUnavailable />
+      </div>
+    )
+  }
+  if (isError && !budgetUnavailable && !monthOffline) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="budget-error">
         <p className="max-w-md text-sm text-muted-foreground">{t('common.app.error')}</p>
@@ -310,14 +350,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         {hasAccounts ? (
           <>
             <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.empty.description')}</p>
-            <Button type="button" onClick={() => setCreateBudgetOpen(true)}>
+            <Button type="button" disabled={!online} onClick={() => setCreateBudgetOpen(true)}>
               {t('budgets.page.budget.empty.create_budget')}
             </Button>
           </>
         ) : (
           <>
             <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.empty.initial_setup')}</p>
-            <Button type="button" onClick={() => openAccountModal({})}>
+            <Button type="button" disabled={!online} onClick={() => openAccountModal({})}>
               {t('budgets.page.budget.empty.create_account')}
             </Button>
           </>
@@ -652,17 +692,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   return (
     <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
       <header className="flex items-center gap-2">
-        {isCompact ? (
-          <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
-            <ChevronLeft className="size-5" />
-          </Button>
-        ) : null}
-        <h1
-          className={isPhone ? 'min-w-0 shrink truncate text-lg font-medium' : 'min-w-0 shrink truncate text-xl'}
-          title={budget.meta.name}
-        >
-          {budget.meta.name}
-        </h1>
+        {budgetTitleParts(budget.meta.name)}
         <span className="flex-1" />
         {editMode ? (
           <Button type="button" size="sm" onClick={() => setEditMode(false)}>
@@ -677,6 +707,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             className="uppercase tracking-wide text-muted-foreground"
             aria-label={t('budgets.page.budget.settings.button')}
             title={t('budgets.page.budget.settings.button')}
+            disabled={!online}
             onClick={() => (structureMode ? setConfigureOpen(true) : setUpdateBudgetOpen(true))}
           >
             <Settings2 className="size-4" />
@@ -689,7 +720,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
           <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} startDay={periodStartDay} />
-          {isPlaceholderData || periodSwitching ? (
+          {monthOffline ? (
+            <OfflineUnavailable />
+          ) : isPlaceholderData || periodSwitching ? (
             <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
               <CoinLoader label={t('common.app.modal.loading.data_loading')} />
             </div>
@@ -700,6 +733,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                 buckets={buckets}
                 currencies={currencies}
                 selectedDate={selectedDate}
+                dataPeriod={dataPeriod}
                 planMonth={planMonth}
                 commentsByCell={commentsByCell}
                 onOpenSheet={setSheetTarget}
@@ -725,7 +759,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
           <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} startDay={periodStartDay} leading={viewSwitch} />
 
-          {isPlaceholderData || periodSwitching ? (
+          {monthOffline ? (
+            <OfflineUnavailable />
+          ) : isPlaceholderData || periodSwitching ? (
             // month switch in flight — the strip stays put, the stale table is
             // replaced by the loader until the new period lands
             <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
@@ -738,6 +774,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                 <div className="flex flex-col">
                   <MonthFlows
                     budget={budget}
+                    dataPeriod={dataPeriod}
                     currencies={currencies}
                     planMonth={planMonth}
                     future={selectedDate > curPeriod}
@@ -789,6 +826,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   >
                   <BudgetTable
                     budget={budget}
+                    dataPeriod={dataPeriod}
                     buckets={buckets}
                     future={selectedDate > curPeriod}
                     hideTotals

@@ -9,8 +9,12 @@
 package httpx
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
 type okEnvelope struct {
@@ -31,6 +35,27 @@ type errEnvelope struct {
 	Message string              `json:"message"`
 	Code    int                 `json:"code"`
 	Errors  map[string][]string `json:"errors"`
+}
+
+// replayEnvelope is errEnvelope plus the additive resourceId; a separate struct
+// so the frozen errEnvelope keeps its exact fields.
+type replayEnvelope struct {
+	Success    bool                `json:"success"`
+	Message    string              `json:"message"`
+	Code       int                 `json:"code"`
+	Errors     map[string][]string `json:"errors"`
+	ResourceID string              `json:"resourceId,omitempty"`
+}
+
+// WriteReplay answers a request whose Idempotency-Key was already used.
+func WriteReplay(ctx context.Context, w http.ResponseWriter, resourceID string) {
+	writeJSON(w, http.StatusConflict, replayEnvelope{
+		Success:    false,
+		Message:    translated(reqctx.Language(ctx), "Operation is locked", errs.CodeOperationLocked, nil),
+		Code:       http.StatusConflict,
+		Errors:     map[string][]string{},
+		ResourceID: resourceID,
+	})
 }
 
 // exceptionEnvelope is the unhandled-exception response (HTTP 500). It omits

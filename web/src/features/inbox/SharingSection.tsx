@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Label } from '@/components/ui/label'
 import { EntitySelect } from '@/features/transactions/EntitySelect'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -18,6 +19,7 @@ const NO_FOLDER_OPTION = '__general__'
 
 export function SharingSection({ invites }: { invites: PendingInvite[] }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const navigate = useNavigate()
   const { data: folders } = useFolders()
   const acceptAccount = useAcceptAccountAccess()
@@ -111,10 +113,10 @@ export function SharingSection({ invites }: { invites: PendingInvite[] }) {
           ) : null}
 
           <div className={dialogActionsClass}>
-            <Button type="button" variant="destructive" onClick={() => setDeclineTarget(invite)}>
+            <Button type="button" variant="destructive" disabled={!online} onClick={() => setDeclineTarget(invite)}>
               {t('common.button.decline.label')}
             </Button>
-            <Button type="button" onClick={() => accept(invite)}>
+            <Button type="button" disabled={!online} onClick={() => accept(invite)}>
               {t('common.button.accept.label')}
             </Button>
           </div>

@@ -5,9 +5,13 @@ import { Link, useLocation, useSearchParams } from 'react-router'
 import { authorizationRequestFromSearch } from '@/api/authserver'
 import type { AuthorizationRequestResultDto } from '@/api/dto/authserver'
 import { CoinLoader } from '@/components/CoinLoader'
+import { OfflineNotice } from '@/components/OfflineNotice'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { apiErrorMessage } from '@/lib/apiError'
+import { useOnline } from '@/hooks/useOnline'
 import { RouterPage } from '@/app/router-pages'
 import { useUserData } from '@/features/user/queries'
 import { AuthFrame } from '@/app/layouts/AuthFrame'
@@ -120,7 +124,9 @@ export function ConsentPage() {
   const request = useAuthorizationRequest(req)
   const approve = useApproveAuthorization()
   const decline = useDeclineAuthorization()
+  const online = useOnline()
   const { data: user } = useUserData()
+  const unavailable = useUnavailableOffline(request)
 
   const errorStatus = isAxiosError(request.error) ? request.error.response?.status : undefined
   // A 401 means the stored session is stale: the api client is already sending the user to
@@ -136,6 +142,14 @@ export function ConsentPage() {
       rememberPostLoginRedirect(location.pathname + location.search)
     }
   }, [unusable, location.pathname, location.search])
+
+  if (unavailable) {
+    return (
+      <Shell>
+        <OfflineUnavailable />
+      </Shell>
+    )
+  }
 
   if (request.isPending) {
     return (
@@ -183,7 +197,7 @@ export function ConsentPage() {
         <h1 className="text-lg font-semibold">{result.clientName}</h1>
         <p className="text-sm text-muted-foreground">{t('authserver.consent.readonly')}</p>
         {decline.error && <p className="text-sm text-destructive">{apiErrorMessage(decline.error)}</p>}
-        <Button className={primaryButton} disabled={decline.isPending} onClick={() => decline.mutate(req)}>
+        <Button className={primaryButton} disabled={decline.isPending || !online} onClick={() => decline.mutate(req)}>
           {t('authserver.consent.returnToApp')}
         </Button>
       </Shell>
@@ -191,11 +205,12 @@ export function ConsentPage() {
   }
 
   const readScope = result.scope === 'read'
-  const busy = approve.isPending || approve.isSuccess || decline.isPending || decline.isSuccess
+  const busy = approve.isPending || approve.isSuccess || decline.isPending || decline.isSuccess || !online
   const failure = approve.error ?? decline.error
 
   return (
     <Shell>
+      <OfflineNotice />
       <div className="flex flex-col gap-1">
         <h1 className="text-sm text-muted-foreground">{t('authserver.consent.title')}</h1>
         <div className="flex flex-wrap items-center gap-2">

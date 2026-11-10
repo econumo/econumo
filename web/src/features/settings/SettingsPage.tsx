@@ -19,6 +19,7 @@ import { useFullReload, useFullReloadPending } from '@/features/transactions/use
 import { useInstallApp } from '@/features/install/useInstallApp'
 import { InstallInstructionsDialog } from '@/features/install/InstallInstructionsDialog'
 import { useUiStore } from '@/app/uiStore'
+import { OfflineNotice } from '@/components/OfflineNotice'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -97,6 +98,7 @@ export function SettingsPage() {
       ) : (
         <h1 className="text-xl font-semibold">{t('settings.page.header_desktop')}</h1>
       )}
+      <OfflineNotice className="max-w-md" />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex max-w-md flex-col gap-2">
@@ -137,8 +139,9 @@ export function SettingsPage() {
               <MenuRow
                 accent={access.state === 'full_access' ? 'hover' : 'rest'}
                 label={t('subscription.settings.portal')}
+                disabled={portal.disabled}
                 onClick={() => {
-                  if (!portal.pending) portal.open()
+                  if (!portal.disabled) portal.open()
                 }}
                 trailing={
                   access.state === 'trial' ? (
@@ -232,6 +235,7 @@ export function SettingsPage() {
         question={t('auth.sign_out.question')}
         confirmLabel={t('auth.sign_out.action.logout')}
         cancelLabel={t('auth.sign_out.action.cancel')}
+        offlineOk
       />
     </div>
   )

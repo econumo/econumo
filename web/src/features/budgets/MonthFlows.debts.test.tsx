@@ -25,6 +25,7 @@ function renderFlows(debts: BudgetDebtElementDto[], adjust?: (b: BudgetDto) => v
   render(
     <MonthFlows
       budget={budget}
+      dataPeriod={budget.filters.periodStart.slice(0, 10)}
       currencies={[usd, eur]}
       planMonth={null}
       future={false}

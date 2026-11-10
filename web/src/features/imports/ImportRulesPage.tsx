@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { ImportRuleDto, ImportRuleSpecDto } from '@/api/dto/imports'
@@ -17,7 +19,9 @@ interface RuleItem extends ClassificationItem {
 
 export function ImportRulesPage() {
   const { t } = useTranslation()
-  const { data: rules = [], isPending } = useImportRules()
+  const rulesQuery = useImportRules()
+  const { data: rules = [], isPending } = rulesQuery
+  const offline = useUnavailableOffline(rulesQuery)
   const { data: categories = [] } = useCategories()
   const names = useTargetNames()
   const update = useUpdateImportRule()
@@ -62,7 +66,7 @@ export function ImportRulesPage() {
         title={t('imports.rules.page.title')}
         info={t('imports.rules.page.intro')}
         createLabel={t('imports.rules.page.add')}
-        emptyText={isPending ? t('common.app.modal.loading.data_loading') : t('imports.rules.page.empty')}
+        emptyText={offline ? <OfflineUnavailable /> : isPending ? t('common.app.modal.loading.data_loading') : t('imports.rules.page.empty')}
         deleteTitle={t('imports.rules.page.delete_title')}
         archivedLabel=""
         items={items}

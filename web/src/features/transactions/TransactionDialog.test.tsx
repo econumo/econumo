@@ -1,9 +1,13 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
+import { Toaster } from '@/components/ui/sonner'
 import { server } from '@/test/msw'
+import { onlineManager } from '@tanstack/react-query'
+import { getOps, loadPendingWrites, mutate } from '@/features/pendingWrites/store'
+import { addChange } from '@/features/pendingWrites/queue'
 import { coreHandlers, fixtureAccounts, fixtureCategories, fixtureLabels, fixtureOwner, fixtureUsd } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
@@ -20,7 +24,7 @@ function mockMatchMedia(phone = false) {
 }
 
 function renderDialog(routePath = '/account/a1') {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false, networkMode: 'always' } } })
   const router = createMemoryRouter(
     [{ path: '/account/:id', element: <TransactionDialog /> }, { path: '/', element: <TransactionDialog /> }],
     { initialEntries: [routePath] },
@@ -986,6 +990,32 @@ it('a queued import in a foreign currency opens with an empty amount and shows t
   expect(screen.getByLabelText('Amount')).toHaveValue('11')
 })
 
+it('an edit that only queued does not prompt for a rule: the server has not taken it yet', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
+  const importLink = {
+    id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
+    externalTransactionId: 'tap-1', externalPayee: 'BLUE BOTTLE COFFEE #142', externalDescription: '', externalAmount: '9.99',
+    externalCurrency: 'USD', externalPostedAt: '2026-07-03 10:00:00', status: 'created', importedAt: '2026-07-03 10:00:05',
+    appliedCategoryId: 'cat-food', appliedPayeeId: '', appliedTagId: '', appliedLabelIds: [], appliedRuleId: '',
+  }
+  server.use(
+    http.get('*/api/v1/import/get-transaction-import-list', () => HttpResponse.json({ success: true, message: '', data: { items: [importLink] } })),
+    http.post('*/api/v1/transaction/update-transaction', () => HttpResponse.error()),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.setState({ rulePrompt: null })
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ id: 't-imported', isImported: 1 }) as unknown as TransactionDto })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await waitFor(() => expect(chip('health', 'label')).toBeInTheDocument())
+  await user.click(chip('health', 'label'))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+  expect(getOps()).toHaveLength(1)
+  expect(useUiStore.getState().rulePrompt).toBeNull()
+  await mutate(() => [])
+})
+
 it('editing an imported transaction prompts for a rule only when the classification diverges from what the import applied', async () => {
   window.econumoConfig = { IMPORT_SIMPLEFIN: true }
   const seen = captureUpdate()
@@ -1153,7 +1183,7 @@ describe('unfinished new transaction', () => {
 
   afterEach(() => vi.restoreAllMocks())
 
-  it('offers a cancelled form and restores it with the same id', async () => {
+  it('offers a cancelled form and restores it, sending no id', async () => {
     let body: Record<string, unknown> | undefined
     server.use(
       http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
@@ -1164,7 +1194,6 @@ describe('unfinished new transaction', () => {
     const user = userEvent.setup()
     renderDialog()
     await typeAmountAndCancel(user)
-    const savedId = (JSON.parse(localStorage.getItem(draftKey)!) as { form: { id: string } }).form.id
 
     await openNew()
     expect(offer()).toBeInTheDocument()
@@ -1176,7 +1205,8 @@ describe('unfinished new transaction', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add' }))
     await waitFor(() => expect(body).toBeDefined())
-    expect(body!.id).toBe(savedId)
+    expect(body).toMatchObject({ amount: '42' })
+    expect(body).not.toHaveProperty('id')
     await waitFor(() => expect(localStorage.getItem(draftKey)).toBeNull())
   })
 
@@ -1394,5 +1424,140 @@ describe('unfinished new transaction', () => {
     await openNew()
     expect(offer()).not.toBeInTheDocument()
     expect(localStorage.getItem(draftKey)).toBeNull()
+  })
+})
+
+it('offline Add closes the dialog with no request and queues the change', async () => {
+  let called = false
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () => {
+      called = true
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+    }),
+  )
+  onlineManager.setOnline(false)
+  try {
+    await loadPendingWrites('u1')
+    const user = userEvent.setup()
+    renderDialog()
+    useUiStore.getState().openTransactionModal({ type: 'expense', accountId: 'a1' })
+    await screen.findByRole('heading', { name: 'Add transaction' })
+    await user.type(await screen.findByLabelText('Amount'), '7')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+    expect(called).toBe(false)
+    expect(getOps()).toMatchObject([{ kind: 'tx-create', payload: { amount: '7', accountId: 'a1' } }])
+  } finally {
+    onlineManager.setOnline(true)
+  }
+})
+
+it('a server error closes the dialog and queues the add under the key it was sent with, with no id', async () => {
+  const seen: { key: string | null; body: Record<string, unknown> }[] = []
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
+      seen.push({ key: request.headers.get('idempotency-key'), body: (await request.json()) as Record<string, unknown> })
+      return HttpResponse.json({ success: false, message: 'Boom', code: 0, exceptionType: 'x' }, { status: 500 })
+    }),
+  )
+  await loadPendingWrites('u1')
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense', accountId: 'a1' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '7')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+
+  expect(seen).toHaveLength(1)
+  expect(seen[0].key).toMatch(/^[0-9a-f-]{36}$/)
+  expect(seen[0].body).not.toHaveProperty('id')
+  expect(getOps()).toMatchObject([{ kind: 'tx-create', key: seen[0].key, attempted: true, status: 'waiting' }])
+})
+
+it('a 402 leaves its toast to the API client', async () => {
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () =>
+      HttpResponse.json({ success: false, message: 'Read only envelope', code: 402, errors: {} }, { status: 402 }),
+    ),
+  )
+  await loadPendingWrites('u1')
+  const user = userEvent.setup()
+  renderDialog()
+  render(<Toaster />)
+  useUiStore.getState().openTransactionModal({ type: 'expense', accountId: 'a1' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '7')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled())
+  expect(screen.queryByText('Read only envelope')).not.toBeInTheDocument()
+})
+
+it('a refused add reads as the add it still is', async () => {
+  await loadPendingWrites('u1')
+  const change = { kind: 'tx-create' as const, txId: 't-queued', payload: { id: 't-queued', type: 'expense' as const, accountId: 'a1', accountRecipientId: null, amount: '7', amountRecipient: null, categoryId: null, description: '', payeeId: null, tagId: null, labelIds: [], date: '2026-07-03 10:00:00' } }
+  await mutate((ops) => addChange(ops, change, { key: 't-queued', seq: 1 }).map((o) => ({ ...o, status: 'failed' as const, error: 'No' })))
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ id: 't-queued', amount: '7' }) as unknown as TransactionDto })
+  expect(await screen.findByRole('heading', { name: 'Add transaction' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument()
+  await mutate(() => [])
+})
+
+it('an online validation refusal still shows in the dialog', async () => {
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () =>
+      HttpResponse.json({ success: false, message: 'Refused by server', code: 0, errors: {} }, { status: 400 }),
+    ),
+  )
+  await loadPendingWrites('u1')
+  const user = userEvent.setup()
+  renderDialog()
+  render(<Toaster />)
+  useUiStore.getState().openTransactionModal({ type: 'expense', accountId: 'a1' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '7')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  expect(await screen.findByText('Refused by server')).toBeInTheDocument()
+  expect(useUiStore.getState().transactionModal).not.toBeNull()
+  expect(getOps()).toEqual([])
+})
+
+describe('offline', () => {
+  beforeEach(() => {
+    onlineManager.setOnline(false)
+  })
+  afterEach(() => {
+    act(() => onlineManager.setOnline(true))
+  })
+
+  it('offers no create row in the pickers and no "+" for a tag', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    useUiStore.getState().openTransactionModal({ transaction: wireTxEcho() as unknown as TransactionDto })
+    await screen.findByRole('heading', { name: 'Edit transaction' })
+    // the user query decides the "+" online; wait on a settled picker instead
+    await screen.findByRole('combobox', { name: 'Category' })
+    expect(screen.queryByRole('button', { name: 'Add tag' })).toBeNull()
+
+    await user.click(screen.getByRole('combobox', { name: 'Category' }))
+    expect(await screen.findByPlaceholderText('Search')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Search or enter a new name')).toBeNull()
+  })
+
+  it('keeps adding and updating a transaction enabled, posting a template is not', async () => {
+    renderDialog()
+    useUiStore.getState().openTransactionModal({ type: 'expense' })
+    expect(await screen.findByRole('button', { name: 'Add' })).toBeEnabled()
+    act(() => useUiStore.getState().closeTransactionModal())
+
+    const template: RecurringDto = {
+      id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+      amount: '42.5', categoryId: 'cat-food', payeeId: null, tagId: null, labelIds: [],
+      description: 'rent', schedule: 'monthly', nextPaymentAt: '2026-07-05 00:00:00',
+    }
+    useUiStore.getState().openTransactionModal({ postRecurring: template })
+    expect(await screen.findByRole('button', { name: 'Add' })).toBeDisabled()
   })
 })

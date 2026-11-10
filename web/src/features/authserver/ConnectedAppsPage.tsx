@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { Check, Copy, Plug } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
@@ -6,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
+import { useOnline } from '@/hooks/useOnline'
 import type { ConnectedAppDto } from '@/api/dto/authserver'
 import { mcpUrl } from '@/lib/config'
 import { useServerConfig } from '@/lib/appConfig'
@@ -17,8 +20,11 @@ import { useConnectedApps, useRevokeConnectedApp } from './queries'
 
 export function ConnectedAppsPage() {
   const { t, i18n } = useTranslation()
-  const { data: apps } = useConnectedApps()
+  const appsQuery = useConnectedApps()
+  const { data: apps } = appsQuery
+  const offline = useUnavailableOffline(appsQuery)
   const revoke = useRevokeConnectedApp()
+  const online = useOnline()
   const [confirmRevoke, setConfirmRevoke] = useState<ConnectedAppDto | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -41,6 +47,7 @@ export function ConnectedAppsPage() {
       <InfoBox>{t('authserver.apps.description')}</InfoBox>
 
       <div className="flex max-w-md flex-col gap-2 py-2">
+        {offline ? <OfflineUnavailable /> : null}
         {apps && apps.length === 0 ? (
           <div className="flex flex-col gap-3 px-1">
             <p className="text-sm text-muted-foreground">{t('authserver.apps.empty')}</p>
@@ -94,6 +101,7 @@ export function ConnectedAppsPage() {
               variant="ghost"
               size="sm"
               className="shrink-0 text-econumo-link"
+              disabled={!online}
               onClick={() => setConfirmRevoke(app)}
             >
               {t('authserver.apps.revoke')}

@@ -69,12 +69,13 @@ beforeEach(() => {
   )
 })
 
-it('offline with nothing cached, it does not claim the list is empty', async () => {
+it('offline with nothing cached, it says the list is not on this device instead of loading or claiming it is empty', async () => {
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   const queryClient = renderDialog()
   await waitFor(() => expect(queryClient.getQueryCache().find({ queryKey: queryKeys.budgetTransactions, exact: false })?.state.fetchStatus).toBe('paused'))
-  expect(screen.getByLabelText('loading')).toBeInTheDocument()
+  expect(await screen.findByTestId('offline-unavailable')).toBeInTheDocument()
+  expect(screen.queryByLabelText('loading')).not.toBeInTheDocument()
   expect(screen.queryByText('List is empty')).not.toBeInTheDocument()
 })
 

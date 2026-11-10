@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { OptionSelect } from '@/components/OptionSelect'
 import { Switch } from '@/components/ui/switch'
@@ -24,6 +25,7 @@ interface CompleteBudgetDialogProps {
 
 export function CompleteBudgetDialog({ budget, onClose }: CompleteBudgetDialogProps) {
   const { t, i18n } = useTranslation()
+  const online = useOnline()
   const navigate = useNavigate()
   const updateBudget = useUpdateBudgetDetail()
   const archiveBudget = useArchiveBudget()
@@ -110,7 +112,7 @@ export function CompleteBudgetDialog({ budget, onClose }: CompleteBudgetDialogPr
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="budget-complete-form">
+          <Button type="submit" form="budget-complete-form" disabled={!online}>
             {t('common.button.save.label')}
           </Button>
         </div>

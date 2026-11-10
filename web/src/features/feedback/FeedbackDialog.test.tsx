@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
@@ -133,4 +133,12 @@ it('opened from Reports: preselects Feature request and sends the reports topic'
   await userEvent.click(screen.getByRole('button', { name: 'Send' }))
   await waitFor(() => expect(bodies).toHaveLength(1))
   expect(bodies[0].fields).toMatchObject({ type: 'feature_request', topic: 'reports' })
+})
+
+it('offline: Send is disabled', async () => {
+  renderDialog()
+  await screen.findByRole('button', { name: 'Send' })
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
 })

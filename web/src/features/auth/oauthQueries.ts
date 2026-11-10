@@ -153,6 +153,7 @@ export function useStartOAuth() {
 export function useExchangeHandoff() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ code, flow }: { code: string; flow: string }) => oauthApi.exchangeHandoff(code, flow),
     onSuccess: async (data) => {
       // The new session may belong to a different user, and the app can reach

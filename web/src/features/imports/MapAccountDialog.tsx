@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import type { ImportCardDto, ImportProvider } from '@/api/dto/imports'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { useAccounts } from '@/features/accounts/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
@@ -13,6 +14,7 @@ import { useLinkImportAccount } from './queries'
 
 export function MapAccountDialog({ sourceId, provider, card, onClose }: { sourceId: string; provider: ImportProvider | undefined; card: ImportCardDto | null; onClose: () => void }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const ns = provider === 'simplefin' ? 'imports.simplefin.accounts' : 'imports.apple_wallet.cards'
   const { data: accounts = [] } = useAccounts()
   const { data: user } = useUserData()
@@ -75,7 +77,7 @@ export function MapAccountDialog({ sourceId, provider, card, onClose }: { source
         />
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={close}>{t('common.button.cancel.label')}</Button>
-          <Button type="button" disabled={!accountId || accountId === current || link.isPending} onClick={submit}>{t(`${ns}.map_modal.submit`)}</Button>
+          <Button type="button" disabled={!accountId || accountId === current || link.isPending || !online} onClick={submit}>{t(`${ns}.map_modal.submit`)}</Button>
         </div>
       </div>
     </ResponsiveDialog>

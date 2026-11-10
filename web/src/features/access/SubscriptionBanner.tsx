@@ -81,7 +81,7 @@ export function SubscriptionBanner({ banner }: { banner: SubscriptionBannerState
 
   // The sale only exists with billing enabled, so it always gets a CTA.
   const cta = billingEnabled ? (
-    <Button type="button" size="sm" variant="outline" disabled={portal.pending} onClick={() => portal.open()}>
+    <Button type="button" size="sm" variant="outline" disabled={portal.disabled} onClick={() => portal.open()}>
       {variant === 'sale' ? t('subscription.banner.sale_cta') : t('subscription.banner.cta')}
     </Button>
   ) : null

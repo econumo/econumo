@@ -13,6 +13,7 @@ import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { patchTransactions } from '@/features/transactions/revisionTracking'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import type { OwnErrorHandling } from '@/lib/appQueryClient'
 
 const byPosition = <T extends { position: number }>(items: T[]) => [...items].sort((a, b) => a.position - b.position)
 
@@ -38,9 +39,10 @@ function findByName<T extends { name: string; ownerUserId: Id }>(items: T[] | un
   return (items ?? []).find((i) => i.name.toLowerCase() === target && (!ownerUserId || i.ownerUserId === ownerUserId))
 }
 
-export function useCreateCategory() {
+export function useCreateCategory({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors },
     mutationFn: async (form: { name: string; type: CategoryType; accountId?: Id; ownerUserId?: Id; icon?: string }) => {
       const existing = findByName(queryClient.getQueryData<CategoryDto[]>(queryKeys.categories), form.name, form.ownerUserId)
       if (existing && existing.type === form.type) {
@@ -60,9 +62,10 @@ export function useCreateCategory() {
   })
 }
 
-export function useCreatePayee() {
+export function useCreatePayee({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors },
     mutationFn: async (form: { name: string; accountId?: Id; ownerUserId?: Id }) => {
       const existing = findByName(queryClient.getQueryData<PayeeDto[]>(queryKeys.payees), form.name, form.ownerUserId)
       if (existing) {
@@ -308,6 +311,7 @@ export function useMovePayee() {
 export function useUpdateTag() {
   const ops = useEntityCacheOps('tags', true)
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (form: { id: Id; name: string }) => tagApi.updateTag(form),
     onSuccess: (item, form) => {
       ops.replaceItem(form.id, { name: item?.name ?? form.name })
@@ -374,6 +378,7 @@ export function useMoveTag() {
 export function useCreateTag() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: async (form: { name: string; accountId?: Id; ownerUserId?: Id }) => {
       const existing = findByName(queryClient.getQueryData<TagDto[]>(queryKeys.tags), form.name, form.ownerUserId)
       if (existing) {
@@ -446,6 +451,7 @@ export function useSortTags() {
 export function useUpdateLabel() {
   const ops = useEntityCacheOps('labels', true)
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (form: { id: Id; name: string }) => labelApi.updateLabel(form),
     onSuccess: (item, form) => {
       ops.replaceItem(form.id, { name: item?.name ?? form.name })
@@ -554,6 +560,7 @@ export function useSortLabels() {
 export function useCreateLabel() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: async (form: { name: string; accountId?: Id; ownerUserId?: Id }) => {
       const existing = findByName(queryClient.getQueryData<LabelDto[]>(queryKeys.labels), form.name, form.ownerUserId)
       if (existing) {

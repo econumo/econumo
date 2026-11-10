@@ -7,10 +7,13 @@ import { coreHandlers, fixtureBudgets, fixtureDebtRow, fixtureOwner, fixtureWire
 import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { mutate } from '@/features/pendingWrites/store'
+import type { PendingOp } from '@/features/pendingWrites/types'
 import { useBudgetPeriodStore } from './budgetStore'
 import {
   useArchiveBudget,
   useBudgetPlan,
+  useBudgetTransactions,
   useBudgets,
   useCloneBudget,
   useCreateBudget,
@@ -177,7 +180,7 @@ it('useSetLimit (budget mode) also invalidates the plan cache so the plan sheet 
   const { result } = renderHook(() => useSetLimit(), { wrapper })
   result.current.mutate({ budgetId: 'b1', elementId: 'cat-food', period: '2026-09-01', amount: '250' })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
-  expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.budgetPlan })
+  expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budgetPlan, 'b1'] })
 })
 
 it('useSetLimit refreshes the budget\'s later months: a changed budget moves what they carry over', async () => {
@@ -735,5 +738,51 @@ describe('a plan change refreshes the debts\' future payments', () => {
     result.current.mutate({ budgetId: 'b1', elementId: 'debt-1', amount: '250', targets: [{ period: '2026-07-01', monthIndex: 2 }] })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     await waitFor(() => expect(queryClient.getQueryState(forecastKey)?.isInvalidated).toBe(true))
+  })
+})
+
+describe('useBudgetTransactions with a waiting edit', () => {
+  const wireRow = { id: 'x1', author: fixtureOwner, currencyId: 'c', amount: '5', description: '', category: { id: 'c1', name: 'Old', icon: 'a' }, payee: null, tag: null, labelIds: [], spentAt: '2026-11-08 09:00:00' }
+  const waitingEdit = (over: Record<string, unknown>) => ({
+    key: 'k1', seq: 1, attempted: false, status: 'waiting', retries: 0, notBefore: 0, kind: 'tx-update', txId: 'x1',
+    payload: { id: 'x1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '5', amountRecipient: null, categoryId: 'c1', description: '', payeeId: null, tagId: null, labelIds: [], date: '2026-11-08 10:00:00', ...over },
+  }) as PendingOp
+  const serveRow = () => http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [wireRow], upcoming: [] } }))
+
+  it('names a new category once the reference list arrives after the rows', async () => {
+    let release = () => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    server.use(
+      serveRow(),
+      http.get('*/api/v1/category/get-category-list', async () => {
+        await gate
+        return HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'c2', name: 'New', icon: 'b', position: 0 }] } })
+      }),
+    )
+    await mutate(() => [waitingEdit({ categoryId: 'c2' })])
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useBudgetTransactions({ budgetId: 'b1', periodStart: '2026-11-01', accountId: 'a1' }), { wrapper })
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(1))
+    expect(result.current.data?.items[0].category).toEqual({ id: 'c2', name: '', icon: '' })
+
+    release()
+    await waitFor(() => expect(result.current.data?.items[0].category).toMatchObject({ id: 'c2', name: 'New', icon: 'b' }))
+  })
+
+  it('drops a row whose edit takes it out of the listed category', async () => {
+    server.use(serveRow())
+    await mutate(() => [waitingEdit({ categoryId: 'c2' })])
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useBudgetTransactions({ budgetId: 'b1', periodStart: '2026-11-01', categoryId: 'c1' }), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.items).toEqual([])
+  })
+
+  it('drops a row whose edit dates it outside the budget\'s period, once the budget is known', async () => {
+    server.use(serveRow())
+    await mutate(() => [waitingEdit({ date: '2026-12-08 10:00:00' })])
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useBudgetTransactions({ budgetId: 'b1', periodStart: '2026-11-01', categoryId: 'c1' }), { wrapper })
+    await waitFor(() => expect(result.current.data?.items).toEqual([]))
   })
 })

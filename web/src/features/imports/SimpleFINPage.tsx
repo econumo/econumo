@@ -7,6 +7,9 @@ import type { ImportCardDto } from '@/api/dto/imports'
 import { queryKeys } from '@/app/queryKeys'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useOnline } from '@/hooks/useOnline'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { InfoBox } from '@/components/InfoBox'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -22,9 +25,13 @@ import { useExternalAccounts, useImportRuns, useImportSources, useSyncImportSour
 
 export function SimpleFINPage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const queryClient = useQueryClient()
-  const { data: sources = [], isPending: sourcesPending } = useImportSources()
-  const { state: keyState, refresh: refreshKey } = useImportKey()
+  const sourcesQuery = useImportSources()
+  const { data: sources = [], isPending: sourcesPending } = sourcesQuery
+  const { state: keyState, refresh: refreshKey, remote: remoteKey } = useImportKey()
+  // only network data counts: the local key read settles offline too
+  const unavailableOffline = useUnavailableOffline(sourcesQuery, remoteKey)
   const source = sources.find((s) => s.provider === 'simplefin') ?? null
   const [accessUrl, setAccessUrl] = useState<string | null>(null)
   const [reconnecting, setReconnecting] = useState(false)
@@ -105,6 +112,9 @@ export function SimpleFINPage() {
 
   const body = () => {
     if (sourcesPending || keyState.status === 'loading') {
+      if (unavailableOffline) {
+        return <OfflineUnavailable />
+      }
       return <p className="text-sm text-muted-foreground">{t('common.app.modal.loading.data_loading')}</p>
     }
     if (!source || reconnecting) {
@@ -132,7 +142,7 @@ export function SimpleFINPage() {
             {t('imports.simplefin.sync.from')}
             <input id="simplefin-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="rounded border bg-background px-2 py-1 text-sm text-foreground" />
           </label>
-          <Button type="button" className="w-full sm:w-auto" disabled={sync.isPending || !accessUrl} onClick={runSync}>
+          <Button type="button" className="w-full sm:w-auto" disabled={sync.isPending || !accessUrl || !online} onClick={runSync}>
             {sync.isPending ? t('imports.simplefin.sync.running') : t('imports.simplefin.sync.button')}
           </Button>
         </div>
@@ -143,7 +153,7 @@ export function SimpleFINPage() {
         {external.isError ? <p role="alert" className="text-sm text-destructive">{apiErrorMessage(external.error)}</p> : null}
         <ImportCards source={source} cards={cards} variant="account" />
         <div className="flex flex-wrap gap-2 pt-2">
-          <Button type="button" variant="secondary" size="sm" onClick={() => setReconnecting(true)}>{t('imports.simplefin.unlock.reconnect')}</Button>
+          <Button type="button" variant="secondary" size="sm" disabled={!online} onClick={() => setReconnecting(true)}>{t('imports.simplefin.unlock.reconnect')}</Button>
           <Button type="button" variant="ghost" size="sm" onClick={() => void forget()}>{t('imports.simplefin.forget_device')}</Button>
         </div>
       </>

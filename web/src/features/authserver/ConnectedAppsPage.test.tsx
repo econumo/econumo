@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -121,4 +122,11 @@ test('existing grants stay listed and revocable when the MCP address is unavaila
   expect(await screen.findByText('Claude')).toBeInTheDocument()
   expect(screen.getAllByRole('button', { name: 'Revoke' })).toHaveLength(2)
   expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument()
+})
+
+it('offline with nothing loaded on this device, the connected apps list says so instead of an empty or loading page', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderPage()
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not available offline')
 })

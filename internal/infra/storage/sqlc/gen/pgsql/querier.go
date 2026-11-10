@@ -69,6 +69,7 @@ type Querier interface {
 	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotencyKeyParams) error
 	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
 	DeleteImportAccountLink(ctx context.Context, id string) error
 	DeleteImportCredentialKey(ctx context.Context, userID string) error
@@ -184,6 +185,7 @@ type Querier interface {
 	// placeholders). See the sqlite variant for documentation.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	GetIdempotencyKey(ctx context.Context, arg GetIdempotencyKeyParams) (*string, error)
 	// OAuth feature queries: identities, in-flight states, one-shot handoffs.
 	GetIdentityByProviderSubject(ctx context.Context, arg GetIdentityByProviderSubjectParams) (UsersIdentity, error)
 	GetIdentityByUserProvider(ctx context.Context, arg GetIdentityByUserProviderParams) (UsersIdentity, error)
@@ -302,6 +304,7 @@ type Querier interface {
 	// nothing instead of failing the foreign key.
 	InsertDebtSplit(ctx context.Context, arg InsertDebtSplitParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
+	InsertIdempotencyKey(ctx context.Context, arg InsertIdempotencyKeyParams) error
 	// See the sqlite sibling.
 	InsertIdentityIfGeneration(ctx context.Context, arg InsertIdentityIfGenerationParams) (int64, error)
 	InsertImportAccountLink(ctx context.Context, arg InsertImportAccountLinkParams) error
@@ -485,6 +488,7 @@ type Querier interface {
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
 	PurgeExcessUnusedOAuthClients(ctx context.Context, limit int32) (int64, error)
 	PurgeExpiredOAuthCodes(ctx context.Context, expiresAt time.Time) error
+	PurgeIdempotencyKeys(ctx context.Context, createdAt time.Time) error
 	PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Time) (int64, error)
 	// The operation_requests_ids idempotency queries moved to operations.sql (shared
 	// across modules that take a client-supplied operation id).

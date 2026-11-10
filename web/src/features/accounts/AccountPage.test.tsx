@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -550,6 +550,47 @@ describe('drag to reorder', () => {
     renderPage()
     await screen.findByTestId('tx-t1')
     expect(handles().length).toBe(document.querySelectorAll('[data-testid^="tx-"]').length)
+  })
+
+  it('desktop: a row waiting or refused in the queue has no handle, even online', async () => {
+    const { loadPendingWrites, mutate, resetPendingWritesForTests } = await import('@/features/pendingWrites/store')
+    const { addChange } = await import('@/features/pendingWrites/queue')
+    resetPendingWritesForTests()
+    await loadPendingWrites('u1')
+    await mutate((ops) => addChange(ops, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'k1', seq: 1 }, false))
+    mockViewport(false)
+    renderPage()
+    await screen.findByTestId('tx-t2')
+    expect(handles().length).toBe(document.querySelectorAll('[data-testid^="tx-"]').length - (document.querySelector('[data-testid="tx-t1"]') ? 1 : 0))
+    expect(handles().length).toBeGreaterThan(0)
+    resetPendingWritesForTests()
+  })
+
+  it('desktop: a refused row has no handle either', async () => {
+    const { loadPendingWrites, mutate, resetPendingWritesForTests } = await import('@/features/pendingWrites/store')
+    const { addChange } = await import('@/features/pendingWrites/queue')
+    resetPendingWritesForTests()
+    await loadPendingWrites('u1')
+    await mutate((ops) =>
+      addChange(ops, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'k1', seq: 1 }, false).map((op) => ({ ...op, status: 'failed' as const, error: 'refused' })),
+    )
+    mockViewport(false)
+    renderPage()
+    await screen.findByTestId('tx-t2')
+    const rows = document.querySelectorAll('[data-testid^="tx-"]').length - (document.querySelector('[data-testid="tx-t1"]') ? 1 : 0)
+    expect(handles().length).toBe(rows)
+    expect(handles().length).toBeGreaterThan(0)
+    resetPendingWritesForTests()
+  })
+
+  it('desktop: no handles offline', async () => {
+    mockViewport(false)
+    renderPage()
+    await screen.findByTestId('tx-t1')
+    expect(handles().length).toBeGreaterThan(0)
+    act(() => onlineManager.setOnline(false))
+    onTestFinished(() => act(() => onlineManager.setOnline(true)))
+    await waitFor(() => expect(handles()).toHaveLength(0))
   })
 
   it('desktop: no handles while searching', async () => {

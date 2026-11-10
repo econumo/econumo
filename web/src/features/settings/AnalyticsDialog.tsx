@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Switch } from '@/components/ui/switch'
+import { useOnline } from '@/hooks/useOnline'
 
 export function AnalyticsDialog({ open, onClose, enabled, onChange }: {
   open: boolean
@@ -9,6 +10,7 @@ export function AnalyticsDialog({ open, onClose, enabled, onChange }: {
   onChange: (enabled: boolean) => void
 }) {
   const { t } = useTranslation()
+  const online = useOnline()
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('user.page.settings.profile.analytics.menu_item')}>
       <div className="flex flex-col gap-4">
@@ -21,7 +23,7 @@ export function AnalyticsDialog({ open, onClose, enabled, onChange }: {
           <label htmlFor="profile-analytics" className="text-sm">
             {t('user.page.settings.profile.analytics.label')}
           </label>
-          <Switch id="profile-analytics" checked={enabled} onCheckedChange={onChange} />
+          <Switch id="profile-analytics" disabled={!online} checked={enabled} onCheckedChange={onChange} />
         </div>
       </div>
     </ResponsiveDialog>

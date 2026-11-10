@@ -7,6 +7,7 @@ import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
+import { useOnline } from '@/hooks/useOnline'
 import type {
   BudgetDebtElementDto,
   BudgetDto,
@@ -94,6 +95,7 @@ export function useBudgetLineMenus({
   onOpenSettings: () => void
 }): BudgetLineMenus {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: accounts = [] } = useAccounts()
   const openAccountModal = useUiStore((s) => s.openAccountModal)
   const openDebtModal = useUiStore((s) => s.openDebtModal)
@@ -140,7 +142,7 @@ export function useBudgetLineMenus({
 
   // a debt is its owner's alone: everyone else sees its row and nothing more
   const ownsDebt = (row: DebtRef) => !!userId && row.ownerUserId === userId
-  const editAccess = (target: SheetTarget): boolean | null => {
+  const rawEditAccess = (target: SheetTarget): boolean | null => {
     if (target.kind === 'label') {
       // update-label answers anyone but the tag's owner with NotFound
       return !!userId && target.label.ownerUserId === userId
@@ -150,6 +152,11 @@ export function useBudgetLineMenus({
       return ownsDebt(target.row) ? true : null
     }
     return elementEditAccess(sheetElement(target), userId, editDetails, accounts)
+  }
+  // every menu write needs the server: offline the actions stay listed, greyed out
+  const editAccess = (target: SheetTarget): boolean | null => {
+    const access = rawEditAccess(target)
+    return access === null ? null : access && online
   }
   const editFromSheet = (target: SheetTarget) => {
     if (target.kind === 'label') {
@@ -175,7 +182,7 @@ export function useBudgetLineMenus({
     }
   }
   const editAction = (target: SheetTarget): MenuAction[] => {
-    const access = editAccess(target)
+    const access = rawEditAccess(target)
     if (access === null) {
       return []
     }
@@ -511,17 +518,21 @@ export function useBudgetLineMenus({
     </>
   ) : null
 
+  const gate = (actions: MenuAction[]): MenuAction[] =>
+    online ? actions : actions.map((a) => ({ ...a, disabled: true, reason: a.reason ?? t('settings.sync.offline') }))
+  const gateOpt = (actions: MenuAction[] | undefined): MenuAction[] | undefined => (actions ? gate(actions) : undefined)
+
   return {
-    expenseRowMenu,
-    incomeRowMenu,
-    planRowMenu,
-    envelopeChildMenu,
-    savingsRowMenu,
-    debtRowMenu,
-    labelMenu,
-    folderActionsFor,
-    sectionMenu,
-    savingsSectionMenu,
+    expenseRowMenu: (element) => gate(expenseRowMenu(element)),
+    incomeRowMenu: (cell) => gate(incomeRowMenu(cell)),
+    planRowMenu: (el, monthIndex) => gate(planRowMenu(el, monthIndex)),
+    envelopeChildMenu: (child, parent) => gate(envelopeChildMenu(child, parent)),
+    savingsRowMenu: (row) => gate(savingsRowMenu(row)),
+    debtRowMenu: (row) => gate(debtRowMenu(row)),
+    labelMenu: (label) => gate(labelMenu(label)),
+    folderActionsFor: (folder, empty, side) => gateOpt(folderActionsFor(folder, empty, side)),
+    sectionMenu: (side) => gateOpt(sectionMenu(side)),
+    savingsSectionMenu: gateOpt(savingsSectionMenu),
     editAccess,
     editFromSheet,
     editorOpen: envelopeDialog.open || categoryTarget !== null || tagTarget !== null,

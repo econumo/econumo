@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import type { HttpHandler } from 'msw'
@@ -84,7 +84,7 @@ function renderPage(path: '/budget' | '/plan' = '/budget') {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
-  return { queryClient }
+  return { queryClient, router }
 }
 
 beforeEach(() => {
@@ -516,4 +516,49 @@ it('a shifted budget shows its dates under the strip months and figures for its 
   } finally {
     vi.useRealTimers()
   }
+})
+
+it('offline: Set budget on the sheet still works, Configure does not', async () => {
+  handlers()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  const row = await screen.findByRole('button', { name: /^Food, budget 200.00/ })
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  expect(screen.getByRole('button', { name: 'Configure' })).toBeDisabled()
+  await user.click(row)
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).getByRole('button', { name: 'Set budget' })).toBeEnabled()
+  await user.click(within(sheet).getByRole('button', { name: 'Set budget' }))
+  expect(await screen.findByLabelText('Budget')).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+})
+
+it('offline: a month never loaded on this device says so under the month strip', async () => {
+  handlers()
+  renderPage()
+  await screen.findByRole('button', { name: /^Food, budget 200.00/ })
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This data isn't available without an internet connection.")
+  expect(screen.queryByTestId('budget-loading')).toBeNull()
+  expect(screen.getByRole('tablist', { name: 'period' })).toBeInTheDocument()
+})
+
+it('offline: opened cold on a month never loaded, the header and month strip stay to reach a saved month', async () => {
+  handlers()
+  const { router } = renderPage()
+  await screen.findByRole('button', { name: /^Food, budget 200.00/ })
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
+  await act(() => router.navigate('/plan'))  // a fresh page: no previous month to hold
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This data isn't available without an internet connection.")
+  expect(screen.getByRole('button', { name: 'back' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Main budget' })).toBeInTheDocument()
+  expect(screen.getByRole('tablist', { name: 'period' })).toBeInTheDocument()
+  act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' }))
+  expect(await screen.findByRole('button', { name: /^Food, budget 200.00/ })).toBeInTheDocument()
+  expect(screen.queryByTestId('offline-unavailable')).toBeNull()
 })

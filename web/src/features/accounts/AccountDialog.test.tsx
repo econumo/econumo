@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -17,8 +17,12 @@ function mockMatchMedia() {
   }))
 }
 
-function renderDialog() {
+// accounts: already cached when the dialog mounts, so no fetch of them can land over a test's values
+function renderDialog(accounts?: unknown[]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  if (accounts) {
+    queryClient.setQueryData(queryKeys.accounts, accounts)
+  }
   render(
     <QueryClientProvider client={queryClient}>
       <AccountDialog />
@@ -189,8 +193,8 @@ it('edit mode seeds the raw balance and posts updatedAt in Y-m-d H:i:s', async (
     }),
   )
   const user = userEvent.setup()
-  renderDialog()
   const account = { ...fixtureAccounts[0], balance: 1234.5 } as unknown as AccountDto
+  renderDialog([account])
   useUiStore.getState().openAccountModal({ account })
 
   await screen.findByText('Edit account')
@@ -274,4 +278,62 @@ it('has no savings switch and sends no type on create or update', async () => {
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(bodies).toHaveLength(2))
   expect(bodies[1]).not.toHaveProperty('type')
+})
+
+it('follows the stored balance when a waiting change is confirmed while the dialog is open', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/account/update-account', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: fixtureAccounts[0], transaction: null } })
+    }),
+  )
+  const user = userEvent.setup()
+  const queryClient = renderDialog([{ ...fixtureAccounts[0], balance: '100.5' }])
+  useUiStore.getState().openAccountModal({ account: { ...fixtureAccounts[0], balance: '90.5' } as unknown as AccountDto })
+  await screen.findByText('Edit account')
+  expect(screen.getByLabelText('Balance')).toHaveValue('100.50')
+
+  act(() => queryClient.setQueryData(queryKeys.accounts, [{ ...fixtureAccounts[0], balance: '90.5' }]))
+  expect(screen.getByLabelText('Balance')).toHaveValue('90.50')
+
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(Number(body!.balance)).toBe(90.5)
+})
+
+it('keeps a balance the user typed when the stored one moves', async () => {
+  const user = userEvent.setup()
+  const queryClient = renderDialog([{ ...fixtureAccounts[0], balance: '100.5' }])
+  // the user arriving re-seeds the form, which is not what this is about
+  await waitFor(() => expect(queryClient.getQueryState(queryKeys.user)?.status).toBe('success'))
+  useUiStore.getState().openAccountModal({ account: { ...fixtureAccounts[0], balance: '90.5' } as unknown as AccountDto })
+  await screen.findByText('Edit account')
+  const balanceField = screen.getByLabelText('Balance')
+  await user.clear(balanceField)
+  await user.type(balanceField, '42')
+
+  act(() => queryClient.setQueryData(queryKeys.accounts, [{ ...fixtureAccounts[0], balance: '90.5' }]))
+  expect(balanceField).toHaveValue('42')
+})
+
+it('renaming an account with a waiting change sends the stored balance, not the overlaid one', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/account/update-account', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: fixtureAccounts[0], transaction: null } })
+    }),
+  )
+  const user = userEvent.setup()
+  // the cache holds what the server stores; the list handed to the dialog also counts a waiting expense of 10
+  renderDialog([{ ...fixtureAccounts[0], balance: '100.5' }])
+  useUiStore.getState().openAccountModal({ account: { ...fixtureAccounts[0], balance: '90.5' } as unknown as AccountDto })
+
+  await screen.findByText('Edit account')
+  expect(screen.getByLabelText('Balance')).toHaveValue('100.50')
+  await user.type(screen.getByLabelText('Name'), ' 2')
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(Number(body!.balance)).toBe(100.5)
 })

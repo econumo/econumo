@@ -117,13 +117,13 @@ A debt is **set up** once it has a balance and a last payment date. Until then:
   today with the stored payment and schedule and copies the terms onto the debt, as
   every snapshot write does today.
 
-Schema: the unreleased migration `20261109000000` on this branch may be edited in
+Schema: the unreleased migration `20261110000500` on this branch may be edited in
 place (it was never released): `as_of`, `balance` and `last_payment_date` on
 `debts` become nullable; `label_id` (nullable, FK to `labels`, indexed) is added.
 `payment` and `schedule` stay required. `created_day` (DATE, required) holds the
 creation date in the owner's timezone, written once at creation: it can start the
 planning bounds and must not move when the owner later changes timezone. (The
-migration was renumbered from `20261102000000` to sort above main's latest.)
+migration was renumbered from `20261102000000`, then from `20261109000000`, to sort above main's latest.)
 
 ## 4. The review screen (full screen, phone and desktop)
 

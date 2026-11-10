@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -1297,5 +1297,168 @@ describe('a budget whose months start on the 28th', () => {
     expect(await screen.findByTestId('budget-folder-Essentials')).toBeInTheDocument()
     expect(screen.queryAllByTestId('period-strip-dates')).toHaveLength(0)
     expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-10-01')
+  })
+})
+
+describe('offline', () => {
+  const goOffline = () => {
+    act(() => onlineManager.setOnline(false))
+    onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  }
+  const budgetHandlers = () =>
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+    )
+
+  it('a month never loaded on this device says so instead of an endless loader; the strip stays usable', async () => {
+    budgetHandlers()
+    renderPage()
+    await screen.findByTestId('element-cat-food')
+    goOffline()
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
+    const state = await screen.findByTestId('offline-unavailable')
+    expect(state).toHaveTextContent("This data isn't available without an internet connection.")
+    expect(screen.queryByTestId('budget-loading')).toBeNull()
+    expect(screen.getByRole('tablist', { name: 'period' })).toBeInTheDocument()
+    // a month the device has comes back at once
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' }))
+    expect(await screen.findByTestId('element-cat-food')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+  })
+
+  it('opening the page offline on a month never loaded shows the offline state, not the cold loader and its log-out escape', async () => {
+    budgetHandlers()
+    const { router } = renderPage()
+    await screen.findByTestId('element-cat-food')
+    goOffline()
+    await act(() => router.navigate('/settings/budgets'))
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
+    await act(() => router.navigate('/budget'))
+    const state = await screen.findByTestId('offline-unavailable')
+    expect(state).toHaveTextContent("This data isn't available without an internet connection.")
+    expect(screen.queryByTestId('budget-loading')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Log out' })).toBeNull()
+    // the header and the month strip come from the cached budget list, so a
+    // month the device has is one tap away
+    expect(screen.getByRole('heading', { name: 'Main budget' })).toBeInTheDocument()
+    const strip = screen.getByRole('tablist', { name: 'period' })
+    expect(within(strip).getByRole('tab', { selected: true })).toHaveTextContent(/Jun/)
+    expect(screen.getByRole('tab', { name: 'Budget' })).toBeInTheDocument()
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' }))
+    expect(await screen.findByTestId('element-cat-food')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+  })
+
+  it('opening the page offline on a month never loaded, with the budget list not cached either, keeps the bare offline state', async () => {
+    budgetHandlers()
+    const { router, queryClient } = renderPage()
+    await screen.findByTestId('element-cat-food')
+    goOffline()
+    await act(() => router.navigate('/settings/budgets'))
+    queryClient.removeQueries({ queryKey: queryKeys.budgets })
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
+    await act(() => router.navigate('/budget'))
+    expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This data isn't available without an internet connection.")
+    expect(screen.queryByRole('tablist', { name: 'period' })).toBeNull()
+  })
+
+  it('a user with no default budget sees the no-budget screen offline, not the offline state', async () => {
+    server.use(...coreHandlers())
+    act(() => onlineManager.setOnline(false))
+    onTestFinished(() => act(() => onlineManager.setOnline(true)))
+    renderPage('/budget', (qc) => {
+      qc.setQueryData(queryKeys.user, fixtureUser)
+      qc.setQueryData(queryKeys.budgets, [])
+    })
+    expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+  })
+
+  it('the Plan: months never loaded on this device say so, and the arrows still lead back', async () => {
+    budgetHandlers()
+    const user = userEvent.setup()
+    renderPage('/plan')
+    await screen.findByTestId('plan-month-header')
+    goOffline()
+    await user.click(screen.getByRole('button', { name: 'Scroll to later months' }))
+    const state = await screen.findByTestId('offline-unavailable')
+    expect(state).toHaveTextContent("This data isn't available without an internet connection.")
+    await user.click(screen.getByRole('button', { name: 'Scroll to earlier months' }))
+    expect(await screen.findByTestId('plan-month-header')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+  })
+
+  it('a server error while online keeps the retryable error', async () => {
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: false, message: 'boom', code: 0 }, { status: 500 })),
+    )
+    renderPage()
+    expect(await screen.findByTestId('budget-error')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+  })
+
+  it('the inline limit editor stays enabled', async () => {
+    budgetHandlers()
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('element-cat-food')
+    goOffline()
+    await act(async () => {})
+    const limit = within(await screen.findByTestId('element-cat-food')).getByRole('button', { name: 'limit Food' })
+    expect(limit).toBeEnabled()
+    await user.click(limit)
+    expect(await screen.findByLabelText('Budget')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+  })
+
+  it('a non-limit line menu item is disabled, saying why', async () => {
+    budgetHandlers()
+    const user = userEvent.setup()
+    const { queryClient } = renderPage()
+    await screen.findByTestId('element-cat-food')
+    await waitFor(() => expect(queryClient.getQueryData(queryKeys.categories)).toBeTruthy())
+    goOffline()
+    await act(async () => {})
+    await user.click(within(await screen.findByTestId('element-cat-food')).getByRole('button', { name: 'menu Food' }))
+    const change = (await screen.findAllByRole('menuitem')).find((i) => i.textContent?.startsWith('Change currency'))
+    expect(change).toHaveAttribute('aria-disabled', 'true')
+    expect(change).toHaveTextContent('No connection')
+  })
+
+  it('structure controls are off: Configure and the drag grips are disabled, the rows stay', async () => {
+    budgetHandlers()
+    renderPage()
+    await screen.findByTestId('element-cat-food')
+    const grips = () => screen.getAllByRole('button', { name: /^move / })
+    expect(grips().length).toBeGreaterThan(0)
+    grips().forEach((g) => expect(g).toBeEnabled())
+    goOffline()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Configure' })).toBeDisabled())
+    await waitFor(() => grips().forEach((g) => expect(g).toBeDisabled()))
+  })
+
+  it('an open limit editor survives the connection dropping: the typed value stays and saving queues it', async () => {
+    const { getOps, loadPendingWrites, resetPendingWritesForTests } = await import('@/features/pendingWrites/store')
+    resetPendingWritesForTests()
+    await loadPendingWrites('u1')
+    onTestFinished(() => resetPendingWritesForTests())
+    budgetHandlers()
+    const user = userEvent.setup()
+    // the app's client sends writes offline into the queue instead of pausing them
+    renderPage('/budget', (qc) => qc.setDefaultOptions({ queries: { retry: false }, mutations: { retry: false, networkMode: 'always' } }))
+    const food = await screen.findByTestId('element-cat-food')
+    await user.click(within(food).getByRole('button', { name: 'limit Food' }))
+    const input = await screen.findByLabelText('Budget')
+    await user.clear(input)
+    await user.type(input, '321')
+    goOffline()
+    await act(async () => {})
+    expect(screen.getByLabelText('Budget')).toHaveValue('321')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByLabelText('Budget')).toBeNull())
+    await waitFor(() => expect(getOps().some((op) => op.kind === 'limit' && op.amount === '321')).toBe(true))
   })
 })

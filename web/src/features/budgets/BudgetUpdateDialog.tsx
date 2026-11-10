@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -26,9 +27,10 @@ interface BudgetUpdateDialogProps {
 
 export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialogProps) {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
-  const updateBudget = useUpdateBudgetDetail()
+  const updateBudget = useUpdateBudgetDetail({ handlesOwnErrors: true })
 
   const [name, setName] = useState('')
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
@@ -178,7 +180,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="budget-update-form" disabled={updateBudget.isPending}>
+          <Button type="submit" form="budget-update-form" disabled={updateBudget.isPending || !online}>
             {t('common.button.update.label')}
           </Button>
         </div>

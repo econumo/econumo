@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { RouterPage } from '@/app/router-pages'
@@ -23,6 +24,7 @@ import { useDeleteRecurring, useRecurring } from './queries'
 
 export function RecurringSettingsPage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const isCompact = useIsCompact()
   const { data: recurring = [] } = useRecurring()
   const { data: accounts } = useAccounts()
@@ -91,11 +93,11 @@ export function RecurringSettingsPage() {
       backTo={RouterPage.SETTINGS}
       actions={
         isCompact ? (
-          <Button type="button" size="icon" aria-label={createLabel} title={createLabel} data-testid="recurring-create" onClick={() => openRecurringModal({})}>
+          <Button type="button" size="icon" aria-label={createLabel} title={createLabel} data-testid="recurring-create" disabled={!online} onClick={() => openRecurringModal({})}>
             <Plus className="size-4" />
           </Button>
         ) : (
-          <Button type="button" size="sm" data-testid="recurring-create" onClick={() => openRecurringModal({})}>
+          <Button type="button" size="sm" data-testid="recurring-create" disabled={!online} onClick={() => openRecurringModal({})}>
             <Plus className="size-4" />
             {createLabel}
           </Button>
@@ -167,13 +169,13 @@ export function RecurringSettingsPage() {
                   </DropdownMenuTrigger>
                   {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
                   <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem disabled={!canChange} onSelect={() => post(rt)}>
+                    <DropdownMenuItem disabled={!canChange || !online} onSelect={() => post(rt)}>
                       {t('recurring.preview.post')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem disabled={!canChange} onSelect={() => edit(rt)}>
+                    <DropdownMenuItem disabled={!canChange || !online} onSelect={() => edit(rt)}>
                       {t('common.button.edit.label')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem variant="destructive" disabled={!canChange} onSelect={() => setDeleteTarget(rt)}>
+                    <DropdownMenuItem variant="destructive" disabled={!canChange || !online} onSelect={() => setDeleteTarget(rt)}>
                       {t('common.button.delete.label')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -191,7 +193,7 @@ export function RecurringSettingsPage() {
         <div className="flex flex-col gap-2 [&_button]:h-11">
           <Button
             type="button"
-            disabled={!sheetItem || !canChangeRecurring(sheetItem)}
+            disabled={!online || !sheetItem || !canChangeRecurring(sheetItem)}
             onClick={() => {
               if (sheetItem) {
                 post(sheetItem)
@@ -204,7 +206,7 @@ export function RecurringSettingsPage() {
           <Button
             type="button"
             variant="outline"
-            disabled={!sheetItem || !canChangeRecurring(sheetItem)}
+            disabled={!online || !sheetItem || !canChangeRecurring(sheetItem)}
             onClick={() => {
               if (sheetItem) {
                 edit(sheetItem)
@@ -218,7 +220,7 @@ export function RecurringSettingsPage() {
             type="button"
             variant="outline"
             className="text-destructive hover:text-destructive"
-            disabled={!sheetItem || !canChangeRecurring(sheetItem)}
+            disabled={!online || !sheetItem || !canChangeRecurring(sheetItem)}
             onClick={() => {
               setDeleteTarget(sheetItem)
               setSheetItem(null)

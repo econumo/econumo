@@ -161,7 +161,12 @@
       "title": "Wymagana aktualizacja",
       "blockedApp": "Ta aplikacja jest zbyt stara dla Twojego serwera Econumo: wymagana jest wersja aplikacji {version} lub nowsza. Zaktualizuj aplikację, aby kontynuować.",
       "blockedServer": "Ta aplikacja wymaga serwera Econumo {min} lub nowszego, a Twój serwer to {version}. Zaktualizuj serwer, aby kontynuować."
-    }
+    },
+    "offline_unavailable": {
+      "title": "Niedostępne offline",
+      "text": "Te dane są niedostępne bez połączenia z internetem."
+    },
+    "offline_notice": "Brak połączenia z internetem. Dane są tylko do odczytu."
   },
   "accounts": {
     "folders": {
@@ -296,6 +301,7 @@
       "failing": "Brak połączenia z serwerem — ponawianie próby",
       "full_reload": "Czyszczenie pamięci podręcznej i ponowne wczytywanie…",
       "hold_hint": "Przytrzymaj, aby wyczyścić pamięć podręczną i wczytać ponownie",
+      "waiting": "{count} zmiana czeka na połączenie z internetem | {count} zmiany czekają na połączenie z internetem | {count} zmian czeka na połączenie z internetem",
       "full_reload_offline": "Jesteś offline. Wyczyść pamięć podręczną i wczytaj ponownie, gdy wrócisz do sieci.",
       "offline": "Brak połączenia"
     },
@@ -357,6 +363,7 @@
     }
   },
   "transactions": {
+    "not_saved": "Niezapisana",
     "modal": {
       "transaction_type": {
         "expense": "Wydatek",
@@ -631,12 +638,26 @@
     "title": "Skrzynka odbiorcza",
     "open": "Skrzynka: do przejrzenia {count}",
     "empty": "Brak nowych powiadomień",
+    "failed_writes": {
+      "kind_create": "Dodanie",
+      "kind_update": "Zmiana",
+      "kind_delete": "Usunięcie",
+      "delete_generic": "Usunięta transakcja",
+      "limit": "{name}: plan {amount} ({period})",
+      "limit_generic": "Plan {amount} ({period})",
+      "limit_cleared": "{name}: plan usunięty ({period})",
+      "limit_cleared_generic": "Plan usunięty ({period})",
+      "retry": "Spróbuj ponownie",
+      "discard": "Odrzuć",
+      "reason_unknown": "Serwer odrzucił tę zmianę."
+    },
     "sections": {
       "due": "Zaplanowane transakcje",
       "sharing": "Udostępnianie",
       "sync": "Problemy z synchronizacją",
       "failed": "Nieudane importy",
       "to_review": "Do przejrzenia",
+      "failed_writes": "Niezapisane",
       "skipped": "Pominięte ({count})"
     },
     "due": {
@@ -1735,6 +1756,9 @@
           "header": "Zarchiwizowane"
         }
       }
+    },
+    "limit": {
+      "not_saved": "Niezapisany"
     }
   },
   "reports": {

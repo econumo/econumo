@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyField } from '@/features/currencies/CurrencyField'
@@ -77,6 +78,8 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
     })
   }
 
+  const online = useOnline()
+
   const submit = () => {
     const next: { name?: string; currency?: string; accounts?: string } = {}
     if (!isNotEmpty(name)) {
@@ -109,7 +112,7 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="budget-create-form">{t('common.button.create.label')}</Button>
+          <Button type="submit" form="budget-create-form" disabled={!online}>{t('common.button.create.label')}</Button>
         </div>
       }
     >

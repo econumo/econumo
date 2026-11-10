@@ -16,6 +16,7 @@ export function useCurrencyRates() {
 export function useCreateCurrency() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (form: { code: string; name: string; symbol?: string; fractionDigits?: number; rate: string }) =>
       currencyApi.createCurrency({ id: uuidv7(), ...form }),
     onSuccess: () => {
@@ -29,6 +30,7 @@ export function useCreateCurrency() {
 export function useUpdateCurrency() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: currencyApi.updateCurrency,
     onSuccess: () => {
       trackEvent(METRICS.CURRENCY_UPDATE)
@@ -42,6 +44,7 @@ export function useUpdateCurrency() {
 export function useDeleteCurrency() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (id: Id) => currencyApi.deleteCurrency(id),
     onSuccess: () => {
       trackEvent(METRICS.CURRENCY_DELETE)
@@ -53,6 +56,7 @@ export function useDeleteCurrency() {
 export function useHideCurrency() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (id: Id) => currencyApi.hideCurrency(id),
     onSuccess: () => {
       trackEvent(METRICS.CURRENCY_DISABLE)
@@ -64,6 +68,7 @@ export function useHideCurrency() {
 export function useShowCurrency() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (id: Id) => currencyApi.showCurrency(id),
     onSuccess: () => {
       trackEvent(METRICS.CURRENCY_ENABLE)
@@ -75,6 +80,7 @@ export function useShowCurrency() {
 export function useHideAllCurrencies() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: () => currencyApi.hideAllCurrencies(),
     onSuccess: () => {
       trackEvent(METRICS.CURRENCY_DISABLE_ALL)
@@ -86,6 +92,7 @@ export function useHideAllCurrencies() {
 export function useShowAllCurrencies() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: () => currencyApi.showAllCurrencies(),
     onSuccess: () => {
       trackEvent(METRICS.CURRENCY_ENABLE_ALL)

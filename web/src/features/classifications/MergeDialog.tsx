@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { CommandEmpty, CommandItem } from '@/components/ui/command'
 import { EntityIcon } from '@/components/EntityIcon'
 import { InfoBox } from '@/components/InfoBox'
@@ -40,6 +41,7 @@ export function MergeDialog<T extends ClassificationItem>({
   onConfirm,
 }: MergeDialogProps<T>) {
   const { t } = useTranslation()
+  const online = useOnline()
   const [targetId, setTargetId] = useState<string | null>(null)
 
   // a reopened dialog must not inherit the previous merge's choice
@@ -67,7 +69,7 @@ export function MergeDialog<T extends ClassificationItem>({
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="button" variant="destructive" disabled={targetId === null} onClick={() => targetId !== null && onConfirm(targetId)}>
+          <Button type="button" variant="destructive" disabled={targetId === null || !online} onClick={() => targetId !== null && onConfirm(targetId)}>
             {t('classifications.common.merge.confirm')}
           </Button>
         </div>

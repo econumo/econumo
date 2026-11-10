@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosRequestConfig } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import { getToken, removeToken } from '@/lib/storage'
@@ -11,6 +11,19 @@ import { resetAnalyticsIdentity } from '@/lib/analytics'
 
 export const api = axios.create()
 
+export interface WriteOptions {
+  /** The same key on every attempt: the queue's retries must read as one operation. */
+  idempotencyKey?: string
+  timeout?: number
+}
+
+export function writeConfig(opts?: WriteOptions): AxiosRequestConfig {
+  return {
+    timeout: opts?.timeout,
+    headers: opts?.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : undefined,
+  }
+}
+
 api.interceptors.request.use((config) => {
   config.headers.Accept = 'application/json'
   const token = getToken()
@@ -19,7 +32,9 @@ api.interceptors.request.use((config) => {
   }
   config.headers['Accept-Language'] = locale()
   config.headers['X-Timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone
-  config.headers['X-Request-Id'] = uuidv7()
+  if (config.method === 'post' && !config.headers.has('Idempotency-Key')) {
+    config.headers.set('Idempotency-Key', uuidv7())
+  }
   return config
 })
 

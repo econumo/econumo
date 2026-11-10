@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
+import { loadPendingWrites, mutate } from '@/features/pendingWrites/store'
+import { addChange } from '@/features/pendingWrites/queue'
+import type { CreateTransactionDto } from '@/api/dto/transaction'
 import { coreHandlers, fixtureOwner } from '@/test/fixtures'
 import type { ViewTransaction } from './useAccountTransactions'
 import { ViewTransactionDialog } from './ViewTransactionDialog'
@@ -251,4 +254,40 @@ it('lists the import provenance for an imported transaction', async () => {
 it('fetches no provenance for a hand-entered transaction', () => {
   renderView({ transaction: { ...fixtureTransaction, isImported: 0 } as ViewTransaction })
   expect(screen.queryByText('Imported from')).toBeNull()
+})
+
+describe('waiting change', () => {
+  const payload: CreateTransactionDto = {
+    id: 't1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '50.5', amountRecipient: null,
+    categoryId: 'cat1', description: 'test transaction', payeeId: null, tagId: null, labelIds: [], date: '2026-07-15 10:00:00',
+  }
+  const queue = async (extra: { status?: 'failed'; error?: string } = {}) => {
+    await loadPendingWrites('u1')
+    await mutate((ops) => addChange(ops, { kind: 'tx-update', txId: 't1', payload }, { key: 'k1', seq: 1 }, false))
+    if (extra.status) {
+      await mutate((ops) => ops.map((o) => ({ ...o, ...extra })))
+    }
+  }
+
+  it('shows Not saved on the preview of a waiting row', async () => {
+    await queue()
+    renderView({ onMakeRecurring: vi.fn() })
+    expect(await screen.findByText('Not saved')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Make recurring' })).toBeNull()
+  })
+
+  it('shows the server reason on a failed one', async () => {
+    await queue({ status: 'failed', error: 'Account is archived' })
+    renderView()
+    expect(await screen.findByText('Account is archived')).toBeInTheDocument()
+    expect(screen.queryByText('Not saved')).toBeNull()
+  })
+
+  it('shows neither on a server row', async () => {
+    await loadPendingWrites('u1')
+    renderView({ onMakeRecurring: vi.fn() })
+    await screen.findByRole('button', { name: 'Edit' })
+    expect(screen.queryByText('Not saved')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Make recurring' })).toBeInTheDocument()
+  })
 })

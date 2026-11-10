@@ -1,10 +1,14 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
-import { useCreateTransaction, useDeleteTransaction, useMoveTransaction } from './queries'
+import { coreHandlers } from '@/test/fixtures'
+import { useAccounts } from '@/features/accounts/queries'
+import { getOps, loadPendingWrites } from '@/features/pendingWrites/store'
+import type { CreateTransactionDto } from '@/api/dto/transaction'
+import { useCreateTransaction, useDeleteTransaction, useMoveTransaction, useTransactions, useUpdateTransaction } from './queries'
 
 const wireOwner = { id: 'u1', avatar: '', name: 'Ada' }
 const wireTx = {
@@ -19,7 +23,7 @@ const wireAccount = {
 }
 
 function makeWrapper() {
-  const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
+  const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false, networkMode: 'always' }, queries: { retry: false, networkMode: 'always' } } })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -137,5 +141,87 @@ describe('useMoveTransaction', () => {
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect(keysOf(queryClient.getQueryData(queryKeys.transactions))).toEqual({ m1: 'a2', m2: 'a1' })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.transactions })
+  })
+})
+
+describe('offline writes', () => {
+  const form: CreateTransactionDto = {
+    id: 'temp-1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '10',
+    amountRecipient: null, categoryId: 'cat-food', description: 'lunch', payeeId: null, tagId: null,
+    labelIds: [], date: '2026-07-01 09:30:00',
+  }
+  let requests: string[]
+
+  beforeEach(async () => {
+    requests = []
+    server.use(...coreHandlers())
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST') {
+        requests.push(new URL(request.url).pathname)
+      }
+    })
+    onlineManager.setOnline(false)
+    await loadPendingWrites('u1')
+  })
+
+  afterEach(() => {
+    server.events.removeAllListeners()
+    onlineManager.setOnline(true)
+  })
+
+  function mount() {
+    const { queryClient, wrapper } = makeWrapper()
+    const hooks = renderHook(
+      () => ({ txs: useTransactions(), accounts: useAccounts(), create: useCreateTransaction(), update: useUpdateTransaction(), del: useDeleteTransaction() }),
+      { wrapper },
+    )
+    return { queryClient, ...hooks }
+  }
+
+  it('an offline add sends nothing, shows the row and moves the balance', async () => {
+    const { result } = mount()
+    await waitFor(() => expect(result.current.txs.data).toBeDefined())
+    await waitFor(() => expect(result.current.accounts.data).toBeDefined())
+    const before = result.current.accounts.data!.find((a) => a.id === 'a1')!.balance
+
+    await act(() => result.current.create.mutateAsync(form))
+
+    expect(requests).not.toContain('/api/v1/transaction/create-transaction')
+    expect(result.current.txs.data!.find((t) => t.id === 'temp-1')).toMatchObject({ amount: '10', description: 'lunch' })
+    await waitFor(() => expect(result.current.accounts.data!.find((a) => a.id === 'a1')!.balance).toBe(String(Number(before) - 10)))
+  })
+
+  it('a sync landing server rows keeps the waiting row', async () => {
+    const { result, queryClient } = mount()
+    await waitFor(() => expect(result.current.txs.data).toBeDefined())
+    await act(() => result.current.create.mutateAsync(form))
+
+    act(() => {
+      queryClient.setQueryData(queryKeys.transactions, [{ ...wireTx, id: 't-from-sync' }])
+    })
+
+    await waitFor(() => expect(result.current.txs.data!.map((t) => t.id).sort()).toEqual(['t-from-sync', 'temp-1']))
+  })
+
+  it('editing a waiting row offline leaves one op carrying the last values', async () => {
+    const { result } = mount()
+    await waitFor(() => expect(result.current.txs.data).toBeDefined())
+    await act(() => result.current.create.mutateAsync(form))
+    await act(() => result.current.update.mutateAsync({ ...form, amount: '12' }))
+
+    expect(getOps()).toHaveLength(1)
+    expect(getOps()[0]).toMatchObject({ kind: 'tx-create', payload: { amount: '12' } })
+    expect(result.current.txs.data!.find((t) => t.id === 'temp-1')!.amount).toBe('12')
+  })
+
+  it('an offline delete drops the row from the list and remembers the previous row', async () => {
+    const { result, queryClient } = mount()
+    await waitFor(() => expect(result.current.txs.data).toBeDefined())
+    const target = queryClient.getQueryData<{ id: string }[]>(queryKeys.transactions)![0]
+
+    await act(() => result.current.del.mutateAsync(target.id))
+
+    expect(result.current.txs.data!.some((t) => t.id === target.id)).toBe(false)
+    expect(getOps()[0]).toMatchObject({ kind: 'tx-delete', txId: target.id, previous: { id: target.id } })
   })
 })

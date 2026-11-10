@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useOnline } from '@/hooks/useOnline'
 import type { CategoryDto, CategoryType } from '@/api/dto/category'
 import type { TagDto } from '@/api/dto/tag'
 import type { Id } from '@/api/types'
@@ -42,6 +43,7 @@ type Pending = { kind: 'category'; item: CategoryDto } | { kind: 'tag'; item: Ta
  */
 export function useClassificationMenu(budgetId: Id) {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: user } = useUserData()
   const { data: categories = [] } = useCategories()
   const { data: tags = [] } = useTags()
@@ -74,12 +76,13 @@ export function useClassificationMenu(budgetId: Id) {
     const pending = resolve(ref)
     // the lists hold the user's own items and the shared ones; ownership decides
     const own = pending !== null && !!user && pending.item.ownerUserId === user.id
-    const reason = own ? undefined : t('budgets.page.plan.menu.no_access')
+    const usable = own && online
+    const reason = !own ? t('budgets.page.plan.menu.no_access') : online ? undefined : t('settings.sync.offline')
     const archived = pending?.item.isArchived === 1
     return [
       {
         label: archived ? t('classifications.common.unarchive.action') : t('classifications.common.archive.action'),
-        disabled: !own,
+        disabled: !usable,
         reason,
         onSelect: () => {
           if (!pending) {
@@ -92,20 +95,24 @@ export function useClassificationMenu(budgetId: Id) {
           }
         },
       },
-      { label: t('classifications.common.merge.action'), disabled: !own, reason, onSelect: () => setMerging(pending) },
-      { label: t('common.button.delete.label'), destructive: true, disabled: !own, reason, onSelect: () => setDeleting(pending) },
+      { label: t('classifications.common.merge.action'), disabled: !usable, reason, onSelect: () => setMerging(pending) },
+      { label: t('common.button.delete.label'), destructive: true, disabled: !usable, reason, onSelect: () => setDeleting(pending) },
     ]
   }
 
   /** New category: lands in the folder (or No folder) the menu belongs to */
   const newCategoryAction = (type: CategoryType, folderId: Id | null): MenuAction => ({
     label: t('classifications.categories.modals.create.header'),
+    disabled: !online,
+    reason: online ? undefined : t('settings.sync.offline'),
     onSelect: () => setCreating({ type, folderId }),
   })
 
   /** New tag: a budget tag (tags are expense-only), placed like New category */
   const newTagAction = (folderId: Id | null): MenuAction => ({
     label: t('classifications.tags.modals.create.header'),
+    disabled: !online,
+    reason: online ? undefined : t('settings.sync.offline'),
     onSelect: () => setCreatingTagIn(folderId),
   })
 

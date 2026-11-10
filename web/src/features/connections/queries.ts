@@ -26,6 +26,7 @@ export function useGenerateInvite() {
 export function useAcceptInvite() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (code: string) => connectionApi.acceptInvite(code),
     onSuccess: (items) => {
       queryClient.setQueryData(queryKeys.connections, items)

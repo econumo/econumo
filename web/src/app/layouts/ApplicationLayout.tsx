@@ -26,6 +26,9 @@ import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { InboxButton } from '@/features/inbox/InboxButton'
+import { formatInboxCount } from '@/features/inbox/useInbox'
+import { useWaitingCount } from '@/features/pendingWrites/hooks'
+import { pluralPick } from '@/lib/plural'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
@@ -43,6 +46,7 @@ import { useCategories, usePayees, useTags } from '@/features/classifications/qu
 import { useCurrencies, useCurrencyRates } from '@/features/currencies/queries'
 import { useUserData, isOnboardingCompleted } from '@/features/user/queries'
 import { useBudgets } from '@/features/budgets/queries'
+import { useKeepBudgetMonths } from '@/features/budgets/offlineMonths'
 import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { useFullReload } from '@/features/transactions/useFullReload'
 import { recordPathname } from '@/lib/navigation'
@@ -84,7 +88,7 @@ function useLastSyncAt(): string {
 }
 
 export function ApplicationLayout() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const location = useLocation()
   // Recorded during render (idempotent per pathname) so children mounting in
   // this same pass can already read their origin via previousPathname().
@@ -98,6 +102,7 @@ export function ApplicationLayout() {
   const searchLabel = t('search.open')
   const searchTooltip = t('search.open_tooltip', { shortcut: searchShortcutLabel() })
   useSearchHotkey()
+  useKeepBudgetMonths()
   // the main menu returns to the budget view last opened on this device
   const budgetLink = useBudgetPeriodStore((s) => s.lastMode) === 'plan' ? RouterPage.PLAN : RouterPage.BUDGET
 
@@ -119,13 +124,23 @@ export function ApplicationLayout() {
   const isFetching = useIsFetching() > 0
   const lastSyncAt = useLastSyncAt()
   const online = useOnline()
+  const syncFailing = useSyncFailing()
+  const waiting = useWaitingCount()
+  const waitingText = waiting > 0 ? `\n${pluralPick(t('settings.sync.waiting'), waiting, i18n.language)}` : ''
+  const syncTitle = `${t(syncFailing ? 'settings.sync.failing' : 'settings.sync.menu_item')} — ${lastSyncAt}${waitingText}\n${t('settings.sync.hold_hint')}`
+  const waitingBadge = waiting > 0 ? (
+    <span
+      data-testid="sync-waiting"
+      className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 text-primary-foreground"
+    >
+      {formatInboxCount(waiting)}
+    </span>
+  ) : null
   const offlineIcon = {
     role: 'img',
     'aria-label': t('settings.sync.offline'),
-    title: `${t('settings.sync.offline')} — ${lastSyncAt}`,
+    title: `${t('settings.sync.offline')} — ${lastSyncAt}${waitingText}`,
   }
-  const syncFailing = useSyncFailing()
-  const syncTitle = `${t(syncFailing ? 'settings.sync.failing' : 'settings.sync.menu_item')} — ${lastSyncAt}\n${t('settings.sync.hold_hint')}`
   const fullReload = useFullReload()
   const syncPress = useLongPress({
     onClick: () => void queryClient.invalidateQueries(),
@@ -277,14 +292,16 @@ export function ApplicationLayout() {
                     type="button"
                     aria-label="sync"
                     title={syncTitle}
-                    className={`${syncClass} select-none [-webkit-touch-callout:none]`}
+                    className={`relative ${syncClass} select-none [-webkit-touch-callout:none]`}
                     {...syncPress}
                   >
                     <RefreshCw className={`size-5 ${isFetching ? 'animate-spin' : ''}`} />
+                    {waitingBadge}
                   </button>
                 ) : (
-                  <span {...offlineIcon} className="-m-1.5 p-1.5 text-muted-foreground">
+                  <span {...offlineIcon} className="relative -m-1.5 p-1.5 text-muted-foreground">
                     <WifiOff className="size-5" />
+                    {waitingBadge}
                   </span>
                 )}
               </footer>
@@ -312,14 +329,16 @@ export function ApplicationLayout() {
                       type="button"
                       aria-label="sync"
                       title={syncTitle}
-                      className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
+                      className={`relative ${syncClassFull} select-none [-webkit-touch-callout:none]`}
                       {...syncPress}
                     >
                       <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
+                      {waitingBadge}
                     </button>
                   ) : (
-                    <span {...offlineIcon} className={`grid ${isCompact ? 'size-11' : 'size-9'} place-items-center text-muted-foreground`}>
+                    <span {...offlineIcon} className={`relative grid ${isCompact ? 'size-11' : 'size-9'} place-items-center text-muted-foreground`}>
                       <WifiOff className={isCompact ? 'size-6' : 'size-5'} />
+                      {waitingBadge}
                     </span>
                   )}
                 </div>

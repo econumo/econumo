@@ -161,7 +161,12 @@
       "title": "Update vereist",
       "blockedApp": "Deze app is te oud voor je Econumo-server: versie {version} of nieuwer is vereist. Werk de app bij om door te gaan.",
       "blockedServer": "Deze app vereist Econumo-server {min} of nieuwer, maar je server is {version}. Werk de server bij om door te gaan."
-    }
+    },
+    "offline_unavailable": {
+      "title": "Offline niet beschikbaar",
+      "text": "Deze gegevens zijn niet beschikbaar zonder internetverbinding."
+    },
+    "offline_notice": "Geen internetverbinding. Gegevens zijn alleen te bekijken."
   },
   "accounts": {
     "folders": {
@@ -296,6 +301,7 @@
       "failing": "Geen verbinding met de server — opnieuw proberen",
       "full_reload": "Cache wissen en opnieuw laden…",
       "hold_hint": "Houd ingedrukt om de cache te wissen en opnieuw te laden",
+      "waiting": "{count} wijziging wacht op een internetverbinding | {count} wijzigingen wachten op een internetverbinding",
       "full_reload_offline": "Je bent offline. Wis de cache en laad opnieuw zodra je weer online bent.",
       "offline": "Geen verbinding"
     },
@@ -357,6 +363,7 @@
     }
   },
   "transactions": {
+    "not_saved": "Niet opgeslagen",
     "modal": {
       "transaction_type": {
         "expense": "Uitgave",
@@ -631,12 +638,26 @@
     "title": "Postvak IN",
     "open": "Postvak IN, {count} wachtend",
     "empty": "Geen nieuwe meldingen",
+    "failed_writes": {
+      "kind_create": "Nieuw",
+      "kind_update": "Gewijzigd",
+      "kind_delete": "Verwijderd",
+      "delete_generic": "Verwijderde transactie",
+      "limit": "{name}: plan van {amount} ({period})",
+      "limit_generic": "Plan van {amount} ({period})",
+      "limit_cleared": "{name}: plan verwijderd ({period})",
+      "limit_cleared_generic": "Plan verwijderd ({period})",
+      "retry": "Opnieuw proberen",
+      "discard": "Ongedaan maken",
+      "reason_unknown": "De server heeft deze wijziging geweigerd."
+    },
     "sections": {
       "due": "Geplande transacties",
       "sharing": "Gedeeld",
       "sync": "Synchronisatieproblemen",
       "failed": "Mislukte imports",
       "to_review": "Te beoordelen",
+      "failed_writes": "Niet opgeslagen",
       "skipped": "Overgeslagen ({count})"
     },
     "due": {
@@ -1735,6 +1756,9 @@
           "header": "Gearchiveerd"
         }
       }
+    },
+    "limit": {
+      "not_saved": "Niet opgeslagen"
     }
   },
   "reports": {
