@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { hashKey, keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
@@ -17,7 +17,7 @@ import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { followsCurrentPeriod, useBudgetPeriodStore } from './budgetStore'
-import { addMonths, monthDiff } from './planMath'
+import { addMonths, monthDiff, PLAN_COLUMNS_MAX } from './planMath'
 import { usePendingOps } from '@/features/pendingWrites/hooks'
 import { patchBudgetLimit, patchPlanLimit } from '@/features/pendingWrites/limitPatches'
 import { overlayBudget, overlayBudgetTransactions, overlayPlan } from '@/features/pendingWrites/overlay'
@@ -244,21 +244,31 @@ export function budgetPlanQueryOptions(budgetId: Id | null, from: string, months
   }
 }
 
-/** periods either side of the current one the kept plan window spans
- *  (useKeepBudgetMonths), so the windows the Plan and Budget views ask for
- *  near today fall inside it offline */
+/** periods before the earliest kept one the kept plan window reaches back */
 export const KEPT_PLAN_REACH = 6
 
+/** the plan window useKeepBudgetMonths keeps: from KEPT_PLAN_REACH periods before
+ *  the previous period to the next period plus the widest Plan grid (which starts
+ *  a column before the selected month, or at the budget's start when that is
+ *  later), so every Plan or Budget view opened on a kept period falls inside it
+ *  offline. 21 months; were it over the server's cap, the months ahead win. */
+export function keptPlanWindow(current: string): { from: string; months: number } {
+  const to = addMonths(current, 1 + PLAN_COLUMNS_MAX)
+  const from = addMonths(current, -1 - KEPT_PLAN_REACH)
+  const months = Math.min(monthDiff(from, to) + 1, PLAN_MONTHS_MAX)
+  return { from: addMonths(to, -(months - 1)), months }
+}
+
 /** the Budget view's plan months. Within one period of the current one it is the
- *  kept window (the buffer of planFetchWindow brings it to KEPT_PLAN_REACH either
- *  side), so the previous, current and next period share it. Further away the
- *  window runs from the selected month, or from the current period to it: the
- *  server books only what precedes the window, so a future month's Balance needs
- *  every unmet plan from the current period on inside it. */
+ *  kept window (less the buffer planFetchWindow adds back), so the previous,
+ *  current and next period share it. Further away the window runs from the
+ *  selected month, or from the current period to it: the server books only what
+ *  precedes the window, so a future month's Balance needs every unmet plan from
+ *  the current period on inside it. */
 export function monthPlanSpan(selected: string, current: string): { first: string; visible: number } {
-  const reach = KEPT_PLAN_REACH - PLAN_BUFFER
   if (Math.abs(monthDiff(current, selected)) <= 1) {
-    return { first: addMonths(current, -reach), visible: 2 * reach + 1 }
+    const kept = keptPlanWindow(current)
+    return { first: addMonths(kept.from, PLAN_BUFFER), visible: kept.months - 2 * PLAN_BUFFER }
   }
   const first = selected < current ? selected : current
   return { first, visible: monthDiff(first, selected) + 1 }
@@ -287,7 +297,12 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
   // of the budget holding all its months. Only ever returned, never stored under
   // this key, so the next online fetch replaces it.
   const ownData = query.data !== undefined && !query.isPlaceholderData
-  const wantsCover = budgetId !== null && !ownData && (!online || query.fetchStatus === 'paused')
+  // once served, the cover stays until the key has data of its own: when the
+  // connection returns the paused fetch resumes, and the window must not drop
+  // to a loader until it lands
+  const keyHash = hashKey(planKey)
+  const coveringKey = useRef<string | null>(null)
+  const wantsCover = budgetId !== null && !ownData && (!online || query.fetchStatus === 'paused' || coveringKey.current === keyHash)
   const coverFirst = [firstMonth, currentPeriod(startDay)].sort()[0]
   const coverLast = addMonths(firstMonth, visibleMonths - 1)
   const cover = useSyncExternalStore(
@@ -299,6 +314,7 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
     () => (cover && budgetId ? overlayPlan(coveredPlan(cover, fetchLast), ops, budgetId) : undefined),
     [cover, fetchLast, ops, budgetId],
   )
+  coveringKey.current = covered ? keyHash : null
   if (covered) {
     return {
       ...query,

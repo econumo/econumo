@@ -54,9 +54,12 @@ export const PLAN_MIN_MONTH_COL_PX = 150
 /** PLAN_LINE's pl-2 + pr-2.5; its month cells carry their own padding and no gap */
 const PLAN_LINE_PADDING_PX = 18
 
+/** the most month columns the Plan grid shows */
+export const PLAN_COLUMNS_MAX = 12
+
 export function planVisibleCount(containerWidthPx: number, nameWidthPx: number = PLAN_NAME_COL_PX): number {
   const fit = Math.floor((containerWidthPx - nameWidthPx - PLAN_LINE_PADDING_PX) / PLAN_MIN_MONTH_COL_PX)
-  return fit < 3 ? 1 : Math.min(fit, 12)
+  return fit < 3 ? 1 : Math.min(fit, PLAN_COLUMNS_MAX)
 }
 
 /** Excel fill: the column the drag currently targets. Right-only — never

@@ -1,4 +1,5 @@
 import { notifyManager, onlineManager, type QueryClient } from '@tanstack/react-query'
+import { noteWrite } from '@/lib/writeEvents'
 import { isAxiosError } from 'axios'
 import { getAccountList } from '@/api/account'
 import { setLimit } from '@/api/budget'
@@ -102,6 +103,7 @@ function applyAcceptedLimit(queryClient: QueryClient, change: LimitChange): void
 // The queue is not a mutation, so the MutationCache's report invalidation does not see it.
 function acknowledge(queryClient: QueryClient, change: OpChange): void {
   invalidateReports(queryClient)
+  noteWrite()
   trackEvent(CONFIRM_METRIC[change.kind])
 }
 
@@ -123,6 +125,7 @@ function refreshAfterOtherTab(queryClient: QueryClient): void {
     void queryClient.invalidateQueries({ queryKey })
   }
   invalidateReports(queryClient)
+  noteWrite()
 }
 
 function isQueued(op: PendingOp): boolean {

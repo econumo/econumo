@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
@@ -56,7 +56,7 @@ function makeClient() {
 const wrapperFor = (client: QueryClient) => ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>
 
 // the window useKeepBudgetMonths keeps for July 2026: six periods either side
-const KEPT = { from: '2026-01-01', months: 13 }
+const KEPT = { from: '2025-12-01', months: 21 }
 
 describe('coveredPlan', () => {
   it('keeps the window start and trims every month-indexed part after the last month', () => {
@@ -78,16 +78,21 @@ describe('coveredPlan', () => {
 
 describe('useBudgetPlan served from a covering window offline', () => {
   let requests: string[]
+  let planDelay: number
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 6, 15, 12))
     requests = []
+    planDelay = 0
     server.use(
       ...coreHandlers(),
-      http.get('*/api/v1/budget/get-budget-plan', ({ request }) => {
+      http.get('*/api/v1/budget/get-budget-plan', async ({ request }) => {
         const url = new URL(request.url)
         requests.push(`${url.searchParams.get('from')} ${url.searchParams.get('months')}`)
+        if (planDelay > 0) {
+          await new Promise((r) => setTimeout(r, planDelay))
+        }
         return HttpResponse.json({ success: true, message: '', data: { item: planFor(url.searchParams.get('from')!, Number(url.searchParams.get('months'))) } })
       }),
     )
@@ -118,11 +123,40 @@ describe('useBudgetPlan served from a covering window offline', () => {
     const cells = plan.structure.elements[0].cells
     expect(cells).toHaveLength(plan.months.length)
     // the cell under a month is that month's own
-    expect(cells[plan.months.indexOf('2026-07-01')].actual).toBe('16')
+    expect(cells[plan.months.indexOf('2026-07-01')].actual).toBe('17')
     expect(isUnavailableOffline(result.current, false)).toBe(false)
     expect(result.current.isPending).toBe(false)
     expect(client.getQueryData(result.current.planKey)).toBeUndefined()
     expect(requests).toEqual([])
+  })
+
+  it('a 1920 px grid (twelve columns) on the next period is served too', async () => {
+    const client = seeded()
+    const first = planWindow('2026-08-01', 12, '2026-01-01')
+    const { result } = renderHook(() => useBudgetPlan('b1', first, 12, 1), { wrapper: wrapperFor(client) })
+    await waitFor(() => expect(result.current.data).toBeTruthy())
+    expect(result.current.data!.months).toContain('2027-06-01')
+  })
+
+  it('keeps serving the covering window while the connection returns and the window loads', async () => {
+    const client = seeded()
+    const { result } = renderHook(() => useBudgetPlan('b1', '2026-06-01', 8, 1), { wrapper: wrapperFor(client) })
+    await waitFor(() => expect(result.current.data?.months[0]).toBe(KEPT.from))
+    planDelay = 150
+    act(() => onlineManager.setOnline(true))
+    await waitFor(() => expect(requests).toEqual(['2026-04-01 12']))
+    expect(result.current.data?.months[0]).toBe(KEPT.from)
+    expect(result.current.isPending).toBe(false)
+    await waitFor(() => expect(result.current.data?.months[0]).toBe('2026-04-01'))
+  })
+
+  it('a cached window from an older server, with no transfers, is served without throwing', async () => {
+    const { transfers: _t, savingsFlows: _f, savingsIncomeExpense: _i, ...old } = planFor(KEPT.from, KEPT.months)
+    const client = seeded({ ...old, structure: { ...old.structure, savings: undefined } } as unknown as BudgetPlanDto)
+    const { result } = renderHook(() => useBudgetPlan('b1', '2026-06-01', 3, 1), { wrapper: wrapperFor(client) })
+    await waitFor(() => expect(result.current.data).toBeTruthy())
+    expect(result.current.data!.transfers).toBeUndefined()
+    expect(planMonthFigures(result.current.data!, [fixtureUsd, fixtureEur], '2026-07-01')).not.toBeNull()
   })
 
   it('a budget in its first period: the clamped window is served too', async () => {
@@ -145,13 +179,15 @@ describe('useBudgetPlan served from a covering window offline', () => {
     const currencies = [fixtureUsd, fixtureEur]
     const figures = planMonthFigures(result.current.data!, currencies, '2026-08-01')
     expect(figures).not.toBeNull()
-    // the same as the whole window gives for that month
-    expect(figures).toEqual(planMonthFigures(kept, currencies, '2026-08-01'))
+    // the same figures as the whole window gives for that month (the rows carry their cells, cut)
+    const numbers = (f: unknown) => JSON.stringify(f, (k, v) => (k === 'cells' ? undefined : v))
+    expect(numbers(figures)).toBe(numbers(planMonthFigures(kept, currencies, '2026-08-01')))
+    expect(numbers(figures)).toMatch(/"balance"/)
   })
 
   it('a window no cached one covers stays not saved', async () => {
     const client = seeded()
-    const { result } = renderHook(() => useBudgetPlan('b1', '2027-03-01', 3, 1), { wrapper: wrapperFor(client) })
+    const { result } = renderHook(() => useBudgetPlan('b1', '2028-03-01', 3, 1), { wrapper: wrapperFor(client) })
     await new Promise((r) => setTimeout(r, 20))
     expect(result.current.data).toBeUndefined()
     expect(isUnavailableOffline(result.current, false)).toBe(true)

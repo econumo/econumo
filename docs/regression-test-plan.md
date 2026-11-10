@@ -2750,7 +2750,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       the Plan with their figures; any other month says "This month isn't saved on this device".
       Still true after a day away (device clock forward 25 h) once the app was online at the start.
       The Plan shows its figures offline at phone width and on a wide desktop (1440 px), and the
-      Plan's months up to six periods either side of today do too; a budget that starts this
+      Plan at 1920 px, on the current and the next month; a budget that starts this
       month also opens the month before it offline.
 - [ ] While online, saving several transactions in a row on Home (no budget page open) does not
       fire a burst of `get-budget` / `get-budget-plan` requests per save: the budget months refetch

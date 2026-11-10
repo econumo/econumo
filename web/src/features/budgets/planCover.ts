@@ -13,20 +13,23 @@ export function coveredPlan(plan: BudgetPlanDto, last: string): BudgetPlanDto {
   if (end === 0 || end === plan.months.length) {
     return plan
   }
-  const cut = <T,>(cells: T[]) => cells.slice(0, end)
+  // a window cached from an older server lacks some of these (transfers, the
+  // savings parts), so every one may be missing
+  const cut = <T,>(list: T[] | undefined): T[] => (list ?? []).slice(0, end)
+  const cutOptional = <T,>(list: T[] | undefined): T[] | undefined => list?.slice(0, end)
   const within = <T extends { month: string }>(list: T[] | undefined) => list?.filter((f) => f.month <= last)
   const { savings } = plan.structure
   return {
     ...plan,
     months: cut(plan.months),
     currencyRates: cut(plan.currencyRates),
-    transfers: cut(plan.transfers),
+    transfers: cutOptional(plan.transfers) as BudgetPlanDto['transfers'],
     structure: {
       ...plan.structure,
       elements: plan.structure.elements.map((el) => ({
         ...el,
         cells: cut<PlanCellDto>(el.cells),
-        children: el.children.map((c) => ({ ...c, cells: cut(c.cells) })),
+        children: (el.children ?? []).map((c) => ({ ...c, cells: cut(c.cells) })),
       })),
       ...(savings ? { savings: savings.map((s) => ({ ...s, cells: cut<PlanCellDto>(s.cells) })) } : {}),
     },

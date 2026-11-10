@@ -5,19 +5,19 @@ import { UserOptions } from '@/api/dto/user'
 import { useOnline } from '@/hooks/useOnline'
 import { useUserData, userOption } from '@/features/user/queries'
 import { addMonths } from './planMath'
-import { budgetCurrentPeriod, currentPeriod, periodStartDayOf } from './period'
-import { budgetPlanQueryOptions, budgetQueryOptions, monthPlanSpan, planFetchWindow, useBudgets } from './queries'
+import { budgetCurrentPeriod } from './period'
+import { budgetPlanQueryOptions, budgetQueryOptions, keptPlanWindow, useBudgets } from './queries'
+import { onWrite } from '@/lib/writeEvents'
 
 /** the periods and the plan window of a budget the device keeps for offline use:
  *  the previous, current and next period, under the keys the Budget page asks for
  *  when it opens on them */
 export function keptBudgetMonths(meta: BudgetMetaDto, now: Date): { periods: string[]; plan: { from: string; months: number } } {
-  const startDay = periodStartDayOf(meta)
   const cur = budgetCurrentPeriod(meta, now)
   // a month before the budget's first is browsable too (read-only), so it is kept
   const periods = [addMonths(cur, -1), cur, addMonths(cur, 1)]
-  const span = monthPlanSpan(cur, currentPeriod(startDay, now))
-  return { periods, plan: planFetchWindow(span.first, span.visible, startDay, now) }
+  // around the kept periods, not today: a budget that has not started yet opens on its first period
+  return { periods, plan: keptPlanWindow(cur) }
 }
 
 const localDay = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
@@ -40,7 +40,7 @@ function useLocalDay(): string {
   return day
 }
 
-/** how long the kept entries wait after an invalidation before they refetch: a
+/** how long the kept entries wait after the last write before they refetch: a
  *  burst of writes (a queue of changes draining) refetches them once */
 export const KEEP_REFETCH_DELAY_MS = 3000
 
@@ -51,9 +51,9 @@ export const KEEP_REFETCH_DELAY_MS = 3000
 // The observers are disabled: invalidating the budget queries (every transaction
 // write) must not refetch them at once on every page. A Budget or Plan page on
 // screen has its own enabled observer and refetches its month immediately as
-// before; the rest are fetched here, online only, at once when missing and
-// after `delayMs` without another invalidation when stale. Errors show nowhere
-// but the sync icon.
+// before (an invalidation cancels and restarts a fetch in flight there); the rest
+// are fetched here, online only, at once when missing and `delayMs` after the
+// last write when a write invalidated them. Errors show nowhere but the sync icon.
 export function useKeepBudgetMonths(delayMs: number = KEEP_REFETCH_DELAY_MS): void {
   const queryClient = useQueryClient()
   const { data: user } = useUserData()
@@ -80,37 +80,78 @@ export function useKeepBudgetMonths(delayMs: number = KEEP_REFETCH_DELAY_MS): vo
       return
     }
     const cache = queryClient.getQueryCache()
-    const hashes = new Set(options.map((o) => hashKey(o.queryKey)))
+    const find = (o: (typeof options)[number]) => cache.find({ queryKey: o.queryKey, exact: true })
+    const fetch = (o: (typeof options)[number]) => {
+      queryClient.fetchQuery({ ...o, staleTime: 0 } as Parameters<typeof queryClient.fetchQuery>[0]).catch(() => {})
+    }
+    // Entries a write left behind. The 'invalidate' event alone would lose
+    // writes: it fires only for a query not already invalidated, and a fetch
+    // that started before the write clears the flag when it lands, with the
+    // figures from before the write. So every write marks the entries it
+    // invalidated, and a marked entry refetches after the last write, once no
+    // fetch of it is in flight.
+    const dirty = new Set<(typeof options)[number]>()
     let timer: ReturnType<typeof setTimeout> | undefined
-    const due = (missingOnly: boolean) =>
-      options.filter((o) => {
-        const query = cache.find({ queryKey: o.queryKey, exact: true })
-        if (!query || query.state.data === undefined) {
-          return query?.state.fetchStatus !== 'fetching'
+    const flush = () => {
+      timer = undefined
+      for (const o of [...dirty]) {
+        const query = find(o)
+        if (query?.isActive()) {
+          // a page on screen refetches it itself
+          dirty.delete(o)
+        } else if (query?.state.fetchStatus !== 'fetching') {
+          dirty.delete(o)
+          fetch(o)
         }
-        return !missingOnly && query.state.fetchStatus !== 'fetching' && query.isStaleByTime(o.staleTime)
-      })
-    const fetch = (list: typeof options) => {
-      for (const o of list) {
-        queryClient.fetchQuery(o as Parameters<typeof queryClient.fetchQuery>[0]).catch(() => {})
+      }
+      if (dirty.size > 0) {
+        timer = setTimeout(flush, delayMs)
       }
     }
-    const later = () => {
-      clearTimeout(timer)
-      timer = setTimeout(() => fetch(due(false)), delayMs)
+    const restart = () => {
+      if (dirty.size > 0) {
+        clearTimeout(timer)
+        timer = setTimeout(flush, delayMs)
+      }
     }
-    fetch(due(true))
-    if (due(false).length > 0) {
-      later()
+    const markInvalidated = () => {
+      for (const o of options) {
+        if (find(o)?.state.isInvalidated) {
+          dirty.add(o)
+        }
+      }
+      restart()
     }
-    const unsubscribe = cache.subscribe((event) => {
+
+    for (const o of options) {
+      const query = find(o)
+      if (!query || query.state.data === undefined) {
+        if (query?.state.fetchStatus !== 'fetching') {
+          fetch(o)
+        }
+      } else if (query.isStaleByTime(o.staleTime)) {
+        dirty.add(o)
+      }
+    }
+    restart()
+    const hashes = new Set(options.map((o) => hashKey(o.queryKey)))
+    const unsubscribeQueries = cache.subscribe((event) => {
       if (event.type === 'updated' && event.action.type === 'invalidate' && hashes.has(event.query.queryHash)) {
-        later()
+        markInvalidated()
       }
     })
+    // a mutation's success runs its invalidations before this event
+    const unsubscribeMutations = queryClient.getMutationCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'success') {
+        markInvalidated()
+      }
+    })
+    const unsubscribeWrites = onWrite(markInvalidated)
     return () => {
       clearTimeout(timer)
-      unsubscribe()
+      unsubscribeQueries()
+      unsubscribeMutations()
+      unsubscribeWrites()
     }
   }, [online, options, queryClient, delayMs])
 }
