@@ -3,9 +3,13 @@ package budget
 
 import (
 	"context"
+	"fmt"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -58,4 +62,130 @@ func (s *Service) CurrentPeriod(ctx context.Context, userID, budgetID vo.Id) (ti
 		return time.Time{}, err
 	}
 	return openingPeriod(b.budget, currentPeriod(s.clock.Now(), reqctx.Location(ctx), b.budget.PeriodStartDay)), nil
+}
+
+// CategoryHistory returns, for every category of the budget's participants,
+// its income or spending in each of the `months` periods before the current one
+// (the budget's current period in the caller's timezone, never before its first
+// period), computed like the plan sheet's category rows: the everyday member
+// accounts only, transfers excluded, converted into the element's currency with
+// each period's average rates. A tagged expense counts for its category. The
+// caller must be able to update the budget.
+func (s *Service) CategoryHistory(ctx context.Context, userID, budgetID vo.Id, months int) ([]model.BudgetCategoryHistory, error) {
+	b, err := s.loadAggregate(ctx, budgetID)
+	if err != nil {
+		return nil, err
+	}
+	if !s.canUpdate(b, userID) {
+		return nil, accessDenied()
+	}
+	current := openingPeriod(b.budget, currentPeriod(s.clock.Now(), reqctx.Location(ctx), b.budget.PeriodStartDay))
+	f, err := s.buildFilters(ctx, userID, b, current.AddDate(0, -months, 0), months)
+	if err != nil {
+		return nil, err
+	}
+	monthIdx := map[string]int{}
+	windows := make([][2]time.Time, months)
+	for i := range months {
+		key := f.periodKey.AddDate(0, i, 0)
+		monthIdx[key.Format(datetime.DateLayout)] = i
+		windows[i][0], windows[i][1] = f.window(key)
+	}
+
+	items := map[string]*model.BudgetCategoryHistory{}
+	var order []string
+	options := s.elementOptions(b)
+	itemFor := func(cat model.CategoryMeta) *model.BudgetCategoryHistory {
+		typ := model.ElementCategory
+		if cat.IsIncome {
+			typ = model.ElementIncomeCategory
+		}
+		index := elementKey(cat.ID, typ)
+		if it, ok := items[index]; ok {
+			return it
+		}
+		currency := b.budget.CurrencyID
+		if opt, ok := options[index]; ok && opt.currencyID != nil {
+			currency = *opt.currencyID
+		}
+		it := &model.BudgetCategoryHistory{
+			CategoryID: cat.ID, OwnerID: cat.OwnerID, IsIncome: cat.IsIncome, IsArchived: cat.IsArchived,
+			CurrencyID: currency.String(), Amounts: make([]string, months),
+		}
+		items[index] = it
+		order = append(order, index)
+		return it
+	}
+	toConvert := map[string][]model.ConvertItem{}
+	add := func(cat model.CategoryMeta, month, currencyID, amount string) error {
+		i, ok := monthIdx[month]
+		if !ok {
+			return nil
+		}
+		from, err := vo.ParseId(currencyID)
+		if err != nil {
+			return err
+		}
+		it := itemFor(cat)
+		key := fmt.Sprintf("%d_%s_%t", i, it.CategoryID, it.IsIncome)
+		toConvert[key] = append(toConvert[key], model.ConvertItem{
+			PeriodStart: windows[i][0], PeriodEnd: windows[i][1],
+			From: from, To: vo.MustParseId(it.CurrencyID), Amount: vo.NewDecimal(amount),
+		})
+		return nil
+	}
+
+	expenseIDs := make([]vo.Id, 0, len(f.categories))
+	for id := range f.categories {
+		expenseIDs = append(expenseIDs, vo.MustParseId(id))
+	}
+	spending, err := s.read.SpendingByMonth(ctx, expenseIDs, f.everydayAccountIDs, f.periodStart, f.periodEnd, f.startDay)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range spending {
+		if row.CategoryID == nil {
+			continue
+		}
+		if cat, ok := f.categories[*row.CategoryID]; ok {
+			if err := add(cat, row.Month, row.CurrencyID, row.Amount); err != nil {
+				return nil, err
+			}
+		}
+	}
+	income, err := s.read.IncomeByMonth(ctx, f.everydayAccountIDs, f.periodStart, f.periodEnd, f.startDay)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range income {
+		if row.CategoryID == nil {
+			continue
+		}
+		if cat, ok := f.incomeCategories[*row.CategoryID]; ok {
+			if err := add(cat, row.Month, row.CurrencyID, row.Amount); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if len(toConvert) == 0 {
+		return []model.BudgetCategoryHistory{}, nil
+	}
+	// The top-level range doubles as month 0's rate range (see buildPlanStructure).
+	converted, err := s.convertorFor(f.startDay).BulkConvert(ctx, windows[0][0], windows[0][1], toConvert)
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(order)
+	out := make([]model.BudgetCategoryHistory, 0, len(order))
+	for _, index := range order {
+		it := items[index]
+		for i := range months {
+			key := fmt.Sprintf("%d_%s_%t", i, it.CategoryID, it.IsIncome)
+			if _, ok := toConvert[key]; ok {
+				it.Amounts[i] = convertedGetter(converted)(key).String()
+			}
+		}
+		out = append(out, *it)
+	}
+	return out, nil
 }

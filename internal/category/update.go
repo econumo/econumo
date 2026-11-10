@@ -34,3 +34,23 @@ func (s *Service) UpdateCategory(ctx context.Context, userID vo.Id, req model.Up
 	// Empty body ({"data":{}}); the entity is not echoed (frozen wire shape).
 	return &model.UpdateCategoryResult{}, nil
 }
+
+// ReplaceIcon sets the icon of a category the caller owns, but only while it
+// still shows from: a change the user made in the meantime wins. Reports
+// whether the icon changed.
+func (s *Service) ReplaceIcon(ctx context.Context, userID, id vo.Id, from, to string) (bool, error) {
+	icon, err := newIcon(to)
+	if err != nil {
+		return false, err
+	}
+	changed := false
+	if _, err := s.mutate(ctx, id, userID, func(c *model.Category, now time.Time) {
+		if c.Icon == from && c.Icon != icon {
+			c.UpdateIcon(icon, now)
+			changed = true
+		}
+	}); err != nil {
+		return false, err
+	}
+	return changed, nil
+}

@@ -61,3 +61,17 @@ func (s *Service) MarkOnboardingStep(ctx context.Context, userID vo.Id, step str
 	}
 	return &cur, nil
 }
+
+// OnboardingUser returns the current user without taking the row lock, for the
+// onboarding reads.
+func (s *Service) OnboardingUser(ctx context.Context, userID vo.Id) (*model.CurrentUserResult, error) {
+	u, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	cur, err := s.toCurrentUser(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return &cur, nil
+}

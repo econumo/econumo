@@ -41,9 +41,10 @@ type AttemptLimiter interface {
 	Reserve(scope, key string) error
 }
 
-// Steps are the dependencies of the three step writes (save-categories,
-// save-accounts, save-plan). Every write a step makes goes through the owning
-// feature's own use case, inside the step's one transaction.
+// Steps are the dependencies of the step writes (finish-import,
+// save-categories, save-accounts, save-plan), the plan suggestions and the
+// background import review. Every write goes through the owning feature's own
+// use case; a step's writes run inside the step's one transaction.
 type Steps struct {
 	Tx         port.TxRunner
 	Ops        port.OperationGuard
@@ -61,23 +62,36 @@ type UserSteps interface {
 	// LockForOnboarding takes the user row lock in the caller's transaction.
 	LockForOnboarding(ctx context.Context, userID vo.Id) (*model.CurrentUserResult, error)
 	MarkOnboardingStep(ctx context.Context, userID vo.Id, step string) (*model.CurrentUserResult, error)
+	// OnboardingUser reads the current user without the lock.
+	OnboardingUser(ctx context.Context, userID vo.Id) (*model.CurrentUserResult, error)
 	UpdateCurrency(ctx context.Context, userID vo.Id, req model.UpdateCurrencyRequest) (*model.UpdateCurrencyResult, error)
 }
 
-// CategorySteps is the category feature's create and sort, plus the caller's
-// own categories (archived included) in display order.
+// CategorySteps is the category feature's create, sort, archive and icon
+// change, plus the caller's own categories (archived included) in display order.
 type CategorySteps interface {
 	CreateCategory(ctx context.Context, userID vo.Id, req model.CreateCategoryRequest) (*model.CreateCategoryResult, error)
 	SortCategoryList(ctx context.Context, userID vo.Id, req model.SortCategoryListRequest) (*model.SortCategoryListResult, error)
+	ArchiveCategory(ctx context.Context, userID vo.Id, req model.ArchiveCategoryRequest) (*model.ArchiveCategoryResult, error)
+	UnarchiveCategory(ctx context.Context, userID vo.Id, req model.UnarchiveCategoryRequest) (*model.UnarchiveCategoryResult, error)
+	// ReplaceIcon changes the icon only while the category still shows from.
+	ReplaceIcon(ctx context.Context, userID, id vo.Id, from, to string) (bool, error)
 	OwnCategories(ctx context.Context, userID vo.Id) ([]model.CategoryResult, error)
 }
 
-// AccountSteps is the account feature's create, the caller's own live
-// accounts, and the id of their first folder ("" when they have none).
+// AccountSteps is the account feature's create, folder, move and icon use
+// cases, plus the caller's own live accounts (with their icon, currency code
+// and whether a hidden folder holds them).
 type AccountSteps interface {
 	CreateAccount(ctx context.Context, userID vo.Id, req model.CreateAccountRequest) (*model.CreateAccountResult, error)
 	OwnLiveAccounts(ctx context.Context, userID vo.Id) ([]model.OnboardingAccount, error)
-	FirstFolderID(ctx context.Context, userID vo.Id) (string, error)
+	GetFolderList(ctx context.Context, userID vo.Id) (*model.GetFolderListResult, error)
+	CreateFolder(ctx context.Context, userID vo.Id, req model.CreateFolderRequest) (*model.CreateFolderResult, error)
+	HideFolder(ctx context.Context, userID vo.Id, req model.HideFolderRequest) (*model.HideFolderResult, error)
+	ShowFolder(ctx context.Context, userID vo.Id, req model.ShowFolderRequest) (*model.ShowFolderResult, error)
+	MoveAccount(ctx context.Context, userID vo.Id, req model.MoveAccountRequest) (*model.MoveAccountResult, error)
+	// ReplaceIcon changes the icon only while the account still shows from.
+	ReplaceIcon(ctx context.Context, userID, id vo.Id, from, to string) (bool, error)
 }
 
 // CurrencySteps is the currency feature: the code of a currency the caller may
@@ -87,13 +101,17 @@ type CurrencySteps interface {
 	UsableCurrencyCode(ctx context.Context, userID vo.Id, currencyID string) (string, error)
 	HideAllCurrencies(ctx context.Context, userID vo.Id) (*model.HideAllCurrenciesResult, error)
 	ShowCurrency(ctx context.Context, userID vo.Id, req model.ShowCurrencyRequest) (*model.ShowCurrencyResult, error)
+	FractionDigits(ctx context.Context, currencyID string) (int, error)
 }
 
-// BudgetSteps is the budget feature's create, add-account and set-limit use
-// cases, plus the reads that pick the budget and its current period.
+// BudgetSteps is the budget feature's create, add-account, remove-account and
+// set-limit use cases, plus the reads that pick the budget, its current period
+// and the categories' recent history.
 type BudgetSteps interface {
 	CreateBudget(ctx context.Context, userID vo.Id, req model.CreateBudgetRequest) (*model.CreateBudgetResult, error)
 	AddAccount(ctx context.Context, userID vo.Id, req model.AddAccountRequest) (*model.AddAccountResult, error)
+	RemoveAccount(ctx context.Context, userID vo.Id, req model.RemoveAccountRequest) (*model.RemoveAccountResult, error)
+	CategoryHistory(ctx context.Context, userID, budgetID vo.Id, months int) ([]model.BudgetCategoryHistory, error)
 	SetLimit(ctx context.Context, userID vo.Id, req model.SetLimitRequest) (*model.SetLimitResult, error)
 	DefaultBudget(ctx context.Context, userID vo.Id, preferred string) (id vo.Id, writable, found bool, err error)
 	CurrentPeriod(ctx context.Context, userID, budgetID vo.Id) (time.Time, error)

@@ -46,4 +46,40 @@ func init() {
 			{Label: "get-budget-after", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
 		}
 	}})
+
+	// The import path: finish-import reuses the owner's budget and marks only the
+	// import step; the categories and accounts steps then review what exists
+	// (archive/restore, hide/unhide); the plan step reads the suggestions.
+	register(Scenario{Name: "onboarding_import_review", Calls: func() []Call {
+		const (
+			importOp = "0f000000-0000-7000-8000-000000000011"
+			catOp    = "0f000000-0000-7000-8000-000000000012"
+			accOp    = "0f000000-0000-7000-8000-000000000013"
+			otherOp  = "0f000000-0000-7000-8000-000000000014"
+		)
+		finish := map[string]any{"id": importOp}
+		categories := map[string]any{"id": catOp, "categories": []any{}, "archive": []string{CatFood}}
+		accounts := map[string]any{"id": accOp, "accounts": []any{}, "currencyIds": []string{USD}, "mainCurrencyId": USD, "hide": []string{OwnerAccount}}
+		return []Call{
+			{Label: "err:finish-import-blank", Method: "POST", Path: "/api/v1/onboarding/finish-import", Auth: "owner", Body: map[string]any{"id": ""}},
+			{Label: "err:finish-import-readonly", Method: "POST", Path: "/api/v1/onboarding/finish-import", Auth: "readonly", Body: finish},
+			{Label: "finish-import", Method: "POST", Path: "/api/v1/onboarding/finish-import", Auth: "owner", Body: finish},
+			{Label: "finish-import-replay", Method: "POST", Path: "/api/v1/onboarding/finish-import", Auth: "owner", Body: finish},
+			{Label: "get-plan-suggestions", Method: "GET", Path: "/api/v1/onboarding/get-plan-suggestions", Auth: "owner"},
+			{Label: "get-plan-suggestions-named", Method: "GET", Path: "/api/v1/onboarding/get-plan-suggestions?budgetId=" + Budget, Auth: "owner"},
+			{Label: "err:get-plan-suggestions-bad-id", Method: "GET", Path: "/api/v1/onboarding/get-plan-suggestions?budgetId=nope", Auth: "owner"},
+			{Label: "err:get-plan-suggestions-guest", Method: "GET", Path: "/api/v1/onboarding/get-plan-suggestions?budgetId=" + Budget, Auth: "guest"},
+			{Label: "err:save-categories-archive-foreign", Method: "POST", Path: "/api/v1/onboarding/save-categories", Auth: "guest",
+				Body: map[string]any{"id": otherOp, "categories": []any{}, "archive": []string{CatFood}}},
+			{Label: "err:save-categories-archive-and-restore", Method: "POST", Path: "/api/v1/onboarding/save-categories", Auth: "owner",
+				Body: map[string]any{"id": otherOp, "archive": []string{CatFood}, "restore": []string{CatFood}}},
+			{Label: "save-categories-archive", Method: "POST", Path: "/api/v1/onboarding/save-categories", Auth: "owner", Body: categories},
+			{Label: "get-category-list-after", Method: "GET", Path: "/api/v1/category/get-category-list", Auth: "owner"},
+			{Label: "err:save-accounts-hide-shared", Method: "POST", Path: "/api/v1/onboarding/save-accounts", Auth: "owner",
+				Body: map[string]any{"id": otherOp, "mainCurrencyId": USD, "hide": []string{SharedAccount}}},
+			{Label: "save-accounts-hide", Method: "POST", Path: "/api/v1/onboarding/save-accounts", Auth: "owner", Body: accounts},
+			{Label: "get-folder-list-after", Method: "GET", Path: "/api/v1/account/get-folder-list", Auth: "owner"},
+			{Label: "get-budget-after", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
+		}
+	}})
 }

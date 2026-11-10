@@ -25,12 +25,20 @@ func (c stepClock) Now() time.Time { return c.t }
 type recordingCompleter struct {
 	mu      sync.Mutex
 	prompts []string
+	systems []string
+	// reply, when set, answers instead of the empty savings list.
+	reply func() (string, error)
 }
 
-func (c *recordingCompleter) Complete(_ context.Context, _, _, user string) (string, error) {
+func (c *recordingCompleter) Complete(_ context.Context, _, system, user string) (string, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.prompts = append(c.prompts, user)
+	c.systems = append(c.systems, system)
+	reply := c.reply
+	c.mu.Unlock()
+	if reply != nil {
+		return reply()
+	}
 	return `{"savings":[]}`, nil
 }
 

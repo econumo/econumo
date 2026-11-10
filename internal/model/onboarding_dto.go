@@ -15,6 +15,7 @@ const (
 	MaxOnboardingAccounts   = 50
 	MaxOnboardingAmounts    = 200
 	MaxOnboardingCurrencies = 200
+	MaxOnboardingReviewIDs  = 200
 	maxOnboardingKeyLength  = 64
 )
 
@@ -81,11 +82,14 @@ type OnboardingCategoryRow struct {
 
 // OnboardingSaveCategoriesRequest is the save-categories body. Categories are
 // in display order; Order, when present, is the user's full wanted order of
-// existing category ids and row keys (each type ordered on its own).
+// existing category ids and row keys (each type ordered on its own). Archive
+// and Restore name existing own categories to archive or bring back.
 type OnboardingSaveCategoriesRequest struct {
 	Id         string                  `json:"id"`
 	Categories []OnboardingCategoryRow `json:"categories"`
 	Order      []string                `json:"order"`
+	Archive    []string                `json:"archive"`
+	Restore    []string                `json:"restore"`
 }
 
 // Validate checks the shape; names, types and icons are checked by the
@@ -107,6 +111,33 @@ func (r OnboardingSaveCategoriesRequest) Validate() error {
 	}
 	if len(r.Order) > MaxOnboardingCategories*4 {
 		return tooLongError("order")
+	}
+	return validateReviewIDs("archive", r.Archive, "restore", r.Restore)
+}
+
+// validateReviewIDs checks two id lists that toggle one state: UUIDs, at most
+// MaxOnboardingReviewIDs each, and no id in both.
+func validateReviewIDs(onKey string, on []string, offKey string, off []string) error {
+	seen := map[string]bool{}
+	for _, list := range []struct {
+		key string
+		ids []string
+	}{{onKey, on}, {offKey, off}} {
+		if len(list.ids) > MaxOnboardingReviewIDs {
+			return tooLongError(list.key)
+		}
+		for _, raw := range list.ids {
+			id, err := vo.ParseId(strings.TrimSpace(raw))
+			if err != nil {
+				return invalidUUIDError(list.key)
+			}
+			if list.key == offKey && seen[id.String()] {
+				return onboardingFieldError(offKey, "The value you selected is not a valid choice.", errs.CodeInvalidChoice)
+			}
+			if list.key == onKey {
+				seen[id.String()] = true
+			}
+		}
 	}
 	return nil
 }
@@ -132,12 +163,16 @@ type OnboardingAccountRow struct {
 
 // OnboardingSaveAccountsRequest is the save-accounts body. CurrencyIds are the
 // currencies the user keeps visible (with the main one and every account's
-// own); MainCurrencyId becomes the profile currency.
+// own); MainCurrencyId becomes the profile currency. Hide and Unhide name
+// existing own accounts to move into the hidden archive folder (and out of the
+// budget) or back.
 type OnboardingSaveAccountsRequest struct {
 	Id             string                 `json:"id"`
 	Accounts       []OnboardingAccountRow `json:"accounts"`
 	CurrencyIds    []string               `json:"currencyIds"`
 	MainCurrencyId string                 `json:"mainCurrencyId"`
+	Hide           []string               `json:"hide"`
+	Unhide         []string               `json:"unhide"`
 }
 
 // Validate checks the shape and the balances; names, icons and currencies are
@@ -177,7 +212,7 @@ func (r OnboardingSaveAccountsRequest) Validate() error {
 	if _, err := vo.ParseId(strings.TrimSpace(r.MainCurrencyId)); err != nil {
 		return invalidUUIDError("mainCurrencyId")
 	}
-	return nil
+	return validateReviewIDs("hide", r.Hide, "unhide", r.Unhide)
 }
 
 // OnboardingSaveAccountsResult answers save-accounts.
@@ -234,4 +269,48 @@ func (r OnboardingSavePlanRequest) Validate() error {
 type OnboardingSavePlanResult struct {
 	User     CurrentUserResult `json:"user"`
 	BudgetId string            `json:"budgetId"`
+}
+
+// OnboardingFinishImportRequest is the finish-import body: the operation id.
+type OnboardingFinishImportRequest struct {
+	Id string `json:"id"`
+}
+
+func (r OnboardingFinishImportRequest) Validate() error {
+	return validateOperationID(r.Id)
+}
+
+// OnboardingFinishImportResult answers finish-import: the user (import step
+// marked) and the budget id ("" when the user has no account to budget).
+type OnboardingFinishImportResult struct {
+	User     CurrentUserResult `json:"user"`
+	BudgetId string            `json:"budgetId"`
+}
+
+// OnboardingGetPlanSuggestionsRequest selects the budget; "" is the default one.
+type OnboardingGetPlanSuggestionsRequest struct {
+	BudgetId string `json:"budgetId"`
+}
+
+func (r OnboardingGetPlanSuggestionsRequest) Validate() error {
+	if b := strings.TrimSpace(r.BudgetId); b != "" {
+		if _, err := vo.ParseId(b); err != nil {
+			return invalidUUIDError("budgetId")
+		}
+	}
+	return nil
+}
+
+// OnboardingPlanSuggestion is one category's suggested plan for the current
+// period, in the category element's currency.
+type OnboardingPlanSuggestion struct {
+	CategoryId string `json:"categoryId"`
+	Amount     string `json:"amount"`
+}
+
+// OnboardingGetPlanSuggestionsResult answers get-plan-suggestions; BudgetId is
+// "" (and Items empty) when the user has no budget.
+type OnboardingGetPlanSuggestionsResult struct {
+	BudgetId string                     `json:"budgetId"`
+	Items    []OnboardingPlanSuggestion `json:"items"`
 }

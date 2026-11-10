@@ -109,16 +109,26 @@ func (s *Service) createBudget(ctx context.Context, userID vo.Id, accountIDs []s
 	return id.String(), nil
 }
 
-func (s *Service) ownLiveAccountIDs(ctx context.Context, userID vo.Id) ([]string, error) {
+// ownVisibleAccountIDs are the user's own live accounts outside hidden
+// folders: the accounts a budget onboarding creates starts with.
+func (s *Service) ownVisibleAccountIDs(ctx context.Context, userID vo.Id) ([]string, error) {
 	accounts, err := s.steps.Accounts.OwnLiveAccounts(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	ids := make([]string, 0, len(accounts))
 	for _, a := range accounts {
-		ids = append(ids, a.ID)
+		if !a.Hidden {
+			ids = append(ids, a.ID)
+		}
 	}
 	return ids, nil
+}
+
+func invalidChoice(key string) error {
+	return errs.NewValidation("Validation failed", errs.FieldError{
+		Key: key, Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice,
+	})
 }
 
 // SaveCategories creates the categories step's rows, applies the user's order,
@@ -180,12 +190,15 @@ func (s *Service) SaveCategories(ctx context.Context, userID vo.Id, req model.On
 				return oerr
 			}
 		}
+		if aerr := s.archiveCategories(ctx, userID, own, req.Archive, req.Restore); aerr != nil {
+			return aerr
+		}
 		out.BudgetId, err = s.defaultBudgetID(ctx, userID, user)
 		if err != nil {
 			return err
 		}
 		if out.BudgetId == "" {
-			accounts, aerr := s.ownLiveAccountIDs(ctx, userID)
+			accounts, aerr := s.ownVisibleAccountIDs(ctx, userID)
 			if aerr != nil {
 				return aerr
 			}
@@ -206,6 +219,43 @@ func (s *Service) SaveCategories(ctx context.Context, userID vo.Id, req model.On
 		return nil, err
 	}
 	return out, nil
+}
+
+// archiveCategories archives and restores the named categories, which must be
+// the user's own (else a 400 on the list naming them). A category already in
+// the wanted state is left alone.
+func (s *Service) archiveCategories(ctx context.Context, userID vo.Id, own []model.CategoryResult, archive, restore []string) error {
+	archived := map[string]bool{}
+	for _, c := range own {
+		archived[strings.ToLower(c.Id)] = c.IsArchived == 1
+	}
+	for _, list := range []struct {
+		key  string
+		ids  []string
+		want bool
+	}{{"archive", archive, true}, {"restore", restore, false}} {
+		for _, raw := range list.ids {
+			id := strings.ToLower(strings.TrimSpace(raw))
+			state, mine := archived[id]
+			if !mine {
+				return invalidChoice(list.key)
+			}
+			if state == list.want {
+				continue
+			}
+			var err error
+			if list.want {
+				_, err = s.steps.Categories.ArchiveCategory(ctx, userID, model.ArchiveCategoryRequest{Id: id})
+			} else {
+				_, err = s.steps.Categories.UnarchiveCategory(ctx, userID, model.UnarchiveCategoryRequest{Id: id})
+			}
+			if err != nil {
+				return err
+			}
+			archived[id] = list.want
+		}
+	}
+	return nil
 }
 
 // matchCategories recovers the key->id map of an earlier call by name among the
@@ -302,9 +352,11 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 			}
 			return err
 		}
-		folderID, err := s.steps.Accounts.FirstFolderID(ctx, userID)
-		if err != nil {
-			return err
+		folderID := ""
+		if len(req.Accounts) > 0 {
+			if folderID, err = s.visibleFolderID(ctx, userID, false); err != nil {
+				return err
+			}
 		}
 		created := make([]vo.Id, 0, len(req.Accounts))
 		for _, row := range req.Accounts {
@@ -341,6 +393,10 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 		if err := s.showOnly(ctx, userID, visibleCurrencies(mainID, req, own)); err != nil {
 			return err
 		}
+		hidden, unhidden, err := s.moveAccounts(ctx, userID, own, req.Hide, req.Unhide)
+		if err != nil {
+			return err
+		}
 
 		budgetID, writable, found, err := s.steps.Budgets.DefaultBudget(ctx, userID, preferredBudget(user))
 		if err != nil {
@@ -348,7 +404,7 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 		}
 		switch {
 		case !found:
-			accounts, aerr := s.ownLiveAccountIDs(ctx, userID)
+			accounts, aerr := s.ownVisibleAccountIDs(ctx, userID)
 			if aerr != nil {
 				return aerr
 			}
@@ -366,6 +422,9 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 				if _, aerr := s.steps.Budgets.AddAccount(ctx, userID, model.AddAccountRequest{BudgetId: budgetID.String(), AccountId: id.String()}); aerr != nil {
 					return aerr
 				}
+			}
+			if merr := s.syncMembership(ctx, userID, budgetID, hidden, unhidden); merr != nil {
+				return merr
 			}
 			out.BudgetId = budgetID.String()
 			classifyBudget, classify = budgetID, created
@@ -386,6 +445,142 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 	}
 	s.schedule(ctx, userID, classifyBudget, classify)
 	return out, nil
+}
+
+// visibleFolderID is the user's first visible folder. With none: "" when the
+// user has no folder at all and create is false (the first account creates
+// one), else a "General" folder, shown again when a hidden one has that name.
+func (s *Service) visibleFolderID(ctx context.Context, userID vo.Id, create bool) (string, error) {
+	folders, err := s.steps.Accounts.GetFolderList(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	for _, f := range folders.Items {
+		if f.IsVisible == 1 {
+			return f.Id, nil
+		}
+	}
+	if len(folders.Items) == 0 && !create {
+		return "", nil
+	}
+	for _, f := range folders.Items {
+		if f.Name == generalFolderName {
+			if _, err := s.steps.Accounts.ShowFolder(ctx, userID, model.ShowFolderRequest{Id: f.Id}); err != nil {
+				return "", err
+			}
+			return f.Id, nil
+		}
+	}
+	res, err := s.steps.Accounts.CreateFolder(ctx, userID, model.CreateFolderRequest{Name: generalFolderName})
+	if err != nil {
+		return "", err
+	}
+	return res.Item.Id, nil
+}
+
+// generalFolderName is the name the account feature gives the folder it
+// creates for a user's first account.
+const generalFolderName = "General"
+
+// archiveFolderID is the user's folder named onboarding.archive_folder in the
+// request language, created when missing and hidden when visible.
+func (s *Service) archiveFolderID(ctx context.Context, userID vo.Id) (string, error) {
+	name := i18n.T(reqctx.Language(ctx), "onboarding.archive_folder", nil)
+	folders, err := s.steps.Accounts.GetFolderList(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	id, visible := "", false
+	for _, f := range folders.Items {
+		if f.Name == name {
+			id, visible = f.Id, f.IsVisible == 1
+			break
+		}
+	}
+	if id == "" {
+		res, cerr := s.steps.Accounts.CreateFolder(ctx, userID, model.CreateFolderRequest{Name: name})
+		if cerr != nil {
+			return "", cerr
+		}
+		id, visible = res.Item.Id, true
+	}
+	if visible {
+		if _, err := s.steps.Accounts.HideFolder(ctx, userID, model.HideFolderRequest{Id: id}); err != nil {
+			return "", err
+		}
+	}
+	return id, nil
+}
+
+// moveAccounts moves the accounts to hide into the archive folder and the
+// accounts to unhide into the first visible folder. Each must be a live
+// account the user owns (else a 400 on the list naming it); one already where
+// it should be does not move. Returns the ids that are hidden and visible now.
+func (s *Service) moveAccounts(ctx context.Context, userID vo.Id, own []model.OnboardingAccount, hide, unhide []string) ([]string, []string, error) {
+	hiddenNow := map[string]bool{}
+	for _, a := range own {
+		hiddenNow[strings.ToLower(a.ID)] = a.Hidden
+	}
+	var hidden, shown []string
+	folder := map[bool]string{}
+	for _, list := range []struct {
+		key  string
+		ids  []string
+		hide bool
+	}{{"hide", hide, true}, {"unhide", unhide, false}} {
+		for _, raw := range list.ids {
+			id := strings.ToLower(strings.TrimSpace(raw))
+			state, mine := hiddenNow[id]
+			if !mine {
+				return nil, nil, invalidChoice(list.key)
+			}
+			if list.hide {
+				hidden = append(hidden, id)
+			} else {
+				shown = append(shown, id)
+			}
+			if state == list.hide {
+				continue
+			}
+			if folder[list.hide] == "" {
+				var err error
+				if list.hide {
+					folder[true], err = s.archiveFolderID(ctx, userID)
+				} else {
+					folder[false], err = s.visibleFolderID(ctx, userID, true)
+				}
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+			target := folder[list.hide]
+			if _, err := s.steps.Accounts.MoveAccount(ctx, userID, model.MoveAccountRequest{Id: id, FolderId: &target}); err != nil {
+				return nil, nil, err
+			}
+			hiddenNow[id] = list.hide
+		}
+	}
+	return hidden, shown, nil
+}
+
+// syncMembership takes the hidden accounts out of the budget and puts the
+// unhidden ones back. An account whose history in past periods locks it in the
+// budget stays a member: hiding it still succeeds.
+func (s *Service) syncMembership(ctx context.Context, userID, budgetID vo.Id, hidden, shown []string) error {
+	for _, id := range hidden {
+		_, err := s.steps.Budgets.RemoveAccount(ctx, userID, model.RemoveAccountRequest{
+			BudgetId: budgetID.String(), AccountId: id, ConfirmSavingsRemoval: true,
+		})
+		if err != nil && !hasFieldCode(err, errs.CodeBudgetAccountNotRemovable) {
+			return err
+		}
+	}
+	for _, id := range shown {
+		if _, err := s.steps.Budgets.AddAccount(ctx, userID, model.AddAccountRequest{BudgetId: budgetID.String(), AccountId: id}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // visibleCurrencies is the main currency, the requested ones, every new
@@ -429,6 +624,19 @@ func (s *Service) showOnly(ctx context.Context, userID vo.Id, ids []string) erro
 		}
 	}
 	return nil
+}
+
+func hasFieldCode(err error, code string) bool {
+	var ve *errs.ValidationError
+	if !errors.As(err, &ve) {
+		return false
+	}
+	for _, f := range ve.Fields {
+		if f.Code == code {
+			return true
+		}
+	}
+	return false
 }
 
 func refusal(err error) bool {

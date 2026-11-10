@@ -173,3 +173,33 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 	}
 	return &model.UpdateAccountResult{Item: item, Transaction: correction}, nil
 }
+
+// ReplaceIcon sets the icon of a live account the caller owns, but only while
+// it still shows from: a change the user made in the meantime wins. Reports
+// whether the icon changed.
+func (s *Service) ReplaceIcon(ctx context.Context, userID, id vo.Id, from, to string) (bool, error) {
+	icon, err := newIcon(to)
+	if err != nil {
+		return false, err
+	}
+	changed := false
+	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
+		acct, gerr := s.accounts.GetByID(ctx, id)
+		if gerr != nil {
+			return gerr
+		}
+		if !acct.UserID.Equal(userID) {
+			return errs.NewAccessDenied("Access denied")
+		}
+		if acct.IsDeleted || acct.Icon != from || acct.Icon == icon {
+			return nil
+		}
+		acct.UpdateIcon(icon, s.clock.Now())
+		changed = true
+		return s.accounts.Save(ctx, acct)
+	})
+	if err != nil {
+		return false, err
+	}
+	return changed, nil
+}

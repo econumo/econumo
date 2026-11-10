@@ -114,15 +114,16 @@ type onboardingAccountList interface {
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
 }
 
-// OnboardingAccounts adapts the account service and repository to
-// onboarding.AccountSteps.
+// OnboardingAccounts adapts the account service and repository plus the
+// currency lookup to onboarding.AccountSteps.
 type OnboardingAccounts struct {
 	*appaccount.Service
 	accounts onboardingAccountList
+	currency onboardingCurrencyLookup
 }
 
-func NewOnboardingAccounts(svc *appaccount.Service, accounts onboardingAccountList) *OnboardingAccounts {
-	return &OnboardingAccounts{Service: svc, accounts: accounts}
+func NewOnboardingAccounts(svc *appaccount.Service, accounts onboardingAccountList, currency onboardingCurrencyLookup) *OnboardingAccounts {
+	return &OnboardingAccounts{Service: svc, accounts: accounts, currency: currency}
 }
 
 func (a *OnboardingAccounts) OwnLiveAccounts(ctx context.Context, userID vo.Id) ([]model.OnboardingAccount, error) {
@@ -130,23 +131,34 @@ func (a *OnboardingAccounts) OwnLiveAccounts(ctx context.Context, userID vo.Id) 
 	if err != nil {
 		return nil, err
 	}
+	visible, err := a.VisibleAccountIDs(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	shown := make(map[string]bool, len(visible))
+	for _, id := range visible {
+		shown[id.String()] = true
+	}
+	codes := map[string]string{}
 	out := make([]model.OnboardingAccount, 0, len(list))
 	for _, acc := range list {
-		if acc.UserID.Equal(userID) && !acc.IsDeleted {
-			out = append(out, model.OnboardingAccount{
-				ID: acc.ID.String(), OwnerID: acc.UserID.String(), Name: acc.Name, CurrencyID: acc.CurrencyID.String(), CreatedAt: acc.CreatedAt,
-			})
+		if !acc.UserID.Equal(userID) || acc.IsDeleted {
+			continue
 		}
+		cid := acc.CurrencyID.String()
+		code, seen := codes[cid]
+		if !seen {
+			if cur, cerr := a.currency.GetByID(ctx, cid); cerr == nil {
+				code = cur.Code
+			}
+			codes[cid] = code
+		}
+		out = append(out, model.OnboardingAccount{
+			ID: acc.ID.String(), OwnerID: acc.UserID.String(), Name: acc.Name, CurrencyID: cid, CurrencyCode: code,
+			Icon: acc.Icon, Hidden: !shown[acc.ID.String()], CreatedAt: acc.CreatedAt,
+		})
 	}
 	return out, nil
-}
-
-func (a *OnboardingAccounts) FirstFolderID(ctx context.Context, userID vo.Id) (string, error) {
-	res, err := a.GetFolderList(ctx, userID)
-	if err != nil || len(res.Items) == 0 {
-		return "", err
-	}
-	return res.Items[0].Id, nil
 }
 
 // OnboardingCurrencies adapts the currency manage service and lookup to
@@ -158,6 +170,14 @@ type OnboardingCurrencies struct {
 
 func NewOnboardingCurrencies(svc *appcurrency.ManageService, lookup onboardingCurrencyLookup) *OnboardingCurrencies {
 	return &OnboardingCurrencies{ManageService: svc, lookup: lookup}
+}
+
+func (c *OnboardingCurrencies) FractionDigits(ctx context.Context, currencyID string) (int, error) {
+	cur, err := c.lookup.GetByID(ctx, currencyID)
+	if err != nil {
+		return 0, err
+	}
+	return int(cur.FractionDigits), nil
 }
 
 func (c *OnboardingCurrencies) UsableCurrencyCode(ctx context.Context, userID vo.Id, currencyID string) (string, error) {

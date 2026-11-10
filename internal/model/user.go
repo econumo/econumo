@@ -306,7 +306,7 @@ func (u *User) SetOnboardingProgress(value string, now time.Time) bool {
 // serverSteps are the steps the onboarding step writes mark done after
 // creating their rows. A stale client write must not reopen one: a later save
 // under a new operation id would then create the rows a second time.
-var serverSteps = []string{"categories", "accounts", "plan"}
+var serverSteps = []string{"import", "categories", "accounts", "plan"}
 
 // keepServerSteps returns next with every server step done in stored kept
 // done, replacing a skipped entry for it.

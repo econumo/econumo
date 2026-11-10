@@ -13,6 +13,9 @@ type OnboardingAccount struct {
 	Name         string
 	CurrencyCode string
 	CurrencyID   string
+	Icon         string
 	IsDeleted    bool
-	CreatedAt    time.Time
+	// Hidden is set when the account sits in one of the user's hidden folders.
+	Hidden    bool
+	CreatedAt time.Time
 }

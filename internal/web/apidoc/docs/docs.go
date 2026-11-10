@@ -8605,6 +8605,150 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/onboarding/finish-import": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "In one transaction: creates the budget when the user has none (over their live accounts outside hidden folders, in the profile currency, named in the request language; no budget without such an account) and marks the import step done. The categories and accounts steps stay open for review. After the commit, when the server has an AI provider, a background job sends the user's active category names and types and live account names and currencies, with the caller's timezone and language, and applies the icons it picks from the app's icon catalogue (only to items whose icon has not changed since) and flags the savings accounts it picks in the budget this call created. Idempotent on the operation id like onboarding/save-categories.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Onboarding"
+                ],
+                "summary": "Finish the onboarding import step",
+                "parameters": [
+                    {
+                        "description": "Finish import request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.OnboardingFinishImportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OnboardingFinishImportResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding/get-plan-suggestions": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "For the current period of the budget (budgetId, else the user's default budget; the caller must be able to update it), suggests per own active category, income and expense, the average monthly amount over the last three complete periods (sum divided by three, in the element currency, rounded to its fraction digits), only for categories with transactions in at least two of them. Read-only. budgetId is \"\" and items empty when the user has no budget.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Onboarding"
+                ],
+                "summary": "Suggest the onboarding plan",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Budget id (default: the user's default budget)",
+                        "name": "budgetId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OnboardingGetPlanSuggestionsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/onboarding/save-accounts": {
             "post": {
                 "security": [
@@ -8612,7 +8756,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "In one transaction: creates the accounts (validated like account/create-account, opening balance as a correction; the first account of a user with no folder creates one), sets the profile currency to mainCurrencyId, keeps only the main, listed and account currencies visible, then creates the budget over all the user's live accounts when they have none, else adds the new accounts to their default budget, and marks the accounts step done. After the commit, when the server has an AI provider, a background job sends the new accounts' names and currencies with the caller's timezone and language to it and flags the ones it judges savings in that budget. Idempotent on the operation id like onboarding/save-categories.",
+                "description": "In one transaction: creates the accounts (validated like account/create-account, opening balance as a correction; the first account of a user with no folder creates one), sets the profile currency to mainCurrencyId, keeps only the main, listed and account currencies visible, moves the accounts in hide into the user's hidden archive folder (named in the request language, created when missing) and those in unhide into the first visible folder (a \"General\" folder when there is none; the caller's own live accounts only, another id is a 400 on that list), then creates the budget over the user's live accounts outside hidden folders when they have none, else adds the new and unhidden accounts to their default budget and removes the hidden ones from it (an account that has transactions in a past period stays a member), and marks the accounts step done. After the commit, when the server has an AI provider, a background job sends the new accounts' names and currencies with the caller's timezone and language to it and flags the ones it judges savings in that budget. Idempotent on the operation id like onboarding/save-categories.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8693,7 +8837,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "In one transaction: creates the categories in display order (validated like category/create-category; a row named like an active category of its type, or like an earlier row, maps to that category instead), applies the optional order (existing category ids and row keys, each type ordered on its own), creates the budget when the user owns a live account but has no budget, and marks the categories step done. The operation id makes it idempotent: a replay, or a call after the step is done, writes nothing and answers with the current state (row keys matched by name).",
+                "description": "In one transaction: creates the categories in display order (validated like category/create-category; a row named like an active category of its type, or like an earlier row, maps to that category instead), applies the optional order (existing category ids and row keys, each type ordered on its own), archives the categories in archive and restores those in restore (the caller's own; another id is a 400 on that list), creates the budget when the user owns a live account but has no budget, and marks the categories step done. The operation id makes it idempotent: a replay, or a call after the step is done, writes nothing and answers with the current state (row keys matched by name).",
                 "consumes": [
                     "application/json"
                 ],
@@ -16566,7 +16710,51 @@ const docTemplate = `{
                 }
             }
         },
+        "model.OnboardingFinishImportRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OnboardingFinishImportResult": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.OnboardingGetPlanSuggestionsResult": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OnboardingPlanSuggestion"
+                    }
+                }
+            }
+        },
         "model.OnboardingPlanAmount": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OnboardingPlanSuggestion": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -16592,11 +16780,23 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "hide": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "id": {
                     "type": "string"
                 },
                 "mainCurrencyId": {
                     "type": "string"
+                },
+                "unhide": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -16620,6 +16820,12 @@ const docTemplate = `{
         "model.OnboardingSaveCategoriesRequest": {
             "type": "object",
             "properties": {
+                "archive": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "categories": {
                     "type": "array",
                     "items": {
@@ -16630,6 +16836,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "order": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "restore": {
                     "type": "array",
                     "items": {
                         "type": "string"

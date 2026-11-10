@@ -1,7 +1,8 @@
 // Package onboarding holds the Day 0 setup writes the SPA's first-run flow
 // makes. Each write answers at once; when an AI provider is configured, a
 // background job then asks it which of the new accounts are savings accounts
-// and flags them in the budget.
+// (and, after an import, which icons fit the categories and accounts) and
+// applies the answer.
 package onboarding
 
 import (
@@ -53,15 +54,42 @@ func (s *Service) SetSteps(steps Steps) { s.steps = steps }
 func (s *Service) SetRunner(r Runner) { s.run = r }
 
 // schedule starts the classification of accountIDs for budgetID, unless AI is
-// off or the user is over the cap. The job gets a fresh context: the request's
-// is cancelled the moment the response is written.
+// off or the user is over the cap.
 func (s *Service) schedule(ctx context.Context, userID, budgetID vo.Id, accountIDs []vo.Id) {
-	if s.completer == nil || len(accountIDs) == 0 {
+	if len(accountIDs) == 0 {
+		return
+	}
+	s.startJob(ctx, userID, jobClassify, func(jobCtx context.Context, facts promptFacts) error {
+		return s.classify(jobCtx, userID, budgetID, accountIDs, facts)
+	})
+}
+
+// The static log messages of each background job.
+type jobLogs struct{ skipped, panicked, failed string }
+
+var (
+	jobClassify = jobLogs{
+		skipped:  "onboarding savings classification skipped",
+		panicked: "onboarding savings classification panicked",
+		failed:   "onboarding savings classification failed",
+	}
+	jobReview = jobLogs{
+		skipped:  "onboarding import review skipped",
+		panicked: "onboarding import review panicked",
+		failed:   "onboarding import review failed",
+	}
+)
+
+// startJob runs one background AI job for the user, unless AI is off or the
+// user is over the cap (every job counts against it). The job gets a fresh
+// context: the request's is cancelled the moment the response is written.
+func (s *Service) startJob(ctx context.Context, userID vo.Id, logs jobLogs, job func(context.Context, promptFacts) error) {
+	if s.completer == nil {
 		return
 	}
 	if s.limiter != nil {
 		if err := s.limiter.Allow(ctx, RateScopeClassify, userID.String()); err != nil {
-			slog.InfoContext(ctx, "onboarding savings classification skipped", "user_id", userID.String(), "reason", "rate_limited")
+			slog.InfoContext(ctx, logs.skipped, "user_id", userID.String(), "reason", "rate_limited")
 			return
 		}
 		if err := s.limiter.Reserve(RateScopeClassify, userID.String()); err != nil {
@@ -72,14 +100,14 @@ func (s *Service) schedule(ctx context.Context, userID, budgetID vo.Id, accountI
 	s.run(func() {
 		defer func() {
 			if r := recover(); r != nil {
-				slog.Error("onboarding savings classification panicked", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", r))
+				slog.Error(logs.panicked, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", r))
 			}
 		}()
 		jobCtx, cancel := context.WithTimeout(context.Background(), classifyTimeout)
 		defer cancel()
-		if err := s.classify(jobCtx, userID, budgetID, accountIDs, facts); err != nil {
-			// Never log the prompt, the reply or the error text: they can carry account names.
-			slog.Warn("onboarding savings classification failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+		if err := job(jobCtx, facts); err != nil {
+			// Never log the prompt, the reply or the error text: they can carry names.
+			slog.Warn(logs.failed, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
 		}
 	})
 }
