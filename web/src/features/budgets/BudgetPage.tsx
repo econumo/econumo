@@ -291,7 +291,20 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // nothing to show yet (the page opened on a month never loaded): the whole
   // area says so; with another month on hand the strip stays to switch back
   if (monthOffline && !budget) {
-    return <OfflineUnavailable subject="month" />
+    // on a phone the header's back button is the only way out of this page
+    return (
+      <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
+        {isCompact ? (
+          <header className="flex items-center gap-2">
+            <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
+              <ChevronLeft className="size-5" />
+            </Button>
+            <h1 className="min-w-0 shrink truncate text-lg font-medium">{budgetList?.find((b) => b.id === budgetId)?.name}</h1>
+          </header>
+        ) : null}
+        <OfflineUnavailable subject="month" />
+      </div>
+    )
   }
   if (isError && !budgetUnavailable && !monthOffline) {
     return (

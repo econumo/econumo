@@ -70,11 +70,11 @@ it('Sync all navigates to SimpleFIN settings when the device key is locked', asy
 })
 
 
-it('offline: Import CSV is disabled, Export stays', async () => {
+it('offline: Import and Export CSV are disabled (both need the server)', async () => {
   renderPage()
   await screen.findByText('Import & export')
   act(() => onlineManager.setOnline(false))
   onTestFinished(() => act(() => onlineManager.setOnline(true)))
   expect(screen.getByRole('button', { name: 'Import CSV' })).toBeDisabled()
-  expect(screen.getByRole('button', { name: 'Export CSV' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDisabled()
 })

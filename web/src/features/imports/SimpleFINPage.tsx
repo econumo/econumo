@@ -7,6 +7,7 @@ import type { ImportCardDto } from '@/api/dto/imports'
 import { queryKeys } from '@/app/queryKeys'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
 import { useOnline } from '@/hooks/useOnline'
 import { InfoBox } from '@/components/InfoBox'
 import { SettingsShell } from '@/features/settings/SettingsShell'
@@ -107,6 +108,10 @@ export function SimpleFINPage() {
 
   const body = () => {
     if (sourcesPending || keyState.status === 'loading') {
+      // offline these wait for the connection instead of loading
+      if (!online) {
+        return <OfflineUnavailable />
+      }
       return <p className="text-sm text-muted-foreground">{t('common.app.modal.loading.data_loading')}</p>
     }
     if (!source || reconnecting) {

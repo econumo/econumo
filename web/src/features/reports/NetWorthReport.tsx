@@ -369,7 +369,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
         <section aria-label={t('reports.networth.headline')} className={`flex min-w-0 flex-col ${dim}`}>
           {/* the months the figures cover, the whole window or the dragged range; the space holds the line while loading */}
           <span className="text-sm text-muted-foreground">{drillRange ? labels.range([drillRange[0], drillRange[1]]) : '\u00a0'}</span>
-          <span className="text-2xl tabular-nums sm:text-3xl">{data ? money(totalLine.now) : '…'}</span>
+          <span className="text-2xl tabular-nums sm:text-3xl">{data ? money(totalLine.now) : unavailable ? '\u00a0' : '…'}</span>
           {data && n > 1 ? (
             <span className="text-sm">
               <span className={changeClass(totalLine.change)}>{signedMoney(totalLine.change, money)}</span>{' '}

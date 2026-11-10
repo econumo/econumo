@@ -95,7 +95,7 @@ export function ImportsDataPage() {
     >
       <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
         <ActionRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} disabled={!online} />
-        <ActionRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
+        <ActionRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} disabled={!online} />
         <TransactionImportRows />
       </div>
 

@@ -22,6 +22,8 @@ import type { ViewTransaction } from '@/features/transactions/useAccountTransact
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { elementDisplayName } from './budgetMath'
 import { useBudgetTransactions } from './queries'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { budgetTransactionsParams } from './budgetTransactionsParams'
 import { useBudgetPeriodStore } from './budgetStore'
 import { budgetTransactionView } from './budgetTransactionView'
@@ -87,9 +89,11 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
 
   const params = element ? budgetTransactionsParams(budget.meta.id, element, selectedDate) : null
-  const { data, isLoading, fetchStatus } = useBudgetTransactions(params)
+  const txQuery = useBudgetTransactions(params)
+  const { data, isLoading } = txQuery
   // paused offline with nothing cached is unknown, not an empty list
-  const waiting = isLoading || (fetchStatus === 'paused' && data === undefined)
+  const unavailable = useUnavailableOffline(txQuery)
+  const waiting = isLoading && !unavailable
   const transactions = data?.items
 
   const openedKind = element ? transactionsKind(element.type) : null
@@ -148,7 +152,11 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
     <>
       {/* interactions inside the stacked preview/confirm must not dismiss the list */}
       <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={displayName} dismissible={!preview && !deleteTarget}>
-        {waiting ? (
+        {unavailable ? (
+          <div className="py-2">
+            <OfflineUnavailable compact />
+          </div>
+        ) : waiting ? (
           <div className="flex justify-center py-6">
             <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="loading" />
           </div>
