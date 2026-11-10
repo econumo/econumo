@@ -174,6 +174,29 @@ it('reviews existing categories: Archive and Restore flip rows, and Continue sen
   expect(onContinue.mock.calls[0][3]).toEqual({ archive: ['cat-1'], restore: ['cat-3'] })
 })
 
+it('typing the name of an archived category restores it instead of adding a duplicate', async () => {
+  const user = userEvent.setup()
+  const old: ExistingCategory = { id: 'cat-3', name: 'Old hobby', type: 'expense', icon: 'cake', archived: true }
+  const { onContinue } = renderStep({ existing: [food, old] })
+  await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'old HOBBY{Enter}')
+  expect(screen.getByRole('button', { name: 'Archive Old hobby' })).toBeInTheDocument()
+  expect(screen.queryByDisplayValue('old HOBBY')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][0]).toEqual([])
+  expect(onContinue.mock.calls[0][3]).toEqual({ archive: [], restore: ['cat-3'] })
+})
+
+it('a new row renamed to an archived category restores that category on Continue', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep({ existing: [{ id: 'cat-9', name: 'Pets', type: 'expense', icon: 'pets', archived: true }] })
+  const kids = screen.getByDisplayValue('Kids')
+  await user.clear(kids)
+  await user.type(kids, 'pets')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][0].map((r: CategoryRow) => r.name)).not.toContain('pets')
+  expect(onContinue.mock.calls[0][3]).toEqual({ archive: [], restore: ['cat-9'] })
+})
+
 it('cannot continue with every category archived and nothing new', async () => {
   const user = userEvent.setup()
   renderStep({ existing: [food] })

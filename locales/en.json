@@ -1223,7 +1223,7 @@
       "hide_label": "Hide {name}",
       "show_label": "Show {name}",
       "hidden": "Hidden",
-      "hidden_hint": "Hidden accounts move to the Archive folder and leave the budget."
+      "hidden_hint": "Hidden accounts move to the Archive folder and usually leave the budget (one with history in an earlier month stays in it)."
     },
     "categories_step": {
       "heading": "What do you spend on?",

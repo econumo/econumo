@@ -168,13 +168,22 @@ function serveOption(initial: string, postDelayMs = 0) {
 
 it('markDone writes the option and fires the done metric; a revisited skip turns into done', async () => {
   const track = vi.spyOn(metrics, 'trackEvent')
+  const { result } = setup(userWith('!plan'))
+  const state = serveOption('!plan')
+  await waitFor(() => expect(result.current.ready).toBe(true))
+  await act(() => result.current.markDone('plan'))
+  expect(state.posts).toEqual([{ value: 'plan' }])
+  expect(result.current.steps.find((s) => s.key === 'plan')).toEqual({ key: 'plan', state: 'done' })
+  expect(track).toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_STEP_DONE, { step: 'plan' })
+})
+
+it('never writes import as done: only finish-import marks it', async () => {
   const { result } = setup(userWith('!import'))
   const state = serveOption('!import')
   await waitFor(() => expect(result.current.ready).toBe(true))
   await act(() => result.current.markDone('import'))
-  expect(state.posts).toEqual([{ value: 'import' }])
-  expect(result.current.steps[0]).toEqual({ key: 'import', state: 'done' })
-  expect(track).toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_STEP_DONE, { step: 'import' })
+  expect(state.posts).toEqual([])
+  expect(result.current.steps[0]).toEqual({ key: 'import', state: 'skipped' })
 })
 
 it('skip on a revisited done step keeps it done and writes nothing', async () => {
@@ -244,15 +253,16 @@ it('a user fetch answering before the write lands does not bring the step back',
   const state = serveOption('', 100)
   await waitFor(() => expect(result.current.ready).toBe(true))
   act(() => {
-    markOnboardingStepDone(queryClient, 'import')
+    markOnboardingStepDone(queryClient, 'plan')
     // what the CSV import does right after: refetch everything, the user included
     void queryClient.invalidateQueries()
   })
-  await waitFor(() => expect(state.stored).toBe('import'))
-  await waitFor(() => expect(result.current.steps[0]?.state).toBe('done'))
+  const plan = () => result.current.steps.find((s) => s.key === 'plan')?.state
+  await waitFor(() => expect(state.stored).toBe('plan'))
+  await waitFor(() => expect(plan()).toBe('done'))
   await new Promise((r) => setTimeout(r, 100))
-  expect(result.current.steps[0]?.state).toBe('done')
-  expect(state.posts).toEqual([{ value: 'import' }])
+  expect(plan()).toBe('done')
+  expect(state.posts).toEqual([{ value: 'plan' }])
 })
 
 it('answering a step already in that state fires no metric and writes nothing', async () => {

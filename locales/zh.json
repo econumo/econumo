@@ -1223,7 +1223,7 @@
       "hide_label": "隐藏 {name}",
       "show_label": "显示 {name}",
       "hidden": "已隐藏",
-      "hidden_hint": "隐藏的账户会移到“已归档”文件夹，并移出预算。"
+      "hidden_hint": "隐藏的账户会移到“已归档”文件夹，通常也会移出预算（在之前月份有交易的账户会保留在预算中）。"
     },
     "categories_step": {
       "heading": "你的钱花在哪里？",

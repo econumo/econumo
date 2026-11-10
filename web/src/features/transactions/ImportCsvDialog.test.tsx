@@ -1,10 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureLabels, fixtureUsd } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureLabels, fixtureUsd, fixtureUser } from '@/test/fixtures'
 import { api } from '@/api/client'
+import { cancelAiRefresh } from '@/features/onboarding/finishImport'
 import { ImportCsvDialog } from './ImportCsvDialog'
 
 const CSV = 'Account,Date,Amount,Category,Description\nCash,2026-01-02,-5.5,Food,coffee\nBank,2026-01-03,100,Salary,pay\n'
@@ -121,6 +122,46 @@ it('happy path: import posts once, invalidates queries, and reports the result',
   await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ imported: 2, failed: 0, errors: [] }))
   expect(posts).toBe(1)
   expect(invalidateSpy).toHaveBeenCalled()
+})
+
+describe('during onboarding', () => {
+  const onboardingUser = (value: string) => ({
+    ...fixtureUser,
+    options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value } : o)),
+  })
+
+  async function importWith(value: string) {
+    const finishes: unknown[] = []
+    server.use(
+      ...coreHandlers({ user: onboardingUser(value) }),
+      http.post('*/api/v1/transaction/import-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { imported: 2, skipped: 0, errors: {} } })),
+      http.post('*/api/v1/onboarding/finish-import', async ({ request }) => {
+        finishes.push(await request.json())
+        return HttpResponse.json({ success: true, message: '', data: { user: onboardingUser('import'), budgetId: 'b1' } })
+      }),
+      http.post('*/api/v1/user/update-onboarding', () => {
+        throw new Error('update-onboarding must not be called')
+      }),
+    )
+    const { queryClient, onComplete } = renderDialog()
+    queryClient.setQueryData(['user'], onboardingUser(value))
+    const user = await uploadCsv()
+    await screen.findByText(/Map the columns/)
+    await user.click(screen.getByRole('button', { name: 'Import' }))
+    await waitFor(() => expect(onComplete).toHaveBeenCalled())
+    cancelAiRefresh()
+    cleanup()
+    return finishes
+  }
+
+  it('an import from anywhere settles the open import step through finish-import', async () => {
+    expect(await importWith('!import')).toEqual([{ id: expect.any(String) }])
+  })
+
+  it('sends nothing once the import step is done or onboarding is over', async () => {
+    expect(await importWith('import')).toEqual([])
+    expect(await importWith('completed')).toEqual([])
+  })
 })
 
 // jsdom multipart bodies don't survive the MSW interceptor (no Blob.stream),

@@ -320,7 +320,9 @@ navigation (single-pane vs sidebar).
       categories) read muted, "Archived" next to the name from a tablet width,
       with a "Restore" button. Then no defaults are offered; defaults named
       like any category the user has, archived ones included, are not offered
-      either. Continue sends `archive`/`restore` in `save-categories` only for
+      either. Typing the name of an archived category under "Add your own"
+      (or renaming a new row to it) restores that category instead of adding
+      a duplicate. Continue sends `archive`/`restore` in `save-categories` only for
       the rows flipped against the server (flipping a row twice sends
       nothing); after it the archived ones are gone from the category pickers
       and restored ones are back. The defaults are, for
@@ -347,8 +349,8 @@ navigation (single-pane vs sidebar).
       for, each with a Hide button (an eye; "Hide" next to it from a tablet
       width up); a hidden one (also an account already in a hidden folder)
       reads muted with "Hidden" instead of its balance and a Show button, and
-      under the list a hint reads "Hidden accounts move to the Archive folder
-      and leave the budget." Continue sends `hide`/`unhide` in `save-accounts`
+      under the list a hint says hidden accounts move to the Archive folder
+      and usually leave the budget. Continue sends `hide`/`unhide` in `save-accounts`
       for the flipped rows only: a hidden account then sits in the hidden
       "Archive" folder (translated) and is gone from the budget (unless it has
       history in an earlier month, then it stays a member); a shown one moves
@@ -387,10 +389,17 @@ navigation (single-pane vs sidebar).
       stay open as review steps of what the import brought in (they are not
       ticked); closing the dialog or importing nothing leaves the step open;
       Skip skips only Import. A failed finish-import shows the error with
-      "Try again", which resends the same operation id.
+      "Try again", which resends the same operation id; Import and the drop
+      area are disabled meanwhile. The Network tab shows no
+      `update-onboarding` carrying `import`.
+- [ ] While onboarding is in progress, a CSV import from Settings → Data also
+      settles the Import step through `finish-import` (the budget appears and,
+      with AI, icons arrive).
 - [ ] With AI (`ECONUMO_AI_DSN` set), after an import the imported categories
       and accounts get matching icons later without a reload (the review
-      screens refetch about 10 s, 30 s and 90 s after the import), the
+      screens refetch about 10 s, 30 s and 90 s after the import, also when
+      onboarding was completed meanwhile; without AI there are no such
+      refetches), the
       budget the import created flags the accounts the AI judges savings, and
       an icon the user changed meanwhile is kept. Without AI the icons stay
       as imported.

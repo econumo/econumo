@@ -1223,7 +1223,7 @@
       "hide_label": "{name} ausblenden",
       "show_label": "{name} einblenden",
       "hidden": "Ausgeblendet",
-      "hidden_hint": "Ausgeblendete Konten kommen in den Ordner „Archiv“ und zählen nicht mehr zum Budget."
+      "hidden_hint": "Ausgeblendete Konten kommen in den Ordner „Archiv“ und verlassen meist das Budget (ein Konto mit Buchungen in einem früheren Monat bleibt darin)."
     },
     "categories_step": {
       "heading": "Wofür geben Sie Geld aus?",

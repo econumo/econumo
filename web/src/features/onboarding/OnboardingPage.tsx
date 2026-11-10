@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Menu } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
-import { queryKeys } from '@/app/queryKeys'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
 import { useCompleteOnboarding, useUserData } from '@/features/user/queries'
@@ -28,12 +26,7 @@ export interface StepBodyProps {
   coreStepsDone?: boolean
   // skips every open step, completes onboarding and lands on `to` instead of the budget
   onCompleteSetup?: (to: string) => Promise<void>
-  // the import finished: the server's background AI job sets icons and savings flags a few seconds later
-  onImportFinished?: () => void
 }
-
-// when, after finish-import, the lists are refetched to show the AI's icons and savings (the job may take up to 90 s)
-export const AI_REFRESH_DELAYS_MS = [10_000, 30_000, 90_000]
 
 const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
   import: ImportStep,
@@ -53,7 +46,6 @@ export function OnboardingPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
-  const queryClient = useQueryClient()
   const { steps, current, allResolved, markDone, skip, ready } = useOnboardingSteps()
   const complete = useCompleteOnboarding()
   const { data: user } = useUserData()
@@ -64,36 +56,18 @@ export function OnboardingPage() {
   const autoCompleted = useRef(false)
   // where a completion lands, kept so the Finish retry after a failure goes there too
   const landing = useRef<string>(RouterPage.BUDGET)
-  // outlives the import step's body, which unmounts as the flow moves on to Categories
-  const aiRefresh = useRef<ReturnType<typeof setTimeout>[]>([])
-  const cancelAiRefresh = useCallback(() => {
-    aiRefresh.current.forEach(clearTimeout)
-    aiRefresh.current = []
-  }, [])
-  useEffect(() => cancelAiRefresh, [cancelAiRefresh])
-  const scheduleAiRefresh = useCallback(() => {
-    cancelAiRefresh()
-    aiRefresh.current = AI_REFRESH_DELAYS_MS.map((delay) =>
-      setTimeout(() => {
-        for (const queryKey of [queryKeys.categories, queryKeys.accounts, queryKeys.budgets, queryKeys.budget]) {
-          void queryClient.invalidateQueries({ queryKey })
-        }
-      }, delay),
-    )
-  }, [queryClient, cancelAiRefresh])
 
   const finish = useCallback(async () => {
     if (completing.current) return
     completing.current = true
     try {
       await complete.mutateAsync()
-      cancelAiRefresh()
       if (userId) clearDraft(userId)
       navigate(landing.current)
     } finally {
       completing.current = false
     }
-  }, [complete, navigate, userId, cancelAiRefresh])
+  }, [complete, navigate, userId])
 
   // Steps answered elsewhere (another device, the budget page) finish the
   // flow on arrival; only once, so a failure waits for the Finish button.
@@ -179,7 +153,7 @@ export function OnboardingPage() {
           ) : null}
         </div>
       ) : null}
-      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} coreStepsDone={coreStepsDone} onCompleteSetup={completeSetup} onImportFinished={scheduleAiRefresh} />}
+      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} coreStepsDone={coreStepsDone} onCompleteSetup={completeSetup} />}
     </div>
   )
 }

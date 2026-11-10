@@ -1223,7 +1223,7 @@
       "hide_label": "Ocultar {name}",
       "show_label": "Mostrar {name}",
       "hidden": "Oculta",
-      "hidden_hint": "Contas ocultas vão para a pasta Arquivo e saem do orçamento."
+      "hidden_hint": "Contas ocultas vão para a pasta Arquivo e normalmente saem do orçamento (uma com movimentos num mês anterior permanece)."
     },
     "categories_step": {
       "heading": "Em que você gasta?",

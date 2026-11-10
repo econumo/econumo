@@ -392,7 +392,7 @@ it('reviews existing accounts: Hide and Show flip rows, hidden ones read muted, 
   const archived: ExistingAccount = { id: 'acc-old', name: 'Old card', icon: 'credit_card', balance: '0', currencyId: 'cur-usd', hidden: true }
   const { onContinue } = renderStep({ existing: [imported, rainy, archived] })
   await ready()
-  expect(screen.getByText('Hidden accounts move to the Archive folder and leave the budget.')).toBeInTheDocument()
+  expect(screen.getByText(/^Hidden accounts move to the Archive folder and usually leave the budget/)).toBeInTheDocument()
   const oldRow = rowsEls()[2]
   expect(oldRow).toHaveAttribute('data-hidden', 'true')
   expect(within(oldRow).getByText('Hidden')).toBeInTheDocument()

@@ -1223,7 +1223,7 @@
       "hide_label": "Nascondi {name}",
       "show_label": "Mostra {name}",
       "hidden": "Nascosto",
-      "hidden_hint": "I conti nascosti finiscono nella cartella Archivio ed escono dal budget."
+      "hidden_hint": "I conti nascosti finiscono nella cartella Archivio e di solito escono dal budget (uno con movimenti in un mese precedente vi resta)."
     },
     "categories_step": {
       "heading": "In cosa spendi?",

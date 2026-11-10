@@ -14,7 +14,7 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { useUserData } from '@/features/user/queries'
 import type { AggregatedImportResult, CsvAnalysis, FieldKey, ImportSelection } from './importCsv'
-import { markOnboardingStepDone } from '@/features/onboarding/onboardingProgress'
+import { finishImportStep } from '@/features/onboarding/finishImport'
 import { EntitySelect } from './EntitySelect'
 import { analyzeCsv, autoDetect, CHUNK_SIZE, countNewLabels, defaultSelection, runImport, selectionValid } from './importCsv'
 
@@ -260,7 +260,9 @@ export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: Impo
     try {
       const result = await runImport(analysis, selection, importTransactionList, (done, total) => setProgress({ done, total }))
       trackEvent(METRICS.TRANSACTION_IMPORT)
-      markOnboardingStepDone(queryClient, 'import')
+      // during onboarding the import settles the import step through finish-import (budget + AI review);
+      // a failure there is retried by the Import step and never fails the import itself
+      if (result.imported > 0) await finishImportStep(queryClient).catch(() => undefined)
       await queryClient.invalidateQueries()
       onClose()
       onComplete(result)

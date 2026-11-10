@@ -1223,7 +1223,7 @@
       "hide_label": "{name} verbergen",
       "show_label": "{name} tonen",
       "hidden": "Verborgen",
-      "hidden_hint": "Verborgen rekeningen gaan naar de map Archief en tellen niet meer mee in het budget."
+      "hidden_hint": "Verborgen rekeningen gaan naar de map Archief en verlaten meestal het budget (een rekening met transacties in een eerdere maand blijft erin)."
     },
     "categories_step": {
       "heading": "Waar geef je geld aan uit?",

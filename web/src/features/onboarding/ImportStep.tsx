@@ -11,7 +11,7 @@ import { useDay0 } from './useDay0'
 
 const isCsv = (file: File) => file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv'
 
-export function ImportStep({ onDone, onSkip, onImportFinished }: StepBodyProps) {
+export function ImportStep({ onDone, onSkip }: StepBodyProps) {
   const { t } = useTranslation()
   const day0 = useDay0()
   const [open, setOpen] = useState(false)
@@ -23,17 +23,18 @@ export function ImportStep({ onDone, onSkip, onImportFinished }: StepBodyProps) 
     setPending(true)
     void onSkip().finally(() => setPending(false))
   }
-  // categories and accounts stay open: the import's rows are reviewed there next
+  // the dialog has settled the step through finish-import already; this retries one that failed
+  // there. Categories and accounts stay open: the import's rows are reviewed there next.
   const finish = () => {
     void day0
       .finishImport()
-      .then(() => {
-        onImportFinished?.()
-        return onDone()
-      })
+      .then(() => onDone())
       .catch(() => undefined)
   }
+  // the rows are in: importing the same file again while the step waits for its retry would duplicate them
+  const blocked = day0.error != null || day0.pending
   const choose = () => {
+    if (blocked) return
     setDropped(undefined)
     setNotCsv(false)
     setOpen(true)
@@ -50,6 +51,7 @@ export function ImportStep({ onDone, onSkip, onImportFinished }: StepBodyProps) 
   const drop = (e: DragEvent) => {
     e.preventDefault()
     setDragging(false)
+    if (blocked) return
     const file = e.dataTransfer.files[0]
     if (!file) return
     if (!isCsv(file)) {
@@ -68,9 +70,10 @@ export function ImportStep({ onDone, onSkip, onImportFinished }: StepBodyProps) 
         type="button"
         data-dragging={dragging || undefined}
         className={cn(
-          'mt-4 flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 text-sm text-muted-foreground transition-colors outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/50',
+          'mt-4 flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 text-sm text-muted-foreground transition-colors outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50',
           dragging && 'border-primary bg-primary/15 text-foreground',
         )}
+        disabled={blocked}
         onClick={choose}
         onDragEnter={dragOver}
         onDragOver={dragOver}
@@ -100,7 +103,7 @@ export function ImportStep({ onDone, onSkip, onImportFinished }: StepBodyProps) 
         <Button type="button" variant="ghost" disabled={pending || day0.pending} onClick={skip}>
           {t('onboarding.import_step.skip')}
         </Button>
-        <Button type="button" disabled={pending || day0.pending} onClick={choose}>
+        <Button type="button" disabled={pending || blocked} onClick={choose}>
           {t('onboarding.import_step.import')}
         </Button>
       </div>

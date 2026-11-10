@@ -115,9 +115,19 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
   const update = (key: string, patch: Partial<CategoryRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
   const remove = (key: string) => setRows((prev) => prev.filter((r) => r.key !== key))
 
+  // a name the user already has as an archived category means that category: it is restored, not duplicated
+  const archivedNamed = (type: CategoryType, name: string) =>
+    existing.find((c) => isArchived(c) && nameKey(c.type, c.name) === nameKey(type, name))
+
   const addDraft = (type: CategoryType) => {
     const name = drafts[type].trim()
     if (name === '') return
+    const match = archivedNamed(type, name)
+    if (match) {
+      toggleArchived(match.id)
+      setDrafts((prev) => ({ ...prev, [type]: '' }))
+      return
+    }
     const key = uuidv7()
     setRows((prev) => [...prev, { key, name, type, icon: defaultCategoryIcon }])
     touch(key)
@@ -137,17 +147,19 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
   }
 
   const invalidName = new Set(rows.filter((r) => r.name.trim() !== '' && !nameLengthValid(r.name)).map((r) => r.key))
-  const keptExisting = existing.filter((c) => !isArchived(c)).length
+  // a renamed row that names an archived category restores it on submit
+  const revived = new Set(rows.flatMap((r) => (r.name.trim() === '' ? [] : [archivedNamed(r.type, r.name.trim())?.id ?? []].flat())))
+  const finallyArchived = (c: ExistingCategory) => isArchived(c) && !revived.has(c.id)
+  const keptExisting = existing.filter((c) => !finallyArchived(c)).length
   const canContinue = !pending && invalidName.size === 0 && keptExisting + normalized().length > 0
   const submit = () => {
     if (!canContinue) return
     const ids = fullOrder()
     const at = new Map(ids.map((id, i) => [id, i]))
     const sorted = normalized().sort((a, b) => (at.get(a.key) ?? ids.length) - (at.get(b.key) ?? ids.length))
-    const changed = existing.filter((c) => flipped.has(c.id))
     onContinue(sorted, reordered ? ids : undefined, offered, {
-      archive: changed.filter((c) => !c.archived).map((c) => c.id),
-      restore: changed.filter((c) => c.archived).map((c) => c.id),
+      archive: existing.filter((c) => !c.archived && finallyArchived(c)).map((c) => c.id),
+      restore: existing.filter((c) => c.archived && !finallyArchived(c)).map((c) => c.id),
     })
   }
 

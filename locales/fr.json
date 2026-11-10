@@ -1223,7 +1223,7 @@
       "hide_label": "Masquer {name}",
       "show_label": "Afficher {name}",
       "hidden": "Masqué",
-      "hidden_hint": "Les comptes masqués vont dans le dossier Archives et sortent du budget."
+      "hidden_hint": "Les comptes masqués vont dans le dossier Archives et quittent en général le budget (un compte avec des opérations d'un mois précédent y reste)."
     },
     "categories_step": {
       "heading": "Où va votre argent ?",

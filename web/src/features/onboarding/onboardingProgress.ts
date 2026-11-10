@@ -43,7 +43,10 @@ let writesInFlight = 0
 // first; one started meanwhile (a CSV import refetches everything) is settled
 // by refetching once the last write lands, which also cancels it. Only the
 // last write reconciles, so overlapping writes do not flicker.
+// `import` done is only ever written by finish-import (it creates the budget and starts the AI
+// review); the client never pre-marks it, or the server would find it done and do nothing.
 export async function writeStepState(queryClient: QueryClient, key: StoredStepKey, state: Answer): Promise<void> {
+  if (key === 'import' && state === 'done') return
   await queryClient.cancelQueries({ queryKey: queryKeys.user })
   const user = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
   const option = onboardingProgress(user)
@@ -67,7 +70,7 @@ export async function writeStepState(queryClient: QueryClient, key: StoredStepKe
 
 // Callable from the budget mutations without a hook of their own: nothing is
 // sent outside the flow or once the step has an answer.
-export function markOnboardingStepDone(queryClient: QueryClient, key: StoredStepKey): void {
+export function markOnboardingStepDone(queryClient: QueryClient, key: Exclude<StoredStepKey, 'import'>): void {
   const option = onboardingProgress(queryClient.getQueryData<CurrentUserDto>(queryKeys.user))
   if (option === null || storedStepState(option, key) !== 'open') return
   void writeStepState(queryClient, key, 'done')

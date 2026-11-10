@@ -6,7 +6,8 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureCategories, fixtureEur, fixtureUser, fixtureUsd, fixtureWireBudget } from '@/test/fixtures'
 import { HomePage } from '@/features/home/HomePage'
-import { AI_REFRESH_DELAYS_MS, OnboardingPage } from './OnboardingPage'
+import { AI_REFRESH_DELAYS_MS, cancelAiRefresh } from './finishImport'
+import { OnboardingPage } from './OnboardingPage'
 
 let importedRows = 0
 vi.mock('@/features/transactions/ImportCsvDialog', () => ({
@@ -101,6 +102,8 @@ function mockViewport(compact: boolean) {
     matches: q.includes('1023') ? compact : false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
 }
+
+afterEach(() => cancelAiRefresh())
 
 beforeEach(() => {
   localStorage.clear()
@@ -327,24 +330,33 @@ it('a failed finish-import stays on the import step with a retry that replays th
   await user.click(await screen.findByRole('button', { name: 'finish import' }))
   expect(await screen.findByRole('alert')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Bring in your history' })).toBeInTheDocument()
+  // the rows are already in: importing again before the retry would duplicate them
+  expect(screen.getByRole('button', { name: 'Import' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Choose a CSV file' })).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'Try again' }))
   expect(await heading('What do you spend on?')).toBeInTheDocument()
   expect(ids).toHaveLength(2)
   expect(ids[1]).toBe(ids[0])
 })
 
-it('refetches the categories at each AI refresh delay after the import, and no more', async () => {
+async function importAndCountRefetches(ai: boolean) {
+  window.econumoConfig = { AI_ENABLED: ai }
+  const state = serve('')
+  importedRows = 3
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage()
+  await heading('Bring in your history')
+  await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
+  await user.click(await screen.findByRole('button', { name: 'finish import' }))
+  expect(await heading('What do you spend on?')).toBeInTheDocument()
+  await screen.findByRole('button', { name: 'Archive Food' })
+  return state
+}
+
+it('with AI, refetches the categories at each AI refresh delay after the import, and no more', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   try {
-    const state = serve('')
-    importedRows = 3
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    renderPage()
-    await heading('Bring in your history')
-    await user.click(screen.getByRole('button', { name: 'Choose a CSV file' }))
-    await user.click(await screen.findByRole('button', { name: 'finish import' }))
-    expect(await heading('What do you spend on?')).toBeInTheDocument()
-    await screen.findByRole('button', { name: 'Archive Food' })
+    const state = await importAndCountRefetches(true)
     const before = state.categoryListCalls
     let elapsed = 0
     for (const [i, delay] of AI_REFRESH_DELAYS_MS.entries()) {
@@ -354,6 +366,18 @@ it('refetches the categories at each AI refresh delay after the import, and no m
     }
     await vi.advanceTimersByTimeAsync(120_000)
     expect(state.categoryListCalls).toBe(before + AI_REFRESH_DELAYS_MS.length)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('without AI, an import schedules no extra refetches', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    const state = await importAndCountRefetches(false)
+    const before = state.categoryListCalls
+    await vi.advanceTimersByTimeAsync(120_000)
+    expect(state.categoryListCalls).toBe(before)
   } finally {
     vi.useRealTimers()
   }

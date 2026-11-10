@@ -1,25 +1,20 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useQueryClient, type Query } from '@tanstack/react-query'
-import { isAxiosError } from 'axios'
+import { useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import type { CurrentUserDto } from '@/api/dto/user'
-import { finishOnboardingImport, saveOnboardingAccounts, saveOnboardingCategories, saveOnboardingPlan } from '@/api/onboarding'
+import { saveOnboardingAccounts, saveOnboardingCategories, saveOnboardingPlan } from '@/api/onboarding'
 import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
 import { useAccounts } from '@/features/accounts/queries'
 import { useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { claimedElsewhere, finishImportStep, notUser } from './finishImport'
 import { emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft, type Day0Step } from './draft'
 
 export type CategoryReview = { archive: Id[]; restore: Id[] }
 export type AccountReview = { hide: Id[]; unhide: Id[] }
 
-// The user query is answered by the step itself, so it is never refetched over that answer.
-const notUser = (q: Query) => q.queryKey[0] !== queryKeys.user[0]
-
-// A 400 on `id`: the operation id was claimed by another write.
-const claimedElsewhere = (err: unknown) =>
-  isAxiosError(err) && err.response?.status === 400 && Boolean((err.response.data as { errors?: Record<string, unknown> } | undefined)?.errors?.id)
+// The user query is answered by the step itself, so it is never refetched over that answer (notUser).
 
 // Each step is one server call that writes everything and marks the step done.
 // The client only keeps the submitted form and the operation id in the draft:
@@ -100,23 +95,21 @@ export function useDay0() {
     [userId, current, persist, queryClient],
   )
 
-  // A CSV import that brought rows in: the server marks the import step and creates the
-  // budget when there is none; categories and accounts stay open for review.
+  // A CSV import that brought rows in: the shared helper settles the import step (the dialog
+  // itself already called it, so this only retries one that failed there).
   const finishImport = useCallback(async () => {
-    const result = await runStep(
-      'import',
-      () => undefined,
-      (id) => finishOnboardingImport(id),
-      (d, res) => {
-        d.budgetId = res.budgetId || d.budgetId
-      },
-    )
-    if (!result) {
-      return
+    setPending(true)
+    setError(null)
+    try {
+      await finishImportStep(queryClient)
+    } catch (err) {
+      setError(err)
+      throw err
+    } finally {
+      setPending(false)
+      setVersion((v) => v + 1)
     }
-    void queryClient.invalidateQueries({ predicate: notUser })
-    trackEvent(METRICS.ONBOARDING_IMPORT_FINISHED, { budget: result.budgetId !== '' })
-  }, [runStep, queryClient])
+  }, [queryClient])
 
   // `review` holds existing categories whose archived state the user flipped.
   const saveCategories = useCallback(

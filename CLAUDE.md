@@ -445,12 +445,18 @@ Lint is oxlint, tests are vitest (`pnpm test`).
 `docs/superpowers/specs/2026-11-01-onboarding-day-0-design.md`, "Revision 2026-11-08"): a new
 user's first run is the Getting started stepper at `/` (`OnboardingPage` shell + `Stepper`,
 bodies in `STEP_BODIES`; phones land there too, with a Menu link to `/?menu=1` for the nav
-list). The step model is `useOnboardingSteps`, keys `import` (optional CSV import; an import that brought rows in calls `finish-import`
-under a draft-persisted operation id, puts the answered user in the cache, invalidates every
-non-user query and moves on to Categories; Categories and Accounts are NOT ticked by it, they
-become review steps; `OnboardingPage` then refetches categories/accounts/budgets again at
-`AI_REFRESH_DELAYS_MS` (about 10 s, 30 s and 90 s) after it so the background AI job's icons and
-savings flags show up, the timers cleared on unmount), `categories`, `accounts`, `plan` (budget
+list). The step model is `useOnboardingSteps`, keys `import` (optional CSV import; while onboarding is in progress and `import` is not done,
+every successful CSV import, from this step or the Settings data page, settles it through ONE
+helper, `finishImportStep` in `web/src/features/onboarding/finishImport.ts`, called from
+`ImportCsvDialog`'s success path: `finish-import` under a draft-persisted operation id
+(concurrent callers share one request), the answered user into the cache, every non-user
+query invalidated; the client never writes `import` through `update-onboarding`, since a
+pre-marked step would make `finish-import` a no-op with no budget and no AI job. With
+`AI_ENABLED` it then refetches categories/accounts/budgets/plan at 10, 30 and 90 s
+(module-level timers, not stopped by completing onboarding; dropped once the cached user
+changes). The Import step only retries a failed `finish-import` (Import is disabled meanwhile,
+so the file cannot be imported twice) and moves on to Categories; Categories and Accounts are
+NOT ticked by an import, they become review steps), `categories`, `accounts`, `plan` (budget
 and plan: Income/Expenses cards of the user's own non-archived categories prefilled from `get-budget-plan`,
 since `get-budget` lists expense categories only; the budget's own period; EMPTY inputs are then
 prefilled once from `get-plan-suggestions` when it arrives, never over a stored plan or anything
@@ -465,7 +471,7 @@ there is no savings toggle and no name-based savings guess (the icon guess cover
 reviewed, names and balances read-only: every own category (archived ones too, muted, with
 Restore) carries an Archive/Restore toggle and every own account (one in a hidden folder reads
 Hidden, muted) a Hide/Show toggle with the hint that hidden accounts move to the Archive folder
-and leave the budget; Continue sends the new rows plus `archive`/`restore` (`hide`/`unhide`)
+and usually leave the budget; a new row named like an archived category restores it instead; Continue sends the new rows plus `archive`/`restore` (`hide`/`unhide`)
 diffs against the server state, and the step-complete events carry `archived`/`restored`
 (`hidden`/`shown`) counts; the unsaved
 draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the writes are idempotent, so

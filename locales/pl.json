@@ -1223,7 +1223,7 @@
       "hide_label": "Ukryj {name}",
       "show_label": "Pokaż {name}",
       "hidden": "Ukryte",
-      "hidden_hint": "Ukryte konta trafiają do folderu Archiwum i wypadają z budżetu."
+      "hidden_hint": "Ukryte konta trafiają do folderu Archiwum i zwykle wypadają z budżetu (konto z transakcjami z wcześniejszego miesiąca w nim zostaje)."
     },
     "categories_step": {
       "heading": "Na co wydajesz pieniądze?",
