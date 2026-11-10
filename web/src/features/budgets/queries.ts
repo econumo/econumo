@@ -299,10 +299,12 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
   const ownData = query.data !== undefined && !query.isPlaceholderData
   // once served, the cover stays until the key has data of its own: when the
   // connection returns the paused fetch resumes, and the window must not drop
-  // to a loader until it lands
+  // to a loader until it lands; online, a failed fetch drops it so the error
+  // and Retry show instead of the older window
   const keyHash = hashKey(planKey)
   const coveringKey = useRef<string | null>(null)
-  const wantsCover = budgetId !== null && !ownData && (!online || query.fetchStatus === 'paused' || coveringKey.current === keyHash)
+  const resuming = coveringKey.current === keyHash && !(online && query.isError)
+  const wantsCover = budgetId !== null && !ownData && (!online || query.fetchStatus === 'paused' || resuming)
   const coverFirst = [firstMonth, currentPeriod(startDay)].sort()[0]
   const coverLast = addMonths(firstMonth, visibleMonths - 1)
   const cover = useSyncExternalStore(

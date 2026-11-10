@@ -150,6 +150,16 @@ describe('useBudgetPlan served from a covering window offline', () => {
     await waitFor(() => expect(result.current.data?.months[0]).toBe('2026-04-01'))
   })
 
+  it('back online, a failed fetch of the window shows its error instead of the older window', async () => {
+    const client = seeded()
+    const { result } = renderHook(() => useBudgetPlan('b1', '2026-06-01', 8, 1), { wrapper: wrapperFor(client) })
+    await waitFor(() => expect(result.current.data?.months[0]).toBe(KEPT.from))
+    server.use(http.get('*/api/v1/budget/get-budget-plan', () => HttpResponse.json({ success: false, message: 'boom', code: 0 }, { status: 500 })))
+    act(() => onlineManager.setOnline(true))
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.data).toBeUndefined()
+  })
+
   it('a cached window from an older server, with no transfers, is served without throwing', async () => {
     const { transfers: _t, savingsFlows: _f, savingsIncomeExpense: _i, ...old } = planFor(KEPT.from, KEPT.months)
     const client = seeded({ ...old, structure: { ...old.structure, savings: undefined } } as unknown as BudgetPlanDto)
