@@ -11,6 +11,8 @@ import type { ElementRowExtras } from './BudgetTable'
 import type { FolderBucket } from './budgetMath'
 import { bucketElements, makeBudgetExchange } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
+import { addChange } from '@/features/pendingWrites/queue'
+import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
 import type { BudgetDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 
@@ -18,6 +20,7 @@ const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fracti
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 
 type TableExtras = ElementRowExtras & {
+  dataPeriod?: string
   future?: boolean
   collapsedElementId?: string | null
   showEmptyNoFolder?: boolean
@@ -31,7 +34,7 @@ function renderTable(mutate?: (budget: BudgetDto) => void, extras: TableExtras =
   const buckets = bucketElements(budget, makeBudgetExchange(budget, [usd, eur]))
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <BudgetTable budget={budget} buckets={buckets} {...extras} />
+      <BudgetTable budget={budget} buckets={buckets} dataPeriod="2026-07-01" {...extras} />
     </QueryClientProvider>,
   )
   return budget
@@ -42,6 +45,17 @@ beforeEach(() => {
   window.econumoConfig = {}
   server.use(...coreHandlers())
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planFolds: {}, budgetFolds: {}, planUnfoldedElements: {} })
+})
+
+it('marks a waiting limit by the month the figures belong to, not the month selected', async () => {
+  resetPendingWritesForTests()
+  await loadPendingWrites('u1')
+  await mutate((ops) => addChange(ops, { kind: 'limit', budgetId: coerceBudgetFixture(fixtureWireBudget).meta.id, elementId: 'cat-food', period: '2026-07-01', amount: '9' }, { key: 'k', seq: 1 }))
+  // the selected month is not cached yet, so July's figures stay on screen
+  useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' })
+  renderTable(undefined, { dataPeriod: '2026-07-01' })
+  expect(await screen.findAllByRole('img', { name: 'Not saved' })).toHaveLength(1)
+  resetPendingWritesForTests()
 })
 
 it('renders column headers, folder, default and archived sections with aligned stat cells', async () => {

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
 func TestOK_SuccessEnvelope(t *testing.T) {
@@ -184,3 +185,26 @@ func TestWriteError_StatusMappingMatrix(t *testing.T) {
 type errPlain string
 
 func (e errPlain) Error() string { return string(e) }
+
+func TestWriteReplay_ConflictEnvelopeWithResourceId(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteReplay(context.Background(), rec, "res-1")
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status=%d want 409", rec.Code)
+	}
+	want := `{"success":false,"message":"Operation is locked","code":409,"errors":{},"resourceId":"res-1"}` + "\n"
+	if got := rec.Body.String(); got != want {
+		t.Fatalf("body=%s want %s", got, want)
+	}
+}
+
+func TestWriteReplay_OmitsAnEmptyResourceIdAndRendersTheLanguage(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteReplay(reqctx.WithLanguage(context.Background(), "de"), rec, "")
+
+	want := `{"success":false,"message":"Der Vorgang ist gesperrt","code":409,"errors":{}}` + "\n"
+	if got := rec.Body.String(); got != want {
+		t.Fatalf("body=%s want %s", got, want)
+	}
+}

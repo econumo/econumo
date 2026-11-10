@@ -15,19 +15,22 @@ export type ImportKeyState =
 // Server half: the passphrase-wrapped key (shared by every device). Local
 // half: whether THIS device holds the unwrapped key in IndexedDB. Both are
 // queries so a successful unlock/forget only has to invalidate the local one.
-export function useImportKey(): { state: ImportKeyState; refresh: () => void } {
+// remote is exposed so a page can tell, offline, a server key never loaded on
+// this device (it waits for the network) from the local IndexedDB read, which
+// is pending for a moment on every mount.
+export function useImportKey(): { state: ImportKeyState; refresh: () => void; remote: ReturnType<typeof useImportCredentialKey> } {
   const queryClient = useQueryClient()
   const remote = useImportCredentialKey()
   const local = useQuery({ queryKey: queryKeys.importLocalKey, queryFn: loadStoredKey, staleTime: Infinity, gcTime: 0, networkMode: 'always' })
   const refresh = () => void queryClient.invalidateQueries({ queryKey: queryKeys.importLocalKey })
   if (remote.isPending || local.isPending) {
-    return { state: { status: 'loading' }, refresh }
+    return { state: { status: 'loading' }, refresh, remote }
   }
   if (!remote.data) {
-    return { state: { status: 'none' }, refresh }
+    return { state: { status: 'none' }, refresh, remote }
   }
   if (local.data?.tag === remote.data.wrappedDataKey) {
-    return { state: { status: 'unlocked', wrapped: remote.data }, refresh }
+    return { state: { status: 'unlocked', wrapped: remote.data }, refresh, remote }
   }
-  return { state: { status: 'locked', wrapped: remote.data, stale: local.data !== null }, refresh }
+  return { state: { status: 'locked', wrapped: remote.data, stale: local.data !== null }, refresh, remote }
 }

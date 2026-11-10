@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
@@ -16,6 +17,7 @@ interface AcceptInviteDialogProps {
 
 export function AcceptInviteDialog({ open, pending, error, onSubmit, onClose }: AcceptInviteDialogProps) {
   const { t } = useTranslation()
+  const online = useOnline()
   const [code, setCode] = useState('')
   const [touched, setTouched] = useState(false)
 
@@ -61,7 +63,7 @@ export function AcceptInviteDialog({ open, pending, error, onSubmit, onClose }: 
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || !online}>
             {t('common.button.accept.label')}
           </Button>
         </div>

@@ -1,3 +1,4 @@
+import { useCallback, useSyncExternalStore } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import * as accountApi from '@/api/account'
 import type { AccountDto, AccountItemDto, AccountRole } from '@/api/dto/account'
@@ -5,24 +6,74 @@ import type { FolderDto } from '@/api/dto/folder'
 import type { Id } from '@/api/types'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { useLocalDay } from '@/hooks/useLocalDay'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyMove } from '@/lib/ordering'
 import { isPendingForMe } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
+import { usePendingOps } from '@/features/pendingWrites/hooks'
+import { overlayAccounts } from '@/features/pendingWrites/overlay'
 import { beginLocalWrite, noteOwnWrite } from '@/features/transactions/revisionTracking'
+
+// Reads the stored rows without observing the query: an observer without a queryFn would
+// overwrite the shared query's options on every render and break the sync's retries.
+function useStoredTransactions(enabled: boolean): TransactionDto[] | undefined {
+  const queryClient = useQueryClient()
+  const subscribe = useCallback(
+    (notify: () => void) =>
+      enabled
+        ? queryClient.getQueryCache().subscribe((event) => {
+            if (event.query.queryKey[0] === queryKeys.transactions[0]) {
+              notify()
+            }
+          })
+        : () => {},
+    [queryClient, enabled],
+  )
+  return useSyncExternalStore(subscribe, () => (enabled ? queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions) : undefined))
+}
+
+/** The balance the server stores, without the waiting changes the list shows. */
+export function useStoredBalance(accountId: string | undefined): string | undefined {
+  const queryClient = useQueryClient()
+  const subscribe = useCallback(
+    (notify: () => void) =>
+      queryClient.getQueryCache().subscribe((event) => {
+        if (event.query.queryKey[0] === queryKeys.accounts[0]) {
+          notify()
+        }
+      }),
+    [queryClient],
+  )
+  return useSyncExternalStore(subscribe, () => queryClient.getQueryData<AccountDto[]>(queryKeys.accounts)?.find((a) => a.id === accountId)?.balance)
+}
 
 export function useAccounts() {
   const { data: user } = useUserData()
+  const ops = usePendingOps()
+  // an update or delete reverses the stored row's effect, so those need the rows (read without observing)
+  const needsRows = ops.some((op) => op.kind === 'tx-update' || op.kind === 'tx-delete')
+  const serverRows = useStoredTransactions(needsRows)
+  const userId = user?.id
+  // a waiting row counts from its day on, so midnight has to reach the memoized select
+  const today = useLocalDay()
+  // get-account-list response order differs from order-account-list; position is authoritative.
+  // Invites I have not accepted are surfaced by the sharing-requests modal, not the lists.
+  const select = useCallback(
+    (items: AccountDto[]) =>
+      overlayAccounts(
+        items.filter((a) => !isPendingForMe(a, userId)).sort((a, b) => a.position - b.position),
+        ops,
+        serverRows ?? [],
+        today,
+      ),
+    [userId, ops, serverRows, today],
+  )
   return useQuery({
     queryKey: queryKeys.accounts,
     queryFn: accountApi.getAccountList,
     staleTime: TEN_MINUTES,
-    // get-account-list response order differs from order-account-list; position is authoritative.
-    // Invites I have not accepted are surfaced by the sharing-requests modal, not the lists.
-    select: (items) =>
-      items
-        .filter((a) => !isPendingForMe(a, user?.id))
-        .sort((a, b) => a.position - b.position),
+    select,
   })
 }
 

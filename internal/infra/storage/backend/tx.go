@@ -92,6 +92,54 @@ func (m *TxManager) BeforeCommit(ctx context.Context, key any, fn func(ctx conte
 
 type ctxKey struct{}
 
+type commitHookKey struct{}
+
+// commitHook belongs to a whole request, not to one transaction, so a handler
+// that opens several top-level transactions must not fire it for each.
+type commitHook struct {
+	fn func(ctx context.Context) error
+
+	mu   sync.Mutex
+	done bool
+}
+
+func (h *commitHook) claim() bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.done {
+		return false
+	}
+	h.done = true
+	return true
+}
+
+func (h *commitHook) release() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.done = false
+}
+
+// WithCommitHook arranges for the first top-level transaction opened under the
+// returned context to run fn inside itself, after its unit of work and before
+// its BeforeCommit hooks; an error rolls that transaction back. Should that
+// transaction not commit, what fn wrote is gone and the next one runs it again.
+// A SAVEPOINT nested in a caller-managed transaction never runs it.
+func WithCommitHook(ctx context.Context, fn func(ctx context.Context) error) context.Context {
+	return context.WithValue(ctx, commitHookKey{}, &commitHook{fn: fn})
+}
+
+// CommitHookDone reports whether the hook installed by WithCommitHook has run
+// in a transaction that committed.
+func CommitHookDone(ctx context.Context) bool {
+	h, ok := ctx.Value(commitHookKey{}).(*commitHook)
+	if !ok {
+		return false
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.done
+}
+
 // ctxWithDBTX returns a child context carrying the given txState as the active
 // transaction for this unit of work.
 func ctxWithDBTX(ctx context.Context, st *txState) context.Context {
@@ -152,6 +200,14 @@ func (m *TxManager) top(ctx context.Context, fn func(ctx context.Context) error)
 	st := &txState{tx: tx}
 	txCtx := ctxWithDBTX(ctx, st)
 
+	hook, _ := ctx.Value(commitHookKey{}).(*commitHook)
+	hookClaimed, committed := false, false
+	defer func() {
+		if hookClaimed && !committed {
+			hook.release()
+		}
+	}()
+
 	defer func() {
 		if p := recover(); p != nil {
 			_ = tx.Rollback()
@@ -165,11 +221,19 @@ func (m *TxManager) top(ctx context.Context, fn func(ctx context.Context) error)
 		}
 		if cErr := tx.Commit(); cErr != nil {
 			err = fmt.Errorf("commit transaction: %w", cErr)
+			return
 		}
+		committed = true
 	}()
 
 	if err = fn(txCtx); err != nil {
 		return err
+	}
+	if hook != nil && hook.claim() {
+		hookClaimed = true
+		if err = hook.fn(txCtx); err != nil {
+			return err
+		}
 	}
 	st.mu.Lock()
 	hooks := append([]txHook(nil), st.hooks...)

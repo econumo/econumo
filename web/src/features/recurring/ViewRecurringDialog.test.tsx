@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { formatDateTime } from '@/lib/datetime'
@@ -113,4 +113,12 @@ it('colours the amount like a regular expense', async () => {
   expect(amount).not.toBeNull()
   expect(amount?.textContent).toContain('50.5')
   expect(amount?.textContent).toMatch(/^-/)
+})
+
+it('offline: post and skip are disabled', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderView({ onPost: () => {} })
+  expect(await screen.findByRole('button', { name: 'Post' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Skip' })).toBeDisabled()
 })

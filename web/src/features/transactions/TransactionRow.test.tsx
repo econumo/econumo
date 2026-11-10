@@ -220,3 +220,12 @@ describe('global mode (no page account)', () => {
     expect(screen.queryByTestId('tx-account-t1')).toBeNull()
   })
 })
+
+it('renders no not-saved marker on a row that has a waiting change', async () => {
+  const { loadPendingWrites, mutate } = await import('@/features/pendingWrites/store')
+  const { addChange } = await import('@/features/pendingWrites/queue')
+  await loadPendingWrites('u1')
+  await mutate((ops) => addChange(ops, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'k1', seq: 1 }, false))
+  renderRow()
+  expect(screen.queryByText('Not saved')).toBeNull()
+})

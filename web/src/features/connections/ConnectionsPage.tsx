@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { MoreVertical, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
@@ -21,6 +22,7 @@ import { useAcceptInvite, useConnections, useDeleteConnection, useGenerateInvite
 
 export function ConnectionsPage() {
   const { t, i18n } = useTranslation()
+  const online = useOnline()
   const { data: connections = [] } = useConnections({ poll: true })
   const generateInvite = useGenerateInvite()
   const acceptInvite = useAcceptInvite()
@@ -50,12 +52,13 @@ export function ConnectionsPage() {
             size="sm"
             aria-label={t('connections.pages.settings.generate_invite')}
             title={t('connections.pages.settings.generate_invite')}
+            disabled={!online}
             onClick={() => generateInvite.mutate(undefined, { onSuccess: setInvite })}
           >
             <UserPlus className="size-4" />
             <span className="hidden sm:inline">{t('connections.pages.settings.generate_invite')}</span>
           </Button>
-          <Button type="button" size="sm" variant="secondary" onClick={openAccept}>
+          <Button type="button" size="sm" variant="secondary" disabled={!online} onClick={openAccept}>
             {t('connections.pages.settings.accept_invite')}
           </Button>
         </div>
@@ -92,7 +95,7 @@ export function ConnectionsPage() {
                   </span>
                 </button>
                 {billingEnabled && needsAttention ? (
-                  <Button type="button" size="sm" variant="secondary" disabled={portal.pending} onClick={() => portal.open(connection.user.id)}>
+                  <Button type="button" size="sm" variant="secondary" disabled={portal.disabled} onClick={() => portal.open(connection.user.id)}>
                     {t('subscription.connections.pay_for', { name: connection.user.name })}
                   </Button>
                 ) : null}
@@ -104,7 +107,7 @@ export function ConnectionsPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onSelect={() => setPreview(connection)}>{t('common.button.view.label')}</DropdownMenuItem>
-                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(connection)}>
+                    <DropdownMenuItem variant="destructive" disabled={!online} onSelect={() => setDeleteTarget(connection)}>
                       {t('common.button.delete.label')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>

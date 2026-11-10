@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import type { AccountDto } from '@/api/dto/account'
 import { hasAccountAdminAccess } from '@/features/connections/shared'
+import { useOnline } from '@/hooks/useOnline'
 import { useUserData } from '@/features/user/queries'
 import { useAccountActions } from './useAccountActions'
 
@@ -23,6 +24,7 @@ export function AccountActionsMenu({
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const actions = useAccountActions()
+  const online = useOnline()
   const isOwner = account.owner.id === user?.id
   return (
     <>
@@ -45,9 +47,9 @@ export function AccountActionsMenu({
         <DropdownMenuContent align="end" onClick={stop} onKeyDown={stop}>
           <DropdownMenuItem onSelect={() => actions.edit(account)}>{t('common.button.edit.label')}</DropdownMenuItem>
           {user && hasAccountAdminAccess(account, user.id) ? (
-            <DropdownMenuItem onSelect={() => actions.access(account)}>{t('settings.accounts.list_actions.access')}</DropdownMenuItem>
+            <DropdownMenuItem disabled={!online} onSelect={() => actions.access(account)}>{t('settings.accounts.list_actions.access')}</DropdownMenuItem>
           ) : null}
-          <DropdownMenuItem variant="destructive" onSelect={() => actions.remove(account)}>
+          <DropdownMenuItem variant="destructive" disabled={!online} onSelect={() => actions.remove(account)}>
             {t(isOwner ? 'common.button.delete.label' : 'common.button.decline.label')}
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -5,6 +5,10 @@ import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
 import { formatDateTime } from '@/lib/datetime'
+import { addChange } from '@/features/pendingWrites/queue'
+import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
+import { delayTransactionCompletion } from '@/test/idbDelay'
+import { STORE_TIMEOUT_MS } from '@/lib/transactionStore'
 import { formatInboxCount, isDueRecurring, isSyncProblem, useInbox } from './useInbox'
 
 const owner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
@@ -201,4 +205,52 @@ it('is not loaded until the recurring list resolves', async () => {
   // the import queries settle, the recurring one never does
   await new Promise((r) => setTimeout(r, 50))
   expect(result.current.isLoaded).toBe(false)
+})
+
+it('counts refused changes made on this device, and not the ones still waiting', async () => {
+  const wrapper = makeWrapper()
+  server.use(...coreHandlers())
+  resetPendingWritesForTests()
+  await loadPendingWrites('u1')
+  await mutate((ops) => {
+    const refused = addChange(ops, { kind: 'limit', budgetId: 'b1', elementId: 'e1', period: '2026-07-01', amount: '5' }, { key: 'k1', seq: 1 })
+    const both = addChange(refused, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'k2', seq: 2 })
+    return both.map((op) => (op.key === 'k1' ? { ...op, status: 'failed' as const, error: 'no' } : op))
+  })
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  expect(result.current.failedWrites.map((op) => op.key)).toEqual(['k1'])
+  expect(result.current.count).toBe(1)
+})
+
+describe('isLoaded and the stored queue', () => {
+  const refused = (ops: Parameters<Parameters<typeof mutate>[0]>[0]) =>
+    addChange(ops, { kind: 'limit', budgetId: 'b', elementId: 'e', period: '2026-07-01', amount: '1' }, { key: 'k1', seq: 1 }).map((o) => ({ ...o, status: 'failed' as const, error: 'No' }))
+
+  async function storedAndReopened() {
+    localStorage.setItem('token', 'tok')
+    localStorage.setItem('sessionUserId', 'u1')
+    server.use(...coreHandlers())
+    await loadPendingWrites('u1')
+    await mutate(refused)
+    resetPendingWritesForTests()
+  }
+
+  it('waits for the refused changes on the disk, so "all caught up" cannot show before them', async () => {
+    await storedAndReopened()
+    const restore = delayTransactionCompletion(600)
+    const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+    await waitFor(() => expect(result.current.isLoaded).toBe(true), { timeout: STORE_TIMEOUT_MS * 2 })
+    restore()
+    expect(result.current.failedWrites).toHaveLength(1)
+  })
+
+  it('stops waiting when the database stalls', async () => {
+    await storedAndReopened()
+    const restore = delayTransactionCompletion(null)
+    const { result } = renderHook(() => useInbox(), { wrapper: makeWrapper() })
+    await waitFor(() => expect(result.current.isLoaded).toBe(true), { timeout: STORE_TIMEOUT_MS * 3 })
+    restore()
+    expect(result.current.failedWrites).toHaveLength(0)
+  })
 })

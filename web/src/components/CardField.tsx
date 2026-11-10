@@ -28,11 +28,13 @@ export function CardField({
   )
 }
 
+// The card is the field's frame, so a disabled control (offline) keeps no fill
+// of its own: the shared input's disabled background would show as a bar.
 export const cardFieldControlClass =
-  'h-auto rounded-none border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent'
+  'h-auto rounded-none border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent disabled:cursor-default disabled:bg-transparent dark:disabled:bg-transparent'
 
 // The oversized borderless money input (the transaction dialog's amount field).
 // Wrap the Input/CalculatorInput in a div with this class so the calculator
 // keypad stays inside the same card as the input.
 export const amountCardInputClass =
-  '[&_input]:h-12 [&_input]:rounded-none [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:text-[28px] [&_input]:font-light [&_input]:shadow-none [&_input]:focus-visible:ring-0 [&_input]:placeholder:text-muted-foreground/50'
+  '[&_input]:h-12 [&_input]:rounded-none [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:text-[28px] [&_input]:font-light [&_input]:shadow-none [&_input]:focus-visible:ring-0 [&_input]:placeholder:text-muted-foreground/50 [&_input]:disabled:bg-transparent dark:[&_input]:disabled:bg-transparent'

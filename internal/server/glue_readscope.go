@@ -41,3 +41,12 @@ func (g *readScopeGate) Authenticate(ctx context.Context, token string) (model.P
 func (g *readScopeGateWithLanguage) StoredLanguage(ctx context.Context, userID vo.Id) string {
 	return g.lang.StoredLanguage(ctx, userID)
 }
+
+// The guard finds its store by asserting on the outermost authenticator, so a
+// gate that hid the provider would switch idempotency off without an error.
+func (g *readScopeGate) IdempotencyStore() middleware.IdempotencyStore {
+	if p, ok := g.inner.(middleware.IdempotencyProvider); ok {
+		return p.IdempotencyStore()
+	}
+	return nil
+}

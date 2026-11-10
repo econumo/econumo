@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LoadingDialog } from '@/components/LoadingDialog'
@@ -23,6 +24,7 @@ const RESEND_COOLDOWN_SECONDS = 60
 
 export function ChangeEmailPage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const navigate = useNavigate()
   const requestChange = useRequestEmailChange()
   const confirmChange = useConfirmEmailChange()
@@ -175,7 +177,7 @@ export function ChangeEmailPage() {
             {requestErrors.password ? <p className="text-sm text-destructive">{requestErrors.password}</p> : null}
           </div>
           {requestError ? <p className="text-sm text-destructive">{requestError}</p> : null}
-          <Button type="submit" className="h-10 w-full font-normal lg:w-auto lg:min-w-44 lg:self-start" disabled={requestChange.isPending}>
+          <Button type="submit" className="h-10 w-full font-normal lg:w-auto lg:min-w-44 lg:self-start" disabled={requestChange.isPending || !online}>
             {t('user.change_email.form.submit.label')}
           </Button>
         </form>
@@ -209,14 +211,14 @@ export function ChangeEmailPage() {
             variant="secondary"
             className="h-11 w-full"
             onClick={onResend}
-            disabled={resend.isPending || cooldown > 0}
+            disabled={resend.isPending || cooldown > 0 || !online}
             title={t('user.change_email.confirm.action.resend')}
           >
             {cooldown > 0
               ? t('user.change_email.confirm.action.resend_in', { seconds: cooldown })
               : t('user.change_email.confirm.action.resend')}
           </Button>
-          <Button type="submit" className="h-10 w-full font-normal lg:w-auto lg:min-w-44 lg:self-start" disabled={confirmChange.isPending}>
+          <Button type="submit" className="h-10 w-full font-normal lg:w-auto lg:min-w-44 lg:self-start" disabled={confirmChange.isPending || !online}>
             {t('user.change_email.confirm.action.verify')}
           </Button>
         </form>

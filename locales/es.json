@@ -161,7 +161,12 @@
       "title": "Actualización necesaria",
       "blockedApp": "Esta aplicación es demasiado antigua para tu servidor de Econumo: se requiere la versión {version} o posterior. Actualiza la aplicación para continuar.",
       "blockedServer": "Esta aplicación requiere un servidor de Econumo {min} o posterior, pero tu servidor es {version}. Actualiza el servidor para continuar."
-    }
+    },
+    "offline_unavailable": {
+      "title": "No disponible sin conexión",
+      "text": "Estos datos no están disponibles sin conexión a internet."
+    },
+    "offline_notice": "Sin conexión a internet. Los datos son solo de lectura."
   },
   "accounts": {
     "folders": {
@@ -296,6 +301,7 @@
       "failing": "No se puede conectar con el servidor: reintentando",
       "full_reload": "Borrando la caché y recargando…",
       "hold_hint": "Mantén pulsado para borrar la caché y recargar",
+      "waiting": "{count} cambio esperando conexión a internet | {count} cambios esperando conexión a internet",
       "full_reload_offline": "Estás sin conexión. Borra la caché y recarga cuando vuelvas a estar en línea.",
       "offline": "Sin conexión"
     },
@@ -357,6 +363,7 @@
     }
   },
   "transactions": {
+    "not_saved": "Sin guardar",
     "modal": {
       "transaction_type": {
         "expense": "Gasto",
@@ -498,12 +505,26 @@
     "title": "Bandeja de entrada",
     "open": "Bandeja de entrada: {count} por revisar",
     "empty": "No hay notificaciones nuevas",
+    "failed_writes": {
+      "kind_create": "Nueva",
+      "kind_update": "Modificada",
+      "kind_delete": "Eliminada",
+      "delete_generic": "Transacción eliminada",
+      "limit": "{name}: plan de {amount} ({period})",
+      "limit_generic": "Plan de {amount} ({period})",
+      "limit_cleared": "{name}: plan eliminado ({period})",
+      "limit_cleared_generic": "Plan eliminado ({period})",
+      "retry": "Reintentar",
+      "discard": "Descartar",
+      "reason_unknown": "El servidor rechazó este cambio."
+    },
     "sections": {
       "due": "Transacciones programadas",
       "sharing": "Compartidos",
       "sync": "Problemas de sincronización",
       "failed": "Importaciones fallidas",
       "to_review": "Para revisar",
+      "failed_writes": "Sin guardar",
       "skipped": "Omitidos ({count})"
     },
     "due": {
@@ -1588,6 +1609,9 @@
           "header": "Archivados"
         }
       }
+    },
+    "limit": {
+      "not_saved": "Sin guardar"
     }
   },
   "reports": {

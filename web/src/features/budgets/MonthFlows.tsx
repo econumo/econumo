@@ -6,6 +6,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-ki
 import { besidePointer, centerRowOnPointer, snapRowToPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { PendingLimitMark } from '@/features/pendingWrites/NotSavedIcon'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
 import { cmp, isZero } from '@/lib/decimal'
@@ -117,6 +118,8 @@ function FlowRow({
 
 interface MonthFlowsProps {
   budget: BudgetDto
+  /** the month `budget` really holds, which a month switch can leave behind the selected one */
+  dataPeriod: string
   currencies: CurrencyDto[]
   /** null while get-budget-plan loads: the Income section waits for it */
   planMonth: PlanMonthFigures | null
@@ -149,6 +152,7 @@ interface MonthFlowsProps {
  *  Planned · Received · To receive, and Planned · Saved · Balance. */
 export function MonthFlows({
   budget,
+  dataPeriod,
   currencies,
   planMonth,
   future,
@@ -172,7 +176,13 @@ export function MonthFlows({
   }
   const planned = (target: FlowTarget, amount: string, currencyId: Id) => {
     const hint = sheetPlanHint(target)
-    return renderPlanned(target, amount === '' ? EMPTY_CELL : fmt(amount, currencyId), hint)
+    const figure = renderPlanned(target, amount === '' ? EMPTY_CELL : fmt(amount, currencyId), hint)
+    return (
+      <>
+        <PendingLimitMark budgetId={budget.meta.id} elementId={target.kind === 'plan' ? target.cell.element.id : target.row.id} period={dataPeriod} className="mr-1 align-middle" />
+        {figure}
+      </>
+    )
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const exchangeFn = makeBudgetExchange(budget, currencies)

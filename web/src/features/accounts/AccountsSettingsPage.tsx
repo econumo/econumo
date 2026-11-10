@@ -18,6 +18,7 @@ import { afterIdFromDrop } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
 import { isNotEmpty, isValidFolderName } from '@/lib/validation'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useOnline } from '@/hooks/useOnline'
 import { useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import type { AccountDto } from '@/api/dto/account'
@@ -49,8 +50,9 @@ const COLLAPSED_FOLDERS_KEY = 'settings.accounts.collapsedFolders'
 
 function AccountRow({ account, onPreview }: { account: AccountDto; onPreview: () => void }) {
   const isCompact = useIsCompact()
+  const online = useOnline()
   const [menuOpen, setMenuOpen] = useState(false)
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: account.id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: account.id, disabled: !online })
   return (
     <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={isDragging ? 'opacity-60' : undefined}>
       {/* the whole row is the click target: compact opens the preview sheet, desktop the context menu */}
@@ -61,7 +63,8 @@ function AccountRow({ account, onPreview }: { account: AccountDto; onPreview: ()
         <button
           type="button"
           aria-label={`drag ${account.name}`}
-          className="cursor-grab touch-none text-muted-foreground"
+          disabled={!online}
+          className="cursor-grab touch-none text-muted-foreground disabled:cursor-not-allowed disabled:opacity-40"
           onClick={(e) => e.stopPropagation()}
           {...attributes}
           {...(listeners ?? {})}
@@ -122,12 +125,13 @@ function FolderSection({
 }) {
   const { t } = useTranslation()
   const isCompact = useIsCompact()
+  const online = useOnline()
   const [menuOpen, setMenuOpen] = useState(false)
   // the section is both a sortable item (folder reorder, desktop) and a drop
   // container for accounts; the account droppable pauses during a folder drag
   const { attributes, listeners, setNodeRef: setSortableRef, transform, transition, isDragging } = useSortable({
     id: folder.id,
-    disabled: isCompact,
+    disabled: isCompact || !online,
   })
   const { setNodeRef: setDroppableRef } = useDroppable({ id: `folder:${folder.id}`, disabled: folderDragging })
   const isHidden = folder.isVisible === 0
@@ -150,7 +154,8 @@ function FolderSection({
           <button
             type="button"
             aria-label={`drag folder ${folder.name}`}
-            className="cursor-grab touch-none text-muted-foreground"
+            disabled={!online}
+            className="cursor-grab touch-none text-muted-foreground disabled:cursor-not-allowed disabled:opacity-40"
             onClick={(e) => e.stopPropagation()}
             {...attributes}
             {...(listeners ?? {})}
@@ -185,6 +190,7 @@ function FolderSection({
           variant="ghost"
           size="icon"
           aria-label={`add account to ${folder.name}`}
+          disabled={!online}
           onClick={(e) => {
             e.stopPropagation()
             onAction('add')
@@ -206,16 +212,16 @@ function FolderSection({
           </DropdownMenuTrigger>
           {/* portaled content still bubbles React clicks to the header — don't reopen the menu */}
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            {index > 0 ? <DropdownMenuItem onSelect={() => onAction('up')}>{t('common.button.up.label')}</DropdownMenuItem> : null}
+            {index > 0 ? <DropdownMenuItem disabled={!online} onSelect={() => onAction('up')}>{t('common.button.up.label')}</DropdownMenuItem> : null}
             {index < total - 1 ? (
-              <DropdownMenuItem onSelect={() => onAction('down')}>{t('common.button.down.label')}</DropdownMenuItem>
+              <DropdownMenuItem disabled={!online} onSelect={() => onAction('down')}>{t('common.button.down.label')}</DropdownMenuItem>
             ) : null}
-            <DropdownMenuItem onSelect={() => onAction('rename')}>{t('common.button.edit.label')}</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => onAction(folder.isVisible === 1 ? 'hide' : 'show')}>
+            <DropdownMenuItem disabled={!online} onSelect={() => onAction('rename')}>{t('common.button.edit.label')}</DropdownMenuItem>
+            <DropdownMenuItem disabled={!online} onSelect={() => onAction(folder.isVisible === 1 ? 'hide' : 'show')}>
               {folder.isVisible === 1 ? t('common.button.hide.label') : t('common.button.show.label')}
             </DropdownMenuItem>
             {index > 0 ? (
-              <DropdownMenuItem variant="destructive" onSelect={() => onAction('delete')}>
+              <DropdownMenuItem variant="destructive" disabled={!online} onSelect={() => onAction('delete')}>
                 {t('common.button.delete.label')}
               </DropdownMenuItem>
             ) : null}
@@ -233,6 +239,7 @@ function FolderSection({
 
 export function AccountsSettingsPage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: accounts = [] } = useAccounts()
   const { data: folders = [] } = useFolders()
   const { data: user } = useUserData()
@@ -377,7 +384,7 @@ export function AccountsSettingsPage() {
       title={t('settings.accounts.header')}
       backTo={RouterPage.SETTINGS}
       actions={
-        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+        <Button type="button" size="sm" disabled={!online} onClick={() => setCreateOpen(true)}>
           <FolderPlus className="size-4" />
           <span className="hidden sm:inline">{t('settings.accounts.create_folder')}</span>
         </Button>
@@ -386,7 +393,7 @@ export function AccountsSettingsPage() {
       <InfoBox>{t('settings.accounts.info')}</InfoBox>
 
       {accounts.length === 0 ? (
-        <button type="button" className="px-1 py-2 text-sm text-econumo-link underline" onClick={() => openAccountModal({ folderId: folders[0]?.id ?? null })}>
+        <button type="button" disabled={!online} className="px-1 py-2 text-sm text-econumo-link underline disabled:no-underline disabled:opacity-50" onClick={() => openAccountModal({ folderId: folders[0]?.id ?? null })}>
           {t('settings.accounts.list_empty_create')} {t('settings.accounts.list_empty_new_account')}
         </button>
       ) : null}
@@ -552,6 +559,7 @@ export function AccountsSettingsPage() {
             <Button
               type="button"
               variant="destructive"
+              disabled={!online}
               onClick={() => {
                 previewActions.remove(previewLive)
                 setPreviewAccount(null)

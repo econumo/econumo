@@ -1,5 +1,7 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
+import { loadPendingWrites, mutate } from '@/features/pendingWrites/store'
+import { addChange } from '@/features/pendingWrites/queue'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
@@ -202,4 +204,51 @@ it('useAccounts hides an account pending my acceptance, and shows it once accept
   )
   await result.current.refetch()
   await waitFor(() => expect(result.current.data?.map((a) => a.id)).toEqual(['a-real', 'a-pending']))
+})
+
+it('useAccounts leaves the transaction query\'s queryFn alone, so a retry still reaches it', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, retryDelay: 0 } } })
+  queryClient.setQueryData(queryKeys.accounts, [])
+  await loadPendingWrites('u1')
+  await mutate((ops) => addChange(ops, { kind: 'tx-delete', txId: 't1', previous: null }, { key: 'k1', seq: 1 }, false))
+  let calls = 0
+  let rerender: () => void = () => {}
+  const queryFn = vi.fn(async () => {
+    calls += 1
+    if (calls === 1) {
+      // a render of a useAccounts consumer between the attempts
+      rerender()
+      throw new Error('first attempt fails')
+    }
+    return []
+  })
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  const hook = renderHook(
+    () => ({ accounts: useAccounts(), txs: useQuery({ queryKey: queryKeys.transactions, queryFn }) }),
+    { wrapper },
+  )
+  rerender = () => hook.rerender()
+  await waitFor(() => expect(hook.result.current.txs.status).toBe('success'))
+  expect(queryFn).toHaveBeenCalledTimes(2)
+})
+
+it('useAccounts counts a waiting row dated tomorrow once midnight passes with the app open', async () => {
+  await loadPendingWrites('u1')
+  await mutate((ops) =>
+    addChange(ops, {
+      kind: 'tx-create',
+      txId: 't1',
+      payload: { id: 't1', type: 'expense', accountId: 'a-real', accountRecipientId: null, amount: '10', amountRecipient: null, categoryId: null, description: '', payeeId: null, tagId: null, labelIds: [], date: '2026-11-10 08:00:00' },
+    }, { key: 'k1', seq: 1 }),
+  )
+  vi.useFakeTimers({ now: new Date(2026, 10, 9, 23, 59, 30) })
+  onTestFinished(() => { vi.useRealTimers() })
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.user, wireUser)
+  queryClient.setQueryData(queryKeys.accounts, [wireAccount])
+  const { result } = renderHook(() => useAccounts(), { wrapper })
+  expect(result.current.data?.[0]?.balance).toBe('100.5')
+
+  await act(async () => { await vi.advanceTimersByTimeAsync(31_000) })
+  expect(result.current.data?.[0]?.balance).toBe('90.5')
 })

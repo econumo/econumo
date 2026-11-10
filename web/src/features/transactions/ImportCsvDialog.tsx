@@ -4,6 +4,7 @@ import { ArrowLeftRight, Split } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
@@ -34,6 +35,7 @@ interface ImportCsvDialogProps {
 
 export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogProps) {
   const { t, i18n } = useTranslation()
+  const online = useOnline()
   const queryClient = useQueryClient()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
@@ -435,7 +437,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
           <Button type="button" variant="secondary" disabled={submitting} onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="button" disabled={!analysis || !selectionValid(selection) || submitting} onClick={() => void handleSubmit()}>
+          <Button type="button" disabled={!online || !analysis || !selectionValid(selection) || submitting} onClick={() => void handleSubmit()}>
             {t('common.button.import.label')}
           </Button>
         </div>

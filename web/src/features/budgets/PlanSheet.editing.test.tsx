@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -572,4 +572,16 @@ it('a past month makes no transactions request', async () => {
   await new Promise((r) => setTimeout(r, 30))
   expect(seen).toEqual([])
   expect(screen.queryByTestId('upcoming-payments')).not.toBeInTheDocument()
+})
+
+it('offline: a plan cell still edits in place', async () => {
+  usePlanHandlers()
+  renderPage()
+  const { grid } = await gridAtFirstExpenseCell()
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  fireEvent.keyDown(grid, { key: '7' })
+  const input = await screen.findByRole('textbox', { name: 'Plan for Living, July' })
+  expect(input).toBeEnabled()
+  expect(input).toHaveValue('7')
 })

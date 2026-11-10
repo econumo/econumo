@@ -1,0 +1,25 @@
+import type { Id } from '@/api/types'
+import type { CreateTransactionDto, TransactionDto } from '@/api/dto/transaction'
+
+type OpBase = {
+  key: string
+  seq: number
+  /** A request may have reached the server: the key can no longer carry a different payload. */
+  attempted: boolean
+  status: 'waiting' | 'failed'
+  error?: string
+  retries: number
+  notBefore: number
+  /** The server was found to hold this change and the accounts cache was read back since, so the
+   *  balances already count it, and the persisted cache too after a reload. `realId` names the row
+   *  a replayed add became. */
+  landed?: { realId?: Id }
+}
+
+export type OpChange =
+  | { kind: 'tx-create'; txId: Id; payload: CreateTransactionDto }
+  | { kind: 'tx-update'; txId: Id; payload: CreateTransactionDto }
+  | { kind: 'tx-delete'; txId: Id; previous: TransactionDto | null }
+  | { kind: 'limit'; budgetId: Id; elementId: Id; period: string; amount: string | null }
+
+export type PendingOp = OpBase & OpChange

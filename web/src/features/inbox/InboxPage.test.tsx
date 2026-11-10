@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -367,4 +368,14 @@ it('does not list a due template on an account shared with me read-only', async 
   renderInbox()
   expect(await screen.findByText('All caught up')).toBeInTheDocument()
   expect(screen.queryByTestId('due-r-ro')).toBeNull()
+})
+
+it('offline with the import queue never loaded, the inbox says so instead of an error or a blank page', async () => {
+  server.use(...coreHandlers())
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderInbox()
+  expect(await screen.findByTestId('offline-unavailable')).toBeInTheDocument()
+  expect(screen.queryByText('Something went wrong. Please try again.')).toBeNull()
+  expect(screen.queryByText('All caught up')).toBeNull()
 })

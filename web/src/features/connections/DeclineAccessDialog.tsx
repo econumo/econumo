@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import type { UserDto } from '@/api/dto/user'
@@ -14,6 +15,7 @@ interface DeclineAccessDialogProps {
 
 export function DeclineAccessDialog({ open, owner, itemName, onDecline, onClose }: DeclineAccessDialogProps) {
   const { t } = useTranslation()
+  const online = useOnline()
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={owner?.name ?? ''}>
       <div className="flex flex-col gap-3">
@@ -30,7 +32,7 @@ export function DeclineAccessDialog({ open, owner, itemName, onDecline, onClose 
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="button" variant="destructive" onClick={onDecline}>
+          <Button type="button" variant="destructive" disabled={!online} onClick={onDecline}>
             {t('connections.modals.decline_access.decline_access')}
           </Button>
         </div>

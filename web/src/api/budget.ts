@@ -1,4 +1,4 @@
-import { api, apiUrl } from './client'
+import { api, apiUrl, writeConfig, type WriteOptions } from './client'
 import type { Id } from './types'
 import type {
   BudgetCommentDto,
@@ -126,8 +126,8 @@ export interface SetLimitForm {
   amount: string | null
 }
 
-export async function setLimit(form: SetLimitForm): Promise<void> {
-  await api.post(apiUrl('/api/v1/budget/set-limit'), form)
+export async function setLimit(form: SetLimitForm, opts?: WriteOptions): Promise<void> {
+  await api.post(apiUrl('/api/v1/budget/set-limit'), form, writeConfig(opts))
 }
 
 export interface EnvelopeForm {

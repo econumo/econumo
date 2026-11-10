@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
+import { onlineManager } from '@tanstack/react-query'
 import userEvent from '@testing-library/user-event'
 import { AccessLevelDialog } from './AccessLevelDialog'
 import { DeclineAccessDialog } from './DeclineAccessDialog'
@@ -57,4 +58,14 @@ it('decline dialog shows owner + item and fires onDecline', async () => {
   expect(screen.getByText('Their cash')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Decline access' }))
   expect(onDecline).toHaveBeenCalled()
+})
+
+it('offline: the role options and revoke are disabled', () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  render(
+    <AccessLevelDialog open kind="accounts" user={partner} role="user" onSelect={() => {}} onRevoke={() => {}} onClose={() => {}} />,
+  )
+  expect(screen.getByRole('button', { name: 'Full control' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Revoke access' })).toBeDisabled()
 })

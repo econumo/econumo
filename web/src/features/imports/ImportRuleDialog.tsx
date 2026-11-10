@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import type { CategoryType } from '@/api/dto/category'
 import type { ImportRuleAction, ImportRuleDto, ImportRuleSpecDto } from '@/api/dto/imports'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { CardField } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
@@ -40,6 +41,7 @@ interface ImportRuleDialogProps {
 
 export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: ImportRuleDialogProps) {
   const { t } = useTranslation()
+  const online = useOnline()
   const [spec, setSpec] = useState<ImportRuleSpecDto>(() => rule ? ruleSpec(rule) : initial ?? emptyRuleSpec(0))
   const { data: categories = [] } = useCategories()
   const { data: payees = [] } = usePayees()
@@ -49,8 +51,8 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
   const { mutate: runPreview } = preview
   const create = useCreateImportRule()
   const update = useUpdateImportRule()
-  const createCategory = useCreateCategory()
-  const createPayee = useCreatePayee()
+  const createCategory = useCreateCategory({ handlesOwnErrors: true })
+  const createPayee = useCreatePayee({ handlesOwnErrors: true })
   const { data: user } = useUserData()
   const { state: accessState } = useAccessState()
   const [addTagOpen, setAddTagOpen] = useState(false)
@@ -143,7 +145,7 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
                   <EntitySelect aria-label={t('imports.rules.editor.category')} value={spec.categoryId || null} clearable placeholder={t('imports.rules.editor.not_set')}
                     onChange={(id) => patch({ categoryId: id ?? '' })}
                     options={own(categories).filter((c) => c.type === categoryType && (!c.isArchived || c.id === spec.categoryId)).map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
-                    onCreate={canCreate ? (name) => createCategory.mutate(
+                    onCreate={canCreate && online ? (name) => createCategory.mutate(
                       { name, type: categoryType, ownerUserId: ownerId },
                       { onSuccess: (item) => patch({ categoryId: item.id }), onError: (err) => toast.error(apiErrorMessage(err)) },
                     ) : undefined}
@@ -168,7 +170,7 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
                 <EntitySelect aria-label={t('imports.rules.editor.payee')} value={spec.payeeId || null} clearable placeholder={t('imports.rules.editor.not_set')}
                   onChange={(id) => patch({ payeeId: id ?? '' })}
                   options={own(payees).filter((p) => !p.isArchived || p.id === spec.payeeId).map((p) => ({ value: p.id, label: p.name }))}
-                  onCreate={canCreate ? (name) => createPayee.mutate(
+                  onCreate={canCreate && online ? (name) => createPayee.mutate(
                     { name, ownerUserId: ownerId },
                     { onSuccess: (item) => patch({ payeeId: item.id }), onError: (err) => toast.error(apiErrorMessage(err)) },
                   ) : undefined}
@@ -181,7 +183,7 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
                       const next = toggleClassification({ tagId: s.tagId || null, labelIds: s.labelIds }, chip.kind, chip.id)
                       return { ...s, tagId: next.tagId ?? '', labelIds: next.labelIds }
                     })} />
-                    {canCreate ? (
+                    {canCreate && online ? (
                       <button type="button" aria-label={t('classifications.tags.forms.tag.add_button')} title={t('common.button.add.label')}
                         className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => setAddTagOpen(true)}>
                         <Plus className="size-4" />
@@ -198,7 +200,7 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
 
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>{t('common.button.cancel.label')}</Button>
-          <Button type="button" disabled={!canSave || create.isPending || update.isPending} onClick={() => void save()}>{t('common.button.save.label')}</Button>
+          <Button type="button" disabled={!canSave || !online || create.isPending || update.isPending} onClick={() => void save()}>{t('common.button.save.label')}</Button>
         </div>
       </div>
       <TagDialog open={addTagOpen} onClose={() => setAddTagOpen(false)} ownerUserId={ownerId}

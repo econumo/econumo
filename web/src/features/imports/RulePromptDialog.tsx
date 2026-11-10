@@ -5,6 +5,7 @@ import type { ImportRuleMatchField, ImportRuleMatchType, ImportRuleScopeDto, Imp
 import { useUiStore } from '@/app/uiStore'
 import type { RulePromptParams } from '@/app/uiStore'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
@@ -54,6 +55,7 @@ function useDiffSummary(diff: RulePromptParams['diff']) {
 
 function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () => void }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const { link, diff } = params
   const { data: rules = [] } = useImportRules()
   const existing = link.appliedRuleId ? rules.find((r) => r.id === link.appliedRuleId) ?? null : null
@@ -175,7 +177,7 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
           {includeEditedControl(alreadyEdited)}
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.skip_apply')}</Button>
-            <Button type="button" disabled={apply.isPending} onClick={() => void applyTo(runScope, 'all')}>{t('imports.rules.prompt.apply')}</Button>
+            <Button type="button" disabled={apply.isPending || !online} onClick={() => void applyTo(runScope, 'all')}>{t('imports.rules.prompt.apply')}</Button>
           </div>
         </>
       )
@@ -192,7 +194,7 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
           {includeEditedControl(allPreview.data?.alreadyEdited ?? 0)}
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.done')}</Button>
-            <Button type="button" disabled={apply.isPending || allPreview.isPending} onClick={() => void applyTo(ALL_SCOPE, null)}>{t('imports.rules.prompt.apply_all')}</Button>
+            <Button type="button" disabled={apply.isPending || allPreview.isPending || !online} onClick={() => void applyTo(ALL_SCOPE, null)}>{t('imports.rules.prompt.apply_all')}</Button>
           </div>
         </>
       )
@@ -226,7 +228,7 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
         </p>
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.not_now')}</Button>
-          <Button type="button" disabled={create.isPending || update.isPending || spec.matchValue.trim() === ''} onClick={() => void save()}>
+          <Button type="button" disabled={create.isPending || update.isPending || !online || spec.matchValue.trim() === ''} onClick={() => void save()}>
             {existing ? t('imports.rules.prompt.update_rule') : t('imports.rules.prompt.create_rule')}
           </Button>
         </div>

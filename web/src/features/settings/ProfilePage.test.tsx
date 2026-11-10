@@ -1,7 +1,8 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
+import { act } from 'react'
+import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
@@ -35,12 +36,17 @@ function renderWithHistory(initialEntries: string[], initialIndex: number) {
   )
 }
 
+function LogoutRoute() {
+  const { state } = useLocation()
+  return <div>LOGOUT ROUTE<span data-testid="logout-state">{state ? JSON.stringify(state) : ''}</span></div>
+}
+
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
     [
       { path: '/settings/profile', element: <ProfilePage /> },
-      { path: '/logout', element: <div>LOGOUT ROUTE</div> },
+      { path: '/logout', element: <LogoutRoute /> },
       { path: '/settings/profile/change-password', element: <div>CHANGE PASSWORD ROUTE</div> },
     ],
     { initialEntries: ['/settings/profile'] },
@@ -344,4 +350,28 @@ it('signs out after a passwordless user sets a password (the reset revoked this 
   await user.type(screen.getByLabelText(/new password/i), 'Password123!')
   await user.click(screen.getByRole('button', { name: 'Reset password' }))
   expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
+  // the same user signs back in, so what is waiting to be sent stays
+  expect(screen.getByTestId('logout-state')).toHaveTextContent('{"keepPendingWrites":true}')
+})
+
+it('a plain log out does not ask to keep the queue', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Log out'))
+  await user.click(await screen.findByRole('button', { name: 'Log out' }))
+  expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
+  expect(screen.getByTestId('logout-state')).toBeEmptyDOMElement()
+})
+
+it('offline the name reads as plain text in its card: read-only, no grey bar behind it', async () => {
+  renderPage()
+  const nameInput = await screen.findByLabelText('Name')
+  await waitFor(() => expect(nameInput).toHaveValue('Ada'))
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  await waitFor(() => expect(nameInput).toBeDisabled())
+  // the shared input's disabled fill is for bordered fields; a card field has none
+  expect(nameInput.className).not.toMatch(/(^|\s)(dark:)?disabled:bg-input/)
+  expect(nameInput.className).toContain('disabled:bg-transparent')
+  expect(nameInput.className).toContain('dark:disabled:bg-transparent')
 })

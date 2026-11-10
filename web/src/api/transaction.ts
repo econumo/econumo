@@ -1,4 +1,4 @@
-import { api, apiUrl } from './client'
+import { api, apiUrl, writeConfig, type WriteOptions } from './client'
 import type { Id } from './types'
 import type { AccountTransactionListDto, CreateTransactionDto, MoveTransactionDto, MoveTransactionResultDto, TransactionDto, TransactionItemDto } from './dto/transaction'
 
@@ -21,13 +21,14 @@ export async function getAccountTransactionList(accountIds?: Id[], signal?: Abor
   return response.data.data
 }
 
-export async function createTransaction(form: CreateTransactionDto): Promise<TransactionItemDto> {
-  const response = await api.post<Envelope<TransactionItemDto>>(apiUrl('/api/v1/transaction/create-transaction'), form)
+// The server mints the id; what the form holds is local to this device.
+export async function createTransaction({ id: _id, ...body }: CreateTransactionDto, opts?: WriteOptions): Promise<TransactionItemDto> {
+  const response = await api.post<Envelope<TransactionItemDto>>(apiUrl('/api/v1/transaction/create-transaction'), body, writeConfig(opts))
   return response.data.data
 }
 
-export async function updateTransaction(form: CreateTransactionDto): Promise<TransactionItemDto> {
-  const response = await api.post<Envelope<TransactionItemDto>>(apiUrl('/api/v1/transaction/update-transaction'), form)
+export async function updateTransaction(form: CreateTransactionDto, opts?: WriteOptions): Promise<TransactionItemDto> {
+  const response = await api.post<Envelope<TransactionItemDto>>(apiUrl('/api/v1/transaction/update-transaction'), form, writeConfig(opts))
   return response.data.data
 }
 
@@ -36,8 +37,8 @@ export async function moveTransaction(req: MoveTransactionDto): Promise<MoveTran
   return response.data.data
 }
 
-export async function deleteTransaction(id: Id): Promise<TransactionItemDto> {
-  const response = await api.post<Envelope<TransactionItemDto>>(apiUrl('/api/v1/transaction/delete-transaction'), { id })
+export async function deleteTransaction(id: Id, opts?: WriteOptions): Promise<TransactionItemDto> {
+  const response = await api.post<Envelope<TransactionItemDto>>(apiUrl('/api/v1/transaction/delete-transaction'), { id }, writeConfig(opts))
   return response.data.data
 }
 

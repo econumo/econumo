@@ -1,6 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -385,4 +385,13 @@ it('compact: the preview sheet shows a read-only access list to a non-admin memb
   expect(screen.queryByRole('button', { name: /Partner/ })).toBeNull()
   expect(screen.getByRole('button', { name: 'Decline' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+})
+
+it('offline: creating a folder and dragging are disabled', async () => {
+  renderPage()
+  await screen.findByTestId('folder-General')
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  expect(screen.getByRole('button', { name: 'Create folder' })).toBeDisabled()
+  await waitFor(() => expect(screen.getAllByRole('button', { name: /^drag / })[0]).toBeDisabled())
 })

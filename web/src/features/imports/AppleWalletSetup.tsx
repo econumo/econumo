@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { useCreatePersonalToken, usePersonalTokens, useRevokePersonalToken } from '@/features/settings/security'
 import { apiErrorMessage } from '@/lib/apiError'
 import { backendHost, getWebsiteUrl } from '@/lib/config'
@@ -97,6 +98,7 @@ function OpenShortcutsButton({ step }: { step: ShortcutsStep }) {
 
 export function AppleWalletConnect() {
   const { t } = useTranslation()
+  const online = useOnline()
   const createSource = useCreateImportSource()
   return (
     <div className="flex flex-col gap-4 rounded-lg bg-econumo-card px-4 py-4 text-sm">
@@ -133,7 +135,7 @@ export function AppleWalletConnect() {
           ))}
         </ol>
       </div>
-      <Button type="button" className="h-11" disabled={createSource.isPending} onClick={() => createSource.mutate({ provider: 'apple-wallet', name: 'iPhone' })}>
+      <Button type="button" className="h-11" disabled={createSource.isPending || !online} onClick={() => createSource.mutate({ provider: 'apple-wallet', name: 'iPhone' })}>
         {t('imports.apple_wallet.connect')}
       </Button>
     </div>
@@ -167,8 +169,9 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
   resetting: boolean
 }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const createToken = useCreatePersonalToken()
-  const revokeToken = useRevokePersonalToken()
+  const revokeToken = useRevokePersonalToken({ handlesOwnErrors: true })
   const tokens = usePersonalTokens()
   const configuringRef = useRef(false)
   // the open step follows the current one as steps complete
@@ -261,7 +264,7 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
                   <ExternalLink className="size-4" />{t('imports.apple_wallet.steps.configure.open')}
                 </ExternalButton>
               ) : (
-                <Button type="button" variant={isDone ? 'outline' : 'default'} className="h-10" disabled={configuring || resetting} onClick={() => void createLink()}>
+                <Button type="button" variant={isDone ? 'outline' : 'default'} className="h-10" disabled={configuring || resetting || !online} onClick={() => void createLink()}>
                   {t('imports.apple_wallet.steps.configure.button')}
                 </Button>
               )}
@@ -339,6 +342,7 @@ function Stepper({ setup, configuring, setConfiguring, resetting }: {
 
 export function AppleWalletSetup({ setup }: { setup: WalletSetup }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const complete = setup.complete
   // Run Immediately is optional, so a guide still showing it stays open until
   // the user folds it away.
@@ -364,7 +368,7 @@ export function AppleWalletSetup({ setup }: { setup: WalletSetup }) {
     <button
       type="button"
       className="flex min-h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-econumo-hover hover:text-econumo-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-      disabled={configuring || resetting}
+      disabled={configuring || resetting || !online}
       onClick={() => void reconfigure()}
     >
       <RotateCcw className="size-3.5" />{t('imports.apple_wallet.setup.reconfigure')}
@@ -412,11 +416,12 @@ export function AppleWalletSetup({ setup }: { setup: WalletSetup }) {
 
 export function AppleWalletDisconnect({ source }: { source: ImportSourceDto }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const deleteSource = useDeleteImportSource()
   const [disconnectOpen, setDisconnectOpen] = useState(false)
   return (
     <div className="flex justify-center pt-4">
-      <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDisconnectOpen(true)}>
+      <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" disabled={!online} onClick={() => setDisconnectOpen(true)}>
         {t('imports.apple_wallet.disconnect_full')}
       </Button>
       <ConfirmDialog

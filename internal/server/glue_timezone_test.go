@@ -40,7 +40,7 @@ func TestTimezoneTrackingAuthenticator(t *testing.T) {
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
 	userSvc := newTimezoneTestUserSvc(t, db)
-	authn := NewTimezoneTrackingAuthenticator(authstub.Authenticator{}, userSvc)
+	authn := NewTimezoneTrackingAuthenticator(authstub.Authenticator{}, userSvc, nil)
 
 	loc, err := time.LoadLocation("Europe/Amsterdam")
 	if err != nil {
@@ -91,14 +91,14 @@ func TestTimezoneTrackingAuthenticator_ReadScopeWritesNothing(t *testing.T) {
 	}
 	ctx := reqctx.WithExplicitLocation(context.Background(), loc)
 
-	if _, err := NewTimezoneTrackingAuthenticator(fixedScopeAuthenticator{uid, model.TokenScopeRead}, userSvc).Authenticate(ctx, "t"); err != nil {
+	if _, err := NewTimezoneTrackingAuthenticator(fixedScopeAuthenticator{uid, model.TokenScopeRead}, userSvc, nil).Authenticate(ctx, "t"); err != nil {
 		t.Fatal(err)
 	}
 	if tz, _ := userSvc.GetTimezone(context.Background(), uid); tz != "" {
 		t.Fatalf("a read token persisted timezone %q", tz)
 	}
 
-	if _, err := NewTimezoneTrackingAuthenticator(fixedScopeAuthenticator{uid, model.TokenScopeMCP}, userSvc).Authenticate(ctx, "t"); err != nil {
+	if _, err := NewTimezoneTrackingAuthenticator(fixedScopeAuthenticator{uid, model.TokenScopeMCP}, userSvc, nil).Authenticate(ctx, "t"); err != nil {
 		t.Fatal(err)
 	}
 	if tz, _ := userSvc.GetTimezone(context.Background(), uid); tz != "Europe/Amsterdam" {

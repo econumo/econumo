@@ -13,6 +13,8 @@ import { EntityIcon } from '@/components/EntityIcon'
 import { UserAvatar } from '@/components/UserAvatar'
 import { moneyFormat } from '@/lib/money'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useOnline } from '@/hooks/useOnline'
+import { usePendingOps } from '@/features/pendingWrites/hooks'
 import { useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { useAccounts } from './queries'
@@ -37,6 +39,8 @@ export function AccountPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
+  const online = useOnline()
+  const pendingOps = usePendingOps()
   const { id } = useParams()
   const { data: accounts } = useAccounts()
   const { data: user } = useUserData()
@@ -110,7 +114,13 @@ export function AccountPage() {
   const canTouchRow = (tx: ViewTransaction): boolean => canTouchTransaction(tx, canChangeTransaction)
   // reordering writes only this account's order, so write access to it is
   // enough; moving to another day edits the transaction (canTouchRow)
-  const canDrag = (tx: ViewTransaction): boolean => canChangeTransaction && !tx.recurring && search.trim() === ''
+  // a row waiting or refused in the queue has no server row to move yet
+  const canDrag = (tx: ViewTransaction): boolean =>
+    online &&
+    canChangeTransaction &&
+    !tx.recurring &&
+    search.trim() === '' &&
+    !pendingOps.some((op) => op.kind !== 'limit' && op.txId === tx.id)
 
   const dropTransaction = (tx: ViewTransaction, drop: HistoryDrop, dayChanged: boolean) => {
     if (dayChanged && !canTouchRow(tx)) {
@@ -246,6 +256,7 @@ export function AccountPage() {
       )}
 
       <HistoryDragProvider
+        accountId={account.id}
         entries={entries}
         onDrop={dropTransaction}
         renderOverlay={(tx) => <TransactionRow transaction={tx} pageAccount={account} />}
@@ -359,6 +370,7 @@ export function AccountPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           variant="destructive"
+                          disabled={!online}
                           onSelect={() => setRecurringDeleteTarget(entry.transaction.recurring ?? null)}
                         >
                           {t('common.button.delete.label')}
@@ -442,6 +454,7 @@ export function AccountPage() {
         confirmLabel={t('common.button.delete.label')}
         cancelLabel={t('common.button.cancel.label')}
         destructive
+        offlineOk
       />
 
       {recurringPreview ? (

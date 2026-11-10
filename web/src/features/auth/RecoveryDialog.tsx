@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
@@ -16,6 +17,7 @@ interface RecoveryForm {
 
 export function RecoveryDialog({ open, onClose, onSuccess, email }: { open: boolean; onClose: () => void; onSuccess?: () => void; email?: string }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const [isCodeSent, setIsCodeSent] = useState(false)
   const remind = useRemindPassword()
   const reset = useResetPassword()
@@ -114,7 +116,7 @@ export function RecoveryDialog({ open, onClose, onSuccess, email }: { open: bool
               <Button type="button" variant="secondary" onClick={onClose}>
                 {t('common.button.cancel.label')}
               </Button>
-              <Button type="submit" disabled={reset.isPending}>
+              <Button type="submit" disabled={reset.isPending || !online}>
                 {t('auth.form.access_recovery.action.change_password.label')}
               </Button>
             </div>
@@ -128,7 +130,7 @@ export function RecoveryDialog({ open, onClose, onSuccess, email }: { open: bool
               <Button type="button" variant="secondary" onClick={onClose}>
                 {t('common.button.cancel.label')}
               </Button>
-              <Button type="submit" disabled={remind.isPending}>
+              <Button type="submit" disabled={remind.isPending || !online}>
                 {t('auth.form.access_recovery.action.recover.label')}
               </Button>
             </div>

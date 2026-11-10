@@ -1,24 +1,29 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
-import type { BudgetCommentDto, BudgetDto, BudgetMetaDto, BudgetPlanDto, PlanCellDto } from '@/api/dto/budget'
+import type { BudgetCommentDto, BudgetDto, BudgetTransactionListDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
 import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { apiErrorMessage } from '@/lib/apiError'
 import { compareNames } from '@/lib/collate'
-import { add, cmp, sub } from '@/lib/decimal'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyMove } from '@/lib/ordering'
 import type { ElementMoveItem } from './elementMove'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
+import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { followsCurrentPeriod, useBudgetPeriodStore } from './budgetStore'
 import { addMonths, monthDiff } from './planMath'
+import { usePendingOps } from '@/features/pendingWrites/hooks'
+import { patchBudgetLimit, patchPlanLimit } from '@/features/pendingWrites/limitPatches'
+import { overlayBudget, overlayBudgetTransactions, overlayPlan } from '@/features/pendingWrites/overlay'
+import { submitChange } from '@/features/pendingWrites/submit'
 import { budgetCurrentPeriod, currentPeriod, periodStartDayOf } from './period'
+import type { OwnErrorHandling } from '@/lib/appQueryClient'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -36,10 +41,11 @@ export function useBudgets() {
   })
 }
 
-export function useCreateBudget() {
+export function useCreateBudget({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
   return useMutation({
+    meta: { handlesOwnErrors },
     mutationFn: async (form: budgetApi.CreateBudgetForm & { ownerUserId?: Id }) => {
       // Vue guard: a same-name own budget resolves without an API call
       const existing = queryClient
@@ -143,6 +149,10 @@ export function useBudget() {
   const resetFoldsFor = useBudgetPeriodStore((s) => s.resetFoldsFor)
   const budgetId = userOption(user, UserOptions.BUDGET)
   const periodSettled = useDefaultPeriodSettled(budgetId)
+  const ops = usePendingOps()
+  // Placeholder data is another period's: its waiting limits are matched by the
+  // period it really holds, never the selected one.
+  const shownPeriod = useRef(selectedDate)
 
   useEffect(() => {
     if (budgetId) {
@@ -150,79 +160,49 @@ export function useBudget() {
     }
   }, [budgetId, resetFoldsFor])
 
-  return useQuery<BudgetDto | null>({
+  const query = useQuery<BudgetDto | null>({
     queryKey: [...queryKeys.budget, budgetId ?? 'none', selectedDate],
     queryFn: () => (budgetId ? budgetApi.getBudget(budgetId, selectedDate) : Promise.resolve(null)),
     enabled: user !== undefined && periodSettled,
     staleTime: TEN_MINUTES,
+    // no default budget needs no server: offline, 'online' would pause the
+    // query and the page would say the month is not saved instead of offering
+    // to create a budget
+    networkMode: budgetId ? 'online' : 'always',
     // month switches keep showing the previous period instead of a blank page
     placeholderData: keepPreviousData,
   })
+  if (!query.isPlaceholderData) {
+    shownPeriod.current = selectedDate
+  }
+  const period = shownPeriod.current
+  const { data } = query
+  const overlaid = useMemo(() => (data && budgetId ? overlayBudget(data, ops, budgetId, period) : data), [data, ops, budgetId, period])
+  return { ...query, data: overlaid, dataPeriod: period } as typeof query & { dataPeriod: string }
 }
 
 export function useSetLimit() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (form: { budgetId: Id; elementId: Id; period: string; amount: string | null }) =>
-      budgetApi.setLimit(form),
+      submitChange(queryClient, { kind: 'limit', ...form }, (opts) => budgetApi.setLimit(form, opts)),
     onMutate: async (form) => {
       // optimistic budgeted patch with rollback (Vue parity: instant cell feedback)
       const key = [...queryKeys.budget, form.budgetId, form.period]
       await queryClient.cancelQueries({ queryKey: key })
-      const previous = queryClient.getQueryData<BudgetDto | null>(key)
-      queryClient.setQueryData<BudgetDto | null>(key, (prev) => {
-        if (!prev) {
-          return prev
-        }
-        const budgeted = form.amount ?? ''
-        const isBudgeted = form.amount === null ? (0 as const) : (1 as const)
-        const savings = prev.structure.savings
-        // from the current month on a savings row's closing balance still expects
-        // its unmet plan, so the edit moves it by the change in that gap
-        const projected = form.period >= currentPeriod(periodStartDayOf(prev.meta))
-        const gap = (planned: string, spent: string) => (cmp(planned, spent) > 0 ? sub(planned, spent) : '0')
-        return {
-          ...prev,
-          structure: {
-            ...prev.structure,
-            elements: prev.structure.elements.map((el) => (el.id === form.elementId ? { ...el, budgeted, isBudgeted } : el)),
-            // a savings row carries no carry-over: its available is planned minus saved
-            ...(savings
-              ? {
-                  savings: savings.map((row) =>
-                    row.id === form.elementId
-                      ? {
-                          ...row,
-                          budgeted,
-                          isBudgeted,
-                          available: sub(budgeted, row.spent),
-                          ...(projected && row.isArchived === 0 && row.closingBalance !== undefined
-                            ? { closingBalance: add(sub(row.closingBalance, gap(row.budgeted, row.spent)), gap(budgeted, row.spent)) }
-                            : {}),
-                        }
-                      : row,
-                  ),
-                }
-              : {}),
-          },
-        }
-      })
-      return { previous, key }
+      return { patch: patchBudgetLimit(queryClient, key, form) }
     },
-    onError: (_err, _form, context) => {
-      if (context) {
-        queryClient.setQueryData(context.key, context.previous)
+    onError: (_err, _form, context) => context?.patch.withdraw(),
+    // A queued change is not an error: the overlay shows it, so the raw cache
+    // goes back to server truth and a discarded change leaves nothing behind.
+    // A direct success is confirmed (caches invalidated, metric fired) by
+    // submitChange, a queued one by the sender once it lands.
+    onSuccess: (res, _form, context) => {
+      if (res.queued) {
+        context?.patch.withdraw()
+      } else {
+        context?.patch.confirm()
       }
-    },
-    onSuccess: (_data, form) => {
-      trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
-      // budget-mode edits patch only the budget-page cache above; the plan cache
-      // (a different window/query key) must be invalidated too or the plan sheet
-      // keeps showing the pre-edit limit until something else happens to refetch it
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
-      // every later month moves too: a budget carries over (what a month shows as
-      // left from earlier months), and a savings plan moves later closing balances
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
     },
   })
 }
@@ -249,6 +229,11 @@ export function planFetchWindow(firstMonth: string, visibleMonths: number, start
 export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number, startDay: number) {
   const { from, months } = planFetchWindow(firstMonth, visibleMonths, startDay)
   const planKey = [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const
+  const ops = usePendingOps()
+  const select = useCallback(
+    (plan: BudgetPlanDto | null) => (plan && budgetId ? overlayPlan(plan, ops, budgetId) : plan),
+    [ops, budgetId],
+  )
   const query = useQuery<BudgetPlanDto | null>({
     queryKey: planKey,
     queryFn: () => (budgetId ? budgetApi.getBudgetPlan(budgetId, from, months) : Promise.resolve(null)),
@@ -256,60 +241,31 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
     staleTime: TEN_MINUTES,
     // shifting months keeps showing the previous window instead of a blank sheet
     placeholderData: keepPreviousData,
+    select,
   })
   return { ...query, fetchFrom: from, planKey }
-}
-
-// A plan row's id is either an element's or, for a savings row, the savings
-// account's; the two sets never collide, so one patch covers both arrays.
-function patchPlanCells(
-  plan: BudgetPlanDto | null | undefined,
-  elementId: Id,
-  patch: (cell: PlanCellDto, monthIndex: number) => PlanCellDto,
-): BudgetPlanDto | null | undefined {
-  if (!plan) {
-    return plan
-  }
-  const patchRow = <T extends { id: Id; cells: PlanCellDto[] }>(row: T): T =>
-    row.id === elementId ? { ...row, cells: row.cells.map(patch) } : row
-  const { savings } = plan.structure
-  return {
-    ...plan,
-    structure: {
-      ...plan.structure,
-      elements: plan.structure.elements.map(patchRow),
-      ...(savings ? { savings: savings.map(patchRow) } : {}),
-    },
-  }
 }
 
 export function usePlanSetLimit(planKey: readonly unknown[]) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (form: { budgetId: Id; elementId: Id; period: string; amount: string | null; monthIndex: number }) =>
-      budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: form.period, amount: form.amount }),
+      submitChange(
+        queryClient,
+        { kind: 'limit', budgetId: form.budgetId, elementId: form.elementId, period: form.period, amount: form.amount },
+        (opts) => budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: form.period, amount: form.amount }, opts),
+      ),
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
-      const previous = queryClient.getQueryData<BudgetPlanDto | null>(planKey)
-      const planned = form.amount === null ? '' : form.amount
-      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) =>
-        patchPlanCells(prev, form.elementId, (c, i) => (i === form.monthIndex ? { ...c, planned } : c)),
-      )
-      return { previous }
+      return { patch: patchPlanLimit(queryClient, planKey, { elementId: form.elementId, monthIndex: form.monthIndex, planned: form.amount ?? '' }) }
     },
-    onError: (_err, _form, context) => {
-      if (context) {
-        queryClient.setQueryData(planKey, context.previous)
+    onError: (_err, _form, context) => context?.patch.withdraw(),
+    onSuccess: (res, _form, context) => {
+      if (res.queued) {
+        context?.patch.withdraw()
+      } else {
+        context?.patch.confirm()
       }
-    },
-    onSuccess: (_res, form) => {
-      trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
-      // the budget-page cache is now stale: that month's figures, and for a savings
-      // row the projected closing balance of every later month. Every cached plan
-      // window of the budget resyncs too, not just this one: later months' balances
-      // are cumulative, and each phone month switch caches a window of its own
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
     },
   })
 }
@@ -319,19 +275,27 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
   return useMutation({
     mutationFn: (form: { budgetId: Id; elementId: Id; amount: string; targets: { period: string; monthIndex: number }[] }) =>
       Promise.all(
-        form.targets.map((t) =>
-          budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: t.period, amount: form.amount === '' ? null : form.amount }),
-        ),
+        form.targets.map((t) => {
+          const amount = form.amount === '' ? null : form.amount
+          return submitChange(
+            queryClient,
+            { kind: 'limit', budgetId: form.budgetId, elementId: form.elementId, period: t.period, amount },
+            (opts) => budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: t.period, amount }, opts),
+          )
+        }),
       ),
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
-      const covered = new Set(form.targets.map((t) => t.monthIndex))
-      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) =>
-        patchPlanCells(prev, form.elementId, (c, i) => (covered.has(i) ? { ...c, planned: form.amount } : c)),
-      )
+      return { patches: form.targets.map((t) => patchPlanLimit(queryClient, planKey, { elementId: form.elementId, monthIndex: t.monthIndex, planned: form.amount })) }
     },
-    onSuccess: () => {
+    onSuccess: (results, _form, context) => {
       trackEvent(METRICS.BUDGET_PLAN_FILL_RIGHT)
+      // waiting targets show through the overlay; the raw cache keeps server truth
+      results.forEach((r, i) => {
+        if (r.queued) {
+          context?.patches[i]?.withdraw()
+        }
+      })
     },
     // No partial rollback: any failure means some months may have landed, so both a
     // success and a failure need the same resync — the budget-page caches (every
@@ -339,7 +303,8 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
     // plus every cached plan window of the budget — from the server rather than trusting the
     // optimistic patch. Invalidating here (not split across onSuccess/onError) also
     // means it happens exactly once regardless of outcome.
-    onSettled: (_res, _err, form) => {
+    onSettled: (_res, _err, form, context) => {
+      context?.patches.forEach((patch) => patch.confirm())
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
     },
@@ -509,10 +474,11 @@ function sameIdSet(a: Id[], b: Id[]): boolean {
   return set.size === new Set(b).size && b.every((id) => set.has(id))
 }
 
-export function useUpdateBudgetDetail() {
+export function useUpdateBudgetDetail({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
   return useMutation({
+    meta: { handlesOwnErrors },
     // previousSavingsAccountIds is client-only: the set the dialog opened with,
     // so the metric fires only when the request actually changes a flag
     mutationFn: ({ previousSavingsAccountIds: _prev, ...form }: budgetApi.UpdateBudgetForm & { previousSavingsAccountIds?: Id[] }) =>
@@ -541,16 +507,29 @@ export function useUpdateBudgetDetail() {
 }
 
 export function useBudgetTransactions(params: budgetApi.BudgetTransactionsParams | null) {
+  const ops = usePendingOps()
+  const { data: categories } = useCategories()
+  const { data: payees } = usePayees()
+  const { data: tags } = useTags()
+  const { data: budgets } = useBudgets()
+  const meta = budgets?.find((b) => b.id === params?.budgetId)
+  const select = useCallback((list: BudgetTransactionListDto) => {
+    const lookups = { categories, payees, tags }
+    const listing = params ? { params: [params], meta } : undefined
+    return { ...list, items: overlayBudgetTransactions(list.items, ops, lookups, listing), upcoming: overlayBudgetTransactions(list.upcoming, ops, lookups, listing) }
+  }, [ops, categories, payees, tags, params, meta])
   return useQuery({
     queryKey: [...queryKeys.budgetTransactions, params],
     queryFn: () => budgetApi.getBudgetTransactions(params as budgetApi.BudgetTransactionsParams),
     enabled: params !== null,
+    select,
   })
 }
 
-export function useGrantBudgetAccess() {
+export function useGrantBudgetAccess({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors },
     mutationFn: (form: { budgetId: Id; userId: Id; role: string }) => budgetApi.grantAccess(form),
     onSuccess: (items) => {
       queryClient.setQueryData(queryKeys.budgets, items)

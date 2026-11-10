@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { IconPicker } from '@/components/IconPicker'
@@ -22,6 +23,7 @@ interface CategoryDialogProps {
 
 export function CategoryDialog({ open, category, onClose, onSubmit, fixedType }: CategoryDialogProps) {
   const { t } = useTranslation()
+  const online = useOnline()
   const isNew = !category
   const [name, setName] = useState('')
   const [type, setType] = useState<CategoryType>('expense')
@@ -60,7 +62,7 @@ export function CategoryDialog({ open, category, onClose, onSubmit, fixedType }:
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="category-dialog-form">
+          <Button type="submit" form="category-dialog-form" disabled={!online}>
             {isNew ? t('common.button.create.label') : t('common.button.update.label')}
           </Button>
         </div>

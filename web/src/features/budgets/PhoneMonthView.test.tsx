@@ -8,6 +8,8 @@ import { useBudgetPeriodStore } from './budgetStore'
 import type { PlanMonthFigures } from './phoneMonth'
 import { PhoneMonthView } from './PhoneMonthView'
 import type { PhoneMonthViewProps } from './PhoneMonthView'
+import { addChange } from '@/features/pendingWrites/queue'
+import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
@@ -39,6 +41,15 @@ function incomeOf(row: { element: PlanElementDto; planned: string; actual: strin
   }
 }
 
+it('marks a waiting limit by the month the figures belong to, not the month selected', async () => {
+  resetPendingWritesForTests()
+  await loadPendingWrites('u1')
+  await mutate((ops) => addChange(ops, { kind: 'limit', budgetId: coerceBudgetFixture(fixtureWireBudget).meta.id, elementId: 'cat-food', period: '2026-07-01', amount: '9' }, { key: 'k', seq: 1 }))
+  renderView({ selectedDate: '2026-08-01', dataPeriod: '2026-07-01' })
+  expect(await screen.findAllByRole('img', { name: 'Not saved' })).toHaveLength(1)
+  resetPendingWritesForTests()
+})
+
 function renderView(overrides: Partial<PhoneMonthViewProps> = {}, mutate?: (b: BudgetDto) => void) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
   mutate?.(budget)
@@ -47,6 +58,7 @@ function renderView(overrides: Partial<PhoneMonthViewProps> = {}, mutate?: (b: B
     buckets: bucketElements(budget, makeBudgetExchange(budget, [usd, eur])),
     currencies: [usd, eur],
     selectedDate: '2026-07-01',
+    dataPeriod: '2026-07-01',
     planMonth,
     commentsByCell: new Map(),
     onOpenSheet: vi.fn(),

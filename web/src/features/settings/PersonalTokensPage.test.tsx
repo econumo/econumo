@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -174,4 +175,11 @@ it('expiresAtFrom computes UTC datetimes from choices', () => {
   expect(expiresAtFrom('d365', '', now)).toBe('2027-07-10 12:00:00')
   expect(expiresAtFrom('custom', '2030-01-01', now)).toBe('2030-01-01 23:59:59')
   expect(expiresAtFrom('never', '', now)).toBeNull()
+})
+
+it('offline with nothing loaded on this device, the token list says so instead of an empty or loading page', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderPage()
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not available offline')
 })

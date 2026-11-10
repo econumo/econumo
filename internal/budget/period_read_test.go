@@ -729,3 +729,17 @@ func TestCarryOverLegacyThirtyFirstStart(t *testing.T) {
 	sameAmount(t, "march spent", row.Spent, "10")
 	sameAmount(t, "march available", row.Available, "-15")
 }
+
+func TestSetLimitPinsItsIdempotencyKey(t *testing.T) {
+	h := newPeriodHarness(t, 1, time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC))
+	ctx := reqctx.WithIdempotencyResource(context.Background())
+	a := vo.NewFlexString("10")
+	if _, err := h.svc.SetLimit(ctx, h.owner, model.SetLimitRequest{
+		BudgetId: h.budgetID, ElementId: h.category, Period: "2026-10-01", Amount: &a,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !reqctx.IdempotencyPinned(ctx) {
+		t.Fatal("set-limit must pin its key once the limit is written")
+	}
+}

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
+import { useOnline } from '@/hooks/useOnline'
 import type { UserDto } from '@/api/dto/user'
 
 export type GrantableRole = 'guest' | 'user' | 'admin'
@@ -24,6 +25,7 @@ const OPTIONS: GrantableRole[] = ['guest', 'user', 'admin']
 export function AccessLevelDialog({ open, kind, user, role, onSelect, onRevoke, onClose }: AccessLevelDialogProps) {
   const { t } = useTranslation()
   const [confirmRevoke, setConfirmRevoke] = useState(false)
+  const online = useOnline()
   return (
     <>
       <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={user?.name ?? ''}>
@@ -40,7 +42,8 @@ export function AccessLevelDialog({ open, kind, user, role, onSelect, onRevoke, 
                 key={option}
                 type="button"
                 aria-pressed={role === option}
-                className={`rounded-md px-3 py-2.5 text-left text-sm hover:bg-accent ${role === option ? 'bg-accent font-medium' : ''}`}
+                disabled={!online}
+                className={`rounded-md px-3 py-2.5 text-left text-sm hover:bg-accent disabled:pointer-events-none disabled:opacity-50 ${role === option ? 'bg-accent font-medium' : ''}`}
                 onClick={() => onSelect(option)}
               >
                 {t(`connections.${kind}.roles.${option}`)}
@@ -49,7 +52,8 @@ export function AccessLevelDialog({ open, kind, user, role, onSelect, onRevoke, 
             {role && role !== 'owner' ? (
               <button
                 type="button"
-                className="rounded-md px-3 py-2.5 text-left text-sm text-destructive hover:bg-accent"
+                disabled={!online}
+                className="rounded-md px-3 py-2.5 text-left text-sm text-destructive hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
                 onClick={() => setConfirmRevoke(true)}
               >
                 {t('connections.modals.share_access.revoke_access')}

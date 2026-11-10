@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { previousPathname } from '@/lib/navigation'
 import { RouterPage } from '@/app/router-pages'
+import { OfflineNotice } from '@/components/OfflineNotice'
 
 interface Crumb {
   label: string
@@ -26,10 +27,12 @@ interface SettingsShellProps {
   actions?: ReactNode
   /** desktop-only control sitting on the heading's right edge */
   titleAction?: ReactNode
+  /** something on the page can still be changed offline (queued), so it gets no offline notice */
+  editableOffline?: boolean
   children: ReactNode
 }
 
-export function SettingsShell({ title, heading, backTo, crumbs, actions, titleAction, children }: SettingsShellProps) {
+export function SettingsShell({ title, heading, backTo, crumbs, actions, titleAction, editableOffline = false, children }: SettingsShellProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
@@ -86,6 +89,7 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, titleAc
           ) : null}
         </header>
       )}
+      {editableOffline ? null : <OfflineNotice className="lg:max-w-xl" />}
       {/* -mx/px pair: 4px of in-scroller breathing room so focus rings at the
           content edge aren't clipped (overflow-y:auto also clips the x axis).
           On desktop the content column is capped like the settings hub, so

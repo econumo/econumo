@@ -161,7 +161,12 @@
       "title": "Mise à jour requise",
       "blockedApp": "Cette application est trop ancienne pour votre serveur Econumo : la version {version} ou ultérieure est requise. Veuillez mettre à jour l'application pour continuer.",
       "blockedServer": "Cette application nécessite un serveur Econumo {min} ou ultérieur, mais votre serveur est en {version}. Veuillez mettre à jour le serveur pour continuer."
-    }
+    },
+    "offline_unavailable": {
+      "title": "Indisponible hors ligne",
+      "text": "Ces données ne sont pas disponibles sans connexion Internet."
+    },
+    "offline_notice": "Pas de connexion Internet. Les données sont en lecture seule."
   },
   "accounts": {
     "folders": {
@@ -296,6 +301,7 @@
       "failing": "Serveur injoignable — nouvelle tentative",
       "full_reload": "Vidage du cache et rechargement…",
       "hold_hint": "Maintenez pour vider le cache et recharger",
+      "waiting": "{count} modification en attente d'une connexion Internet | {count} modifications en attente d'une connexion Internet",
       "full_reload_offline": "Vous êtes hors ligne. Videz le cache et rechargez une fois de nouveau en ligne.",
       "offline": "Pas de connexion"
     },
@@ -357,6 +363,7 @@
     }
   },
   "transactions": {
+    "not_saved": "Non enregistrée",
     "modal": {
       "transaction_type": {
         "expense": "Dépense",
@@ -498,12 +505,26 @@
     "title": "Boîte de réception",
     "open": "Boîte de réception, {count} en attente",
     "empty": "Aucune nouvelle notification",
+    "failed_writes": {
+      "kind_create": "Ajout",
+      "kind_update": "Modification",
+      "kind_delete": "Suppression",
+      "delete_generic": "Transaction supprimée",
+      "limit": "{name} : plan de {amount} ({period})",
+      "limit_generic": "Plan de {amount} ({period})",
+      "limit_cleared": "{name} : plan supprimé ({period})",
+      "limit_cleared_generic": "Plan supprimé ({period})",
+      "retry": "Réessayer",
+      "discard": "Abandonner",
+      "reason_unknown": "Le serveur a refusé cette modification."
+    },
     "sections": {
       "due": "Transactions planifiées",
       "sharing": "Partages",
       "sync": "Problèmes de synchronisation",
       "failed": "Importations échouées",
       "to_review": "À vérifier",
+      "failed_writes": "Non enregistré",
       "skipped": "Ignorés ({count})"
     },
     "due": {
@@ -1588,6 +1609,9 @@
           "header": "Archivés"
         }
       }
+    },
+    "limit": {
+      "not_saved": "Non enregistré"
     }
   },
   "reports": {

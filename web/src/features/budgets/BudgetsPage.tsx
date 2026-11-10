@@ -12,6 +12,7 @@ import { v7 as uuidv7 } from "uuid";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
+import { useOnline } from "@/hooks/useOnline";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,11 +60,12 @@ export function BudgetsPage() {
   const { data: user } = useUserData();
   const { data: budgets = [] } = useBudgets();
   const { data: connections = [] } = useConnections();
-  const createBudget = useCreateBudget();
+  const online = useOnline();
+  const createBudget = useCreateBudget({ handlesOwnErrors: true });
   const deleteBudget = useDeleteBudget();
   const updateDefaultBudget = useUpdateDefaultBudget();
   const declineAccess = useDeclineBudgetAccess();
-  const grantAccess = useGrantBudgetAccess();
+  const grantAccess = useGrantBudgetAccess({ handlesOwnErrors: true });
   const revokeAccess = useRevokeBudgetAccess();
   const archiveBudget = useArchiveBudget();
   const unarchiveBudget = useUnarchiveBudget();
@@ -122,8 +124,8 @@ export function BudgetsPage() {
               ? `default budget ${budget.name}`
               : `set default ${budget.name}`
           }
-          disabled={isDefault || !accepted || budget.isArchived === 1}
-          className="text-muted-foreground disabled:opacity-100"
+          disabled={isDefault || !accepted || budget.isArchived === 1 || !online}
+          className={`text-muted-foreground ${isDefault ? "disabled:opacity-100" : "disabled:opacity-50"}`}
           onClick={() => updateDefaultBudget.mutate(budget.id)}
         >
           <Bookmark
@@ -164,12 +166,17 @@ export function BudgetsPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {accepted ? (
-              <DropdownMenuItem onSelect={() => goTo(budget)}>
+              // switching the default budget is a write
+              <DropdownMenuItem
+                disabled={!online && defaultBudgetId !== budget.id}
+                onSelect={() => goTo(budget)}
+              >
                 {t("budgets.page.settings.list_actions.go_to")}
               </DropdownMenuItem>
             ) : null}
             {user && hasBudgetAdminAccess(budget, user.id) ? (
               <DropdownMenuItem
+                disabled={!online}
                 onSelect={() => {
                   // grant state changes on the partner's device — refresh first
                   void queryClient.invalidateQueries({ queryKey: queryKeys.budgets });
@@ -180,19 +187,20 @@ export function BudgetsPage() {
               </DropdownMenuItem>
             ) : null}
             {user && hasBudgetAdminAccess(budget, user.id) ? (
-              <DropdownMenuItem onSelect={() => setDuplicateTarget(budget)}>
+              <DropdownMenuItem disabled={!online} onSelect={() => setDuplicateTarget(budget)}>
                 {t("budgets.page.settings.list_actions.duplicate")}
               </DropdownMenuItem>
             ) : null}
             {user &&
             hasBudgetAdminAccess(budget, user.id) &&
             budget.isArchived === 0 ? (
-              <DropdownMenuItem onSelect={() => setCompleteTarget(budget)}>
+              <DropdownMenuItem disabled={!online} onSelect={() => setCompleteTarget(budget)}>
                 {t("budgets.page.settings.list_actions.complete")}
               </DropdownMenuItem>
             ) : null}
             {user && hasBudgetAdminAccess(budget, user.id) ? (
               <DropdownMenuItem
+                disabled={!online}
                 onSelect={() =>
                   budget.isArchived === 1
                     ? unarchiveBudget.mutate(budget.id)
@@ -207,6 +215,7 @@ export function BudgetsPage() {
             {budget.ownerUserId !== user?.id ? (
               <DropdownMenuItem
                 variant="destructive"
+                disabled={!online}
                 onSelect={() => setDeclineTarget(budget)}
               >
                 {t("common.button.decline.label")}
@@ -215,6 +224,7 @@ export function BudgetsPage() {
             {user && hasBudgetAdminAccess(budget, user.id) ? (
               <DropdownMenuItem
                 variant="destructive"
+                disabled={!online}
                 onSelect={() => setDeleteTarget(budget)}
               >
                 {t("common.button.delete.label")}
@@ -231,7 +241,7 @@ export function BudgetsPage() {
       title={t("budgets.page.settings.header")}
       backTo={RouterPage.SETTINGS}
       actions={
-        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+        <Button type="button" size="sm" disabled={!online} onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" />
           <span className="hidden sm:inline">
             {t("budgets.page.settings.create_budget")}
