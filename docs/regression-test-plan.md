@@ -2749,6 +2749,12 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       offline. The default budget's previous, current and next month open in the Budget view and
       the Plan with their figures; any other month says "This month isn't saved on this device".
       Still true after a day away (device clock forward 25 h) once the app was online at the start.
+      The Plan shows its figures offline at phone width and on a wide desktop (1440 px), and the
+      Plan's months up to six periods either side of today do too; a budget that starts this
+      month also opens the month before it offline.
+- [ ] While online, saving several transactions in a row on Home (no budget page open) does not
+      fire a burst of `get-budget` / `get-budget-plan` requests per save: the budget months refetch
+      once, about 3 s after the last save.
 - [ ] 📱 Offline, a budget opened on a month this device never loaded keeps its header with the
       back button on a phone (the budget name next to it), so the page can be left.
 - [ ] Offline, the OAuth consent page (`/oauth/authorize?...`) says "Not saved on this device"

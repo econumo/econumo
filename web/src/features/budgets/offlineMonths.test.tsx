@@ -6,13 +6,16 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget, fixtureWirePlan } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { useBudgetPeriodStore } from './budgetStore'
-import { monthPlanSpan, useBudget, useBudgetPlan } from './queries'
+import { monthPlanSpan, planFetchWindow, useBudget, useBudgetPlan } from './queries'
+import { addMonths, monthDiff } from './planMath'
 import { useKeepBudgetMonths } from './offlineMonths'
 
 const userWith = (budget: string | null) => ({
   ...fixtureUser,
   options: fixtureUser.options.map((o) => (o.name === 'budget' ? { ...o, value: budget } : o)),
 })
+
+const DELAY = 60
 
 function makeClient() {
   // gcTime 0: anything left unobserved is dropped at once
@@ -57,13 +60,13 @@ describe('useKeepBudgetMonths', () => {
     `budget ${id} 2026-06-01`,
     `budget ${id} 2026-07-01`,
     `budget ${id} 2026-08-01`,
-    `plan ${id} 2026-04-01 7`,
+    `plan ${id} 2026-01-01 13`,
   ]
 
   it('fetches the previous, current and next period and one plan window, once', async () => {
     const client = makeClient()
     client.setQueryData(queryKeys.user, userWith('b1'))
-    const { rerender } = renderHook(() => useKeepBudgetMonths(), { wrapper: wrapperFor(client) })
+    const { rerender } = renderHook(() => useKeepBudgetMonths(DELAY), { wrapper: wrapperFor(client) })
     await waitFor(() => expect([...requests].sort()).toEqual(expectedSet('b1')))
     rerender()
     await new Promise((r) => setTimeout(r, 50))
@@ -73,7 +76,7 @@ describe('useKeepBudgetMonths', () => {
   it('fetches nothing without a default budget', async () => {
     const client = makeClient()
     client.setQueryData(queryKeys.user, userWith(null))
-    renderHook(() => useKeepBudgetMonths(), { wrapper: wrapperFor(client) })
+    renderHook(() => useKeepBudgetMonths(DELAY), { wrapper: wrapperFor(client) })
     await waitFor(() => expect(client.getQueryData(queryKeys.budgets)).toBeDefined())
     await new Promise((r) => setTimeout(r, 50))
     expect(requests).toEqual([])
@@ -84,7 +87,7 @@ describe('useKeepBudgetMonths', () => {
     client.setQueryData(queryKeys.user, userWith('b1'))
     client.setQueryData(queryKeys.budgets, [fixtureWireBudget.meta])
     onlineManager.setOnline(false)
-    renderHook(() => useKeepBudgetMonths(), { wrapper: wrapperFor(client) })
+    renderHook(() => useKeepBudgetMonths(DELAY), { wrapper: wrapperFor(client) })
     await new Promise((r) => setTimeout(r, 50))
     expect(requests).toEqual([])
     act(() => onlineManager.setOnline(true))
@@ -95,7 +98,7 @@ describe('useKeepBudgetMonths', () => {
     const client = makeClient()
     client.setQueryData(queryKeys.user, userWith('b1'))
     const wrapper = wrapperFor(client)
-    renderHook(() => useKeepBudgetMonths(), { wrapper })
+    renderHook(() => useKeepBudgetMonths(DELAY), { wrapper })
     await waitFor(() => expect(requests).toHaveLength(4))
 
     for (const month of ['2026-06-01', '2026-07-01', '2026-08-01']) {
@@ -114,7 +117,7 @@ describe('useKeepBudgetMonths', () => {
     const client = makeClient()
     client.setQueryData(queryKeys.user, userWith('b1'))
     const wrapper = wrapperFor(client)
-    renderHook(() => useKeepBudgetMonths(), { wrapper })
+    renderHook(() => useKeepBudgetMonths(DELAY), { wrapper })
     await waitFor(() => expect(requests).toHaveLength(4))
     useBudgetPeriodStore.setState({ selectedDate: '2026-11-01', periodChosen: true })
     const { result, unmount } = renderHook(() => useBudget(), { wrapper })
@@ -126,25 +129,54 @@ describe('useKeepBudgetMonths', () => {
     for (const month of ['2026-06-01', '2026-07-01', '2026-08-01']) {
       expect(client.getQueryData([...queryKeys.budget, 'b1', month])).toBeDefined()
     }
-    expect(client.getQueryData([...queryKeys.budgetPlan, 'b1', '2026-04-01', 7])).toBeDefined()
+    expect(client.getQueryData([...queryKeys.budgetPlan, 'b1', '2026-01-01', 13])).toBeDefined()
   })
 
-  it('refetches the set once after a write invalidates the budget queries', async () => {
+  it('a burst of invalidations refetches the kept set once, after a pause', async () => {
     const client = makeClient()
     client.setQueryData(queryKeys.user, userWith('b1'))
-    renderHook(() => useKeepBudgetMonths(), { wrapper: wrapperFor(client) })
+    renderHook(() => useKeepBudgetMonths(DELAY), { wrapper: wrapperFor(client) })
     await waitFor(() => expect(requests).toHaveLength(4))
-    await act(() => client.invalidateQueries({ queryKey: queryKeys.budget }))
-    await act(() => client.invalidateQueries({ queryKey: queryKeys.budgetPlan }))
-    await waitFor(() => expect(requests).toHaveLength(8))
-    await new Promise((r) => setTimeout(r, 50))
+    for (let i = 0; i < 5; i++) {
+      await act(() => client.invalidateQueries({ queryKey: queryKeys.budget }))
+      await act(() => client.invalidateQueries({ queryKey: queryKeys.budgetPlan }))
+      await new Promise((r) => setTimeout(r, 10))
+    }
+    // nothing yet: no page shows the budget
+    expect(requests).toHaveLength(4)
+    await waitFor(() => expect([...requests.slice(4)].sort()).toEqual(expectedSet('b1')))
+    await new Promise((r) => setTimeout(r, DELAY * 3))
     expect(requests).toHaveLength(8)
+  })
+
+  it('a Budget page on screen still refetches its month at once', async () => {
+    const client = makeClient()
+    client.setQueryData(queryKeys.user, userWith('b1'))
+    const wrapper = wrapperFor(client)
+    renderHook(() => useKeepBudgetMonths(DELAY), { wrapper })
+    await waitFor(() => expect(requests).toHaveLength(4))
+    useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', periodChosen: true })
+    renderHook(() => useBudget(), { wrapper })
+    await act(() => client.invalidateQueries({ queryKey: queryKeys.budget }))
+    expect(requests.slice(4)).toEqual(['budget b1 2026-07-01'])
+    // the rest of the set follows after the pause, the page's month not again
+    await waitFor(() => expect([...requests.slice(5)].sort()).toEqual(['budget b1 2026-06-01', 'budget b1 2026-08-01']))
+    await new Promise((r) => setTimeout(r, DELAY * 3))
+    expect(requests).toHaveLength(7)
+  })
+
+  it('keeps the period before the first of a budget that starts this period', async () => {
+    const client = makeClient()
+    client.setQueryData(queryKeys.user, userWith('b1'))
+    client.setQueryData(queryKeys.budgets, [{ ...fixtureWireBudget.meta, startedAt: '2026-07-01 00:00:00' }])
+    renderHook(() => useKeepBudgetMonths(DELAY), { wrapper: wrapperFor(client) })
+    await waitFor(() => expect([...requests].sort()).toEqual(expectedSet('b1')))
   })
 
   it('a new default budget prefetches its own set', async () => {
     const client = makeClient()
     client.setQueryData(queryKeys.user, userWith('b1'))
-    renderHook(() => useKeepBudgetMonths(), { wrapper: wrapperFor(client) })
+    renderHook(() => useKeepBudgetMonths(DELAY), { wrapper: wrapperFor(client) })
     await waitFor(() => expect(requests).toHaveLength(4))
     act(() => client.setQueryData(queryKeys.user, userWith('b2')))
     await waitFor(() => expect([...requests.slice(4)].sort()).toEqual(expectedSet('b2')))
@@ -153,26 +185,36 @@ describe('useKeepBudgetMonths', () => {
   it('a new current period prefetches the new set', async () => {
     const client = makeClient()
     client.setQueryData(queryKeys.user, userWith('b1'))
-    renderHook(() => useKeepBudgetMonths(), { wrapper: wrapperFor(client) })
+    renderHook(() => useKeepBudgetMonths(DELAY), { wrapper: wrapperFor(client) })
     await waitFor(() => expect(requests).toHaveLength(4))
     vi.setSystemTime(new Date(2026, 7, 2, 9))
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'))
     })
     // July and August are still fresh; September and the moved plan window are new
-    await waitFor(() => expect([...requests.slice(4)].sort()).toEqual(['budget b1 2026-09-01', 'plan b1 2026-05-01 7']))
+    await waitFor(() => expect([...requests.slice(4)].sort()).toEqual(['budget b1 2026-09-01', 'plan b1 2026-02-01 13']))
   })
 })
 
 describe('monthPlanSpan', () => {
-  it('gives the previous, current and next period one window', () => {
+  it('gives the previous, current and next period the kept window', () => {
     const spans = ['2026-06-01', '2026-07-01', '2026-08-01'].map((m) => monthPlanSpan(m, '2026-07-01'))
     expect(spans).toEqual([spans[0], spans[0], spans[0]])
-    expect(spans[0]).toEqual({ first: '2026-06-01', visible: 3 })
+    expect(planFetchWindow(spans[0].first, spans[0].visible, 1, new Date(2026, 6, 15))).toEqual({ from: '2026-01-01', months: 13 })
   })
 
-  it('reaches out to a month further away', () => {
-    expect(monthPlanSpan('2026-03-01', '2026-07-01')).toEqual({ first: '2026-03-01', visible: 6 })
-    expect(monthPlanSpan('2026-10-01', '2026-07-01')).toEqual({ first: '2026-06-01', visible: 5 })
+  it('a month further away keeps the window it had: from it, or from the current period to it', () => {
+    expect(monthPlanSpan('2026-05-01', '2026-07-01')).toEqual({ first: '2026-05-01', visible: 1 })
+    expect(monthPlanSpan('2026-09-01', '2026-07-01')).toEqual({ first: '2026-07-01', visible: 3 })
+  })
+
+  it('a far future month stays inside the fetched window', () => {
+    const now = new Date(2026, 6, 15)
+    for (const ahead of [2, 21]) {
+      const selected = addMonths('2026-07-01', ahead)
+      const span = monthPlanSpan(selected, '2026-07-01')
+      const w = planFetchWindow(span.first, span.visible, 1, now)
+      expect(monthDiff(w.from, selected)).toBeLessThan(w.months)
+    }
   })
 })

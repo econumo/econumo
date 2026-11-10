@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
@@ -24,6 +24,8 @@ import { overlayBudget, overlayBudgetTransactions, overlayPlan } from '@/feature
 import { submitChange } from '@/features/pendingWrites/submit'
 import { budgetCurrentPeriod, currentPeriod, periodStartDayOf } from './period'
 import type { OwnErrorHandling } from '@/lib/appQueryClient'
+import { useOnline } from '@/hooks/useOnline'
+import { coveredPlan, findCoveringPlan } from './planCover'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -242,20 +244,32 @@ export function budgetPlanQueryOptions(budgetId: Id | null, from: string, months
   }
 }
 
-/** the Budget view's plan months: never less than the previous, current and next
- *  period, so those three share one window (the one kept for offline use) */
+/** periods either side of the current one the kept plan window spans
+ *  (useKeepBudgetMonths), so the windows the Plan and Budget views ask for
+ *  near today fall inside it offline */
+export const KEPT_PLAN_REACH = 6
+
+/** the Budget view's plan months. Within one period of the current one it is the
+ *  kept window (the buffer of planFetchWindow brings it to KEPT_PLAN_REACH either
+ *  side), so the previous, current and next period share it. Further away the
+ *  window runs from the selected month, or from the current period to it: the
+ *  server books only what precedes the window, so a future month's Balance needs
+ *  every unmet plan from the current period on inside it. */
 export function monthPlanSpan(selected: string, current: string): { first: string; visible: number } {
-  const prev = addMonths(current, -1)
-  const next = addMonths(current, 1)
-  const first = selected < prev ? selected : prev
-  const last = selected > next ? selected : next
-  return { first, visible: monthDiff(first, last) + 1 }
+  const reach = KEPT_PLAN_REACH - PLAN_BUFFER
+  if (Math.abs(monthDiff(current, selected)) <= 1) {
+    return { first: addMonths(current, -reach), visible: 2 * reach + 1 }
+  }
+  const first = selected < current ? selected : current
+  return { first, visible: monthDiff(first, selected) + 1 }
 }
 
 export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number, startDay: number) {
   const { from, months } = planFetchWindow(firstMonth, visibleMonths, startDay)
   const { queryKey: planKey, ...planOptions } = budgetPlanQueryOptions(budgetId, from, months)
   const ops = usePendingOps()
+  const online = useOnline()
+  const queryClient = useQueryClient()
   const select = useCallback(
     (plan: BudgetPlanDto | null) => (plan && budgetId ? overlayPlan(plan, ops, budgetId) : plan),
     [ops, budgetId],
@@ -268,6 +282,37 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
     placeholderData: keepPreviousData,
     select,
   })
+  // Offline, a window this device never fetched under its own key (another width,
+  // a clamped start, a period that rolled over) is served from a cached window
+  // of the budget holding all its months. Only ever returned, never stored under
+  // this key, so the next online fetch replaces it.
+  const ownData = query.data !== undefined && !query.isPlaceholderData
+  const wantsCover = budgetId !== null && !ownData && (!online || query.fetchStatus === 'paused')
+  const coverFirst = [firstMonth, currentPeriod(startDay)].sort()[0]
+  const coverLast = addMonths(firstMonth, visibleMonths - 1)
+  const cover = useSyncExternalStore(
+    useCallback((onChange: () => void) => queryClient.getQueryCache().subscribe(onChange), [queryClient]),
+    () => (wantsCover && budgetId ? findCoveringPlan(queryClient, budgetId, coverFirst, coverLast) : undefined),
+  )
+  const fetchLast = addMonths(from, months - 1)
+  const covered = useMemo(
+    () => (cover && budgetId ? overlayPlan(coveredPlan(cover, fetchLast), ops, budgetId) : undefined),
+    [cover, fetchLast, ops, budgetId],
+  )
+  if (covered) {
+    return {
+      ...query,
+      data: covered,
+      isPlaceholderData: false,
+      isPending: false,
+      isSuccess: true,
+      isError: false,
+      error: null,
+      status: 'success',
+      fetchFrom: from,
+      planKey,
+    } as typeof query & { fetchFrom: string; planKey: typeof planKey }
+  }
   return { ...query, fetchFrom: from, planKey }
 }
 
