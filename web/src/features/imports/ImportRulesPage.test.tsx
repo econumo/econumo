@@ -258,5 +258,5 @@ it('offline with nothing loaded on this device, the rule list says so instead of
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   renderPage()
-  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not saved on this device')
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not available offline')
 })

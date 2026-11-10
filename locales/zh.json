@@ -163,10 +163,10 @@
       "blockedServer": "此应用需要 {min} 或更新版本的 Econumo 服务器，而您的服务器为 {version}。请更新服务器后继续。"
     },
     "offline_unavailable": {
-      "title": "未保存到此设备",
-      "text": "这些数据未保存到此设备。请联网后加载。"
+      "title": "离线时不可用",
+      "text": "没有网络连接时无法查看这些数据。"
     },
-    "offline_notice": "当前处于离线状态。此页面仅可查看，联网后才能修改。"
+    "offline_notice": "无网络连接。数据仅可查看。"
   },
   "accounts": {
     "folders": {
@@ -301,7 +301,7 @@
       "failing": "无法连接到服务器——正在重试",
       "full_reload": "正在清除缓存并重新加载…",
       "hold_hint": "长按可清除缓存并重新加载",
-      "waiting": "{count} 项更改待发送",
+      "waiting": "{count} 项更改等待网络连接",
       "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。",
       "offline": "无网络连接"
     },

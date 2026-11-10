@@ -163,10 +163,10 @@
       "blockedServer": "This app requires Econumo server {min} or newer, but your server is {version}. Please update the server to continue."
     },
     "offline_unavailable": {
-      "title": "Not saved on this device",
-      "text": "This data isn't saved on this device. Connect to the internet to load it."
+      "title": "Not available offline",
+      "text": "This data isn't available without an internet connection."
     },
-    "offline_notice": "You're offline. You can look around, but changes here need a connection."
+    "offline_notice": "No internet connection. Data is view-only."
   },
   "accounts": {
     "folders": {
@@ -301,7 +301,7 @@
       "failing": "Can't reach the server — retrying",
       "full_reload": "Clearing the cache and reloading…",
       "hold_hint": "Hold to clear the cache and reload",
-      "waiting": "{count} change waiting to be sent | {count} changes waiting to be sent",
+      "waiting": "{count} change waiting for an internet connection | {count} changes waiting for an internet connection",
       "full_reload_offline": "You're offline. Clear the cache and reload when you're back online.",
       "offline": "No connection"
     },

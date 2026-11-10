@@ -611,7 +611,7 @@ when a source file fires a mutation without reading `useOnline`, unless it is li
 reason in `OFFLINE_EXEMPT` or goes through a shared component in `OFFLINE_VIA_SHARED`. So a new
 write control needs the hook or an entry there. A page whose writes are all off says so offline
 with one inline notice under its header, `OfflineNotice` (`web/src/components/OfflineNotice.tsx`,
-"You're offline. You can look around, but changes here need a connection."; never a top banner or
+"No internet connection. Data is view-only."; never a top banner or
 a toast): `SettingsShell` renders it unless the page passes `editableOffline` (the Inbox), and the
 Settings hub, Getting started and the OAuth consent page render it themselves; Home, account pages,
 Budget/Plan, the Inbox and Reports show none. `web/src/lib/offline-notice-coverage.test.ts` fails

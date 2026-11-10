@@ -163,10 +163,10 @@
       "blockedServer": "Esta aplicação requer o servidor Econumo {min} ou mais recente, mas o seu servidor é {version}. Atualize o servidor para continuar."
     },
     "offline_unavailable": {
-      "title": "Não guardado neste dispositivo",
-      "text": "Estes dados não estão guardados neste dispositivo. Ligue-se à internet para os carregar."
+      "title": "Indisponível offline",
+      "text": "Estes dados não estão disponíveis sem ligação à internet."
     },
-    "offline_notice": "Está offline. Aqui só pode consultar; para fazer alterações precisa de ligação à internet."
+    "offline_notice": "Sem ligação à internet. Os dados são apenas de leitura."
   },
   "accounts": {
     "folders": {
@@ -301,7 +301,7 @@
       "failing": "Não é possível contactar o servidor — a tentar novamente",
       "full_reload": "A limpar a cache e a recarregar…",
       "hold_hint": "Mantenha premido para limpar a cache e recarregar",
-      "waiting": "{count} alteração por enviar | {count} alterações por enviar",
+      "waiting": "{count} alteração à espera de ligação à internet | {count} alterações à espera de ligação à internet",
       "full_reload_offline": "Está offline. Limpe a cache e recarregue quando voltar a estar online.",
       "offline": "Sem ligação"
     },

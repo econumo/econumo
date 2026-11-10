@@ -228,5 +228,5 @@ it('offline with nothing loaded on this device, the linked accounts list says so
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   renderPage()
-  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not saved on this device')
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not available offline')
 })
