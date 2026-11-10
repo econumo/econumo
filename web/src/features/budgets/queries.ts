@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { hashKey, keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
@@ -17,13 +17,15 @@ import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { followsCurrentPeriod, useBudgetPeriodStore } from './budgetStore'
-import { addMonths, monthDiff } from './planMath'
+import { addMonths, monthDiff, PLAN_COLUMNS_MAX } from './planMath'
 import { usePendingOps } from '@/features/pendingWrites/hooks'
 import { patchBudgetLimit, patchPlanLimit } from '@/features/pendingWrites/limitPatches'
 import { overlayBudget, overlayBudgetTransactions, overlayPlan } from '@/features/pendingWrites/overlay'
 import { submitChange } from '@/features/pendingWrites/submit'
 import { budgetCurrentPeriod, currentPeriod, periodStartDayOf } from './period'
 import type { OwnErrorHandling } from '@/lib/appQueryClient'
+import { useOnline } from '@/hooks/useOnline'
+import { coveredPlan, findCoveringPlan } from './planCover'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -143,6 +145,20 @@ export function useDefaultPeriodSettled(budgetId: Id | null): boolean {
   return !meta || budgetCurrentPeriod(meta) === selectedDate
 }
 
+// One definition for the page and for useKeepBudgetMonths, so the months kept
+// for offline use land under the very keys the page reads.
+export function budgetQueryOptions(budgetId: Id | null, period: string) {
+  return {
+    queryKey: [...queryKeys.budget, budgetId ?? 'none', period] as const,
+    queryFn: (): Promise<BudgetDto | null> => (budgetId ? budgetApi.getBudget(budgetId, period) : Promise.resolve(null)),
+    staleTime: TEN_MINUTES,
+    // no default budget needs no server: offline, 'online' would pause the
+    // query and the page would say the month is not saved instead of offering
+    // to create a budget
+    networkMode: budgetId ? ('online' as const) : ('always' as const),
+  }
+}
+
 export function useBudget() {
   const { data: user } = useUserData()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
@@ -161,14 +177,8 @@ export function useBudget() {
   }, [budgetId, resetFoldsFor])
 
   const query = useQuery<BudgetDto | null>({
-    queryKey: [...queryKeys.budget, budgetId ?? 'none', selectedDate],
-    queryFn: () => (budgetId ? budgetApi.getBudget(budgetId, selectedDate) : Promise.resolve(null)),
+    ...budgetQueryOptions(budgetId, selectedDate),
     enabled: user !== undefined && periodSettled,
-    staleTime: TEN_MINUTES,
-    // no default budget needs no server: offline, 'online' would pause the
-    // query and the page would say the month is not saved instead of offering
-    // to create a budget
-    networkMode: budgetId ? 'online' : 'always',
     // month switches keep showing the previous period instead of a blank page
     placeholderData: keepPreviousData,
   })
@@ -226,23 +236,101 @@ export function planFetchWindow(firstMonth: string, visibleMonths: number, start
   return { from: buffered, months: Math.min(visibleMonths + 2 * PLAN_BUFFER, PLAN_MONTHS_MAX) }
 }
 
+export function budgetPlanQueryOptions(budgetId: Id | null, from: string, months: number) {
+  return {
+    queryKey: [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const,
+    queryFn: (): Promise<BudgetPlanDto | null> => (budgetId ? budgetApi.getBudgetPlan(budgetId, from, months) : Promise.resolve(null)),
+    staleTime: TEN_MINUTES,
+  }
+}
+
+/** periods before the earliest kept one the kept plan window reaches back */
+export const KEPT_PLAN_REACH = 6
+
+/** the plan window useKeepBudgetMonths keeps: from KEPT_PLAN_REACH periods before
+ *  the previous period to the next period plus the widest Plan grid (which starts
+ *  a column before the selected month, or at the budget's start when that is
+ *  later), so every Plan or Budget view opened on a kept period falls inside it
+ *  offline. 21 months; were it over the server's cap, the months ahead win. */
+export function keptPlanWindow(current: string): { from: string; months: number } {
+  const to = addMonths(current, 1 + PLAN_COLUMNS_MAX)
+  const from = addMonths(current, -1 - KEPT_PLAN_REACH)
+  const months = Math.min(monthDiff(from, to) + 1, PLAN_MONTHS_MAX)
+  return { from: addMonths(to, -(months - 1)), months }
+}
+
+/** the Budget view's plan months. Within one period of the current one it is the
+ *  kept window (less the buffer planFetchWindow adds back), so the previous,
+ *  current and next period share it. Further away the window runs from the
+ *  selected month, or from the current period to it: the server books only what
+ *  precedes the window, so a future month's Balance needs every unmet plan from
+ *  the current period on inside it. */
+export function monthPlanSpan(selected: string, current: string): { first: string; visible: number } {
+  if (Math.abs(monthDiff(current, selected)) <= 1) {
+    const kept = keptPlanWindow(current)
+    return { first: addMonths(kept.from, PLAN_BUFFER), visible: kept.months - 2 * PLAN_BUFFER }
+  }
+  const first = selected < current ? selected : current
+  return { first, visible: monthDiff(first, selected) + 1 }
+}
+
 export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number, startDay: number) {
   const { from, months } = planFetchWindow(firstMonth, visibleMonths, startDay)
-  const planKey = [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const
+  const { queryKey: planKey, ...planOptions } = budgetPlanQueryOptions(budgetId, from, months)
   const ops = usePendingOps()
+  const online = useOnline()
+  const queryClient = useQueryClient()
   const select = useCallback(
     (plan: BudgetPlanDto | null) => (plan && budgetId ? overlayPlan(plan, ops, budgetId) : plan),
     [ops, budgetId],
   )
   const query = useQuery<BudgetPlanDto | null>({
+    ...planOptions,
     queryKey: planKey,
-    queryFn: () => (budgetId ? budgetApi.getBudgetPlan(budgetId, from, months) : Promise.resolve(null)),
     enabled: budgetId !== null,
-    staleTime: TEN_MINUTES,
     // shifting months keeps showing the previous window instead of a blank sheet
     placeholderData: keepPreviousData,
     select,
   })
+  // Offline, a window this device never fetched under its own key (another width,
+  // a clamped start, a period that rolled over) is served from a cached window
+  // of the budget holding all its months. Only ever returned, never stored under
+  // this key, so the next online fetch replaces it.
+  const ownData = query.data !== undefined && !query.isPlaceholderData
+  // once served, the cover stays until the key has data of its own: when the
+  // connection returns the paused fetch resumes, and the window must not drop
+  // to a loader until it lands; online, a failed fetch drops it so the error
+  // and Retry show instead of the older window
+  const keyHash = hashKey(planKey)
+  const coveringKey = useRef<string | null>(null)
+  const resuming = coveringKey.current === keyHash && !(online && query.isError)
+  const wantsCover = budgetId !== null && !ownData && (!online || query.fetchStatus === 'paused' || resuming)
+  const coverFirst = [firstMonth, currentPeriod(startDay)].sort()[0]
+  const coverLast = addMonths(firstMonth, visibleMonths - 1)
+  const cover = useSyncExternalStore(
+    useCallback((onChange: () => void) => queryClient.getQueryCache().subscribe(onChange), [queryClient]),
+    () => (wantsCover && budgetId ? findCoveringPlan(queryClient, budgetId, coverFirst, coverLast) : undefined),
+  )
+  const fetchLast = addMonths(from, months - 1)
+  const covered = useMemo(
+    () => (cover && budgetId ? overlayPlan(coveredPlan(cover, fetchLast), ops, budgetId) : undefined),
+    [cover, fetchLast, ops, budgetId],
+  )
+  coveringKey.current = covered ? keyHash : null
+  if (covered) {
+    return {
+      ...query,
+      data: covered,
+      isPlaceholderData: false,
+      isPending: false,
+      isSuccess: true,
+      isError: false,
+      error: null,
+      status: 'success',
+      fetchFrom: from,
+      planKey,
+    } as typeof query & { fetchFrom: string; planKey: typeof planKey }
+  }
   return { ...query, fetchFrom: from, planKey }
 }
 

@@ -32,6 +32,7 @@ import {
   useBudget,
   useBudgets,
   useBudgetComments,
+  monthPlanSpan,
   useBudgetPlan,
   usePlanSetLimit,
   useSetLimit,
@@ -48,7 +49,6 @@ import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetMode } from './budgetStore'
 import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
-import { monthDiff } from './planMath'
 import { currentPeriod, periodStartDayOf } from './period'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
@@ -155,8 +155,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // The window starts no later than the current period: the server books only
   // what precedes the window, so a future month's Balance needs every unmet plan
   // from the current period on inside it.
-  const monthPlanFirst = selectedDate < curPeriod ? selectedDate : curPeriod
-  const monthPlan = useBudgetPlan(monthBudgetId, monthPlanFirst, monthDiff(monthPlanFirst, selectedDate) + 1, startDay)
+  const monthPlanWindow = monthPlanSpan(selectedDate, curPeriod)
+  const monthPlan = useBudgetPlan(monthBudgetId, monthPlanWindow.first, monthPlanWindow.visible, startDay)
   const planSetLimit = usePlanSetLimit(monthPlan.planKey)
   const planMonth = useMemo(
     () => (monthPlan.data && !monthPlan.isPlaceholderData ? planMonthFigures(monthPlan.data, currencies, selectedDate) : null),

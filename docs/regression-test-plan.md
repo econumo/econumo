@@ -2744,6 +2744,16 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       runs, Import rules, Getting started, the OAuth consent page, and inside the account and
       recurring dialogs. It is NOT on Home, an account page, Budget, Plan, the Inbox or Reports.
       It disappears as soon as the network returns, without a reload, and never shows online.
+- [ ] 📱 Budget months kept offline: sign in online and open only Home (never the budget), then go
+      offline. The default budget's previous, current and next month open in the Budget view and
+      the Plan with their figures; any other month says "This month isn't saved on this device".
+      Still true after a day away (device clock forward 25 h) once the app was online at the start.
+      The Plan shows its figures offline at phone width and on a wide desktop (1440 px), and the
+      Plan at 1920 px, on the current and the next month; a budget that starts this
+      month also opens the month before it offline.
+- [ ] While online, saving several transactions in a row on Home (no budget page open) does not
+      fire a burst of `get-budget` / `get-budget-plan` requests per save: the budget months refetch
+      once, about 3 s after the last save.
 - [ ] 📱 Offline, a budget opened on a month this device never loaded keeps its header with the
       back button on a phone (the budget name next to it), so the page can be left.
 - [ ] Offline, the OAuth consent page (`/oauth/authorize?...`) says "Not available offline"
