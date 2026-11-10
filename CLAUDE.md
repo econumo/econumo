@@ -614,9 +614,8 @@ operations on other targets; no response, a timeout, a 429 or a body that is not
 local, marked failed, and appears in the Inbox's "Not saved" section
 (`features/inbox/FailedWritesSection.tsx`, counted in the Inbox badge): a failed add or edit
 opens the normal transaction dialog with the user's values and saving sends it again, a failed
-delete or limit has Try again, and all have Discard; other changes still go through. Sign-out,
-the "Log out" link on a stuck loader and the consent page's "Switch account" included, warns while anything is unsent because `LogoutPage` clears the queue
-(`useSignOutConfirm`: until the stored queue has loaded the confirm is disabled, at most `STORE_TIMEOUT_MS`, and if it never arrives the warning says changes may be lost); the
+delete or limit has Try again, and all have Discard; other changes still go through. Signing out
+discards the queue without a warning (`LogoutPage` clears it; the owner's decision); the
 sign-out after "Set a password" (every session revoked, the same user signs back in) passes
 `{ keepPendingWrites: true }` as router state and keeps it. A
 login keeps the queue when the same user signs back in, and a different user's rows are
@@ -630,7 +629,7 @@ when a source file fires a mutation without reading `useOnline`, unless it is li
 reason in `OFFLINE_EXEMPT` or goes through a shared component in `OFFLINE_VIA_SHARED`. So a new
 write control needs the hook or an entry there. A page whose writes are all off says so offline
 with one inline notice under its header, `OfflineNotice` (`web/src/components/OfflineNotice.tsx`,
-"You're offline. You can look around, but changes here need a connection."; never a top banner or
+"No internet connection. Data is view-only."; never a top banner or
 a toast): `SettingsShell` renders it unless the page passes `editableOffline` (the Inbox), and the
 Settings hub, Getting started and the OAuth consent page render it themselves; Home, account pages,
 Budget/Plan, the Inbox and Reports show none. `web/src/lib/offline-notice-coverage.test.ts` fails

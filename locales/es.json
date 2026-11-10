@@ -163,10 +163,10 @@
       "blockedServer": "Esta aplicación requiere un servidor de Econumo {min} o posterior, pero tu servidor es {version}. Actualiza el servidor para continuar."
     },
     "offline_unavailable": {
-      "title": "No guardado en este dispositivo",
-      "text": "Estos datos no están guardados en este dispositivo. Conéctate a internet para cargarlos."
+      "title": "No disponible sin conexión",
+      "text": "Estos datos no están disponibles sin conexión a internet."
     },
-    "offline_notice": "Estás sin conexión. Aquí solo puedes consultar; para hacer cambios necesitas conexión."
+    "offline_notice": "Sin conexión a internet. Los datos son solo de lectura."
   },
   "accounts": {
     "folders": {
@@ -301,7 +301,7 @@
       "failing": "No se puede conectar con el servidor: reintentando",
       "full_reload": "Borrando la caché y recargando…",
       "hold_hint": "Mantén pulsado para borrar la caché y recargar",
-      "waiting": "{count} cambio pendiente de enviar | {count} cambios pendientes de enviar",
+      "waiting": "{count} cambio esperando conexión a internet | {count} cambios esperando conexión a internet",
       "full_reload_offline": "Estás sin conexión. Borra la caché y recarga cuando vuelvas a estar en línea.",
       "offline": "Sin conexión"
     },
@@ -360,10 +360,6 @@
     },
     "update": {
       "available": "Nueva versión {version} disponible"
-    },
-    "logout": {
-      "pending_unknown": "Si hay cambios sin enviar en este dispositivo, se perderán.",
-      "pending_warning": "{count} cambio aún no se ha enviado y se perderá. | {count} cambios aún no se han enviado y se perderán."
     }
   },
   "transactions": {

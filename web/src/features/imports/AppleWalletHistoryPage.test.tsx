@@ -118,5 +118,5 @@ it('offline with nothing loaded on this device, the tap history says so instead 
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   renderPage({ '': { items: [], hasMore: false } })
-  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not saved on this device')
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not available offline')
 })

@@ -163,10 +163,10 @@
       "blockedServer": "Deze app vereist Econumo-server {min} of nieuwer, maar je server is {version}. Werk de server bij om door te gaan."
     },
     "offline_unavailable": {
-      "title": "Niet op dit apparaat opgeslagen",
-      "text": "Deze gegevens zijn niet op dit apparaat opgeslagen. Maak verbinding met internet om ze te laden."
+      "title": "Offline niet beschikbaar",
+      "text": "Deze gegevens zijn niet beschikbaar zonder internetverbinding."
     },
-    "offline_notice": "U bent offline. U kunt hier alles bekijken, maar voor wijzigingen is een verbinding nodig."
+    "offline_notice": "Geen internetverbinding. Gegevens zijn alleen te bekijken."
   },
   "accounts": {
     "folders": {
@@ -301,7 +301,7 @@
       "failing": "Geen verbinding met de server — opnieuw proberen",
       "full_reload": "Cache wissen en opnieuw laden…",
       "hold_hint": "Houd ingedrukt om de cache te wissen en opnieuw te laden",
-      "waiting": "{count} wijziging nog niet verzonden | {count} wijzigingen nog niet verzonden",
+      "waiting": "{count} wijziging wacht op een internetverbinding | {count} wijzigingen wachten op een internetverbinding",
       "full_reload_offline": "Je bent offline. Wis de cache en laad opnieuw zodra je weer online bent.",
       "offline": "Geen verbinding"
     },
@@ -360,10 +360,6 @@
     },
     "update": {
       "available": "Nieuwe versie {version} beschikbaar"
-    },
-    "logout": {
-      "pending_unknown": "Als er op dit apparaat nog niet-verzonden wijzigingen zijn, gaan die verloren.",
-      "pending_warning": "{count} wijziging is nog niet verzonden en gaat verloren. | {count} wijzigingen zijn nog niet verzonden en gaan verloren."
     }
   },
   "transactions": {

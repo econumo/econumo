@@ -71,12 +71,12 @@ it('offline with nothing loaded on this device, a run says so instead of an empt
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   renderAt('/settings/simplefin/history/r1')
-  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not saved on this device')
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not available offline')
 })
 
 it('offline with nothing loaded on this device, the SimpleFIN history says so instead of an empty or loading page', async () => {
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   renderAt('/settings/simplefin/history')
-  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not saved on this device')
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not available offline')
 })

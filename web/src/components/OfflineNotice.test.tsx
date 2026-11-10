@@ -10,7 +10,7 @@ it('shows only while offline and goes away when the connection returns', () => {
   render(<OfflineNotice />)
   expect(screen.queryByTestId('offline-notice')).not.toBeInTheDocument()
   act(() => onlineManager.setOnline(false))
-  expect(screen.getByTestId('offline-notice')).toHaveTextContent("You're offline. You can look around, but changes here need a connection.")
+  expect(screen.getByTestId('offline-notice')).toHaveTextContent("No internet connection. Data is view-only.")
   act(() => onlineManager.setOnline(true))
   expect(screen.queryByTestId('offline-notice')).not.toBeInTheDocument()
 })

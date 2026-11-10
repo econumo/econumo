@@ -173,7 +173,7 @@ describe('offline', () => {
     expect(screen.queryByTestId('offline-unavailable')).toBeNull()
   })
 
-  it('with nothing cached, it says the page is not saved on this device', async () => {
+  it('with nothing cached, it says the page is not available offline', async () => {
     renderCached(() => {})
     expect(await screen.findByTestId('offline-unavailable')).toBeInTheDocument()
   })

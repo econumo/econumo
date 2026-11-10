@@ -1229,7 +1229,7 @@ describe('offline', () => {
     goOffline()
     act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
     const state = await screen.findByTestId('offline-unavailable')
-    expect(state).toHaveTextContent("This data isn't saved on this device.")
+    expect(state).toHaveTextContent("This data isn't available without an internet connection.")
     expect(screen.queryByTestId('budget-loading')).toBeNull()
     expect(screen.getByRole('tablist', { name: 'period' })).toBeInTheDocument()
     // a month the device has comes back at once
@@ -1247,7 +1247,7 @@ describe('offline', () => {
     act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
     await act(() => router.navigate('/budget'))
     const state = await screen.findByTestId('offline-unavailable')
-    expect(state).toHaveTextContent("This data isn't saved on this device.")
+    expect(state).toHaveTextContent("This data isn't available without an internet connection.")
     expect(screen.queryByTestId('budget-loading')).toBeNull()
     expect(screen.queryByRole('link', { name: 'Log out' })).toBeNull()
     // the header and the month strip come from the cached budget list, so a
@@ -1270,7 +1270,7 @@ describe('offline', () => {
     queryClient.removeQueries({ queryKey: queryKeys.budgets })
     act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
     await act(() => router.navigate('/budget'))
-    expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This data isn't saved on this device.")
+    expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This data isn't available without an internet connection.")
     expect(screen.queryByRole('tablist', { name: 'period' })).toBeNull()
   })
 
@@ -1294,7 +1294,7 @@ describe('offline', () => {
     goOffline()
     await user.click(screen.getByRole('button', { name: 'Scroll to later months' }))
     const state = await screen.findByTestId('offline-unavailable')
-    expect(state).toHaveTextContent("This data isn't saved on this device.")
+    expect(state).toHaveTextContent("This data isn't available without an internet connection.")
     await user.click(screen.getByRole('button', { name: 'Scroll to earlier months' }))
     expect(await screen.findByTestId('plan-month-header')).toBeInTheDocument()
     expect(screen.queryByTestId('offline-unavailable')).toBeNull()

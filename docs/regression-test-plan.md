@@ -2721,10 +2721,10 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       confirm buttons, create rows in the pickers, drag handles); nothing waiting
       is written to local storage. Signing
       in offline fails at once with an error. A budget cell's transaction list
-      that was never loaded says "This data isn't saved on this device" offline,
+      that was never loaded says "This data isn't available without an internet connection" offline,
       never a spinner or "List is empty".
 - [ ] 📱 Offline, a page whose data this device never loaded says so in the page
-      (a cloud icon, "Not saved on this device", then "This data isn't saved on this device. Connect to the internet to load it.": one message for every page, month, report and list)
+      (a cloud icon, "Not available offline", then "This data isn't available without an internet connection.": one message for every page, month, report and list)
       instead of a loader that never ends, a "LOADING" screen with "Having trouble? Log
       out", a generic error, or an empty list. Check: Budget view and phone view on a
       month never opened (the month strip stays and switching back to a loaded month works),
@@ -2735,8 +2735,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       (the same message, the other sections
       still listed). The sidebar and every page already loaded stay usable, and when the
       network returns the page loads by itself.
-- [ ] 📱 Offline notice: with no network, a small bordered line with a cloud icon, "You're
-      offline. You can look around, but changes here need a connection.", sits under the page
+- [ ] 📱 Offline notice: with no network, a small bordered line with a cloud icon, "No internet connection. Data is view-only.", sits under the page
       header (below the action button on desktop), readable in light and dark mode, on: Settings,
       Personal settings and each of its pages (Change password, Change email, Sessions, API
       tokens, Connected apps, Sign-in methods), Accounts, Shared access, Budgets & Plans,
@@ -2757,7 +2756,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       once, about 3 s after the last save.
 - [ ] 📱 Offline, a budget opened on a month this device never loaded keeps its header with the
       back button on a phone (the budget name next to it), so the page can be left.
-- [ ] Offline, the OAuth consent page (`/oauth/authorize?...`) says "Not saved on this device"
+- [ ] Offline, the OAuth consent page (`/oauth/authorize?...`) says "Not available offline"
       instead of a loader that never ends; SimpleFIN never opened on this device says the same
       instead of "Loading your data"; Net worth on a period never loaded shows no "…" headline.
 - [ ] 📱 Offline, Settings > Personal settings: the Name reads as plain text in its card
@@ -2820,13 +2819,13 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       sends it again (refused again: it returns to the Inbox with the reason; accepted: it leaves
       the Inbox and one row is left). A refused delete or plan offers Try again and Discard; Discard
       brings back the row or the server's number. The preview of a refused row shows the reason.
-- [ ] 📱 Signing out with changes unsent, waiting or refused: the Log out confirmation (Settings, Profile, and Sign out on this device's row in Sessions) says how many
-      will be lost; Stay keeps them, Log out drops them and the next user of the device never sees
-      or sends them. Signing back in as the same user keeps them if the session ended by itself.
-      The "Log out" link under a stuck loader and "Switch account" on the Connected-apps consent page ask the same question while anything is unsent, and go straight to sign-out when nothing is.
-      Reopened with changes waiting, the confirmation names them even if opened at once (its button stays disabled for a moment while they load).
+- [ ] 📱 Signing out with changes unsent, waiting or refused: no confirmation mentions them (Settings and
+      Profile ask only "Are you sure you want to log out?", Sign out on this device's row in Sessions
+      only "Sign out of this device?"; the "Log out" link under a stuck loader and "Switch account" on
+      the consent page go straight to sign-out). Signing out drops them and the next user of the device
+      never sees or sends them. Signing back in as the same user keeps them if the session ended by itself.
       "Set a password" with changes waiting: after signing back in as the same user they are still waiting and get sent.
-- [ ] 📱 Budget view with a plan waiting, offline, switching to a month not yet downloaded: it says "This data isn't saved on this device", and switching back shows the month with the not-saved icon still on the cell.
+- [ ] 📱 Budget view with a plan waiting, offline, switching to a month not yet downloaded: it says "This data isn't available without an internet connection", and switching back shows the month with the not-saved icon still on the cell.
 - [ ] Plan edits in flight on a flaky connection: edit one cell and then another before the first answers; when the requests time out both cells keep their new numbers with the not-saved icon, and discarding one in the Inbox brings back the server's number there and leaves the other.
 - [ ] 📱 Budget transaction list (Spent drill-down and a report's savings drill-down) with a transaction edited offline: a transfer shows the amount of the side listed; a new date within the period moves it under that day with no repeated day heading; a date outside the period, or another category or tag, takes it off the list until it is confirmed; a new category shows its name.
 - [ ] Sync button tap = incremental refresh: after an edit made on another

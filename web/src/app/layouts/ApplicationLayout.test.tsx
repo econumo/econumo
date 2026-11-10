@@ -159,7 +159,7 @@ it('the sync control shows how many changes are waiting, and says so in its titl
   renderShell('/')
   const sync = await screen.findByRole('button', { name: 'sync' })
   expect(within(sync).getByTestId('sync-waiting')).toHaveTextContent('1')
-  expect(sync.title).toContain('1 change waiting to be sent')
+  expect(sync.title).toContain('1 change waiting for an internet connection')
 })
 
 it('the no-connection icon shows the waiting changes too', async () => {
@@ -175,7 +175,7 @@ it('the no-connection icon shows the waiting changes too', async () => {
   act(() => onlineManager.setOnline(false))
   const icon = screen.getByRole('img', { name: 'No connection' })
   expect(within(icon).getByTestId('sync-waiting')).toHaveTextContent('1')
-  expect(icon.title).toContain('1 change waiting to be sent')
+  expect(icon.title).toContain('1 change waiting for an internet connection')
 })
 
 it('Reports is an icon next to sync in the footer, expanded and collapsed', async () => {

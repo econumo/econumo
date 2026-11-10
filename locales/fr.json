@@ -163,10 +163,10 @@
       "blockedServer": "Cette application nécessite un serveur Econumo {min} ou ultérieur, mais votre serveur est en {version}. Veuillez mettre à jour le serveur pour continuer."
     },
     "offline_unavailable": {
-      "title": "Non enregistré sur cet appareil",
-      "text": "Ces données ne sont pas enregistrées sur cet appareil. Connectez-vous à Internet pour les charger."
+      "title": "Indisponible hors ligne",
+      "text": "Ces données ne sont pas disponibles sans connexion Internet."
     },
-    "offline_notice": "Vous êtes hors ligne. Vous pouvez consulter cette page, mais pas la modifier sans connexion."
+    "offline_notice": "Pas de connexion Internet. Les données sont en lecture seule."
   },
   "accounts": {
     "folders": {
@@ -301,7 +301,7 @@
       "failing": "Serveur injoignable — nouvelle tentative",
       "full_reload": "Vidage du cache et rechargement…",
       "hold_hint": "Maintenez pour vider le cache et recharger",
-      "waiting": "{count} modification en attente d'envoi | {count} modifications en attente d'envoi",
+      "waiting": "{count} modification en attente d'une connexion Internet | {count} modifications en attente d'une connexion Internet",
       "full_reload_offline": "Vous êtes hors ligne. Videz le cache et rechargez une fois de nouveau en ligne.",
       "offline": "Pas de connexion"
     },
@@ -360,10 +360,6 @@
     },
     "update": {
       "available": "Nouvelle version {version} disponible"
-    },
-    "logout": {
-      "pending_unknown": "Si des modifications n'ont pas encore été envoyées depuis cet appareil, elles seront perdues.",
-      "pending_warning": "{count} modification n'a pas encore été envoyée et sera perdue. | {count} modifications n'ont pas encore été envoyées et seront perdues."
     }
   },
   "transactions": {

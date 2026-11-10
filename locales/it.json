@@ -163,10 +163,10 @@
       "blockedServer": "Questa app richiede un server Econumo {min} o successivo, ma il tuo server è {version}. Aggiorna il server per continuare."
     },
     "offline_unavailable": {
-      "title": "Non salvato su questo dispositivo",
-      "text": "Questi dati non sono salvati su questo dispositivo. Connettiti a internet per caricarli."
+      "title": "Non disponibile offline",
+      "text": "Questi dati non sono disponibili senza una connessione a internet."
     },
-    "offline_notice": "Sei offline. Qui puoi solo consultare: per modificare serve una connessione."
+    "offline_notice": "Nessuna connessione a internet. I dati sono in sola lettura."
   },
   "accounts": {
     "folders": {
@@ -301,7 +301,7 @@
       "failing": "Impossibile raggiungere il server — nuovo tentativo in corso",
       "full_reload": "Svuotamento della cache e ricaricamento…",
       "hold_hint": "Tieni premuto per svuotare la cache e ricaricare",
-      "waiting": "{count} modifica in attesa di invio | {count} modifiche in attesa di invio",
+      "waiting": "{count} modifica in attesa di una connessione a internet | {count} modifiche in attesa di una connessione a internet",
       "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online.",
       "offline": "Nessuna connessione"
     },
@@ -360,10 +360,6 @@
     },
     "update": {
       "available": "Nuova versione {version} disponibile"
-    },
-    "logout": {
-      "pending_unknown": "Se su questo dispositivo ci sono modifiche non ancora inviate, andranno perse.",
-      "pending_warning": "{count} modifica non è ancora stata inviata e andrà persa. | {count} modifiche non sono ancora state inviate e andranno perse."
     }
   },
   "transactions": {

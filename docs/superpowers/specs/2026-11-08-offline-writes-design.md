@@ -124,26 +124,23 @@ A network failure is never a failure in this sense: the change stays waiting.
   controls, with no fill behind it.
 - A page whose writes are all off (Settings and its pages, imports, the account and
   recurring dialogs, Getting started, OAuth consent) shows one inline notice under its
-  header, `OfflineNotice`: "You're offline. You can look around, but changes here need a
-  connection." It is never a top banner or a toast, and it is absent where something can
+  header, `OfflineNotice`: "No internet connection. Data is view-only." It is never a top banner or a toast, and it is absent where something can
   still be changed offline (Home, account pages, Budget, Plan, the Inbox) and on Reports,
   which are read-only anyway.
 
-### Not saved on this device
+### Not available offline
 
 Offline, a page whose data this device never loaded (a budget month, a Plan window, a
 report, a settings list) says so in place (`OfflineUnavailable`, decided by
 `isUnavailableOffline`: paused with no data of its own, or an error while offline) instead
 of a loader that never ends or a generic error. A month or window keeps its navigation so
 the user can go back to one that is saved; the rest of the app stays usable. The page loads
-by itself when the network returns. Every such page shows the same message, titled "Not saved on this device": "This data isn't saved on this device. Connect to the internet to load it."
+by itself when the network returns. Every such page shows the same message, titled "Not available offline": "This data isn't available without an internet connection."
 
 ### Signing out
 
-If changes are waiting, sign-out warns first, because signing out discards them. Until the
-stored queue has loaded the count is unknown: the confirmation waits for it, briefly and with its
-button disabled, and if the store does not answer in time it says that unsent changes may be
-lost. Every plain link to sign-out asks the same way. The sign-out that follows "Set a password"
+Signing out discards unsent changes without a warning: no sign-out confirmation or link
+mentions them (the owner's decision, 2026-11-10). The sign-out that follows "Set a password"
 keeps the queue, because the same user signs straight back in.
 
 ## Technical decisions
