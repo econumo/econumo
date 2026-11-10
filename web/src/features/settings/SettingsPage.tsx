@@ -11,7 +11,6 @@ import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
-import { useSignOutConfirm } from '@/features/pendingWrites/hooks'
 import { SEMVER } from '@/lib/version'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { useUserData, useAccessState } from '@/features/user/queries'
@@ -82,7 +81,6 @@ export function SettingsPage() {
   const access = useAccessState()
   const portal = useOpenBillingPortal()
   const [logoutOpen, setLogoutOpen] = useState(false)
-  const signOut = useSignOutConfirm(t('auth.sign_out.question'))
   const fullReload = useFullReload()
   const reloading = useFullReloadPending()
   const install = useInstallApp()
@@ -233,8 +231,7 @@ export function SettingsPage() {
         onClose={() => setLogoutOpen(false)}
         onConfirm={() => navigate(RouterPage.LOGOUT)}
         title={t('auth.sign_out.title')}
-        question={signOut.question}
-        confirmDisabled={signOut.confirmDisabled}
+        question={t('auth.sign_out.question')}
         confirmLabel={t('auth.sign_out.action.logout')}
         cancelLabel={t('auth.sign_out.action.cancel')}
         offlineOk

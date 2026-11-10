@@ -595,9 +595,8 @@ operations on other targets; no response, a timeout, a 429 or a body that is not
 local, marked failed, and appears in the Inbox's "Not saved" section
 (`features/inbox/FailedWritesSection.tsx`, counted in the Inbox badge): a failed add or edit
 opens the normal transaction dialog with the user's values and saving sends it again, a failed
-delete or limit has Try again, and all have Discard; other changes still go through. Sign-out,
-the "Log out" link on a stuck loader and the consent page's "Switch account" included, warns while anything is unsent because `LogoutPage` clears the queue
-(`useSignOutConfirm`: until the stored queue has loaded the confirm is disabled, at most `STORE_TIMEOUT_MS`, and if it never arrives the warning says changes may be lost); the
+delete or limit has Try again, and all have Discard; other changes still go through. Signing out
+discards the queue without a warning (`LogoutPage` clears it; the owner's decision); the
 sign-out after "Set a password" (every session revoked, the same user signs back in) passes
 `{ keepPendingWrites: true }` as router state and keeps it. A
 login keeps the queue when the same user signs back in, and a different user's rows are

@@ -2809,11 +2809,11 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       sends it again (refused again: it returns to the Inbox with the reason; accepted: it leaves
       the Inbox and one row is left). A refused delete or plan offers Try again and Discard; Discard
       brings back the row or the server's number. The preview of a refused row shows the reason.
-- [ ] 📱 Signing out with changes unsent, waiting or refused: the Log out confirmation (Settings, Profile, and Sign out on this device's row in Sessions) says how many
-      will be lost; Stay keeps them, Log out drops them and the next user of the device never sees
-      or sends them. Signing back in as the same user keeps them if the session ended by itself.
-      The "Log out" link under a stuck loader and "Switch account" on the Connected-apps consent page ask the same question while anything is unsent, and go straight to sign-out when nothing is.
-      Reopened with changes waiting, the confirmation names them even if opened at once (its button stays disabled for a moment while they load).
+- [ ] 📱 Signing out with changes unsent, waiting or refused: no confirmation mentions them (Settings and
+      Profile ask only "Are you sure you want to log out?", Sign out on this device's row in Sessions
+      only "Sign out of this device?"; the "Log out" link under a stuck loader and "Switch account" on
+      the consent page go straight to sign-out). Signing out drops them and the next user of the device
+      never sees or sends them. Signing back in as the same user keeps them if the session ended by itself.
       "Set a password" with changes waiting: after signing back in as the same user they are still waiting and get sent.
 - [ ] 📱 Budget view with a plan waiting, offline, switching to a month not yet downloaded: it says "This data isn't available without an internet connection", and switching back shows the month with the not-saved icon still on the cell.
 - [ ] Plan edits in flight on a flaky connection: edit one cell and then another before the first answers; when the requests time out both cells keep their new numbers with the not-saved icon, and discarding one in the Inbox brings back the server's number there and leaves the other.

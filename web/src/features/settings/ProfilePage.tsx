@@ -13,7 +13,6 @@ import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
 import { apiFieldErrors } from '@/lib/apiError'
-import { useSignOutConfirm } from '@/features/pendingWrites/hooks'
 import { useOnline } from '@/hooks/useOnline'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNotEmpty, isValidName } from '@/lib/validation'
@@ -47,7 +46,6 @@ export function ProfilePage() {
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
-  const signOut = useSignOutConfirm(t('auth.sign_out.question'))
   const [languageOpen, setLanguageOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
@@ -293,8 +291,7 @@ export function ProfilePage() {
         onClose={() => setLogoutOpen(false)}
         onConfirm={() => navigate(RouterPage.LOGOUT)}
         title={t('auth.sign_out.title')}
-        question={signOut.question}
-        confirmDisabled={signOut.confirmDisabled}
+        question={t('auth.sign_out.question')}
         confirmLabel={t('auth.sign_out.action.logout')}
         cancelLabel={t('auth.sign_out.action.cancel')}
         offlineOk

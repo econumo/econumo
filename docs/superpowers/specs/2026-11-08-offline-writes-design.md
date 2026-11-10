@@ -139,10 +139,8 @@ by itself when the network returns. Every such page shows the same message, titl
 
 ### Signing out
 
-If changes are waiting, sign-out warns first, because signing out discards them. Until the
-stored queue has loaded the count is unknown: the confirmation waits for it, briefly and with its
-button disabled, and if the store does not answer in time it says that unsent changes may be
-lost. Every plain link to sign-out asks the same way. The sign-out that follows "Set a password"
+Signing out discards unsent changes without a warning: no sign-out confirmation or link
+mentions them (the owner's decision, 2026-11-10). The sign-out that follows "Set a password"
 keeps the queue, because the same user signs straight back in.
 
 ## Technical decisions

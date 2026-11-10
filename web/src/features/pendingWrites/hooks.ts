@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { Id } from '@/api/types'
-import { pluralPick } from '@/lib/plural'
 import { getSessionUserId, hasToken } from '@/lib/storage'
 import { getOps, isQueueLoaded, loadPendingWrites, subscribe, subscribeAdopted } from './store'
 import { realIdOf } from './tempIds'
@@ -78,27 +76,4 @@ function useStoredQueueState(): 'loaded' | 'loading' | 'unknown' {
 /** The stored rows are in memory, or the store's time limit passed without them. */
 export function useStoredQueueSettled(): boolean {
   return useStoredQueueState() !== 'loading'
-}
-
-export interface SignOutConfirm {
-  /** The confirm's question, followed by what signing out would lose. */
-  question: string
-  /** The stored queue is still on its way, so the question is not final. */
-  confirmDisabled: boolean
-  /** A link straight to sign-out must stop and ask. */
-  mustAsk: boolean
-}
-
-export function useSignOutConfirm(question: string): SignOutConfirm {
-  const { t, i18n } = useTranslation()
-  const unsent = useUnsentCount()
-  const queue = useStoredQueueState()
-  const warning = unsent > 0
-    ? pluralPick(t('settings.logout.pending_warning'), unsent, i18n.language)
-    : queue === 'unknown' ? t('settings.logout.pending_unknown') : ''
-  return {
-    question: warning ? `${question} ${warning}` : question,
-    confirmDisabled: queue === 'loading',
-    mustAsk: unsent > 0 || queue !== 'loaded',
-  }
 }

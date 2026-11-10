@@ -360,10 +360,6 @@
     },
     "update": {
       "available": "有新版本 {version} 可用"
-    },
-    "logout": {
-      "pending_unknown": "如果此设备上有尚未发送的更改，退出登录后将丢失。",
-      "pending_warning": "{count} 项更改尚未发送，退出登录后将丢失。"
     }
   },
   "transactions": {

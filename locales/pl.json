@@ -360,10 +360,6 @@
     },
     "update": {
       "available": "Dostępna jest nowa wersja {version}"
-    },
-    "logout": {
-      "pending_unknown": "Jeśli na tym urządzeniu są niewysłane zmiany, zostaną utracone.",
-      "pending_warning": "{count} zmiana nie została jeszcze wysłana i przepadnie. | {count} zmiany nie zostały jeszcze wysłane i przepadną. | {count} zmian nie zostało jeszcze wysłanych i przepadnie."
     }
   },
   "transactions": {

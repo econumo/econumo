@@ -4,8 +4,6 @@ import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { mutate } from '@/features/pendingWrites/store'
-import type { PendingOp } from '@/features/pendingWrites/types'
 import { SessionsPage } from './SessionsPage'
 import { describeUserAgent, relativeTime } from './securityFormat'
 
@@ -110,29 +108,6 @@ it('signing out of the current session goes through the logout flow without revo
   await user.click(buttons[buttons.length - 1])
   await waitFor(() => expect(screen.getByTestId('logout-page')).toBeInTheDocument())
   expect(revokeCalled).toBe(false)
-})
-
-const waiting: PendingOp = {
-  key: 'k1', seq: 1, attempted: false, status: 'waiting', retries: 0, notBefore: 0,
-  kind: 'limit', budgetId: 'b', elementId: 'e', period: '2026-11-01', amount: '1',
-}
-
-it('warns that signing out of this device loses unsent changes, only when there are some', async () => {
-  const user = userEvent.setup()
-  renderPage()
-  await user.click(await screen.findByRole('button', { name: 'Sign out' }))
-  expect(within(await screen.findByRole('dialog')).getByText('Sign out of this device?')).toBeInTheDocument()
-
-  await act(() => mutate(() => [waiting]))
-  expect(within(screen.getByRole('dialog')).getByText('Sign out of this device? 1 change has not been sent yet and will be lost.')).toBeInTheDocument()
-})
-
-it('does not warn about unsent changes when revoking another device', async () => {
-  await mutate(() => [waiting])
-  const user = userEvent.setup()
-  renderPage()
-  await user.click(await screen.findByRole('button', { name: 'Revoke' }))
-  expect((await screen.findByRole('dialog')).textContent).not.toContain('will be lost')
 })
 
 it('signs out other devices', async () => {

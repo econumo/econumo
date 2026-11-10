@@ -360,10 +360,6 @@
     },
     "update": {
       "available": "Nieuwe versie {version} beschikbaar"
-    },
-    "logout": {
-      "pending_unknown": "Als er op dit apparaat nog niet-verzonden wijzigingen zijn, gaan die verloren.",
-      "pending_warning": "{count} wijziging is nog niet verzonden en gaat verloren. | {count} wijzigingen zijn nog niet verzonden en gaan verloren."
     }
   },
   "transactions": {

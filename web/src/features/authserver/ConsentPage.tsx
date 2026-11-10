@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useOnline } from '@/hooks/useOnline'
 import { RouterPage } from '@/app/router-pages'
-import { useSignOutLink } from '@/features/auth/useSignOutLink'
 import { useUserData } from '@/features/user/queries'
 import { AuthFrame } from '@/app/layouts/AuthFrame'
 import { clearPostLoginRedirect, rememberPostLoginRedirect } from './postLoginRedirect'
@@ -127,7 +126,6 @@ export function ConsentPage() {
   const decline = useDeclineAuthorization()
   const online = useOnline()
   const { data: user } = useUserData()
-  const { askFirst, confirm } = useSignOutLink()
   const unavailable = useUnavailableOffline(request)
 
   const errorStatus = isAxiosError(request.error) ? request.error.response?.status : undefined
@@ -246,10 +244,9 @@ export function ConsentPage() {
       {user && (
         <div className="flex flex-col gap-1 text-sm text-muted-foreground">
           <p className="break-words">{t('authserver.consent.signedInAs', { email: user.email })}</p>
-          <Link to={RouterPage.LOGOUT} onClick={askFirst} className="w-fit underline hover:text-foreground">
+          <Link to={RouterPage.LOGOUT} className="w-fit underline hover:text-foreground">
             {t('authserver.consent.switchAccount')}
           </Link>
-          {confirm}
         </div>
       )}
     </Shell>
