@@ -12,13 +12,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// BudgetWriter is the budget feature's write path, run as the calling user with
-// the budget feature's own validation, idempotency and access checks.
+// BudgetWriter is the budget write the background savings classification makes.
 type BudgetWriter interface {
-	CreateBudget(ctx context.Context, userID vo.Id, req model.CreateBudgetRequest) (*model.CreateBudgetResult, error)
-	AddAccount(ctx context.Context, userID vo.Id, req model.AddAccountRequest) (*model.AddAccountResult, error)
-	// MemberAccountIDs lists the budget's members for a caller who may update it.
-	MemberAccountIDs(ctx context.Context, userID, budgetID vo.Id) ([]vo.Id, error)
 	// MarkSavingsMembers flags accounts that are still live members as savings
 	// and skips the rest.
 	MarkSavingsMembers(ctx context.Context, userID, budgetID vo.Id, accountIDs []vo.Id) error

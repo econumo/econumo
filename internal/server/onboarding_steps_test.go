@@ -252,7 +252,6 @@ func TestSaveCategories_Validation(t *testing.T) {
 	e := newOnbEnv(t, stepNow)
 	for name, body := range map[string]any{
 		"no id":     categoriesBody("", [3]string{"a", "Food", "expense"}),
-		"no rows":   map[string]any{"id": fixture.NewID(), "categories": []any{}},
 		"dup key":   categoriesBody(fixture.NewID(), [3]string{"a", "Food", "expense"}, [3]string{"a", "Cafe", "expense"}),
 		"bad type":  categoriesBody(fixture.NewID(), [3]string{"a", "Food", "spending"}),
 		"blank key": categoriesBody(fixture.NewID(), [3]string{"", "Food", "expense"}),
@@ -406,7 +405,6 @@ func TestSaveAccounts_FailureOnTheLastRowRollsEverythingBack(t *testing.T) {
 func TestSaveAccounts_Validation(t *testing.T) {
 	e := newOnbEnv(t, stepNow)
 	for name, body := range map[string]any{
-		"no rows":      accountsBody(fixture.NewID(), e.eur, nil),
 		"bad balance":  accountsBody(fixture.NewID(), e.eur, nil, [4]string{"a", "Wallet", "1,5", e.eur}),
 		"no main":      accountsBody(fixture.NewID(), "", nil, [4]string{"a", "Wallet", "", e.eur}),
 		"unknown main": accountsBody(fixture.NewID(), fixture.NewID(), nil, [4]string{"a", "Wallet", "", e.eur}),
@@ -418,6 +416,23 @@ func TestSaveAccounts_Validation(t *testing.T) {
 	}
 	if n := e.count(`SELECT COUNT(*) FROM accounts WHERE user_id = ?`, e.user); n != 0 {
 		t.Fatalf("accounts = %d", n)
+	}
+}
+
+// A user who already has categories and accounts continues without new rows:
+// the step is marked, and with no account at all no budget is created.
+func TestSaveSteps_NoRows(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	status, data := e.post("/api/v1/onboarding/save-categories", map[string]any{"id": fixture.NewID(), "categories": []any{}})
+	if status != 200 || data["budgetId"] != "" || e.onboarding() != "categories" {
+		t.Fatalf("categories %d: %v (%q)", status, data, e.onboarding())
+	}
+	status, data = e.post("/api/v1/onboarding/save-accounts", accountsBody(fixture.NewID(), e.eur, nil))
+	if status != 200 || data["budgetId"] != "" || e.onboarding() != "categories,accounts" || e.budgetCount() != 0 {
+		t.Fatalf("accounts %d: %v (%q)", status, data, e.onboarding())
+	}
+	if cur := e.str(`SELECT value FROM users_options WHERE user_id = ? AND name = 'currency'`, e.user); cur != e.eur {
+		t.Fatalf("profile currency = %s", cur)
 	}
 }
 

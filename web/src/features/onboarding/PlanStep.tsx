@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { isAxiosError } from 'axios'
-import { getBudgetPlan, setLimit } from '@/api/budget'
+import { getBudgetPlan } from '@/api/budget'
 import type { CategoryDto } from '@/api/dto/category'
+import { UserOptions } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
 import { Button } from '@/components/ui/button'
@@ -14,10 +14,9 @@ import { useBudgets } from '@/features/budgets/queries'
 import { budgetCurrentPeriod, localDate } from '@/features/budgets/period'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useExchange } from '@/features/currencies/useExchange'
-import { useUserData } from '@/features/user/queries'
+import { userOption, useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { add, cmp } from '@/lib/decimal'
-import { METRICS, trackEvent } from '@/lib/metrics'
 import { moneyFormat } from '@/lib/money'
 import { decimalInput, parseBalance } from './balance'
 import { rowTile } from './CategoriesStep'
@@ -34,36 +33,26 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
   const currencies = useCurrencies()
   const exchange = useExchange()
   const categories = useCategories()
-  const [budgetId, setBudgetId] = useState<Id | null>(null)
-  // a non-HTTP refusal: no own account or no main currency to build the budget from
-  const [ensureFailure, setEnsureFailure] = useState<{ error: unknown; needsAccount: boolean } | null>(null)
+  const budgets = useBudgets()
   const [edits, setEdits] = useState<Record<Id, string>>({})
   const [saving, setSaving] = useState(false)
   const [skipping, setSkipping] = useState(false)
   const [saveError, setSaveError] = useState<unknown>(null)
-  const started = useRef(false)
-  const { ensureBudget } = day0
 
-  const ensure = useCallback(() => {
-    setEnsureFailure(null)
-    ensureBudget()
-      // the cached list may predate the budget (a fresh create, or a stale cache): its meta names the period
-      .then(async (id) => {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
-        setBudgetId(id)
-      })
-      .catch((error: unknown) => setEnsureFailure({ error, needsAccount: !isAxiosError(error) }))
-  }, [ensureBudget, queryClient])
-
+  // The budget the categories or accounts step answered with, else the user's default one
+  // (the budget option, else the first own or accepted budget). A user who skipped the
+  // accounts step may have none: the server creates the budget once there is an account.
+  // a cached list may predate the budget a step (or another device) just created
   useEffect(() => {
-    if (!day0.ready || started.current) return
-    started.current = true
-    ensure()
-  }, [day0.ready, ensure])
-
-  // a reused budget may start its months on another day: its current period is the one to plan
-  const budgets = useBudgets()
-  const meta = budgets.data?.find((b) => b.id === budgetId)
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+  }, [queryClient])
+  const usable = (budgets.data ?? []).filter(
+    (b) => b.isArchived === 0 && (b.ownerUserId === user?.id || b.access.some((a) => a.user.id === user?.id && a.isAccepted === 1)),
+  )
+  const meta =
+    usable.find((b) => b.id === day0.draft?.budgetId) ?? usable.find((b) => b.id === userOption(user, UserOptions.BUDGET)) ?? usable[0]
+  const budgetId = meta?.id ?? null
+  // a budget may start its months on another day: its current period is the one to plan
   const period = meta ? budgetCurrentPeriod(meta) : null
   // get-budget lists expense categories only; the plan carries both kinds,
   // with "" for a category that has no plan this month
@@ -98,7 +87,9 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
     </section>
   )
 
-  if (ensureFailure?.needsAccount) {
+  if (budgets.isError) return frame(<StepLoadError error={budgets.error} onRetry={() => void budgets.refetch()} />)
+  if (!meta) {
+    if (!day0.ready || budgets.isPending || budgets.isFetching) return frame(null)
     return frame(
       <div className="flex flex-col items-start gap-3">
         <p className="text-sm text-muted-foreground">{t('onboarding.plan_step.needs_account')}</p>
@@ -107,12 +98,6 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
         </Button>
       </div>,
     )
-  }
-  if (ensureFailure) return frame(<StepLoadError error={ensureFailure.error} onRetry={ensure} />)
-  if (budgets.isError) return frame(<StepLoadError error={budgets.error} onRetry={() => void budgets.refetch()} />)
-  // ensure() refetched the list before naming the budget, so a budget still missing from it is an error
-  if (budgetId !== null && budgets.data !== undefined && !budgets.isFetching && meta === undefined) {
-    return frame(<StepLoadError error={new Error('budget missing from the list')} onRetry={ensure} />)
   }
   if (plan.isError) return frame(<StepLoadError error={plan.error} onRetry={() => void plan.refetch()} />)
   if (categories.isError) return frame(<StepLoadError error={categories.error} onRetry={() => void categories.refetch()} />)
@@ -152,21 +137,14 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
     setSaving(true)
     setSaveError(null)
     try {
-      let written = 0
-      for (const c of rows) {
+      const amounts = rows.flatMap((c) => {
         const amount = parsed(c)
         // a blank is never written; a typed zero is a plan of its own unless it is the stored one
-        if (!amount || (stored(c) !== '' && cmp(amount, stored(c)) === 0)) continue
-        // set-limit adds the element row a category created after the budget lacks
-        await setLimit({ budgetId, elementId: c.id, period, amount })
-        written++
-      }
-      if (written > 0) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
-        void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
-      }
+        if (!amount || (stored(c) !== '' && cmp(amount, stored(c)) === 0)) return []
+        return [{ categoryId: c.id, amount }]
+      })
+      await day0.savePlan(budgetId, amounts)
       await onDone()
-      trackEvent(METRICS.ONBOARDING_PLAN_COMPLETE, { rows: written })
     } catch (err) {
       setSaveError(err)
     } finally {

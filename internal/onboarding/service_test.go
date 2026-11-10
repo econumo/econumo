@@ -25,31 +25,7 @@ const (
 )
 
 type fakeBudgets struct {
-	created []model.CreateBudgetRequest
-	added   []model.AddAccountRequest
-	marked  []vo.Id
-	members []vo.Id
-	err     error
-}
-
-func (f *fakeBudgets) MemberAccountIDs(context.Context, vo.Id, vo.Id) ([]vo.Id, error) {
-	return f.members, f.err
-}
-
-func (f *fakeBudgets) CreateBudget(_ context.Context, _ vo.Id, req model.CreateBudgetRequest) (*model.CreateBudgetResult, error) {
-	if f.err != nil {
-		return nil, f.err
-	}
-	f.created = append(f.created, req)
-	return &model.CreateBudgetResult{Item: model.BudgetResult{}}, nil
-}
-
-func (f *fakeBudgets) AddAccount(_ context.Context, _ vo.Id, req model.AddAccountRequest) (*model.AddAccountResult, error) {
-	if f.err != nil {
-		return nil, f.err
-	}
-	f.added = append(f.added, req)
-	return &model.AddAccountResult{Item: model.MetaResult{Id: req.BudgetId}}, nil
+	marked []vo.Id
 }
 
 func (f *fakeBudgets) MarkSavingsMembers(_ context.Context, _, _ vo.Id, ids []vo.Id) error {
@@ -116,20 +92,22 @@ func newSvc(c onboarding.Completer, l onboarding.AttemptLimiter) (*onboarding.Se
 
 var allIDs = []string{cash, deposit, gone, theirs}
 
-func createReq() model.OnboardingCreateBudgetRequest {
-	return model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "My budget", CurrencyId: "cur", AccountIds: allIDs, NewAccountIds: allIDs}
+func ids(raw ...string) []vo.Id {
+	out := make([]vo.Id, 0, len(raw))
+	for _, r := range raw {
+		out = append(out, vo.MustParseId(r))
+	}
+	return out
 }
 
-func TestCreateBudget_FlagsTheAIPicksInTheBackground(t *testing.T) {
+func schedule(ctx context.Context, svc *onboarding.Service, accountIDs ...string) {
+	svc.Schedule(ctx, vo.MustParseId(me), vo.MustParseId(budgetID), ids(accountIDs...))
+}
+
+func TestClassification_FlagsTheAIPicks(t *testing.T) {
 	c := replying("```json\n{\"savings\":[\"" + strings.ToUpper(deposit) + "\",\"" + theirs + "\",\"nope\"]}\n```")
 	svc, b := newSvc(c, nil)
-	ctx := reqctx.WithLanguage(context.Background(), "de")
-	if _, err := svc.CreateBudget(ctx, vo.MustParseId(me), createReq()); err != nil {
-		t.Fatal(err)
-	}
-	if len(b.created) != 1 || b.created[0].Id != budgetID || len(b.created[0].AccountIds) != 4 || b.created[0].SavingsAccountIds != nil {
-		t.Fatalf("created = %+v", b.created)
-	}
+	schedule(reqctx.WithLanguage(context.Background(), "de"), svc, allIDs...)
 	if len(b.marked) != 1 || b.marked[0].String() != deposit {
 		t.Fatalf("marked = %v", b.marked)
 	}
@@ -153,93 +131,30 @@ func TestCreateBudget_FlagsTheAIPicksInTheBackground(t *testing.T) {
 	}
 }
 
-func TestCreateBudget_ExplicitTimezoneWins(t *testing.T) {
+func TestClassification_ExplicitTimezoneWins(t *testing.T) {
 	c := replying(`{"savings":[]}`)
 	svc, b := newSvc(c, nil)
 	loc, _ := time.LoadLocation("Asia/Tokyo")
-	if _, err := svc.CreateBudget(reqctx.WithExplicitLocation(context.Background(), loc), vo.MustParseId(me), createReq()); err != nil {
-		t.Fatal(err)
-	}
+	schedule(reqctx.WithExplicitLocation(context.Background(), loc), svc, allIDs...)
 	if !strings.Contains(c.user, `"timezone":"Asia/Tokyo"`) || len(b.marked) != 0 {
 		t.Fatalf("prompt = %s, marked = %v", c.user, b.marked)
 	}
 }
 
-func TestCreateBudget_NoAIRunsNoJob(t *testing.T) {
+func TestClassification_NoAIRunsNoJob(t *testing.T) {
 	svc, b := newSvc(nil, nil)
-	if _, err := svc.CreateBudget(context.Background(), vo.MustParseId(me), createReq()); err != nil {
-		t.Fatal(err)
-	}
-	if len(b.created) != 1 || len(b.marked) != 0 {
-		t.Fatalf("budgets = %+v", b)
-	}
-}
-
-func TestCreateBudget_FailedCreateRunsNoJob(t *testing.T) {
-	c := replying(`{"savings":["` + deposit + `"]}`)
-	svc, b := newSvc(c, nil)
-	b.err = errors.New("in use")
-	if _, err := svc.CreateBudget(context.Background(), vo.MustParseId(me), createReq()); err == nil {
-		t.Fatal("want the create error")
-	}
-	if c.calls != 0 {
-		t.Fatal("AI asked after a failed create")
-	}
-}
-
-func TestCreateBudget_ClassifiesOnlyNewAccounts(t *testing.T) {
-	c := replying(`{"savings":["` + deposit + `","` + cash + `"]}`)
-	svc, b := newSvc(c, nil)
-	req := createReq()
-	// More accounts than one onboarding call may classify: the budget still takes them all.
-	req.AccountIds = make([]string, 0, 60)
-	for i := 0; i < 58; i++ {
-		req.AccountIds = append(req.AccountIds, vo.NewId().String())
-	}
-	req.AccountIds = append(req.AccountIds, cash, deposit)
-	req.NewAccountIds = []string{deposit}
-	if err := req.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := svc.CreateBudget(context.Background(), vo.MustParseId(me), req); err != nil {
-		t.Fatal(err)
-	}
-	if len(b.created[0].AccountIds) != 60 {
-		t.Fatalf("accountIds = %d", len(b.created[0].AccountIds))
-	}
-	if strings.Contains(c.user, cash) || strings.Contains(c.user, "Wallet") || !strings.Contains(c.user, deposit) {
-		t.Fatalf("prompt = %s", c.user)
-	}
-	if len(b.marked) != 1 || b.marked[0].String() != deposit {
+	schedule(context.Background(), svc, allIDs...)
+	if len(b.marked) != 0 {
 		t.Fatalf("marked = %v", b.marked)
 	}
 }
 
-func TestCreateBudget_NoNewAccountsAsksNothing(t *testing.T) {
+func TestClassification_NoAccountsAsksNothing(t *testing.T) {
 	c := replying(`{"savings":[]}`)
 	svc, _ := newSvc(c, nil)
-	req := createReq()
-	req.NewAccountIds = nil
-	if _, err := svc.CreateBudget(context.Background(), vo.MustParseId(me), req); err != nil {
-		t.Fatal(err)
-	}
+	schedule(context.Background(), svc)
 	if c.calls != 0 {
 		t.Fatal("AI asked with no new account")
-	}
-}
-
-func TestAddBudgetAccounts_ExistingMembersAreNotReclassified(t *testing.T) {
-	c := replying(`{"savings":["` + deposit + `","` + cash + `"]}`)
-	svc, b := newSvc(c, nil)
-	b.members = []vo.Id{vo.MustParseId(deposit)}
-	if _, err := svc.AddBudgetAccounts(context.Background(), vo.MustParseId(me), model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID, AccountIds: []string{cash, deposit}}); err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(c.user, deposit) {
-		t.Fatalf("an existing member was sent: %s", c.user)
-	}
-	if len(b.marked) != 1 || b.marked[0].String() != cash {
-		t.Fatalf("marked = %v", b.marked)
 	}
 }
 
@@ -260,9 +175,7 @@ func TestClassification_FailuresChangeNothing(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			svc, b := newSvc(c, nil)
-			if _, err := svc.CreateBudget(context.Background(), vo.MustParseId(me), createReq()); err != nil {
-				t.Fatal(err)
-			}
+			schedule(context.Background(), svc, allIDs...)
 			if len(b.marked) != 0 {
 				t.Fatalf("marked = %v", b.marked)
 			}
@@ -273,80 +186,17 @@ func TestClassification_FailuresChangeNothing(t *testing.T) {
 func TestClassification_OnlyForeignOrDeletedAsksNothing(t *testing.T) {
 	c := replying(`{"savings":[]}`)
 	svc, _ := newSvc(c, nil)
-	req := createReq()
-	req.AccountIds = []string{gone, theirs}
-	req.NewAccountIds = req.AccountIds
-	if _, err := svc.CreateBudget(context.Background(), vo.MustParseId(me), req); err != nil {
-		t.Fatal(err)
-	}
+	schedule(context.Background(), svc, gone, theirs)
 	if c.calls != 0 {
 		t.Fatalf("AI asked %d times", c.calls)
 	}
 }
 
-func TestClassification_OverTheCapSkipsTheJobNotTheWrite(t *testing.T) {
+func TestClassification_OverTheCapSkipsTheJob(t *testing.T) {
 	c := replying(`{"savings":["` + deposit + `"]}`)
 	svc, b := newSvc(c, denyLimiter{})
-	if _, err := svc.CreateBudget(context.Background(), vo.MustParseId(me), createReq()); err != nil {
-		t.Fatal(err)
-	}
-	if len(b.created) != 1 || c.calls != 0 {
-		t.Fatalf("created = %d, calls = %d", len(b.created), c.calls)
-	}
-}
-
-func TestAddBudgetAccounts_AddsEverydayThenClassifies(t *testing.T) {
-	c := replying(`{"savings":["` + deposit + `"]}`)
-	svc, b := newSvc(c, nil)
-	res, err := svc.AddBudgetAccounts(context.Background(), vo.MustParseId(me), model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID, AccountIds: []string{cash, deposit, cash}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.Item.Id != budgetID || len(b.added) != 2 || b.added[0].IsSavings != nil || b.added[1].AccountId != deposit {
-		t.Fatalf("added = %+v", b.added)
-	}
-	if len(b.marked) != 1 || b.marked[0].String() != deposit {
-		t.Fatalf("marked = %v", b.marked)
-	}
-}
-
-func TestAddBudgetAccounts_ErrorStopsBeforeTheJob(t *testing.T) {
-	c := replying(`{"savings":[]}`)
-	svc, b := newSvc(c, nil)
-	b.err = errs.NewAccessDenied("Access denied")
-	if _, err := svc.AddBudgetAccounts(context.Background(), vo.MustParseId(me), model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID, AccountIds: []string{cash}}); err == nil {
-		t.Fatal("want the add error")
-	}
-	if c.calls != 0 {
-		t.Fatal("AI asked after a failed add")
-	}
-}
-
-func TestRequests_Validate(t *testing.T) {
-	many := make([]string, model.MaxOnboardingAccountIds+1)
-	for i := range many {
-		many[i] = cash
-	}
-	bad := map[string]interface{ Validate() error }{
-		"create blank":     model.OnboardingCreateBudgetRequest{},
-		"add blank budget": model.OnboardingAddBudgetAccountsRequest{AccountIds: []string{cash}},
-		"add no accounts":  model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID},
-		"add too many":     model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID, AccountIds: many},
-		"add not uuid":     model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID, AccountIds: []string{"x"}},
-		"new too many":     model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "B", AccountIds: many, NewAccountIds: many},
-		"new not member":   model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "B", AccountIds: []string{cash}, NewAccountIds: []string{deposit}},
-		"new not uuid":     model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "B", AccountIds: []string{"x"}, NewAccountIds: []string{"x"}},
-	}
-	for name, r := range bad {
-		var ve *errs.ValidationError
-		if err := r.Validate(); !errors.As(err, &ve) {
-			t.Fatalf("%s: err = %v", name, err)
-		}
-	}
-	if err := (model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID, AccountIds: []string{cash}}).Validate(); err != nil {
-		t.Fatal(err)
-	}
-	if err := (model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "B", AccountIds: many, NewAccountIds: []string{strings.ToUpper(cash)}}).Validate(); err != nil {
-		t.Fatalf("more than 50 accountIds must pass: %v", err)
+	schedule(context.Background(), svc, allIDs...)
+	if len(b.marked) != 0 || c.calls != 0 {
+		t.Fatalf("marked = %v, calls = %d", b.marked, c.calls)
 	}
 }

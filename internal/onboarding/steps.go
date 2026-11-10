@@ -341,6 +341,9 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 			if aerr != nil {
 				return aerr
 			}
+			if len(accounts) == 0 {
+				break
+			}
 			id, berr := s.createBudget(ctx, userID, accounts)
 			if berr != nil {
 				return berr

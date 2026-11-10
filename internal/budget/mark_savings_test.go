@@ -68,16 +68,3 @@ func TestMarkSavingsMembers_SkipsDeletedMembers(t *testing.T) {
 		t.Fatalf("deleted = %v, live = %v", goneOn, liveOn)
 	}
 }
-
-func TestMemberAccountIDs(t *testing.T) {
-	h := newNetWorthHarness(t)
-	b := h.budget(t, "2026-01-01 00:00:00", h.acct)
-	ids, err := h.svc.MemberAccountIDs(h.ctx, vo.MustParseId(h.user), vo.MustParseId(b))
-	if err != nil || len(ids) != 1 || ids[0].String() != h.acct {
-		t.Fatalf("ids = %v, err = %v", ids, err)
-	}
-	other := h.f.User(fixture.User{Name: "Other", Email: "other2@networth.test"})
-	if _, err := h.svc.MemberAccountIDs(h.ctx, vo.MustParseId(other), vo.MustParseId(b)); err == nil {
-		t.Fatal("a stranger must be refused")
-	}
-}

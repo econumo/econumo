@@ -9,84 +9,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// MaxOnboardingAccountIds caps the accounts one onboarding call names: one
-// onboarding screen's worth, and one AI prompt.
-const MaxOnboardingAccountIds = 50
-
-// OnboardingCreateBudgetRequest is the onboarding create-budget body: the
-// budget create-budget fields onboarding uses, without savings (the server
-// decides those in the background when an AI provider is configured).
-// NewAccountIds names the accounts the onboarding flow itself created; only
-// those are classified, so the user's earlier accounts never reach the AI.
-type OnboardingCreateBudgetRequest struct {
-	Id            string   `json:"id"`
-	Name          string   `json:"name"`
-	StartDate     string   `json:"startDate"`
-	CurrencyId    string   `json:"currencyId"`
-	AccountIds    []string `json:"accountIds"`
-	NewAccountIds []string `json:"newAccountIds"`
-}
-
-// Validate enforces id + name NotBlank (as budget create-budget does; the
-// account list is checked by the budget use case) and newAccountIds: at most
-// MaxOnboardingAccountIds UUIDs, each one of accountIds.
-func (r OnboardingCreateBudgetRequest) Validate() error {
-	if err := ValidateBlank(map[string]string{"id": r.Id, "name": r.Name}); err != nil {
-		return err
-	}
-	if len(r.NewAccountIds) > MaxOnboardingAccountIds {
-		return newAccountIdsError("This value is too long.", errs.CodeTooLong)
-	}
-	members := map[string]bool{}
-	for _, id := range r.AccountIds {
-		members[strings.ToLower(strings.TrimSpace(id))] = true
-	}
-	for _, id := range r.NewAccountIds {
-		if _, err := vo.ParseId(strings.TrimSpace(id)); err != nil {
-			return newAccountIdsError("This value is not a valid UUID.", errs.CodeInvalidUUID)
-		}
-		if !members[strings.ToLower(strings.TrimSpace(id))] {
-			return newAccountIdsError("The value you selected is not a valid choice.", errs.CodeInvalidChoice)
-		}
-	}
-	return nil
-}
-
-func newAccountIdsError(msg, code string) error {
-	return errs.NewValidation("Form validation error", errs.FieldError{Key: "newAccountIds", Message: msg, Code: code})
-}
-
-// OnboardingAddBudgetAccountsRequest adds accounts to a budget as everyday members.
-type OnboardingAddBudgetAccountsRequest struct {
-	BudgetId   string   `json:"budgetId"`
-	AccountIds []string `json:"accountIds"`
-}
-
-// Validate requires budgetId and 1..MaxOnboardingAccountIds UUIDs on accountIds.
-func (r OnboardingAddBudgetAccountsRequest) Validate() error {
-	if err := ValidateBlank(map[string]string{"budgetId": r.BudgetId}); err != nil {
-		return err
-	}
-	if len(r.AccountIds) == 0 {
-		return accountIdsError("This value should not be blank.", errs.CodeIsBlank)
-	}
-	if len(r.AccountIds) > MaxOnboardingAccountIds {
-		return accountIdsError("This value is too long.", errs.CodeTooLong)
-	}
-	for _, id := range r.AccountIds {
-		if _, err := vo.ParseId(strings.TrimSpace(id)); err != nil {
-			return accountIdsError("This value is not a valid UUID.", errs.CodeInvalidUUID)
-		}
-	}
-	return nil
-}
-
-// OnboardingAddBudgetAccountsResult is {item: MetaResult}: the budget after
-// the last account joined.
-type OnboardingAddBudgetAccountsResult struct {
-	Item MetaResult `json:"item"`
-}
-
 // Caps on one onboarding step call: a screen's worth of rows.
 const (
 	MaxOnboardingCategories = 60
@@ -167,13 +89,11 @@ type OnboardingSaveCategoriesRequest struct {
 }
 
 // Validate checks the shape; names, types and icons are checked by the
-// category create use case itself.
+// category create use case itself. No rows is valid: a user who already has
+// categories finishes the step by reordering them or by keeping them as they are.
 func (r OnboardingSaveCategoriesRequest) Validate() error {
 	if err := validateOperationID(r.Id); err != nil {
 		return err
-	}
-	if len(r.Categories) == 0 {
-		return blankError("categories")
 	}
 	if len(r.Categories) > MaxOnboardingCategories {
 		return tooLongError("categories")
@@ -221,13 +141,11 @@ type OnboardingSaveAccountsRequest struct {
 }
 
 // Validate checks the shape and the balances; names, icons and currencies are
-// checked by the account create use case itself.
+// checked by the account create use case itself. No rows is valid: a user who
+// already has accounts still picks the currencies.
 func (r OnboardingSaveAccountsRequest) Validate() error {
 	if err := validateOperationID(r.Id); err != nil {
 		return err
-	}
-	if len(r.Accounts) == 0 {
-		return blankError("accounts")
 	}
 	if len(r.Accounts) > MaxOnboardingAccounts {
 		return tooLongError("accounts")

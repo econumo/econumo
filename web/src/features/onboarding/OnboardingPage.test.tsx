@@ -40,21 +40,28 @@ function renderPage() {
 
 const ok = (data: unknown = {}) => HttpResponse.json({ success: true, message: '', data })
 
-let posts: { path: string; value?: string }[]
+let posts: { path: string; value?: string; body?: unknown }[]
+
+const markStep = (stored: string, step: string) =>
+  [...stored.split(',').filter((k) => k !== '' && k !== 'started' && k !== step && k !== `!${step}`), step].join(',')
 
 // get-user-data serves the stored option, an update-onboarding POST replaces it
 function serve(initial: string) {
   posts = []
-  const state = { stored: initial, completed: false, failComplete: false, budgets: [] as { id: string }[] }
+  const state = { stored: initial, completed: false, failComplete: false, budgets: [fixtureWireBudget.meta] as { id: string }[] }
   server.use(...coreHandlers({ budgets: [], categories: [] }))
   // added later, so these answer ahead of the core handlers
   server.use(
     http.get('*/api/v1/budget/get-budget-list', () => ok({ items: state.budgets })),
-    http.post('*/api/v1/onboarding/create-budget', async ({ request }) => {
-      const { id } = (await request.json()) as { id: string }
-      state.budgets.push({ ...fixtureWireBudget.meta, id })
-      return ok({ item: { ...fixtureWireBudget.meta, id } })
-    }),
+    // the step routes mark their step server-side and answer with the user
+    ...(['categories', 'accounts', 'plan'] as const).map((step) =>
+      http.post(`*/api/v1/onboarding/save-${step}`, async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        posts.push({ path: `save-${step}`, body })
+        state.stored = markStep(state.stored, step)
+        return ok({ user: userWith(state.stored), budgetId: 'b1', ...(step === 'plan' ? {} : { [step]: {} }) })
+      }),
+    ),
     http.get('*/api/v1/budget/get-budget', () => ok({ item: fixtureWireBudget })),
     http.get('*/api/v1/user/get-user-data', () => ok({ user: userWith(state.stored, state.completed) })),
     http.post('*/api/v1/user/update-onboarding', async ({ request }) => {
@@ -122,6 +129,19 @@ it('a revisited step moves on to the next open step after it', async () => {
   expect(posts).toEqual([{ path: 'update-onboarding', value: '!accounts' }])
 })
 
+it('Continue on Categories ticks the step from the user save-categories answers with, writing no option', async () => {
+  serve('import')
+  // a refetched user would still show the step open: the tick can only come from the answer
+  server.use(http.get('*/api/v1/user/get-user-data', () => ok({ user: userWith('import') })))
+  const user = userEvent.setup()
+  renderPage()
+  await heading('What do you spend on?')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(await heading("Where's your money right now?")).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Categories/ })).toHaveAttribute('data-state', 'done')
+  expect(posts.map((p) => p.path)).toEqual(['save-categories'])
+})
+
 it('a done step cannot be opened again', async () => {
   serve('import')
   const user = userEvent.setup()
@@ -178,8 +198,9 @@ it('resolving the last open step completes onboarding and lands on the budget', 
   await screen.findByRole('textbox', { name: 'Food' }, { timeout: 5000 })
   await user.click(screen.getByRole('button', { name: 'Save plan' }))
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
+  // the server marks the plan step itself: the client writes no option for it
   expect(posts).toEqual([
-    { path: 'update-onboarding', value: 'import,!categories,accounts,plan' },
+    { path: 'save-plan', body: { id: expect.any(String), budgetId: 'b1', amounts: [] } },
     { path: 'complete-onboarding' },
   ])
 })
@@ -326,6 +347,10 @@ function serveRegisteredUser() {
   }
   let n = 0
   const nextId = (p: string) => `${p}-${++n}`
+  const markStep = (step: string) => {
+    const value = state.options.find((o) => o.name === 'onboarding')?.value ?? ''
+    setOption('onboarding', [...value.split(',').filter((k) => k !== '' && k !== 'started' && k !== step && k !== `!${step}`), step].join(','))
+  }
   server.use(...coreHandlers({ user: user(), budgets: [], categories: [], accounts: [], folders: [] }))
   server.use(
     http.get('*/api/v1/user/get-user-data', () => ok({ user: user() })),
@@ -341,39 +366,50 @@ function serveRegisteredUser() {
       return ok({ user: user() })
     }),
     http.get('*/api/v1/category/get-category-list', () => ok({ items: state.categories })),
-    http.post('*/api/v1/category/create-category', async ({ request }) => {
-      const body = (await request.json()) as { name: string; type: string; icon: string }
-      // the server mints its own id: the posted one is the operation id
-      const item = { id: nextId('cat'), ownerUserId: 'u1', name: body.name, position: state.categories.length, type: body.type, icon: body.icon, isArchived: 0, createdAt: '2026-11-08 21:56:10', updatedAt: '2026-11-08 21:56:10' }
-      state.categories.push(item)
-      return ok({ item })
-    }),
     http.get('*/api/v1/account/get-folder-list', () => ok({ items: state.folders })),
     http.get('*/api/v1/account/get-account-list', () => ok({ items: state.accounts })),
-    http.post('*/api/v1/account/create-account', async ({ request }) => {
-      const body = (await request.json()) as { name: string; currencyId: string; balance: string; icon: string; folderId: string | null }
-      if (!body.folderId) state.folders.push({ id: 'folder-general', name: 'General', position: 0, isVisible: 1 })
-      const id = nextId('acc')
-      const item = {
-        id, owner, folderId: body.folderId ?? 'folder-general', name: body.name, position: state.accounts.length,
-        currency: body.currencyId === 'cur-eur' ? fixtureEur : fixtureUsd, balance: body.balance, type: 2, icon: body.icon,
-        sharedAccess: [], transactionsRevision: 1, transactionsCount: 1,
-      }
-      state.accounts.push(item)
-      return ok({ item, transaction: null })
-    }),
-    http.post('*/api/v1/user/update-currency', () => ok({ user: user() })),
-    http.post('*/api/v1/currency/hide-all-currencies', () => ok()),
-    http.post('*/api/v1/currency/show-currency', () => ok()),
     http.get('*/api/v1/budget/get-budget-list', () => ok({ items: state.budgets })),
-    http.post('*/api/v1/onboarding/create-budget', async ({ request }) => {
-      const body = (await request.json()) as { id: string; name: string; currencyId: string; accountIds: string[] }
-      log.push({ path: 'create-budget', body: body.accountIds })
-      const meta = { id: body.id, ownerUserId: 'u1', name: body.name, startedAt: '2026-11-01 00:00:00', endedAt: '', currencyId: body.currencyId, isArchived: 0, periodStartDay: 1, access: [{ user: owner, role: 'owner', isAccepted: 1 }] }
-      state.budgets.push(meta)
+    // save-categories as the server answers it: the rows created in one transaction, the step marked
+    http.post('*/api/v1/onboarding/save-categories', async ({ request }) => {
+      const body = (await request.json()) as { id: string; categories: { key: string; name: string; type: string; icon: string }[] }
+      log.push({ path: 'save-categories', body: body.categories.length })
+      const ids: Record<string, string> = {}
+      for (const row of body.categories) {
+        const item = { id: nextId('cat'), ownerUserId: 'u1', name: row.name, position: state.categories.length, type: row.type, icon: row.icon, isArchived: 0, createdAt: '2026-11-08 21:56:10', updatedAt: '2026-11-08 21:56:10' }
+        state.categories.push(item)
+        ids[row.key] = item.id
+      }
+      markStep('categories')
+      return ok({ user: user(), categories: ids, budgetId: '' })
+    }),
+    // save-accounts creates the accounts, the "General" folder and, with no budget yet, the budget over them
+    http.post('*/api/v1/onboarding/save-accounts', async ({ request }) => {
+      const body = (await request.json()) as { accounts: { key: string; name: string; currencyId: string; balance: string; icon: string }[]; currencyIds: string[]; mainCurrencyId: string }
+      log.push({ path: 'save-accounts', body: { accounts: body.accounts.map((a) => [a.name, a.balance]), currencyIds: body.currencyIds, main: body.mainCurrencyId } })
+      if (state.folders.length === 0) state.folders.push({ id: 'folder-general', name: 'General', position: 0, isVisible: 1 })
+      const ids: Record<string, string> = {}
+      for (const row of body.accounts) {
+        const id = nextId('acc')
+        state.accounts.push({
+          id, owner, folderId: 'folder-general', name: row.name, position: state.accounts.length,
+          currency: row.currencyId === 'cur-eur' ? fixtureEur : fixtureUsd, balance: row.balance, type: 2, icon: row.icon,
+          sharedAccess: [], transactionsRevision: 1, transactionsCount: 1,
+        })
+        ids[row.key] = id
+      }
+      const budgetId = 'b-onb'
+      state.budgets.push({ id: budgetId, ownerUserId: 'u1', name: 'My budget', startedAt: '2026-11-01 00:00:00', endedAt: '', currencyId: body.mainCurrencyId, isArchived: 0, periodStartDay: 1, access: [{ user: owner, role: 'owner', isAccepted: 1 }] })
       // the server makes a new budget the user's default
-      setOption('budget', body.id)
-      return ok({ item: { meta } })
+      setOption('budget', budgetId)
+      markStep('accounts')
+      return ok({ user: user(), accounts: ids, budgetId })
+    }),
+    http.post('*/api/v1/onboarding/save-plan', async ({ request }) => {
+      const body = (await request.json()) as { budgetId: string; amounts: { categoryId: string; amount: string }[] }
+      log.push({ path: 'save-plan', body: [body.budgetId, body.amounts.map((a) => [a.categoryId, a.amount])] })
+      for (const a of body.amounts) state.plans[a.categoryId] = a.amount
+      markStep('plan')
+      return ok({ user: user(), budgetId: body.budgetId })
     }),
     // get-budget-plan lists both kinds of categories, planned "" when unset
     http.get('*/api/v1/budget/get-budget-plan', ({ request }) => {
@@ -390,12 +426,6 @@ function serveRegisteredUser() {
           savingsFlows: [], savingsIncomeExpense: [], structure: { folders: [], savings: [], elements },
         },
       })
-    }),
-    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
-      const body = (await request.json()) as { elementId: string; amount: string }
-      log.push({ path: 'set-limit', body: [body.elementId, body.amount] })
-      state.plans[body.elementId] = body.amount
-      return ok()
     }),
   )
   return { log, state }
@@ -429,14 +459,12 @@ it('a registered user without the option walks every step and the answers and co
   expect(await screen.findByText('BUDGET ROUTE', {}, { timeout: 5000 })).toBeInTheDocument()
   const salaryId = state.categories.find((c) => c.name === 'Salary')?.id
   const groceriesId = state.categories.find((c) => c.name === 'Groceries')?.id
+  // Skip still writes the option; each done step is marked by its own route, never written again by the client
   expect(log).toEqual([
     { path: 'update-onboarding', body: '!import' },
-    { path: 'update-onboarding', body: '!import,categories' },
-    { path: 'update-onboarding', body: '!import,categories,accounts' },
-    { path: 'create-budget', body: ['acc-15'] },
-    { path: 'set-limit', body: [salaryId, '3000'] },
-    { path: 'set-limit', body: [groceriesId, '400'] },
-    { path: 'update-onboarding', body: '!import,categories,accounts,plan' },
+    { path: 'save-categories', body: 14 },
+    { path: 'save-accounts', body: { accounts: [['Cash', '100']], currencyIds: ['cur-usd'], main: 'cur-usd' } },
+    { path: 'save-plan', body: ['b-onb', [[salaryId, '3000'], [groceriesId, '400']]] },
     { path: 'complete-onboarding' },
   ])
   expect(state.options.find((o) => o.name === 'onboarding')?.value).toBe('completed')

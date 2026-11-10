@@ -1,32 +1,81 @@
 import { api, apiUrl } from './client'
+import type { CurrentUserDto } from './dto/user'
 import type { Id } from './types'
-import type { BudgetMetaDto } from './dto/budget'
 
 interface Envelope<T> {
   data: T
 }
 
-export interface OnboardingBudgetForm {
-  /** the budget id, also the create's idempotency key */
-  id: Id
+// Each Day 0 step is one server transaction: it creates the rows, marks the
+// step done in the onboarding option and answers with the updated user. `id`
+// is the operation id; a replay of it, or a call for a step already done,
+// writes nothing and answers with the current state.
+
+export interface OnboardingCategoryRowForm {
+  key: string
   name: string
-  startDate: string
+  type: 'expense' | 'income'
+  icon: string
+}
+
+export interface SaveCategoriesForm {
+  id: Id
+  categories: OnboardingCategoryRowForm[]
+  // existing category ids and row keys, each type in display order; absent leaves the order alone
+  order?: string[]
+}
+
+export interface SaveCategoriesResult {
+  user: CurrentUserDto
+  categories: Record<string, Id>
+  budgetId: Id | ''
+}
+
+export async function saveOnboardingCategories(form: SaveCategoriesForm): Promise<SaveCategoriesResult> {
+  const response = await api.post<Envelope<SaveCategoriesResult>>(apiUrl('/api/v1/onboarding/save-categories'), form)
+  return response.data.data
+}
+
+export interface OnboardingAccountRowForm {
+  key: string
+  name: string
+  balance: string
   currencyId: Id
-  accountIds: Id[]
-  /** the accounts the flow created (a subset of accountIds, at most 50): the only ones classified */
-  newAccountIds: Id[]
+  icon: string
 }
 
-// Creates the Day 0 budget. When the server has an AI provider it flags the
-// savings accounts in the background afterwards; the client never waits for it.
-export async function createOnboardingBudget(form: OnboardingBudgetForm): Promise<BudgetMetaDto> {
-  const response = await api.post<Envelope<{ item: { meta: BudgetMetaDto } }>>(apiUrl('/api/v1/onboarding/create-budget'), form)
-  return response.data.data.item.meta
+export interface SaveAccountsForm {
+  id: Id
+  accounts: OnboardingAccountRowForm[]
+  currencyIds: Id[]
+  mainCurrencyId: Id
 }
 
-// Adds accounts to the budget as everyday members (same background savings
-// classification as createOnboardingBudget).
-export async function addOnboardingBudgetAccounts(budgetId: Id, accountIds: Id[]): Promise<BudgetMetaDto> {
-  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/onboarding/add-budget-accounts'), { budgetId, accountIds })
-  return response.data.data.item
+export interface SaveAccountsResult {
+  user: CurrentUserDto
+  accounts: Record<string, Id>
+  budgetId: Id | ''
+}
+
+// When the server has an AI provider it flags the new savings accounts in the background afterwards.
+export async function saveOnboardingAccounts(form: SaveAccountsForm): Promise<SaveAccountsResult> {
+  const response = await api.post<Envelope<SaveAccountsResult>>(apiUrl('/api/v1/onboarding/save-accounts'), form)
+  return response.data.data
+}
+
+export interface SavePlanForm {
+  id: Id
+  budgetId?: Id
+  // limits of the budget's current period; "0" is a real zero plan
+  amounts: { categoryId: Id; amount: string }[]
+}
+
+export interface SavePlanResult {
+  user: CurrentUserDto
+  budgetId: Id
+}
+
+export async function saveOnboardingPlan(form: SavePlanForm): Promise<SavePlanResult> {
+  const response = await api.post<Envelope<SavePlanResult>>(apiUrl('/api/v1/onboarding/save-plan'), form)
+  return response.data.data
 }

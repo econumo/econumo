@@ -8,6 +8,7 @@ import { coreHandlers, fixtureCategories } from '@/test/fixtures'
 import { CategoriesStep, CategoriesStepBody, type ExistingCategory } from './CategoriesStep'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { emptyDraft, loadDraft, saveDraft, type CategoryRow } from './draft'
+import { stepRoutes, userWith } from './onboardingRoutes.test-utils'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
@@ -271,19 +272,11 @@ describe('in the UI language', () => {
 
 describe('CategoriesStepBody', () => {
   const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
-  let created: string[]
+  let routes: ReturnType<typeof stepRoutes>
 
   function renderBody(categories: unknown[], first: Parameters<typeof server.use> = []) {
-    created = []
-    server.use(
-      ...first,
-      ...coreHandlers({ categories }),
-      http.post('*/api/v1/category/create-category', async ({ request }) => {
-        const body = (await request.json()) as { id: string; name: string; type: string }
-        created.push(body.name)
-        return ok({ item: { ...fixtureCategories[0], id: `new-${created.length}`, name: body.name, type: body.type } })
-      }),
-    )
+    routes = stepRoutes()
+    server.use(...first, ...coreHandlers({ categories, user: userWith('') }), ...routes.handlers)
     const onDone = vi.fn(() => Promise.resolve())
     const onSkip = vi.fn(() => Promise.resolve())
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -331,22 +324,44 @@ describe('CategoriesStepBody', () => {
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORY_REMOVED, expect.anything())
   })
 
-  it('a stored draft with some rows created resumes without duplicates, then moves on', async () => {
-    const rows: CategoryRow[] = [
-      { key: 'k1', name: 'Food', type: 'expense', icon: 'restaurant' },
-      { key: 'k2', name: 'Fun', type: 'expense', icon: 'movie' },
-    ]
-    saveDraft('u1', { ...emptyDraft(), ops: { 'category:k1': 'op1', 'category:k2': 'op2' }, categoryRows: rows, createdCategories: { k1: 'cat-food' } })
+  it('Continue posts one save-categories with every row in display order, then moves on', async () => {
+    const user = userEvent.setup()
+    const { onDone } = renderBody([])
+    await screen.findByRole('heading', { name: 'What do you spend on?' })
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(routes.srv.calls).toHaveLength(1)
+    const body = routes.srv.calls[0].body
+    expect(body.order).toBeUndefined()
+    expect(body.categories).toHaveLength(14)
+    expect(body.categories[0]).toEqual({ key: expect.any(String), name: 'Groceries', type: 'expense', icon: expect.any(String) })
+    expect(Object.keys(loadDraft('u1')!.createdCategories)).toHaveLength(14)
+  })
+
+  it('a user who already has categories continues with no new rows', async () => {
     const user = userEvent.setup()
     const { onDone } = renderBody(fixtureCategories)
     await screen.findByRole('heading', { name: 'What do you spend on?' })
-    expect(screen.getAllByText('Food')).toHaveLength(1)
-    expect(screen.queryByRole('button', { name: 'Remove Food' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Old')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
-    expect(created).toEqual(['Fun'])
-    expect(loadDraft('u1')!.createdCategories).toEqual({ k1: 'cat-food', k2: 'new-1' })
+    expect(routes.srv.calls.map((c) => c.body.categories)).toEqual([[]])
+  })
+
+  it('a stored draft from a failed submit reseeds the form and replays its operation id', async () => {
+    const rows: CategoryRow[] = [
+      { key: 'k1', name: 'Gifts', type: 'expense', icon: 'redeem' },
+      { key: 'k2', name: 'Fun', type: 'expense', icon: 'movie' },
+    ]
+    saveDraft('u1', { ...emptyDraft(), ops: { categories: 'op-cats' }, categoryRows: rows })
+    const user = userEvent.setup()
+    const { onDone } = renderBody(fixtureCategories)
+    await screen.findByRole('heading', { name: 'What do you spend on?' })
+    expect(screen.getByDisplayValue('Gifts')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Fun')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(routes.srv.calls.map((c) => [c.body.id, c.body.categories.map((r: CategoryRow) => r.key)])).toEqual([['op-cats', ['k1', 'k2']]])
+    expect(loadDraft('u1')!.createdCategories).toEqual({ k1: 'cat-1', k2: 'cat-2' })
   })
 
   it('an archived category of the user keeps its default name out of the list', async () => {
@@ -360,7 +375,7 @@ describe('CategoriesStepBody', () => {
   it('a failed save shows the error and stays on the step', async () => {
     const user = userEvent.setup()
     const { onDone } = renderBody([])
-    server.use(http.post('*/api/v1/category/create-category', () => HttpResponse.json({ success: false, message: 'Nope', code: 400, errors: {} }, { status: 500 })))
+    server.use(http.post('*/api/v1/onboarding/save-categories', () => HttpResponse.json({ success: false, message: 'Nope', code: 400, errors: {} }, { status: 400 })))
     await screen.findByRole('heading', { name: 'What do you spend on?' })
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Nope')

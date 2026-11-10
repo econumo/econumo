@@ -8,6 +8,7 @@ import { http, HttpResponse } from 'msw'
 import { fixtureAccounts } from '@/test/fixtures'
 import { AccountsStep, AccountsStepBody, type ExistingAccount } from './AccountsStep'
 import { emptyDraft, loadDraft, saveDraft, type AccountRow } from './draft'
+import { stepRoutes, userWith } from './onboardingRoutes.test-utils'
 
 function renderStep(props: Partial<React.ComponentProps<typeof AccountsStep>> = {}, handlers: Parameters<typeof coreHandlers>[0] = {}) {
   server.use(...coreHandlers(handlers))
@@ -420,81 +421,72 @@ it('disables Skip while pending', async () => {
 })
 
 describe('AccountsStepBody', () => {
-  const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
-
-  it('a stored draft with one account created resumes without creating it again, then moves on', async () => {
-    localStorage.clear()
-    const rows: AccountRow[] = [
-      { key: 'k1', name: 'Cash', balance: '100.5', currencyId: 'cur-usd', icon: 'payments' },
-      { key: 'k2', name: 'Travel fund', balance: '20', currencyId: 'cur-usd', icon: 'savings' },
-    ]
-    saveDraft('u1', { ...emptyDraft(), ops: { 'account:k1': 'op1', 'account:k2': 'op2' }, rows, created: { k1: 'a1' } })
-    const created: string[] = []
-    server.use(
-      ...coreHandlers({ accounts: [fixtureAccounts[0]] }),
-      http.post('*/api/v1/account/create-account', async ({ request }) => {
-        const body = (await request.json()) as { name: string; id: string }
-        created.push(body.name)
-        return ok({ item: { ...fixtureAccounts[1], id: 'a-new', name: body.name }, transaction: null })
-      }),
-      http.post('*/api/v1/user/update-currency', () => ok({ user: {} })),
-      http.post('*/api/v1/currency/hide-all-currencies', () => ok({})),
-      http.post('*/api/v1/currency/show-currency', () => ok({})),
-    )
-    const onDone = vi.fn(() => Promise.resolve())
+  const renderBody = (onDone = vi.fn(() => Promise.resolve())) => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const user = userEvent.setup()
     render(
       <QueryClientProvider client={queryClient}>
         <AccountsStepBody onDone={onDone} onSkip={() => Promise.resolve()} />
       </QueryClientProvider>,
     )
+    return { onDone, queryClient }
+  }
+
+  it('Continue posts one save-accounts with the new rows, the currencies and the main one, then moves on', async () => {
+    localStorage.clear()
+    const routes = stepRoutes({ option: 'categories' })
+    server.use(...coreHandlers({ accounts: [fixtureAccounts[0]], user: userWith('categories') }), ...routes.handlers)
+    const user = userEvent.setup()
+    const { onDone } = renderBody()
     await ready()
-    expect(screen.getAllByText('Cash')).toHaveLength(1)
+    await addAccount(user)
+    await user.type(nameInputs()[0], 'Travel fund')
+    await user.type(balanceInputs()[0], '20')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(routes.srv.calls).toHaveLength(1)
+    const body = routes.srv.calls[0].body
+    expect(body.accounts).toEqual([{ key: expect.any(String), name: 'Travel fund', balance: '20', currencyId: body.mainCurrencyId, icon: expect.any(String) }])
+    expect(body.currencyIds).toEqual(expect.arrayContaining([fixtureAccounts[0].currency.id, body.mainCurrencyId]))
+    expect(Object.values(loadDraft('u1')!.created)).toEqual(['acc-1'])
+  })
+
+  it('a stored draft from a failed submit reseeds the form and replays its operation id', async () => {
+    localStorage.clear()
+    const rows: AccountRow[] = [{ key: 'k2', name: 'Travel fund', balance: '20', currencyId: 'cur-usd', icon: 'savings' }]
+    saveDraft('u1', { ...emptyDraft(), ops: { accounts: 'op-acc' }, rows })
+    const routes = stepRoutes()
+    server.use(...coreHandlers({ accounts: [fixtureAccounts[0]], user: userWith('') }), ...routes.handlers)
+    const user = userEvent.setup()
+    const { onDone } = renderBody()
+    await ready()
     expect(nameInputs()).toHaveLength(1)
     expect(nameInputs()[0]).toHaveValue('Travel fund')
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
-    expect(created).toEqual(['Travel fund'])
-    expect(loadDraft('u1')!.created).toEqual({ k1: 'a1', k2: 'a-new' })
+    expect(routes.srv.calls.map((c) => [c.body.id, c.body.accounts.map((a: AccountRow) => a.key)])).toEqual([['op-acc', ['k2']]])
+    expect(loadDraft('u1')!.created).toEqual({ k2: 'acc-1' })
+    expect(loadDraft('u1')!.ops.accounts).toBeUndefined()
+  })
+
+  it('a failed save shows the error, stays on the step and keeps the id for the retry', async () => {
+    localStorage.clear()
+    const routes = stepRoutes()
+    routes.srv.failNext.accounts = 'http500'
+    server.use(...coreHandlers({ accounts: [], user: userWith('') }), ...routes.handlers)
+    const user = userEvent.setup()
+    const { onDone } = renderBody()
+    await ready()
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(onDone).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(routes.srv.calls[1].body.id).toBe(routes.srv.calls[0].body.id)
   })
 })
 
 describe('AccountsStepBody recovery', () => {
   const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
-
-  it('a draft row whose create landed but whose response was lost shows once and continues', async () => {
-    localStorage.clear()
-    const rows: AccountRow[] = [{ key: 'k1', name: 'Cash', balance: '100.5', currencyId: 'cur-usd', icon: 'payments' }]
-    saveDraft('u1', { ...emptyDraft(), ops: { 'account:k1': 'op1' }, rows })
-    const creates: string[] = []
-    server.use(
-      ...coreHandlers({ accounts: [fixtureAccounts[0]] }),
-      http.post('*/api/v1/account/create-account', async ({ request }) => {
-        creates.push(((await request.json()) as { id: string }).id)
-        return HttpResponse.json({ success: false, message: 'Operation is locked', code: 400, errors: {} }, { status: 400 })
-      }),
-      http.post('*/api/v1/user/update-currency', () => ok({ user: {} })),
-      http.post('*/api/v1/currency/hide-all-currencies', () => ok({})),
-      http.post('*/api/v1/currency/show-currency', () => ok({})),
-    )
-    const onDone = vi.fn(() => Promise.resolve())
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const user = userEvent.setup()
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AccountsStepBody onDone={onDone} onSkip={() => Promise.resolve()} />
-      </QueryClientProvider>,
-    )
-    await ready()
-    expect(screen.getAllByTestId('account-row')).toHaveLength(1)
-    expect(screen.queryByLabelText('Account name')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
-    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
-    expect(creates).toEqual([])
-    const d = loadDraft('u1')!
-    expect(d.created).toEqual({ k1: 'a1' })
-  })
 
   it('a failed account list shows the error with a retry instead of an empty form', async () => {
     let fail = true

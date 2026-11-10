@@ -8,6 +8,7 @@ import { coreHandlers, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
 import * as metrics from '@/lib/metrics'
 import { queryKeys } from '@/app/queryKeys'
 import { PlanStep } from './PlanStep'
+import { stepRoutes } from './onboardingRoutes.test-utils'
 
 const pendingUser = {
   ...fixtureUser,
@@ -72,60 +73,46 @@ const period = (() => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 })()
 
-let creates: unknown[]
-let limits: { budgetId: string; elementId: string; period: string; amount: string | null }[]
+let saves: { id: string; budgetId?: string; amounts: { categoryId: string; amount: string }[] }[]
 let budgetPeriods: string[]
-let listCalls: number
+let routes: ReturnType<typeof stepRoutes>
 
 interface Setup {
   salary?: string
   accounts?: unknown[]
   categories?: ReturnType<typeof category>[]
   plans?: Record<string, string>
-  // an existing default budget instead of a fresh one
-  existing?: { id: string; periodStartDay: number }
+  // the user's default budget; null = none (the accounts step was skipped)
+  budget?: { id: string; periodStartDay: number } | null
   // a budget list already cached (fresh) when the step opens
   cachedBudgets?: unknown[]
-  // the server lists the budget to the first list call only
-  listOnce?: boolean
 }
 
-function setup({ salary = '3000', accounts, categories = defaultCategories(), plans = defaultPlans(salary), existing, cachedBudgets, listOnce }: Setup = {}) {
-  creates = []
-  limits = []
+function setup({ salary = '3000', accounts, categories = defaultCategories(), plans = defaultPlans(salary), budget = { id: 'b1', periodStartDay: 1 }, cachedBudgets }: Setup = {}) {
   budgetPeriods = []
-  listCalls = 0
-  const user = existing
-    ? { ...pendingUser, options: pendingUser.options.map((o) => (o.name === 'budget' ? { ...o, value: existing.id } : o)) }
+  routes = stepRoutes({ option: 'categories,accounts', budgetId: budget?.id })
+  saves = []
+  const user = budget
+    ? { ...pendingUser, options: pendingUser.options.map((o) => (o.name === 'budget' ? { ...o, value: budget.id } : o)) }
     : pendingUser
-  const meta = (id: string, periodStartDay = 1) => ({ ...fixtureWireBudget.meta, id, periodStartDay })
-  const metas = () => (existing ? [meta(existing.id, existing.periodStartDay)] : creates.map((c) => meta((c as { id: string }).id)))
-  const byId = (id: string) => metas().find((m) => m.id === id)
-  server.use(...coreHandlers({ user, budgets: [], categories, ...(accounts ? { accounts } : {}) }))
+  const metas = budget ? [{ ...fixtureWireBudget.meta, id: budget.id, periodStartDay: budget.periodStartDay }] : []
+  server.use(...coreHandlers({ user, budgets: metas, categories, ...(accounts ? { accounts } : {}) }))
   server.use(
-    http.get('*/api/v1/budget/get-budget-list', () => {
-      listCalls++
-      return ok({ items: listOnce && listCalls > 1 ? [] : metas() })
-    }),
-    http.post('*/api/v1/onboarding/create-budget', async ({ request }) => {
-      const body = (await request.json()) as { id: string }
-      creates.push(body)
-      return ok({ item: byId(body.id) })
-    }),
+    http.get('*/api/v1/budget/get-budget-list', () => ok({ items: metas })),
     http.get('*/api/v1/budget/get-budget-plan', ({ request }) => {
       const url = new URL(request.url)
       const from = url.searchParams.get('from') ?? ''
       budgetPeriods.push(from)
       const id = url.searchParams.get('id') ?? ''
-      return ok({ item: wirePlan(id, categories, plans, from, byId(id)?.periodStartDay ?? 1) })
+      return ok({ item: wirePlan(id, categories, plans, from, metas.find((m) => m.id === id)?.periodStartDay ?? 1) })
     }),
     http.get('*/api/v1/oauth/get-identity-list', () => ok([])),
-    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
-      limits.push((await request.json()) as (typeof limits)[number])
-      return ok()
-    }),
+    ...routes.handlers,
   )
-  const onDone = vi.fn(() => Promise.resolve())
+  const onDone = vi.fn(() => {
+    saves = routes.srv.calls.map((c) => c.body)
+    return Promise.resolve()
+  })
   const onSkip = vi.fn(() => Promise.resolve())
   const onGoTo = vi.fn()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -137,10 +124,8 @@ function setup({ salary = '3000', accounts, categories = defaultCategories(), pl
       </QueryClientProvider>
     </StrictMode>,
   )
-  return { onDone, onSkip, onGoTo }
+  return { onDone, onSkip, onGoTo, queryClient }
 }
-
-const createdId = () => (creates[0] as { id: string }).id
 
 const input = (name: string) => screen.findByRole('textbox', { name }, { timeout: 5000 })
 
@@ -153,11 +138,11 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-it('creates the budget once on entering and loads this month', async () => {
+it('loads this month of the default budget and writes nothing on entering', async () => {
   setup()
   await input('Groceries')
-  expect(creates).toHaveLength(1)
   expect(budgetPeriods).toContain(period)
+  expect(routes.srv.calls).toEqual([])
 })
 
 it('lists income and expense categories in their groups, prefilled from the plan', async () => {
@@ -199,7 +184,7 @@ it('saves changed amounts only, a typed zero but never a blank, then moves on', 
   await user.clear(screen.getByRole('textbox', { name: 'Salary' }))
   await user.click(screen.getByRole('button', { name: 'Save plan' }))
   await waitFor(() => expect(onDone).toHaveBeenCalled())
-  expect(limits).toEqual([{ budgetId: createdId(), elementId: 'cat-rent', period, amount: '0' }])
+  expect(saves).toEqual([{ id: expect.any(String), budgetId: 'b1', amounts: [{ categoryId: 'cat-rent', amount: '0' }] }])
 })
 
 it('keeps a stored plan digit for digit and leaves an untouched one alone', async () => {
@@ -212,10 +197,10 @@ it('keeps a stored plan digit for digit and leaves an untouched one alone', asyn
   await user.type(screen.getByRole('textbox', { name: 'Salary' }), '0')
   await user.click(screen.getByRole('button', { name: 'Save plan' }))
   await waitFor(() => expect(onDone).toHaveBeenCalled())
-  expect(limits).toEqual([{ budgetId: createdId(), elementId: 'cat-salary', period, amount: '0' }])
+  expect(saves.map((b) => b.amounts)).toEqual([[{ categoryId: 'cat-salary', amount: '0' }]])
 })
 
-it('writes every changed row with the first of the month', async () => {
+it('writes every changed row in one save-plan', async () => {
   const user = userEvent.setup()
   const { onDone } = setup()
   await input('Groceries')
@@ -225,9 +210,11 @@ it('writes every changed row with the first of the month', async () => {
   await user.type(screen.getByRole('textbox', { name: 'Salary' }), '3200')
   await user.click(screen.getByRole('button', { name: 'Save plan' }))
   await waitFor(() => expect(onDone).toHaveBeenCalled())
-  expect(limits).toEqual([
-    { budgetId: createdId(), elementId: 'cat-salary', period, amount: '3200' },
-    { budgetId: createdId(), elementId: 'cat-food', period, amount: '250.5' },
+  expect(saves.map((b) => b.amounts)).toEqual([
+    [
+      { categoryId: 'cat-salary', amount: '3200' },
+      { categoryId: 'cat-food', amount: '250.5' },
+    ],
   ])
 })
 
@@ -240,13 +227,16 @@ it('refuses to save an amount it cannot read', async () => {
   expect(onDone).not.toHaveBeenCalled()
 })
 
-it('without an account it asks for one and opens the Accounts step', async () => {
+it('without a budget it asks for an account and opens the Accounts step, and Skip stays', async () => {
   const user = userEvent.setup()
-  const { onGoTo } = setup({ accounts: [] })
+  const { onGoTo, onSkip } = setup({ accounts: [], budget: null })
   await user.click(await screen.findByRole('button', { name: 'Add an account' }, { timeout: 5000 }))
   expect(onGoTo).toHaveBeenCalledWith('accounts')
   expect(screen.getByText('A budget needs at least one account. Add one first.')).toBeInTheDocument()
-  expect(creates).toHaveLength(0)
+  expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: 'Skip for now' }))
+  expect(onSkip).toHaveBeenCalled()
+  expect(routes.srv.calls).toEqual([])
 })
 
 it('Skip for now skips the step', async () => {
@@ -260,16 +250,16 @@ it('Skip for now skips the step', async () => {
 it('plans the current period of a reused budget whose months start on the 15th', async () => {
   vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 10, 12) })
   const user = userEvent.setup()
-  const { onDone } = setup({ existing: { id: 'b-old', periodStartDay: 15 } })
+  const { onDone } = setup({ budget: { id: 'b-old', periodStartDay: 15 } })
   await input('Groceries')
-  expect(creates).toHaveLength(0)
   expect(budgetPeriods).toEqual(expect.arrayContaining(['2026-10-01']))
   expect(budgetPeriods).not.toContain('2026-11-01')
   expect(screen.getByText('Expenses · October')).toBeInTheDocument()
   await user.type(screen.getByRole('textbox', { name: 'Housing' }), '10')
   await user.click(screen.getByRole('button', { name: 'Save plan' }))
   await waitFor(() => expect(onDone).toHaveBeenCalled())
-  expect(limits).toEqual([{ budgetId: 'b-old', elementId: 'cat-rent', period: '2026-10-01', amount: '10' }])
+  // the server writes its own current period of the budget; the client names the budget only
+  expect(saves).toEqual([{ id: expect.any(String), budgetId: 'b-old', amounts: [{ categoryId: 'cat-rent', amount: '10' }] }])
 })
 
 it('refuses a negative amount', async () => {
@@ -290,34 +280,30 @@ it('with no categories to plan it points to the Categories step', async () => {
   expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
 })
 
-it('reports the plan only once the step is answered', async () => {
+it('reports the plan once save-plan succeeds and takes the user it answers with', async () => {
   const user = userEvent.setup()
-  const { onDone } = setup()
-  let resolve = () => {}
-  onDone.mockImplementation(() => new Promise<void>((r) => (resolve = r)))
   const tracked: unknown[] = []
   const spy = vi.spyOn(metrics, 'trackEvent').mockImplementation((...args) => void tracked.push(args))
+  const { onDone, queryClient } = setup()
   await input('Groceries')
+  routes.srv.failNext.plan = 'http500'
   await user.type(screen.getByRole('textbox', { name: 'Housing' }), '5')
   await user.click(screen.getByRole('button', { name: 'Save plan' }))
-  await waitFor(() => expect(onDone).toHaveBeenCalled())
+  expect(await screen.findByRole('alert')).toBeInTheDocument()
   expect(tracked).toEqual([])
-  resolve()
-  await waitFor(() => expect(tracked).toEqual([[metrics.METRICS.ONBOARDING_PLAN_COMPLETE, { rows: 1 }]]))
+  expect(onDone).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await waitFor(() => expect(onDone).toHaveBeenCalled())
+  expect(tracked).toEqual([[metrics.METRICS.ONBOARDING_PLAN_COMPLETE, { rows: 1 }]])
+  // the retry replays the operation id of the failed save
+  expect(routes.srv.calls.map((c) => c.body.id)).toEqual([routes.srv.calls[0].body.id, routes.srv.calls[0].body.id])
+  const option = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)?.options.find((o) => o.name === 'onboarding')?.value
+  expect(option).toBe('categories,accounts,plan')
   spy.mockRestore()
 })
 
 it('a cached budget list without the budget is refetched before planning', async () => {
-  setup({ existing: { id: 'b-old', periodStartDay: 1 }, cachedBudgets: [] })
+  setup({ cachedBudgets: [] })
   expect(await input('Groceries')).toBeInTheDocument()
   expect(budgetPeriods).toContain(period)
-})
-
-it('a budget the list never shows is an error with retry, and Skip stays', async () => {
-  const user = userEvent.setup()
-  const { onSkip } = setup({ existing: { id: 'b-old', periodStartDay: 1 }, cachedBudgets: [], listOnce: true })
-  expect(await screen.findByRole('button', { name: 'Try again' }, { timeout: 5000 })).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
-  await user.click(screen.getByRole('button', { name: 'Skip for now' }))
-  expect(onSkip).toHaveBeenCalled()
 })

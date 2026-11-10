@@ -301,8 +301,12 @@ navigation (single-pane vs sidebar).
       appear once onboarding is completed.
 - [ ] Skip on Categories or Accounts creates nothing; Continue on Categories
       creates every category still listed (in the listed order), Continue on Accounts only the new
-      accounts (and sets the main currency and visible currencies). Neither
-      step creates a budget.
+      accounts (and sets the main currency and visible currencies). Each Continue
+      sends one request (Network tab: `onboarding/save-categories` /
+      `save-accounts`); a user who already has categories or accounts can
+      Continue without adding any. The budget is created by whichever of the
+      two steps comes second with an account present (over every own account),
+      and not at all while the user has no account.
 - [ ] Categories: one card per type, a trash button on the right of each new
       row ("Remove {name}" for a screen reader), an "Add your own" row at the
       end. On a fresh account every default is listed; the trash button drops
@@ -377,7 +381,10 @@ navigation (single-pane vs sidebar).
 - [ ] An existing user who owns accounts (upgraded instance) is not sent to
       onboarding.
 - [ ] 📱 Reloading mid-flow (or retrying after a failed request) resumes at the
-      same step with the same rows and creates nothing twice.
+      same step with the same rows and creates nothing twice. With the network
+      cut (DevTools offline) Continue shows an error and stays on the step;
+      back online, Continue again creates each row once; a step whose request
+      landed but whose answer was lost shows done after the user reloads.
 - [ ] An invalid balance in a row with no name does not block Continue; Skip is
       disabled while a save is running.
 - [ ] Balances follow the UI language: in English "2,500" saves 2500 and
@@ -388,17 +395,17 @@ navigation (single-pane vs sidebar).
       shows the server's length message under the row once the field is left,
       and Continue stays disabled until it is fixed (or, for a new row,
       removed). In Chinese every default category saves without an error.
-- [ ] 📱 Opening "Budget & plan" creates the budget once (over every own
-      account; without AI none of them is savings, even one named "Savings"
-      with the piggy-bank icon; with AI the step opens without waiting for
-      the AI, and a few seconds later the accounts it judges savings (e.g.
-      "Tagesgeld" for a German user) become savings members, never accounts
-      the user does not own; an AI failure or timeout leaves them all
-      everyday) when the user has none, or uses the
-      default/first budget they already have (its savings flags are left
-      alone); reopening the step creates
-      nothing more. With no own account it says a budget needs one and
-      "Add an account" opens the Accounts step.
+- [ ] 📱 Opening "Budget & plan" writes nothing: it plans the budget the
+      Categories/Accounts steps created (over every own account; without AI
+      none of them is savings, even one named "Savings" with the piggy-bank
+      icon; with AI the Accounts step moves on without waiting for the AI, and
+      a few seconds later the accounts it judges savings (e.g. "Tagesgeld" for
+      a German user) become savings members, never accounts the user does not
+      own; an AI failure or timeout leaves them all everyday), or the
+      default/first budget the user already has (its savings flags are left
+      alone). With no budget (Accounts skipped and no account) it says a budget
+      needs an account and "Add an account" opens the Accounts step; Skip stays
+      available.
 - [ ] "Plan this month" lists an "Income · {month}" card (the user's own
       income categories, e.g. Salary right after Day 0) and an "Expenses ·
       {month}" card (own expense categories, not archived ones nor those inside
@@ -407,10 +414,10 @@ navigation (single-pane vs sidebar).
       "Planned X of Y expected income" once any income is entered, otherwise
       "Planned X of Y in your accounts" (own accounts converted to the budget
       currency), and updates while typing.
-- [ ] "Save plan" writes only changed rows for this month: a typed 0 is saved
-      as a zero plan, a blank row is never written (clearing an existing plan
-      here leaves it); the step is then marked done and the next open step
-      opens. An unreadable or negative amount shows an inline error and
+- [ ] "Save plan" writes only changed rows for this month in one request
+      (`onboarding/save-plan`): a typed 0 is saved as a zero plan, a blank row
+      is never written (clearing an existing plan here leaves it); the step is
+      then marked done and the next open step opens. An unreadable or negative amount shows an inline error and
       disables Save plan; "Skip for now" skips the step and writes nothing.
 - [ ] Reusing a budget whose months start on another day (e.g. the 15th) plans
       that budget's current period: its month name heads the cards and the

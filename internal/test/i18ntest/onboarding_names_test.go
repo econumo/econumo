@@ -6,7 +6,8 @@ import (
 	"unicode/utf8"
 )
 
-// The onboarding defaults are sent as-is to create-category and create-budget,
+// The onboarding defaults reach category create and budget create as-is (the
+// step routes name the budget from onboarding.budget_name),
 // which both refuse names outside 3-64 runes (category newCategoryName,
 // model.ValidateName); a default outside that range blocks the step.
 func TestOnboardingDefaultNamesFitServerLimits(t *testing.T) {

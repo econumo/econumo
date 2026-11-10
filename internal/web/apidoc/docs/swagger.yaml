@@ -2187,20 +2187,6 @@ definitions:
       name:
         type: string
     type: object
-  model.OnboardingAddBudgetAccountsRequest:
-    properties:
-      accountIds:
-        items:
-          type: string
-        type: array
-      budgetId:
-        type: string
-    type: object
-  model.OnboardingAddBudgetAccountsResult:
-    properties:
-      item:
-        $ref: '#/definitions/model.MetaResult'
-    type: object
   model.OnboardingCategoryRow:
     properties:
       icon:
@@ -2210,25 +2196,6 @@ definitions:
       name:
         type: string
       type:
-        type: string
-    type: object
-  model.OnboardingCreateBudgetRequest:
-    properties:
-      accountIds:
-        items:
-          type: string
-        type: array
-      currencyId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      newAccountIds:
-        items:
-          type: string
-        type: array
-      startDate:
         type: string
     type: object
   model.OnboardingPlanAmount:
@@ -8858,111 +8825,6 @@ paths:
       summary: Unlink a provider from the current account
       tags:
       - OAuth
-  /api/v1/onboarding/add-budget-accounts:
-    post:
-      consumes:
-      - application/json
-      description: Adds each account to the budget like budget/add-account (everyday
-        members; an existing member keeps its flag) and answers at once. When the
-        server has an AI provider, the same background savings classification as onboarding/create-budget
-        follows for these accounts.
-      parameters:
-      - description: Onboarding add budget accounts request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.OnboardingAddBudgetAccountsRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.OnboardingAddBudgetAccountsResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "402":
-          description: Payment Required
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Add onboarding accounts to a budget
-      tags:
-      - Onboarding
-  /api/v1/onboarding/create-budget:
-    post:
-      consumes:
-      - application/json
-      description: Creates a budget exactly like budget/create-budget (same validation
-        and id idempotency) and answers at once. When the server has an AI provider,
-        a background job then sends the accounts' names and currencies and the caller's
-        timezone and language to it, and flags the accounts it judges savings as savings
-        members of the budget.
-      parameters:
-      - description: Onboarding create budget request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.OnboardingCreateBudgetRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.CreateBudgetResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "402":
-          description: Payment Required
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Create the onboarding budget
-      tags:
-      - Onboarding
   /api/v1/onboarding/save-accounts:
     post:
       consumes:

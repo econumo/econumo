@@ -132,27 +132,6 @@ func (s *Service) MarkSavingsMembers(ctx context.Context, userID, budgetID vo.Id
 	})
 }
 
-// MemberAccountIDs lists the budget's member accounts (deleted ones included)
-// for a caller who may update the budget.
-func (s *Service) MemberAccountIDs(ctx context.Context, userID, budgetID vo.Id) ([]vo.Id, error) {
-	b, err := s.loadAggregate(ctx, budgetID)
-	if err != nil {
-		return nil, err
-	}
-	if !s.canUpdate(b, userID) {
-		return nil, accessDenied()
-	}
-	members, err := s.budgets.MemberAccounts(ctx, budgetID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]vo.Id, 0, len(members))
-	for _, m := range members {
-		out = append(out, m.AccountID)
-	}
-	return out, nil
-}
-
 // RemoveAccount drops a member account the caller owns, unless its history in
 // closed months has locked it in place.
 func (s *Service) RemoveAccount(ctx context.Context, userID vo.Id, req model.RemoveAccountRequest) (*model.RemoveAccountResult, error) {

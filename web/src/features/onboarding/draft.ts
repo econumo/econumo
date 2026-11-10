@@ -14,13 +14,16 @@ export type AccountRow = {
   iconPicked?: boolean
 }
 export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; labelKey?: string; defaultKey?: string }
+export type Day0Step = 'categories' | 'accounts' | 'plan'
 export type Day0Draft = {
-  // operation ids by `account:<rowKey>` / `category:<rowKey>` / `budget` (the budget's own id)
-  ops: Record<string, Id>
+  // the operation id of a step's submit, minted on its first Continue and kept until the
+  // server answers, so a retry after a lost response replays the same id
+  ops: Partial<Record<Day0Step, Id>>
   // the rows last submitted by saveAccounts; a reload seeds the form from them to keep their keys
   rows: AccountRow[]
   extraCurrencyIds: Id[]
-  // server account id by row key / server category id by row key, written right after each create
+  mainCurrencyId: Id | null
+  // server account id by row key / server category id by row key, from the step's answer
   created: Record<string, Id>
   createdCategories: Record<string, Id>
   // the categories last submitted by saveCategories, so a retry after a failure reseeds the form with the same keys
@@ -29,12 +32,8 @@ export type Day0Draft = {
   categoryOrder: string[]
   // catalogue keys of the defaults the first submit offered, kept across retries for the analytics event
   offeredDefaults?: string[]
-  // the currency selection last applied, so a revisit that changes it applies it again
-  currenciesApplied: string | null
-  budgetDone: boolean
-  // the budget the plan step planned, created or reused; accounts saved later join it
+  // the budget the categories or accounts step answered with; the plan step plans it
   budgetId: Id | null
-  mainCurrencyId: Id | null
 }
 
 export function emptyDraft(): Day0Draft {
@@ -42,16 +41,16 @@ export function emptyDraft(): Day0Draft {
     ops: {},
     rows: [],
     extraCurrencyIds: [],
+    mainCurrencyId: null,
     created: {},
     createdCategories: {},
     categoryRows: [],
     categoryOrder: [],
-    currenciesApplied: null,
-    budgetDone: false,
     budgetId: null,
-    mainCurrencyId: null,
   }
 }
+
+const STEPS: Day0Step[] = ['categories', 'accounts', 'plan']
 
 const storageKey = (userId: Id) => `econumo-day0:${userId}`
 
@@ -65,7 +64,13 @@ export function loadDraft(userId: Id): Day0Draft | null {
     if (!parsed || typeof parsed !== 'object' || typeof parsed.ops !== 'object') {
       return null
     }
-    return { ...emptyDraft(), ...parsed }
+    // a draft from the per-row flow keyed its ids by row; those are never replayed
+    const ops: Day0Draft['ops'] = {}
+    for (const step of STEPS) {
+      const id = (parsed.ops as Record<string, unknown>)[step]
+      if (typeof id === 'string') ops[step] = id
+    }
+    return { ...emptyDraft(), ...parsed, ops }
   } catch {
     return null
   }
@@ -75,7 +80,7 @@ export function saveDraft(userId: Id, draft: Day0Draft): void {
   try {
     localStorage.setItem(storageKey(userId), JSON.stringify(draft))
   } catch {
-    // storage unavailable: retries then mint fresh ids, which the server may duplicate
+    // storage unavailable: a retry after a reload mints a fresh id; the server still never runs a done step twice
   }
 }
 
