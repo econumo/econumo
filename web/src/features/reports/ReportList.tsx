@@ -73,7 +73,7 @@ interface FigureProps {
 function Figure({ isPending, offline, isError, empty, amount, caption, series, seriesClass = '', note }: FigureProps) {
   const { t } = useTranslation()
   if (offline) {
-    return <OfflineUnavailable subject="report" compact />
+    return <OfflineUnavailable compact />
   }
   if (isPending) {
     return <div className="mt-1 h-[4.5rem] animate-pulse rounded-md bg-econumo-hover" />

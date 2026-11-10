@@ -384,7 +384,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       <ReportUpdatedAt query={report} />
 
       {unavailable ? (
-        <OfflineUnavailable subject="report" />
+        <OfflineUnavailable />
       ) : report.isPending ? (
         <div className="h-64 animate-pulse rounded-xl bg-econumo-hover" />
       ) : report.isError && !data ? (

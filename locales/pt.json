@@ -164,13 +164,9 @@
     },
     "offline_unavailable": {
       "title": "Não guardado neste dispositivo",
-      "page": "Esta página ainda não foi carregada neste dispositivo. Ligue-se à internet para a carregar.",
-      "month": "Este mês não está guardado neste dispositivo. Ligue-se à internet para o carregar.",
-      "months": "Estes meses não estão guardados neste dispositivo. Ligue-se à internet para os carregar.",
-      "report": "Este relatório não está guardado neste dispositivo. Ligue-se à internet para o carregar.",
-      "imports": "As transações importadas por rever não estão guardadas neste dispositivo. Ligue-se à internet para as carregar."
+      "text": "Estes dados não estão guardados neste dispositivo. Ligue-se à internet para os carregar."
     },
-    "offline_notice": "Está offline. Pode consultar, mas as alterações aqui precisam de ligação à internet."
+    "offline_notice": "Está offline. Aqui só pode consultar; para fazer alterações precisa de ligação à internet."
   },
   "accounts": {
     "folders": {
@@ -305,7 +301,7 @@
       "failing": "Não é possível contactar o servidor — a tentar novamente",
       "full_reload": "A limpar a cache e a recarregar…",
       "hold_hint": "Mantenha premido para limpar a cache e recarregar",
-      "waiting": "{count} alteração à espera de ser enviada | {count} alterações à espera de serem enviadas",
+      "waiting": "{count} alteração por enviar | {count} alterações por enviar",
       "full_reload_offline": "Está offline. Limpe a cache e recarregue quando voltar a estar online.",
       "offline": "Sem ligação"
     },
@@ -366,7 +362,7 @@
       "available": "Nova versão {version} disponível"
     },
     "logout": {
-      "pending_unknown": "As alterações ainda não enviadas deste dispositivo, se existirem, serão perdidas.",
+      "pending_unknown": "Se houver alterações por enviar neste dispositivo, serão perdidas.",
       "pending_warning": "{count} alteração ainda não foi enviada e será perdida. | {count} alterações ainda não foram enviadas e serão perdidas."
     }
   },
@@ -515,16 +511,16 @@
     "empty": "Sem novas notificações",
     "failed_writes": {
       "kind_create": "Nova",
-      "kind_update": "Editar",
-      "kind_delete": "Eliminar",
+      "kind_update": "Alterada",
+      "kind_delete": "Eliminada",
       "delete_generic": "Transação eliminada",
-      "limit": "Plano de {name}: {amount} ({period})",
-      "limit_generic": "Plano: {amount} ({period})",
-      "limit_cleared": "Plano de {name} removido ({period})",
+      "limit": "{name}: plano de {amount} ({period})",
+      "limit_generic": "Plano de {amount} ({period})",
+      "limit_cleared": "{name}: plano removido ({period})",
       "limit_cleared_generic": "Plano removido ({period})",
       "retry": "Tentar novamente",
       "discard": "Descartar",
-      "reason_unknown": "O servidor não aceitou esta alteração."
+      "reason_unknown": "O servidor recusou esta alteração."
     },
     "sections": {
       "due": "Transações agendadas",

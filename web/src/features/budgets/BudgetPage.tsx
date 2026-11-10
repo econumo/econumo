@@ -316,7 +316,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         ) : listMeta ? (
           viewSwitch
         ) : null}
-        <OfflineUnavailable subject="month" />
+        <OfflineUnavailable />
       </div>
     )
   }
@@ -699,7 +699,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
           <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} startDay={periodStartDay} />
           {monthOffline ? (
-            <OfflineUnavailable subject="month" />
+            <OfflineUnavailable />
           ) : isPlaceholderData || periodSwitching ? (
             <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
               <CoinLoader label={t('common.app.modal.loading.data_loading')} />
@@ -738,7 +738,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} startDay={periodStartDay} leading={viewSwitch} />
 
           {monthOffline ? (
-            <OfflineUnavailable subject="month" />
+            <OfflineUnavailable />
           ) : isPlaceholderData || periodSwitching ? (
             // month switch in flight — the strip stays put, the stale table is
             // replaced by the loader until the new period lands

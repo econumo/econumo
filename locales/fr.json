@@ -164,13 +164,9 @@
     },
     "offline_unavailable": {
       "title": "Non enregistré sur cet appareil",
-      "page": "Cette page n’a pas encore été chargée sur cet appareil. Connectez-vous à Internet pour la charger.",
-      "month": "Ce mois n’est pas enregistré sur cet appareil. Connectez-vous à Internet pour le charger.",
-      "months": "Ces mois ne sont pas enregistrés sur cet appareil. Connectez-vous à Internet pour les charger.",
-      "report": "Ce rapport n’est pas enregistré sur cet appareil. Connectez-vous à Internet pour le charger.",
-      "imports": "Les transactions importées à vérifier ne sont pas enregistrées sur cet appareil. Connectez-vous à Internet pour les charger."
+      "text": "Ces données ne sont pas enregistrées sur cet appareil. Connectez-vous à Internet pour les charger."
     },
-    "offline_notice": "Vous êtes hors ligne. Vous pouvez consulter cette page, mais les modifications nécessitent une connexion."
+    "offline_notice": "Vous êtes hors ligne. Vous pouvez consulter cette page, mais pas la modifier sans connexion."
   },
   "accounts": {
     "folders": {
@@ -366,7 +362,7 @@
       "available": "Nouvelle version {version} disponible"
     },
     "logout": {
-      "pending_unknown": "Les modifications pas encore envoyées depuis cet appareil, s'il y en a, seront perdues.",
+      "pending_unknown": "Si des modifications n'ont pas encore été envoyées depuis cet appareil, elles seront perdues.",
       "pending_warning": "{count} modification n'a pas encore été envoyée et sera perdue. | {count} modifications n'ont pas encore été envoyées et seront perdues."
     }
   },
@@ -514,17 +510,17 @@
     "open": "Boîte de réception, {count} en attente",
     "empty": "Aucune nouvelle notification",
     "failed_writes": {
-      "kind_create": "Nouvelle",
-      "kind_update": "Modifier",
-      "kind_delete": "Supprimer",
+      "kind_create": "Ajout",
+      "kind_update": "Modification",
+      "kind_delete": "Suppression",
       "delete_generic": "Transaction supprimée",
-      "limit": "Plan pour {name} : {amount} ({period})",
-      "limit_generic": "Plan : {amount} ({period})",
-      "limit_cleared": "Plan pour {name} supprimé ({period})",
+      "limit": "{name} : plan de {amount} ({period})",
+      "limit_generic": "Plan de {amount} ({period})",
+      "limit_cleared": "{name} : plan supprimé ({period})",
       "limit_cleared_generic": "Plan supprimé ({period})",
       "retry": "Réessayer",
       "discard": "Abandonner",
-      "reason_unknown": "Le serveur n'a pas accepté cette modification."
+      "reason_unknown": "Le serveur a refusé cette modification."
     },
     "sections": {
       "due": "Transactions planifiées",

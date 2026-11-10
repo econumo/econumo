@@ -164,13 +164,9 @@
     },
     "offline_unavailable": {
       "title": "Non salvato su questo dispositivo",
-      "page": "Questa pagina non è ancora stata caricata su questo dispositivo. Connettiti a internet per caricarla.",
-      "month": "Questo mese non è salvato su questo dispositivo. Connettiti a internet per caricarlo.",
-      "months": "Questi mesi non sono salvati su questo dispositivo. Connettiti a internet per caricarli.",
-      "report": "Questo report non è salvato su questo dispositivo. Connettiti a internet per caricarlo.",
-      "imports": "Le transazioni importate da rivedere non sono salvate su questo dispositivo. Connettiti a internet per caricarle."
+      "text": "Questi dati non sono salvati su questo dispositivo. Connettiti a internet per caricarli."
     },
-    "offline_notice": "Sei offline. Puoi dare un'occhiata, ma per le modifiche qui serve una connessione."
+    "offline_notice": "Sei offline. Qui puoi solo consultare: per modificare serve una connessione."
   },
   "accounts": {
     "folders": {
@@ -366,8 +362,8 @@
       "available": "Nuova versione {version} disponibile"
     },
     "logout": {
-      "pending_unknown": "Le modifiche non ancora inviate da questo dispositivo, se presenti, andranno perse.",
-      "pending_warning": "{count} modifica non è stata ancora inviata e andrà persa. | {count} modifiche non sono state ancora inviate e andranno perse."
+      "pending_unknown": "Se su questo dispositivo ci sono modifiche non ancora inviate, andranno perse.",
+      "pending_warning": "{count} modifica non è ancora stata inviata e andrà persa. | {count} modifiche non sono ancora state inviate e andranno perse."
     }
   },
   "transactions": {
@@ -514,17 +510,17 @@
     "open": "Posta in arrivo, {count} in attesa",
     "empty": "Nessuna nuova notifica",
     "failed_writes": {
-      "kind_create": "Nuova",
+      "kind_create": "Aggiunta",
       "kind_update": "Modifica",
-      "kind_delete": "Elimina",
+      "kind_delete": "Eliminazione",
       "delete_generic": "Transazione eliminata",
-      "limit": "Piano per {name}: {amount} ({period})",
-      "limit_generic": "Piano: {amount} ({period})",
-      "limit_cleared": "Piano per {name} rimosso ({period})",
+      "limit": "{name}: piano di {amount} ({period})",
+      "limit_generic": "Piano di {amount} ({period})",
+      "limit_cleared": "{name}: piano rimosso ({period})",
       "limit_cleared_generic": "Piano rimosso ({period})",
       "retry": "Riprova",
       "discard": "Scarta",
-      "reason_unknown": "Il server non ha accettato questa modifica."
+      "reason_unknown": "Il server ha rifiutato questa modifica."
     },
     "sections": {
       "due": "Transazioni programmate",
