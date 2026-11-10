@@ -415,6 +415,22 @@ it('cannot continue with every account hidden and no new row', async () => {
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
 })
 
+it('withdraws the untouched Cash row once accounts of the user arrive', async () => {
+  server.use(...coreHandlers())
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const props = { onContinue: vi.fn(), onSkip: vi.fn(), pending: false }
+  const ui = (existing: ExistingAccount[]) => (
+    <QueryClientProvider client={queryClient}>
+      <AccountsStep existing={existing} {...props} />
+    </QueryClientProvider>
+  )
+  const { rerender } = render(ui([]))
+  expect(nameInputs()[0]).toHaveValue('Cash')
+  rerender(ui([imported]))
+  expect(screen.queryByLabelText('Account name')).not.toBeInTheDocument()
+  expect(rowsEls()).toHaveLength(1)
+})
+
 it('reseeds from a stored draft: rows standing for existing accounts stay locked, the rest stay editable', async () => {
   const user = userEvent.setup()
   const rows: AccountRow[] = [
@@ -479,6 +495,28 @@ describe('AccountsStepBody', () => {
     expect(loadDraft('u1')!.budgetId).toBe('b-onb')
     expect(body.hide).toBeUndefined()
     expect(body.unhide).toBeUndefined()
+  })
+
+  it('waits for the refetch of an account list cached before an import: no Cash row is offered or created', async () => {
+    localStorage.clear()
+    const routes = stepRoutes({ option: 'import,categories' })
+    server.use(...coreHandlers({ accounts: [fixtureAccounts[0]], user: userWith('import,categories') }), ...routes.handlers)
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    queryClient.setQueryData(['accounts'], [])
+    void queryClient.invalidateQueries({ queryKey: ['accounts'], refetchType: 'none' })
+    const onDone = vi.fn(() => Promise.resolve())
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AccountsStepBody onDone={onDone} onSkip={() => Promise.resolve()} />
+      </QueryClientProvider>,
+    )
+    await ready()
+    expect(screen.queryByLabelText('Account name')).not.toBeInTheDocument()
+    expect(rowsEls()[0]).toHaveTextContent(fixtureAccounts[0].name)
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(routes.srv.calls[0].body.accounts).toEqual([])
   })
 
   it('an account in a hidden folder shows as hidden; Show and Hide go out as unhide and hide', async () => {

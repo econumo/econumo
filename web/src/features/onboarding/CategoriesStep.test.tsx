@@ -7,6 +7,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureCategories } from '@/test/fixtures'
 import { CategoriesStep, CategoriesStepBody, type ExistingCategory } from './CategoriesStep'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { queryKeys } from '@/app/queryKeys'
 import { emptyDraft, loadDraft, saveDraft, type CategoryRow } from './draft'
 import { stepRoutes, userWith } from './onboardingRoutes.test-utils'
 
@@ -197,6 +198,22 @@ it('a new row renamed to an archived category restores that category on Continue
   expect(onContinue.mock.calls[0][3]).toEqual({ archive: [], restore: ['cat-9'] })
 })
 
+it('withdraws the untouched defaults once categories of the user arrive, keeping a renamed one', async () => {
+  const user = userEvent.setup()
+  const onContinue = vi.fn()
+  const props = { onContinue, onSkip: vi.fn(), pending: false }
+  const { rerender } = render(<CategoriesStep existing={[]} {...props} />)
+  const kids = screen.getByDisplayValue('Kids')
+  await user.clear(kids)
+  await user.type(kids, 'Children')
+  rerender(<CategoriesStep existing={[food, pay]} {...props} />)
+  expect(removeButtons()).toHaveLength(1)
+  expect(screen.getByDisplayValue('Children')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(submitted(onContinue).map((r) => r.name)).toEqual(['Children'])
+  expect(onContinue.mock.calls[0][2]).toEqual([])
+})
+
 it('cannot continue with every category archived and nothing new', async () => {
   const user = userEvent.setup()
   renderStep({ existing: [food] })
@@ -326,12 +343,17 @@ describe('CategoriesStepBody', () => {
   const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
   let routes: ReturnType<typeof stepRoutes>
 
-  function renderBody(categories: unknown[], first: Parameters<typeof server.use> = []) {
+  function renderBody(categories: unknown[], first: Parameters<typeof server.use> = [], staleCache?: unknown[]) {
     routes = stepRoutes()
     server.use(...first, ...coreHandlers({ categories, user: userWith('') }), ...routes.handlers)
     const onDone = vi.fn(() => Promise.resolve())
     const onSkip = vi.fn(() => Promise.resolve())
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    if (staleCache) {
+      // what a CSV import leaves behind: the list cached before it, invalidated but not refetched
+      queryClient.setQueryData(queryKeys.categories, staleCache)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.categories, refetchType: 'none' })
+    }
     render(
       <QueryClientProvider client={queryClient}>
         <CategoriesStepBody onDone={onDone} onSkip={onSkip} />
@@ -413,6 +435,17 @@ describe('CategoriesStepBody', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(routes.srv.calls[0].body).toMatchObject({ categories: [], archive: [live.id], restore: ['cat-old'] })
     expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_CATEGORIES_COMPLETE, { renamed: '', custom: 0, offered: 0, archived: 1, restored: 1 })
+  })
+
+  it('waits for the refetch of a list cached before an import: no defaults are offered or created', async () => {
+    const user = userEvent.setup()
+    const { onDone } = renderBody(fixtureCategories, [], [])
+    await screen.findByRole('heading', { name: 'What do you spend on?' })
+    expect(removeButtons()).toHaveLength(0)
+    expect(screen.getByRole('button', { name: 'Archive Food' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(routes.srv.calls[0].body.categories).toEqual([])
   })
 
   it('a stored draft from a failed submit reseeds the form and replays its operation id', async () => {

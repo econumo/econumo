@@ -21,6 +21,7 @@ import { labelled, nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import type { StepBodyProps } from './OnboardingPage'
 import { StepLoadError } from './StepLoadError'
 import { useDay0, type CategoryReview } from './useDay0'
+import { useSettled } from './useSettled'
 
 type CategoryType = CategoryRow['type']
 type ListItem = { id: string; existing?: ExistingCategory; row?: CategoryRow }
@@ -80,7 +81,11 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
   const [offered] = useState<string[]>(() =>
     initialRows && initialRows.length > 0 ? [] : stored.flatMap((r) => (r.defaultKey ? [r.defaultKey] : [])),
   )
-  const rows = stored.map((r) => labelled(r, t))
+  // defaults are offered only to a user with no categories: should theirs arrive after the form was
+  // seeded (an import landing late), the defaults the user has not renamed are withdrawn
+  const [fromDefaults] = useState(() => !(initialRows && initialRows.length > 0) && live.length === 0)
+  const withdrawn = fromDefaults && live.length > 0
+  const rows = stored.filter((r) => !(withdrawn && r.defaultKey && r.labelKey)).map((r) => labelled(r, t))
   const [order, setOrder] = useState<string[]>(initialOrder ?? [])
   const [reordered, setReordered] = useState(Boolean(initialOrder && initialOrder.length > 0))
   const [drafts, setDrafts] = useState<Record<CategoryType, string>>({ expense: '', income: '' })
@@ -157,7 +162,7 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
     const ids = fullOrder()
     const at = new Map(ids.map((id, i) => [id, i]))
     const sorted = normalized().sort((a, b) => (at.get(a.key) ?? ids.length) - (at.get(b.key) ?? ids.length))
-    onContinue(sorted, reordered ? ids : undefined, offered, {
+    onContinue(sorted, reordered ? ids : undefined, withdrawn ? [] : offered, {
       archive: existing.filter((c) => !c.archived && finallyArchived(c)).map((c) => c.id),
       restore: existing.filter((c) => c.archived && !finallyArchived(c)).map((c) => c.id),
     })
@@ -328,8 +333,10 @@ export function CategoriesStepBody({ onDone, onSkip }: StepBodyProps) {
   const categories = useCategories()
   const day0 = useDay0()
   const [skipping, setSkipping] = useState(false)
+  // the list cached before an import is stale: wait for its refetch before seeding the form
+  const settled = useSettled(day0.ready && !categories.isPending && !categories.isFetching)
   if (categories.isError) return <StepLoadError error={categories.error} onRetry={() => void categories.refetch()} />
-  if (!day0.ready || categories.isPending) return null
+  if (!settled) return null
   const own = (categories.data ?? []).filter((c) => c.ownerUserId === user?.id)
   return (
     <CategoriesStep

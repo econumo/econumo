@@ -25,6 +25,7 @@ import { rowInput, rowTile } from './CategoriesStep'
 import type { StepBodyProps } from './OnboardingPage'
 import { StepLoadError } from './StepLoadError'
 import { useDay0, type AccountReview } from './useDay0'
+import { useSettled } from './useSettled'
 
 export interface ExistingAccount {
   id: Id
@@ -68,7 +69,11 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
     const labelKey = 'onboarding.accounts.default_cash'
     return [{ ...emptyRow(), name: t(labelKey), labelKey, icon: 'payments' }]
   })
-  const rows = allRows.map((r) => labelled(r, t))
+  // the Cash row is only for a user with no accounts: accounts arriving after it was seeded (an
+  // import landing late) withdraw it unless the user has made it their own
+  const rows = allRows
+    .filter((r) => !(existing.length > 0 && r.labelKey === 'onboarding.accounts.default_cash' && r.balance.trim() === '' && !r.iconPicked))
+    .map((r) => labelled(r, t))
   const [extraIds, setExtraIds] = useState<Id[]>(initialExtraCurrencyIds ?? [])
   const [mainOverride, setMainOverride] = useState<Id | null>(null)
   // the first new row's pick: rows the user has not changed by hand follow it
@@ -329,9 +334,11 @@ export function AccountsStepBody({ onDone, onSkip }: StepBodyProps) {
   const folders = useFolders()
   const day0 = useDay0()
   const [skipping, setSkipping] = useState(false)
+  // the lists cached before an import are stale: wait for their refetch before seeding the form
+  const settled = useSettled(day0.ready && !folders.isPending && !accounts.isFetching && !folders.isFetching)
   if (accounts.isError) return <StepLoadError error={accounts.error} onRetry={() => void accounts.refetch()} />
   if (folders.isError) return <StepLoadError error={folders.error} onRetry={() => void folders.refetch()} />
-  if (!day0.ready || folders.isPending) return null
+  if (!settled) return null
   const hiddenFolders = new Set((folders.data ?? []).filter((f) => f.isVisible === 0).map((f) => f.id))
   const existing = (accounts.data ?? [])
     .filter((a) => a.owner.id === user?.id)
