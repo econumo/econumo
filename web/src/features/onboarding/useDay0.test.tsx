@@ -393,6 +393,8 @@ describe('useDay0', () => {
       accountIds: ['acc-imp', 'acc-sav'],
     })
     expect(calls[0].body).not.toHaveProperty('savingsAccountIds')
+    // pre-existing accounts join the budget but are never classified
+    expect(calls[0].body.newAccountIds).toEqual([])
     let again = ''
     await act(async () => {
       again = await result.current.ensureBudget()
@@ -409,7 +411,7 @@ describe('useDay0', () => {
       await result.current.ensureBudget()
     })
     const body = calls.find((c) => c.path === 'create-budget')!.body
-    expect(body).toEqual({ id: body.id, name: 'My budget', startDate: '', currencyId: 'cur-usd', accountIds: ['acc-1', 'acc-2'] })
+    expect(body).toEqual({ id: body.id, name: 'My budget', startDate: '', currencyId: 'cur-usd', accountIds: ['acc-1', 'acc-2'], newAccountIds: ['acc-1', 'acc-2'] })
   })
 
   it('ensureBudget returns the default budget the user already has', async () => {

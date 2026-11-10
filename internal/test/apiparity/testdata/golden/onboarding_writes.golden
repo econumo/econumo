@@ -7,8 +7,11 @@
 == err:create-budget-blank POST /api/v1/onboarding/create-budget [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."],"name":["This value should not be blank."]}}
 
-== err:create-budget-too-many POST /api/v1/onboarding/create-budget [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"accountIds":["This value is too long."]}}
+== err:create-budget-new-too-many POST /api/v1/onboarding/create-budget [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"newAccountIds":["This value is too long."]}}
+
+== err:create-budget-new-not-member POST /api/v1/onboarding/create-budget [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"newAccountIds":["The value you selected is not a valid choice."]}}
 
 == add-budget-accounts POST /api/v1/onboarding/add-budget-accounts [owner] -> 200
 {"success":true,"message":"","data":{"item":{"id":"b0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Budget","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"periodStartDay":1,"access":[{"user":{"id":"22222222-2222-2222-2222-222222222222","avatar":"diamond:sky","name":"User 2222"},"role":"user","isAccepted":0},{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]}}}

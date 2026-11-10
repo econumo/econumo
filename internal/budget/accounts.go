@@ -112,14 +112,45 @@ func (s *Service) MarkSavingsMembers(ctx context.Context, userID, budgetID vo.Id
 	if len(allowed) == 0 {
 		return firstErr
 	}
-	return s.writeMemberChange(ctx, budgetID, false, func(_ context.Context, c *memberChange) error {
+	return s.writeMemberChange(ctx, budgetID, false, func(txCtx context.Context, c *memberChange) error {
+		views, err := s.accounts.AccountsByIDs(txCtx, allowed)
+		if err != nil {
+			return err
+		}
+		deleted := map[string]bool{}
+		for _, v := range views {
+			deleted[v.ID] = v.IsDeleted
+		}
 		for _, id := range allowed {
-			if c.isMember(id) {
+			// A deleted member keeps counting in the budget, but one deleted since
+			// the classification started must not turn savings.
+			if c.isMember(id) && !deleted[id.String()] {
 				c.setFlag(id, true)
 			}
 		}
 		return nil
 	})
+}
+
+// MemberAccountIDs lists the budget's member accounts (deleted ones included)
+// for a caller who may update the budget.
+func (s *Service) MemberAccountIDs(ctx context.Context, userID, budgetID vo.Id) ([]vo.Id, error) {
+	b, err := s.loadAggregate(ctx, budgetID)
+	if err != nil {
+		return nil, err
+	}
+	if !s.canUpdate(b, userID) {
+		return nil, accessDenied()
+	}
+	members, err := s.budgets.MemberAccounts(ctx, budgetID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]vo.Id, 0, len(members))
+	for _, m := range members {
+		out = append(out, m.AccountID)
+	}
+	return out, nil
 }
 
 // RemoveAccount drops a member account the caller owns, unless its history in

@@ -15,24 +15,44 @@ const MaxOnboardingAccountIds = 50
 // OnboardingCreateBudgetRequest is the onboarding create-budget body: the
 // budget create-budget fields onboarding uses, without savings (the server
 // decides those in the background when an AI provider is configured).
+// NewAccountIds names the accounts the onboarding flow itself created; only
+// those are classified, so the user's earlier accounts never reach the AI.
 type OnboardingCreateBudgetRequest struct {
-	Id         string   `json:"id"`
-	Name       string   `json:"name"`
-	StartDate  string   `json:"startDate"`
-	CurrencyId string   `json:"currencyId"`
-	AccountIds []string `json:"accountIds"`
+	Id            string   `json:"id"`
+	Name          string   `json:"name"`
+	StartDate     string   `json:"startDate"`
+	CurrencyId    string   `json:"currencyId"`
+	AccountIds    []string `json:"accountIds"`
+	NewAccountIds []string `json:"newAccountIds"`
 }
 
-// Validate enforces id + name NotBlank (as budget create-budget does) and at
-// most MaxOnboardingAccountIds account ids.
+// Validate enforces id + name NotBlank (as budget create-budget does; the
+// account list is checked by the budget use case) and newAccountIds: at most
+// MaxOnboardingAccountIds UUIDs, each one of accountIds.
 func (r OnboardingCreateBudgetRequest) Validate() error {
 	if err := ValidateBlank(map[string]string{"id": r.Id, "name": r.Name}); err != nil {
 		return err
 	}
-	if len(r.AccountIds) > MaxOnboardingAccountIds {
-		return accountIdsError("This value is too long.", errs.CodeTooLong)
+	if len(r.NewAccountIds) > MaxOnboardingAccountIds {
+		return newAccountIdsError("This value is too long.", errs.CodeTooLong)
+	}
+	members := map[string]bool{}
+	for _, id := range r.AccountIds {
+		members[strings.ToLower(strings.TrimSpace(id))] = true
+	}
+	for _, id := range r.NewAccountIds {
+		if _, err := vo.ParseId(strings.TrimSpace(id)); err != nil {
+			return newAccountIdsError("This value is not a valid UUID.", errs.CodeInvalidUUID)
+		}
+		if !members[strings.ToLower(strings.TrimSpace(id))] {
+			return newAccountIdsError("The value you selected is not a valid choice.", errs.CodeInvalidChoice)
+		}
 	}
 	return nil
+}
+
+func newAccountIdsError(msg, code string) error {
+	return errs.NewValidation("Form validation error", errs.FieldError{Key: "newAccountIds", Message: msg, Code: code})
 }
 
 // OnboardingAddBudgetAccountsRequest adds accounts to a budget as everyday members.

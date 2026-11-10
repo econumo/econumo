@@ -16494,6 +16494,12 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "newAccountIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "startDate": {
                     "type": "string"
                 }

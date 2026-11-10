@@ -28,7 +28,12 @@ type fakeBudgets struct {
 	created []model.CreateBudgetRequest
 	added   []model.AddAccountRequest
 	marked  []vo.Id
+	members []vo.Id
 	err     error
+}
+
+func (f *fakeBudgets) MemberAccountIDs(context.Context, vo.Id, vo.Id) ([]vo.Id, error) {
+	return f.members, f.err
 }
 
 func (f *fakeBudgets) CreateBudget(_ context.Context, _ vo.Id, req model.CreateBudgetRequest) (*model.CreateBudgetResult, error) {
@@ -112,7 +117,7 @@ func newSvc(c onboarding.Completer, l onboarding.AttemptLimiter) (*onboarding.Se
 var allIDs = []string{cash, deposit, gone, theirs}
 
 func createReq() model.OnboardingCreateBudgetRequest {
-	return model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "My budget", CurrencyId: "cur", AccountIds: allIDs}
+	return model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "My budget", CurrencyId: "cur", AccountIds: allIDs, NewAccountIds: allIDs}
 }
 
 func TestCreateBudget_FlagsTheAIPicksInTheBackground(t *testing.T) {
@@ -182,6 +187,62 @@ func TestCreateBudget_FailedCreateRunsNoJob(t *testing.T) {
 	}
 }
 
+func TestCreateBudget_ClassifiesOnlyNewAccounts(t *testing.T) {
+	c := replying(`{"savings":["` + deposit + `","` + cash + `"]}`)
+	svc, b := newSvc(c, nil)
+	req := createReq()
+	// More accounts than one onboarding call may classify: the budget still takes them all.
+	req.AccountIds = make([]string, 0, 60)
+	for i := 0; i < 58; i++ {
+		req.AccountIds = append(req.AccountIds, vo.NewId().String())
+	}
+	req.AccountIds = append(req.AccountIds, cash, deposit)
+	req.NewAccountIds = []string{deposit}
+	if err := req.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.CreateBudget(context.Background(), vo.MustParseId(me), req); err != nil {
+		t.Fatal(err)
+	}
+	if len(b.created[0].AccountIds) != 60 {
+		t.Fatalf("accountIds = %d", len(b.created[0].AccountIds))
+	}
+	if strings.Contains(c.user, cash) || strings.Contains(c.user, "Wallet") || !strings.Contains(c.user, deposit) {
+		t.Fatalf("prompt = %s", c.user)
+	}
+	if len(b.marked) != 1 || b.marked[0].String() != deposit {
+		t.Fatalf("marked = %v", b.marked)
+	}
+}
+
+func TestCreateBudget_NoNewAccountsAsksNothing(t *testing.T) {
+	c := replying(`{"savings":[]}`)
+	svc, _ := newSvc(c, nil)
+	req := createReq()
+	req.NewAccountIds = nil
+	if _, err := svc.CreateBudget(context.Background(), vo.MustParseId(me), req); err != nil {
+		t.Fatal(err)
+	}
+	if c.calls != 0 {
+		t.Fatal("AI asked with no new account")
+	}
+}
+
+func TestAddBudgetAccounts_ExistingMembersAreNotReclassified(t *testing.T) {
+	c := replying(`{"savings":["` + deposit + `","` + cash + `"]}`)
+	svc, b := newSvc(c, nil)
+	b.members = []vo.Id{vo.MustParseId(deposit)}
+	if _, err := svc.AddBudgetAccounts(context.Background(), vo.MustParseId(me), model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID, AccountIds: []string{cash, deposit}}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(c.user, deposit) {
+		t.Fatalf("an existing member was sent: %s", c.user)
+	}
+	if len(b.marked) != 1 || b.marked[0].String() != cash {
+		t.Fatalf("marked = %v", b.marked)
+	}
+}
+
 func TestClassification_FailuresChangeNothing(t *testing.T) {
 	cases := map[string]*fakeCompleter{
 		"malformed":   replying("the second one"),
@@ -214,6 +275,7 @@ func TestClassification_OnlyForeignOrDeletedAsksNothing(t *testing.T) {
 	svc, _ := newSvc(c, nil)
 	req := createReq()
 	req.AccountIds = []string{gone, theirs}
+	req.NewAccountIds = req.AccountIds
 	if _, err := svc.CreateBudget(context.Background(), vo.MustParseId(me), req); err != nil {
 		t.Fatal(err)
 	}
@@ -267,11 +329,13 @@ func TestRequests_Validate(t *testing.T) {
 	}
 	bad := map[string]interface{ Validate() error }{
 		"create blank":     model.OnboardingCreateBudgetRequest{},
-		"create too many":  model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "B", AccountIds: many},
 		"add blank budget": model.OnboardingAddBudgetAccountsRequest{AccountIds: []string{cash}},
 		"add no accounts":  model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID},
 		"add too many":     model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID, AccountIds: many},
 		"add not uuid":     model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID, AccountIds: []string{"x"}},
+		"new too many":     model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "B", AccountIds: many, NewAccountIds: many},
+		"new not member":   model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "B", AccountIds: []string{cash}, NewAccountIds: []string{deposit}},
+		"new not uuid":     model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "B", AccountIds: []string{"x"}, NewAccountIds: []string{"x"}},
 	}
 	for name, r := range bad {
 		var ve *errs.ValidationError
@@ -281,5 +345,8 @@ func TestRequests_Validate(t *testing.T) {
 	}
 	if err := (model.OnboardingAddBudgetAccountsRequest{BudgetId: budgetID, AccountIds: []string{cash}}).Validate(); err != nil {
 		t.Fatal(err)
+	}
+	if err := (model.OnboardingCreateBudgetRequest{Id: budgetID, Name: "B", AccountIds: many, NewAccountIds: []string{strings.ToUpper(cash)}}).Validate(); err != nil {
+		t.Fatalf("more than 50 accountIds must pass: %v", err)
 	}
 }

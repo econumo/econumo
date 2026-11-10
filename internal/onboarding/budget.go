@@ -9,8 +9,8 @@ import (
 )
 
 // CreateBudget creates the Day 0 budget through the budget feature's own
-// create path, answers with its result, then classifies the accounts in the
-// background when an AI provider is configured.
+// create path, answers with its result, then classifies the accounts the flow
+// created (newAccountIds) in the background when an AI provider is configured.
 func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.OnboardingCreateBudgetRequest) (*model.CreateBudgetResult, error) {
 	res, err := s.budgets.CreateBudget(ctx, userID, model.CreateBudgetRequest{
 		Id: req.Id, Name: req.Name, StartDate: req.StartDate, CurrencyId: req.CurrencyId, AccountIds: req.AccountIds,
@@ -19,15 +19,33 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Onbo
 		return nil, err
 	}
 	if budgetID, perr := vo.ParseId(req.Id); perr == nil {
-		s.schedule(ctx, userID, budgetID, parseIDs(req.AccountIds))
+		s.schedule(ctx, userID, budgetID, parseIDs(req.NewAccountIds))
 	}
 	return res, nil
 }
 
 // AddBudgetAccounts adds the accounts to the budget as everyday members (an
-// existing member keeps its flag), then classifies them in the background.
+// existing member keeps its flag), then classifies the ones that were not
+// members before in the background: a member the user already set stays as is.
 func (s *Service) AddBudgetAccounts(ctx context.Context, userID vo.Id, req model.OnboardingAddBudgetAccountsRequest) (*model.OnboardingAddBudgetAccountsResult, error) {
 	ids := parseIDs(req.AccountIds)
+	budgetID, perr := vo.ParseId(req.BudgetId)
+	var joined []vo.Id
+	if perr == nil {
+		members, err := s.budgets.MemberAccountIDs(ctx, userID, budgetID)
+		if err != nil {
+			return nil, err
+		}
+		was := map[string]bool{}
+		for _, m := range members {
+			was[m.String()] = true
+		}
+		for _, id := range ids {
+			if !was[id.String()] {
+				joined = append(joined, id)
+			}
+		}
+	}
 	out := &model.OnboardingAddBudgetAccountsResult{}
 	for _, id := range ids {
 		res, err := s.budgets.AddAccount(ctx, userID, model.AddAccountRequest{BudgetId: req.BudgetId, AccountId: id.String()})
@@ -36,8 +54,8 @@ func (s *Service) AddBudgetAccounts(ctx context.Context, userID vo.Id, req model
 		}
 		out.Item = res.Item
 	}
-	if budgetID, perr := vo.ParseId(req.BudgetId); perr == nil {
-		s.schedule(ctx, userID, budgetID, ids)
+	if perr == nil {
+		s.schedule(ctx, userID, budgetID, joined)
 	}
 	return out, nil
 }

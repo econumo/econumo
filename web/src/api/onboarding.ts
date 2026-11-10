@@ -13,6 +13,8 @@ export interface OnboardingBudgetForm {
   startDate: string
   currencyId: Id
   accountIds: Id[]
+  /** the accounts the flow created (a subset of accountIds, at most 50): the only ones classified */
+  newAccountIds: Id[]
 }
 
 // Creates the Day 0 budget. When the server has an AI provider it flags the

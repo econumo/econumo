@@ -11,14 +11,16 @@ func init() {
 		}
 		return []Call{
 			{Label: "create-budget", Method: "POST", Path: "/api/v1/onboarding/create-budget", Auth: "owner",
-				Body: map[string]any{"id": onbBudget, "name": "My budget", "startDate": "", "currencyId": USD, "accountIds": []string{OwnerAccount}}},
+				Body: map[string]any{"id": onbBudget, "name": "My budget", "startDate": "", "currencyId": USD, "accountIds": []string{OwnerAccount}, "newAccountIds": []string{OwnerAccount}}},
 			// The same operation id again: refused exactly like budget/create-budget.
 			{Label: "err:create-budget-again", Method: "POST", Path: "/api/v1/onboarding/create-budget", Auth: "owner",
 				Body: map[string]any{"id": onbBudget, "name": "My budget", "startDate": "", "currencyId": USD, "accountIds": []string{OwnerAccount}}},
 			{Label: "err:create-budget-blank", Method: "POST", Path: "/api/v1/onboarding/create-budget", Auth: "owner",
 				Body: map[string]any{"id": "", "name": ""}},
-			{Label: "err:create-budget-too-many", Method: "POST", Path: "/api/v1/onboarding/create-budget", Auth: "owner",
-				Body: map[string]any{"id": onbBudget, "name": "My budget", "accountIds": tooMany}},
+			{Label: "err:create-budget-new-too-many", Method: "POST", Path: "/api/v1/onboarding/create-budget", Auth: "owner",
+				Body: map[string]any{"id": onbBudget, "name": "My budget", "accountIds": tooMany, "newAccountIds": tooMany}},
+			{Label: "err:create-budget-new-not-member", Method: "POST", Path: "/api/v1/onboarding/create-budget", Auth: "owner",
+				Body: map[string]any{"id": onbBudget, "name": "My budget", "accountIds": []string{OwnerAccount}, "newAccountIds": []string{SharedAccount}}},
 			{Label: "add-budget-accounts", Method: "POST", Path: "/api/v1/onboarding/add-budget-accounts", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "accountIds": []string{OwnerAccount}}},
 			{Label: "err:add-budget-accounts-foreign", Method: "POST", Path: "/api/v1/onboarding/add-budget-accounts", Auth: "owner",

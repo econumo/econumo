@@ -47,3 +47,37 @@ func TestMarkSavingsMembers_FlagsOnlyOwnMembers(t *testing.T) {
 		t.Fatal("a participant without update rights must be refused")
 	}
 }
+
+func TestMarkSavingsMembers_SkipsDeletedMembers(t *testing.T) {
+	h := newNetWorthHarness(t)
+	gone := h.f.Account(fixture.Account{UserID: h.user, Name: "Gone"})
+	b := h.budget(t, "2026-01-01 00:00:00", h.acct, gone)
+	h.exec(t, "UPDATE accounts SET is_deleted = ? WHERE id = ?", true, gone)
+	if err := h.svc.MarkSavingsMembers(h.ctx, vo.MustParseId(h.user), vo.MustParseId(b), []vo.Id{vo.MustParseId(gone), vo.MustParseId(h.acct)}); err != nil {
+		t.Fatal(err)
+	}
+	var goneOn, liveOn bool
+	q := h.tdb.Rebind("SELECT is_savings FROM budgets_accounts WHERE budget_id = ? AND account_id = ?")
+	if err := h.tdb.Raw.QueryRowContext(h.ctx, q, b, gone).Scan(&goneOn); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.tdb.Raw.QueryRowContext(h.ctx, q, b, h.acct).Scan(&liveOn); err != nil {
+		t.Fatal(err)
+	}
+	if goneOn || !liveOn {
+		t.Fatalf("deleted = %v, live = %v", goneOn, liveOn)
+	}
+}
+
+func TestMemberAccountIDs(t *testing.T) {
+	h := newNetWorthHarness(t)
+	b := h.budget(t, "2026-01-01 00:00:00", h.acct)
+	ids, err := h.svc.MemberAccountIDs(h.ctx, vo.MustParseId(h.user), vo.MustParseId(b))
+	if err != nil || len(ids) != 1 || ids[0].String() != h.acct {
+		t.Fatalf("ids = %v, err = %v", ids, err)
+	}
+	other := h.f.User(fixture.User{Name: "Other", Email: "other2@networth.test"})
+	if _, err := h.svc.MemberAccountIDs(h.ctx, vo.MustParseId(other), vo.MustParseId(b)); err == nil {
+		t.Fatal("a stranger must be refused")
+	}
+}

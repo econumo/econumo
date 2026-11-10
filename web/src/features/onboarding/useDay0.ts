@@ -297,6 +297,8 @@ export function useDay0() {
               startDate: '',
               currencyId,
               accountIds: owned,
+              // only these reach the server's savings classification, never pre-existing accounts
+              newAccountIds: flowCreatedIds(d, d.rows).filter((id) => owned.includes(id)).slice(0, 50),
             })
           } catch (err) {
             if (!isBadRequest(err) || !(await getBudgetList()).some((b) => b.id === budgetId)) {

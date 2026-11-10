@@ -2200,6 +2200,10 @@ definitions:
         type: string
       name:
         type: string
+      newAccountIds:
+        items:
+          type: string
+        type: array
       startDate:
         type: string
     type: object
