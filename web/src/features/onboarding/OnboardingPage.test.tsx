@@ -6,7 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureCategories, fixtureEur, fixtureUser, fixtureUsd, fixtureWireBudget } from '@/test/fixtures'
 import { HomePage } from '@/features/home/HomePage'
-import { AI_REFRESH_DELAY_MS, OnboardingPage } from './OnboardingPage'
+import { AI_REFRESH_DELAYS_MS, OnboardingPage } from './OnboardingPage'
 
 let importedRows = 0
 vi.mock('@/features/transactions/ImportCsvDialog', () => ({
@@ -333,7 +333,7 @@ it('a failed finish-import stays on the import step with a retry that replays th
   expect(ids[1]).toBe(ids[0])
 })
 
-it('refetches the categories once more a few seconds after the import, for the icons the AI sets', async () => {
+it('refetches the categories at each AI refresh delay after the import, and no more', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   try {
     const state = serve('')
@@ -346,8 +346,14 @@ it('refetches the categories once more a few seconds after the import, for the i
     expect(await heading('What do you spend on?')).toBeInTheDocument()
     await screen.findByRole('button', { name: 'Archive Food' })
     const before = state.categoryListCalls
-    await vi.advanceTimersByTimeAsync(AI_REFRESH_DELAY_MS)
-    await waitFor(() => expect(state.categoryListCalls).toBe(before + 1))
+    let elapsed = 0
+    for (const [i, delay] of AI_REFRESH_DELAYS_MS.entries()) {
+      await vi.advanceTimersByTimeAsync(delay - elapsed)
+      elapsed = delay
+      await waitFor(() => expect(state.categoryListCalls).toBe(before + i + 1))
+    }
+    await vi.advanceTimersByTimeAsync(120_000)
+    expect(state.categoryListCalls).toBe(before + AI_REFRESH_DELAYS_MS.length)
   } finally {
     vi.useRealTimers()
   }

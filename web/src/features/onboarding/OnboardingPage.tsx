@@ -32,8 +32,8 @@ export interface StepBodyProps {
   onImportFinished?: () => void
 }
 
-// how long after finish-import the lists are refetched once to show the AI's icons
-export const AI_REFRESH_DELAY_MS = 8000
+// when, after finish-import, the lists are refetched to show the AI's icons and savings (the job may take up to 90 s)
+export const AI_REFRESH_DELAYS_MS = [10_000, 30_000, 90_000]
 
 const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
   import: ImportStep,
@@ -65,28 +65,35 @@ export function OnboardingPage() {
   // where a completion lands, kept so the Finish retry after a failure goes there too
   const landing = useRef<string>(RouterPage.BUDGET)
   // outlives the import step's body, which unmounts as the flow moves on to Categories
-  const aiRefresh = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  useEffect(() => () => clearTimeout(aiRefresh.current), [])
+  const aiRefresh = useRef<ReturnType<typeof setTimeout>[]>([])
+  const cancelAiRefresh = useCallback(() => {
+    aiRefresh.current.forEach(clearTimeout)
+    aiRefresh.current = []
+  }, [])
+  useEffect(() => cancelAiRefresh, [cancelAiRefresh])
   const scheduleAiRefresh = useCallback(() => {
-    clearTimeout(aiRefresh.current)
-    aiRefresh.current = setTimeout(() => {
-      for (const queryKey of [queryKeys.categories, queryKeys.accounts, queryKeys.budgets, queryKeys.budget]) {
-        void queryClient.invalidateQueries({ queryKey })
-      }
-    }, AI_REFRESH_DELAY_MS)
-  }, [queryClient])
+    cancelAiRefresh()
+    aiRefresh.current = AI_REFRESH_DELAYS_MS.map((delay) =>
+      setTimeout(() => {
+        for (const queryKey of [queryKeys.categories, queryKeys.accounts, queryKeys.budgets, queryKeys.budget]) {
+          void queryClient.invalidateQueries({ queryKey })
+        }
+      }, delay),
+    )
+  }, [queryClient, cancelAiRefresh])
 
   const finish = useCallback(async () => {
     if (completing.current) return
     completing.current = true
     try {
       await complete.mutateAsync()
+      cancelAiRefresh()
       if (userId) clearDraft(userId)
       navigate(landing.current)
     } finally {
       completing.current = false
     }
-  }, [complete, navigate, userId])
+  }, [complete, navigate, userId, cancelAiRefresh])
 
   // Steps answered elsewhere (another device, the budget page) finish the
   // flow on arrival; only once, so a failure waits for the Finish button.
