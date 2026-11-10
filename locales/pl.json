@@ -169,7 +169,8 @@
       "months": "Te miesiące nie są zapisane na tym urządzeniu. Połącz się z internetem, aby je wczytać.",
       "report": "Ten raport nie jest zapisany na tym urządzeniu. Połącz się z internetem, aby go wczytać.",
       "imports": "Zaimportowane transakcje do przejrzenia nie są zapisane na tym urządzeniu. Połącz się z internetem, aby je wczytać."
-    }
+    },
+    "offline_notice": "Jesteś offline. Możesz przeglądać, ale zmiany tutaj wymagają połączenia."
   },
   "accounts": {
     "folders": {

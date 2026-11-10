@@ -28,6 +28,7 @@ import { evaluatedAmount } from '../transactions/useTransactionForm'
 import { useAccounts, useCreateAccount, useFolders, useGrantAccountAccess, useRevokeAccountAccess, useStoredBalance, useUpdateAccount } from './queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { useOnline } from '@/hooks/useOnline'
+import { OfflineNotice } from '@/components/OfflineNotice'
 
 const balanceText = (balance: string, currency: CurrencyDto) =>
   moneyFormat(balance, currency, { showCurrency: false, useNativePrecision: false, useThousandSeparator: false })
@@ -189,6 +190,7 @@ export function AccountDialog() {
           void submit()
         }}
       >
+        <OfflineNotice />
         <CardField label={t('accounts.form.name.label')} htmlFor="account-name" error={errors.name}>
           <Input
             id="account-name"

@@ -169,7 +169,8 @@
       "months": "Questi mesi non sono salvati su questo dispositivo. Connettiti a internet per caricarli.",
       "report": "Questo report non è salvato su questo dispositivo. Connettiti a internet per caricarlo.",
       "imports": "Le transazioni importate da rivedere non sono salvate su questo dispositivo. Connettiti a internet per caricarle."
-    }
+    },
+    "offline_notice": "Sei offline. Puoi dare un'occhiata, ma per le modifiche qui serve una connessione."
   },
   "accounts": {
     "folders": {

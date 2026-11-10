@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { useOnline } from '@/hooks/useOnline'
+import { OfflineNotice } from '@/components/OfflineNotice'
 import { Label } from '@/components/ui/label'
 import { OptionSelect } from '@/components/OptionSelect'
 import { Textarea } from '@/components/ui/textarea'
@@ -147,6 +148,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
           void submit()
         }}
       >
+        <OfflineNotice />
         {/* the dialog header is visually hidden — the title shares one row with
             the back-a-day arrow + date chip, exactly as in TransactionDialog.
             That chip IS the next payment, so there is no separate date row. */}

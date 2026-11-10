@@ -169,7 +169,8 @@
       "months": "These months aren't saved on this device. Connect to the internet to load them.",
       "report": "This report isn't saved on this device. Connect to the internet to load it.",
       "imports": "Imported transactions to review aren't saved on this device. Connect to the internet to load them."
-    }
+    },
+    "offline_notice": "You're offline. You can look around, but changes here need a connection."
   },
   "accounts": {
     "folders": {

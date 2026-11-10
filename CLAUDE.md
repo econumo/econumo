@@ -609,7 +609,14 @@ which a hook needs when its callers show the failure themselves (a per-call `onE
 around `mutateAsync`, an inline `isError`); a hook with mixed callers takes it as an option. `web/src/lib/offline-coverage.test.ts` fails the suite
 when a source file fires a mutation without reading `useOnline`, unless it is listed with a
 reason in `OFFLINE_EXEMPT` or goes through a shared component in `OFFLINE_VIA_SHARED`. So a new
-write control needs the hook or an entry there. Analytics: the usual create/update/delete/limit
+write control needs the hook or an entry there. A page whose writes are all off says so offline
+with one inline notice under its header, `OfflineNotice` (`web/src/components/OfflineNotice.tsx`,
+"You're offline. You can look around, but changes here need a connection."; never a top banner or
+a toast): `SettingsShell` renders it unless the page passes `editableOffline` (the Inbox), and the
+Settings hub, Getting started and the OAuth consent page render it themselves; Home, account pages,
+Budget/Plan, the Inbox and Reports show none. `web/src/lib/offline-notice-coverage.test.ts` fails
+when a routed page neither shows it nor is listed with a reason. Data the device never loaded is
+`OfflineUnavailable` instead (the page or dialog never spins offline). Analytics: the usual create/update/delete/limit
 events fire when the server confirms, `METRICS.WRITE_QUEUED`/`WRITE_RETRIED`/`WRITE_DISCARDED`
 at those points.
 

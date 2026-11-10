@@ -20,6 +20,7 @@ import { useFullReload, useFullReloadPending } from '@/features/transactions/use
 import { useInstallApp } from '@/features/install/useInstallApp'
 import { InstallInstructionsDialog } from '@/features/install/InstallInstructionsDialog'
 import { useUiStore } from '@/app/uiStore'
+import { OfflineNotice } from '@/components/OfflineNotice'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -99,6 +100,7 @@ export function SettingsPage() {
       ) : (
         <h1 className="text-xl font-semibold">{t('settings.page.header_desktop')}</h1>
       )}
+      <OfflineNotice className="max-w-md" />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex max-w-md flex-col gap-2">

@@ -169,7 +169,8 @@
       "months": "Estes meses não estão guardados neste dispositivo. Ligue-se à internet para os carregar.",
       "report": "Este relatório não está guardado neste dispositivo. Ligue-se à internet para o carregar.",
       "imports": "As transações importadas por rever não estão guardadas neste dispositivo. Ligue-se à internet para as carregar."
-    }
+    },
+    "offline_notice": "Está offline. Pode consultar, mas as alterações aqui precisam de ligação à internet."
   },
   "accounts": {
     "folders": {

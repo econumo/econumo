@@ -122,6 +122,12 @@ A network failure is never a failure in this sense: the change stays waiting.
   even when online, until it is confirmed.
 - A disabled text field in a card reads as plain text: faded like the other disabled
   controls, with no fill behind it.
+- A page whose writes are all off (Settings and its pages, imports, the account and
+  recurring dialogs, Getting started, OAuth consent) shows one inline notice under its
+  header, `OfflineNotice`: "You're offline. You can look around, but changes here need a
+  connection." It is never a top banner or a toast, and it is absent where something can
+  still be changed offline (Home, account pages, Budget, Plan, the Inbox) and on Reports,
+  which are read-only anyway.
 
 ### Not saved on this device
 

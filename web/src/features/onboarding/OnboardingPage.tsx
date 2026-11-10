@@ -5,6 +5,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { useOnline } from '@/hooks/useOnline'
+import { OfflineNotice } from '@/components/OfflineNotice'
 import { UserAvatar } from '@/components/UserAvatar'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { RouterPage } from '@/app/router-pages'
@@ -119,6 +120,7 @@ export function OnboardingPage() {
       ) : (
         <h1 className="border-b pb-2 text-[22px] uppercase tracking-wide">{t('onboarding.header')}</h1>
       )}
+      <OfflineNotice />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <h2 className="pb-5 text-[32px] font-normal">{t('onboarding.title')}</h2>

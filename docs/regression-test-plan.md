@@ -2721,7 +2721,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       confirm buttons, create rows in the pickers, drag handles); nothing waiting
       is written to local storage. Signing
       in offline fails at once with an error. A budget cell's transaction list
-      that was never loaded shows a spinner offline, never "List is empty".
+      that was never loaded says "This page hasn't been loaded on this device yet" offline,
+      never a spinner or "List is empty".
 - [ ] 📱 Offline, a page whose data this device never loaded says so in the page
       (a cloud icon, "Not saved on this device" and what to do: connect to the internet)
       instead of a loader that never ends, a "LOADING" screen with "Having trouble? Log
@@ -2734,6 +2735,21 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       ("Imported transactions to review aren't saved on this device", the other sections
       still listed). The sidebar and every page already loaded stay usable, and when the
       network returns the page loads by itself.
+- [ ] 📱 Offline notice: with no network, a small bordered line with a cloud icon, "You're
+      offline. You can look around, but changes here need a connection.", sits under the page
+      header (below the action button on desktop), readable in light and dark mode, on: Settings,
+      Personal settings and each of its pages (Change password, Change email, Sessions, API
+      tokens, Connected apps, Sign-in methods), Accounts, Shared access, Budgets & Plans,
+      Recurring transactions, Categories, Tags, Payees, Currencies, Import & export (Import CSV
+      and Export CSV both disabled), Apple Wallet and its history, SimpleFIN and its history and
+      runs, Import rules, Getting started, the OAuth consent page, and inside the account and
+      recurring dialogs. It is NOT on Home, an account page, Budget, Plan, the Inbox or Reports.
+      It disappears as soon as the network returns, without a reload, and never shows online.
+- [ ] 📱 Offline, a budget opened on a month this device never loaded keeps its header with the
+      back button on a phone (the budget name next to it), so the page can be left.
+- [ ] Offline, the OAuth consent page (`/oauth/authorize?...`) says "Not saved on this device"
+      instead of a loader that never ends; SimpleFIN never opened on this device says the same
+      instead of "Loading your data"; Net worth on a period never loaded shows no "…" headline.
 - [ ] 📱 Offline, Settings > Personal settings: the Name reads as plain text in its card
       (slightly faded like the Currency picker below it, no grey bar behind the text) and
       cannot be edited; the same for every other card field disabled offline.
