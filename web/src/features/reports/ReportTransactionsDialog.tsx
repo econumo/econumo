@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { OfflineUnavailable } from '@/components/OfflineUnavailable'
 import { useOnline } from '@/hooks/useOnline'
-import { isUnavailableOffline } from '@/lib/offlineQuery'
+import { isUnavailableOffline, useUnavailableOffline } from '@/lib/offlineQuery'
 import { useTranslation } from 'react-i18next'
 import { useQueries } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
@@ -94,7 +94,10 @@ function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: 
 }
 
 function useLocalRows(enabled: boolean, row: AccountsDrill, from: string, to: string) {
-  const { data: transactions, isLoading, isError } = useTransactions()
+  const transactionsQuery = useTransactions()
+  const { data: transactions, isLoading, isError } = transactionsQuery
+  // a device that never downloaded the list: paused offline, not loading and not empty
+  const unavailable = useUnavailableOffline(transactionsQuery)
   const lookups = useTransactionLookups()
   const rows = useMemo(() => {
     if (!enabled) return []
@@ -112,7 +115,7 @@ function useLocalRows(enabled: boolean, row: AccountsDrill, from: string, to: st
       .sort((a, b) => compareTransactions(a, b, row.kind === 'account' ? row.id : undefined))
       .map((tx) => ({ view: enrichTransaction(tx, lookups), currencyId: undefined as Id | undefined, amount: undefined }))
   }, [enabled, transactions, lookups, row, from, to])
-  return { isLoading: enabled && isLoading, isError: enabled && isError && !transactions, rows }
+  return { isLoading: enabled && isLoading, isError: enabled && isError && !transactions, offline: enabled && unavailable, rows }
 }
 
 export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
@@ -129,7 +132,7 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
   const localRows = useLocalRows(row.kind !== 'savings', row, from, to)
   const isLoading = budgetRows.isLoading || localRows.isLoading
   const isError = budgetRows.isError || localRows.isError
-  const offline = budgetRows.offline
+  const offline = budgetRows.offline || localRows.offline
   // newest first across both sources; a transfer between two listed accounts once
   const rows = useMemo(() => {
     const local = new Set(localRows.rows.map((r) => r.view.id))

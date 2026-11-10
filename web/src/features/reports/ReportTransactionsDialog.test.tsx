@@ -198,3 +198,13 @@ it('offline with a month never loaded, says it is not on this device instead of 
   expect(await screen.findByTestId('offline-unavailable')).toBeInTheDocument()
   expect(screen.queryByText('Something went wrong. Please try again.')).toBeNull()
 })
+
+it('offline on a device that never downloaded the transactions, an account drill says so instead of an empty list', async () => {
+  const { onlineManager } = await import('@tanstack/react-query')
+  server.use(...coreHandlers({ accounts, transactions }))
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderDialog({ budgetId: null, row: cash, from: '2026-07-01', to: '2026-08-01' })
+  expect(await screen.findByTestId('offline-unavailable')).toBeInTheDocument()
+  expect(screen.queryByText('List is empty')).toBeNull()
+})
