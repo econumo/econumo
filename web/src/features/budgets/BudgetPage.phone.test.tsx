@@ -84,7 +84,7 @@ function renderPage(path: '/budget' | '/plan' = '/budget') {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
-  return { queryClient }
+  return { queryClient, router }
 }
 
 beforeEach(() => {
@@ -495,4 +495,21 @@ it('offline: a month never loaded on this device says so under the month strip',
   expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This month isn't saved on this device.")
   expect(screen.queryByTestId('budget-loading')).toBeNull()
   expect(screen.getByRole('tablist', { name: 'period' })).toBeInTheDocument()
+})
+
+it('offline: opened cold on a month never loaded, the header and month strip stay to reach a saved month', async () => {
+  handlers()
+  const { router } = renderPage()
+  await screen.findByRole('button', { name: /^Food, budget 200.00/ })
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
+  await act(() => router.navigate('/plan'))  // a fresh page: no previous month to hold
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This month isn't saved on this device.")
+  expect(screen.getByRole('button', { name: 'back' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Main budget' })).toBeInTheDocument()
+  expect(screen.getByRole('tablist', { name: 'period' })).toBeInTheDocument()
+  act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' }))
+  expect(await screen.findByRole('button', { name: /^Food, budget 200.00/ })).toBeInTheDocument()
+  expect(screen.queryByTestId('offline-unavailable')).toBeNull()
 })

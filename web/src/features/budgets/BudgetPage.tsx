@@ -268,6 +268,21 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const structureMode = isCompact
   const configureVisible = editDetails || (structureMode && configure)
 
+  // on a phone the back button is the only way out of this page
+  const budgetTitleParts = (name: string) => (
+    <>
+      {isCompact ? (
+        <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
+          <ChevronLeft className="size-5" />
+        </Button>
+      ) : null}
+      <h1 className={isPhone ? 'min-w-0 shrink truncate text-lg font-medium' : 'min-w-0 shrink truncate text-xl'} title={name}>
+        {name}
+      </h1>
+    </>
+  )
+  const budgetTitle = (name: string) => <header className="flex items-center gap-2">{budgetTitleParts(name)}</header>
+
   // The default budget can 403/404 while still being the stored option: access
   // was revoked or the budget deleted. keepPreviousData would otherwise pin
   // isPlaceholderData forever (the fetch never succeeds), so the error must be
@@ -288,19 +303,18 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       </div>
     )
   }
-  // nothing to show yet (the page opened on a month never loaded): the whole
-  // area says so; with another month on hand the strip stays to switch back
+  // Nothing to show yet: the page opened on a month never loaded. The header
+  // and the month strip come from the budget list's meta, so a month the
+  // device has stays one tap away; only without that meta is the page bare.
   if (monthOffline && !budget) {
-    // on a phone the header's back button is the only way out of this page
+    const listMeta = budgetList?.find((b) => b.id === budgetId)
     return (
       <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
-        {isCompact ? (
-          <header className="flex items-center gap-2">
-            <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
-              <ChevronLeft className="size-5" />
-            </Button>
-            <h1 className="min-w-0 shrink truncate text-lg font-medium">{budgetList?.find((b) => b.id === budgetId)?.name}</h1>
-          </header>
+        {listMeta || isCompact ? budgetTitle(listMeta?.name ?? '') : null}
+        {listMeta && (isPhone || mode === 'budget') ? (
+          <PeriodStrip startedAt={listMeta.startedAt} endedAt={listMeta.endedAt} startDay={periodStartDayOf(listMeta)} leading={viewSwitch} />
+        ) : listMeta ? (
+          viewSwitch
         ) : null}
         <OfflineUnavailable subject="month" />
       </div>
@@ -656,17 +670,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   return (
     <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
       <header className="flex items-center gap-2">
-        {isCompact ? (
-          <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
-            <ChevronLeft className="size-5" />
-          </Button>
-        ) : null}
-        <h1
-          className={isPhone ? 'min-w-0 shrink truncate text-lg font-medium' : 'min-w-0 shrink truncate text-xl'}
-          title={budget.meta.name}
-        >
-          {budget.meta.name}
-        </h1>
+        {budgetTitleParts(budget.meta.name)}
         <span className="flex-1" />
         {editMode ? (
           <Button type="button" size="sm" onClick={() => setEditMode(false)}>

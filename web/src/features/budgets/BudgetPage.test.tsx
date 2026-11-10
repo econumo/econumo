@@ -1250,6 +1250,40 @@ describe('offline', () => {
     expect(state).toHaveTextContent("This month isn't saved on this device.")
     expect(screen.queryByTestId('budget-loading')).toBeNull()
     expect(screen.queryByRole('link', { name: 'Log out' })).toBeNull()
+    // the header and the month strip come from the cached budget list, so a
+    // month the device has is one tap away
+    expect(screen.getByRole('heading', { name: 'Main budget' })).toBeInTheDocument()
+    const strip = screen.getByRole('tablist', { name: 'period' })
+    expect(within(strip).getByRole('tab', { selected: true })).toHaveTextContent(/Jun/)
+    expect(screen.getByRole('tab', { name: 'Budget' })).toBeInTheDocument()
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' }))
+    expect(await screen.findByTestId('element-cat-food')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+  })
+
+  it('opening the page offline on a month never loaded, with the budget list not cached either, keeps the bare offline state', async () => {
+    budgetHandlers()
+    const { router, queryClient } = renderPage()
+    await screen.findByTestId('element-cat-food')
+    goOffline()
+    await act(() => router.navigate('/settings/budgets'))
+    queryClient.removeQueries({ queryKey: queryKeys.budgets })
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
+    await act(() => router.navigate('/budget'))
+    expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This month isn't saved on this device.")
+    expect(screen.queryByRole('tablist', { name: 'period' })).toBeNull()
+  })
+
+  it('a user with no default budget sees the no-budget screen offline, not the offline state', async () => {
+    server.use(...coreHandlers())
+    act(() => onlineManager.setOnline(false))
+    onTestFinished(() => act(() => onlineManager.setOnline(true)))
+    renderPage('/budget', (qc) => {
+      qc.setQueryData(queryKeys.user, fixtureUser)
+      qc.setQueryData(queryKeys.budgets, [])
+    })
+    expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
   })
 
   it('the Plan: months never loaded on this device say so, and the arrows still lead back', async () => {
