@@ -25,6 +25,7 @@ type onboardingAccountRepo interface {
 
 type onboardingCurrencyLookup interface {
 	GetByID(ctx context.Context, id string) (model.CurrencyView, error)
+	EnsureUsable(ctx context.Context, userID, currencyID string) error
 }
 
 // OnboardingAccountReader adapts the account repository plus the currency
@@ -132,7 +133,9 @@ func (a *OnboardingAccounts) OwnLiveAccounts(ctx context.Context, userID vo.Id) 
 	out := make([]model.OnboardingAccount, 0, len(list))
 	for _, acc := range list {
 		if acc.UserID.Equal(userID) && !acc.IsDeleted {
-			out = append(out, model.OnboardingAccount{ID: acc.ID.String(), OwnerID: acc.UserID.String(), Name: acc.Name})
+			out = append(out, model.OnboardingAccount{
+				ID: acc.ID.String(), OwnerID: acc.UserID.String(), Name: acc.Name, CurrencyID: acc.CurrencyID.String(), CreatedAt: acc.CreatedAt,
+			})
 		}
 	}
 	return out, nil
@@ -157,7 +160,10 @@ func NewOnboardingCurrencies(svc *appcurrency.ManageService, lookup onboardingCu
 	return &OnboardingCurrencies{ManageService: svc, lookup: lookup}
 }
 
-func (c *OnboardingCurrencies) CurrencyCode(ctx context.Context, currencyID string) (string, error) {
+func (c *OnboardingCurrencies) UsableCurrencyCode(ctx context.Context, userID vo.Id, currencyID string) (string, error) {
+	if err := c.lookup.EnsureUsable(ctx, userID.String(), currencyID); err != nil {
+		return "", err
+	}
 	cur, err := c.lookup.GetByID(ctx, currencyID)
 	if err != nil {
 		return "", err

@@ -3,6 +3,7 @@ package onboarding
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/econumo/econumo/internal/infra/i18n"
@@ -21,9 +22,11 @@ const (
 )
 
 // begin opens a step inside its transaction: it takes the user row lock, then
-// decides whether the step still has work to do. A step already done, or an
-// operation id already claimed (a replay whose first response was lost), has
-// none: the caller answers with the current state and writes nothing.
+// decides whether the step still has work to do. A step already done (also a
+// replay whose first response was lost: that call marked it) has none, and the
+// caller answers with the current state and writes nothing. An operation id
+// already claimed while the step is open was used by another write and is
+// refused.
 func (s *Service) begin(ctx context.Context, userID vo.Id, rawOpID, step string) (*model.CurrentUserResult, bool, error) {
 	user, err := s.steps.Users.LockForOnboarding(ctx, userID)
 	if err != nil {
@@ -41,7 +44,11 @@ func (s *Service) begin(ctx context.Context, userID vo.Id, rawOpID, step string)
 		return nil, false, err
 	}
 	if already {
-		return user, false, nil
+		// The step is not done, so the id was claimed by another write: the
+		// operation id table is shared by every create endpoint.
+		return nil, false, errs.NewValidation("Validation failed", errs.FieldError{
+			Key: "id", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice,
+		})
 	}
 	return user, true, nil
 }
@@ -286,9 +293,9 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 			return err
 		}
 		mainID := strings.TrimSpace(req.MainCurrencyId)
-		mainCode, err := s.steps.Currencies.CurrencyCode(ctx, mainID)
+		mainCode, err := s.steps.Currencies.UsableCurrencyCode(ctx, userID, mainID)
 		if err != nil {
-			if _, nf := errs.AsNotFound(err); nf {
+			if refusal(err) {
 				return errs.NewValidation("Validation failed", errs.FieldError{
 					Key: "mainCurrencyId", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice,
 				})
@@ -327,7 +334,11 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 		if _, err := s.steps.Users.UpdateCurrency(ctx, userID, model.UpdateCurrencyRequest{Currency: mainCode}); err != nil {
 			return err
 		}
-		if err := s.showOnly(ctx, userID, visibleCurrencies(mainID, req)); err != nil {
+		own, err := s.steps.Accounts.OwnLiveAccounts(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if err := s.showOnly(ctx, userID, visibleCurrencies(mainID, req, own)); err != nil {
 			return err
 		}
 
@@ -377,9 +388,11 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 	return out, nil
 }
 
-// visibleCurrencies is the main currency, the requested ones and every new
-// account's own, deduplicated in that order.
-func visibleCurrencies(mainID string, req model.OnboardingSaveAccountsRequest) []string {
+// visibleCurrencies is the main currency, the requested ones, every new
+// account's own and the currency of every live account the user owns (so
+// hiding the rest never hides one an account is kept in), deduplicated in that
+// order.
+func visibleCurrencies(mainID string, req model.OnboardingSaveAccountsRequest, own []model.OnboardingAccount) []string {
 	seen := map[string]bool{}
 	var out []string
 	add := func(id string) {
@@ -395,6 +408,9 @@ func visibleCurrencies(mainID string, req model.OnboardingSaveAccountsRequest) [
 	}
 	for _, a := range req.Accounts {
 		add(a.CurrencyId)
+	}
+	for _, a := range own {
+		add(a.CurrencyID)
 	}
 	return out
 }
@@ -425,8 +441,18 @@ func refusal(err error) bool {
 }
 
 // matchAccounts recovers the key->id map of an earlier call by name among the
-// user's live accounts; two rows of one name take two accounts.
+// user's live accounts, newest first: the step created its accounts after any
+// the user already had, so an older account of the same name is never taken
+// for a row. Two rows of one name take two accounts.
 func matchAccounts(rows []model.OnboardingAccountRow, own []model.OnboardingAccount) map[string]string {
+	own = slices.Clone(own)
+	slices.SortStableFunc(own, func(a, b model.OnboardingAccount) int {
+		if c := b.CreatedAt.Compare(a.CreatedAt); c != 0 {
+			return c
+		}
+		// UUIDv7 ids order by creation within one second
+		return strings.Compare(b.ID, a.ID)
+	})
 	taken := map[string]bool{}
 	out := map[string]string{}
 	for _, r := range rows {

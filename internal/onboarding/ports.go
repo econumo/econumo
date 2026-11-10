@@ -80,10 +80,11 @@ type AccountSteps interface {
 	FirstFolderID(ctx context.Context, userID vo.Id) (string, error)
 }
 
-// CurrencySteps is the currency feature: a currency's code (a NotFound error
-// when it does not exist) and the caller's visible set.
+// CurrencySteps is the currency feature: the code of a currency the caller may
+// use (a global or their own live custom; a NotFound or validation error
+// otherwise) and the caller's visible set.
 type CurrencySteps interface {
-	CurrencyCode(ctx context.Context, currencyID string) (string, error)
+	UsableCurrencyCode(ctx context.Context, userID vo.Id, currencyID string) (string, error)
 	HideAllCurrencies(ctx context.Context, userID vo.Id) (*model.HideAllCurrenciesResult, error)
 	ShowCurrency(ctx context.Context, userID vo.Id, req model.ShowCurrencyRequest) (*model.ShowCurrencyResult, error)
 }

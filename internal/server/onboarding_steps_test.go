@@ -520,3 +520,84 @@ func TestSavePlan_ForeignBudgetIsRefused(t *testing.T) {
 		t.Fatalf("status %d: %v", status, data)
 	}
 }
+
+// operation_requests_ids is shared by every create endpoint, so an id another
+// write claimed is refused while the step is still open; once the step is done
+// the same id is the no-op replay.
+func TestSaveSteps_AnIDClaimedByAnotherWriteIsRefused(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	op := fixture.NewID()
+	if status, data := e.post("/api/v1/onboarding/save-categories", categoriesBody(op, [3]string{"a", "Food", "expense"})); status != 200 {
+		t.Fatalf("categories %d: %v", status, data)
+	}
+	status, data := e.post("/api/v1/onboarding/save-accounts", accountsBody(op, e.eur, nil, [4]string{"a", "Wallet", "", e.eur}))
+	errsMap, _ := data["errors"].(map[string]any)
+	if status != 400 || errsMap["id"] == nil {
+		t.Fatalf("reused id %d: %v", status, data)
+	}
+	if n := e.count(`SELECT COUNT(*) FROM accounts WHERE user_id = ?`, e.user); n != 0 || e.onboarding() != "categories" {
+		t.Fatalf("accounts = %d, onboarding %q", n, e.onboarding())
+	}
+	if status, _ := e.post("/api/v1/onboarding/save-categories", categoriesBody(op, [3]string{"a", "Food", "expense"})); status != 200 {
+		t.Fatalf("replay of a done step %d", status)
+	}
+}
+
+func TestSaveAccounts_ReplayNeverMapsARowToAnOlderAccountOfTheSameName(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	older := e.f.Account(fixture.Account{UserID: e.user, Name: "Cash"})
+	op := fixture.NewID()
+	body := accountsBody(op, e.eur, nil, [4]string{"c", "Cash", "5", e.eur})
+	status, data := e.post("/api/v1/onboarding/save-accounts", body)
+	created := stringMap(t, data["accounts"])["c"]
+	if status != 200 || created == "" || created == older {
+		t.Fatalf("save %d: %v", status, data)
+	}
+	status, again := e.post("/api/v1/onboarding/save-accounts", body)
+	if got := stringMap(t, again["accounts"])["c"]; status != 200 || got != created {
+		t.Fatalf("replay mapped c to %s, want %s (older %s)", got, created, older)
+	}
+}
+
+func TestSaveAccounts_MainCurrencyMustBeUsable(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	other := e.f.User(fixture.User{Name: "Other", Email: "other@onboarding.test"})
+	foreign := e.f.Currency(fixture.Currency{Code: "XFO", Symbol: "X", UserID: other, Rate: "2.00000000"})
+	gone := e.f.Currency(fixture.Currency{Code: "XGO", Symbol: "G", Deleted: true})
+	for name, main := range map[string]string{"foreign custom": foreign, "deleted": gone} {
+		status, data := e.post("/api/v1/onboarding/save-accounts", accountsBody(fixture.NewID(), main, nil, [4]string{"a", "Wallet", "", e.eur}))
+		errsMap, _ := data["errors"].(map[string]any)
+		if status != 400 || errsMap["mainCurrencyId"] == nil || strings.Contains(data["message"].(string), "XFO") {
+			t.Fatalf("%s: %d %v", name, status, data)
+		}
+	}
+	if e.onboarding() != "started" {
+		t.Fatalf("onboarding = %q", e.onboarding())
+	}
+}
+
+func TestSaveAccounts_KeepsTheCurrenciesOfExistingAccountsVisible(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	chf := e.f.Currency(fixture.Currency{Code: "CHF", Symbol: "Fr", Name: "Franc"})
+	e.f.Account(fixture.Account{UserID: e.user, Name: "Swiss", CurrencyID: chf})
+	if status, data := e.post("/api/v1/onboarding/save-accounts", accountsBody(fixture.NewID(), e.eur, nil, [4]string{"a", "Wallet", "", e.eur})); status != 200 {
+		t.Fatalf("status %d: %v", status, data)
+	}
+	if e.count(`SELECT COUNT(*) FROM users_hidden_currencies WHERE user_id = ? AND currency_id = ?`, e.user, chf) != 0 {
+		t.Fatal("the currency of an existing account was hidden")
+	}
+}
+
+func TestUpdateOnboarding_NeverReopensAStepTheServerMarked(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	if status, _ := e.post("/api/v1/onboarding/save-categories", categoriesBody(fixture.NewID(), [3]string{"a", "Food", "expense"})); status != 200 {
+		t.Fatal("save-categories")
+	}
+	// a stale stepper that still shows Categories open skips it
+	if status, data := e.post("/api/v1/user/update-onboarding", map[string]any{"value": "!import,!categories"}); status != 200 {
+		t.Fatalf("update %d: %v", status, data)
+	}
+	if got := e.onboarding(); got != "!import,categories" {
+		t.Fatalf("onboarding = %q", got)
+	}
+}

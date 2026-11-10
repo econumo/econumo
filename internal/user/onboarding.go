@@ -1,4 +1,5 @@
-// Onboarding use case: mark the user's onboarding complete.
+// Onboarding use cases: complete onboarding, and the row lock plus step
+// marking the onboarding feature's step writes run inside their transaction.
 package user
 
 import (

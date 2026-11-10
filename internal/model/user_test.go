@@ -454,6 +454,22 @@ func TestSetOnboardingProgress(t *testing.T) {
 		t.Fatalf("value = %q, want completed", got)
 	}
 
+	// a stale client write cannot reopen a step the server marked done
+	marked := "!import,categories,accounts"
+	m := &User{Options: []UserOption{NewUserOption(vo.NewId(), OptionOnboarding, &marked, now)}}
+	m.SetOnboardingProgress("!import,!categories,!plan", later)
+	if got := *m.Option(OptionOnboarding).Value; got != "!import,!plan,categories,accounts" {
+		t.Fatalf("value = %q", got)
+	}
+	m.SetOnboardingProgress(OnboardingStarted, later)
+	if got := *m.Option(OptionOnboarding).Value; got != "categories,accounts" {
+		t.Fatalf("value = %q", got)
+	}
+	m.SetOnboardingProgress("apple_wallet", later)
+	if got := *m.Option(OptionOnboarding).Value; got != "apple_wallet,categories,accounts" {
+		t.Fatalf("value = %q", got)
+	}
+
 	none := &User{}
 	if none.SetOnboardingProgress("plan", now) || len(none.Options) != 0 {
 		t.Fatal("a user without the option must be left alone")

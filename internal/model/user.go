@@ -9,6 +9,7 @@ package model
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -297,9 +298,38 @@ func (u *User) SetOnboardingProgress(value string, now time.Time) bool {
 	if o == nil || o.Value == nil || *o.Value == OnboardingCompleted || value == OnboardingCompleted {
 		return false
 	}
-	v := value
+	v := keepServerSteps(*o.Value, value)
 	o.setValue(&v, now)
 	return true
+}
+
+// serverSteps are the steps the onboarding step writes mark done after
+// creating their rows. A stale client write must not reopen one: a later save
+// under a new operation id would then create the rows a second time.
+var serverSteps = []string{"categories", "accounts", "plan"}
+
+// keepServerSteps returns next with every server step done in stored kept
+// done, replacing a skipped entry for it.
+func keepServerSteps(stored, next string) string {
+	listed := func(value, step string) bool {
+		return value != OnboardingStarted && slices.Contains(strings.Split(value, ","), step)
+	}
+	var items []string
+	if next != OnboardingStarted && next != "" {
+		items = strings.Split(next, ",")
+	}
+	changed := false
+	for _, step := range serverSteps {
+		if !listed(stored, step) || listed(next, step) {
+			continue
+		}
+		items = append(slices.DeleteFunc(items, func(item string) bool { return item == "!"+step }), step)
+		changed = true
+	}
+	if !changed {
+		return next
+	}
+	return strings.Join(items, ",")
 }
 
 // OnboardingStepDone reports whether step needs no more work: it is in the
