@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -299,6 +300,43 @@ func (u *User) SetOnboardingProgress(value string, now time.Time) bool {
 	v := value
 	o.setValue(&v, now)
 	return true
+}
+
+// OnboardingStepDone reports whether step needs no more work: it is in the
+// stored step list unskipped, or onboarding is completed or predates the
+// option (neither is ever reopened).
+func OnboardingStepDone(value *string, step string) bool {
+	if value == nil || *value == OnboardingCompleted {
+		return true
+	}
+	if *value == OnboardingStarted {
+		return false
+	}
+	for _, item := range strings.Split(*value, ",") {
+		if item == step {
+			return true
+		}
+	}
+	return false
+}
+
+// MarkOnboardingStep records step as finished in an onboarding still in
+// progress, replacing a skipped entry for it; a completed or absent onboarding
+// is left alone. Reports whether the option changed.
+func (u *User) MarkOnboardingStep(step string, now time.Time) bool {
+	o := u.Option(OptionOnboarding)
+	if o == nil || OnboardingStepDone(o.Value, step) {
+		return false
+	}
+	var items []string
+	if *o.Value != OnboardingStarted {
+		for _, item := range strings.Split(*o.Value, ",") {
+			if item != "!"+step {
+				items = append(items, item)
+			}
+		}
+	}
+	return u.SetOnboardingProgress(strings.Join(append(items, step), ","), now)
 }
 
 // SetLastSeenVersion records the release whose "what's new" notice the user has

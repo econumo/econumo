@@ -8760,6 +8760,243 @@
                 }
             }
         },
+        "/api/v1/onboarding/save-accounts": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "In one transaction: creates the accounts (validated like account/create-account, opening balance as a correction; the first account of a user with no folder creates one), sets the profile currency to mainCurrencyId, keeps only the main, listed and account currencies visible, then creates the budget over all the user's live accounts when they have none, else adds the new accounts to their default budget, and marks the accounts step done. After the commit, when the server has an AI provider, a background job sends the new accounts' names and currencies with the caller's timezone and language to it and flags the ones it judges savings in that budget. Idempotent on the operation id like onboarding/save-categories.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Onboarding"
+                ],
+                "summary": "Save the onboarding accounts step",
+                "parameters": [
+                    {
+                        "description": "Save accounts request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.OnboardingSaveAccountsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OnboardingSaveAccountsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding/save-categories": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "In one transaction: creates the categories in display order (validated like category/create-category; a row named like an active category of its type, or like an earlier row, maps to that category instead), applies the optional order (existing category ids and row keys, each type ordered on its own), creates the budget when the user owns a live account but has no budget, and marks the categories step done. The operation id makes it idempotent: a replay, or a call after the step is done, writes nothing and answers with the current state (row keys matched by name).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Onboarding"
+                ],
+                "summary": "Save the onboarding categories step",
+                "parameters": [
+                    {
+                        "description": "Save categories request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.OnboardingSaveCategoriesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OnboardingSaveCategoriesResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/onboarding/save-plan": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "In one transaction: writes each amount as the category's limit for the budget's current period (budgetId, else the user's default budget; the caller must be able to update it) like budget/set-limit, and marks the plan step done. Idempotent on the operation id like onboarding/save-categories.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Onboarding"
+                ],
+                "summary": "Save the onboarding plan step",
+                "parameters": [
+                    {
+                        "description": "Save plan request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.OnboardingSavePlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OnboardingSavePlanResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/payee/archive-payee": {
             "post": {
                 "security": [
@@ -16447,6 +16684,26 @@
                 }
             }
         },
+        "model.OnboardingAccountRow": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "model.OnboardingAddBudgetAccountsRequest": {
             "type": "object",
             "properties": {
@@ -16466,6 +16723,23 @@
             "properties": {
                 "item": {
                     "$ref": "#/definitions/model.MetaResult"
+                }
+            }
+        },
+        "model.OnboardingCategoryRow": {
+            "type": "object",
+            "properties": {
+                "icon": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
@@ -16495,6 +16769,122 @@
                 },
                 "startDate": {
                     "type": "string"
+                }
+            }
+        },
+        "model.OnboardingPlanAmount": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OnboardingSaveAccountsRequest": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OnboardingAccountRow"
+                    }
+                },
+                "currencyIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mainCurrencyId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OnboardingSaveAccountsResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "budgetId": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.OnboardingSaveCategoriesRequest": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OnboardingCategoryRow"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.OnboardingSaveCategoriesResult": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "categories": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.OnboardingSavePlanRequest": {
+            "type": "object",
+            "properties": {
+                "amounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OnboardingPlanAmount"
+                    }
+                },
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OnboardingSavePlanResult": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
                 }
             }
         },

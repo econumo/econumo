@@ -1,0 +1,491 @@
+package onboarding
+
+import (
+	"context"
+	"errors"
+	"strings"
+
+	"github.com/econumo/econumo/internal/infra/i18n"
+	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
+	"github.com/econumo/econumo/internal/shared/vo"
+)
+
+// Step names as stored in the onboarding option.
+const (
+	StepCategories = "categories"
+	StepAccounts   = "accounts"
+	StepPlan       = "plan"
+)
+
+// begin opens a step inside its transaction: it takes the user row lock, then
+// decides whether the step still has work to do. A step already done, or an
+// operation id already claimed (a replay whose first response was lost), has
+// none: the caller answers with the current state and writes nothing.
+func (s *Service) begin(ctx context.Context, userID vo.Id, rawOpID, step string) (*model.CurrentUserResult, bool, error) {
+	user, err := s.steps.Users.LockForOnboarding(ctx, userID)
+	if err != nil {
+		return nil, false, err
+	}
+	if model.OnboardingStepDone(optionValue(user, model.OptionOnboarding), step) {
+		return user, false, nil
+	}
+	opID, err := vo.ParseId(strings.TrimSpace(rawOpID))
+	if err != nil {
+		return nil, false, err
+	}
+	already, err := s.steps.Ops.Claim(ctx, opID, s.steps.Clock.Now())
+	if err != nil {
+		return nil, false, err
+	}
+	if already {
+		return user, false, nil
+	}
+	return user, true, nil
+}
+
+// finish marks the step done and the operation handled.
+func (s *Service) finish(ctx context.Context, userID vo.Id, rawOpID, step string) (*model.CurrentUserResult, error) {
+	opID, err := vo.ParseId(strings.TrimSpace(rawOpID))
+	if err != nil {
+		return nil, err
+	}
+	if err := s.steps.Ops.MarkHandled(ctx, opID, s.steps.Clock.Now()); err != nil {
+		return nil, err
+	}
+	return s.steps.Users.MarkOnboardingStep(ctx, userID, step)
+}
+
+func optionValue(user *model.CurrentUserResult, name string) *string {
+	for _, o := range user.Options {
+		if o.Name == name {
+			return o.Value
+		}
+	}
+	return nil
+}
+
+func preferredBudget(user *model.CurrentUserResult) string {
+	if v := optionValue(user, model.OptionBudget); v != nil {
+		return *v
+	}
+	return ""
+}
+
+func nameKey(typ, name string) string {
+	return typ + ":" + strings.ToLower(strings.TrimSpace(name))
+}
+
+// defaultBudgetID is the budget id a step answers with: "" when the user has none.
+func (s *Service) defaultBudgetID(ctx context.Context, userID vo.Id, user *model.CurrentUserResult) (string, error) {
+	id, _, found, err := s.steps.Budgets.DefaultBudget(ctx, userID, preferredBudget(user))
+	if err != nil || !found {
+		return "", err
+	}
+	return id.String(), nil
+}
+
+// createBudget creates the onboarding budget over accountIDs: named in the
+// caller's language, in the profile currency, starting this period.
+func (s *Service) createBudget(ctx context.Context, userID vo.Id, accountIDs []string) (string, error) {
+	id := vo.NewId()
+	_, err := s.steps.Budgets.CreateBudget(ctx, userID, model.CreateBudgetRequest{
+		Id:         id.String(),
+		Name:       i18n.T(reqctx.Language(ctx), "onboarding.budget_name", nil),
+		AccountIds: accountIDs,
+	})
+	if err != nil {
+		return "", err
+	}
+	return id.String(), nil
+}
+
+func (s *Service) ownLiveAccountIDs(ctx context.Context, userID vo.Id) ([]string, error) {
+	accounts, err := s.steps.Accounts.OwnLiveAccounts(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(accounts))
+	for _, a := range accounts {
+		ids = append(ids, a.ID)
+	}
+	return ids, nil
+}
+
+// SaveCategories creates the categories step's rows, applies the user's order,
+// creates the budget when the user has accounts but no budget yet, and marks
+// the step done, all in one transaction. A row named like one of the user's
+// active categories of its type (or like an earlier row) maps to that category
+// instead of creating a second one.
+func (s *Service) SaveCategories(ctx context.Context, userID vo.Id, req model.OnboardingSaveCategoriesRequest) (*model.OnboardingSaveCategoriesResult, error) {
+	out := &model.OnboardingSaveCategoriesResult{Categories: map[string]string{}}
+	err := s.steps.Tx.WithTx(ctx, func(ctx context.Context) error {
+		user, proceed, err := s.begin(ctx, userID, req.Id, StepCategories)
+		if err != nil {
+			return err
+		}
+		own, err := s.steps.Categories.OwnCategories(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if !proceed {
+			out.User = *user
+			out.Categories = matchCategories(req.Categories, own)
+			out.BudgetId, err = s.defaultBudgetID(ctx, userID, user)
+			return err
+		}
+		known := map[string]string{}
+		for _, c := range own {
+			if c.IsArchived == 0 {
+				if _, dup := known[nameKey(c.Type, c.Name)]; !dup {
+					known[nameKey(c.Type, c.Name)] = c.Id
+				}
+			}
+		}
+		for _, row := range req.Categories {
+			name := strings.TrimSpace(row.Name)
+			if id, ok := known[nameKey(row.Type, name)]; ok {
+				out.Categories[row.Key] = id
+				continue
+			}
+			icon := strings.TrimSpace(row.Icon)
+			res, cerr := s.steps.Categories.CreateCategory(ctx, userID, model.CreateCategoryRequest{
+				Id: vo.NewId().String(), Name: name, Type: row.Type, Icon: &icon,
+			})
+			if cerr != nil {
+				return cerr
+			}
+			out.Categories[row.Key] = res.Item.Id
+			known[nameKey(row.Type, name)] = res.Item.Id
+		}
+		if len(req.Order) > 0 {
+			wanted := make([]string, 0, len(req.Order))
+			for _, k := range req.Order {
+				if id, ok := out.Categories[k]; ok {
+					wanted = append(wanted, id)
+				} else {
+					wanted = append(wanted, k)
+				}
+			}
+			if oerr := s.applyCategoryOrder(ctx, userID, wanted); oerr != nil {
+				return oerr
+			}
+		}
+		out.BudgetId, err = s.defaultBudgetID(ctx, userID, user)
+		if err != nil {
+			return err
+		}
+		if out.BudgetId == "" {
+			accounts, aerr := s.ownLiveAccountIDs(ctx, userID)
+			if aerr != nil {
+				return aerr
+			}
+			if len(accounts) > 0 {
+				if out.BudgetId, err = s.createBudget(ctx, userID, accounts); err != nil {
+					return err
+				}
+			}
+		}
+		done, err := s.finish(ctx, userID, req.Id, StepCategories)
+		if err != nil {
+			return err
+		}
+		out.User = *done
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// matchCategories recovers the key->id map of an earlier call by name among the
+// user's categories, active ones first.
+func matchCategories(rows []model.OnboardingCategoryRow, own []model.CategoryResult) map[string]string {
+	byName := map[string]string{}
+	for _, archived := range []int{0, 1} {
+		for _, c := range own {
+			k := nameKey(c.Type, c.Name)
+			if _, ok := byName[k]; !ok && c.IsArchived == archived {
+				byName[k] = c.Id
+			}
+		}
+	}
+	out := map[string]string{}
+	for _, r := range rows {
+		if id, ok := byName[nameKey(r.Type, r.Name)]; ok {
+			out[r.Key] = id
+		}
+	}
+	return out
+}
+
+// applyCategoryOrder gives the wanted ids the slots their type's rows hold in
+// the user's list, each type ordered on its own; archived and unnamed rows keep
+// their place. An order already in place writes nothing.
+func (s *Service) applyCategoryOrder(ctx context.Context, userID vo.Id, wanted []string) error {
+	own, err := s.steps.Categories.OwnCategories(ctx, userID)
+	if err != nil {
+		return err
+	}
+	typeOf := map[string]string{}
+	for _, c := range own {
+		typeOf[c.Id] = c.Type
+	}
+	queue := map[string][]string{}
+	placed := map[string]bool{}
+	for _, id := range wanted {
+		if t, ok := typeOf[id]; ok && !placed[id] {
+			queue[t] = append(queue[t], id)
+			placed[id] = true
+		}
+	}
+	next := make([]string, 0, len(own))
+	changed := false
+	for _, c := range own {
+		id := c.Id
+		if placed[id] && len(queue[c.Type]) > 0 {
+			id, queue[c.Type] = queue[c.Type][0], queue[c.Type][1:]
+		}
+		changed = changed || id != c.Id
+		next = append(next, id)
+	}
+	if !changed {
+		return nil
+	}
+	_, err = s.steps.Categories.SortCategoryList(ctx, userID, model.SortCategoryListRequest{Ids: next})
+	return err
+}
+
+// SaveAccounts creates the accounts step's rows, sets the profile currency and
+// the visible currencies, then puts the new accounts in a budget: a new one
+// over all the user's live accounts when they have none, else their default
+// budget. The step is marked done in the same transaction. After the commit,
+// when an AI provider is configured, the new accounts are classified as savings
+// or not in the background.
+func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.OnboardingSaveAccountsRequest) (*model.OnboardingSaveAccountsResult, error) {
+	out := &model.OnboardingSaveAccountsResult{Accounts: map[string]string{}}
+	var classify []vo.Id
+	var classifyBudget vo.Id
+	err := s.steps.Tx.WithTx(ctx, func(ctx context.Context) error {
+		classify = nil
+		user, proceed, err := s.begin(ctx, userID, req.Id, StepAccounts)
+		if err != nil {
+			return err
+		}
+		if !proceed {
+			own, aerr := s.steps.Accounts.OwnLiveAccounts(ctx, userID)
+			if aerr != nil {
+				return aerr
+			}
+			out.User = *user
+			out.Accounts = matchAccounts(req.Accounts, own)
+			out.BudgetId, err = s.defaultBudgetID(ctx, userID, user)
+			return err
+		}
+		mainID := strings.TrimSpace(req.MainCurrencyId)
+		mainCode, err := s.steps.Currencies.CurrencyCode(ctx, mainID)
+		if err != nil {
+			if _, nf := errs.AsNotFound(err); nf {
+				return errs.NewValidation("Validation failed", errs.FieldError{
+					Key: "mainCurrencyId", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice,
+				})
+			}
+			return err
+		}
+		folderID, err := s.steps.Accounts.FirstFolderID(ctx, userID)
+		if err != nil {
+			return err
+		}
+		created := make([]vo.Id, 0, len(req.Accounts))
+		for _, row := range req.Accounts {
+			balance := strings.TrimSpace(row.Balance.String())
+			if balance == "" {
+				balance = "0"
+			}
+			res, cerr := s.steps.Accounts.CreateAccount(ctx, userID, model.CreateAccountRequest{
+				Id:         vo.NewId().String(),
+				Name:       strings.TrimSpace(row.Name),
+				CurrencyId: strings.TrimSpace(row.CurrencyId),
+				Balance:    vo.NewFlexString(balance),
+				Icon:       row.Icon,
+				FolderId:   folderID,
+			})
+			if cerr != nil {
+				return cerr
+			}
+			// The first account of a user with no folder creates "General"; the rest join it.
+			if folderID == "" && res.Item.FolderId != nil {
+				folderID = *res.Item.FolderId
+			}
+			out.Accounts[row.Key] = res.Item.Id
+			created = append(created, vo.MustParseId(res.Item.Id))
+		}
+
+		if _, err := s.steps.Users.UpdateCurrency(ctx, userID, model.UpdateCurrencyRequest{Currency: mainCode}); err != nil {
+			return err
+		}
+		if err := s.showOnly(ctx, userID, visibleCurrencies(mainID, req)); err != nil {
+			return err
+		}
+
+		budgetID, writable, found, err := s.steps.Budgets.DefaultBudget(ctx, userID, preferredBudget(user))
+		if err != nil {
+			return err
+		}
+		switch {
+		case !found:
+			accounts, aerr := s.ownLiveAccountIDs(ctx, userID)
+			if aerr != nil {
+				return aerr
+			}
+			id, berr := s.createBudget(ctx, userID, accounts)
+			if berr != nil {
+				return berr
+			}
+			out.BudgetId = id
+			classifyBudget, classify = vo.MustParseId(id), created
+		case writable:
+			for _, id := range created {
+				if _, aerr := s.steps.Budgets.AddAccount(ctx, userID, model.AddAccountRequest{BudgetId: budgetID.String(), AccountId: id.String()}); aerr != nil {
+					return aerr
+				}
+			}
+			out.BudgetId = budgetID.String()
+			classifyBudget, classify = budgetID, created
+		default:
+			// A budget the user may only read takes no accounts from them.
+			out.BudgetId = budgetID.String()
+		}
+
+		done, err := s.finish(ctx, userID, req.Id, StepAccounts)
+		if err != nil {
+			return err
+		}
+		out.User = *done
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.schedule(ctx, userID, classifyBudget, classify)
+	return out, nil
+}
+
+// visibleCurrencies is the main currency, the requested ones and every new
+// account's own, deduplicated in that order.
+func visibleCurrencies(mainID string, req model.OnboardingSaveAccountsRequest) []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(id string) {
+		id = strings.ToLower(strings.TrimSpace(id))
+		if id != "" && !seen[id] {
+			seen[id] = true
+			out = append(out, id)
+		}
+	}
+	add(mainID)
+	for _, id := range req.CurrencyIds {
+		add(id)
+	}
+	for _, a := range req.Accounts {
+		add(a.CurrencyId)
+	}
+	return out
+}
+
+// showOnly hides every global currency (the base and profile ones stay) and
+// shows the given ones. A currency the user cannot show, or one that does not
+// exist, is skipped: each call runs in its own savepoint, so a refusal undoes
+// nothing else.
+func (s *Service) showOnly(ctx context.Context, userID vo.Id, ids []string) error {
+	if _, err := s.steps.Currencies.HideAllCurrencies(ctx, userID); err != nil && !refusal(err) {
+		return err
+	}
+	for _, id := range ids {
+		if _, err := s.steps.Currencies.ShowCurrency(ctx, userID, model.ShowCurrencyRequest{Id: id}); err != nil && !refusal(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func refusal(err error) bool {
+	var ve *errs.ValidationError
+	if errors.As(err, &ve) {
+		return true
+	}
+	_, nf := errs.AsNotFound(err)
+	return nf
+}
+
+// matchAccounts recovers the key->id map of an earlier call by name among the
+// user's live accounts; two rows of one name take two accounts.
+func matchAccounts(rows []model.OnboardingAccountRow, own []model.OnboardingAccount) map[string]string {
+	taken := map[string]bool{}
+	out := map[string]string{}
+	for _, r := range rows {
+		for _, a := range own {
+			if !taken[a.ID] && strings.EqualFold(strings.TrimSpace(a.Name), strings.TrimSpace(r.Name)) {
+				taken[a.ID] = true
+				out[r.Key] = a.ID
+				break
+			}
+		}
+	}
+	return out
+}
+
+// SavePlan writes the plan step's amounts as limits of the budget's current
+// period (the request's budget, else the user's default one) and marks the
+// step done, in one transaction.
+func (s *Service) SavePlan(ctx context.Context, userID vo.Id, req model.OnboardingSavePlanRequest) (*model.OnboardingSavePlanResult, error) {
+	out := &model.OnboardingSavePlanResult{}
+	err := s.steps.Tx.WithTx(ctx, func(ctx context.Context) error {
+		user, proceed, err := s.begin(ctx, userID, req.Id, StepPlan)
+		if err != nil {
+			return err
+		}
+		out.BudgetId = strings.ToLower(strings.TrimSpace(req.BudgetId))
+		if out.BudgetId == "" {
+			if out.BudgetId, err = s.defaultBudgetID(ctx, userID, user); err != nil {
+				return err
+			}
+		}
+		if !proceed {
+			out.User = *user
+			return nil
+		}
+		if out.BudgetId == "" {
+			return model.ValidateBlank(map[string]string{"budgetId": ""})
+		}
+		budgetID := vo.MustParseId(out.BudgetId)
+		period, err := s.steps.Budgets.CurrentPeriod(ctx, userID, budgetID)
+		if err != nil {
+			return err
+		}
+		for _, a := range req.Amounts {
+			amount := vo.NewFlexString(strings.TrimSpace(a.Amount.String()))
+			if _, lerr := s.steps.Budgets.SetLimit(ctx, userID, model.SetLimitRequest{
+				BudgetId:  out.BudgetId,
+				ElementId: strings.TrimSpace(a.CategoryId),
+				Period:    period.Format(datetime.DateLayout),
+				Amount:    &amount,
+			}); lerr != nil {
+				return lerr
+			}
+		}
+		done, err := s.finish(ctx, userID, req.Id, StepPlan)
+		if err != nil {
+			return err
+		}
+		out.User = *done
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}

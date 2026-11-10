@@ -33,6 +33,7 @@ type Service struct {
 	completer Completer
 	limiter   AttemptLimiter
 	run       Runner
+	steps     Steps
 }
 
 func NewService(budgets BudgetWriter, accounts AccountReader, timezones TimezoneReader) *Service {
@@ -44,6 +45,9 @@ func NewService(budgets BudgetWriter, accounts AccountReader, timezones Timezone
 func (s *Service) SetAdvisor(c Completer, limiter AttemptLimiter) {
 	s.completer, s.limiter = c, limiter
 }
+
+// SetSteps wires the dependencies of the three step writes.
+func (s *Service) SetSteps(steps Steps) { s.steps = steps }
 
 // SetRunner replaces how background jobs start (tests run them inline).
 func (s *Service) SetRunner(r Runner) { s.run = r }

@@ -122,6 +122,12 @@ type Seams struct {
 	// calls when providers are built from cfg (nil = the default 10s client);
 	// the apiparity harness maps a fixed literal issuer onto its fake.
 	OAuthHTTPClient *http.Client
+	// OnboardingCompleter, when non-nil, is the AI provider the onboarding
+	// savings classification asks instead of the configured one, and
+	// OnboardingRunner replaces how its background job starts; tests use them
+	// to observe the job inline without a network.
+	OnboardingCompleter apponboarding.Completer
+	OnboardingRunner    apponboarding.Runner
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -413,8 +419,21 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
 
 	onboardingSvc := apponboarding.NewService(budgetSvc, NewOnboardingAccountReader(accountRepo, accountCurrencyLookup), NewOnboardingTimezones(userRepo))
-	if aiClient != nil {
+	onboardingSvc.SetSteps(apponboarding.Steps{
+		Tx: txm, Ops: opGuard, Clock: clk,
+		Users:      userSvc,
+		Categories: NewOnboardingCategories(categorySvc, categoryReadSvc),
+		Accounts:   NewOnboardingAccounts(accountSvc, accountRepo),
+		Currencies: NewOnboardingCurrencies(currencyManageSvc, accountCurrencyLookup),
+		Budgets:    budgetSvc,
+	})
+	if seams.OnboardingCompleter != nil {
+		onboardingSvc.SetAdvisor(seams.OnboardingCompleter, authLimiter)
+	} else if aiClient != nil {
 		onboardingSvc.SetAdvisor(aiClient, authLimiter)
+	}
+	if seams.OnboardingRunner != nil {
+		onboardingSvc.SetRunner(seams.OnboardingRunner)
 	}
 	onboardingHandlers := handleronboarding.NewHandlers(onboardingSvc)
 

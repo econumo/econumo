@@ -14,5 +14,8 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 
 		mux.Handle("POST /api/v1/onboarding/create-budget", auth(h.CreateBudget))
 		mux.Handle("POST /api/v1/onboarding/add-budget-accounts", auth(h.AddBudgetAccounts))
+		mux.Handle("POST /api/v1/onboarding/save-categories", auth(h.SaveCategories))
+		mux.Handle("POST /api/v1/onboarding/save-accounts", auth(h.SaveAccounts))
+		mux.Handle("POST /api/v1/onboarding/save-plan", auth(h.SavePlan))
 	}
 }
