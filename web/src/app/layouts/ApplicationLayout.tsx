@@ -44,6 +44,7 @@ import { useCategories, usePayees, useTags } from '@/features/classifications/qu
 import { useCurrencies, useCurrencyRates } from '@/features/currencies/queries'
 import { useUserData, isOnboardingCompleted } from '@/features/user/queries'
 import { useBudgets } from '@/features/budgets/queries'
+import { useKeepBudgetMonths } from '@/features/budgets/offlineMonths'
 import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { useFullReload } from '@/features/transactions/useFullReload'
 import { recordPathname } from '@/lib/navigation'
@@ -99,6 +100,7 @@ export function ApplicationLayout() {
   const searchLabel = t('search.open')
   const searchTooltip = t('search.open_tooltip', { shortcut: searchShortcutLabel() })
   useSearchHotkey()
+  useKeepBudgetMonths()
   // the main menu returns to the budget view last opened on this device
   const budgetLink = useBudgetPeriodStore((s) => s.lastMode) === 'plan' ? RouterPage.PLAN : RouterPage.BUDGET
 

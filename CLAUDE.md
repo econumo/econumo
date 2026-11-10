@@ -506,7 +506,14 @@ an offline start after a day away shows data instead of the boot loader. The per
 copies each snapshot into the store (`putSnapshot`, throttled like the localStorage write,
 fenced by the epoch, dropped with the buckets when another user writes); the restore uses
 that copy when localStorage holds no snapshot of this release, so a device that lost its
-localStorage but kept IndexedDB still starts offline. That
+localStorage but kept IndexedDB still starts offline. The default budget's previous, current and
+next period (`get-budget`) and the one `get-budget-plan` window covering them (`monthPlanSpan`
+gives the Budget view one window for all three) are kept for offline use by
+`useKeepBudgetMonths` (`web/src/features/budgets/offlineMonths.ts`, mounted in
+`ApplicationLayout`): it observes those keys with the pages' own query options, enabled only
+online and without focus refetch, so they fetch once when stale or invalidated, are never
+garbage collected while the app runs, and outlive `maxAge` through the re-stamp above; a new
+build's buster drops them until the next online start. That
 key's `queryFn` is the revision-driven sync
 (`web/src/features/transactions/{sync.ts,revisionTracking.ts}`): it compares the bucket
 revisions with the `transactionsRevision` of `get-account-list` and calls

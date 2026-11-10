@@ -143,6 +143,20 @@ export function useDefaultPeriodSettled(budgetId: Id | null): boolean {
   return !meta || budgetCurrentPeriod(meta) === selectedDate
 }
 
+// One definition for the page and for useKeepBudgetMonths, so the months kept
+// for offline use land under the very keys the page reads.
+export function budgetQueryOptions(budgetId: Id | null, period: string) {
+  return {
+    queryKey: [...queryKeys.budget, budgetId ?? 'none', period] as const,
+    queryFn: (): Promise<BudgetDto | null> => (budgetId ? budgetApi.getBudget(budgetId, period) : Promise.resolve(null)),
+    staleTime: TEN_MINUTES,
+    // no default budget needs no server: offline, 'online' would pause the
+    // query and the page would say the month is not saved instead of offering
+    // to create a budget
+    networkMode: budgetId ? ('online' as const) : ('always' as const),
+  }
+}
+
 export function useBudget() {
   const { data: user } = useUserData()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
@@ -161,14 +175,8 @@ export function useBudget() {
   }, [budgetId, resetFoldsFor])
 
   const query = useQuery<BudgetDto | null>({
-    queryKey: [...queryKeys.budget, budgetId ?? 'none', selectedDate],
-    queryFn: () => (budgetId ? budgetApi.getBudget(budgetId, selectedDate) : Promise.resolve(null)),
+    ...budgetQueryOptions(budgetId, selectedDate),
     enabled: user !== undefined && periodSettled,
-    staleTime: TEN_MINUTES,
-    // no default budget needs no server: offline, 'online' would pause the
-    // query and the page would say the month is not saved instead of offering
-    // to create a budget
-    networkMode: budgetId ? 'online' : 'always',
     // month switches keep showing the previous period instead of a blank page
     placeholderData: keepPreviousData,
   })
@@ -226,19 +234,36 @@ export function planFetchWindow(firstMonth: string, visibleMonths: number, start
   return { from: buffered, months: Math.min(visibleMonths + 2 * PLAN_BUFFER, PLAN_MONTHS_MAX) }
 }
 
+export function budgetPlanQueryOptions(budgetId: Id | null, from: string, months: number) {
+  return {
+    queryKey: [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const,
+    queryFn: (): Promise<BudgetPlanDto | null> => (budgetId ? budgetApi.getBudgetPlan(budgetId, from, months) : Promise.resolve(null)),
+    staleTime: TEN_MINUTES,
+  }
+}
+
+/** the Budget view's plan months: never less than the previous, current and next
+ *  period, so those three share one window (the one kept for offline use) */
+export function monthPlanSpan(selected: string, current: string): { first: string; visible: number } {
+  const prev = addMonths(current, -1)
+  const next = addMonths(current, 1)
+  const first = selected < prev ? selected : prev
+  const last = selected > next ? selected : next
+  return { first, visible: monthDiff(first, last) + 1 }
+}
+
 export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number, startDay: number) {
   const { from, months } = planFetchWindow(firstMonth, visibleMonths, startDay)
-  const planKey = [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const
+  const { queryKey: planKey, ...planOptions } = budgetPlanQueryOptions(budgetId, from, months)
   const ops = usePendingOps()
   const select = useCallback(
     (plan: BudgetPlanDto | null) => (plan && budgetId ? overlayPlan(plan, ops, budgetId) : plan),
     [ops, budgetId],
   )
   const query = useQuery<BudgetPlanDto | null>({
+    ...planOptions,
     queryKey: planKey,
-    queryFn: () => (budgetId ? budgetApi.getBudgetPlan(budgetId, from, months) : Promise.resolve(null)),
     enabled: budgetId !== null,
-    staleTime: TEN_MINUTES,
     // shifting months keeps showing the previous window instead of a blank sheet
     placeholderData: keepPreviousData,
     select,
