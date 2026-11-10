@@ -55,7 +55,8 @@ it('createTransaction returns {item, accounts} with decimal strings passed throu
     labelIds: [], date: '2026-07-01 09:30:00',
   }
   const result = await transactionApi.createTransaction(form)
-  expect(body).toEqual(form)
+  const { id: _id, ...withoutId } = form
+  expect(body).toEqual(withoutId)
   expect(result.item.amount).toBe('9.99')
   expect(result.accounts[0].balance).toBe('90.01')
 })

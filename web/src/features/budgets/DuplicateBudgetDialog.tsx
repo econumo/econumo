@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
@@ -18,6 +19,7 @@ interface DuplicateBudgetDialogProps {
 
 export function DuplicateBudgetDialog({ budget, onClose }: DuplicateBudgetDialogProps) {
   const { t } = useTranslation()
+  const online = useOnline()
   const cloneBudget = useCloneBudget()
   const [name, setName] = useState('')
   const [copyPlans, setCopyPlans] = useState(true)
@@ -68,7 +70,7 @@ export function DuplicateBudgetDialog({ budget, onClose }: DuplicateBudgetDialog
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="budget-duplicate-form">
+          <Button type="submit" form="budget-duplicate-form" disabled={!online}>
             {t('common.button.save.label')}
           </Button>
         </div>

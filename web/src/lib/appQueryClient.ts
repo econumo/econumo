@@ -1,6 +1,17 @@
 import axios from 'axios'
 import { MutationCache, QueryClient, onlineManager } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { queryKeys } from '@/app/queryKeys'
+import { apiErrorMessage } from './apiError'
+
+declare module '@tanstack/react-query' {
+  interface Register {
+    mutationMeta: { handlesOwnErrors?: boolean }
+  }
+}
+
+/** For a mutation hook whose callers differ: the ones that show the failure themselves pass this. */
+export type OwnErrorHandling = { handlesOwnErrors?: boolean }
 
 // A leaf module on purpose: queryPersist imports the transaction sync, which
 // reaches the api client and through it the app's queryClient singleton, so
@@ -31,11 +42,24 @@ export function createAppQueryClient() {
   // with no network would retry every read forever.
   onlineManager.setOnline(navigator.onLine !== false)
   const client: QueryClient = new QueryClient({
-    mutationCache: new MutationCache({ onSuccess: () => invalidateReports(client) }),
+    mutationCache: new MutationCache({
+      onSuccess: () => invalidateReports(client),
+      // With networkMode 'always' an offline write fails at once, and a site
+      // with no error handling of its own would otherwise fail silently. A
+      // `mutate(v, { onError })` or a try around `mutateAsync` is invisible here,
+      // so such a hook says so through its meta.
+      onError: (error, _variables, _result, mutation) => {
+        if (axios.isAxiosError(error) && !error.response && !mutation.options.onError && !mutation.meta?.handlesOwnErrors) {
+          toast.error(apiErrorMessage(error), { id: 'no-response' })
+        }
+      },
+    }),
     defaultOptions: {
       // gcTime must outlive the persister's maxAge, or queries get
       // garbage-collected out of the persisted snapshot before it expires.
       queries: { gcTime: CACHE_MAX_AGE_MS, retry: retryPolicy },
+      // A write outside the queue fails at once offline rather than pausing with its form open.
+      mutations: { networkMode: 'always', retry: false },
     },
   })
   return client

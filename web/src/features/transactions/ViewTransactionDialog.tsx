@@ -9,6 +9,8 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import { useLabels } from '@/features/classifications/queries'
 import { useTransactionImportLinks } from '@/features/imports/queries'
+import { useOnline } from '@/hooks/useOnline'
+import { usePendingOpForTransaction } from '@/features/pendingWrites/hooks'
 import { formatDateTime, parseDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import type { CurrencyLike } from '@/lib/money'
@@ -58,7 +60,11 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
   const attachedLabels = (tx.labelIds ?? [])
     .map((id) => labels.find((l) => l.id === id))
     .filter((label): label is (typeof labels)[number] => Boolean(label))
-  const showMakeRecurring = canMakeRecurring(tx, onMakeRecurring)
+  // a waiting row has no server id to template from yet
+  const pendingOp = usePendingOpForTransaction(tx.id)
+  // a template is created on the server, so it needs a connection too
+  const online = useOnline()
+  const showMakeRecurring = canMakeRecurring(tx, pendingOp || !online ? undefined : onMakeRecurring)
   // Indicator only, independent of whether the template itself resolved: the
   // transaction's own recurringId is enough to state that it came from a
   // schedule, even when the template is gone (so the row below is hidden).
@@ -249,6 +255,11 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       </div>
 
       <div className="flex flex-col gap-2">
+        {pendingOp ? (
+          <p role="status" className="text-center text-xs text-muted-foreground">
+            {pendingOp.status === 'failed' ? (pendingOp.error ?? t('transactions.not_saved')) : t('transactions.not_saved')}
+          </p>
+        ) : null}
         {cards.map((card) => (
           <CardField key={card.label} label={card.label}>
             {card.content}

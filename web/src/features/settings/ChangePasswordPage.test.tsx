@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -86,4 +86,13 @@ it('a 400 (wrong old password) shows the error dialog', async () => {
   expect(
     screen.getByText('Something went wrong while changing your password. Check your current password and try again.'),
   ).toBeInTheDocument()
+})
+
+it('offline: the change-password submit is disabled', async () => {
+  renderPage()
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  const submit = (await screen.findAllByRole('button')).filter((b) => b.getAttribute('type') === 'submit')
+  expect(submit.length).toBeGreaterThan(0)
+  for (const b of submit) expect(b).toBeDisabled()
 })

@@ -7,6 +7,7 @@ import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsPhone } from '@/hooks/useIsPhone'
+import { useOnline } from '@/hooks/useOnline'
 import { useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -263,6 +264,7 @@ function SearchPanel({
 
 export function GlobalSearchDialog() {
   const { t } = useTranslation()
+  const online = useOnline()
   const open = useUiStore((s) => s.searchOpen)
   const close = useUiStore((s) => s.closeSearch)
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
@@ -339,7 +341,8 @@ export function GlobalSearchDialog() {
             close()
             openRecurringModal({ recurring: recurringPreview })
           }}
-          canChange={canChangeRecurring(recurringPreview.accountId)}
+          // posting, skipping and editing a template need the server
+          canChange={online && canChangeRecurring(recurringPreview.accountId)}
           skipPending={skipRecurring.isPending}
           postPending={postRecurring.isPending}
         />
@@ -360,6 +363,7 @@ export function GlobalSearchDialog() {
         confirmLabel={t('common.button.delete.label')}
         cancelLabel={t('common.button.cancel.label')}
         destructive
+        offlineOk
       />
     </>
   )

@@ -3,6 +3,7 @@ import type { ReactNode, SyntheticEvent } from 'react'
 import { MoreVertical } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PromptDialog } from '@/components/PromptDialog'
@@ -71,6 +72,7 @@ function ActionsMenu<T extends ClassificationItem>({
   children,
 }: ActionsMenuProps<T>) {
   const { t } = useTranslation()
+  const online = useOnline()
   const [mergeOpen, setMergeOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   return (
@@ -92,12 +94,12 @@ function ActionsMenu<T extends ClassificationItem>({
         </DropdownMenuTrigger>
         {/* portaled content still bubbles React events to the host row — don't reselect it */}
         <DropdownMenuContent align="end" onClick={stop} onKeyDown={stop}>
-          <DropdownMenuItem onSelect={onEdit}>{t('common.button.edit.label')}</DropdownMenuItem>
-          <DropdownMenuItem onSelect={onToggleArchive}>
+          <DropdownMenuItem disabled={!online} onSelect={onEdit}>{t('common.button.edit.label')}</DropdownMenuItem>
+          <DropdownMenuItem disabled={!online} onSelect={onToggleArchive}>
             {item.isArchived === 0 ? t('classifications.common.archive.action') : t('classifications.common.unarchive.action')}
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setMergeOpen(true)}>{t('classifications.common.merge.action')}</DropdownMenuItem>
-          <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
+          <DropdownMenuItem disabled={!online} onSelect={() => setMergeOpen(true)}>{t('classifications.common.merge.action')}</DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" disabled={!online} onSelect={() => setDeleteOpen(true)}>
             {t('common.button.delete.label')}
           </DropdownMenuItem>
         </DropdownMenuContent>

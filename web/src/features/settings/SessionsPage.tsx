@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { MonitorSmartphone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
@@ -14,8 +17,11 @@ import { SettingsShell } from './SettingsShell'
 
 export function SessionsPage() {
   const { t, i18n } = useTranslation()
+  const online = useOnline()
   const navigate = useNavigate()
-  const { data: sessions } = useSessions()
+  const sessionsQuery = useSessions()
+  const { data: sessions } = sessionsQuery
+  const offline = useUnavailableOffline(sessionsQuery)
   const providers = useProviders()
   const revokeSession = useRevokeSession()
   const revokeOthers = useRevokeOtherSessions()
@@ -49,6 +55,7 @@ export function SessionsPage() {
       <InfoBox>{t('user.page.settings.profile.sessions.description')}</InfoBox>
 
       <div className="flex max-w-md flex-col gap-2 py-2">
+        {offline ? <OfflineUnavailable /> : null}
         {(sessions ?? []).map((session) => (
           <div key={session.id} className="flex items-center gap-3 rounded-lg bg-econumo-card px-4 py-3">
             <MonitorSmartphone className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -76,6 +83,7 @@ export function SessionsPage() {
               variant="ghost"
               size="sm"
               className="shrink-0 text-econumo-link"
+              disabled={!online && !session.isCurrent}
               onClick={() => setConfirmTarget(session)}
             >
               {session.isCurrent
@@ -88,7 +96,7 @@ export function SessionsPage() {
 
       {others.length > 0 ? (
         <div className="max-w-md py-2">
-          <Button type="button" onClick={() => setConfirmOthers(true)}>
+          <Button type="button" disabled={!online} onClick={() => setConfirmOthers(true)}>
             {t('user.page.settings.profile.sessions.revoke_others')}
           </Button>
         </div>
@@ -109,6 +117,7 @@ export function SessionsPage() {
             : t('user.page.settings.profile.sessions.revoke')
         }
         cancelLabel={t('common.button.cancel.label')}
+        offlineOk={confirmTarget?.isCurrent === true}
         destructive
       />
       <ConfirmDialog

@@ -6,6 +6,7 @@ import type { ImportCardDto, ImportSourceDto } from '@/api/dto/imports'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { useAccounts } from '@/features/accounts/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { pluralPick } from '@/lib/plural'
@@ -33,6 +34,7 @@ const tileClass = 'flex size-10 shrink-0 items-center justify-center rounded-lg'
 
 export function ImportCards({ source, cards = source.cards, variant = 'card', footnote }: { source: ImportSourceDto; cards?: ImportCardDto[]; variant?: 'card' | 'account'; footnote?: ReactNode }) {
   const { t, i18n } = useTranslation()
+  const online = useOnline()
   const ns = variant === 'account' ? 'imports.simplefin.accounts' : 'imports.apple_wallet.cards'
   const { data: accounts = [] } = useAccounts()
   const ignore = useIgnoreImportAccount()
@@ -63,10 +65,10 @@ export function ImportCards({ source, cards = source.cards, variant = 'card', fo
       sub={details(pluralPick(t(`${ns}.waiting`), card.queuedCount, i18n.language), when(card))}
       actions={
         <>
-          <Button type="button" size="sm" aria-label={action(t(`${ns}.map`), card)} onClick={() => setMapTarget(card)}>
+          <Button type="button" size="sm" aria-label={action(t(`${ns}.map`), card)} disabled={!online} onClick={() => setMapTarget(card)}>
             {t(`${ns}.map_modal.submit`)}
           </Button>
-          <Button type="button" size="sm" variant="ghost" aria-label={action(t(`${ns}.ignore`), card)} disabled={ignore.isPending} onClick={() => ignoreCard(card)}>
+          <Button type="button" size="sm" variant="ghost" aria-label={action(t(`${ns}.ignore`), card)} disabled={ignore.isPending || !online} onClick={() => ignoreCard(card)}>
             {t(`${ns}.ignore`)}
           </Button>
         </>
@@ -83,7 +85,7 @@ export function ImportCards({ source, cards = source.cards, variant = 'card', fo
           title={<div className="truncate text-muted-foreground">{card.externalName}</div>}
           sub={details(t(`${ns}.state.ignored`), taps(card), when(card))}
           actions={
-            <Button type="button" size="sm" variant="secondary" aria-label={action(t(`${ns}.map`), card)} onClick={() => setMapTarget(card)}>
+            <Button type="button" size="sm" variant="secondary" aria-label={action(t(`${ns}.map`), card)} disabled={!online} onClick={() => setMapTarget(card)}>
               {t(`${ns}.map_modal.submit`)}
             </Button>
           }
@@ -105,10 +107,10 @@ export function ImportCards({ source, cards = source.cards, variant = 'card', fo
         sub={details(taps(card), when(card))}
         actions={
           <>
-            <Button type="button" size="sm" variant="secondary" aria-label={action(t(`${ns}.remap`), card)} onClick={() => setMapTarget(card)}>
+            <Button type="button" size="sm" variant="secondary" aria-label={action(t(`${ns}.remap`), card)} disabled={!online} onClick={() => setMapTarget(card)}>
               {t(`${ns}.remap`)}
             </Button>
-            <Button type="button" size="sm" variant="ghost" aria-label={action(t(`${ns}.unlink`), card)} onClick={() => setUnlinkTarget(card)}>
+            <Button type="button" size="sm" variant="ghost" aria-label={action(t(`${ns}.unlink`), card)} disabled={!online} onClick={() => setUnlinkTarget(card)}>
               {t(`${ns}.unlink`)}
             </Button>
           </>

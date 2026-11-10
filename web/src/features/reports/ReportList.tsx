@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { useTranslation } from 'react-i18next'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -58,6 +60,7 @@ function Card({ question, onClick, children }: { question: string; onClick: () =
 
 interface FigureProps {
   isPending: boolean
+  offline: boolean
   isError: boolean
   empty: boolean
   amount?: string
@@ -67,8 +70,11 @@ interface FigureProps {
   note?: ReactNode
 }
 
-function Figure({ isPending, isError, empty, amount, caption, series, seriesClass = '', note }: FigureProps) {
+function Figure({ isPending, offline, isError, empty, amount, caption, series, seriesClass = '', note }: FigureProps) {
   const { t } = useTranslation()
+  if (offline) {
+    return <OfflineUnavailable compact />
+  }
   if (isPending) {
     return <div className="mt-1 h-[4.5rem] animate-pulse rounded-md bg-econumo-hover" />
   }
@@ -95,7 +101,7 @@ function NetWorthCard({ budgetId, year, onChoose }: { budgetId: Id | null; year:
   // balances are month-end: last December's closing balance is where this year started
   const report = useNetWorthReport({ budgetId, from: `${year - 1}-12-01` })
   // offline with nothing cached for this scope: never the previous scope's figures
-  const unavailable = report.fetchStatus === 'paused' && (report.isPending || report.isPlaceholderData)
+  const unavailable = useUnavailableOffline(report)
   const money = useMoney(report.data?.currencyId)
   const total = report.data ? netWorthSeries(report.data, (a) => ({ id: a.id, name: a.name })).total : []
   const change = total.length >= 2 ? sub(total[total.length - 1], total[0]) : '0'
@@ -104,7 +110,8 @@ function NetWorthCard({ budgetId, year, onChoose }: { budgetId: Id | null; year:
     <Card question={t(REPORT_QUESTION.networth)} onClick={onChoose}>
       <Figure
         isPending={report.isPending && !unavailable}
-        isError={unavailable || (report.isError && !report.data)}
+        offline={unavailable}
+        isError={report.isError && !report.data}
         empty={(report.data?.accounts.length ?? 0) === 0}
         amount={money(total[total.length - 1] ?? '0')}
         caption={t('reports.list.networth_caption')}

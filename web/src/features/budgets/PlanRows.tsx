@@ -1,5 +1,6 @@
 import { memo, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
+import { PendingLimitMark } from '@/features/pendingWrites/NotSavedIcon'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -539,6 +540,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                   </span>
                 ) : (
                   <span data-testid="cell-planned" className={`ml-auto shrink-0 text-[15px] whitespace-nowrap tabular-nums ${planHintClass(view.hint)}`}>
+                    <PendingLimitMark budgetId={ctx.meta.id} elementId={el.id} period={m} className="mr-1 align-middle" />
                     {planFigure !== null ? fmt(planFigure) : view.balance ? <Dash /> : ''}
                   </span>
                 )}

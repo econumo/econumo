@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -37,6 +38,7 @@ interface TagDialogProps {
 
 export function TagDialog({ open, item, onClose, accountId, ownerUserId, onCreated, fixedKind }: TagDialogProps) {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: user } = useUserData()
   const isNew = !item
   const [kind, setKind] = useState<ClassificationKind>(fixedKind ?? CLASSIFICATION_KINDS[0])
@@ -159,7 +161,7 @@ export function TagDialog({ open, item, onClose, accountId, ownerUserId, onCreat
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit">{isNew ? t('common.button.create.label') : t('common.button.update.label')}</Button>
+          <Button type="submit" disabled={!online}>{isNew ? t('common.button.create.label') : t('common.button.update.label')}</Button>
         </div>
       </form>
     </ResponsiveDialog>

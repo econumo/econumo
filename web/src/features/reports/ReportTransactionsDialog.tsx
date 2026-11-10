@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useOnline } from '@/hooks/useOnline'
+import { isUnavailableOffline, useUnavailableOffline } from '@/lib/offlineQuery'
 import { useTranslation } from 'react-i18next'
 import { useQueries } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
@@ -11,9 +14,12 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useAccounts } from '@/features/accounts/queries'
 import { budgetTransactionView } from '@/features/budgets/budgetTransactionView'
 import { addMonths, monthDiff } from '@/features/budgets/planMath'
+import { useBudgets } from '@/features/budgets/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useCurrencies } from '@/features/currencies/queries'
+import { usePendingOps } from '@/features/pendingWrites/hooks'
+import { overlayBudgetTransactions } from '@/features/pendingWrites/overlay'
 import { canTouchTransaction } from '@/features/transactions/canTouchTransaction'
 import { compareTransactions } from '@/features/transactions/order'
 import { useDeleteTransaction, useTransactions } from '@/features/transactions/queries'
@@ -42,14 +48,15 @@ function monthList(from: string, to: string): string[] {
 }
 
 function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: string) {
+  const online = useOnline()
   const months = monthList(from, to)
+  const queries: budgetApi.BudgetTransactionsParams[] = (budgetId ? accountIds : []).flatMap((accountId) =>
+    months.map((periodStart) => ({ budgetId: budgetId!, periodStart, accountId })),
+  )
   const results = useQueries({
-    queries: (budgetId ? accountIds : []).flatMap((accountId) => months.map((periodStart) => {
-      const params: budgetApi.BudgetTransactionsParams = { budgetId: budgetId!, periodStart, accountId }
-      return {
-        queryKey: [...queryKeys.budgetTransactions, params],
-        queryFn: () => budgetApi.getBudgetTransactions(params),
-      }
+    queries: queries.map((params) => ({
+      queryKey: [...queryKeys.budgetTransactions, params],
+      queryFn: () => budgetApi.getBudgetTransactions(params),
     })),
   })
   const { data: transactions } = useTransactions()
@@ -58,8 +65,12 @@ function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: 
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
   const { data: currencies } = useCurrencies()
+  const ops = usePendingOps()
   // a transfer between two listed accounts comes back once per account
-  const wire = [...new Map(results.flatMap((r) => r.data?.items ?? []).map((w) => [w.id, w])).values()]
+  const fetched = [...new Map(results.flatMap((r) => r.data?.items ?? []).map((w) => [w.id, w])).values()]
+  const { data: budgets } = useBudgets()
+  const meta = budgets?.find((b) => b.id === budgetId)
+  const wire = overlayBudgetTransactions(fetched, ops, { categories, payees, tags }, { params: queries, meta })
   const rows = wire.map((w) => {
     const view = budgetTransactionView(w, { transactions, accounts, categories, payees, tags })
     const currency = currencies?.find((c) => c.id === w.currencyId)
@@ -75,6 +86,7 @@ function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: 
   })
   return {
     isLoading: results.some((r) => r.isLoading),
+    offline: results.some((r) => isUnavailableOffline(r, online)),
     // one month missing would pass for a complete list, offline as much as after an error
     isError: results.some((r) => !r.data && (r.isError || r.fetchStatus === 'paused')),
     rows,
@@ -82,7 +94,10 @@ function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: 
 }
 
 function useLocalRows(enabled: boolean, row: AccountsDrill, from: string, to: string) {
-  const { data: transactions, isLoading, isError } = useTransactions()
+  const transactionsQuery = useTransactions()
+  const { data: transactions, isLoading, isError } = transactionsQuery
+  // a device that never downloaded the list: paused offline, not loading and not empty
+  const unavailable = useUnavailableOffline(transactionsQuery)
   const lookups = useTransactionLookups()
   const rows = useMemo(() => {
     if (!enabled) return []
@@ -100,7 +115,7 @@ function useLocalRows(enabled: boolean, row: AccountsDrill, from: string, to: st
       .sort((a, b) => compareTransactions(a, b, row.kind === 'account' ? row.id : undefined))
       .map((tx) => ({ view: enrichTransaction(tx, lookups), currencyId: undefined as Id | undefined, amount: undefined }))
   }, [enabled, transactions, lookups, row, from, to])
-  return { isLoading: enabled && isLoading, isError: enabled && isError && !transactions, rows }
+  return { isLoading: enabled && isLoading, isError: enabled && isError && !transactions, offline: enabled && unavailable, rows }
 }
 
 export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
@@ -117,6 +132,7 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
   const localRows = useLocalRows(row.kind !== 'savings', row, from, to)
   const isLoading = budgetRows.isLoading || localRows.isLoading
   const isError = budgetRows.isError || localRows.isError
+  const offline = budgetRows.offline || localRows.offline
   // newest first across both sources; a transfer between two listed accounts once
   const rows = useMemo(() => {
     const local = new Set(localRows.rows.map((r) => r.view.id))
@@ -145,7 +161,9 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
   return (
     <>
       <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={title} dismissible={!preview && !deleteTarget}>
-        {isError ? (
+        {offline ? (
+          <div className="py-2"><OfflineUnavailable compact /></div>
+        ) : isError ? (
           <p className="py-2 text-sm text-muted-foreground">{t('common.app.error')}</p>
         ) : isLoading ? (
           <div className="flex justify-center py-6">
@@ -206,6 +224,7 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
         confirmLabel={t('common.button.delete.label')}
         cancelLabel={t('common.button.cancel.label')}
         destructive
+        offlineOk
       />
     </>
   )

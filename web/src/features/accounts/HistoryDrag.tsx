@@ -4,6 +4,7 @@ import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, PointerSensor, To
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import type { Id } from '@/api/types'
 import type { DailyListEntry, ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import { snapRowToPointer } from '@/lib/dnd'
 import { acceptsDrop, entryKey, resolveDrop } from './historyDrop'
@@ -46,7 +47,8 @@ function groupDayOf(entries: DailyListEntry[], index: number): string | null {
   return null
 }
 
-export function HistoryDragProvider({ entries, onDrop, renderOverlay, children }: {
+export function HistoryDragProvider({ accountId, entries, onDrop, renderOverlay, children }: {
+  accountId: Id
   entries: DailyListEntry[]
   onDrop: (tx: ViewTransaction, drop: HistoryDrop, dayChanged: boolean) => void
   renderOverlay: (tx: ViewTransaction) => ReactNode
@@ -68,7 +70,7 @@ export function HistoryDragProvider({ entries, onDrop, renderOverlay, children }
 
   const dropFor = (activeId: string, overId: string | number | undefined) => {
     const overIndex = overId === undefined ? -1 : keys.indexOf(String(overId))
-    return resolveDrop(entries, activeId, overIndex)
+    return resolveDrop(entries, activeId, overIndex, accountId)
   }
 
   const onDragStart = ({ active: a }: DragStartEvent) => {

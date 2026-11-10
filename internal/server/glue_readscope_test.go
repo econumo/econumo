@@ -26,6 +26,34 @@ func (a *languageAuthenticator) StoredLanguage(_ context.Context, userID vo.Id) 
 	return "ru"
 }
 
+type idempotencyAuthenticator struct {
+	scopeAuthenticator
+	store middleware.IdempotencyStore
+}
+
+func (a idempotencyAuthenticator) IdempotencyStore() middleware.IdempotencyStore { return a.store }
+
+func TestReadScopeGateForwardsIdempotencyStore(t *testing.T) {
+	store := &nopIdempotencyStore{}
+	gate, ok := NewReadScopeGate(idempotencyAuthenticator{store: store}, true).(middleware.IdempotencyProvider)
+	if !ok || gate.IdempotencyStore() != middleware.IdempotencyStore(store) {
+		t.Fatal("the gate must forward the inner's idempotency store")
+	}
+	bare, ok := NewReadScopeGate(scopeAuthenticator{}, true).(middleware.IdempotencyProvider)
+	if !ok || bare.IdempotencyStore() != nil {
+		t.Fatal("without an inner provider the gate must report no store")
+	}
+}
+
+type nopIdempotencyStore struct{}
+
+func (*nopIdempotencyStore) Find(context.Context, vo.Id, string) (string, bool, error) {
+	return "", false, nil
+}
+func (*nopIdempotencyStore) Insert(context.Context, vo.Id, string, string) error { return nil }
+func (*nopIdempotencyStore) Delete(context.Context, vo.Id, string) error         { return nil }
+func (*nopIdempotencyStore) MaybePurge(context.Context)                          {}
+
 func TestReadScopeGate(t *testing.T) {
 	ctx := context.Background()
 	for _, scope := range []model.TokenScope{model.TokenScopeFull, model.TokenScopeMCP, model.TokenScopeIngest} {

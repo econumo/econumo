@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { Label } from '@/components/ui/label'
@@ -53,6 +54,8 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, serverEr
     }
   }, [open, currency, currentRate])
 
+  const online = useOnline()
+
   const submit = () => {
     if (!isNotEmpty(name)) {
       setError(t('classifications.currencies.forms.currency.name.validation.required_field'))
@@ -76,7 +79,7 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, serverEr
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="currency-dialog-form">
+          <Button type="submit" form="currency-dialog-form" disabled={!online}>
             {isNew ? t('common.button.create.label') : t('common.button.update.label')}
           </Button>
         </div>

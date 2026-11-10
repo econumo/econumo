@@ -5,7 +5,31 @@ import axios from 'axios'
 // delivers the response when the request body is FormData (the promise hangs
 // forever). Route axios through the fetch adapter, which msw handles fine.
 // Must run before api/client.ts calls axios.create(), which snapshots defaults.
-axios.defaults.adapter = 'fetch'
+//
+// A write still unanswered when its test ends would time out 10 s later and queue
+// itself, and the queue is module state: the change would land in whichever test is
+// running by then and show up in its cells. So a test's writes end with it.
+const writesInFlight = new Map<AbortController, Promise<unknown>>()
+axios.defaults.adapter = (config) => {
+  const fetchAdapter = axios.getAdapter('fetch')
+  if (config.method !== 'post') {
+    return fetchAdapter(config)
+  }
+  const controller = new AbortController()
+  const signal = config.signal ? AbortSignal.any([config.signal as AbortSignal, controller.signal]) : controller.signal
+  const response = fetchAdapter({ ...config, signal })
+  writesInFlight.set(controller, response.catch(() => {}).finally(() => writesInFlight.delete(controller)))
+  return response
+}
+const realSetTimeout = globalThis.setTimeout
+afterEach(async () => {
+  for (const controller of writesInFlight.keys()) {
+    controller.abort()
+  }
+  await Promise.all(writesInFlight.values())
+  // what the failed requests' callers do with it is over too, before the next test resets the queue
+  await new Promise((resolve) => realSetTimeout(resolve))
+})
 
 // Node >= 25 defines an experimental global `localStorage` (unusable without
 // --localstorage-file), so vitest's jsdom environment skips copying jsdom's
@@ -68,8 +92,10 @@ await import('@/app/i18n')
 const { IDBFactory } = await import('fake-indexeddb')
 const { resetDbForTests } = await import('@/lib/db')
 const { resetTransactionStoreForTests } = await import('@/lib/transactionStore')
+const { resetPendingWritesForTests } = await import('@/features/pendingWrites/store')
 beforeEach(() => {
   globalThis.indexedDB = new IDBFactory()
   resetDbForTests()
   resetTransactionStoreForTests()
+  resetPendingWritesForTests()
 })

@@ -1,6 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -425,4 +425,12 @@ it('a server refusal on create shows INSIDE the dialog, not behind it', async ()
   await user.click(screen.getByRole('button', { name: 'Create' }))
   const dialog = await screen.findByRole('dialog')
   expect(await within(dialog).findByText('Currency already exists')).toBeInTheDocument()
+})
+
+it('offline: creating a currency is disabled', async () => {
+  renderPage()
+  await screen.findByText('Points')
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => act(() => onlineManager.setOnline(true)))
+  expect(screen.getAllByRole('button', { name: /Create/ })[0]).toBeDisabled()
 })

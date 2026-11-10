@@ -13,6 +13,7 @@ import { CurrencyField } from '@/features/currencies/CurrencyField'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
 import { apiFieldErrors } from '@/lib/apiError'
+import { useOnline } from '@/hooks/useOnline'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
@@ -30,6 +31,7 @@ import { useTheme } from 'next-themes'
 
 export function ProfilePage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const navigate = useNavigate()
   const { data: user } = useUserData()
   const updateName = useUpdateName()
@@ -137,6 +139,7 @@ export function ProfilePage() {
                 setName(e.target.value)
                 setSavedVisible(false)
               }}
+              disabled={!online}
               onBlur={saveName}
             />
             {/* unobtrusive save confirmation: fades in on success, fades out on its own */}
@@ -161,6 +164,7 @@ export function ProfilePage() {
         <CurrencyField
           label={t('user.page.settings.profile.currency.label')}
           value={currentCurrencyId}
+          disabled={!online}
           onChange={(id) => {
             const currency = currencies?.find((c) => c.id === id)
             if (currency && id !== currentCurrencyId) {
@@ -225,7 +229,8 @@ export function ProfilePage() {
         ) : (
           <button
             type="button"
-            className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover"
+            className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover disabled:opacity-50"
+            disabled={!online}
             onClick={() => setRecoveryOpen(true)}
           >
             {t('user.page.settings.profile.linked_accounts.set_password.menu_item')}
@@ -278,7 +283,7 @@ export function ProfilePage() {
       <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
 
       {recoveryOpen ? (
-        <RecoveryDialog open onClose={() => setRecoveryOpen(false)} onSuccess={() => navigate(RouterPage.LOGOUT)} email={user?.email} />
+        <RecoveryDialog open onClose={() => setRecoveryOpen(false)} onSuccess={() => navigate(RouterPage.LOGOUT, { state: { keepPendingWrites: true } })} email={user?.email} />
       ) : null}
 
       <ConfirmDialog
@@ -289,6 +294,7 @@ export function ProfilePage() {
         question={t('auth.sign_out.question')}
         confirmLabel={t('auth.sign_out.action.logout')}
         cancelLabel={t('auth.sign_out.action.cancel')}
+        offlineOk
       />
     </SettingsShell>
   )

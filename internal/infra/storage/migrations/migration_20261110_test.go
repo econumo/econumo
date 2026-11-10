@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func TestMigration20261109CompletesOnboardingForUsersWithAccounts(t *testing.T) {
-	db := runUpTo(t, "onboarding_backfill", "20261109000000")
+func TestMigration20261110CompletesOnboardingForUsersWithAccounts(t *testing.T) {
+	db := runUpTo(t, "onboarding_backfill", "20261110000000")
 	checkOnboardingBackfill(t, db, func(q string) string { return q }, func() { runAll(t, db) })
 }
 

@@ -161,7 +161,12 @@
       "title": "需要更新",
       "blockedApp": "此应用对您的 Econumo 服务器来说过旧：需要 {version} 或更新版本的应用。请更新应用后继续。",
       "blockedServer": "此应用需要 {min} 或更新版本的 Econumo 服务器，而您的服务器为 {version}。请更新服务器后继续。"
-    }
+    },
+    "offline_unavailable": {
+      "title": "离线时不可用",
+      "text": "没有网络连接时无法查看这些数据。"
+    },
+    "offline_notice": "无网络连接。数据仅可查看。"
   },
   "accounts": {
     "folders": {
@@ -296,6 +301,7 @@
       "failing": "无法连接到服务器——正在重试",
       "full_reload": "正在清除缓存并重新加载…",
       "hold_hint": "长按可清除缓存并重新加载",
+      "waiting": "{count} 项更改等待网络连接",
       "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。",
       "offline": "无网络连接"
     },
@@ -357,6 +363,7 @@
     }
   },
   "transactions": {
+    "not_saved": "未保存",
     "modal": {
       "transaction_type": {
         "expense": "支出",
@@ -498,12 +505,26 @@
     "title": "收件箱",
     "open": "收件箱，{count} 项待处理",
     "empty": "没有新通知",
+    "failed_writes": {
+      "kind_create": "新增",
+      "kind_update": "修改",
+      "kind_delete": "删除",
+      "delete_generic": "已删除的交易",
+      "limit": "{name}：计划 {amount}（{period}）",
+      "limit_generic": "计划 {amount}（{period}）",
+      "limit_cleared": "{name}：计划已删除（{period}）",
+      "limit_cleared_generic": "计划已删除（{period}）",
+      "retry": "重试",
+      "discard": "放弃",
+      "reason_unknown": "服务器拒绝了此更改。"
+    },
     "sections": {
       "due": "计划交易",
       "sharing": "共享",
       "sync": "同步问题",
       "failed": "导入失败",
       "to_review": "待审核",
+      "failed_writes": "未保存",
       "skipped": "已跳过（{count}）"
     },
     "due": {
@@ -1679,6 +1700,9 @@
           "header": "已归档"
         }
       }
+    },
+    "limit": {
+      "not_saved": "未保存"
     }
   },
   "reports": {

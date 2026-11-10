@@ -187,6 +187,13 @@ type Folder struct {
 	SortKey   string
 }
 
+type IdempotencyKey struct {
+	UserID         string
+	IdempotencyKey string
+	ResourceID     *string
+	CreatedAt      time.Time
+}
+
 type ImportAccountLink struct {
 	ID                string
 	SourceID          string

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -199,6 +199,18 @@ describe('recurring templates', () => {
   }
   beforeEach(() => {
     server.use(...coreHandlers({ recurring: [rent] }))
+  })
+
+  it('offline: the template preview cannot be posted or skipped', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await screen.findByTestId('tx-t1')
+    await user.type(input(), 'rent')
+    await user.click(await screen.findByTestId('search-recurring-r-rent'))
+    const preview = await screen.findByRole('dialog', { name: 'Transaction details' })
+    act(() => onlineManager.setOnline(false))
+    onTestFinished(() => act(() => onlineManager.setOnline(true)))
+    await waitFor(() => expect(within(preview).getByRole('button', { name: 'Post' })).toBeDisabled())
   })
 
   it('a query shows the Recurring group; a template opens its preview and Edit hands it to the form', async () => {

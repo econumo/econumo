@@ -28,7 +28,33 @@ it('sends the standard headers on every request', async () => {
   expect(captured!.get('accept')).toBe('application/json')
   expect(captured!.get('authorization')).toBe('Bearer tok123')
   expect(captured!.get('x-timezone')).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone)
-  expect(captured!.get('x-request-id')).toMatch(UUID_V7)
+  expect(captured!.has('x-request-id')).toBe(false)
+  expect(captured!.has('idempotency-key')).toBe(false)
+})
+
+it('mints an Idempotency-Key on a POST', async () => {
+  let captured: Headers | undefined
+  server.use(
+    http.post('*/api/v1/ping', ({ request }) => {
+      captured = request.headers
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  await api.post(apiUrl('/api/v1/ping'), {})
+  expect(captured!.get('idempotency-key')).toMatch(UUID_V7)
+  expect(captured!.has('x-request-id')).toBe(false)
+})
+
+it('keeps an Idempotency-Key the caller set', async () => {
+  let captured: Headers | undefined
+  server.use(
+    http.post('*/api/v1/ping', ({ request }) => {
+      captured = request.headers
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  await api.post(apiUrl('/api/v1/ping'), {}, { headers: { 'Idempotency-Key': 'stored-key' } })
+  expect(captured!.get('idempotency-key')).toBe('stored-key')
 })
 
 it('omits Authorization when there is no token', async () => {

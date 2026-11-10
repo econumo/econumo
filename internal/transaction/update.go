@@ -7,6 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -140,6 +141,7 @@ func (s *Service) updateTransaction(ctx context.Context, userID vo.Id, req model
 				return zerr
 			}
 		}
+		reqctx.PinIdempotency(ctx)
 		updated = t
 		return nil
 	}); err != nil {

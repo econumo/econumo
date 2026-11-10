@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useOnline } from '@/hooks/useOnline'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
@@ -114,6 +115,7 @@ export function CommentMarker({
 
 export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly, truncated, layout = 'popover', onClose }: CommentThreadProps) {
   const { t, i18n } = useTranslation()
+  const online = useOnline()
   const createComment = useCreateComment(budgetId)
   const updateComment = useUpdateComment(budgetId)
   const deleteComment = useDeleteComment(budgetId)
@@ -181,7 +183,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
 
   const draftRunes = runeLength(draft)
   const editRunes = runeLength(editDraft)
-  const postDisabled = createComment.isPending || !draft.trim() || draftRunes > MAX_COMMENT_RUNES
+  const postDisabled = !online || createComment.isPending || !draft.trim() || draftRunes > MAX_COMMENT_RUNES
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -217,6 +219,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
                             variant="ghost"
                             size="icon-xs"
                             aria-label={t('budgets.page.plan.comments.edit')}
+                            disabled={!online}
                             title={t('budgets.page.plan.comments.edit')}
                             onClick={() => startEdit(c)}
                           >
@@ -229,6 +232,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
                           size="icon-xs"
                           className="text-destructive hover:text-destructive"
                           aria-label={t('budgets.page.plan.comments.delete')}
+                          disabled={!online}
                           title={t('budgets.page.plan.comments.delete')}
                           onClick={() => setDeleteTarget(c.id)}
                         >
@@ -257,7 +261,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
                           <Button
                             type="button"
                             size="sm"
-                            disabled={!editDraft.trim() || editRunes > MAX_COMMENT_RUNES}
+                            disabled={!online || !editDraft.trim() || editRunes > MAX_COMMENT_RUNES}
                             onClick={() => saveEdit(c.id)}
                           >
                             {t('common.button.save.label')}
@@ -281,6 +285,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
           <CardField label={t('budgets.page.plan.comments.comment_label')} htmlFor="ct-composer">
             <Textarea
               id="ct-composer"
+              disabled={!online}
               className={`${cardFieldControlClass} resize-none`}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}

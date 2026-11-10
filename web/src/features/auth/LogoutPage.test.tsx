@@ -8,6 +8,8 @@ import i18n from '@/app/i18n'
 import { IDBFactory } from 'fake-indexeddb'
 import { resetDbForTests } from '@/lib/db'
 import { resetTransactionStoreForTests } from '@/lib/transactionStore'
+import { addChange } from '@/features/pendingWrites/queue'
+import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
 import { LogoutPage } from './LogoutPage'
 
 // Tracks real call order (not just "was called") so a refactor that moves
@@ -58,9 +60,9 @@ vi.mock('@/app/routerRef', async (importOriginal) => {
 
 const assign = vi.fn()
 
-function renderPage() {
+function renderPage(state?: unknown) {
   Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
-  const router = createMemoryRouter([{ path: '/logout', element: <LogoutPage /> }], { initialEntries: ['/logout'] })
+  const router = createMemoryRouter([{ path: '/logout', element: <LogoutPage /> }], { initialEntries: [{ pathname: '/logout', state }] })
   return render(<RouterProvider router={router} />)
 }
 
@@ -109,6 +111,42 @@ it('still redirects to /login when IndexedDB never answers', async () => {
     resetDbForTests()
     resetTransactionStoreForTests()
   }
+})
+
+describe('the queue of unsent changes', () => {
+  const queueOne = async () => {
+    await loadPendingWrites('u1')
+    await mutate((ops) => addChange(ops, { kind: 'limit', budgetId: 'b', elementId: 'e', period: '2026-11-01', amount: '1' }, { key: 'k', seq: 1 }))
+    server.use(http.post('*/api/v1/user/logout-user', () => HttpResponse.json({ success: true, message: '', data: {} })))
+    setToken('tok', 'u1')
+  }
+  const stored = async () => {
+    resetPendingWritesForTests()
+    return loadPendingWrites('u1')
+  }
+
+  it('is cleared by a sign-out', async () => {
+    await queueOne()
+    renderPage()
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
+    expect(await stored()).toEqual([])
+  })
+
+  it('stays for the same user to sign back in when the sign-out asks to keep it', async () => {
+    await queueOne()
+    renderPage({ keepPendingWrites: true })
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(await stored()).toHaveLength(1)
+  })
+
+  it('stays when the session is already gone too', async () => {
+    await queueOne()
+    localStorage.removeItem('token')
+    renderPage({ keepPendingWrites: true })
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
+    expect(await stored()).toHaveLength(1)
+  })
 })
 
 it('navigates to the IdP end-session url when logout returns one', async () => {

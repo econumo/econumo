@@ -14,9 +14,9 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/pgsql"
 )
 
-// The PostgreSQL twin of TestMigration20261109CompletesOnboardingForUsersWithAccounts:
+// The PostgreSQL twin of TestMigration20261110CompletesOnboardingForUsersWithAccounts:
 // the two engines carry separate SQL for the same cleanup.
-func TestMigration20261109Pgsql(t *testing.T) {
+func TestMigration20261110Pgsql(t *testing.T) {
 	url := os.Getenv("DATABASE_TEST_PGSQL_URL")
 	if url == "" {
 		t.Skip("DATABASE_TEST_PGSQL_URL not set")
@@ -27,7 +27,7 @@ func TestMigration20261109Pgsql(t *testing.T) {
 	}
 	db.SetMaxOpenConns(1)
 	ctx := context.Background()
-	const schema = "test_migration_20261109"
+	const schema = "test_migration_20261110"
 	if _, err := db.ExecContext(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %[1]s CASCADE; CREATE SCHEMA %[1]s; SET search_path TO %[1]s`, schema)); err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestMigration20261109Pgsql(t *testing.T) {
 		}
 		return out
 	}
-	if err := migrate.Run(ctx, db, upTo("20261109000000"), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+	if err := migrate.Run(ctx, db, upTo("20261110000000"), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("pre-migrations: %v", err)
 	}
 	rebind := func(q string) string {

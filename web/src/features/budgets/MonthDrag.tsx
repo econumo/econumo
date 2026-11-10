@@ -5,6 +5,7 @@ import { SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 import { EntityIcon } from '@/components/EntityIcon'
+import { useOnline } from '@/hooks/useOnline'
 import type { SortableHandleProps } from '@/components/SortableList'
 import { lineControlClass, useLineControls, useRowLevel } from './monthLayout'
 import type { RowLevel } from './monthLayout'
@@ -54,7 +55,10 @@ export function DragGhost({ icon, name }: { icon: string; name: string }) {
  *  is dragged the row stays dimmed in place. `indicator`: the drop lands right
  *  before or after this row. */
 export function DragRow({ id, indicator, children }: { id: string; indicator?: 'before' | 'after'; children: ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  // offline the wrappers stay mounted (state below them, like an open limit editor,
+  // must survive a connection drop); only the dragging switches off
+  const online = useOnline()
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !online })
   const controls = useLineControls()
   const level = useRowLevel()
   return (
@@ -67,6 +71,7 @@ export function DragRow({ id, indicator, children }: { id: string; indicator?: '
       <button
         type="button"
         aria-label={`move ${id}`}
+        disabled={!online}
         className={`absolute top-3 ${ROW_GRIP[level]} z-10 cursor-grab touch-none text-muted-foreground ${isDragging ? '' : lineControlClass(controls, 'drag')}`}
         {...attributes}
         {...listeners}
@@ -85,6 +90,7 @@ const FolderHandleContext = createContext<SortableHandleProps | null>(null)
 export function FolderGrip({ name }: { name: string }) {
   const handle = useContext(FolderHandleContext)
   const controls = useLineControls()
+  const online = useOnline()
   if (!handle) {
     return null
   }
@@ -92,6 +98,7 @@ export function FolderGrip({ name }: { name: string }) {
     <button
       type="button"
       aria-label={`move folder ${name}`}
+      disabled={!online}
       className={`absolute left-0.5 z-10 cursor-grab touch-none text-muted-foreground ${lineControlClass(controls, 'line')}`}
       {...handle.attributes}
       {...(handle.listeners ?? {})}
@@ -124,9 +131,10 @@ export function DragFolder({
   // a container that is not a folder is neither dragged nor a drop target of its
   // own: drops land on its `bfolder:` droppable (a bare `disabled: true` still
   // leaves the sortable registered as a drop target)
+  const online = useOnline()
   const sortable = useSortable({
     id: sortableId ?? `__container__${dropId}`,
-    disabled: sortableId === null ? { draggable: true, droppable: true } : false,
+    disabled: sortableId === null ? { draggable: true, droppable: true } : { draggable: !online },
   })
   const { setNodeRef: setDroppableRef } = useDroppable({ id: dropId, disabled: folderDragging })
   return (
@@ -151,7 +159,8 @@ export function DragFolder({
 /** A category inside an unfolded envelope: dragged out to a row or folder, or into
  *  another envelope's list. It stays dimmed in place; a floating copy moves. */
 export function DragChild({ id, children }: { id: string; children: ReactNode }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id })
+  const online = useOnline()
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, disabled: !online })
   const controls = useLineControls()
   const level = useRowLevel()
   return (
@@ -159,6 +168,7 @@ export function DragChild({ id, children }: { id: string; children: ReactNode })
       <button
         type="button"
         aria-label={`move ${id}`}
+        disabled={!online}
         className={`absolute top-2 ${CHILD_GRIP[level]} z-10 cursor-grab touch-none text-muted-foreground ${isDragging ? '' : lineControlClass(controls, 'child')}`}
         {...attributes}
         {...listeners}

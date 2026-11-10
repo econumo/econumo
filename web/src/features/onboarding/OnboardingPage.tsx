@@ -4,6 +4,8 @@ import { Menu } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
+import { OfflineNotice } from '@/components/OfflineNotice'
+import { useOnline } from '@/hooks/useOnline'
 import { useCompleteOnboarding, useUserData } from '@/features/user/queries'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -44,6 +46,7 @@ const DONE_STEP_PAGES: Partial<Record<OnboardingStepKey, string>> = {
 
 export function OnboardingPage() {
   const { t } = useTranslation()
+  const online = useOnline()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { steps, current, allResolved, markDone, skip, ready } = useOnboardingSteps()
@@ -136,10 +139,11 @@ export function OnboardingPage() {
         ) : (
           <span />
         )}
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={skippingAll} onClick={() => void completeSetup()}>
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={skippingAll || !online} onClick={() => void completeSetup()}>
           {t('onboarding.steps_nav.complete_setup')}
         </Button>
       </div>
+      <OfflineNotice />
       <Stepper steps={steps} current={active} onSelect={setSelected} />
       {complete.error != null ? (
         <div className="flex items-center justify-between gap-4">
@@ -147,7 +151,7 @@ export function OnboardingPage() {
             {apiErrorMessage(complete.error)}
           </p>
           {allResolved ? (
-            <Button type="button" disabled={complete.isPending} onClick={() => void finish().catch(() => undefined)}>
+            <Button type="button" disabled={complete.isPending || !online} onClick={() => void finish().catch(() => undefined)}>
               {t('onboarding.steps_nav.finish')}
             </Button>
           ) : null}

@@ -2,6 +2,7 @@ import { ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { RecurringDto } from '@/api/dto/recurring'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { useAccounts } from '@/features/accounts/queries'
@@ -41,6 +42,8 @@ export function ViewRecurringDialog({
   postPending = false,
 }: ViewRecurringDialogProps) {
   const { t } = useTranslation()
+  const online = useOnline()
+  const canAct = canChange && online
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
@@ -81,7 +84,7 @@ export function ViewRecurringDialog({
           </Button>
           {onPost ? (
             <>
-              <Button type="button" className="flex-1" disabled={!canChange || postPending || skipPending} onClick={onPost}>
+              <Button type="button" className="flex-1" disabled={!canAct || postPending || skipPending} onClick={onPost}>
                 {t('recurring.preview.post')}
               </Button>
               <Button
@@ -89,7 +92,7 @@ export function ViewRecurringDialog({
                 variant="secondary"
                 size="icon"
                 className="size-11"
-                disabled={!canChange || skipPending || postPending}
+                disabled={!canAct || skipPending || postPending}
                 aria-label={t('recurring.preview.skip')}
                 title={t('recurring.preview.skip')}
                 onClick={onSkip}
@@ -104,7 +107,7 @@ export function ViewRecurringDialog({
               type="button"
               variant="secondary"
               className="flex-1"
-              disabled={!canChange || skipPending}
+              disabled={!canAct || skipPending}
               onClick={onSkip}
             >
               {t('recurring.preview.skip')}

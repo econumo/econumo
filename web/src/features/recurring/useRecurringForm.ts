@@ -7,6 +7,7 @@ import type { TransactionType } from '@/api/dto/transaction'
 import type { OpenRecurringParams } from '@/app/uiStore'
 import { formatDate, formatDateTime, parseDateTime } from '@/lib/datetime'
 import { normalizeNumber } from '@/lib/money'
+import { realIdOf } from '@/features/pendingWrites/tempIds'
 import { evaluatedAmount } from '@/features/transactions/useTransactionForm'
 
 export interface RecurringFormState {
@@ -148,7 +149,7 @@ export function buildRecurringPayload(form: RecurringFormState): CreateRecurring
     schedule: form.schedule,
     nextPaymentAt: form.nextPaymentAt,
     // create-from-transaction only; edits never carry a source
-    ...(form.sourceTransactionId ? { sourceTransactionId: form.sourceTransactionId } : {}),
+    ...(form.sourceTransactionId ? { sourceTransactionId: realIdOf(form.sourceTransactionId) } : {}),
   }
 }
 

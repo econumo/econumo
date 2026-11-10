@@ -37,6 +37,7 @@ export function useAuthorizationRequest(req: AuthorizationRequestDto) {
 
 export function useApproveAuthorization() {
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (req: AuthorizationRequestDto) => safeDecision(authserverApi.approveAuthorization(req)),
     onSuccess: ({ redirectUrl }) => {
       trackEvent(METRICS.CONNECTED_APP_APPROVE, {})
@@ -48,6 +49,7 @@ export function useApproveAuthorization() {
 
 export function useDeclineAuthorization() {
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (req: AuthorizationRequestDto) => safeDecision(authserverApi.declineAuthorization(req)),
     onSuccess: ({ redirectUrl }) => {
       clearPostLoginRedirect()

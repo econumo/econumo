@@ -318,6 +318,7 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 				return gerr
 			}
 		}
+		reqctx.PinIdempotency(txCtx)
 		if req.Amount == nil {
 			if hasExisting {
 				return s.limits.DeleteLimit(txCtx, existing.ID)

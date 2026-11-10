@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react'
+import { isAxiosError } from 'axios'
+import { toast } from 'sonner'
+import { onlineManager } from '@tanstack/react-query'
+import { apiErrorMessage } from '@/lib/apiError'
 import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useMatch, useParams } from 'react-router'
@@ -15,6 +19,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
 import { tryNormalize } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
+import { useOnline } from '@/hooks/useOnline'
 import type { OpenTransactionParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import {
@@ -27,6 +32,7 @@ import {
 } from '@/features/classifications/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useExchange } from '@/features/currencies/useExchange'
+import { usePendingOpForTransaction } from '@/features/pendingWrites/hooks'
 import { usePostRecurring } from '@/features/recurring/queries'
 import { useImportQueuedEvent, useTransactionImportLinks } from '@/features/imports/queries'
 import { latestImportLink, ruleDiff } from '@/lib/importMatch'
@@ -69,12 +75,14 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const exchangeFn = useExchange()
   const setSwitchAccountPrompt = useUiStore((s) => s.setSwitchAccountPrompt)
   const setRulePrompt = useUiStore((s) => s.setRulePrompt)
+  const online = useOnline()
   const isImported = params.transaction?.isImported === 1
   const { data: importLinks = [] } = useTransactionImportLinks(params.transaction?.id ?? '', isImported)
 
   const createTransaction = useCreateTransaction()
   const updateTransaction = useUpdateTransaction()
   const postRecurring = usePostRecurring()
+  const queuedOp = usePendingOpForTransaction(params.transaction?.id ?? '')
   const importQueued = useImportQueuedEvent()
   const createCategory = useCreateCategory()
   const createPayee = useCreatePayee()
@@ -228,20 +236,24 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           setSwitchAccountPrompt(payload.accountId)
         }
       } else {
-        await updateTransaction.mutateAsync(payload)
+        const { queued } = await updateTransaction.mutateAsync(payload)
         // An account shared with the user takes its owner's rules, which the
         // user cannot write: no prompt there.
         const link = account?.owner.id === user?.id ? latestImportLink(importLinks) : undefined
         // params.transaction is the row as it was BEFORE this edit: only a
         // classification THIS save changed may prompt for a rule
         const diff = link ? ruleDiff(payload, link, params.transaction ?? null) : null
-        if (link && diff) {
+        // the rule editor needs the server, and the server may yet refuse an edit that only queued
+        if (!queued && link && diff && onlineManager.isOnline()) {
           setRulePrompt({ link, diff })
         }
       }
       onDone()
-    } catch {
-      // dialog stays open on failure
+    } catch (err) {
+      // dialog stays open on failure; a refusal from the server says why
+      if (isAxiosError(err) && err.response && err.response.status !== 402) {
+        toast.error(apiErrorMessage(err))
+      }
     }
   }
 
@@ -250,8 +262,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     onDone()
   }
 
-  // The draft keeps its id: if its first submit reached the server and only
-  // the response was lost, the server refuses the repeat instead of duplicating.
+  // The draft keeps its id, which keys the add: if its first submit reached the
+  // server and only the response was lost, the server refuses the repeat instead
+  // of duplicating.
   const restoreDraft = () => {
     if (draft.offer) {
       patch(draft.offer)
@@ -273,10 +286,13 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     : ''
 
   const dateOnly = dayKey(form.date)
+  // these two post to the server directly: only add/edit of a transaction queues
+  const needsNetwork = Boolean(params.postRecurring || params.importQueued)
   const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending || importQueued.isPending
   // posting a template creates an ordinary transaction (prefilled from it), so
   // it reads as the regular add dialog rather than a mode of its own
-  const title = form.isNew
+  const addsARow = form.isNew || queuedOp?.kind === 'tx-create'
+  const title = addsARow
     ? t('transactions.modal.create_form.header')
     : t('transactions.modal.update_form.header')
 
@@ -303,8 +319,8 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           <Button type="button" variant="secondary" onClick={cancel}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="transaction-dialog-form" disabled={pending}>
-            {form.isNew ? t('common.button.add.label') : t('common.button.update.label')}
+          <Button type="submit" form="transaction-dialog-form" disabled={pending || (needsNetwork && !online)}>
+            {addsARow ? t('common.button.add.label') : t('common.button.update.label')}
           </Button>
         </div>
       }
@@ -469,7 +485,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 options={currentCategories.map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
                 clearable
                 onCreate={
-                  canEditData
+                  canEditData && online
                     ? (name) => {
                         createCategory.mutate(
                           { name, type: form.type as 'expense' | 'income', accountId: form.accountId ?? undefined, ownerUserId: ownerId },
@@ -490,7 +506,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 options={currentPayees.map((p) => ({ value: p.id, label: p.name }))}
                 clearable
                 onCreate={
-                  canEditData
+                  canEditData && online
                     ? (name) => {
                         createPayee.mutate(
                           { name, accountId: form.accountId ?? undefined, ownerUserId: ownerId },
@@ -507,7 +523,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
             <CardField label={t('accounts.page.preview_transaction_modal.tags.label')}>
               <div className="flex items-center gap-2">
                 <ClassificationChips chips={chips} onToggle={(chip) => patch(toggleClassification(form, chip.kind, chip.id))} />
-                {canEditData ? (
+                {canEditData && online ? (
                   <button
                     type="button"
                     aria-label={t('classifications.tags.forms.tag.add_button')}

@@ -2,6 +2,8 @@ import { ChevronLeft, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
+import { OfflineNotice } from '@/components/OfflineNotice'
 import { Label } from '@/components/ui/label'
 import { OptionSelect } from '@/components/OptionSelect'
 import { Textarea } from '@/components/ui/textarea'
@@ -43,6 +45,7 @@ const SCHEDULE_ORDER: RecurringSchedule[] = ['weekly', 'biweekly', 'monthly', 'q
 
 function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone: () => void }) {
   const { t } = useTranslation()
+  const online = useOnline()
   const { data: accounts = [] } = useAccounts()
   const { data: folders = [] } = useFolders()
   const { data: categories = [] } = useCategories()
@@ -130,7 +133,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
           <Button type="button" variant="secondary" onClick={onDone}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="recurring-dialog-form" disabled={pending}>
+          <Button type="submit" form="recurring-dialog-form" disabled={pending || !online}>
             {form.isNew ? t('common.button.add.label') : t('common.button.update.label')}
           </Button>
         </div>
@@ -145,6 +148,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
           void submit()
         }}
       >
+        <OfflineNotice />
         {/* the dialog header is visually hidden — the title shares one row with
             the back-a-day arrow + date chip, exactly as in TransactionDialog.
             That chip IS the next payment, so there is no separate date row. */}
@@ -270,7 +274,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
               <CardField label={t('accounts.page.preview_transaction_modal.tags.label')}>
                 <div className="flex items-center gap-2">
                   <ClassificationChips chips={chips} onToggle={(chip) => patch(toggleClassification(form, chip.kind, chip.id))} />
-                  {canEditData ? (
+                  {canEditData && online ? (
                     <button
                       type="button"
                       aria-label={t('classifications.tags.forms.tag.add_button')}

@@ -18,8 +18,9 @@ import (
 // (MCP) can fall back to it. The in-memory last-seen cache keeps writes to
 // ~one per user per boot/change; persist failures never fail the request.
 type timezoneTrackingAuthenticator struct {
-	inner middleware.TokenAuthenticator
-	users *appuser.Service
+	inner       middleware.TokenAuthenticator
+	users       *appuser.Service
+	idempotency middleware.IdempotencyStore
 	// seen: vo.Id -> string (last persisted IANA name). Load-then-Store below is
 	// deliberately non-atomic under concurrent requests for the same user — a
 	// duplicate persist just repeats the same idempotent UPDATE, so "~one write
@@ -30,8 +31,8 @@ type timezoneTrackingAuthenticator struct {
 	seen sync.Map
 }
 
-func NewTimezoneTrackingAuthenticator(inner middleware.TokenAuthenticator, users *appuser.Service) middleware.TokenAuthenticator {
-	return &timezoneTrackingAuthenticator{inner: inner, users: users}
+func NewTimezoneTrackingAuthenticator(inner middleware.TokenAuthenticator, users *appuser.Service, idempotency middleware.IdempotencyStore) middleware.TokenAuthenticator {
+	return &timezoneTrackingAuthenticator{inner: inner, users: users, idempotency: idempotency}
 }
 
 // The access level is passed through untouched: this decorator only observes

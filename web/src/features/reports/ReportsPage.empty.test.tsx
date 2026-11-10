@@ -38,3 +38,15 @@ it('a report that failed to load leaves the card readable', async () => {
   renderReports()
   expect(await within(await card()).findByText('Something went wrong. Please try again.')).toBeInTheDocument()
 })
+
+it('offline with no report cached (the request failed on a dead network), the card says it is not on this device', async () => {
+  const { onlineManager, act } = { ...(await import('@tanstack/react-query')), ...(await import('react')) }
+  const { http, HttpResponse } = await import('msw')
+  server.use(http.get('*/api/v1/report/get-net-worth-report', () => HttpResponse.error()), ...coreHandlers(), ...reportHandlers())
+  renderReports()
+  // the request died on the network before the browser noticed the drop
+  expect(await within(await card()).findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => onlineManager.setOnline(true))
+  expect(await within(await card()).findByText("This data isn't available without an internet connection.")).toBeInTheDocument()
+})

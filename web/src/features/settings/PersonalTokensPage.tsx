@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { Check, Copy, KeyRound, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useOnline } from '@/hooks/useOnline'
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -38,7 +41,10 @@ export function expiresAtFrom(choice: ExpiryChoice, customDate: string, now: Dat
 
 export function PersonalTokensPage() {
   const { t, i18n } = useTranslation()
-  const { data: tokens } = usePersonalTokens()
+  const online = useOnline()
+  const tokensQuery = usePersonalTokens()
+  const { data: tokens } = tokensQuery
+  const offline = useUnavailableOffline(tokensQuery)
   const createToken = useCreatePersonalToken()
   const revokeToken = useRevokePersonalToken()
 
@@ -104,6 +110,7 @@ export function PersonalTokensPage() {
         <Button
           type="button"
           size="sm"
+          disabled={!online}
           onClick={() => setCreateOpen(true)}
           title={t('user.page.settings.profile.tokens.create.label')}
           aria-label={t('user.page.settings.profile.tokens.create.label')}
@@ -116,6 +123,7 @@ export function PersonalTokensPage() {
       <InfoBox>{t('user.page.settings.profile.tokens.description')}</InfoBox>
 
       <div className="flex max-w-md flex-col gap-2 py-2">
+        {offline ? <OfflineUnavailable /> : null}
         {tokens && tokens.length === 0 ? (
           <p className="px-1 text-sm text-muted-foreground">{t('user.page.settings.profile.tokens.empty')}</p>
         ) : null}
@@ -134,6 +142,7 @@ export function PersonalTokensPage() {
               </span>
             </div>
             <Button
+              disabled={!online}
               type="button"
               variant="ghost"
               size="sm"
@@ -233,7 +242,7 @@ export function PersonalTokensPage() {
             >
               {t('common.button.cancel.label')}
             </Button>
-            <Button type="submit" disabled={createToken.isPending}>
+            <Button type="submit" disabled={createToken.isPending || !online}>
               {t('user.page.settings.profile.tokens.form.submit.label')}
             </Button>
           </div>

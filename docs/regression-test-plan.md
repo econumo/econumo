@@ -2452,7 +2452,10 @@ shared with a partner.
       signed amount and currency; a partner's other unshared accounts are not
       listed. A month that fails to load
       shows an error instead of a shorter list; offline with nothing cached the
-      report and its card show the error, not an endless placeholder. A plain click on the chart or
+      report, its card and the Transactions list say "This data isn't saved on this
+      device. Connect to the internet to load it." (no endless placeholder, no "Something
+      went wrong"), while a report the device already loaded still shows; online, a
+      server error still shows "Something went wrong. Please try again." A plain click on the chart or
       the chip's × clears the range; changing the period or scope drops it.
       Clicking the chart draws no outline around it.
 - [ ] Net worth: an account row (inside an opened folder, or a budget's
@@ -2914,11 +2917,120 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       no-connection icon that cannot be pressed and does not spin, its tooltip
       says "No connection" with the last sync time, and the network log shows
       no retries. When the network returns the button is back and the data
-      refreshes by itself. Something saved while offline waits (the Save
-      button keeps spinning) and is sent when the network returns, as long as
-      the app stays open; nothing waiting is written to local storage. Signing
+      refreshes by itself. A transaction or budget plan saved while offline
+      shows at once, the icon carries a badge with the number of changes
+      waiting (its tooltip says so too), and they are sent when the network
+      returns. Every other write is visibly disabled instead (buttons, menu items,
+      confirm buttons, create rows in the pickers, drag handles); nothing waiting
+      is written to local storage. Signing
       in offline fails at once with an error. A budget cell's transaction list
-      that was never loaded shows a spinner offline, never "List is empty".
+      that was never loaded says "This data isn't available without an internet connection" offline,
+      never a spinner or "List is empty".
+- [ ] 📱 Offline, a page whose data this device never loaded says so in the page
+      (a cloud icon, "Not available offline", then "This data isn't available without an internet connection.": one message for every page, month, report and list)
+      instead of a loader that never ends, a "LOADING" screen with "Having trouble? Log
+      out", a generic error, or an empty list. Check: Budget view and phone view on a
+      month never opened (the month strip stays and switching back to a loaded month works),
+      the page opened on such a month, the Plan grid shifted to months never loaded (the
+      ‹ › arrows stay), Reports > Net worth and its card on a period or scope never loaded,
+      Settings > Profile > Sessions, Personal access tokens, Connected apps, Sign-in methods,
+      Import rules, Apple Wallet history, SimpleFIN history and a run, and the Inbox
+      (the same message, the other sections
+      still listed). The sidebar and every page already loaded stay usable, and when the
+      network returns the page loads by itself.
+- [ ] 📱 Offline notice: with no network, a small bordered line with a cloud icon, "No internet connection. Data is view-only.", sits under the page
+      header (below the action button on desktop), readable in light and dark mode, on: Settings,
+      Personal settings and each of its pages (Change password, Change email, Sessions, API
+      tokens, Connected apps, Sign-in methods), Accounts, Shared access, Budgets & Plans,
+      Recurring transactions, Categories, Tags, Payees, Currencies, Import & export (Import CSV
+      and Export CSV both disabled), Apple Wallet and its history, SimpleFIN and its history and
+      runs, Import rules, Getting started, the OAuth consent page, and inside the account and
+      recurring dialogs. It is NOT on Home, an account page, Budget, Plan, the Inbox or Reports.
+      It disappears as soon as the network returns, without a reload, and never shows online.
+- [ ] 📱 Budget months kept offline: sign in online and open only Home (never the budget), then go
+      offline. The default budget's previous, current and next month open in the Budget view and
+      the Plan with their figures; any other month says "This month isn't saved on this device".
+      Still true after a day away (device clock forward 25 h) once the app was online at the start.
+      The Plan shows its figures offline at phone width and on a wide desktop (1440 px), and the
+      Plan at 1920 px, on the current and the next month; a budget that starts this
+      month also opens the month before it offline.
+- [ ] While online, saving several transactions in a row on Home (no budget page open) does not
+      fire a burst of `get-budget` / `get-budget-plan` requests per save: the budget months refetch
+      once, about 3 s after the last save.
+- [ ] 📱 Offline, a budget opened on a month this device never loaded keeps its header with the
+      back button on a phone (the budget name next to it), so the page can be left.
+- [ ] Offline, the OAuth consent page (`/oauth/authorize?...`) says "Not available offline"
+      instead of a loader that never ends; SimpleFIN never opened on this device says the same
+      instead of "Loading your data"; Net worth on a period never loaded shows no "…" headline.
+- [ ] 📱 Offline, Settings > Personal settings: the Name reads as plain text in its card
+      (slightly faded like the Currency picker below it, no grey bar behind the text) and
+      cannot be edited; the same for every other card field disabled offline.
+- [ ] 📱 Offline, what stays usable and what is off: adding, editing and deleting
+      a transaction, and changing a budget limit (Budget view, phone sheet, Plan grid,
+      fill right) work; the Inbox "Try again" on a refused change works; Sign out works.
+      Off: creating a category, payee or tag from the transaction form (no create row, no
+      "+"), posting a recurring template, make recurring, drag reorder (transactions,
+      budget lines, folders, accounts, lists), the non-limit items of the budget line
+      menus (greyed out, labelled "No connection"), every settings page save, sharing,
+      connections, imports and the import rules; no "save as a rule" prompt appears after
+      editing an imported row. A transaction still waiting or refused cannot be dragged
+      even online.
+- [ ] 📱 Offline add: tap Add transaction, fill it in, Add. The dialog closes at once, the row is on
+      top of its day in the list, the account balance moves and the sidebar's no-connection icon
+      counts one change. The row looks like any other row; tapping it opens the preview, which says
+      "Not saved". The category, recipient and tag pickers offer existing entries only (no create
+      row for a name that does not exist, no "+").
+- [ ] 📱 Offline edit: change the amount of a saved transaction. The dialog closes at once and the
+      list and the balance show the new amount. Editing a transaction added offline keeps one
+      waiting change (the badge does not grow) and only the last version is sent.
+- [ ] 📱 Offline delete: delete a saved transaction. It leaves every list at once and the balance
+      moves. Deleting a transaction added offline removes it and sends nothing on reconnect.
+- [ ] 📱 Offline limit: change a plan in the Budget view, the phone sheet, the Plan grid (single
+      cell and fill right). The new number shows at once with a small not-saved icon beside it and
+      Total follows; changing the same cell again keeps one waiting change.
+- [ ] 📱 Budget figures do not guess offline: Spent, Available and the budget cell's transaction
+      list keep the server's numbers for a waiting transaction (an edit or delete of a listed row
+      shows there, a new one only once sent), and update when the server confirms it.
+- [ ] 📱 Reopening with waiting changes: with changes waiting, close the app or reload while
+      still offline. It opens with every change in place: rows, balance, the plan and its icon, the
+      "Not saved" preview and the badge. Open it again with the network back and each change is
+      sent once by itself.
+- [ ] 📱 Back online: each waiting change goes out once, oldest first, the badge and the
+      icons and "Not saved" labels clear, the list shows one row per change (no flash of a
+      duplicate) and the balance stays right. With the network log open, every request of one
+      change carries the same `Idempotency-Key`; a change whose response was lost (no network
+      just as it arrives) is sent again, answered 409 and still leaves one row, the balance
+      counting it once the whole time. With two tabs open, only one of them sends. Open an
+      account's Edit dialog while a change on it goes out: the Balance field moves to the new
+      stored balance unless you already typed in it, and saving writes no correction.
+- [ ] A slow server while online: no answer within about 10 seconds closes the dialog and the
+      change waits and goes out later, one row in the end. The same for a 5xx from the app: the
+      dialog closes and the change is retried under the same key, one row in the end; a delete
+      whose server failed after committing does not come back as a failure.
+- [ ] 📱 A change whose response was lost, app killed: add a transaction with the response cut
+      off, kill the app, reopen it online. The row appears once and the balance counts it once,
+      at every moment, including while the app refreshes after opening.
+- [ ] With two tabs open and the network off, edit the same waiting transaction in the second
+      tab just as the first reconnects: the row ends with the last values on the server, and
+      nothing is left waiting.
+- [ ] Dropped connection on a screen with its own error (add a tag, delete a currency, skip an
+      import row): one message appears, not two. Two failures in a row collapse into one toast.
+- [ ] 📱 A refused change in the Inbox: go offline, add a transaction on an account, delete that
+      account from another session, come back online. The Inbox badge counts it and its "Not saved"
+      section shows the row with the server's reason; other waiting changes still went through.
+      Tapping a refused add or edit opens the transaction dialog with the entered values and saving
+      sends it again (refused again: it returns to the Inbox with the reason; accepted: it leaves
+      the Inbox and one row is left). A refused delete or plan offers Try again and Discard; Discard
+      brings back the row or the server's number. The preview of a refused row shows the reason.
+- [ ] 📱 Signing out with changes unsent, waiting or refused: no confirmation mentions them (Settings and
+      Profile ask only "Are you sure you want to log out?", Sign out on this device's row in Sessions
+      only "Sign out of this device?"; the "Log out" link under a stuck loader and "Switch account" on
+      the consent page go straight to sign-out). Signing out drops them and the next user of the device
+      never sees or sends them. Signing back in as the same user keeps them if the session ended by itself.
+      "Set a password" with changes waiting: after signing back in as the same user they are still waiting and get sent.
+- [ ] 📱 Budget view with a plan waiting, offline, switching to a month not yet downloaded: it says "This data isn't available without an internet connection", and switching back shows the month with the not-saved icon still on the cell.
+- [ ] Plan edits in flight on a flaky connection: edit one cell and then another before the first answers; when the requests time out both cells keep their new numbers with the not-saved icon, and discarding one in the Inbox brings back the server's number there and leaves the other.
+- [ ] 📱 Budget transaction list (Spent drill-down and a report's savings drill-down) with a transaction edited offline: a transfer shows the amount of the side listed; a new date within the period moves it under that day with no repeated day heading; a date outside the period, or another category or tag, takes it off the list until it is confirmed; a new category shows its name.
 - [ ] Sync button tap = incremental refresh: after an edit made on another
       device, one tap shows it, and the network log shows a single
       `get-account-transaction-list` request whose `accountIds` names only the

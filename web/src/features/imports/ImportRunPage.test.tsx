@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -64,4 +65,18 @@ it('run detail shows imported, tombstone and queued rows read-only', async () =>
 it('an unknown run id shows the server error', async () => {
   renderAt('/settings/simplefin/history/nope')
   expect(await screen.findByRole('alert')).toHaveTextContent('Run not found')
+})
+
+it('offline with nothing loaded on this device, a run says so instead of an empty or loading page', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderAt('/settings/simplefin/history/r1')
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not available offline')
+})
+
+it('offline with nothing loaded on this device, the SimpleFIN history says so instead of an empty or loading page', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderAt('/settings/simplefin/history')
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not available offline')
 })

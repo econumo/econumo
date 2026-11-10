@@ -12,6 +12,7 @@ const authNetworkMode = 'always'
 export function useLogin() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     networkMode: authNetworkMode,
     mutationFn: ({ username, password }: { username: string; password: string }) => userApi.login(username, password),
     onSuccess: async (data) => {
@@ -33,6 +34,7 @@ export function useLogin() {
 
 export function useConfirmEmail() {
   return useMutation({
+    meta: { handlesOwnErrors: true },
     networkMode: authNetworkMode,
     mutationFn: ({ username, code }: { username: string; code: string }) => userApi.confirmEmail(username, code),
     onSuccess: () => trackEvent(METRICS.EMAIL_VERIFICATION_COMPLETED),
@@ -41,6 +43,7 @@ export function useConfirmEmail() {
 
 export function useResendVerification() {
   return useMutation({
+    meta: { handlesOwnErrors: true },
     networkMode: authNetworkMode,
     mutationFn: ({ username }: { username: string }) => userApi.resendVerificationCode(username),
     onSuccess: () => trackEvent(METRICS.EMAIL_VERIFICATION_RESENT),
@@ -49,6 +52,7 @@ export function useResendVerification() {
 
 export function useRegister() {
   return useMutation({
+    meta: { handlesOwnErrors: true },
     networkMode: authNetworkMode,
     mutationFn: ({ email, password, name }: { email: string; password: string; name: string }) =>
       userApi.register(email, password, name),
@@ -58,6 +62,7 @@ export function useRegister() {
 
 export function useRemindPassword() {
   return useMutation({
+    meta: { handlesOwnErrors: true },
     networkMode: authNetworkMode,
     mutationFn: ({ username }: { username: string }) => userApi.remindPassword(username),
     onSuccess: () => trackEvent(METRICS.USER_REMIND_PASSWORD),
@@ -66,6 +71,7 @@ export function useRemindPassword() {
 
 export function useResetPassword() {
   return useMutation({
+    meta: { handlesOwnErrors: true },
     networkMode: authNetworkMode,
     mutationFn: ({ username, code, password }: { username: string; code: string; password: string }) =>
       userApi.resetPassword(username, code, password),

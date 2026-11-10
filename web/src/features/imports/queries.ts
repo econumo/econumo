@@ -15,6 +15,7 @@ import type {
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useApplyTransactionItem } from '@/features/transactions/queries'
+import type { OwnErrorHandling } from '@/lib/appQueryClient'
 
 // The queries reached from surfaces that exist with transaction import off
 // (the Inbox, the transaction dialogs) never fetch then: the server does not
@@ -27,9 +28,10 @@ export function useImportQueue() {
   return useQuery({ queryKey: queryKeys.importQueue, queryFn: importsApi.getImportQueue, staleTime: TEN_MINUTES })
 }
 
-export function useCreateImportSource() {
+export function useCreateImportSource({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors },
     mutationFn: ({ provider, name, credentialCiphertext }: { provider: ImportProvider; name: string; credentialCiphertext?: string }) =>
       importsApi.createImportSource(provider, name, credentialCiphertext),
     onSuccess: (item) => {
@@ -85,6 +87,7 @@ export function useLinkImportAccount() {
   const apply = useApplyImportAccount()
   const cardBefore = useCardBefore()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ sourceId, externalAccountId, accountId, externalName }: { sourceId: Id; externalAccountId: string; accountId: Id; externalName?: string }) =>
       importsApi.linkImportAccount(sourceId, externalAccountId, accountId, externalName),
     onSuccess: (result, { sourceId, externalAccountId, accountId }) => {
@@ -108,6 +111,7 @@ export function useLinkImportAccount() {
 export function useIgnoreImportAccount() {
   const apply = useApplyImportAccount()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ sourceId, externalAccountId, externalName }: { sourceId: Id; externalAccountId: string; externalName?: string }) =>
       importsApi.ignoreImportAccount(sourceId, externalAccountId, externalName),
     onSuccess: (result) => {
@@ -120,6 +124,7 @@ export function useIgnoreImportAccount() {
 export function useUnlinkImportAccount() {
   const apply = useApplyImportAccount()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ sourceId, externalAccountId }: { sourceId: Id; externalAccountId: string }) =>
       importsApi.unlinkImportAccount(sourceId, externalAccountId),
     onSuccess: (result) => {
@@ -159,6 +164,7 @@ function useReplaceQueue() {
 export function useSkipQueuedEvent() {
   const replace = useReplaceQueue()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: importsApi.skipQueuedEvent,
     onSuccess: (queue) => {
       replace(queue)
@@ -169,12 +175,12 @@ export function useSkipQueuedEvent() {
 
 export function useUnskipQueuedEvent() {
   const replace = useReplaceQueue()
-  return useMutation({ mutationFn: importsApi.unskipQueuedEvent, onSuccess: replace })
+  return useMutation({ meta: { handlesOwnErrors: true }, mutationFn: importsApi.unskipQueuedEvent, onSuccess: replace })
 }
 
-export function useDiscardImportEvent() {
+export function useDiscardImportEvent({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const replace = useReplaceQueue()
-  return useMutation({ mutationFn: importsApi.discardImportEvent, onSuccess: replace })
+  return useMutation({ meta: { handlesOwnErrors }, mutationFn: importsApi.discardImportEvent, onSuccess: replace })
 }
 
 // A retry may create a transaction (status "created") or park the event
@@ -182,6 +188,7 @@ export function useDiscardImportEvent() {
 export function useRetryImportEvent() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: importsApi.retryImportEvent,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
@@ -209,13 +216,14 @@ export function useImportCredentialKey() {
 export function useSetImportCredentialKey() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: importsApi.setImportCredentialKey,
     onSuccess: (key) => queryClient.setQueryData(queryKeys.importCredentialKey, key),
   })
 }
 
 export function useClaimSetupToken() {
-  return useMutation({ mutationFn: importsApi.claimSetupToken })
+  return useMutation({ meta: { handlesOwnErrors: true }, mutationFn: importsApi.claimSetupToken })
 }
 
 // The access URL is a per-request secret: it is the query's input, never
@@ -233,6 +241,7 @@ export function useExternalAccounts(sourceId: Id, accessUrl: string | null) {
 export function useSyncImportSource() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ sourceId, accessUrl, startDate, endDate }: { sourceId: Id; accessUrl: string; startDate: string; endDate?: string }) =>
       importsApi.syncImportSource(sourceId, accessUrl, startDate, endDate),
     onSuccess: (result, vars) => {
@@ -290,6 +299,7 @@ export function useImportRules() {
 export function useCreateImportRule() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     // The id is the create's idempotency key and the server requires it, so it
     // is minted HERE — the one choke point every call site goes through.
     mutationFn: ({ spec, id }: { spec: ImportRuleSpecDto; id?: Id }) => importsApi.createImportRule(spec, id ?? uuidv7()),
@@ -303,6 +313,7 @@ export function useCreateImportRule() {
 export function useUpdateImportRule() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ id, spec }: { id: Id; spec: ImportRuleSpecDto }) => importsApi.updateImportRule(id, spec),
     onSuccess: (rule) => {
       queryClient.setQueryData<ImportRuleDto[]>(queryKeys.importRules, (prev = []) => prev.map((r) => (r.id === rule.id ? rule : r)))
@@ -313,6 +324,7 @@ export function useUpdateImportRule() {
 export function useDeleteImportRule() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (id: Id) => importsApi.deleteImportRule(id),
     onSuccess: (_void, id) => {
       queryClient.setQueryData<ImportRuleDto[]>(queryKeys.importRules, (prev = []) => prev.filter((r) => r.id !== id))
@@ -331,6 +343,7 @@ export function usePreviewImportRule() {
 export function useApplyImportRule() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: ({ ruleId, scope, includeEdited }: { ruleId: Id; scope: ImportRuleScopeDto; includeEdited: boolean }) =>
       importsApi.applyImportRule(ruleId, scope, includeEdited),
     onSuccess: (result) => {

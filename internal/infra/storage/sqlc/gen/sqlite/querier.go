@@ -68,6 +68,7 @@ type Querier interface {
 	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotencyKeyParams) error
 	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
 	DeleteImportAccountLink(ctx context.Context, id string) error
 	DeleteImportCredentialKey(ctx context.Context, userID string) error
@@ -241,6 +242,7 @@ type Querier interface {
 	// and contains accounts via accounts_folders.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	GetIdempotencyKey(ctx context.Context, arg GetIdempotencyKeyParams) (*string, error)
 	// OAuth feature queries: identities, in-flight states, one-shot handoffs.
 	GetIdentityByProviderSubject(ctx context.Context, arg GetIdentityByProviderSubjectParams) (UsersIdentity, error)
 	GetIdentityByUserProvider(ctx context.Context, arg GetIdentityByUserProviderParams) (UsersIdentity, error)
@@ -398,6 +400,7 @@ type Querier interface {
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
+	InsertIdempotencyKey(ctx context.Context, arg InsertIdempotencyKeyParams) error
 	// Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
 	// user before an account reclaim must not land an identity after it. A plain
 	// INSERT, never an upsert: an identity the reclaim deleted must stay deleted.
@@ -615,6 +618,7 @@ type Querier interface {
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
 	PurgeExcessUnusedOAuthClients(ctx context.Context, limit int64) (int64, error)
 	PurgeExpiredOAuthCodes(ctx context.Context, expiresAt time.Time) error
+	PurgeIdempotencyKeys(ctx context.Context, createdAt time.Time) error
 	PurgeUnusedOAuthClients(ctx context.Context, createdAt time.Time) (int64, error)
 	// The operation_requests_ids idempotency queries moved to operations.sql (shared
 	// across modules that take a client-supplied operation id).

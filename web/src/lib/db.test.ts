@@ -1,5 +1,5 @@
 import { IDBFactory } from 'fake-indexeddb'
-import { STORE_ACCOUNT_TRANSACTIONS, STORE_IMPORT_KEYS, STORE_META, dbRequest, dbTransaction, openDb, resetDbForTests } from './db'
+import { STORE_ACCOUNT_TRANSACTIONS, STORE_IMPORT_KEYS, STORE_META, STORE_PENDING_WRITES, dbRequest, dbTransaction, openDb, resetDbForTests } from './db'
 import { loadStoredKey } from './importCrypto'
 
 beforeEach(() => {
@@ -26,10 +26,30 @@ function seedLegacy(record: unknown): Promise<void> {
 
 const newKey = () => crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
 
-it('a fresh open creates the three stores', async () => {
+it('a database of the first version gains the queue and keeps its data', async () => {
+  await new Promise<void>((resolve, reject) => {
+    const req = indexedDB.open('econumo', 1)
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(STORE_IMPORT_KEYS)
+      req.result.createObjectStore(STORE_ACCOUNT_TRANSACTIONS, { keyPath: 'accountId' })
+      req.result.createObjectStore(STORE_META)
+    }
+    req.onsuccess = () => {
+      const t = req.result.transaction(STORE_META, 'readwrite')
+      t.objectStore(STORE_META).put('kept', 'state')
+      t.oncomplete = () => { req.result.close(); resolve() }
+    }
+    req.onerror = () => reject(req.error)
+  })
+  const db = await openDb()
+  expect(db.transaction(STORE_PENDING_WRITES).objectStore(STORE_PENDING_WRITES).keyPath).toBe('key')
+  expect(await dbRequest(STORE_META, 'readonly', (s) => s.get('state'))).toBe('kept')
+})
+
+it('a fresh open creates the stores', async () => {
   const db = await openDb()
   expect(db.name).toBe('econumo')
-  expect([...db.objectStoreNames].sort()).toEqual([STORE_ACCOUNT_TRANSACTIONS, STORE_IMPORT_KEYS, STORE_META].sort())
+  expect([...db.objectStoreNames].sort()).toEqual([STORE_ACCOUNT_TRANSACTIONS, STORE_IMPORT_KEYS, STORE_META, STORE_PENDING_WRITES].sort())
   expect(db.transaction(STORE_ACCOUNT_TRANSACTIONS).objectStore(STORE_ACCOUNT_TRANSACTIONS).keyPath).toBe('accountId')
 })
 
@@ -123,7 +143,7 @@ it('dbTransaction resolves on commit and rejects on abort', async () => {
 it('a versionchange from another tab closes the cached connection instead of blocking it', async () => {
   const db = await openDb()
   const upgraded = await new Promise<IDBDatabase>((resolve, reject) => {
-    const req = indexedDB.open('econumo', 2)
+    const req = indexedDB.open('econumo', 3)
     req.onblocked = () => reject(new Error('blocked by the cached connection'))
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -142,5 +162,5 @@ it('after the database is deleted elsewhere, openDb reopens a fresh one', async 
   })
   const second = await openDb()
   expect(second).not.toBe(first)
-  expect([...second.objectStoreNames]).toHaveLength(3)
+  expect([...second.objectStoreNames]).toHaveLength(4)
 })

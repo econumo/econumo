@@ -161,7 +161,12 @@
       "title": "Atualização necessária",
       "blockedApp": "Esta aplicação é demasiado antiga para o seu servidor Econumo: é necessária a versão {version} ou mais recente. Atualize a aplicação para continuar.",
       "blockedServer": "Esta aplicação requer o servidor Econumo {min} ou mais recente, mas o seu servidor é {version}. Atualize o servidor para continuar."
-    }
+    },
+    "offline_unavailable": {
+      "title": "Indisponível offline",
+      "text": "Estes dados não estão disponíveis sem ligação à internet."
+    },
+    "offline_notice": "Sem ligação à internet. Os dados são apenas de leitura."
   },
   "accounts": {
     "folders": {
@@ -296,6 +301,7 @@
       "failing": "Não é possível contactar o servidor — a tentar novamente",
       "full_reload": "A limpar a cache e a recarregar…",
       "hold_hint": "Mantenha premido para limpar a cache e recarregar",
+      "waiting": "{count} alteração à espera de ligação à internet | {count} alterações à espera de ligação à internet",
       "full_reload_offline": "Está offline. Limpe a cache e recarregue quando voltar a estar online.",
       "offline": "Sem ligação"
     },
@@ -357,6 +363,7 @@
     }
   },
   "transactions": {
+    "not_saved": "Não guardada",
     "modal": {
       "transaction_type": {
         "expense": "Despesa",
@@ -498,12 +505,26 @@
     "title": "Caixa de entrada",
     "open": "Caixa de entrada: {count} por rever",
     "empty": "Sem novas notificações",
+    "failed_writes": {
+      "kind_create": "Nova",
+      "kind_update": "Alterada",
+      "kind_delete": "Eliminada",
+      "delete_generic": "Transação eliminada",
+      "limit": "{name}: plano de {amount} ({period})",
+      "limit_generic": "Plano de {amount} ({period})",
+      "limit_cleared": "{name}: plano removido ({period})",
+      "limit_cleared_generic": "Plano removido ({period})",
+      "retry": "Tentar novamente",
+      "discard": "Descartar",
+      "reason_unknown": "O servidor recusou esta alteração."
+    },
     "sections": {
       "due": "Transações agendadas",
       "sharing": "Partilhas",
       "sync": "Problemas de sincronização",
       "failed": "Importações falhadas",
       "to_review": "Para rever",
+      "failed_writes": "Não guardado",
       "skipped": "Ignorados ({count})"
     },
     "due": {
@@ -1679,6 +1700,9 @@
           "header": "Arquivados"
         }
       }
+    },
+    "limit": {
+      "not_saved": "Não guardado"
     }
   },
   "reports": {

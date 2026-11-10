@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
+import { rememberRealId } from '@/features/pendingWrites/tempIds'
 import { buildRecurringPayload, initialRecurringFormState, nextFromAnchor, useRecurringForm } from './useRecurringForm'
 
 const accounts = [{ id: 'a1', currency: { symbol: '$', fractionDigits: 2 } }] as never
@@ -51,6 +52,12 @@ describe('useRecurringForm', () => {
   it('starts a from-scratch template with no labels', () => {
     expect(initialRecurringFormState({}, accounts).labelIds).toEqual([])
     expect(buildRecurringPayload(initialRecurringFormState({}, accounts)).labelIds).toEqual([])
+  })
+
+  it('a template made from an add that has landed since the dialog opened names the real row', () => {
+    rememberRealId('t-temp', 't-real')
+    const s = { ...initialRecurringFormState({}, accounts), sourceTransactionId: 't-temp' }
+    expect(buildRecurringPayload(s).sourceTransactionId).toBe('t-real')
   })
 
   it('only the from-transaction flow sends sourceTransactionId', () => {
