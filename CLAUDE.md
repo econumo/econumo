@@ -455,7 +455,7 @@ and `apple_wallet`. A done step is read-only (the stepper will not open it; a li
 another step opens its settings page instead); skipped steps can be reopened, and "Complete
 setup" skips every open step (so does Apple Wallet's Set up once categories and accounts are
 done, landing on the Apple Wallet settings instead of the budget). New category rows are created unless removed (trash button);
-onboarding sets no budget savings membership. Categories and accounts the user already has are
+there is no savings toggle: an account the flow creates with the piggy-bank icon (`SAVINGS_ICON`, guessed from a savings-like name or picked by hand) is a savings member of the budget — `savingsAccountIds` when `ensureBudget` creates the budget, `isSavings` on `add-account` for accounts created after it; a reused budget and the user's pre-existing accounts keep their flags. Categories and accounts the user already has are
 shown read-only; the unsaved
 draft is resumable in `localStorage` (`econumo-day0:<userId>`) and the writes are idempotent, so
 a reload or retry creates nothing twice. Onboarding completes automatically once every visible

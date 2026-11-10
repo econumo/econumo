@@ -14,6 +14,7 @@ import { queryKeys } from '@/app/queryKeys'
 import { useAccounts } from '@/features/accounts/queries'
 import { userCurrencyId, userOption, useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { SAVINGS_ICON } from './defaults'
 import { emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft } from './draft'
 
 const isBadRequest = (err: unknown) => isAxiosError(err) && err.response?.status === 400
@@ -42,13 +43,16 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// Accounts the flow created after the budget exists join it; the user's other
-// accounts keep whatever membership that budget gives them.
+// The piggy-bank icon is what marks a flow-created account as savings in the budget.
+const isSavingsRow = (row: AccountRow) => row.icon === SAVINGS_ICON
+
+// Accounts the flow created after the budget exists join it (savings when they carry the
+// savings icon); the user's other accounts keep whatever membership that budget gives them.
 async function syncBudgetAccounts(d: Day0Draft, rows: AccountRow[], budgetId: Id): Promise<void> {
   const members = new Set(((await getBudget(budgetId, today())).filters.accounts ?? []).map((a) => a.id))
   for (const row of rows) {
     const id = d.created[row.key]
-    if (d.ops[`account:${row.key}`] && !members.has(id)) await addAccount(budgetId, id)
+    if (d.ops[`account:${row.key}`] && !members.has(id)) await addAccount(budgetId, id, isSavingsRow(row) ? true : undefined)
   }
 }
 
@@ -285,6 +289,7 @@ export function useDay0() {
           if (owned.length === 0 || !currencyId) {
             throw new Error('Day 0 budget needs accounts and a main currency')
           }
+          const savingsAccountIds = d.rows.filter(isSavingsRow).flatMap((r) => (d.created[r.key] && owned.includes(d.created[r.key]) ? [d.created[r.key]] : []))
           const budgetId = opId(d, 'budget')
           persist(d)
           try {
@@ -294,6 +299,7 @@ export function useDay0() {
               startDate: '',
               currencyId,
               accountIds: owned,
+              ...(savingsAccountIds.length > 0 ? { savingsAccountIds } : {}),
             })
           } catch (err) {
             if (!isBadRequest(err) || !(await getBudgetList()).some((b) => b.id === budgetId)) {

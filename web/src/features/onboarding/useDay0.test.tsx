@@ -116,7 +116,7 @@ function mockWrites(f: Faults = {}) {
       const body = (await request.json()) as any
       calls.push({ path: 'create-budget', body })
       if (srv.budgets.some((b) => b.id === body.id)) return HttpResponse.json({ success: false, message: 'in use', code: 400, errors: { id: ['x'] } }, { status: 400 })
-      srv.budgets.push({ id: body.id, ownerUserId: 'u1', access: [], members: [...body.accountIds] })
+      srv.budgets.push({ id: body.id, ownerUserId: 'u1', access: [], members: [...body.accountIds], savings: body.savingsAccountIds ?? [] })
       if (f.budgetLost && !budgetFault) {
         budgetFault = true
         return HttpResponse.error()
@@ -128,7 +128,7 @@ function mockWrites(f: Faults = {}) {
       const id = new URL(request.url).searchParams.get('id')
       const b = srv.budgets.find((x) => x.id === id)
       if (!b) return HttpResponse.json({ success: false, message: 'Budget not found', code: 0, errors: {} }, { status: 400 })
-      const accounts = (b.members ?? []).map((id: string) => ({ id, removable: true, isSavings: false }))
+      const accounts = (b.members ?? []).map((id: string) => ({ id, removable: true, isSavings: (b.savings ?? []).includes(id) }))
       return ok({ item: { meta: b, filters: { periodStart: '2026-11-01 00:00:00', periodEnd: '2026-12-01 00:00:00', accounts }, balances: [], currencyRates: [], structure: { folders: [], elements: [] } } })
     }),
     http.post('*/api/v1/budget/add-account', async ({ request }) => {
@@ -371,7 +371,7 @@ describe('useDay0', () => {
     expect(loadDraft('u1')!.categoryRows[0].labelKey).toBe('onboarding.categories.pets')
   })
 
-  it('ensureBudget creates one budget over every owned account, with no savings members', async () => {
+  it('ensureBudget creates one budget over every owned account, with no savings members when the flow made none', async () => {
     mockWrites()
     srv.accounts.push(
       { id: 'acc-imp', name: 'Imported', owner: { id: 'u1' } },
@@ -399,6 +399,31 @@ describe('useDay0', () => {
     })
     expect(again).toBe(id)
     expect(calls.filter((c) => c.path === 'create-budget')).toHaveLength(1)
+  })
+
+  const budgetBody = async (accountRows: AccountRow[]) => {
+    mockWrites()
+    const { result } = await ready()
+    await act(() => result.current.saveAccounts(accountRows, [], 'cur-usd'))
+    await act(async () => {
+      await result.current.ensureBudget()
+    })
+    return { body: calls.find((c) => c.path === 'create-budget')!.body, ids: loadDraft('u1')!.created }
+  }
+
+  it('ensureBudget marks the flow-created accounts with the savings icon as savings', async () => {
+    const { body, ids } = await budgetBody([rows[1], { ...rows[0], key: 'r1' }].reverse())
+    expect(body.savingsAccountIds).toEqual([ids.r2])
+    expect(body.accountIds).toHaveLength(2)
+  })
+
+  it('a hand-picked piggy icon makes any account savings, another icon on a Savings row does not', async () => {
+    const picked = await budgetBody([{ key: 'w', name: 'Wallet', balance: '', currencyId: 'cur-usd', icon: 'savings', iconPicked: true }])
+    expect(picked.body.savingsAccountIds).toEqual([picked.ids.w])
+    localStorage.clear()
+    calls = []
+    const other = await budgetBody([{ key: 's', name: 'Savings', balance: '', currencyId: 'cur-usd', icon: 'payments', iconPicked: true }])
+    expect(other.body).not.toHaveProperty('savingsAccountIds')
   })
 
   it('ensureBudget returns the default budget the user already has', async () => {
@@ -457,7 +482,7 @@ describe('useDay0', () => {
     ...extra,
   ]
 
-  it('accounts saved after the budget exists join it, with no savings flag', async () => {
+  it('accounts saved after the budget exists join it, savings when they carry the savings icon', async () => {
     mockWrites()
     const { result } = await ready()
     await act(() => result.current.saveAccounts(rows, [], 'cur-usd'))
@@ -468,7 +493,7 @@ describe('useDay0', () => {
     calls = []
     const piggy: AccountRow = { key: 'r3', name: 'Piggy bank', balance: '5', currencyId: 'cur-usd', icon: 'savings' }
     await act(() => result.current.saveAccounts(revisit([piggy]), [], 'cur-usd'))
-    expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body)).toEqual([{ id: budgetId, accountId: 'acc-3' }])
+    expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body)).toEqual([{ id: budgetId, accountId: 'acc-3', isSavings: true }])
     expect(srv.budgets[0].members).toEqual(['acc-1', 'acc-2', 'acc-3'])
     // nothing new: nothing written
     calls = []
@@ -489,6 +514,7 @@ describe('useDay0', () => {
     const out: AccountRow = { key: 'account:acc-out', name: 'Card', balance: '', currencyId: 'cur-usd', icon: 'credit_card', accountId: 'acc-out' }
     await act(() => result.current.saveAccounts([old, out, rows[0]], [], 'cur-usd'))
     expect(calls.filter((c) => c.path === 'add-account').map((c) => c.body)).toEqual([{ id: 'b-old', accountId: 'acc-3' }])
+    expect(paths()).not.toContain('create-budget')
   })
 
   it('ready waits for the accounts query', async () => {
