@@ -54,7 +54,7 @@ export function InboxPage() {
         {inbox.dueRecurring.length > 0 ? (
           <InboxSection title={t('inbox.sections.due')}><DueRecurringSection items={inbox.dueRecurring} /></InboxSection>
         ) : null}
-        {inbox.importsOffline ? <OfflineUnavailable subject="imports" compact /> : null}
+        {inbox.importsOffline ? <OfflineUnavailable compact /> : null}
         {inbox.importsError ? (
           <div className="flex flex-col items-center gap-3 p-6 text-center">
             <p className="max-w-md text-sm text-muted-foreground">{t('common.app.error')}</p>

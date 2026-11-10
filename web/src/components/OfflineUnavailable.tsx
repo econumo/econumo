@@ -1,22 +1,12 @@
 import { CloudOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-const TEXT = {
-  page: 'common.offline_unavailable.page',
-  month: 'common.offline_unavailable.month',
-  months: 'common.offline_unavailable.months',
-  report: 'common.offline_unavailable.report',
-  imports: 'common.offline_unavailable.imports',
-} as const
-
-export type OfflineSubject = keyof typeof TEXT
-
 // What a page shows offline in place of a loader that would never finish or a
 // generic error: the data was never loaded on this device. It names no retry,
 // because the query resumes on its own once the connection returns.
-export function OfflineUnavailable({ subject = 'page', compact = false }: { subject?: OfflineSubject; compact?: boolean }) {
+export function OfflineUnavailable({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()
-  const text = t(TEXT[subject])
+  const text = t('common.offline_unavailable.text')
   if (compact) {
     return (
       <p role="status" data-testid="offline-unavailable" className="flex items-start gap-2 text-sm text-muted-foreground">

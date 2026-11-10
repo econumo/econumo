@@ -389,7 +389,7 @@ it('offline: a period with nothing cached says it is not on this device, not the
   onlineManager.setOnline(false)
   try {
     await userEvent.click(screen.getByRole('radio', { name: 'All' }))
-    expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This report isn't saved on this device.")
+    expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This data isn't saved on this device.")
     expect(screen.queryByText('Something went wrong. Please try again.')).toBeNull()
     expect(screen.queryByRole('table')).toBeNull()
   } finally {

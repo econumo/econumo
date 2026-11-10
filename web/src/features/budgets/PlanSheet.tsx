@@ -1060,7 +1060,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             </Button>
           </span>
         </div>
-        <OfflineUnavailable subject="months" />
+        <OfflineUnavailable />
       </div>
     )
   }

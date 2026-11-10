@@ -136,7 +136,7 @@ report, a settings list) says so in place (`OfflineUnavailable`, decided by
 `isUnavailableOffline`: paused with no data of its own, or an error while offline) instead
 of a loader that never ends or a generic error. A month or window keeps its navigation so
 the user can go back to one that is saved; the rest of the app stays usable. The page loads
-by itself when the network returns.
+by itself when the network returns. Every such page shows the same message, titled "Not saved on this device": "This data isn't saved on this device. Connect to the internet to load it."
 
 ### Signing out
 

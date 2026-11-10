@@ -162,7 +162,7 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
     <>
       <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={title} dismissible={!preview && !deleteTarget}>
         {offline ? (
-          <div className="py-2"><OfflineUnavailable subject="report" compact /></div>
+          <div className="py-2"><OfflineUnavailable compact /></div>
         ) : isError ? (
           <p className="py-2 text-sm text-muted-foreground">{t('common.app.error')}</p>
         ) : isLoading ? (

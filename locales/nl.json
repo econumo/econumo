@@ -164,11 +164,7 @@
     },
     "offline_unavailable": {
       "title": "Niet op dit apparaat opgeslagen",
-      "page": "Deze pagina is nog niet op dit apparaat geladen. Maak verbinding met internet om hem te laden.",
-      "month": "Deze maand is niet op dit apparaat opgeslagen. Maak verbinding met internet om hem te laden.",
-      "months": "Deze maanden zijn niet op dit apparaat opgeslagen. Maak verbinding met internet om ze te laden.",
-      "report": "Dit rapport is niet op dit apparaat opgeslagen. Maak verbinding met internet om het te laden.",
-      "imports": "Geïmporteerde transacties om te controleren zijn niet op dit apparaat opgeslagen. Maak verbinding met internet om ze te laden."
+      "text": "Deze gegevens zijn niet op dit apparaat opgeslagen. Maak verbinding met internet om ze te laden."
     },
     "offline_notice": "U bent offline. U kunt rondkijken, maar voor wijzigingen hier is een verbinding nodig."
   },

@@ -164,11 +164,7 @@
     },
     "offline_unavailable": {
       "title": "Nicht auf diesem Gerät gespeichert",
-      "page": "Diese Seite wurde auf diesem Gerät noch nicht geladen. Stellen Sie eine Internetverbindung her, um sie zu laden.",
-      "month": "Dieser Monat ist auf diesem Gerät nicht gespeichert. Stellen Sie eine Internetverbindung her, um ihn zu laden.",
-      "months": "Diese Monate sind auf diesem Gerät nicht gespeichert. Stellen Sie eine Internetverbindung her, um sie zu laden.",
-      "report": "Dieser Bericht ist auf diesem Gerät nicht gespeichert. Stellen Sie eine Internetverbindung her, um ihn zu laden.",
-      "imports": "Importierte Buchungen zur Prüfung sind auf diesem Gerät nicht gespeichert. Stellen Sie eine Internetverbindung her, um sie zu laden."
+      "text": "Diese Daten sind auf diesem Gerät nicht gespeichert. Stellen Sie eine Internetverbindung her, um sie zu laden."
     },
     "offline_notice": "Sie sind offline. Sie können sich umsehen, aber Änderungen hier benötigen eine Verbindung."
   },

@@ -48,5 +48,5 @@ it('offline with no report cached (the request failed on a dead network), the ca
   expect(await within(await card()).findByText('Something went wrong. Please try again.')).toBeInTheDocument()
   act(() => onlineManager.setOnline(false))
   onTestFinished(() => onlineManager.setOnline(true))
-  expect(await within(await card()).findByText("This report isn't saved on this device. Connect to the internet to load it.")).toBeInTheDocument()
+  expect(await within(await card()).findByText("This data isn't saved on this device. Connect to the internet to load it.")).toBeInTheDocument()
 })

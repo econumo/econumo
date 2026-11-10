@@ -164,11 +164,7 @@
     },
     "offline_unavailable": {
       "title": "Non enregistré sur cet appareil",
-      "page": "Cette page n’a pas encore été chargée sur cet appareil. Connectez-vous à Internet pour la charger.",
-      "month": "Ce mois n’est pas enregistré sur cet appareil. Connectez-vous à Internet pour le charger.",
-      "months": "Ces mois ne sont pas enregistrés sur cet appareil. Connectez-vous à Internet pour les charger.",
-      "report": "Ce rapport n’est pas enregistré sur cet appareil. Connectez-vous à Internet pour le charger.",
-      "imports": "Les transactions importées à vérifier ne sont pas enregistrées sur cet appareil. Connectez-vous à Internet pour les charger."
+      "text": "Ces données ne sont pas enregistrées sur cet appareil. Connectez-vous à Internet pour les charger."
     },
     "offline_notice": "Vous êtes hors ligne. Vous pouvez consulter cette page, mais les modifications nécessitent une connexion."
   },

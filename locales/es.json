@@ -164,11 +164,7 @@
     },
     "offline_unavailable": {
       "title": "No guardado en este dispositivo",
-      "page": "Esta página aún no se ha cargado en este dispositivo. Conéctate a internet para cargarla.",
-      "month": "Este mes no está guardado en este dispositivo. Conéctate a internet para cargarlo.",
-      "months": "Estos meses no están guardados en este dispositivo. Conéctate a internet para cargarlos.",
-      "report": "Este informe no está guardado en este dispositivo. Conéctate a internet para cargarlo.",
-      "imports": "Las transacciones importadas por revisar no están guardadas en este dispositivo. Conéctate a internet para cargarlas."
+      "text": "Estos datos no están guardados en este dispositivo. Conéctate a internet para cargarlos."
     },
     "offline_notice": "Estás sin conexión. Puedes echar un vistazo, pero los cambios aquí necesitan conexión."
   },
