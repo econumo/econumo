@@ -81,6 +81,8 @@ import { applyArrangement, arrangementFromBuckets, arrangementItem, dropIndicato
 import type { DropIndicator } from './elementMove'
 import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
 import { CoinLoader } from '@/components/CoinLoader'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
 type CellTarget = Pick<BudgetElementDto, 'id' | 'name' | 'budgeted'>
@@ -101,7 +103,10 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // isPending covers the whole cold boot (incl. the disabled phase while the
   // user record loads); month switches show the previous period as placeholder
   // data (isPlaceholderData) while the new one loads
-  const { data: budget, dataPeriod, isPending, isPlaceholderData, isFetching, isError, error, refetch } = useBudget()
+  const budgetQuery = useBudget()
+  const { data: budget, dataPeriod, isPending, isPlaceholderData, isFetching, isError, error, refetch } = budgetQuery
+  // offline, a month this device never loaded would hold the loader forever
+  const monthOffline = useUnavailableOffline(budgetQuery)
   const { data: budgetList } = useBudgets()
   const showLogoutEscape = useLogoutEscape(isPending)
   const { data: currencies = [] } = useCurrencies()
@@ -283,7 +288,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       </div>
     )
   }
-  if (isError && !budgetUnavailable) {
+  // nothing to show yet (the page opened on a month never loaded): the whole
+  // area says so; with another month on hand the strip stays to switch back
+  if (monthOffline && !budget) {
+    return <OfflineUnavailable subject="month" />
+  }
+  if (isError && !budgetUnavailable && !monthOffline) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="budget-error">
         <p className="max-w-md text-sm text-muted-foreground">{t('common.app.error')}</p>
@@ -671,7 +681,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
           <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} startDay={periodStartDay} />
-          {isPlaceholderData || periodSwitching ? (
+          {monthOffline ? (
+            <OfflineUnavailable subject="month" />
+          ) : isPlaceholderData || periodSwitching ? (
             <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
               <CoinLoader label={t('common.app.modal.loading.data_loading')} />
             </div>
@@ -708,7 +720,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
           <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} startDay={periodStartDay} leading={viewSwitch} />
 
-          {isPlaceholderData || periodSwitching ? (
+          {monthOffline ? (
+            <OfflineUnavailable subject="month" />
+          ) : isPlaceholderData || periodSwitching ? (
             // month switch in flight — the strip stays put, the stale table is
             // replaced by the loader until the new period lands
             <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">

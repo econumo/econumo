@@ -161,6 +161,14 @@
       "title": "Update vereist",
       "blockedApp": "Deze app is te oud voor je Econumo-server: versie {version} of nieuwer is vereist. Werk de app bij om door te gaan.",
       "blockedServer": "Deze app vereist Econumo-server {min} of nieuwer, maar je server is {version}. Werk de server bij om door te gaan."
+    },
+    "offline_unavailable": {
+      "title": "Niet op dit apparaat opgeslagen",
+      "page": "Deze pagina is nog niet op dit apparaat geladen. Maak verbinding met internet om hem te laden.",
+      "month": "Deze maand is niet op dit apparaat opgeslagen. Maak verbinding met internet om hem te laden.",
+      "months": "Deze maanden zijn niet op dit apparaat opgeslagen. Maak verbinding met internet om ze te laden.",
+      "report": "Dit rapport is niet op dit apparaat opgeslagen. Maak verbinding met internet om het te laden.",
+      "imports": "Geïmporteerde transacties om te controleren zijn niet op dit apparaat opgeslagen. Maak verbinding met internet om ze te laden."
     }
   },
   "accounts": {

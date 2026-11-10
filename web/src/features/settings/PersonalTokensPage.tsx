@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { Check, Copy, KeyRound, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -40,7 +42,9 @@ export function expiresAtFrom(choice: ExpiryChoice, customDate: string, now: Dat
 export function PersonalTokensPage() {
   const { t, i18n } = useTranslation()
   const online = useOnline()
-  const { data: tokens } = usePersonalTokens()
+  const tokensQuery = usePersonalTokens()
+  const { data: tokens } = tokensQuery
+  const offline = useUnavailableOffline(tokensQuery)
   const createToken = useCreatePersonalToken()
   const revokeToken = useRevokePersonalToken()
 
@@ -119,6 +123,7 @@ export function PersonalTokensPage() {
       <InfoBox>{t('user.page.settings.profile.tokens.description')}</InfoBox>
 
       <div className="flex max-w-md flex-col gap-2 py-2">
+        {offline ? <OfflineUnavailable /> : null}
         {tokens && tokens.length === 0 ? (
           <p className="px-1 text-sm text-muted-foreground">{t('user.page.settings.profile.tokens.empty')}</p>
         ) : null}

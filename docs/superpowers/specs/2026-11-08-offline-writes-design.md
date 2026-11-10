@@ -120,6 +120,17 @@ A network failure is never a failure in this sense: the change stays waiting.
 - Posting a due recurring payment is off.
 - Actions on a waiting transaction that need it on the server (make recurring, drag) are off
   even when online, until it is confirmed.
+- A disabled text field in a card reads as plain text: faded like the other disabled
+  controls, with no fill behind it.
+
+### Not saved on this device
+
+Offline, a page whose data this device never loaded (a budget month, a Plan window, a
+report, a settings list) says so in place (`OfflineUnavailable`, decided by
+`isUnavailableOffline`: paused with no data of its own, or an error while offline) instead
+of a loader that never ends or a generic error. A month or window keeps its navigation so
+the user can go back to one that is saved; the rest of the app stays usable. The page loads
+by itself when the network returns.
 
 ### Signing out
 

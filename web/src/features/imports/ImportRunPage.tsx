@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { useParams } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
@@ -13,6 +15,7 @@ export function ImportRunPage() {
   const { t, i18n } = useTranslation()
   const { id = '' } = useParams()
   const detail = useImportRun(id)
+  const offline = useUnavailableOffline(detail)
   const { data: sources = [] } = useImportSources()
   const source = sources.find((s) => s.id === detail.data?.item.sourceId)
   // A bridge account id ("ACT-…") means nothing to the user; the source's
@@ -30,8 +33,9 @@ export function ImportRunPage() {
       ]}
     >
       <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
-        {detail.isPending ? <p className="text-sm text-muted-foreground">{t('common.app.modal.loading.data_loading')}</p> : null}
-        {detail.isError ? <p role="alert" className="text-sm text-destructive">{apiErrorMessage(detail.error)}</p> : null}
+        {offline ? <OfflineUnavailable /> : null}
+        {detail.isPending && !offline ? <p className="text-sm text-muted-foreground">{t('common.app.modal.loading.data_loading')}</p> : null}
+        {detail.isError && !offline ? <p role="alert" className="text-sm text-destructive">{apiErrorMessage(detail.error)}</p> : null}
         {detail.data ? (
           <>
             <ImportRunSummary run={detail.data.item} accountName={accountName} />

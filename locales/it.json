@@ -161,6 +161,14 @@
       "title": "Aggiornamento necessario",
       "blockedApp": "Questa app è troppo vecchia per il tuo server Econumo: è richiesta la versione {version} o successiva. Aggiorna l'app per continuare.",
       "blockedServer": "Questa app richiede un server Econumo {min} o successivo, ma il tuo server è {version}. Aggiorna il server per continuare."
+    },
+    "offline_unavailable": {
+      "title": "Non salvato su questo dispositivo",
+      "page": "Questa pagina non è ancora stata caricata su questo dispositivo. Connettiti a internet per caricarla.",
+      "month": "Questo mese non è salvato su questo dispositivo. Connettiti a internet per caricarlo.",
+      "months": "Questi mesi non sono salvati su questo dispositivo. Connettiti a internet per caricarli.",
+      "report": "Questo report non è salvato su questo dispositivo. Connettiti a internet per caricarlo.",
+      "imports": "Le transazioni importate da rivedere non sono salvate su questo dispositivo. Connettiti a internet per caricarle."
     }
   },
   "accounts": {

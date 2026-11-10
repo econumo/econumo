@@ -383,17 +383,36 @@ it('a single-month report shows the balance without a change line', async () => 
   expect(plain(headline().textContent)).not.toContain('in the last')
 })
 
-it('offline: a period with nothing cached shows an error, not the previous figures', async () => {
+it('offline: a period with nothing cached says it is not on this device, not the previous figures', async () => {
   openNetWorth()
   await screen.findByRole('table')
   onlineManager.setOnline(false)
   try {
     await userEvent.click(screen.getByRole('radio', { name: 'All' }))
-    expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+    expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent("This report isn't saved on this device.")
+    expect(screen.queryByText('Something went wrong. Please try again.')).toBeNull()
     expect(screen.queryByRole('table')).toBeNull()
   } finally {
     onlineManager.setOnline(true)
   }
+})
+
+it('offline: a request that failed on a dead network reads as not on this device', async () => {
+  openNetWorth()
+  server.use(http.get('*/api/v1/report/get-net-worth-report', () => HttpResponse.error()))
+  // the request failed before the browser noticed the drop
+  expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  act(() => onlineManager.setOnline(false))
+  onTestFinished(() => onlineManager.setOnline(true))
+  expect(await screen.findByTestId('offline-unavailable')).toBeInTheDocument()
+})
+
+it('online: a server error keeps the generic message', async () => {
+  openNetWorth()
+  server.use(http.get('*/api/v1/report/get-net-worth-report', () =>
+    HttpResponse.json({ success: false, message: 'no', code: 500, errors: {} }, { status: 500 })))
+  expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  expect(screen.queryByTestId('offline-unavailable')).toBeNull()
 })
 
 it('offline: cached figures say when they were fetched', async () => {

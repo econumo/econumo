@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useOnline } from '@/hooks/useOnline'
+import { isUnavailableOffline } from '@/lib/offlineQuery'
 import { useTranslation } from 'react-i18next'
 import { useQueries } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
@@ -45,6 +48,7 @@ function monthList(from: string, to: string): string[] {
 }
 
 function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: string) {
+  const online = useOnline()
   const months = monthList(from, to)
   const queries: budgetApi.BudgetTransactionsParams[] = (budgetId ? accountIds : []).flatMap((accountId) =>
     months.map((periodStart) => ({ budgetId: budgetId!, periodStart, accountId })),
@@ -82,6 +86,7 @@ function useBudgetRows(budgetId: Id | null, accountIds: Id[], from: string, to: 
   })
   return {
     isLoading: results.some((r) => r.isLoading),
+    offline: results.some((r) => isUnavailableOffline(r, online)),
     // one month missing would pass for a complete list, offline as much as after an error
     isError: results.some((r) => !r.data && (r.isError || r.fetchStatus === 'paused')),
     rows,
@@ -124,6 +129,7 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
   const localRows = useLocalRows(row.kind !== 'savings', row, from, to)
   const isLoading = budgetRows.isLoading || localRows.isLoading
   const isError = budgetRows.isError || localRows.isError
+  const offline = budgetRows.offline
   // newest first across both sources; a transfer between two listed accounts once
   const rows = useMemo(() => {
     const local = new Set(localRows.rows.map((r) => r.view.id))
@@ -152,7 +158,9 @@ export function ReportTransactionsDialog({ budgetId, row, from, to, onClose }: {
   return (
     <>
       <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={title} dismissible={!preview && !deleteTarget}>
-        {isError ? (
+        {offline ? (
+          <div className="py-2"><OfflineUnavailable subject="report" compact /></div>
+        ) : isError ? (
           <p className="py-2 text-sm text-muted-foreground">{t('common.app.error')}</p>
         ) : isLoading ? (
           <div className="flex justify-center py-6">

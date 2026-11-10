@@ -161,6 +161,14 @@
       "title": "Mise à jour requise",
       "blockedApp": "Cette application est trop ancienne pour votre serveur Econumo : la version {version} ou ultérieure est requise. Veuillez mettre à jour l'application pour continuer.",
       "blockedServer": "Cette application nécessite un serveur Econumo {min} ou ultérieur, mais votre serveur est en {version}. Veuillez mettre à jour le serveur pour continuer."
+    },
+    "offline_unavailable": {
+      "title": "Non enregistré sur cet appareil",
+      "page": "Cette page n’a pas encore été chargée sur cet appareil. Connectez-vous à Internet pour la charger.",
+      "month": "Ce mois n’est pas enregistré sur cet appareil. Connectez-vous à Internet pour le charger.",
+      "months": "Ces mois ne sont pas enregistrés sur cet appareil. Connectez-vous à Internet pour les charger.",
+      "report": "Ce rapport n’est pas enregistré sur cet appareil. Connectez-vous à Internet pour le charger.",
+      "imports": "Les transactions importées à vérifier ne sont pas enregistrées sur cet appareil. Connectez-vous à Internet pour les charger."
     }
   },
   "accounts": {

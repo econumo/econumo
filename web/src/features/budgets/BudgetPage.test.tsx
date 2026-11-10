@@ -1222,6 +1222,60 @@ describe('offline', () => {
       planHandler(),
     )
 
+  it('a month never loaded on this device says so instead of an endless loader; the strip stays usable', async () => {
+    budgetHandlers()
+    renderPage()
+    await screen.findByTestId('element-cat-food')
+    goOffline()
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
+    const state = await screen.findByTestId('offline-unavailable')
+    expect(state).toHaveTextContent("This month isn't saved on this device.")
+    expect(screen.queryByTestId('budget-loading')).toBeNull()
+    expect(screen.getByRole('tablist', { name: 'period' })).toBeInTheDocument()
+    // a month the device has comes back at once
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-07-01' }))
+    expect(await screen.findByTestId('element-cat-food')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+  })
+
+  it('opening the page offline on a month never loaded shows the offline state, not the cold loader and its log-out escape', async () => {
+    budgetHandlers()
+    const { router } = renderPage()
+    await screen.findByTestId('element-cat-food')
+    goOffline()
+    await act(() => router.navigate('/settings/budgets'))
+    act(() => useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' }))
+    await act(() => router.navigate('/budget'))
+    const state = await screen.findByTestId('offline-unavailable')
+    expect(state).toHaveTextContent("This month isn't saved on this device.")
+    expect(screen.queryByTestId('budget-loading')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Log out' })).toBeNull()
+  })
+
+  it('the Plan: months never loaded on this device say so, and the arrows still lead back', async () => {
+    budgetHandlers()
+    const user = userEvent.setup()
+    renderPage('/plan')
+    await screen.findByTestId('plan-month-header')
+    goOffline()
+    await user.click(screen.getByRole('button', { name: 'Scroll to later months' }))
+    const state = await screen.findByTestId('offline-unavailable')
+    expect(state).toHaveTextContent("These months aren't saved on this device.")
+    await user.click(screen.getByRole('button', { name: 'Scroll to earlier months' }))
+    expect(await screen.findByTestId('plan-month-header')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+  })
+
+  it('a server error while online keeps the retryable error', async () => {
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: false, message: 'boom', code: 0 }, { status: 500 })),
+    )
+    renderPage()
+    expect(await screen.findByTestId('budget-error')).toBeInTheDocument()
+    expect(screen.queryByTestId('offline-unavailable')).toBeNull()
+  })
+
   it('the inline limit editor stays enabled', async () => {
     budgetHandlers()
     const user = userEvent.setup()

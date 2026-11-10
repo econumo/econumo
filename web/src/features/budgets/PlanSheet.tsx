@@ -10,6 +10,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { CoinLoader } from '@/components/CoinLoader'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat, normalizeNumber } from '@/lib/money'
 import type {
@@ -544,7 +546,11 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   }
 
   const startDay = periodStartDayOf(budget.meta)
-  const { data: plan, isPending, isError, refetch, planKey, fetchFrom } = useBudgetPlan(budget.meta.id, firstMonth, visible, startDay)
+  const planQuery = useBudgetPlan(budget.meta.id, firstMonth, visible, startDay)
+  const { data: plan, isPending, isError, refetch, planKey, fetchFrom } = planQuery
+  // offline, a window this device never loaded: placeholder data would label
+  // the previous window's figures with these months
+  const windowOffline = useUnavailableOffline(planQuery)
   const setLimit = usePlanSetLimit(planKey)
   const fillCells = useFillPlannedCells(planKey)
   const menus = useBudgetLineMenus({ budget, plan, userId, onOpenSettings })
@@ -1039,6 +1045,25 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
   // The ⋮ menus read live rights, categories and tags, so they are rebuilt on every
   // render rather than memoized; moving the selection re-renders the rows anyway.
   const ctx: GridCtx | null = gridCtx && { ...gridCtx, rowMenu, childMenu }
+
+  if (windowOffline) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className={`${PLAN_LINE} min-h-[45px] border-b`}>
+          <span className="-ml-2 flex items-center gap-1">
+            {viewSwitch}
+            <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={t('budgets.page.budget.nav.prev')} disabled={atStart} onClick={() => shiftWindow(-1)}>
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={t('budgets.page.budget.nav.next')} disabled={atEnd} onClick={() => shiftWindow(1)}>
+              <ChevronRight className="size-4" />
+            </Button>
+          </span>
+        </div>
+        <OfflineUnavailable subject="months" />
+      </div>
+    )
+  }
 
   if (!plan || !shownRows || !ctx || !ex) {
     if (isError) {

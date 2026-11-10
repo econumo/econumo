@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import type { ReactNode } from 'react'
 import { EntityIcon } from '@/components/EntityIcon'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -134,7 +136,7 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
 
   // offline, a period or scope with nothing cached has no figures: never the
   // previous report's under this one's labels
-  const unavailable = report.fetchStatus === 'paused' && (report.isPending || report.isPlaceholderData)
+  const unavailable = useUnavailableOffline(report)
   const data = unavailable ? undefined : report.data
   const shown = data ? data.accounts.filter((a) => !allZero(a)) : []
   const me = user?.id ?? ''
@@ -381,9 +383,11 @@ export function NetWorthReport({ tab }: { tab: ReportTab }) {
       </div>
       <ReportUpdatedAt query={report} />
 
-      {report.isPending && !unavailable ? (
+      {unavailable ? (
+        <OfflineUnavailable subject="report" />
+      ) : report.isPending ? (
         <div className="h-64 animate-pulse rounded-xl bg-econumo-hover" />
-      ) : unavailable || (report.isError && !data) ? (
+      ) : report.isError && !data ? (
         <p className="text-sm text-muted-foreground">{t('common.app.error')}</p>
       ) : shown.length === 0 ? (
         // the period stays switchable: an empty 1y window may hide balances All would show

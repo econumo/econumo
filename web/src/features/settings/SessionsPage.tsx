@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { MonitorSmartphone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -18,7 +20,9 @@ export function SessionsPage() {
   const { t, i18n } = useTranslation()
   const online = useOnline()
   const navigate = useNavigate()
-  const { data: sessions } = useSessions()
+  const sessionsQuery = useSessions()
+  const { data: sessions } = sessionsQuery
+  const offline = useUnavailableOffline(sessionsQuery)
   const providers = useProviders()
   const revokeSession = useRevokeSession()
   const revokeOthers = useRevokeOtherSessions()
@@ -53,6 +57,7 @@ export function SessionsPage() {
       <InfoBox>{t('user.page.settings.profile.sessions.description')}</InfoBox>
 
       <div className="flex max-w-md flex-col gap-2 py-2">
+        {offline ? <OfflineUnavailable /> : null}
         {(sessions ?? []).map((session) => (
           <div key={session.id} className="flex items-center gap-3 rounded-lg bg-econumo-card px-4 py-3">
             <MonitorSmartphone className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />

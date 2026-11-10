@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useSearchParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -27,6 +29,7 @@ export function LinkedAccountsPage() {
   const queryClient = useQueryClient()
   const providers = useProviders()
   const identities = useIdentities()
+  const offline = useUnavailableOffline(identities)
   const user = useUserData()
   const start = useStartOAuth()
   const inFlight = useOAuthInFlight((s) => s.inFlight)
@@ -115,6 +118,7 @@ export function LinkedAccountsPage() {
           <AlertDescription>{linkError}</AlertDescription>
         </Alert>
       ) : null}
+      {offline ? <OfflineUnavailable /> : null}
       {identities.data?.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('user.page.settings.profile.linked_accounts.empty')}</p>
       ) : null}

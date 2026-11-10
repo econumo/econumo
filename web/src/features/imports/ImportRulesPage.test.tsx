@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -251,4 +252,11 @@ it('switching the category type clears the picked category', async () => {
   await user.click(await screen.findByRole('option', { name: 'Salary' }))
   await user.click(within(dialog).getByRole('radio', { name: 'Income' }))
   expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveValue('Salary')
+})
+
+it('offline with nothing loaded on this device, the rule list says so instead of an empty or loading page', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderPage()
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not saved on this device')
 })

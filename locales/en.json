@@ -161,6 +161,14 @@
       "title": "Update required",
       "blockedApp": "This app is too old for your Econumo server: it requires app version {version} or newer. Please update the app to continue.",
       "blockedServer": "This app requires Econumo server {min} or newer, but your server is {version}. Please update the server to continue."
+    },
+    "offline_unavailable": {
+      "title": "Not saved on this device",
+      "page": "This page hasn't been loaded on this device yet. Connect to the internet to load it.",
+      "month": "This month isn't saved on this device. Connect to the internet to load it.",
+      "months": "These months aren't saved on this device. Connect to the internet to load them.",
+      "report": "This report isn't saved on this device. Connect to the internet to load it.",
+      "imports": "Imported transactions to review aren't saved on this device. Connect to the internet to load them."
     }
   },
   "accounts": {

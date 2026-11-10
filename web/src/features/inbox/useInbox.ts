@@ -1,4 +1,5 @@
 import type { AccountDto } from '@/api/dto/account'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import type { ImportFailedEventDto, ImportQueuedEventDto, ImportSourceDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { Id } from '@/api/types'
@@ -29,6 +30,8 @@ export interface Inbox {
   isLoaded: boolean
   /** the import queue or the source list request failed; either section may be showing stale/partial data */
   importsError: boolean
+  // offline with the import queue or sources never loaded on this device
+  importsOffline: boolean
   retryImports: () => void
 }
 
@@ -61,6 +64,7 @@ export function useInbox(): Inbox {
   const { invites } = usePendingInvites()
   const queue = useImportQueue()
   const sources = useImportSources()
+  const importsOffline = useUnavailableOffline(queue, sources)
   const recurring = useRecurring()
   const { data: accounts } = useAccounts()
   const folders = useFolders()
@@ -91,7 +95,8 @@ export function useInbox(): Inbox {
       (sources.data !== undefined || sources.isError) &&
       (recurring.data !== undefined || recurring.isError) &&
       foldersKnown,
-    importsError: queue.isError || sources.isError,
+    importsError: !importsOffline && (queue.isError || sources.isError),
+    importsOffline,
     retryImports: () => {
       void queue.refetch()
       void sources.refetch()

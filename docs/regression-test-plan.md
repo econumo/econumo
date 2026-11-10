@@ -2250,7 +2250,10 @@ shared with a partner.
       signed amount and currency; a partner's other unshared accounts are not
       listed. A month that fails to load
       shows an error instead of a shorter list; offline with nothing cached the
-      report and its card show the error, not an endless placeholder. A plain click on the chart or
+      report, its card and the Transactions list say "This report isn't saved on this
+      device. Connect to the internet to load it." (no endless placeholder, no "Something
+      went wrong"), while a report the device already loaded still shows; online, a
+      server error still shows "Something went wrong. Please try again." A plain click on the chart or
       the chip's × clears the range; changing the period or scope drops it.
       Clicking the chart draws no outline around it.
 - [ ] Net worth: an account row (inside an opened folder, or a budget's
@@ -2719,6 +2722,21 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       is written to local storage. Signing
       in offline fails at once with an error. A budget cell's transaction list
       that was never loaded shows a spinner offline, never "List is empty".
+- [ ] 📱 Offline, a page whose data this device never loaded says so in the page
+      (a cloud icon, "Not saved on this device" and what to do: connect to the internet)
+      instead of a loader that never ends, a "LOADING" screen with "Having trouble? Log
+      out", a generic error, or an empty list. Check: Budget view and phone view on a
+      month never opened (the month strip stays and switching back to a loaded month works),
+      the page opened on such a month, the Plan grid shifted to months never loaded (the
+      ‹ › arrows stay), Reports > Net worth and its card on a period or scope never loaded,
+      Settings > Profile > Sessions, Personal access tokens, Connected apps, Sign-in methods,
+      Import rules, Apple Wallet history, SimpleFIN history and a run, and the Inbox
+      ("Imported transactions to review aren't saved on this device", the other sections
+      still listed). The sidebar and every page already loaded stay usable, and when the
+      network returns the page loads by itself.
+- [ ] 📱 Offline, Settings > Personal settings: the Name reads as plain text in its card
+      (slightly faded like the Currency picker below it, no grey bar behind the text) and
+      cannot be edited; the same for every other card field disabled offline.
 - [ ] 📱 Offline, what stays usable and what is off: adding, editing and deleting
       a transaction, and changing a budget limit (Budget view, phone sheet, Plan grid,
       fill right) work; the Inbox "Try again" on a refused change works; Sign out works.
@@ -2782,7 +2800,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       The "Log out" link under a stuck loader and "Switch account" on the Connected-apps consent page ask the same question while anything is unsent, and go straight to sign-out when nothing is.
       Reopened with changes waiting, the confirmation names them even if opened at once (its button stays disabled for a moment while they load).
       "Set a password" with changes waiting: after signing back in as the same user they are still waiting and get sent.
-- [ ] 📱 Budget view with a plan waiting, offline, switching to a month not yet downloaded: the previous month's figures stay on screen and the not-saved icon stays on the cell of that month.
+- [ ] 📱 Budget view with a plan waiting, offline, switching to a month not yet downloaded: it says "This month isn't saved on this device", and switching back shows the month with the not-saved icon still on the cell.
 - [ ] Plan edits in flight on a flaky connection: edit one cell and then another before the first answers; when the requests time out both cells keep their new numbers with the not-saved icon, and discarding one in the Inbox brings back the server's number there and leaves the other.
 - [ ] 📱 Budget transaction list (Spent drill-down and a report's savings drill-down) with a transaction edited offline: a transfer shows the amount of the side listed; a new date within the period moves it under that day with no repeated day heading; a date outside the period, or another category or tag, takes it off the list until it is confirmed; a new category shows its name.
 - [ ] Sync button tap = incremental refresh: after an edit made on another

@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -111,4 +112,11 @@ it('a tap whose transaction was deleted says so, with nothing to create', async 
   const dialog = await screen.findByRole('dialog')
   expect(within(dialog).getByText('This transaction was imported and deleted later.')).toBeInTheDocument()
   expect(within(dialog).queryByRole('button', { name: 'Create transaction' })).toBeNull()
+})
+
+it('offline with nothing loaded on this device, the tap history says so instead of an empty or loading page', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderPage({ '': { items: [], hasMore: false } })
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not saved on this device')
 })

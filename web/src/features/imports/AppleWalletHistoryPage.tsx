@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { OfflineUnavailable } from '@/components/OfflineUnavailable'
+import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { useTranslation } from 'react-i18next'
 import type { ImportRunLinkDto } from '@/api/dto/imports'
 import { RouterPage } from '@/app/router-pages'
@@ -33,10 +35,12 @@ function localTime(posted: string): string {
 
 export function AppleWalletHistoryPage() {
   const { t, i18n } = useTranslation()
-  const { data: sources } = useImportSources()
+  const sourcesQuery = useImportSources()
+  const { data: sources } = sourcesQuery
   const wallet = sources?.find((s) => s.provider === 'apple-wallet')
   const history = useImportSourceHistory(wallet?.id)
   const rows = history.data?.pages.flatMap((p) => p.items) ?? []
+  const offline = useUnavailableOffline(sourcesQuery, ...(wallet ? [history] : []))
   const cardName = (externalAccountId: string) =>
     wallet?.cards.find((c) => c.externalAccountId === externalAccountId)?.externalName || externalAccountId
   const { data: transactions, isPending: transactionsLoading } = useTransactions()
@@ -106,8 +110,9 @@ export function AppleWalletHistoryPage() {
       ]}
     >
       <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
-        {history.isPending && wallet ? <p className="text-sm text-muted-foreground">{t('common.app.modal.loading.data_loading')}</p> : null}
-        {history.isError ? <p role="alert" className="text-sm text-destructive">{apiErrorMessage(history.error)}</p> : null}
+        {offline ? <OfflineUnavailable /> : null}
+        {history.isPending && wallet && !offline ? <p className="text-sm text-muted-foreground">{t('common.app.modal.loading.data_loading')}</p> : null}
+        {history.isError && !offline ? <p role="alert" className="text-sm text-destructive">{apiErrorMessage(history.error)}</p> : null}
         {sources && (!wallet || (history.isSuccess && rows.length === 0)) ? (
           <p className="rounded-lg bg-econumo-card px-4 py-3.5 text-sm text-muted-foreground">{t('imports.runs.empty')}</p>
         ) : null}

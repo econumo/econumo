@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -221,4 +222,11 @@ it('points the disabled Unlink button at the hint that explains it', async () =>
   const btn = await screen.findByRole('button', { name: 'Unlink' })
   expect(btn).toHaveAttribute('aria-describedby', 'linked-accounts-last-identity-hint')
   expect(screen.getByText('Set a password before unlinking your only sign-in method.')).toHaveAttribute('id', 'linked-accounts-last-identity-hint')
+})
+
+it('offline with nothing loaded on this device, the linked accounts list says so instead of an empty or loading page', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderPage()
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not saved on this device')
 })

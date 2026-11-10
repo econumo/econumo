@@ -64,7 +64,8 @@ interface ClassificationListProps<T extends ClassificationItem> {
   /** a second header action beside Create */
   secondaryAction?: ReactNode
   /** replaces the generic empty-list text */
-  emptyText?: string
+  // a node replaces the default empty line outright (e.g. the offline state)
+  emptyText?: ReactNode
   /** a function is needed when one list mixes item kinds with different nouns (e.g. tag vs label) */
   deleteTitle: string | ((item: T) => string)
   /** badge on archived rows; per-noun because languages inflect it per noun — a function is
@@ -442,9 +443,13 @@ export function ClassificationList<T extends ClassificationItem>({
         </div>
       ) : null}
       {visible.length === 0 ? (
-        <p className="px-1 py-2 text-sm text-muted-foreground">
-          {searching ? t('common.list.search_empty') : (emptyText ?? t('common.list.list_empty'))}
-        </p>
+        !searching && emptyText != null && typeof emptyText !== 'string' ? (
+          emptyText
+        ) : (
+          <p className="px-1 py-2 text-sm text-muted-foreground">
+            {searching ? t('common.list.search_empty') : (emptyText ?? t('common.list.list_empty'))}
+          </p>
+        )
       ) : (
         visibleSections.map((section) => {
           const sectionItems = section.items

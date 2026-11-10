@@ -188,3 +188,13 @@ it('a savings drill leaves out a transaction whose delete is waiting and shows a
   expect(screen.getByText('after the edit')).toBeInTheDocument()
   expect(screen.queryByText('before the edit')).toBeNull()
 })
+
+it('offline with a month never loaded, says it is not on this device instead of an error', async () => {
+  const { onlineManager } = await import('@tanstack/react-query')
+  server.use(...coreHandlers({ accounts, transactions }))
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderDialog({ budgetId: 'b1', row: { id: 'b-sav', kind: 'savings', name: 'Bob savings' }, from: '2026-07-01', to: '2026-08-01' })
+  expect(await screen.findByTestId('offline-unavailable')).toBeInTheDocument()
+  expect(screen.queryByText('Something went wrong. Please try again.')).toBeNull()
+})

@@ -200,3 +200,10 @@ it('offline: revoking another session is disabled, signing out still works', asy
   await user.click(within(dialog).getByRole('button', { name: 'Sign out' }))
   await waitFor(() => expect(screen.getByTestId('logout-page')).toBeInTheDocument())
 })
+
+it('offline with nothing loaded on this device, the session list says so instead of an empty or loading page', async () => {
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  renderPage()
+  expect(await screen.findByTestId('offline-unavailable')).toHaveTextContent('Not saved on this device')
+})

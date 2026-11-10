@@ -161,6 +161,14 @@
       "title": "Wymagana aktualizacja",
       "blockedApp": "Ta aplikacja jest zbyt stara dla Twojego serwera Econumo: wymagana jest wersja aplikacji {version} lub nowsza. Zaktualizuj aplikację, aby kontynuować.",
       "blockedServer": "Ta aplikacja wymaga serwera Econumo {min} lub nowszego, a Twój serwer to {version}. Zaktualizuj serwer, aby kontynuować."
+    },
+    "offline_unavailable": {
+      "title": "Nie zapisano na tym urządzeniu",
+      "page": "Ta strona nie została jeszcze wczytana na tym urządzeniu. Połącz się z internetem, aby ją wczytać.",
+      "month": "Ten miesiąc nie jest zapisany na tym urządzeniu. Połącz się z internetem, aby go wczytać.",
+      "months": "Te miesiące nie są zapisane na tym urządzeniu. Połącz się z internetem, aby je wczytać.",
+      "report": "Ten raport nie jest zapisany na tym urządzeniu. Połącz się z internetem, aby go wczytać.",
+      "imports": "Zaimportowane transakcje do przejrzenia nie są zapisane na tym urządzeniu. Połącz się z internetem, aby je wczytać."
     }
   },
   "accounts": {
