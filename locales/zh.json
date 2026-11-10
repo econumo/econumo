@@ -296,7 +296,8 @@
       "failing": "无法连接到服务器——正在重试",
       "full_reload": "正在清除缓存并重新加载…",
       "hold_hint": "长按可清除缓存并重新加载",
-      "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。"
+      "full_reload_offline": "您当前处于离线状态。请在恢复联网后清除缓存并重新加载。",
+      "offline": "无网络连接"
     },
     "data": {
       "reload_all": "清除缓存并重新加载"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "编辑交易"
+      },
+      "draft": {
+        "message": "未完成",
+        "restore": "恢复"
       },
       "form": {
         "date": {
@@ -442,6 +447,7 @@
         "newline": "换行",
         "custom_label": "自定义分隔符"
       },
+      "tag_hint": "每笔交易只能有一个预算标签。如需多个，请使用统计标签。",
       "new_labels_count": "本次导入将创建 {count} 个新标签"
     },
     "import_result": {
@@ -2111,9 +2117,14 @@
     "consent": {
       "title": "将应用连接到 Econumo",
       "wantsAccess": "请求访问您的 Econumo 账户。",
+      "official": "官方",
       "redirect": "允许后，您将被转到 {host}。",
       "loopback": "允许后，您将返回此电脑上的应用。",
-      "fullAccess": "它将能够读取并更改您所有的 Econumo 数据。",
+      "unverified": "由应用自行注册。Econumo 不验证其名称，请核对下方的地址。",
+      "unverifiedLoopback": "由应用自行注册。Econumo 不验证其名称。",
+      "wantsRead": "请求读取您的 Econumo 数据。",
+      "readAccess": "它无法更改任何内容。",
+      "fullAccess": "它将能够读取并更改您的数据。",
       "signedInAs": "当前登录账户：{email}",
       "switchAccount": "不是您？切换账户",
       "allow": "允许",
@@ -2138,6 +2149,7 @@
       "lastUsed": "上次使用 {when}",
       "loopback": "在这台电脑上运行",
       "returnsTo": "会将您带回 {host}",
+      "official": "官方",
       "menuItem": "已连接的应用"
     }
   },
@@ -2248,7 +2260,9 @@
       "not_available": "该货币不可用。",
       "in_use": "该货币正在使用中，无法删除。",
       "base_immutable": "基准货币无法修改。",
-      "cannot_be_hidden": "该货币无法隐藏。"
+      "cannot_be_hidden": "该货币无法隐藏。",
+      "rate_range_order": "结束日期不能早于开始日期",
+      "rate_range_too_long": "日期范围最多为 {max} 天"
     },
     "import": {
       "source_not_found": "尚未连接 Apple Wallet。请先在 设置 → Apple Wallet 中连接。",
@@ -2273,7 +2287,8 @@
       "disabled": "此服务器不支持连接应用。",
       "client_not_found": "此应用的注册已过期或无法识别。请在应用中移除 Econumo，然后重新添加。",
       "redirect_uri_mismatch": "此登录链接对该应用无效。请从应用中重新开始连接。",
-      "grant_not_found": "未找到已连接的应用。"
+      "grant_not_found": "未找到已连接的应用。",
+      "app_not_yours": "此应用已连接到另一个 Econumo 账号。请在应用中移除 Econumo，然后重新添加。"
     },
     "oauth": {
       "provider_not_configured": "登录提供方未配置",

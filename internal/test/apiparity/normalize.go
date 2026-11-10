@@ -29,7 +29,7 @@ func NormalizeParity(b []byte) string {
 var (
 	datetimeRe = regexp.MustCompile(`\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}`)
 	dateRe     = regexp.MustCompile(`\d{4}-\d{2}-\d{2}`)
-	tokenRe    = regexp.MustCompile(`eco_(ses|pat)_[A-Za-z0-9_-]{43}`)
+	tokenRe    = regexp.MustCompile(`eco_(ses|pat|oat)_[A-Za-z0-9_-]{43}`)
 
 	// inviteCodeRe redacts generate-invite's freshly-minted connection code — a
 	// 5-hex-char string with per-character randomized case

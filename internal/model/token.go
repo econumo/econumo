@@ -26,6 +26,7 @@ const (
 	TokenScopeFull   TokenScope = "full"
 	TokenScopeIngest TokenScope = "ingest"
 	TokenScopeMCP    TokenScope = "mcp"
+	TokenScopeRead   TokenScope = "read"
 )
 
 // ParseTokenScope fails closed: anything but the two user-selectable values is

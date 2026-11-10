@@ -3,6 +3,7 @@ package authserver
 import (
 	"context"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/econumo/econumo/internal/model"
@@ -26,7 +27,16 @@ func clientNotFound() error {
 	return &errs.ValidationError{Msg: "This app's registration has expired or is unknown. Remove Econumo from the app and add it again.", MsgCode: errs.CodeAuthServerClientNotFound}
 }
 
-func (s *Service) validate(ctx context.Context, req model.AuthorizationRequest) (*model.OAuthClient, *redirectErr, error) {
+// appNotYours must never name, hint at or confirm who owns the app.
+func appNotYours() error {
+	return &errs.ValidationError{Msg: "This app is connected to a different Econumo account. Remove Econumo from the app and add it again.", MsgCode: errs.CodeAuthServerAppNotYours}
+}
+
+func ownedByOther(c *model.OAuthClient, userID vo.Id) bool {
+	return !c.IsGlobal && c.OwnerUserID != nil && !c.OwnerUserID.Equal(userID)
+}
+
+func (s *Service) validate(ctx context.Context, userID vo.Id, req model.AuthorizationRequest) (*model.OAuthClient, *redirectErr, error) {
 	if !s.Enabled() {
 		return nil, nil, &errs.ValidationError{Msg: "Connecting apps is not available on this server.", MsgCode: errs.CodeAuthServerDisabled}
 	}
@@ -40,6 +50,10 @@ func (s *Service) validate(ctx context.Context, req model.AuthorizationRequest) 
 			return nil, nil, clientNotFound()
 		}
 		return nil, nil, err
+	}
+	// Before the redirect check, so a stranger cannot probe the registered URIs.
+	if ownedByOther(c, userID) {
+		return nil, nil, appNotYours()
 	}
 	if !MatchRedirectURI(c.RedirectURIs, req.RedirectURI) {
 		return nil, nil, &errs.ValidationError{Msg: "This sign-in link is not valid for this app. Start the connection again from the app.", MsgCode: errs.CodeAuthServerRedirectMismatch}
@@ -101,12 +115,13 @@ func (s *Service) errorRedirect(req model.AuthorizationRequest, re redirectErr) 
 }
 
 func (s *Service) DescribeAuthorization(ctx context.Context, userID vo.Id, req model.AuthorizationRequest) (model.AuthorizationRequestResult, error) {
-	c, re, err := s.validate(ctx, req)
+	c, re, err := s.validate(ctx, userID, req)
 	if err != nil {
 		return model.AuthorizationRequestResult{}, err
 	}
 	host, loopback := RedirectHost(req.RedirectURI)
-	res := model.AuthorizationRequestResult{ClientName: c.Name, RedirectHost: host, IsLoopback: loopback}
+	res := model.AuthorizationRequestResult{ClientName: c.Name, RedirectHost: host, IsLoopback: loopback,
+		IsGlobal: c.IsGlobal, Scope: string(grantedScope(req.Scope))}
 	if re != nil {
 		res.ErrorRedirectURL = s.errorRedirect(req, *re)
 	}
@@ -116,10 +131,13 @@ func (s *Service) DescribeAuthorization(ctx context.Context, userID vo.Id, req m
 // The generation is read under the user row lock, together with a check that
 // the presenting session is still live: a reclaim that committed after the
 // auth middleware accepted the session has revoked it, so no code is issued.
-func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.Id, req model.AuthorizationRequest) (model.AuthorizationDecisionResult, error) {
-	c, re, err := s.validate(ctx, req)
+func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.Id, fullAccess bool, req model.AuthorizationRequest) (model.AuthorizationDecisionResult, error) {
+	c, re, err := s.validate(ctx, userID, req)
 	if err != nil {
 		return model.AuthorizationDecisionResult{}, err
+	}
+	if !fullAccess && grantedScope(req.Scope) != model.TokenScopeRead {
+		return model.AuthorizationDecisionResult{}, &errs.PaymentRequiredError{Msg: "Read-only access. Write operations are disabled.", Code: errs.CodeReadonlyAccess}
 	}
 	if re != nil {
 		return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, *re)}, nil
@@ -129,6 +147,7 @@ func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.I
 		return model.AuthorizationDecisionResult{}, err
 	}
 	now := s.clock.Now().UTC()
+	codeInsertFailed := false
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		gen, err := s.creds.LockForOAuth(ctx, userID)
 		if err != nil {
@@ -141,17 +160,27 @@ func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.I
 		if !live {
 			return errs.NewUnauthorized("Invalid access token")
 		}
+		if err := s.claim(ctx, c, userID); err != nil {
+			return err
+		}
 		code := &model.OAuthAuthorizationCode{
 			CodeHash: hash, ClientID: c.ID, UserID: userID,
 			RedirectURI: req.RedirectURI, CodeChallenge: req.CodeChallenge, Resource: s.ResourceURL(),
-			CredentialsGeneration: gen, CreatedAt: now, ExpiresAt: now.Add(CodeTTL),
+			Scope: grantedScope(req.Scope), CredentialsGeneration: gen, CreatedAt: now, ExpiresAt: now.Add(CodeTTL),
 		}
 		if err := s.repo.InsertCode(ctx, code); err != nil {
+			codeInsertFailed = true
 			return err
 		}
 		return s.repo.MarkClientUsed(ctx, c.ID, now)
 	})
 	if err != nil {
+		// app:delete removing the client after validate makes the code INSERT
+		// fail its foreign key. Checked after the rollback: an aborted
+		// PostgreSQL transaction runs no further statements.
+		if codeInsertFailed && s.clientGone(ctx, c.ID) {
+			return model.AuthorizationDecisionResult{}, clientNotFound()
+		}
 		return model.AuthorizationDecisionResult{}, err
 	}
 	reqctx.AddLogAttr(ctx, "client_id", c.ID.String())
@@ -162,8 +191,32 @@ func (s *Service) ApproveAuthorization(ctx context.Context, userID, tokenID vo.I
 	return model.AuthorizationDecisionResult{RedirectURL: s.redirectWith(req.RedirectURI, p)}, nil
 }
 
+// claim makes the first approver the owner of a user app. A claim that matches
+// no row lost a race (or the app changed since validate), so the client is
+// re-read in this transaction to tell the cases apart.
+func (s *Service) claim(ctx context.Context, c *model.OAuthClient, userID vo.Id) error {
+	if c.IsGlobal || c.OwnerUserID != nil {
+		return nil
+	}
+	n, err := s.repo.ClaimClient(ctx, c.ID, userID)
+	if err != nil || n == 1 {
+		return err
+	}
+	cur, err := s.repo.GetClient(ctx, c.ID)
+	if err != nil {
+		if _, ok := errs.AsNotFound(err); ok {
+			return clientNotFound()
+		}
+		return err
+	}
+	if cur.IsGlobal || cur.OwnerUserID != nil && cur.OwnerUserID.Equal(userID) {
+		return nil
+	}
+	return appNotYours()
+}
+
 func (s *Service) DeclineAuthorization(ctx context.Context, userID vo.Id, req model.AuthorizationRequest) (model.AuthorizationDecisionResult, error) {
-	_, re, err := s.validate(ctx, req)
+	_, re, err := s.validate(ctx, userID, req)
 	if err != nil {
 		return model.AuthorizationDecisionResult{}, err
 	}
@@ -171,4 +224,14 @@ func (s *Service) DeclineAuthorization(ctx context.Context, userID vo.Id, req mo
 		return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, *re)}, nil
 	}
 	return model.AuthorizationDecisionResult{RedirectURL: s.errorRedirect(req, redirectErr{code: "access_denied"})}, nil
+}
+
+// A client asking for mcp, alone or next to read, keeps full access, so a client
+// that requests everything the discovery document lists still reaches /mcp.
+func grantedScope(requested string) model.TokenScope {
+	fields := strings.Fields(requested)
+	if !slices.Contains(fields, ScopeRead) || slices.Contains(fields, Scope) {
+		return model.TokenScopeMCP
+	}
+	return model.TokenScopeRead
 }

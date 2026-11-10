@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { IDBFactory } from 'fake-indexeddb'
@@ -460,12 +460,14 @@ it('a snapshot of another user never shows the stored transactions', async () =>
 
 it('clearPersistedQueryCache empties the stored transactions and the snapshot', async () => {
   localStorage.setItem(QUERY_CACHE_KEY, '{}')
+  localStorage.setItem('econumo.transaction-draft', '{}')
   await putBuckets(fixtureUser.id, [{ accountId: 'a1', revision: 1, items: [], authors: [] }])
   expect((await loadBuckets(fixtureUser.id)).size).toBe(1)
 
   await clearPersistedQueryCache()
 
   expect(localStorage.getItem(QUERY_CACHE_KEY)).toBeNull()
+  expect(localStorage.getItem('econumo.transaction-draft')).toBeNull()
   expect((await loadBuckets(fixtureUser.id)).size).toBe(0)
 })
 
@@ -500,6 +502,23 @@ describe('the sync button', () => {
     seen.length = 0
     return { ...view, seen }
   }
+
+  it.each([
+    ['the full footer', false],
+    ['the icon rail', true],
+  ])('offline, %s shows a no-connection icon instead of the button, until the connection returns', async (_, collapsed) => {
+    onTestFinished(() => onlineManager.setOnline(true))
+    useSidebarStore.setState({ collapsed })
+    await bootWarm()
+
+    act(() => onlineManager.setOnline(false))
+    expect(screen.queryByRole('button', { name: 'sync' })).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'No connection' })).toHaveAttribute('title', expect.stringContaining('No connection'))
+
+    act(() => onlineManager.setOnline(true))
+    expect(screen.getByRole('button', { name: 'sync' })).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'No connection' })).not.toBeInTheDocument()
+  })
 
   it('a tap refreshes without downloading transactions whose revisions are unchanged', async () => {
     const { queryClient, seen } = await bootWarm()

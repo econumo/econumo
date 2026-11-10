@@ -2,7 +2,8 @@ import {
   initialFormState,
   buildPayload,
   evaluatedAmount,
-  accountOptions,
+  hiddenFolderAccountIds,
+  visibleAccountsFirst,
   categoryOptions,
   canChangeAccountData,
   classificationChips,
@@ -219,14 +220,26 @@ it('falls back to the primary amount when the recipient amount is unparseable', 
   expect(transfer.amountRecipient).toBe('10')
 })
 
-it('creation offers only accounts in visible folders; edit offers all', () => {
-  const accounts = [account({ id: 'a1', folderId: 'f-visible' }), account({ id: 'a2', folderId: 'f-hidden' })]
+it('a new form defaults to the first visible account', () => {
+  const accounts = [account({ id: 'a-h', folderId: 'f-hidden' }), account({ id: 'a-v', folderId: 'f-visible' })]
   const folders = [
     { id: 'f-visible', name: 'V', position: 0, isVisible: 1 as const },
     { id: 'f-hidden', name: 'H', position: 1, isVisible: 0 as const },
   ]
-  expect(accountOptions(accounts, folders, true).map((a) => a.id)).toEqual(['a1'])
-  expect(accountOptions(accounts, folders, false).map((a) => a.id)).toEqual(['a1', 'a2'])
+  expect(initialFormState({}, visibleAccountsFirst(accounts, folders), null).accountId).toBe('a-v')
+})
+
+it('finds the accounts living in hidden folders', () => {
+  const accounts = [
+    account({ id: 'a1', folderId: 'f-visible' }),
+    account({ id: 'a2', folderId: 'f-hidden' }),
+    account({ id: 'a3', folderId: null }),
+  ]
+  const folders = [
+    { id: 'f-visible', name: 'V', position: 0, isVisible: 1 as const },
+    { id: 'f-hidden', name: 'H', position: 1, isVisible: 0 as const },
+  ]
+  expect([...hiddenFolderAccountIds(accounts, folders)]).toEqual(['a2'])
 })
 
 it('categories filter by type, owner and archived flag', () => {

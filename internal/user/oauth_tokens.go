@@ -43,7 +43,7 @@ func (s *Service) IsTokenLive(ctx context.Context, userID, tokenID vo.Id) (bool,
 // IssueOAuthAccessToken mints an eco_oat_ token for the grant. The expiry is
 // fixed at ttl (Touch slides sessions only). ok=false means the generation
 // fence matched no row: a reclaim landed after the caller read its evidence.
-func (s *Service) IssueOAuthAccessToken(ctx context.Context, userID, grantID vo.Id, name string, generation int64, ttl time.Duration) (string, bool, error) {
+func (s *Service) IssueOAuthAccessToken(ctx context.Context, userID, grantID vo.Id, name string, scope model.TokenScope, generation int64, ttl time.Duration) (string, bool, error) {
 	raw, hash, err := generateAccessToken(model.TokenKindOAuth)
 	if err != nil {
 		return "", false, err
@@ -52,7 +52,7 @@ func (s *Service) IssueOAuthAccessToken(ctx context.Context, userID, grantID vo.
 	exp := now.Add(ttl)
 	t := &model.AccessToken{
 		ID: vo.NewId(), UserID: userID, Kind: model.TokenKindOAuth, TokenHash: hash,
-		Scope: model.TokenScopeMCP, Name: &name, CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp, GrantID: &grantID,
+		Scope: scope, Name: &name, CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp, GrantID: &grantID,
 	}
 	n, err := s.tokens.InsertOAuthIfGeneration(ctx, t, generation)
 	if err != nil {

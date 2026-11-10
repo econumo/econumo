@@ -14,9 +14,8 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/pgsql"
 )
 
-// The PostgreSQL twin of TestMigration20261108CompletesOnboardingForUsersWithAccounts:
-// the two engines carry separate SQL for the same cleanup.
-func TestMigration20261108Pgsql(t *testing.T) {
+// The PostgreSQL twin of TestMigration20261108_BackfillsClientOwners.
+func TestMigration20261108_Pgsql(t *testing.T) {
 	url := os.Getenv("DATABASE_TEST_PGSQL_URL")
 	if url == "" {
 		t.Skip("DATABASE_TEST_PGSQL_URL not set")
@@ -60,7 +59,7 @@ func TestMigration20261108Pgsql(t *testing.T) {
 		}
 		return b.String()
 	}
-	checkOnboardingBackfill(t, db, rebind, func() {
+	checkOAuthOwnerBackfill(t, db, rebind, func() {
 		if err := migrate.Run(ctx, db, upTo(""), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 			t.Fatalf("target migration: %v", err)
 		}

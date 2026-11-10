@@ -296,7 +296,8 @@
       "failing": "Brak połączenia z serwerem — ponawianie próby",
       "full_reload": "Czyszczenie pamięci podręcznej i ponowne wczytywanie…",
       "hold_hint": "Przytrzymaj, aby wyczyścić pamięć podręczną i wczytać ponownie",
-      "full_reload_offline": "Jesteś offline. Wyczyść pamięć podręczną i wczytaj ponownie, gdy wrócisz do sieci."
+      "full_reload_offline": "Jesteś offline. Wyczyść pamięć podręczną i wczytaj ponownie, gdy wrócisz do sieci.",
+      "offline": "Brak połączenia"
     },
     "data": {
       "reload_all": "Wyczyść pamięć podręczną i wczytaj ponownie"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Edytuj transakcję"
+      },
+      "draft": {
+        "message": "Niedokończona",
+        "restore": "Przywróć"
       },
       "form": {
         "date": {
@@ -442,6 +447,7 @@
         "newline": "Nowa linia",
         "custom_label": "Własny separator"
       },
+      "tag_hint": "Transakcja może mieć tylko jeden tag budżetowy. Aby dodać więcej, użyj pola Tagi raportowe.",
       "new_labels_count": "Ten import utworzy {count} nowy tag | Ten import utworzy {count} nowe tagi | Ten import utworzy {count} nowych tagów"
     },
     "import_result": {
@@ -2111,9 +2117,14 @@
     "consent": {
       "title": "Połącz aplikację z Econumo",
       "wantsAccess": "chce uzyskać dostęp do Twojego konta Econumo.",
+      "official": "Oficjalna",
       "redirect": "Po wyrażeniu zgody zostaniesz przekierowany do {host}.",
       "loopback": "Po wyrażeniu zgody wrócisz do aplikacji na tym komputerze.",
-      "fullAccess": "Będzie mogła odczytywać i zmieniać wszystkie Twoje dane w Econumo.",
+      "unverified": "Zarejestrowana przez samą aplikację. Econumo nie weryfikuje jej nazwy; sprawdź adres poniżej.",
+      "unverifiedLoopback": "Zarejestrowana przez samą aplikację. Econumo nie weryfikuje jej nazwy.",
+      "wantsRead": "chce odczytać Twoje dane w Econumo.",
+      "readAccess": "Niczego nie zmieni.",
+      "fullAccess": "Będzie mogła odczytywać i zmieniać Twoje dane.",
       "signedInAs": "Zalogowano jako {email}",
       "switchAccount": "To nie Ty? Zmień konto",
       "allow": "Zezwól",
@@ -2138,6 +2149,7 @@
       "lastUsed": "Ostatnio używana {when}",
       "loopback": "Działa na tym komputerze",
       "returnsTo": "Odsyła Cię do {host}",
+      "official": "Oficjalna",
       "menuItem": "Połączone aplikacje"
     }
   },
@@ -2248,7 +2260,9 @@
       "not_available": "Waluta jest niedostępna.",
       "in_use": "Waluta jest używana i nie można jej usunąć.",
       "base_immutable": "Waluty bazowej nie można zmienić.",
-      "cannot_be_hidden": "Tej waluty nie można ukryć."
+      "cannot_be_hidden": "Tej waluty nie można ukryć.",
+      "rate_range_order": "Data końcowa nie może być wcześniejsza niż data początkowa",
+      "rate_range_too_long": "Zakres dat może obejmować co najwyżej {max} dni"
     },
     "import": {
       "source_not_found": "Apple Wallet nie jest połączony. Najpierw połącz go w Ustawienia → Apple Wallet.",
@@ -2273,7 +2287,8 @@
       "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",
       "client_not_found": "Rejestracja tej aplikacji wygasła lub jest nieznana. Usuń Econumo z aplikacji i dodaj je ponownie.",
       "redirect_uri_mismatch": "Ten link logowania jest nieprawidłowy dla tej aplikacji. Rozpocznij połączenie ponownie z poziomu aplikacji.",
-      "grant_not_found": "Nie znaleziono połączonej aplikacji."
+      "grant_not_found": "Nie znaleziono połączonej aplikacji.",
+      "app_not_yours": "Ta aplikacja jest połączona z innym kontem Econumo. Usuń Econumo z aplikacji i dodaj je ponownie."
     },
     "oauth": {
       "provider_not_configured": "Dostawca logowania nie jest skonfigurowany",

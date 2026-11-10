@@ -24,6 +24,20 @@ type TokenAuthenticator interface {
 // IngestPathPrefix is the only route family an ingest-scoped token may reach.
 const IngestPathPrefix = "/api/v1/import/ingest-"
 
+// ReadScopePaths are the only routes a read-scoped token may call, and only
+// with GET. The apiparity guard asserts each is a registered GET route.
+var ReadScopePaths = map[string]bool{
+	"/api/v1/user/get-user-data":                       true,
+	"/api/v1/account/get-account-list":                 true,
+	"/api/v1/category/get-category-list":               true,
+	"/api/v1/tag/get-tag-list":                         true,
+	"/api/v1/label/get-label-list":                     true,
+	"/api/v1/currency/get-currency-list":               true,
+	"/api/v1/currency/get-currency-rate-list":          true,
+	"/api/v1/transaction/get-account-transaction-list": true,
+	"/api/v1/transaction/get-transaction-list":         true,
+}
+
 // MCPPath is the only path an mcp-scoped token may reach.
 const MCPPath = "/mcp"
 
@@ -57,6 +71,10 @@ type ctxKeyTokenIDType struct{}
 
 var ctxKeyTokenID ctxKeyTokenIDType
 
+type ctxKeyAccessLevelType struct{}
+
+var ctxKeyAccessLevel ctxKeyAccessLevelType
+
 // ReadonlyAllowedPaths are the POST endpoints a restricted caller may still
 // reach. The principle: a restricted user may always secure their account,
 // leave it, or pay to restore it, but may not add data. update-password and
@@ -77,7 +95,10 @@ var ctxKeyTokenID ctxKeyTokenIDType
 // authserver/revoke-connected-app joins too: revoking a connected app removes
 // access, like revoking a token. authserver/decline-authorization joins as
 // well: declining writes nothing, and a restricted user must be able to send
-// the app back with a refusal.
+// the app back with a refusal. authserver/approve-authorization joins so a
+// restricted owner can still approve a read-only app; the service
+// itself refuses every non-read approval for a restricted caller with the
+// same 402.
 //
 // Exported so a guard test (internal/test/apiparity) can assert every path
 // here is still a real registered route, catching a route rename that would
@@ -107,6 +128,7 @@ var ReadonlyAllowedPaths = map[string]bool{
 	"/api/v1/oauth/unlink-identity":            true,
 	"/api/v1/authserver/revoke-connected-app":  true,
 	"/api/v1/authserver/decline-authorization": true,
+	"/api/v1/authserver/approve-authorization": true,
 }
 
 // AuthWith builds the authentication middleware with optional configuration.
@@ -144,16 +166,18 @@ func AuthWith(authn TokenAuthenticator, opts AuthOptions) Middleware {
 				deny(err)
 				return
 			}
-			// Allowlist, not a denylist: three known scopes (full anywhere; ingest
-			// only under IngestPathPrefix; mcp only on /mcp while OAuth is enabled),
+			// Allowlist, not a denylist: four known scopes (full anywhere; ingest
+			// only under IngestPathPrefix; mcp only on /mcp while OAuth is enabled;
+			// read only on GET of ReadScopePaths),
 			// so an empty or unknown stored scope is rejected everywhere — the repo
 			// read path does not validate the column, so this gate is the only place
 			// that does. The 401 text is identical to a bad token on purpose: an
-			// ingest or mcp credential must not reveal that it is valid elsewhere.
+			// ingest, mcp or read credential must not reveal that it is valid elsewhere.
 			switch {
 			case p.Scope == model.TokenScopeFull:
 			case p.Scope == model.TokenScopeIngest && strings.HasPrefix(r.URL.Path, IngestPathPrefix):
 			case p.Scope == model.TokenScopeMCP && opts.AllowMCPScope && r.URL.Path == MCPPath:
+			case p.Scope == model.TokenScopeRead && r.Method == http.MethodGet && ReadScopePaths[r.URL.Path]:
 			default:
 				deny(errs.NewUnauthorized("Invalid access token"))
 				return
@@ -182,6 +206,7 @@ func AuthWith(authn TokenAuthenticator, opts AuthOptions) Middleware {
 			}
 			ctx = context.WithValue(ctx, ctxKeyUserID, userID)
 			ctx = context.WithValue(ctx, ctxKeyTokenID, tokenID)
+			ctx = context.WithValue(ctx, ctxKeyAccessLevel, level)
 			reqctx.AddLogAttr(ctx, "user_id", userID.String())
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -226,6 +251,13 @@ func UserIDFromCtx(ctx context.Context) (vo.Id, bool) {
 func TokenIDFromCtx(ctx context.Context) (vo.Id, bool) {
 	id, ok := ctx.Value(ctxKeyTokenID).(vo.Id)
 	return id, ok
+}
+
+// AccessLevelFromCtx returns the authenticated principal's effective access
+// level stored by the auth middleware.
+func AccessLevelFromCtx(ctx context.Context) (model.AccessLevel, bool) {
+	l, ok := ctx.Value(ctxKeyAccessLevel).(model.AccessLevel)
+	return l, ok
 }
 
 // RequireUser pulls the user id placed by the auth middleware; absence is

@@ -12,20 +12,20 @@ import (
 )
 
 type Service struct {
-	repo     Repository
-	accounts AccountResolver
-	grants   AccountGrants
-	visible  VisibleAccounts
-	creator  TransactionCreator
-	labels   LabelOwnership
-	cats     CategoryLister
-	tx       port.TxRunner
-	ops      port.OperationGuard
-	clock    port.Clock
+	repo      Repository
+	accounts  AccountResolver
+	grants    AccountGrants
+	available AvailableAccounts
+	creator   TransactionCreator
+	labels    LabelOwnership
+	cats      CategoryLister
+	tx        port.TxRunner
+	ops       port.OperationGuard
+	clock     port.Clock
 }
 
-func NewService(repo Repository, accounts AccountResolver, grants AccountGrants, visible VisibleAccounts, creator TransactionCreator, labels LabelOwnership, cats CategoryLister, tx port.TxRunner, ops port.OperationGuard, clock port.Clock) *Service {
-	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, creator: creator, labels: labels, cats: cats, tx: tx, ops: ops, clock: clock}
+func NewService(repo Repository, accounts AccountResolver, grants AccountGrants, available AvailableAccounts, creator TransactionCreator, labels LabelOwnership, cats CategoryLister, tx port.TxRunner, ops port.OperationGuard, clock port.Clock) *Service {
+	return &Service{repo: repo, accounts: accounts, grants: grants, available: available, creator: creator, labels: labels, cats: cats, tx: tx, ops: ops, clock: clock}
 }
 
 // checkCategoryKind refuses a category of the other kind (an income category

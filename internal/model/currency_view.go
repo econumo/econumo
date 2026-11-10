@@ -29,4 +29,6 @@ type CurrencyRateViewRow struct {
 	BaseCurrencyID string
 	Rate           string
 	UpdatedAt      string
+	// Date is the published day, "Y-m-d".
+	Date string
 }

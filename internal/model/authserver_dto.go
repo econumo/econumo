@@ -48,6 +48,8 @@ type AuthorizationRequestResult struct {
 	ClientName       string `json:"clientName"`
 	RedirectHost     string `json:"redirectHost"`
 	IsLoopback       bool   `json:"isLoopback"`
+	IsGlobal         bool   `json:"isGlobal"`
+	Scope            string `json:"scope"`            // "mcp" | "read"
 	ErrorRedirectURL string `json:"errorRedirectUrl"` // non-empty: navigate there instead of showing consent
 }
 
@@ -72,6 +74,7 @@ type ConnectedAppResult struct {
 	ClientName   string `json:"clientName"`
 	RedirectHost string `json:"redirectHost"`
 	IsLoopback   bool   `json:"isLoopback"`
+	IsGlobal     bool   `json:"isGlobal"`
 	CreatedAt    string `json:"createdAt"`
 	LastUsedAt   string `json:"lastUsedAt"`
 }

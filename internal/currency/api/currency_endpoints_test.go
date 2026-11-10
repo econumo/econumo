@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -146,6 +147,43 @@ func TestGetCurrencyRateList_LatestDateOnly(t *testing.T) {
 	}
 	if byCur[usdID].Rate != "1" {
 		t.Fatalf("synthetic base rate = %q, want '1'", byCur[usdID].Rate)
+	}
+}
+
+func TestGetCurrencyRateList_Ranged(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+	h.resetCurrencies(t)
+	h.seedCurrency(t, usdID, "USD", "$", 2)
+	h.seedCurrency(t, eurID, "EUR", "€", 2)
+	h.seedRate(t, "r1", eurID, usdID, "2026-02-20", "0.90000000")
+	h.seedRate(t, "r2", eurID, usdID, "2026-02-27", "0.91000000")
+	h.seedRate(t, "r3", eurID, usdID, "2026-03-03", "0.92000000")
+
+	status, env := h.do(t, http.MethodGet, "/api/v1/currency/get-currency-rate-list?from=2026-03-01&to=2026-03-31", token)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[rateItemsWrapper](t, env.Data)
+	var eurDates []string
+	for _, it := range res.Items {
+		if it.Date == "" {
+			t.Fatalf("item without date: %+v", it)
+		}
+		if it.CurrencyID == eurID {
+			eurDates = append(eurDates, it.Date)
+		}
+	}
+	if len(eurDates) != 2 || eurDates[0] != "2026-02-27" || eurDates[1] != "2026-03-03" {
+		t.Fatalf("eur dates = %v, want [2026-02-27 2026-03-03]", eurDates)
+	}
+
+	status, env = h.do(t, http.MethodGet, "/api/v1/currency/get-currency-rate-list?from=2026-03-01", token)
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
+	}
+	if !strings.Contains(string(env.Errors), `"to"`) {
+		t.Fatalf("want errors.to; body: %s", env.raw)
 	}
 }
 

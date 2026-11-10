@@ -36,7 +36,8 @@ import {
   useTransactionForm,
   buildPayload,
   scrubForeignClassifications,
-  accountOptions,
+  hiddenFolderAccountIds,
+  visibleAccountsFirst,
   categoryOptions,
   canChangeAccountData,
   classificationChips,
@@ -50,6 +51,7 @@ import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TransactionType } from '@/api/dto/transaction'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { TransactionDatePicker } from './TransactionDatePicker'
+import { clearTransactionDraftOf, useTransactionDraft } from './transactionDraft'
 
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 
@@ -79,11 +81,13 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
 
   const { form, patch, setType, account, accountRecipient, recomputeRecipientAmount, swapAccounts } = useTransactionForm(
     params,
-    accounts,
+    visibleAccountsFirst(accounts, folders),
     routeAccountId ?? null,
   )
   const { errors, setErrors, clear: clearError } = useFormErrors<Record<string, string | undefined>>()
   const [addTagOpen, setAddTagOpen] = useState(false)
+  // prefilled forms can simply be opened again from where they came from
+  const draft = useTransactionDraft(form, !params.transaction && !params.postRecurring && !params.importQueued)
 
   const isTransfer = form.type === 'transfer'
   const isExpense = form.type === 'expense'
@@ -120,10 +124,11 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     }
   }, [ownerId, categories, payees, tags, labels, form, patch])
 
-  const selectableAccounts = accountOptions(accounts, folders, form.isNew)
-  // a transfer needs two accounts the user can write to; an existing transfer
-  // keeps its type so it stays editable
-  const transferUnavailable = !isTransfer && selectableAccounts.filter((a) => canWriteToAccount(a, user?.id)).length < 2
+  const hiddenAccountIds = hiddenFolderAccountIds(accounts, folders)
+  // a transfer needs two accounts the user can write to, outside hidden folders;
+  // an existing transfer keeps its type, even after trying another one, so it stays editable
+  const wasTransfer = (params.transaction ?? params.postRecurring)?.type === 'transfer'
+  const transferUnavailable = !isTransfer && !wasTransfer && accounts.filter((a) => !hiddenAccountIds.has(a.id) && canWriteToAccount(a, user?.id)).length < 2
   const currentCategories = categoryOptions(categories, form.type, ownerId)
   const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
   const chips = classificationChips(tags, labels, form, ownerId)
@@ -214,6 +219,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         await postRecurring.mutateAsync({ ...payload, recurringId: params.postRecurring.id })
       } else if (form.isNew) {
         await createTransaction.mutateAsync(payload)
+        clearTransactionDraftOf(form.id)
         if (isTransfer && payload.accountRecipientId && payload.accountRecipientId !== accountPageId) {
           setSwitchAccountPrompt(payload.accountRecipientId)
         } else if (accountPageId && payload.accountId !== accountPageId && payload.accountRecipientId !== accountPageId) {
@@ -239,6 +245,33 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     }
   }
 
+  const cancel = () => {
+    draft.leave()
+    onDone()
+  }
+
+  // The draft keeps its id: if its first submit reached the server and only
+  // the response was lost, the server refuses the repeat instead of duplicating.
+  const restoreDraft = () => {
+    if (draft.offer) {
+      patch(draft.offer)
+      setErrors({})
+      trackEvent(METRICS.TRANSACTION_DRAFT_RESTORE)
+    }
+  }
+
+  const draftSummary = draft.offer
+    ? [
+        draft.offer.amount,
+        accounts.find((a) => a.id === draft.offer?.accountId)?.name,
+        categories.find((c) => c.id === draft.offer?.categoryId)?.name,
+        payees.find((p) => p.id === draft.offer?.payeeId)?.name,
+        draft.offer.description,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : ''
+
   const dateOnly = dayKey(form.date)
   const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending || importQueued.isPending
   // posting a template creates an ordinary transaction (prefilled from it), so
@@ -253,6 +286,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     searchText: a.name,
     icon: a.icon,
     disabled: !canWriteToAccount(a, user?.id),
+    hiddenLabel: hiddenAccountIds.has(a.id) ? t('search.hidden_folder') : undefined,
   })
 
   return (
@@ -262,11 +296,11 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       fullScreen
       hideHeader
       dismissible={false}
-      onOpenChange={(o) => !o && onDone()}
+      onOpenChange={(o) => !o && cancel()}
       title={title}
       footer={
         <div className={dialogActionsClass}>
-          <Button type="button" variant="secondary" onClick={onDone}>
+          <Button type="button" variant="secondary" onClick={cancel}>
             {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="transaction-dialog-form" disabled={pending}>
@@ -310,6 +344,17 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         </span>
       </div>
 
+      {draft.offer ? (
+        <div role="status" className="flex items-center gap-2 rounded-lg bg-econumo-card pl-3 text-sm">
+          <p className="min-w-0 flex-1 truncate">
+            {t('transactions.modal.draft.message')} <span className="text-muted-foreground">{draftSummary}</span>
+          </p>
+          <Button type="button" variant="ghost" size="sm" className="shrink-0 max-sm:h-11" onClick={restoreDraft}>
+            {t('transactions.modal.draft.restore')}
+          </Button>
+        </div>
+      ) : null}
+
       <div className="flex rounded-lg bg-econumo-card p-1" role="radiogroup" aria-label="type">
         {TYPE_ORDER.map((type) => (
           <button
@@ -337,7 +382,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
               title={t('transactions.modal.form.account.label')}
               value={form.accountId}
               onChange={(id) => patch({ accountId: id })}
-              options={selectableAccounts.map(accountToOption)}
+              options={accounts.map(accountToOption)}
             />
           </div>
         ) : null}
@@ -388,7 +433,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                     title={t('transactions.modal.form.from.label')}
                     value={form.accountId}
                     onChange={setSenderAccount}
-                    options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
+                    options={accounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
                   />
                 </SelectCard>
               </div>
@@ -409,7 +454,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 title={t('transactions.modal.form.to.label')}
                 value={form.accountRecipientId}
                 onChange={setRecipientAccount}
-                options={selectableAccounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
+                options={accounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
               />
             </SelectCard>
           </div>

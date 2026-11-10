@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, Copy, Plug } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
@@ -60,10 +61,21 @@ export function ConnectedAppsPage() {
           </div>
         ) : null}
         {(apps ?? []).map((app) => (
-          <div key={app.id} className="flex items-center gap-3 rounded-lg bg-econumo-card px-4 py-3">
+          <div
+            key={app.id}
+            data-testid={`connected-app-${app.id}`}
+            className="flex items-center gap-3 rounded-lg bg-econumo-card px-4 py-3"
+          >
             <Plug className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="truncate text-sm">{app.clientName}</span>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-sm">{app.clientName}</span>
+                {app.isGlobal && (
+                  <Badge variant="secondary" className="shrink-0">
+                    {t('authserver.apps.official')}
+                  </Badge>
+                )}
+              </div>
               <span className="truncate text-xs text-muted-foreground">
                 {app.isLoopback
                   ? t('authserver.apps.loopback')

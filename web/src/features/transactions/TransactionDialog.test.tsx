@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -10,6 +10,8 @@ import { useUiStore } from '@/app/uiStore'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { TransactionDialog } from './TransactionDialog'
+import { DRAFT_TTL_MS, hasDraftContent } from './transactionDraft'
+import type { TransactionFormState } from './useTransactionForm'
 
 function mockMatchMedia(phone = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -668,6 +670,90 @@ it('editing an existing transfer keeps the Transfer type with one writable accou
   expect(transfer).toHaveAttribute('aria-checked', 'true')
 })
 
+it('editing offers a hidden-folder account only to a search of three characters', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho() as unknown as TransactionDto })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+
+  const picker = await screen.findByRole('combobox', { name: 'account' })
+  await waitFor(() => expect((picker as HTMLInputElement).value).toContain('Cash'))
+  await user.click(picker)
+  await screen.findByRole('option', { name: /Bank/ })
+  // the folder list arrives on its own request
+  await waitFor(() => expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument())
+
+  await user.keyboard('und')
+  expect(await screen.findByRole('option', { name: /Under the mattress.*Hidden folder/ })).toBeInTheDocument()
+})
+
+it('editing a transaction of a hidden-folder account still names that account', async () => {
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ accountId: 'a-hidden' }) as unknown as TransactionDto })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+
+  await waitFor(() => expect(screen.getByRole<HTMLInputElement>('combobox', { name: 'account' }).value).toContain('Under the mattress'))
+  expect(await screen.findByRole('img', { name: 'Hidden folder' })).toBeInTheDocument()
+})
+
+it('adding reaches a hidden-folder account through a search too', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  await user.click(await screen.findByRole('combobox', { name: 'account' }))
+  await screen.findByRole('option', { name: /Bank/ })
+  // the folder list arrives on its own request
+  await waitFor(() => expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument())
+
+  await user.keyboard('und')
+  expect(await screen.findByRole('option', { name: /Under the mattress/ })).toBeInTheDocument()
+})
+
+it.each([
+  ['adding', { type: 'expense' as const }, 'Add transaction'],
+  ['editing', { transaction: wireTxEcho() as unknown as TransactionDto }, 'Edit transaction'],
+])('%s: Transfer is unavailable when the only other writable account sits in a hidden folder', async (_mode, params, heading) => {
+  const hidden = fixtureAccounts.find((a) => a.id === 'a-hidden')!
+  server.use(...coreHandlers({ accounts: [fixtureAccounts[0], hidden] }))
+  renderDialog()
+  useUiStore.getState().openTransactionModal(params)
+  await screen.findByRole('heading', { name: heading })
+
+  await waitFor(() => expect(screen.getByRole('radio', { name: 'Transfer' })).toBeDisabled())
+})
+
+it('an existing transfer can go back to Transfer after trying another type', async () => {
+  const hidden = fixtureAccounts.find((a) => a.id === 'a-hidden')!
+  server.use(...coreHandlers({ accounts: [fixtureAccounts[0], hidden] }))
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: wireTxEcho({ type: 'transfer', accountId: 'a1', accountRecipientId: 'a-hidden', categoryId: null }) as unknown as TransactionDto,
+  })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await screen.findByRole('combobox', { name: 'to account' })
+
+  await user.click(screen.getByRole('radio', { name: 'Expense' }))
+  expect(screen.getByRole('radio', { name: 'Transfer' })).toBeEnabled()
+})
+
+it('a transfer reaches a hidden-folder account through a search in the To field', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'transfer', accountId: 'a1' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  await user.click(await screen.findByRole('combobox', { name: 'to account' }))
+  await screen.findByRole('option', { name: /Bank/ })
+  // the folder list arrives on its own request
+  await waitFor(() => expect(screen.queryByRole('option', { name: /Under the mattress/ })).not.toBeInTheDocument())
+
+  await user.keyboard('und')
+  expect(await screen.findByRole('option', { name: /Under the mattress.*Hidden folder/ })).toBeInTheDocument()
+})
+
 it('editing a transaction round-trips its existing labels', async () => {
   // update-transaction REPLACES the label set: an edit that forgets to resend
   // the attached ids deletes them, which is what this asserts against
@@ -1046,4 +1132,267 @@ it('account pickers match the account name with skipped letters, never its balan
   await user.clear(picker)
   await user.keyboard('2000')
   expect(screen.queryAllByRole('option')).toHaveLength(0)
+})
+
+describe('unfinished new transaction', () => {
+  const draftKey = 'econumo.transaction-draft'
+
+  const openNew = async () => {
+    useUiStore.getState().openTransactionModal({ type: 'expense' })
+    await screen.findByRole('heading', { name: 'Add transaction' })
+  }
+
+  const typeAmountAndCancel = async (user: ReturnType<typeof userEvent.setup>, amount = '42') => {
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), amount)
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+  }
+
+  const offer = () => screen.queryByRole('button', { name: 'Restore' })
+
+  afterEach(() => vi.restoreAllMocks())
+
+  it('offers a cancelled form and restores it with the same id', async () => {
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user)
+    const savedId = (JSON.parse(localStorage.getItem(draftKey)!) as { form: { id: string } }).form.id
+
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+    expect(screen.getByLabelText('Amount')).toHaveValue('')
+
+    await user.click(screen.getByRole('button', { name: 'Restore' }))
+    expect(screen.getByLabelText('Amount')).toHaveValue('42')
+    expect(offer()).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(body).toBeDefined())
+    expect(body!.id).toBe(savedId)
+    await waitFor(() => expect(localStorage.getItem(draftKey)).toBeNull())
+  })
+
+  it('survives a page reload without Cancel', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), '7')
+    cleanup()
+
+    useUiStore.setState({ transactionModal: null })
+    renderDialog()
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+  })
+
+  it('stops offering after two minutes, counted from leaving the form', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user)
+    const left = Date.now()
+
+    vi.spyOn(Date, 'now').mockReturnValue(left + DRAFT_TTL_MS + 5000)
+    await openNew()
+    expect(offer()).not.toBeInTheDocument()
+    expect(localStorage.getItem(draftKey)).toBeNull()
+  })
+
+  it('still offers when the form sat idle and was then cancelled', async () => {
+    const user = userEvent.setup()
+    const start = Date.now()
+    renderDialog()
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), '42')
+
+    const left = start + DRAFT_TTL_MS * 5
+    vi.spyOn(Date, 'now').mockReturnValue(left)
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+
+    vi.spyOn(Date, 'now').mockReturnValue(left + DRAFT_TTL_MS - 1000)
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+  })
+
+  it.each([
+    ['Cancel', (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Cancel' }))],
+    ['Escape', (user: ReturnType<typeof userEvent.setup>) => user.keyboard('{Escape}')],
+  ])('is dropped by %s while it is still offered', async (_name, close) => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user)
+
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+    await close(user)
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+    expect(localStorage.getItem(draftKey)).toBeNull()
+
+    await openNew()
+    expect(offer()).not.toBeInTheDocument()
+  })
+
+  it('stays offered across a reload while it is showing', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user)
+
+    await openNew()
+    cleanup()
+    useUiStore.setState({ transactionModal: null })
+    renderDialog()
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+  })
+
+  it('is offered again when the restored form is cancelled', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user)
+
+    await openNew()
+    await user.click(screen.getByRole('button', { name: 'Restore' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+
+    await openNew()
+    expect(offer()).toBeInTheDocument()
+  })
+
+  it('is replaced by typing into the new form, even if it is emptied again', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user, '42')
+
+    await openNew()
+    const amount = screen.getByLabelText('Amount')
+    await user.type(amount, '9')
+    expect(offer()).not.toBeInTheDocument()
+    expect((JSON.parse(localStorage.getItem(draftKey)!) as { form: { amount: string } }).form.amount).toBe('9')
+
+    await user.clear(amount)
+    expect(offer()).not.toBeInTheDocument()
+    expect(localStorage.getItem(draftKey)).toBeNull()
+  })
+
+  it('is kept when adding fails', async () => {
+    server.use(
+      http.post('*/api/v1/transaction/create-transaction', () =>
+        HttpResponse.json({ success: false, message: 'nope', code: 400, errors: {} }, { status: 400 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderDialog()
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), '42')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await screen.findByRole('button', { name: 'Add' })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled())
+    expect(localStorage.getItem(draftKey)).not.toBeNull()
+    expect(useUiStore.getState().transactionModal).not.toBeNull()
+  })
+
+  it('does not save a form where only the prefilled choices changed', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await openNew()
+    await user.click(screen.getByRole('radio', { name: 'Income' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(localStorage.getItem(draftKey)).toBeNull()
+  })
+
+  it('is neither offered nor overwritten by a prefilled form', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await typeAmountAndCancel(user, '42')
+    const before = localStorage.getItem(draftKey)
+
+    useUiStore.getState().openTransactionModal({
+      importQueued: { linkId: 'l1', accountId: 'a1', amount: '5.00', currency: 'USD', type: 'expense', payee: 'Shop', date: '2026-07-03 10:00:00' },
+    })
+    await screen.findByRole('heading', { name: 'Add transaction' })
+    expect(offer()).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText('Amount'), '1')
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(localStorage.getItem(draftKey)).toBe(before)
+  })
+
+  it('restamps when the app is backgrounded', async () => {
+    const user = userEvent.setup()
+    const start = Date.now()
+    renderDialog()
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), '42')
+
+    const hiddenAt = start + DRAFT_TTL_MS * 5
+    vi.spyOn(Date, 'now').mockReturnValue(hiddenAt)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    expect((JSON.parse(localStorage.getItem(draftKey)!) as { savedAt: number }).savedAt).toBe(hiddenAt)
+  })
+
+  it('is not offered to another user', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('sessionUserId', 'user-a')
+    renderDialog()
+    await typeAmountAndCancel(user)
+
+    localStorage.setItem('sessionUserId', 'user-b')
+    await openNew()
+    expect(offer()).not.toBeInTheDocument()
+    expect(localStorage.getItem(draftKey)).toBeNull()
+  })
+
+  it('leaves a newer draft alone when an earlier add succeeds', async () => {
+    const newer = JSON.stringify({ savedAt: Date.now(), userId: null, form: { id: 'newer', amount: '1', description: '', labelIds: [] } })
+    server.use(
+      http.post('*/api/v1/transaction/create-transaction', () => {
+        localStorage.setItem(draftKey, newer)
+        return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderDialog()
+    await openNew()
+    await user.type(await screen.findByLabelText('Amount'), '42')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+    expect(localStorage.getItem(draftKey)).toBe(newer)
+  })
+
+  it('counts only what the current type shows as content', () => {
+    const empty: TransactionFormState = {
+      id: 'x', isNew: true, type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '', amountRecipient: '',
+      categoryId: null, payeeId: null, tagId: null, labelIds: [], description: '', date: '2026-07-03 10:00:00',
+    }
+    expect(hasDraftContent(empty)).toBe(false)
+    expect(hasDraftContent({ ...empty, accountRecipientId: 'a2' })).toBe(false)
+    expect(hasDraftContent({ ...empty, type: 'transfer', accountRecipientId: 'a2' })).toBe(true)
+    expect(hasDraftContent({ ...empty, type: 'transfer', payeeId: 'p1' })).toBe(false)
+    expect(hasDraftContent({ ...empty, payeeId: 'p1' })).toBe(true)
+    expect(hasDraftContent({ ...empty, tagId: 't1' })).toBe(true)
+    expect(hasDraftContent({ ...empty, type: 'income', tagId: 't1', labelIds: ['l1'] })).toBe(false)
+  })
+
+  it.each([
+    ['invalid JSON', () => '{not json'],
+    ['the wrong shape', () => JSON.stringify({ savedAt: Date.now(), userId: null, form: {} })],
+  ])('ignores a stored draft with %s', async (_name, stored) => {
+    localStorage.setItem(draftKey, stored())
+    renderDialog()
+    await openNew()
+    expect(offer()).not.toBeInTheDocument()
+    expect(localStorage.getItem(draftKey)).toBeNull()
+  })
 })

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { Link, Outlet, useLocation, useSearchParams } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
-import { ChartColumn, RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
+import { ChartColumn, RefreshCw, Rocket, Search, Settings, Wallet, WifiOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file sits right at vite's 4KB auto-inline
 // cutoff, and a separately shipped sidebar logo can 404 where an inlined one
@@ -20,6 +20,7 @@ import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useLongPress } from '@/hooks/useLongPress'
+import { useOnline } from '@/hooks/useOnline'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
@@ -122,6 +123,12 @@ export function ApplicationLayout() {
   const showWorkspace = !isCompact || location.pathname !== '/' || homeIsOnboarding
   const isFetching = useIsFetching() > 0
   const lastSyncAt = useLastSyncAt()
+  const online = useOnline()
+  const offlineIcon = {
+    role: 'img',
+    'aria-label': t('settings.sync.offline'),
+    title: `${t('settings.sync.offline')} — ${lastSyncAt}`,
+  }
   const syncFailing = useSyncFailing()
   const syncTitle = `${t(syncFailing ? 'settings.sync.failing' : 'settings.sync.menu_item')} — ${lastSyncAt}\n${t('settings.sync.hold_hint')}`
   const fullReload = useFullReload()
@@ -270,15 +277,21 @@ export function ApplicationLayout() {
                 <Link to={RouterPage.REPORTS} title={t('common.nav.reports')} className="text-muted-foreground hover:text-foreground">
                   <ChartColumn className="size-5" />
                 </Link>
-                <button
-                  type="button"
-                  aria-label="sync"
-                  title={syncTitle}
-                  className={`${syncClass} select-none [-webkit-touch-callout:none]`}
-                  {...syncPress}
-                >
-                  <RefreshCw className={`size-5 ${isFetching ? 'animate-spin' : ''}`} />
-                </button>
+                {online ? (
+                  <button
+                    type="button"
+                    aria-label="sync"
+                    title={syncTitle}
+                    className={`${syncClass} select-none [-webkit-touch-callout:none]`}
+                    {...syncPress}
+                  >
+                    <RefreshCw className={`size-5 ${isFetching ? 'animate-spin' : ''}`} />
+                  </button>
+                ) : (
+                  <span {...offlineIcon} className="-m-1.5 p-1.5 text-muted-foreground">
+                    <WifiOff className="size-5" />
+                  </span>
+                )}
               </footer>
             ) : (
               <footer className={`flex items-center justify-between border-t ${isCompact ? 'px-3' : 'px-2'} pt-1 pb-[max(env(safe-area-inset-bottom),0.25rem)]`}>
@@ -299,15 +312,21 @@ export function ApplicationLayout() {
                   >
                     <ChartColumn className={isCompact ? 'size-6' : 'size-5'} />
                   </Link>
-                  <button
-                    type="button"
-                    aria-label="sync"
-                    title={syncTitle}
-                    className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
-                    {...syncPress}
-                  >
-                    <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
-                  </button>
+                  {online ? (
+                    <button
+                      type="button"
+                      aria-label="sync"
+                      title={syncTitle}
+                      className={`${syncClassFull} select-none [-webkit-touch-callout:none]`}
+                      {...syncPress}
+                    >
+                      <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
+                    </button>
+                  ) : (
+                    <span {...offlineIcon} className={`grid ${isCompact ? 'size-11' : 'size-9'} place-items-center text-muted-foreground`}>
+                      <WifiOff className={isCompact ? 'size-6' : 'size-5'} />
+                    </span>
+                  )}
                 </div>
               </footer>
             )}

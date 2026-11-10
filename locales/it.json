@@ -296,7 +296,8 @@
       "failing": "Impossibile raggiungere il server — nuovo tentativo in corso",
       "full_reload": "Svuotamento della cache e ricaricamento…",
       "hold_hint": "Tieni premuto per svuotare la cache e ricaricare",
-      "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online."
+      "full_reload_offline": "Sei offline. Svuota la cache e ricarica quando torni online.",
+      "offline": "Nessuna connessione"
     },
     "data": {
       "reload_all": "Svuota la cache e ricarica"
@@ -367,6 +368,10 @@
       },
       "update_form": {
         "header": "Modifica transazione"
+      },
+      "draft": {
+        "message": "Non completata",
+        "restore": "Ripristina"
       },
       "form": {
         "date": {
@@ -442,6 +447,7 @@
         "newline": "A capo",
         "custom_label": "Separatore personalizzato"
       },
+      "tag_hint": "Una transazione può avere un solo tag di budget. Per indicarne più di uno, usa Tag per i report.",
       "new_labels_count": "Questa importazione creerà {count} nuovo tag | Questa importazione creerà {count} nuovi tag"
     },
     "import_result": {
@@ -2111,9 +2117,14 @@
     "consent": {
       "title": "Collega un'app a Econumo",
       "wantsAccess": "vuole accedere al tuo account Econumo.",
+      "official": "Ufficiale",
       "redirect": "Dopo il tuo consenso verrai reindirizzato a {host}.",
       "loopback": "Dopo il tuo consenso tornerai a un'app su questo computer.",
-      "fullAccess": "Potrà leggere e modificare tutti i tuoi dati di Econumo.",
+      "unverified": "Registrata dall'app stessa. Econumo non verifica il suo nome; controlla l'indirizzo qui sotto.",
+      "unverifiedLoopback": "Registrata dall'app stessa. Econumo non verifica il suo nome.",
+      "wantsRead": "vuole leggere i tuoi dati di Econumo.",
+      "readAccess": "Non potrà modificare nulla.",
+      "fullAccess": "Potrà leggere e modificare i tuoi dati.",
       "signedInAs": "Accesso effettuato come {email}",
       "switchAccount": "Non sei tu? Cambia account",
       "allow": "Consenti",
@@ -2138,6 +2149,7 @@
       "lastUsed": "Ultimo utilizzo {when}",
       "loopback": "Funziona su questo computer",
       "returnsTo": "Ti riporta a {host}",
+      "official": "Ufficiale",
       "menuItem": "App connesse"
     }
   },
@@ -2248,7 +2260,9 @@
       "not_available": "La valuta non è disponibile",
       "in_use": "La valuta è in uso e non può essere eliminata",
       "base_immutable": "La valuta di base non può essere modificata",
-      "cannot_be_hidden": "Questa valuta non può essere nascosta"
+      "cannot_be_hidden": "Questa valuta non può essere nascosta",
+      "rate_range_order": "La data di fine non può precedere la data di inizio",
+      "rate_range_too_long": "L'intervallo di date può essere al massimo di {max} giorni"
     },
     "import": {
       "source_not_found": "Apple Wallet non è collegato. Collegalo prima in Impostazioni → Apple Wallet.",
@@ -2273,7 +2287,8 @@
       "disabled": "Il collegamento di app non è disponibile su questo server.",
       "client_not_found": "La registrazione di questa app è scaduta o non è riconosciuta. Rimuovi Econumo dall'app e aggiungilo di nuovo.",
       "redirect_uri_mismatch": "Questo link di accesso non è valido per questa app. Avvia di nuovo la connessione dall'app.",
-      "grant_not_found": "App collegata non trovata."
+      "grant_not_found": "App collegata non trovata.",
+      "app_not_yours": "Questa app è collegata a un altro account Econumo. Rimuovi Econumo dall'app e aggiungilo di nuovo."
     },
     "oauth": {
       "provider_not_configured": "Il provider di accesso non è configurato",

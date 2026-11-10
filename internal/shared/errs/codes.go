@@ -90,6 +90,8 @@ const (
 	CodeCurrencyInUse               = "currency.in_use"
 	CodeCurrencyBaseImmutable       = "currency.base_immutable"
 	CodeCurrencyCannotBeHidden      = "currency.cannot_be_hidden"
+	CodeCurrencyRateRangeOrder      = "currency.rate_range_order"
+	CodeCurrencyRateRangeTooLong    = "currency.rate_range_too_long"
 
 	CodeTokenNameLength            = "token.name_length"
 	CodeTokenInvalidExpirationDate = "token.invalid_expiration_date"
@@ -143,6 +145,7 @@ const (
 	CodeAuthServerClientNotFound   = "authserver.client_not_found"
 	CodeAuthServerRedirectMismatch = "authserver.redirect_uri_mismatch"
 	CodeAuthServerGrantNotFound    = "authserver.grant_not_found"
+	CodeAuthServerAppNotYours      = "authserver.app_not_yours"
 )
 
 var AllCodes = []string{
@@ -227,6 +230,8 @@ var AllCodes = []string{
 	CodeCurrencyInUse,
 	CodeCurrencyBaseImmutable,
 	CodeCurrencyCannotBeHidden,
+	CodeCurrencyRateRangeOrder,
+	CodeCurrencyRateRangeTooLong,
 
 	CodeTokenNameLength,
 	CodeTokenInvalidExpirationDate,
@@ -280,4 +285,5 @@ var AllCodes = []string{
 	CodeAuthServerClientNotFound,
 	CodeAuthServerRedirectMismatch,
 	CodeAuthServerGrantNotFound,
+	CodeAuthServerAppNotYours,
 }

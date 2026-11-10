@@ -84,7 +84,7 @@ var intended = []change{
 	{"v1.4.0", regexp.MustCompile(`get-(folder|account)-list \$\.items\[[^]]+\]\.position$`),
 		"fractional sort keys replaced stored positions; position is the index in the new order"},
 	{"v1.8.0", regexp.MustCompile(`get-user-data \$\.user\.options\[name=onboarding\]\.value$`),
-		"existing users with accounts skip the new onboarding (migration 20261108000000)"},
+		"existing users with accounts skip the new onboarding (migration 20261109000000)"},
 }
 
 // tolerated returns the path checks a diff from release may ignore.

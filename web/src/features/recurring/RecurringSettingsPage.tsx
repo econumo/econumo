@@ -1,4 +1,4 @@
-import { MoreVertical, Plus } from 'lucide-react'
+import { EyeOff, MoreVertical, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AccountDto } from '@/api/dto/account'
@@ -11,10 +11,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { RouterPage } from '@/app/router-pages'
 import { useUiStore } from '@/app/uiStore'
-import { useAccounts } from '@/features/accounts/queries'
+import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
+import { hiddenFolderAccountIds } from '@/features/transactions/useTransactionForm'
 import { useUserData } from '@/features/user/queries'
 import { dayKey, isFuture } from '@/lib/datetime'
 import { recurringAsTransaction } from './asTransaction'
@@ -25,6 +26,7 @@ export function RecurringSettingsPage() {
   const isCompact = useIsCompact()
   const { data: recurring = [] } = useRecurring()
   const { data: accounts } = useAccounts()
+  const { data: folders } = useFolders()
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
@@ -71,13 +73,14 @@ export function RecurringSettingsPage() {
     byAccount.set(rt.accountId, [...(byAccount.get(rt.accountId) ?? []), rt])
   }
   const knownIds = new Set((accounts ?? []).map((a) => a.id))
+  const hiddenAccountIds = hiddenFolderAccountIds(accounts ?? [], folders ?? [])
   const groups = [
     ...(accounts ?? [])
       .filter((a) => byAccount.has(a.id))
-      .map((a) => ({ key: a.id, label: a.name, items: sortGroup(byAccount.get(a.id) as RecurringDto[]) })),
+      .map((a) => ({ key: a.id, label: a.name, hidden: hiddenAccountIds.has(a.id), items: sortGroup(byAccount.get(a.id) as RecurringDto[]) })),
     ...[...byAccount.entries()]
       .filter(([id]) => !knownIds.has(id))
-      .map(([id, items]) => ({ key: id, label: t('accounts.account.name_hidden'), items: sortGroup(items) })),
+      .map(([id, items]) => ({ key: id, label: t('accounts.account.name_hidden'), hidden: false, items: sortGroup(items) })),
   ]
 
   const createLabel = t('settings.recurring.create')
@@ -109,6 +112,12 @@ export function RecurringSettingsPage() {
                 informative even when a single group is visible */}
             <div className="mt-2 mb-1 flex items-center gap-3 px-1 pt-3 first:mt-0">
               <span className="text-sm font-semibold uppercase tracking-wide">{group.label}</span>
+              {group.hidden ? (
+                <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                  <EyeOff className="size-3.5" aria-hidden />
+                  {t('search.hidden_folder')}
+                </span>
+              ) : null}
               <span className="h-px flex-1 bg-border" aria-hidden="true" />
             </div>
             {group.items.map((rt) => {

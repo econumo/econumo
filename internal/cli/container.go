@@ -9,6 +9,8 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	appauthserver "github.com/econumo/econumo/internal/authserver"
+	authserverrepo "github.com/econumo/econumo/internal/authserver/repo"
 	"github.com/econumo/econumo/internal/config"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	appcurrency "github.com/econumo/econumo/internal/currency"
@@ -39,6 +41,7 @@ type container struct {
 	currency *appcurrency.WriteService
 	loader   *currencyrepo.Loader
 	account  *appaccount.Service
+	apps     *appauthserver.Service
 }
 
 // newContainer loads config, opens the database, and wires the container's
@@ -131,6 +134,9 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 		accountAccessResolver, txm, opGuard, clk,
 	)
 
+	// The CLI never serves /oauth/register, so no rate limiter.
+	apps := appauthserver.NewService(authserverrepo.NewRepo(cfg.DatabaseDriver, txm), userSvc, txm, clk, nil, cfg.AppURL)
+
 	return &container{
 		db:       db,
 		cfg:      cfg,
@@ -139,6 +145,7 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 		currency: currencySvc,
 		loader:   loader,
 		account:  accountSvc,
+		apps:     apps,
 	}
 }
 

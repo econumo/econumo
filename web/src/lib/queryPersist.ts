@@ -7,6 +7,7 @@ import type { CurrentUserDto } from '@/api/dto/user'
 import { queryKeys } from '@/app/queryKeys'
 import { isPendingForMe } from '@/features/connections/shared'
 import { resetRevisions, seedRevisions } from '@/features/transactions/revisionTracking'
+import { clearTransactionDraft } from '@/features/transactions/transactionDraft'
 import { assemble, hasRevisions } from '@/features/transactions/sync'
 import { CACHE_MAX_AGE_MS } from './appQueryClient'
 import { getSessionUserId, hasToken } from './storage'
@@ -194,6 +195,9 @@ export function createPersistOptions({ throttleTime = 1000 }: { throttleTime?: n
         query.queryKey[0] !== queryKeys.transactions[0] &&
         query.state.status === 'success' &&
         !isLongReport(query.queryKey, query.state.data),
+      // A paused login carries the password, and a restored mutation has no
+      // function to resume with anyway.
+      shouldDehydrateMutation: () => false,
     },
   }
 }
@@ -202,6 +206,7 @@ export function createPersistOptions({ throttleTime = 1000 }: { throttleTime?: n
 // can change (logout, and login as a possibly different user).
 export async function clearPersistedQueryCache(): Promise<void> {
   localStorage.removeItem(QUERY_CACHE_KEY)
+  clearTransactionDraft()
   resetRevisions()
   await clearTransactions()
 }

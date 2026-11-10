@@ -34,23 +34,15 @@ func (s *Service) Register(ctx context.Context, req model.ClientRegistrationRequ
 		}
 	}
 
-	name := strings.TrimSpace(strings.Map(dropInvisible, req.ClientName))
+	name, oe := cleanClientName(req.ClientName)
+	if oe != nil {
+		return model.ClientRegistrationResult{}, oe
+	}
 	if name == "" {
 		name = defaultClientName
 	}
-	if utf8.RuneCountInString(name) > maxClientName {
-		return model.ClientRegistrationResult{}, invalidMetadata("client_name is too long")
-	}
-	if n := len(req.RedirectURIs); n < 1 || n > maxRedirectURIs {
-		return model.ClientRegistrationResult{}, &OAuthError{Status: 400, Code: "invalid_redirect_uri", Description: "between 1 and 10 redirect_uris are required"}
-	}
-	for _, u := range req.RedirectURIs {
-		if len(u) > maxRedirectURILen {
-			return model.ClientRegistrationResult{}, &OAuthError{Status: 400, Code: "invalid_redirect_uri", Description: "redirect URI is too long"}
-		}
-		if err := ValidateRedirectURI(u); err != nil {
-			return model.ClientRegistrationResult{}, &OAuthError{Status: 400, Code: "invalid_redirect_uri", Description: err.Error()}
-		}
+	if oe := checkRedirectURIs(req.RedirectURIs); oe != nil {
+		return model.ClientRegistrationResult{}, oe
 	}
 
 	grantTypes := req.GrantTypes
@@ -112,6 +104,29 @@ func (s *Service) Register(ctx context.Context, req model.ClientRegistrationRequ
 	}
 	reqctx.AddLogAttr(ctx, "client_id", res.ClientID)
 	return res, nil
+}
+
+func cleanClientName(raw string) (string, *OAuthError) {
+	name := strings.TrimSpace(strings.Map(dropInvisible, raw))
+	if utf8.RuneCountInString(name) > maxClientName {
+		return "", invalidMetadata("client_name is too long")
+	}
+	return name, nil
+}
+
+func checkRedirectURIs(uris []string) *OAuthError {
+	if n := len(uris); n < 1 || n > maxRedirectURIs {
+		return &OAuthError{Status: 400, Code: "invalid_redirect_uri", Description: "between 1 and 10 redirect_uris are required"}
+	}
+	for _, u := range uris {
+		if len(u) > maxRedirectURILen {
+			return &OAuthError{Status: 400, Code: "invalid_redirect_uri", Description: "redirect URI is too long"}
+		}
+		if err := ValidateRedirectURI(u); err != nil {
+			return &OAuthError{Status: 400, Code: "invalid_redirect_uri", Description: err.Error()}
+		}
+	}
+	return nil
 }
 
 // Control and format runes (newlines, bidi overrides) would let a client name
