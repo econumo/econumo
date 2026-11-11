@@ -163,6 +163,7 @@ export function PickerSheet({
       initialFocus={searchable ? (isPhone && focusSearch ? searchRef : undefined) : commandRef}
       onCloseAutoFocus={onCloseAutoFocus}
       footer={footer}
+      anchorTop
     >
       {header}
       {/* sticky at the top of the rows, so it stays in view: iOS skips a

@@ -5,12 +5,11 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { useKeyboardInset } from '@/hooks/useKeyboardInset'
 import { useSheetGlide } from '@/hooks/useSheetGlide'
+import { SHEET_TOP_GAP, useAnchoredSheet } from '@/hooks/useAnchoredSheet'
 
 const STACKED_CONTENT = '[data-slot="dialog-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"]'
 const STACKED_OVERLAY = '[data-slot="dialog-overlay"], [data-slot="drawer-overlay"], [data-slot="alert-dialog-overlay"]'
 
-// px kept free above a sheet squeezed by the on-screen keyboard
-const SHEET_TOP_GAP = 24
 
 // a full-screen page counts the sheets open over it (a picker's), and holds
 // still while any is: the keyboard those sheets raise is theirs to follow
@@ -60,6 +59,9 @@ interface ResponsiveDialogProps {
   footer?: ReactNode
   /** desktop width: `wide` suits list-heavy dialogs (the global search palette) */
   size?: 'default' | 'wide'
+  /** phone sheet: the top stays where it opened and the keyboard moves only
+   *  the bottom edge (pickers, whose list scrolls between the two) */
+  anchorTop?: boolean
   /** the element that takes focus on open (a mobile sheet focuses itself otherwise) */
   initialFocus?: RefObject<HTMLElement | null>
   /** runs as the dialog hands focus back on close; preventDefault() keeps focus
@@ -67,7 +69,7 @@ interface ResponsiveDialogProps {
   onCloseAutoFocus?: (e: Event) => void
 }
 
-export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerAction, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus, initialFocus, size = 'default' }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerAction, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus, initialFocus, size = 'default', anchorTop = false }: ResponsiveDialogProps) {
   // full-screen / bottom-sheet layouts kick in only below sm (640px); at 640px
   // and up dialogs stay centred like on desktop
   const isMobile = useIsPhone()
@@ -158,7 +160,9 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
     coverParent(1)
     return () => coverParent(-1)
   }, [open, coverParent])
-  const sheetStyle = keyboard.height > 0 ? { bottom: keyboard.bottom, maxHeight: keyboard.height - SHEET_TOP_GAP } : undefined
+  const sheetBodyRef = useRef<HTMLDivElement>(null)
+  const anchoredStyle = useAnchoredSheet(contentRef, sheetBodyRef, anchorTop && open && isMobile && !fullScreen, keyboard)
+  const sheetStyle = anchoredStyle ?? (keyboard.height > 0 ? { bottom: keyboard.bottom, maxHeight: keyboard.height - SHEET_TOP_GAP } : undefined)
   useSheetGlide(contentRef, open && isMobile && !fullScreen, `${keyboard.top}:${keyboard.height}:${keyboard.bottom}`)
   // a full-screen page shrinks to the visible area instead: left at h-dvh, iOS
   // pans it so the header and the fields above the focused one go off-screen
@@ -292,7 +296,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
             {headerAction && !hideHeader ? <div className="absolute top-1/2 right-3 -translate-y-1/2">{headerAction}</div> : null}
           </DrawerHeader>
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
-          <div className={bodyClass}>{children}</div>
+          <div ref={sheetBodyRef} className={bodyClass}>{children}</div>
           {footer ? (
             <div className={footerClass}>{footer}</div>
           ) : null}
