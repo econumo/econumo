@@ -33,6 +33,8 @@ vi.mock('@/lib/metrics', async (original) => ({
 }))
 
 const me = { id: 'u1', name: 'Ann', avatar: 'face:fuchsia' }
+// the cached current user: with no onboarding option, onboarding counts as completed
+const currentUser = { ...me, options: [] }
 const payload = (id: string, over: Partial<CreateTransactionDto> = {}): CreateTransactionDto => ({
   id, type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '5', amountRecipient: null,
   categoryId: null, description: '', payeeId: null, tagId: null, labelIds: [], date: '2026-11-08 10:00:00', ...over,
@@ -93,7 +95,7 @@ beforeEach(async () => {
   onlineManager.setOnline(true)
   vi.mocked(trackEvent).mockClear()
   client = createAppQueryClient()
-  client.setQueryData(queryKeys.user, me)
+  client.setQueryData(queryKeys.user, currentUser)
   client.setQueryData(queryKeys.accounts, [])
   client.setQueryData(queryKeys.transactions, [])
   await loadPendingWrites('u1')
@@ -527,7 +529,7 @@ it('the same user signing back in resumes the queue when the user data arrives',
   await queue(limit('e1'), 'k1', 1)
   await kickPendingWrites()
   setToken('fresh', 'u1')
-  await client.fetchQuery({ queryKey: queryKeys.user, queryFn: async () => me })
+  await client.fetchQuery({ queryKey: queryKeys.user, queryFn: async () => currentUser })
   await vi.waitFor(() => expect(getOps()).toEqual([]))
   expect(seen).toHaveLength(2)
 })

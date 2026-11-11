@@ -12,6 +12,7 @@ import (
 var (
 	_ = apidoc.JsonResponseError{}
 	_ = model.CompleteOnboardingResult{}
+	_ = model.UpdateOnboardingResult{}
 )
 
 // CompleteOnboarding handles POST /api/v1/user/complete-onboarding (auth). No
@@ -29,4 +30,23 @@ var (
 // @Router      /api/v1/user/complete-onboarding [post]
 func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.svc.CompleteOnboarding)
+}
+
+// UpdateOnboarding handles POST /api/v1/user/update-onboarding (auth).
+//
+// @Summary     Update onboarding progress
+// @Description Stores which onboarding steps the authenticated user finished or skipped ("started" = none yet) and returns the refreshed user. A completed onboarding is left unchanged.
+// @Tags        User
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.UpdateOnboardingRequest true "Update onboarding request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateOnboardingResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/user/update-onboarding [post]
+func (h *Handlers) UpdateOnboarding(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.UpdateOnboarding)
 }

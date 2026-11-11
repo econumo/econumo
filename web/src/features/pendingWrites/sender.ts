@@ -9,6 +9,7 @@ import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import type { TransactionItemDto } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
+import { markOnboardingStepDone } from '@/features/onboarding/onboardingProgress'
 import { applyTransactionItem } from '@/features/transactions/queries'
 import { consumeFullReload, transactionsQueryFn } from '@/features/transactions/revisionTracking'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -112,6 +113,8 @@ export function confirmChange(queryClient: QueryClient, change: OpChange, result
   if (change.kind === 'limit') {
     applyAcceptedLimit(queryClient, change)
     invalidateChange(queryClient, change)
+    // like the metric: a queued limit counts for onboarding once it lands
+    markOnboardingStepDone(queryClient, 'plan')
   } else {
     applyTransactionItem(queryClient, result as TransactionItemDto, APPLY_MODE[change.kind])
   }

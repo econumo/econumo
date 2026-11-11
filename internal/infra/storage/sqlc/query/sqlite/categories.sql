@@ -48,3 +48,9 @@ UPDATE transactions SET category_id = ? WHERE category_id = ?;
 -- the old delete-category replace mode lossy: templates were left pointing at a
 -- category about to be deleted, and the FK silently nulled them.
 UPDATE recurring_transactions SET category_id = ? WHERE category_id = ?;
+
+-- name: ReplaceCategoryIcon :execrows
+-- A compare-and-set on the icon: a category whose icon changed since it was
+-- read is left alone, and nothing is written.
+UPDATE categories SET icon = ?, updated_at = ?
+WHERE id = ? AND user_id = ? AND icon = ?;

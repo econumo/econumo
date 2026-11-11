@@ -15,6 +15,7 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { useUserData } from '@/features/user/queries'
 import type { AggregatedImportResult, CsvAnalysis, FieldKey, ImportSelection } from './importCsv'
+import { finishImportStep } from '@/features/onboarding/finishImport'
 import { EntitySelect } from './EntitySelect'
 import { analyzeCsv, autoDetect, CHUNK_SIZE, countNewLabels, defaultSelection, runImport, selectionValid } from './importCsv'
 
@@ -31,9 +32,11 @@ interface ImportCsvDialogProps {
   open: boolean
   onClose: () => void
   onComplete: (result: AggregatedImportResult) => void
+  // a file dropped before the dialog opened, parsed as if picked in it
+  initialFile?: File
 }
 
-export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogProps) {
+export function ImportCsvDialog({ open, onClose, onComplete, initialFile }: ImportCsvDialogProps) {
   const { t, i18n } = useTranslation()
   const online = useOnline()
   const queryClient = useQueryClient()
@@ -63,8 +66,10 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
   useEffect(() => {
     if (open) {
       reset()
+      if (initialFile) void handleFile(initialFile)
     }
-  }, [open])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialFile])
 
   const meId = user?.id
   // accounts I can write transactions into: mine, or shared to me above view-only
@@ -257,6 +262,9 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     try {
       const result = await runImport(analysis, selection, importTransactionList, (done, total) => setProgress({ done, total }))
       trackEvent(METRICS.TRANSACTION_IMPORT)
+      // during onboarding the import settles the import step through finish-import (budget + AI review);
+      // a failure there is retried by the Import step and never fails the import itself
+      if (result.imported > 0) await finishImportStep(queryClient).catch(() => undefined)
       await queryClient.invalidateQueries()
       onClose()
       onComplete(result)

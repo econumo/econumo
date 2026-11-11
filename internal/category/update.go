@@ -34,3 +34,18 @@ func (s *Service) UpdateCategory(ctx context.Context, userID vo.Id, req model.Up
 	// Empty body ({"data":{}}); the entity is not echoed (frozen wire shape).
 	return &model.UpdateCategoryResult{}, nil
 }
+
+// ReplaceIcon sets the icon of a category the caller owns, but only while it
+// still shows from: one conditional write, so a change the user made in the
+// meantime wins and a failed compare writes nothing. Reports whether the icon
+// changed.
+func (s *Service) ReplaceIcon(ctx context.Context, userID, id vo.Id, from, to string) (bool, error) {
+	icon, err := newIcon(to)
+	if err != nil {
+		return false, err
+	}
+	if icon == from {
+		return false, nil
+	}
+	return s.repo.ReplaceIcon(ctx, id, userID, from, icon, s.clock.Now())
+}

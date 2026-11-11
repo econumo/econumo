@@ -1196,46 +1196,112 @@
     }
   },
   "onboarding": {
-    "header": "Aan de slag",
-    "title": "Welkom bij Econumo!",
-    "complete": "Setup voltooien",
-    "add_account": "Rekening toevoegen",
-    "import_transactions": "Transacties importeren",
-    "steps": {
-      "accounts": {
-        "title": "Voeg uw rekeningen toe",
-        "text": "Voeg om te beginnen een rekening toe met de knop hieronder. U kunt uw rekeningen ook altijd beheren en in mappen ordenen via <settings>Instellingen</settings> -> <accounts>Rekeningen</accounts>."
-      },
-      "transactions": {
-        "title": "Voer uw eerste transactie in",
-        "text": "U voert transacties in door links in het menu een rekening te kiezen en op de knop <action>Transactie toevoegen</action> te klikken.",
-        "hint": "Categorieën, tags en begunstigden kunt u rechtstreeks vanuit het transactievenster aanmaken: typ de naam en druk op Enter."
-      },
-      "classifications": {
-        "title": "Beheer categorieën, tags en begunstigden",
-        "text": "Categorieën, tags en begunstigden beheert u via <settings>Instellingen</settings> -> <categories>Categorieën</categories>, <tags>Tags</tags> of <payees>Begunstigden</payees>. U kunt ze ook sorteren of archiveren."
-      },
-      "avatar": {
-        "title": "Werk uw avatar bij",
-        "text": "Kies een pictogram en een kleur voor uw avatar — die vertegenwoordigt u in gedeelde rekeningen. <choose>Kies uw avatar</choose>"
-      },
-      "connections": {
-        "title": "Maak verbinding met uw partner",
-        "text": "Ga naar <settings>Instellingen</settings> -> <connections>Gedeelde toegang</connections> om verbinding te maken met uw partner en de gedeelde toegang tot uw budget of rekeningen te beheren."
-      },
-      "budget": {
-        "title": "Maak uw budget",
-        "text": "Uw eerste budget maakt u op de pagina <budget>Budget</budget>.",
-        "text_secondary": "Op de pagina <settings>Instellingen</settings> -> <budgets>Budgetten</budgets> beheert u bovendien uw budgetten, de gedeelde toegang en meer."
-      }
+    "categories": {
+      "groceries": "Boodschappen",
+      "housing": "Wonen",
+      "utilities": "Vaste lasten",
+      "transport": "Vervoer",
+      "eating_out": "Uit eten",
+      "health": "Gezondheid",
+      "shopping": "Winkelen",
+      "entertainment": "Entertainment",
+      "kids": "Kinderen",
+      "pets": "Huisdieren",
+      "subscriptions": "Abonnementen",
+      "salary": "Salaris",
+      "bonus": "Bonus",
+      "other_income": "Overige inkomsten"
     },
-    "user_guide": {
-      "accounts": "Handleiding: rekeningen",
-      "transactions": "Handleiding: transacties",
-      "classifications": "Handleiding: indeling",
-      "user_profile": "Handleiding: gebruikersprofiel",
-      "shared_access": "Handleiding: gedeelde toegang",
-      "budgets": "Handleiding: budgetten"
+    "archive_folder": "Archief",
+    "budget_name": "Mijn budget",
+    "accounts": {
+      "heading": "Waar staat uw geld op dit moment?",
+      "subtext": "De huidige saldi zijn genoeg, geen geschiedenis nodig.",
+      "name_label": "Rekeningnaam",
+      "balance_label": "Saldo",
+      "balance_invalid": "Voer een getal in, bijvoorbeeld 1234,50",
+      "currency_title": "Valuta",
+      "add": "Rekening toevoegen",
+      "default_cash": "Contant",
+      "balance_of": "Saldo van {name}"
+    },
+    "categories_step": {
+      "heading": "Waaraan geeft u geld uit?",
+      "subtext": "Verwijder wat u niet nodig hebt. U kunt deze lijst later bewerken.",
+      "expenses": "Uitgaven",
+      "income": "Inkomsten",
+      "name_label": "Categorienaam",
+      "icon_label": "Pictogram wijzigen",
+      "reorder_label": "{name} verplaatsen",
+      "add_placeholder": "Voeg uw eigen toe"
+    },
+    "currencies": {
+      "title": "Valuta's",
+      "main_title": "Hoofdvaluta",
+      "add": "Valuta toevoegen",
+      "hint": "Kies de valuta's die u het vaakst gebruikt. U kunt er later meer toevoegen in Instellingen.",
+      "selected": "Geselecteerde valuta",
+      "main_label": "Hoofdvaluta: {code}",
+      "main_suffix": "Hoofd",
+      "make_main": "Als hoofdvaluta instellen",
+      "chips_hint": "Tik op een valuta om deze als hoofdvaluta in te stellen of te verwijderen."
+    },
+    "steps_nav": {
+      "title": "Aan de slag",
+      "progress": "Aan de slag · {current} van {total}",
+      "complete_setup": "Instellen voltooien",
+      "optional": "optioneel",
+      "import": "Importeren",
+      "categories": "Categorieën",
+      "accounts": "Rekeningen",
+      "plan": "Budget & plan",
+      "home_screen": "App installeren",
+      "apple_wallet": "Apple Wallet",
+      "menu": "Menu",
+      "finish": "Afronden",
+      "state_done": "klaar",
+      "state_skipped": "overgeslagen"
+    },
+    "import_step": {
+      "heading": "Neem uw geschiedenis mee",
+      "text": "Hebt u een CSV-export van uw bank of een andere app? Die maakt rekeningen, categorieën en transacties in één keer aan.",
+      "choose": "Kies een CSV-bestand",
+      "no_file": "Ik heb er geen",
+      "drop_here": "of sleep het hierheen",
+      "not_csv": "Hier kunnen alleen CSV-bestanden worden geïmporteerd."
+    },
+    "install_step": {
+      "heading": "Econumo altijd binnen handbereik",
+      "text": "Zet het op uw beginscherm, zodat een koffie loggen maar een paar seconden kost.",
+      "install": "Installeren",
+      "done": "Klaar"
+    },
+    "wallet_step": {
+      "heading": "Kaartbetalingen, vanzelf vastgelegd",
+      "text": "Koppel Apple Wallet en elke betaling met uw kaart verschijnt vanzelf in Econumo.",
+      "setup": "Instellen",
+      "later": "U kunt de Apple Wallet-koppeling op elk moment later instellen in Instellingen."
+    },
+    "retry": "Opnieuw proberen",
+    "save_continue": "Opslaan en doorgaan",
+    "skip": "Overslaan",
+    "archive": "Archiveren",
+    "restore": "Herstellen",
+    "archive_label": "{name} archiveren",
+    "restore_label": "{name} herstellen",
+    "archived": "Gearchiveerd",
+    "remove": "Verwijderen",
+    "remove_label": "{name} verwijderen",
+    "plan_step": {
+      "heading": "Plan deze maand",
+      "subtext": "Vul globale geplande bedragen in – u kunt ze later aanpassen.",
+      "income": "Inkomsten · {month}",
+      "expenses": "Uitgaven · {month}",
+      "needs_account": "Een budget heeft minstens één rekening nodig. Voeg er eerst een toe.",
+      "add_account": "Rekening toevoegen",
+      "no_categories": "Er zijn nog geen categorieën om te plannen. Voeg er eerst een paar toe.",
+      "add_categories": "Categorieën toevoegen",
+      "amount_invalid": "Voer een bedrag van nul of meer in, bijvoorbeeld 250,50"
     }
   },
   "budgets": {

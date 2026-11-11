@@ -2,6 +2,7 @@ package category
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -20,6 +21,10 @@ type Repository interface {
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
 
 	Save(ctx context.Context, c *model.Category) error
+
+	// ReplaceIcon sets the icon of the owner's category only while it is from,
+	// in one conditional write; it reports whether a row changed.
+	ReplaceIcon(ctx context.Context, id, ownerID vo.Id, from, to string, now time.Time) (bool, error)
 
 	// Delete removes a category. Transactions referencing it have category_id set
 	// to NULL via the ON DELETE SET NULL FK.

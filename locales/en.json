@@ -1196,46 +1196,112 @@
     }
   },
   "onboarding": {
-    "header": "Getting started",
-    "title": "Welcome to Econumo!",
-    "complete": "Finish setup",
-    "add_account": "Add account",
-    "import_transactions": "Import transactions",
-    "steps": {
-      "accounts": {
-        "title": "Add your accounts",
-        "text": "To start, you can add an account by clicking the button below. Alternatively, you can always navigate to the <settings>Settings</settings> -> <accounts>Accounts</accounts> page to manage your accounts and arrange them into folders."
-      },
-      "transactions": {
-        "title": "Enter your first transaction",
-        "text": "You can enter transactions by selecting any account in the left sidebar and clicking the <action>Add transaction</action> button.",
-        "hint": "You can create categories, tags, and payees directly from the transaction modal by entering their names and pressing Enter."
-      },
-      "classifications": {
-        "title": "Manage categories, tags, and payees",
-        "text": "To manage categories, tags, and payees, navigate to <settings>Settings</settings> -> <categories>Categories</categories>, <tags>Tags</tags>, or <payees>Payees</payees>. You can also sort or archive them as necessary."
-      },
-      "avatar": {
-        "title": "Update your avatar",
-        "text": "Pick an icon and a color for your avatar — it represents you in shared accounts. <choose>Choose your avatar</choose>"
-      },
-      "connections": {
-        "title": "Connect with your partner",
-        "text": "To connect with your partner and manage shared access to your budget or accounts, please visit <settings>Settings</settings> -> <connections>Shared access</connections>."
-      },
-      "budget": {
-        "title": "Create your budget",
-        "text": "You can create your first budget on the <budget>Budget</budget> page.",
-        "text_secondary": "Additionally, you can access the <settings>Settings</settings> -> <budgets>Budgets</budgets> page to manage your budgets, shared access, and more."
-      }
+    "categories": {
+      "groceries": "Groceries",
+      "housing": "Housing",
+      "utilities": "Utilities",
+      "transport": "Transport",
+      "eating_out": "Eating out",
+      "health": "Health",
+      "shopping": "Shopping",
+      "entertainment": "Entertainment",
+      "kids": "Kids",
+      "pets": "Pets",
+      "subscriptions": "Subscriptions",
+      "salary": "Salary",
+      "bonus": "Bonus",
+      "other_income": "Other income"
     },
-    "user_guide": {
-      "accounts": "User guide: accounts",
-      "transactions": "User guide: transactions",
-      "classifications": "User guide: classifications",
-      "user_profile": "User guide: user profile",
-      "shared_access": "User guide: shared access",
-      "budgets": "User guide: budgets"
+    "archive_folder": "Archive",
+    "budget_name": "My budget",
+    "accounts": {
+      "heading": "Where's your money right now?",
+      "subtext": "Current balances are enough, no history needed.",
+      "name_label": "Account name",
+      "balance_label": "Balance",
+      "balance_invalid": "Enter a number, for example 1234.50",
+      "currency_title": "Currency",
+      "add": "Add account",
+      "default_cash": "Cash",
+      "balance_of": "Balance of {name}"
+    },
+    "categories_step": {
+      "heading": "What do you spend on?",
+      "subtext": "Remove what you don't need. You can edit this list later.",
+      "expenses": "Expenses",
+      "income": "Income",
+      "name_label": "Category name",
+      "icon_label": "Change icon",
+      "reorder_label": "Reorder {name}",
+      "add_placeholder": "Add your own"
+    },
+    "currencies": {
+      "title": "Currencies",
+      "main_title": "Main currency",
+      "add": "Add currency",
+      "hint": "Select the currencies you use most often. You can add more later in Settings.",
+      "selected": "Selected currencies",
+      "main_label": "Main currency: {code}",
+      "main_suffix": "Main",
+      "make_main": "Make main",
+      "chips_hint": "Tap a currency to make it main or remove it."
+    },
+    "steps_nav": {
+      "title": "Getting started",
+      "progress": "Getting started · {current} of {total}",
+      "complete_setup": "Complete setup",
+      "optional": "optional",
+      "import": "Import",
+      "categories": "Categories",
+      "accounts": "Accounts",
+      "plan": "Budget & plan",
+      "home_screen": "Install app",
+      "apple_wallet": "Apple Wallet",
+      "menu": "Menu",
+      "finish": "Finish",
+      "state_done": "done",
+      "state_skipped": "skipped"
+    },
+    "import_step": {
+      "heading": "Bring in your history",
+      "text": "Have a CSV export from your bank or another app? It creates accounts, categories and transactions in one go.",
+      "choose": "Choose a CSV file",
+      "no_file": "I don't have one",
+      "drop_here": "or drop it here",
+      "not_csv": "Only CSV files can be imported here."
+    },
+    "install_step": {
+      "heading": "Keep Econumo one tap away",
+      "text": "Add it to your home screen so logging a coffee takes seconds.",
+      "install": "Install",
+      "done": "Done"
+    },
+    "wallet_step": {
+      "heading": "Card payments, logged for you",
+      "text": "Connect Apple Wallet and every tap with your card appears in Econumo on its own.",
+      "setup": "Set up",
+      "later": "You can set up the Apple Wallet integration any time later in Settings."
+    },
+    "retry": "Try again",
+    "save_continue": "Save and continue",
+    "skip": "Skip",
+    "archive": "Archive",
+    "restore": "Restore",
+    "archive_label": "Archive {name}",
+    "restore_label": "Restore {name}",
+    "archived": "Archived",
+    "remove": "Remove",
+    "remove_label": "Remove {name}",
+    "plan_step": {
+      "heading": "Plan this month",
+      "subtext": "Enter rough planned amounts — you can adjust them later.",
+      "income": "Income · {month}",
+      "expenses": "Expenses · {month}",
+      "needs_account": "A budget needs at least one account. Add one first.",
+      "add_account": "Add an account",
+      "no_categories": "There are no categories to plan yet. Add a few first.",
+      "add_categories": "Add categories",
+      "amount_invalid": "Enter an amount of zero or more, for example 250.50"
     }
   },
   "budgets": {

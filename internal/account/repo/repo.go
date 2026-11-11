@@ -31,6 +31,7 @@ type (
 	optionRow         = sqlitegen.AccountsOption
 	accessRow         = sqlitegen.AccountsAccess
 	upsertAccountP    = sqlitegen.UpsertAccountParams
+	replaceIconP      = sqlitegen.ReplaceAccountIconParams
 	getOptionP        = sqlitegen.GetAccountOptionParams
 	upsertOptionP     = sqlitegen.UpsertAccountOptionParams
 	insertCorrectionP = sqlitegen.InsertCorrectionTransactionParams
@@ -54,6 +55,7 @@ type querier interface {
 	CountAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	GetAccountTransactionsRevision(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error
+	ReplaceAccountIcon(ctx context.Context, db backend.DBTX, p replaceIconP) (int64, error)
 	GetAccountOption(ctx context.Context, db backend.DBTX, p getOptionP) (optionRow, error)
 	ListAccountOptionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertAccountOption(ctx context.Context, db backend.DBTX, p upsertOptionP) error
@@ -138,6 +140,13 @@ func (r *Repo) ListIDsByOwner(ctx context.Context, userID vo.Id) ([]vo.Id, error
 }
 
 // ListAvailable returns the user's non-deleted accounts.
+func (r *Repo) ReplaceIcon(ctx context.Context, id, ownerID vo.Id, from, to string, now time.Time) (bool, error) {
+	n, err := r.q.ReplaceAccountIcon(ctx, r.db(ctx), replaceIconP{
+		Icon: to, UpdatedAt: now, ID: id.String(), UserID: ownerID.String(), Icon_2: from,
+	})
+	return n > 0, err
+}
+
 func (r *Repo) ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error) {
 	rows, err := r.q.ListAvailableAccounts(ctx, r.db(ctx), userID.String())
 	if err != nil {

@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureOwner } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { formatDateTime } from '@/lib/datetime'
 import { InboxButton } from './InboxButton'
 import { InboxPage } from './InboxPage'
@@ -368,6 +368,13 @@ it('does not list a due template on an account shared with me read-only', async 
   renderInbox()
   expect(await screen.findByText('All caught up')).toBeInTheDocument()
   expect(screen.queryByTestId('due-r-ro')).toBeNull()
+})
+
+it('lists no next steps, even for a user still in onboarding', async () => {
+  server.use(...coreHandlers({ user: { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'onboarding' ? { ...o, value: 'started' } : o)) } }))
+  renderInbox()
+  expect(await screen.findByText('All caught up')).toBeInTheDocument()
+  expect(screen.queryByText('Next steps')).toBeNull()
 })
 
 it('offline with the import queue never loaded, the inbox says so instead of an error or a blank page', async () => {

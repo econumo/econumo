@@ -126,3 +126,7 @@ func (sqliteBalance) ListAccountBalancesForUser(ctx context.Context, db backend.
 func (sqliteQuerier) ListAccountIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]string, error) {
 	return sqlitegen.New(db).ListAccountIDsByOwner(ctx, userID)
 }
+
+func (sqliteQuerier) ReplaceAccountIcon(ctx context.Context, db backend.DBTX, p replaceIconP) (int64, error) {
+	return sqlitegen.New(db).ReplaceAccountIcon(ctx, p)
+}

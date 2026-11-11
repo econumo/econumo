@@ -1,75 +1,47 @@
-import { useState } from 'react'
-import type { ReactNode } from 'react'
-import { Check, ChevronLeft, ChevronRight, Lightbulb } from 'lucide-react'
-import { Trans, useTranslation } from 'react-i18next'
+import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Menu } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
-import { Button } from '@/components/ui/button'
-import { useOnline } from '@/hooks/useOnline'
-import { OfflineNotice } from '@/components/OfflineNotice'
-import { UserAvatar } from '@/components/UserAvatar'
-import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { RouterPage } from '@/app/router-pages'
-import { useUiStore } from '@/app/uiStore'
-import { useIsCompact } from '@/hooks/useIsCompact'
-import { useAccounts, useFolders } from '@/features/accounts/queries'
-import { useTransactions } from '@/features/transactions/queries'
-import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
-import { useConnections } from '@/features/connections/queries'
-import { useBudgets } from '@/features/budgets/queries'
+import { Button } from '@/components/ui/button'
+import { OfflineNotice } from '@/components/OfflineNotice'
+import { useOnline } from '@/hooks/useOnline'
 import { useCompleteOnboarding, useUserData } from '@/features/user/queries'
-import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
-import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
-import type { AggregatedImportResult } from '@/features/transactions/importCsv'
+import { useIsCompact } from '@/hooks/useIsCompact'
+import { apiErrorMessage } from '@/lib/apiError'
+import { METRICS, trackEvent } from '@/lib/metrics'
+import { AccountsStepBody } from './AccountsStep'
+import { AppleWalletStep } from './AppleWalletStep'
+import { CategoriesStepBody } from './CategoriesStep'
+import { clearDraft } from './draft'
+import { ImportStep } from './ImportStep'
+import { InstallStep } from './InstallStep'
+import { PlanStep } from './PlanStep'
+import { Stepper } from './Stepper'
+import { useOnboardingSteps, type OnboardingStepKey } from './useOnboardingSteps'
 
-function Step({
-  id,
-  done,
-  avatar,
-  idleIcon,
-  title,
-  guideText,
-  guideHref,
-  children,
-}: {
-  id: string
-  done: boolean
-  avatar?: string
-  idleIcon?: ReactNode
-  title: string
-  guideText: string
-  guideHref: string
-  children: ReactNode
-}) {
-  return (
-    <li data-testid={`step-${id}`} data-done={done} className="flex gap-3">
-      <div className="flex flex-col items-center">
-        <span
-          className={`flex size-8 shrink-0 items-center justify-center rounded-full border ${done ? 'border-econumo-purple bg-econumo-purple text-white' : 'text-muted-foreground'}`}
-        >
-          {avatar ? (
-            <UserAvatar avatar={avatar} size="sm" />
-          ) : done ? (
-            <Check className="size-4" />
-          ) : (
-            (idleIcon ?? <ChevronRight className="size-4" />)
-          )}
-        </span>
-        <span className="w-px flex-1 bg-econumo-magenta-light" />
-      </div>
-      <div className="flex flex-col gap-1 pb-8">
-        <a
-          href={guideHref}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs font-medium uppercase tracking-wide text-econumo-purple dark:text-econumo-link underline underline-offset-2"
-        >
-          {guideText}
-        </a>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <div className="text-sm text-foreground/80">{children}</div>
-      </div>
-    </li>
-  )
+export interface StepBodyProps {
+  onDone: () => Promise<void>
+  onSkip: () => Promise<void>
+  onGoTo?: (key: OnboardingStepKey) => void
+  // categories and accounts are done, so the rest of the guide may be wrapped up from this step
+  coreStepsDone?: boolean
+  // skips every open step, completes onboarding and lands on `to` instead of the budget
+  onCompleteSetup?: (to: string) => Promise<void>
+}
+
+const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
+  import: ImportStep,
+  categories: CategoriesStepBody,
+  accounts: AccountsStepBody,
+  plan: PlanStep,
+  home_screen: InstallStep,
+  apple_wallet: AppleWalletStep,
+}
+
+const DONE_STEP_PAGES: Partial<Record<OnboardingStepKey, string>> = {
+  categories: RouterPage.SETTINGS_CATEGORIES,
+  accounts: RouterPage.SETTINGS_ACCOUNTS,
 }
 
 export function OnboardingPage() {
@@ -77,201 +49,115 @@ export function OnboardingPage() {
   const online = useOnline()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
-  const openAccountModal = useUiStore((s) => s.openAccountModal)
-
+  const { steps, current, allResolved, markDone, skip, ready } = useOnboardingSteps()
+  const complete = useCompleteOnboarding()
   const { data: user } = useUserData()
-  const { data: accounts = [] } = useAccounts()
-  const { data: folders = [] } = useFolders()
-  const { data: transactions = [] } = useTransactions()
-  const { data: categories = [] } = useCategories()
-  const { data: payees = [] } = usePayees()
-  const { data: tags = [] } = useTags()
-  const { data: connections = [] } = useConnections()
-  const { data: budgets = [] } = useBudgets()
-  const completeOnboarding = useCompleteOnboarding()
+  const userId = user?.id
+  const [selected, setSelected] = useState<OnboardingStepKey | null>(null)
+  const [skippingAll, setSkippingAll] = useState(false)
+  const completing = useRef(false)
+  const autoCompleted = useRef(false)
+  // where a completion lands, kept so the Finish retry after a failure goes there too
+  const landing = useRef<string>(RouterPage.BUDGET)
 
-  const [importOpen, setImportOpen] = useState(false)
-  const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
-  const [avatarOpen, setAvatarOpen] = useState(false)
+  const finish = useCallback(async () => {
+    if (completing.current) return
+    completing.current = true
+    try {
+      await complete.mutateAsync()
+      if (userId) clearDraft(userId)
+      navigate(landing.current)
+    } finally {
+      completing.current = false
+    }
+  }, [complete, navigate, userId])
 
-  const isAccountCreated = accounts.length > 0
-  const isTransactionsEntered = accounts.length > 0 && categories.length > 0 && transactions.length > 0
-  const isClassificationsCreated = categories.length > 0 && (tags.length > 0 || payees.length > 0)
-  const isConnectionsEstablished = connections.length > 0
-  const isBudgetCreated = budgets.length > 0
+  // Steps answered elsewhere (another device, the budget page) finish the
+  // flow on arrival; only once, so a failure waits for the Finish button.
+  useEffect(() => {
+    if (ready && allResolved && !autoCompleted.current) {
+      autoCompleted.current = true
+      void finish().catch(() => undefined)
+    }
+  }, [ready, allResolved, finish])
 
-  // Trans fills the children from the catalogue string's <tag>label</tag>
-  const settingsLink = (to: string) => <Link to={to} className="text-econumo-purple dark:text-econumo-link underline underline-offset-2" />
-
-  const handleComplete = () => {
-    completeOnboarding.mutate(undefined, { onSuccess: () => navigate(RouterPage.BUDGET) })
+  if (!ready || steps.length === 0) {
+    return null
   }
 
+  // a done step is read-only, so a selection that became done falls back to the first open step
+  const active = steps.find((s) => s.key === selected && s.state !== 'done')?.key ?? current ?? steps[0].key
+
+  // The steps read here are the ones rendered, so the answered step still
+  // counts as open in them and is excluded by key.
+  const answer = (act: (key: OnboardingStepKey) => Promise<void>) => async () => {
+    await act(active)
+    const open = steps.filter((s) => s.key !== active && s.state === 'open')
+    if (open.length === 0) {
+      autoCompleted.current = true
+      await finish().catch(() => undefined)
+      return
+    }
+    const after = open.find((s) => steps.indexOf(s) > steps.findIndex((x) => x.key === active))
+    setSelected((after ?? open[0]).key)
+  }
+
+  const completeSetup = async (to?: string) => {
+    setSkippingAll(true)
+    if (to) landing.current = to
+    else trackEvent(METRICS.ONBOARDING_SKIP, { step: active })
+    try {
+      await Promise.all(steps.filter((s) => s.state === 'open').map((s) => skip(s.key)))
+      autoCompleted.current = true
+      await finish()
+    } catch {
+      // the completion error stays in the mutation state and is shown below
+    } finally {
+      setSkippingAll(false)
+    }
+  }
+
+  // a done step cannot be reopened, so a link to it opens the settings page holding its data
+  const goTo = (key: OnboardingStepKey) => {
+    const settings = DONE_STEP_PAGES[key]
+    if (steps.find((s) => s.key === key)?.state === 'done' && settings) navigate(settings)
+    else setSelected(key)
+  }
+
+  const Body = STEP_BODIES[active]
+  const coreStepsDone = steps.filter((s) => s.key === 'categories' || s.key === 'accounts').every((s) => s.state === 'done')
+
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
-      {isCompact ? (
-        <header className="flex items-center gap-2">
-          <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
-            <ChevronLeft className="size-5" />
-          </Button>
-          <h1 className="flex-1 truncate text-center text-lg uppercase">{t('onboarding.header')}</h1>
-          <span className="min-w-9" />
-        </header>
-      ) : (
-        <h1 className="border-b pb-2 text-[22px] uppercase tracking-wide">{t('onboarding.header')}</h1>
-      )}
-      <OfflineNotice />
-
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <h2 className="pb-5 text-[32px] font-normal">{t('onboarding.title')}</h2>
-        <ul className="flex flex-col">
-          <Step
-            id="accounts"
-            done={isAccountCreated}
-            title={t('onboarding.steps.accounts.title')}
-            guideText={t('onboarding.user_guide.accounts')}
-            guideHref="https://econumo.com/docs/user-guide/accounts"
-          >
-            <p>
-              <Trans
-                i18nKey="onboarding.steps.accounts.text"
-                components={{
-                  settings: settingsLink(RouterPage.SETTINGS),
-                  accounts: settingsLink(RouterPage.SETTINGS_ACCOUNTS),
-                }}
-              />
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              className="mt-2 bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85"
-              disabled={!online}
-              onClick={() => openAccountModal({ folderId: folders[0]?.id ?? null })}
-            >
-              {t('onboarding.add_account')}
-            </Button>
-          </Step>
-
-          <Step
-            id="transactions"
-            done={isTransactionsEntered}
-            title={t('onboarding.steps.transactions.title')}
-            guideText={t('onboarding.user_guide.transactions')}
-            guideHref="https://econumo.com/docs/user-guide/transactions"
-          >
-            <p>
-              <Trans
-                i18nKey="onboarding.steps.transactions.text"
-                components={{ action: <span className="font-medium text-foreground" /> }}
-              />
-              <br />
-              {t('onboarding.steps.transactions.hint')}
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              className="mt-2 bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85"
-              disabled={!online}
-              onClick={() => setImportOpen(true)}
-            >
-              {t('onboarding.import_transactions')}
-            </Button>
-          </Step>
-
-          <Step
-            id="classifications"
-            done={isClassificationsCreated}
-            idleIcon={<Lightbulb className="size-4" />}
-            title={t('onboarding.steps.classifications.title')}
-            guideText={t('onboarding.user_guide.classifications')}
-            guideHref="https://econumo.com/docs/user-guide/classifications"
-          >
-            <p>
-              <Trans
-                i18nKey="onboarding.steps.classifications.text"
-                components={{
-                  settings: settingsLink(RouterPage.SETTINGS),
-                  categories: settingsLink(RouterPage.SETTINGS_CATEGORIES),
-                  tags: settingsLink(RouterPage.SETTINGS_TAGS),
-                  payees: settingsLink(RouterPage.SETTINGS_PAYEES),
-                }}
-              />
-            </p>
-          </Step>
-
-          <Step
-            id="avatar"
-            done={false}
-            avatar={user?.avatar}
-            title={t('onboarding.steps.avatar.title')}
-            guideText={t('onboarding.user_guide.user_profile')}
-            guideHref="https://econumo.com/docs/user-guide/user-profile"
-          >
-            <p>
-              <Trans
-                i18nKey="onboarding.steps.avatar.text"
-                components={{
-                  choose: (
-                    <button
-                      type="button"
-                      onClick={() => setAvatarOpen(true)}
-                      className="text-econumo-purple dark:text-econumo-link underline underline-offset-2"
-                    />
-                  ),
-                }}
-              />
-            </p>
-          </Step>
-
-          <Step
-            id="connections"
-            done={isConnectionsEstablished}
-            title={t('onboarding.steps.connections.title')}
-            guideText={t('onboarding.user_guide.shared_access')}
-            guideHref="https://econumo.com/docs/user-guide/shared-access"
-          >
-            <p>
-              <Trans
-                i18nKey="onboarding.steps.connections.text"
-                components={{
-                  settings: settingsLink(RouterPage.SETTINGS),
-                  connections: settingsLink(RouterPage.SETTINGS_CONNECTIONS),
-                }}
-              />
-            </p>
-          </Step>
-
-          <Step
-            id="budget"
-            done={isBudgetCreated}
-            title={t('onboarding.steps.budget.title')}
-            guideText={t('onboarding.user_guide.budgets')}
-            guideHref="https://econumo.com/docs/user-guide/budgets"
-          >
-            <p>
-              <Trans
-                i18nKey="onboarding.steps.budget.text"
-                components={{ budget: settingsLink(RouterPage.BUDGET) }}
-              />
-              <br />
-              <Trans
-                i18nKey="onboarding.steps.budget.text_secondary"
-                components={{
-                  settings: settingsLink(RouterPage.SETTINGS),
-                  budgets: settingsLink(RouterPage.SETTINGS_BUDGETS),
-                }}
-              />
-            </p>
-            <Button type="button" size="sm" className="mt-2" disabled={completeOnboarding.isPending || !online} onClick={handleComplete}>
-              {t('onboarding.complete')}
-            </Button>
-          </Step>
-        </ul>
+    <div className="mx-auto flex h-full w-full max-w-3xl scroll-pb-24 flex-col gap-6 overflow-y-auto p-4 scrollbar-slim lg:px-8">
+      {/* the page title is spoken; the stepper's own line shows it on a phone */}
+      <h1 className="sr-only">{t('onboarding.steps_nav.title')}</h1>
+      <div className="flex items-center justify-between">
+        {isCompact ? (
+          <Link to="/?menu=1" aria-label={t('onboarding.steps_nav.menu')} className="-ml-2 grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent">
+            <Menu className="size-5" />
+          </Link>
+        ) : (
+          <span />
+        )}
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={skippingAll || !online} onClick={() => void completeSetup()}>
+          {t('onboarding.steps_nav.complete_setup')}
+        </Button>
       </div>
-
-      <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
-      <ImportResultDialog open={importResult !== null} result={importResult} onClose={() => setImportResult(null)} />
-      <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
+      <OfflineNotice />
+      <Stepper steps={steps} current={active} onSelect={setSelected} />
+      {complete.error != null ? (
+        <div className="flex items-center justify-between gap-4">
+          <p role="alert" className="text-sm text-destructive">
+            {apiErrorMessage(complete.error)}
+          </p>
+          {allResolved ? (
+            <Button type="button" disabled={complete.isPending || !online} onClick={() => void finish().catch(() => undefined)}>
+              {t('onboarding.steps_nav.finish')}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      {allResolved ? null : <Body key={active} onDone={answer(markDone)} onSkip={answer(skip)} onGoTo={goTo} coreStepsDone={coreStepsDone} onCompleteSetup={completeSetup} />}
     </div>
   )
 }

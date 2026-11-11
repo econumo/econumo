@@ -37,3 +37,9 @@ UPDATE transactions SET category_id = $1 WHERE category_id = $2;
 
 -- name: ReassignCategoryRecurring :exec
 UPDATE recurring_transactions SET category_id = $1 WHERE category_id = $2;
+
+-- name: ReplaceCategoryIcon :execrows
+-- A compare-and-set on the icon: a category whose icon changed since it was
+-- read is left alone, and nothing is written.
+UPDATE categories SET icon = $1, updated_at = $2
+WHERE id = $3 AND user_id = $4 AND icon = $5;

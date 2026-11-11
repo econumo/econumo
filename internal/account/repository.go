@@ -27,6 +27,10 @@ type AccountStore interface {
 	// ListAvailable returns the user's non-deleted accounts.
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
 
+	// ReplaceIcon sets the icon of the owner's live account only while it is
+	// from, in one conditional write; it reports whether a row changed.
+	ReplaceIcon(ctx context.Context, id, ownerID vo.Id, from, to string, now time.Time) (bool, error)
+
 	// ListDeleted returns every soft-deleted account across all users (the
 	// zero-deleted-accounts migration and self-healing sweep operate globally,
 	// not per-user).

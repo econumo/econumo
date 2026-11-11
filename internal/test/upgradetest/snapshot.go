@@ -83,6 +83,8 @@ var intended = []change{
 		"a budget counts the history of its deleted member accounts"},
 	{"v1.4.0", regexp.MustCompile(`get-(folder|account)-list \$\.items\[[^]]+\]\.position$`),
 		"fractional sort keys replaced stored positions; position is the index in the new order"},
+	{"v1.8.0", regexp.MustCompile(`get-user-data \$\.user\.options\[name=onboarding\]\.value$`),
+		"existing users with transactions skip the new onboarding (migration 20261110000000)"},
 }
 
 // tolerated returns the path checks a diff from release may ignore.

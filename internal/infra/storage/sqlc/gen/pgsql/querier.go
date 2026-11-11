@@ -478,6 +478,12 @@ type Querier interface {
 	RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	// A compare-and-set on the icon of a live account: one whose icon changed since
+	// it was read, or that was deleted, is left alone and nothing is written.
+	ReplaceAccountIcon(ctx context.Context, arg ReplaceAccountIconParams) (int64, error)
+	// A compare-and-set on the icon: a category whose icon changed since it was
+	// read is left alone, and nothing is written.
+	ReplaceCategoryIcon(ctx context.Context, arg ReplaceCategoryIconParams) (int64, error)
 	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
