@@ -356,7 +356,10 @@ Decided with Dmitry, replacing the manual steps' AI icon review above.
   category and account rows apply it once their name was typed or edited, so an untouched
   default keeps its curated icon; the New category and New account dialogs apply it in create
   mode only. A category created inline from a picker ("Create <name>") is saved on the default
-  icon and takes the suggestion afterwards, in the background, if its icon is still that one.
+  icon and takes the suggestion afterwards, in the background, if its icon is still that one
+  (`apply-suggested-icon`, a compare-and-set on the server that never touches the name). An icon
+  a suggestion put there goes back to the starting icon when the name changes, until the new
+  name has its own suggestion.
 - Without an AI provider nothing is asked and the default icon stays; there is no built-in
   word list. Over the per-user limit (60 per rate-limit window), on a failure or after 8 s the
   server answers no icon rather than an error, so typing never shows one. Answers are cached

@@ -463,7 +463,11 @@ navigation (single-pane vs sidebar).
       category picker ("Create Mortgage") saves at once with the default icon
       and, a few seconds later, shows a matching icon in the picker and the
       category list without a reload; if its icon was changed in the
-      meantime, that icon stays. Without AI it keeps the default icon.
+      meantime (here or on another device), that icon stays, and a rename
+      made meanwhile is kept. Without AI it keeps the default icon.
+- [ ] With AI, a name that got a suggested icon and is then renamed to
+      something with no match (e.g. "Rent" -> "Xyz") goes back to the
+      default icon instead of keeping the old suggestion.
 - [ ] With AI, after an import whose history shows a loan repayment (e.g. a
       "Mortgage" category paid in at least 2 of the last 6 complete months), a
       debt named in the UI language appears in the budget's Debts block
