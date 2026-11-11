@@ -124,7 +124,36 @@ export interface StoredKey {
   tag: string
 }
 
+// Set synchronously before the delete: a sign-out or sign-in navigates away
+// right after asking, and a slow IndexedDB may not have deleted the key by
+// then, so the next read finishes the job instead of handing the key out.
+const FORGET_PENDING = 'econumo.import-key-forget-pending'
+
+function forgetPending(): boolean {
+  try {
+    return localStorage.getItem(FORGET_PENDING) === '1'
+  } catch {
+    return false
+  }
+}
+
+function setForgetPending(pending: boolean): void {
+  try {
+    if (pending) {
+      localStorage.setItem(FORGET_PENDING, '1')
+    } else {
+      localStorage.removeItem(FORGET_PENDING)
+    }
+  } catch {
+    // no localStorage: the delete itself is all there is
+  }
+}
+
 export async function loadStoredKey(): Promise<StoredKey | null> {
+  if (forgetPending()) {
+    await forgetKey()
+    return null
+  }
   const value = await dbRequest<StoredKey | CryptoKey | undefined>(STORE_IMPORT_KEYS, 'readonly', (s) => s.get(RECORD))
   if (value instanceof CryptoKey) {
     return { key: value, tag: '' }  // untagged record from before tags existed: forces one re-unlock
@@ -134,11 +163,15 @@ export async function loadStoredKey(): Promise<StoredKey | null> {
 
 async function storeKey(key: CryptoKey, tag: string): Promise<void> {
   const record: StoredKey = { key, tag }
+  // the put replaces whatever an unfinished forget left behind
+  setForgetPending(false)
   await dbRequest(STORE_IMPORT_KEYS, 'readwrite', (s) => s.put(record, RECORD))
 }
 
 export async function forgetKey(): Promise<void> {
+  setForgetPending(true)
   await dbRequest(STORE_IMPORT_KEYS, 'readwrite', (s) => s.delete(RECORD))
+  setForgetPending(false)
 }
 
 async function wrap(rawDataKey: ArrayBuffer, passphrase: string, params: KdfParams): Promise<WrappedKey> {
