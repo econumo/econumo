@@ -8,6 +8,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { cn } from '@/lib/utils'
 import type { StepBodyProps } from './OnboardingPage'
 import { useDay0 } from './useDay0'
+import { StepFooter } from './StepFooter'
 
 const isCsv = (file: File) => file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv'
 
@@ -99,14 +100,14 @@ export function ImportStep({ onDone, onSkip }: StepBodyProps) {
           {t('onboarding.import_step.not_csv')}
         </p>
       )}
-      <div className="mt-6 flex items-center justify-between">
+      <StepFooter>
         <Button type="button" variant="ghost" disabled={pending || day0.pending} onClick={skip}>
           {t('onboarding.skip')}
         </Button>
         <Button type="button" variant="ghost" disabled={pending || day0.pending} onClick={skip}>
           {t('onboarding.import_step.no_file')}
         </Button>
-      </div>
+      </StepFooter>
       <ImportCsvDialog
         open={open}
         initialFile={dropped}

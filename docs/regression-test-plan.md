@@ -303,6 +303,13 @@ navigation (single-pane vs sidebar).
       (translated), whether or not anything changed.
 - [ ] Every step's skip button reads "Skip" (Plan included, translated);
       Import also has "I don't have one".
+- [ ] 📱 The step's buttons stay visible at the bottom while a long list
+      scrolls (Categories with every default row, a long Plan): the bar sits
+      on the page background with a thin top border only while rows run
+      under it, the last row is never hidden behind it, on an iPhone it clears
+      the home indicator, focusing a balance or plan input near the bottom
+      (with the keyboard open) scrolls it into view above the bar, and on a
+      desktop dragging a category to the bottom of the list still works.
 - [ ] Skip on Categories or Accounts creates nothing; Save and continue on Categories
       creates every category still listed (in the listed order), Save and continue on Accounts only the new
       accounts (and sets the main currency and visible currencies). Each Save and continue

@@ -22,6 +22,7 @@ import type { StepBodyProps } from './OnboardingPage'
 import { StepLoadError } from './StepLoadError'
 import { useDay0, type CategoryReview } from './useDay0'
 import { useSettled } from './useSettled'
+import { StepFooter } from './StepFooter'
 
 type CategoryType = CategoryRow['type']
 type ListItem = { id: string; existing?: ExistingCategory; row?: CategoryRow }
@@ -299,14 +300,14 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
       {group('income', t('onboarding.categories_step.income'))}
 
       {error}
-      <div className="mt-6 flex items-center justify-between">
+      <StepFooter>
         <Button type="button" variant="ghost" disabled={pending} onClick={onSkip}>
           {t('onboarding.skip')}
         </Button>
         <Button type="button" disabled={!canContinue} onClick={submit}>
           {t('onboarding.save_continue')}
         </Button>
-      </div>
+      </StepFooter>
 
       <ResponsiveDialog
         open={editing !== undefined}

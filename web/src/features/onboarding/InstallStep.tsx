@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { InstallSteps } from '@/features/install/InstallSteps'
 import { useInstallApp } from '@/features/install/useInstallApp'
 import type { StepBodyProps } from './OnboardingPage'
+import { StepFooter } from './StepFooter'
 
 export function InstallStep({ onDone, onSkip }: StepBodyProps) {
   const { t } = useTranslation()
@@ -25,7 +26,7 @@ export function InstallStep({ onDone, onSkip }: StepBodyProps) {
           <InstallSteps mode={mode} />
         </div>
       ) : null}
-      <div className="mt-6 flex items-center justify-between">
+      <StepFooter>
         <Button type="button" variant="ghost" disabled={pending} onClick={run(onSkip)}>
           {t('onboarding.skip')}
         </Button>
@@ -38,7 +39,7 @@ export function InstallStep({ onDone, onSkip }: StepBodyProps) {
             {t('onboarding.install_step.done')}
           </Button>
         )}
-      </div>
+      </StepFooter>
     </section>
   )
 }

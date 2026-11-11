@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
 import type { StepBodyProps } from './OnboardingPage'
+import { StepFooter } from './StepFooter'
 
 export function AppleWalletStep({ onSkip, coreStepsDone, onCompleteSetup }: StepBodyProps) {
   const { t } = useTranslation()
@@ -14,7 +15,7 @@ export function AppleWalletStep({ onSkip, coreStepsDone, onCompleteSetup }: Step
       <h2 className="text-2xl font-normal">{t('onboarding.wallet_step.heading')}</h2>
       <p className="text-sm text-muted-foreground">{t('onboarding.wallet_step.text')}</p>
       <p className="text-sm text-muted-foreground">{t('onboarding.wallet_step.later')}</p>
-      <div className="mt-6 flex items-center justify-between">
+      <StepFooter>
         <Button
           type="button"
           variant="ghost"
@@ -40,7 +41,7 @@ export function AppleWalletStep({ onSkip, coreStepsDone, onCompleteSetup }: Step
         >
           {t('onboarding.wallet_step.setup')}
         </Button>
-      </div>
+      </StepFooter>
     </section>
   )
 }

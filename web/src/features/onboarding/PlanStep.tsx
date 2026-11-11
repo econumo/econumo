@@ -24,6 +24,7 @@ import { rowTile } from './CategoriesStep'
 import type { StepBodyProps } from './OnboardingPage'
 import { StepLoadError } from './StepLoadError'
 import { useDay0 } from './useDay0'
+import { StepFooter } from './StepFooter'
 
 export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
   const { t, i18n } = useTranslation()
@@ -87,7 +88,7 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
     <section className="flex flex-col gap-2">
       <h2 className="text-2xl font-normal">{t('onboarding.plan_step.heading')}</h2>
       {body}
-      <div className="mt-6 flex items-center justify-between">
+      <StepFooter>
         <Button
           type="button"
           variant="ghost"
@@ -102,7 +103,7 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
         <Button type="button" disabled={pending || !save || save.disabled} onClick={save?.onSave}>
           {t('onboarding.save_continue')}
         </Button>
-      </div>
+      </StepFooter>
     </section>
   )
 
