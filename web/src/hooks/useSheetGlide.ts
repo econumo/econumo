@@ -33,41 +33,29 @@ function vaulMoving(el: HTMLElement): boolean {
 }
 
 /**
- * iOS moves the visible area in one step on the frame its keyboard starts to
- * rise or fall (measured: 812px <-> 416px panned by 396px), so a sheet that
- * sits on the keyboard jumps. Each time the keyboard changes the sheet's
- * place, this starts it where it was on screen and slides it to its new place.
- * It animates `translate`, which composes with vaul's own `transform`.
- *
- * `placement` changes exactly when the keyboard moves the sheet; every other
- * render (a filtered list growing or shrinking) only records where it is.
+ * Slides the sheet from its previous place to its new one when its top moves
+ * (a short list rising above the keyboard), instead of jumping. `top` is the
+ * place the sheet was given (px from the top of the visible area), not a
+ * measurement: iOS reports the sheet's position inconsistently while it pans
+ * for the keyboard (measured: glides started 47-72px off), and a long list's
+ * top never moves, so it never glides. It animates `translate`, which
+ * composes with vaul's own `transform`.
  */
-export function useSheetGlide(ref: RefObject<HTMLElement | null>, active: boolean, placement: string) {
-  // where the sheet rests, without a glide's offset
-  const last = useRef<{ top: number; placement: string } | null>(null)
+export function useSheetGlide(ref: RefObject<HTMLElement | null>, active: boolean, top: number | undefined) {
+  const last = useRef<number | undefined>(undefined)
   useLayoutEffect(() => {
     const el = ref.current
-    if (!active || !el) {
-      last.current = null
-      return
-    }
-    // read before cancelling: where a glide cut short has got to
-    const offset = glideOffset(el)
-    const top = el.getBoundingClientRect().top - offset
     const prev = last.current
-    last.current = { top, placement }
-    if (prev === null || prev.placement === placement) {
+    last.current = active ? top : undefined
+    if (!active || !el || prev === undefined || top === undefined || Math.abs(prev - top) < 2) {
       return
     }
+    // a glide cut short continues from where it had got to
+    const from = prev - top + glideOffset(el)
     el.getAnimations?.().forEach((a) => a.id === GLIDE_ID && a.cancel())
-    // on screen it was at its rest place plus the glide's offset
-    const from = prev.top + offset - top
-    if (Math.abs(from) < 2 || typeof el.animate !== 'function' || vaulMoving(el)) {
-      return
-    }
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    if (typeof el.animate !== 'function' || vaulMoving(el) || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       return
     }
     el.animate([{ translate: `0 ${from}px` }, { translate: '0 0' }], { duration: GLIDE_MS, easing: GLIDE_EASING, id: GLIDE_ID })
-  })
+  }, [ref, active, top])
 }

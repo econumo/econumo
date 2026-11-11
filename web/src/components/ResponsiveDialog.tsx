@@ -160,10 +160,13 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
     coverParent(1)
     return () => coverParent(-1)
   }, [open, coverParent])
-  const sheetBodyRef = useRef<HTMLDivElement>(null)
-  const anchoredStyle = useAnchoredSheet(contentRef, sheetBodyRef, anchorTop && open && isMobile && !fullScreen, keyboard)
+  // state, not a ref: vaul mounts the sheet after this render, and the anchor
+  // must be measured as it appears, not at the next keyboard change
+  const [sheetBody, setSheetBody] = useState<HTMLDivElement | null>(null)
+  const anchored = useAnchoredSheet(contentRef, sheetBody, anchorTop && isMobile && !fullScreen, open, keyboard)
+  const anchoredStyle = anchored?.style
   const sheetStyle = anchoredStyle ?? (keyboard.height > 0 ? { bottom: keyboard.bottom, maxHeight: keyboard.height - SHEET_TOP_GAP } : undefined)
-  useSheetGlide(contentRef, open && isMobile && !fullScreen, `${keyboard.top}:${keyboard.height}:${keyboard.bottom}`)
+  useSheetGlide(contentRef, open && isMobile && !fullScreen, anchored?.top)
   // a full-screen page shrinks to the visible area instead: left at h-dvh, iOS
   // pans it so the header and the fields above the focused one go off-screen
   // and the rest hides behind the keyboard; fitted, the header and footer stay
@@ -296,7 +299,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
             {headerAction && !hideHeader ? <div className="absolute top-1/2 right-3 -translate-y-1/2">{headerAction}</div> : null}
           </DrawerHeader>
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
-          <div ref={sheetBodyRef} className={bodyClass}>{children}</div>
+          <div ref={setSheetBody} className={bodyClass}>{children}</div>
           {footer ? (
             <div className={footerClass}>{footer}</div>
           ) : null}

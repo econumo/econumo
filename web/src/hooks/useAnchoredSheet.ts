@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import type { KeyboardInset } from '@/hooks/useKeyboardInset'
 
@@ -46,29 +46,44 @@ export function anchoredTop(anchor: SheetAnchor, visibleHeight: number): number 
  * moves its bottom edge, and the list in between gets shorter or taller. The
  * top is set once from the content: as tall as the content, and a list
  * longer than the screen fills it up to the status bar, so the keyboard
- * leaves it room for several rows. It moves up when the content grows (data arriving), never down when
- * it shrinks (a filter), and moves up only as far as needed when the keyboard
- * would leave less than about two rows of list.
+ * leaves it room for several rows. It moves up when the content grows (data
+ * arriving), never down when it shrinks (a filter), and moves up only as far
+ * as needed when the keyboard would leave less than about two rows of list.
+ * A closing sheet keeps its place while it slides out.
  */
+export interface AnchoredSheet {
+  style: CSSProperties
+  /** px from the top of the visible area to the sheet's top */
+  top: number
+}
+
 export function useAnchoredSheet(
   ref: RefObject<HTMLElement | null>,
-  bodyRef: RefObject<HTMLElement | null>,
+  body: HTMLElement | null,
   enabled: boolean,
+  open: boolean,
   keyboard: KeyboardInset,
-): CSSProperties | undefined {
+): AnchoredSheet | undefined {
   const [anchor, setAnchor] = useState<SheetAnchor | null>(null)
+  const measured = useRef(false)
   // after every render, since the content can grow without the keyboard
   // changing; it only ever sets the anchor higher, so it settles
   // oxlint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     if (!enabled) {
+      measured.current = false
       if (anchor !== null) {
         setAnchor(null)
       }
       return
     }
+    // a closing sheet keeps its place while it slides out; the next opening
+    // measures afresh
+    if (!open) {
+      measured.current = false
+      return
+    }
     const el = ref.current
-    const body = bodyRef.current
     if (!el || !body) {
       return
     }
@@ -78,7 +93,8 @@ export function useAnchoredSheet(
     const layout = document.documentElement.clientHeight || window.innerHeight
     const minTop = Math.max(SHEET_TOP_GAP, safeAreaTop() + STATUS_BAR_GAP)
     const top = Math.max(minTop, layout - natural)
-    if (anchor === null || top < anchor.top - 1) {
+    if (!measured.current || anchor === null || top < anchor.top - 1) {
+      measured.current = true
       setAnchor({ top, natural, chrome, minTop })
     }
   })
@@ -88,7 +104,10 @@ export function useAnchoredSheet(
   const layout = document.documentElement.clientHeight || window.innerHeight
   const visibleHeight = keyboard.height > 0 ? keyboard.height : layout
   const top = anchoredTop(anchor, visibleHeight)
-  // placed in the layout viewport, which iOS pans by keyboard.top
-  // marginTop: the drawer's mt-24 only kept a bottom-anchored sheet off the top
-  return { top: keyboard.top + top, bottom: 'auto', marginTop: 0, height: visibleHeight - top, maxHeight: 'none' }
+  return {
+    top,
+    // placed in the layout viewport, which iOS pans by keyboard.top;
+    // marginTop: the drawer's mt-24 only kept a bottom-anchored sheet off the top
+    style: { top: keyboard.top + top, bottom: 'auto', marginTop: 0, height: visibleHeight - top, maxHeight: 'none' },
+  }
 }
