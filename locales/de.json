@@ -155,12 +155,12 @@
       "dismiss": "Ausblenden"
     },
     "serverUpdate": {
-      "notice": "Dein Econumo-Server ({version}) ist älter als diese App. Aktualisiere den Server, um die neuesten Funktionen zu erhalten."
+      "notice": "Ihr Econumo-Server ({version}) ist älter als diese App. Aktualisieren Sie den Server, um die neuesten Funktionen zu erhalten."
     },
     "appUpdate": {
       "title": "Aktualisierung erforderlich",
-      "blockedApp": "Diese App ist zu alt für deinen Econumo-Server: erforderlich ist App-Version {version} oder neuer. Bitte aktualisiere die App, um fortzufahren.",
-      "blockedServer": "Diese App benötigt Econumo-Server {min} oder neuer, dein Server ist {version}. Bitte aktualisiere den Server, um fortzufahren."
+      "blockedApp": "Diese App ist zu alt für Ihren Econumo-Server: erforderlich ist App-Version {version} oder neuer. Bitte aktualisieren Sie die App, um fortzufahren.",
+      "blockedServer": "Diese App benötigt Econumo-Server {min} oder neuer, Ihr Server ist {version}. Bitte aktualisieren Sie den Server, um fortzufahren."
     },
     "offline_unavailable": {
       "title": "Offline nicht verfügbar",
@@ -561,19 +561,19 @@
       "instructions": "Einrichtungsanleitung",
       "connect": "Apple Wallet einrichten",
       "connect_intro": {
-        "needs_title": "Du brauchst",
+        "needs_title": "Sie benötigen",
         "needs": {
           "iphone": "Ein iPhone mit Apple Pay",
           "shortcuts": "Die App Kurzbefehle – sie ist in iOS enthalten",
           "time": "Etwa 5 Minuten"
         },
         "limitations_title": "Bekannte Einschränkungen",
-        "tap_only": "Funktioniert nur, wenn du dein iPhone zum Bezahlen ans Terminal hältst",
+        "tap_only": "Funktioniert nur, wenn Sie Ihr iPhone zum Bezahlen ans Terminal halten",
         "online_not_imported": "Apple Pay-Zahlungen auf Websites werden nicht unterstützt",
         "no_signal": "Ohne Netz beim Bezahlen wird die Transaktion möglicherweise nicht hinzugefügt",
         "steps_title": "So funktioniert es",
         "flow": {
-          "pay": "Bezahle mit Apple Pay",
+          "pay": "Mit Apple Pay bezahlen",
           "send": "Die Integration sendet Details direkt an Econumo",
           "privacy": "Econumo erhält Kartenname, Händler, Betrag und Währung",
           "record": "Econumo speichert die Transaktion"
@@ -590,39 +590,39 @@
         "reconfigure": "Erneut einrichten"
       },
       "steps": {
-        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um den Kurzbefehl herunterzuladen und abgeschlossene Schritte manuell zu markieren.",
+        "hint_desktop": "Öffnen Sie diese Seite auf Ihrem iPhone, um den Kurzbefehl herunterzuladen und abgeschlossene Schritte manuell zu markieren.",
         "install": {
           "title": "Kurzbefehl installieren",
-          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“.",
+          "text": "Öffnen Sie die Datei auf Ihrem iPhone und tippen Sie auf „Kurzbefehl hinzufügen“.",
           "file": "oder herunterladen"
         },
         "configure": {
           "title": "Kurzbefehl verbinden",
-          "text": "Tippe auf „Kurzbefehl verbinden“ und dann bei jeder Abfrage auf „Immer erlauben“.",
+          "text": "Tippen Sie auf „Kurzbefehl verbinden“ und dann bei jeder Abfrage auf „Immer erlauben“.",
           "button": "Kurzbefehl verbinden",
           "open": "Econumo verknüpfen",
           "waiting": "Warte darauf, dass der Kurzbefehl Econumo erreicht …",
-          "again_note": "Erneutes Verbinden ersetzt das Token, das der Kurzbefehl gerade nutzt: Zahlungen werden erst wieder importiert, wenn du econumo mit dem neuen öffnest."
+          "again_note": "Erneutes Verbinden ersetzt das Token, das der Kurzbefehl gerade nutzt: Zahlungen werden erst wieder importiert, wenn Sie econumo mit dem neuen öffnen."
         },
         "automate": {
           "title": "Automation anlegen",
-          "text": "Erstelle in der Kurzbefehle-App eine Wallet-Automation:",
+          "text": "Erstellen Sie in der Kurzbefehle-App eine Wallet-Automation:",
           "list": {
-            "open": "Öffne den Tab „Automation“ (unter iOS 27: Mediathek → Automation) und tippe auf „Neue Automation“ oder +",
-            "wallet": "Wähle Wallet („Wenn ich auf eine Wallet-Karte oder einen Pass tippe“)",
-            "cards": "Wähle die Karten und Kategorien aus, die importiert werden sollen, oder alle",
-            "confirm": "Lass die Bestätigung an: „Nach Bestätigung ausführen“ (iOS 26) oder „Vor dem Ausführen bestätigen“ (iOS 27)",
-            "shortcut": "Wähle den Kurzbefehl econumo (unter iOS 27: „Kurzbefehl ausführen“ → econumo hinzufügen, mit „Transaktion“ als Eingabe)"
+            "open": "Öffnen Sie den Tab „Automation“ (unter iOS 27: Mediathek → Automation) und tippen Sie auf „Neue Automation“ oder +",
+            "wallet": "Wählen Sie Wallet („Wenn ich auf eine Wallet-Karte oder einen Pass tippe“)",
+            "cards": "Wählen Sie die Karten und Kategorien aus, die importiert werden sollen, oder alle",
+            "confirm": "Lassen Sie die Bestätigung an: „Nach Bestätigung ausführen“ (iOS 26) oder „Vor dem Ausführen bestätigen“ (iOS 27)",
+            "shortcut": "Wählen Sie den Kurzbefehl econumo (unter iOS 27: „Kurzbefehl ausführen“ → econumo hinzufügen, mit „Transaktion“ als Eingabe)"
           }
         },
         "payment": {
           "title": "Erste Zahlung tätigen",
-          "text": "Zahle einmal mit Apple Pay. Tippe auf „Ausführen“, wenn die Automation nachfragt, und dann bei jeder Abfrage auf „Immer erlauben“.",
+          "text": "Zahlen Sie einmal mit Apple Pay. Tippen Sie auf „Ausführen“, wenn die Automation nachfragt, und dann bei jeder Abfrage auf „Immer erlauben“.",
           "waiting": "Warte auf die erste Zahlung …"
         },
         "immediate": {
           "title": "Automation auf „Sofort ausführen“ umstellen",
-          "text": "Schalte die Bestätigung aus, damit Zahlungen ohne Rückfrage importiert werden: Öffne die Automation in der Kurzbefehle-App und wähle „Sofort ausführen“ (iOS 26) oder schalte „Vor dem Ausführen bestätigen“ aus (iOS 27)."
+          "text": "Schalten Sie die Bestätigung aus, damit Zahlungen ohne Rückfrage importiert werden: Öffnen Sie die Automation in der Kurzbefehle-App und wählen Sie „Sofort ausführen“ (iOS 26) oder schalten Sie „Vor dem Ausführen bestätigen“ aus (iOS 27)."
         },
         "done": "Erledigt",
         "guide_title": "Schritt-für-Schritt-Anleitung mit Screenshots:",
@@ -648,7 +648,7 @@
         "unlink": "Zuordnung aufheben",
         "unlink_modal": {
           "title": "Zuordnung von {card} aufheben?",
-          "question": "Neue Zahlungen dieser Karte warten auf Prüfung, bis du sie erneut zuordnest."
+          "question": "Neue Zahlungen dieser Karte warten auf Prüfung, bis Sie sie erneut zuordnen."
         },
         "map_modal": {
           "header": "{card} zuordnen",
@@ -786,23 +786,23 @@
       "action": { "classify": "Klassifizieren", "skip": "Überspringen" },
       "prompt": {
         "title": "Importregel erstellen",
-        "changed_category": "Du hast die Kategorie auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
-        "changed_payee": "Du hast den Zahlungsempfänger auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
-        "changed_tag": "Du hast den Tag auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
-        "changed_labels": "Du hast die Tags {names} hinzugefügt. Regel für ähnliche Importe erstellen?",
+        "changed_category": "Sie haben die Kategorie auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
+        "changed_payee": "Sie haben den Zahlungsempfänger auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
+        "changed_tag": "Sie haben den Tag auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
+        "changed_labels": "Sie haben die Tags {names} hinzugefügt. Regel für ähnliche Importe erstellen?",
         "existing_rule": "Diese Transaktion wurde durch die Regel „{rule}“ klassifiziert.",
         "match_count": "Trifft auf {count} Transaktionen in diesem Import zu",
         "not_now": "Nicht jetzt",
         "create_rule": "Regel erstellen",
         "update_rule": "Regel aktualisieren",
         "apply_question": "Diese Regel auf {count} passende Transaktionen in diesem Import anwenden?",
-        "apply_all_question": "Diese Regel auf {count} passende Transaktionen in all deinen Importen anwenden?",
-        "skipped_edited": "{count} übersprungen (von dir bearbeitet)",
-        "include_edited": "Auch die {count} von dir bearbeiteten Transaktionen aktualisieren",
+        "apply_all_question": "Diese Regel auf {count} passende Transaktionen in all Ihren Importen anwenden?",
+        "skipped_edited": "{count} übersprungen (von Ihnen bearbeitet)",
+        "include_edited": "Auch die {count} von Ihnen bearbeiteten Transaktionen aktualisieren",
         "skip_apply": "Überspringen",
         "apply": "Anwenden",
         "applied_toast": "{count} Transaktionen aktualisiert",
-        "all_question": "Auch auf alle deine Importe anwenden? {count} Transaktionen passen.",
+        "all_question": "Auch auf alle Ihre Importe anwenden? {count} Transaktionen passen.",
         "apply_all": "Auf alle Importe anwenden",
         "done": "Fertig"
       },
@@ -848,7 +848,7 @@
       "waiting": "Diese Transaktion wartet im Posteingang.",
       "deleted": "Diese Transaktion wurde importiert und später gelöscht.",
       "create": "Transaktion erstellen",
-      "unavailable": "Diese Transaktion wurde importiert, ist für dich aber nicht verfügbar."
+      "unavailable": "Diese Transaktion wurde importiert, ist für Sie aber nicht verfügbar."
     }
   },
   "user": {
@@ -989,7 +989,7 @@
             "system": "System",
             "light": "Hell",
             "dark": "Dunkel",
-            "description": "Gilt nur auf diesem Gerät. Das Systemdesign folgt den Einstellungen deines Geräts."
+            "description": "Gilt nur auf diesem Gerät. Das Systemdesign folgt den Einstellungen Ihres Geräts."
           },
           "menu_item": "Profil",
           "header": "Persönliche Einstellungen",
@@ -1322,7 +1322,7 @@
         "savings": {
           "label": "Sparkonten",
           "description": "Geld, das auf diese Konten fließt, gilt als gespart, nicht als ausgegeben.",
-          "empty": "Nimm oben ein Konto auf, um es als Sparkonto zu markieren.",
+          "empty": "Nehmen Sie oben ein Konto auf, um es als Sparkonto zu markieren.",
           "none": "Keine",
           "toggle": "{name} ist ein Sparkonto",
           "note": "Sparkonten werden allen mit Zugriff auf dieses Budget mit Namen, gesparten Beträgen und Salden angezeigt.",
@@ -1409,7 +1409,7 @@
         },
         "accounts": {
           "validation": {
-            "required": "Wähle mindestens ein Konto"
+            "required": "Wählen Sie mindestens ein Konto"
           }
         },
         "end_month": {
@@ -1515,7 +1515,7 @@
             "note": "Dieser Ordner ist leer. Verschieben Sie eine Kategorie, ein Tag oder einen Umschlag hierher oder erstellen Sie einen neuen Umschlag."
           },
           "empty_envelope": {
-            "note": "Dieser Umschlag ist leer. Ziehe eine Kategorie hierher oder wähle Kategorien über Bearbeiten."
+            "note": "Dieser Umschlag ist leer. Ziehen Sie eine Kategorie hierher oder wählen Sie Kategorien über Bearbeiten."
           },
           "element": {
             "action": {
@@ -1757,7 +1757,7 @@
         "title": "„{name}“ zusammenführen mit",
         "confirm": "Zusammenführen",
         "warning": "Alle Transaktionen von „{name}“ werden verschoben, und „{name}“ wird gelöscht.",
-        "envelope_info": "Wenn beide in verschiedenen Umschlägen liegen, aktualisiere zuerst dein Budget, damit deine geplanten Beträge nicht verloren gehen — beim Zusammenführen werden die Limits addiert."
+        "envelope_info": "Wenn beide in verschiedenen Umschlägen liegen, aktualisieren Sie zuerst Ihr Budget, damit Ihre geplanten Beträge nicht verloren gehen — beim Zusammenführen werden die Limits addiert."
       },
       "archive": {
         "action": "Archivieren"
@@ -2244,14 +2244,14 @@
       "envelope_member_not_category": "Nur Kategorien können zu einem Umschlag hinzugefügt werden",
       "savings_folder_not_allowed": "Sparkonten können nicht in einen Ordner verschoben werden",
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
-      "savings_account_not_member": "Sparkonten müssen deine eigenen Konten in diesem Budget sein",
-      "savings_removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare der Sparkonten gelöscht, die du in diesem Budget ausgeschaltet oder daraus entfernt hast; bestätige, um fortzufahren",
-      "accounts_required": "Wähle mindestens ein Konto",
+      "savings_account_not_member": "Sparkonten müssen Ihre eigenen Konten in diesem Budget sein",
+      "savings_removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare der Sparkonten gelöscht, die Sie in diesem Budget ausgeschaltet oder daraus entfernt haben; bestätigen Sie, um fortzufahren",
+      "accounts_required": "Wählen Sie mindestens ein Konto",
       "archived": "Dieses Budget ist archiviert",
       "end_before_start": "Der Endmonat liegt vor dem Budgetbeginn",
       "invalid_period_start_day": "Wählen Sie einen Tag von 1 bis 28",
       "comment_not_found": "Kommentar nicht gefunden",
-      "comment_forbidden": "Du kannst diesen Kommentar nicht ändern",
+      "comment_forbidden": "Sie können diesen Kommentar nicht ändern",
       "id_in_use": "Diese Budget-ID ist bereits vergeben"
     },
     "category": {
@@ -2283,10 +2283,10 @@
       "rate_range_too_long": "Der Zeitraum darf höchstens {max} Tage umfassen"
     },
     "import": {
-      "source_not_found": "Apple Wallet ist nicht verbunden. Verbinde es zuerst unter Einstellungen → Apple Wallet.",
+      "source_not_found": "Apple Wallet ist nicht verbunden. Verbinden Sie es zuerst unter Einstellungen → Apple Wallet.",
       "provider_unsupported": "Dieser Import-Anbieter wird nicht unterstützt.",
-      "account_link_exists": "Diese Karte ist bereits verknüpft.",
-      "currency_mismatch": "Die Währung der Karte stimmt nicht mit der Währung des Kontos überein.",
+      "account_link_exists": "Dies ist bereits diesem Konto zugeordnet.",
+      "currency_mismatch": "Die Währung dieses importierten Kontos stimmt nicht mit dem ausgewählten Konto überein.",
       "link_not_queued": "Dieses Ereignis wartet nicht auf Prüfung.",
       "link_not_skipped": "Dieses Ereignis ist nicht übersprungen.",
       "event_not_failed": "Dieses Ereignis ist nicht fehlgeschlagen.",
@@ -2343,7 +2343,7 @@
       "too_many_labels": "Eine Transaktion kann höchstens 50 Auswertungs-Tags haben.",
       "account_deleted": "Dieses Konto wurde gelöscht.",
       "category_type_mismatch": "Der Kategorietyp muss zum Transaktionstyp passen.",
-      "day_changed": "Dieser Tag wurde inzwischen geändert. Aktualisiere und versuche es erneut.",
+      "day_changed": "Dieser Tag wurde inzwischen geändert. Aktualisieren Sie und versuchen Sie es erneut.",
       "cannot_move": "Diese Transaktion kann nicht auf einen anderen Tag verschoben werden."
     },
     "user": {
