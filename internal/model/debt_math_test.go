@@ -858,3 +858,28 @@ func TestProjectDebt_StartDayPaymentPaysNoDueAfterAStatement(t *testing.T) {
 		t.Fatalf("next due %v, periods paid %d; want 15 Jan and 0", p.NextDueDate, p.PeriodsPaid)
 	}
 }
+
+// Cent-rounded stored interest against the float projection can leave one
+// smallest unit after the last due: the last payment absorbs it, with no
+// extra due and the contract's payoff date.
+func TestProjectDebt_ResidueOfOneUnitFoldsIntoTheLastPayment(t *testing.T) {
+	origin := MathSnapshot{AsOf: ymd(2026, time.May, 15), Balance: 16500, Payment: 450,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2030, time.March, 10), Digits: 2, Origin: true}
+	var pays []MathPayment
+	for m := time.June; m <= time.November; m++ {
+		pays = append(pays, pay(m.String(), ymd(2026, m, 10), 450))
+	}
+	split := SplitPayments([]MathSnapshot{origin}, pays)
+	interest := map[string]float64{}
+	for id, v := range split {
+		interest[id] = roundDigits(v, 2) // as stored
+	}
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{origin}, Pays: pays, Interest: interest, Today: ymd(2026, time.November, 11)})
+	if p.PaymentsLeft != 40 || !p.PayoffDate.Equal(origin.Last) {
+		t.Fatalf("payments left %d, payoff %v; want 40 and %v", p.PaymentsLeft, p.PayoffDate, origin.Last)
+	}
+	last := p.Payments[len(p.Payments)-1]
+	if !last.Date.Equal(origin.Last) || last.Balance != 0 {
+		t.Fatalf("last projected payment = %+v", last)
+	}
+}

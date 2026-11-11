@@ -489,6 +489,12 @@ func roundDigits(x float64, digits int) float64 {
 // rounds to 0.
 func halfUnit(digits int) float64 { return math.Pow10(-digits) / 2 }
 
+// settledBelow is the balance under which a debt is settled: one that rounds
+// to at most ONE smallest unit. Interest stored rounded to the unit against
+// the float projection can leave such a residue after the last due; the
+// last payment absorbs it rather than a due of one unit being projected.
+func settledBelow(digits int) float64 { return 3 * halfUnit(digits) }
+
 func monthKey(m time.Time) string { return m.Format(monthKeyLayout) }
 
 func monthStart(t time.Time) time.Time {
@@ -526,7 +532,7 @@ func (r projRun) moneyLeft() float64 {
 // projected payment.
 func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue time.Time, extras map[string]float64, startDay int) projRun {
 	run := projRun{closing: map[string]float64{}, endBalance: balance}
-	if balance <= eps {
+	if balance < eps {
 		run.endBalance = 0
 		return run
 	}
@@ -538,19 +544,24 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 		first, share = originFirst(s)
 	}
 	month := PeriodOf(today, startDay)
-	for i := 0; i < maxProjectMonths && balance > eps; i++ {
+	for i := 0; i < maxProjectMonths && balance >= eps; i++ {
 		_, next := PeriodWindow(month, startDay)
 		extra := extras[monthKey(month)]
 		stepped := false
-		for balance > eps && due.Before(next) {
+		for balance >= eps && due.Before(next) {
 			interest := balance * rate
 			if due.Equal(first) {
 				interest *= share
 			}
 			pay := math.Min(s.Payment, balance+interest)
 			balance = balance + interest - pay
+			if balance < eps {
+				// the residue of at most one unit rides on this payment
+				pay += balance
+				balance = 0
+			}
 			run.steps = append(run.steps, projStep{date: due, pay: pay})
-			if balance <= eps {
+			if balance <= 0 {
 				balance, run.payoffDate = 0, laterOf(due, today)
 				run.payments = append(run.payments, ProjectedPayment{Date: due, Payment: pay, Interest: interest, Principal: pay - interest})
 				break
@@ -564,7 +575,11 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 				payment.Principal += applied
 				payment.Extra = applied
 				payment.Balance = balance
-				if balance <= eps {
+				if balance < eps {
+					run.extraTotal += balance
+					payment.Payment += balance
+					payment.Principal += balance
+					payment.Extra += balance
 					balance, run.payoffDate = 0, laterOf(due, today)
 					payment.Balance = 0
 					run.payments = append(run.payments, payment)
@@ -575,14 +590,15 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 			stepped = true
 			due = NextOccurrence(due, s.Schedule, anchor)
 		}
-		if !stepped && balance > eps && extra > 0 {
+		if !stepped && balance >= eps && extra > 0 {
 			applied := math.Min(extra, balance)
 			balance -= applied
-			run.extraTotal += applied
-			if balance <= eps {
+			if balance < eps {
+				applied += balance
 				balance = 0
 				run.payoffDate = next.AddDate(0, 0, -1)
 			}
+			run.extraTotal += applied
 			run.payments = append(run.payments, ProjectedPayment{Date: next.AddDate(0, 0, -1), Payment: applied, Principal: applied, Extra: applied, Balance: balance})
 		}
 		run.closing[monthKey(month)] = balance
@@ -628,7 +644,7 @@ func payoffEvent(snaps []MathSnapshot, pays []MathPayment, interest map[string]f
 	var at time.Time
 	found := false
 	for i := len(times) - 1; i >= 0; i-- {
-		if roundDigits(BalanceAt(snaps, pays, interest, times[i]), digits) > 0 {
+		if BalanceAt(snaps, pays, interest, times[i]) >= settledBelow(digits) {
 			break
 		}
 		at, found = times[i], true
@@ -658,8 +674,8 @@ func ProjectDebt(in ProjectionInput) Projection {
 	rate := snapshotRate(latest)
 	current := BalanceAt(snaps, pays, in.Interest, today)
 
-	eps := halfUnit(in.Digits)
-	if at, ok := payoffEvent(snaps, pays, in.Interest, today, in.Digits); ok && roundDigits(current, in.Digits) <= 0 {
+	eps := settledBelow(in.Digits)
+	if at, ok := payoffEvent(snaps, pays, in.Interest, today, in.Digits); ok && current < eps {
 		out.PaidOff, out.PayoffMonth, out.PaidOffAt = true, monthStart(at), at
 	}
 	if current < 0 {
@@ -806,7 +822,7 @@ func paymentsLeftAt(snaps []MathSnapshot, balance float64, t time.Time, eps floa
 	rate := snapshotRate(terms)
 	horizon := len(DueDatesBetween(terms.Schedule, terms.Last, t, t.AddDate(0, maxProjectMonths, 0)))
 	n := 0
-	for ; balance > eps && n < horizon; n++ {
+	for ; balance >= eps && n < horizon; n++ {
 		interest := balance * rate
 		if terms.Payment <= interest {
 			return horizon
