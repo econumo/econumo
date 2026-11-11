@@ -1,5 +1,6 @@
 import { isNativeApp, nativePlugin } from './platform'
 import { THEME_STORAGE_KEY } from './theme'
+import { APP_LOCK_ATTEMPTS_KEY, APP_LOCK_CONFIG_KEY } from '@/features/appLock/keys'
 
 interface PreferencesPlugin {
   get(o: { key: string }): Promise<{ value: string | null }>
@@ -10,9 +11,11 @@ interface PreferencesPlugin {
 // WKWebView may evict localStorage under storage pressure; these are the keys
 // whose loss logs the user out or strands them on the wrong server (and the
 // token's user, without which nothing is restored offline), plus the local
-// appearance preference. Values are mirrored verbatim (storage.ts JSON-encodes
-// the other keys), so restoration copies them directly.
-const MIRRORED_KEYS: readonly string[] = ['token', 'sessionUserId', 'backendHost', 'selfHosted', 'analyticsOptOut', THEME_STORAGE_KEY]
+// appearance preference and the app lock (an evicted config would silently
+// turn the lock off, evicted attempts would reset the counter). Values are
+// mirrored verbatim (storage.ts JSON-encodes the other keys), so restoration
+// copies them directly.
+const MIRRORED_KEYS: readonly string[] = ['token', 'sessionUserId', 'backendHost', 'selfHosted', 'analyticsOptOut', THEME_STORAGE_KEY, APP_LOCK_CONFIG_KEY, APP_LOCK_ATTEMPTS_KEY]
 
 function prefs(): PreferencesPlugin | null {
   return nativePlugin<PreferencesPlugin>('Preferences')

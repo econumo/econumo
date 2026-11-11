@@ -12,11 +12,14 @@ import { attemptedWritesResolved, holdRestoredReads, startPendingWrites } from '
 import { setRouter } from '@/app/routerRef'
 import { registerServiceWorker } from '@/lib/serviceWorker'
 import { listenForInstallPrompt } from '@/features/install/installPrompt'
+import { initAppLock } from '@/features/appLock/lockStore'
 
 registerServiceWorker()
 listenForInstallPrompt()
 
 void bootNativeApp().then(() => {
+  // after the native storage restore, which may bring the lock config back
+  initAppLock()
   const router = createRouter()
   setRouter(router)
   createRoot(document.getElementById('root')!).render(
