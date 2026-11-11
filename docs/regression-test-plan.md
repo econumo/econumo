@@ -1057,9 +1057,9 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       toasts "{n} imported, {m} matched, {s} skipped"; the imported transactions
       carry the Imported badge and their provenance sheet names the SimpleFIN
       source.
-- [ ] Mapping a bridge account onto an account in another currency (USD bank →
-      EUR account) is refused with the "The card's currency does not match the
-      account's currency." error.
+- [ ] Mapping a SimpleFIN account onto an account in another currency (USD bank →
+      EUR account) is refused with "The currency of this imported account does not
+      match the selected account."
 - [ ] "Sync now" pulls new transactions for a mapped account; a fully completed
       run toasts "{n} imported, {m} matched" (a partial or failed run shows no
       toast — the run summary card is the only record of it).

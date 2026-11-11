@@ -2285,8 +2285,8 @@
     "import": {
       "source_not_found": "Apple Wallet nie jest połączony. Najpierw połącz go w Ustawienia → Apple Wallet.",
       "provider_unsupported": "Ten dostawca importu nie jest obsługiwany.",
-      "account_link_exists": "Ta karta jest już powiązana.",
-      "currency_mismatch": "Waluta karty nie zgadza się z walutą konta.",
+      "account_link_exists": "To jest już przypisane do tego konta.",
+      "currency_mismatch": "Waluta tego importowanego konta nie zgadza się z wybranym kontem.",
       "link_not_queued": "To zdarzenie nie czeka na sprawdzenie.",
       "link_not_skipped": "To zdarzenie nie jest pominięte.",
       "event_not_failed": "To zdarzenie nie zakończyło się błędem.",
