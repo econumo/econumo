@@ -691,7 +691,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       imports; skipped rows are not counted.
 - [ ] Inbox page 📱: sections appear in order Due, To review, Sync problems,
       Failed imports, Skipped (collapsed), Sharing; empty sections are hidden; with
-      nothing pending it reads "All caught up".
+      nothing pending it reads "All caught up". On desktop the heading has no
+      breadcrumb above it (the Inbox is not part of Settings).
 - [ ] Inbox clears itself 📱: accepting/declining an invite, importing/skipping
       every queued row, and a successful re-sync each remove the item and lower
       the badge without a reload.

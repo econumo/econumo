@@ -45,7 +45,7 @@ export function InboxPage() {
   const empty = inbox.isLoaded && !inbox.importsError && inbox.count === 0 && inbox.skipped.length === 0
 
   return (
-    <SettingsShell title={t('inbox.title')} backTo={RouterPage.HOME} editableOffline>
+    <SettingsShell title={t('inbox.title')} backTo={RouterPage.HOME} crumbs={[]} editableOffline>
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
         {empty ? <p className="px-1 text-sm text-muted-foreground">{t('inbox.empty')}</p> : null}
         {inbox.failedWrites.length > 0 ? (
