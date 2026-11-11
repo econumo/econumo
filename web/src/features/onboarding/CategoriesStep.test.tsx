@@ -408,8 +408,7 @@ describe('CategoriesStepBody', () => {
     const body = routes.srv.calls[0].body
     expect(body.order).toBeUndefined()
     expect(body.categories).toHaveLength(14)
-    // a default's icon was picked for it
-    expect(body.categories[0]).toEqual({ key: expect.any(String), name: 'Groceries', type: 'expense', icon: expect.any(String), autoIcon: false })
+    expect(body.categories[0]).toEqual({ key: expect.any(String), name: 'Groceries', type: 'expense', icon: expect.any(String) })
     expect(loadDraft('u1')!.ops.categories).toBeUndefined()
   })
 

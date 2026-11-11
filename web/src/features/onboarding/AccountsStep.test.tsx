@@ -686,10 +686,7 @@ describe('AccountsStepBody', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(routes.srv.calls).toHaveLength(1)
     const body = routes.srv.calls[0].body
-    // nobody picked the new row's icon, so the server's AI review may replace it
-    expect(body.accounts).toEqual([
-      { key: expect.any(String), name: 'Travel fund', balance: '20', currencyId: body.mainCurrencyId, icon: 'credit_card', autoIcon: true },
-    ])
+    expect(body.accounts).toEqual([{ key: expect.any(String), name: 'Travel fund', balance: '20', currencyId: body.mainCurrencyId, icon: expect.any(String) }])
     expect(body.currencyIds).toEqual(expect.arrayContaining([fixtureAccounts[0].currency.id, body.mainCurrencyId]))
     expect(loadDraft('u1')!.budgetId).toBe('b-onb')
     expect(body.hide).toBeUndefined()

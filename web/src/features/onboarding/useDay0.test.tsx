@@ -72,8 +72,8 @@ describe('useDay0', () => {
     expect(srv.calls[0].body).toEqual({
       id: expect.any(String),
       categories: [
-        { key: 'c1', name: 'Food', type: 'expense', icon: 'restaurant', autoIcon: false },
-        { key: 'c2', name: 'Salary', type: 'income', icon: 'work', autoIcon: true },
+        { key: 'c1', name: 'Food', type: 'expense', icon: 'restaurant' },
+        { key: 'c2', name: 'Salary', type: 'income', icon: 'work' },
       ],
       order,
     })
@@ -82,33 +82,6 @@ describe('useDay0', () => {
     expect(draft.budgetId).toBe('b-onb')
     expect(draft.ops.categories).toBeUndefined()
     expect(draft.categoryOrder).toEqual(order)
-  })
-
-  it('marks an icon automatic only on a custom row whose icon nobody picked', async () => {
-    const { result } = await ready()
-    await act(() =>
-      result.current.saveCategories([
-        { key: 'c1', name: 'Loan', type: 'expense', icon: 'home' },
-        { key: 'c2', name: 'Cinema', type: 'expense', icon: 'movie', iconPicked: true },
-      ]),
-    )
-    expect(srv.calls[0].body.categories.map((c: { autoIcon: boolean }) => c.autoIcon)).toEqual([true, false])
-  })
-
-  it('marks an account icon automatic unless picked, or the untouched Cash row', async () => {
-    const { result } = await ready('categories')
-    await act(() =>
-      result.current.saveAccounts(
-        [
-          { key: 'a', name: 'Cash', balance: '0', currencyId: 'cur-usd', icon: 'payments', labelKey: 'onboarding.accounts.default_cash' },
-          { key: 'b', name: 'Revolut', balance: '0', currencyId: 'cur-usd', icon: 'credit_card' },
-          { key: 'c', name: 'Piggy', balance: '0', currencyId: 'cur-usd', icon: 'savings', iconPicked: true },
-        ],
-        [],
-        'cur-usd',
-      ),
-    )
-    expect(srv.calls[0].body.accounts.map((a: { autoIcon: boolean }) => a.autoIcon)).toEqual([false, true, false])
   })
 
   it('saveCategories sends no order when the list was not reordered, and works with no new rows', async () => {
@@ -205,8 +178,8 @@ describe('useDay0', () => {
       body: {
         id: expect.any(String),
         accounts: [
-          { key: 'r1', name: 'Cash', balance: '0', currencyId: 'cur-usd', icon: 'payments', autoIcon: true },
-          { key: 'r2', name: 'Savings', balance: '100', currencyId: 'cur-eur', icon: 'savings', autoIcon: true },
+          { key: 'r1', name: 'Cash', balance: '0', currencyId: 'cur-usd', icon: 'payments' },
+          { key: 'r2', name: 'Savings', balance: '100', currencyId: 'cur-eur', icon: 'savings' },
         ],
         currencyIds: ['cur-gbp', 'cur-chf', 'cur-usd', 'cur-eur'],
         mainCurrencyId: 'cur-usd',

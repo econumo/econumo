@@ -76,15 +76,11 @@ func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.Onbo
 
 // The import review is four independent requests, so a slow or failing one
 // (the icon replies take real providers 20-60 s) never holds back the others.
-// The manual steps' reviews are split the same way.
 var (
 	reviewCategories = withPart(jobReview, "categories")
 	reviewAccounts   = withPart(jobReview, "accounts")
 	reviewSavings    = withPart(jobReview, "savings")
 	reviewDebts      = withPart(jobReview, "debts")
-	stepCategories   = withPart(jobStepReview, "categories")
-	stepAccounts     = withPart(jobStepReview, "accounts")
-	stepSavings      = withPart(jobClassify, "savings")
 )
 
 func withPart(spec jobSpec, part string) jobSpec {
@@ -101,10 +97,10 @@ func (s *Service) startReview(ctx context.Context, userID vo.Id, savingsBudget, 
 	}
 	facts := s.promptContext(ctx, userID)
 	s.runJob(userID, reviewCategories, facts, func(jobCtx context.Context, facts promptFacts) error {
-		return s.reviewCategoryIcons(jobCtx, userID, facts, nil)
+		return s.reviewCategoryIcons(jobCtx, userID, facts)
 	})
 	s.runJob(userID, reviewAccounts, facts, func(jobCtx context.Context, facts promptFacts) error {
-		return s.reviewAccountIcons(jobCtx, userID, facts, nil)
+		return s.reviewAccountIcons(jobCtx, userID, facts)
 	})
 	if savingsBudget != nil {
 		budgetID := *savingsBudget
@@ -120,45 +116,14 @@ func (s *Service) startReview(ctx context.Context, userID vo.Id, savingsBudget, 
 	}
 }
 
-// startCategoryReview starts save-categories' request: icons for the user's
-// categories still on a default icon, the rows the step created on an icon
-// nobody chose (auto, id -> icon) included.
-func (s *Service) startCategoryReview(ctx context.Context, userID vo.Id, auto map[string]string) {
-	if !s.reserveJob(ctx, userID, jobStepReview) {
-		return
-	}
-	s.runJob(userID, stepCategories, s.promptContext(ctx, userID), func(jobCtx context.Context, facts promptFacts) error {
-		return s.reviewCategoryIcons(jobCtx, userID, facts, auto)
-	})
-}
-
-// startAccountsReview starts save-accounts' requests: icons for the user's
-// accounts still on a default icon (auto as for categories) and, when the step
-// put new accounts in a budget, which of them are savings. Together they count
-// once against the per-user cap.
-func (s *Service) startAccountsReview(ctx context.Context, userID vo.Id, auto map[string]string, budgetID vo.Id, savings []vo.Id) {
-	if !s.reserveJob(ctx, userID, jobStepReview) {
-		return
-	}
-	facts := s.promptContext(ctx, userID)
-	s.runJob(userID, stepAccounts, facts, func(jobCtx context.Context, facts promptFacts) error {
-		return s.reviewAccountIcons(jobCtx, userID, facts, auto)
-	})
-	if len(savings) > 0 {
-		s.runJob(userID, stepSavings, facts, func(jobCtx context.Context, facts promptFacts) error {
-			return s.classify(jobCtx, userID, budgetID, savings, facts)
-		})
-	}
-}
-
 var iconRules = `Names may be in any language; use the user's timezone and language to read local bank and product names. ` +
 	`Use only icons from this list: ` + strings.Join(Icons, ", ") + `. `
 
-var categoryIconsSystem = `You help set up a personal budget from the user's bank data and the names they typed. ` +
+var categoryIconsSystem = `You help set up a personal budget from the user's imported bank data. ` +
 	`For each category pick the icon that best shows what the money is spent on or comes from. ` + iconRules +
 	`Reply with JSON only, exactly {"categories":{"<id>":"<icon>"}}; leave out a category when no icon fits.`
 
-var accountIconsSystem = `You help set up a personal budget from the user's bank data and the names they typed. ` +
+var accountIconsSystem = `You help set up a personal budget from the user's imported bank data. ` +
 	`For each account pick the icon that best shows what kind of account it is (a card, a bank account, cash, savings, an investment). ` + iconRules +
 	`Reply with JSON only, exactly {"accounts":{"<id>":"<icon>"}}; leave out an account when no icon fits.`
 
@@ -183,11 +148,10 @@ var (
 )
 
 // reviewCategoryIcons asks for an icon per active own category still on a
-// default icon, or on the icon auto names for it, and applies each one in the
-// catalogue, only while the category still has the icon it had when the job
-// read it (a change the user made since wins). An unusable reply changes
-// nothing.
-func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts promptFacts, auto map[string]string) error {
+// default icon and applies each one in the catalogue, only while the category
+// still has the icon it had when the job read it (a change the user made since
+// wins). An unusable reply changes nothing.
+func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts promptFacts) error {
 	categories, err := s.steps.Categories.OwnCategories(ctx, userID)
 	if err != nil {
 		return err
@@ -195,7 +159,7 @@ func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts p
 	prompt := categoryIconFacts{Timezone: facts.Timezone, Language: facts.Language, Categories: []reviewCategory{}}
 	from := map[string]string{}
 	for _, c := range categories {
-		if c.IsArchived == 0 && (repaintableCategory[c.Icon] || unchosen(auto, c.Id, c.Icon)) {
+		if c.IsArchived == 0 && repaintableCategory[c.Icon] {
 			prompt.Categories = append(prompt.Categories, reviewCategory{ID: c.Id, Name: c.Name, Type: c.Type})
 			from[strings.ToLower(c.Id)] = c.Icon
 		}
@@ -214,8 +178,8 @@ func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts p
 }
 
 // reviewAccountIcons does the same for live own accounts still on the
-// import's icon or on the icon auto names for them.
-func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts promptFacts, auto map[string]string) error {
+// import's icon.
+func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts promptFacts) error {
 	accounts, err := s.steps.Accounts.OwnLiveAccounts(ctx, userID)
 	if err != nil {
 		return err
@@ -223,7 +187,7 @@ func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts pr
 	prompt := promptFacts{Timezone: facts.Timezone, Language: facts.Language, Accounts: []promptAccount{}}
 	from := map[string]string{}
 	for _, a := range accounts {
-		if repaintableAccount[a.Icon] || unchosen(auto, a.ID, a.Icon) {
+		if repaintableAccount[a.Icon] {
 			prompt.Accounts = append(prompt.Accounts, promptAccount{ID: a.ID, Name: a.Name, Currency: a.CurrencyCode})
 			from[strings.ToLower(a.ID)] = a.Icon
 		}
@@ -239,13 +203,6 @@ func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts pr
 		_, err := s.steps.Accounts.ReplaceIcon(ctx, userID, id, from, to)
 		return err
 	})
-}
-
-// unchosen reports whether the item still shows the icon a step created it
-// with when nobody chose one.
-func unchosen(auto map[string]string, id, icon string) bool {
-	created, ok := auto[strings.ToLower(id)]
-	return ok && created == icon
 }
 
 // reviewSavings asks which live own accounts are savings, with the

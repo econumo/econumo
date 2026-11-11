@@ -16,8 +16,6 @@ export interface OnboardingCategoryRowForm {
   name: string
   type: 'expense' | 'income'
   icon: string
-  // the row's default icon, nobody chose it: with an AI provider the server may pick a better one
-  autoIcon?: boolean
 }
 
 export interface SaveCategoriesForm {
@@ -47,8 +45,6 @@ export interface OnboardingAccountRowForm {
   balance: string
   currencyId: Id
   icon: string
-  // as on a category row
-  autoIcon?: boolean
 }
 
 export interface SaveAccountsForm {
