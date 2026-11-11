@@ -171,3 +171,29 @@ the first terms are saved.
   pickers' visual form.
 - Copy, in all 11 locales.
 - The regression test plan and CLAUDE.md updates.
+
+## Revision 2026-11-10: terms from the loan contract
+
+Setup (Finish setup and the Settings tab) no longer asks for "balance now". It asks
+for the contract's facts: **amount borrowed**, **start date** (when the loan began)
+and **last payment date** on one row, start first, and the **payment + frequency**.
+These three come together (`amountBorrowed`, `startDate`, `lastPaymentDate`); the
+create form stays short and sets none of them.
+
+- The debt's FIRST snapshot is the origin: as of the start date, balance = the
+  amount borrowed, payment, schedule and last payment date as entered; the rate is
+  implied from them. Payments before the start date don't belong to the debt.
+- Without anything else, owed today = amount borrowed less the principal of the
+  payments RECORDED since the start (no assumption that unrecorded dues were paid),
+  split forward with the usual per-window accrual.
+- **Owed now (optional)** ("Only if recorded payments don't match your
+  statement") appends a snapshot as of today and overrides from today on.
+- Editing the facts later is a correction: the origin snapshot is rewritten (later
+  snapshots take the corrected payment, frequency and last payment date, keeping
+  their balance), the stored splits are dropped and the next sync re-splits. This
+  relaxes "snapshots are never changed" for the origin.
+- The terms form no longer projects or fills in the last payment date: every fact
+  is typed from the contract.
+- Overview's Loan card shows **Borrowed** (amount and start date); "Owed now" stays.
+- A whole-category debt is one with no payee, tag or label: a set-up debt always
+  has a start date, which no longer makes it partial.

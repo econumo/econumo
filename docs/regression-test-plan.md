@@ -2154,8 +2154,9 @@ and on tablet/phone only with a hardware keyboard.
 A debt is a loan paid down through an expense category (`internal/debt`); it is
 not an account, so it shows in no account list, account total or net worth.
 Create a debt "Car loan" (currency USD, category "Car", payment 500.00
-monthly) and finish its setup (balance 10,000.00, last payment date 20 months
-out), and add a second budget member account in USD, before running these.
+monthly) and finish its setup (amount borrowed 10,000.00, start date four
+months ago, last payment date 20 months out), and add a second budget member
+account in USD, before running these.
 
 - [ ] 📱 **Settings → Debts** (right after Categories) lists the user's debts:
       icon, name, current balance and "N payments left" (or a "Paid off"
@@ -2202,8 +2203,8 @@ out), and add a second budget member account in USD, before running these.
       field. Saving a second debt that matches the same payments as an
       existing one (same category, payee, tag and reporting tag) is refused
       with "another debt ... already starts on this date" and only then a
-      Start date field appears; entering a date and saving again creates the
-      debt. An overlapping debt (category alone vs category plus payee, or a
+      Start date field appears ("When the loan began"); entering a date and
+      saving again creates the debt. An overlapping debt (category alone vs category plus payee, or a
       labelled and an unlabelled one) is refused with its message and shows no
       start date field.
 - [ ] **Reporting tags tell debts apart**: two debts on one category, one
@@ -2217,51 +2218,51 @@ out), and add a second budget member account in USD, before running these.
       from a transaction moves it off the debt; a recurring template with the
       tag leaves the category's upcoming money and shows on the older matching
       debt only.
-- [ ] 📱 Edit after a payment: with the details or the budget open, add a
-      matching expense (or import one, or merge a category into the debt's),
-      then open the review screen's Settings tab: the balance field shows
-      the balance after that payment, not the one from before it, and saving
-      without changes writes no snapshot that undoes the payment.
-- [ ] 📱 **Settings tab** holds one form: Name, the "Payments from"
-      sentence, Balance now, the Payment row (amount and its "every month ▾"
-      card, as on the create form), one row of two same-height date cards
-      (Start date (optional) first, with its clear X once set, then Last
-      payment date; it fits a 360 px phone, the hints are read only by screen
-      readers) and Currency, then Cancel and Save. Save sends one request and
-      returns to the Overview with the new figures; Cancel puts back what
-      was loaded. Switching to the Overview and back keeps unsaved edits;
-      with no edits, each visit reloads the debt. Editing the balance or
-      the payment recalculates the last payment date in the form (keeping the
-      rate; on a debt whose next payment is due today or overdue, the first
-      counted payment is the next one after today, and saving the filled-in
-      date succeeds); changing the date or the schedule recalculates nothing; terms
-      typed back to what they were (also as "1,200" for 1200) restore the
-      stored date; when the payment can never pay the balance off, a message
-      under the payment says so and the date stays. Saving a payment that
-      cannot cover the balance, a last payment date before today, an empty
-      name or a refused sentence (key conflict) shows the error next to its
-      field. The tab ends at Cancel and Save; while the debt loads it shows
-      the loader, not the buttons alone.
+- [ ] 📱 **Owed now follows the recorded payments**: with no owed-now
+      override, Owed now is the amount borrowed less the principal of the
+      payments recorded since the start date: a payment dated before the start
+      date does not count, a missed month adds no interest, an extra payment
+      comes fully off. With the details or the budget open, add a matching
+      expense, then open the Settings tab: Owed now (optional) is empty, and
+      saving without changes writes no snapshot (History of terms does not
+      grow) and the payment keeps counting.
+- [ ] 📱 **Settings tab** holds one form with the loan contract's facts:
+      Name, the "Payments from" sentence, Amount borrowed, one row of two
+      same-height date cards (Start date first, then Last payment date; no
+      clear X on a set-up debt; it fits a 360 px phone, the hints are read
+      only by screen readers), the Payment row (amount and its "every month ▾"
+      card, as on the create form), Owed now (optional) with the hint "Only
+      if recorded payments don't match your statement" under it (always
+      empty when the tab opens) and Currency, then Cancel and Save. Save
+      sends one request and returns to the Overview with the new figures;
+      Cancel puts back what was loaded. Switching to the Overview and back
+      keeps unsaved edits; with no edits, each visit reloads the debt. No date
+      is filled in or recalculated while typing. Saving payments that cannot
+      cover the amount borrowed, a last payment date not after the start
+      date, a start date after today, an empty name or a refused sentence
+      (key conflict) shows the error next to its field. The tab ends at
+      Cancel and Save; while the debt loads it shows the loader, not the
+      buttons alone.
 - [ ] 📱 **Danger zone tab** (the third tab): a red-tinted card lists Mark as
       paid off (set-up debts that are not paid off only; "Sets the balance to
       0 and stops the countdown.") and Delete ("Removes the debt. Its payments
       go back to the category."), each a row with its description and button,
       both asking first; on a phone the button sits under its description.
       Neither is on the Settings tab. After Mark as paid off the screen
-      returns to the Overview; reopening Settings shows Balance now 0, and
-      changing only the payment then saves balance 0 (the debt stays paid
-      off).
+      returns to the Overview; reopening Settings shows Owed now (optional)
+      empty, and changing only the payment then saves the corrected payment
+      without touching the paid-off balance (the debt stays paid off).
 - [ ] 📱 **Change the currency** (Settings tab → Currency, a searchable picker), on a
       set-up debt with a payment and a plan in a budget: leave the other
-      fields and save. No snapshot is added (also when moving a balance with
-      cents, e.g. 1,000.50, to a currency without them such as JPY: the
-      balance shown keeps reflecting the payments made since); the balance and payment keep
-      their numbers, now in the new currency (no conversion); the payments
-      list shows each payment converted into the new currency and split
-      again; the debt's budget row shows the new currency with its plans
-      unchanged. Typing a new balance or payment together with the currency
-      saves them in the new currency (with a snapshot, as any change of
-      terms). A debt not set up can change its currency the same way. A
+      fields and save. No snapshot is added (also when moving an amount
+      borrowed with cents, e.g. 1,000.50, to a currency without them such as
+      JPY: the balance shown keeps reflecting the payments made since); the
+      amount borrowed and payment keep their numbers, now in the new currency
+      (no conversion); the payments list shows each payment converted into
+      the new currency and split again; the debt's budget row shows the new
+      currency with its plans unchanged. Typing a new amount borrowed or
+      payment together with the currency saves them in the new currency (a
+      correction of the loan's facts). A debt not set up can change its currency the same way. A
       deleted custom currency is not offered. With
       the review screen open on two devices, change the currency on the
       second, then rename (or change the sentence) on the first without
@@ -2271,10 +2272,15 @@ out), and add a second budget member account in USD, before running these.
       months, as without the currency change.
 - [ ] 📱 A rename and a change of the "Payments from" sentence (Settings
       tab, saved together in one Save) write no new snapshot (the history
-      does not grow); changing the balance, payment, schedule or last payment
-      date adds a snapshot as of today and leaves the older ones untouched.
-      The payments already listed keep their interest figures after such an
-      edit. A refused change (key conflict) shows its message under the
+      does not grow). Correcting the amount borrowed, start date, payment,
+      repeats or last payment date rewrites the first entry of History of
+      terms (the loan's start) instead of adding one, and every listed
+      payment's interest is recomputed from the corrected facts; with an
+      owed-now entry on file, that entry keeps its balance and takes the
+      corrected payment, repeats and last payment date. Typing Owed now adds
+      an entry as of today (Owed now then shows it), and the payments before
+      today keep their interest figures; saving the same owed now again the
+      same day adds nothing. A refused change (key conflict) shows its message under the
       sentence and keeps the old filters. With the review screen open on
       two devices, edit the terms on the second, then rename (or change the
       sentence) on the first without reloading: the debt keeps the second
@@ -2298,9 +2304,9 @@ out), and add a second budget member account in USD, before running these.
       progress bar whose grey track is the whole loan and whose filled part
       is what is paid, with "77 of 360 paid" (hidden when both counts are 0),
       and "Owed now X · Paid off by Mon YYYY" (no payoff part once paid off).
-      The "Loan" card (no Edit button) lists owed now, payment · repeats,
-      next payment, loan ends, start date (or "From the first payment"),
-      left to pay, overpaid so far and overpayment still to come, currency;
+      The "Loan" card (no Edit button) lists Borrowed (the amount · the start
+      date), owed now, payment · repeats, next payment, loan ends, left to
+      pay, overpaid so far and overpayment still to come, currency;
       below it "Which payments count" as a plain sentence (no pickers), the
       payments (Date / Payment / Interest / Principal / Balance, newest
       first; Balance is what was owed after that payment, the newest one
@@ -2344,20 +2350,21 @@ out), and add a second budget member account in USD, before running these.
       future payments follow its plans.
 - [ ] 📱 **Not set up**: a debt created without terms shows "Paid so far" (the
       sum of its payments dated up to today; a future-dated payment is listed
-      but not counted), the hint "Add what you owe and when the loan ends
-      to see payments left" and a "Finish setup" button; there is no balance
+      but not counted), the hint "Add the amount borrowed and the loan's
+      dates to see payments left" and a "Finish setup" button; there is no balance
       or progress bar, the Loan card is short (payment · repeats, start date,
       currency) and the payment list shows Date and Payment only (no
       Balance column, no "Show future payments"). Mark as
       paid off is not offered (and the server refuses it). Finish setup
-      switches to the Settings tab with the Balance now field focused; the
-      budget row's "Finish setup", the item sheet's "Finish setup" button and
-      the Settings → Debts row of such a debt open the screen straight on
-      that tab. There the last payment date is typed, not filled in
-      automatically; saving with both balance and last payment date finishes
-      the setup, one without the other is a field error, and neither saves
-      just the other fields (name, sentence, payment, repeats, start date,
-      currency). After finishing, the Overview shows payments left, the progress and
+      switches to the Settings tab with the Amount borrowed field focused (the
+      start date chip when the amount is there, then the last payment date);
+      the budget row's "Finish setup", the item sheet's "Finish setup" button
+      and the Settings → Debts row of such a debt open the screen straight on
+      that tab. Saving with the amount borrowed, start date and last payment
+      date finishes the setup (Owed now optional on top); once any of them or
+      Owed now is typed the missing ones are field errors, and with none of
+      them Save keeps just the other fields (name, sentence, payment, repeats,
+      start date, currency). After finishing, the Overview shows payments left, the progress and
       the Loan card, payments entered before setup are split into interest and
       principal, and "Finish setup" fires its analytics event once.
 - [ ] 📱 A debt not set up is still a real debt for matching: payments in its
@@ -2427,12 +2434,14 @@ out), and add a second budget member account in USD, before running these.
       the plannable months run from the creation day on with no end.
 - [ ] Finish setup of a whole-category debt created without terms: give the
       category plans for the next two years and a comment in a month after
-      the planned end, convert (no terms), then Finish setup with a last
-      payment six months out. The debt row keeps the plans up to the last
+      the planned end, convert (no terms), then Finish setup with a start date
+      of today and a last payment six months out. The debt row keeps the plans up to the last
       payment's month; the months after it show their plans (and that
       comment) on the category row again, in every budget (a month both rows
-      plan adds up). A debt with a payee, tag, reporting tag or start date
-      moves nothing. Finishing setup through the API or MCP in a request that
+      plan adds up). A debt with a payee, tag or reporting tag moves nothing.
+      Finishing setup with a start date months before the conversion moves
+      the category's plans and comments of those earlier months to the debt
+      row; one after the conversion day hands the months before it back. Finishing setup through the API or MCP in a request that
       also adds a payee or changes the category still hands those months back
       to the category the debt covered before.
 - [ ] A later start date on a whole-category debt (set up or not): give the
@@ -2440,8 +2449,9 @@ out), and add a second budget member account in USD, before running these.
       convert, then set a start date two months after the debt's creation.
       Those months show their plans (and the comment) on the category row
       again, in every budget (a month both rows plan adds up); the debt row
-      keeps the months from its start on. An earlier start date, or a debt
-      with a payee, tag or reporting tag, moves nothing back.
+      keeps the months from its start on. An earlier start date moves the
+      category's plans and comments of the months it adds to the debt row
+      instead; a debt with a payee, tag or reporting tag moves nothing.
 - [ ] A partial debt (payee set): payments to that payee leave the category
       row's Spent (and its drill-down) and count on the debt row, payments to
       other payees stay in the category row.

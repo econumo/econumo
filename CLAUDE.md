@@ -238,7 +238,8 @@ The package name is `imports`
 `/api/v1/debt/` (`get-debt-list`, `get-debt`, `get-debt-forecast`, `create-debt`, `update-debt`,
 `delete-debt`, `mark-debt-paid-off`); a debt belongs to its owner alone, so another user gets not-found.
 A debt is created with a name, what counts as its payments, a payment and a schedule; its terms
-(balance, last payment date) are optional and can be added later (see "Budget debts").
+(the loan contract's amount borrowed, start date and last payment date) are optional and can be
+added later (see "Budget debts").
 Its ports (classification ownership, rates, the budget's element rows, a budget's plans of a debt
 row for the forecast) are wired in `internal/server/glue_debt.go` and `glue_budget_debt.go`; budget
 reads debts through its own `DebtSource` port.
@@ -1894,7 +1895,8 @@ data unreadable. Most are also asserted by the test suite.
   the debt names one (a debt with a label matches only a transaction carrying that label; a
   debt with none ignores labels), and it is dated inside the debt's range. Debts with the same
   category/payee/tag/label are partitioned by start date (a debt owns its start date up to the day
-  before the next one's; empty = from the beginning; a shared start date is refused); keys that
+  before the next one's; empty = from the beginning, which only a debt not set up can have; a
+  shared start date is refused); keys that
   could both match one transaction (category alone vs category + payee, a labelled debt vs an
   unlabelled one) are refused (`debt.key_conflict`, `debt.start_date_taken`), except that two
   debts naming DIFFERENT labels never conflict (labels alone tell debts apart). A transaction
@@ -1909,28 +1911,48 @@ data unreadable. Most are also asserted by the test suite.
   amount keeps its interest, capped at the new amount). Splits of payments dated after today are
   provisional (every Sync recomputes them, so a payment takes the terms in force on its date once
   it arrives). **Snapshots** (`debts_snapshots`: balance after the as-of day's payments, payment,
-  schedule, last payment date) are append-only history; the debt row also carries a copy of the
-  latest snapshot's values ("current terms"), written with every new snapshot in the same
-  transaction. **Optional terms**: a debt is created with a name, what counts (category, optional
-  payee/tag/label), payment and schedule only; `balance` and `lastPaymentDate` are an all-or-
-  none pair (one without the other is `common.is_blank` on the missing one), and the debt stays
-  NOT SET UP (`isSetUp` 0, no snapshot, `debts.as_of`/`balance`/`last_payment_date` NULL) until an
-  update supplies them. Create with terms makes the first snapshot; finishing setup (the update
-  that first supplies the pair, SPA event `appDebtFinishSetup`) writes the first snapshot as of
-  today and deletes the debt's provisional zero splits in the same transaction, so the next sync
-  splits the collected payments by the normal rules (backward estimate before the snapshot); a
-  debt that covered a whole category before setup hands that category back its plans and comments
-  after the new end, whatever key the same update gives it (it took them with no end), and a
-  whole-category debt whose update moves its first planning day later (a later start date, set
-  up or not) hands the category back its plans and comments in the periods before the new start
-  (`BeforeDay` bound on the transfer, a month both rows plan adding up); an
-  update without the pair keeps the stored terms and a `payment`/`schedule` left out keeps the
-  stored one, but on a set-up debt a differing payment or schedule is a change of terms and needs
-  the pair (`common.is_blank` on both otherwise). The review screen's rename and "Payments from"
-  saves send no currency (`currencyId` ""), payment, schedule or terms, so a stale screen never
-  writes back a currency or terms another device changed; the terms form likewise sends no terms
-  when none was touched. With the pair, a new snapshot is written only when balance, payment, schedule or
-  last payment date differ (a rename does not); `mark-debt-paid-off` writes a
+  schedule, last payment date) are history; the debt row also carries a copy of the latest
+  snapshot's values ("current terms"), written with every snapshot write in the same transaction.
+  **Terms are the loan contract's facts**: a debt is created with a name, what counts (category,
+  optional payee/tag/label), payment and schedule only; `amountBorrowed`, `startDate` and
+  `lastPaymentDate` are the setup trio (amount borrowed and last payment date both or neither,
+  `startDate` required with them; each missing one is `common.is_blank`; a start date alone only
+  bounds which payments count), and the debt stays NOT SET UP (`isSetUp` 0, no snapshot,
+  `debts.amount_borrowed`/`as_of`/`balance`/`last_payment_date` NULL) until a body supplies them.
+  The trio makes the FIRST snapshot, the ORIGIN: as of the start date, balance = the amount
+  borrowed (`debts.amount_borrowed` copies it, `amountBorrowed` on `DebtResult`), the payment,
+  schedule and last payment date as entered; the rate is implied from them (the dues after the
+  start up to the last payment date; `debt.payments_dont_cover` otherwise), the start may not be
+  after today (`debt.start_in_future`) and the last payment date must be after it
+  (`debt.last_payment_before_start`). Without anything else, what is owed today is the amount
+  borrowed less the debt parts of the payments RECORDED since the start, split forward from the
+  origin (no assumption that unrecorded dues were paid; a payment dated on the start day itself
+  is taken as already in the amount borrowed). The optional `balance` is "owed now": an override
+  appended as a snapshot as of today with the origin's terms (`debt.last_payment_in_past` when the
+  last payment date is not after today and something is still owed), unless the latest snapshot
+  already says the same as of today; payments before it keep their origin-based splits. On a
+  set-up debt `startDate` is required, and `amountBorrowed`, `lastPaymentDate`, `payment` and
+  `schedule` left out keep the stored ones; one that differs from the origin (amounts compared
+  rounded to the debt currency) is a CORRECTION, the one relaxation of "snapshots are never
+  changed": the origin is rewritten in place (`UpdateSnapshot`), every later snapshot (owed-now,
+  paid-off) takes the corrected payment, schedule and last payment date while keeping its as-of
+  and balance (refused when one would no longer validate, or would precede the new start), the
+  debt's current terms follow the latest, and the debt's stored splits are dropped so the next
+  sync splits every payment again. Finishing setup (SPA event `appDebtFinishSetup`) writes the
+  origin (plus an owed-now) with the payment and schedule stored when left out, and deletes the
+  debt's provisional zero splits in the same transaction; a debt that covered a whole category
+  before setup hands that category back its plans and comments after the new end, whatever key
+  the same update gives it (it took them with no end). A whole-category debt (no payee, tag or
+  label: a set-up debt always has a start date, so the start does not make it partial) whose
+  update moves its first planning day later (setup, a correction, set up or not) hands the
+  category back its plans and comments in the periods before the new start (`BeforeDay` bound on
+  the transfer, a month both rows plan adding up); one whose first planning day moves earlier,
+  still covering the same whole category, takes the category's plans and comments of the periods
+  it now starts in (`FirstDay`..`BeforeDay`). The review screen's rename and "Payments from"
+  saves send no currency (`currencyId` ""), payment, schedule or terms (only the start date), so a
+  stale screen never writes back a currency or terms another device changed; the Settings form
+  likewise sends the loan's facts only when one was touched (all of them then) and owed now only
+  when typed. A rename writes no snapshot; `mark-debt-paid-off` writes a
   balance-0 snapshot and is refused on a debt not set up (`debt.not_set_up`). **Not set up**:
   payments still match and are stored in `debts_payments` with interest 0 (no projection exists;
   a payment dated up to today keeps its zero split until setup drops it, one dated after today is
@@ -1965,7 +1987,8 @@ data unreadable. Most are also asserted by the test suite.
   entered later in that window takes only what is left)
   and everything else, an extra payment included, goes fully to the debt; a missed period (or a
   payment below the interest) adds nothing, the balance never rises on its own; payments before
-  the first snapshot are estimated backward with its `r`; foreign payments convert with the rates
+  the first snapshot (on a set-up debt only those on its start day) are estimated backward with
+  its `r`; foreign payments convert with the rates
   the app uses for their day (the month's average, like every other conversion; 1:1 when no rate
   is stored). Every stored or emitted amount is rounded to the debt
   currency's fraction digits. **Projection**: current balance = latest snapshot's balance less the
@@ -1987,8 +2010,8 @@ data unreadable. Most are also asserted by the test suite.
   `budgetSpent`, available with the element carry-over, `closingBalance`, payments left, payoff
   figures with and without the planned extras, `upcoming` = the unpaid scheduled dues, `isPlannable`)
   and on `get-budget-plan` (per-cell figures, `scheduledTotal`, `isPaidOff`). **Planning bounds**:
-  a month is plannable from the start month (start date's month, else the earliest of the
-  creation day's month (`debts.created_day`, the day in the OWNER's stored `users.timezone`, UTC
+  a month is plannable from the start month (start date's month, always there once set up,
+  else the earliest of the creation day's month (`debts.created_day`, the day in the OWNER's stored `users.timezone`, UTC
   when none, written once at creation, so it is the same for every viewer and for the conversion's
   plan move and a later timezone change does not move it: a debt created at 20:00 on 31 Oct by an
   owner in New York plans from October; the timezone is read through the debt feature's `Owners`
@@ -2021,7 +2044,7 @@ data unreadable. Most are also asserted by the test suite.
   which is what `syncElements`, `set-limit` and the transaction lists call, so partners'
   owner-row locks can never invert inside a budget write. **Converting**: "Track as debt" on an
   expense category row (also inside an envelope) opens the short create form (category locked);
-  creating a WHOLE-category debt (no payee/tag/label/start date) moves the category row's plans and comments (`TransferData`,
+  creating a WHOLE-category debt (no payee/tag/label; the start date does not count) moves the category row's plans and comments (`TransferData`,
   only where the target row's currency matches, only for the months of the debt's planning
   life: the rest stays on the category row, whose Available keeps counting it) to the debt row
   in every budget in the same transaction; an edit that makes a debt whole-category (or moves a
@@ -2058,7 +2081,7 @@ data unreadable. Most are also asserted by the test suite.
   lists tags and reporting tags in two headed groups, setting `tagId` or `labelId` and clearing the
   other, with "any ..." rows and expense-only categories, and one Payment row, `PaymentField`: the
   amount card and, beside it at the same height on every breakpoint, an "every month" schedule
-  card). Amounts (payment, balance) are plain `inputMode="decimal"` inputs, no calculator:
+  card). Amounts (payment, amount borrowed, owed now) are plain `inputMode="decimal"` inputs, no calculator:
   `plainAmount` reads "2000", "2 000", "2,000.50", "1,200" and "1,5" (a lone comma is the decimal
   mark unless exactly three digits follow it, as the app displays amounts) and anything else is
   `common.validation.invalid_number`; while the text holds a "," or "." the field echoes how it
@@ -2078,8 +2101,9 @@ data unreadable. Most are also asserted by the test suite.
   body (the Tabs root wraps the dialog, its context reaching both through the portal), each tab's
   2px underline as wide as its label and overlapping the block's border. Overview is read-only: payments left in large text with an X-of-Y progress bar whose
   visible track is the whole loan (`periodsPaid` of `periodsPaid + paymentsLeft`, hidden at 0), a
-  "Loan" card (owed now, payment, repeats, next payment, loan ends, start date, left to pay,
-  overpaid so far, overpayment still to come, currency), the payments-from sentence read-only
+  "Loan" card (borrowed: the amount and the start date, owed now, payment, repeats, next payment,
+  loan ends, left to pay, overpaid so far, overpayment still to come, currency; a debt not set up
+  shows payment, its start date or "From the first payment", and currency), the payments-from sentence read-only
   (`PaymentsFromEditor readOnly`), payments (with a Balance column on a set-up debt: `get-debt`'s
   additive `balance` per payment, what was owed after it, from the snapshots and stored splits,
   `""` while not set up; Principal is left out on a phone) and a collapsed "History of terms".
@@ -2105,19 +2129,24 @@ data unreadable. Most are also asserted by the test suite.
   row's, while Left and payments left wait for the next read; the metric fires on
   the click that opens the list. "Track as debt" passes the row's budget through
   `OpenDebtParams.budgetId` to the screen opened after create. A debt not set up has no items. Settings is ONE
-  form, `DebtSettingsForm` (name, payments from, balance, payment row, one `DatesRow` of two cards,
-  start date first and last payment date second, hints screen-reader only, currency; Cancel resets it, Save sends one `update-debt`, built by `buildTermsPayload`:
-  untouched terms are not sent, and an unchanged currency goes as `""`, so the server keeps what
-  another device may have changed); it ends at Save/Cancel. The Danger zone tab is a
+  form, `DebtSettingsForm`, asking for the loan contract's facts (name, payments from, Amount
+  borrowed, one `DatesRow` of two cards, Start date first and Last payment date second, hints
+  screen-reader only, the clear X only on a debt not set up, the payment row, "Owed now
+  (optional)" with the visible hint "Only if recorded payments don't match your statement",
+  always starting empty, currency; Cancel resets it, Save sends one `update-debt`, built by
+  `buildTermsPayload`: the start date always, the facts (amount borrowed, last payment date,
+  payment, schedule) only when one was touched and then all of them, owed now only when typed,
+  and an unchanged currency as `""`, so the server keeps what another device may have changed; no
+  date is projected or auto-filled, every fact is typed from the contract); it ends at Save/Cancel. The Danger zone tab is a
   destructive-tinted card, a row per action with a one-line description, with Mark as paid off
   (set up and not paid off) and Delete, each behind its confirm.
   The Settings tab stays mounted (edits survive a look at the Overview) and reloads the debt
   afresh on every visit while it holds no edits (`useFetchDebtForEdit`, the app's loader while it
   loads); a save or Mark as paid off rebuilds the form from the returned debt and returns to the
-  Overview, so a later edit never sends the balance from before it. A debt not set up shows "Paid so far" (its payments dated up to the caller's today),
-  a hint and a Finish setup button that switches to Settings and focuses the first missing term
-  (no stored rate, so the last payment date is typed, never auto-filled; saving with both terms
-  fires `appDebtFinishSetup`); the Settings row, the budget row's Left cell and the item sheet's
+  Overview, so a later edit never sends facts from before it. A debt not set up shows "Paid so far" (its payments dated up to the caller's today),
+  a hint and a Finish setup button that switches to Settings and focuses the first missing fact
+  (amount borrowed, then the start date, then the last payment date; once one fact or owed now is
+  typed all three are required; saving with the facts fires `appDebtFinishSetup`); the Settings row, the budget row's Left cell and the item sheet's
   Details button read "Finish setup" for the owner and open the screen on Settings, a partner
   sees a dash; Left sums, Plan cells and payoff lines skip it.
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per
