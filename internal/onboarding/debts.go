@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -48,7 +47,7 @@ type debtCandidate struct {
 // startPlanDebts starts save-plan's debt detection over the planned categories
 // (lower-cased id -> amount); nothing starts when no plan is above zero.
 func (s *Service) startPlanDebts(ctx context.Context, userID vo.Id, budget string, planned map[string]vo.DecimalNumber) {
-	if s.debts == nil || budget == "" || !slices.ContainsFunc(slices.Collect(maps.Values(planned)), positive) {
+	if s.debts == nil || budget == "" || !anyPositive(planned) {
 		return
 	}
 	if !s.reserveJob(ctx, userID, jobDebts) {
@@ -230,6 +229,15 @@ func medianPaid(amounts []string) vo.DecimalNumber {
 }
 
 func positive(d vo.DecimalNumber) bool { return !d.IsZero() && !d.IsNegative() }
+
+func anyPositive(amounts map[string]vo.DecimalNumber) bool {
+	for _, a := range amounts {
+		if positive(a) {
+			return true
+		}
+	}
+	return false
+}
 
 func orZero(s string) string {
 	if strings.TrimSpace(s) == "" {
