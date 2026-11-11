@@ -222,12 +222,15 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         {/* the ::after carries the page's background below its bottom edge, so a
-            keyboard sliding away under a fitted page never shows the screen behind */}
+            keyboard sliding away under a fitted page never shows the screen behind.
+            transition-none: the dialog's duration-100 would otherwise animate every
+            property, so the page slid 100 ms behind each iOS pan (measured: -347px
+            -> 0 on screen) and blinked behind the sheet */}
         <DialogContent
           ref={contentRef}
           style={pageStyle}
           onFocusCapture={onPageFocus}
-          className="top-0 left-0 flex h-dvh max-h-dvh w-screen after:absolute after:inset-x-0 after:top-full after:h-dvh after:bg-background after:content-[''] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
+          className="transition-none top-0 left-0 flex h-dvh max-h-dvh w-screen after:absolute after:inset-x-0 after:top-full after:h-dvh after:bg-background after:content-[''] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
           onInteractOutside={onInteractOutside}
           onEscapeKeyDown={onEscapeKeyDown}
           onCloseAutoFocus={onCloseAutoFocus}
