@@ -38,6 +38,7 @@ export function SimpleFINPage() {
   const [accessUrl, setAccessUrl] = useState<string | null>(null)
   const [reconnecting, setReconnecting] = useState(false)
   const [startDate, setStartDate] = useState('')
+  const [editingDate, setEditingDate] = useState(false)
   const sync = useSyncImportSource()
   const disconnect = useDeleteImportSource()
   const [forgetOpen, setForgetOpen] = useState(false)
@@ -89,6 +90,7 @@ export function SimpleFINPage() {
     sync.mutate({ sourceId: source.id, accessUrl, startDate }, {
       onSuccess: (result) => {
         setStartDate(syncStartDate({ ...source, lastSyncedAt: result.run.finishedAt || source.lastSyncedAt }))
+        setEditingDate(false)
         if (result.run.status === 'completed') {
           toast.success(t('imports.simplefin.sync.done_toast', { imported: result.run.importedCount, matched: result.run.matchedCount }))
         }
@@ -147,13 +149,24 @@ export function SimpleFINPage() {
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
-            <span className="flex items-center gap-2 text-muted-foreground">
-              {t('imports.simplefin.sync.from')}
-              <TransactionDatePicker
-                value={startDate} onChange={(day) => setStartDate(formatDate(day))}
-                label={t('imports.simplefin.sync.from')} className="bg-background text-foreground max-sm:h-10"
-              />
-            </span>
+            {/* after the first sync the default window is right for almost every sync,
+                so the date hides behind Change, kept for re-pulling an older range */}
+            {source.lastSyncedAt && !editingDate ? (
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+                {t('imports.simplefin.sync.since', { date: startDate })}
+                <button type="button" className="text-econumo-link underline-offset-2 hover:underline" onClick={() => setEditingDate(true)}>
+                  {t('imports.simplefin.sync.change')}
+                </button>
+              </span>
+            ) : (
+              <span className="flex items-center gap-2 text-muted-foreground">
+                {t('imports.simplefin.sync.from')}
+                <TransactionDatePicker
+                  value={startDate} onChange={(day) => setStartDate(formatDate(day))}
+                  label={t('imports.simplefin.sync.from')} className="bg-background text-foreground max-sm:h-10"
+                />
+              </span>
+            )}
             <Button type="button" className="h-10 max-sm:w-full" disabled={sync.isPending || !accessUrl || !online} onClick={runSync}>
               {sync.isPending ? t('imports.simplefin.sync.running') : t('imports.simplefin.sync.button')}
             </Button>

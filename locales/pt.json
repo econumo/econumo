@@ -730,6 +730,8 @@
         "button": "Sincronizar agora",
         "running": "A sincronizar…",
         "from": "Desde",
+        "since": "Sincroniza as transações desde {date}",
+        "change": "Alterar",
         "last_synced": "Última sincronização {date}",
         "never": "Nunca sincronizado",
         "done_toast": "{imported} importadas, {matched} correspondidas"

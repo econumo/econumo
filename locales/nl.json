@@ -730,6 +730,8 @@
         "button": "Nu synchroniseren",
         "running": "Synchroniseren…",
         "from": "Vanaf",
+        "since": "Synchroniseert transacties vanaf {date}",
+        "change": "Wijzigen",
         "last_synced": "Laatst gesynchroniseerd {date}",
         "never": "Nooit gesynchroniseerd",
         "done_toast": "{imported} geïmporteerd, {matched} gematcht"

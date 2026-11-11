@@ -730,6 +730,8 @@
         "button": "Sync now",
         "running": "Syncing…",
         "from": "From",
+        "since": "Syncs transactions since {date}",
+        "change": "Change",
         "last_synced": "Last synced {date}",
         "never": "Never synced",
         "done_toast": "{imported} imported, {matched} matched"

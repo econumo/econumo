@@ -730,6 +730,8 @@
         "button": "立即同步",
         "running": "正在同步…",
         "from": "起始",
+        "since": "同步 {date} 起的交易",
+        "change": "更改",
         "last_synced": "上次同步 {date}",
         "never": "从未同步",
         "done_toast": "已导入 {imported}，已匹配 {matched}"

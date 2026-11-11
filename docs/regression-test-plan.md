@@ -1031,8 +1031,10 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       setup token + new passphrase and replaces the connection (account mappings
       kept).
 - [ ] Connected page layout 📱: the sync card has the source name and last-synced time
-      over a divider, then "From" with a calendar date picker (a sheet on a phone) and
-      "Sync now"; "Import history" is a card row with a chevron (shown once a run
+      over a divider, then "Sync now" and, before the first sync, "From" with a calendar
+      date picker (a sheet on a phone); after it, "Syncs transactions since <date>" (3 days
+      before the last sync) with a "Change" link that opens the picker, back to the text
+      after the next sync; "Import history" is a card row with a chevron (shown once a run
       exists); a bridge account with nothing queued shows its currency, not "0 to
       review"; Reconnect, Forget this device and the red "Disconnect SimpleFIN" sit
       centered at the bottom. "Reconnect" there opens the reconnect form with a Cancel
@@ -1057,7 +1059,7 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Sync with a "From" date after today, or a range longer than 400 days, is
       accepted by the form (there is no client-side check) but rejected by the
       server (`import.sync_range_invalid`) and surfaced as a toast; "From"
-      defaults to 3 days before the last sync (30 days back before the first).
+      (after "Change" once synced) defaults to 3 days before the last sync (30 days back before the first).
 - [ ] Sync twice with the same window: the second run reports 0 imported, 0
       matched (exact duplicates are skipped) and the last-synced timestamp
       advances.

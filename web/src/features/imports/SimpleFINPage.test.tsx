@@ -73,6 +73,8 @@ it('first connect: creates a key, claims the token, and stores only ciphertext',
   expect(src.credentialCiphertext).toMatch(/^v1:/)
   expect(JSON.stringify(posted)).not.toContain(ACCESS_URL)
   expect(await screen.findByRole('button', { name: 'Sync now' })).toBeInTheDocument()
+  // before the first sync the date is a picker right away
+  expect(screen.getByRole('button', { name: 'From' })).toBeInTheDocument()
 }, 20_000)
 
 it('locked device: wrong passphrase is rejected, right one unlocks and lists bridge accounts', async () => {
@@ -140,6 +142,11 @@ it('unlocked device: Sync now posts the decrypted access URL and shows the run s
   ] } })))
   const user = userEvent.setup()
   expect(await screen.findByText('Last synced 2026-09-05 08:00:00')).toBeInTheDocument()
+  // after a first sync the window is the default one, shown as text; Change opens the picker
+  expect(screen.getByText(/Syncs transactions since 2026-09-02/)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'From' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Change' }))
+  expect(screen.getByRole('button', { name: 'From' })).toHaveTextContent('2026-09-02')
   const syncButton = await screen.findByRole('button', { name: 'Sync now' })
   // the button stays disabled until the stored credential is decrypted, which
   // finishes after first paint; a click before that is a no-op
