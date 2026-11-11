@@ -21,7 +21,7 @@ const SETTLE_MS = [100, 300, 600]
 // innerHeight 416 = visualViewport.height, offsetTop 396 on an 812px screen),
 // so innerHeight alone would hide the keyboard; clientHeight is not affected
 
-function layoutHeight(): number {
+export function layoutHeight(): number {
   return Math.max(document.documentElement.clientHeight, window.innerHeight)
 }
 

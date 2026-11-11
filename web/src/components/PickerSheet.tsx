@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Command, CommandInput, CommandList } from '@/components/ui/command'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
@@ -77,8 +77,9 @@ export function PickerSheet({
   const searchRef = useRef<HTMLInputElement>(null)
   const commandRef = useRef<HTMLDivElement>(null)
 
-  // a reopened picker starts from the full list
-  useEffect(() => {
+  // a reopened picker starts from the full list, before its first paint: the
+  // sheet sizes itself to the list it shows as it opens
+  useLayoutEffect(() => {
     if (open) {
       setQuery('')
       setNavigated(false)

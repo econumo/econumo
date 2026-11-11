@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
+import { layoutHeight } from '@/hooks/useKeyboardInset'
 import type { KeyboardInset } from '@/hooks/useKeyboardInset'
 
 // px kept free above the sheet
@@ -19,6 +20,8 @@ export interface SheetAnchor {
   chrome: number
   /** px the top never goes above: clear of the status bar */
   minTop: number
+  /** px of the layout viewport it was measured on: a new size measures afresh */
+  layout: number
 }
 
 let safeTop: { width: number; px: number } | null = null
@@ -87,21 +90,24 @@ export function useAnchoredSheet(
     if (!el || !body) {
       return
     }
-    // the content's own height, however tall the sheet is drawn now
+    // the content's own height, however tall the sheet is drawn now; a
+    // picker's rows scroll inside their own list, which the body does not see
     const chrome = el.offsetHeight - body.clientHeight
-    const natural = chrome + body.scrollHeight
-    const layout = document.documentElement.clientHeight || window.innerHeight
+    const list = body.querySelector<HTMLElement>('[cmdk-list]')
+    const natural = chrome + body.scrollHeight + (list ? list.scrollHeight - list.clientHeight : 0)
+    const layout = layoutHeight()
     const minTop = Math.max(SHEET_TOP_GAP, safeAreaTop() + STATUS_BAR_GAP)
     const top = Math.max(minTop, layout - natural)
-    if (!measured.current || anchor === null || top < anchor.top - 1) {
+    // the content grew (rows arriving, the query reset), or the screen changed
+    if (!measured.current || anchor === null || anchor.layout !== layout || top < anchor.top - 1) {
       measured.current = true
-      setAnchor({ top, natural, chrome, minTop })
+      setAnchor({ top, natural, chrome, minTop, layout })
     }
   })
   if (!enabled || anchor === null) {
     return undefined
   }
-  const layout = document.documentElement.clientHeight || window.innerHeight
+  const layout = layoutHeight()
   const visibleHeight = keyboard.height > 0 ? keyboard.height : layout
   const top = anchoredTop(anchor, visibleHeight)
   return {
