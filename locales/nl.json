@@ -1228,7 +1228,7 @@
     "archive_folder": "Archief",
     "budget_name": "Mijn budget",
     "accounts": {
-      "heading": "Waar staat je geld op dit moment?",
+      "heading": "Waar staat uw geld op dit moment?",
       "subtext": "De saldi van vandaag zijn genoeg, geen geschiedenis nodig.",
       "name_label": "Rekeningnaam",
       "balance_label": "Saldo",
@@ -1246,15 +1246,15 @@
       "balance_of": "Saldo van {name}"
     },
     "categories_step": {
-      "heading": "Waar geef je geld aan uit?",
-      "subtext": "Verwijder wat je niet nodig hebt. Je kunt dit later wijzigen.",
+      "heading": "Waaraan geeft u geld uit?",
+      "subtext": "Verwijder wat u niet nodig hebt. U kunt dit later wijzigen.",
       "expenses": "Uitgaven",
       "income": "Inkomsten",
       "name_label": "Categorienaam",
       "icon_label": "Pictogram wijzigen",
       "reorder_label": "{name} verplaatsen",
       "remove_label": "{name} verwijderen",
-      "add_placeholder": "Voeg je eigen toe",
+      "add_placeholder": "Voeg uw eigen toe",
       "skip": "Overslaan",
       "archive": "Archiveren",
       "restore": "Herstellen",
@@ -1266,7 +1266,7 @@
       "title": "Valuta's",
       "main_title": "Hoofdvaluta",
       "add": "Valuta toevoegen",
-      "hint": "Kies de valuta's die je het vaakst gebruikt. Je kunt er later meer toevoegen in Instellingen.",
+      "hint": "Kies de valuta's die u het vaakst gebruikt. U kunt er later meer toevoegen in Instellingen.",
       "selected": "Geselecteerde valuta",
       "main_label": "Hoofdvaluta: {code}",
       "main_suffix": "Hoofd",
@@ -1291,8 +1291,8 @@
       "state_skipped": "overgeslagen"
     },
     "import_step": {
-      "heading": "Neem je geschiedenis mee",
-      "text": "Heb je een CSV-export van je bank of een andere app? Die maakt rekeningen, categorieën en transacties in één keer aan.",
+      "heading": "Neem uw geschiedenis mee",
+      "text": "Hebt u een CSV-export van uw bank of een andere app? Die maakt rekeningen, categorieën en transacties in één keer aan.",
       "choose": "Kies een CSV-bestand",
       "skip": "Ik heb er geen",
       "skip_short": "Overslaan",
@@ -1301,27 +1301,27 @@
     },
     "install_step": {
       "heading": "Econumo altijd binnen handbereik",
-      "text": "Zet het op je beginscherm zodat een koffie loggen maar een paar seconden kost.",
+      "text": "Zet het op uw beginscherm, zodat een koffie loggen maar een paar seconden kost.",
       "install": "Installeren",
       "done": "Klaar",
       "skip": "Overslaan"
     },
     "wallet_step": {
       "heading": "Kaartbetalingen, vanzelf vastgelegd",
-      "text": "Koppel Apple Wallet en elke betaling met je kaart verschijnt vanzelf in Econumo.",
+      "text": "Koppel Apple Wallet en elke betaling met uw kaart verschijnt vanzelf in Econumo.",
       "setup": "Instellen",
       "skip": "Overslaan",
-      "later": "Je kunt de Apple Wallet-koppeling op elk moment later instellen in Instellingen."
+      "later": "U kunt de Apple Wallet-koppeling op elk moment later instellen in Instellingen."
     },
     "retry": "Opnieuw proberen",
     "save_continue": "Opslaan en doorgaan",
     "plan_step": {
       "heading": "Plan deze maand",
-      "subtext": "Je budget staat klaar. Zet een globaal bedrag bij wat belangrijk is – je kunt het altijd aanpassen.",
+      "subtext": "Uw budget staat klaar. Zet een globaal bedrag bij wat belangrijk is – u kunt het altijd aanpassen.",
       "income": "Inkomsten · {month}",
       "expenses": "Uitgaven · {month}",
       "planned_of_income": "{planned} gepland van {total} verwachte inkomsten",
-      "planned_of_accounts": "{planned} gepland van {total} op je rekeningen",
+      "planned_of_accounts": "{planned} gepland van {total} op uw rekeningen",
       "save": "Plan opslaan",
       "skip": "Later",
       "needs_account": "Een budget heeft minstens één rekening nodig. Voeg er eerst een toe.",

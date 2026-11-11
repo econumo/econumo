@@ -1266,7 +1266,7 @@
       "title": "Währungen",
       "main_title": "Hauptwährung",
       "add": "Währung hinzufügen",
-      "hint": "Wähle die Währungen, die du am häufigsten nutzt. Weitere kannst du später in den Einstellungen hinzufügen.",
+      "hint": "Wählen Sie die Währungen, die Sie am häufigsten nutzen. Weitere können Sie später in den Einstellungen hinzufügen.",
       "selected": "Ausgewählte Währungen",
       "main_label": "Hauptwährung: {code}",
       "main_suffix": "Haupt",
@@ -1291,8 +1291,8 @@
       "state_skipped": "übersprungen"
     },
     "import_step": {
-      "heading": "Bring deine Historie mit",
-      "text": "Hast du einen CSV-Export von deiner Bank oder einer anderen App? Er legt Konten, Kategorien und Buchungen in einem Schritt an.",
+      "heading": "Bringen Sie Ihre Historie mit",
+      "text": "Haben Sie einen CSV-Export Ihrer Bank oder einer anderen App? Er legt Konten, Kategorien und Buchungen in einem Schritt an.",
       "choose": "CSV-Datei auswählen",
       "skip": "Ich habe keine",
       "skip_short": "Überspringen",
@@ -1301,34 +1301,34 @@
     },
     "install_step": {
       "heading": "Econumo immer griffbereit",
-      "text": "Füge es zum Home-Bildschirm hinzu, damit du einen Kaffee in Sekunden erfasst.",
+      "text": "Fügen Sie es zum Home-Bildschirm hinzu, damit Sie einen Kaffee in Sekunden erfassen.",
       "install": "Installieren",
       "done": "Fertig",
       "skip": "Überspringen"
     },
     "wallet_step": {
       "heading": "Kartenzahlungen, automatisch erfasst",
-      "text": "Verbinde Apple Wallet, und jede Kartenzahlung erscheint von selbst in Econumo.",
+      "text": "Verbinden Sie Apple Wallet, und jede Kartenzahlung erscheint von selbst in Econumo.",
       "setup": "Einrichten",
       "skip": "Überspringen",
-      "later": "Du kannst die Apple-Wallet-Integration jederzeit später in den Einstellungen einrichten."
+      "later": "Sie können die Apple-Wallet-Integration jederzeit später in den Einstellungen einrichten."
     },
     "retry": "Erneut versuchen",
     "save_continue": "Speichern und weiter",
     "plan_step": {
       "heading": "Diesen Monat planen",
-      "subtext": "Dein Budget ist bereit. Trag grobe Beträge bei dem ein, was dir wichtig ist – du kannst sie jederzeit anpassen.",
+      "subtext": "Ihr Budget ist bereit. Tragen Sie grobe Beträge für das ein, was Ihnen wichtig ist – Sie können sie jederzeit anpassen.",
       "income": "Einnahmen · {month}",
       "expenses": "Ausgaben · {month}",
       "planned_of_income": "{planned} von {total} erwarteten Einnahmen geplant",
-      "planned_of_accounts": "{planned} von {total} auf deinen Konten geplant",
+      "planned_of_accounts": "{planned} von {total} auf Ihren Konten geplant",
       "save": "Plan speichern",
       "skip": "Später",
-      "needs_account": "Ein Budget braucht mindestens ein Konto. Lege zuerst eines an.",
+      "needs_account": "Ein Budget braucht mindestens ein Konto. Legen Sie zuerst eines an.",
       "add_account": "Konto hinzufügen",
-      "no_categories": "Es gibt noch keine Kategorien zum Planen. Lege zuerst ein paar an.",
+      "no_categories": "Es gibt noch keine Kategorien zum Planen. Legen Sie zuerst ein paar an.",
       "add_categories": "Kategorien hinzufügen",
-      "amount_invalid": "Gib einen Betrag von null oder mehr ein, zum Beispiel 250,50"
+      "amount_invalid": "Geben Sie einen Betrag von null oder mehr ein, zum Beispiel 250,50"
     }
   },
   "budgets": {
