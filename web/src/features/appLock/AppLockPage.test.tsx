@@ -253,7 +253,7 @@ it('a cancelled passkey prompt leaves biometrics off with a toast', async () => 
   const user = userEvent.setup()
   renderPage()
   const toggle = await screen.findByRole('switch', { name: 'Use biometrics' })
-  await waitFor(() => expect(prepareBiometricRegistration).toHaveBeenCalled())
+  await waitFor(() => expect(toggle).toBeEnabled())
   await user.click(toggle)
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't turn on biometrics"))
   expect(toggle).not.toBeChecked()
@@ -271,6 +271,36 @@ it('turning the lock off accepts biometrics instead of the PIN', async () => {
   await user.click(within(dialog).getByRole('button', { name: 'Unlock with biometrics' }))
   await waitFor(() => expect(readConfig()).toBeNull())
   expect(verifyBiometric).toHaveBeenCalledWith('cred-1')
+})
+
+it('keeps the biometrics switch disabled until the passkey request is prepared', async () => {
+  await configure()
+  vi.mocked(biometricAvailable).mockResolvedValue(true)
+  let ready: (start: () => Promise<{ status: 'ok'; credentialId: string }>) => void = () => {}
+  vi.mocked(prepareBiometricRegistration).mockReturnValue(new Promise((resolve) => { ready = resolve }))
+  renderPage()
+  const toggle = await screen.findByRole('switch', { name: 'Use biometrics' })
+  expect(toggle).toBeDisabled()
+  ready(vi.fn().mockResolvedValue({ status: 'ok', credentialId: 'cred-1' }))
+  await waitFor(() => expect(toggle).toBeEnabled())
+})
+
+it('a passkey answer arriving after the dialog closed changes nothing', async () => {
+  await configure({ biometric: { credentialId: 'cred-1' } })
+  localStorage.setItem('econumo.appLock.attempts', JSON.stringify({ failedAttempts: 3, lockedUntil: null }))
+  let answer: (result: 'ok') => void = () => {}
+  vi.mocked(verifyBiometric).mockReturnValue(new Promise((resolve) => { answer = resolve }))
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(lockSwitch())
+  const dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
+  await user.click(within(dialog).getByRole('button', { name: 'Unlock with biometrics' }))
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  answer('ok')
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(readConfig()).not.toBeNull()
+  expect(JSON.parse(localStorage.getItem('econumo.appLock.attempts')!).failedAttempts).toBe(3)
 })
 
 it('works over plain http, showing biometrics as needing HTTPS', async () => {

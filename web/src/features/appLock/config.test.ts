@@ -96,6 +96,8 @@ describe('attempts', () => {
   it('clamps a lockout set by a clock far ahead', () => {
     localStorage.setItem('econumo.appLock.attempts', JSON.stringify({ failedAttempts: 6, lockedUntil: 10 ** 13 }))
     expect(readAttempts(1000).lockedUntil).toBe(1000 + 900_000)
+    expect(readAttempts(61_000).lockedUntil).toBe(1000 + 900_000)
+    expect(lockoutRemainingMs(61_000)).toBe(840_000)
   })
 
   it('counts ten failures as exceeded', () => {

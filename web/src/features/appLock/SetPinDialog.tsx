@@ -38,6 +38,14 @@ export function SetPinDialog({ open, flow, pinLength, credentialId, onClose, onC
   const [remaining, setRemaining] = useState(() => MAX_FAILED_ATTEMPTS - readAttempts().failedAttempts)
   const [lockout, setLockout] = useState(() => (flow === 'enable' ? 0 : lockoutRemainingMs()))
   const firstPin = useRef('')
+  // A passkey prompt can outlive the dialog; its answer must not land after a cancel.
+  const openRef = useRef(open)
+  useEffect(() => {
+    openRef.current = open
+    return () => {
+      openRef.current = false
+    }
+  }, [open])
 
   const lockedOut = step === 'verify' && lockout > 0
   useEffect(() => {
@@ -93,6 +101,9 @@ export function SetPinDialog({ open, flow, pinLength, credentialId, onClose, onC
     setError('')
     // No await before this call: the click is the user gesture it needs.
     void verifyBiometric(credentialId).then((result) => {
+      if (!openRef.current) {
+        return
+      }
       if (result === 'ok') {
         resetAttempts()
         setRemaining(MAX_FAILED_ATTEMPTS)

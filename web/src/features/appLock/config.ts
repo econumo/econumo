@@ -136,8 +136,10 @@ export function readAttempts(now: number = Date.now()): AppLockAttempts {
   const failed = Number.isInteger(value.failedAttempts) && (value.failedAttempts as number) > 0 ? (value.failedAttempts as number) : 0
   let lockedUntil = typeof value.lockedUntil === 'number' && Number.isFinite(value.lockedUntil) ? value.lockedUntil : null
   // A clock set back must not stretch a lockout beyond the longest one.
+  // Stored back, so later reads count down from the cap instead of re-capping.
   if (lockedUntil !== null && lockedUntil > now + MAX_LOCKOUT_MS) {
     lockedUntil = now + MAX_LOCKOUT_MS
+    store(APP_LOCK_ATTEMPTS_KEY, { failedAttempts: failed, lockedUntil })
   }
   return { failedAttempts: failed, lockedUntil }
 }

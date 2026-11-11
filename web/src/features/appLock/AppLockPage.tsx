@@ -257,7 +257,7 @@ export function AppLockPage() {
                 <Switch
                   id="app-lock-biometric"
                   checked={credentialId !== null}
-                  disabled={registering}
+                  disabled={registering || (credentialId === null && register === null)}
                   onCheckedChange={onBiometricChange}
                 />
               </div>
