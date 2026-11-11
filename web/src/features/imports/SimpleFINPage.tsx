@@ -187,7 +187,7 @@ export function SimpleFINPage() {
         <div className="flex flex-wrap justify-center gap-2 pt-4">
           <Button type="button" variant="ghost" disabled={!online} onClick={() => { setReconnecting(true); setUserReconnect(true) }}>{t('imports.simplefin.unlock.reconnect')}</Button>
           <Button type="button" variant="ghost" onClick={() => setForgetOpen(true)}>{t('imports.simplefin.forget_device')}</Button>
-          <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" disabled={!online} onClick={() => setDisconnectOpen(true)}>
+          <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" disabled={!online || sync.isPending || disconnect.isPending} onClick={() => setDisconnectOpen(true)}>
             {t('imports.simplefin.disconnect_full')}
           </Button>
         </div>
