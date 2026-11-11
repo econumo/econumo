@@ -37,10 +37,15 @@ export function SimpleFINPage() {
   const source = sources.find((s) => s.provider === 'simplefin') ?? null
   const [accessUrl, setAccessUrl] = useState<string | null>(null)
   const [reconnecting, setReconnecting] = useState(false)
-  const [startDate, setStartDate] = useState('')
+  // a reconnect forced by a credential this key cannot decrypt has nothing to go back to
+  const [userReconnect, setUserReconnect] = useState(false)
+  // '' = the source's default window, computed during render so a new source
+  // (after a disconnect) starts from its own first-sync default
+  const [pickedDate, setStartDate] = useState('')
+  const startDate = pickedDate || (source ? syncStartDate(source) : '')
   const [editingDate, setEditingDate] = useState(false)
   const sync = useSyncImportSource()
-  const disconnect = useDeleteImportSource()
+  const disconnect = useDeleteImportSource({ handlesOwnErrors: true })
   const [forgetOpen, setForgetOpen] = useState(false)
   const [disconnectOpen, setDisconnectOpen] = useState(false)
   const { data: runs = [] } = useImportRuns(source?.id)
@@ -58,12 +63,6 @@ export function SimpleFINPage() {
       .catch(() => { if (!cancelled) setReconnecting(true) })  // ciphertext from another key: reconnect
     return () => { cancelled = true }
   }, [source?.credentialCiphertext, keyState.status, accessUrl])
-
-  useEffect(() => {
-    if (source && !startDate) {
-      setStartDate(syncStartDate(source))
-    }
-  }, [source, startDate])
 
   // Bridge accounts merged over the server's mapping rows: an account the
   // bridge reports that no row exists for yet shows up unmapped.
@@ -105,6 +104,7 @@ export function SimpleFINPage() {
   const onConnected = (url: string) => {
     setAccessUrl(url)
     setReconnecting(false)
+    setUserReconnect(false)
     if (source) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importExternalAccounts(source.id) })
     }
@@ -128,12 +128,12 @@ export function SimpleFINPage() {
       return (
         <SimpleFINConnect
           keyState={keyState} reconnect={reconnecting} onConnected={onConnected}
-          onCancel={source && reconnecting ? () => setReconnecting(false) : undefined}
+          onCancel={source && userReconnect ? () => { setReconnecting(false); setUserReconnect(false) } : undefined}
         />
       )
     }
     if (keyState.status === 'locked') {
-      return <SimpleFINUnlock wrapped={keyState.wrapped} stale={keyState.stale} onUnlocked={refreshKey} onReconnect={() => setReconnecting(true)} />
+      return <SimpleFINUnlock wrapped={keyState.wrapped} stale={keyState.stale} onUnlocked={refreshKey} onReconnect={() => { setReconnecting(true); setUserReconnect(true) }} />
     }
     if (keyState.status === 'none') {
       // a source exists but its key was deleted server-side (never happens through the UI); reconnect
@@ -185,7 +185,7 @@ export function SimpleFINPage() {
         {external.isError ? <p role="alert" className="px-1 text-sm text-destructive">{apiErrorMessage(external.error)}</p> : null}
         <ImportCards source={source} cards={cards} variant="account" />
         <div className="flex flex-wrap justify-center gap-2 pt-4">
-          <Button type="button" variant="ghost" disabled={!online} onClick={() => setReconnecting(true)}>{t('imports.simplefin.unlock.reconnect')}</Button>
+          <Button type="button" variant="ghost" disabled={!online} onClick={() => { setReconnecting(true); setUserReconnect(true) }}>{t('imports.simplefin.unlock.reconnect')}</Button>
           <Button type="button" variant="ghost" onClick={() => setForgetOpen(true)}>{t('imports.simplefin.forget_device')}</Button>
           <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" disabled={!online} onClick={() => setDisconnectOpen(true)}>
             {t('imports.simplefin.disconnect_full')}
@@ -210,7 +210,14 @@ export function SimpleFINPage() {
           onClose={() => setDisconnectOpen(false)}
           onConfirm={() => {
             setDisconnectOpen(false)
-            disconnect.mutate(source.id, { onSuccess: () => setAccessUrl(null) })
+            disconnect.mutate(source.id, {
+              onSuccess: () => {
+                setAccessUrl(null)
+                setStartDate('')
+                setEditingDate(false)
+              },
+              onError: (err) => toast.error(apiErrorMessage(err)),
+            })
           }}
           title={t('imports.simplefin.disconnect_modal.title')}
           question={t('imports.simplefin.disconnect_modal.question')}

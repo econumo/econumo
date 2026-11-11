@@ -133,7 +133,7 @@ export function SimpleFINConnect({ keyState, onConnected, onCancel, reconnect = 
         <Button type="submit" className="h-11 sm:min-w-40" disabled={busy || !online}>
           {t(reconnect ? 'imports.simplefin.connect.submit_reconnect' : 'imports.simplefin.connect.submit')}
         </Button>
-        {onCancel ? <Button type="button" variant="secondary" className="h-11" onClick={onCancel}>{t('common.button.cancel.label')}</Button> : null}
+        {onCancel ? <Button type="button" variant="secondary" className="h-11" disabled={busy} onClick={onCancel}>{t('common.button.cancel.label')}</Button> : null}
       </div>
     </form>
   )

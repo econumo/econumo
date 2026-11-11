@@ -157,6 +157,37 @@ it('unlocked device: Sync now posts the decrypted access URL and shows the run s
   expect(screen.getByText(/ACT-SAV: unsupported currency/)).toBeInTheDocument()
 })
 
+it('connected page: Reconnect can be cancelled, Disconnect asks first and a refusal says so', async () => {
+  const { toast } = await import('sonner')
+  const wrapped = await createKey('pw')
+  const ciphertext = await encryptCredential(ACCESS_URL)
+  let deleted = 0
+  server.use(
+    http.post('*/api/v1/import/list-external-accounts', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+    http.post('*/api/v1/import/delete-source', () => {
+      deleted += 1
+      return HttpResponse.json({ success: false, message: 'Source not found', code: 400, errors: {} }, { status: 400 })
+    }),
+  )
+  renderPage({
+    importSources: [source({ credentialCiphertext: ciphertext, lastSyncedAt: '2026-09-05 08:00:00' })],
+    importCredentialKey: { ...wrapped, updatedAt: '2026-09-07 10:00:00' },
+    importRuns: [],
+  })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Reconnect' }))
+  expect(screen.getByLabelText('Setup token')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(await screen.findByRole('button', { name: 'Sync now' })).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Disconnect SimpleFIN' }))
+  expect(screen.getByText('Disconnect SimpleFIN?')).toBeInTheDocument()
+  expect(deleted).toBe(0)
+  await user.click(screen.getByRole('button', { name: 'Disconnect' }))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Source not found'))
+  expect(deleted).toBe(1)
+}, 20_000)
+
 describe('offline', () => {
   function renderCached(seed: (qc: QueryClient) => void) {
     onlineManager.setOnline(false)

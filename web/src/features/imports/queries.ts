@@ -44,9 +44,10 @@ export function useCreateImportSource({ handlesOwnErrors = false }: OwnErrorHand
   })
 }
 
-export function useDeleteImportSource() {
+export function useDeleteImportSource({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { handlesOwnErrors },
     mutationFn: importsApi.deleteImportSource,
     onSuccess: (items, id) => {
       const source = queryClient.getQueryData<ImportSourceDto[]>(queryKeys.importSources)?.find((item) => item.id === id)
