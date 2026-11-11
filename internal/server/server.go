@@ -489,7 +489,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			TokenMinLength:  cfg.ImportTokenMinLength,
 		},
 	)
-	if !cfg.ImportSimpleFIN {
+	if cfg.SimpleFINDisabled {
 		importsSvc.DisableProvider(model.ImportProviderSimpleFIN)
 	}
 	importsSvc.RegisterParser(model.ImportProviderAppleWallet, applewallet.Parser{})
@@ -519,7 +519,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// Disabled means unrouted: with SimpleFIN off its credential and sync
 	// routes 404.
 	importsAPI := handlerimports.RegisterAPI(importsHandlers, authn, handlerimports.Providers{
-		SimpleFIN: cfg.ImportSimpleFIN,
+		SimpleFIN: !cfg.SimpleFINDisabled,
 	})
 
 	registerAPI := router.Compose(

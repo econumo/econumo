@@ -736,9 +736,10 @@ navigation (single-pane vs sidebar).
 
 ## 5a. Imports — Apple Wallet
 
-Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
+Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the default).
 
-- [ ] With `ECONUMO_IMPORT_SIMPLEFIN` unset, Apple Wallet and Import rules are
+- [ ] With `ECONUMO_IMPORT_SIMPLEFIN` unset, Settings lists SimpleFIN (on by default);
+      with `ECONUMO_IMPORT_SIMPLEFIN=false`, Apple Wallet and Import rules are
       available; SimpleFIN stays hidden, `/settings/simplefin` shows the
       not-found page and "Sync SimpleFIN" never appears. Apple Wallet
       has no switch: a leftover `ECONUMO_IMPORT_APPLE_WALLET=false` in the

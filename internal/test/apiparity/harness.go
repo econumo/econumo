@@ -140,7 +140,6 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		RateLimitClaimSetupToken: 5,
 		RateLimitSync:            10,
 		// SimpleFIN is off by default; the catalogue covers it.
-		ImportSimpleFIN: true,
 		// Production matcher defaults so the seeded queued tap adopts Txn1 by
 		// the same rules a real instance applies.
 		ImportMatchDays:       3,

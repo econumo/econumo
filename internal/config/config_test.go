@@ -705,16 +705,16 @@ func TestLoad_ImportSimpleFIN(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.ImportSimpleFIN {
-		t.Error("SimpleFIN must default off")
+	if cfg.SimpleFINDisabled {
+		t.Error("SimpleFIN must default on")
 	}
 
-	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "true")
+	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "false")
 	if cfg, err = Load(); err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.ImportSimpleFIN {
-		t.Error("explicit true must enable SimpleFIN")
+	if !cfg.SimpleFINDisabled {
+		t.Error("explicit false must disable SimpleFIN")
 	}
 
 	t.Setenv("ECONUMO_IMPORT_SIMPLEFIN", "yes please")
