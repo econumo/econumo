@@ -164,9 +164,13 @@ export async function loadStoredKey(): Promise<StoredKey | null> {
 
 async function storeKey(key: CryptoKey, tag: string): Promise<void> {
   const record: StoredKey = { key, tag }
+  // a forget that starts while this put runs keeps its own marker
+  const pendingBefore = forgetPending()
   await dbRequest(STORE_IMPORT_KEYS, 'readwrite', (s) => s.put(record, RECORD))
   // only once the put has replaced whatever an unfinished forget left behind
-  setForgetPending(false)
+  if (pendingBefore) {
+    setForgetPending(false)
+  }
 }
 
 export async function forgetKey(): Promise<void> {

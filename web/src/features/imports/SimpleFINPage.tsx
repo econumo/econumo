@@ -124,6 +124,9 @@ function SimpleFINSettings() {
     setAccessUrl(url)
     setReconnecting(false)
     setUserReconnect(false)
+    // the source may have gone elsewhere (another tab); a new one starts from its own default
+    setStartDate('')
+    setEditingDate(false)
     if (source) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importExternalAccounts(source.id) })
     }
@@ -167,7 +170,7 @@ function SimpleFINSettings() {
             {source.lastSyncedAt && !editingDate ? (
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
                 {t('imports.simplefin.sync.since', { date: startDate })}
-                <button type="button" className="text-econumo-link underline-offset-2 hover:underline" onClick={() => setEditingDate(true)}>
+                <button type="button" className="text-econumo-link underline-offset-2 hover:underline disabled:opacity-50" disabled={sync.isPending} onClick={() => setEditingDate(true)}>
                   {t('imports.simplefin.sync.change')}
                 </button>
               </span>
@@ -176,7 +179,7 @@ function SimpleFINSettings() {
                 {t('imports.simplefin.sync.from')}
                 <TransactionDatePicker
                   value={startDate} onChange={(day) => setStartDate(formatDate(day))}
-                  label={t('imports.simplefin.sync.from')} className="bg-background text-foreground max-sm:h-10"
+                  label={t('imports.simplefin.sync.from')} className="bg-background text-foreground max-sm:h-10" disabled={sync.isPending}
                 />
               </span>
             )}

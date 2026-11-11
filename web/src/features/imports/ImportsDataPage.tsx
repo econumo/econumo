@@ -10,6 +10,7 @@ import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
 import { apiErrorMessage } from '@/lib/apiError'
+import { isSimpleFINImportEnabled } from '@/lib/config'
 import { decryptCredential } from '@/lib/importCrypto'
 import { syncStartDate } from './syncWindow'
 import { useImportKey } from './useImportKey'
@@ -36,7 +37,7 @@ function TransactionImportRows() {
   const sync = useSyncImportSource()
   const [syncing, setSyncing] = useState(false)
   // on a plain-http page the browser cannot decrypt the stored access URL
-  const pullSources = window.isSecureContext ? sources.filter((s) => s.provider === 'simplefin') : []
+  const pullSources = window.isSecureContext && isSimpleFINImportEnabled() ? sources.filter((s) => s.provider === 'simplefin') : []
 
   // One source at a time: each sync holds the server's single SQLite writer
   // for a moment, and the summary toast wants the totals.

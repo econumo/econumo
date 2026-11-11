@@ -78,3 +78,10 @@ it('offline: Import and Export CSV are disabled (both need the server)', async (
   expect(screen.getByRole('button', { name: 'Import CSV' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDisabled()
 })
+
+it('offers no SimpleFIN sync when the server turned SimpleFIN off, even with a cached source', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: false }
+  renderPage({ importSources: [simplefinSource] })
+  expect(await screen.findByText('Import CSV')).toBeInTheDocument()
+  expect(screen.queryByText('Sync SimpleFIN')).toBeNull()
+})
