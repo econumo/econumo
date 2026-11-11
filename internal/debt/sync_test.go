@@ -2,6 +2,8 @@ package debt_test
 
 import (
 	"context"
+	"math"
+	"strconv"
 	"testing"
 
 	"github.com/econumo/econumo/internal/model"
@@ -21,9 +23,11 @@ func TestSync_SplitsNewPayments(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("splits = %v", got)
 	}
-	want := vo.NewDecimal("10000").Mul(vo.NewDecimal(res.PeriodRate)).Round(2)
+	// the loan began on 10 Mar: the first period accrues 22 of March's 31 days
+	rate, _ := strconv.ParseFloat(res.PeriodRate, 64)
+	want := vo.NewDecimal(strconv.FormatFloat(math.Round(10000*rate*22/31*100)/100, 'f', 2, 64))
 	if !vo.NewDecimal(got[a]).Equals(want) {
-		t.Errorf("first payment interest = %s, want %s (balance x rate)", got[a], want)
+		t.Errorf("first payment interest = %s, want %s (balance x rate, prorated)", got[a], want)
 	}
 	if got[b] != "0" {
 		t.Errorf("a second payment in the same window takes no interest, got %s", got[b])

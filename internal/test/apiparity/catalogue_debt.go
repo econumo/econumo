@@ -78,8 +78,9 @@ func init() {
 
 	// debt_currency_change moves a set-up debt with a payment and a plan from
 	// USD to a custom currency at 2 per USD, without its terms: the debt keeps
-	// its numbers, its 50 USD payment reads 100 and is split again, and the
-	// budget row turns to the new currency with its plan of 105 kept.
+	// its numbers, its 50 USD payment reads 100 and is split again (made on
+	// the start day, it is all principal and pays the 100 off), and the budget
+	// row turns to the new currency with its plan of 105 kept.
 	register(Scenario{Name: "debt_currency_change", Calls: func() []Call {
 		const (
 			opCurrency = "cc000000-0000-0000-0000-0000000000d1"

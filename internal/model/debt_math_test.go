@@ -158,8 +158,7 @@ func TestSplit_EarlyPaymentLandsOnItsDue(t *testing.T) {
 
 func mustRate(t *testing.T, s MathSnapshot) float64 {
 	t.Helper()
-	n := len(DueDatesBetween(s.Schedule, s.Last, s.AsOf, s.Last))
-	r, err := ImpliedRate(s.Balance, s.Payment, n, s.Digits)
+	r, err := SnapshotRate(s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -745,5 +744,102 @@ func TestProjectDebt_PaymentsHoldAnExtraOfAPeriodWithoutADue(t *testing.T) {
 	near(t, "extra principal", feb.Principal, 500, 1e-9)
 	if len(p.Payments) != p.PaymentsLeft+1 {
 		t.Fatalf("payments = %d, want the %d regular ones and the extra", len(p.Payments), p.PaymentsLeft)
+	}
+}
+
+// originLoan: 12000 taken on 15 Jan 2026, 24 payments of 600 on the 20th from
+// 20 Jan 2026 (a first period of 5 of December 20 - January 20's 31 days).
+func originLoan() MathSnapshot {
+	return MathSnapshot{AsOf: ymd(2026, time.January, 15), Balance: 12000, Payment: 600,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2027, time.December, 20), Digits: 2, Origin: true}
+}
+
+// The rate solves the contract with its short first period: amortizing with
+// the prorated first period ends at 0 after the last due.
+func TestSnapshotRate_OriginSolvesTheProratedFirstPeriod(t *testing.T) {
+	s := originLoan()
+	r, err := SnapshotRate(s)
+	if err != nil || r <= 0 {
+		t.Fatalf("rate = %v, %v", r, err)
+	}
+	balance := s.Balance*(1+r*5.0/31.0) - s.Payment
+	for i := 1; i < 24; i++ {
+		balance = balance*(1+r) - s.Payment
+	}
+	near(t, "balance after the last due", balance, 0, 1e-6)
+	if full, _ := ImpliedRate(12000, 600, 24, 2); r <= full {
+		t.Fatalf("rate %v, want above the full-period rate %v (less interest in the first period)", r, full)
+	}
+	if _, err := SnapshotRate(MathSnapshot{AsOf: s.AsOf, Balance: 20000, Payment: 600, Schedule: s.Schedule, Last: s.Last, Digits: 2, Origin: true}); !errors.Is(err, ErrPaymentsDontCover) {
+		t.Fatalf("err = %v, want ErrPaymentsDontCover", err)
+	}
+}
+
+func TestSplit_OriginFirstPeriodIsProratedByDays(t *testing.T) {
+	s := originLoan()
+	r := mustRate(t, s)
+	pays := []MathPayment{pay("jan", ymd(2026, time.January, 20), 600), pay("feb", ymd(2026, time.February, 20), 600)}
+	got := SplitPayments([]MathSnapshot{s}, pays)
+	first := 12000 * r * 5 / 31
+	near(t, "first period interest", got["jan"], first, 1e-9)
+	near(t, "second period interest", got["feb"], (12000-(600-first))*r, 1e-9)
+}
+
+// A payment on the start day accrues nothing: all of it comes off the amount
+// borrowed, and the balance after that day shows it.
+func TestSplit_OriginDayPaymentIsAllPrincipal(t *testing.T) {
+	s := originLoan()
+	r := mustRate(t, s)
+	pays := []MathPayment{pay("down", ymd(2026, time.January, 15), 1000), pay("jan", ymd(2026, time.January, 20), 600)}
+	got := SplitPayments([]MathSnapshot{s}, pays)
+	if got["down"] != 0 {
+		t.Fatalf("start-day interest = %v, want 0", got["down"])
+	}
+	near(t, "first period interest", got["jan"], 11000*r*5/31, 1e-9)
+	near(t, "balance on the start day", BalanceAt([]MathSnapshot{s}, pays, got, s.AsOf), 11000, 1e-9)
+	near(t, "balance before the start", BalanceAt([]MathSnapshot{s}, pays, got, s.AsOf.AddDate(0, 0, -1)), 12000, 1e-9)
+}
+
+// A window keyed by a due on or before the start accrues nothing: the loan
+// had not begun at that due.
+func TestSplit_OriginWindowOfAnEarlierDueAccruesNothing(t *testing.T) {
+	s := originLoan()
+	s.AsOf = ymd(2026, time.January, 1) // in December 20's window
+	pays := []MathPayment{pay("early", ymd(2026, time.January, 2), 600)}
+	if got := SplitPayments([]MathSnapshot{s}, pays); got["early"] != 0 {
+		t.Fatalf("interest = %v, want 0", got["early"])
+	}
+}
+
+func TestProjectDebt_OriginFirstProjectedPaymentIsProrated(t *testing.T) {
+	s := originLoan()
+	r := mustRate(t, s)
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{s}, Today: ymd(2026, time.January, 16)})
+	if len(p.Payments) == 0 || !p.Payments[0].Date.Equal(ymd(2026, time.January, 20)) {
+		t.Fatalf("payments = %+v", p.Payments)
+	}
+	near(t, "first projected interest", p.Payments[0].Interest, 12000*r*5/31, 1e-9)
+	if p.PaymentsLeft != 24 || !p.PayoffDate.Equal(s.Last) {
+		t.Fatalf("payments left %d, payoff %v; want the contract's 24 to its last date", p.PaymentsLeft, p.PayoffDate)
+	}
+}
+
+// After a reconciliation every due up to its date counts as paid, plus the
+// windows after it holding a recorded payment.
+func TestProjectDebt_ReconciliationCountsTheDuesBeforeIt(t *testing.T) {
+	origin := MathSnapshot{AsOf: ymd(2021, time.January, 1), Balance: 300000, Payment: 2000,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2051, time.January, 1), Digits: 2, Origin: true}
+	rec := origin
+	rec.Origin, rec.AsOf, rec.Balance = false, ymd(2026, time.January, 1), 270000
+	pays := []MathPayment{pay("feb", ymd(2026, time.February, 1), 2000)}
+	snaps := []MathSnapshot{origin, rec}
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: snaps, Pays: pays, Interest: SplitPayments(snaps, pays), Today: ymd(2026, time.February, 10)})
+	if p.PeriodsPaid != 61 {
+		t.Fatalf("PeriodsPaid = %d, want 60 dues to the statement and February's", p.PeriodsPaid)
+	}
+	// with the origin alone (no statement) only the recorded payment counts
+	q := ProjectDebt(ProjectionInput{Digits: 2, Snaps: snaps[:1], Pays: pays, Interest: SplitPayments(snaps[:1], pays), Today: ymd(2026, time.February, 10)})
+	if q.PeriodsPaid != 1 {
+		t.Fatalf("PeriodsPaid without a statement = %d, want 1", q.PeriodsPaid)
 	}
 }

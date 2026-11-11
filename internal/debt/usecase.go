@@ -261,9 +261,10 @@ func checkKeys(d *model.Debt, others []*model.Debt) error {
 	return nil
 }
 
-func termsFloats(t model.DebtTerms, digits int) model.MathSnapshot {
+// termsFloats: origin marks the loan's first snapshot.
+func termsFloats(t model.DebtTerms, digits int, origin bool) model.MathSnapshot {
 	return model.MathSnapshot{AsOf: t.AsOf, Balance: toFloat(t.Balance), Payment: toFloat(t.Payment),
-		Schedule: t.Schedule, Last: t.LastPaymentDate, Digits: digits}
+		Schedule: t.Schedule, Last: t.LastPaymentDate, Digits: digits, Origin: origin}
 }
 
 // validateTerms checks terms about to become a snapshot as of terms.AsOf
@@ -279,7 +280,7 @@ func validateTerms(t model.DebtTerms, digits int) error {
 	if !t.LastPaymentDate.After(t.AsOf) {
 		return fieldError("lastPaymentDate", "The last payment date must be after today.", errs.CodeDebtLastPaymentInPast)
 	}
-	return validateCover(t, digits)
+	return validateCover(t, digits, false)
 }
 
 // validateOrigin checks the loan's facts: the origin as of the start date,
@@ -294,18 +295,16 @@ func validateOrigin(o model.DebtTerms, today time.Time, digits int) error {
 	if !o.LastPaymentDate.After(o.AsOf) {
 		return fieldError("lastPaymentDate", "The last payment date must be after the start date.", errs.CodeDebtLastPaymentBeforeStart)
 	}
-	return validateCover(o, digits)
+	return validateCover(o, digits, true)
 }
 
 // validateCover: the payments due after the as-of day must repay the balance,
-// within the projection's horizon.
-func validateCover(t model.DebtTerms, digits int) error {
+// within the projection's horizon (an origin's first period prorated).
+func validateCover(t model.DebtTerms, digits int, origin bool) error {
 	if model.DebtTermTooLong(t.AsOf, t.LastPaymentDate) {
 		return fieldError("lastPaymentDate", "This value is out of range.", errs.CodeOutOfRange)
 	}
-	m := termsFloats(t, digits)
-	n := len(model.DueDatesBetween(m.Schedule, m.Last, m.AsOf, m.Last))
-	if _, err := model.ImpliedRate(m.Balance, m.Payment, n, digits); err != nil {
+	if _, err := model.SnapshotRate(termsFloats(t, digits, origin)); err != nil {
 		return fieldError("payment", "The payments do not cover the balance.", errs.CodeDebtPaymentsDontCover)
 	}
 	return nil

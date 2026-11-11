@@ -17,6 +17,10 @@ type MathSnapshot struct {
 	// Digits are the debt currency's fraction digits: payments within half
 	// its smallest unit of the balance are interest-free.
 	Digits int
+	// Origin marks the loan's first snapshot: its balance is the amount
+	// borrowed BEFORE the start day's payments (which accrue nothing), and
+	// its first period accrues interest prorated by days.
+	Origin bool
 }
 
 type MathPayment struct {
@@ -185,6 +189,12 @@ func dueContaining(s RecurringSchedule, last, t time.Time) time.Time {
 // digits are the currency's fraction digits, so a difference below half its
 // smallest unit is rounding, not interest or a shortfall.
 func ImpliedRate(balance, payment float64, n, digits int) (float64, error) {
+	return impliedRate(balance, payment, n, digits, 1)
+}
+
+// impliedRate solves the rate when the first period accrues only the share
+// first of a full period's interest.
+func impliedRate(balance, payment float64, n, digits int, first float64) (float64, error) {
 	if balance <= 0 {
 		return 0, nil
 	}
@@ -195,7 +205,11 @@ func ImpliedRate(balance, payment float64, n, digits int) (float64, error) {
 	if total < balance {
 		return 0, ErrPaymentsDontCover
 	}
-	pv := func(r float64) float64 { return payment * (-math.Expm1(-float64(n) * math.Log1p(r))) / r }
+	// B(1 + first*r) = P + P*annuity(n-1, r)
+	pv := func(r float64) float64 {
+		rest := payment * (-math.Expm1(-float64(n-1) * math.Log1p(r))) / r
+		return (payment + rest) / (1 + first*r)
+	}
 	lo, hi := 0.0, 1.0
 	// pv falls as r grows: widen until the bracket holds the solution.
 	for hi < 1e9 && pv(hi) > balance {
@@ -212,9 +226,38 @@ func ImpliedRate(balance, payment float64, n, digits int) (float64, error) {
 	return (lo + hi) / 2, nil
 }
 
-func snapshotRate(s MathSnapshot) float64 {
+// originFirst is the first due after an origin and the share of a full
+// period (the one ending on that due) its interest is prorated to: the days
+// from the start to that due over the period's days.
+func originFirst(s MathSnapshot) (time.Time, float64) {
+	start := debtDay(s.AsOf)
+	dues := DueDatesBetween(s.Schedule, s.Last, start, start.AddDate(0, 0, windowSearchWidth))
+	if len(dues) == 0 {
+		return time.Time{}, 1
+	}
+	first := dues[0]
+	prev := shiftDue(s.Schedule, debtDay(s.Last).Day(), first, -1)
+	full := first.Sub(prev).Hours() / 24
+	if full <= 0 {
+		return first, 1
+	}
+	return first, math.Min(1, first.Sub(start).Hours()/24/full)
+}
+
+// SnapshotRate is a snapshot's implied rate per schedule period; an origin
+// solves its prorated first period. ErrPaymentsDontCover when the dues after
+// the as-of day cannot repay the balance.
+func SnapshotRate(s MathSnapshot) (float64, error) {
 	n := len(DueDatesBetween(s.Schedule, s.Last, s.AsOf, s.Last))
-	r, err := ImpliedRate(s.Balance, s.Payment, n, s.Digits)
+	first := 1.0
+	if s.Origin {
+		_, first = originFirst(s)
+	}
+	return impliedRate(s.Balance, s.Payment, n, s.Digits, first)
+}
+
+func snapshotRate(s MathSnapshot) float64 {
+	r, err := SnapshotRate(s)
 	if err != nil {
 		return 0
 	}
@@ -280,6 +323,16 @@ func allocate(pays []MathPayment, due float64, out map[string]float64) float64 {
 	return due
 }
 
+// onOrAfterSnapshot: a payment dated on an origin's day comes after it (the
+// origin is the amount borrowed before that day's payments); on any other
+// snapshot's day it is already in the balance.
+func onOrAfterSnapshot(s MathSnapshot, d time.Time) bool {
+	if s.Origin {
+		return !d.Before(s.AsOf)
+	}
+	return d.After(s.AsOf)
+}
+
 // SplitPayments returns the interest part of every payment.
 func SplitPayments(snaps []MathSnapshot, pays []MathPayment) map[string]float64 {
 	out := make(map[string]float64, len(pays))
@@ -290,7 +343,7 @@ func SplitPayments(snaps []MathSnapshot, pays []MathPayment) map[string]float64 
 
 	var backward []MathPayment
 	for _, p := range pays {
-		if !p.Date.After(snaps[0].AsOf) {
+		if !onOrAfterSnapshot(snaps[0], p.Date) {
 			backward = append(backward, p)
 		}
 	}
@@ -299,7 +352,7 @@ func SplitPayments(snaps []MathSnapshot, pays []MathPayment) map[string]float64 
 	for k, s := range snaps {
 		var seg []MathPayment
 		for _, p := range pays {
-			if p.Date.After(s.AsOf) && (k == len(snaps)-1 || !p.Date.After(snaps[k+1].AsOf)) {
+			if onOrAfterSnapshot(s, p.Date) && (k == len(snaps)-1 || !onOrAfterSnapshot(snaps[k+1], p.Date)) {
 				seg = append(seg, p)
 			}
 		}
@@ -310,6 +363,10 @@ func SplitPayments(snaps []MathSnapshot, pays []MathPayment) map[string]float64 
 
 func splitForward(s MathSnapshot, seg, all []MathPayment, out map[string]float64) {
 	if len(seg) == 0 {
+		return
+	}
+	if s.Origin {
+		splitFromOrigin(s, seg, out)
 		return
 	}
 	r := snapshotRate(s)
@@ -326,6 +383,41 @@ func splitForward(s MathSnapshot, seg, all []MathPayment, out map[string]float64
 		due := balance * r
 		if accruedBefore && g.due.Equal(accrued) {
 			due = 0
+		}
+		allocate(g.pays, due, out)
+		for _, p := range g.pays {
+			balance -= p.Amount - out[p.ID]
+		}
+	}
+}
+
+// splitFromOrigin: the start day's payments accrue nothing; a window whose
+// due is on or before the start accrues nothing (the loan had not begun);
+// the first due's window accrues its prorated share; later ones a full
+// period's interest.
+func splitFromOrigin(s MathSnapshot, seg []MathPayment, out map[string]float64) {
+	r := snapshotRate(s)
+	first, share := originFirst(s)
+	balance := s.Balance
+	var startDay, rest []MathPayment
+	for _, p := range seg {
+		if p.Date.Equal(debtDay(s.AsOf)) {
+			startDay = append(startDay, p)
+		} else {
+			rest = append(rest, p)
+		}
+	}
+	allocate(startDay, 0, out)
+	for _, p := range startDay {
+		balance -= p.Amount - out[p.ID]
+	}
+	for _, g := range groupByWindow(s, rest) {
+		due := balance * r
+		switch {
+		case !g.due.After(debtDay(s.AsOf)):
+			due = 0
+		case g.due.Equal(first):
+			due *= share
 		}
 		allocate(g.pays, due, out)
 		for _, p := range g.pays {
@@ -373,7 +465,7 @@ func BalanceAt(snaps []MathSnapshot, pays []MathPayment, interest map[string]flo
 	if idx < 0 {
 		balance := snaps[0].Balance
 		for _, p := range pays {
-			if p.Date.After(t) && !p.Date.After(snaps[0].AsOf) {
+			if p.Date.After(t) && !onOrAfterSnapshot(snaps[0], p.Date) {
 				balance += p.Amount - interest[p.ID]
 			}
 		}
@@ -381,7 +473,7 @@ func BalanceAt(snaps []MathSnapshot, pays []MathPayment, interest map[string]flo
 	}
 	balance := snaps[idx].Balance
 	for _, p := range pays {
-		if p.Date.After(snaps[idx].AsOf) && !p.Date.After(t) {
+		if onOrAfterSnapshot(snaps[idx], p.Date) && !p.Date.After(t) {
 			balance -= p.Amount - interest[p.ID]
 		}
 	}
@@ -440,6 +532,11 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 	}
 	anchor := int16(debtDay(s.Last).Day())
 	due := firstDue
+	// projected from the origin, the first due accrues its prorated share
+	first, share := time.Time{}, 1.0
+	if s.Origin {
+		first, share = originFirst(s)
+	}
 	month := PeriodOf(today, startDay)
 	for i := 0; i < maxProjectMonths && balance > eps; i++ {
 		_, next := PeriodWindow(month, startDay)
@@ -447,6 +544,9 @@ func runProjection(s MathSnapshot, rate, balance, eps float64, today, firstDue t
 		stepped := false
 		for balance > eps && due.Before(next) {
 			interest := balance * rate
+			if due.Equal(first) {
+				interest *= share
+			}
 			pay := math.Min(s.Payment, balance+interest)
 			balance = balance + interest - pay
 			run.steps = append(run.steps, projStep{date: due, pay: pay})
@@ -570,9 +670,19 @@ func ProjectDebt(in ProjectionInput) Projection {
 	for _, p := range pays {
 		if !p.Date.After(today) {
 			out.OverpaidSoFar += in.Interest[p.ID]
+			if !instalment(snaps[0], p) {
+				continue
+			}
 			if due := dueContaining(latest.Schedule, latest.Last, p.Date); !due.IsZero() {
 				paidDues[due] = true
 			}
+		}
+	}
+	// A statement after the origin settles every due up to its date: the
+	// payments behind it need not be recorded.
+	if origin := snaps[0]; origin.Origin && len(snaps) > 1 && !latest.AsOf.After(today) {
+		for _, due := range DueDatesBetween(latest.Schedule, latest.Last, origin.AsOf, latest.AsOf) {
+			paidDues[due] = true
 		}
 	}
 	out.PeriodsPaid = len(paidDues)
@@ -747,10 +857,16 @@ func firstUnpaidDue(s MathSnapshot, pays []MathPayment, today time.Time) time.Ti
 	return due
 }
 
+// instalment: a payment on (or before) the origin's day is principal paid at
+// the start, not a scheduled payment, so it pays no due.
+func instalment(first MathSnapshot, p MathPayment) bool {
+	return !first.Origin || p.Date.After(debtDay(first.AsOf))
+}
+
 func paidWindow(s MathSnapshot, pays []MathPayment, due, today time.Time) bool {
 	start, end := DueWindow(s.Schedule, s.Last, due)
 	for _, p := range pays {
-		if !p.Date.After(today) && !p.Date.Before(start) && p.Date.Before(end) {
+		if instalment(s, p) && !p.Date.After(today) && !p.Date.Before(start) && p.Date.Before(end) {
 			return true
 		}
 	}
