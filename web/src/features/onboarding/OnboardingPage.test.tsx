@@ -212,7 +212,7 @@ it('resolving the last open step completes onboarding and lands on the budget', 
   expect(await heading('Plan this month')).toBeInTheDocument()
   // the heading shows while the budget loads; Save waits for its rows
   await screen.findByRole('textbox', { name: 'Food' }, { timeout: 5000 })
-  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
   // the server marks the plan step itself: the client writes no option for it
   expect(posts).toEqual([
@@ -562,7 +562,7 @@ it('a registered user without the option walks every step and the answers and co
   expect(screen.getByRole('textbox', { name: 'Groceries' })).toHaveValue('')
   await user.type(salary, '3000')
   await user.type(screen.getByRole('textbox', { name: 'Groceries' }), '400')
-  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
 
   expect(await screen.findByText('BUDGET ROUTE', {}, { timeout: 5000 })).toBeInTheDocument()
   const salaryId = state.categories.find((c) => c.name === 'Salary')?.id

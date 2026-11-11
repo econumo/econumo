@@ -299,8 +299,8 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 While onboarding is incomplete neither the "Econumo works best as an
       app" banner nor the one-time install popup appears in the app; both
       appear once onboarding is completed.
-- [ ] The main button on Categories and Accounts reads "Save and continue"
-      (translated), whether or not anything changed; Plan keeps "Save plan".
+- [ ] The main button on Categories, Accounts and Plan reads "Save and continue"
+      (translated), whether or not anything changed.
 - [ ] Skip on Categories or Accounts creates nothing; Save and continue on Categories
       creates every category still listed (in the listed order), Save and continue on Accounts only the new
       accounts (and sets the main currency and visible currencies). Each Save and continue
@@ -491,20 +491,20 @@ navigation (single-pane vs sidebar).
       suggestions, while a partner's shared account adds nothing);
       a stored plan is never replaced, and an amount typed (or a row cleared)
       before the suggestions arrive is kept. A prefilled amount is saved by
-      Save plan like a typed one; an archived category is never listed. The line below reads
+      "Save and continue" like a typed one; an archived category is never listed. The line below reads
       "Planned X of Y expected income" once any income is entered, otherwise
       "Planned X of Y in your accounts" (own accounts converted to the budget
       currency), and updates while typing.
-- [ ] "Save plan" writes only changed rows for this month in one request
+- [ ] "Save and continue" on Plan writes only changed rows for this month in one request
       (`onboarding/save-plan`): a typed 0 is saved as a zero plan, a blank row
       is never written (clearing an existing plan here leaves it); the step is
       then marked done and the next open step opens. An unreadable or negative amount shows an inline error and
-      disables Save plan; "Skip for now" skips the step and writes nothing.
+      disables "Save and continue"; "Skip for now" skips the step and writes nothing.
 - [ ] Reusing a budget whose months start on another day (e.g. the 15th) plans
       that budget's current period: its month name heads the cards and the
       saved plan shows in that period on the budget page.
 - [ ] A budget with no income or expense categories shows a hint and an "Add
-      categories" button that opens the Categories step; Save plan is
+      categories" button that opens the Categories step; "Save and continue" is
       disabled.
 - [ ] 📱 The budget page never shows get-ready cards (an empty budget shows the
       normal table or the create-budget prompt), and the Inbox has no "Next

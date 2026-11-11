@@ -1322,7 +1322,6 @@
       "expenses": "Expenses · {month}",
       "planned_of_income": "Planned {planned} of {total} expected income",
       "planned_of_accounts": "Planned {planned} of {total} in your accounts",
-      "save": "Save plan",
       "skip": "Skip for now",
       "needs_account": "A budget needs at least one account. Add one first.",
       "add_account": "Add an account",

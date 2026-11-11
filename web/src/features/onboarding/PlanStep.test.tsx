@@ -211,7 +211,7 @@ it('saves changed amounts only, a typed zero but never a blank, then moves on', 
   await input('Groceries')
   await user.type(screen.getByRole('textbox', { name: 'Housing' }), '0')
   await user.clear(screen.getByRole('textbox', { name: 'Salary' }))
-  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   await waitFor(() => expect(onDone).toHaveBeenCalled())
   expect(saves).toEqual([{ id: expect.any(String), budgetId: 'b1', amounts: [{ categoryId: 'cat-rent', amount: '0' }] }])
 })
@@ -224,7 +224,7 @@ it('keeps a stored plan digit for digit and leaves an untouched one alone', asyn
   expect(screen.getByRole('textbox', { name: 'Housing' })).toHaveValue('0')
   expect(screen.getByRole('textbox', { name: 'Salary' })).toHaveValue('')
   await user.type(screen.getByRole('textbox', { name: 'Salary' }), '0')
-  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   await waitFor(() => expect(onDone).toHaveBeenCalled())
   expect(saves.map((b) => b.amounts)).toEqual([[{ categoryId: 'cat-salary', amount: '0' }]])
 })
@@ -237,7 +237,7 @@ it('writes every changed row in one save-plan', async () => {
   await user.type(screen.getByRole('textbox', { name: 'Groceries' }), '250.5')
   await user.clear(screen.getByRole('textbox', { name: 'Salary' }))
   await user.type(screen.getByRole('textbox', { name: 'Salary' }), '3200')
-  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   await waitFor(() => expect(onDone).toHaveBeenCalled())
   expect(saves.map((b) => b.amounts)).toEqual([
     [
@@ -252,7 +252,7 @@ it('refuses to save an amount it cannot read', async () => {
   const { onDone } = setup()
   await input('Groceries')
   await user.type(screen.getByRole('textbox', { name: 'Housing' }), 'abc')
-  expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDisabled()
   expect(onDone).not.toHaveBeenCalled()
 })
 
@@ -262,7 +262,7 @@ it('without a budget it asks for an account and opens the Accounts step, and Ski
   await user.click(await screen.findByRole('button', { name: 'Add an account' }, { timeout: 5000 }))
   expect(onGoTo).toHaveBeenCalledWith('accounts')
   expect(screen.getByText('A budget needs at least one account. Add one first.')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'Skip for now' }))
   expect(onSkip).toHaveBeenCalled()
   expect(routes.srv.calls).toEqual([])
@@ -296,7 +296,7 @@ it('plans the current period of a reused budget whose months start on the 15th',
   expect(budgetPeriods).not.toContain('2026-11-01')
   expect(screen.getByText('Expenses · October')).toBeInTheDocument()
   await user.type(screen.getByRole('textbox', { name: 'Housing' }), '10')
-  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   await waitFor(() => expect(onDone).toHaveBeenCalled())
   // the server writes its own current period of the budget; the client names the budget only
   expect(saves).toEqual([{ id: expect.any(String), budgetId: 'b-old', amounts: [{ categoryId: 'cat-rent', amount: '10' }] }])
@@ -307,7 +307,7 @@ it('refuses a negative amount', async () => {
   setup()
   await input('Groceries')
   await user.type(screen.getByRole('textbox', { name: 'Housing' }), '-5')
-  expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDisabled()
   expect(screen.getByText('Enter an amount of zero or more, for example 250.50')).toBeInTheDocument()
 })
 
@@ -317,7 +317,7 @@ it('with no categories to plan it points to the Categories step', async () => {
   await user.click(await screen.findByRole('button', { name: 'Add categories' }, { timeout: 5000 }))
   expect(onGoTo).toHaveBeenCalledWith('categories')
   expect(screen.getByText('There are no categories to plan yet. Add a few first.')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDisabled()
 })
 
 it('reports the plan once save-plan succeeds and takes the user it answers with', async () => {
@@ -328,11 +328,11 @@ it('reports the plan once save-plan succeeds and takes the user it answers with'
   await input('Groceries')
   routes.srv.failNext.plan = 'http500'
   await user.type(screen.getByRole('textbox', { name: 'Housing' }), '5')
-  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   expect(await screen.findByRole('alert')).toBeInTheDocument()
   expect(tracked).toEqual([])
   expect(onDone).not.toHaveBeenCalled()
-  await user.click(screen.getByRole('button', { name: 'Save plan' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   await waitFor(() => expect(onDone).toHaveBeenCalled())
   expect(tracked).toEqual([[metrics.METRICS.ONBOARDING_PLAN_COMPLETE, { rows: 1 }]])
   // the retry replays the operation id of the failed save
@@ -364,7 +364,7 @@ describe('plan suggestions', () => {
     expect(screen.getByRole('textbox', { name: 'Salary' })).toHaveValue('3000')
     // an archived category is never planned, suggested or not
     expect(screen.queryByRole('textbox', { name: 'Old' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Save plan' }))
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalled())
     expect(saves.map((b) => b.amounts)).toEqual([[{ categoryId: 'cat-rent', amount: '6.67' }]])
   })
@@ -384,7 +384,7 @@ describe('plan suggestions', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Salary' })).toHaveValue('2500'))
     expect(screen.getByRole('textbox', { name: 'Housing' })).toHaveValue('5')
     expect(screen.getByRole('textbox', { name: 'Groceries' })).toHaveValue('')
-    await user.click(screen.getByRole('button', { name: 'Save plan' }))
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalled())
     expect(saves.map((b) => b.amounts)).toEqual([[
       { categoryId: 'cat-salary', amount: '2500' },

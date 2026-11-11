@@ -100,7 +100,7 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
           {t('onboarding.plan_step.skip')}
         </Button>
         <Button type="button" disabled={pending || !save || save.disabled} onClick={save?.onSave}>
-          {t('onboarding.plan_step.save')}
+          {t('onboarding.save_continue')}
         </Button>
       </div>
     </section>

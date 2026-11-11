@@ -1322,7 +1322,6 @@
       "expenses": "Dépenses · {month}",
       "planned_of_income": "{planned} prévus sur {total} de revenus attendus",
       "planned_of_accounts": "{planned} prévus sur {total} sur vos comptes",
-      "save": "Enregistrer le plan",
       "skip": "Plus tard",
       "needs_account": "Un budget nécessite au moins un compte. Ajoutez-en un d'abord.",
       "add_account": "Ajouter un compte",

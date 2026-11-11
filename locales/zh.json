@@ -1322,7 +1322,6 @@
       "expenses": "支出 · {month}",
       "planned_of_income": "已规划 {planned}，预期收入 {total}",
       "planned_of_accounts": "已规划 {planned}，账户余额 {total}",
-      "save": "保存计划",
       "skip": "暂时跳过",
       "needs_account": "预算至少需要一个账户。请先添加账户。",
       "add_account": "添加账户",

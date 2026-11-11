@@ -1322,7 +1322,6 @@
       "expenses": "Uitgaven · {month}",
       "planned_of_income": "{planned} gepland van {total} verwachte inkomsten",
       "planned_of_accounts": "{planned} gepland van {total} op uw rekeningen",
-      "save": "Plan opslaan",
       "skip": "Later",
       "needs_account": "Een budget heeft minstens één rekening nodig. Voeg er eerst een toe.",
       "add_account": "Rekening toevoegen",

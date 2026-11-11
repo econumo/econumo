@@ -296,7 +296,7 @@ right, no bold, the accent colour only for progress and the primary button.
    flags, kept categories) if none exists. Then "Plan this month": an Income group (expected
    income per income category) and an Expenses group (one amount per expense category), a
    running "Planned X of Y" line (planned spending against expected income, or against the
-   money in the accounts when no income is planned), and "Save plan" writes this month's
+   money in the accounts when no income is planned), and "Save and continue" writes this month's
    limits for both groups. "Skip for now" is allowed. Empty amounts are prefilled from
    `get-plan-suggestions`: per category, the average of the last three complete periods
    over every account the user owns (archived and deleted ones included, not just the
