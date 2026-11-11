@@ -939,8 +939,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       sources whose last sync failed/partially failed + failed imports + queued
       imports; skipped rows are not counted.
 - [ ] Inbox page 📱: sections appear in order Due, To review, Sync problems,
-      Failed imports, Skipped (collapsed), Sharing; empty sections are
-      hidden; with nothing pending it reads "All caught up".
+      Failed imports, Skipped (collapsed), Sharing; empty sections are hidden; with
+      nothing pending it reads "All caught up". On desktop the heading has no
+      breadcrumb above it (the Inbox is not part of Settings).
 - [ ] Inbox clears itself 📱: accepting/declining an invite, importing/skipping
       every queued row, and a successful re-sync each remove the item and lower
       the badge without a reload.
@@ -3259,6 +3260,14 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       carries a check mark. Search-first pickers (Category, Recipient, account,
       Currency) raise the keyboard on open; the checklist and Merge into do
       not. Desktop keeps the search above the list, with the same keys.
+- [ ] 📱 iPhone home-screen app: open Category on Add transaction with 10+
+      categories, hide the keyboard, then tap the search (repeat a few times,
+      and with another keyboard language). Every time the sheet shrinks to
+      the space above the keyboard: the handle, the title and the first rows
+      stay on screen and the rest of the list scrolls; the top of the sheet
+      never goes off the screen. Hiding the keyboard (✓) lets the sheet grow
+      back down to its full height without first jumping up to the top of
+      the screen.
 - [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
       Savings accounts checklist, Category, Currency, Merge into) have the
       same rounded corners as the sheet's search field and OK button, not
