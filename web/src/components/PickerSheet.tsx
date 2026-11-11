@@ -173,7 +173,18 @@ export function PickerSheet({
         <input aria-hidden inputMode="none" className={`${NAV_STOP} sticky top-0 -mb-px block`} onFocus={() => onNavigate(-1)} />
       ) : null}
       {/* with no search, the list is a Tab stop of its own */}
-      <Command ref={commandRef} shouldFilter={false} label={searchLabel} tabIndex={searchable ? -1 : 0} value={active} onValueChange={setActive}>
+      {/* phone: as tall as its rows, so the sheet's body scrolls them together
+          with what follows (the create row); at full height the rows would
+          scroll inside and push that row out of reach */}
+      <Command
+        ref={commandRef}
+        shouldFilter={false}
+        label={searchLabel}
+        tabIndex={searchable ? -1 : 0}
+        value={active}
+        onValueChange={setActive}
+        className={isPhone ? 'h-auto! shrink-0' : undefined}
+      >
         {!isPhone && searchable ? (
           <CommandInput autoFocus={focusSearch} aria-label={searchLabel} placeholder={searchPlaceholder ?? searchLabel} value={query} onValueChange={changeQuery} />
         ) : null}
