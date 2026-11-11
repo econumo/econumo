@@ -47,6 +47,26 @@ func (s *Service) DefaultBudget(ctx context.Context, userID vo.Id, preferred str
 	return first.budget.ID, s.canUpdate(first, userID) && !first.budget.IsArchived, true, nil
 }
 
+// UnplannedOwnBudget reports the budget's name and currency; ok is set only
+// when the caller owns it alone (no participant, invited or accepted), it is
+// not archived and no element has a limit in any period. Onboarding follows the
+// profile currency only in such a budget: switching it reshapes nobody's plan.
+func (s *Service) UnplannedOwnBudget(ctx context.Context, userID, budgetID vo.Id) (name, currencyID string, ok bool, err error) {
+	b, err := s.loadAggregate(ctx, budgetID)
+	if err != nil {
+		return "", "", false, err
+	}
+	name, currencyID = b.budget.Name, b.budget.CurrencyID.String()
+	if !b.budget.UserID.Equal(userID) || len(b.access) > 0 || b.budget.IsArchived {
+		return name, currencyID, false, nil
+	}
+	limits, err := s.limits.ListLimitsFrom(ctx, budgetID, time.Unix(0, 0).UTC())
+	if err != nil {
+		return "", "", false, err
+	}
+	return name, currencyID, len(limits) == 0, nil
+}
+
 // CurrentPeriod is the first day of the budget's period holding today in the
 // caller's timezone, never before the budget's first period. The caller must
 // be able to update the budget, and it must not be archived.

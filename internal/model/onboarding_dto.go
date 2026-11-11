@@ -161,18 +161,26 @@ type OnboardingAccountRow struct {
 	Icon       string        `json:"icon"`
 }
 
+// OnboardingAccountCurrency moves an existing own account to another currency
+// (a CSV import creates every account in the instance base currency).
+type OnboardingAccountCurrency struct {
+	AccountId  string `json:"accountId"`
+	CurrencyId string `json:"currencyId"`
+}
+
 // OnboardingSaveAccountsRequest is the save-accounts body. CurrencyIds are the
 // currencies the user keeps visible (with the main one and every account's
 // own); MainCurrencyId becomes the profile currency. Hide and Unhide name
 // existing own accounts to move into the hidden archive folder (and out of the
-// budget) or back.
+// budget) or back; Currencies changes existing own accounts' currency.
 type OnboardingSaveAccountsRequest struct {
-	Id             string                 `json:"id"`
-	Accounts       []OnboardingAccountRow `json:"accounts"`
-	CurrencyIds    []string               `json:"currencyIds"`
-	MainCurrencyId string                 `json:"mainCurrencyId"`
-	Hide           []string               `json:"hide"`
-	Unhide         []string               `json:"unhide"`
+	Id             string                      `json:"id"`
+	Accounts       []OnboardingAccountRow      `json:"accounts"`
+	CurrencyIds    []string                    `json:"currencyIds"`
+	MainCurrencyId string                      `json:"mainCurrencyId"`
+	Hide           []string                    `json:"hide"`
+	Unhide         []string                    `json:"unhide"`
+	Currencies     []OnboardingAccountCurrency `json:"currencies"`
 }
 
 // Validate checks the shape and the balances; names, icons and currencies are
@@ -211,6 +219,23 @@ func (r OnboardingSaveAccountsRequest) Validate() error {
 	}
 	if _, err := vo.ParseId(strings.TrimSpace(r.MainCurrencyId)); err != nil {
 		return invalidUUIDError("mainCurrencyId")
+	}
+	if len(r.Currencies) > MaxOnboardingReviewIDs {
+		return tooLongError("currencies")
+	}
+	seen := map[string]bool{}
+	for _, c := range r.Currencies {
+		id, err := vo.ParseId(strings.TrimSpace(c.AccountId))
+		if err != nil {
+			return invalidUUIDError("currencies")
+		}
+		if _, err := vo.ParseId(strings.TrimSpace(c.CurrencyId)); err != nil {
+			return invalidUUIDError("currencies")
+		}
+		if seen[id.String()] {
+			return onboardingFieldError("currencies", "The value you selected is not a valid choice.", errs.CodeInvalidChoice)
+		}
+		seen[id.String()] = true
 	}
 	return validateReviewIDs("hide", r.Hide, "unhide", r.Unhide)
 }

@@ -384,6 +384,9 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 			created = append(created, vo.MustParseId(res.Item.Id))
 		}
 
+		if cerr := s.changeCurrencies(ctx, userID, req.Currencies); cerr != nil {
+			return cerr
+		}
 		if _, err := s.steps.Users.UpdateCurrency(ctx, userID, model.UpdateCurrencyRequest{Currency: mainCode}); err != nil {
 			return err
 		}
@@ -427,6 +430,9 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 			if merr := s.syncMembership(ctx, userID, budgetID, hidden, unhidden); merr != nil {
 				return merr
 			}
+			if ferr := s.followMainCurrency(ctx, userID, budgetID, mainID); ferr != nil {
+				return ferr
+			}
 			out.BudgetId = budgetID.String()
 			classifyBudget, classify = budgetID, created
 		default:
@@ -446,6 +452,62 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 	}
 	s.schedule(ctx, userID, classifyBudget, classify)
 	return out, nil
+}
+
+// changeCurrencies moves existing accounts to the currencies the review
+// picked. Each must be a live account the user owns and each currency one the
+// user may use, else a 400 on the list; an account already in its currency is
+// left alone.
+func (s *Service) changeCurrencies(ctx context.Context, userID vo.Id, changes []model.OnboardingAccountCurrency) error {
+	if len(changes) == 0 {
+		return nil
+	}
+	own, err := s.steps.Accounts.OwnLiveAccounts(ctx, userID)
+	if err != nil {
+		return err
+	}
+	current := make(map[string]string, len(own))
+	for _, a := range own {
+		current[strings.ToLower(a.ID)] = strings.ToLower(a.CurrencyID)
+	}
+	var apply []model.OnboardingAccountCurrency
+	for _, c := range changes {
+		id := strings.ToLower(strings.TrimSpace(c.AccountId))
+		currencyID := strings.ToLower(strings.TrimSpace(c.CurrencyId))
+		was, mine := current[id]
+		if !mine {
+			return invalidChoice("currencies")
+		}
+		if was == currencyID {
+			continue
+		}
+		if _, uerr := s.steps.Currencies.UsableCurrencyCode(ctx, userID, currencyID); uerr != nil {
+			if refusal(uerr) {
+				return invalidChoice("currencies")
+			}
+			return uerr
+		}
+		apply = append(apply, model.OnboardingAccountCurrency{AccountId: id, CurrencyId: currencyID})
+	}
+	if len(apply) == 0 {
+		return nil
+	}
+	return s.steps.Accounts.ChangeCurrencies(ctx, userID, apply)
+}
+
+// followMainCurrency puts the budget in the main currency when nothing was
+// planned in it yet and nobody else uses it: the budget an earlier step
+// (finish-import, save-categories) created took the profile currency of that
+// moment, usually the instance base currency.
+func (s *Service) followMainCurrency(ctx context.Context, userID, budgetID vo.Id, mainID string) error {
+	name, currencyID, ok, err := s.steps.Budgets.UnplannedOwnBudget(ctx, userID, budgetID)
+	if err != nil || !ok || strings.EqualFold(currencyID, mainID) {
+		return err
+	}
+	_, err = s.steps.Budgets.UpdateBudget(ctx, userID, model.UpdateBudgetRequest{
+		Id: budgetID.String(), Name: name, CurrencyId: mainID,
+	})
+	return err
 }
 
 // visibleFolderID is the user's first visible folder. With none: "" when the
@@ -618,6 +680,9 @@ func visibleCurrencies(mainID string, req model.OnboardingSaveAccountsRequest, o
 	}
 	for _, a := range req.Accounts {
 		add(a.CurrencyId)
+	}
+	for _, c := range req.Currencies {
+		add(c.CurrencyId)
 	}
 	for _, a := range own {
 		add(a.CurrencyID)

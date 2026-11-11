@@ -55,6 +55,13 @@ export interface SaveAccountsForm {
   // own account ids: hide moves them into the hidden Archive folder and out of the budget, unhide brings them back
   hide?: Id[]
   unhide?: Id[]
+  // own existing accounts moved to another currency (a CSV import creates them in the instance base currency)
+  currencies?: AccountCurrencyChange[]
+}
+
+export interface AccountCurrencyChange {
+  accountId: Id
+  currencyId: Id
 }
 
 export interface SaveAccountsResult {

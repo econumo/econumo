@@ -39,6 +39,7 @@ export interface ExistingAccount {
 
 interface AccountsStepProps {
   // the user's own accounts: listed first, name and balance locked, each with a Hide / Show toggle
+  // and a currency chip (a CSV import creates them in the instance base currency)
   existing: ExistingAccount[]
   initialRows?: AccountRow[]
   initialExtraCurrencyIds?: Id[]
@@ -76,9 +77,20 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
     .map((r) => labelled(r, t))
   const [extraIds, setExtraIds] = useState<Id[]>(initialExtraCurrencyIds ?? [])
   const [mainOverride, setMainOverride] = useState<Id | null>(null)
-  // the first new row's pick: rows the user has not changed by hand follow it
-  const [sharedId, setSharedId] = useState<Id | null>(leftover[0]?.currencyId || null)
+  // the first row's pick (the first shown existing account, else the first new row): rows the
+  // user has not changed by hand follow it
+  const [sharedId, setSharedId] = useState<Id | null>(existing.length === 0 ? leftover[0]?.currencyId || null : null)
+  // existing accounts whose currency the user picked by hand; a failed submit's picks come back
+  const [picked, setPicked] = useState<Readonly<Record<Id, Id>>>(() => {
+    const out: Record<Id, Id> = {}
+    for (const r of initialRows ?? []) {
+      const a = r.accountId ? existing.find((e) => e.id === r.accountId) : undefined
+      if (a && r.currencyId && r.currencyId !== a.currencyId) out[a.id] = r.currencyId
+    }
+    return out
+  })
   const [pickingRow, setPickingRow] = useState<string | null>(null)
+  const [pickingAccount, setPickingAccount] = useState<Id | null>(null)
   const [iconRowKey, setIconRowKey] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
   // a name still being typed is short on its way to valid, so its error waits for blur
@@ -101,6 +113,9 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   }, [currencies, user])
 
   const currencyOf = (row: AccountRow) => row.currencyId || sharedId || defaultId
+  // a hidden account keeps its currency; a shown one takes its own pick, else the first row's
+  const lead = existing.find((a) => !isHidden(a))
+  const currencyOfExisting = (a: ExistingAccount) => (isHidden(a) ? a.currencyId : picked[a.id] || (lead ? sharedId : null) || a.currencyId)
   const update = (key: string, patch: Partial<AccountRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
 
   const rename = (row: AccountRow, name: string) => {
@@ -115,18 +130,23 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
     setFocusKey(row.key)
   }
   const remove = (key: string) => {
-    if (key === rows[0]?.key) setSharedId(rows[1] ? currencyOf(rows[1]) : null)
+    if (!lead && key === rows[0]?.key) setSharedId(rows[1] ? currencyOf(rows[1]) : null)
     setRows((prev) => prev.filter((r) => r.key !== key))
   }
 
   const active = rows.filter((r) => r.name.trim() !== '')
   const counted = [
-    ...existing.map((a) => a.currencyId),
+    ...existing.map(currencyOfExisting),
     ...(active.length > 0 || existing.length > 0 ? active : rows).map(currencyOf),
-    ...(sharedId && rows.length > 0 ? [sharedId] : []),
+    ...(sharedId && (lead || rows.length > 0) ? [sharedId] : []),
   ].filter(Boolean)
   const usedIds = [...new Set(counted)]
-  const computedMain: Id | null = (sharedId && rows.length > 0 ? sharedId : active[0] ? currencyOf(active[0]) : existing[0]?.currencyId || (rows[0] ? currencyOf(rows[0]) : '')) || null
+  const computedMain: Id | null =
+    (sharedId && (lead || rows.length > 0)
+      ? sharedId
+      : active[0]
+        ? currencyOf(active[0])
+        : (lead ? currencyOfExisting(lead) : existing[0]?.currencyId) || (rows[0] ? currencyOf(rows[0]) : '')) || null
   const extras = extraIds.filter((id) => !usedIds.includes(id))
   const selectedIds = [...usedIds, ...extras]
   const mainId = mainOverride && selectedIds.includes(mainOverride) ? mainOverride : computedMain
@@ -145,7 +165,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
           key: `account:${a.id}`,
           name: a.name,
           balance: '',
-          currencyId: a.currencyId,
+          currencyId: currencyOfExisting(a),
           icon: a.icon,
           accountId: a.id,
         })),
@@ -156,11 +176,16 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
       {
         hide: existing.filter((a) => flipped.has(a.id) && !a.hidden).map((a) => a.id),
         unhide: existing.filter((a) => flipped.has(a.id) && a.hidden).map((a) => a.id),
+        currencies: existing
+          .filter((a) => currencyOfExisting(a) !== a.currencyId)
+          .map((a) => ({ accountId: a.id, currencyId: currencyOfExisting(a) })),
       },
     )
   }
 
   const editing = rows.find((r) => r.key === pickingRow)
+  const editingAccount = existing.find((a) => a.id === pickingAccount)
+  const editingCurrency = editingAccount ? currencyOfExisting(editingAccount) : editing ? currencyOf(editing) : undefined
   const editingIcon = rows.find((r) => r.key === iconRowKey)
   const codeOf = (id: Id) => currencies?.find((c) => c.id === id)?.code ?? ''
   const chip = 'shrink-0 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground'
@@ -173,7 +198,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
 
       <ul className="mt-4 divide-y divide-border/60 overflow-hidden rounded-xl border bg-card">
         {existing.map((a) => {
-          const cur = currencies?.find((c) => c.id === a.currencyId)
+          const cur = currencies?.find((c) => c.id === currencyOfExisting(a))
           const off = isHidden(a)
           return (
             <li key={a.id} className="px-3 py-2" data-testid="account-row" data-hidden={off || undefined}>
@@ -189,7 +214,14 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
                     <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                       {addThousandSeparators(formatNumber(a.balance, cur?.fractionDigits ?? 2, true)).join('.')}
                     </span>
-                    <span className={chip}>{cur?.code ?? ''}</span>
+                    <button
+                      type="button"
+                      className={cn(chip, 'hover:bg-accent')}
+                      aria-label={t('onboarding.accounts.currency_title')}
+                      onClick={() => setPickingAccount(a.id)}
+                    >
+                      {cur?.code ?? ''}
+                    </button>
                   </>
                 )}
                 <Button
@@ -311,14 +343,24 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
       </ResponsiveDialog>
 
       <CurrencyListSheet
-        open={editing !== undefined}
+        open={editing !== undefined || editingAccount !== undefined}
         title={t('onboarding.accounts.currency_title')}
-        options={selectableCurrencies(currencies, editing ? currencyOf(editing) : undefined)}
-        value={editing ? currencyOf(editing) : null}
-        onClose={() => setPickingRow(null)}
+        options={selectableCurrencies(currencies, editingCurrency)}
+        value={editingCurrency ?? null}
+        onClose={() => {
+          setPickingRow(null)
+          setPickingAccount(null)
+        }}
         onPick={(id) => {
+          if (editingAccount) {
+            if (editingAccount.id === lead?.id) {
+              setSharedId(id)
+              setPicked((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== editingAccount.id)))
+            } else setPicked((prev) => ({ ...prev, [editingAccount.id]: id }))
+            return
+          }
           if (!pickingRow) return
-          if (pickingRow === rows[0]?.key) {
+          if (!lead && pickingRow === rows[0]?.key) {
             setSharedId(id)
             update(pickingRow, { currencyId: '' })
           } else update(pickingRow, { currencyId: id })

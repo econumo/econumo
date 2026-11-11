@@ -363,6 +363,18 @@ navigation (single-pane vs sidebar).
       add more later in Settings."; the line reads "USD (main) · + Add";
       tapping the main currency changes it. No note about missing exchange
       rates appears.
+- [ ] 📱 Accounts after a CSV import (accounts arrive in the instance base
+      currency): an existing, shown account's currency chip is tappable and
+      opens the currency list (its name and balance stay read-only, a hidden
+      one shows no chip). Changing the FIRST row's currency also moves every
+      row whose currency was not changed by hand (other imported accounts and
+      new rows) and the main currency; changing another row moves only that
+      row. Continue sends the changed existing accounts as `currencies` in
+      `save-accounts`: afterwards they show the new currency on Accounts with
+      the same balance and no "Balance correction" transaction, and the new
+      currencies are visible. The budget the import created (nothing planned,
+      not shared) switches to the main currency; a budget that has a plan, or
+      is shared with someone (also a pending invite), keeps its currency.
 - [ ] Default names follow the UI language: switching the language on
       Categories or Accounts (or reloading in another language mid-flow)
       re-labels the default categories and the Cash row that were not

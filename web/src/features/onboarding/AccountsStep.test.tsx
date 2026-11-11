@@ -404,7 +404,53 @@ it('reviews existing accounts: Hide and Show flip rows, hidden ones read muted, 
   await user.click(screen.getByRole('button', { name: 'Hide Rainy day savings' }))
   await user.click(screen.getByRole('button', { name: 'Show Rainy day savings' }))
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(onContinue.mock.calls[0][3]).toEqual({ hide: ['acc-imp'], unhide: ['acc-old'] })
+  expect(onContinue.mock.calls[0][3]).toEqual({ hide: ['acc-imp'], unhide: ['acc-old'], currencies: [] })
+})
+
+it('an existing account takes a currency from its chip; Continue sends it as a currencies diff, balance and name stay locked', async () => {
+  const user = userEvent.setup()
+  const lead: ExistingAccount = { id: 'acc-lead', name: 'Main card', icon: 'credit_card', balance: '5', currencyId: 'cur-usd' }
+  const other: ExistingAccount = { id: 'acc-other', name: 'Other card', icon: 'credit_card', balance: '7', currencyId: 'cur-usd' }
+  const { onContinue } = renderStep({ existing: [lead, other] })
+  await ready()
+  await pickCurrency(user, 1, 'EUR')
+  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
+  expect(within(rowsEls()[1]).queryByLabelText('Balance')).not.toBeInTheDocument()
+  expect(within(rowsEls()[1]).queryByLabelText('Account name')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  const [rows, , main, review] = onContinue.mock.calls[0]
+  expect(review.currencies).toEqual([{ accountId: 'acc-other', currencyId: 'cur-eur' }])
+  expect(rows).toEqual([
+    expect.objectContaining({ accountId: 'acc-lead', currencyId: 'cur-usd' }),
+    expect.objectContaining({ accountId: 'acc-other', currencyId: 'cur-eur' }),
+  ])
+  // the first row is unchanged, so the main currency is too
+  expect(main).toBe('cur-usd')
+})
+
+it('the first existing account leads: untouched rows, existing or new, follow its pick and so does the main currency', async () => {
+  const user = userEvent.setup()
+  const lead: ExistingAccount = { id: 'acc-lead', name: 'Main card', icon: 'credit_card', balance: '5', currencyId: 'cur-usd' }
+  const follower: ExistingAccount = { id: 'acc-follow', name: 'Second card', icon: 'credit_card', balance: '7', currencyId: 'cur-usd' }
+  const byHand: ExistingAccount = { id: 'acc-hand', name: 'Third card', icon: 'credit_card', balance: '9', currencyId: 'cur-eur' }
+  const { onContinue } = renderStep({ existing: [lead, follower, byHand] })
+  await ready()
+  await pickCurrency(user, 2, 'USD')
+  await addAccount(user)
+  await user.type(nameInputs()[0], 'Travel fund')
+  await pickCurrency(user, 0, 'EUR')
+  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
+  expect(within(rowsEls()[2]).getByRole('button', { name: 'Currency' })).toHaveTextContent('USD')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  const [rows, , main, review] = onContinue.mock.calls[0]
+  expect(review.currencies).toEqual([
+    { accountId: 'acc-lead', currencyId: 'cur-eur' },
+    { accountId: 'acc-follow', currencyId: 'cur-eur' },
+    { accountId: 'acc-hand', currencyId: 'cur-usd' },
+  ])
+  expect(rows[3]).toMatchObject({ name: 'Travel fund', currencyId: 'cur-eur' })
+  expect(main).toBe('cur-eur')
+  expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent('EUR (main)')
 })
 
 it('cannot continue with every account hidden and no new row', async () => {
@@ -536,6 +582,27 @@ describe('AccountsStepBody', () => {
     expect(routes.srv.calls[0].body).toMatchObject({ accounts: [], hide: [fixtureAccounts[0].id], unhide: ['a-hid'] })
     expect(track).toHaveBeenCalledWith(metrics.METRICS.ONBOARDING_ACCOUNTS_COMPLETE, expect.objectContaining({ accounts: 0, hidden: 1, shown: 1 }))
     track.mockRestore()
+  })
+
+  it('changing the first imported account\'s currency posts it and the untouched accounts that follow as currencies, with the main currency', async () => {
+    localStorage.clear()
+    const routes = stepRoutes({ option: 'import,categories' })
+    server.use(...coreHandlers({ accounts: fixtureAccounts, user: userWith('import,categories') }), ...routes.handlers)
+    const user = userEvent.setup()
+    const { onDone } = renderBody()
+    await ready()
+    // Cash (USD) leads; Bank (USD) follows; Euro Stash is EUR already; the hidden account keeps its currency
+    await pickCurrency(user, 0, 'EUR')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    const body = routes.srv.calls[0].body
+    expect(body.currencies).toEqual([
+      { accountId: 'a1', currencyId: 'cur-eur' },
+      { accountId: 'a2', currencyId: 'cur-eur' },
+    ])
+    expect(body.mainCurrencyId).toBe('cur-eur')
+    expect(body.accounts).toEqual([])
+    expect(body.currencyIds).toContain('cur-eur')
   })
 
   it('a stored draft from a failed submit reseeds the form and replays its operation id', async () => {

@@ -8756,7 +8756,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "In one transaction: creates the accounts (validated like account/create-account, opening balance as a correction; the first account of a user with no folder creates one), sets the profile currency to mainCurrencyId, keeps only the main, listed and account currencies visible, moves the accounts in hide into the user's hidden archive folder (named in the request language; created hidden when missing, with a number appended when a visible folder holds the name) and those in unhide into the first visible folder (a \"General\" folder when there is none; the caller's own live accounts only, another id is a 400 on that list), then creates the budget over the user's live accounts outside hidden folders when they have none, else adds the new and unhidden accounts to their default budget and removes the hidden ones from it (an account that has transactions in a past period, or a savings member with plans or comments, stays a member), and marks the accounts step done. After the commit, when the server has an AI provider, a background job sends the new accounts' names and currencies with the caller's timezone and language to it and flags the ones it judges savings in that budget. Idempotent on the operation id like onboarding/save-categories.",
+                "description": "In one transaction: creates the accounts (validated like account/create-account, opening balance as a correction; the first account of a user with no folder creates one), moves each existing account in currencies (the caller's own live accounts and a currency they may use, else a 400 on currencies) to its currency through account/update-account with its name, icon and balance unchanged, sets the profile currency to mainCurrencyId, keeps only the main, listed and account currencies visible, moves the accounts in hide into the user's hidden archive folder (named in the request language; created hidden when missing, with a number appended when a visible folder holds the name) and those in unhide into the first visible folder (a \"General\" folder when there is none; the caller's own live accounts only, another id is a 400 on that list), then creates the budget over the user's live accounts outside hidden folders when they have none, else adds the new and unhidden accounts to their default budget and removes the hidden ones from it (an account that has transactions in a past period, or a savings member with plans or comments, stays a member), and switches that budget to mainCurrencyId when the caller owns it alone (no participant, invited or accepted) and it has no limit in any period yet, and marks the accounts step done. After the commit, when the server has an AI provider, a background job sends the new accounts' names and currencies with the caller's timezone and language to it and flags the ones it judges savings in that budget. Idempotent on the operation id like onboarding/save-categories.",
                 "consumes": [
                     "application/json"
                 ],
@@ -16674,6 +16674,17 @@ const docTemplate = `{
                 }
             }
         },
+        "model.OnboardingAccountCurrency": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                }
+            }
+        },
         "model.OnboardingAccountRow": {
             "type": "object",
             "properties": {
@@ -16773,6 +16784,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.OnboardingAccountRow"
+                    }
+                },
+                "currencies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OnboardingAccountCurrency"
                     }
                 },
                 "currencyIds": {

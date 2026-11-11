@@ -424,7 +424,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		Tx: txm, Ops: opGuard, Clock: clk,
 		Users:      userSvc,
 		Categories: NewOnboardingCategories(categorySvc, categoryReadSvc),
-		Accounts:   NewOnboardingAccounts(accountSvc, accountRepo, accountCurrencyLookup),
+		Accounts:   NewOnboardingAccounts(accountSvc, accountRepo, accountCurrencyLookup, clk),
 		Currencies: NewOnboardingCurrencies(currencyManageSvc, accountCurrencyLookup),
 		Budgets:    budgetSvc,
 	})

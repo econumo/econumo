@@ -5,6 +5,7 @@ package server
 import (
 	"context"
 	"errors"
+	"strings"
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	appbudget "github.com/econumo/econumo/internal/budget"
@@ -12,7 +13,9 @@ import (
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/model"
 	apponboarding "github.com/econumo/econumo/internal/onboarding"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 	appuser "github.com/econumo/econumo/internal/user"
 )
@@ -120,10 +123,40 @@ type OnboardingAccounts struct {
 	*appaccount.Service
 	accounts onboardingAccountList
 	currency onboardingCurrencyLookup
+	clock    port.Clock
 }
 
-func NewOnboardingAccounts(svc *appaccount.Service, accounts onboardingAccountList, currency onboardingCurrencyLookup) *OnboardingAccounts {
-	return &OnboardingAccounts{Service: svc, accounts: accounts, currency: currency}
+func NewOnboardingAccounts(svc *appaccount.Service, accounts onboardingAccountList, currency onboardingCurrencyLookup, clock port.Clock) *OnboardingAccounts {
+	return &OnboardingAccounts{Service: svc, accounts: accounts, currency: currency, clock: clock}
+}
+
+// ChangeCurrencies runs update-account for each change with the account's own
+// name, icon and balance as get-account-list shows them, so only the currency
+// moves: the balance equals the computed one and no correction is written.
+func (a *OnboardingAccounts) ChangeCurrencies(ctx context.Context, userID vo.Id, changes []model.OnboardingAccountCurrency) error {
+	list, err := a.AccountListForUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	byID := make(map[string]model.AccountResult, len(list))
+	for _, item := range list {
+		byID[strings.ToLower(item.Id)] = item
+	}
+	updatedAt := a.clock.Now().UTC().Format(datetime.Layout)
+	for _, c := range changes {
+		item, ok := byID[strings.ToLower(c.AccountId)]
+		if !ok {
+			return errs.NewNotFound("Account not found")
+		}
+		currencyID := c.CurrencyId
+		if _, err := a.UpdateAccount(ctx, userID, model.UpdateAccountRequest{
+			Id: item.Id, Name: item.Name, Balance: vo.NewFlexString(item.Balance), Icon: item.Icon,
+			CurrencyId: &currencyID, UpdatedAt: updatedAt,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (a *OnboardingAccounts) OwnLiveAccounts(ctx context.Context, userID vo.Id) ([]model.OnboardingAccount, error) {

@@ -92,6 +92,10 @@ type AccountSteps interface {
 	MoveAccount(ctx context.Context, userID vo.Id, req model.MoveAccountRequest) (*model.MoveAccountResult, error)
 	// ReplaceIcon changes the icon only while the account still shows from.
 	ReplaceIcon(ctx context.Context, userID, id vo.Id, from, to string) (bool, error)
+	// ChangeCurrencies moves accounts to another currency through update-account,
+	// resending each account's own name, icon and balance (so no correction is
+	// written).
+	ChangeCurrencies(ctx context.Context, userID vo.Id, changes []model.OnboardingAccountCurrency) error
 }
 
 // CurrencySteps is the currency feature: the code of a currency the caller may
@@ -104,11 +108,16 @@ type CurrencySteps interface {
 	FractionDigits(ctx context.Context, currencyID string) (int, error)
 }
 
-// BudgetSteps is the budget feature's create, add-account, remove-account and
-// set-limit use cases, plus the reads that pick the budget, its current period
+// BudgetSteps is the budget feature's create, update, add-account,
+// remove-account and set-limit use cases, plus the reads that pick the budget, its current period
 // and the categories' recent history.
 type BudgetSteps interface {
 	CreateBudget(ctx context.Context, userID vo.Id, req model.CreateBudgetRequest) (*model.CreateBudgetResult, error)
+	UpdateBudget(ctx context.Context, userID vo.Id, req model.UpdateBudgetRequest) (*model.UpdateBudgetResult, error)
+	// UnplannedOwnBudget reports the budget's name and currency, with ok set
+	// only when the caller owns it alone (no other participant, invited or
+	// accepted) and it has no limit in any period.
+	UnplannedOwnBudget(ctx context.Context, userID, budgetID vo.Id) (name, currencyID string, ok bool, err error)
 	AddAccount(ctx context.Context, userID vo.Id, req model.AddAccountRequest) (*model.AddAccountResult, error)
 	RemoveAccount(ctx context.Context, userID vo.Id, req model.RemoveAccountRequest) (*model.RemoveAccountResult, error)
 	CategoryHistory(ctx context.Context, userID, budgetID vo.Id, months int) ([]model.BudgetCategoryHistory, error)
