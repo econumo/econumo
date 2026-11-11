@@ -3015,7 +3015,9 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       and with another keyboard language). Every time the sheet shrinks to
       the space above the keyboard: the handle, the title and the first rows
       stay on screen and the rest of the list scrolls; the top of the sheet
-      never goes off the screen.
+      never goes off the screen. Hiding the keyboard (✓) lets the sheet grow
+      back down to its full height without first jumping up to the top of
+      the screen.
 - [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
       Savings accounts checklist, Category, Currency, Merge into) have the
       same rounded corners as the sheet's search field and OK button, not
