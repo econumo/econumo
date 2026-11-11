@@ -1235,7 +1235,6 @@
       "balance_invalid": "Voer een getal in, bijvoorbeeld 1234,50",
       "remove": "Rekening verwijderen",
       "currency_title": "Valuta",
-      "continue": "Doorgaan",
       "skip": "Overslaan",
       "add": "Rekening toevoegen",
       "default_cash": "Contant",
@@ -1256,7 +1255,6 @@
       "reorder_label": "{name} verplaatsen",
       "remove_label": "{name} verwijderen",
       "add_placeholder": "Voeg je eigen toe",
-      "continue": "Doorgaan",
       "skip": "Overslaan",
       "archive": "Archiveren",
       "restore": "Herstellen",
@@ -1313,6 +1311,7 @@
       "later": "Je kunt de Apple Wallet-koppeling op elk moment later instellen in Instellingen."
     },
     "retry": "Opnieuw proberen",
+    "save_continue": "Opslaan en doorgaan",
     "plan_step": {
       "heading": "Plan deze maand",
       "subtext": "Je budget staat klaar. Zet een globaal bedrag bij wat belangrijk is – je kunt het altijd aanpassen.",

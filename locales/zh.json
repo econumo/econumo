@@ -1235,7 +1235,6 @@
       "balance_invalid": "请输入数字，例如 1234.50",
       "remove": "移除账户",
       "currency_title": "币种",
-      "continue": "继续",
       "skip": "跳过",
       "add": "添加账户",
       "default_cash": "现金账户",
@@ -1256,7 +1255,6 @@
       "reorder_label": "移动{name}",
       "remove_label": "移除{name}",
       "add_placeholder": "添加自定义分类",
-      "continue": "继续",
       "skip": "跳过",
       "archive": "归档",
       "restore": "恢复",
@@ -1313,6 +1311,7 @@
       "later": "你可以随时在设置中配置 Apple Wallet 集成。"
     },
     "retry": "重试",
+    "save_continue": "保存并继续",
     "plan_step": {
       "heading": "规划本月",
       "subtext": "预算已准备好。为重要的项目填一个大概金额——随时都可以调整。",

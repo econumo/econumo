@@ -270,7 +270,7 @@ navigation (single-pane vs sidebar).
 - [ ] The stepper shows no focus outline after page load or a click; Tab
       onto a step shows a focus ring.
 - [ ] Clicking an open or skipped step (or its bar segment on a phone) opens
-      it; Continue or Skip on a step moves to the next open step after it, and
+      it; Save and continue or Skip on a step moves to the next open step after it, and
       the stepper shows the new state. A done step is read-only: it keeps its
       ✓, shows no hover, cannot be opened (clicking or tapping it changes
       nothing) and is still announced as done.
@@ -278,7 +278,7 @@ navigation (single-pane vs sidebar).
       Categories / Accounts step while it is open or skipped, and the
       Categories / Accounts settings page once that step is done.
 - [ ] A freshly registered user's answers are saved: after Skip on Import and
-      Continue on Categories and Accounts, a reload keeps those steps checked
+      Save and continue on Categories and Accounts, a reload keeps those steps checked
       and opens Budget & plan; finishing it completes onboarding.
 - [ ] 📱 A screen reader announces the page heading "Getting started" and each
       step with its state ("Import, done", "Categories, skipped"); each phone
@@ -299,9 +299,11 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 While onboarding is incomplete neither the "Econumo works best as an
       app" banner nor the one-time install popup appears in the app; both
       appear once onboarding is completed.
-- [ ] Skip on Categories or Accounts creates nothing; Continue on Categories
-      creates every category still listed (in the listed order), Continue on Accounts only the new
-      accounts (and sets the main currency and visible currencies). Each Continue
+- [ ] The main button on Categories and Accounts reads "Save and continue"
+      (translated), whether or not anything changed; Plan keeps "Save plan".
+- [ ] Skip on Categories or Accounts creates nothing; Save and continue on Categories
+      creates every category still listed (in the listed order), Save and continue on Accounts only the new
+      accounts (and sets the main currency and visible currencies). Each Save and continue
       sends one request (Network tab: `onboarding/save-categories` /
       `save-accounts`); a user who already has categories or accounts can
       Continue without adding any. The budget is created by whichever of the
@@ -311,7 +313,7 @@ navigation (single-pane vs sidebar).
       row ("Remove {name}" for a screen reader), an "Add your own" row at the
       end. On a fresh account every default is listed; the trash button drops
       a row from the list, and a removed name typed again under "Add your own"
-      comes back as a normal row. Continue is disabled only when no category
+      comes back as a normal row. Save and continue is disabled only when no category
       would be left at all (every row archived or removed and nothing new).
       Categories the user already has (after an import) are listed with their
       name read-only (no trash button, no checkbox) and an Archive button
@@ -322,7 +324,7 @@ navigation (single-pane vs sidebar).
       like any category the user has, archived ones included, are not offered
       either. Typing the name of an archived category under "Add your own"
       (or renaming a new row to it) restores that category instead of adding
-      a duplicate. Continue sends `archive`/`restore` in `save-categories` only for
+      a duplicate. Save and continue sends `archive`/`restore` in `save-categories` only for
       the rows flipped against the server (flipping a row twice sends
       nothing); after it the archived ones are gone from the category pickers
       and restored ones are back. The defaults are, for
@@ -335,8 +337,8 @@ navigation (single-pane vs sidebar).
 - [ ] Categories on a desktop width: each row has a drag handle, and dragging
       (or focusing the handle, Space, arrow keys, Space) reorders rows within
       Expenses or Income, existing read-only categories included; a row never
-      moves to the other card. After Continue the Categories settings page
-      lists them in that order; a reload before Continue keeps the order.
+      moves to the other card. After Save and continue the Categories settings page
+      lists them in that order; a reload before Save and continue keeps the order.
       On a phone or tablet width there are no handles.
 - [ ] Accounts: one card of compact rows (icon, name, balance, currency chip,
       and on a new row an ✕ that removes it), with no label under the name and
@@ -349,11 +351,11 @@ navigation (single-pane vs sidebar).
       editable, each with an Archive button (an archive box; "Archive" next to
       it from a tablet width up); an archived one (also an account already in
       a hidden folder) reads muted with "Archived" instead of its balance and
-      a Restore button. Continue sends `hide`/`unhide` in `save-accounts`
+      a Restore button. Save and continue sends `hide`/`unhide` in `save-accounts`
       for the flipped rows only: an archived account then sits in the hidden
       "Archive" folder (translated) and is gone from the budget (unless it has
       history in an earlier month, then it stays a member); a shown one moves
-      back to a visible folder and into the budget. Continue is disabled while
+      back to a visible folder and into the budget. Save and continue is disabled while
       every account is archived and no new row has a name. A user with no accounts starts with one row named "Cash" (cash
       icon, blank balance saved as 0, the default currency) that
       can be renamed or removed like any row; a user who already has accounts,
@@ -369,12 +371,12 @@ navigation (single-pane vs sidebar).
       "Archived" with no chip or input. Changing the FIRST row's currency also
       moves every row whose currency was not changed by hand (other imported
       accounts and new rows) and the main currency; changing another row moves
-      only that row. Continue sends the changed existing accounts as
+      only that row. Save and continue sends the changed existing accounts as
       `currencies` and edited balances as `balances` in `save-accounts`:
       afterwards they show the new currency on Accounts, an untouched balance
       unchanged with no correction, an edited one at the typed amount with one
       "Balance adjustment" transaction dated today; an unreadable balance shows
-      the error and blocks Continue. The budget the import created (nothing
+      the error and blocks Save and continue. The budget the import created (nothing
       planned, not shared) switches to the main currency; a budget that has a
       plan, or is shared with someone (also a pending invite), keeps its
       currency.
@@ -394,7 +396,7 @@ navigation (single-pane vs sidebar).
 - [ ] Default names follow the UI language: switching the language on
       Categories or Accounts (or reloading in another language mid-flow)
       re-labels the default categories and the Cash row that were not
-      renamed, and Continue creates them in that language; a renamed row
+      renamed, and Save and continue creates them in that language; a renamed row
       keeps the typed name; categories and accounts that already exist keep
       their stored names.
 - [ ] Accounts skipped, then opened again after Budget & plan: a new account
@@ -405,7 +407,7 @@ navigation (single-pane vs sidebar).
       their budget membership and savings flags.
 - [ ] 📱 Categories and Accounts render usably on a phone, tablet and desktop
       width (each account row stays on one line; no horizontal scroll;
-      Continue and Skip reachable).
+      Save and continue and Skip reachable).
 - [ ] Import step: "Choose a CSV file" (a dashed, accent-tinted area) opens
       the CSV import dialog; under it sit "Skip" on the left and "I don't
       have one" on the right, both skipping the step (there is no separate
@@ -447,10 +449,10 @@ navigation (single-pane vs sidebar).
       onboarding.
 - [ ] 📱 Reloading mid-flow (or retrying after a failed request) resumes at the
       same step with the same rows and creates nothing twice. With the network
-      cut (DevTools offline) Continue shows an error and stays on the step;
-      back online, Continue again creates each row once; a step whose request
+      cut (DevTools offline) Save and continue shows an error and stays on the step;
+      back online, Save and continue again creates each row once; a step whose request
       landed but whose answer was lost shows done after the user reloads.
-- [ ] An invalid balance in a row with no name does not block Continue; Skip is
+- [ ] An invalid balance in a row with no name does not block Save and continue; Skip is
       disabled while a save is running.
 - [ ] Balances follow the UI language: in English "2,500" saves 2500 and
       "2.50" saves 2.50; in German "2.500" saves 2500 and "2,50" saves 2.50;
@@ -458,7 +460,7 @@ navigation (single-pane vs sidebar).
       (e.g. "2.500" in Russian) shows the "Enter a number" error.
 - [ ] An account or category name shorter than 3 or longer than 64 characters
       shows the server's length message under the row once the field is left,
-      and Continue stays disabled until it is fixed (or, for a new row,
+      and Save and continue stays disabled until it is fixed (or, for a new row,
       removed). In Chinese every default category saves without an error.
 - [ ] 📱 Opening "Budget & plan" writes nothing: it plans the budget the
       Categories/Accounts steps created (over every own account; without AI

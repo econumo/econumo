@@ -1235,7 +1235,6 @@
       "balance_invalid": "Geben Sie eine Zahl ein, z. B. 1234,50",
       "remove": "Konto entfernen",
       "currency_title": "Währung",
-      "continue": "Weiter",
       "skip": "Überspringen",
       "add": "Konto hinzufügen",
       "default_cash": "Bargeld",
@@ -1256,7 +1255,6 @@
       "reorder_label": "{name} verschieben",
       "remove_label": "{name} entfernen",
       "add_placeholder": "Eigene hinzufügen",
-      "continue": "Weiter",
       "skip": "Überspringen",
       "archive": "Archivieren",
       "restore": "Wiederherstellen",
@@ -1313,6 +1311,7 @@
       "later": "Du kannst die Apple-Wallet-Integration jederzeit später in den Einstellungen einrichten."
     },
     "retry": "Erneut versuchen",
+    "save_continue": "Speichern und weiter",
     "plan_step": {
       "heading": "Diesen Monat planen",
       "subtext": "Dein Budget ist bereit. Trag grobe Beträge bei dem ein, was dir wichtig ist – du kannst sie jederzeit anpassen.",

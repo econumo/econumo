@@ -152,7 +152,7 @@ it('Continue on Categories ticks the step from the user save-categories answers 
   const user = userEvent.setup()
   renderPage()
   await heading('What do you spend on?')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   expect(await heading("Where's your money right now?")).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Categories/ })).toHaveAttribute('data-state', 'done')
   expect(posts.map((p) => p.path)).toEqual(['save-categories'])
@@ -295,14 +295,14 @@ it('an import with rows finishes it on the server and opens Categories and Accou
   // the imported categories are reviewed: archive one, the archived one stays archived
   await user.click(await screen.findByRole('button', { name: 'Archive Food' }))
   expect(screen.getByRole('button', { name: 'Restore Old' })).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   expect(await heading("Where's your money right now?")).toBeInTheDocument()
   expect(posts[1]).toMatchObject({ path: 'save-categories', body: { categories: [], archive: ['cat-food'] } })
   expect((posts[1].body as Record<string, unknown>).restore).toBeUndefined()
 
   // the accounts the import created are reviewed: one goes to the hidden Archive folder
   await user.click(await screen.findByRole('button', { name: 'Archive Cash' }))
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   expect(await heading('Plan this month')).toBeInTheDocument()
   expect(posts[2]).toMatchObject({ path: 'save-accounts', body: { accounts: [], hide: ['a1'] } })
   expect(posts.filter((p) => p.path === 'update-onboarding')).toEqual([])
@@ -548,12 +548,12 @@ it('a registered user without the option walks every step and the answers and co
   await user.click(screen.getByRole('button', { name: "I don't have one" }))
 
   expect(await heading('What do you spend on?')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
 
   expect(await heading("Where's your money right now?")).toBeInTheDocument()
   expect(screen.getByRole('textbox', { name: 'Account name' })).toHaveValue('Cash')
   await user.type(screen.getByRole('textbox', { name: 'Balance' }), '100')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
 
   expect(await heading('Plan this month')).toBeInTheDocument()
   const salary = await screen.findByRole('textbox', { name: 'Salary' }, { timeout: 5000 })

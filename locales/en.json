@@ -1235,7 +1235,6 @@
       "balance_invalid": "Enter a number, for example 1234.50",
       "remove": "Remove account",
       "currency_title": "Currency",
-      "continue": "Continue",
       "skip": "Skip",
       "add": "Add account",
       "default_cash": "Cash",
@@ -1256,7 +1255,6 @@
       "reorder_label": "Reorder {name}",
       "remove_label": "Remove {name}",
       "add_placeholder": "Add your own",
-      "continue": "Continue",
       "skip": "Skip",
       "archive": "Archive",
       "restore": "Restore",
@@ -1313,6 +1311,7 @@
       "later": "You can set up the Apple Wallet integration any time later in Settings."
     },
     "retry": "Try again",
+    "save_continue": "Save and continue",
     "plan_step": {
       "heading": "Plan this month",
       "subtext": "Your budget is ready. Put a rough amount next to what matters — you can refine it any time.",

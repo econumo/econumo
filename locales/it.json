@@ -1235,7 +1235,6 @@
       "balance_invalid": "Inserisci un numero, ad esempio 1234,50",
       "remove": "Rimuovi conto",
       "currency_title": "Valuta",
-      "continue": "Continua",
       "skip": "Salta",
       "add": "Aggiungi conto",
       "default_cash": "Contanti",
@@ -1256,7 +1255,6 @@
       "reorder_label": "Riordina {name}",
       "remove_label": "Rimuovi {name}",
       "add_placeholder": "Aggiungi le tue",
-      "continue": "Continua",
       "skip": "Salta",
       "archive": "Archivia",
       "restore": "Ripristina",
@@ -1313,6 +1311,7 @@
       "later": "Puoi configurare l'integrazione con Apple Wallet in qualsiasi momento dalle Impostazioni."
     },
     "retry": "Riprova",
+    "save_continue": "Salva e continua",
     "plan_step": {
       "heading": "Pianifica questo mese",
       "subtext": "Il tuo budget è pronto. Inserisci un importo indicativo accanto a ciò che conta: potrai modificarlo in qualsiasi momento.",

@@ -71,7 +71,7 @@ it('moves a row within its group and submits rows and the full order in that ord
   await moveUp(user, 'Pets')
   expect(names('expense').slice(7, 10)).toEqual(['Entertainment', 'Pets', 'Kids'])
   expect(names('income')).toEqual(['Salary', 'Bonus', 'Other income'])
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   const [rows, order] = onContinue.mock.calls[0] as [CategoryRow[], string[]]
   expect(rows.filter((r) => r.type === 'expense').map((r) => r.name).slice(7, 10)).toEqual(['Entertainment', 'Pets', 'Kids'])
   expect(order).toEqual(rows.map((r) => r.key))
@@ -85,7 +85,7 @@ it('moves a new row above an existing read-only category', async () => {
   expect(names('expense')[0]).toBe('Groceries')
   await moveUp(user, 'Housing')
   expect(names('expense').slice(0, 2)).toEqual(['Housing', 'Groceries'])
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   const [rows, order] = onContinue.mock.calls[0] as [CategoryRow[], string[]]
   expect(order.slice(0, 2)).toEqual([keyOf(rows, 'Housing'), 'cat-1'])
 })
@@ -96,7 +96,7 @@ it('a removed row drops out of the submitted rows but the rest keep the moved or
   await moveUp(user, 'Pets')
   await user.click(screen.getByRole('button', { name: 'Remove Kids' }))
   expect(names('expense').slice(7, 9)).toEqual(['Entertainment', 'Pets'])
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   const [rows, order] = onContinue.mock.calls[0] as [CategoryRow[], string[]]
   expect(rows.map((r) => r.name)).not.toContain('Kids')
   expect(order).toEqual(rows.map((r) => r.key))
@@ -105,7 +105,7 @@ it('a removed row drops out of the submitted rows but the rest keep the moved or
 it('passes no order when nothing was moved', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep()
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   expect(onContinue.mock.calls[0][1]).toBeUndefined()
 })
 
@@ -122,7 +122,7 @@ it('restores a stored order and submits it again', async () => {
   const initialRows: CategoryRow[] = [{ key: 'k1', name: 'Pets', type: 'expense', icon: 'pets' }]
   const { onContinue } = renderStep({ existing: [food], initialRows, initialOrder: ['k1', 'cat-1'] })
   expect(names('expense')).toEqual(['Pets', 'Groceries'])
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   expect(onContinue.mock.calls[0][1]).toEqual(['k1', 'cat-1'])
 })
 

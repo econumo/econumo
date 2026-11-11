@@ -1235,7 +1235,6 @@
       "balance_invalid": "Introduza um número, por exemplo 1234,50",
       "remove": "Remover conta",
       "currency_title": "Moeda",
-      "continue": "Continuar",
       "skip": "Pular",
       "add": "Adicionar conta",
       "default_cash": "Dinheiro",
@@ -1256,7 +1255,6 @@
       "reorder_label": "Reordenar {name}",
       "remove_label": "Remover {name}",
       "add_placeholder": "Adicione as suas",
-      "continue": "Continuar",
       "skip": "Pular",
       "archive": "Arquivar",
       "restore": "Restaurar",
@@ -1313,6 +1311,7 @@
       "later": "Pode configurar a integração com o Apple Wallet a qualquer momento nas Definições."
     },
     "retry": "Tentar novamente",
+    "save_continue": "Guardar e continuar",
     "plan_step": {
       "heading": "Planeie este mês",
       "subtext": "O seu orçamento está pronto. Coloque um valor aproximado junto ao que importa — pode ajustá-lo a qualquer momento.",

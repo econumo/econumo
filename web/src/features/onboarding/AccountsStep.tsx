@@ -378,7 +378,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
           {t('onboarding.accounts.skip')}
         </Button>
         <Button type="button" disabled={!canContinue} onClick={submit}>
-          {t('onboarding.accounts.continue')}
+          {t('onboarding.save_continue')}
         </Button>
       </div>
 

@@ -304,7 +304,7 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
           {t('onboarding.categories_step.skip')}
         </Button>
         <Button type="button" disabled={!canContinue} onClick={submit}>
-          {t('onboarding.categories_step.continue')}
+          {t('onboarding.save_continue')}
         </Button>
       </div>
 
