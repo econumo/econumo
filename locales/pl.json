@@ -1294,7 +1294,7 @@
       "text": "Masz eksport CSV z banku lub innej aplikacji? Utworzy konta, kategorie i transakcje za jednym razem.",
       "choose": "Wybierz plik CSV",
       "skip": "Nie mam",
-      "import": "Importuj",
+      "skip_short": "Pomiń",
       "drop_here": "lub upuść go tutaj",
       "not_csv": "Tutaj można importować tylko pliki CSV."
     },

@@ -1294,7 +1294,7 @@
       "text": "Vous avez un export CSV de votre banque ou d'une autre appli ? Il crée comptes, catégories et transactions en une seule fois.",
       "choose": "Choisir un fichier CSV",
       "skip": "Je n'en ai pas",
-      "import": "Importer",
+      "skip_short": "Passer",
       "drop_here": "ou déposez-le ici",
       "not_csv": "Seuls les fichiers CSV peuvent être importés ici."
     },

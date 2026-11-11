@@ -406,8 +406,10 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 Categories and Accounts render usably on a phone, tablet and desktop
       width (each account row stays on one line; no horizontal scroll;
       Continue and Skip reachable).
-- [ ] Import step: "Choose a CSV file" (a dashed, accent-tinted area) and
-      Import open the CSV import dialog. On a desktop the area also reads "or
+- [ ] Import step: "Choose a CSV file" (a dashed, accent-tinted area) opens
+      the CSV import dialog; under it sit "Skip" on the left and "I don't
+      have one" on the right, both skipping the step (there is no separate
+      Import button). On a desktop the area also reads "or
       drop it here": dragging a file over it highlights it, dropping a .csv
       opens the dialog with that file already read (column mapping shown),
       and dropping another kind of file opens nothing and shows "Only CSV
@@ -416,9 +418,9 @@ navigation (single-pane vs sidebar).
       none), ticks Import only and opens Categories: Categories and Accounts
       stay open as review steps of what the import brought in (they are not
       ticked); closing the dialog or importing nothing leaves the step open;
-      Skip skips only Import. A failed finish-import shows the error with
-      "Try again", which resends the same operation id; Import and the drop
-      area are disabled meanwhile. The Network tab shows no
+      "Skip" and "I don't have one" skip only Import. A failed finish-import shows the
+      error with "Try again", which resends the same operation id; the drop
+      area is disabled meanwhile. The Network tab shows no
       `update-onboarding` carrying `import`.
 - [ ] While onboarding is in progress, a CSV import from Settings → Data also
       settles the Import step through `finish-import` (the budget appears and,

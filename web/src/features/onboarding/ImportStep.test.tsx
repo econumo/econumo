@@ -7,12 +7,12 @@ import { ImportStep } from './ImportStep'
 
 const CSV = 'Account,Date,Amount\nCash,2026-01-02,-5.5\n'
 
-function renderStep() {
+function renderStep(onSkip = vi.fn().mockResolvedValue(undefined)) {
   server.use(...coreHandlers())
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <ImportStep onDone={vi.fn()} onSkip={vi.fn().mockResolvedValue(undefined)} />
+      <ImportStep onDone={vi.fn()} onSkip={onSkip} />
     </QueryClientProvider>,
   )
   return screen.getByRole('button', { name: 'Choose a CSV file' })
@@ -55,4 +55,18 @@ it('a click on the zone opens the dialog with the file picker', async () => {
   await userEvent.setup().click(zone)
   expect(await screen.findByLabelText('CSV File')).toBeInTheDocument()
   expect(screen.queryByText(/Map the columns/)).not.toBeInTheDocument()
+})
+
+it('the footer has Skip on the left and "I don\'t have one" on the right, both skipping the step, and no Import button', async () => {
+  const onSkip = vi.fn().mockResolvedValue(undefined)
+  renderStep(onSkip)
+  const user = userEvent.setup()
+  const skipButton = screen.getByRole('button', { name: 'Skip' })
+  const none = screen.getByRole('button', { name: "I don't have one" })
+  expect(skipButton.parentElement).toBe(none.parentElement)
+  expect(skipButton.compareDocumentPosition(none) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Import' })).not.toBeInTheDocument()
+  await user.click(skipButton)
+  await user.click(none)
+  expect(onSkip).toHaveBeenCalledTimes(2)
 })

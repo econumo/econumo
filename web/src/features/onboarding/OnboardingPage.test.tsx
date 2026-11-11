@@ -331,7 +331,6 @@ it('a failed finish-import stays on the import step with a retry that replays th
   expect(await screen.findByRole('alert')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Bring in your history' })).toBeInTheDocument()
   // the rows are already in: importing again before the retry would duplicate them
-  expect(screen.getByRole('button', { name: 'Import' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Choose a CSV file' })).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'Try again' }))
   expect(await heading('What do you spend on?')).toBeInTheDocument()

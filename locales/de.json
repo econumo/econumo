@@ -1294,7 +1294,7 @@
       "text": "Hast du einen CSV-Export von deiner Bank oder einer anderen App? Er legt Konten, Kategorien und Buchungen in einem Schritt an.",
       "choose": "CSV-Datei auswählen",
       "skip": "Ich habe keine",
-      "import": "Importieren",
+      "skip_short": "Überspringen",
       "drop_here": "oder hier ablegen",
       "not_csv": "Hier können nur CSV-Dateien importiert werden."
     },

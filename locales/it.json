@@ -1294,7 +1294,7 @@
       "text": "Hai un export CSV della tua banca o di un'altra app? Crea conti, categorie e transazioni in un colpo solo.",
       "choose": "Scegli un file CSV",
       "skip": "Non ne ho uno",
-      "import": "Importa",
+      "skip_short": "Salta",
       "drop_here": "oppure trascinalo qui",
       "not_csv": "Qui si possono importare solo file CSV."
     },

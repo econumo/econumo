@@ -1294,7 +1294,7 @@
       "text": "Heb je een CSV-export van je bank of een andere app? Die maakt rekeningen, categorieën en transacties in één keer aan.",
       "choose": "Kies een CSV-bestand",
       "skip": "Ik heb er geen",
-      "import": "Importeren",
+      "skip_short": "Overslaan",
       "drop_here": "of sleep het hierheen",
       "not_csv": "Hier kunnen alleen CSV-bestanden worden geïmporteerd."
     },
