@@ -448,12 +448,22 @@ navigation (single-pane vs sidebar).
       budget the import created flags the accounts the AI judges savings, and
       an icon the user changed meanwhile is kept. Without AI the icons stay
       as imported.
-- [ ] With AI, a category added on the Categories step without picking an icon,
-      and a new account row whose icon was never picked, get a matching icon a
-      few seconds after Save and continue (the lists refetch about 10 s, 30 s
-      and 90 s later); a default category (Groceries, ...), a row whose icon the
-      user picked, and the untouched Cash row keep theirs. Without AI nothing
-      changes.
+- [ ] With AI, typing a category name on the Categories step (a new row, or
+      a renamed default) changes the row's icon to a matching one about a
+      second after typing pauses; the same for a new or renamed account row on
+      Accounts. An untouched default category (Groceries, ...) and the
+      untouched Cash row keep theirs; once the user picks an icon, typing
+      never changes it again. After Save and continue no icon of these rows
+      changes any more. Without AI no icon changes while typing.
+- [ ] With AI, the New category and New account dialogs pick a matching icon
+      as the name is typed, until the user picks one; editing an existing
+      category or account never changes its icon. Typing fast or a slow
+      provider shows no error.
+- [ ] With AI, a category created inline from the transaction dialog's
+      category picker ("Create Mortgage") saves at once with the default icon
+      and, a few seconds later, shows a matching icon in the picker and the
+      category list without a reload; if its icon was changed in the
+      meantime, that icon stays. Without AI it keeps the default icon.
 - [ ] With AI, after an import whose history shows a loan repayment (e.g. a
       "Mortgage" category paid in at least 2 of the last 6 complete months), a
       debt named in the UI language appears in the budget's Debts block

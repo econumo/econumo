@@ -326,13 +326,8 @@ right, no bold, the accent colour only for progress and the primary button.
 Decided with Dmitry. Applies only when the server has an AI provider (`ECONUMO_AI_DSN`);
 without one nothing below runs.
 
-- **The manual steps get the AI review too**, not only an import. After Categories, the
-  categories still on a default icon, and the rows the user added without picking an icon,
-  get an icon from the AI. After Accounts, the accounts still on the import's icon, and the
-  new rows whose icon nobody picked (never the untouched Cash row), get one, beside the
-  savings classification that already ran there. A default category's icon was chosen for
-  it and is kept. Each step counts once against the per-user cap. The page refetches the
-  lists at the same 10, 30 and 90 s as after an import, so the icons show up.
+- ~~The manual steps get the AI review too~~ (withdrawn the same day, see below): an icon the
+  user saved for a category or account they added by hand is never changed afterwards.
 - **Debts are created automatically** from categories that repay a loan (a mortgage, a car,
   student or personal loan, credit-line instalments; not rent, utilities, subscriptions,
   insurance or card spending). The AI names the categories and a name for each debt in the
@@ -347,3 +342,23 @@ without one nothing below runs.
   - A category that already has a debt is skipped, so running detection again never makes a
     second one; a plan entered for it moves to the debt's row instead of staying on the
     category.
+
+## Revision 2026-11-11 (b): icon suggestion while typing, no repaint
+
+Decided with Dmitry, replacing the manual steps' AI icon review above.
+
+- Nothing repaints the icon of a row the user added by hand once it is saved: save-categories
+  and save-accounts take no `autoIcon` and start no icon request. The import review (items the
+  CSV import created), the savings classification after Accounts and the debt detection stay.
+- Instead, while the user types a name, the page asks `GET /api/v1/onboarding/suggest-icon`
+  (kind, name, the category's type or the account's currency) for an icon and applies it in
+  the form, only while the user has not picked an icon (picking one is final). Onboarding
+  category and account rows apply it once their name was typed or edited, so an untouched
+  default keeps its curated icon; the New category and New account dialogs apply it in create
+  mode only. A category created inline from a picker ("Create <name>") is saved on the default
+  icon and takes the suggestion afterwards, in the background, if its icon is still that one.
+- Without an AI provider nothing is asked and the default icon stays; there is no built-in
+  word list. Over the per-user limit (60 per rate-limit window), on a failure or after 8 s the
+  server answers no icon rather than an error, so typing never shows one. Answers are cached
+  per user on both sides, and the name is never logged.
+- The first suggestion an item takes fires `appIconSuggestionApplied` `{kind, source}`.
