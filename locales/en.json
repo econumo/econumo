@@ -539,8 +539,6 @@
     "details": {
       "money_left": "Left to pay",
       "overpaid_so_far": "Overpaid so far",
-      "snapshots": "History of terms",
-      "snapshot_terms": "{payment} · {schedule} · until {date}",
       "payments": "Payments",
       "payments_empty": "No payments yet",
       "column": {
@@ -594,10 +592,10 @@
       "difference": "Difference",
       "form": {
         "title": "Reconcile with a statement",
-        "hint": "Enter the balance from your lender's statement. From its date on Econumo counts from it, and the payments due up to it count as paid.",
+        "hint": "Enter the principal still owed on your lender's statement. From its date on Econumo counts from it, and the payments due up to it count as paid; interest since the last payment is charged at the next payment, for a full period.",
         "balance": "Statement balance",
         "date": "Statement date",
-        "date_range": "Pick a date between the start date and today",
+        "date_range": "Pick a date after the start date and no later than today. To change what was borrowed, correct Amount borrowed in Settings.",
         "save": "Reconcile"
       },
       "history": "Statements",
@@ -608,10 +606,15 @@
         "difference": "Difference"
       },
       "origin": "Amount borrowed",
+      "paid_off": "Marked paid off",
       "delete": "Delete the statement of {date}",
       "delete_confirm": {
         "title": "Delete this statement?",
         "question": "Payments after its date are counted from the earlier balance again."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Delete the paid-off mark?",
+        "question": "The debt reopens: what is owed is counted again from the earlier entries and the payments."
       }
     },
     "review": {

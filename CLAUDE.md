@@ -1935,9 +1935,12 @@ data unreadable. Most are also asserted by the test suite.
   (`model.SnapshotRate`, `MathSnapshot.Origin`) and the projection prorates the first projected
   due alike. **Statements (reconciliation)**: `reconcile-debt` (`{id, balance, balanceDate}`;
   also `balance`/`balanceDate` on create/update-debt) appends a snapshot as of the statement date
-  (default today; between the start date and today inclusive, else `common.out_of_range` on
-  `balanceDate`) under the latest terms; a statement on a date that already has one REPLACES it
-  (`UpdateSnapshot`). The splits of payments dated after that date are dropped in the same
+  (default today; AFTER the start date and no later than today, else `common.out_of_range` on
+  `balanceDate`: the start day's balance is the amount borrowed, corrected in the loan's facts)
+  under the latest terms; a statement on a date that already has one REPLACES it
+  (`UpdateSnapshot`, exactly one row). A statement balance is the PRINCIPAL still owed: interest
+  since the last payment is charged at the next due, for a full period (only the origin's first
+  period is prorated). The splits of payments dated after that date are dropped in the same
   transaction, so the next sync splits them from the statement; those before keep theirs.
   `delete-debt-reconciliation` (`{id, reconciliationId}`) removes one (never the origin: not
   found) and drops the splits after its date the same way. Every due in (start, latest
@@ -1962,7 +1965,9 @@ data unreadable. Most are also asserted by the test suite.
   the same update gives it (it took them with no end). A whole-category debt (no payee, tag or
   label, and the only such debt in its category: a set-up debt always has a start date, so the
   start does not make it partial, but debts told apart only by their start dates share the
-  category's months, so none of them moves plans to or from the category) whose
+  category's months, so none of them moves plans to or from the category; deleting either of two
+  such debts therefore keeps its plans on the debt row and asks to drop them, `confirmDataRemoval`,
+  instead of handing them back) whose
   update moves its first planning day later (setup, a correction, set up or not) hands the
   category back its plans and comments in the periods before the new start (`BeforeDay` bound on
   the transfer, a month both rows plan adding up); one whose first planning day moves earlier,
@@ -1970,8 +1975,9 @@ data unreadable. Most are also asserted by the test suite.
   it now starts in (`FirstDay`..`BeforeDay`). The Settings form sends no currency (`currencyId`
   "") unless it changed, the loan's facts only when one was touched (all of them then) and a
   set-up debt's start date only when it changed, so a stale screen never writes back a currency
-  or terms another device changed. A rename writes no snapshot; `mark-debt-paid-off` writes a
-  balance-0 snapshot and is refused on a debt not set up (`debt.not_set_up`). **Not set up**:
+  or terms another device changed. A rename writes no snapshot; `mark-debt-paid-off` stores a
+  statement of 0 as of today (replacing one entered today, dropping the splits after today) and is
+  refused on a debt not set up (`debt.not_set_up`). **Not set up**:
   payments still match and are stored in `debts_payments` with interest 0 (no projection exists;
   a payment dated up to today keeps its zero split until setup drops it, one dated after today is
   provisional like any other and is dropped and re-inserted by every sync). With `isSetUp` 0,
@@ -2126,7 +2132,8 @@ data unreadable. Most are also asserted by the test suite.
   shows payment, its start date or "From the first payment", and currency), the payments-from sentence read-only
   (`PaymentsFromEditor readOnly`), payments (with a Balance column on a set-up debt: `get-debt`'s
   additive `balance` per payment, what was owed after it, from the snapshots and stored splits,
-  `""` while not set up; Principal is left out on a phone) and a collapsed "History of terms".
+  `""` while not set up; Principal is left out on a phone); the history of the loan's entries is
+  the Balance tab's.
   Beside the Payments heading of a set-up debt that is not paid off, "Show future payments" loads
   `get-debt-forecast?id=&budgetId=` (fires `appDebtForecastView`): the projection's own run
   (`model.Projection.Payments`, a planned extra riding on its period's first payment, an extra of
@@ -2160,10 +2167,12 @@ data unreadable. Most are also asserted by the test suite.
   **Balance** tab (`DebtBalanceTab`) reconciles with a statement: Econumo's balance today and,
   once there is a statement, the latest one ("X on date") with the difference (statement less
   Econumo's figure for that date); a "Reconcile with a statement" form (statement balance,
-  statement date defaulting to today, between the start date and today, checked before sending)
+  statement date defaulting to today, after the start date and no later than today, checked
+  before sending; its hint says the balance is the principal still owed)
   sends `reconcile-debt` (`appDebtReconcile`); a history table lists the origin first (the
   amount borrowed, marked, never deletable) and every statement (date, statement, Econumo then,
-  hidden on a phone, difference) with a delete button behind a confirm
+  hidden on a phone, difference; a statement of 0 reads "Marked paid off" with no difference, and
+  its confirm says deleting it reopens the debt) with a delete button behind a confirm
   (`delete-debt-reconciliation`, `appDebtReconciliationDelete`); both refresh the debt, the
   lists and every forecast; it ends at Save/Cancel. The Danger zone tab is a
   destructive-tinted card, a row per action with a one-line description, with Mark as paid off

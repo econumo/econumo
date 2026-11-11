@@ -2228,8 +2228,8 @@ account in USD, before running these.
       starting on the 25th with payments on the 1st owes about a fifth of a
       month's interest at its first payment). With the details or the budget
       open, add a matching expense, then open the Settings tab and save
-      without changes: no snapshot is written (History of terms does not
-      grow) and the payment keeps counting.
+      without changes: no snapshot is written (the Balance tab's history
+      does not grow) and the payment keeps counting.
 - [ ] 📱 **Settings tab** holds one form with the loan contract's facts:
       Name, the "Payments from" sentence, Amount borrowed, one row of two
       same-height date cards (Start date first, then Last payment date; no
@@ -2251,9 +2251,12 @@ account in USD, before running these.
       statement X on date" with the difference (statement less Econumo's
       figure for that date, e.g. -120.00). "Reconcile with a statement": a
       statement balance and a statement date (today by default); an empty
-      balance is "Required field", a date before the start date shows "Pick
-      a date between the start date and today" (the server also refuses a
-      date after today); Reconcile writes it, the form empties, Owed now and
+      balance is "Required field", a date on or before the start date shows
+      "Pick a date after the start date and no later than today. To change
+      what was borrowed, correct Amount borrowed in Settings." (the server
+      also refuses a date after today); the hint says the balance is the
+      principal still owed, interest since the last payment coming with the
+      next one; Reconcile writes it, the form empties, Owed now and
       the history follow. Story: a loan started five years ago with monthly
       dues and no payments entered: reconcile today with the statement
       balance; Overview shows that balance as Owed now and "60 of N paid".
@@ -2263,7 +2266,10 @@ account in USD, before running these.
       "Amount borrowed", no delete button) first, then each statement with
       Econumo's figure then (hidden on a phone) and the difference; deleting
       one asks first, then removes it and the payments after its date are
-      split again. Both actions are greyed out offline.
+      split again. After Mark as paid off the history shows a 0 entry marked
+      "Marked paid off" (no difference; a statement entered the same day is
+      replaced, not doubled); deleting it warns that the debt reopens. Both
+      actions are greyed out offline.
 - [ ] 📱 **Danger zone tab** (the fourth tab): a red-tinted card lists Mark as
       paid off (set-up debts that are not paid off only; "Sets the balance to
       0 and stops the countdown.") and Delete ("Removes the debt. Its payments
@@ -2294,8 +2300,8 @@ account in USD, before running these.
 - [ ] 📱 A rename and a change of the "Payments from" sentence (Settings
       tab, saved together in one Save) write no new snapshot (the history
       does not grow). Correcting the amount borrowed, start date, payment,
-      repeats or last payment date rewrites the first entry of History of
-      terms (the loan's start) instead of adding one, and every listed
+      repeats or last payment date rewrites the first entry of the Balance
+      tab's history (the loan's start) instead of adding one, and every listed
       payment's interest is recomputed from the corrected facts; a statement
       on file keeps its date and balance and takes the corrected payment,
       repeats and last payment date. A correction that would put the start
@@ -2334,9 +2340,8 @@ account in USD, before running these.
       payments (Date / Payment / Interest / Principal / Balance, newest
       first; Balance is what was owed after that payment, the newest one
       matching "Owed now" when it is not dated after today; on a phone the
-      Principal column is left out) and a
-      collapsed "History of terms" that expands on tap (hidden when there
-      are no snapshots). The figures
+      Principal column is left out); there is no "History of terms" section
+      (the Balance tab holds the history). The figures
       follow the entered payments with no typing: add a matching expense and
       the balance drops by its debt part, the payment appears in the list and
       the progress moves by one when the payment lands in a new due window

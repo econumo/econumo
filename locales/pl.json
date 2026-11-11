@@ -539,8 +539,6 @@
     "details": {
       "money_left": "Do zapłaty",
       "overpaid_so_far": "Dotychczasowy koszt długu",
-      "snapshots": "Historia warunków",
-      "snapshot_terms": "{payment} · {schedule} · do {date}",
       "payments": "Płatności",
       "payments_empty": "Brak płatności",
       "column": {
@@ -594,10 +592,10 @@
       "difference": "Różnica",
       "form": {
         "title": "Uzgodnij z wyciągiem",
-        "hint": "Wpisz saldo z wyciągu od pożyczkodawcy. Od jego daty Econumo liczy od niego, a raty należne do tego dnia liczą się jako zapłacone.",
+        "hint": "Wpisz kapitał pozostały do spłaty z wyciągu od pożyczkodawcy. Od jego daty Econumo liczy od niego, a raty należne do tego dnia liczą się jako zapłacone; odsetki od ostatniej płatności są naliczane przy następnej płatności, za pełny okres.",
         "balance": "Saldo z wyciągu",
         "date": "Data wyciągu",
-        "date_range": "Wybierz datę między datą rozpoczęcia a dzisiaj",
+        "date_range": "Wybierz datę po dacie rozpoczęcia i najpóźniej dzisiaj. Aby zmienić pożyczoną kwotę, popraw ją w ustawieniach.",
         "save": "Uzgodnij"
       },
       "history": "Wyciągi",
@@ -608,10 +606,15 @@
         "difference": "Różnica"
       },
       "origin": "Pożyczona kwota",
+      "paid_off": "Oznaczono jako spłacony",
       "delete": "Usuń wyciąg z dnia {date}",
       "delete_confirm": {
         "title": "Usunąć ten wyciąg?",
         "question": "Płatności po jego dacie znów liczą się od wcześniejszego salda."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Usunąć oznaczenie spłaty?",
+        "question": "Dług zostanie ponownie otwarty: kwota do spłaty znów liczy się z wcześniejszych wpisów i płatności."
       }
     },
     "review": {

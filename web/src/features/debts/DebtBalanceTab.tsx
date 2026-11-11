@@ -18,6 +18,9 @@ import { amountEcho, amountError, plainAmount } from './useDebtForm'
 
 const negate = (v: string) => (v.startsWith('-') ? v.slice(1) : `-${v}`)
 
+/** a statement of 0 is the debt marked paid off: no difference to show */
+const paidOffMark = (s: DebtSnapshotDto) => s.isOrigin !== 1 && Number(s.balance) === 0
+
 /** what the statement says less what Econumo had worked out for its date */
 function statementDifference(snapshot: DebtSnapshotDto): string {
   return add(snapshot.balance, negate(snapshot.computedBalance))
@@ -63,7 +66,8 @@ export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetails
     setServerError(null)
     const next = {
       balance: amountError(balance, t, false),
-      date: date < item.startDate || date > today ? t('debts.balance.form.date_range') : undefined,
+      // the start day's balance is the amount borrowed, corrected in Settings
+      date: date <= item.startDate || date > today ? t('debts.balance.form.date_range') : undefined,
     }
     setErrors(next)
     if (next.balance || next.date) {
@@ -90,7 +94,7 @@ export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetails
         {latest ? (
           <>
             <Row label={t('debts.balance.last_statement')}>{t('debts.balance.statement_on', { amount: amount(latest.balance), date: debtDay(latest.asOf, lang) })}</Row>
-            <Row label={t('debts.balance.difference')}>{amount(statementDifference(latest))}</Row>
+            {paidOffMark(latest) ? null : <Row label={t('debts.balance.difference')}>{amount(statementDifference(latest))}</Row>}
           </>
         ) : null}
       </dl>
@@ -182,10 +186,11 @@ export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetails
                   <td className="py-1.5 text-left">
                     {debtDay(s.asOf, lang)}
                     {s.isOrigin === 1 ? <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.balance.origin')}</span> : null}
+                    {paidOffMark(s) ? <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.balance.paid_off')}</span> : null}
                   </td>
                   <td className="py-1.5 text-right">{amount(s.balance)}</td>
                   <td className="hidden py-1.5 text-right sm:table-cell">{s.isOrigin === 1 ? '—' : amount(s.computedBalance)}</td>
-                  <td className="py-1.5 text-right">{s.isOrigin === 1 ? '—' : amount(statementDifference(s))}</td>
+                  <td className="py-1.5 text-right">{s.isOrigin === 1 || paidOffMark(s) ? '—' : amount(statementDifference(s))}</td>
                   <td className="py-1.5 text-right">
                     {s.isOrigin === 1 ? null : (
                       <Button
@@ -219,8 +224,8 @@ export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetails
             deleteReconciliation.mutate({ id: item.id, reconciliationId: target.id }, { onError: (err) => setServerError(apiErrorMessage(err)) })
           }
         }}
-        title={t('debts.balance.delete_confirm.title')}
-        question={t('debts.balance.delete_confirm.question')}
+        title={t(deleting && paidOffMark(deleting) ? 'debts.balance.delete_paid_off_confirm.title' : 'debts.balance.delete_confirm.title')}
+        question={t(deleting && paidOffMark(deleting) ? 'debts.balance.delete_paid_off_confirm.question' : 'debts.balance.delete_confirm.question')}
         confirmLabel={t('common.button.delete.label')}
         cancelLabel={t('common.button.cancel.label')}
         destructive

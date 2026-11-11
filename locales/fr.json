@@ -539,8 +539,6 @@
     "details": {
       "money_left": "Reste à payer",
       "overpaid_so_far": "Surcoût déjà payé",
-      "snapshots": "Historique des conditions",
-      "snapshot_terms": "{payment} · {schedule} · jusqu’au {date}",
       "payments": "Paiements",
       "payments_empty": "Aucun paiement pour l’instant",
       "column": {
@@ -594,10 +592,10 @@
       "difference": "Écart",
       "form": {
         "title": "Rapprocher avec un relevé",
-        "hint": "Saisissez le solde du relevé de votre prêteur. À partir de sa date, Econumo compte à partir de lui, et les échéances jusqu'à cette date sont considérées comme payées.",
+        "hint": "Saisissez le capital restant dû indiqué sur le relevé de votre prêteur. À partir de sa date, Econumo compte à partir de lui, et les échéances jusqu'à cette date sont considérées comme payées ; les intérêts depuis le dernier paiement sont facturés à l'échéance suivante, pour une période complète.",
         "balance": "Solde du relevé",
         "date": "Date du relevé",
-        "date_range": "Choisissez une date entre la date de début et aujourd'hui",
+        "date_range": "Choisissez une date postérieure à la date de début et au plus tard aujourd'hui. Pour modifier le montant emprunté, corrigez-le dans les paramètres.",
         "save": "Rapprocher"
       },
       "history": "Relevés",
@@ -608,10 +606,15 @@
         "difference": "Écart"
       },
       "origin": "Montant emprunté",
+      "paid_off": "Marquée comme remboursée",
       "delete": "Supprimer le relevé du {date}",
       "delete_confirm": {
         "title": "Supprimer ce relevé ?",
         "question": "Les paiements postérieurs à sa date sont de nouveau comptés à partir du solde précédent."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Supprimer la marque de remboursement ?",
+        "question": "La dette est rouverte : le montant dû est de nouveau calculé à partir des entrées précédentes et des paiements."
       }
     },
     "review": {

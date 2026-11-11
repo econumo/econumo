@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -525,8 +524,7 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
   const paymentsLeft = usePaymentsLeft()
   const { data: currencies } = useCurrencies()
   const loanHeadingId = useId()
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const { item, snapshots, payments } = details
+  const { item, payments } = details
   const setUp = item.isSetUp === 1
   const amount = (value: string) => money(value, item)
   const currency = currencies?.find((c) => c.id === item.currencyId)
@@ -610,44 +608,13 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
 
       <PaymentsSection debt={item} payments={payments} splits={setUp} budgetId={budgetId} amount={amount} lang={lang} />
 
-      {snapshots.length > 0 ? (
-        <section>
-          <button
-            type="button"
-            className="mb-2 flex items-center gap-1 text-sm uppercase tracking-wide text-muted-foreground"
-            aria-expanded={historyOpen}
-            onClick={() => setHistoryOpen((o) => !o)}
-          >
-            {historyOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-            {t('debts.details.snapshots')}
-          </button>
-          {historyOpen ? (
-            <ul className="flex flex-col gap-1.5" aria-label={t('debts.details.snapshots')}>
-              {snapshots.map((snapshot, index) => (
-                <li key={`${snapshot.asOf}-${index}`} className="rounded-lg bg-econumo-card px-4 py-2 text-sm" data-testid="debt-snapshot">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-muted-foreground">{debtDay(snapshot.asOf, lang)}</span>
-                    <span>{amount(snapshot.balance)}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {t('debts.details.snapshot_terms', {
-                      payment: amount(snapshot.payment),
-                      schedule: t(`recurring.schedule.${snapshot.schedule}`),
-                      date: debtDay(snapshot.lastPaymentDate, lang),
-                    })}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
-      ) : null}
     </>
   )
 }
 
 /** The owner's review of one debt, opened with `useUiStore().openDebtDetails(id, tab?, budgetId?)`:
- *  a large dialog (full screen on a phone) with Overview, Settings and Danger zone tabs */
+ *  a large dialog (full screen on a phone) with Overview, Balance (set-up debts only),
+ *  Settings and Danger zone tabs */
 export function DebtReviewScreen() {
   const debtId = useUiStore((s) => s.debtDetailsId)
   const tab = useUiStore((s) => s.debtDetailsTab)

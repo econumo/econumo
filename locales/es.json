@@ -539,8 +539,6 @@
     "details": {
       "money_left": "Falta por pagar",
       "overpaid_so_far": "Sobrecoste pagado hasta ahora",
-      "snapshots": "Historial de condiciones",
-      "snapshot_terms": "{payment} · {schedule} · hasta {date}",
       "payments": "Pagos",
       "payments_empty": "Aún no hay pagos",
       "column": {
@@ -594,10 +592,10 @@
       "difference": "Diferencia",
       "form": {
         "title": "Conciliar con un extracto",
-        "hint": "Introduce el saldo del extracto de tu prestamista. Desde su fecha Econumo cuenta a partir de él, y los pagos vencidos hasta entonces cuentan como pagados.",
+        "hint": "Introduce el capital pendiente según el extracto de tu prestamista. Desde su fecha Econumo cuenta a partir de él, y los pagos vencidos hasta entonces cuentan como pagados; los intereses desde el último pago se cobran en el siguiente pago, por un periodo completo.",
         "balance": "Saldo del extracto",
         "date": "Fecha del extracto",
-        "date_range": "Elige una fecha entre la fecha de inicio y hoy",
+        "date_range": "Elige una fecha posterior a la fecha de inicio y como muy tarde hoy. Para cambiar lo prestado, corrige el importe prestado en Ajustes.",
         "save": "Conciliar"
       },
       "history": "Extractos",
@@ -608,10 +606,15 @@
         "difference": "Diferencia"
       },
       "origin": "Importe prestado",
+      "paid_off": "Marcada como pagada",
       "delete": "Eliminar el extracto del {date}",
       "delete_confirm": {
         "title": "¿Eliminar este extracto?",
         "question": "Los pagos posteriores a su fecha vuelven a contarse desde el saldo anterior."
+      },
+      "delete_paid_off_confirm": {
+        "title": "¿Eliminar la marca de pagada?",
+        "question": "La deuda se reabre: lo que se debe vuelve a calcularse a partir de los registros anteriores y los pagos."
       }
     },
     "review": {

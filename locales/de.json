@@ -539,8 +539,6 @@
     "details": {
       "money_left": "Noch zu zahlen",
       "overpaid_so_far": "Bisherige Mehrkosten",
-      "snapshots": "Verlauf der Konditionen",
-      "snapshot_terms": "{payment} · {schedule} · bis {date}",
       "payments": "Zahlungen",
       "payments_empty": "Noch keine Zahlungen",
       "column": {
@@ -594,10 +592,10 @@
       "difference": "Differenz",
       "form": {
         "title": "Mit einem Kontoauszug abgleichen",
-        "hint": "Geben Sie den Saldo aus dem Kontoauszug Ihres Kreditgebers ein. Ab seinem Datum rechnet Econumo damit, und die bis dahin fälligen Raten gelten als bezahlt.",
+        "hint": "Geben Sie die noch offene Restschuld laut Kontoauszug Ihres Kreditgebers ein. Ab seinem Datum rechnet Econumo damit, und die bis dahin fälligen Raten gelten als bezahlt; Zinsen seit der letzten Zahlung werden mit der nächsten Rate für eine volle Periode berechnet.",
         "balance": "Saldo laut Auszug",
         "date": "Datum des Auszugs",
-        "date_range": "Wählen Sie ein Datum zwischen dem Startdatum und heute",
+        "date_range": "Wählen Sie ein Datum nach dem Startdatum und spätestens heute. Um den geliehenen Betrag zu ändern, korrigieren Sie ihn in den Einstellungen.",
         "save": "Abgleichen"
       },
       "history": "Kontoauszüge",
@@ -608,10 +606,15 @@
         "difference": "Differenz"
       },
       "origin": "Geliehener Betrag",
+      "paid_off": "Als abbezahlt markiert",
       "delete": "Auszug vom {date} löschen",
       "delete_confirm": {
         "title": "Diesen Auszug löschen?",
         "question": "Zahlungen nach seinem Datum werden wieder vom früheren Saldo aus gerechnet."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Markierung als abbezahlt löschen?",
+        "question": "Die Schuld wird wieder geöffnet: Der offene Betrag wird erneut aus den früheren Einträgen und den Zahlungen berechnet."
       }
     },
     "review": {

@@ -539,8 +539,6 @@
     "details": {
       "money_left": "Nog te betalen",
       "overpaid_so_far": "Tot nu toe betaalde meerkosten",
-      "snapshots": "Geschiedenis van de voorwaarden",
-      "snapshot_terms": "{payment} · {schedule} · tot {date}",
       "payments": "Betalingen",
       "payments_empty": "Nog geen betalingen",
       "column": {
@@ -594,10 +592,10 @@
       "difference": "Verschil",
       "form": {
         "title": "Afstemmen met een afschrift",
-        "hint": "Vul het saldo in van het afschrift van uw kredietverstrekker. Vanaf die datum rekent Econumo daarmee, en de termijnen tot dan gelden als betaald.",
+        "hint": "Vul de nog openstaande hoofdsom van het afschrift van uw kredietverstrekker in. Vanaf die datum rekent Econumo daarmee, en de termijnen tot dan gelden als betaald; rente sinds de laatste betaling wordt bij de volgende betaling voor een volledige periode berekend.",
         "balance": "Saldo volgens afschrift",
         "date": "Datum van het afschrift",
-        "date_range": "Kies een datum tussen de startdatum en vandaag",
+        "date_range": "Kies een datum na de startdatum en uiterlijk vandaag. Wilt u het geleende bedrag wijzigen, corrigeer het dan in de instellingen.",
         "save": "Afstemmen"
       },
       "history": "Afschriften",
@@ -608,10 +606,15 @@
         "difference": "Verschil"
       },
       "origin": "Geleend bedrag",
+      "paid_off": "Gemarkeerd als afbetaald",
       "delete": "Afschrift van {date} verwijderen",
       "delete_confirm": {
         "title": "Dit afschrift verwijderen?",
         "question": "Betalingen na de datum ervan worden weer vanaf het eerdere saldo berekend."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Markering als afbetaald verwijderen?",
+        "question": "De schuld gaat weer open: wat verschuldigd is, wordt opnieuw berekend uit de eerdere gegevens en de betalingen."
       }
     },
     "review": {

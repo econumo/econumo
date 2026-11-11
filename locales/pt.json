@@ -539,8 +539,6 @@
     "details": {
       "money_left": "Falta pagar",
       "overpaid_so_far": "Custo adicional já pago",
-      "snapshots": "Histórico das condições",
-      "snapshot_terms": "{payment} · {schedule} · até {date}",
       "payments": "Pagamentos",
       "payments_empty": "Ainda não existem pagamentos",
       "column": {
@@ -594,10 +592,10 @@
       "difference": "Diferença",
       "form": {
         "title": "Reconciliar com um extrato",
-        "hint": "Introduza o saldo do extrato do seu credor. A partir da sua data o Econumo conta a partir dele, e as prestações vencidas até lá contam como pagas.",
+        "hint": "Introduza o capital ainda em dívida indicado no extrato do seu credor. A partir da sua data o Econumo conta a partir dele, e as prestações vencidas até lá contam como pagas; os juros desde o último pagamento são cobrados no pagamento seguinte, por um período completo.",
         "balance": "Saldo do extrato",
         "date": "Data do extrato",
-        "date_range": "Escolha uma data entre a data de início e hoje",
+        "date_range": "Escolha uma data posterior à data de início e, no máximo, hoje. Para alterar o montante emprestado, corrija-o nas definições.",
         "save": "Reconciliar"
       },
       "history": "Extratos",
@@ -608,10 +606,15 @@
         "difference": "Diferença"
       },
       "origin": "Montante emprestado",
+      "paid_off": "Marcada como liquidada",
       "delete": "Eliminar o extrato de {date}",
       "delete_confirm": {
         "title": "Eliminar este extrato?",
         "question": "Os pagamentos posteriores à sua data voltam a ser contados a partir do saldo anterior."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Eliminar a marca de liquidação?",
+        "question": "A dívida volta a ficar aberta: o valor em dívida volta a ser calculado a partir dos registos anteriores e dos pagamentos."
       }
     },
     "review": {

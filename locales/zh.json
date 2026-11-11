@@ -539,8 +539,6 @@
     "details": {
       "money_left": "待还金额",
       "overpaid_so_far": "已付利息与费用",
-      "snapshots": "条款历史",
-      "snapshot_terms": "{payment} · {schedule} · 至 {date}",
       "payments": "还款记录",
       "payments_empty": "暂无还款",
       "column": {
@@ -594,10 +592,10 @@
       "difference": "差额",
       "form": {
         "title": "与对账单核对",
-        "hint": "输入贷款方对账单上的余额。自该日期起 Econumo 以此计算，截至该日期的应还款视为已还。",
+        "hint": "输入贷款方对账单上尚欠的本金。自该日期起 Econumo 以此计算，截至该日期的应还款视为已还；自上次还款以来的利息在下次还款时按整期收取。",
         "balance": "对账单余额",
         "date": "对账单日期",
-        "date_range": "请选择开始日期到今天之间的日期",
+        "date_range": "请选择开始日期之后、不晚于今天的日期。如需更改借款金额，请在设置中修改。",
         "save": "核对"
       },
       "history": "对账单",
@@ -608,10 +606,15 @@
         "difference": "差额"
       },
       "origin": "借款金额",
+      "paid_off": "已标记为还清",
       "delete": "删除 {date} 的对账单",
       "delete_confirm": {
         "title": "删除此对账单？",
         "question": "该日期之后的还款将重新从之前的余额计算。"
+      },
+      "delete_paid_off_confirm": {
+        "title": "删除还清标记？",
+        "question": "债务将重新打开：欠款将重新根据之前的记录和还款计算。"
       }
     },
     "review": {

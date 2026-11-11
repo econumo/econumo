@@ -539,8 +539,6 @@
     "details": {
       "money_left": "Ancora da pagare",
       "overpaid_so_far": "Costo aggiuntivo già pagato",
-      "snapshots": "Storico delle condizioni",
-      "snapshot_terms": "{payment} · {schedule} · fino al {date}",
       "payments": "Pagamenti",
       "payments_empty": "Ancora nessun pagamento",
       "column": {
@@ -594,10 +592,10 @@
       "difference": "Differenza",
       "form": {
         "title": "Riconcilia con un estratto conto",
-        "hint": "Inserisci il saldo dell'estratto conto del tuo finanziatore. Dalla sua data Econumo parte da lì, e le rate dovute fino ad allora contano come pagate.",
+        "hint": "Inserisci il capitale ancora dovuto secondo l'estratto conto del tuo finanziatore. Dalla sua data Econumo parte da lì, e le rate dovute fino ad allora contano come pagate; gli interessi dall'ultimo pagamento vengono addebitati alla rata successiva, per un periodo intero.",
         "balance": "Saldo dell'estratto",
         "date": "Data dell'estratto",
-        "date_range": "Scegli una data tra la data di inizio e oggi",
+        "date_range": "Scegli una data successiva alla data di inizio e non oltre oggi. Per cambiare l'importo preso in prestito, correggilo nelle impostazioni.",
         "save": "Riconcilia"
       },
       "history": "Estratti conto",
@@ -608,10 +606,15 @@
         "difference": "Differenza"
       },
       "origin": "Importo preso in prestito",
+      "paid_off": "Segnato come estinto",
       "delete": "Elimina l'estratto del {date}",
       "delete_confirm": {
         "title": "Eliminare questo estratto?",
         "question": "I pagamenti successivi alla sua data vengono di nuovo calcolati dal saldo precedente."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Eliminare il segno di estinzione?",
+        "question": "Il debito si riapre: il dovuto viene di nuovo calcolato dalle voci precedenti e dai pagamenti."
       }
     },
     "review": {

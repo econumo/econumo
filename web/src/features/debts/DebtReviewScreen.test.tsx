@@ -238,20 +238,6 @@ it('shows interest, principal and the balance left after each payment, newest fi
   expect(within(rows[1]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Oct 5, 2026', '100.00 $', '5.50 $', '94.50 $', '1,180.00 $'])
 })
 
-it('the history of balances is collapsed until asked for', async () => {
-  const user = userEvent.setup()
-  renderScreen()
-  await openScreen()
-
-  expect(screen.queryByTestId('debt-snapshot')).toBeNull()
-  await user.click(screen.getByRole('button', { name: /History of terms/ }))
-
-  const snapshots = screen.getAllByTestId('debt-snapshot')
-  expect(snapshots).toHaveLength(1)
-  expect(snapshots[0]).toHaveTextContent('Oct 1, 2026')
-  expect(snapshots[0]).toHaveTextContent('1,200.00 $')
-})
-
 it('not-set-up debt shows Finish setup and no balance', async () => {
   server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
   renderScreen()
@@ -919,7 +905,7 @@ it('the statement date defaults to today and must not precede the start date', a
   await user.click(within(panel).getByRole('button', { name: 'Statement date' }))
   await user.click(await screen.findByRole('button', { name: /November 2nd, 2026/ }))
   await user.click(within(panel).getByRole('button', { name: 'Reconcile' }))
-  expect(await within(panel).findByText('Pick a date between the start date and today')).toBeInTheDocument()
+  expect(await within(panel).findByText(/Pick a date after the start date/)).toBeInTheDocument()
   expect(called).toBe(false)
 })
 
@@ -944,4 +930,31 @@ it('deleting a statement asks first, then sends its id and fires DEBT_RECONCILIA
   await waitFor(() => expect(bodies).toHaveLength(1))
   expect(bodies[0]).toEqual({ id: 'd1', reconciliationId: 's1' })
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_RECONCILIATION_DELETE)
+})
+
+it('a statement of 0 reads "Marked paid off", shows no difference, and deleting it says the debt reopens', async () => {
+  const paidOff: DebtDetailsDto = {
+    ...withStatement,
+    item: { ...withStatement.item, balance: '0', currentBalance: '0', isPaidOff: 1 },
+    snapshots: [withStatement.snapshots[0], { ...withStatement.snapshots[1], balance: '0', computedBalance: '120' }],
+  }
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(paidOff)))
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  const panel = await openBalance(user)
+
+  expect(within(within(panel).getByTestId('debt-balance-summary')).queryByText('Difference')).toBeNull()
+  const row = within(panel).getAllByTestId('debt-reconciliation')[1]
+  expect(row).toHaveTextContent('Marked paid off')
+  expect(within(row).getAllByRole('cell')[3]).toHaveTextContent('—')
+  await user.click(within(row).getByRole('button', { name: 'Delete the statement of Oct 31, 2026' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Delete the paid-off mark?' })
+  expect(dialog).toHaveTextContent('The debt reopens')
+})
+
+it('the Overview has no history of terms: the Balance tab holds the history', async () => {
+  renderScreen()
+  await openScreen()
+  expect(screen.queryByRole('button', { name: /History of terms/ })).toBeNull()
 })
