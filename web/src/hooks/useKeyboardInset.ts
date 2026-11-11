@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
+import { flushSync } from 'react-dom'
 
 export interface KeyboardInset {
   /** px between the layout viewport's bottom and the visible area's bottom (the on-screen keyboard) */
@@ -47,38 +48,50 @@ function measure(): KeyboardInset {
 // switch or the emoji keyboard too, and a toggled flag drifts out of sync
 export function useKeyboardInset(enabled: boolean): KeyboardInset {
   const [inset, setInset] = useState<KeyboardInset>(NONE)
-  useEffect(() => {
+  // measured before the first paint: a sheet opened over a page whose keyboard
+  // is already up must not show one frame sized for no keyboard
+  useLayoutEffect(() => {
     const vv = window.visualViewport
     if (!enabled || !vv) {
       setInset(NONE)
       return
     }
-    const update = () => {
+    // rendered within the event: iOS moves the visible area in one step and
+    // paints it in the same frame, so a sheet updated a render later shows
+    // one frame in the wrong place (measured: dropped 396px, or off the top)
+    const apply = () => {
       const next = measure()
       setInset((prev) => (prev.bottom === next.bottom && prev.height === next.height && prev.top === next.top ? prev : next))
     }
+    const update = () => flushSync(apply)
     const timers: ReturnType<typeof setTimeout>[] = []
-    const settle = () => {
-      update()
+    const later = () => {
       timers.forEach(clearTimeout)
       timers.length = 0
       SETTLE_MS.forEach((ms) => timers.push(setTimeout(update, ms)))
     }
-    settle()
+    const settle = () => {
+      update()
+      later()
+    }
+    // in a layout effect React already renders the change before the paint
+    apply()
+    later()
     vv.addEventListener('resize', settle)
     vv.addEventListener('scroll', update)
     window.addEventListener('resize', settle)
     // a field tapped in an open sheet raises the keyboard, also a tap on the
-    // field that already has focus after the keyboard was hidden
-    document.addEventListener('focusin', settle)
-    document.addEventListener('touchend', settle)
+    // field that already has focus after the keyboard was hidden. Only timers:
+    // focus may move inside a React commit, where flushSync is not allowed
+    document.addEventListener('focusin', later)
+    document.addEventListener('touchend', later)
     return () => {
       timers.forEach(clearTimeout)
       vv.removeEventListener('resize', settle)
       vv.removeEventListener('scroll', update)
       window.removeEventListener('resize', settle)
-      document.removeEventListener('focusin', settle)
-      document.removeEventListener('touchend', settle)
+      document.removeEventListener('focusin', later)
+      document.removeEventListener('touchend', later)
     }
   }, [enabled])
   return inset

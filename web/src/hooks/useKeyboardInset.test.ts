@@ -118,6 +118,20 @@ describe('useKeyboardInset', () => {
     }
   })
 
+  it('applies a viewport change within the event, not a render later', () => {
+    const { result } = renderHook(() => useKeyboardInset(true))
+    // no act(): the new inset must already be rendered when dispatch returns
+    vv.height = 450
+    vv.dispatchEvent(new Event('resize'))
+    expect(result.current).toEqual({ bottom: 350, height: 450, top: 0 })
+  })
+
+  it('measures a keyboard already up on the first render', () => {
+    vv.height = 450
+    const { result } = renderHook(() => useKeyboardInset(true))
+    expect(result.current).toEqual({ bottom: 350, height: 450, top: 0 })
+  })
+
   it('stays idle when disabled', () => {
     const { result } = renderHook(() => useKeyboardInset(false))
     resize(450)
