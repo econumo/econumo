@@ -1,8 +1,9 @@
 // Package onboarding holds the Day 0 setup writes the SPA's first-run flow
 // makes. Each write answers at once; when an AI provider is configured, a
 // background job then asks it which icons fit the categories and accounts
-// still on a default icon and which of the new accounts are savings accounts,
-// and applies the answer.
+// still on a default icon, which of the new accounts are savings accounts and
+// which categories repay a loan (creating a debt for each), and applies the
+// answer.
 package onboarding
 
 import (
@@ -41,6 +42,7 @@ type Service struct {
 	limiter   AttemptLimiter
 	run       Runner
 	steps     Steps
+	debts     DebtCreator
 }
 
 func NewService(budgets BudgetWriter, accounts AccountReader, timezones TimezoneReader) *Service {
@@ -55,6 +57,10 @@ func (s *Service) SetAdvisor(c Completer, limiter AttemptLimiter) {
 
 // SetSteps wires the dependencies of the three step writes.
 func (s *Service) SetSteps(steps Steps) { s.steps = steps }
+
+// SetDebts enables the debt detection; the debt service is built after this
+// one, so it cannot be a constructor argument.
+func (s *Service) SetDebts(d DebtCreator) { s.debts = d }
 
 // SetRunner replaces how background jobs start (tests run them inline).
 func (s *Service) SetRunner(r Runner) { s.run = r }
@@ -85,6 +91,12 @@ var (
 		skipped:  "onboarding step review skipped",
 		panicked: "onboarding step review panicked",
 		failed:   "onboarding step review failed",
+	}
+	jobDebts = jobSpec{
+		timeout:  reviewTimeout,
+		skipped:  "onboarding debt detection skipped",
+		panicked: "onboarding debt detection panicked",
+		failed:   "onboarding debt detection failed",
 	}
 )
 

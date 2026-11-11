@@ -232,3 +232,40 @@ func (c *OnboardingCurrencies) UsableCurrencyCode(ctx context.Context, userID vo
 	}
 	return cur.Code, nil
 }
+
+type onboardingDebtService interface {
+	CreateDebt(ctx context.Context, userID vo.Id, req model.CreateDebtRequest) (*model.DebtResult, error)
+}
+
+// OnboardingDebts adapts the debt service to onboarding.DebtCreator: a debt
+// detection found creates a debt not set up through create-debt's own
+// validation, and a refusal (the category already has a debt, is not an
+// expense category, the currency cannot be used) creates nothing.
+type OnboardingDebts struct {
+	debts onboardingDebtService
+}
+
+var _ apponboarding.DebtCreator = OnboardingDebts{}
+
+func NewOnboardingDebts(debts onboardingDebtService) OnboardingDebts {
+	return OnboardingDebts{debts: debts}
+}
+
+func (d OnboardingDebts) CreateDebt(ctx context.Context, userID vo.Id, name string, categoryID, currencyID vo.Id, payment vo.DecimalNumber, schedule model.RecurringSchedule) (bool, error) {
+	req := model.CreateDebtRequest{
+		Name: name, CurrencyId: currencyID.String(), CategoryId: categoryID.String(),
+		Payment: vo.NewFlexString(payment.String()), Schedule: string(schedule),
+	}
+	err := req.Validate()
+	if err == nil {
+		_, err = d.debts.CreateDebt(ctx, userID, req)
+	}
+	if err == nil {
+		return true, nil
+	}
+	var ve *errs.ValidationError
+	if _, notFound := errs.AsNotFound(err); notFound || errors.As(err, &ve) {
+		return false, nil
+	}
+	return false, err
+}

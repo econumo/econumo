@@ -111,7 +111,8 @@ export interface FinishImportResult {
 }
 
 // Marks the import step done and creates the budget when the user has none. When the
-// server has an AI provider it sets icons and savings flags in the background afterwards.
+// server has an AI provider it sets icons and savings flags and creates debts from loan
+// categories in the background afterwards.
 export async function finishOnboardingImport(id: Id): Promise<FinishImportResult> {
   const response = await api.post<Envelope<FinishImportResult>>(apiUrl('/api/v1/onboarding/finish-import'), { id })
   return response.data.data

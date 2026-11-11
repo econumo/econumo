@@ -35,6 +35,15 @@ type Completer interface {
 	Complete(ctx context.Context, userID, system, user string) (string, error)
 }
 
+// DebtCreator is the debt feature's create-debt for a debt detection found: a
+// debt not set up (no amount borrowed, start or end) counting every payment in
+// the category. created is false, with no error, when the debt feature refuses
+// it: the category already has a debt, is not an expense category, or the
+// currency cannot be used.
+type DebtCreator interface {
+	CreateDebt(ctx context.Context, userID vo.Id, name string, categoryID, currencyID vo.Id, payment vo.DecimalNumber, schedule model.RecurringSchedule) (created bool, err error)
+}
+
 // AttemptLimiter caps the AI classification per user; every job counts.
 type AttemptLimiter interface {
 	Allow(ctx context.Context, scope, key string) error

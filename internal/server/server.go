@@ -531,6 +531,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	budgetSvc.SetDebts(debtSvc)
 	debtSvc.SetBudgetElements(NewDebtBudgetElements(budgetSvc))
 	debtSvc.SetBudgetPlans(NewDebtBudgetPlans(budgetSvc, userRepo))
+	onboardingSvc.SetDebts(NewOnboardingDebts(debtSvc))
 	debtHandlers := handlerdebt.NewHandlers(debtSvc)
 
 	authn := NewReadScopeGate(NewTimezoneTrackingAuthenticator(userSvc, userSvc, idempotency.NewStore(cfg.DatabaseDriver, txm, clk)), authSrv.Enabled())

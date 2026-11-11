@@ -235,6 +235,8 @@ export function useDay0() {
       if (amounts.length > 0) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+        // the AI turns planned loan categories into debts in the background
+        if (userId) scheduleAiRefresh(queryClient, userId)
       }
       trackEvent(METRICS.ONBOARDING_PLAN_COMPLETE, { rows: amounts.length })
     },

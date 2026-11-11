@@ -17,20 +17,28 @@ const StepImport = "import"
 // account outside a hidden folder, when there is one) and marks the import step
 // done. The categories and accounts steps stay open: they become reviews of
 // what the import created. After the commit, when an AI provider is configured,
-// background requests pick icons for the user's categories and accounts and
-// flag the savings accounts in the budget this call created.
+// background requests pick icons for the user's categories and accounts, flag
+// the savings accounts in the budget this call created and turn the categories
+// that repay a loan into debts.
 func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.OnboardingFinishImportRequest) (*model.OnboardingFinishImportResult, error) {
 	out := &model.OnboardingFinishImportResult{}
 	var review bool
-	var savingsBudget *vo.Id
+	var savingsBudget, debtBudget *vo.Id
 	err := s.steps.Tx.WithTx(ctx, func(ctx context.Context) error {
-		review, savingsBudget = false, nil
+		review, savingsBudget, debtBudget = false, nil, nil
 		user, proceed, err := s.begin(ctx, userID, req.Id, StepImport)
 		if err != nil {
 			return err
 		}
-		if out.BudgetId, err = s.defaultBudgetID(ctx, userID, user); err != nil {
+		budgetID, writable, found, err := s.steps.Budgets.DefaultBudget(ctx, userID, preferredBudget(user))
+		if err != nil {
 			return err
+		}
+		if found {
+			out.BudgetId = budgetID.String()
+			if writable {
+				debtBudget = &budgetID
+			}
 		}
 		if !proceed {
 			out.User = *user
@@ -46,7 +54,7 @@ func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.Onbo
 					return err
 				}
 				id := vo.MustParseId(out.BudgetId)
-				savingsBudget = &id
+				savingsBudget, debtBudget = &id, &id
 			}
 		}
 		done, err := s.finish(ctx, userID, req.Id, StepImport)
@@ -61,18 +69,19 @@ func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.Onbo
 		return nil, err
 	}
 	if review {
-		s.startReview(ctx, userID, savingsBudget)
+		s.startReview(ctx, userID, savingsBudget, debtBudget)
 	}
 	return out, nil
 }
 
-// The import review is three independent requests, so a slow or failing one
+// The import review is four independent requests, so a slow or failing one
 // (the icon replies take real providers 20-60 s) never holds back the others.
 // The manual steps' reviews are split the same way.
 var (
 	reviewCategories = withPart(jobReview, "categories")
 	reviewAccounts   = withPart(jobReview, "accounts")
 	reviewSavings    = withPart(jobReview, "savings")
+	reviewDebts      = withPart(jobReview, "debts")
 	stepCategories   = withPart(jobStepReview, "categories")
 	stepAccounts     = withPart(jobStepReview, "accounts")
 	stepSavings      = withPart(jobClassify, "savings")
@@ -84,9 +93,9 @@ func withPart(spec jobSpec, part string) jobSpec {
 }
 
 // startReview starts the import review's requests: category icons, account
-// icons and, when this call created the budget, savings. Together they count
-// once against the per-user cap.
-func (s *Service) startReview(ctx context.Context, userID vo.Id, savingsBudget *vo.Id) {
+// icons, savings (when this call created the budget) and debts (when the user
+// may plan the budget). Together they count once against the per-user cap.
+func (s *Service) startReview(ctx context.Context, userID vo.Id, savingsBudget, debtBudget *vo.Id) {
 	if !s.reserveJob(ctx, userID, jobReview) {
 		return
 	}
@@ -101,6 +110,12 @@ func (s *Service) startReview(ctx context.Context, userID vo.Id, savingsBudget *
 		budgetID := *savingsBudget
 		s.runJob(userID, reviewSavings, facts, func(jobCtx context.Context, facts promptFacts) error {
 			return s.reviewSavings(jobCtx, userID, budgetID, facts)
+		})
+	}
+	if debtBudget != nil && s.debts != nil {
+		budgetID := *debtBudget
+		s.runJob(userID, reviewDebts, facts, func(jobCtx context.Context, facts promptFacts) error {
+			return s.detectDebts(jobCtx, userID, budgetID, facts, nil)
 		})
 	}
 }

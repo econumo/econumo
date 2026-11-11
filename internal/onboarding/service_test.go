@@ -88,6 +88,13 @@ func (fakeAccountSteps) OwnLiveAccounts(context.Context, vo.Id) ([]model.Onboard
 	return nil, nil
 }
 
+type fakeDebts struct{ calls int }
+
+func (f *fakeDebts) CreateDebt(context.Context, vo.Id, string, vo.Id, vo.Id, vo.DecimalNumber, model.RecurringSchedule) (bool, error) {
+	f.calls++
+	return true, nil
+}
+
 func newSvc(c onboarding.Completer, l onboarding.AttemptLimiter) (*onboarding.Service, *fakeBudgets) {
 	b := &fakeBudgets{}
 	svc := onboarding.NewService(b, fakeAccounts{}, fakeTimezones{})
@@ -208,4 +215,44 @@ func TestClassification_OverTheCapSkipsTheJob(t *testing.T) {
 	if len(b.marked) != 0 || c.calls != 0 {
 		t.Fatalf("marked = %v, calls = %d", b.marked, c.calls)
 	}
+}
+
+func TestPlanDebts_NoAIOrOverTheCapStartsNothing(t *testing.T) {
+	planned := map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")}
+	for name, c := range map[string]*fakeCompleter{"no AI": nil, "over the cap": replying(`{"debts":[]}`)} {
+		t.Run(name, func(t *testing.T) {
+			var svc *onboarding.Service
+			if c == nil {
+				svc, _ = newSvc(nil, nil)
+			} else {
+				svc, _ = newSvc(c, denyLimiter{})
+			}
+			debts := &fakeDebts{}
+			svc.SetDebts(debts)
+			// the steps are not wired: a job that started would panic and log
+			svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, planned)
+			if debts.calls != 0 || (c != nil && c.calls != 0) {
+				t.Fatalf("debts %d", debts.calls)
+			}
+		})
+	}
+}
+
+func TestPlanDebts_NoPlanAboveZeroReservesNothing(t *testing.T) {
+	c := replying(`{"debts":[]}`)
+	reserved := &countingLimiter{}
+	svc, _ := newSvc(c, reserved)
+	svc.SetDebts(&fakeDebts{})
+	svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("0")})
+	if reserved.n != 0 || c.calls != 0 {
+		t.Fatalf("reserved %d, calls %d", reserved.n, c.calls)
+	}
+}
+
+type countingLimiter struct{ n int }
+
+func (*countingLimiter) Allow(context.Context, string, string) error { return nil }
+func (l *countingLimiter) Reserve(string, string) error {
+	l.n++
+	return nil
 }

@@ -9,8 +9,8 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { emptyDraft, loadDraft, saveDraft } from './draft'
 import { onboardingProgress, storedStepState } from './onboardingProgress'
 
-// when, after finish-import and the manual steps, the lists are refetched to show the AI's icons and
-// savings (the job may take up to 90 s)
+// when, after finish-import and the manual steps, the lists are refetched to show the AI's icons, savings
+// and debts (the job may take up to 90 s)
 export const AI_REFRESH_DELAYS_MS = [10_000, 30_000, 90_000]
 
 export const notUser = (q: Query) => q.queryKey[0] !== queryKeys.user[0]
@@ -39,7 +39,7 @@ export function scheduleAiRefresh(queryClient: QueryClient, userId: string): voi
         cancelAiRefresh()
         return
       }
-      for (const queryKey of [queryKeys.categories, queryKeys.accounts, queryKeys.budgets, queryKeys.budget, queryKeys.budgetPlan]) {
+      for (const queryKey of [queryKeys.categories, queryKeys.accounts, queryKeys.budgets, queryKeys.budget, queryKeys.budgetPlan, queryKeys.debts]) {
         void queryClient.invalidateQueries({ queryKey })
       }
     }, delay),
