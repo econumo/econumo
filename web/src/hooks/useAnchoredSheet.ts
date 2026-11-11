@@ -104,17 +104,17 @@ export function sheetVisibleHeight(layout: number, keyboardVisible: number, reme
 // the body stretches to the sheet's fixed height, so its own scrollHeight
 // never reports content shorter than that (a list shorter than last time)
 function contentHeight(body: HTMLElement): number {
-  const first = body.firstElementChild
   const last = body.lastElementChild
-  if (!first || !last) {
+  if (!last) {
     return body.scrollHeight
   }
-  const style = getComputedStyle(body)
-  const padding = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0)
+  const paddingBottom = parseFloat(getComputedStyle(body).paddingBottom) || 0
   // rows that scroll inside a list of their own
   const list = body.querySelector<HTMLElement>('[cmdk-list]')
   const inner = list ? list.scrollHeight - list.clientHeight : 0
-  return Math.ceil(last.getBoundingClientRect().bottom - first.getBoundingClientRect().top + padding + inner)
+  // from the top of the scrolled content (its top padding included) to the
+  // last element's end
+  return Math.ceil(last.getBoundingClientRect().bottom - body.getBoundingClientRect().top + body.scrollTop + paddingBottom + inner)
 }
 
 export interface AnchoredSheet {
@@ -189,6 +189,14 @@ export function useAnchoredSheet(
       setRemembered(rememberedVisible(layout))
     }
   }, [active, layout])
+  // whether it could make room as it opened; a height learned later, with the
+  // sheet already on screen, changes nothing about how it came in
+  const [roomAtOpen, setRoomAtOpen] = useState(false)
+  useLayoutEffect(() => {
+    setRoomAtOpen(active && rememberedVisible(layoutHeight()) !== undefined)
+  }, [active])
+  // the keyboard was up for the field that has it now
+  const sawKeyboard = useRef(false)
   useLayoutEffect(() => {
     const el = ref.current
     if (!active || !el || !body) {
@@ -197,13 +205,12 @@ export function useAnchoredSheet(
     const focused = () => ownsKeyboard(document.activeElement) && el.contains(document.activeElement)
     setFieldTaken(focused())
     setFocusedOpen(focused())
-    // a touch on the field comes before its focus, and so before the keyboard
+    // Room is made when the field takes focus, not when it is touched: the
+    // sheet resizing under a finger still down moves the field away, and the
+    // tap then lands on something else (seen in Chromium)
     let touched = false
-    const onPointerDown = (e: PointerEvent) => {
+    const onPointerDown = () => {
       touched = true
-      if (e.pointerType === 'touch' && ownsKeyboard(e.target)) {
-        setFieldTaken(true)
-      }
     }
     const onFocusIn = (e: FocusEvent) => {
       if (ownsKeyboard(e.target)) {
@@ -214,6 +221,14 @@ export function useAnchoredSheet(
         }
       }
     }
+    // a tap on a field that kept its focus while the keyboard was hidden asks
+    // for the keyboard again
+    const onClick = (e: MouseEvent) => {
+      if (ownsKeyboard(e.target)) {
+        sawKeyboard.current = false
+        setNoKeyboard(false)
+      }
+    }
     const onFocusOut = (e: FocusEvent) => {
       if (!ownsKeyboard(e.relatedTarget)) {
         setFieldTaken(false)
@@ -222,30 +237,32 @@ export function useAnchoredSheet(
     el.addEventListener('pointerdown', onPointerDown, true)
     el.addEventListener('focusin', onFocusIn)
     el.addEventListener('focusout', onFocusOut)
+    el.addEventListener('click', onClick)
     return () => {
       el.removeEventListener('pointerdown', onPointerDown, true)
       el.removeEventListener('focusin', onFocusIn)
       el.removeEventListener('focusout', onFocusOut)
+      el.removeEventListener('click', onClick)
       setFieldTaken(false)
       setFocusedOpen(false)
     }
   }, [active, body, ref])
   useEffect(() => {
     if (!expectsField || keyboard.height > 0) {
+      sawKeyboard.current = expectsField
       setNoKeyboard(false)
       return
     }
-    const el = ref.current
+    // hidden while the field keeps its focus (Android's back button)
+    if (sawKeyboard.current) {
+      setNoKeyboard(true)
+      return
+    }
     const timer = setTimeout(() => {
-      if (el && ownsKeyboard(document.activeElement) && el.contains(document.activeElement)) {
-        setNoKeyboard(true)
-      } else {
-        // a touch that never focused the field (a scroll that began on it)
-        setFieldTaken(false)
-      }
+      setNoKeyboard(true)
     }, KEYBOARD_WAIT_MS)
     return () => clearTimeout(timer)
-  }, [expectsField, keyboard.height, ref])
+  }, [expectsField, keyboard.height])
   useEffect(() => {
     if (!expectsField || keyboard.height === 0 || keyboard.height === remembered) {
       return
@@ -264,7 +281,7 @@ export function useAnchoredSheet(
   }, [expectsField, keyboard.height, remembered, layout])
 
   // with next to no slide, the sheet fades in
-  const shortSlide = open && focusedOpen && remembered !== undefined
+  const shortSlide = open && focusedOpen && roomAtOpen
   useLayoutEffect(() => {
     if (shortSlide) {
       ref.current?.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' })
@@ -273,25 +290,27 @@ export function useAnchoredSheet(
 
   // a closing sheet slides out as it stood, whatever its field and the
   // keyboard do meanwhile
-  const closing = useRef<{ top: number; height: number } | null>(null)
+  const closing = useRef<{ top: number; height: number; pan: number } | null>(null)
   if (!enabled || anchor === null) {
     return undefined
   }
   let top: number
   let height: number
+  // the keyboard is no longer tracked for a closed sheet: it keeps the pan it had
+  let pan = keyboard.top
   if (!open && closing.current) {
-    ;({ top, height } = closing.current)
+    ;({ top, height, pan } = closing.current)
   } else {
     const visibleHeight = sheetVisibleHeight(layout, keyboard.height, remembered, expectsField, noKeyboard)
     top = anchoredTop(anchor, visibleHeight)
     height = visibleHeight - top
-    closing.current = { top, height }
+    closing.current = { top, height, pan }
   }
   return {
     top,
     style: {
       // placed in the layout viewport, which iOS pans by keyboard.top
-      top: keyboard.top + top,
+      top: pan + top,
       bottom: 'auto',
       // the drawer's mt-24 only kept a bottom-anchored sheet off the top
       marginTop: 0,

@@ -81,17 +81,21 @@ export function useKeyboardInset(enabled: boolean): KeyboardInset {
     vv.addEventListener('scroll', update)
     window.addEventListener('resize', settle)
     // a field tapped in an open sheet raises the keyboard, also a tap on the
-    // field that already has focus after the keyboard was hidden. Only timers:
-    // focus may move inside a React commit, where flushSync is not allowed
-    document.addEventListener('focusin', later)
-    document.addEventListener('touchend', later)
+    // field that already has focus after the keyboard was hidden. Not
+    // flushSync: focus may move inside a React commit, where it is not allowed
+    const soon = () => {
+      apply()
+      later()
+    }
+    document.addEventListener('focusin', soon)
+    document.addEventListener('touchend', soon)
     return () => {
       timers.forEach(clearTimeout)
       vv.removeEventListener('resize', settle)
       vv.removeEventListener('scroll', update)
       window.removeEventListener('resize', settle)
-      document.removeEventListener('focusin', later)
-      document.removeEventListener('touchend', later)
+      document.removeEventListener('focusin', soon)
+      document.removeEventListener('touchend', soon)
     }
   }, [enabled])
   return inset

@@ -3278,7 +3278,7 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       above the keyboard. The Add transaction page behind
       it stays still. From the second time a picker's keyboard has been up
       on the device, the sheet is already keyboard-sized when the search is
-      touched or the picker opens with the keyboard coming (it then fades in
+      tapped or the picker opens with the keyboard coming (it then fades in
       instead of sliding up), and the screen does not slide as the keyboard
       comes or goes. The "Type a name to create it" row stays reachable at
       the end of the list, with and without the keyboard.
