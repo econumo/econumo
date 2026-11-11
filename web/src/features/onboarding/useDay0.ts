@@ -228,7 +228,7 @@ export function useDay0() {
       }
       trackEvent(METRICS.ONBOARDING_PLAN_COMPLETE, { rows: amounts.length })
     },
-    [runStep, queryClient],
+    [runStep, queryClient, userId],
   )
 
   return { draft, ready: Boolean(user) && !accountsQuery.isPending, finishImport, saveCategories, saveAccounts, savePlan, pending, error }
