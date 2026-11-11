@@ -35,6 +35,10 @@ func (sqliteQuerier) InsertDebtSnapshot(ctx context.Context, db backend.DBTX, p 
 	return sqlitegen.New(db).InsertDebtSnapshot(ctx, p)
 }
 
+func (sqliteQuerier) UpdateDebtSnapshot(ctx context.Context, db backend.DBTX, p updateSnapshotParams) error {
+	return sqlitegen.New(db).UpdateDebtSnapshot(ctx, p)
+}
+
 func (sqliteQuerier) InsertDebtSplit(ctx context.Context, db backend.DBTX, p splitParams) error {
 	return sqlitegen.New(db).InsertDebtSplit(ctx, p)
 }

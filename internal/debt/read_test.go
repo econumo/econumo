@@ -63,13 +63,13 @@ func TestGetDebt_DetailsListPaymentsNewestFirst(t *testing.T) {
 func TestViews_RangesAndPlanningBounds(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
+	e.clock.now = ymd(2026, 9, 1)
 	oldDebt := e.create(t, nil)
-	newer := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-06-15") })
+	newer := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate, r.LastPaymentDate = ptr("2026-06-15"), "2027-06-01" })
 	payee := e.newPayee()
 	cat2 := e.newCategory(e.user, true)
 	narrow := e.create(t, func(r *model.CreateDebtRequest) { r.CategoryId = cat2; r.PayeeId = &payee })
 
-	e.clock.now = ymd(2026, 9, 1)
 	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: e.account, CategoryID: cat2, PayeeID: payee, Type: 0, Amount: "1000", SpentAt: ymd(2026, 4, 20)})
 
 	views, err := e.svc.Views(ctx, []vo.Id{e.uid()})
@@ -84,7 +84,8 @@ func TestViews_RangesAndPlanningBounds(t *testing.T) {
 		t.Fatalf("views = %d, want 3", len(views))
 	}
 	o, n, nr := byID[oldDebt.Id], byID[newer.Id], byID[narrow.Id]
-	if o.From != nil || o.Until == nil || !o.Until.Equal(ymd(2026, 6, 15)) || o.Icon != "i" || o.OwnerID != e.user || o.CurrencyID != fixture.USD {
+	if o.From == nil || !o.From.Equal(ymd(2026, 3, 10)) || o.Until == nil || !o.Until.Equal(ymd(2026, 6, 15)) || o.Icon != "i" ||
+		o.OwnerID != e.user || o.CurrencyID != fixture.USD {
 		t.Errorf("old = %+v", o)
 	}
 	if n.From == nil || !n.From.Equal(ymd(2026, 6, 15)) || n.Until != nil {
@@ -96,12 +97,11 @@ func TestViews_RangesAndPlanningBounds(t *testing.T) {
 	if !n.StartMonth.Equal(ymd(2026, 6, 1)) {
 		t.Errorf("newer start = %v, want the start date's month", n.StartMonth)
 	}
-	// a first payment after the first snapshot does not move the start past
-	// the snapshot's month: plans moved there at conversion stay in the life
+	// a first payment after the start does not move the start
 	if nr.PayeeID == nil || *nr.PayeeID != payee || !nr.StartMonth.Equal(ymd(2026, 3, 1)) {
-		t.Errorf("narrow = %+v (start is the earlier of the first payment's and the first snapshot's month)", nr)
+		t.Errorf("narrow = %+v (start is the start date's month)", nr)
 	}
-	if o.PayeeID != nil || o.TagID != nil || o.From != nil {
+	if o.PayeeID != nil || o.TagID != nil || o.LabelID != nil {
 		t.Errorf("old should be the whole-category debt: %+v", o)
 	}
 }
@@ -127,7 +127,7 @@ func TestViews_PaidOffEndsAtPayoffMonth(t *testing.T) {
 // Sync.
 func TestViews_WritesNothing(t *testing.T) {
 	e := newEnv(t)
-	res := e.create(t, nil)
+	res := e.createWithoutTerms(t, nil)
 	e.clock.now = ymd(2026, 4, 20)
 	tx := e.expense(t, e.account, ymd(2026, 2, 20), "105", "")
 
@@ -148,10 +148,10 @@ func TestViews_WritesNothing(t *testing.T) {
 	}
 }
 
-// A payment before the first snapshot (the loan's history) starts the life.
+// A payment before the creation day starts the life of a debt not set up.
 func TestViews_StartAtAnEarlierFirstPayment(t *testing.T) {
 	e := newEnv(t)
-	res := e.create(t, nil)
+	res := e.createWithoutTerms(t, nil)
 	e.expense(t, e.account, ymd(2026, 1, 20), "1000", "")
 	views, err := e.svc.Views(context.Background(), []vo.Id{e.uid()})
 	if err != nil || len(views) != 1 {
@@ -208,12 +208,14 @@ func TestGetDebt_NotSetUpPaymentsHaveNoBalance(t *testing.T) {
 	}
 }
 
-// The snapshot holds the balance after its day's payments: a payment on that
-// day leaves the snapshot's balance, and one before it the balance plus the
-// later payment's debt part.
+// A snapshot holds the balance after its day's payments: a payment on the day
+// of a balance now leaves that balance, and one before it comes off the
+// amount borrowed.
 func TestGetDebt_BalanceAroundTheSnapshotDay(t *testing.T) {
 	e := newEnv(t)
-	res := e.create(t, nil) // snapshot as of March 10: 10000
+	res := e.create(t, func(r *model.CreateDebtRequest) {
+		r.AmountBorrowed, r.StartDate, r.Balance = vo.NewFlexString("11000"), ptr("2026-02-15"), vo.NewFlexString("10000")
+	}) // balance now as of March 10: 10000
 	e.clock.now = ymd(2026, 3, 20)
 	e.expense(t, e.account, ymd(2026, 3, 1), "500", "")
 	e.expense(t, e.account, ymd(2026, 3, 10), "1000", "")
@@ -229,7 +231,7 @@ func TestGetDebt_BalanceAroundTheSnapshotDay(t *testing.T) {
 	if !vo.NewDecimal(onDay.Balance).Equals(vo.NewDecimal("10000")) {
 		t.Fatalf("on the snapshot's day: %q, want 10000", onDay.Balance)
 	}
-	if want := vo.NewDecimal("10000").Add(vo.NewDecimal(onDay.Principal)); !vo.NewDecimal(before.Balance).Equals(want) {
+	if want := vo.NewDecimal("11000").Sub(vo.NewDecimal(before.Principal)); !vo.NewDecimal(before.Balance).Equals(want) {
 		t.Fatalf("before the snapshot: %q, want %s", before.Balance, want)
 	}
 }

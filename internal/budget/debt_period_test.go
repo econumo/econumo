@@ -12,9 +12,9 @@ import (
 
 // newShiftedDebtHarness is the attribution harness on a budget whose periods
 // start on the 15th (key June = 15 Jun - 14 Jul; today, 2026-06-15, opens
-// it), with a 12000 zero-interest loan paid 1000 on the 10th of each month
-// through 2027-06-10 and one payment already made on 2026-06-12, which is in
-// period May.
+// it), with a 13000 zero-interest loan taken on 2026-06-01, paid 1000 on the
+// 10th of each month through 2027-06-10, and one payment already made on
+// 2026-06-12, which is in period May (12000 owed now).
 func newShiftedDebtHarness(t *testing.T) (*attrHarness, string) {
 	t.Helper()
 	h := newAttrHarness(t)
@@ -22,9 +22,10 @@ func newShiftedDebtHarness(t *testing.T) (*attrHarness, string) {
 		t.Fatal(err)
 	}
 	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 12, 10, 0, 0, 0, time.UTC))
+	start := "2026-06-01"
 	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
 		Name: "Car loan", CurrencyId: fixture.USD, CategoryId: h.loan,
-		Balance: vo.NewFlexString("12000"), Payment: vo.NewFlexString("1000"),
+		StartDate: &start, AmountBorrowed: vo.NewFlexString("13000"), Balance: vo.NewFlexString("12000"), Payment: vo.NewFlexString("1000"),
 		Schedule: "monthly", LastPaymentDate: "2027-06-10",
 	})
 	if err != nil {

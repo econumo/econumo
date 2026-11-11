@@ -35,6 +35,9 @@ type Repository interface {
 	Delete(ctx context.Context, id vo.Id) error
 	// AddSnapshot is always paired with a Save of the same terms in one transaction.
 	AddSnapshot(ctx context.Context, s *model.DebtSnapshot) error
+	// UpdateSnapshot rewrites a snapshot's as-of, balance and terms: only the
+	// origin's facts and, with them, a later snapshot's terms are corrected.
+	UpdateSnapshot(ctx context.Context, s *model.DebtSnapshot) error
 	// Snapshots are ordered by debt, as_of, created_at.
 	Snapshots(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtSnapshot, error)
 	Splits(ctx context.Context, debtIDs []vo.Id) ([]model.DebtSplit, error)

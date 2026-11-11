@@ -36,7 +36,8 @@ func init() {
 		debt := func(categoryID *string) map[string]any {
 			return map[string]any{
 				"name": "Loan", "currencyId": USD, "categoryId": categoryID,
-				"balance": "100", "payment": "105", "schedule": "monthly", "lastPaymentDate": lastPayment,
+				"amountBorrowed": "100", "startDate": ClockTime.Format("2006-01-02"), "payment": "105", "schedule": "monthly",
+				"lastPaymentDate": lastPayment,
 			}
 		}
 		var loanCat, bikeCat, studyCat, ownerDebt, partnerDebt string

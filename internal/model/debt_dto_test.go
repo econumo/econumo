@@ -11,7 +11,8 @@ import (
 func validDebtRequest() CreateDebtRequest {
 	return CreateDebtRequest{
 		Name: "Car loan", CurrencyId: "dffc2a06-6f29-4704-8575-31709adee926", CategoryId: "0197c8b2-1111-7000-8000-000000000001",
-		Balance: vo.NewFlexString("10000"), Payment: vo.NewFlexString("1000"), Schedule: "monthly", LastPaymentDate: "2027-03-01",
+		AmountBorrowed: vo.NewFlexString("12000"), StartDate: ptrTo("2026-03-01"),
+		Payment: vo.NewFlexString("1000"), Schedule: "monthly", LastPaymentDate: "2027-03-01",
 	}
 }
 
@@ -32,22 +33,22 @@ func TestCreateDebtRequest_Validate(t *testing.T) {
 	if err := validDebtRequest().Validate(); err != nil {
 		t.Fatalf("valid request: %v", err)
 	}
-	zeroBalance := validDebtRequest()
-	zeroBalance.Balance = vo.NewFlexString("0")
-	if err := zeroBalance.Validate(); err != nil {
-		t.Fatalf("a zero balance is allowed: %v", err)
+	owedNow := validDebtRequest()
+	owedNow.Balance = vo.NewFlexString("0")
+	if err := owedNow.Validate(); err != nil {
+		t.Fatalf("a zero balance now is allowed: %v", err)
 	}
 
 	bad := validDebtRequest()
 	bad.Name, bad.CurrencyId, bad.CategoryId = " ", "", "nope"
 	bad.PayeeId, bad.StartDate = ptrTo("x"), ptrTo("2026-13-01")
-	bad.Balance, bad.Payment = vo.NewFlexString("-1"), vo.NewFlexString("0")
+	bad.AmountBorrowed, bad.Balance, bad.Payment = vo.NewFlexString("0"), vo.NewFlexString("-1"), vo.NewFlexString("0")
 	bad.Schedule, bad.LastPaymentDate = "daily", "03/01/2027"
 	got := debtFieldCodes(t, bad.Validate())
 	want := map[string]string{
 		"name": errs.CodeIsBlank, "currencyId": errs.CodeIsBlank, "categoryId": errs.CodeInvalidUUID, "payeeId": errs.CodeInvalidUUID,
-		"startDate": errs.CodeInvalidFormat, "balance": errs.CodeOutOfRange, "payment": errs.CodeOutOfRange,
-		"schedule": errs.CodeInvalidChoice, "lastPaymentDate": errs.CodeInvalidFormat,
+		"startDate": errs.CodeInvalidFormat, "amountBorrowed": errs.CodeOutOfRange, "balance": errs.CodeOutOfRange,
+		"payment": errs.CodeOutOfRange, "schedule": errs.CodeInvalidChoice, "lastPaymentDate": errs.CodeInvalidFormat,
 	}
 	for k, code := range want {
 		if got[k] != code {
@@ -56,14 +57,14 @@ func TestCreateDebtRequest_Validate(t *testing.T) {
 	}
 
 	blank := validDebtRequest()
-	blank.Balance, blank.Payment, blank.Schedule, blank.LastPaymentDate = vo.FlexString{}, vo.FlexString{}, "", ""
+	blank.AmountBorrowed, blank.StartDate, blank.Payment, blank.Schedule, blank.LastPaymentDate = vo.FlexString{}, nil, vo.FlexString{}, "", ""
 	got = debtFieldCodes(t, blank.Validate())
 	for _, k := range []string{"payment", "schedule"} {
 		if got[k] != errs.CodeIsBlank {
 			t.Errorf("%s: code %q, want blank", k, got[k])
 		}
 	}
-	for _, k := range []string{"balance", "lastPaymentDate"} {
+	for _, k := range []string{"amountBorrowed", "startDate", "lastPaymentDate", "balance"} {
 		if _, ok := got[k]; ok {
 			t.Errorf("%s: the terms are optional together, got %v", k, got)
 		}
@@ -80,8 +81,8 @@ func TestDebtRequests_ValidateIds(t *testing.T) {
 	if err := (GetDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000001"}).Validate(); err != nil {
 		t.Errorf("get with a valid id: %v", err)
 	}
-	up := UpdateDebtRequest{Id: "", Name: "n", CategoryId: "0197c8b2-1111-7000-8000-000000000001",
-		Balance: vo.NewFlexString("1"), Payment: vo.NewFlexString("1"), Schedule: "weekly", LastPaymentDate: "2027-01-01"}
+	up := UpdateDebtRequest{Id: "", Name: "n", CategoryId: "0197c8b2-1111-7000-8000-000000000001", AmountBorrowed: vo.NewFlexString("1"),
+		StartDate: ptrTo("2026-01-01"), Payment: vo.NewFlexString("1"), Schedule: "weekly", LastPaymentDate: "2027-01-01"}
 	if got := debtFieldCodes(t, up.Validate()); got["id"] != errs.CodeIsBlank {
 		t.Errorf("update without an id: %v", got)
 	}
@@ -98,36 +99,56 @@ func ptrTo(s string) *string { return &s }
 func TestCreateDebtRequest_RejectsNonDecimalAmounts(t *testing.T) {
 	for _, v := range []string{"1_000", "0x1p3", "1e3", "Inf"} {
 		req := validDebtRequest()
-		req.Balance = vo.NewFlexString(v)
-		if got := debtFieldCodes(t, req.Validate()); got["balance"] != errs.CodeInvalidFormat {
-			t.Errorf("balance %q: code %q, want invalid format", v, got["balance"])
+		req.AmountBorrowed, req.Balance = vo.NewFlexString(v), vo.NewFlexString(v)
+		got := debtFieldCodes(t, req.Validate())
+		if got["amountBorrowed"] != errs.CodeInvalidFormat || got["balance"] != errs.CodeInvalidFormat {
+			t.Errorf("%q: codes %v, want invalid format on both", v, got)
 		}
 	}
-	for _, v := range []string{"1000", "1000.5", ".5", "0"} {
+	for _, v := range []string{"1000", "1000.5", ".5"} {
 		req := validDebtRequest()
-		req.Balance = vo.NewFlexString(v)
+		req.AmountBorrowed, req.Balance = vo.NewFlexString(v), vo.NewFlexString(v)
 		if err := req.Validate(); err != nil {
-			t.Errorf("balance %q: %v", v, err)
+			t.Errorf("%q: %v", v, err)
 		}
 	}
 }
 
-func TestCreateDebtRequest_TermsPair(t *testing.T) {
-	balanceOnly := validDebtRequest()
-	balanceOnly.LastPaymentDate = ""
-	if got := debtFieldCodes(t, balanceOnly.Validate()); got["lastPaymentDate"] != errs.CodeIsBlank || len(got) != 1 {
-		t.Errorf("balance without lastPaymentDate: %v, want only lastPaymentDate blank", got)
+// The loan's facts (amount borrowed, start date, last payment date) come
+// together; the balance now is optional on top of them.
+func TestCreateDebtRequest_SetupTrio(t *testing.T) {
+	for name, tc := range map[string]struct {
+		mod   func(*CreateDebtRequest)
+		blank []string
+	}{
+		"no amount borrowed": {func(r *CreateDebtRequest) { r.AmountBorrowed = vo.FlexString{} }, []string{"amountBorrowed"}},
+		"no last payment":    {func(r *CreateDebtRequest) { r.LastPaymentDate = "" }, []string{"lastPaymentDate"}},
+		"no start date":      {func(r *CreateDebtRequest) { r.StartDate = nil }, []string{"startDate"}},
+		"blank start date":   {func(r *CreateDebtRequest) { r.StartDate = ptrTo(" ") }, []string{"startDate"}},
+		"balance alone": {func(r *CreateDebtRequest) {
+			r.AmountBorrowed, r.StartDate, r.LastPaymentDate, r.Balance = vo.FlexString{}, nil, "", vo.NewFlexString("5")
+		}, []string{"amountBorrowed", "startDate", "lastPaymentDate"}},
+	} {
+		req := validDebtRequest()
+		tc.mod(&req)
+		got := debtFieldCodes(t, req.Validate())
+		if len(got) != len(tc.blank) {
+			t.Errorf("%s: %v, want only %v blank", name, got, tc.blank)
+		}
+		for _, k := range tc.blank {
+			if got[k] != errs.CodeIsBlank {
+				t.Errorf("%s: %s code %q, want blank (%v)", name, k, got[k], got)
+			}
+		}
 	}
-	dateOnly := validDebtRequest()
-	dateOnly.Balance = vo.FlexString{}
-	if got := debtFieldCodes(t, dateOnly.Validate()); got["balance"] != errs.CodeIsBlank || len(got) != 1 {
-		t.Errorf("lastPaymentDate without balance: %v, want only balance blank", got)
+	// a start date alone only bounds which payments count
+	startOnly := validDebtRequest()
+	startOnly.AmountBorrowed, startOnly.LastPaymentDate = vo.FlexString{}, ""
+	if err := startOnly.Validate(); err != nil {
+		t.Errorf("a start date without terms is valid: %v", err)
 	}
-	neither := validDebtRequest()
-	neither.Balance, neither.LastPaymentDate = vo.FlexString{}, ""
-	if err := neither.Validate(); err != nil {
-		t.Errorf("no terms is valid: %v", err)
-	}
+	neither := startOnly
+	neither.StartDate = nil
 	noPayment := neither
 	noPayment.Payment = vo.FlexString{}
 	if got := debtFieldCodes(t, noPayment.Validate()); got["payment"] != errs.CodeIsBlank {
@@ -145,20 +166,27 @@ func TestCreateDebtRequest_TermsPair(t *testing.T) {
 	}
 }
 
-func TestUpdateDebtRequest_TermsPair(t *testing.T) {
+func TestUpdateDebtRequest_SetupTrio(t *testing.T) {
 	up := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000002", Name: "n", CategoryId: "0197c8b2-1111-7000-8000-000000000001",
 		Payment: vo.NewFlexString("1"), Schedule: "weekly"}
 	if err := up.Validate(); err != nil {
 		t.Errorf("update without terms is valid: %v", err)
 	}
-	up.Balance = vo.NewFlexString("10")
-	if got := debtFieldCodes(t, up.Validate()); got["lastPaymentDate"] != errs.CodeIsBlank {
-		t.Errorf("balance without lastPaymentDate: %v", got)
+	// a set-up debt takes a balance now on its own
+	owed := up
+	owed.Balance = vo.NewFlexString("10")
+	if err := owed.Validate(); err != nil {
+		t.Errorf("a balance now alone is valid on an update: %v", err)
+	}
+	half := up
+	half.AmountBorrowed = vo.NewFlexString("10")
+	if got := debtFieldCodes(t, half.Validate()); got["lastPaymentDate"] != errs.CodeIsBlank || got["startDate"] != errs.CodeIsBlank {
+		t.Errorf("amount borrowed without the dates: %v", got)
 	}
 }
 
-// An update may leave out the payment and the schedule (kept as stored), but
-// not alongside a balance and a last payment date.
+// An update may leave out the payment and the schedule (kept as stored), even
+// alongside the loan's facts.
 func TestUpdateDebtRequest_PaymentAndScheduleOptional(t *testing.T) {
 	up := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000002", Name: "n", CategoryId: "0197c8b2-1111-7000-8000-000000000001"}
 	if err := up.Validate(); err != nil {
@@ -170,9 +198,9 @@ func TestUpdateDebtRequest_PaymentAndScheduleOptional(t *testing.T) {
 		t.Errorf("a payment or schedule sent is still checked: %v", got)
 	}
 	terms := up
-	terms.Balance, terms.LastPaymentDate = vo.NewFlexString("10"), "2027-03-01"
-	if got := debtFieldCodes(t, terms.Validate()); got["payment"] != errs.CodeIsBlank || got["schedule"] != errs.CodeIsBlank || len(got) != 2 {
-		t.Errorf("terms without payment and schedule: %v, want both blank", got)
+	terms.AmountBorrowed, terms.StartDate, terms.LastPaymentDate = vo.NewFlexString("10"), ptrTo("2026-01-01"), "2027-03-01"
+	if err := terms.Validate(); err != nil {
+		t.Errorf("terms without payment and schedule keep the stored ones: %v", err)
 	}
 }
 

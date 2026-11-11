@@ -2386,6 +2386,8 @@
       "category_not_expense": "Un debito richiede una categoria di spesa.",
       "removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti di questo debito nei tuoi budget; conferma per continuare.",
       "last_payment_in_past": "La data dell'ultimo pagamento deve essere successiva a oggi.",
+      "last_payment_before_start": "La data dell'ultimo pagamento deve essere successiva alla data di inizio.",
+      "start_in_future": "La data di inizio deve essere oggi o precedente.",
       "not_set_up": "Completa prima la configurazione di questo debito."
     },
     "authserver": {

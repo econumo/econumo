@@ -2386,6 +2386,8 @@
       "category_not_expense": "Une dette nécessite une catégorie de dépenses.",
       "removal_unconfirmed": "Cela supprime les montants prévus et les commentaires de cette dette dans vos budgets ; confirmez pour continuer.",
       "last_payment_in_past": "La date du dernier paiement doit être postérieure à aujourd'hui.",
+      "last_payment_before_start": "La date du dernier paiement doit être postérieure à la date de début.",
+      "start_in_future": "La date de début doit être aujourd'hui ou antérieure.",
       "not_set_up": "Terminez d'abord la configuration de cette dette."
     },
     "authserver": {

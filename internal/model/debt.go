@@ -13,9 +13,13 @@ type Debt struct {
 	PayeeID                             *vo.Id
 	TagID                               *vo.Id
 	LabelID                             *vo.Id
-	StartDate                           *time.Time
-	// Current is nil until the debt is set up (a balance and a last payment
-	// date entered); Payment and Schedule are held either way.
+	// StartDate bounds the payments that count; on a set-up debt it is the
+	// day the loan began, the as-of of its first snapshot (the origin).
+	StartDate *time.Time
+	// AmountBorrowed is the origin's balance, held while the debt is set up.
+	AmountBorrowed vo.DecimalNumber
+	// Current is nil until the debt is set up (amount borrowed, start date
+	// and last payment date entered); Payment and Schedule are held either way.
 	Current  *DebtTerms
 	Payment  vo.DecimalNumber
 	Schedule RecurringSchedule

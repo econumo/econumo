@@ -113,7 +113,7 @@ func (q *Queries) DeleteDebt(ctx context.Context, id string) error {
 
 const getDebtByID = `-- name: GetDebtByID :one
 
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE id = ?
 `
@@ -133,6 +133,7 @@ func (q *Queries) GetDebtByID(ctx context.Context, id string) (Debt, error) {
 		&i.TagID,
 		&i.LabelID,
 		&i.StartDate,
+		&i.AmountBorrowed,
 		&i.AsOf,
 		&i.Balance,
 		&i.Payment,
@@ -229,7 +230,7 @@ func (q *Queries) ListDebtCandidateLabels(ctx context.Context, categoryID *strin
 }
 
 const listDebtsByCategory = `-- name: ListDebtsByCategory :many
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE category_id = ?
 ORDER BY created_at, id
@@ -254,6 +255,7 @@ func (q *Queries) ListDebtsByCategory(ctx context.Context, categoryID string) ([
 			&i.TagID,
 			&i.LabelID,
 			&i.StartDate,
+			&i.AmountBorrowed,
 			&i.AsOf,
 			&i.Balance,
 			&i.Payment,
@@ -332,11 +334,42 @@ func (q *Queries) ReassignDebtTag(ctx context.Context, arg ReassignDebtTagParams
 	return err
 }
 
+const updateDebtSnapshot = `-- name: UpdateDebtSnapshot :exec
+UPDATE debts_snapshots
+SET as_of = CAST(?1 AS TEXT), balance = ?2, payment = ?3, schedule = ?4,
+    last_payment_date = CAST(?5 AS TEXT)
+WHERE id = ?6
+`
+
+type UpdateDebtSnapshotParams struct {
+	AsOf            string
+	Balance         string
+	Payment         string
+	Schedule        string
+	LastPaymentDate string
+	ID              string
+}
+
+// Only the origin (a debt's first snapshot) is ever rewritten, and a later
+// snapshot's payment, schedule and last payment date with it: correcting the
+// loan's facts is a correction, not a change of terms.
+func (q *Queries) UpdateDebtSnapshot(ctx context.Context, arg UpdateDebtSnapshotParams) error {
+	_, err := q.db.ExecContext(ctx, updateDebtSnapshot,
+		arg.AsOf,
+		arg.Balance,
+		arg.Payment,
+		arg.Schedule,
+		arg.LastPaymentDate,
+		arg.ID,
+	)
+	return err
+}
+
 const upsertDebt = `-- name: UpsertDebt :exec
-INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
+INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8,
-    CAST(?9 AS TEXT), CAST(?10 AS TEXT), ?11, ?12, ?13,
-    CAST(?14 AS TEXT), CAST(?15 AS TEXT), ?16, ?17)
+    CAST(?9 AS TEXT), ?10, CAST(?11 AS TEXT), ?12, ?13, ?14,
+    CAST(?15 AS TEXT), CAST(?16 AS TEXT), ?17, ?18)
 ON CONFLICT (id) DO UPDATE SET
     name              = excluded.name,
     currency_id       = excluded.currency_id,
@@ -345,6 +378,7 @@ ON CONFLICT (id) DO UPDATE SET
     tag_id            = excluded.tag_id,
     label_id          = excluded.label_id,
     start_date        = excluded.start_date,
+    amount_borrowed   = excluded.amount_borrowed,
     as_of             = excluded.as_of,
     balance           = excluded.balance,
     payment           = excluded.payment,
@@ -363,6 +397,7 @@ type UpsertDebtParams struct {
 	TagID           *string
 	LabelID         *string
 	StartDate       *string
+	AmountBorrowed  *string
 	AsOf            *string
 	Balance         *string
 	Payment         string
@@ -384,6 +419,7 @@ func (q *Queries) UpsertDebt(ctx context.Context, arg UpsertDebtParams) error {
 		arg.TagID,
 		arg.LabelID,
 		arg.StartDate,
+		arg.AmountBorrowed,
 		arg.AsOf,
 		arg.Balance,
 		arg.Payment,

@@ -106,7 +106,7 @@ func TestSync_UnmatchedPaymentLosesSplit(t *testing.T) {
 
 func TestSync_PartitionByStartDate(t *testing.T) {
 	e := newEnv(t)
-	oldLoan := e.create(t, nil)
+	oldLoan := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2025-12-01") })
 	newLoan := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-01-01") })
 	e.clock.now = ymd(2026, 7, 1)
 	inOld := e.expense(t, e.account, ymd(2025, 12, 20), "1000", "")

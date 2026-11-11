@@ -86,7 +86,7 @@ func TestDeleteDebt_WholeCategoryTransfersBack(t *testing.T) {
 
 func TestDeleteDebt_WidensNeighbourRange(t *testing.T) {
 	e := newEnv(t)
-	old := e.create(t, nil)
+	old := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-01-01") })
 	newer := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-02-01") })
 	e.clock.now = ymd(2026, 7, 1)
 	tx := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")

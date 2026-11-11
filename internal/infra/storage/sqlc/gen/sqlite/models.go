@@ -187,6 +187,7 @@ type Debt struct {
 	TagID           *string
 	LabelID         *string
 	StartDate       *time.Time
+	AmountBorrowed  *string
 	AsOf            *time.Time
 	Balance         *string
 	Payment         string

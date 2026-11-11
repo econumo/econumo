@@ -15,6 +15,11 @@ import (
 
 const debtNameMaxLength = 64
 
+// CreateDebtRequest: AmountBorrowed, StartDate and LastPaymentDate are the
+// loan's facts and come together (a debt without them is created not set up,
+// a StartDate alone only bounding which payments count); Balance is the
+// optional balance now, for when the recorded payments do not tell the whole
+// story.
 type CreateDebtRequest struct {
 	Name            string        `json:"name"`
 	CurrencyId      string        `json:"currencyId"`
@@ -23,6 +28,7 @@ type CreateDebtRequest struct {
 	TagId           *string       `json:"tagId"`
 	LabelId         *string       `json:"labelId"`
 	StartDate       *string       `json:"startDate"`
+	AmountBorrowed  vo.FlexString `json:"amountBorrowed"`
 	Balance         vo.FlexString `json:"balance"`
 	Payment         vo.FlexString `json:"payment"`
 	Schedule        string        `json:"schedule"`
@@ -30,7 +36,8 @@ type CreateDebtRequest struct {
 }
 
 func (r CreateDebtRequest) Validate() error {
-	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate, false)
+	fields := debtFields(debtTermFields{r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate,
+		r.AmountBorrowed, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate}, false)
 	fields = append(fields, debtIDField("currencyId", r.CurrencyId, true)...)
 	return debtValidation(fields)
 }
@@ -38,10 +45,9 @@ func (r CreateDebtRequest) Validate() error {
 // UpdateDebtRequest carries the same fields as create. An empty CurrencyId
 // keeps the stored currency; another one moves the debt to it, the amounts in
 // the request (or, when left out, the stored ones, unconverted) then being in
-// that currency. Without a balance and a last payment date the terms stay as
-// stored, and a payment or schedule left out keeps the stored one; on a
-// set-up debt a payment or schedule that differs from the stored one is a
-// change of terms and needs both.
+// that currency. AmountBorrowed, LastPaymentDate, Payment and Schedule left
+// out keep the stored ones; StartDate is always the debt's (nil = none, which
+// a set-up debt refuses). A Balance alone gives a set-up debt its balance now.
 type UpdateDebtRequest struct {
 	Id              string        `json:"id"`
 	Name            string        `json:"name"`
@@ -51,6 +57,7 @@ type UpdateDebtRequest struct {
 	TagId           *string       `json:"tagId"`
 	LabelId         *string       `json:"labelId"`
 	StartDate       *string       `json:"startDate"`
+	AmountBorrowed  vo.FlexString `json:"amountBorrowed"`
 	Balance         vo.FlexString `json:"balance"`
 	Payment         vo.FlexString `json:"payment"`
 	Schedule        string        `json:"schedule"`
@@ -58,7 +65,8 @@ type UpdateDebtRequest struct {
 }
 
 func (r UpdateDebtRequest) Validate() error {
-	fields := debtFields(r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate, true)
+	fields := debtFields(debtTermFields{r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate,
+		r.AmountBorrowed, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate}, true)
 	fields = append(fields, debtIDField("id", r.Id, true)...)
 	fields = append(fields, debtIDField("currencyId", r.CurrencyId, false)...)
 	return debtValidation(fields)
@@ -129,11 +137,12 @@ type DebtBudgetPlans struct {
 	Plans          map[string]string
 }
 
-// DebtResult is one debt in the API. The terms (balance .. lastPaymentDate)
-// are the latest snapshot's; amounts are decimal strings in the debt's
-// currency, dates "2006-01-02" ("" when none), isPaidOff an int 0/1 and
-// periodRate the implied rate per schedule period with 10 decimals. While
-// isSetUp is 0 the terms and figures are "" and the counts 0.
+// DebtResult is one debt in the API. amountBorrowed is the loan's amount as of
+// startDate; the terms (balance .. lastPaymentDate) are the latest snapshot's;
+// amounts are decimal strings in the debt's currency, dates "2006-01-02" (""
+// when none), isPaidOff an int 0/1 and periodRate the implied rate per
+// schedule period with 10 decimals. While isSetUp is 0 the terms and figures
+// are "" and the counts 0.
 type DebtResult struct {
 	Id              string  `json:"id"`
 	Name            string  `json:"name"`
@@ -144,6 +153,7 @@ type DebtResult struct {
 	TagId           *string `json:"tagId"`
 	LabelId         *string `json:"labelId"`
 	StartDate       string  `json:"startDate"`
+	AmountBorrowed  string  `json:"amountBorrowed"`
 	Balance         string  `json:"balance"`
 	Payment         string  `json:"payment"`
 	Schedule        string  `json:"schedule"`
@@ -247,50 +257,68 @@ func debtOptionalIDField(key string, v *string) []errs.FieldError {
 	return debtIDField(key, *v, false)
 }
 
-// debtFields: with keepable an update may leave out the payment and the
-// schedule, unless it carries terms.
-func debtFields(name, categoryID string, payeeID, tagID, labelID, startDate *string, balance, payment vo.FlexString, schedule, lastPaymentDate string, keepable bool) []errs.FieldError {
+type debtTermFields struct {
+	name, categoryID                   string
+	payeeID, tagID, labelID, startDate *string
+	amountBorrowed, balance, payment   vo.FlexString
+	schedule, lastPaymentDate          string
+}
+
+func filled(v string) bool { return strings.TrimSpace(v) != "" }
+
+// debtFields: with keepable (an update) the payment and the schedule may be
+// left out, and so may the loan's facts around a balance now.
+func debtFields(f debtTermFields, keepable bool) []errs.FieldError {
 	var fields []errs.FieldError
-	switch n := strings.TrimSpace(name); {
+	switch n := strings.TrimSpace(f.name); {
 	case n == "":
 		fields = append(fields, blankField("name"))
 	case utf8.RuneCountInString(n) > debtNameMaxLength:
 		fields = append(fields, errs.FieldError{Key: "name", Message: "This value is too long.", Code: errs.CodeTooLong})
 	}
-	fields = append(fields, debtIDField("categoryId", categoryID, true)...)
-	fields = append(fields, debtOptionalIDField("payeeId", payeeID)...)
-	fields = append(fields, debtOptionalIDField("tagId", tagID)...)
-	fields = append(fields, debtOptionalIDField("labelId", labelID)...)
+	fields = append(fields, debtIDField("categoryId", f.categoryID, true)...)
+	fields = append(fields, debtOptionalIDField("payeeId", f.payeeID)...)
+	fields = append(fields, debtOptionalIDField("tagId", f.tagID)...)
+	fields = append(fields, debtOptionalIDField("labelId", f.labelID)...)
 	// a debt narrows its payments by a tag or by a reporting tag, not both
-	if tagID != nil && strings.TrimSpace(*tagID) != "" && labelID != nil && strings.TrimSpace(*labelID) != "" {
+	if f.tagID != nil && filled(*f.tagID) && f.labelID != nil && filled(*f.labelID) {
 		fields = append(fields, errs.FieldError{Key: "labelId", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
-	if startDate != nil && strings.TrimSpace(*startDate) != "" {
-		if _, err := time.Parse(datetime.DateLayout, *startDate); err != nil {
+	hasStart := f.startDate != nil && filled(*f.startDate)
+	if hasStart {
+		if _, err := time.Parse(datetime.DateLayout, *f.startDate); err != nil {
 			fields = append(fields, debtInvalidField("startDate"))
 		}
 	}
-	// Balance and last payment date are the optional terms: both or neither.
-	hasBalance, hasLast := strings.TrimSpace(balance.String()) != "", strings.TrimSpace(lastPaymentDate) != ""
-	if hasBalance || hasLast {
-		fields = append(fields, debtAmountField("balance", balance.String(), true)...)
+	// The loan's facts come together: amount borrowed and last payment date
+	// both or neither, and with them the start date. A balance now on create
+	// needs them too; on an update it may stand alone (a set-up debt).
+	hasBorrowed, hasLast, hasBalance := filled(f.amountBorrowed.String()), filled(f.lastPaymentDate), filled(f.balance.String())
+	setup := hasBorrowed || hasLast || (hasBalance && !keepable)
+	if setup || hasBorrowed {
+		fields = append(fields, debtAmountField("amountBorrowed", f.amountBorrowed.String(), false)...)
 	}
-	keep := keepable && !hasBalance && !hasLast
-	if !keep || strings.TrimSpace(payment.String()) != "" {
-		fields = append(fields, debtAmountField("payment", payment.String(), false)...)
+	if hasBalance {
+		fields = append(fields, debtAmountField("balance", f.balance.String(), true)...)
 	}
-	if strings.TrimSpace(schedule) == "" {
-		if !keep {
+	if setup && !hasStart {
+		fields = append(fields, blankField("startDate"))
+	}
+	if !keepable || filled(f.payment.String()) {
+		fields = append(fields, debtAmountField("payment", f.payment.String(), false)...)
+	}
+	if !filled(f.schedule) {
+		if !keepable {
 			fields = append(fields, blankField("schedule"))
 		}
-	} else if _, ok := ParseRecurringSchedule(schedule); !ok {
+	} else if _, ok := ParseRecurringSchedule(f.schedule); !ok {
 		fields = append(fields, errs.FieldError{Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 	if !hasLast {
-		if hasBalance {
+		if setup {
 			fields = append(fields, blankField("lastPaymentDate"))
 		}
-	} else if _, err := time.Parse(datetime.DateLayout, lastPaymentDate); err != nil {
+	} else if _, err := time.Parse(datetime.DateLayout, f.lastPaymentDate); err != nil {
 		fields = append(fields, debtInvalidField("lastPaymentDate"))
 	}
 	return fields
@@ -300,7 +328,8 @@ func debtFields(name, categoryID string, payeeID, tagID, labelID, startDate *str
 // "1_000", hex floats and exponents, which would be stored as 0.
 var plainDecimal = regexp.MustCompile(`^[+-]?(\d+\.?\d*|\.\d+)$`)
 
-// debtAmountField: a balance may be zero, a payment must be positive.
+// debtAmountField: a balance may be zero, a payment or an amount borrowed
+// must be positive.
 func debtAmountField(key, v string, allowZero bool) []errs.FieldError {
 	if strings.TrimSpace(v) == "" {
 		return []errs.FieldError{blankField(key)}

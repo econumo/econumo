@@ -74,7 +74,7 @@ func TestUpdateDebt_KeyChecksRunOnEdit(t *testing.T) {
 	e.create(t, nil)
 	narrow := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-02-01") })
 	req := e.updateReq(narrow)
-	req.StartDate = nil
+	req.StartDate = ptr("2026-03-10")
 	_, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
 	requireCode(t, err, errs.CodeDebtStartDateTaken)
 
@@ -301,7 +301,7 @@ func TestUpdateDebt_CurrencyChangeResplitsPayments(t *testing.T) {
 	e.rates.multiplier[fixture.USD] = 2
 	req := e.updateReq(res)
 	req.CurrencyId = eur
-	req.Balance, req.Payment, req.Schedule, req.LastPaymentDate = vo.FlexString{}, vo.FlexString{}, "", ""
+	req.AmountBorrowed, req.Payment, req.Schedule, req.LastPaymentDate = vo.FlexString{}, vo.FlexString{}, "", ""
 	got, err := e.svc.UpdateDebt(ctx, e.uid(), req)
 	if err != nil {
 		t.Fatal(err)
@@ -331,10 +331,13 @@ func TestUpdateDebt_CurrencyChangeResplitsPayments(t *testing.T) {
 func TestUpdateDebt_UnchangedCurrencyTouchesNothing(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
-	res := e.create(t, nil)
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-02-15") })
 	tx := e.expense(t, e.account, ymd(2026, 3, 1), "50", "")
 	e.sync(t)
 	before := e.splits(t, res.Id)[tx]
+	if before == "" {
+		t.Fatal("setup: the payment has no split")
+	}
 	// a currency no longer usable stays on the debt that holds it
 	e.currency.unusable[fixture.USD] = true
 
@@ -399,7 +402,7 @@ func TestUpdateDebt_CurrencyChangeRoundingIsNoChangeOfTerms(t *testing.T) {
 	jpy := e.f.Currency(fixture.Currency{Code: "JPY", Symbol: "¥", Name: "Yen"})
 	e.rates.digitsOf = map[string]int{jpy: 0}
 	res := e.create(t, func(r *model.CreateDebtRequest) {
-		r.Balance, r.Payment = vo.NewFlexString("10000.50"), vo.NewFlexString("1000.25")
+		r.AmountBorrowed, r.Payment = vo.NewFlexString("10000.50"), vo.NewFlexString("1000.25")
 	})
 	e.clock.now = ymd(2026, 4, 10)
 
@@ -412,13 +415,13 @@ func TestUpdateDebt_CurrencyChangeRoundingIsNoChangeOfTerms(t *testing.T) {
 	if n := len(e.snapshots(t, res.Id)); n != 1 {
 		t.Fatalf("the stored terms in the new currency wrote a snapshot: %d", n)
 	}
-	if got.CurrencyId != jpy || got.Balance != "10000.5" || got.Payment != "1000.25" {
+	if got.CurrencyId != jpy || got.Balance != "10000.5" || got.AmountBorrowed != "10000.5" || got.Payment != "1000.25" {
 		t.Fatalf("result = %+v", got)
 	}
 
 	back := e.updateReq(res)
 	back.CurrencyId = fixture.USD
-	back.Balance, back.LastPaymentDate, back.Schedule = vo.FlexString{}, "", ""
+	back.AmountBorrowed, back.LastPaymentDate, back.Schedule = vo.FlexString{}, "", ""
 	back.Payment = vo.NewFlexString("1000.25")
 	if _, err := e.svc.UpdateDebt(ctx, e.uid(), back); err != nil {
 		t.Fatalf("a payment equal to the stored one: %v", err)
@@ -448,7 +451,8 @@ func TestUpdateDebt_CurrencyChangeAtSetupMovesTheTailInTheOldCurrency(t *testing
 
 	req := e.updateReq(res)
 	req.CurrencyId = eur
-	req.Balance, req.Payment, req.LastPaymentDate = vo.NewFlexString("9000"), vo.NewFlexString("900"), "2027-04-01"
+	req.AmountBorrowed, req.StartDate = vo.NewFlexString("9000"), ptr("2026-03-10")
+	req.Payment, req.LastPaymentDate = vo.NewFlexString("900"), "2027-04-01"
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatal(err)
 	}
@@ -467,7 +471,8 @@ func TestUpdateDebt_CurrencyChangeAtSetupMovesTheTailInTheOldCurrency(t *testing
 func TestUpdateDebt_CurrencyChangeWithALaterStartMovesTheHeadInTheOldCurrency(t *testing.T) {
 	e := newEnv(t)
 	eur := e.eur()
-	res := e.create(t, nil)
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.LastPaymentDate = "2027-07-01" })
+	e.clock.now = ymd(2026, 7, 1)
 	e.budget.calls, e.budget.transfers = nil, nil
 
 	req := e.updateReq(res)

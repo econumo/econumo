@@ -94,12 +94,14 @@ func (s *Service) firstPlanningDay(ctx context.Context, d *model.Debt) (time.Tim
 	return first, nil
 }
 
-// moveHeadToCategory hands the plans and comments before a debt's new first
-// planning day back to category, the whole category the debt covered: it
-// took them from its old first day on, and its row hides every month before
-// its start. A start that did not move later moves nothing. currency is the
-// one the debt's rows are in.
-func (s *Service) moveHeadToCategory(ctx context.Context, d *model.Debt, category vo.Id, wasFirst time.Time, currency vo.Id) error {
+// moveHead follows a whole-category debt whose first planning day moved.
+// Later: the plans and comments before the new first day go back to category,
+// the whole category the debt covered (it took them from its old first day on,
+// and its row hides every month before its start). Earlier, the debt still
+// covering that whole category: the category's plans and comments in the
+// months it now starts in come to the debt, as a conversion does. currency is
+// the one the debt's rows are in.
+func (s *Service) moveHead(ctx context.Context, d *model.Debt, category vo.Id, wasFirst time.Time, currency vo.Id) error {
 	if s.budget == nil {
 		return nil
 	}
@@ -107,16 +109,21 @@ func (s *Service) moveHeadToCategory(ctx context.Context, d *model.Debt, categor
 	if err != nil {
 		return err
 	}
-	if !first.After(wasFirst) {
-		return nil
+	switch {
+	case first.After(wasFirst):
+		if err := s.lockRows(ctx, d.ID); err != nil {
+			return err
+		}
+		_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
+			FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
+			CurrencyID: currency, SumOnClash: true, BeforeDay: first,
+		})
+	case first.Before(wasFirst) && isWholeCategory(d) && d.CategoryID.Equal(category):
+		_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
+			FromID: category, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
+			CurrencyID: currency, SumOnClash: true, FirstDay: first, BeforeDay: wasFirst,
+		})
 	}
-	if err := s.lockRows(ctx, d.ID); err != nil {
-		return err
-	}
-	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
-		FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
-		CurrencyID: currency, SumOnClash: true, BeforeDay: first,
-	})
 	return err
 }
 
@@ -196,8 +203,12 @@ func (s *Service) ownedDebt(ctx context.Context, userID, id vo.Id) (*model.Debt,
 	return d, nil
 }
 
+// isWholeCategory: the debt takes every expense of its category, from its
+// start date on. A set-up debt always has a start date (the loan's), so the
+// start does not make a debt partial; months before it stay the category's
+// through the planning bounds.
 func isWholeCategory(d *model.Debt) bool {
-	return d.PayeeID == nil && d.TagID == nil && d.LabelID == nil && d.StartDate == nil
+	return d.PayeeID == nil && d.TagID == nil && d.LabelID == nil
 }
 
 func sameIdPtr(a, b *vo.Id) bool {
@@ -255,17 +266,42 @@ func termsFloats(t model.DebtTerms, digits int) model.MathSnapshot {
 		Schedule: t.Schedule, Last: t.LastPaymentDate, Digits: digits}
 }
 
-// validateTerms checks terms about to become a snapshot as of terms.AsOf, in
-// a currency with the given fraction digits.
+// validateTerms checks terms about to become a snapshot as of terms.AsOf
+// after the origin (a balance now), in a currency with the given fraction
+// digits. A balance of 0 needs no payments left.
 func validateTerms(t model.DebtTerms, digits int) error {
+	if err := validatePayment(t.Payment); err != nil {
+		return err
+	}
+	if !t.Balance.IsGreaterThan(vo.NewDecimal("0")) {
+		return nil
+	}
 	if !t.LastPaymentDate.After(t.AsOf) {
 		return fieldError("lastPaymentDate", "The last payment date must be after today.", errs.CodeDebtLastPaymentInPast)
 	}
+	return validateCover(t, digits)
+}
+
+// validateOrigin checks the loan's facts: the origin as of the start date,
+// which today may not precede, ending on the last payment date.
+func validateOrigin(o model.DebtTerms, today time.Time, digits int) error {
+	if err := validatePayment(o.Payment); err != nil {
+		return err
+	}
+	if o.AsOf.After(today) {
+		return fieldError("startDate", "The start date must be today or earlier.", errs.CodeDebtStartInFuture)
+	}
+	if !o.LastPaymentDate.After(o.AsOf) {
+		return fieldError("lastPaymentDate", "The last payment date must be after the start date.", errs.CodeDebtLastPaymentBeforeStart)
+	}
+	return validateCover(o, digits)
+}
+
+// validateCover: the payments due after the as-of day must repay the balance,
+// within the projection's horizon.
+func validateCover(t model.DebtTerms, digits int) error {
 	if model.DebtTermTooLong(t.AsOf, t.LastPaymentDate) {
 		return fieldError("lastPaymentDate", "This value is out of range.", errs.CodeOutOfRange)
-	}
-	if err := validatePayment(t.Payment); err != nil {
-		return err
 	}
 	m := termsFloats(t, digits)
 	n := len(model.DueDatesBetween(m.Schedule, m.Last, m.AsOf, m.Last))
@@ -283,14 +319,17 @@ func validatePayment(p vo.DecimalNumber) error {
 }
 
 func termsDiffer(a, b model.DebtTerms) bool {
-	return !a.Balance.Equals(b.Balance) || !a.Payment.Equals(b.Payment) ||
+	return !a.AsOf.Equal(b.AsOf) || !a.Balance.Equals(b.Balance) || !a.Payment.Equals(b.Payment) ||
 		a.Schedule != b.Schedule || !a.LastPaymentDate.Equal(b.LastPaymentDate)
 }
 
-func (s *Service) snapshotOf(d *model.Debt, now time.Time) *model.DebtSnapshot {
-	t := d.Current
-	return &model.DebtSnapshot{ID: s.repo.NextIdentity(), DebtID: d.ID, AsOf: t.AsOf, Balance: t.Balance,
+func (s *Service) snapshotOf(debtID vo.Id, t model.DebtTerms, now time.Time) *model.DebtSnapshot {
+	return &model.DebtSnapshot{ID: s.repo.NextIdentity(), DebtID: debtID, AsOf: t.AsOf, Balance: t.Balance,
 		Payment: t.Payment, Schedule: t.Schedule, LastPaymentDate: t.LastPaymentDate, CreatedAt: now}
+}
+
+func snapshotTerms(sn *model.DebtSnapshot) model.DebtTerms {
+	return model.DebtTerms{AsOf: sn.AsOf, Balance: sn.Balance, Payment: sn.Payment, Schedule: sn.Schedule, LastPaymentDate: sn.LastPaymentDate}
 }
 
 // checkClassifications verifies the category is an expense category of the
@@ -375,19 +414,20 @@ func isNotFound(err error) bool {
 	return ok
 }
 
-// debtInput is a create/update body parsed into domain values; the balance and
-// payment are rounded to the debt currency once its digits are known. Without
-// hasTerms the body carries no balance and no last payment date; without
-// hasPayment or hasSchedule an update keeps the stored one.
+// debtInput is a create/update body parsed into domain values; the amounts
+// are rounded to the debt currency once its digits are known. hasOrigin: the
+// body carries the loan's facts (amount borrowed and last payment date, with
+// a start date); hasOwed: a balance now. Without hasPayment or hasSchedule an
+// update keeps the stored one.
 type debtInput struct {
 	name                    string
 	currency, category      vo.Id
 	payee, tag, label       *vo.Id
 	start                   *time.Time
-	balance, payment        vo.DecimalNumber
+	borrowed, owed, payment vo.DecimalNumber
 	schedule                model.RecurringSchedule
 	lastPayment             time.Time
-	hasTerms                bool
+	hasOrigin, hasOwed      bool
 	hasPayment, hasSchedule bool
 }
 
@@ -395,7 +435,7 @@ type debtInput struct {
 type debtBody struct {
 	name, currencyID, categoryID   string
 	payeeID, tagID, labelID, start *string
-	balance, payment               vo.FlexString
+	borrowed, balance, payment     vo.FlexString
 	schedule, lastPayment          string
 }
 
@@ -411,7 +451,8 @@ func parseOptionalID(v *string) (*vo.Id, error) {
 }
 
 func parseInput(b debtBody) (debtInput, error) {
-	in := debtInput{name: b.name, balance: vo.NewDecimal(b.balance.String()), payment: vo.NewDecimal(b.payment.String())}
+	in := debtInput{name: b.name, borrowed: vo.NewDecimal(b.borrowed.String()), owed: vo.NewDecimal(b.balance.String()),
+		payment: vo.NewDecimal(b.payment.String())}
 	var err error
 	if b.currencyID != "" {
 		if in.currency, err = vo.ParseId(b.currencyID); err != nil {
@@ -446,21 +487,19 @@ func parseInput(b debtBody) (debtInput, error) {
 		}
 		in.schedule = sched
 	}
-	// The terms are optional, but only as a pair.
-	hasBalance, hasLast := strings.TrimSpace(b.balance.String()) != "", strings.TrimSpace(b.lastPayment) != ""
-	if !hasBalance && !hasLast {
+	in.hasOwed = strings.TrimSpace(b.balance.String()) != ""
+	// The loan's facts come together, the start date with them.
+	hasBorrowed, hasLast := strings.TrimSpace(b.borrowed.String()) != "", strings.TrimSpace(b.lastPayment) != ""
+	if !hasBorrowed && !hasLast {
 		return in, nil
 	}
-	if !hasBalance || !hasLast {
-		return in, missingTerms(!hasBalance, !hasLast)
-	}
-	if err := in.requirePaymentAndSchedule(); err != nil {
-		return in, err
+	if !hasBorrowed || !hasLast || in.start == nil {
+		return in, missingFacts(!hasBorrowed, in.start == nil, !hasLast)
 	}
 	if in.lastPayment, err = time.Parse(datetime.DateLayout, b.lastPayment); err != nil {
 		return in, err
 	}
-	in.hasTerms = true
+	in.hasOrigin = true
 	return in, nil
 }
 
@@ -478,24 +517,42 @@ func (in debtInput) requirePaymentAndSchedule() error {
 	return errs.NewValidation("Validation failed", missing...)
 }
 
-// changesTerms: a payment or schedule sent that differs from the stored terms.
-func (in debtInput) changesTerms(t model.DebtTerms, digits int) bool {
-	return (in.hasPayment && !in.payment.Round(digits).Equals(t.Payment)) || (in.hasSchedule && in.schedule != t.Schedule)
-}
-
-func missingTerms(balance, lastPayment bool) error {
+// missingFacts names the loan's facts a body left out.
+func missingFacts(borrowed, start, last bool) error {
 	var missing []errs.FieldError
-	if balance {
-		missing = append(missing, errs.FieldError{Key: "balance", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
-	}
-	if lastPayment {
-		missing = append(missing, errs.FieldError{Key: "lastPaymentDate", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	for _, f := range []struct {
+		key  string
+		miss bool
+	}{{"amountBorrowed", borrowed}, {"startDate", start}, {"lastPaymentDate", last}} {
+		if f.miss {
+			missing = append(missing, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+		}
 	}
 	return errs.NewValidation("Validation failed", missing...)
 }
 
-// terms are the snapshot values of the input as of today.
-func (in debtInput) terms(today time.Time, digits int) model.DebtTerms {
-	return model.DebtTerms{AsOf: today, Balance: in.balance.Round(digits), Payment: in.payment.Round(digits),
-		Schedule: in.schedule, LastPaymentDate: in.lastPayment}
+// origin is the debt's first snapshot as the body states it, each fact left
+// out taken from base (the stored origin, or the stored payment and schedule
+// of a debt not set up), the amounts rounded to digits.
+func (in debtInput) origin(base model.DebtTerms, digits int) model.DebtTerms {
+	o := roundedTerms(base, digits)
+	if in.start != nil {
+		o.AsOf = *in.start
+	}
+	if in.hasOrigin {
+		o.Balance, o.LastPaymentDate = in.borrowed.Round(digits), in.lastPayment
+	}
+	if in.hasPayment {
+		o.Payment = in.payment.Round(digits)
+	}
+	if in.hasSchedule {
+		o.Schedule = in.schedule
+	}
+	return o
+}
+
+// owedNow is the balance now as a snapshot as of today under terms t.
+func (in debtInput) owedNow(t model.DebtTerms, today time.Time, digits int) model.DebtTerms {
+	t.AsOf, t.Balance = today, in.owed.Round(digits)
+	return t
 }

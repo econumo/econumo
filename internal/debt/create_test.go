@@ -17,7 +17,8 @@ func TestCreateDebt_ValidatesAndSnapshots(t *testing.T) {
 	if res.Name != "Car loan" || res.Icon != "i" || res.CurrencyId != fixture.USD || res.CategoryId != e.category {
 		t.Errorf("identity = %+v", res)
 	}
-	if res.Balance != "10000" || res.Payment != "1000" || res.Schedule != "monthly" || res.LastPaymentDate != "2027-03-01" || res.StartDate != "" {
+	if res.AmountBorrowed != "10000" || res.Balance != "10000" || res.Payment != "1000" || res.Schedule != "monthly" ||
+		res.LastPaymentDate != "2027-03-01" || res.StartDate != "2026-03-10" {
 		t.Errorf("terms = %+v", res)
 	}
 	if res.CurrentBalance != "10000" || res.PaymentsLeft != 12 || res.IsPaidOff != 0 || res.PayeeId != nil || res.TagId != nil {
@@ -36,15 +37,15 @@ func TestCreateDebt_ValidatesAndSnapshots(t *testing.T) {
 	}
 }
 
-func TestCreateDebt_RefusesLastPaymentInPast(t *testing.T) {
+func TestCreateDebt_RefusesLastPaymentBeforeStart(t *testing.T) {
 	e := newEnv(t)
 	req := e.createReq()
 	req.LastPaymentDate = "2026-03-10"
 	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
-	requireCode(t, err, errs.CodeDebtLastPaymentInPast)
+	requireCode(t, err, errs.CodeDebtLastPaymentBeforeStart)
 }
 
-// A debt created without a balance and a last payment date is not set up: no
+// A debt created without the loan's facts is not set up: no
 // snapshot, and every figure that needs the terms is empty.
 func TestCreateDebt_WithoutTerms(t *testing.T) {
 	e := newEnv(t)
@@ -61,7 +62,7 @@ func TestCreateDebt_WithoutTerms(t *testing.T) {
 		t.Errorf("result = %+v", res)
 	}
 	for name, v := range map[string]string{
-		"balance": res.Balance, "lastPaymentDate": res.LastPaymentDate, "currentBalance": res.CurrentBalance,
+		"amountBorrowed": res.AmountBorrowed, "balance": res.Balance, "lastPaymentDate": res.LastPaymentDate, "currentBalance": res.CurrentBalance,
 		"moneyLeft": res.MoneyLeft, "overpaymentLeft": res.OverpaymentLeft, "overpaidSoFar": res.OverpaidSoFar,
 		"payoffDate": res.PayoffDate, "nextDueDate": res.NextDueDate, "periodRate": res.PeriodRate,
 	} {
@@ -84,17 +85,18 @@ func TestCreateDebt_WithoutTerms(t *testing.T) {
 	}
 }
 
-func TestCreateDebt_TermsPairRequired(t *testing.T) {
+func TestCreateDebt_LoanFactsRequiredTogether(t *testing.T) {
 	e := newEnv(t)
-	req := e.createReq()
-	req.LastPaymentDate = ""
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
-	requireField(t, err, "lastPaymentDate", errs.CodeIsBlank)
-
-	req = e.createReq()
-	req.Balance = vo.FlexString{}
-	_, err = e.svc.CreateDebt(context.Background(), e.uid(), req)
-	requireField(t, err, "balance", errs.CodeIsBlank)
+	for key, mod := range map[string]func(*model.CreateDebtRequest){
+		"lastPaymentDate": func(r *model.CreateDebtRequest) { r.LastPaymentDate = "" },
+		"amountBorrowed":  func(r *model.CreateDebtRequest) { r.AmountBorrowed = vo.FlexString{} },
+		"startDate":       func(r *model.CreateDebtRequest) { r.StartDate = nil },
+	} {
+		req := e.createReq()
+		mod(&req)
+		_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+		requireField(t, err, key, errs.CodeIsBlank)
+	}
 }
 
 func TestCreateDebt_WithoutTermsNeedsAPositivePayment(t *testing.T) {
@@ -143,7 +145,7 @@ func TestCheckKeys_LabelsTellDebtsApart(t *testing.T) {
 	_, err = e.svc.CreateDebt(ctx, e.uid(), req)
 	requireCode(t, err, errs.CodeDebtStartDateTaken)
 
-	req.StartDate = ptr("2026-06-01")
+	req.StartDate = ptr("2026-03-01")
 	if _, err := e.svc.CreateDebt(ctx, e.uid(), req); err != nil {
 		t.Fatalf("same label with a distinct start date: %v", err)
 	}
@@ -187,7 +189,7 @@ func TestCreateDebt_RefusesUnusableCurrency(t *testing.T) {
 func TestCreateDebt_RefusesPaymentsDontCover(t *testing.T) {
 	e := newEnv(t)
 	req := e.createReq()
-	req.Balance = vo.NewFlexString("20000")
+	req.AmountBorrowed = vo.NewFlexString("20000")
 	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
 	requireCode(t, err, errs.CodeDebtPaymentsDontCover)
 }
@@ -199,7 +201,7 @@ func TestCreateDebt_RefusesPaymentsDontCoverInAPreciseCurrency(t *testing.T) {
 	e.rates.digits = 8
 	req := e.createReq()
 	// nine monthly dues after Mar 10, 2026: Apr 1 to Dec 1
-	req.Balance, req.Payment, req.LastPaymentDate = vo.NewFlexString("0.01"), vo.NewFlexString("0.001"), "2026-12-01"
+	req.AmountBorrowed, req.Payment, req.LastPaymentDate = vo.NewFlexString("0.01"), vo.NewFlexString("0.001"), "2026-12-01"
 	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
 	requireCode(t, err, errs.CodeDebtPaymentsDontCover)
 
@@ -277,11 +279,11 @@ func TestCreateDebt_WorksWithoutBudgetPeer(t *testing.T) {
 	e.create(t, nil)
 }
 
-// A blank start date passes the request's validation, so the service must
-// read it as none rather than fail to parse it.
+// A blank start date passes the request's validation of a debt without terms,
+// so the service must read it as none rather than fail to parse it.
 func TestCreateDebt_BlankStartDateIsNone(t *testing.T) {
 	e := newEnv(t)
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr(" ") })
+	res := e.create(t, func(r *model.CreateDebtRequest) { withoutTerms(r); r.StartDate = ptr(" ") })
 	if res.StartDate != "" {
 		t.Fatalf("start date = %q, want none", res.StartDate)
 	}
@@ -296,7 +298,7 @@ func TestCreateDebt_TermBeyondTheProjectionIsRefused(t *testing.T) {
 	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
 	requireCode(t, err, errs.CodeOutOfRange)
 	req.LastPaymentDate = "2126-03-01"
-	req.Balance = vo.NewFlexString("1200000")
+	req.AmountBorrowed = vo.NewFlexString("1200000")
 	if _, err := e.svc.CreateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatalf("a 100-year term is allowed: %v", err)
 	}

@@ -10,19 +10,23 @@ import (
 )
 
 // UpdateDebt saves a debt's name, currency, matching filters, start date and
-// terms. A change to a set-up debt's terms needs all of them and starts a new
-// snapshot; a body without a balance and a last payment date keeps the stored
-// terms, so a stale screen renaming the debt cannot write old ones back. A
-// debt not set up is set up by a body carrying a balance and a last payment
-// date (its first snapshot, as of today); without them only its payment and
-// schedule change, each kept when left out.
+// terms. A debt not set up is set up by a body carrying the loan's facts
+// (amount borrowed, start date, last payment date; the origin as of the start
+// date, plus a snapshot as of today with a balance now); without them only its
+// payment, schedule and start date change, each of the first two kept when
+// left out. On a set-up debt each fact left out keeps the stored one, so a
+// stale screen renaming the debt cannot write old ones back; a fact that
+// differs is a correction: the origin is rewritten (a later snapshot taking
+// the corrected payment, schedule and last payment date, its balance kept)
+// and every payment is split again. A balance now appends a snapshot as of
+// today.
 func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.UpdateDebtRequest) (*model.DebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
 	in, err := parseInput(debtBody{name: req.Name, currencyID: req.CurrencyId, categoryID: req.CategoryId,
-		payeeID: req.PayeeId, tagID: req.TagId, labelID: req.LabelId, start: req.StartDate,
+		payeeID: req.PayeeId, tagID: req.TagId, labelID: req.LabelId, start: req.StartDate, borrowed: req.AmountBorrowed,
 		balance: req.Balance, payment: req.Payment, schedule: req.Schedule, lastPayment: req.LastPaymentDate})
 	if err != nil {
 		return nil, err
@@ -64,14 +68,11 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if err != nil {
 			return err
 		}
-		// the stored terms as the request can state them in that currency:
-		// numbers differing only by its rounding are no change of terms
-		var stored model.DebtTerms
-		if cur.IsSetUp() {
-			stored = roundedTerms(*cur.Current, digits)
+		if cur.IsSetUp() && in.start == nil {
+			return missingFacts(false, true, false)
 		}
-		if cur.IsSetUp() && !in.hasTerms && in.changesTerms(stored, digits) {
-			return missingTerms(true, true)
+		if !cur.IsSetUp() && !in.hasOrigin && in.hasOwed {
+			return missingFacts(true, in.start == nil, true)
 		}
 		wasWhole, wasCategory, wasSetUp := isWholeCategory(cur), cur.CategoryID, cur.IsSetUp()
 		keyChanged := !cur.CategoryID.Equal(in.category) || !sameIdPtr(cur.PayeeID, in.payee) ||
@@ -95,16 +96,20 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 				return err
 			}
 		}
-		changed := false
-		if in.hasTerms {
-			terms := in.terms(today, digits)
-			if changed = !cur.IsSetUp() || termsDiffer(stored, terms); changed {
-				if err := validateTerms(terms, digits); err != nil {
-					return err
-				}
-				cur.SetTerms(terms)
+		resplit := false
+		var added []model.DebtTerms
+		switch {
+		case !cur.IsSetUp() && in.hasOrigin:
+			if added, err = in.setupTerms(model.DebtTerms{Payment: cur.Payment, Schedule: cur.Schedule}, today, digits); err != nil {
+				return err
 			}
-		} else if !cur.IsSetUp() {
+			cur.AmountBorrowed = added[0].Balance
+			cur.SetTerms(added[len(added)-1])
+		case cur.IsSetUp():
+			if resplit, added, err = s.correctTerms(ctx, cur, in, today, digits); err != nil {
+				return err
+			}
+		default:
 			if in.hasPayment {
 				cur.Payment = in.payment.Round(digits)
 				if err := validatePayment(cur.Payment); err != nil {
@@ -119,13 +124,13 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if err := s.repo.Save(ctx, cur); err != nil {
 			return err
 		}
-		if changed {
-			if err := s.repo.AddSnapshot(ctx, s.snapshotOf(cur, now)); err != nil {
+		for _, t := range added {
+			if err := s.repo.AddSnapshot(ctx, s.snapshotOf(cur.ID, t, now)); err != nil {
 				return err
 			}
 		}
 		// splits are in the debt's currency: the next sync splits again
-		if currencyChanged || (!wasSetUp && cur.IsSetUp()) {
+		if currencyChanged || resplit || (!wasSetUp && cur.IsSetUp()) {
 			if err := s.dropSplits(ctx, cur.ID); err != nil {
 				return err
 			}
@@ -140,7 +145,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 			}
 		}
 		if !wasFirst.IsZero() {
-			if err := s.moveHeadToCategory(ctx, cur, wasCategory, wasFirst, oldCurrency); err != nil {
+			if err := s.moveHead(ctx, cur, wasCategory, wasFirst, oldCurrency); err != nil {
 				return err
 			}
 		}
@@ -218,7 +223,7 @@ func (s *Service) MarkDebtPaidOff(ctx context.Context, userID vo.Id, req model.M
 			return err
 		}
 		d = cur
-		return s.repo.AddSnapshot(ctx, s.snapshotOf(cur, now))
+		return s.repo.AddSnapshot(ctx, s.snapshotOf(cur.ID, *cur.Current, now))
 	})
 	if err != nil {
 		return nil, err
@@ -245,8 +250,66 @@ func (s *Service) stateNow(ctx context.Context, d *model.Debt) (*debtState, erro
 	return nil, errs.NewNotFound("Debt not found")
 }
 
-// dropSplits removes the provisional zero-interest splits a debt collected
-// before setup, so the next sync splits those payments by the new terms.
+// correctTerms applies a body to a set-up debt: a fact that differs from the
+// stored origin (amounts compared as the request can state them in the
+// debt's currency) rewrites the origin and, with the corrected payment,
+// schedule and last payment date, every later snapshot, their balances kept;
+// resplit then asks for every payment to be split again. A balance now is
+// returned as a snapshot to add, unless the latest one already says it as of
+// today. cur's current terms follow.
+func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInput, today time.Time, digits int) (resplit bool, added []model.DebtTerms, err error) {
+	snaps, err := s.repo.Snapshots(ctx, []vo.Id{cur.ID})
+	if err != nil {
+		return false, nil, err
+	}
+	if len(snaps) == 0 {
+		return false, nil, errs.NewNotFound("Debt not found")
+	}
+	stored := roundedTerms(snapshotTerms(snaps[0]), digits)
+	origin := in.origin(stored, digits)
+	latest := snapshotTerms(snaps[len(snaps)-1])
+	if termsDiffer(stored, origin) {
+		if err := validateOrigin(origin, today, digits); err != nil {
+			return false, nil, err
+		}
+		for i, sn := range snaps {
+			t := origin
+			if i > 0 {
+				t = snapshotTerms(sn)
+				t.Payment, t.Schedule, t.LastPaymentDate = origin.Payment, origin.Schedule, origin.LastPaymentDate
+				if t.AsOf.Before(origin.AsOf) {
+					return false, nil, fieldError("startDate", "This value is out of range.", errs.CodeOutOfRange)
+				}
+				if err := validateTerms(t, digits); err != nil {
+					return false, nil, err
+				}
+			}
+			sn.AsOf, sn.Balance, sn.Payment, sn.Schedule, sn.LastPaymentDate = t.AsOf, t.Balance, t.Payment, t.Schedule, t.LastPaymentDate
+			if err := s.repo.UpdateSnapshot(ctx, sn); err != nil {
+				return false, nil, err
+			}
+			latest = t
+		}
+		cur.AmountBorrowed, resplit = origin.Balance, true
+	}
+	if in.hasOwed {
+		owed := in.owedNow(latest, today, digits)
+		if !latest.AsOf.Equal(today) || !roundedTerms(latest, digits).Balance.Equals(owed.Balance) {
+			if err := validateTerms(owed, digits); err != nil {
+				return false, nil, err
+			}
+			added, latest = append(added, owed), owed
+		}
+	}
+	if resplit || len(added) > 0 {
+		cur.SetTerms(latest)
+	}
+	return resplit, added, nil
+}
+
+// dropSplits removes a debt's stored splits (the provisional zero-interest
+// ones collected before setup, or those a correction or a currency change
+// made stale), so the next sync splits those payments by the terms now.
 func (s *Service) dropSplits(ctx context.Context, id vo.Id) error {
 	splits, err := s.repo.Splits(ctx, []vo.Id{id})
 	if err != nil {

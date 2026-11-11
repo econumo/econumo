@@ -20,16 +20,17 @@ import (
 )
 
 type (
-	debtRow          = sqlitegen.Debt
-	upsertParams     = sqlitegen.UpsertDebtParams
-	snapshotParams   = sqlitegen.InsertDebtSnapshotParams
-	splitParams      = sqlitegen.InsertDebtSplitParams
-	candidateRow     = sqlitegen.CandidateDebtTransactionsRow
-	reassignCatParam = sqlitegen.ReassignDebtCategoryParams
-	reassignPayParam = sqlitegen.ReassignDebtPayeeParams
-	reassignTagParam = sqlitegen.ReassignDebtTagParams
-	reassignLblParam = sqlitegen.ReassignDebtLabelParams
-	txLabelRow       = sqlitegen.TransactionsLabel
+	debtRow              = sqlitegen.Debt
+	upsertParams         = sqlitegen.UpsertDebtParams
+	snapshotParams       = sqlitegen.InsertDebtSnapshotParams
+	updateSnapshotParams = sqlitegen.UpdateDebtSnapshotParams
+	splitParams          = sqlitegen.InsertDebtSplitParams
+	candidateRow         = sqlitegen.CandidateDebtTransactionsRow
+	reassignCatParam     = sqlitegen.ReassignDebtCategoryParams
+	reassignPayParam     = sqlitegen.ReassignDebtPayeeParams
+	reassignTagParam     = sqlitegen.ReassignDebtTagParams
+	reassignLblParam     = sqlitegen.ReassignDebtLabelParams
+	txLabelRow           = sqlitegen.TransactionsLabel
 )
 
 type querier interface {
@@ -39,6 +40,7 @@ type querier interface {
 	UpsertDebt(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteDebt(ctx context.Context, db backend.DBTX, id string) error
 	InsertDebtSnapshot(ctx context.Context, db backend.DBTX, p snapshotParams) error
+	UpdateDebtSnapshot(ctx context.Context, db backend.DBTX, p updateSnapshotParams) error
 	InsertDebtSplit(ctx context.Context, db backend.DBTX, p splitParams) error
 	CandidateDebtTransactions(ctx context.Context, db backend.DBTX, categoryID *string) ([]candidateRow, error)
 	DebtUsesCategory(ctx context.Context, db backend.DBTX, id string) (bool, error)
@@ -131,6 +133,10 @@ func (r *Repo) Save(ctx context.Context, d *model.Debt) error {
 		s := dateText(*d.StartDate)
 		p.StartDate = &s
 	}
+	if d.IsSetUp() {
+		borrowed := d.AmountBorrowed.String()
+		p.AmountBorrowed = &borrowed
+	}
 	return r.q.UpsertDebt(ctx, r.db(ctx), p)
 }
 
@@ -148,6 +154,17 @@ func (r *Repo) AddSnapshot(ctx context.Context, s *model.DebtSnapshot) error {
 		Schedule:        string(s.Schedule),
 		LastPaymentDate: dateText(s.LastPaymentDate),
 		CreatedAt:       s.CreatedAt,
+	})
+}
+
+func (r *Repo) UpdateSnapshot(ctx context.Context, s *model.DebtSnapshot) error {
+	return r.q.UpdateDebtSnapshot(ctx, r.db(ctx), updateSnapshotParams{
+		ID:              s.ID.String(),
+		AsOf:            dateText(s.AsOf),
+		Balance:         s.Balance.String(),
+		Payment:         s.Payment.String(),
+		Schedule:        string(s.Schedule),
+		LastPaymentDate: dateText(s.LastPaymentDate),
 	})
 }
 
@@ -262,7 +279,7 @@ func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) 
 	for rows.Next() {
 		var row debtRow
 		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID, &row.LabelID,
-			&row.StartDate, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
+			&row.StartDate, &row.AmountBorrowed, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
 			&row.CreatedDay, &row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -274,7 +291,7 @@ func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) 
 	return hydrateAll(scanned)
 }
 
-const debtCols = "id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at"
+const debtCols = "id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at"
 
 // The id-list reads below are hand-built (variadic IN); only the placeholders
 // differ per engine.
@@ -292,7 +309,7 @@ func (r *Repo) ListByOwners(ctx context.Context, ownerIDs []vo.Id) ([]*model.Deb
 	for rows.Next() {
 		var row debtRow
 		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID, &row.LabelID,
-			&row.StartDate, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
+			&row.StartDate, &row.AmountBorrowed, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
 			&row.CreatedDay, &row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -430,6 +447,9 @@ func hydrate(row debtRow) (*model.Debt, error) {
 		CreatedDay: day(row.CreatedDay), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	if row.AsOf != nil && row.Balance != nil && row.LastPaymentDate != nil {
+		if row.AmountBorrowed != nil {
+			d.AmountBorrowed = vo.NewDecimal(*row.AmountBorrowed)
+		}
 		d.Current = &model.DebtTerms{
 			AsOf:            day(*row.AsOf),
 			Balance:         vo.NewDecimal(*row.Balance),

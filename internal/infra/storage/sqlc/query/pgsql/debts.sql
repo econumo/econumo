@@ -2,20 +2,20 @@
 -- the generated parameter types match the sqlite variants.
 
 -- name: GetDebtByID :one
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE id = $1;
 
 -- name: ListDebtsByCategory :many
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE category_id = $1
 ORDER BY created_at, id;
 
 -- name: UpsertDebt :exec
-INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
+INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
 VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.arg(currency_id), sqlc.arg(category_id), sqlc.arg(payee_id), sqlc.arg(tag_id), sqlc.narg(label_id),
-    sqlc.narg(start_date)::text::date, sqlc.narg(as_of)::text::date, sqlc.narg(balance), sqlc.arg(payment), sqlc.arg(schedule),
+    sqlc.narg(start_date)::text::date, sqlc.narg(amount_borrowed), sqlc.narg(as_of)::text::date, sqlc.narg(balance), sqlc.arg(payment), sqlc.arg(schedule),
     sqlc.narg(last_payment_date)::text::date, sqlc.arg(created_day)::text::date, sqlc.arg(created_at), sqlc.arg(updated_at))
 ON CONFLICT (id) DO UPDATE SET
     name              = excluded.name,
@@ -25,6 +25,7 @@ ON CONFLICT (id) DO UPDATE SET
     tag_id            = excluded.tag_id,
     label_id          = excluded.label_id,
     start_date        = excluded.start_date,
+    amount_borrowed   = excluded.amount_borrowed,
     as_of             = excluded.as_of,
     balance           = excluded.balance,
     payment           = excluded.payment,
@@ -39,6 +40,15 @@ DELETE FROM debts WHERE id = $1;
 INSERT INTO debts_snapshots (id, debt_id, as_of, balance, payment, schedule, last_payment_date, created_at)
 VALUES (sqlc.arg(id), sqlc.arg(debt_id), sqlc.arg(as_of)::text::date, sqlc.arg(balance), sqlc.arg(payment), sqlc.arg(schedule),
     sqlc.arg(last_payment_date)::text::date, sqlc.arg(created_at));
+
+-- name: UpdateDebtSnapshot :exec
+-- Only the origin (a debt's first snapshot) is ever rewritten, and a later
+-- snapshot's payment, schedule and last payment date with it: correcting the
+-- loan's facts is a correction, not a change of terms.
+UPDATE debts_snapshots
+SET as_of = sqlc.arg(as_of)::text::date, balance = sqlc.arg(balance), payment = sqlc.arg(payment), schedule = sqlc.arg(schedule),
+    last_payment_date = sqlc.arg(last_payment_date)::text::date
+WHERE id = sqlc.arg(id);
 
 -- name: InsertDebtSplit :exec
 -- Through the transaction row: a payment deleted since it was read inserts

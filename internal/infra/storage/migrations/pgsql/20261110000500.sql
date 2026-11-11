@@ -1,8 +1,9 @@
 -- Budget debts. A debt is one loan or credit line the owner pays down through
 -- a category. The term columns as_of, balance and last_payment_date copy the
 -- latest debts_snapshots row and are written together with every new snapshot;
--- all three are NULL while the debt is not set up (payment and schedule are
--- held either way).
+-- all three, and amount_borrowed, are NULL while the debt is not set up
+-- (payment and schedule are held either way). amount_borrowed is the loan's
+-- amount as of start_date, the balance of the first snapshot (the origin).
 -- created_day is the creation date in the owner's timezone, fixed at creation:
 -- it can start the debt's plannable months, which must not move when the owner
 -- later changes timezone.
@@ -20,6 +21,7 @@ CREATE TABLE debts
     , tag_id            UUID
     , label_id          UUID
     , start_date        DATE
+    , amount_borrowed   NUMERIC(19,8)
     , as_of             DATE
     , balance           NUMERIC(19,8)
     , payment           NUMERIC(19,8) NOT NULL

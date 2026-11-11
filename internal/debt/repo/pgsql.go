@@ -55,6 +55,10 @@ func (pgsqlQuerier) InsertDebtSnapshot(ctx context.Context, db backend.DBTX, p s
 	return pgsqlgen.New(db).InsertDebtSnapshot(ctx, pgsqlgen.InsertDebtSnapshotParams(p))
 }
 
+func (pgsqlQuerier) UpdateDebtSnapshot(ctx context.Context, db backend.DBTX, p updateSnapshotParams) error {
+	return pgsqlgen.New(db).UpdateDebtSnapshot(ctx, pgsqlgen.UpdateDebtSnapshotParams(p))
+}
+
 func (pgsqlQuerier) InsertDebtSplit(ctx context.Context, db backend.DBTX, p splitParams) error {
 	return pgsqlgen.New(db).InsertDebtSplit(ctx, pgsqlgen.InsertDebtSplitParams(p))
 }

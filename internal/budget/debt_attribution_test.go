@@ -65,6 +65,10 @@ type attrHarness struct {
 
 var attrToday = time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
 
+// attrStart is the start date of the harness's loans; each also states its
+// balance now (as of the harness's today), so its figures follow from that.
+var attrStart = "2026-01-01"
+
 func newAttrHarness(t *testing.T) *attrHarness {
 	t.Helper()
 	db := dbtest.New(t)
@@ -132,7 +136,7 @@ func (h *attrHarness) createDebt(t *testing.T) string {
 	t.Helper()
 	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
 		Name: "Mortgage", CurrencyId: fixture.USD, CategoryId: h.loan,
-		Balance: vo.NewFlexString("10000"), Payment: vo.NewFlexString("1000"),
+		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("10000"), Balance: vo.NewFlexString("10000"), Payment: vo.NewFlexString("1000"),
 		Schedule: "monthly", LastPaymentDate: "2027-06-01",
 	})
 	if err != nil {

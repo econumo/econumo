@@ -233,20 +233,21 @@ func (e *env) addLabel(t *testing.T, txID, labelID string) {
 	}
 }
 
-// withoutTerms leaves the balance and the last payment date out: the debt is
-// created not set up.
+// withoutTerms leaves the loan's facts out: the debt is created not set up.
 func withoutTerms(r *model.CreateDebtRequest) {
-	r.Balance, r.LastPaymentDate = vo.FlexString{}, ""
+	r.AmountBorrowed, r.StartDate, r.Balance, r.LastPaymentDate = vo.FlexString{}, nil, vo.FlexString{}, ""
 }
 
 func (e *env) uid() vo.Id { return vo.MustParseId(e.user) }
 
 func ptr(s string) *string { return &s }
 
+// createReq is a loan of 10000 taken today (march10), its origin the same
+// snapshot a balance of 10000 as of today makes.
 func (e *env) createReq() model.CreateDebtRequest {
 	return model.CreateDebtRequest{
 		Name: "Car loan", CurrencyId: fixture.USD, CategoryId: e.category,
-		Balance: vo.NewFlexString("10000"), Payment: vo.NewFlexString("1000"),
+		AmountBorrowed: vo.NewFlexString("10000"), StartDate: ptr("2026-03-10"), Payment: vo.NewFlexString("1000"),
 		Schedule: "monthly", LastPaymentDate: "2027-03-01",
 	}
 }
@@ -273,7 +274,7 @@ func (e *env) updateReq(res *model.DebtResult) model.UpdateDebtRequest {
 	return model.UpdateDebtRequest{
 		Id: res.Id, Name: res.Name, CurrencyId: res.CurrencyId, CategoryId: res.CategoryId,
 		PayeeId: res.PayeeId, TagId: res.TagId, LabelId: res.LabelId, StartDate: startPtr,
-		Balance: vo.NewFlexString(res.Balance), Payment: vo.NewFlexString(res.Payment),
+		AmountBorrowed: vo.NewFlexString(res.AmountBorrowed), Payment: vo.NewFlexString(res.Payment),
 		Schedule: res.Schedule, LastPaymentDate: res.LastPaymentDate,
 	}
 }

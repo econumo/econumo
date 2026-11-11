@@ -2386,6 +2386,8 @@
       "category_not_expense": "Uma dívida precisa de uma categoria de despesa.",
       "removal_unconfirmed": "Isto elimina os montantes planeados e os comentários desta dívida nos seus orçamentos; confirme para continuar.",
       "last_payment_in_past": "A data do último pagamento tem de ser posterior a hoje.",
+      "last_payment_before_start": "A data do último pagamento tem de ser posterior à data de início.",
+      "start_in_future": "A data de início tem de ser hoje ou anterior.",
       "not_set_up": "Conclua primeiro a configuração desta dívida."
     },
     "authserver": {

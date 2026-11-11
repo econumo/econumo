@@ -94,7 +94,7 @@ func (h *Handlers) GetDebtForecast(w http.ResponseWriter, r *http.Request) {
 // CreateDebt handles POST /api/v1/debt/create-debt (auth).
 //
 // @Summary     Create a debt
-// @Description Creates a debt tracked through an expense category, optionally narrowed by payee, tag, label and start date. Balance and lastPaymentDate are optional as a pair: without them the debt is created not set up (isSetUp 0), collecting its payments without figures.
+// @Description Creates a debt tracked through an expense category, optionally narrowed by payee, tag and label. amountBorrowed, startDate and lastPaymentDate are the loan's facts and come together (a missing one is common.is_blank): the debt's first snapshot is amountBorrowed as of startDate (debt.start_in_future after today, debt.last_payment_before_start unless lastPaymentDate is later), and what is owed follows from the payments recorded since. An optional balance (owed now) adds a snapshot as of today. Without the facts the debt is created not set up (isSetUp 0), collecting its payments without figures; a startDate alone then only bounds which payments count.
 // @Tags        Debt
 // @Accept      json
 // @Produce     json
@@ -113,7 +113,7 @@ func (h *Handlers) CreateDebt(w http.ResponseWriter, r *http.Request) {
 // UpdateDebt handles POST /api/v1/debt/update-debt (auth).
 //
 // @Summary     Update a debt
-// @Description Updates a debt's name, key and terms; changed terms start a new snapshot. A body without balance and lastPaymentDate keeps the stored terms (no snapshot), and a payment or schedule left out keeps the stored one; on a set-up debt a payment or schedule that differs from the stored one is a change of terms and needs balance and lastPaymentDate too. A debt not set up is set up by a body carrying balance and lastPaymentDate (its first snapshot, as of today); without them only its payment, schedule and key change. A currencyId other than the stored one moves the debt to that currency (refused with currency.not_available when the user may not use it): the amounts sent, or the stored ones when left out, are read in it unconverted, the payments are split again and the budget rows follow; empty keeps the stored currency. tagId and labelId are exclusive (common.invalid_choice on labelId).
+// @Description Updates a debt's name, key and terms. A debt not set up is set up by a body carrying amountBorrowed, startDate and lastPaymentDate (its first snapshot as of startDate, plus one as of today with a balance); without them only its payment, schedule, start date and key change. On a set-up debt startDate is required, and amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored ones; one that differs corrects the loan's facts: the first snapshot is rewritten (a later one takes the corrected payment, schedule and last payment date, keeping its balance) and every payment is split again. A balance (owed now) adds a snapshot as of today. A currencyId other than the stored one moves the debt to that currency (refused with currency.not_available when the user may not use it): the amounts sent, or the stored ones when left out, are read in it unconverted, the payments are split again and the budget rows follow; empty keeps the stored currency. tagId and labelId are exclusive (common.invalid_choice on labelId).
 // @Tags        Debt
 // @Accept      json
 // @Produce     json

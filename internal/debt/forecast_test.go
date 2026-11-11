@@ -150,10 +150,12 @@ func TestGetDebtForecast_ActiveBudgetOrScheduleOnly(t *testing.T) {
 	}
 }
 
-// A plan outside the debt's planning life never reaches the forecast.
+// A plan outside the debt's planning life never reaches the forecast: a loan
+// whose term ended in December, still owing what was never recorded, keeps
+// being projected, but May is past its life.
 func TestGetDebtForecast_IgnoresPlansOutsideTheLife(t *testing.T) {
 	e := newEnv(t)
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-08-01") })
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate, r.LastPaymentDate = ptr("2025-01-01"), "2025-12-01" })
 	budget := fixture.NewID()
 	e.svc.SetBudgetPlans(&fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
 		budget: {Name: "Family", PeriodStartDay: 1, Plans: map[string]string{"2026-05-01": "5000"}},

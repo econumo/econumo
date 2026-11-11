@@ -2386,6 +2386,8 @@
       "category_not_expense": "A debt needs an expense category.",
       "removal_unconfirmed": "This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.",
       "last_payment_in_past": "The last payment date must be after today.",
+      "last_payment_before_start": "The last payment date must be after the start date.",
+      "start_in_future": "The start date must be today or earlier.",
       "not_set_up": "Finish setting up this debt first."
     },
     "authserver": {

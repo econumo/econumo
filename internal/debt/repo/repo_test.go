@@ -46,6 +46,7 @@ func (e *env) debt(id string) *model.Debt {
 		CategoryID: vo.MustParseId(e.category), Name: "Car loan",
 		CreatedDay: time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC), CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
+	d.AmountBorrowed = vo.NewDecimal("12000.25")
 	d.SetTerms(model.DebtTerms{
 		AsOf: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), Balance: vo.NewDecimal("10000.5"), Payment: vo.NewDecimal("250"),
 		Schedule: model.RecurringScheduleMonthly, LastPaymentDate: time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC),
@@ -90,8 +91,8 @@ func TestRepo_SaveGetDebtRoundTrip(t *testing.T) {
 	if c.Balance.String() != "10000.5" || c.Payment.String() != "250" || c.Schedule != model.RecurringScheduleMonthly {
 		t.Errorf("terms = %+v", c)
 	}
-	if got.Payment.String() != "250" || got.Schedule != model.RecurringScheduleMonthly {
-		t.Errorf("debt payment/schedule = %s / %s", got.Payment, got.Schedule)
+	if got.Payment.String() != "250" || got.Schedule != model.RecurringScheduleMonthly || got.AmountBorrowed.String() != "12000.25" {
+		t.Errorf("debt payment/schedule/borrowed = %s / %s / %s", got.Payment, got.Schedule, got.AmountBorrowed)
 	}
 	if !got.CreatedAt.Equal(fixedTime) || !got.UpdatedAt.Equal(fixedTime) {
 		t.Errorf("timestamps = %v / %v", got.CreatedAt, got.UpdatedAt)
@@ -190,6 +191,34 @@ func TestRepo_SnapshotsOrdered(t *testing.T) {
 	}
 	if s := got[0]; s.Schedule != model.RecurringScheduleMonthly || s.Payment.String() != "100" || s.AsOf.IsZero() {
 		t.Errorf("snapshot fields = %+v", s)
+	}
+}
+
+func TestRepo_UpdateSnapshotRewritesTheOrigin(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	d := e.debt(fixture.NewID())
+	if err := e.repo.Save(ctx, d); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	origin := &model.DebtSnapshot{ID: e.repo.NextIdentity(), DebtID: d.ID, AsOf: at, Balance: vo.NewDecimal("12000"),
+		Payment: vo.NewDecimal("600"), Schedule: model.RecurringScheduleMonthly, LastPaymentDate: at.AddDate(2, 0, 0), CreatedAt: fixedTime}
+	if err := e.repo.AddSnapshot(ctx, origin); err != nil {
+		t.Fatal(err)
+	}
+	origin.AsOf, origin.Balance, origin.Payment = at.AddDate(0, 0, 5), vo.NewDecimal("11000.5"), vo.NewDecimal("700")
+	origin.Schedule, origin.LastPaymentDate = model.RecurringScheduleWeekly, at.AddDate(3, 0, 0)
+	if err := e.repo.UpdateSnapshot(ctx, origin); err != nil {
+		t.Fatalf("UpdateSnapshot: %v", err)
+	}
+	got, err := e.repo.Snapshots(ctx, []vo.Id{d.ID})
+	if err != nil || len(got) != 1 {
+		t.Fatalf("Snapshots = %v, %v", got, err)
+	}
+	if s := got[0]; s.ID != origin.ID || !s.AsOf.Equal(at.AddDate(0, 0, 5)) || s.Balance.String() != "11000.5" || s.Payment.String() != "700" ||
+		s.Schedule != model.RecurringScheduleWeekly || !s.LastPaymentDate.Equal(at.AddDate(3, 0, 0)) || !s.CreatedAt.Equal(fixedTime) {
+		t.Errorf("snapshot = %+v", s)
 	}
 }
 

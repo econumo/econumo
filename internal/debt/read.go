@@ -55,6 +55,7 @@ func (s *Service) result(st *debtState, proj model.Projection, icon string) mode
 		res.IsPaidOff = 1
 	}
 	res.IsSetUp = 1
+	res.AmountBorrowed = d.AmountBorrowed.String()
 	res.Balance, res.LastPaymentDate = d.Current.Balance.String(), dateString(d.Current.LastPaymentDate)
 	res.CurrentBalance, res.PaymentsLeft, res.PeriodsPaid = amountString(proj.CurrentBalance, digits), proj.PaymentsLeft, proj.PeriodsPaid
 	res.MoneyLeft, res.OverpaymentLeft = amountString(proj.MoneyLeft, digits), amountString(proj.OverpaymentLeft, digits)
@@ -207,16 +208,15 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 	return views, nil
 }
 
-// planningBounds: a debt can be planned from its start date, else from the
-// earliest of its first matched payment, its creation day and its first
-// snapshot, to its last payment date, or its payoff once paid off; a budget
-// plans it in the periods holding those days. The creation day is the stored
-// one, taken in the owner's timezone at creation, so every viewer sees the
-// same start and a later timezone change does not move it. Finishing setup
-// never moves the start (its snapshot is dated today), so plans moved at
-// conversion stay in the life; a later start date does, and the update hands
-// the months before it back to the category (moveHeadToCategory). A debt not
-// set up has no end: LastDay is zero.
+// planningBounds: a debt can be planned from its start date (always there
+// once set up: the day the loan began), else from the earliest of its first
+// matched payment, its creation day and its first snapshot, to its last
+// payment date, or its payoff once paid off; a budget plans it in the periods
+// holding those days. The creation day is the stored one, taken in the
+// owner's timezone at creation, so every viewer sees the same start and a
+// later timezone change does not move it. A start that moves (finishing
+// setup, a correction) moves the plans with it for a whole-category debt
+// (moveHead). A debt not set up has no end: LastDay is zero.
 func planningBounds(st *debtState, proj model.Projection) (first, last time.Time) {
 	d := st.debt
 	if d.StartDate != nil {

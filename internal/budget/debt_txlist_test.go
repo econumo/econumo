@@ -149,7 +149,7 @@ func (h *attrHarness) createDebtOn(t *testing.T, categoryID string) string {
 	t.Helper()
 	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
 		Name: "Other", CurrencyId: fixture.USD, CategoryId: categoryID,
-		Balance: vo.NewFlexString("1000"), Payment: vo.NewFlexString("100"),
+		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("1000"), Balance: vo.NewFlexString("1000"), Payment: vo.NewFlexString("100"),
 		Schedule: "monthly", LastPaymentDate: "2027-06-01",
 	})
 	if err != nil {

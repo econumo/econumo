@@ -43,12 +43,13 @@ func TestUpdateDebt_FinishSetupWritesFirstSnapshot(t *testing.T) {
 	e.clock.now = ymd(2026, 4, 10)
 
 	req := e.updateReq(res)
-	req.Balance, req.Payment, req.LastPaymentDate = vo.NewFlexString("9000"), vo.NewFlexString("900"), "2027-04-01"
+	req.AmountBorrowed, req.StartDate = vo.NewFlexString("9000"), ptr("2026-04-10")
+	req.Payment, req.LastPaymentDate = vo.NewFlexString("900"), "2027-04-01"
 	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.IsSetUp != 1 || got.Balance != "9000" || got.Payment != "900" || got.LastPaymentDate != "2027-04-01" ||
+	if got.IsSetUp != 1 || got.Balance != "9000" || got.AmountBorrowed != "9000" || got.Payment != "900" || got.LastPaymentDate != "2027-04-01" ||
 		got.CurrentBalance != "9000" || got.PeriodRate == "" || got.NextDueDate != "2026-05-01" {
 		t.Fatalf("result = %+v", got)
 	}
@@ -84,21 +85,23 @@ func TestUpdateDebt_NotSetUpUpdatesPaymentOnly(t *testing.T) {
 	}
 }
 
-// A changed payment or schedule is a change of terms: without a balance and a
-// last payment date it is refused.
-func TestUpdateDebt_SetUpDebtStillNeedsItsTerms(t *testing.T) {
+// A payment or schedule sent alone corrects the loan's facts: the origin is
+// rewritten, nothing is added.
+func TestUpdateDebt_PaymentAloneCorrectsTheOrigin(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
-	for _, mod := range []func(*model.UpdateDebtRequest){
-		func(r *model.UpdateDebtRequest) { r.Payment = vo.NewFlexString("900") },
-		func(r *model.UpdateDebtRequest) { r.Schedule = "weekly" },
-	} {
-		req := e.updateReq(res)
-		req.Balance, req.LastPaymentDate = vo.FlexString{}, ""
-		mod(&req)
-		_, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
-		requireField(t, err, "balance", "common.is_blank")
-		requireField(t, err, "lastPaymentDate", "common.is_blank")
+	req := e.updateReq(res)
+	req.AmountBorrowed, req.LastPaymentDate = vo.FlexString{}, ""
+	req.Payment, req.Schedule = vo.NewFlexString("900"), "monthly"
+	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Payment != "900" || got.AmountBorrowed != "10000" || got.LastPaymentDate != "2027-03-01" {
+		t.Fatalf("result = %+v", got)
+	}
+	if snaps := e.snapshots(t, res.Id); len(snaps) != 1 || snaps[0].Payment.String() != "900" {
+		t.Fatalf("snapshots = %+v", snaps)
 	}
 }
 
@@ -108,7 +111,7 @@ func TestUpdateDebt_WithoutTermsKeepsNewerTerms(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
 	newer := e.updateReq(res)
-	newer.Balance, newer.Payment, newer.LastPaymentDate = vo.NewFlexString("8000"), vo.NewFlexString("900"), "2027-02-01"
+	newer.AmountBorrowed, newer.Payment, newer.LastPaymentDate = vo.NewFlexString("8000"), vo.NewFlexString("900"), "2027-02-01"
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), newer); err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +123,7 @@ func TestUpdateDebt_WithoutTermsKeepsNewerTerms(t *testing.T) {
 	} {
 		stale := e.updateReq(res)
 		stale.Name, stale.PayeeId = "Renamed", &payee
-		stale.Balance, stale.LastPaymentDate = vo.FlexString{}, ""
+		stale.AmountBorrowed, stale.LastPaymentDate = vo.FlexString{}, ""
 		mod(&stale)
 		got, err := e.svc.UpdateDebt(context.Background(), e.uid(), stale)
 		if err != nil {
@@ -130,8 +133,8 @@ func TestUpdateDebt_WithoutTermsKeepsNewerTerms(t *testing.T) {
 			got.Payment != "900" || got.Schedule != "monthly" || got.LastPaymentDate != "2027-02-01" {
 			t.Fatalf("case %d: result = %+v, want the newer terms kept", i, got)
 		}
-		if n := len(e.snapshots(t, res.Id)); n != 2 {
-			t.Fatalf("case %d: snapshots = %d, want 2 (no new one)", i, n)
+		if n := len(e.snapshots(t, res.Id)); n != 1 {
+			t.Fatalf("case %d: snapshots = %d, want the origin alone", i, n)
 		}
 	}
 }
@@ -151,7 +154,7 @@ func TestUpdateDebt_NotSetUpKeepsPaymentLeftOut(t *testing.T) {
 }
 
 // Payments collected before setup carry a provisional zero interest; setup
-// splits them by the backward estimate from the first snapshot.
+// splits them forward from the origin.
 func TestFinishSetup_ResplitsCollectedPayments(t *testing.T) {
 	e := newEnv(t)
 	res := e.createWithoutTerms(t, nil)
@@ -169,7 +172,7 @@ func TestFinishSetup_ResplitsCollectedPayments(t *testing.T) {
 	}
 
 	req := e.updateReq(res)
-	req.Balance, req.LastPaymentDate = vo.NewFlexString("7500"), "2027-02-01"
+	req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("9500"), ptr("2026-03-10"), "2027-02-01"
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatal(err)
 	}
@@ -188,9 +191,10 @@ func TestFinishSetup_ResplitsCollectedPayments(t *testing.T) {
 	}
 }
 
-// A debt converted in September and set up in November keeps September as
-// its first plannable month, so plans moved at conversion stay visible.
-func TestFinishSetup_KeepsPlanningStart(t *testing.T) {
+// A debt converted in September and set up in November with a loan that
+// began in July plans from July: the whole category's plans of July and
+// August come to it, as at conversion.
+func TestFinishSetup_PlanningStartsAtTheLoanStart(t *testing.T) {
 	e := newEnv(t)
 	e.clock.now = time.Date(2026, 9, 15, 9, 0, 0, 0, time.UTC)
 	res := e.createWithoutTerms(t, nil)
@@ -204,15 +208,21 @@ func TestFinishSetup_KeepsPlanningStart(t *testing.T) {
 	}
 
 	e.clock.now = ymd(2026, 11, 5)
+	e.budget.transfers = nil
 	req := e.updateReq(res)
-	req.Balance, req.LastPaymentDate = vo.NewFlexString("8000"), "2027-08-01"
+	req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("8000"), ptr("2026-07-01"), "2027-08-01"
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatal(err)
 	}
 	v = e.viewOf(t, res.Id)
-	if !v.SetUp || !v.FirstDay.Equal(ymd(2026, 9, 15)) || !v.StartMonth.Equal(ymd(2026, 9, 1)) ||
+	if !v.SetUp || !v.FirstDay.Equal(ymd(2026, 7, 1)) || !v.StartMonth.Equal(ymd(2026, 7, 1)) ||
 		!v.LastDay.Equal(ymd(2027, 8, 1)) || !v.EndMonth.Equal(ymd(2027, 8, 1)) {
 		t.Fatalf("view after setup = %+v", v)
+	}
+	head := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
+		currency: res.CurrencyId, sum: true, first: "2026-07-01", before: "2026-09-15"}
+	if !slices.Contains(e.budget.transfers, head) {
+		t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, head)
 	}
 }
 
@@ -402,20 +412,22 @@ func monthStart(t time.Time) time.Time {
 
 // A later start date on a whole-category debt hands the periods before it
 // back to the category: the debt took them from its creation day on, and its
-// row hides every month before its start. An earlier start, or a debt with a
-// payee, moves nothing back.
-func TestUpdateDebt_LaterStartReturnsTheEarlierMonthsToTheCategory(t *testing.T) {
+// row hides every month before its start. An earlier start takes the
+// category's plans of the months it adds; a debt with a payee moves nothing.
+func TestUpdateDebt_StartMovesTheHeadBetweenCategoryAndDebt(t *testing.T) {
+	const back, toDebt = "back", "to debt"
 	for _, c := range []struct {
 		name  string
 		setUp bool
 		start string
 		payee bool
-		want  bool
+		want  string
 	}{
-		{"not set up, later start", false, "2026-06-01", false, true},
-		{"set up, later start", true, "2026-06-01", false, true},
-		{"earlier start", false, "2026-01-01", false, false},
-		{"with a payee", false, "2026-06-01", true, false},
+		{"not set up, later start", false, "2026-06-01", false, back},
+		{"set up, later start", true, "2026-06-01", false, back},
+		{"earlier start", false, "2026-01-01", false, toDebt},
+		{"set up, earlier start", true, "2026-01-01", false, toDebt},
+		{"with a payee", false, "2026-06-01", true, ""},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			e := newEnv(t)
@@ -425,12 +437,13 @@ func TestUpdateDebt_LaterStartReturnsTheEarlierMonthsToTheCategory(t *testing.T)
 				payee = &p
 			}
 			mod := func(r *model.CreateDebtRequest) {
-				r.PayeeId = payee
+				r.PayeeId, r.LastPaymentDate = payee, "2027-07-01"
 				if !c.setUp {
 					withoutTerms(r)
 				}
 			}
 			res := e.create(t, mod)
+			e.clock.now = ymd(2026, 7, 1)
 			e.budget.transfers = nil
 			req := e.updateReq(res)
 			start := c.start
@@ -439,9 +452,13 @@ func TestUpdateDebt_LaterStartReturnsTheEarlierMonthsToTheCategory(t *testing.T)
 				t.Fatal(err)
 			}
 			var want []transferCall
-			if c.want {
+			switch c.want {
+			case back:
 				want = append(want, transferCall{from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory,
 					currency: res.CurrencyId, sum: true, before: c.start})
+			case toDebt:
+				want = append(want, transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
+					currency: res.CurrencyId, sum: true, first: c.start, before: "2026-03-10"})
 			}
 			if !slices.Equal(e.budget.transfers, want) {
 				t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, want)
@@ -478,7 +495,7 @@ func TestFinishSetup_KeyChangeReturnsTheTailToTheFormerCategory(t *testing.T) {
 			first := e.budget.transfers[0].first
 			e.budget.transfers = nil
 			req := e.updateReq(res)
-			req.Balance, req.LastPaymentDate = vo.NewFlexString("5800"), "2026-09-01"
+			req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("5800"), ptr("2026-03-10"), "2026-09-01"
 			newWhole := c.mod(e, &req)
 			if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 				t.Fatal(err)
@@ -509,7 +526,7 @@ func TestFinishSetup_WholeDebtReturnsTheMonthsAfterItsEnd(t *testing.T) {
 	var setUp *model.DebtResult
 	for _, r := range []*model.DebtResult{res, keyed} {
 		req := e.updateReq(r)
-		req.Balance, req.LastPaymentDate = vo.NewFlexString("5800"), "2026-09-01"
+		req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("5800"), ptr("2026-03-10"), "2026-09-01"
 		got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
 		if err != nil {
 			t.Fatal(err)
@@ -530,7 +547,7 @@ func TestFinishSetup_WholeDebtReturnsTheMonthsAfterItsEnd(t *testing.T) {
 	// already set up: a new end moves nothing
 	e.budget.transfers = nil
 	req := e.updateReq(setUp)
-	req.Balance, req.LastPaymentDate = vo.NewFlexString("5800"), "2026-10-01"
+	req.LastPaymentDate = "2026-10-01"
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatal(err)
 	}

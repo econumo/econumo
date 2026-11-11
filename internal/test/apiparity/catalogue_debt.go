@@ -13,25 +13,27 @@ func init() {
 	debtBody := func(extra map[string]any) map[string]any {
 		body := map[string]any{
 			"name": "Car loan", "currencyId": USD, "categoryId": CatFood,
-			"balance": "100", "payment": "105", "schedule": "weekly", "lastPaymentDate": day(7),
+			"amountBorrowed": "100", "startDate": day(0), "payment": "105", "schedule": "weekly", "lastPaymentDate": day(7),
 		}
 		for k, v := range extra {
 			body[k] = v
 		}
 		return body
 	}
-	// withoutTerms leaves the balance and the last payment date out: the
-	// debt is created not set up.
+	// withoutTerms leaves the loan's facts (amount borrowed, start date, last
+	// payment date) out: the debt is created not set up.
 	withoutTerms := func(extra map[string]any) map[string]any {
 		body := debtBody(extra)
-		delete(body, "balance")
+		delete(body, "amountBorrowed")
+		delete(body, "startDate")
 		delete(body, "lastPaymentDate")
 		return body
 	}
 
-	// debt_crud walks one debt through its life: create, list, get, update the
-	// terms (a new snapshot), rename without terms, mark paid off, delete. A second debt is created
-	// without terms, matching by a label, and then set up.
+	// debt_crud walks one debt through its life: create, list, get, correct
+	// the loan's facts (the origin rewritten), state a balance now (a new
+	// snapshot), rename without terms, mark paid off, delete. A second debt is
+	// created without terms, matching by a label, and then set up.
 	register(Scenario{Name: "debt_crud", Calls: func() []Call {
 		var debtID, draftID string
 		return []Call{
@@ -41,13 +43,17 @@ func init() {
 			{Label: "get", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 			{Label: "update-terms", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{
-					"id": &debtID, "name": "Car loan 2", "categoryId": CatFood, "payeeId": PayeeShop,
-					"balance": "200", "payment": "104", "schedule": "weekly", "lastPaymentDate": day(14),
+					"id": &debtID, "name": "Car loan 2", "categoryId": CatFood, "payeeId": PayeeShop, "startDate": day(0),
+					"amountBorrowed": "200", "payment": "104", "schedule": "weekly", "lastPaymentDate": day(14),
 				}},
 			{Label: "get-after-update", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
-			// no balance, payment, schedule or last payment date: the terms stay
+			{Label: "update-balance-now", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "name": "Car loan 2", "categoryId": CatFood, "payeeId": PayeeShop,
+					"startDate": day(0), "balance": "150"}},
+			// no amount borrowed, balance, payment, schedule or last payment
+			// date: the terms stay
 			{Label: "rename-keeps-terms", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": &debtID, "name": "Car loan 3", "categoryId": CatFood, "payeeId": PayeeShop}},
+				Body: map[string]any{"id": &debtID, "name": "Car loan 3", "categoryId": CatFood, "payeeId": PayeeShop, "startDate": day(0)}},
 			{Label: "mark-paid-off", Method: "POST", Path: "/api/v1/debt/mark-debt-paid-off", Auth: "owner",
 				Body: map[string]any{"id": &debtID}},
 			{Label: "delete", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
@@ -65,7 +71,7 @@ func init() {
 				Body: map[string]any{"id": &draftID}},
 			{Label: "finish-setup", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{"id": &draftID, "name": "Student loan", "categoryId": CatFood, "labelId": LabelWork,
-					"balance": "100", "payment": "105", "schedule": "weekly", "lastPaymentDate": day(7)}},
+					"amountBorrowed": "100", "startDate": day(0), "lastPaymentDate": day(7)}},
 			{Label: "get-after-setup", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &draftID},
 		}
 	}})
@@ -97,7 +103,7 @@ func init() {
 			{Label: "plan", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "elementId": &debtID, "period": month(0), "amount": "105"}},
 			{Label: "change-currency", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": &debtID, "name": "Car loan", "currencyId": &eurID, "categoryId": &categoryID}},
+				Body: map[string]any{"id": &debtID, "name": "Car loan", "currencyId": &eurID, "categoryId": &categoryID, "startDate": day(0)}},
 			{Label: "get-after-change", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 			{Label: "get-budget-after-change", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
 		}
@@ -114,18 +120,22 @@ func init() {
 			create("blank-name", map[string]any{"name": " "}),
 			create("bad-category-id", map[string]any{"categoryId": "nope"}),
 			create("bad-balance", map[string]any{"balance": "-1"}),
+			create("zero-amount-borrowed", map[string]any{"amountBorrowed": "0"}),
 			create("zero-payment", map[string]any{"payment": "0"}),
 			create("bad-schedule", map[string]any{"schedule": "daily"}),
 			create("bad-last-date", map[string]any{"lastPaymentDate": "soon"}),
 			create("bad-start-date", map[string]any{"startDate": "1 Jan"}),
-			create("last-payment-in-past", map[string]any{"lastPaymentDate": day(-1)}),
+			create("last-payment-before-start", map[string]any{"lastPaymentDate": day(-1)}),
+			create("start-in-future", map[string]any{"startDate": day(1)}),
+			create("balance-now-after-last-payment", map[string]any{"startDate": day(-14), "lastPaymentDate": day(-7), "balance": "10"}),
 			create("payments-dont-cover", map[string]any{"payment": "50"}),
 			create("category-not-expense", map[string]any{"categoryId": CatSalary}),
 			create("unknown-category", map[string]any{"categoryId": "c0000000-0000-0000-0000-0000000000ee"}),
 			create("unknown-payee", map[string]any{"payeeId": "20000000-0000-0000-0000-0000000000ee"}),
 			create("unknown-label", map[string]any{"labelId": "30000000-0000-0000-0000-0000000000ee"}),
-			create("terms-pair-missing-last-date", map[string]any{"lastPaymentDate": ""}),
-			create("terms-pair-missing-balance", map[string]any{"balance": ""}),
+			create("loan-facts-missing-last-date", map[string]any{"lastPaymentDate": ""}),
+			create("loan-facts-missing-amount-borrowed", map[string]any{"amountBorrowed": ""}),
+			create("loan-facts-missing-start-date", map[string]any{"startDate": nil}),
 			create("tag-and-label", map[string]any{"tagId": TagWork, "labelId": LabelWork}),
 
 			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
@@ -136,16 +146,16 @@ func init() {
 			create("label-key-conflict", map[string]any{"labelId": LabelWork}),
 			{Label: "err:update-payment-dont-cover", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{
-					"id": &debtID, "name": "Car loan", "categoryId": CatFood, "balance": "100", "payment": "50",
+					"id": &debtID, "name": "Car loan", "categoryId": CatFood, "startDate": day(0), "amountBorrowed": "100", "payment": "50",
 					"schedule": "weekly", "lastPaymentDate": day(7),
 				}},
 			{Label: "err:update-unknown", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{
-					"id": unknownDebt, "name": "x", "categoryId": CatFood, "balance": "100", "payment": "105",
+					"id": unknownDebt, "name": "x", "categoryId": CatFood, "startDate": day(0), "amountBorrowed": "100", "payment": "105",
 					"schedule": "weekly", "lastPaymentDate": day(7),
 				}},
 			{Label: "err:update-blank-id", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": "", "name": "x", "categoryId": CatFood, "balance": "100", "payment": "105",
+				Body: map[string]any{"id": "", "name": "x", "categoryId": CatFood, "startDate": day(0), "amountBorrowed": "100", "payment": "105",
 					"schedule": "weekly", "lastPaymentDate": day(7)}},
 			{Label: "err:get-unknown", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=" + unknownDebt},
 			{Label: "err:get-bad-id", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=nope"},
@@ -269,7 +279,7 @@ func init() {
 			{Label: "err:guest-get", Method: "GET", Auth: "guest", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 			{Label: "err:guest-update", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "guest",
 				Body: map[string]any{
-					"id": &debtID, "name": "Mine now", "categoryId": CatFood, "balance": "100", "payment": "105",
+					"id": &debtID, "name": "Mine now", "categoryId": CatFood, "startDate": day(0), "amountBorrowed": "100", "payment": "105",
 					"schedule": "weekly", "lastPaymentDate": day(7),
 				}},
 			{Label: "err:guest-paid-off", Method: "POST", Path: "/api/v1/debt/mark-debt-paid-off", Auth: "guest",

@@ -13,13 +13,14 @@ import (
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
-// The reference loan: 300000 at 2000 a month, 240 dues on the 20th from
-// 2026-06-20 (five days after the harness's today).
+// The reference loan: 300000 at 2000 a month, taken on 2026-06-01, 240 dues
+// on the 20th from 2026-06-20 (five days after the harness's today).
 func (h *attrHarness) createRefDebt(t *testing.T, extra func(*model.CreateDebtRequest)) string {
 	t.Helper()
+	start := "2026-06-01"
 	req := model.CreateDebtRequest{
 		Name: "Mortgage", CurrencyId: fixture.USD, CategoryId: h.loan,
-		Balance: vo.NewFlexString("300000"), Payment: vo.NewFlexString("2000"),
+		StartDate: &start, AmountBorrowed: vo.NewFlexString("300000"), Balance: vo.NewFlexString("300000"), Payment: vo.NewFlexString("2000"),
 		Schedule: "monthly", LastPaymentDate: "2046-05-20",
 	}
 	if extra != nil {
@@ -238,7 +239,7 @@ func TestGetBudget_PartnerDebtRowVisible(t *testing.T) {
 	car := h.f.Category(fixture.Category{UserID: partner, Name: "Car loan"})
 	res, err := h.debts.CreateDebt(h.ctx, vo.MustParseId(partner), model.CreateDebtRequest{
 		Name: "Car", CurrencyId: fixture.USD, CategoryId: car,
-		Balance: vo.NewFlexString("6000"), Payment: vo.NewFlexString("500"),
+		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("6000"), Balance: vo.NewFlexString("6000"), Payment: vo.NewFlexString("500"),
 		Schedule: "monthly", LastPaymentDate: "2027-05-20",
 	})
 	if err != nil {
@@ -298,13 +299,12 @@ func TestGetBudgetPlan_PlannedExtraMovesPayoff(t *testing.T) {
 
 func TestGetBudgetPlan_OutOfBoundsCellsNotPlannable(t *testing.T) {
 	h := newAttrHarness(t)
-	start := "2026-08-01"
-	debtID := h.createRefDebt(t, func(r *model.CreateDebtRequest) { r.StartDate = &start })
+	debtID := h.createRefDebt(t, nil) // taken on 2026-06-01
 	element := h.f.BudgetElement(fixture.BudgetElement{BudgetID: h.budgetID, ExternalID: debtID, Type: int(model.ElementDebt), CurrencyID: fixture.USD})
-	h.f.BudgetLimit(fixture.BudgetLimit{ElementID: element, Period: "2026-07-01 00:00:00", Amount: "50000"})
-	h.setLimit(t, debtID, "2026-08-01", "2000")
+	h.f.BudgetLimit(fixture.BudgetLimit{ElementID: element, Period: "2026-05-01 00:00:00", Amount: "50000"})
+	h.setLimit(t, debtID, "2026-06-01", "2000")
 
-	row := planDebtRow(h.plan(t, "2026-06-01", "4"), debtID)
+	row := planDebtRow(h.plan(t, "2026-04-01", "4"), debtID)
 	if row == nil {
 		t.Fatal("no plan debt row")
 	}
@@ -313,27 +313,27 @@ func TestGetBudgetPlan_OutOfBoundsCellsNotPlannable(t *testing.T) {
 			t.Errorf("cell %d plannable = %d, want %d", i, row.Cells[i].IsPlannable, want)
 		}
 	}
-	// June's due falls before the debt's start: nothing scheduled, due or
-	// owed is shown there yet.
+	// April's and May's dues fall before the loan's start: nothing
+	// scheduled, due or owed is shown there.
 	for i := 0; i < 2; i++ {
 		if c := row.Cells[i]; c.ScheduledTotal != "0" || c.Upcoming != "0" || c.ClosingBalance != "0" {
 			t.Errorf("cell %d before the start = %+v, want nothing scheduled, due or owed", i, c)
 		}
 	}
 	if c := row.Cells[2]; c.ScheduledTotal != "2000" || c.Upcoming != "2000" {
-		t.Errorf("August cell = %+v, want 2000 scheduled and due", c)
+		t.Errorf("June cell = %+v, want 2000 scheduled and due", c)
 	}
 	if row.Cells[1].Planned != "" {
-		t.Errorf("July's stored plan is out of range, planned = %q", row.Cells[1].Planned)
+		t.Errorf("May's stored plan is out of range, planned = %q", row.Cells[1].Planned)
 	}
 	if row.Cells[2].Planned != "2000" {
-		t.Errorf("August planned = %q, want 2000", row.Cells[2].Planned)
+		t.Errorf("June planned = %q, want 2000", row.Cells[2].Planned)
 	}
 	if row.PayoffDate != row.BasePayoffDate {
 		t.Errorf("an out-of-range plan moved the payoff: %s vs %s", row.PayoffDate, row.BasePayoffDate)
 	}
-	if july := debtRow(h.budgetAt(t, h.owner, "2026-07-01"), debtID); july != nil {
-		t.Errorf("July is before the debt's start, row = %+v", july)
+	if may := debtRow(h.budgetAt(t, h.owner, "2026-05-01"), debtID); may != nil {
+		t.Errorf("May is before the debt's start, row = %+v", may)
 	}
 }
 
@@ -560,7 +560,7 @@ func TestFinishSetup_PlansPastTheEndReturnToTheCategory(t *testing.T) {
 
 	if _, err := h.debts.UpdateDebt(h.ctx, h.owner, model.UpdateDebtRequest{
 		Id: debtID, Name: "Loose", CurrencyId: fixture.USD, CategoryId: h.loan,
-		Balance: vo.NewFlexString("5800"), Payment: vo.NewFlexString("1000"), Schedule: "monthly", LastPaymentDate: "2026-12-01",
+		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("5800"), Balance: vo.NewFlexString("5800"), Payment: vo.NewFlexString("1000"), Schedule: "monthly", LastPaymentDate: "2026-12-01",
 	}); err != nil {
 		t.Fatal(err)
 	}

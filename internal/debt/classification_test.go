@@ -88,7 +88,7 @@ func TestReassignClassification_PaymentsFollowTheMerge(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	src, dst := e.newPayee(), e.newPayee()
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.PayeeId = &src })
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.PayeeId = &src; r.StartDate = ptr("2026-03-01") })
 	tx := e.expense(t, e.account, ymd(2026, 3, 5), "100", src)
 	e.sync(t)
 	if _, ok := e.splits(t, res.Id)[tx]; !ok {
