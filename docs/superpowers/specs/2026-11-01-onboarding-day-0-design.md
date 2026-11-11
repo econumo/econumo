@@ -320,3 +320,29 @@ right, no bold, the accent colour only for progress and the primary button.
   this page is the only home of these steps.
 - Phones open Getting started right after sign-up, like desktop. The old install popup and
   banner stay hidden while onboarding is incomplete (the install step replaces them).
+
+## Revision 2026-11-11: AI review for typed data, and debts from loan categories
+
+Decided with Dmitry. Applies only when the server has an AI provider (`ECONUMO_AI_DSN`);
+without one nothing below runs.
+
+- **The manual steps get the AI review too**, not only an import. After Categories, the
+  categories still on a default icon, and the rows the user added without picking an icon,
+  get an icon from the AI. After Accounts, the accounts still on the import's icon, and the
+  new rows whose icon nobody picked (never the untouched Cash row), get one, beside the
+  savings classification that already ran there. A default category's icon was chosen for
+  it and is kept. Each step counts once against the per-user cap. The page refetches the
+  lists at the same 10, 30 and 90 s as after an import, so the icons show up.
+- **Debts are created automatically** from categories that repay a loan (a mortgage, a car,
+  student or personal loan, credit-line instalments; not rent, utilities, subscriptions,
+  insurance or card spending). The AI names the categories and a name for each debt in the
+  user's language; the debt is created NOT set up (no amount borrowed, start or end), paid
+  monthly, over the whole category, so it takes the category's plans and appears in the
+  budget's Debts block with Finish setup. The user finishes or deletes it.
+  - After an import, the payment is the median of the category's months with spending among
+    the last six complete periods; a category paid in fewer than two of them gets no debt.
+  - After the plan step, the payment is the amount planned for the category in the current
+    period; a category without a plan above zero gets no debt. This also runs after an
+    import, adding categories the history could not cover.
+  - A category that already has a debt is skipped, so running detection again never makes a
+    second one.

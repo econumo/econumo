@@ -448,6 +448,24 @@ navigation (single-pane vs sidebar).
       budget the import created flags the accounts the AI judges savings, and
       an icon the user changed meanwhile is kept. Without AI the icons stay
       as imported.
+- [ ] With AI, a category added on the Categories step without picking an icon,
+      and a new account row whose icon was never picked, get a matching icon a
+      few seconds after Save and continue (the lists refetch about 10 s, 30 s
+      and 90 s later); a default category (Groceries, ...), a row whose icon the
+      user picked, and the untouched Cash row keep theirs. Without AI nothing
+      changes.
+- [ ] With AI, after an import whose history shows a loan repayment (e.g. a
+      "Mortgage" category paid in at least 2 of the last 6 complete months), a
+      debt named in the UI language appears in the budget's Debts block
+      without a reload, not set up (Finish setup), monthly, its payment the
+      median of the paid months; the category's Plan moves to the debt row. A
+      loan category paid only once gets none, nor do rent, utilities,
+      subscriptions, insurance or income categories. The debt can be deleted.
+- [ ] With AI, on a manual setup, planning a loan category (e.g. "Car loan"
+      450) on Budget & plan creates a not-set-up monthly debt with payment 450
+      shortly after Save and continue; an unplanned (blank or 0) loan category
+      gets none; a category that already has a debt (e.g. one the import
+      created) never gets a second. Without AI no debt is ever created.
 - [ ] Steps per device: Install app appears only where the browser can
       install or show home-screen instructions (a standalone PWA shows
       none); the Install button or "Done" marks it done and Skip skips it. On
