@@ -3009,6 +3009,12 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       carries a check mark. Search-first pickers (Category, Recipient, account,
       Currency) raise the keyboard on open; the checklist and Merge into do
       not. Desktop keeps the search above the list, with the same keys.
+- [ ] 📱 iPhone home-screen app: open Category on Add transaction with 10+
+      categories, hide the keyboard, then tap the search (repeat a few times,
+      and with another keyboard language). Every time the sheet shrinks to
+      the space above the keyboard: the handle, the title and the first rows
+      stay on screen and the rest of the list scrolls; the top of the sheet
+      never goes off the screen.
 - [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
       Savings accounts checklist, Category, Currency, Merge into) have the
       same rounded corners as the sheet's search field and OK button, not

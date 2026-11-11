@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { useKeyboardInset } from './useKeyboardInset'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { resetKeyboardBaseline, useKeyboardInset } from './useKeyboardInset'
 
 class FakeViewport extends EventTarget {
   height = 800
@@ -15,6 +15,7 @@ describe('useKeyboardInset', () => {
     vv = new FakeViewport()
     Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+    resetKeyboardBaseline()
   })
   afterEach(() => {
     if (original) {
@@ -57,6 +58,43 @@ describe('useKeyboardInset', () => {
     const { result } = renderHook(() => useKeyboardInset(true))
     resize(450, 350)
     expect(result.current).toEqual({ bottom: 0, height: 450, top: 350 })
+  })
+
+  it('sees a keyboard that shrank the layout viewport as well', () => {
+    const { result } = renderHook(() => useKeyboardInset(true))
+    act(() => {
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 450 })
+    })
+    // iOS reports a pan it has not done (measured: 396 of a 416px viewport)
+    resize(450, 430)
+    expect(result.current).toEqual({ bottom: 0, height: 450, top: 0 })
+  })
+
+  it('takes a small drop of both heights for a toolbar, not a keyboard', () => {
+    const { result } = renderHook(() => useKeyboardInset(true))
+    act(() => {
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 740 })
+    })
+    resize(740)
+    expect(result.current).toEqual({ bottom: 0, height: 0, top: 0 })
+  })
+
+  it('measures again after a field takes focus, once iOS has settled', () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderHook(() => useKeyboardInset(true))
+      act(() => {
+        document.dispatchEvent(new FocusEvent('focusin'))
+      })
+      // iOS changed the viewport without firing an event of its own
+      vv.height = 450
+      act(() => {
+        vi.advanceTimersByTime(700)
+      })
+      expect(result.current).toEqual({ bottom: 350, height: 450, top: 0 })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('stays idle when disabled', () => {
