@@ -234,9 +234,9 @@ currency / transaction-creation ports, wired in `internal/server/glue_imports.go
 The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
 
-`debt` (loans the owner pays down through an expense category) exposes seven routes under
+`debt` (loans the owner pays down through an expense category) exposes nine routes under
 `/api/v1/debt/` (`get-debt-list`, `get-debt`, `get-debt-forecast`, `create-debt`, `update-debt`,
-`delete-debt`, `mark-debt-paid-off`); a debt belongs to its owner alone, so another user gets not-found.
+`delete-debt`, `mark-debt-paid-off`, `reconcile-debt`, `delete-debt-reconciliation`); a debt belongs to its owner alone, so another user gets not-found.
 A debt is created with a name, what counts as its payments, a payment and a schedule; its terms
 (the loan contract's amount borrowed, start date and last payment date) are optional and can be
 added later (see "Budget debts").
@@ -1926,33 +1926,51 @@ data unreadable. Most are also asserted by the test suite.
   after today (`debt.start_in_future`) and the last payment date must be after it
   (`debt.last_payment_before_start`). Without anything else, what is owed today is the amount
   borrowed less the debt parts of the payments RECORDED since the start, split forward from the
-  origin (no assumption that unrecorded dues were paid; a payment dated on the start day itself
-  is taken as already in the amount borrowed). The optional `balance` is "owed now": an override
-  appended as a snapshot as of today with the origin's terms (`debt.last_payment_in_past` when the
-  last payment date is not after today and something is still owed), unless the latest snapshot
-  already says the same as of today; payments before it keep their origin-based splits. On a
-  set-up debt `startDate` is required, and `amountBorrowed`, `lastPaymentDate`, `payment` and
-  `schedule` left out keep the stored ones; one that differs from the origin (amounts compared
-  rounded to the debt currency) is a CORRECTION, the one relaxation of "snapshots are never
-  changed": the origin is rewritten in place (`UpdateSnapshot`), every later snapshot (owed-now,
-  paid-off) takes the corrected payment, schedule and last payment date while keeping its as-of
-  and balance (refused when one would no longer validate, or would precede the new start), the
-  debt's current terms follow the latest, and the debt's stored splits are dropped so the next
-  sync splits every payment again. Finishing setup (SPA event `appDebtFinishSetup`) writes the
-  origin (plus an owed-now) with the payment and schedule stored when left out, and deletes the
+  origin (no assumption that unrecorded dues were paid). The origin is the amount borrowed BEFORE
+  the start day's payments: a payment dated on the start date is split forward, accrues nothing,
+  comes fully off the balance and pays no due. The FIRST period is prorated by days: the window
+  of the first due after the start accrues a regular period's interest x (days from the start to
+  that due / days of the full period ending on it); a window whose due is on or before the start
+  accrues nothing, later ones a full period; the implied rate solves that same accrual
+  (`model.SnapshotRate`, `MathSnapshot.Origin`) and the projection prorates the first projected
+  due alike. **Statements (reconciliation)**: `reconcile-debt` (`{id, balance, balanceDate}`;
+  also `balance`/`balanceDate` on create/update-debt) appends a snapshot as of the statement date
+  (default today; between the start date and today inclusive, else `common.out_of_range` on
+  `balanceDate`) under the latest terms; a statement on a date that already has one REPLACES it
+  (`UpdateSnapshot`). The splits of payments dated after that date are dropped in the same
+  transaction, so the next sync splits them from the statement; those before keep theirs.
+  `delete-debt-reconciliation` (`{id, reconciliationId}`) removes one (never the origin: not
+  found) and drops the splits after its date the same way. Every due in (start, latest
+  statement] counts as paid in `periodsPaid` (plus the windows after it holding a recorded
+  payment), so a mortgage paid for five years and reconciled today reads "60 of 360 paid".
+  `get-debt`'s history entries carry `id`, `isOrigin` and `computedBalance` (what the entries
+  before it and the recorded payments gave for its date, `""` for the origin). On a set-up debt
+  `startDate`, `amountBorrowed`, `lastPaymentDate`, `payment` and `schedule` left out keep the
+  stored ones (`amountBorrowed` and `lastPaymentDate` come as a pair); one that differs from the
+  origin (amounts compared rounded to the debt currency) is a CORRECTION, the one relaxation of
+  "snapshots are never changed": the origin is rewritten in place (`UpdateSnapshot`), every
+  later snapshot (statements, paid-off) takes the corrected payment, schedule and last payment
+  date while keeping its date and balance (one contract for the loan's life;
+  `debt.conflicts_with_reconciliation` when the new start would follow a statement or the new
+  last payment date would not follow one still owing, `debt.payments_dont_cover` when its
+  balance could no longer be repaid), the debt's current terms follow the latest, and the debt's
+  stored splits are dropped so the next sync splits every payment again. Finishing setup (SPA
+  event `appDebtFinishSetup`) writes the origin with the payment and schedule stored when left
+  out, and deletes the
   debt's provisional zero splits in the same transaction; a debt that covered a whole category
   before setup hands that category back its plans and comments after the new end, whatever key
   the same update gives it (it took them with no end). A whole-category debt (no payee, tag or
-  label: a set-up debt always has a start date, so the start does not make it partial) whose
+  label, and the only such debt in its category: a set-up debt always has a start date, so the
+  start does not make it partial, but debts told apart only by their start dates share the
+  category's months, so none of them moves plans to or from the category) whose
   update moves its first planning day later (setup, a correction, set up or not) hands the
   category back its plans and comments in the periods before the new start (`BeforeDay` bound on
   the transfer, a month both rows plan adding up); one whose first planning day moves earlier,
   still covering the same whole category, takes the category's plans and comments of the periods
-  it now starts in (`FirstDay`..`BeforeDay`). The review screen's rename and "Payments from"
-  saves send no currency (`currencyId` ""), payment, schedule or terms (only the start date), so a
-  stale screen never writes back a currency or terms another device changed; the Settings form
-  likewise sends the loan's facts only when one was touched (all of them then) and owed now only
-  when typed. A rename writes no snapshot; `mark-debt-paid-off` writes a
+  it now starts in (`FirstDay`..`BeforeDay`). The Settings form sends no currency (`currencyId`
+  "") unless it changed, the loan's facts only when one was touched (all of them then) and a
+  set-up debt's start date only when it changed, so a stale screen never writes back a currency
+  or terms another device changed. A rename writes no snapshot; `mark-debt-paid-off` writes a
   balance-0 snapshot and is refused on a debt not set up (`debt.not_set_up`). **Not set up**:
   payments still match and are stored in `debts_payments` with interest 0 (no projection exists;
   a payment dated up to today keeps its zero split until setup drops it, one dated after today is
@@ -1964,7 +1982,8 @@ data unreadable. Most are also asserted by the test suite.
   `payoffDate`, `basePayoffDate`, `overpaymentLeft` and `baseOverpaymentLeft` as `""`,
   `paymentsLeft` 0 and `scheduledTotal`/`upcoming` `"0"` (the SPA keys on `isSetUp`, not on
   empty strings); `Timelines` leaves such a debt out. `periodsPaid` counts the schedule's due
-  windows holding at least one payment dated up to today (payments from before setup count). Create refuses a currency the user may not use (deleted, or another
+  windows holding at least one payment dated up to today (payments from before setup count, a
+  start-day payment does not), plus every due up to the latest statement. Create refuses a currency the user may not use (deleted, or another
   user's custom one: `currency.not_available`, the same `EnsureUsable` check budgets use).
   A debt names a tag OR a label, never both (create/update refuse the pair: `common.invalid_choice`
   on `labelId`). Category, payee, tag, label and start date are editable, rechecked by the same
@@ -1987,8 +2006,8 @@ data unreadable. Most are also asserted by the test suite.
   entered later in that window takes only what is left)
   and everything else, an extra payment included, goes fully to the debt; a missed period (or a
   payment below the interest) adds nothing, the balance never rises on its own; payments before
-  the first snapshot (on a set-up debt only those on its start day) are estimated backward with
-  its `r`; foreign payments convert with the rates
+  the first snapshot (on a set-up debt none: matching starts on its start date) are estimated
+  backward with its `r`; foreign payments convert with the rates
   the app uses for their day (the month's average, like every other conversion; 1:1 when no rate
   is stored). Every stored or emitted amount is rounded to the debt
   currency's fraction digits. **Projection**: current balance = latest snapshot's balance less the
@@ -2081,7 +2100,7 @@ data unreadable. Most are also asserted by the test suite.
   lists tags and reporting tags in two headed groups, setting `tagId` or `labelId` and clearing the
   other, with "any ..." rows and expense-only categories, and one Payment row, `PaymentField`: the
   amount card and, beside it at the same height on every breakpoint, an "every month" schedule
-  card). Amounts (payment, amount borrowed, owed now) are plain `inputMode="decimal"` inputs, no calculator:
+  card). Amounts (payment, amount borrowed, a statement balance) are plain `inputMode="decimal"` inputs, no calculator:
   `plainAmount` reads "2000", "2 000", "2,000.50", "1,200" and "1,5" (a lone comma is the decimal
   mark unless exactly three digits follow it, as the app displays amounts) and anything else is
   `common.validation.invalid_number`; while the text holds a "," or "." the field echoes how it
@@ -2090,12 +2109,13 @@ data unreadable. Most are also asserted by the test suite.
   (like the start date); the start date field appears only after
   `debt.start_date_taken` (the one refusal a date can resolve; `debt.key_conflict` just shows its
   message) and the form creates a debt with no terms, then opens the review screen. The ONLY way
-  into a debt is its Details entry (Settings row, budget row menu, item sheet; owner only), opening
+  into a debt is its Details entry (Settings → Debts row, in the Finances group right after
+  Budgets; budget row menu; item sheet; owner only), opening
   `DebtReviewScreen`: on desktop a centred dialog 90% of the viewport high and a reading column
   wide (min(90vw, 52rem)) that scrolls inside (`ResponsiveDialog` `size="column"`; the page-sized
   sizes clip to their rounded corners with `overflow-hidden`), full screen on a phone (`fullScreen`). Its header is the
-  icon, name and close X (no menu); under it the tabs **Overview**, **Settings** and **Danger
-  zone** (`components/ui/tabs`, `openDebtDetails(id, tab, budgetId)` picks the first; `debtDetailsTab`
+  icon, name and close X (no menu); under it the tabs **Overview**, **Balance** (set-up debts
+  only), **Settings** and **Danger zone** (`components/ui/tabs`, `openDebtDetails(id, tab, budgetId)` picks the first; `debtDetailsTab`
   and `debtDetailsBudgetId`, the budget the screen was opened from, in `uiStore`). The tab bar is
   the dialog's `subheader`: title and tabs are one opaque, bordered block outside the scrolling
   body (the Tabs root wraps the dialog, its context reaching both through the portal), each tab's
@@ -2131,13 +2151,21 @@ data unreadable. Most are also asserted by the test suite.
   `OpenDebtParams.budgetId` to the screen opened after create. A debt not set up has no items. Settings is ONE
   form, `DebtSettingsForm`, asking for the loan contract's facts (name, payments from, Amount
   borrowed, one `DatesRow` of two cards, Start date first and Last payment date second, hints
-  screen-reader only, the clear X only on a debt not set up, the payment row, "Owed now
-  (optional)" with the visible hint "Only if recorded payments don't match your statement",
-  always starting empty, currency; Cancel resets it, Save sends one `update-debt`, built by
-  `buildTermsPayload`: the start date always, the facts (amount borrowed, last payment date,
-  payment, schedule) only when one was touched and then all of them, owed now only when typed,
-  and an unchanged currency as `""`, so the server keeps what another device may have changed; no
-  date is projected or auto-filled, every fact is typed from the contract); it ends at Save/Cancel. The Danger zone tab is a
+  screen-reader only, the clear X only on a debt not set up, the payment row, currency; Cancel
+  resets it, Save sends one `update-debt`, built by `buildTermsPayload`: the facts (amount
+  borrowed, last payment date, payment, schedule) only when one was touched and then all of them,
+  a set-up debt's start date only when it changed (a debt not set up always sends it, null
+  clearing it), and an unchanged currency as `""`, so the server keeps what another device may
+  have changed; no date is projected or auto-filled, every fact is typed from the contract). The
+  **Balance** tab (`DebtBalanceTab`) reconciles with a statement: Econumo's balance today and,
+  once there is a statement, the latest one ("X on date") with the difference (statement less
+  Econumo's figure for that date); a "Reconcile with a statement" form (statement balance,
+  statement date defaulting to today, between the start date and today, checked before sending)
+  sends `reconcile-debt` (`appDebtReconcile`); a history table lists the origin first (the
+  amount borrowed, marked, never deletable) and every statement (date, statement, Econumo then,
+  hidden on a phone, difference) with a delete button behind a confirm
+  (`delete-debt-reconciliation`, `appDebtReconciliationDelete`); both refresh the debt, the
+  lists and every forecast; it ends at Save/Cancel. The Danger zone tab is a
   destructive-tinted card, a row per action with a one-line description, with Mark as paid off
   (set up and not paid off) and Delete, each behind its confirm.
   The Settings tab stays mounted (edits survive a look at the Overview) and reloads the debt
@@ -2145,8 +2173,8 @@ data unreadable. Most are also asserted by the test suite.
   loads); a save or Mark as paid off rebuilds the form from the returned debt and returns to the
   Overview, so a later edit never sends facts from before it. A debt not set up shows "Paid so far" (its payments dated up to the caller's today),
   a hint and a Finish setup button that switches to Settings and focuses the first missing fact
-  (amount borrowed, then the start date, then the last payment date; once one fact or owed now is
-  typed all three are required; saving with the facts fires `appDebtFinishSetup`); the Settings row, the budget row's Left cell and the item sheet's
+  (amount borrowed, then the start date, then the last payment date; once one fact is typed all
+  three are required; saving with the facts fires `appDebtFinishSetup`); the Settings row, the budget row's Left cell and the item sheet's
   Details button read "Finish setup" for the owner and open the screen on Settings, a partner
   sees a dash; Left sums, Plan cells and payoff lines skip it.
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per

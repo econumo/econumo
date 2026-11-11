@@ -2158,7 +2158,7 @@ monthly) and finish its setup (amount borrowed 10,000.00, start date four
 months ago, last payment date 20 months out), and add a second budget member
 account in USD, before running these.
 
-- [ ] 📱 **Settings → Debts** (right after Categories) lists the user's debts:
+- [ ] 📱 **Settings → Debts** (in the Finances group, right after Budgets) lists the user's debts:
       icon, name, current balance and "N payments left" (or a "Paid off"
       badge), open debts first; the create button opens the short debt form; a
       row opens the debt's review screen. A debt without terms shows "Finish
@@ -2218,22 +2218,25 @@ account in USD, before running these.
       from a transaction moves it off the debt; a recurring template with the
       tag leaves the category's upcoming money and shows on the older matching
       debt only.
-- [ ] 📱 **Owed now follows the recorded payments**: with no owed-now
-      override, Owed now is the amount borrowed less the principal of the
-      payments recorded since the start date: a payment dated before the start
-      date does not count, a missed month adds no interest, an extra payment
-      comes fully off. With the details or the budget open, add a matching
-      expense, then open the Settings tab: Owed now (optional) is empty, and
-      saving without changes writes no snapshot (History of terms does not
+- [ ] 📱 **Owed now follows the recorded payments**: with no statement,
+      Owed now is the amount borrowed less the principal of the payments
+      recorded since the start date: a payment dated before the start date
+      does not count, one ON the start date comes fully off (no interest, no
+      payment counted in the progress), a missed month adds no interest, an
+      extra payment comes fully off, and the first month's interest is only
+      the share of the days from the start date to the first payment (a loan
+      starting on the 25th with payments on the 1st owes about a fifth of a
+      month's interest at its first payment). With the details or the budget
+      open, add a matching expense, then open the Settings tab and save
+      without changes: no snapshot is written (History of terms does not
       grow) and the payment keeps counting.
 - [ ] 📱 **Settings tab** holds one form with the loan contract's facts:
       Name, the "Payments from" sentence, Amount borrowed, one row of two
       same-height date cards (Start date first, then Last payment date; no
       clear X on a set-up debt; it fits a 360 px phone, the hints are read
       only by screen readers), the Payment row (amount and its "every month ▾"
-      card, as on the create form), Owed now (optional) with the hint "Only
-      if recorded payments don't match your statement" under it (always
-      empty when the tab opens) and Currency, then Cancel and Save. Save
+      card, as on the create form) and Currency (no "Owed now" field: a
+      statement balance is the Balance tab's), then Cancel and Save. Save
       sends one request and returns to the Overview with the new figures;
       Cancel puts back what was loaded. Switching to the Overview and back
       keeps unsaved edits; with no edits, each visit reloads the debt. No date
@@ -2243,15 +2246,33 @@ account in USD, before running these.
       (key conflict) shows the error next to its field. The tab ends at
       Cancel and Save; while the debt loads it shows the loader, not the
       buttons alone.
-- [ ] 📱 **Danger zone tab** (the third tab): a red-tinted card lists Mark as
+- [ ] 📱 **Balance tab** (set-up debts only; a debt not set up has no such
+      tab): Econumo's balance today, and once there is a statement "Last
+      statement X on date" with the difference (statement less Econumo's
+      figure for that date, e.g. -120.00). "Reconcile with a statement": a
+      statement balance and a statement date (today by default); an empty
+      balance is "Required field", a date before the start date shows "Pick
+      a date between the start date and today" (the server also refuses a
+      date after today); Reconcile writes it, the form empties, Owed now and
+      the history follow. Story: a loan started five years ago with monthly
+      dues and no payments entered: reconcile today with the statement
+      balance; Overview shows that balance as Owed now and "60 of N paid".
+      A statement dated in the past re-splits only the payments after its
+      date (the earlier ones keep their interest); a second statement on the
+      same date replaces the first. The history lists the start (marked
+      "Amount borrowed", no delete button) first, then each statement with
+      Econumo's figure then (hidden on a phone) and the difference; deleting
+      one asks first, then removes it and the payments after its date are
+      split again. Both actions are greyed out offline.
+- [ ] 📱 **Danger zone tab** (the fourth tab): a red-tinted card lists Mark as
       paid off (set-up debts that are not paid off only; "Sets the balance to
       0 and stops the countdown.") and Delete ("Removes the debt. Its payments
       go back to the category."), each a row with its description and button,
       both asking first; on a phone the button sits under its description.
       Neither is on the Settings tab. After Mark as paid off the screen
-      returns to the Overview; reopening Settings shows Owed now (optional)
-      empty, and changing only the payment then saves the corrected payment
-      without touching the paid-off balance (the debt stays paid off).
+      returns to the Overview; changing only the payment in Settings then
+      saves the corrected payment without touching the paid-off balance (the
+      debt stays paid off).
 - [ ] 📱 **Change the currency** (Settings tab → Currency, a searchable picker), on a
       set-up debt with a payment and a plan in a budget: leave the other
       fields and save. No snapshot is added (also when moving an amount
@@ -2275,12 +2296,14 @@ account in USD, before running these.
       does not grow). Correcting the amount borrowed, start date, payment,
       repeats or last payment date rewrites the first entry of History of
       terms (the loan's start) instead of adding one, and every listed
-      payment's interest is recomputed from the corrected facts; with an
-      owed-now entry on file, that entry keeps its balance and takes the
-      corrected payment, repeats and last payment date. Typing Owed now adds
-      an entry as of today (Owed now then shows it), and the payments before
-      today keep their interest figures; saving the same owed now again the
-      same day adds nothing. A refused change (key conflict) shows its message under the
+      payment's interest is recomputed from the corrected facts; a statement
+      on file keeps its date and balance and takes the corrected payment,
+      repeats and last payment date. A correction that would put the start
+      after a statement, or the last payment date on or before one that
+      still owes, is refused with "This conflicts with a balance you entered
+      from a statement..." under the field. Saving the form without touching
+      the start date sends no start date (a start changed on another device
+      meanwhile stays). A refused change (key conflict) shows its message under the
       sentence and keeps the old filters. With the review screen open on
       two devices, edit the terms on the second, then rename (or change the
       sentence) on the first without reloading: the debt keeps the second
@@ -2292,14 +2315,14 @@ account in USD, before running these.
       height and only as wide as its content (about 52rem, narrower on a
       small window) that scrolls inside, its four corners rounded (the
       header never squares the top ones); on a phone a full page. The header is the debt's icon, name and the close X, with no ⋮
-      menu on any width. Under it three tabs, Overview (selected on open),
-      Settings and Danger zone. The header and the tabs are one opaque block
+      menu on any width. Under it the tabs Overview (selected on open),
+      Balance (set-up debts only), Settings and Danger zone. The header and the tabs are one opaque block
       with a bottom border that never scrolls: scroll a long Overview (or
       Settings on a phone) and nothing (no "N payments left", no card title)
       shows between the header and the tabs or above the tabs; content
       disappears exactly at the border. The selected tab's underline is
-      exactly as wide as its label and lies on that border, for each of the
-      three tabs, on desktop and on a phone. Overview is
+      exactly as wide as its label and lies on that border, for each tab, on
+      desktop and on a phone. Overview is
       read-only. Top: "N payments left" in large text (or "Paid off"), a
       progress bar whose grey track is the whole loan and whose filled part
       is what is paid, with "77 of 360 paid" (hidden when both counts are 0),

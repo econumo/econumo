@@ -197,3 +197,28 @@ create form stays short and sets none of them.
 - Overview's Loan card shows **Borrowed** (amount and start date); "Owed now" stays.
 - A whole-category debt is one with no payee, tag or label: a set-up debt always
   has a start date, which no longer makes it partial.
+
+## Revision 2026-11-10 (2): Balance tab, prorated first period
+
+- **Owed now (optional)** leaves Settings. Reconciling with a lender's statement
+  gets its own **Balance** tab (Overview · Balance · Settings · Danger zone):
+  Econumo's balance today, the latest statement with the difference, a "Reconcile
+  with a statement" form (balance, statement date defaulting to today, between the
+  start date and today) and the history (the origin first, kept; each statement
+  deletable). Use case: starting Econumo years into a loan, the user states the
+  current balance instead of entering past payments.
+- A statement is a snapshot as of its date under the latest terms; one on a date
+  that already has a statement replaces it. Payments after its date are split
+  again from it; those before keep their splits. Every due up to the latest
+  statement counts as paid ("60 of 360 paid" right after reconciling a mortgage
+  paid for five years).
+- The first period's interest is prorated by days: a regular period's interest x
+  (days from the start date to the first due / days of that full period); the
+  implied rate solves the same accrual. A payment on the start date accrues
+  nothing and comes fully off the amount borrowed.
+- A correction of the loan's facts rewrites every later snapshot's payment,
+  frequency and last payment date, keeping its date and balance (one contract
+  for the loan's life); one that would conflict with a statement is refused.
+- Debts sharing their filters, told apart only by start date, no longer move plans
+  to or from the category.
+- Settings → Debts moves to the Finances group, after Budgets.
