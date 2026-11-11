@@ -477,7 +477,10 @@ navigation (single-pane vs sidebar).
       (e.g. after an import) a blank row is then prefilled with the suggestion from the last
       three complete months (`onboarding/get-plan-suggestions`: only a
       category with transactions in at least 2 of those 3 months, the total
-      divided by 3, rounded to the currency's digits, in the budget currency);
+      divided by 3, rounded to the currency's digits, in the budget currency;
+      counted over every account the user owns, so archiving the imported
+      account on the Accounts step, or one deleted earlier, still leaves the
+      suggestions, while a partner's shared account adds nothing);
       a stored plan is never replaced, and an amount typed (or a row cleared)
       before the suggestions arrive is kept. A prefilled amount is saved by
       Save plan like a typed one; an archived category is never listed. The line below reads

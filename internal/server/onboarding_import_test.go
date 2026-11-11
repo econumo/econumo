@@ -419,9 +419,14 @@ func TestGetPlanSuggestions_AveragesTheLastThreeCompleteMonths(t *testing.T) {
 	usd := e.f.Account(fixture.Account{UserID: e.user, Name: "Card"})
 	eur := e.f.Account(fixture.Account{UserID: e.user, Name: "Euro card", CurrencyID: e.eur})
 	other := e.f.Account(fixture.Account{UserID: e.user, Name: "Not in the budget"})
+	// someone else's account shared into the budget: its history is theirs
+	partner := e.f.User(fixture.User{Name: "Partner", Email: "partner@onboarding.test"})
+	theirs := e.f.Account(fixture.Account{UserID: partner, Name: "Partner card"})
+	e.f.AccountAccess(theirs, e.user, 1)
 	budget := e.f.Budget(fixture.Budget{UserID: e.user, StartedAt: "2026-03-01 00:00:00"})
 	e.f.BudgetAccount(budget, usd)
 	e.f.BudgetAccount(budget, eur)
+	e.f.BudgetAccount(budget, theirs)
 	for _, month := range []string{"2025-12-15", "2026-01-15", "2026-02-15"} {
 		e.f.Rate(fixture.Rate{CurrencyID: e.eur, Rate: "0.50000000", PublishedAt: month})
 	}
@@ -437,9 +442,10 @@ func TestGetPlanSuggestions_AveragesTheLastThreeCompleteMonths(t *testing.T) {
 	tx(usd, food, 0, "30", "2025-12-05")
 	tx(usd, food, 0, "60", "2026-01-10")
 	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: usd, CategoryID: food, TagID: tag, Type: 0, Amount: "30", SpentAt: "2026-01-20 10:00:00"})
-	tx(usd, food, 0, "500", "2025-11-20") // before the window
-	tx(usd, food, 0, "999", "2026-03-05") // the current month
-	tx(other, food, 0, "777", "2026-02-05")
+	tx(usd, food, 0, "500", "2025-11-20")   // before the window
+	tx(usd, food, 0, "999", "2026-03-05")   // the current month
+	tx(other, food, 0, "777", "2026-02-05") // the caller's own account counts, member or not
+	tx(theirs, food, 0, "555", "2026-01-05")
 	tx(usd, cafe, 0, "12", "2026-02-11")
 	tx(usd, transport, 0, "10", "2025-12-01")
 	tx(usd, transport, 0, "10", "2026-01-31")
@@ -457,7 +463,8 @@ func TestGetPlanSuggestions_AveragesTheLastThreeCompleteMonths(t *testing.T) {
 		t.Fatalf("status %d: %v", status, data)
 	}
 	got := suggestions(t, data)
-	want := map[string]string{food: "40", transport: "6.67", travel: "13.33", salary: "1000"}
+	// food: (30 + 60 + 30 + 777) / 3
+	want := map[string]string{food: "299", transport: "6.67", travel: "13.33", salary: "1000"}
 	if len(got) != len(want) {
 		t.Fatalf("suggestions = %v, want %v (cafe %s, gifts %s, old %s, empty %s)", got, want, cafe, gifts, old, empty)
 	}

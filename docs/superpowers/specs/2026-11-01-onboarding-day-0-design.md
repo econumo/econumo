@@ -294,7 +294,12 @@ right, no bold, the accent colour only for progress and the primary button.
    income per income category) and an Expenses group (one amount per expense category), a
    running "Planned X of Y" line (planned spending against expected income, or against the
    money in the accounts when no income is planned), and "Save plan" writes this month's
-   limits for both groups. "Skip for now" is allowed.
+   limits for both groups. "Skip for now" is allowed. Empty amounts are prefilled from
+   `get-plan-suggestions`: per category, the average of the last three complete periods
+   over every account the user owns (archived and deleted ones included, not just the
+   budget's members, so archiving the account that holds the history in the Accounts
+   step still leaves suggestions; another user's shared account never counts), only
+   with activity in at least two of them, converted into the budget currency.
 4. **Install as an app.** Only where the browser can install (or instructions exist);
    hidden when already running as an installed app.
 5. **Apple Wallet.** Only on iPhone or Mac; leads to the existing Apple Wallet setup.

@@ -20,7 +20,8 @@ const (
 // (budgetId, which the caller must be able to update; else the user's default
 // budget when they may plan it, otherwise none): for each of the user's own active categories, income and expense, the
 // average monthly amount over the last three complete periods, rounded to the
-// element currency's fraction digits. A category with transactions in fewer
+// element currency's fraction digits. The history is every account the caller
+// owns (see budget.CategoryHistory), not only the budget's members. A category with transactions in fewer
 // than two of those periods, or with no positive average, gets no suggestion.
 func (s *Service) GetPlanSuggestions(ctx context.Context, userID vo.Id, req model.OnboardingGetPlanSuggestionsRequest) (*model.OnboardingGetPlanSuggestionsResult, error) {
 	out := &model.OnboardingGetPlanSuggestionsResult{BudgetId: strings.ToLower(strings.TrimSpace(req.BudgetId)), Items: []model.OnboardingPlanSuggestion{}}

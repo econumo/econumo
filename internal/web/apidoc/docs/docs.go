@@ -8687,7 +8687,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "For the current period of the budget (budgetId, which the caller must be able to update; else the user's default budget, when they can update it), suggests per own active category, income and expense, the average monthly amount over the last three complete periods (sum divided by three, in the element currency, rounded to its fraction digits), only for categories with transactions in at least two of them. Read-only. budgetId is \"\" and items empty when the user has no default budget they can update.",
+                "description": "For the current period of the budget (budgetId, which the caller must be able to update; else the user's default budget, when they can update it), suggests per own active category, income and expense, the average monthly amount over the last three complete periods (sum divided by three, in the element currency, rounded to its fraction digits), only for categories with transactions in at least two of them. The history is read over every account the caller owns (archived and deleted ones included), not the budget's members; accounts other users share are left out. Read-only. budgetId is \"\" and items empty when the user has no default budget they can update.",
                 "produces": [
                     "application/json"
                 ],

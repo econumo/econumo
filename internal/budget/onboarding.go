@@ -87,10 +87,13 @@ func (s *Service) CurrentPeriod(ctx context.Context, userID, budgetID vo.Id) (ti
 // CategoryHistory returns, for every category of the budget's participants,
 // its income or spending in each of the `months` periods before the current one
 // (the budget's current period in the caller's timezone, never before its first
-// period), computed like the plan sheet's category rows: the everyday member
-// accounts only, transfers excluded, converted into the element's currency with
-// each period's average rates. A tagged expense counts for its category. The
-// caller must be able to update the budget.
+// period), computed like the plan sheet's category rows but over every account
+// the CALLER owns, archived and deleted ones included, rather than the budget's
+// members: it predicts what the caller will spend, and onboarding's review may
+// take the account holding all the history out of the budget. Transfers are
+// excluded and amounts converted into the element's currency with each
+// period's average rates. A tagged expense counts for its category. The caller
+// must be able to update the budget.
 func (s *Service) CategoryHistory(ctx context.Context, userID, budgetID vo.Id, months int) ([]model.BudgetCategoryHistory, error) {
 	b, err := s.loadAggregate(ctx, budgetID)
 	if err != nil {
@@ -159,7 +162,14 @@ func (s *Service) CategoryHistory(ctx context.Context, userID, budgetID vo.Id, m
 	for id := range f.categories {
 		expenseIDs = append(expenseIDs, vo.MustParseId(id))
 	}
-	spending, err := s.read.SpendingByMonth(ctx, expenseIDs, f.everydayAccountIDs, f.periodStart, f.periodEnd, f.startDay)
+	owned, err := s.accounts.OwnedAccountIDs(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if len(owned) == 0 {
+		return []model.BudgetCategoryHistory{}, nil
+	}
+	spending, err := s.read.SpendingByMonth(ctx, expenseIDs, owned, f.periodStart, f.periodEnd, f.startDay)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +183,7 @@ func (s *Service) CategoryHistory(ctx context.Context, userID, budgetID vo.Id, m
 			}
 		}
 	}
-	income, err := s.read.IncomeByMonth(ctx, f.everydayAccountIDs, f.periodStart, f.periodEnd, f.startDay)
+	income, err := s.read.IncomeByMonth(ctx, owned, f.periodStart, f.periodEnd, f.startDay)
 	if err != nil {
 		return nil, err
 	}

@@ -141,9 +141,10 @@ func TestSaveAccounts_BudgetKeepsItsCurrencyWhenPlannedOrShared(t *testing.T) {
 }
 
 // The import path end to end: finish-import creates the budget starting this
-// month, and the imported history of the three months before it still feeds
-// the suggestions. Archiving the account in the review takes it (and so its
-// history) out of the budget, which leaves nothing to suggest.
+// month, and the imported history of the three months before it feeds the
+// suggestions. They read every account the user owns, so archiving the only
+// account with history (which takes it out of the budget) or deleting one
+// keeps its history counting.
 func TestGetPlanSuggestions_FromHistoryBeforeAnOnboardingBudget(t *testing.T) {
 	e := newOnbEnv(t, stepNow)
 	card, _ := seedImported(e)
@@ -174,8 +175,22 @@ func TestGetPlanSuggestions_FromHistoryBeforeAnOnboardingBudget(t *testing.T) {
 	if status, data := e.post("/api/v1/onboarding/save-accounts", map[string]any{"id": fixture.NewID(), "mainCurrencyId": fixture.USD, "hide": []string{card}}); status != 200 {
 		t.Fatalf("save-accounts %d: %v", status, data)
 	}
-	if _, data := e.get("/api/v1/onboarding/get-plan-suggestions"); len(suggestions(t, data)) != 0 {
-		t.Fatalf("an archived account's history still counts: %v", data)
+	if e.member(budget, card) {
+		t.Fatal("the archived account is still a budget member")
+	}
+	_, data = e.get("/api/v1/onboarding/get-plan-suggestions")
+	if got := suggestions(t, data); len(got) != 2 || got[strata] != "360.13" || got[cashback] != "1.18" {
+		t.Fatalf("after archiving: %v", got)
+	}
+
+	// a deleted account's history counts too
+	gone := e.f.Account(fixture.Account{UserID: e.user, Name: "Closed card", Deleted: true})
+	for _, at := range []string{"2026-01-10", "2026-02-10"} {
+		e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: gone, CategoryID: strata, Type: 0, Amount: "30", SpentAt: at + " 00:00:00"})
+	}
+	_, data = e.get("/api/v1/onboarding/get-plan-suggestions")
+	if got := suggestions(t, data); got[strata] != "380.13" {
+		t.Fatalf("with a deleted account: %v", got)
 	}
 }
 
