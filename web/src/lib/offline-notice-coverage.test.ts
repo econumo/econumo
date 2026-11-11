@@ -10,6 +10,7 @@ const NO_NOTICE: Record<string, string> = {
   BudgetPage: 'Budget and Plan: limits can be changed offline',
   InboxPage: 'Try again on a failed write works offline (editableOffline)',
   ReportsPage: 'read-only even online',
+  AppLockPage: 'local device setting, works offline',
   LoginPage: 'signed out',
   RegistrationPage: 'signed out',
   LogoutPage: 'signed out',

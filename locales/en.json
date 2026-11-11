@@ -2197,6 +2197,37 @@
     "dismiss": "Dismiss"
   },
   "appLock": {
+    "settings": {
+      "menu_item": "App lock",
+      "title": "App lock",
+      "on": "On",
+      "off": "Off",
+      "needs_https": "Needs HTTPS",
+      "about": "The lock protects Econumo on this device only. If you forget the PIN, you'll need to log in again. It doesn't encrypt the data stored on the device.",
+      "enabled_label": "App lock",
+      "enabled_hint": "Ask for a PIN when Econumo opens",
+      "change_pin": "Change PIN",
+      "pin_changed": "PIN changed",
+      "biometric_label": "Use biometrics",
+      "biometric_hint": "Face ID, Touch ID or fingerprint, when the device supports it. Your device may also accept its passcode. The passkey syncs with your password manager; you can delete it in your device's password settings.",
+      "biometric_failed": "Couldn't turn on biometrics",
+      "lock_after": {
+        "label": "Lock after",
+        "immediately": "Immediately",
+        "one_minute": "1 minute",
+        "five_minutes": "5 minutes",
+        "fifteen_minutes": "15 minutes"
+      },
+      "dialog": {
+        "create_title": "Choose a PIN",
+        "new_title": "Choose a new PIN",
+        "current_title": "Enter your current PIN",
+        "confirm_title": "Enter the PIN again",
+        "pin_hint": "4 to 8 digits",
+        "mismatch": "The PINs don't match. Try again.",
+        "save": "Save"
+      }
+    },
     "lock_screen": {
       "title": "Enter PIN",
       "wrong_pin": "Wrong PIN",

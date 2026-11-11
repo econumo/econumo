@@ -2197,6 +2197,37 @@
     "dismiss": "Sluiten"
   },
   "appLock": {
+    "settings": {
+      "menu_item": "App-vergrendeling",
+      "title": "App-vergrendeling",
+      "on": "Aan",
+      "off": "Uit",
+      "needs_https": "Vereist HTTPS",
+      "about": "De vergrendeling beschermt Econumo alleen op dit apparaat. Als u de pincode vergeet, moet u opnieuw inloggen. De gegevens op het apparaat worden niet versleuteld.",
+      "enabled_label": "App-vergrendeling",
+      "enabled_hint": "Om een pincode vragen bij het openen van Econumo",
+      "change_pin": "Pincode wijzigen",
+      "pin_changed": "Pincode gewijzigd",
+      "biometric_label": "Biometrie gebruiken",
+      "biometric_hint": "Face ID, Touch ID of vingerafdruk, als het apparaat dit ondersteunt. Uw apparaat accepteert mogelijk ook zijn toegangscode. De passkey wordt gesynchroniseerd met uw wachtwoordbeheerder; u kunt hem verwijderen in de wachtwoordinstellingen van het apparaat.",
+      "biometric_failed": "Biometrie kon niet worden ingeschakeld",
+      "lock_after": {
+        "label": "Vergrendelen na",
+        "immediately": "Direct",
+        "one_minute": "1 minuut",
+        "five_minutes": "5 minuten",
+        "fifteen_minutes": "15 minuten"
+      },
+      "dialog": {
+        "create_title": "Kies een pincode",
+        "new_title": "Kies een nieuwe pincode",
+        "current_title": "Voer uw huidige pincode in",
+        "confirm_title": "Voer de pincode nogmaals in",
+        "pin_hint": "4 tot 8 cijfers",
+        "mismatch": "De pincodes komen niet overeen. Probeer het opnieuw.",
+        "save": "Opslaan"
+      }
+    },
     "lock_screen": {
       "title": "Voer uw pincode in",
       "wrong_pin": "Onjuiste pincode",

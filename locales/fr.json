@@ -2197,6 +2197,37 @@
     "dismiss": "Ignorer"
   },
   "appLock": {
+    "settings": {
+      "menu_item": "Verrouillage de l'app",
+      "title": "Verrouillage de l'app",
+      "on": "Activé",
+      "off": "Désactivé",
+      "needs_https": "Nécessite HTTPS",
+      "about": "Le verrouillage protège Econumo sur cet appareil uniquement. Si vous oubliez le code PIN, vous devrez vous reconnecter. Il ne chiffre pas les données stockées sur l'appareil.",
+      "enabled_label": "Verrouillage de l'app",
+      "enabled_hint": "Demander un code PIN à l'ouverture d'Econumo",
+      "change_pin": "Modifier le code PIN",
+      "pin_changed": "Code PIN modifié",
+      "biometric_label": "Utiliser la biométrie",
+      "biometric_hint": "Face ID, Touch ID ou empreinte digitale, si l'appareil le permet. Votre appareil peut aussi accepter son code de déverrouillage. La clé d'accès se synchronise avec votre gestionnaire de mots de passe ; vous pouvez la supprimer dans les réglages des mots de passe de l'appareil.",
+      "biometric_failed": "Impossible d'activer la biométrie",
+      "lock_after": {
+        "label": "Verrouiller après",
+        "immediately": "Immédiatement",
+        "one_minute": "1 minute",
+        "five_minutes": "5 minutes",
+        "fifteen_minutes": "15 minutes"
+      },
+      "dialog": {
+        "create_title": "Choisissez un code PIN",
+        "new_title": "Choisissez un nouveau code PIN",
+        "current_title": "Saisissez votre code PIN actuel",
+        "confirm_title": "Saisissez à nouveau le code PIN",
+        "pin_hint": "4 à 8 chiffres",
+        "mismatch": "Les codes PIN ne correspondent pas. Réessayez.",
+        "save": "Enregistrer"
+      }
+    },
     "lock_screen": {
       "title": "Saisissez le code PIN",
       "wrong_pin": "Code PIN incorrect",

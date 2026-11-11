@@ -16,16 +16,12 @@ import darkLogo from '@/assets/econumo-dark.svg'
 import { verifyBiometric } from './biometric'
 import { lockoutRemainingMs, MAX_FAILED_ATTEMPTS, readAttempts } from './config'
 import { unlock, useAppLock } from './lockStore'
+import { formatCountdown } from './format'
 import { checkPin } from './pin'
 import { PinPad } from './PinPad'
 
 // Shown when fewer attempts than this are left before the sign-out.
 const WARN_REMAINING = 5
-
-function formatCountdown(ms: number): string {
-  const seconds = Math.ceil(ms / 1000)
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
-}
 
 function remainingAttempts(): number {
   return MAX_FAILED_ATTEMPTS - readAttempts().failedAttempts

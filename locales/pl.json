@@ -2197,6 +2197,37 @@
     "dismiss": "Zamknij"
   },
   "appLock": {
+    "settings": {
+      "menu_item": "Blokada aplikacji",
+      "title": "Blokada aplikacji",
+      "on": "Włączona",
+      "off": "Wyłączona",
+      "needs_https": "Wymaga HTTPS",
+      "about": "Blokada chroni Econumo tylko na tym urządzeniu. Jeśli zapomnisz PIN-u, trzeba będzie zalogować się ponownie. Nie szyfruje danych zapisanych na urządzeniu.",
+      "enabled_label": "Blokada aplikacji",
+      "enabled_hint": "Pytaj o PIN przy otwieraniu Econumo",
+      "change_pin": "Zmień PIN",
+      "pin_changed": "PIN zmieniony",
+      "biometric_label": "Używaj biometrii",
+      "biometric_hint": "Face ID, Touch ID lub odcisk palca, jeśli urządzenie to obsługuje. Urządzenie może też przyjąć swój kod blokady. Klucz dostępu synchronizuje się z menedżerem haseł; możesz go usunąć w ustawieniach haseł urządzenia.",
+      "biometric_failed": "Nie udało się włączyć biometrii",
+      "lock_after": {
+        "label": "Blokuj po",
+        "immediately": "Natychmiast",
+        "one_minute": "1 minucie",
+        "five_minutes": "5 minutach",
+        "fifteen_minutes": "15 minutach"
+      },
+      "dialog": {
+        "create_title": "Ustaw PIN",
+        "new_title": "Ustaw nowy PIN",
+        "current_title": "Wpisz obecny PIN",
+        "confirm_title": "Wpisz PIN ponownie",
+        "pin_hint": "Od 4 do 8 cyfr",
+        "mismatch": "PIN-y nie są zgodne. Spróbuj ponownie.",
+        "save": "Zapisz"
+      }
+    },
     "lock_screen": {
       "title": "Wpisz PIN",
       "wrong_pin": "Nieprawidłowy PIN",

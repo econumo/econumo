@@ -2735,6 +2735,62 @@ User C sees none of it.
       password, a second linked provider, or where the new email already
       belongs to another user leaves the stored email unchanged.
 
+- [ ] **App lock** 📱 (Settings → Profile → App lock, the row after Sessions,
+      reading On/Off): the page explains the lock covers this device only,
+      a forgotten PIN means logging in again and data on the device is not
+      encrypted. Turning the switch on asks for a PIN (4–8 digits, Continue
+      enabled from 4) and then for it again; typing a different PIN the second
+      time shows "The PINs don't match" and starts over; closing the dialog
+      leaves the lock off. After confirming, the switch reads on, the current
+      tab stays unlocked, and Change PIN, Lock after (default 1 minute) and,
+      where the device supports it, Use biometrics appear. Everything works
+      offline.
+- [ ] App lock: Change PIN asks for the current PIN first (a wrong one says
+      "Wrong PIN" and counts towards the same limit as the lock screen), then
+      the new one twice; the next lock asks for the new PIN. Turning the lock
+      off asks for the current PIN (or biometrics when they are on) and the
+      Profile row then reads Off.
+- [ ] App lock 📱 cold start: with the lock on, a reload, a new tab and opening
+      the installed PWA all show the lock screen (logo, avatar, name, "Enter
+      PIN") with no balance or transaction visible; the right PIN opens the
+      page that was asked for.
+- [ ] App lock 📱 background timeout: with "1 minute", leaving the app for under
+      a minute returns unlocked and for over a minute returns locked; with
+      "Immediately" any switch away locks; a phone left asleep with the app
+      open past the timeout is locked on wake.
+- [ ] App lock 📱 app switcher: with the lock on, the app-switcher preview shows
+      the Econumo logo on a plain background, not the page (best effort: note
+      the platform if a snapshot still shows data).
+- [ ] App lock wrong PINs: dots shake and "Wrong PIN" shows; from the 5th
+      failure the keypad is disabled with a "Try again in 0:30" countdown
+      (longer after each further failure) that survives a reload; the
+      remaining attempts show once fewer than 5 are left; the 10th failure
+      logs out, and after logging back in as the same user the changes that
+      were waiting to be sent (make one offline first) are still sent. A right
+      PIN or biometrics before that resets the count.
+- [ ] App lock "Forgot PIN?": confirming logs out; logging back in opens
+      without a PIN and the Profile row reads Off; the offline queue survives
+      as above.
+- [ ] App lock 📱 biometrics on an iPhone home-screen PWA (Face ID) and on Android
+      (fingerprint): turning on "Use biometrics" shows the system passkey
+      prompt; cancelling it leaves the switch off with a toast; once on, the
+      lock screen offers the fingerprint button (and on a phone tries
+      biometrics by itself on appearing), and it unlocks; the device passcode
+      may be offered instead and also unlocks. Turning it off needs no PIN.
+      The hint mentions the passcode and where to delete the passkey.
+- [ ] App lock with two users on one browser: user A turns the lock on and logs
+      out; user B logs in and is never asked for a PIN, and B's Profile row
+      reads Off.
+- [ ] App lock fresh login: logging in with a password (or a provider) right
+      after a sign-out or a "Set a password" never asks for the PIN in that tab.
+- [ ] App lock in two tabs: with the lock on and tab 2 locked, logging out in
+      tab 1 reloads tab 2 onto the login page; unlocking one tab never unlocks
+      the other.
+- [ ] App lock on a plain-http instance (not localhost): the Profile row is
+      greyed out with "Needs HTTPS" and is not a link; opening
+      `/settings/profile/app-lock` directly shows the switch disabled with the
+      same hint, and the app never locks.
+
 ## 12a. Connected apps (MCP OAuth)
 
 Needs `ECONUMO_URL` set (for a local run, `ECONUMO_URL=http://localhost:8181`)

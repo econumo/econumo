@@ -1,0 +1,276 @@
+import { useEffect, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router'
+import { toast } from 'sonner'
+import { RouterPage } from '@/app/router-pages'
+import { InfoBox } from '@/components/InfoBox'
+import { OptionSelect } from '@/components/OptionSelect'
+import { Switch } from '@/components/ui/switch'
+import { SettingsShell } from '@/features/settings/SettingsShell'
+import { useUserData } from '@/features/user/queries'
+import { METRICS, trackEvent } from '@/lib/metrics'
+import { getSessionUserId } from '@/lib/storage'
+import { biometricAvailable, prepareBiometricRegistration, type RegisterResult } from './biometric'
+import {
+  activeConfig,
+  appLockSupported,
+  clearConfig,
+  DEFAULT_LOCK_AFTER_MS,
+  LOCK_AFTER_OPTIONS,
+  readConfig,
+  resetAttempts,
+  writeConfig,
+  type AppLockConfig,
+} from './config'
+import { APP_LOCK_CONFIG_KEY } from './keys'
+import { unlock } from './lockStore'
+import { hashPin } from './pin'
+import { SetPinDialog, type PinFlow } from './SetPinDialog'
+
+const rowClass = 'flex items-center justify-between gap-4 rounded-lg bg-econumo-card px-4 py-3.5'
+
+export function AppLockPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { data: user } = useUserData()
+  const supported = appLockSupported()
+  const [config, setConfig] = useState<AppLockConfig | null>(() => activeConfig())
+  const [flow, setFlow] = useState<{ kind: PinFlow; seq: number; open: boolean } | null>(null)
+  const [biometrics, setBiometrics] = useState(false)
+  const [register, setRegister] = useState<(() => Promise<RegisterResult>) | null>(null)
+  const [registering, setRegistering] = useState(false)
+  const enabled = config !== null
+  const credentialId = config?.biometric?.credentialId ?? null
+  const userId = getSessionUserId() ?? user?.id ?? null
+
+  const refresh = () => setConfig(activeConfig())
+
+  // Another tab may change the lock; this page shows what is stored.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === APP_LOCK_CONFIG_KEY) {
+        setConfig(activeConfig())
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void biometricAvailable().then((available) => {
+      if (!cancelled) {
+        setBiometrics(available)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Prepared ahead: Safari shows the passkey sheet only when create() runs
+  // straight from the tap, with nothing awaited before it.
+  const email = user?.email
+  useEffect(() => {
+    if (!biometrics || !enabled || !userId || !email) {
+      setRegister(null)
+      return
+    }
+    let cancelled = false
+    void prepareBiometricRegistration({ userId, email }, credentialId).then(
+      (start) => {
+        if (!cancelled) {
+          setRegister(() => start)
+        }
+      },
+      () => {
+        if (!cancelled) {
+          setRegister(null)
+        }
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [biometrics, enabled, userId, email, credentialId])
+
+  const openFlow = (kind: PinFlow) => setFlow((prev) => ({ kind, seq: (prev?.seq ?? 0) + 1, open: true }))
+  const closeFlow = () => setFlow((prev) => (prev ? { ...prev, open: false } : prev))
+
+  // Every write starts from what is stored now, so a change from another tab survives.
+  const update = (change: Partial<AppLockConfig>): boolean => {
+    const current = readConfig()
+    if (current === null || current.userId !== config?.userId) {
+      refresh()
+      return false
+    }
+    writeConfig({ ...current, ...change })
+    refresh()
+    return true
+  }
+
+  const onComplete = async (pin?: string) => {
+    if (flow === null) {
+      return
+    }
+    if (flow.kind === 'disable') {
+      clearConfig()
+      unlock()
+      trackEvent(METRICS.APP_LOCK_DISABLED)
+    } else if (flow.kind === 'enable' && pin && userId) {
+      const hash = await hashPin(pin)
+      resetAttempts()
+      // Turning the lock on does not lock this tab: the user just proved who they are.
+      writeConfig({ v: 1, userId, pin: hash, lockAfterMs: DEFAULT_LOCK_AFTER_MS, biometric: null })
+      trackEvent(METRICS.APP_LOCK_ENABLED)
+    } else if (flow.kind === 'change' && pin) {
+      if (update({ pin: await hashPin(pin) })) {
+        trackEvent(METRICS.APP_LOCK_PIN_CHANGED)
+        toast.success(t('appLock.settings.pin_changed'))
+      }
+    }
+    refresh()
+    closeFlow()
+  }
+
+  const onExceeded = () => {
+    closeFlow()
+    trackEvent(METRICS.APP_LOCK_ATTEMPTS_EXCEEDED)
+    void navigate(RouterPage.LOGOUT, { state: { keepPendingWrites: true, resetAppLock: true } })
+  }
+
+  const onBiometricChange = (checked: boolean) => {
+    if (!checked) {
+      if (update({ biometric: null })) {
+        trackEvent(METRICS.APP_LOCK_BIOMETRIC_DISABLED)
+      }
+      return
+    }
+    if (register === null) {
+      toast.error(t('appLock.settings.biometric_failed'))
+      return
+    }
+    setRegistering(true)
+    // Called straight from the tap: nothing may be awaited before create().
+    void register()
+      .then((result) => {
+        if (result.status === 'ok') {
+          if (update({ biometric: { credentialId: result.credentialId } })) {
+            trackEvent(METRICS.APP_LOCK_BIOMETRIC_ENABLED)
+          }
+          return
+        }
+        toast.error(t('appLock.settings.biometric_failed'))
+      })
+      .finally(() => setRegistering(false))
+  }
+
+  const onLockAfterChange = (value: string) => {
+    const ms = Number(value)
+    if (ms === config?.lockAfterMs || !(LOCK_AFTER_OPTIONS as readonly number[]).includes(ms)) {
+      return
+    }
+    if (update({ lockAfterMs: ms })) {
+      trackEvent(METRICS.APP_LOCK_TIMEOUT_CHANGED, { lockAfter: ms / 1000 })
+    }
+  }
+
+  const lockAfterOptions = [
+    { value: '0', label: t('appLock.settings.lock_after.immediately') },
+    { value: '60000', label: t('appLock.settings.lock_after.one_minute') },
+    { value: '300000', label: t('appLock.settings.lock_after.five_minutes') },
+    { value: '900000', label: t('appLock.settings.lock_after.fifteen_minutes') },
+  ]
+
+  return (
+    <SettingsShell
+      title={t('appLock.settings.title')}
+      backTo={RouterPage.SETTINGS_PROFILE}
+      crumbs={[
+        { label: t('settings.page.header_desktop'), to: RouterPage.SETTINGS },
+        { label: t('user.page.settings.profile.menu_item'), to: RouterPage.SETTINGS_PROFILE },
+      ]}
+      editableOffline
+    >
+      <InfoBox>{t('appLock.settings.about')}</InfoBox>
+
+      <div className="flex max-w-md flex-col gap-2 py-2">
+        <div className={`${rowClass} ${supported ? '' : 'opacity-60'}`}>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <label htmlFor="app-lock-enabled" className="text-sm">
+              {t('appLock.settings.enabled_label')}
+            </label>
+            <span className="text-xs text-muted-foreground">
+              {supported ? t('appLock.settings.enabled_hint') : t('appLock.settings.needs_https')}
+            </span>
+          </div>
+          <Switch
+            id="app-lock-enabled"
+            checked={enabled}
+            disabled={!supported || (!enabled && userId === null)}
+            onCheckedChange={(checked) => openFlow(checked ? 'enable' : 'disable')}
+          />
+        </div>
+
+        {enabled ? (
+          <>
+            <button
+              type="button"
+              className={`${rowClass} text-left text-sm hover:bg-econumo-hover`}
+              onClick={() => openFlow('change')}
+            >
+              {t('appLock.settings.change_pin')}
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </button>
+
+            {biometrics ? (
+              <div className={rowClass}>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <label htmlFor="app-lock-biometric" className="text-sm">
+                    {t('appLock.settings.biometric_label')}
+                  </label>
+                  <span className="text-xs text-muted-foreground">{t('appLock.settings.biometric_hint')}</span>
+                </div>
+                <Switch
+                  id="app-lock-biometric"
+                  checked={credentialId !== null}
+                  disabled={registering}
+                  onCheckedChange={onBiometricChange}
+                />
+              </div>
+            ) : null}
+
+            <div className={rowClass}>
+              <span className="text-sm">
+                {t('appLock.settings.lock_after.label')}
+              </span>
+              <OptionSelect
+                id="app-lock-after"
+                aria-label={t('appLock.settings.lock_after.label')}
+                title={t('appLock.settings.lock_after.label')}
+                value={String(config.lockAfterMs)}
+                onValueChange={onLockAfterChange}
+                options={lockAfterOptions}
+                className="w-40 shrink-0"
+              />
+            </div>
+          </>
+        ) : null}
+      </div>
+
+      {flow ? (
+        <SetPinDialog
+          key={flow.seq}
+          open={flow.open}
+          flow={flow.kind}
+          pinLength={config?.pin.length ?? 4}
+          credentialId={credentialId}
+          onClose={closeFlow}
+          onComplete={onComplete}
+          onExceeded={onExceeded}
+        />
+      ) : null}
+    </SettingsShell>
+  )
+}

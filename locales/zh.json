@@ -2197,6 +2197,37 @@
     "dismiss": "关闭"
   },
   "appLock": {
+    "settings": {
+      "menu_item": "应用锁",
+      "title": "应用锁",
+      "on": "开",
+      "off": "关",
+      "needs_https": "需要 HTTPS",
+      "about": "应用锁仅在此设备上保护 Econumo。如果忘记 PIN 码，需要重新登录。它不会加密设备上存储的数据。",
+      "enabled_label": "应用锁",
+      "enabled_hint": "打开 Econumo 时要求输入 PIN 码",
+      "change_pin": "更改 PIN 码",
+      "pin_changed": "PIN 码已更改",
+      "biometric_label": "使用生物识别",
+      "biometric_hint": "在设备支持时使用面容 ID、触控 ID 或指纹。设备也可能接受其锁屏密码。通行密钥会与您的密码管理器同步；可在设备的密码设置中删除。",
+      "biometric_failed": "无法开启生物识别",
+      "lock_after": {
+        "label": "锁定时间",
+        "immediately": "立即",
+        "one_minute": "1 分钟",
+        "five_minutes": "5 分钟",
+        "fifteen_minutes": "15 分钟"
+      },
+      "dialog": {
+        "create_title": "设置 PIN 码",
+        "new_title": "设置新 PIN 码",
+        "current_title": "输入当前 PIN 码",
+        "confirm_title": "再次输入 PIN 码",
+        "pin_hint": "4 到 8 位数字",
+        "mismatch": "两次输入的 PIN 码不一致，请重试。",
+        "save": "保存"
+      }
+    },
     "lock_screen": {
       "title": "输入 PIN 码",
       "wrong_pin": "PIN 码错误",

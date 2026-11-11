@@ -27,6 +27,7 @@ import { AnalyticsDialog } from './AnalyticsDialog'
 import { ThemeDialog } from './ThemeDialog'
 import { themePreference } from '@/lib/theme'
 import { useTheme } from 'next-themes'
+import { activeConfig, appLockSupported } from '@/features/appLock/config'
 
 
 export function ProfilePage() {
@@ -251,6 +252,27 @@ export function ProfilePage() {
           {t('user.page.settings.profile.sessions.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
+        {appLockSupported() ? (
+          <Link
+            to={RouterPage.SETTINGS_APP_LOCK}
+            className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+          >
+            {t('appLock.settings.menu_item')}
+            <span className="flex items-center gap-2 text-xs text-muted-foreground">
+              {activeConfig() ? t('appLock.settings.on') : t('appLock.settings.off')}
+              <ChevronRight className="size-4" />
+            </span>
+          </Link>
+        ) : (
+          // Plain-http self-hosting: no crypto.subtle, so no lock to set up.
+          <div
+            aria-disabled="true"
+            className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm opacity-60"
+          >
+            {t('appLock.settings.menu_item')}
+            <span className="text-xs text-muted-foreground">{t('appLock.settings.needs_https')}</span>
+          </div>
+        )}
         <Link
           to={RouterPage.SETTINGS_TOKENS}
           className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"

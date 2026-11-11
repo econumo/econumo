@@ -17,6 +17,7 @@ import { ChangePasswordPage } from '@/features/settings/ChangePasswordPage'
 import { ChangeEmailPage } from '@/features/settings/ChangeEmailPage'
 import { SessionsPage } from '@/features/settings/SessionsPage'
 import { PersonalTokensPage } from '@/features/settings/PersonalTokensPage'
+import { AppLockPage } from '@/features/appLock/AppLockPage'
 import { LinkedAccountsPage } from '@/features/settings/LinkedAccountsPage'
 import { AccountsSettingsPage } from '@/features/accounts/AccountsSettingsPage'
 import { CategoriesPage } from '@/features/classifications/CategoriesPage'
@@ -75,6 +76,7 @@ export function createRouter() {
                 { path: '/settings/profile/change-email', element: <ChangeEmailPage /> },
                 { path: '/settings/profile/sessions', element: <SessionsPage /> },
                 { path: '/settings/profile/tokens', element: <PersonalTokensPage /> },
+                { path: '/settings/profile/app-lock', element: <AppLockPage /> },
                 { path: '/settings/profile/connected-apps', element: <ConnectedAppsPage /> },
                 { path: '/settings/profile/linked-accounts', element: <LinkedAccountsPage /> },
                 { path: '/settings/accounts', element: <AccountsSettingsPage /> },

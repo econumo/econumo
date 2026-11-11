@@ -689,6 +689,28 @@ when a routed page neither shows it nor is listed with a reason. Data the device
 events fire when the server confirms, `METRICS.WRITE_QUEUED`/`WRITE_RETRIED`/`WRITE_DISCARDED`
 at those points.
 
+**App lock** (`web/src/features/appLock`; spec `docs/superpowers/specs/2026-11-11-app-lock-design.md`,
+"Revision 1" wins): a per-device PIN (4-8 digits, PBKDF2 in `pin.ts`) with optional biometrics (a
+platform passkey, `biometric.ts`: no signature check, the clientData challenge/origin and the UV flag
+only; the device passcode also satisfies it), frontend only, never sent to the server. Storage:
+localStorage `econumo.appLock` (config: owner `userId`, PIN hash, `lockAfterMs` 0/1/5/15 min, passkey
+id) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
+sessionStorage marker `econumo.appLock.fresh` that `setToken` sets so the reload after a sign-in does
+not ask for the PIN. `setToken` is also the only place that deletes another user's lock (both ids
+known and different); `activeConfig()` fails closed (no `sessionUserId` yet still locks) and is null
+without a secure context (plain http: the Profile row reads "Needs HTTPS"). `initAppLock()`
+(`lockStore.ts`, from `main.tsx` before the first render) starts every page load locked, locks after
+`lockAfterMs` in the background or a slept device (15 s heartbeat), toggles a static `#privacy-cover`
+on hide outside React, and reloads a locked tab when another tab removes the lock or changes the
+session (a storage event never unlocks). The gate is in `RequireAuth`, which renders `LockScreen`
+INSTEAD of its outlet, so nothing financial stays mounted. Every current-PIN prompt (lock screen and
+settings, `AppLockPage` at `/settings/profile/app-lock`) goes through `checkPin`, which stores the
+failure before deriving; from the 5th failure a lockout, the 10th signs out. Sign-out:
+`LogoutPage` drops the lock unless it was sent `{ keepPendingWrites: true }` alone ("Set a password");
+"Forgot PIN" and the attempt limit send `{ keepPendingWrites: true, resetAppLock: true }`, keeping the
+owner's offline queue but not the lock. Threat model: someone handling an unlocked device through the
+UI; anyone with devtools or the browser profile can read the unencrypted caches or delete the config.
+
 **Product analytics rule:** every new user-facing feature/action MUST fire an
 analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
 `app`-prefixed camelCase names; the collector's snake_case name derives

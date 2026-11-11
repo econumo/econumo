@@ -2197,6 +2197,37 @@
     "dismiss": "Ausblenden"
   },
   "appLock": {
+    "settings": {
+      "menu_item": "App-Sperre",
+      "title": "App-Sperre",
+      "on": "An",
+      "off": "Aus",
+      "needs_https": "Erfordert HTTPS",
+      "about": "Die Sperre schützt Econumo nur auf diesem Gerät. Wenn Sie die PIN vergessen, müssen Sie sich erneut anmelden. Die auf dem Gerät gespeicherten Daten werden nicht verschlüsselt.",
+      "enabled_label": "App-Sperre",
+      "enabled_hint": "Beim Öffnen von Econumo nach einer PIN fragen",
+      "change_pin": "PIN ändern",
+      "pin_changed": "PIN geändert",
+      "biometric_label": "Biometrie verwenden",
+      "biometric_hint": "Face ID, Touch ID oder Fingerabdruck, sofern das Gerät es unterstützt. Ihr Gerät akzeptiert eventuell auch seinen Gerätecode. Der Passkey wird mit Ihrem Passwortmanager synchronisiert; Sie können ihn in den Passworteinstellungen Ihres Geräts löschen.",
+      "biometric_failed": "Biometrie konnte nicht aktiviert werden",
+      "lock_after": {
+        "label": "Sperren nach",
+        "immediately": "Sofort",
+        "one_minute": "1 Minute",
+        "five_minutes": "5 Minuten",
+        "fifteen_minutes": "15 Minuten"
+      },
+      "dialog": {
+        "create_title": "PIN festlegen",
+        "new_title": "Neue PIN festlegen",
+        "current_title": "Aktuelle PIN eingeben",
+        "confirm_title": "PIN erneut eingeben",
+        "pin_hint": "4 bis 8 Ziffern",
+        "mismatch": "Die PINs stimmen nicht überein. Versuchen Sie es erneut.",
+        "save": "Speichern"
+      }
+    },
     "lock_screen": {
       "title": "PIN eingeben",
       "wrong_pin": "Falsche PIN",

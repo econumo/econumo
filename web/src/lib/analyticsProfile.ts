@@ -8,6 +8,7 @@ import type { AccountDto } from '@/api/dto/account'
 import type { BudgetMetaDto } from '@/api/dto/budget'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { isPendingForMe } from '@/features/connections/shared'
+import { activeConfig } from '@/features/appLock/config'
 
 let client: QueryClient | null = null
 
@@ -24,7 +25,10 @@ function list<T>(key: readonly unknown[]): T[] | undefined {
 // that would read as a real measurement rather than "unknown"). Every count is
 // a total: active, hidden and archived items alike.
 type ProfileCount = 'accounts' | 'budgets' | 'categories' | 'payees' | 'tags' | 'labels' | 'connections' | 'signup_year' | 'months_since_signup'
-type ProfileAttributes = Partial<Record<ProfileCount, number>> & { import_apple_wallet?: 'on' | 'off' }
+type ProfileAttributes = Partial<Record<ProfileCount, number>> & {
+  import_apple_wallet?: 'on' | 'off'
+  app_lock?: 'off' | 'pin' | 'biometric'
+}
 
 function count(out: ProfileAttributes, key: readonly unknown[], name: ProfileCount): void {
   const rows = list<unknown>(key)
@@ -51,7 +55,9 @@ function monthsSince(createdAt: string, now: Date): number | undefined {
 }
 
 export function profileAttributes(): ProfileAttributes {
-  const out: ProfileAttributes = {}
+  // A device setting, read from storage at capture time: never in the query cache.
+  const lock = activeConfig()
+  const out: ProfileAttributes = { app_lock: lock === null ? 'off' : lock.biometric ? 'biometric' : 'pin' }
   if (!client) {
     return out
   }
