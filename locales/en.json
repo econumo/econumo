@@ -1216,7 +1216,7 @@
     "budget_name": "My budget",
     "accounts": {
       "heading": "Where's your money right now?",
-      "subtext": "Today's balances are enough, no history needed.",
+      "subtext": "Current balances are enough, no history needed.",
       "name_label": "Account name",
       "balance_label": "Balance",
       "balance_invalid": "Enter a number, for example 1234.50",
@@ -1227,7 +1227,7 @@
     },
     "categories_step": {
       "heading": "What do you spend on?",
-      "subtext": "Remove what you don't need. You can change these later.",
+      "subtext": "Remove what you don't need. You can edit this list later.",
       "expenses": "Expenses",
       "income": "Income",
       "name_label": "Category name",
@@ -1294,11 +1294,9 @@
     "remove_label": "Remove {name}",
     "plan_step": {
       "heading": "Plan this month",
-      "subtext": "Your budget is ready. Put a rough amount next to what matters — you can refine it any time.",
+      "subtext": "Enter rough planned amounts — you can adjust them later.",
       "income": "Income · {month}",
       "expenses": "Expenses · {month}",
-      "planned_of_income": "Planned {planned} of {total} expected income",
-      "planned_of_accounts": "Planned {planned} of {total} in your accounts",
       "needs_account": "A budget needs at least one account. Add one first.",
       "add_account": "Add an account",
       "no_categories": "There are no categories to plan yet. Add a few first.",

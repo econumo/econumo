@@ -1216,7 +1216,7 @@
     "budget_name": "Mijn budget",
     "accounts": {
       "heading": "Waar staat uw geld op dit moment?",
-      "subtext": "De saldi van vandaag zijn genoeg, geen geschiedenis nodig.",
+      "subtext": "De huidige saldi zijn genoeg, geen geschiedenis nodig.",
       "name_label": "Rekeningnaam",
       "balance_label": "Saldo",
       "balance_invalid": "Voer een getal in, bijvoorbeeld 1234,50",
@@ -1227,7 +1227,7 @@
     },
     "categories_step": {
       "heading": "Waaraan geeft u geld uit?",
-      "subtext": "Verwijder wat u niet nodig hebt. U kunt dit later wijzigen.",
+      "subtext": "Verwijder wat u niet nodig hebt. U kunt deze lijst later bewerken.",
       "expenses": "Uitgaven",
       "income": "Inkomsten",
       "name_label": "Categorienaam",
@@ -1294,11 +1294,9 @@
     "remove_label": "{name} verwijderen",
     "plan_step": {
       "heading": "Plan deze maand",
-      "subtext": "Uw budget staat klaar. Zet een globaal bedrag bij wat belangrijk is – u kunt het altijd aanpassen.",
+      "subtext": "Vul globale geplande bedragen in – u kunt ze later aanpassen.",
       "income": "Inkomsten · {month}",
       "expenses": "Uitgaven · {month}",
-      "planned_of_income": "{planned} gepland van {total} verwachte inkomsten",
-      "planned_of_accounts": "{planned} gepland van {total} op uw rekeningen",
       "needs_account": "Een budget heeft minstens één rekening nodig. Voeg er eerst een toe.",
       "add_account": "Rekening toevoegen",
       "no_categories": "Er zijn nog geen categorieën om te plannen. Voeg er eerst een paar toe.",

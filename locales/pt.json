@@ -1216,7 +1216,7 @@
     "budget_name": "Meu orçamento",
     "accounts": {
       "heading": "Onde está o seu dinheiro agora?",
-      "subtext": "Os saldos de hoje bastam, não é preciso histórico.",
+      "subtext": "Bastam os saldos atuais, não é preciso histórico.",
       "name_label": "Nome da conta",
       "balance_label": "Saldo",
       "balance_invalid": "Introduza um número, por exemplo 1234,50",
@@ -1227,7 +1227,7 @@
     },
     "categories_step": {
       "heading": "Em que você gasta?",
-      "subtext": "Remova o que não precisa. Você pode alterar isso depois.",
+      "subtext": "Remova o que não precisa. Pode editar esta lista mais tarde.",
       "expenses": "Despesas",
       "income": "Receitas",
       "name_label": "Nome da categoria",
@@ -1294,11 +1294,9 @@
     "remove_label": "Remover {name}",
     "plan_step": {
       "heading": "Planeie este mês",
-      "subtext": "O seu orçamento está pronto. Coloque um valor aproximado junto ao que importa — pode ajustá-lo a qualquer momento.",
+      "subtext": "Introduza valores aproximados planeados — pode ajustá-los mais tarde.",
       "income": "Receitas · {month}",
       "expenses": "Despesas · {month}",
-      "planned_of_income": "Planeado {planned} de {total} de receitas previstas",
-      "planned_of_accounts": "Planeado {planned} de {total} nas suas contas",
       "needs_account": "Um orçamento precisa de pelo menos uma conta. Adicione uma primeiro.",
       "add_account": "Adicionar uma conta",
       "no_categories": "Ainda não há categorias para planear. Adicione algumas primeiro.",

@@ -500,10 +500,9 @@ navigation (single-pane vs sidebar).
       suggestions, while a partner's shared account adds nothing);
       a stored plan is never replaced, and an amount typed (or a row cleared)
       before the suggestions arrive is kept. A prefilled amount is saved by
-      "Save and continue" like a typed one; an archived category is never listed. The line below reads
-      "Planned X of Y expected income" once any income is entered, otherwise
-      "Planned X of Y in your accounts" (own accounts converted to the budget
-      currency), and updates while typing.
+      "Save and continue" like a typed one; an archived category is never listed. The
+      step reads "Enter rough planned amounts — you can adjust them later." and
+      shows no "Planned X of Y" total.
 - [ ] "Save and continue" on Plan writes only changed rows for this month in one request
       (`onboarding/save-plan`): a typed 0 is saved as a zero plan, a blank row
       is never written (clearing an existing plan here leaves it); the step is

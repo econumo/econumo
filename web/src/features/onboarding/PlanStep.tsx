@@ -9,16 +9,13 @@ import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
-import { useAccounts } from '@/features/accounts/queries'
 import { useCategories } from '@/features/classifications/queries'
 import { canEditBudget, useBudgets } from '@/features/budgets/queries'
 import { budgetCurrentPeriod, localDate } from '@/features/budgets/period'
 import { useCurrencies } from '@/features/currencies/queries'
-import { useExchange } from '@/features/currencies/useExchange'
 import { userOption, useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
-import { add, cmp } from '@/lib/decimal'
-import { moneyFormat } from '@/lib/money'
+import { cmp } from '@/lib/decimal'
 import { decimalInput, parseBalance } from './balance'
 import { rowTile } from './CategoriesStep'
 import type { StepBodyProps } from './OnboardingPage'
@@ -31,9 +28,7 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
   const queryClient = useQueryClient()
   const day0 = useDay0()
   const { data: user } = useUserData()
-  const accounts = useAccounts()
   const currencies = useCurrencies()
-  const exchange = useExchange()
   const categories = useCategories()
   const budgets = useBudgets()
   const [edits, setEdits] = useState<Record<Id, string>>({})
@@ -142,22 +137,14 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
     return raw.startsWith('-') ? null : parseBalance(raw, i18n.language)
   }
   const invalid = new Set(rows.filter((c) => parsed(c) === null).map((c) => c.id))
-  const sum = (list: CategoryDto[]) => list.reduce((acc, c) => add(acc, parsed(c) || '0'), '0')
 
   const budgetCurrencyId = plan.data.meta.currencyId
-  const currency = (currencies.data ?? []).find((c) => c.id === budgetCurrencyId)
   // a category is planned in its element's currency, the budget's until the element carries another
   const elementCurrency = new Map(plan.data.structure.elements.map((e) => [e.id, e.currencyId]))
   const codeOf = (c: CategoryDto) => {
     const id = elementCurrency.get(c.id) || budgetCurrencyId
     return (currencies.data ?? []).find((x) => x.id === id)?.code ?? ''
   }
-  const plannedTotal = sum(expenses)
-  const expected = sum(income)
-  const hasIncome = cmp(expected, '0') > 0
-  const inAccounts = (accounts.data ?? [])
-    .filter((a) => a.owner.id === user?.id)
-    .reduce((acc, a) => add(acc, exchange(a.currency.id, budgetCurrencyId, a.balance)), '0')
   const month = new Intl.DateTimeFormat(i18n.language, { month: 'long' }).format(localDate(period))
 
   const save = async () => {
@@ -224,12 +211,6 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
       {group(income, t('onboarding.plan_step.income', { month }), 'group-income')}
       {group(expenses, t('onboarding.plan_step.expenses', { month }), 'group-expense')}
 
-      <p className="mt-3 text-sm text-muted-foreground">
-        {t(hasIncome ? 'onboarding.plan_step.planned_of_income' : 'onboarding.plan_step.planned_of_accounts', {
-          planned: moneyFormat(plannedTotal, currency),
-          total: moneyFormat(hasIncome ? expected : inAccounts, currency),
-        })}
-      </p>
       {invalid.size > 0 && <p className="text-sm text-destructive">{t('onboarding.plan_step.amount_invalid')}</p>}
       {saveError != null && (
         <p role="alert" className="text-sm text-destructive">

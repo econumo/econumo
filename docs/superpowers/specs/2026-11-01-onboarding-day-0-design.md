@@ -296,9 +296,9 @@ right, no bold, the accent colour only for progress and the primary button.
    "Archived"); there is no hint line under the list.
 3. **Budget and plan.** Entering the step creates the budget (all accounts, savings
    flags, kept categories) if none exists. Then "Plan this month": an Income group (expected
-   income per income category) and an Expenses group (one amount per expense category), a
-   running "Planned X of Y" line (planned spending against expected income, or against the
-   money in the accounts when no income is planned), and "Save and continue" writes this month's
+   income per income category) and an Expenses group (one amount per expense category)
+   under the line "Enter rough planned amounts — you can adjust them later.", with no
+   running total, and "Save and continue" writes this month's
    limits for both groups. "Skip" is allowed. Empty amounts are prefilled from
    `get-plan-suggestions`: per category, the average of the last three complete periods
    over every account the user owns (archived and deleted ones included, not just the

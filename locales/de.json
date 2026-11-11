@@ -1216,7 +1216,7 @@
     "budget_name": "Mein Budget",
     "accounts": {
       "heading": "Wo ist Ihr Geld gerade?",
-      "subtext": "Die heutigen Kontostände genügen, ein Verlauf ist nicht nötig.",
+      "subtext": "Die aktuellen Kontostände genügen, ein Verlauf ist nicht nötig.",
       "name_label": "Kontoname",
       "balance_label": "Kontostand",
       "balance_invalid": "Geben Sie eine Zahl ein, z. B. 1234,50",
@@ -1227,7 +1227,7 @@
     },
     "categories_step": {
       "heading": "Wofür geben Sie Geld aus?",
-      "subtext": "Entfernen Sie, was Sie nicht brauchen. Sie können das später ändern.",
+      "subtext": "Entfernen Sie, was Sie nicht brauchen. Sie können diese Liste später bearbeiten.",
       "expenses": "Ausgaben",
       "income": "Einnahmen",
       "name_label": "Kategoriename",
@@ -1294,11 +1294,9 @@
     "remove_label": "{name} entfernen",
     "plan_step": {
       "heading": "Diesen Monat planen",
-      "subtext": "Ihr Budget ist bereit. Tragen Sie grobe Beträge für das ein, was Ihnen wichtig ist – Sie können sie jederzeit anpassen.",
+      "subtext": "Tragen Sie ungefähre geplante Beträge ein – Sie können sie später anpassen.",
       "income": "Einnahmen · {month}",
       "expenses": "Ausgaben · {month}",
-      "planned_of_income": "{planned} von {total} erwarteten Einnahmen geplant",
-      "planned_of_accounts": "{planned} von {total} auf Ihren Konten geplant",
       "needs_account": "Ein Budget braucht mindestens ein Konto. Legen Sie zuerst eines an.",
       "add_account": "Konto hinzufügen",
       "no_categories": "Es gibt noch keine Kategorien zum Planen. Legen Sie zuerst ein paar an.",

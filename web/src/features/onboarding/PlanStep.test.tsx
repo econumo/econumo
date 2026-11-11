@@ -188,21 +188,11 @@ it('shows each row\'s currency next to its amount: the budget\'s, or the element
   expect(within(await row('Housing')).getByTestId('plan-currency')).toHaveTextContent('EUR')
 })
 
-it('plans spending against expected income when there is any', async () => {
-  const user = userEvent.setup()
+it('shows the subtext and no planned-of-total line', async () => {
   setup()
   await input('Groceries')
-  expect(screen.getByText('Planned 200.00 $ of 3,000.00 $ expected income')).toBeInTheDocument()
-  await user.type(screen.getByRole('textbox', { name: 'Housing' }), '1800')
-  expect(screen.getByText('Planned 2,000.00 $ of 3,000.00 $ expected income')).toBeInTheDocument()
-})
-
-it('plans against the money in the accounts when no income is planned', async () => {
-  setup({ salary: '' })
-  await input('Groceries')
-  expect(screen.getByText(/^Planned 200\.00 \$ of [\d,.]+ \$ in your accounts$/)).toBeInTheDocument()
-  // own accounts only: the fixture's USD accounts plus the EUR one converted
-  expect(screen.getByText(/of 2,20\d\.\d\d \$ in your accounts/)).toBeInTheDocument()
+  expect(screen.getByText('Enter rough planned amounts — you can adjust them later.')).toBeInTheDocument()
+  expect(screen.queryByText(/^Planned /)).not.toBeInTheDocument()
 })
 
 it('saves changed amounts only, a typed zero but never a blank, then moves on', async () => {

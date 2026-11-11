@@ -1216,7 +1216,7 @@
     "budget_name": "我的预算",
     "accounts": {
       "heading": "您的钱现在在哪里？",
-      "subtext": "只需今天的余额，无需历史记录。",
+      "subtext": "只需当前余额，无需历史记录。",
       "name_label": "账户名称",
       "balance_label": "余额",
       "balance_invalid": "请输入数字，例如 1234.50",
@@ -1227,7 +1227,7 @@
     },
     "categories_step": {
       "heading": "你的钱花在哪里？",
-      "subtext": "移除不需要的项目。之后也可以修改。",
+      "subtext": "移除不需要的项目。之后可以编辑此列表。",
       "expenses": "支出",
       "income": "收入",
       "name_label": "分类名称",
@@ -1294,11 +1294,9 @@
     "remove_label": "移除{name}",
     "plan_step": {
       "heading": "规划本月",
-      "subtext": "预算已准备好。为重要的项目填一个大概金额——随时都可以调整。",
+      "subtext": "填写大致的计划金额——之后可以调整。",
       "income": "收入 · {month}",
       "expenses": "支出 · {month}",
-      "planned_of_income": "已规划 {planned}，预期收入 {total}",
-      "planned_of_accounts": "已规划 {planned}，账户余额 {total}",
       "needs_account": "预算至少需要一个账户。请先添加账户。",
       "add_account": "添加账户",
       "no_categories": "还没有可规划的分类。请先添加几个。",

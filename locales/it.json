@@ -1216,7 +1216,7 @@
     "budget_name": "Il mio budget",
     "accounts": {
       "heading": "Dove sono i tuoi soldi adesso?",
-      "subtext": "Bastano i saldi di oggi, non serve la cronologia.",
+      "subtext": "Bastano i saldi attuali, non serve la cronologia.",
       "name_label": "Nome del conto",
       "balance_label": "Saldo",
       "balance_invalid": "Inserisci un numero, ad esempio 1234,50",
@@ -1227,7 +1227,7 @@
     },
     "categories_step": {
       "heading": "In cosa spendi?",
-      "subtext": "Rimuovi ciò che non ti serve. Potrai modificarlo più tardi.",
+      "subtext": "Rimuovi ciò che non ti serve. Potrai modificare questo elenco più tardi.",
       "expenses": "Spese",
       "income": "Entrate",
       "name_label": "Nome della categoria",
@@ -1294,11 +1294,9 @@
     "remove_label": "Rimuovi {name}",
     "plan_step": {
       "heading": "Pianifica questo mese",
-      "subtext": "Il tuo budget è pronto. Inserisci un importo indicativo accanto a ciò che conta: potrai modificarlo in qualsiasi momento.",
+      "subtext": "Inserisci importi indicativi previsti: potrai modificarli più tardi.",
       "income": "Entrate · {month}",
       "expenses": "Spese · {month}",
-      "planned_of_income": "Pianificati {planned} su {total} di entrate previste",
-      "planned_of_accounts": "Pianificati {planned} su {total} nei tuoi conti",
       "needs_account": "Un budget richiede almeno un conto. Aggiungine uno prima.",
       "add_account": "Aggiungi un conto",
       "no_categories": "Non ci sono ancora categorie da pianificare. Aggiungine prima alcune.",
