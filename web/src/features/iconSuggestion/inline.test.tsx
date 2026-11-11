@@ -21,6 +21,7 @@ const created: CategoryDto = {
 let suggested: () => Promise<string>
 let asked: number
 let updates: Record<string, unknown>[]
+let serverIcon: string
 
 function setup() {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
@@ -39,6 +40,7 @@ beforeEach(() => {
   suggested = async () => 'house'
   asked = 0
   updates = []
+  serverIcon = 'home'
   server.use(
     http.post('*/api/v1/category/create-category', async ({ request }) => {
       const body = (await request.json()) as { icon?: string }
@@ -48,9 +50,11 @@ beforeEach(() => {
       asked++
       return HttpResponse.json({ success: true, message: '', data: { icon: await suggested() } })
     }),
-    http.post('*/api/v1/category/update-category', async ({ request }) => {
-      updates.push((await request.json()) as Record<string, unknown>)
-      return HttpResponse.json({ success: true, message: '', data: {} })
+    // the server's compare-and-set: applied only while the category still shows expectedIcon
+    http.post('*/api/v1/onboarding/apply-suggested-icon', async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>
+      updates.push(body)
+      return HttpResponse.json({ success: true, message: '', data: { applied: body.expectedIcon === serverIcon } })
     }),
   )
 })
@@ -63,7 +67,7 @@ it('an inline create answers at once, then takes the suggested icon while it sti
   const { queryClient, result } = setup()
   const item = await result.current.mutateAsync({ name: 'Mortgage', type: 'expense' })
   expect(item.icon).toBe('home')
-  await waitFor(() => expect(updates).toEqual([{ id: created.id, name: 'Mortgage', icon: 'house' }]))
+  await waitFor(() => expect(updates).toEqual([{ categoryId: created.id, icon: 'house', expectedIcon: 'home' }]))
   await waitFor(() => expect(iconOf(queryClient)).toBe('house'))
   expect(applied()).toEqual([[METRICS.ICON_SUGGESTION_APPLIED, { kind: 'category', source: 'inline' }]])
 })
@@ -74,11 +78,23 @@ it('an icon changed while the suggestion was on its way stays', async () => {
   const { queryClient, result } = setup()
   await result.current.mutateAsync({ name: 'Mortgage', type: 'expense' })
   await waitFor(() => expect(asked).toBe(1))
+  // the user picked another icon meanwhile
+  serverIcon = 'wallet'
   queryClient.setQueryData<CategoryDto[]>(queryKeys.categories, (prev) => (prev ?? []).map((c) => ({ ...c, icon: 'wallet' })))
   answer('house')
-  await new Promise((resolve) => setTimeout(resolve, 100))
-  expect(updates).toEqual([])
+  await waitFor(() => expect(updates).toEqual([{ categoryId: created.id, icon: 'house', expectedIcon: 'home' }]))
+  await new Promise((resolve) => setTimeout(resolve, 50))
   expect(iconOf(queryClient)).toBe('wallet')
+  expect(applied()).toEqual([])
+})
+
+it('the server keeps an icon changed on another device: nothing patched or reported, the list marked stale', async () => {
+  serverIcon = 'wallet'
+  const { queryClient, result } = setup()
+  await result.current.mutateAsync({ name: 'Mortgage', type: 'expense' })
+  await waitFor(() => expect(updates).toHaveLength(1))
+  await waitFor(() => expect(queryClient.getQueryState(queryKeys.categories)?.isInvalidated).toBe(true))
+  expect(iconOf(queryClient)).toBe('home')
   expect(applied()).toEqual([])
 })
 

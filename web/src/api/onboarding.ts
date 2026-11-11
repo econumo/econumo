@@ -139,3 +139,10 @@ export async function suggestIcon(params: SuggestIconParams, signal?: AbortSigna
   const response = await api.get<Envelope<{ icon: string }>>(apiUrl('/api/v1/onboarding/suggest-icon'), { params, signal })
   return response.data.data.icon
 }
+
+// Sets a suggested icon on the caller's category only while it still shows expectedIcon (the
+// server compares and writes in one step); the name is never sent.
+export async function applySuggestedIcon(form: { categoryId: Id; icon: string; expectedIcon: string }): Promise<boolean> {
+  const response = await api.post<Envelope<{ applied: boolean }>>(apiUrl('/api/v1/onboarding/apply-suggested-icon'), form)
+  return response.data.data.applied
+}
