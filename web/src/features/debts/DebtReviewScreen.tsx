@@ -110,9 +110,8 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
   const markPaidOff = useMarkDebtPaidOff()
   const deleteDebt = useDeleteDebt()
   const [tab, setTab] = useState<DebtDetailsTab>(initialTab)
-  // the debt the Settings form was built from, loaded afresh: the form starts
-  // from what is owed now, and a cached balance from before a payment would
-  // store a snapshot that loses that payment's principal
+  // the debt the Settings form was built from, loaded afresh: a cached copy
+  // could send back facts another device has corrected since
   const [editDebt, setEditDebt] = useState<DebtDto | null>(null)
   const [formKey, setFormKey] = useState(0)
   // a reload on its way replaces the form: Finish setup focuses the new one
@@ -565,7 +564,12 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
       <section aria-labelledby={loanHeadingId}>
         <SectionHeading id={loanHeadingId}>{t('debts.review.loan')}</SectionHeading>
         <dl className="divide-y divide-border rounded-lg bg-econumo-card px-4 py-1.5">
-          {setUp ? <Figure label={t('debts.review.owed_now_label')}>{amount(item.currentBalance)}</Figure> : null}
+          {setUp ? (
+            <>
+              <Figure label={t('debts.review.borrowed')}>{`${amount(item.amountBorrowed)} · ${debtDay(item.startDate, lang)}`}</Figure>
+              <Figure label={t('debts.review.owed_now_label')}>{amount(item.currentBalance)}</Figure>
+            </>
+          ) : null}
           <Figure label={t('debts.form.payment.label')}>{`${amount(item.payment)} · ${schedule}`}</Figure>
           {setUp ? (
             <>
@@ -573,7 +577,10 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
               <Figure label={t('debts.review.loan_ends')}>{item.lastPaymentDate ? debtDay(item.lastPaymentDate, lang) : '—'}</Figure>
             </>
           ) : null}
-          <Figure label={t('debts.review.start_date')}>{item.startDate ? debtDay(item.startDate, lang) : t('debts.review.from_first_payment')}</Figure>
+          {/* a set-up debt's start is in Borrowed */}
+          {setUp ? null : (
+            <Figure label={t('debts.review.start_date')}>{item.startDate ? debtDay(item.startDate, lang) : t('debts.review.from_first_payment')}</Figure>
+          )}
           {setUp ? (
             <>
               <Figure label={t('debts.details.money_left')}>{amount(item.moneyLeft)}</Figure>

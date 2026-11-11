@@ -1,5 +1,4 @@
 import { X } from 'lucide-react'
-import type { Ref } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +22,7 @@ function AmountInput({ id, value, onChange }: { id: string; value: string; onCha
 export function AmountField({
   id,
   label,
+  hint,
   value,
   symbol,
   error,
@@ -31,6 +31,8 @@ export function AmountField({
 }: {
   id: string
   label: string
+  /** a line under the card saying when to fill it */
+  hint?: string
   value: string
   symbol: string
   error?: string | null
@@ -49,6 +51,7 @@ export function AmountField({
         </div>
       </CardField>
       {!error ? <AmountEcho echo={echo} /> : null}
+      {hint ? <p className="px-1 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   )
 }
@@ -134,7 +137,8 @@ export function StartDateField({ value, error, onChange }: { value: string; erro
 }
 
 /** One date in a card of half a row: the label above, the chip under it, the
-    hint for screen readers only (a 360 px phone has no room for it). */
+    hint for screen readers only (a 360 px phone has no room for it). The chip's
+    wrapper is marked `data-date-chip`, for Finish setup's focus. */
 function DateCard({
   label,
   hint,
@@ -158,7 +162,7 @@ function DateCard({
         {label}
       </span>
       <span className="sr-only">{hint}</span>
-      <span className="flex min-w-0 items-center gap-1">
+      <span data-date-chip className="flex min-w-0 items-center gap-1">
         <TransactionDatePicker ariaLabel={label} placeholder={placeholder} value={value} onChange={(day) => onChange(formatDate(day))} />
         {onClear && value ? (
           <Button type="button" variant="ghost" size="icon" className="size-7 shrink-0" aria-label={clearLabel} onClick={onClear}>
@@ -171,13 +175,14 @@ function DateCard({
 }
 
 /** The start date and the last payment date on one row, on every breakpoint:
-    the start date first, as the loan's dates read. */
+    the start date first, as the loan's dates read. `clearable` offers to drop
+    the start date (a debt not set up, where it only bounds the payments). */
 export function DatesRow({
   startDate,
   lastPaymentDate,
   startError,
   lastPaymentError,
-  lastPaymentRef,
+  clearable = false,
   onStartDateChange,
   onLastPaymentDateChange,
 }: {
@@ -185,8 +190,7 @@ export function DatesRow({
   lastPaymentDate: string
   startError?: string
   lastPaymentError?: string
-  /** holds the last payment date's chip, for Finish setup's focus */
-  lastPaymentRef?: Ref<HTMLDivElement>
+  clearable?: boolean
   onStartDateChange: (value: string) => void
   onLastPaymentDateChange: (value: string) => void
 }) {
@@ -201,20 +205,18 @@ export function DatesRow({
           label={startLabel}
           hint={t('debts.form.start_date.hint')}
           value={startDate}
-          placeholder={t('debts.form.start_date.none')}
+          placeholder={t('debts.form.last_payment_date.choose')}
           onChange={onStartDateChange}
-          onClear={() => onStartDateChange('')}
+          onClear={clearable ? () => onStartDateChange('') : undefined}
           clearLabel={t('debts.form.start_date.clear')}
         />
-        <div ref={lastPaymentRef} className="flex min-w-0 flex-1">
-          <DateCard
-            label={lastLabel}
-            hint={t('debts.form.last_payment_date.hint')}
-            value={lastPaymentDate}
-            placeholder={t('debts.form.last_payment_date.choose')}
-            onChange={onLastPaymentDateChange}
-          />
-        </div>
+        <DateCard
+          label={lastLabel}
+          hint={t('debts.form.last_payment_date.hint')}
+          value={lastPaymentDate}
+          placeholder={t('debts.form.last_payment_date.choose')}
+          onChange={onLastPaymentDateChange}
+        />
       </div>
       {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
     </div>

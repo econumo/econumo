@@ -13,8 +13,10 @@ export interface DebtDto {
   payeeId: Id | null
   tagId: Id | null
   labelId: Id | null
-  /** "" when the debt has no start date */
+  /** the day the loan began (always there once set up); "" when none */
   startDate: string
+  /** the loan's amount as of startDate; "" while not set up */
+  amountBorrowed: string
   /** the latest snapshot's terms */
   balance: string
   payment: string
@@ -32,7 +34,7 @@ export interface DebtDto {
   /** implied rate per schedule period, 10 decimals */
   periodRate: string
   isPaidOff: 0 | 1
-  /** 1 once the debt has a balance and a last payment date */
+  /** 1 once the debt has its amount borrowed, start date and last payment date */
   isSetUp: 0 | 1
 }
 
@@ -84,9 +86,14 @@ export interface CreateDebtDto {
   payeeId?: Id | null
   tagId?: Id | null
   labelId?: Id | null
-  /** Y-m-d; omitted or null = none */
+  /** Y-m-d, the day the loan began; omitted or null = none (alone it only
+   *  bounds which payments count) */
   startDate?: string | null
-  /** the optional terms, both or neither: without them the debt is not set up */
+  /** the loan's facts, amountBorrowed, startDate and lastPaymentDate, come
+   *  together: without them the debt is not set up */
+  amountBorrowed?: string
+  /** owed now, optional: a snapshot as of today over what the recorded
+   *  payments give */
   balance?: string
   /** must be positive (the server refuses 0 and blank) */
   payment: string
@@ -94,10 +101,10 @@ export interface CreateDebtDto {
   lastPaymentDate?: string
 }
 
-/** the currency never changes after creation; the server ignores currencyId.
- *  Without balance and lastPaymentDate the stored terms stay, and a payment or
- *  schedule left out keeps the stored one (one that differs from a set-up debt's
- *  terms needs balance and lastPaymentDate too) */
+/** currencyId "" keeps the stored currency. A set-up debt needs its startDate;
+ *  amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored
+ *  ones, one that differs corrects the loan's facts; a balance alone adds what
+ *  is owed now */
 export interface UpdateDebtDto extends Omit<CreateDebtDto, 'payment' | 'schedule'> {
   id: Id
   payment?: string

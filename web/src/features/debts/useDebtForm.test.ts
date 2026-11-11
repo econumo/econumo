@@ -1,64 +1,23 @@
 import { act, renderHook } from '@testing-library/react'
-import { buildCreatePayload, buildTermsPayload, initialCreateState, initialTermsState, plainAmount, projectTerms, useDebtTermsForm } from './useDebtForm'
+import { buildCreatePayload, buildTermsPayload, initialCreateState, initialTermsState, plainAmount, useDebtTermsForm } from './useDebtForm'
 import { wireDebt, wireDebtNotSetUp } from './testDebt'
 
-const debt = { ...wireDebt, periodRate: '0.01', currentBalance: '900' }
-
-// the projection starts after the caller's day: pin it before the stored next due
-beforeEach(() => {
-  vi.useFakeTimers({ toFake: ['Date'] })
-  vi.setSystemTime(new Date(2026, 10, 8, 12))
-})
-afterEach(() => {
-  vi.useRealTimers()
-})
-
-it('projects nothing under another schedule: the stored rate and next due belong to the old one', () => {
-  const form = { ...initialTermsState(debt), schedule: 'weekly' as const, balance: '600' }
-  expect(projectTerms(form, debt)).toEqual({ status: 'unknown' })
-})
-
-it('an amount edited after the schedule changed leaves the last payment date alone', () => {
-  const { result } = renderHook(() => useDebtTermsForm(debt))
-  act(() => result.current.patch({ schedule: 'weekly' }))
-  act(() => result.current.setBalance('600'))
-  expect(result.current.form.lastPaymentDate).toBe(debt.lastPaymentDate)
-  expect(result.current.projection).toEqual({ status: 'unknown' })
-})
-
-it('projects with the debt currency precision', () => {
-  const btc = { ...wireDebt, periodRate: '0', nextDueDate: '2026-12-15', lastPaymentDate: '2027-06-15' }
-  const form = { ...initialTermsState(btc), balance: '0.004', payment: '0.001' }
-  expect(projectTerms(form, btc, 8)).toEqual({ status: 'date', date: '2027-03-15' })
-  const { result } = renderHook(() => useDebtTermsForm(btc, () => 8))
-  act(() => result.current.setBalance('0.004'))
-  act(() => result.current.setPayment('0.001'))
-  expect(result.current.form.lastPaymentDate).toBe('2027-03-15')
-})
-
-// the server counts only the dues after the new snapshot, dated today
-it('projects from the first due after today when the next due is overdue or today', () => {
-  const overdue = { ...wireDebt, periodRate: '0', nextDueDate: '2026-11-05', lastPaymentDate: '2027-11-05' }
-  const form = { ...initialTermsState(overdue), balance: '200', payment: '100' }
-  expect(projectTerms(form, overdue, 2, '2026-11-08')).toEqual({ status: 'date', date: '2027-01-05' })
-  const dueToday = { ...overdue, nextDueDate: '2026-11-08', lastPaymentDate: '2027-11-08' }
-  expect(projectTerms({ ...form }, dueToday, 2, '2026-11-08')).toEqual({ status: 'date', date: '2027-01-08' })
-  // a future next due is the first projected payment
-  expect(projectTerms(form, overdue, 2, '2026-11-01')).toEqual({ status: 'date', date: '2026-12-05' })
-})
-
-it('a debt not set up starts with an empty balance and date, and projects nothing', () => {
-  const { result } = renderHook(() => useDebtTermsForm(wireDebtNotSetUp))
+it('a set-up debt starts from the loan facts, with no owed-now override', () => {
+  const { result } = renderHook(() => useDebtTermsForm({ ...wireDebt, currentBalance: '900' }))
   expect(result.current.form).toEqual({
-    name: 'Car loan', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null,
-    currencyId: 'cur-usd', balance: '', payment: '100', schedule: 'monthly', lastPaymentDate: '', startDate: '',
+    name: 'Car loan', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null, currencyId: 'cur-usd',
+    amountBorrowed: '1200', startDate: '2026-11-05', lastPaymentDate: '2027-11-05', payment: '100', schedule: 'monthly', balance: '',
   })
-  act(() => result.current.setBalance('600'))
-  expect(result.current.form.lastPaymentDate).toBe('')
-  expect(result.current.projection).toEqual({ status: 'unknown' })
 })
 
-it('setup without balance and date sends payment, repeats and start date only', () => {
+it('a debt not set up starts with the loan facts empty', () => {
+  const { result } = renderHook(() => useDebtTermsForm(wireDebtNotSetUp))
+  expect(result.current.form).toMatchObject({ amountBorrowed: '', startDate: '', lastPaymentDate: '', balance: '', payment: '100' })
+  act(() => result.current.patch({ amountBorrowed: '600' }))
+  expect(result.current.dirty).toBe(true)
+})
+
+it('setup without the loan facts sends payment, repeats and start date only', () => {
   const initial = initialTermsState(wireDebtNotSetUp)
   const payload = buildTermsPayload({ ...initial, payment: '120', startDate: '2026-01-01' }, initial, wireDebtNotSetUp)
   // the currency as loaded goes as none: the server keeps the stored one
@@ -68,10 +27,38 @@ it('setup without balance and date sends payment, repeats and start date only', 
   })
 })
 
-it('setup with balance and date sends both terms', () => {
+it('setup with the loan facts sends them, owed now only when typed', () => {
   const initial = initialTermsState(wireDebtNotSetUp)
-  const payload = buildTermsPayload({ ...initial, balance: '900', lastPaymentDate: '2027-08-05' }, initial, wireDebtNotSetUp)
-  expect(payload).toMatchObject({ balance: '900', lastPaymentDate: '2027-08-05', payment: '100', schedule: 'monthly', startDate: null })
+  const facts = { ...initial, amountBorrowed: '2 000', startDate: '2025-08-05', lastPaymentDate: '2027-08-05' }
+  const payload = buildTermsPayload(facts, initial, wireDebtNotSetUp)
+  expect(payload).toMatchObject({ amountBorrowed: '2000', startDate: '2025-08-05', lastPaymentDate: '2027-08-05', payment: '100', schedule: 'monthly' })
+  expect(payload).not.toHaveProperty('balance')
+  expect(buildTermsPayload({ ...facts, balance: '1500' }, initial, wireDebtNotSetUp)).toMatchObject({ balance: '1500', amountBorrowed: '2000' })
+})
+
+it('a set-up debt sends no loan facts while none was touched, only its start date', () => {
+  const initial = initialTermsState(wireDebt)
+  const payload = buildTermsPayload({ ...initial, name: 'Renamed' }, initial, wireDebt)
+  expect(payload).toEqual({
+    id: 'd1', name: 'Renamed', currencyId: '', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null, startDate: '2026-11-05',
+  })
+  // "1 200" typed over a stored 1200 is the same amount
+  expect(buildTermsPayload({ ...initial, amountBorrowed: '1 200' }, initial, wireDebt)).not.toHaveProperty('amountBorrowed')
+})
+
+it('a touched loan fact sends every fact, so the server reads one correction', () => {
+  const initial = initialTermsState(wireDebt)
+  expect(buildTermsPayload({ ...initial, payment: '110' }, initial, wireDebt)).toMatchObject({
+    amountBorrowed: '1200', lastPaymentDate: '2027-11-05', payment: '110', schedule: 'monthly', startDate: '2026-11-05',
+  })
+})
+
+it('owed now alone goes without the loan facts', () => {
+  const initial = initialTermsState(wireDebt)
+  const payload = buildTermsPayload({ ...initial, balance: '800' }, initial, wireDebt)
+  expect(payload).toMatchObject({ balance: '800', startDate: '2026-11-05' })
+  expect(payload).not.toHaveProperty('amountBorrowed')
+  expect(payload).not.toHaveProperty('payment')
 })
 
 it('a new debt is created without terms and keeps its label', () => {
@@ -82,6 +69,7 @@ it('a new debt is created without terms and keeps its label', () => {
     startDate: null, payment: '50', schedule: 'monthly',
   })
   expect(payload).not.toHaveProperty('balance')
+  expect(payload).not.toHaveProperty('amountBorrowed')
   expect(payload).not.toHaveProperty('lastPaymentDate')
 })
 

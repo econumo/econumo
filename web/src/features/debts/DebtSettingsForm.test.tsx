@@ -51,15 +51,6 @@ function captureUpdate(answer: (body: Record<string, unknown>) => unknown = () =
   return bodies
 }
 
-// the projection starts after the caller's day: pin it before the stored next due
-beforeEach(() => {
-  vi.useFakeTimers({ toFake: ['Date'] })
-  vi.setSystemTime(new Date(2026, 10, 8, 12))
-})
-afterEach(() => {
-  vi.useRealTimers()
-})
-
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
@@ -68,76 +59,46 @@ beforeEach(() => {
   vi.mocked(trackEvent).mockClear()
 })
 
-const TERM_KEYS = ['balance', 'payment', 'schedule', 'lastPaymentDate']
+const TERM_KEYS = ['amountBorrowed', 'balance', 'payment', 'schedule', 'lastPaymentDate']
 
+const startChip = () => screen.getByRole('button', { name: 'Start date' })
 const lastPaymentChip = () => screen.getByRole('button', { name: 'Last payment date' })
+const owedNow = () => screen.getByLabelText('Owed now (optional)')
 
-it('editing the balance recomputes the last payment date', async () => {
-  const user = userEvent.setup()
+it('asks for the loan facts in order: borrowed, the dates, payment, owed now, currency', () => {
   renderForm(wireDebt)
+  expect(screen.getByLabelText('Name')).toHaveValue('Car loan')
+  expect(screen.getByRole('button', { name: 'Category: Food' })).toBeInTheDocument()
+  const borrowed = screen.getByLabelText('Amount borrowed')
+  expect(borrowed).toHaveValue('1200')
+  expect(startChip()).toHaveTextContent('2026-11-05')
   expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
-
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '600')
-
-  // six 100 payments from the next due date, 2026-12-05
-  expect(lastPaymentChip()).toHaveTextContent('2027-05-05')
-  expect(screen.getByLabelText('Payment')).toHaveValue('100')
+  expect(screen.getByRole('group', { name: 'Payment, Repeats' })).toBeInTheDocument()
+  // the override starts empty: what is owed follows from the recorded payments
+  expect(owedNow()).toHaveValue('')
+  expect(screen.getByText("Only if recorded payments don't match your statement")).toBeInTheDocument()
+  const order = [borrowed, startChip(), lastPaymentChip(), screen.getByLabelText('Payment'), owedNow(), screen.getByRole('button', { name: /^Currency/ })]
+  for (let i = 1; i < order.length; i++) {
+    expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  }
+  expect(screen.getAllByRole('button', { name: 'Save' })).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
 })
 
-it('editing the payment recomputes the date from the debt interest rate', async () => {
-  const user = userEvent.setup()
-  renderForm({ ...wireDebt, periodRate: '0.01' })
-
-  const payment = screen.getByLabelText('Payment')
-  await user.clear(payment)
-  await user.type(payment, '600')
-
-  // 1200 at 1% a period, 600 a payment: 3 payments, Dec, Jan, Feb
-  expect(lastPaymentChip()).toHaveTextContent('2027-02-05')
+it('the dates share one row: Start date first, Last payment date second', () => {
+  renderForm(wireDebt)
+  const row = screen.getByRole('group', { name: 'Start date, Last payment date' })
+  const start = within(row).getByRole('button', { name: 'Start date' })
+  const last = within(row).getByRole('button', { name: 'Last payment date' })
+  expect(start.compareDocumentPosition(last) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // the hints stay for screen readers, off the narrow cards
+  expect(within(row).getByText('When the loan began')).toHaveClass('sr-only')
+  expect(within(row).getByText('When the debt ends')).toHaveClass('sr-only')
+  // a set-up debt keeps its start: nothing to clear
+  expect(screen.queryByRole('button', { name: 'Clear the start date' })).toBeNull()
 })
 
-it('a payment that never covers the interest says so and keeps the date', async () => {
-  const user = userEvent.setup()
-  renderForm({ ...wireDebt, periodRate: '0.05' })
-
-  const payment = screen.getByLabelText('Payment')
-  await user.clear(payment)
-  await user.type(payment, '10')
-
-  expect(await screen.findByText(/never pays off/)).toBeInTheDocument()
-  expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
-})
-
-it('an unusable balance or payment is not called a payment that never covers the interest', async () => {
-  const user = userEvent.setup()
-  renderForm({ ...wireDebt, periodRate: '0.05' })
-
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '-100')
-  const payment = screen.getByLabelText('Payment')
-  await user.clear(payment)
-  await user.type(payment, '0')
-
-  expect(screen.queryByText(/never pays off/)).toBeNull()
-})
-
-it('editing the last payment date leaves the other fields', async () => {
-  const user = userEvent.setup()
-  renderForm({ ...wireDebt, currentBalance: '900' })
-
-  await user.click(lastPaymentChip())
-  await user.click(await screen.findByRole('button', { name: /November 20th, 2027/ }))
-
-  expect(lastPaymentChip()).toHaveTextContent('2027-11-20')
-  expect(screen.getByLabelText('Balance now')).toHaveValue('900')
-  expect(screen.getByLabelText('Payment')).toHaveValue('100')
-  expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('every month')
-})
-
-it('saving untouched terms sends none, so the server keeps the stored ones', async () => {
+it('saving untouched terms sends none but the start date, so the server keeps the stored ones', async () => {
   const bodies = captureUpdate()
   const user = userEvent.setup()
   const onSaved = renderForm({ ...wireDebt, currentBalance: '900' })
@@ -145,7 +106,7 @@ it('saving untouched terms sends none, so the server keeps the stored ones', asy
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', currencyId: '', categoryId: 'cat-food', labelId: null, startDate: null })
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', currencyId: '', categoryId: 'cat-food', labelId: null, startDate: '2026-11-05' })
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
@@ -153,17 +114,29 @@ it('saving untouched terms sends none, so the server keeps the stored ones', asy
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
 })
 
-it('a balance typed and put back is untouched: no new snapshot', async () => {
+it('a corrected amount borrowed sends every loan fact, typed plain', async () => {
   const bodies = captureUpdate()
   const user = userEvent.setup()
-  renderForm({ ...wireDebt, currentBalance: '900' })
+  renderForm(wireDebt)
 
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '500')
-  await user.clear(balance)
-  await user.type(balance, '900')
-  expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
+  const borrowed = screen.getByLabelText('Amount borrowed')
+  await user.clear(borrowed)
+  await user.type(borrowed, '1 500')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ amountBorrowed: '1500', startDate: '2026-11-05', lastPaymentDate: '2027-11-05', payment: '100', schedule: 'monthly' })
+  expect(bodies[0]).not.toHaveProperty('balance')
+})
+
+it('an amount borrowed typed back as stored is untouched', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm(wireDebt)
+
+  const borrowed = screen.getByLabelText('Amount borrowed')
+  await user.clear(borrowed)
+  await user.type(borrowed, '1,200')
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
@@ -172,18 +145,33 @@ it('a balance typed and put back is untouched: no new snapshot', async () => {
   }
 })
 
-it('a changed balance is sent as typed', async () => {
+it('owed now goes alone, without the loan facts', async () => {
   const bodies = captureUpdate()
   const user = userEvent.setup()
   renderForm(wireDebt)
 
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '600')
+  const name = screen.getByLabelText('Name')
+  await user.clear(name)
+  await user.type(name, 'Van loan')
+  await user.type(owedNow(), '1 100.50')
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ balance: '600', payment: '100', lastPaymentDate: '2027-05-05' })
+  expect(bodies[0]).toMatchObject({ name: 'Van loan', balance: '1100.5', startDate: '2026-11-05' })
+  expect(bodies[0]).not.toHaveProperty('amountBorrowed')
+  expect(bodies[0]).not.toHaveProperty('payment')
+})
+
+it('a negative owed now is refused before sending', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm(wireDebt)
+
+  await user.type(owedNow(), '-5')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  expect(await screen.findByText('Enter a valid number')).toBeInTheDocument()
+  expect(bodies).toHaveLength(0)
 })
 
 it('shows a server refusal under its field', async () => {
@@ -204,50 +192,59 @@ it('shows a server refusal under its field', async () => {
   expect(onSaved).not.toHaveBeenCalled()
 })
 
-it('setup starts with payment and repeats filled, balance and date empty', () => {
+it('setup starts with payment and repeats filled, the loan facts empty', () => {
   renderForm(wireDebtNotSetUp)
-  expect(screen.getByLabelText('Balance now')).toHaveValue('')
+  expect(screen.getByLabelText('Amount borrowed')).toHaveValue('')
+  expect(owedNow()).toHaveValue('')
   expect(screen.getByLabelText('Payment')).toHaveValue('100')
   expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('every month')
+  expect(startChip()).toHaveTextContent('Choose a date')
   expect(lastPaymentChip()).toHaveTextContent('Choose a date')
 })
 
-it('setup does not fill the last payment date from the balance: there is no rate yet', async () => {
-  const user = userEvent.setup()
-  renderForm(wireDebtNotSetUp)
-  await user.type(screen.getByLabelText('Balance now'), '600')
-  expect(lastPaymentChip()).toHaveTextContent('Choose a date')
-})
-
-it('setup asks for the date once a balance is typed', async () => {
+it('setup asks for the dates once an amount borrowed is typed', async () => {
   let called = false
   server.use(http.post('*/api/v1/debt/update-debt', () => { called = true; return ok(wireDebt) }))
   const user = userEvent.setup()
   renderForm(wireDebtNotSetUp)
-  await user.type(screen.getByLabelText('Balance now'), '600')
+  await user.type(screen.getByLabelText('Amount borrowed'), '600')
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   expect(await screen.findByText('Required field')).toBeInTheDocument()
   expect(called).toBe(false)
 })
 
-it('saving a debt not set up with both terms finishes its setup and fires DEBT_FINISH_SETUP once', async () => {
-  const bodies = captureUpdate(() => ({ ...wireDebt, balance: '600', lastPaymentDate: '2026-12-15' }))
+it('setup asks for the loan facts once owed now is typed', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm(wireDebtNotSetUp)
+  await user.type(owedNow(), '600')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  expect((await screen.findAllByText('Required field')).length).toBeGreaterThan(0)
+  expect(bodies).toHaveLength(0)
+})
+
+it('saving a debt not set up with the loan facts finishes its setup and fires DEBT_FINISH_SETUP once', async () => {
+  const bodies = captureUpdate(() => wireDebt)
   const user = userEvent.setup()
   const onSaved = renderForm(wireDebtNotSetUp)
 
-  await user.type(screen.getByLabelText('Balance now'), '600')
-  await user.click(lastPaymentChip())
+  await user.type(screen.getByLabelText('Amount borrowed'), '1200')
   const now = new Date()
   const month = new Intl.DateTimeFormat('en', { month: 'long' }).format(now)
+  await user.click(startChip())
+  await user.click(await screen.findByRole('button', { name: new RegExp(`${month} 1st, ${now.getFullYear()}`) }))
+  await user.click(lastPaymentChip())
   await user.click(await screen.findByRole('button', { name: new RegExp(`${month} 15th, ${now.getFullYear()}`) }))
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   expect(bodies[0]).toMatchObject({
-    id: 'd1', balance: '600', payment: '100', schedule: 'monthly',
-    lastPaymentDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-15`,
+    id: 'd1', amountBorrowed: '1200', startDate: `${ym}-01`, lastPaymentDate: `${ym}-15`, payment: '100', schedule: 'monthly',
   })
+  expect(bodies[0]).not.toHaveProperty('balance')
   const events = vi.mocked(trackEvent).mock.calls.map((c) => c[0])
   expect(events.filter((e) => e === METRICS.DEBT_FINISH_SETUP)).toHaveLength(1)
   expect(events).not.toContain(METRICS.DEBT_UPDATE)
@@ -266,6 +263,7 @@ it('setup saved without terms only updates the payment and is no finished setup'
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
   expect(bodies[0]).toMatchObject({ payment: '120', schedule: 'monthly' })
   expect(bodies[0]).not.toHaveProperty('balance')
+  expect(bodies[0]).not.toHaveProperty('amountBorrowed')
   expect(bodies[0]).not.toHaveProperty('lastPaymentDate')
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
@@ -308,20 +306,40 @@ it('a currency changed alone sends no terms, even into a currency with fewer dig
   }
 })
 
-it('a changed balance goes with a changed currency', async () => {
+// a currency changed on another device since the form loaded stays
+it('shows the currency and sends none while it is kept, so the server keeps the stored one', async () => {
   const bodies = captureUpdate()
   const user = userEvent.setup()
   renderForm(wireDebt)
 
-  await user.click(await screen.findByRole('button', { name: /^Currency: USD/ }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/EUR/))
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '600')
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ currencyId: 'cur-eur', balance: '600', payment: '100' })
+  expect(bodies[0]).toMatchObject({ currencyId: '' })
+})
+
+// sending the stored 1000.50 back would be rounded to 1001 yen on the server
+it('a currency changed alone sends no terms, even into a currency with fewer digits', async () => {
+  server.use(
+    http.get('*/api/v1/currency/get-currency-list', () =>
+      ok({ items: [fixtureUsd, { ...fixtureUsd, id: 'cur-jpy', code: 'JPY', name: 'Yen', symbol: '¥', fractionDigits: 0 }] }),
+    ),
+  )
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm({ ...wireDebt, amountBorrowed: '1000.50', currentBalance: '900.50', payment: '100.25' })
+
+  await user.click(await screen.findByRole('button', { name: /^Currency: USD/ }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Currency' })).getByText(/JPY/))
+  expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('JPY')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ currencyId: 'cur-jpy' })
+  for (const key of TERM_KEYS) {
+    expect(bodies[0]).not.toHaveProperty(key)
+  }
 })
 
 it('payment and repeats read as one line', async () => {
@@ -338,19 +356,6 @@ it('payment and repeats read as one line', async () => {
 
   await waitFor(() => expect(bodies).toHaveLength(1))
   expect(bodies[0]).toMatchObject({ schedule: 'biweekly' })
-})
-
-it('holds the name, the payments sentence, the terms, the start date and the currency in one form', () => {
-  renderForm(wireDebt)
-  expect(screen.getByLabelText('Name')).toHaveValue('Car loan')
-  expect(screen.getByRole('button', { name: 'Category: Food' })).toBeInTheDocument()
-  expect(screen.getByLabelText('Balance now')).toHaveValue('1200')
-  expect(screen.getByRole('group', { name: 'Payment, Repeats' })).toBeInTheDocument()
-  expect(lastPaymentChip()).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Start date (optional)' })).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: /^Currency/ })).toBeInTheDocument()
-  expect(screen.getAllByRole('button', { name: 'Save' })).toHaveLength(1)
-  expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
 })
 
 it('a rename and a new reporting tag go in one request with no terms and no currency', async () => {
@@ -370,41 +375,6 @@ it('a rename and a new reporting tag go in one request with no terms and no curr
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
-})
-
-it('a rename together with a new balance sends both in the same request', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebt)
-
-  const name = screen.getByLabelText('Name')
-  await user.clear(name)
-  await user.type(name, 'Van loan')
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '600')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ name: 'Van loan', balance: '600', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-05-05' })
-})
-
-it('a balance typed with a thousands separator is the same amount and sent plain', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm({ ...wireDebt, currentBalance: '1200' })
-
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '1,200')
-  // the same amount as stored: no new terms
-  expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
-  await user.clear(balance)
-  await user.type(balance, '1 100.50')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ balance: '1100.5' })
 })
 
 it('an empty name is refused before sending', async () => {
@@ -446,35 +416,41 @@ it('Cancel puts back what was loaded', async () => {
   const name = screen.getByLabelText('Name')
   await user.clear(name)
   await user.type(name, 'Van loan')
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '600')
+  const borrowed = screen.getByLabelText('Amount borrowed')
+  await user.clear(borrowed)
+  await user.type(borrowed, '600')
+  await user.type(owedNow(), '300')
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
   expect(screen.getByLabelText('Name')).toHaveValue('Car loan')
-  expect(screen.getByLabelText('Balance now')).toHaveValue('1200')
-  expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
+  expect(screen.getByLabelText('Amount borrowed')).toHaveValue('1200')
+  expect(owedNow()).toHaveValue('')
 })
 
-it('asked to, it focuses the first missing term of a debt not set up', () => {
+it('asked to, it focuses the first missing loan fact of a debt not set up', () => {
   renderForm(wireDebtNotSetUp, { focusMissing: true })
-  expect(screen.getByLabelText('Balance now')).toHaveFocus()
+  expect(screen.getByLabelText('Amount borrowed')).toHaveFocus()
+})
+
+it('asked to, it focuses the start date once the amount borrowed is there', () => {
+  renderForm({ ...wireDebtNotSetUp, amountBorrowed: '1200', isSetUp: 1, startDate: '' }, { focusMissing: true })
+  expect(startChip()).toHaveFocus()
 })
 
 it('an amount typed with a separator shows how it is read, in the display format', async () => {
   const user = userEvent.setup()
   renderForm(wireDebt)
 
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '1.500')
+  const borrowed = screen.getByLabelText('Amount borrowed')
+  await user.clear(borrowed)
+  await user.type(borrowed, '1.500')
   expect(await screen.findByText('= 1.50 $')).toBeInTheDocument()
-  await user.clear(balance)
-  await user.type(balance, '1,500')
+  await user.clear(borrowed)
+  await user.type(borrowed, '1,500')
   expect(await screen.findByText('= 1,500.00 $')).toBeInTheDocument()
   // nothing to tell apart without a separator
-  await user.clear(balance)
-  await user.type(balance, '1500')
+  await user.clear(borrowed)
+  await user.type(borrowed, '1500')
   expect(screen.queryByText(/^= /)).toBeNull()
 
   const payment = screen.getByLabelText('Payment')
@@ -483,24 +459,13 @@ it('an amount typed with a separator shows how it is read, in the display format
   expect(await screen.findByText('= 2,000.50 $')).toBeInTheDocument()
 })
 
-it('the dates share one row: Start date first, Last payment date second', () => {
-  renderForm(wireDebt)
-  const row = screen.getByRole('group', { name: 'Start date (optional), Last payment date' })
-  const start = within(row).getByRole('button', { name: 'Start date (optional)' })
-  const last = within(row).getByRole('button', { name: 'Last payment date' })
-  expect(start.compareDocumentPosition(last) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  // the hints stay for screen readers, off the narrow cards
-  expect(within(row).getByText("Earlier payments don't count")).toHaveClass('sr-only')
-  expect(within(row).getByText('When the debt ends')).toHaveClass('sr-only')
-})
-
-it('a start date set in the row can be cleared', async () => {
-  const bodies = captureUpdate()
+it('a debt not set up can drop its start date', async () => {
+  const bodies = captureUpdate(() => wireDebtNotSetUp)
   const user = userEvent.setup()
-  renderForm({ ...wireDebt, startDate: '2026-03-01' })
+  renderForm({ ...wireDebtNotSetUp, startDate: '2026-03-01' })
 
   await user.click(screen.getByRole('button', { name: 'Clear the start date' }))
-  expect(screen.getByRole('button', { name: 'Start date (optional)' })).toHaveTextContent('None')
+  expect(startChip()).toHaveTextContent('Choose a date')
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))

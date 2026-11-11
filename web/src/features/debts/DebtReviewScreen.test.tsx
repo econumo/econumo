@@ -38,13 +38,14 @@ function renderScreen() {
   return renderScreenWithClient()
 }
 
-const TERM_KEYS = ['balance', 'payment', 'schedule', 'lastPaymentDate']
+const TERM_KEYS = ['amountBorrowed', 'balance', 'payment', 'schedule', 'lastPaymentDate']
 
 const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
 
 const details: DebtDetailsDto = {
   item: {
     ...wireDebt,
+    startDate: '2026-10-01',
     currentBalance: '1090',
     paymentsLeft: 283,
     periodsPaid: 77,
@@ -182,11 +183,13 @@ it('the Loan card holds every figure of the debt and nothing to edit', async () 
 
   const loan = screen.getByRole('region', { name: 'Loan' })
   const figure = (label: string) => within(loan).getByText(label).nextElementSibling
+  expect(figure('Borrowed')).toHaveTextContent('1,200.00 $ · Oct 1, 2026')
   expect(figure('Owed now')).toHaveTextContent('1,090.00 $')
   expect(figure('Payment')).toHaveTextContent('100.00 $ · Monthly')
   expect(figure('Next payment')).toHaveTextContent('Dec 5, 2026')
   expect(figure('Loan ends')).toHaveTextContent('Jul 5, 2050')
-  expect(figure('Start date')).toHaveTextContent('From the first payment')
+  // the start is in Borrowed
+  expect(within(loan).queryByText('Start date')).toBeNull()
   expect(figure('Left to pay')).toHaveTextContent('1,100.00 $')
   expect(figure('Overpaid so far')).toHaveTextContent('15.50 $')
   expect(figure('Overpayment still to come')).toHaveTextContent('10.00 $')
@@ -194,13 +197,23 @@ it('the Loan card holds every figure of the debt and nothing to edit', async () 
   expect(within(loan).queryByRole('button')).toBeNull()
 })
 
-it('a debt with a start date shows it in the Loan card', async () => {
-  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, startDate: '2026-03-01' } })))
+it('a debt not set up shows its start date in the Loan card, or that it counts from the first payment', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...notSetUp, item: { ...notSetUp.item, startDate: '2026-03-01' } })))
   renderScreen()
   await openScreen()
 
   const loan = screen.getByRole('region', { name: 'Loan' })
   expect(within(loan).getByText('Start date').nextElementSibling).toHaveTextContent('Mar 1, 2026')
+  expect(within(loan).queryByText('Borrowed')).toBeNull()
+})
+
+it('a debt not set up without a start date counts from the first payment', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
+  renderScreen()
+  await openScreen()
+
+  const loan = screen.getByRole('region', { name: 'Loan' })
+  expect(within(loan).getByText('Start date').nextElementSibling).toHaveTextContent('From the first payment')
 })
 
 it('the Overview reads which payments count as a sentence, with no pickers', async () => {
@@ -248,7 +261,7 @@ it('not-set-up debt shows Finish setup and no balance', async () => {
   expect(top).toHaveTextContent('Paid so far')
   expect(top).toHaveTextContent('150.50 $')
   expect(within(top).getByRole('button', { name: 'Finish setup' })).toBeInTheDocument()
-  expect(top).toHaveTextContent('Add what you owe and when the loan ends to see payments left')
+  expect(top).toHaveTextContent("Add the amount borrowed and the loan's dates to see payments left")
   expect(screen.queryByText(/\d+ payments? left/)).toBeNull()
   expect(screen.queryByText(/Owed now/)).toBeNull()
   expect(screen.queryByRole('progressbar')).toBeNull()
@@ -274,7 +287,7 @@ it('Paid so far counts only payments dated up to today; the list keeps the futur
   expect(screen.getAllByTestId('debt-payment')).toHaveLength(3)
 })
 
-it('Finish setup switches to Settings with the balance focused', async () => {
+it('Finish setup switches to Settings with the amount borrowed focused', async () => {
   server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
   const user = userEvent.setup()
   renderScreen()
@@ -283,10 +296,10 @@ it('Finish setup switches to Settings with the balance focused', async () => {
   await user.click(within(screen.getByTestId('debt-review-top')).getByRole('button', { name: 'Finish setup' }))
 
   expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
-  await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveFocus())
+  await waitFor(() => expect(screen.getByLabelText('Amount borrowed')).toHaveFocus())
 })
 
-it('Finish setup after a visit to Settings focuses the balance of the reloaded form', async () => {
+it('Finish setup after a visit to Settings focuses the amount borrowed of the reloaded form', async () => {
   server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
   const user = userEvent.setup()
   renderScreen()
@@ -296,10 +309,10 @@ it('Finish setup after a visit to Settings focuses the balance of the reloaded f
 
   await user.click(within(screen.getByTestId('debt-review-top')).getByRole('button', { name: 'Finish setup' }))
 
-  await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveFocus())
+  await waitFor(() => expect(screen.getByLabelText('Amount borrowed')).toHaveFocus())
   // still there once the reload has landed
   await new Promise((resolve) => setTimeout(resolve, 50))
-  expect(screen.getByLabelText('Balance now')).toHaveFocus()
+  expect(screen.getByLabelText('Amount borrowed')).toHaveFocus()
 })
 
 it('opened for Finish setup, the screen starts on Settings', async () => {
@@ -308,7 +321,7 @@ it('opened for Finish setup, the screen starts on Settings', async () => {
   await openScreen('settings')
 
   expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
-  await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveFocus())
+  await waitFor(() => expect(screen.getByLabelText('Amount borrowed')).toHaveFocus())
 })
 
 it('saving the terms of a debt not set up finishes its setup and goes back to the Overview', async () => {
@@ -323,29 +336,33 @@ it('saving the terms of a debt not set up finishes its setup and goes back to th
   await openScreen()
 
   await user.click(within(screen.getByTestId('debt-review-top')).getByRole('button', { name: 'Finish setup' }))
-  await user.type(await screen.findByLabelText('Balance now'), '600')
+  await user.type(await screen.findByLabelText('Amount borrowed'), '1200')
+  await user.click(screen.getByRole('button', { name: 'Start date' }))
+  await user.click(await screen.findByRole('button', { name: /November 1st, 2026/ }))
   await user.click(screen.getByRole('button', { name: 'Last payment date' }))
   await user.click(await screen.findByRole('button', { name: /November 15th, 2026/ }))
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ id: 'd1', balance: '600', payment: '100', schedule: 'monthly', lastPaymentDate: '2026-11-15' })
+  expect(bodies[0]).toMatchObject({
+    id: 'd1', amountBorrowed: '1200', startDate: '2026-11-01', payment: '100', schedule: 'monthly', lastPaymentDate: '2026-11-15',
+  })
   expect(vi.mocked(trackEvent).mock.calls.filter(([event]) => event === METRICS.DEBT_FINISH_SETUP)).toHaveLength(1)
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
   expect(await screen.findByText('12 payments left')).toBeInTheDocument()
   expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
 })
 
-it('Settings loads the debt afresh: the balance is the one after a payment landed', async () => {
+it('Settings loads the debt afresh: a fact corrected on another device shows', async () => {
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
-  // a payment landed since the screen loaded
-  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, currentBalance: '990' } })))
+  // corrected elsewhere since the screen loaded
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, amountBorrowed: '1500' } })))
 
   await openSettings(user)
 
-  expect(await screen.findByLabelText('Balance now')).toHaveValue('990')
+  expect(await screen.findByLabelText('Amount borrowed')).toHaveValue('1500')
 })
 
 it('Settings saves the name, the payments sentence and the terms in one request', async () => {
@@ -376,7 +393,7 @@ it('a save after an earlier one starts from the debt as saved, so the earlier te
   let current = details.item
   server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: current })))
   const bodies = captureUpdate((body) => {
-    current = body.balance ? { ...current, balance: '600', currentBalance: '600', lastPaymentDate: '2031-03-05' } : { ...current, name: body.name as string }
+    current = body.amountBorrowed ? { ...current, amountBorrowed: '1500' } : { ...current, name: body.name as string }
     return current
   })
   const user = userEvent.setup()
@@ -384,15 +401,15 @@ it('a save after an earlier one starts from the debt as saved, so the earlier te
   await openScreen()
 
   await openSettings(user)
-  const balance = screen.getByLabelText('Balance now')
-  await user.clear(balance)
-  await user.type(balance, '600')
+  const borrowed = screen.getByLabelText('Amount borrowed')
+  await user.clear(borrowed)
+  await user.type(borrowed, '1500')
   await user.click(screen.getByRole('button', { name: 'Save' }))
   await waitFor(() => expect(bodies).toHaveLength(1))
   await waitFor(() => expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true'))
 
   await openSettings(user)
-  await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveValue('600'))
+  await waitFor(() => expect(screen.getByLabelText('Amount borrowed')).toHaveValue('1500'))
   const name = screen.getByLabelText('Name')
   await user.clear(name)
   await user.type(name, 'Van loan')
@@ -478,7 +495,7 @@ it('marking a debt paid off asks first, then posts', async () => {
   await waitFor(() => expect(called).toBe(1))
 })
 
-it('after Mark as paid off, Settings starts from the paid-off debt, so a later edit does not send the old balance', async () => {
+it('after Mark as paid off, Settings starts from the paid-off debt, so a later edit sends no balance', async () => {
   let current = details.item
   server.use(
     http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: current })),
@@ -492,7 +509,7 @@ it('after Mark as paid off, Settings starts from the paid-off debt, so a later e
   renderScreen()
   await openScreen()
   await openSettings(user)
-  expect(screen.getByLabelText('Balance now')).toHaveValue('1090')
+  expect(screen.getByLabelText('Owed now (optional)')).toHaveValue('')
 
   await user.click(within(await openDanger(user)).getByRole('button', { name: 'Mark as paid off' }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Mark as paid off?' })).getByRole('button', { name: 'Mark as paid off' }))
@@ -500,14 +517,15 @@ it('after Mark as paid off, Settings starts from the paid-off debt, so a later e
   await waitFor(() => expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true'))
 
   await openSettings(user)
-  await waitFor(() => expect(screen.getByLabelText('Balance now')).toHaveValue('0'))
+  await waitFor(() => expect(screen.getByLabelText('Owed now (optional)')).toHaveValue(''))
   const payment = screen.getByLabelText('Payment')
   await user.clear(payment)
   await user.type(payment, '120')
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ balance: '0', payment: '120' })
+  expect(bodies[0]).toMatchObject({ amountBorrowed: '1200', payment: '120' })
+  expect(bodies[0]).not.toHaveProperty('balance')
 })
 
 it('Settings shows a loader, not just its buttons, while the debt loads', async () => {

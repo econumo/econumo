@@ -509,13 +509,17 @@
         "label": "标签（可选）"
       },
       "start_date": {
-        "label": "开始日期（可选）",
-        "hint": "此前的还款不计入",
+        "label": "开始日期",
+        "hint": "贷款开始的日期",
         "none": "无日期",
         "clear": "清除开始日期"
       },
+      "amount_borrowed": {
+        "label": "借款金额"
+      },
       "balance": {
-        "label": "当前余额"
+        "label": "当前欠款（可选）",
+        "hint": "仅当已记录的还款与对账单不符时填写"
       },
       "payment": {
         "label": "还款额"
@@ -534,8 +538,7 @@
         "label": "最后还款日",
         "hint": "债务何时结束",
         "choose": "选择日期"
-      },
-      "never_pays_off": "这笔还款不足以支付利息，因此债务永远无法还清。"
+      }
     },
     "details": {
       "money_left": "待还金额",
@@ -593,8 +596,9 @@
       "owed_now": "当前欠款 {amount}",
       "owed_now_label": "当前欠款",
       "paid_so_far": "已还金额",
-      "not_set_up": "填写欠款金额和贷款结束日期，即可查看剩余还款笔数",
+      "not_set_up": "填写借款金额和贷款日期，即可查看剩余还款笔数",
       "loan": "贷款",
+      "borrowed": "借款",
       "next_payment": "下次还款",
       "loan_ends": "贷款结束",
       "start_date": "开始日期",

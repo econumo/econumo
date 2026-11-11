@@ -509,13 +509,17 @@
         "label": "Tag (optioneel)"
       },
       "start_date": {
-        "label": "Startdatum (optioneel)",
-        "hint": "Eerdere betalingen tellen niet mee",
+        "label": "Startdatum",
+        "hint": "Wanneer de lening begon",
         "none": "Geen datum",
         "clear": "Startdatum wissen"
       },
+      "amount_borrowed": {
+        "label": "Geleend bedrag"
+      },
       "balance": {
-        "label": "Huidig saldo"
+        "label": "Nu verschuldigd (optioneel)",
+        "hint": "Alleen als de geregistreerde betalingen niet overeenkomen met uw afschrift"
       },
       "payment": {
         "label": "Betaling"
@@ -534,8 +538,7 @@
         "label": "Datum van de laatste betaling",
         "hint": "Wanneer de schuld eindigt",
         "choose": "Kies een datum"
-      },
-      "never_pays_off": "Deze betaling dekt de rente niet, dus de schuld wordt nooit afbetaald."
+      }
     },
     "details": {
       "money_left": "Nog te betalen",
@@ -593,8 +596,9 @@
       "owed_now": "Nu verschuldigd: {amount}",
       "owed_now_label": "Nu verschuldigd",
       "paid_so_far": "Tot nu toe betaald",
-      "not_set_up": "Vul in wat u verschuldigd bent en wanneer de lening afloopt om de resterende betalingen te zien",
+      "not_set_up": "Vul het geleende bedrag en de data van de lening in om de resterende betalingen te zien",
       "loan": "Lening",
+      "borrowed": "Geleend",
       "next_payment": "Volgende betaling",
       "loan_ends": "Lening loopt af",
       "start_date": "Startdatum",

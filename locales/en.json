@@ -509,13 +509,17 @@
         "label": "Tag (optional)"
       },
       "start_date": {
-        "label": "Start date (optional)",
-        "hint": "Earlier payments don't count",
+        "label": "Start date",
+        "hint": "When the loan began",
         "none": "None",
         "clear": "Clear the start date"
       },
+      "amount_borrowed": {
+        "label": "Amount borrowed"
+      },
       "balance": {
-        "label": "Balance now"
+        "label": "Owed now (optional)",
+        "hint": "Only if recorded payments don't match your statement"
       },
       "payment": {
         "label": "Payment"
@@ -534,8 +538,7 @@
         "label": "Last payment date",
         "hint": "When the debt ends",
         "choose": "Choose a date"
-      },
-      "never_pays_off": "This payment doesn't cover the interest, so the debt never pays off."
+      }
     },
     "details": {
       "money_left": "Left to pay",
@@ -593,8 +596,9 @@
       "owed_now": "Owed now {amount}",
       "owed_now_label": "Owed now",
       "paid_so_far": "Paid so far",
-      "not_set_up": "Add what you owe and when the loan ends to see payments left",
+      "not_set_up": "Add the amount borrowed and the loan's dates to see payments left",
       "loan": "Loan",
+      "borrowed": "Borrowed",
       "next_payment": "Next payment",
       "loan_ends": "Loan ends",
       "start_date": "Start date",

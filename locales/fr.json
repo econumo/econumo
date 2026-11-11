@@ -509,13 +509,17 @@
         "label": "Tag (facultatif)"
       },
       "start_date": {
-        "label": "Date de début (facultatif)",
-        "hint": "Les paiements antérieurs ne comptent pas",
+        "label": "Date de début",
+        "hint": "Quand le prêt a commencé",
         "none": "Aucune date",
         "clear": "Effacer la date de début"
       },
+      "amount_borrowed": {
+        "label": "Montant emprunté"
+      },
       "balance": {
-        "label": "Solde actuel"
+        "label": "Dû actuellement (facultatif)",
+        "hint": "Seulement si les paiements enregistrés ne correspondent pas à votre relevé"
       },
       "payment": {
         "label": "Paiement"
@@ -534,8 +538,7 @@
         "label": "Date du dernier paiement",
         "hint": "Quand la dette prend fin",
         "choose": "Choisir une date"
-      },
-      "never_pays_off": "Ce paiement ne couvre pas les intérêts : la dette ne sera donc jamais remboursée."
+      }
     },
     "details": {
       "money_left": "Reste à payer",
@@ -593,8 +596,9 @@
       "owed_now": "Dû actuellement : {amount}",
       "owed_now_label": "Dû actuellement",
       "paid_so_far": "Payé jusqu'ici",
-      "not_set_up": "Indiquez ce que vous devez et la date de fin du prêt pour voir les paiements restants",
+      "not_set_up": "Indiquez le montant emprunté et les dates du prêt pour voir les paiements restants",
       "loan": "Prêt",
+      "borrowed": "Emprunté",
       "next_payment": "Prochain paiement",
       "loan_ends": "Fin du prêt",
       "start_date": "Date de début",

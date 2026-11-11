@@ -509,13 +509,17 @@
         "label": "Etiqueta (opcional)"
       },
       "start_date": {
-        "label": "Data de início (opcional)",
-        "hint": "Os pagamentos anteriores não contam",
+        "label": "Data de início",
+        "hint": "Quando começou o empréstimo",
         "none": "Sem data",
         "clear": "Limpar a data de início"
       },
+      "amount_borrowed": {
+        "label": "Montante emprestado"
+      },
       "balance": {
-        "label": "Saldo atual"
+        "label": "Em dívida agora (opcional)",
+        "hint": "Apenas se os pagamentos registados não coincidirem com o seu extrato"
       },
       "payment": {
         "label": "Pagamento"
@@ -534,8 +538,7 @@
         "label": "Data do último pagamento",
         "hint": "Quando termina a dívida",
         "choose": "Escolher uma data"
-      },
-      "never_pays_off": "Este pagamento não cobre os juros, por isso a dívida nunca fica liquidada."
+      }
     },
     "details": {
       "money_left": "Falta pagar",
@@ -593,8 +596,9 @@
       "owed_now": "Em dívida agora: {amount}",
       "owed_now_label": "Em dívida agora",
       "paid_so_far": "Pago até agora",
-      "not_set_up": "Indique quanto deve e quando termina o empréstimo para ver os pagamentos em falta",
+      "not_set_up": "Indique o montante emprestado e as datas do empréstimo para ver os pagamentos em falta",
       "loan": "Empréstimo",
+      "borrowed": "Emprestado",
       "next_payment": "Próximo pagamento",
       "loan_ends": "Fim do empréstimo",
       "start_date": "Data de início",

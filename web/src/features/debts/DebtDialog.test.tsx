@@ -204,7 +204,7 @@ it('a start date already taken reveals the start date field and resends with it'
   expect(await screen.findByText(taken)).toBeInTheDocument()
   expect(useUiStore.getState().debtModal).not.toBeNull()
 
-  await user.click(screen.getByRole('button', { name: 'Start date (optional)' }))
+  await user.click(screen.getByRole('button', { name: 'Start date' }))
   const now = new Date()
   const month = new Intl.DateTimeFormat('en', { month: 'long' }).format(now)
   await user.click(await screen.findByRole('button', { name: new RegExp(`${month} 1st, ${now.getFullYear()}`) }))

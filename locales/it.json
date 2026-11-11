@@ -509,13 +509,17 @@
         "label": "Tag (facoltativo)"
       },
       "start_date": {
-        "label": "Data di inizio (facoltativa)",
-        "hint": "I pagamenti precedenti non contano",
+        "label": "Data di inizio",
+        "hint": "Quando è iniziato il prestito",
         "none": "Nessuna data",
         "clear": "Cancella la data di inizio"
       },
+      "amount_borrowed": {
+        "label": "Importo preso in prestito"
+      },
       "balance": {
-        "label": "Saldo attuale"
+        "label": "Dovuto ora (facoltativo)",
+        "hint": "Solo se i pagamenti registrati non corrispondono al tuo estratto conto"
       },
       "payment": {
         "label": "Pagamento"
@@ -534,8 +538,7 @@
         "label": "Data dell'ultimo pagamento",
         "hint": "Quando finisce il debito",
         "choose": "Scegli una data"
-      },
-      "never_pays_off": "Questo pagamento non copre gli interessi, quindi il debito non si estingue mai."
+      }
     },
     "details": {
       "money_left": "Ancora da pagare",
@@ -593,8 +596,9 @@
       "owed_now": "Dovuto ora: {amount}",
       "owed_now_label": "Dovuto ora",
       "paid_so_far": "Pagato finora",
-      "not_set_up": "Aggiungi quanto devi e quando finisce il prestito per vedere i pagamenti rimasti",
+      "not_set_up": "Aggiungi l'importo preso in prestito e le date del prestito per vedere i pagamenti rimasti",
       "loan": "Prestito",
+      "borrowed": "Preso in prestito",
       "next_payment": "Prossimo pagamento",
       "loan_ends": "Fine del prestito",
       "start_date": "Data di inizio",

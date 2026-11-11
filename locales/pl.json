@@ -509,13 +509,17 @@
         "label": "Tag (opcjonalnie)"
       },
       "start_date": {
-        "label": "Data rozpoczęcia (opcjonalnie)",
-        "hint": "Wcześniejsze płatności się nie liczą",
+        "label": "Data rozpoczęcia",
+        "hint": "Kiedy zaczęła się pożyczka",
         "none": "Brak daty",
         "clear": "Wyczyść datę rozpoczęcia"
       },
+      "amount_borrowed": {
+        "label": "Pożyczona kwota"
+      },
       "balance": {
-        "label": "Aktualne saldo"
+        "label": "Do spłaty teraz (opcjonalnie)",
+        "hint": "Tylko jeśli zapisane płatności nie zgadzają się z wyciągiem"
       },
       "payment": {
         "label": "Płatność"
@@ -534,8 +538,7 @@
         "label": "Data ostatniej płatności",
         "hint": "Kiedy kończy się dług",
         "choose": "Wybierz datę"
-      },
-      "never_pays_off": "Ta płatność nie pokrywa odsetek, więc dług nigdy się nie spłaci."
+      }
     },
     "details": {
       "money_left": "Do zapłaty",
@@ -593,8 +596,9 @@
       "owed_now": "Do spłaty teraz: {amount}",
       "owed_now_label": "Do spłaty teraz",
       "paid_so_far": "Zapłacono dotąd",
-      "not_set_up": "Dodaj kwotę do spłaty i datę końca pożyczki, aby zobaczyć pozostałe płatności",
+      "not_set_up": "Dodaj pożyczoną kwotę i daty pożyczki, aby zobaczyć pozostałe płatności",
       "loan": "Pożyczka",
+      "borrowed": "Pożyczono",
       "next_payment": "Następna płatność",
       "loan_ends": "Koniec pożyczki",
       "start_date": "Data rozpoczęcia",

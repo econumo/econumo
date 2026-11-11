@@ -509,13 +509,17 @@
         "label": "Tag (optional)"
       },
       "start_date": {
-        "label": "Startdatum (optional)",
-        "hint": "Frühere Zahlungen zählen nicht",
+        "label": "Startdatum",
+        "hint": "Wann der Kredit begann",
         "none": "Kein Datum",
         "clear": "Startdatum entfernen"
       },
+      "amount_borrowed": {
+        "label": "Geliehener Betrag"
+      },
       "balance": {
-        "label": "Aktueller Saldo"
+        "label": "Aktuell geschuldet (optional)",
+        "hint": "Nur wenn die erfassten Zahlungen nicht zu Ihrem Kontoauszug passen"
       },
       "payment": {
         "label": "Rate"
@@ -534,8 +538,7 @@
         "label": "Datum der letzten Zahlung",
         "hint": "Wann die Schuld endet",
         "choose": "Datum wählen"
-      },
-      "never_pays_off": "Diese Rate deckt die Zinsen nicht, daher wird die Schuld nie abbezahlt."
+      }
     },
     "details": {
       "money_left": "Noch zu zahlen",
@@ -593,8 +596,9 @@
       "owed_now": "Aktuell geschuldet: {amount}",
       "owed_now_label": "Aktuell geschuldet",
       "paid_so_far": "Bisher bezahlt",
-      "not_set_up": "Geben Sie an, was Sie schulden und wann der Kredit endet, um die verbleibenden Zahlungen zu sehen",
+      "not_set_up": "Geben Sie den geliehenen Betrag und die Daten des Kredits an, um die verbleibenden Zahlungen zu sehen",
       "loan": "Kredit",
+      "borrowed": "Geliehen",
       "next_payment": "Nächste Zahlung",
       "loan_ends": "Kredit endet",
       "start_date": "Startdatum",

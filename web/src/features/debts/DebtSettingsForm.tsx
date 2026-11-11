@@ -17,13 +17,26 @@ import { useUpdateDebt } from './queries'
 import { AmountField, DatesRow, PaymentField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
-import { amountEcho, amountError, buildTermsPayload, useDebtTermsForm } from './useDebtForm'
+import { amountEcho, amountError, buildTermsPayload, factsAsked, useDebtTermsForm } from './useDebtForm'
 
 // the fields a server refusal can name here; anything else lands in the form's alert
-const SERVER_FIELDS = ['name', 'categoryId', 'payeeId', 'tagId', 'labelId', 'currencyId', 'balance', 'payment', 'schedule', 'lastPaymentDate', 'startDate']
+const SERVER_FIELDS = [
+  'name',
+  'categoryId',
+  'payeeId',
+  'tagId',
+  'labelId',
+  'currencyId',
+  'amountBorrowed',
+  'balance',
+  'payment',
+  'schedule',
+  'lastPaymentDate',
+  'startDate',
+]
 
 export interface DebtSettingsFormProps {
-  /** the debt as just loaded: the form starts from what is owed now */
+  /** the debt as just loaded: the form starts from the loan's facts as stored now */
   debt: DebtDto
   onSaved: (saved: DebtDto) => void
   onDirtyChange?: (dirty: boolean) => void
@@ -33,13 +46,12 @@ export interface DebtSettingsFormProps {
 }
 
 /**
- * The debt's Settings tab: name, which payments count, what is owed now, the
- * payment and its repeats, last payment date, start date and currency (the
- * amounts are read in it, never converted), saved in ONE update. Editing the
- * balance or payment of a set-up debt re-fills the last payment date at the
- * debt's own rate; a debt not set up has no rate yet, so its date is typed.
- * Saving a debt not set up with a balance and a last payment date finishes its
- * setup; without them the other fields still save.
+ * The debt's Settings tab: name, which payments count, the loan's facts from
+ * its contract (amount borrowed, start and last payment dates, the payment and
+ * its repeats), an optional owed-now override and the currency (the amounts
+ * are read in it, never converted), saved in ONE update. Saving a debt not set
+ * up with the loan's facts finishes its setup; without them the other fields
+ * still save.
  */
 export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = false, onFocused }: DebtSettingsFormProps) {
   const { t } = useTranslation()
@@ -48,16 +60,13 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
   const { data: currencies } = useCurrencies()
   const settingUp = debt.isSetUp !== 1
   const updateDebt = useUpdateDebt({ finishingSetup: settingUp })
-  const { form, initial, patch, setBalance, setPayment, reset, dirty, projection } = useDebtTermsForm(
-    debt,
-    (id) => currencies?.find((c) => c.id === id)?.fractionDigits,
-  )
+  const { form, initial, patch, reset, dirty } = useDebtTermsForm(debt)
   const currency = currencies?.find((c) => c.id === form.currencyId)
   const { errors, setErrors, clear: clearError } = useFormErrors<FieldErrors>()
   const [serverError, setServerError] = useState<string | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
-  const balanceRef = useRef<HTMLDivElement>(null)
-  const lastPaymentRef = useRef<HTMLDivElement>(null)
+  const borrowedRef = useRef<HTMLDivElement>(null)
+  const datesRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     onDirtyChange?.(dirty)
@@ -67,7 +76,15 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
     if (!focusMissing) {
       return
     }
-    const target = !isNotEmpty(form.balance) ? balanceRef.current?.querySelector('input') : !form.lastPaymentDate ? lastPaymentRef.current?.querySelector('button') : null
+    // the row's two date chips, start first
+    const chip = (index: number) => datesRef.current?.querySelectorAll('[data-date-chip]')[index]?.querySelector('button')
+    const target = !isNotEmpty(form.amountBorrowed)
+      ? borrowedRef.current?.querySelector('input')
+      : !form.startDate
+        ? chip(0)
+        : !form.lastPaymentDate
+          ? chip(1)
+          : null
     target?.focus()
     onFocused?.()
     // only when asked: typing must not move the focus
@@ -84,14 +101,13 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
     next.name = isNotEmpty(form.name.trim()) ? undefined : required
     next.categoryId = form.categoryId ? undefined : required
     next.payment = amountError(form.payment, t, true)
-    // a debt not set up may be saved without its terms, never with only one
-    const termsAsked = !settingUp || isNotEmpty(form.balance) || form.lastPaymentDate !== ''
-    if (termsAsked) {
-      next.balance = amountError(form.balance, t, false)
-      if (!form.lastPaymentDate) {
-        next.lastPaymentDate = required
-      }
+    // a debt not set up may be saved without the loan's facts, never with only some
+    if (factsAsked(form, debt)) {
+      next.amountBorrowed = amountError(form.amountBorrowed, t, true)
+      next.startDate = form.startDate ? undefined : required
+      next.lastPaymentDate = form.lastPaymentDate ? undefined : required
     }
+    next.balance = isNotEmpty(form.balance) ? amountError(form.balance, t, false) : undefined
     const found = Object.fromEntries(Object.entries(next).filter(([, v]) => v))
     setErrors(found)
     return Object.keys(found).length === 0
@@ -116,8 +132,6 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
       }
     }
   }
-
-  const neverPaysOff = projection.status === 'never' ? t('debts.form.never_pays_off') : null
 
   return (
     <>
@@ -155,17 +169,35 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
           errors={{ categoryId: errors.categoryId, payeeId: errors.payeeId, tagId: errors.tagId, labelId: errors.labelId }}
         />
 
-        <div ref={balanceRef}>
+        <div ref={borrowedRef}>
           <AmountField
-            id={`${formId}-balance`}
-            label={t('debts.form.balance.label')}
-            value={form.balance}
+            id={`${formId}-borrowed`}
+            label={t('debts.form.amount_borrowed.label')}
+            value={form.amountBorrowed}
             symbol={symbol}
-            error={errors.balance}
-            echo={amountEcho(form.balance, currency)}
-            onChange={(balance) => {
-              clearError('balance')
-              setBalance(balance)
+            error={errors.amountBorrowed}
+            echo={amountEcho(form.amountBorrowed, currency)}
+            onChange={(amountBorrowed) => {
+              clearError('amountBorrowed')
+              patch({ amountBorrowed })
+            }}
+          />
+        </div>
+        <div ref={datesRef}>
+          <DatesRow
+            startDate={form.startDate}
+            lastPaymentDate={form.lastPaymentDate}
+            startError={errors.startDate}
+            lastPaymentError={errors.lastPaymentDate}
+            // a set-up debt always has its start: only a debt not set up drops it
+            clearable={settingUp}
+            onStartDateChange={(startDate) => {
+              clearError('startDate')
+              patch({ startDate })
+            }}
+            onLastPaymentDateChange={(lastPaymentDate) => {
+              clearError('lastPaymentDate')
+              patch({ lastPaymentDate })
             }}
           />
         </div>
@@ -174,30 +206,28 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
           value={form.payment}
           symbol={symbol}
           schedule={form.schedule}
-          error={errors.payment ?? errors.schedule ?? neverPaysOff}
+          error={errors.payment ?? errors.schedule}
           echo={amountEcho(form.payment, currency)}
           onChange={(payment) => {
             clearError('payment')
-            setPayment(payment)
+            patch({ payment })
           }}
           onScheduleChange={(schedule) => {
             clearError('schedule')
             patch({ schedule })
           }}
         />
-        <DatesRow
-          startDate={form.startDate}
-          lastPaymentDate={form.lastPaymentDate}
-          startError={errors.startDate}
-          lastPaymentError={errors.lastPaymentDate}
-          lastPaymentRef={lastPaymentRef}
-          onStartDateChange={(startDate) => {
-            clearError('startDate')
-            patch({ startDate })
-          }}
-          onLastPaymentDateChange={(lastPaymentDate) => {
-            clearError('lastPaymentDate')
-            patch({ lastPaymentDate })
+        <AmountField
+          id={`${formId}-balance`}
+          label={t('debts.form.balance.label')}
+          hint={t('debts.form.balance.hint')}
+          value={form.balance}
+          symbol={symbol}
+          error={errors.balance}
+          echo={amountEcho(form.balance, currency)}
+          onChange={(balance) => {
+            clearError('balance')
+            patch({ balance })
           }}
         />
 

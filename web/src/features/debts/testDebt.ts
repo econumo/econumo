@@ -1,6 +1,6 @@
 import type { DebtDto } from '@/api/dto/debt'
 
-/** a 12-payment, interest-free car loan owed to the first user */
+/** a 12-payment, interest-free car loan of 1200 taken on 2026-11-05, owed to the first user */
 export const wireDebt: DebtDto = {
   id: 'd1',
   name: 'Car loan',
@@ -10,7 +10,8 @@ export const wireDebt: DebtDto = {
   payeeId: null,
   tagId: null,
   labelId: null,
-  startDate: '',
+  startDate: '2026-11-05',
+  amountBorrowed: '1200',
   balance: '1200',
   payment: '100',
   schedule: 'monthly',
@@ -31,6 +32,8 @@ export const wireDebt: DebtDto = {
 /** the car loan before its terms are entered: payment and schedule only */
 export const wireDebtNotSetUp: DebtDto = {
   ...wireDebt,
+  startDate: '',
+  amountBorrowed: '',
   balance: '',
   lastPaymentDate: '',
   currentBalance: '',
