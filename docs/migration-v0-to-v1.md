@@ -102,7 +102,8 @@ v0.x migrations, so it won't try to re-create the schema.
 ## 4. Rewrite your `.env`
 
 The Symfony variables are gone; start from the new
-[`.env.example`](../.env.example). The mapping:
+[`.env.example`](../.env.example); every variable below is described in
+[`full.env.example`](full.env.example). The mapping:
 
 | v0.x (PHP) | v1.x (Go) | Notes |
 |---|---|---|
