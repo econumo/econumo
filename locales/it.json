@@ -699,14 +699,14 @@
       "accounts": {
         "header": "Conti",
         "empty": "Il bridge non ha ancora segnalato conti.",
-        "needs_mapping": "Non associate",
+        "needs_mapping": "Non associati",
         "state": {
           "ignored": "Ignorato"
         },
         "taps": "{count} transazione | {count} transazioni",
         "waiting": "{count} da rivedere",
         "map": "Associa a un conto",
-        "mapped_to": "associata a",
+        "mapped_to": "associato a",
         "remap": "Riassocia",
         "ignore": "Ignora",
         "unlink": "Dissocia",

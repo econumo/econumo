@@ -661,7 +661,7 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Koppel een bank via SimpleFIN Bridge. Je bridge-gegevens worden op dit apparaat versleuteld met een wachtwoordzin die alleen jij kent; de server bewaart ze versleuteld en ziet ze alleen tijdens een synchronisatie.",
+      "intro": "Koppel een bank via SimpleFIN Bridge. Uw bridge-gegevens worden op dit apparaat versleuteld met een wachtwoordzin die alleen u kent; de server bewaart ze versleuteld en ziet ze alleen tijdens een synchronisatie.",
       "disclaimer": "Econumo is niet verbonden aan SimpleFIN. SimpleFIN Bridge is een dienst van derden met eigen voorwaarden; u gebruikt deze op eigen risico.",
       "disconnect": "Loskoppelen",
       "disconnect_full": "SimpleFIN loskoppelen",
@@ -670,15 +670,15 @@
         "question": "De SimpleFIN-verbinding wordt uit Econumo verwijderd. Eerder geïmporteerde transacties blijven behouden."
       },
       "connect": {
-        "reconnect_intro": "Plak een nieuw installatietoken van SimpleFIN Bridge. De vorige verbinding wordt vervangen; je rekeningkoppelingen blijven behouden.",
+        "reconnect_intro": "Plak een nieuw installatietoken van SimpleFIN Bridge. De vorige verbinding wordt vervangen; uw rekeningkoppelingen blijven behouden.",
         "token_label": "Installatietoken",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → Nieuwe verbinding → kopieer het installatietoken. Een token kan één keer worden gebruikt.",
         "forgot_passphrase": "Ik ben mijn wachtwoordzin vergeten, nieuwe instellen",
         "passphrase_new": "Wachtwoordzin",
-        "passphrase_existing": "Je wachtwoordzin",
+        "passphrase_existing": "Uw wachtwoordzin",
         "passphrase_confirm": "Herhaal de wachtwoordzin",
-        "passphrase_help": "Minstens 8 tekens. Niet herstelbaar: niemand, ook wij niet, kan hem terughalen.",
+        "passphrase_help": "Minstens 8 tekens. Niet herstelbaar: niemand, ook wij niet, kan deze terughalen.",
         "submit": "Verbinden",
         "submit_reconnect": "Opnieuw verbinden",
         "errors": {
@@ -688,13 +688,13 @@
         }
       },
       "unlock": {
-        "intro": "Voer je wachtwoordzin in om SimpleFIN op dit apparaat te gebruiken.",
+        "intro": "Voer uw wachtwoordzin in om SimpleFIN op dit apparaat te gebruiken.",
         "passphrase": "Wachtwoordzin",
         "submit": "Ontgrendelen",
         "reconnect": "Opnieuw verbinden",
         "wrong_passphrase": "Onjuiste wachtwoordzin.",
-        "forgot_help": "Vergeten? Verbind opnieuw met een nieuw installatietoken en een nieuwe wachtwoordzin.",
-        "stale_intro": "Je wachtwoordzin is op een ander apparaat gewijzigd. Voer de nieuwe wachtwoordzin in om SimpleFIN hier te blijven gebruiken."
+        "forgot_help": "Vergeten? Maak opnieuw verbinding met een nieuw installatietoken en een nieuwe wachtwoordzin.",
+        "stale_intro": "Uw wachtwoordzin is op een ander apparaat gewijzigd. Voer de nieuwe wachtwoordzin in om SimpleFIN hier te blijven gebruiken."
       },
       "accounts": {
         "header": "Rekeningen",
@@ -712,7 +712,7 @@
         "unlink": "Ontkoppelen",
         "unlink_modal": {
           "title": "{card} ontkoppelen?",
-          "question": "Nieuwe transacties van deze rekening wachten op controle tot je haar opnieuw koppelt."
+          "question": "Nieuwe transacties van deze rekening wachten op controle tot u deze opnieuw koppelt."
         },
         "map_modal": {
           "header": "{card} koppelen",

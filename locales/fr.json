@@ -661,7 +661,7 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Connectez une banque via SimpleFIN Bridge. Vos identifiants de connexion sont chiffrés sur cet appareil avec une phrase secrète que vous seul connaissez ; le serveur les stocke chiffrés et ne les voit que le temps d'une synchronisation.",
+      "intro": "Connectez une banque via SimpleFIN Bridge. Vos identifiants de connexion sont chiffrés sur cet appareil avec une phrase secrète que vous seul connaissez ; le serveur les stocke chiffrés et ne les voit que le temps d’une synchronisation.",
       "disclaimer": "Econumo n’est pas affilié à SimpleFIN. SimpleFIN Bridge est un service tiers soumis à ses propres conditions ; vous l’utilisez à vos propres risques.",
       "disconnect": "Déconnecter",
       "disconnect_full": "Déconnecter SimpleFIN",
@@ -673,8 +673,8 @@
         "reconnect_intro": "Collez un nouveau jeton de configuration de SimpleFIN Bridge. La connexion précédente sera remplacée ; vos associations de comptes sont conservées.",
         "token_label": "Jeton de configuration",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → Nouvelle connexion → copiez le jeton de configuration. Un jeton ne peut être utilisé qu'une fois.",
-        "forgot_passphrase": "J'ai oublié ma phrase secrète, en définir une nouvelle",
+        "token_help": "SimpleFIN Bridge → Nouvelle connexion → copiez le jeton de configuration. Un jeton ne peut être utilisé qu’une fois.",
+        "forgot_passphrase": "J’ai oublié ma phrase secrète, en définir une nouvelle",
         "passphrase_new": "Phrase secrète",
         "passphrase_existing": "Votre phrase secrète",
         "passphrase_confirm": "Répétez la phrase secrète",
@@ -682,7 +682,7 @@
         "submit": "Connecter",
         "submit_reconnect": "Se reconnecter",
         "errors": {
-          "token_required": "Collez d'abord le jeton de configuration.",
+          "token_required": "Collez d’abord le jeton de configuration.",
           "passphrase_short": "La phrase secrète doit comporter au moins 8 caractères.",
           "passphrase_mismatch": "Les phrases secrètes ne correspondent pas."
         }
@@ -699,20 +699,20 @@
       "accounts": {
         "header": "Comptes",
         "empty": "Aucun compte signalé par la passerelle pour le moment.",
-        "needs_mapping": "Non associées",
+        "needs_mapping": "Non associés",
         "state": {
           "ignored": "Ignoré"
         },
         "taps": "{count} transaction | {count} transactions",
         "waiting": "{count} à vérifier",
         "map": "Associer à un compte",
-        "mapped_to": "associée à",
+        "mapped_to": "associé à",
         "remap": "Réassocier",
         "ignore": "Ignorer",
         "unlink": "Dissocier",
         "unlink_modal": {
           "title": "Dissocier {card} ?",
-          "question": "Les nouvelles transactions de ce compte attendront une vérification jusqu'à ce que vous l'associiez à nouveau."
+          "question": "Les nouvelles transactions de ce compte attendront une vérification jusqu’à ce que vous l’associiez à nouveau."
         },
         "map_modal": {
           "header": "Associer {card}",

@@ -674,7 +674,7 @@
         "token_label": "Token konfiguracyjny",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → Nowe połączenie → skopiuj token konfiguracyjny. Token można wykorzystać tylko raz.",
-        "forgot_passphrase": "Zapomniałem hasła, ustaw nowe",
+        "forgot_passphrase": "Nie pamiętam hasła, ustaw nowe",
         "passphrase_new": "Hasło",
         "passphrase_existing": "Twoje hasło",
         "passphrase_confirm": "Powtórz hasło",
@@ -693,7 +693,7 @@
         "submit": "Odblokuj",
         "reconnect": "Połącz ponownie",
         "wrong_passphrase": "Nieprawidłowe hasło.",
-        "forgot_help": "Zapomniałeś? Połącz się ponownie za pomocą nowego tokenu konfiguracyjnego i nowego hasła.",
+        "forgot_help": "Nie pamiętasz? Połącz się ponownie za pomocą nowego tokenu konfiguracyjnego i nowego hasła.",
         "stale_intro": "Twoje hasło zostało zmienione na innym urządzeniu. Wpisz nowe hasło, aby dalej korzystać z SimpleFIN tutaj."
       },
       "accounts": {
@@ -706,7 +706,7 @@
         "taps": "{count} transakcja | {count} transakcje | {count} transakcji",
         "waiting": "do przejrzenia: {count}",
         "map": "Przypisz do konta",
-        "mapped_to": "przypisana do",
+        "mapped_to": "przypisane do",
         "remap": "Przypisz ponownie",
         "ignore": "Ignoruj",
         "unlink": "Odłącz",
