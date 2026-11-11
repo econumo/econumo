@@ -489,7 +489,9 @@ optimistic, cancel-in-flight, last write reconciles). `completed` is terminal: o
 and is a no-op returning the current user once onboarding is complete (or the option is absent,
 a user predating onboarding). Older clients check only `!== 'completed'`, so they still route an
 in-progress user into onboarding. Migration `20261110000000` marks onboarding
-complete for existing users who own accounts.
+complete for existing users with at least one transaction (one they wrote, a partner's shared
+account included, or one on an account they own, either side, deleted accounts included);
+owning accounts alone does not count, and everyone else keeps their option (or has none).
 
 **Reports page** (`/reports`, `web/src/features/reports`; an icon before the sync button in the
 sidebar footer, not a menu entry): Net worth, plus a "Suggest a report" card that opens the

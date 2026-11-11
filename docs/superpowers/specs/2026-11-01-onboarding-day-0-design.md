@@ -201,7 +201,9 @@ transactions typed by hand.
 ## Decided by me, to check
 
 - **Existing users:** once, at release, a migration marks onboarding complete for anyone
-  not `completed` who already has an account. After that, only finishing the flow completes
+  not `completed` who already has a transaction: one they wrote (a partner's shared account
+  included) or one on an account they own, either side, deleted accounts included. Accounts
+  alone do not count: an account created and left empty is no history. After that, only finishing the flow completes
   it, so the check does not re-run while someone is in the flow.
 - **The base currency stays visible,** because the app refuses to hide it. A user whose
   accounts use another currency sees one extra entry in pickers.

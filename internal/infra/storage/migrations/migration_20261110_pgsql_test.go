@@ -14,7 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/pgsql"
 )
 
-// The PostgreSQL twin of TestMigration20261110CompletesOnboardingForUsersWithAccounts:
+// The PostgreSQL twin of TestMigration20261110CompletesOnboardingForUsersWithTransactions:
 // the two engines carry separate SQL for the same cleanup.
 func TestMigration20261110Pgsql(t *testing.T) {
 	url := os.Getenv("DATABASE_TEST_PGSQL_URL")
