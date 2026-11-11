@@ -1239,12 +1239,12 @@
       "skip": "Omitir",
       "add": "Añadir cuenta",
       "default_cash": "Efectivo",
-      "hide": "Ocultar",
-      "show": "Mostrar",
-      "hide_label": "Ocultar {name}",
-      "show_label": "Mostrar {name}",
-      "hidden": "Oculta",
-      "hidden_hint": "Las cuentas ocultas pasan a la carpeta Archivo y normalmente salen del presupuesto (una con movimientos en un mes anterior se queda)."
+      "hide": "Archivar",
+      "show": "Restaurar",
+      "hide_label": "Archivar {name}",
+      "show_label": "Restaurar {name}",
+      "hidden": "Archivada",
+      "balance_of": "Saldo de {name}"
     },
     "categories_step": {
       "heading": "¿En qué gastas?",
@@ -1269,9 +1269,9 @@
       "main_title": "Moneda principal",
       "add": "Añadir moneda",
       "remove": "Quitar {code}",
-      "main_short": "{code} (principal)",
-      "add_short": "Añadir",
-      "hint": "Selecciona las monedas que más usas. Puedes añadir más después en Ajustes."
+      "hint": "Selecciona las monedas que más usas. Puedes añadir más después en Ajustes.",
+      "main_pick": "Elegir",
+      "selected": "Monedas seleccionadas"
     },
     "steps_nav": {
       "title": "Primeros pasos",

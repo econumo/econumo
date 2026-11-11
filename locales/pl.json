@@ -1239,12 +1239,12 @@
       "skip": "Pomiń",
       "add": "Dodaj konto",
       "default_cash": "Gotówka",
-      "hide": "Ukryj",
-      "show": "Pokaż",
-      "hide_label": "Ukryj {name}",
-      "show_label": "Pokaż {name}",
-      "hidden": "Ukryte",
-      "hidden_hint": "Ukryte konta trafiają do folderu Archiwum i zwykle wypadają z budżetu (konto z transakcjami z wcześniejszego miesiąca w nim zostaje)."
+      "hide": "Archiwizuj",
+      "show": "Przywróć",
+      "hide_label": "Archiwizuj {name}",
+      "show_label": "Przywróć {name}",
+      "hidden": "Zarchiwizowane",
+      "balance_of": "Saldo konta {name}"
     },
     "categories_step": {
       "heading": "Na co wydajesz pieniądze?",
@@ -1269,9 +1269,9 @@
       "main_title": "Waluta główna",
       "add": "Dodaj walutę",
       "remove": "Usuń {code}",
-      "main_short": "{code} (główna)",
-      "add_short": "Dodaj",
-      "hint": "Wybierz waluty, których używasz najczęściej. Kolejne możesz dodać później w Ustawieniach."
+      "hint": "Wybierz waluty, których używasz najczęściej. Kolejne możesz dodać później w Ustawieniach.",
+      "main_pick": "Wybierz",
+      "selected": "Wybrane waluty"
     },
     "steps_nav": {
       "title": "Pierwsze kroki",

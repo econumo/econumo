@@ -1239,12 +1239,12 @@
       "skip": "Overslaan",
       "add": "Rekening toevoegen",
       "default_cash": "Contant",
-      "hide": "Verbergen",
-      "show": "Tonen",
-      "hide_label": "{name} verbergen",
-      "show_label": "{name} tonen",
-      "hidden": "Verborgen",
-      "hidden_hint": "Verborgen rekeningen gaan naar de map Archief en verlaten meestal het budget (een rekening met transacties in een eerdere maand blijft erin)."
+      "hide": "Archiveren",
+      "show": "Herstellen",
+      "hide_label": "{name} archiveren",
+      "show_label": "{name} herstellen",
+      "hidden": "Gearchiveerd",
+      "balance_of": "Saldo van {name}"
     },
     "categories_step": {
       "heading": "Waar geef je geld aan uit?",
@@ -1269,9 +1269,9 @@
       "main_title": "Hoofdvaluta",
       "add": "Valuta toevoegen",
       "remove": "{code} verwijderen",
-      "main_short": "{code} (hoofd)",
-      "add_short": "Toevoegen",
-      "hint": "Kies de valuta's die je het vaakst gebruikt. Je kunt er later meer toevoegen in Instellingen."
+      "hint": "Kies de valuta's die je het vaakst gebruikt. Je kunt er later meer toevoegen in Instellingen.",
+      "main_pick": "Kiezen",
+      "selected": "Geselecteerde valuta"
     },
     "steps_nav": {
       "title": "Aan de slag",

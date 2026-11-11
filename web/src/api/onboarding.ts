@@ -57,6 +57,13 @@ export interface SaveAccountsForm {
   unhide?: Id[]
   // own existing accounts moved to another currency (a CSV import creates them in the instance base currency)
   currencies?: AccountCurrencyChange[]
+  // own existing accounts' new balances: the server books the difference as a Balance adjustment
+  balances?: AccountBalanceChange[]
+}
+
+export interface AccountBalanceChange {
+  accountId: Id
+  balance: string
 }
 
 export interface AccountCurrencyChange {

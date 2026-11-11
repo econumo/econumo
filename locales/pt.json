@@ -1239,12 +1239,12 @@
       "skip": "Pular",
       "add": "Adicionar conta",
       "default_cash": "Dinheiro",
-      "hide": "Ocultar",
-      "show": "Mostrar",
-      "hide_label": "Ocultar {name}",
-      "show_label": "Mostrar {name}",
-      "hidden": "Oculta",
-      "hidden_hint": "Contas ocultas vão para a pasta Arquivo e normalmente saem do orçamento (uma com movimentos num mês anterior permanece)."
+      "hide": "Arquivar",
+      "show": "Restaurar",
+      "hide_label": "Arquivar {name}",
+      "show_label": "Restaurar {name}",
+      "hidden": "Arquivada",
+      "balance_of": "Saldo de {name}"
     },
     "categories_step": {
       "heading": "Em que você gasta?",
@@ -1269,9 +1269,9 @@
       "main_title": "Moeda principal",
       "add": "Adicionar moeda",
       "remove": "Remover {code}",
-      "main_short": "{code} (principal)",
-      "add_short": "Adicionar",
-      "hint": "Selecione as moedas que usa com mais frequência. Pode adicionar mais tarde nas Definições."
+      "hint": "Selecione as moedas que usa com mais frequência. Pode adicionar mais tarde nas Definições.",
+      "main_pick": "Escolher",
+      "selected": "Moedas selecionadas"
     },
     "steps_nav": {
       "title": "Primeiros passos",

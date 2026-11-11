@@ -89,9 +89,11 @@ interface Setup {
   // get-plan-suggestions items; `gate` holds the answer until it resolves
   suggestions?: { categoryId: string; amount: string }[]
   gate?: Promise<void>
+  // an element planned in a currency other than the budget's
+  elementCurrencies?: Record<string, string>
 }
 
-function setup({ salary = '3000', accounts, categories = defaultCategories(), plans = defaultPlans(salary), budget = { id: 'b1', periodStartDay: 1 }, cachedBudgets, suggestions = [], gate }: Setup = {}) {
+function setup({ salary = '3000', accounts, categories = defaultCategories(), plans = defaultPlans(salary), budget = { id: 'b1', periodStartDay: 1 }, cachedBudgets, suggestions = [], gate, elementCurrencies = {} }: Setup = {}) {
   budgetPeriods = []
   routes = stepRoutes({ option: 'categories,accounts', budgetId: budget?.id })
   saves = []
@@ -116,7 +118,9 @@ function setup({ salary = '3000', accounts, categories = defaultCategories(), pl
       const from = url.searchParams.get('from') ?? ''
       budgetPeriods.push(from)
       const id = url.searchParams.get('id') ?? ''
-      return ok({ item: wirePlan(id, categories, plans, from, metas.find((m) => m.id === id)?.periodStartDay ?? 1) })
+      const item = wirePlan(id, categories, plans, from, metas.find((m) => m.id === id)?.periodStartDay ?? 1)
+      item.structure.elements = item.structure.elements.map((e) => ({ ...e, currencyId: elementCurrencies[e.id] ?? e.currencyId }))
+      return ok({ item })
     }),
     http.get('*/api/v1/oauth/get-identity-list', () => ok([])),
     // as the server answers: the budget asked for and a decimal string per category
@@ -174,6 +178,14 @@ it('lists income and expense categories in their groups, prefilled from the plan
   expect(screen.getByRole('heading', { name: 'Plan this month' })).toBeInTheDocument()
   expect(screen.getByText(/^Income · /)).toBeInTheDocument()
   expect(screen.getByText(/^Expenses · /)).toBeInTheDocument()
+})
+
+it('shows each row\'s currency next to its amount: the budget\'s, or the element\'s own', async () => {
+  setup({ elementCurrencies: { 'cat-rent': 'cur-eur' } })
+  const row = async (name: string) => (await input(name)).closest('li') as HTMLElement
+  expect(within(await row('Groceries')).getByTestId('plan-currency')).toHaveTextContent('USD')
+  expect(within(await row('Salary')).getByTestId('plan-currency')).toHaveTextContent('USD')
+  expect(within(await row('Housing')).getByTestId('plan-currency')).toHaveTextContent('EUR')
 })
 
 it('plans spending against expected income when there is any', async () => {

@@ -1239,12 +1239,12 @@
       "skip": "Überspringen",
       "add": "Konto hinzufügen",
       "default_cash": "Bargeld",
-      "hide": "Ausblenden",
-      "show": "Einblenden",
-      "hide_label": "{name} ausblenden",
-      "show_label": "{name} einblenden",
-      "hidden": "Ausgeblendet",
-      "hidden_hint": "Ausgeblendete Konten kommen in den Ordner „Archiv“ und verlassen meist das Budget (ein Konto mit Buchungen in einem früheren Monat bleibt darin)."
+      "hide": "Archivieren",
+      "show": "Wiederherstellen",
+      "hide_label": "{name} archivieren",
+      "show_label": "{name} wiederherstellen",
+      "hidden": "Archiviert",
+      "balance_of": "Kontostand von {name}"
     },
     "categories_step": {
       "heading": "Wofür geben Sie Geld aus?",
@@ -1269,9 +1269,9 @@
       "main_title": "Hauptwährung",
       "add": "Währung hinzufügen",
       "remove": "{code} entfernen",
-      "main_short": "{code} (Haupt)",
-      "add_short": "Hinzufügen",
-      "hint": "Wähle die Währungen, die du am häufigsten nutzt. Weitere kannst du später in den Einstellungen hinzufügen."
+      "hint": "Wähle die Währungen, die du am häufigsten nutzt. Weitere kannst du später in den Einstellungen hinzufügen.",
+      "main_pick": "Auswählen",
+      "selected": "Ausgewählte Währungen"
     },
     "steps_nav": {
       "title": "Erste Schritte",

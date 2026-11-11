@@ -189,7 +189,7 @@ describe('useDay0', () => {
     expect(draft.rows).toHaveLength(3)
     expect(draft.mainCurrencyId).toBe('cur-usd')
     expect(draft.budgetId).toBe('b-onb')
-    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, { accounts: 2, currencies: 4, hidden: 0, shown: 0, currencyChanged: 0 })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, { accounts: 2, currencies: 4, hidden: 0, shown: 0, currencyChanged: 0, balanceChanged: 0 })
     expect(calledTimes(METRICS.ONBOARDING_ACCOUNTS_COMPLETE)).toBe(1)
   })
 

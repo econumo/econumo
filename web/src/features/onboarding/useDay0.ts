@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import type { CurrentUserDto } from '@/api/dto/user'
-import { saveOnboardingAccounts, saveOnboardingCategories, saveOnboardingPlan, type AccountCurrencyChange } from '@/api/onboarding'
+import { saveOnboardingAccounts, saveOnboardingCategories, saveOnboardingPlan, type AccountBalanceChange, type AccountCurrencyChange } from '@/api/onboarding'
 import type { Id } from '@/api/types'
 import { queryKeys } from '@/app/queryKeys'
 import { useAccounts } from '@/features/accounts/queries'
@@ -12,7 +12,7 @@ import { claimedElsewhere, finishImportStep, notUser } from './finishImport'
 import { emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft, type Day0Step } from './draft'
 
 export type CategoryReview = { archive: Id[]; restore: Id[] }
-export type AccountReview = { hide: Id[]; unhide: Id[]; currencies?: AccountCurrencyChange[] }
+export type AccountReview = { hide: Id[]; unhide: Id[]; currencies?: AccountCurrencyChange[]; balances?: AccountBalanceChange[] }
 
 // The user query is answered by the step itself, so it is never refetched over that answer (notUser).
 
@@ -182,6 +182,7 @@ export function useDay0() {
             ...(review.hide.length > 0 ? { hide: review.hide } : {}),
             ...(review.unhide.length > 0 ? { unhide: review.unhide } : {}),
             ...(review.currencies && review.currencies.length > 0 ? { currencies: review.currencies } : {}),
+            ...(review.balances && review.balances.length > 0 ? { balances: review.balances } : {}),
           }),
         (d, res) => {
           d.budgetId = res.budgetId || d.budgetId
@@ -199,6 +200,7 @@ export function useDay0() {
         hidden: review.hide.length,
         shown: review.unhide.length,
         currencyChanged: review.currencies?.length ?? 0,
+        balanceChanged: review.balances?.length ?? 0,
       })
     },
     [runStep, queryClient],

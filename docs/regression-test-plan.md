@@ -345,36 +345,52 @@ navigation (single-pane vs sidebar).
       account a savings account); tapping a new row's icon opens the icon picker, the chosen icon is kept when the name changes and is
       used for the created account, and an existing account's icon is not
       tappable; "Add account" adds a row. Accounts the user already has are
-      listed first and locked, with their balance shown and no balance asked
-      for, each with a Hide button (an eye; "Hide" next to it from a tablet
-      width up); a hidden one (also an account already in a hidden folder)
-      reads muted with "Hidden" instead of its balance and a Show button, and
-      under the list a hint says hidden accounts move to the Archive folder
-      and usually leave the budget. Continue sends `hide`/`unhide` in `save-accounts`
-      for the flipped rows only: a hidden account then sits in the hidden
+      listed first with their name locked and their balance and currency
+      editable, each with an Archive button (an archive box; "Archive" next to
+      it from a tablet width up); an archived one (also an account already in
+      a hidden folder) reads muted with "Archived" instead of its balance and
+      a Restore button. Continue sends `hide`/`unhide` in `save-accounts`
+      for the flipped rows only: an archived account then sits in the hidden
       "Archive" folder (translated) and is gone from the budget (unless it has
       history in an earlier month, then it stays a member); a shown one moves
       back to a visible folder and into the budget. Continue is disabled while
-      every account is hidden and no new row has a name. A user with no accounts starts with one row named "Cash" (cash
+      every account is archived and no new row has a name. A user with no accounts starts with one row named "Cash" (cash
       icon, blank balance saved as 0, the default currency) that
       can be renamed or removed like any row; a user who already has accounts,
       or resumes a draft with rows, gets no Cash row. Under the Currencies
       label a hint reads "Select the currencies you use most often. You can
-      add more later in Settings."; the line reads "USD (main) · + Add";
-      tapping the main currency changes it. No note about missing exchange
-      rates appears.
+      add more later in Settings." above the Main currency select and the
+      currency chips. No note about missing exchange rates appears.
 - [ ] 📱 Accounts after a CSV import (accounts arrive in the instance base
       currency): an existing, shown account's currency chip is tappable and
-      opens the currency list (its name and balance stay read-only, a hidden
-      one shows no chip). Changing the FIRST row's currency also moves every
-      row whose currency was not changed by hand (other imported accounts and
-      new rows) and the main currency; changing another row moves only that
-      row. Continue sends the changed existing accounts as `currencies` in
-      `save-accounts`: afterwards they show the new currency on Accounts with
-      the same balance and no "Balance correction" transaction, and the new
-      currencies are visible. The budget the import created (nothing planned,
-      not shared) switches to the main currency; a budget that has a plan, or
-      is shared with someone (also a pending invite), keeps its currency.
+      opens the currency list, and its balance is an input prefilled with the
+      current balance (to the currency's decimals, in the UI language's
+      number format); its name stays read-only and an archived one shows
+      "Archived" with no chip or input. Changing the FIRST row's currency also
+      moves every row whose currency was not changed by hand (other imported
+      accounts and new rows) and the main currency; changing another row moves
+      only that row. Continue sends the changed existing accounts as
+      `currencies` and edited balances as `balances` in `save-accounts`:
+      afterwards they show the new currency on Accounts, an untouched balance
+      unchanged with no correction, an edited one at the typed amount with one
+      "Balance adjustment" transaction dated today; an unreadable balance shows
+      the error and blocks Continue. The budget the import created (nothing
+      planned, not shared) switches to the main currency; a budget that has a
+      plan, or is shared with someone (also a pending invite), keeps its
+      currency.
+- [ ] 📱 Accounts layout: on a phone and on a desktop the balance inputs,
+      currency chips and the trailing Archive / ✕ buttons line up in columns
+      across existing and new rows. Existing rows' toggle reads "Archive"
+      (an archive-box icon; the word from a tablet width up) and "Restore" on
+      an archived row; there is no hint line under the list.
+- [ ] 📱 Currencies block: under the hint a "Main currency" row has a
+      select-style button (currency label + chevron) that always opens; its
+      list holds the selected currencies plus "Add currency", and adding one
+      from there makes it the main currency. Below, the selected currencies
+      show as chips (only ones no account uses have an ✕) with an
+      "Add currency" chip.
+- [ ] 📱 Plan step: every category row shows its currency code next to the
+      amount (the budget's, or the element's own currency).
 - [ ] Default names follow the UI language: switching the language on
       Categories or Accounts (or reloading in another language mid-flow)
       re-labels the default categories and the Cash row that were not

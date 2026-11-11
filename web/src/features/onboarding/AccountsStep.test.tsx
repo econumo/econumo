@@ -5,7 +5,7 @@ import i18n from '@/app/i18n'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { http, HttpResponse } from 'msw'
-import { fixtureAccounts } from '@/test/fixtures'
+import { fixtureAccounts, fixtureEur, fixtureUsd } from '@/test/fixtures'
 import * as metrics from '@/lib/metrics'
 import { AccountsStep, AccountsStepBody, type ExistingAccount } from './AccountsStep'
 import { emptyDraft, loadDraft, saveDraft, type AccountRow } from './draft'
@@ -32,7 +32,7 @@ const removeRow = (user: ReturnType<typeof userEvent.setup>, i: number) => user.
 
 async function ready() {
   // the default currency resolves once the currency list and profile load
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent(/[A-Z]{3} \(main\)/), { timeout: 3000 })
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent(/^[A-Z]{3},/), { timeout: 3000 })
 }
 
 async function pickCurrency(user: ReturnType<typeof userEvent.setup>, rowIndex: number, code: string) {
@@ -226,7 +226,7 @@ it("uses the first row's currency for the other untouched rows, new rows and Mai
   await addAccount(user)
   await user.type(nameInputs()[3], 'Ddd')
   expect(codes()).toEqual(['EUR', 'USD', 'EUR', 'EUR'])
-  expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent('EUR (main)')
+  expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent(/^EUR,/)
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   const [rows, , main] = onContinue.mock.calls[0]
   expect(rows.map((r: AccountRow) => r.currencyId)).toEqual(['cur-eur', 'cur-usd', 'cur-eur', 'cur-eur'])
@@ -293,9 +293,9 @@ it("Main follows the first row's pick even while that row is blank, and clears w
   await pickCurrency(user, 1, 'USD')
   await pickCurrency(user, 0, 'EUR')
   const main = () => screen.getByRole('button', { name: 'Main currency' })
-  expect(main()).toHaveTextContent('EUR (main)')
+  expect(main()).toHaveTextContent(/^EUR,/)
   await user.type(nameInputs()[0], 'Aaa')
-  expect(main()).toHaveTextContent('EUR (main)')
+  expect(main()).toHaveTextContent(/^EUR,/)
   await removeRow(user, 1)
   await removeRow(user, 0)
   await addAccount(user)
@@ -364,15 +364,14 @@ it('calls onSkip', async () => {
 const imported: ExistingAccount = { id: 'acc-imp', name: 'Imported card', icon: 'credit_card', balance: '1234.5', currencyId: 'cur-eur' }
 const rainy: ExistingAccount = { id: 'acc-sav', name: 'Rainy day savings', icon: 'savings', balance: '10', currencyId: 'cur-usd' }
 
-it('lists existing accounts first, locked with their balance, and passes them on as existing rows', async () => {
+it('lists existing accounts first with their name locked and their balance editable, and passes them on as existing rows', async () => {
   const user = userEvent.setup()
   const { onContinue } = renderStep({ existing: [imported, rainy] })
   await ready()
   const first = rowsEls()[0]
   expect(first).toHaveTextContent('Imported card')
-  expect(first).toHaveTextContent('1,234.50')
+  expect(within(first).getByLabelText('Balance of Imported card')).toHaveValue('1234.50')
   expect(within(first).queryByLabelText('Account name')).not.toBeInTheDocument()
-  expect(within(first).queryByLabelText('Balance')).not.toBeInTheDocument()
   expect(within(first).getByText('EUR')).toBeInTheDocument()
   // existing accounts need no new row, and have no remove button or savings switch
   expect(nameInputs).toThrow()
@@ -387,27 +386,27 @@ it('lists existing accounts first, locked with their balance, and passes them on
   ])
 })
 
-it('reviews existing accounts: Hide and Show flip rows, hidden ones read muted, and Continue sends the diff', async () => {
+it('reviews existing accounts: Archive and Restore flip rows, hidden ones read muted, and Continue sends the diff', async () => {
   const user = userEvent.setup()
   const archived: ExistingAccount = { id: 'acc-old', name: 'Old card', icon: 'credit_card', balance: '0', currencyId: 'cur-usd', hidden: true }
   const { onContinue } = renderStep({ existing: [imported, rainy, archived] })
   await ready()
-  expect(screen.getByText(/^Hidden accounts move to the Archive folder and usually leave the budget/)).toBeInTheDocument()
+  expect(screen.queryByText(/Archive folder/)).not.toBeInTheDocument()
   const oldRow = rowsEls()[2]
   expect(oldRow).toHaveAttribute('data-hidden', 'true')
-  expect(within(oldRow).getByText('Hidden')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Hide Imported card' }))
+  expect(within(oldRow).getByText('Archived')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Archive Imported card' }))
   expect(rowsEls()[0]).toHaveAttribute('data-hidden', 'true')
-  await user.click(screen.getByRole('button', { name: 'Show Old card' }))
+  await user.click(screen.getByRole('button', { name: 'Restore Old card' }))
   expect(rowsEls()[2]).not.toHaveAttribute('data-hidden')
   // flipped twice is no change
-  await user.click(screen.getByRole('button', { name: 'Hide Rainy day savings' }))
-  await user.click(screen.getByRole('button', { name: 'Show Rainy day savings' }))
+  await user.click(screen.getByRole('button', { name: 'Archive Rainy day savings' }))
+  await user.click(screen.getByRole('button', { name: 'Restore Rainy day savings' }))
   await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(onContinue.mock.calls[0][3]).toEqual({ hide: ['acc-imp'], unhide: ['acc-old'], currencies: [] })
+  expect(onContinue.mock.calls[0][3]).toEqual({ hide: ['acc-imp'], unhide: ['acc-old'], currencies: [], balances: [] })
 })
 
-it('an existing account takes a currency from its chip; Continue sends it as a currencies diff, balance and name stay locked', async () => {
+it('an existing account takes a currency from its chip; Continue sends it as a currencies diff and the name stays locked', async () => {
   const user = userEvent.setup()
   const lead: ExistingAccount = { id: 'acc-lead', name: 'Main card', icon: 'credit_card', balance: '5', currencyId: 'cur-usd' }
   const other: ExistingAccount = { id: 'acc-other', name: 'Other card', icon: 'credit_card', balance: '7', currencyId: 'cur-usd' }
@@ -415,7 +414,6 @@ it('an existing account takes a currency from its chip; Continue sends it as a c
   await ready()
   await pickCurrency(user, 1, 'EUR')
   expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
-  expect(within(rowsEls()[1]).queryByLabelText('Balance')).not.toBeInTheDocument()
   expect(within(rowsEls()[1]).queryByLabelText('Account name')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   const [rows, , main, review] = onContinue.mock.calls[0]
@@ -450,14 +448,64 @@ it('the first existing account leads: untouched rows, existing or new, follow it
   ])
   expect(rows[3]).toMatchObject({ name: 'Travel fund', currencyId: 'cur-eur' })
   expect(main).toBe('cur-eur')
-  expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent('EUR (main)')
+  expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent(/^EUR,/)
+})
+
+it('an existing account\'s balance is editable: a changed one goes out in balances, an unreadable one blocks Continue', async () => {
+  const user = userEvent.setup()
+  const lead: ExistingAccount = { id: 'acc-lead', name: 'Main card', icon: 'credit_card', balance: '5', currencyId: 'cur-usd' }
+  const other: ExistingAccount = { id: 'acc-other', name: 'Other card', icon: 'credit_card', balance: '7.5', currencyId: 'cur-usd' }
+  const { onContinue } = renderStep({ existing: [lead, other] })
+  await ready()
+  const leadBalance = screen.getByLabelText('Balance of Main card')
+  expect(leadBalance).toHaveValue('5.00')
+  await user.clear(leadBalance)
+  await user.type(leadBalance, 'abc')
+  expect(screen.getByText('Enter a number, for example 1234.50')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+  await user.clear(leadBalance)
+  await user.type(leadBalance, '1,250.75')
+  // retyping the same amount is no change
+  await user.clear(screen.getByLabelText('Balance of Other card'))
+  await user.type(screen.getByLabelText('Balance of Other card'), '7.50')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  const [rows, , , review] = onContinue.mock.calls[0]
+  expect(review.balances).toEqual([{ accountId: 'acc-lead', balance: '1250.75' }])
+  expect(rows[0]).toMatchObject({ accountId: 'acc-lead', balance: '1250.75' })
+})
+
+it('labels the toggle Archive / Restore and shows no hint under the list', async () => {
+  const archived: ExistingAccount = { id: 'acc-old', name: 'Old card', icon: 'credit_card', balance: '0', currencyId: 'cur-usd', hidden: true }
+  renderStep({ existing: [imported, archived] })
+  await ready()
+  expect(screen.getByRole('button', { name: 'Archive Imported card' })).toHaveTextContent('Archive')
+  expect(screen.getByRole('button', { name: 'Restore Old card' })).toHaveTextContent('Restore')
+  expect(screen.queryByText(/Archive folder/)).not.toBeInTheDocument()
+})
+
+it('the main currency is a select: it lists the selected currencies and adds another as the main one', async () => {
+  const user = userEvent.setup()
+  const gbp = { id: 'cur-gbp', code: 'GBP', name: 'Pound', symbol: '£', fractionDigits: 2, scope: 'global', isHidden: 0, isDeleted: 0 }
+  const { onContinue } = renderStep({ existing: [rainy] }, { currencies: [fixtureUsd, fixtureEur, gbp] })
+  await ready()
+  const main = screen.getByRole('button', { name: 'Main currency' })
+  expect(main).toHaveTextContent(/^USD,/)
+  expect(screen.getByRole('list', { name: 'Selected currencies' })).toHaveTextContent('USD')
+  await user.click(main)
+  expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([expect.stringMatching(/^USD/), 'Add currency'])
+  await user.click(screen.getByRole('option', { name: 'Add currency' }))
+  await user.click(await screen.findByRole('option', { name: /^GBP/ }))
+  await waitFor(() => expect(main).toHaveTextContent(/^GBP,/))
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onContinue.mock.calls[0][1]).toEqual(['cur-gbp'])
+  expect(onContinue.mock.calls[0][2]).toBe('cur-gbp')
 })
 
 it('cannot continue with every account hidden and no new row', async () => {
   const user = userEvent.setup()
   renderStep({ existing: [imported] })
   await ready()
-  await user.click(screen.getByRole('button', { name: 'Hide Imported card' }))
+  await user.click(screen.getByRole('button', { name: 'Archive Imported card' }))
   expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
 })
 
@@ -565,7 +613,7 @@ describe('AccountsStepBody', () => {
     expect(routes.srv.calls[0].body.accounts).toEqual([])
   })
 
-  it('an account in a hidden folder shows as hidden; Show and Hide go out as unhide and hide', async () => {
+  it('an account in a hidden folder shows as hidden; Restore and Archive go out as unhide and hide', async () => {
     localStorage.clear()
     const routes = stepRoutes({ option: 'categories' })
     const inHidden = { ...fixtureAccounts[1], id: 'a-hid', name: 'Old savings', folderId: 'f-hidden' }
@@ -575,8 +623,8 @@ describe('AccountsStepBody', () => {
     const { onDone } = renderBody()
     await ready()
     expect(rowsEls()[1]).toHaveAttribute('data-hidden', 'true')
-    await user.click(screen.getByRole('button', { name: 'Show Old savings' }))
-    await user.click(screen.getByRole('button', { name: `Hide ${fixtureAccounts[0].name}` }))
+    await user.click(screen.getByRole('button', { name: 'Restore Old savings' }))
+    await user.click(screen.getByRole('button', { name: `Archive ${fixtureAccounts[0].name}` }))
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
     expect(routes.srv.calls[0].body).toMatchObject({ accounts: [], hide: [fixtureAccounts[0].id], unhide: ['a-hid'] })
@@ -603,6 +651,25 @@ describe('AccountsStepBody', () => {
     expect(body.mainCurrencyId).toBe('cur-eur')
     expect(body.accounts).toEqual([])
     expect(body.currencyIds).toContain('cur-eur')
+  })
+
+  it('an edited imported balance goes out in balances with the locale\'s decimal mark', async () => {
+    localStorage.clear()
+    await act(() => i18n.changeLanguage('de'))
+    try {
+      const routes = stepRoutes({ option: 'import,categories' })
+      server.use(...coreHandlers({ accounts: [fixtureAccounts[0]], user: userWith('import,categories') }), ...routes.handlers)
+      const user = userEvent.setup()
+      const { onDone } = renderBody()
+      await waitFor(() => expect(screen.getByLabelText('Kontostand von Cash')).toHaveValue('100,50'))
+      await user.clear(screen.getByLabelText('Kontostand von Cash'))
+      await user.type(screen.getByLabelText('Kontostand von Cash'), '80,25')
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+      expect(routes.srv.calls[0].body.balances).toEqual([{ accountId: 'a1', balance: '80.25' }])
+    } finally {
+      await act(() => i18n.changeLanguage('en'))
+    }
   })
 
   it('a stored draft from a failed submit reseeds the form and replays its operation id', async () => {

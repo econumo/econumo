@@ -301,7 +301,7 @@ it('an import with rows finishes it on the server and opens Categories and Accou
   expect((posts[1].body as Record<string, unknown>).restore).toBeUndefined()
 
   // the accounts the import created are reviewed: one goes to the hidden Archive folder
-  await user.click(await screen.findByRole('button', { name: 'Hide Cash' }))
+  await user.click(await screen.findByRole('button', { name: 'Archive Cash' }))
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   expect(await heading('Plan this month')).toBeInTheDocument()
   expect(posts[2]).toMatchObject({ path: 'save-accounts', body: { accounts: [], hide: ['a1'] } })

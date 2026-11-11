@@ -1239,12 +1239,12 @@
       "skip": "跳过",
       "add": "添加账户",
       "default_cash": "现金账户",
-      "hide": "隐藏",
-      "show": "显示",
-      "hide_label": "隐藏 {name}",
-      "show_label": "显示 {name}",
-      "hidden": "已隐藏",
-      "hidden_hint": "隐藏的账户会移到“已归档”文件夹，通常也会移出预算（在之前月份有交易的账户会保留在预算中）。"
+      "hide": "归档",
+      "show": "恢复",
+      "hide_label": "归档 {name}",
+      "show_label": "恢复 {name}",
+      "hidden": "已归档",
+      "balance_of": "{name} 的余额"
     },
     "categories_step": {
       "heading": "你的钱花在哪里？",
@@ -1269,9 +1269,9 @@
       "main_title": "主币种",
       "add": "添加币种",
       "remove": "移除 {code}",
-      "main_short": "{code}（主）",
-      "add_short": "添加",
-      "hint": "选择你最常用的币种。之后可以在设置中添加更多。"
+      "hint": "选择你最常用的币种。之后可以在设置中添加更多。",
+      "main_pick": "选择",
+      "selected": "已选币种"
     },
     "steps_nav": {
       "title": "开始使用",

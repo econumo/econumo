@@ -1239,12 +1239,12 @@
       "skip": "Salta",
       "add": "Aggiungi conto",
       "default_cash": "Contanti",
-      "hide": "Nascondi",
-      "show": "Mostra",
-      "hide_label": "Nascondi {name}",
-      "show_label": "Mostra {name}",
-      "hidden": "Nascosto",
-      "hidden_hint": "I conti nascosti finiscono nella cartella Archivio e di solito escono dal budget (uno con movimenti in un mese precedente vi resta)."
+      "hide": "Archivia",
+      "show": "Ripristina",
+      "hide_label": "Archivia {name}",
+      "show_label": "Ripristina {name}",
+      "hidden": "Archiviato",
+      "balance_of": "Saldo di {name}"
     },
     "categories_step": {
       "heading": "In cosa spendi?",
@@ -1269,9 +1269,9 @@
       "main_title": "Valuta principale",
       "add": "Aggiungi valuta",
       "remove": "Rimuovi {code}",
-      "main_short": "{code} (principale)",
-      "add_short": "Aggiungi",
-      "hint": "Seleziona le valute che usi più spesso. Potrai aggiungerne altre in seguito nelle Impostazioni."
+      "hint": "Seleziona le valute che usi più spesso. Potrai aggiungerne altre in seguito nelle Impostazioni.",
+      "main_pick": "Scegli",
+      "selected": "Valute selezionate"
     },
     "steps_nav": {
       "title": "Per iniziare",

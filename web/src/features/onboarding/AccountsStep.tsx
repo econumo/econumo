@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Eye, EyeOff, Plus, X } from 'lucide-react'
+import { Archive, ArchiveRestore, Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
@@ -12,13 +12,13 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { selectableCurrencies } from '@/features/currencies/selectable'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
-import { addThousandSeparators, formatNumber } from '@/lib/money'
+import { cmp } from '@/lib/decimal'
 import { guessCurrencyCode } from '@/lib/regionCurrency'
 import { cn } from '@/lib/utils'
 import type { Id } from '@/api/types'
 import type { AccountRow } from './draft'
 import { guessAccountIcon } from './defaults'
-import { parseBalance } from './balance'
+import { decimalInput, parseBalance } from './balance'
 import { labelled, nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import { CurrenciesBlock, CurrencyListSheet } from './CurrenciesBlock'
 import { rowInput, rowTile } from './CategoriesStep'
@@ -38,8 +38,8 @@ export interface ExistingAccount {
 }
 
 interface AccountsStepProps {
-  // the user's own accounts: listed first, name and balance locked, each with a Hide / Show toggle
-  // and a currency chip (a CSV import creates them in the instance base currency)
+  // the user's own accounts: listed first with their name locked, an editable balance, a currency
+  // chip (a CSV import creates them in the instance base currency) and an Archive / Restore toggle
   existing: ExistingAccount[]
   initialRows?: AccountRow[]
   initialExtraCurrencyIds?: Id[]
@@ -47,6 +47,13 @@ interface AccountsStepProps {
   onSkip: () => void
   pending: boolean
   error?: ReactNode
+}
+
+// "1234.5" in a two-digit currency reads "1234.50"; a longer fraction is never cut
+function padFraction(value: string, digits: number): string {
+  const [int, frac = ''] = value.split('.')
+  const padded = frac.padEnd(digits, '0')
+  return padded === '' ? int : `${int}.${padded}`
 }
 
 // currencyId '' = the row follows the default currency until the user picks one
@@ -91,6 +98,15 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   })
   const [pickingRow, setPickingRow] = useState<string | null>(null)
   const [pickingAccount, setPickingAccount] = useState<Id | null>(null)
+  // balances typed into existing accounts; a failed submit's edits come back
+  const [balanceEdits, setBalanceEdits] = useState<Readonly<Record<Id, string>>>(() => {
+    const out: Record<Id, string> = {}
+    for (const r of initialRows ?? []) {
+      const a = r.accountId ? existing.find((e) => e.id === r.accountId) : undefined
+      if (a && r.balance !== '' && cmp(r.balance, a.balance) !== 0) out[a.id] = decimalInput(r.balance, i18n.language)
+    }
+    return out
+  })
   const [iconRowKey, setIconRowKey] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
   // a name still being typed is short on its way to valid, so its error waits for blur
@@ -153,9 +169,22 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
 
   const parse = (raw: string) => parseBalance(raw, i18n.language)
   const invalid = new Set(active.filter((r) => parse(r.balance) === null).map((r) => r.key))
+  const balanceInput = (a: ExistingAccount) => {
+    if (balanceEdits[a.id] !== undefined) return balanceEdits[a.id]
+    const digits = currencies?.find((c) => c.id === a.currencyId)?.fractionDigits ?? 2
+    return decimalInput(padFraction(a.balance, digits), i18n.language)
+  }
+  // a shown account's balance as typed, '' while untouched or unchanged, null when unreadable
+  const balanceOf = (a: ExistingAccount): string | null => {
+    if (isHidden(a) || balanceEdits[a.id] === undefined) return ''
+    const value = parse(balanceEdits[a.id])
+    return value === null ? null : cmp(value, a.balance) === 0 ? '' : value
+  }
+  const invalidExisting = new Set(existing.filter((a) => balanceOf(a) === null).map((a) => a.id))
   const invalidName = new Set(active.filter((r) => !nameLengthValid(r.name)).map((r) => r.key))
   const shownExisting = existing.filter((a) => !isHidden(a)).length
-  const canContinue = active.length + shownExisting > 0 && invalid.size === 0 && invalidName.size === 0 && mainId !== null && !pending
+  const canContinue =
+    active.length + shownExisting > 0 && invalid.size === 0 && invalidExisting.size === 0 && invalidName.size === 0 && mainId !== null && !pending
 
   const submit = () => {
     if (!canContinue || !mainId) return
@@ -164,7 +193,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
         ...existing.map((a) => ({
           key: `account:${a.id}`,
           name: a.name,
-          balance: '',
+          balance: balanceOf(a) || '',
           currencyId: currencyOfExisting(a),
           icon: a.icon,
           accountId: a.id,
@@ -179,6 +208,10 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
         currencies: existing
           .filter((a) => currencyOfExisting(a) !== a.currencyId)
           .map((a) => ({ accountId: a.id, currencyId: currencyOfExisting(a) })),
+        balances: existing.flatMap((a) => {
+          const balance = balanceOf(a)
+          return balance ? [{ accountId: a.id, balance }] : []
+        }),
       },
     )
   }
@@ -188,7 +221,11 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   const editingCurrency = editingAccount ? currencyOfExisting(editingAccount) : editing ? currencyOf(editing) : undefined
   const editingIcon = rows.find((r) => r.key === iconRowKey)
   const codeOf = (id: Id) => currencies?.find((c) => c.id === id)?.code ?? ''
-  const chip = 'shrink-0 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground'
+  const chip = 'w-14 shrink-0 rounded-md border px-1.5 py-0.5 text-center text-xs text-muted-foreground'
+  // balance, currency and action cells keep one width on every row, so the columns line up
+  const balanceCell =
+    'w-24 shrink-0 rounded-lg border bg-transparent px-2 py-1.5 text-right text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:border-destructive sm:w-28'
+  const actionCell = 'flex w-8 shrink-0 justify-end sm:w-24'
 
 
   return (
@@ -208,12 +245,20 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
                 </span>
                 <div className={cn('min-w-0 flex-1 truncate px-1', off && 'text-muted-foreground')}>{a.name}</div>
                 {off ? (
-                  <span className="shrink-0 text-xs text-muted-foreground">{t('onboarding.accounts.hidden')}</span>
+                  <span className="w-40 shrink-0 text-right text-xs text-muted-foreground sm:w-[10.25rem]">
+                    {t('onboarding.accounts.hidden')}
+                  </span>
                 ) : (
                   <>
-                    <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                      {addThousandSeparators(formatNumber(a.balance, cur?.fractionDigits ?? 2, true)).join('.')}
-                    </span>
+                    <input
+                      className={balanceCell}
+                      aria-label={t('onboarding.accounts.balance_of', { name: a.name })}
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={balanceInput(a)}
+                      aria-invalid={invalidExisting.has(a.id)}
+                      onChange={(e) => setBalanceEdits((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                    />
                     <button
                       type="button"
                       className={cn(chip, 'hover:bg-accent')}
@@ -224,18 +269,21 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
                     </button>
                   </>
                 )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="-mr-1 shrink-0 text-muted-foreground"
-                  aria-label={t(off ? 'onboarding.accounts.show_label' : 'onboarding.accounts.hide_label', { name: a.name })}
-                  onClick={() => toggleHidden(a.id)}
-                >
-                  {off ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                  <span className="hidden sm:inline">{t(off ? 'onboarding.accounts.show' : 'onboarding.accounts.hide')}</span>
-                </Button>
+                <span className={actionCell}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="-mr-1 text-muted-foreground"
+                    aria-label={t(off ? 'onboarding.accounts.show_label' : 'onboarding.accounts.hide_label', { name: a.name })}
+                    onClick={() => toggleHidden(a.id)}
+                  >
+                    {off ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
+                    <span className="hidden sm:inline">{t(off ? 'onboarding.accounts.show' : 'onboarding.accounts.hide')}</span>
+                  </Button>
+                </span>
               </div>
+              {invalidExisting.has(a.id) && <p className="mt-1 pl-11 text-sm text-destructive">{t('onboarding.accounts.balance_invalid')}</p>}
             </li>
           )
         })}
@@ -263,7 +311,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
                   onBlur={() => setNameTouched((prev) => new Set(prev).add(row.key))}
                 />
                 <input
-                  className="w-20 shrink-0 rounded-lg border bg-transparent px-2 py-1.5 text-right text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:border-destructive sm:w-28"
+                  className={balanceCell}
                   aria-label={t('onboarding.accounts.balance_label')}
                   inputMode="decimal"
                   placeholder="0"
@@ -279,14 +327,16 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
                 >
                   {codeOf(currencyOf(row))}
                 </button>
-                <button
-                  type="button"
-                  aria-label={t('onboarding.accounts.remove')}
-                  className="-mr-1 grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-                  onClick={() => remove(row.key)}
-                >
-                  <X className="size-4" />
-                </button>
+                <span className={actionCell}>
+                  <button
+                    type="button"
+                    aria-label={t('onboarding.accounts.remove')}
+                    className="-mr-1 grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                    onClick={() => remove(row.key)}
+                  >
+                    <X className="size-4" />
+                  </button>
+                </span>
               </div>
               {showName && <p className="mt-1 pl-11 text-sm text-destructive">{t('errors.account.name_length', { min: NAME_MIN, max: NAME_MAX })}</p>}
               {invalid.has(row.key) && <p className="mt-1 pl-11 text-sm text-destructive">{t('onboarding.accounts.balance_invalid')}</p>}
@@ -302,7 +352,6 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
           </button>
         </li>
       </ul>
-      {existing.length > 0 && <p className="text-xs text-muted-foreground">{t('onboarding.accounts.hidden_hint')}</p>}
 
       <CurrenciesBlock
         currencies={currencies ?? []}

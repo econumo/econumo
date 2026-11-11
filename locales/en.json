@@ -1239,12 +1239,12 @@
       "skip": "Skip",
       "add": "Add account",
       "default_cash": "Cash",
-      "hide": "Hide",
-      "show": "Show",
-      "hide_label": "Hide {name}",
-      "show_label": "Show {name}",
-      "hidden": "Hidden",
-      "hidden_hint": "Hidden accounts move to the Archive folder and usually leave the budget (one with history in an earlier month stays in it)."
+      "hide": "Archive",
+      "show": "Restore",
+      "hide_label": "Archive {name}",
+      "show_label": "Restore {name}",
+      "hidden": "Archived",
+      "balance_of": "Balance of {name}"
     },
     "categories_step": {
       "heading": "What do you spend on?",
@@ -1269,9 +1269,9 @@
       "main_title": "Main currency",
       "add": "Add currency",
       "remove": "Remove {code}",
-      "main_short": "{code} (main)",
-      "add_short": "Add",
-      "hint": "Select the currencies you use most often. You can add more later in Settings."
+      "hint": "Select the currencies you use most often. You can add more later in Settings.",
+      "main_pick": "Choose",
+      "selected": "Selected currencies"
     },
     "steps_nav": {
       "title": "Getting started",

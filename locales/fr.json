@@ -1239,12 +1239,12 @@
       "skip": "Passer",
       "add": "Ajouter un compte",
       "default_cash": "Espèces",
-      "hide": "Masquer",
-      "show": "Afficher",
-      "hide_label": "Masquer {name}",
-      "show_label": "Afficher {name}",
-      "hidden": "Masqué",
-      "hidden_hint": "Les comptes masqués vont dans le dossier Archives et quittent en général le budget (un compte avec des opérations d'un mois précédent y reste)."
+      "hide": "Archiver",
+      "show": "Restaurer",
+      "hide_label": "Archiver {name}",
+      "show_label": "Restaurer {name}",
+      "hidden": "Archivé",
+      "balance_of": "Solde de {name}"
     },
     "categories_step": {
       "heading": "Où va votre argent ?",
@@ -1269,9 +1269,9 @@
       "main_title": "Devise principale",
       "add": "Ajouter une devise",
       "remove": "Retirer {code}",
-      "main_short": "{code} (principale)",
-      "add_short": "Ajouter",
-      "hint": "Sélectionnez les devises que vous utilisez le plus souvent. Vous pourrez en ajouter d'autres plus tard dans les Paramètres."
+      "hint": "Sélectionnez les devises que vous utilisez le plus souvent. Vous pourrez en ajouter d'autres plus tard dans les Paramètres.",
+      "main_pick": "Choisir",
+      "selected": "Devises sélectionnées"
     },
     "steps_nav": {
       "title": "Premiers pas",

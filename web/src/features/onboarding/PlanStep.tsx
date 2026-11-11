@@ -145,6 +145,12 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
 
   const budgetCurrencyId = plan.data.meta.currencyId
   const currency = (currencies.data ?? []).find((c) => c.id === budgetCurrencyId)
+  // a category is planned in its element's currency, the budget's until the element carries another
+  const elementCurrency = new Map(plan.data.structure.elements.map((e) => [e.id, e.currencyId]))
+  const codeOf = (c: CategoryDto) => {
+    const id = elementCurrency.get(c.id) || budgetCurrencyId
+    return (currencies.data ?? []).find((x) => x.id === id)?.code ?? ''
+  }
   const plannedTotal = sum(expenses)
   const expected = sum(income)
   const hasIncome = cmp(expected, '0') > 0
@@ -193,6 +199,9 @@ export function PlanStep({ onDone, onSkip, onGoTo }: StepBodyProps) {
                 aria-invalid={invalid.has(c.id)}
                 onChange={(ev) => setEdits((prev) => ({ ...prev, [c.id]: ev.target.value }))}
               />
+              <span className="w-14 shrink-0 rounded-md border px-1.5 py-0.5 text-center text-xs text-muted-foreground" data-testid="plan-currency">
+                {codeOf(c)}
+              </span>
             </li>
           ))}
         </ul>
