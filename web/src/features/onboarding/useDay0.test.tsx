@@ -8,6 +8,7 @@ import type { CurrentUserDto } from '@/api/dto/user'
 import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useDay0 } from './useDay0'
+import { AI_REFRESH_DELAYS_MS, cancelAiRefresh } from './finishImport'
 import { loadDraft, saveDraft, emptyDraft, type AccountRow, type CategoryRow } from './draft'
 import { stepRoutes, userWith, type StepServer } from './onboardingRoutes.test-utils'
 
@@ -240,6 +241,31 @@ describe('useDay0', () => {
     expect(trackEvent).toHaveBeenCalledWith(METRICS.ONBOARDING_PLAN_COMPLETE, { rows: 1 })
     expect(calledTimes(METRICS.ONBOARDING_PLAN_COMPLETE)).toBe(1)
   })
+
+  // with AI the server may turn planned loan categories into debts after the step answers
+  for (const [label, amounts, refreshes] of [
+    ['with amounts', [{ categoryId: 'cat-1', amount: '300' }], true],
+    ['without amounts', [], false],
+  ] as const) {
+    it(`savePlan ${label} ${refreshes ? 'refetches' : 'does not refetch'} the debts and the plan at the AI delays`, async () => {
+      window.econumoConfig = { AI_ENABLED: true }
+      const { result } = await ready('categories,accounts')
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      try {
+        await act(() => result.current.savePlan('b1', [...amounts]))
+        const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+        await vi.advanceTimersByTimeAsync(AI_REFRESH_DELAYS_MS[0])
+        const debts = invalidate.mock.calls.filter(([f]) => JSON.stringify(f?.queryKey) === JSON.stringify(queryKeys.debts))
+        const plans = invalidate.mock.calls.filter(([f]) => JSON.stringify(f?.queryKey) === JSON.stringify(queryKeys.budgetPlan))
+        expect(debts).toHaveLength(refreshes ? 1 : 0)
+        expect(plans).toHaveLength(refreshes ? 1 : 0)
+      } finally {
+        cancelAiRefresh()
+        vi.useRealTimers()
+        window.econumoConfig = {}
+      }
+    })
+  }
 
   it('a step the server already marked answers with the current state and changes nothing', async () => {
     const { result } = await ready('categories')
