@@ -32,6 +32,14 @@ function tallestHeight(): number {
   return tallest.height
 }
 
+// recorded from app start, not only while a sheet is open: a picker opened
+// from a page field whose keyboard already shrank the page would otherwise
+// take the shrunk height for the full one
+if (typeof window !== 'undefined') {
+  tallestHeight()
+  window.addEventListener('resize', tallestHeight)
+}
+
 /** test-only: forget the tallest viewport seen */
 export function resetKeyboardBaseline() {
   tallest = { width: 0, height: 0 }
