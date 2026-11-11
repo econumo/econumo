@@ -1947,7 +1947,7 @@ data unreadable. Most are also asserted by the test suite.
   through `claim-setup-token` (the server returns the access URL and keeps nothing), encrypts
   it in the browser with a passphrase-wrapped data key (`web/src/lib/importCrypto.ts`; the
   wrapped key lives in `import_credential_keys`, one row per user; the unwrapped key stays
-  non-extractable in the `importKeys` store of the `econumo` IndexedDB), and stores only the ciphertext on the source. Every
+  non-extractable in the `importKeys` store of the `econumo` IndexedDB, removed by `clearPersistedQueryCache` on every sign-in and sign-out like the rest of the user's local data, so each sign-in asks for the passphrase once), and stores only the ciphertext on the source. Every
   `list-external-accounts`/`sync-source` call carries the plaintext access URL in the body —
   "at rest zero-knowledge, in flight trusted" — and it is never persisted, logged, or
   formatted into an error. A sync is one `import_runs` row; per-account failures leave the

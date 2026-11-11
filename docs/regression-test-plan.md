@@ -1022,6 +1022,9 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       bodies.
 - [ ] A used/invalid setup token shows the server's error inline; nothing is
       created (Settings → SimpleFIN still shows the connect form after reload).
+- [ ] Sign out and back in on an unlocked browser (same user): Settings → SimpleFIN asks for
+      the passphrase again; the login form still has the remembered email when "Remember
+      me" was on. 📱
 - [ ] Second device (or the same browser after its site data is cleared): the page shows
       the unlock prompt; a wrong passphrase reads "Wrong passphrase."; the right
       one lists the accounts. 📱
