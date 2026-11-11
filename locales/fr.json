@@ -663,13 +663,22 @@
       "title": "SimpleFIN",
       "intro": "Connectez une banque via SimpleFIN Bridge. Vos identifiants de connexion sont chiffrés sur cet appareil avec une phrase secrète que vous seul connaissez ; le serveur les stocke chiffrés et ne les voit que le temps d'une synchronisation.",
       "forget_device": "Oublier cet appareil",
+      "forget_modal": {
+        "title": "Oublier cet appareil ?",
+        "question": "Cet appareil vous redemandera votre phrase secrète avant la prochaine synchronisation. Votre connexion et vos autres appareils ne sont pas concernés."
+      },
+      "disconnect": "Déconnecter",
+      "disconnect_full": "Déconnecter SimpleFIN",
+      "disconnect_modal": {
+        "title": "Déconnecter SimpleFIN ?",
+        "question": "La connexion SimpleFIN sera supprimée d’Econumo. Les transactions déjà importées seront conservées."
+      },
       "connect": {
-        "intro": "Collez le jeton de configuration de votre compte SimpleFIN Bridge et choisissez une phrase secrète. La phrase secrète n'est jamais envoyée au serveur — si vous l'oubliez, vous devrez vous reconnecter avec un nouveau jeton de configuration.",
         "reconnect_intro": "Collez un nouveau jeton de configuration de SimpleFIN Bridge. La connexion précédente sera remplacée ; vos associations de comptes sont conservées.",
         "token_label": "Jeton de configuration",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → Nouvelle connexion → copiez le jeton de configuration. Un jeton ne peut être utilisé qu'une fois.",
-        "forgot_passphrase": "J'ai oublié ma phrase secrète — en définir une nouvelle",
+        "forgot_passphrase": "J'ai oublié ma phrase secrète, en définir une nouvelle",
         "passphrase_new": "Phrase secrète",
         "passphrase_existing": "Votre phrase secrète",
         "passphrase_confirm": "Répétez la phrase secrète",

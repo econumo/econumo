@@ -663,13 +663,22 @@
       "title": "SimpleFIN",
       "intro": "Conecta un banco a través de SimpleFIN Bridge. Tus credenciales de la pasarela se cifran en este dispositivo con una frase de contraseña que solo tú conoces; el servidor las almacena cifradas y solo las ve durante una sincronización.",
       "forget_device": "Olvidar este dispositivo",
+      "forget_modal": {
+        "title": "¿Olvidar este dispositivo?",
+        "question": "Este dispositivo volverá a pedir tu frase de contraseña antes de la próxima sincronización. Tu conexión y tus otros dispositivos no se ven afectados."
+      },
+      "disconnect": "Desconectar",
+      "disconnect_full": "Desconectar SimpleFIN",
+      "disconnect_modal": {
+        "title": "¿Desconectar SimpleFIN?",
+        "question": "La conexión con SimpleFIN se eliminará de Econumo. Las transacciones importadas anteriormente se conservarán."
+      },
       "connect": {
-        "intro": "Pega el token de configuración de tu cuenta de SimpleFIN Bridge y elige una frase de contraseña. La frase de contraseña nunca se envía al servidor — si la olvidas, deberás volver a conectarte con un nuevo token de configuración.",
         "reconnect_intro": "Pega un nuevo token de configuración de SimpleFIN Bridge. Se reemplazará la conexión anterior; tus asignaciones de cuentas se conservan.",
         "token_label": "Token de configuración",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → Nueva conexión → copia el token de configuración. Un token solo puede usarse una vez.",
-        "forgot_passphrase": "Olvidé mi frase de contraseña — establecer una nueva",
+        "forgot_passphrase": "Olvidé mi frase de contraseña, establecer una nueva",
         "passphrase_new": "Frase de contraseña",
         "passphrase_existing": "Tu frase de contraseña",
         "passphrase_confirm": "Repite la frase de contraseña",

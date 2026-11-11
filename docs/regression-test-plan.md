@@ -1008,9 +1008,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
 
 Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fresh setup token.
 
-- [ ] Settings → SimpleFIN on a device with no key: the connect form asks for a
-      setup token and a passphrase (+ repeat); a passphrase under 8 characters or
-      a mismatch is rejected inline before any request. 📱
+- [ ] Settings → SimpleFIN on a device with no key: one card holds the intro, the setup
+      token and passphrase (+ repeat) fields, each a card-style field with its label
+      inside (as in the transaction and account dialogs); a passphrase under 8
+      characters or a mismatch is rejected inline before any request. 📱
 - [ ] Connect: after "Connect" the page lists the bridge's accounts under "Needs mapping",
       the source row reads "Never synced", and the network log shows
       `create-source` carrying `credentialCiphertext` starting `v1:` — the access
@@ -1021,10 +1022,21 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Second device (or same browser after "Forget this device"): the page shows
       the unlock prompt; a wrong passphrase reads "Wrong passphrase."; the right
       one lists the accounts. 📱
-- [ ] "Forget this device" returns the page to the unlock prompt; "Reconnect"
+- [ ] "Forget this device" asks first ("Forget this device?"; Cancel changes
+      nothing), then returns the page to the unlock prompt; "Reconnect"
       from the unlock prompt with "I forgot my passphrase" ticked accepts a new
       setup token + new passphrase and replaces the connection (account mappings
       kept).
+- [ ] Connected page layout 📱: the sync card has the source name and last-synced time
+      over a divider, then "From" with a calendar date picker (a sheet on a phone) and
+      "Sync now"; "Import history" is a card row with a chevron (shown once a run
+      exists); a bridge account with nothing queued shows its currency, not "0 to
+      review"; Reconnect, Forget this device and the red "Disconnect SimpleFIN" sit
+      centered at the bottom. "Reconnect" there opens the reconnect form with a Cancel
+      that returns to the page.
+- [ ] "Disconnect SimpleFIN" asks "Disconnect SimpleFIN?"; confirming removes the
+      source (the page shows the connect form without a passphrase, the key stays on
+      the device) and keeps the previously imported transactions.
 - [ ] After that passphrase reset, a device still unlocked under the OLD
       passphrase opens Settings → SimpleFIN to the unlock prompt reading "Your
       passphrase was changed on another device…" (not the reconnect form); the

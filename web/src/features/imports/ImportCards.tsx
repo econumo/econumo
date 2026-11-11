@@ -62,7 +62,8 @@ export function ImportCards({ source, cards = source.cards, variant = 'card', fo
       attention
       tile={<span className={`${tileClass} bg-econumo-purple/10 text-econumo-purple`}><CreditCard className="size-5" /></span>}
       title={<div className="truncate">{card.externalName}</div>}
-      sub={details(pluralPick(t(`${ns}.waiting`), card.queuedCount, i18n.language), when(card))}
+      // a bridge account the last sync just listed has nothing queued yet
+      sub={details(card.queuedCount > 0 ? pluralPick(t(`${ns}.waiting`), card.queuedCount, i18n.language) : card.externalCurrency, when(card))}
       actions={
         <>
           <Button type="button" size="sm" aria-label={action(t(`${ns}.map`), card)} disabled={!online} onClick={() => setMapTarget(card)}>

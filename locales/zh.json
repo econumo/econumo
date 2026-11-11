@@ -663,13 +663,22 @@
       "title": "SimpleFIN",
       "intro": "通过 SimpleFIN Bridge 连接银行。您的桥接凭据会在此设备上使用只有您知道的密码加密；服务器只存储加密后的凭据，并且仅在同步期间才能看到它们。",
       "forget_device": "忘记此设备",
+      "forget_modal": {
+        "title": "忘记此设备？",
+        "question": "下次同步前，此设备会再次要求输入密码。你的连接和其他设备不受影响。"
+      },
+      "disconnect": "断开连接",
+      "disconnect_full": "断开 SimpleFIN",
+      "disconnect_modal": {
+        "title": "断开 SimpleFIN？",
+        "question": "SimpleFIN 连接将从 Econumo 中移除。之前导入的交易会保留。"
+      },
       "connect": {
-        "intro": "粘贴您 SimpleFIN Bridge 账户中的设置令牌，并选择一个密码。密码永远不会发送到服务器 — 如果您忘记了密码，需要使用新的设置令牌重新连接。",
         "reconnect_intro": "粘贴 SimpleFIN Bridge 提供的新设置令牌。之前的连接将被替换；您的账户映射会保留。",
         "token_label": "设置令牌",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → 新建连接 → 复制设置令牌。令牌只能使用一次。",
-        "forgot_passphrase": "我忘记了密码 — 设置新密码",
+        "forgot_passphrase": "我忘记了密码，设置新密码",
         "passphrase_new": "密码",
         "passphrase_existing": "您的密码",
         "passphrase_confirm": "重复密码",
