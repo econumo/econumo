@@ -1266,10 +1266,13 @@
       "title": "Currencies",
       "main_title": "Main currency",
       "add": "Add currency",
-      "remove": "Remove {code}",
       "hint": "Select the currencies you use most often. You can add more later in Settings.",
-      "main_pick": "Choose",
-      "selected": "Selected currencies"
+      "selected": "Selected currencies",
+      "main_label": "Main currency: {code}",
+      "main_suffix": "Main",
+      "make_main": "Make main",
+      "remove_action": "Remove",
+      "chips_hint": "Tap a currency to make it main or remove it."
     },
     "steps_nav": {
       "title": "Getting started",

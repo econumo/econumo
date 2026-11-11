@@ -1266,10 +1266,13 @@
       "title": "Waluty",
       "main_title": "Waluta główna",
       "add": "Dodaj walutę",
-      "remove": "Usuń {code}",
       "hint": "Wybierz waluty, których używasz najczęściej. Kolejne możesz dodać później w Ustawieniach.",
-      "main_pick": "Wybierz",
-      "selected": "Wybrane waluty"
+      "selected": "Wybrane waluty",
+      "main_label": "Waluta główna: {code}",
+      "main_suffix": "Główna",
+      "make_main": "Ustaw jako główną",
+      "remove_action": "Usuń",
+      "chips_hint": "Dotknij waluty, aby ustawić ją jako główną lub usunąć."
     },
     "steps_nav": {
       "title": "Pierwsze kroki",

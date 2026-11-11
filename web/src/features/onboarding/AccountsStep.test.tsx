@@ -30,9 +30,11 @@ const rowsEls = () => screen.getAllByTestId('account-row')
 const addAccount = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Add account' }))
 const removeRow = (user: ReturnType<typeof userEvent.setup>, i: number) => user.click(within(rowsEls()[i]).getByRole('button', { name: 'Remove account' }))
 
+const mainChip = () => screen.getByRole('button', { name: /^Main currency/ })
+
 async function ready() {
   // the default currency resolves once the currency list and profile load
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent(/^[A-Z]{3},/), { timeout: 3000 })
+  await waitFor(() => expect(mainChip()).toHaveAccessibleName(/^Main currency: [A-Z]{3}$/), { timeout: 3000 })
 }
 
 async function pickCurrency(user: ReturnType<typeof userEvent.setup>, rowIndex: number, code: string) {
@@ -226,7 +228,7 @@ it("uses the first row's currency for the other untouched rows, new rows and Mai
   await addAccount(user)
   await user.type(nameInputs()[3], 'Ddd')
   expect(codes()).toEqual(['EUR', 'USD', 'EUR', 'EUR'])
-  expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent(/^EUR,/)
+  expect(mainChip()).toHaveAccessibleName('Main currency: EUR')
   await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   const [rows, , main] = onContinue.mock.calls[0]
   expect(rows.map((r: AccountRow) => r.currencyId)).toEqual(['cur-eur', 'cur-usd', 'cur-eur', 'cur-eur'])
@@ -241,7 +243,7 @@ it('lets an explicit Main pick win over the first row', async () => {
   await addAccount(user)
   await user.type(nameInputs()[1], 'Bbb')
   await pickCurrency(user, 0, 'EUR')
-  await user.click(screen.getByRole('button', { name: 'Main currency' }))
+  await user.click(mainChip())
   await user.click(await screen.findByRole('option', { name: /^EUR/ }))
   await pickCurrency(user, 0, 'USD')
   await pickCurrency(user, 1, 'EUR')
@@ -292,10 +294,9 @@ it("Main follows the first row's pick even while that row is blank, and clears w
   await user.type(nameInputs()[1], 'Bbb')
   await pickCurrency(user, 1, 'USD')
   await pickCurrency(user, 0, 'EUR')
-  const main = () => screen.getByRole('button', { name: 'Main currency' })
-  expect(main()).toHaveTextContent(/^EUR,/)
+  expect(mainChip()).toHaveAccessibleName('Main currency: EUR')
   await user.type(nameInputs()[0], 'Aaa')
-  expect(main()).toHaveTextContent(/^EUR,/)
+  expect(mainChip()).toHaveAccessibleName('Main currency: EUR')
   await removeRow(user, 1)
   await removeRow(user, 0)
   await addAccount(user)
@@ -320,7 +321,7 @@ it('lets the user pick another selected currency as Main', async () => {
   await user.type(nameInputs()[0], 'Card')
   await user.click(screen.getByRole('button', { name: /Add currency/ }))
   await user.click(await screen.findByRole('option', { name: /^EUR/ }))
-  await user.click(screen.getByRole('button', { name: 'Main currency' }))
+  await user.click(mainChip())
   await user.click(await screen.findByRole('option', { name: /^EUR/ }))
   await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   expect(onContinue.mock.calls[0][2]).toBe('cur-eur')
@@ -448,7 +449,7 @@ it('the first existing account leads: untouched rows, existing or new, follow it
   ])
   expect(rows[3]).toMatchObject({ name: 'Travel fund', currencyId: 'cur-eur' })
   expect(main).toBe('cur-eur')
-  expect(screen.getByRole('button', { name: 'Main currency' })).toHaveTextContent(/^EUR,/)
+  expect(mainChip()).toHaveAccessibleName('Main currency: EUR')
 })
 
 it('an existing account\'s balance is editable: a changed one goes out in balances, an unreadable one blocks Continue', async () => {
@@ -483,22 +484,66 @@ it('labels the toggle Archive / Restore and shows no hint under the list', async
   expect(screen.queryByText(/Archive folder/)).not.toBeInTheDocument()
 })
 
-it('the main currency is a select: it lists the selected currencies and adds another as the main one', async () => {
+const gbp = { id: 'cur-gbp', code: 'GBP', name: 'Pound', symbol: '£', fractionDigits: 2, scope: 'global', isHidden: 0, isDeleted: 0 }
+
+it('currencies are one row of chips: the main one first and filled, then the others, then Add currency', async () => {
+  renderStep({ existing: [rainy] }, { currencies: [fixtureUsd, fixtureEur, gbp] })
+  await ready()
+  const list = screen.getByRole('list', { name: 'Selected currencies' })
+  expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['USD· Main', 'Add currency'])
+  expect(screen.getByText('Tap a currency to make it main or remove it.')).toBeInTheDocument()
+})
+
+it('the main chip opens the full currency list: the pick becomes main and joins the chips, the old main stays', async () => {
   const user = userEvent.setup()
-  const gbp = { id: 'cur-gbp', code: 'GBP', name: 'Pound', symbol: '£', fractionDigits: 2, scope: 'global', isHidden: 0, isDeleted: 0 }
   const { onContinue } = renderStep({ existing: [rainy] }, { currencies: [fixtureUsd, fixtureEur, gbp] })
   await ready()
-  const main = screen.getByRole('button', { name: 'Main currency' })
-  expect(main).toHaveTextContent(/^USD,/)
-  expect(screen.getByRole('list', { name: 'Selected currencies' })).toHaveTextContent('USD')
-  await user.click(main)
-  expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([expect.stringMatching(/^USD/), 'Add currency'])
-  await user.click(screen.getByRole('option', { name: 'Add currency' }))
-  await user.click(await screen.findByRole('option', { name: /^GBP/ }))
-  await waitFor(() => expect(main).toHaveTextContent(/^GBP,/))
+  await user.click(mainChip())
+  expect(screen.getAllByRole('option').map((o) => o.textContent?.slice(0, 3))).toEqual(expect.arrayContaining(['USD', 'EUR', 'GBP']))
+  await user.click(screen.getByRole('option', { name: /^GBP/ }))
+  await waitFor(() => expect(mainChip()).toHaveAccessibleName('Main currency: GBP'))
+  expect(screen.getByRole('button', { name: 'USD' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Save and continue' }))
   expect(onContinue.mock.calls[0][1]).toEqual(['cur-gbp'])
   expect(onContinue.mock.calls[0][2]).toBe('cur-gbp')
+})
+
+it('a non-main chip offers Make main and Remove; an account\'s currency cannot be removed', async () => {
+  const user = userEvent.setup()
+  const euro: ExistingAccount = { id: 'acc-eur', name: 'Euro card', icon: 'credit_card', balance: '1', currencyId: 'cur-eur' }
+  const { onContinue } = renderStep({ existing: [rainy, euro] }, { currencies: [fixtureUsd, fixtureEur, gbp] })
+  await ready()
+  // EUR is a listed account's currency: Make main only
+  await user.click(screen.getByRole('button', { name: 'EUR' }))
+  expect(await screen.findByRole('menuitem', { name: 'Make main' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Remove' })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  // an added one can be removed
+  await user.click(screen.getByRole('button', { name: /Add currency/ }))
+  await user.click(await screen.findByRole('option', { name: /^GBP/ }))
+  await user.click(await screen.findByRole('button', { name: 'GBP' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Remove' }))
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'GBP' })).not.toBeInTheDocument())
+  // Make main moves the main chip
+  await user.click(screen.getByRole('button', { name: 'EUR' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Make main' }))
+  await waitFor(() => expect(mainChip()).toHaveAccessibleName('Main currency: EUR'))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+  expect(onContinue.mock.calls[0][1]).toEqual([])
+  expect(onContinue.mock.calls[0][2]).toBe('cur-eur')
+})
+
+it('Add currency only adds: the main currency stays', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep({ existing: [rainy] }, { currencies: [fixtureUsd, fixtureEur, gbp] })
+  await ready()
+  await user.click(screen.getByRole('button', { name: /Add currency/ }))
+  await user.click(await screen.findByRole('option', { name: /^GBP/ }))
+  expect(await screen.findByRole('button', { name: 'GBP' })).toBeInTheDocument()
+  expect(mainChip()).toHaveAccessibleName('Main currency: USD')
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+  expect(onContinue.mock.calls[0][1]).toEqual(['cur-gbp'])
+  expect(onContinue.mock.calls[0][2]).toBe('cur-usd')
 })
 
 it('cannot continue with every account hidden and no new row', async () => {

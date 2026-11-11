@@ -1266,10 +1266,13 @@
       "title": "Monedas",
       "main_title": "Moneda principal",
       "add": "Añadir moneda",
-      "remove": "Quitar {code}",
       "hint": "Selecciona las monedas que más usas. Puedes añadir más después en Ajustes.",
-      "main_pick": "Elegir",
-      "selected": "Monedas seleccionadas"
+      "selected": "Monedas seleccionadas",
+      "main_label": "Moneda principal: {code}",
+      "main_suffix": "Principal",
+      "make_main": "Hacer principal",
+      "remove_action": "Quitar",
+      "chips_hint": "Toca una moneda para hacerla principal o quitarla."
     },
     "steps_nav": {
       "title": "Primeros pasos",

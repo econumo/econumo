@@ -1266,10 +1266,13 @@
       "title": "Valuta's",
       "main_title": "Hoofdvaluta",
       "add": "Valuta toevoegen",
-      "remove": "{code} verwijderen",
       "hint": "Kies de valuta's die je het vaakst gebruikt. Je kunt er later meer toevoegen in Instellingen.",
-      "main_pick": "Kiezen",
-      "selected": "Geselecteerde valuta"
+      "selected": "Geselecteerde valuta",
+      "main_label": "Hoofdvaluta: {code}",
+      "main_suffix": "Hoofd",
+      "make_main": "Als hoofdvaluta instellen",
+      "remove_action": "Verwijderen",
+      "chips_hint": "Tik op een valuta om deze als hoofdvaluta in te stellen of te verwijderen."
     },
     "steps_nav": {
       "title": "Aan de slag",

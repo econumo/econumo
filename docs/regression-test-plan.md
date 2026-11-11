@@ -361,8 +361,7 @@ navigation (single-pane vs sidebar).
       can be renamed or removed like any row; a user who already has accounts,
       or resumes a draft with rows, gets no Cash row. Under the Currencies
       label a hint reads "Select the currencies you use most often. You can
-      add more later in Settings." above the Main currency select and the
-      currency chips. No note about missing exchange rates appears.
+      add more later in Settings." above the currency chips. No note about missing exchange rates appears.
 - [ ] 📱 Accounts after a CSV import (accounts arrive in the instance base
       currency): an existing, shown account's currency chip is tappable and
       opens the currency list, and its balance is an input prefilled with the
@@ -385,12 +384,14 @@ navigation (single-pane vs sidebar).
       across existing and new rows. Existing rows' toggle reads "Archive"
       (an archive-box icon; the word from a tablet width up) and "Restore" on
       an archived row; there is no hint line under the list.
-- [ ] 📱 Currencies block: under the hint a "Main currency" row has a
-      select-style button (currency label + chevron) that always opens; its
-      list holds the selected currencies plus "Add currency", and adding one
-      from there makes it the main currency. Below, the selected currencies
-      show as chips (only ones no account uses have an ✕) with an
-      "Add currency" chip.
+- [ ] 📱 Currencies block: under the hint one wrapping row of chips, the main
+      currency first (filled, star, "· Main"), then the other selected
+      currencies (outlined), then "+ Add currency", and under them "Tap a
+      currency to make it main or remove it." Tapping the main chip opens the
+      full searchable currency list: the pick becomes main and is added to the
+      chips, the old main stays. Tapping another chip opens a menu with "Make
+      main" and "Remove"; Remove is missing for a currency a listed account
+      uses. "+ Add currency" adds a chip and leaves the main currency alone.
 - [ ] 📱 Plan step: every category row shows its currency code next to the
       amount (the budget's, or the element's own currency).
 - [ ] Default names follow the UI language: switching the language on

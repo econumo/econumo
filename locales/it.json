@@ -1266,10 +1266,13 @@
       "title": "Valute",
       "main_title": "Valuta principale",
       "add": "Aggiungi valuta",
-      "remove": "Rimuovi {code}",
       "hint": "Seleziona le valute che usi più spesso. Potrai aggiungerne altre in seguito nelle Impostazioni.",
-      "main_pick": "Scegli",
-      "selected": "Valute selezionate"
+      "selected": "Valute selezionate",
+      "main_label": "Valuta principale: {code}",
+      "main_suffix": "Principale",
+      "make_main": "Imposta come principale",
+      "remove_action": "Rimuovi",
+      "chips_hint": "Tocca una valuta per renderla principale o rimuoverla."
     },
     "steps_nav": {
       "title": "Per iniziare",

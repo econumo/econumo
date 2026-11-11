@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { ChevronDown, Plus, X } from 'lucide-react'
+import { Plus, Star, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CommandEmpty, CommandItem } from '@/components/ui/command'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 import { PickerSheet } from '@/components/PickerSheet'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { rankByName } from '@/lib/search'
@@ -15,11 +17,9 @@ interface CurrencyListSheetProps {
   value?: Id | null
   onClose: () => void
   onPick: (id: Id) => void
-  // a last item that opens the full list, for a list limited to some currencies
-  onAddMore?: () => void
 }
 
-export function CurrencyListSheet({ open, title, options, value, onClose, onPick, onAddMore }: CurrencyListSheetProps) {
+export function CurrencyListSheet({ open, title, options, value, onClose, onPick }: CurrencyListSheetProps) {
   const { t } = useTranslation()
   return (
     <PickerSheet open={open} onClose={onClose} title={title} searchLabel={t('accounts.page.toolbar.search')} currentValue={value ?? undefined}>
@@ -39,19 +39,6 @@ export function CurrencyListSheet({ open, title, options, value, onClose, onPick
               <span className="flex-1">{fullCurrencyLabel(c)}</span>
             </CommandItem>
           ))}
-          {onAddMore && (
-            <CommandItem
-              value="__add"
-              className="text-primary"
-              onSelect={() => {
-                onClose()
-                onAddMore()
-              }}
-            >
-              <Plus className="size-4" />
-              <span className="flex-1">{t('onboarding.currencies.add')}</span>
-            </CommandItem>
-          )}
         </>
       )}
     </PickerSheet>
@@ -80,77 +67,83 @@ export function CurrenciesBlock({
   onMainChange,
 }: CurrenciesBlockProps) {
   const { t } = useTranslation()
-  // 'extra' adds a currency to the list; 'main' also makes it the main one
-  const [adding, setAdding] = useState<'extra' | 'main' | null>(null)
+  const [adding, setAdding] = useState(false)
   const [pickingMain, setPickingMain] = useState(false)
   const byId = new Map(currencies.map((c) => [c.id, c]))
   const code = (id: Id) => byId.get(id)?.code ?? ''
   const extras = extraIds.filter((id) => !usedIds.includes(id))
-  const selected = [...usedIds, ...extras]
+  const others = [...usedIds, ...extras].filter((id) => id !== mainId)
+  const selected = mainId ? [mainId, ...others] : others
   const addable = selectableOptions.filter((c) => !selected.includes(c.id))
-  const main = mainId ? byId.get(mainId) : undefined
-  const chipClass = 'inline-flex h-7 items-center gap-0.5 rounded-md border px-2 text-xs'
+  const chipClass = 'inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-sm'
 
   return (
     <section>
       <h3 className="mt-4 mb-1 text-xs tracking-wider text-muted-foreground uppercase">{t('onboarding.currencies.title')}</h3>
       <p className="mb-2 text-sm text-muted-foreground">{t('onboarding.currencies.hint')}</p>
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm">
-          {t('onboarding.currencies.main_title')}
-        </span>
-        <button
-          type="button"
-          aria-label={t('onboarding.currencies.main_title')}
-          aria-haspopup="dialog"
-          className="flex h-9 min-w-0 max-w-[60%] items-center gap-2 rounded-lg border bg-transparent px-3 text-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-          onClick={() => setPickingMain(true)}
-        >
-          <span className="truncate">{main ? fullCurrencyLabel(main) : t('onboarding.currencies.main_pick')}</span>
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        </button>
-      </div>
-      <ul className="mt-2 flex flex-wrap items-center gap-1.5" aria-label={t('onboarding.currencies.selected')}>
-        {selected.map((id) => (
-          <li key={id} className={chipClass}>
-            {code(id)}
-            {extras.includes(id) && id !== mainId && (
-              <button
-                type="button"
-                aria-label={t('onboarding.currencies.remove', { code: code(id) })}
-                className="-mr-1 rounded-full p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                onClick={() => onRemoveExtra(id)}
-              >
-                <X className="size-3" />
-              </button>
+      <ul className="flex flex-wrap items-center gap-1.5" aria-label={t('onboarding.currencies.selected')}>
+        <li>
+          {/* the main chip picks the main currency from the whole list; it is never removed */}
+          <button
+            type="button"
+            aria-label={mainId ? t('onboarding.currencies.main_label', { code: code(mainId) }) : t('onboarding.currencies.main_title')}
+            aria-haspopup="dialog"
+            className={cn(chipClass, 'border-primary/40 bg-primary/15 text-foreground hover:bg-primary/25')}
+            onClick={() => setPickingMain(true)}
+          >
+            <Star className="size-3.5 fill-primary text-primary" />
+            {mainId ? code(mainId) : t('onboarding.currencies.main_title')}
+            {mainId && (
+              <span className="text-muted-foreground">
+                <span aria-hidden>· </span>
+                {t('onboarding.currencies.main_suffix')}
+              </span>
             )}
+          </button>
+        </li>
+        {others.map((id) => (
+          <li key={id}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className={cn(chipClass, 'hover:bg-accent')}>
+                  {code(id)}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onSelect={() => onMainChange(id)}>
+                  <Star className="size-4" />
+                  {t('onboarding.currencies.make_main')}
+                </DropdownMenuItem>
+                {/* a currency a listed account uses stays visible */}
+                {extras.includes(id) && (
+                  <DropdownMenuItem variant="destructive" onSelect={() => onRemoveExtra(id)}>
+                    <X className="size-4" />
+                    {t('onboarding.currencies.remove_action')}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </li>
         ))}
         <li>
-          <button type="button" className={`${chipClass} border-dashed text-primary hover:bg-accent`} onClick={() => setAdding('extra')}>
-            <Plus className="size-3" />
+          <button type="button" className={cn(chipClass, 'border-dashed text-primary hover:bg-accent')} onClick={() => setAdding(true)}>
+            <Plus className="size-3.5" />
             {t('onboarding.currencies.add')}
           </button>
         </li>
       </ul>
-      <CurrencyListSheet
-        open={adding !== null}
-        title={t('onboarding.currencies.add')}
-        options={addable}
-        onClose={() => setAdding(null)}
-        onPick={(id) => {
-          onAddExtra(id)
-          if (adding === 'main') onMainChange(id)
-        }}
-      />
+      <p className="mt-1.5 text-xs text-muted-foreground">{t('onboarding.currencies.chips_hint')}</p>
+      <CurrencyListSheet open={adding} title={t('onboarding.currencies.add')} options={addable} onClose={() => setAdding(false)} onPick={onAddExtra} />
       <CurrencyListSheet
         open={pickingMain}
         title={t('onboarding.currencies.main_title')}
-        options={selected.map((id) => byId.get(id)).filter((c): c is CurrencyListItemDto => !!c)}
+        options={selectableOptions}
         value={mainId}
         onClose={() => setPickingMain(false)}
-        onPick={onMainChange}
-        onAddMore={addable.length > 0 ? () => setAdding('main') : undefined}
+        onPick={(id) => {
+          if (!selected.includes(id)) onAddExtra(id)
+          onMainChange(id)
+        }}
       />
     </section>
   )

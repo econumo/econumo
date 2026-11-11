@@ -1266,10 +1266,13 @@
       "title": "币种",
       "main_title": "主币种",
       "add": "添加币种",
-      "remove": "移除 {code}",
       "hint": "选择你最常用的币种。之后可以在设置中添加更多。",
-      "main_pick": "选择",
-      "selected": "已选币种"
+      "selected": "已选币种",
+      "main_label": "主币种：{code}",
+      "main_suffix": "主",
+      "make_main": "设为主币种",
+      "remove_action": "移除",
+      "chips_hint": "点按币种可将其设为主币种或移除。"
     },
     "steps_nav": {
       "title": "开始使用",

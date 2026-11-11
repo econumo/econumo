@@ -1266,10 +1266,13 @@
       "title": "Devises",
       "main_title": "Devise principale",
       "add": "Ajouter une devise",
-      "remove": "Retirer {code}",
       "hint": "Sélectionnez les devises que vous utilisez le plus souvent. Vous pourrez en ajouter d'autres plus tard dans les Paramètres.",
-      "main_pick": "Choisir",
-      "selected": "Devises sélectionnées"
+      "selected": "Devises sélectionnées",
+      "main_label": "Devise principale : {code}",
+      "main_suffix": "Principale",
+      "make_main": "Définir comme principale",
+      "remove_action": "Retirer",
+      "chips_hint": "Touchez une devise pour la définir comme principale ou la retirer."
     },
     "steps_nav": {
       "title": "Premiers pas",

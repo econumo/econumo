@@ -1266,10 +1266,13 @@
       "title": "Währungen",
       "main_title": "Hauptwährung",
       "add": "Währung hinzufügen",
-      "remove": "{code} entfernen",
       "hint": "Wähle die Währungen, die du am häufigsten nutzt. Weitere kannst du später in den Einstellungen hinzufügen.",
-      "main_pick": "Auswählen",
-      "selected": "Ausgewählte Währungen"
+      "selected": "Ausgewählte Währungen",
+      "main_label": "Hauptwährung: {code}",
+      "main_suffix": "Haupt",
+      "make_main": "Als Hauptwährung festlegen",
+      "remove_action": "Entfernen",
+      "chips_hint": "Tippen Sie auf eine Währung, um sie zur Hauptwährung zu machen oder zu entfernen."
     },
     "steps_nav": {
       "title": "Erste Schritte",
