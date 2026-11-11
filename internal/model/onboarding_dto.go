@@ -168,11 +168,27 @@ type OnboardingAccountCurrency struct {
 	CurrencyId string `json:"currencyId"`
 }
 
+// OnboardingAccountBalance sets an existing own account's balance; the
+// difference is booked as a correction like update-account does.
+type OnboardingAccountBalance struct {
+	AccountId string        `json:"accountId"`
+	Balance   vo.FlexString `json:"balance" swaggertype:"string"`
+}
+
+// OnboardingAccountRevision is one existing account's change in the review:
+// "" leaves the currency or the balance as it is.
+type OnboardingAccountRevision struct {
+	AccountId  string
+	CurrencyId string
+	Balance    string
+}
+
 // OnboardingSaveAccountsRequest is the save-accounts body. CurrencyIds are the
 // currencies the user keeps visible (with the main one and every account's
 // own); MainCurrencyId becomes the profile currency. Hide and Unhide name
 // existing own accounts to move into the hidden archive folder (and out of the
-// budget) or back; Currencies changes existing own accounts' currency.
+// budget) or back; Currencies and Balances change existing own accounts'
+// currency and balance.
 type OnboardingSaveAccountsRequest struct {
 	Id             string                      `json:"id"`
 	Accounts       []OnboardingAccountRow      `json:"accounts"`
@@ -181,6 +197,7 @@ type OnboardingSaveAccountsRequest struct {
 	Hide           []string                    `json:"hide"`
 	Unhide         []string                    `json:"unhide"`
 	Currencies     []OnboardingAccountCurrency `json:"currencies"`
+	Balances       []OnboardingAccountBalance  `json:"balances"`
 }
 
 // Validate checks the shape and the balances; names, icons and currencies are
@@ -236,6 +253,23 @@ func (r OnboardingSaveAccountsRequest) Validate() error {
 			return onboardingFieldError("currencies", "The value you selected is not a valid choice.", errs.CodeInvalidChoice)
 		}
 		seen[id.String()] = true
+	}
+	if len(r.Balances) > MaxOnboardingReviewIDs {
+		return tooLongError("balances")
+	}
+	seenBalance := map[string]bool{}
+	for _, b := range r.Balances {
+		id, err := vo.ParseId(strings.TrimSpace(b.AccountId))
+		if err != nil {
+			return invalidUUIDError("balances")
+		}
+		if !onboardingDecimalRe.MatchString(strings.TrimSpace(b.Balance.String())) {
+			return invalidFormatError("balances")
+		}
+		if seenBalance[id.String()] {
+			return onboardingFieldError("balances", "The value you selected is not a valid choice.", errs.CodeInvalidChoice)
+		}
+		seenBalance[id.String()] = true
 	}
 	return validateReviewIDs("hide", r.Hide, "unhide", r.Unhide)
 }

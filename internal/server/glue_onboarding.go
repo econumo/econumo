@@ -16,6 +16,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	appuser "github.com/econumo/econumo/internal/user"
 )
@@ -130,10 +131,12 @@ func NewOnboardingAccounts(svc *appaccount.Service, accounts onboardingAccountLi
 	return &OnboardingAccounts{Service: svc, accounts: accounts, currency: currency, clock: clock}
 }
 
-// ChangeCurrencies runs update-account for each change with the account's own
-// name, icon and balance as get-account-list shows them, so only the currency
-// moves: the balance equals the computed one and no correction is written.
-func (a *OnboardingAccounts) ChangeCurrencies(ctx context.Context, userID vo.Id, changes []model.OnboardingAccountCurrency) error {
+// ReviseAccounts runs update-account for each change with the account's own
+// name and icon as get-account-list shows them, and its shown balance unless
+// the change sets one: an unchanged balance equals the computed one, so no
+// correction is written. A correction is dated now in the caller's timezone,
+// the day the "balance as of today" it fixes is computed for.
+func (a *OnboardingAccounts) ReviseAccounts(ctx context.Context, userID vo.Id, changes []model.OnboardingAccountRevision) error {
 	list, err := a.AccountListForUser(ctx, userID)
 	if err != nil {
 		return err
@@ -142,17 +145,23 @@ func (a *OnboardingAccounts) ChangeCurrencies(ctx context.Context, userID vo.Id,
 	for _, item := range list {
 		byID[strings.ToLower(item.Id)] = item
 	}
-	updatedAt := a.clock.Now().UTC().Format(datetime.Layout)
+	updatedAt := a.clock.Now().In(reqctx.Location(ctx)).Format(datetime.Layout)
 	for _, c := range changes {
 		item, ok := byID[strings.ToLower(c.AccountId)]
 		if !ok {
 			return errs.NewNotFound("Account not found")
 		}
-		currencyID := c.CurrencyId
-		if _, err := a.UpdateAccount(ctx, userID, model.UpdateAccountRequest{
-			Id: item.Id, Name: item.Name, Balance: vo.NewFlexString(item.Balance), Icon: item.Icon,
-			CurrencyId: &currencyID, UpdatedAt: updatedAt,
-		}); err != nil {
+		req := model.UpdateAccountRequest{
+			Id: item.Id, Name: item.Name, Balance: vo.NewFlexString(item.Balance), Icon: item.Icon, UpdatedAt: updatedAt,
+		}
+		if c.Balance != "" {
+			req.Balance = vo.NewFlexString(c.Balance)
+		}
+		if c.CurrencyId != "" {
+			currencyID := c.CurrencyId
+			req.CurrencyId = &currencyID
+		}
+		if _, err := a.UpdateAccount(ctx, userID, req); err != nil {
 			return err
 		}
 	}

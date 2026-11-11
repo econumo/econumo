@@ -384,7 +384,7 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 			created = append(created, vo.MustParseId(res.Item.Id))
 		}
 
-		if cerr := s.changeCurrencies(ctx, userID, req.Currencies); cerr != nil {
+		if cerr := s.reviseAccounts(ctx, userID, req.Currencies, req.Balances); cerr != nil {
 			return cerr
 		}
 		if _, err := s.steps.Users.UpdateCurrency(ctx, userID, model.UpdateCurrencyRequest{Currency: mainCode}); err != nil {
@@ -454,12 +454,12 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 	return out, nil
 }
 
-// changeCurrencies moves existing accounts to the currencies the review
-// picked. Each must be a live account the user owns and each currency one the
-// user may use, else a 400 on the list; an account already in its currency is
-// left alone.
-func (s *Service) changeCurrencies(ctx context.Context, userID vo.Id, changes []model.OnboardingAccountCurrency) error {
-	if len(changes) == 0 {
+// reviseAccounts applies the review's currency and balance changes to
+// existing accounts. Each must be a live account the user owns and each
+// currency one the user may use, else a 400 on the list naming it; a currency
+// the account already has is no change.
+func (s *Service) reviseAccounts(ctx context.Context, userID vo.Id, currencies []model.OnboardingAccountCurrency, balances []model.OnboardingAccountBalance) error {
+	if len(currencies) == 0 && len(balances) == 0 {
 		return nil
 	}
 	own, err := s.steps.Accounts.OwnLiveAccounts(ctx, userID)
@@ -470,8 +470,18 @@ func (s *Service) changeCurrencies(ctx context.Context, userID vo.Id, changes []
 	for _, a := range own {
 		current[strings.ToLower(a.ID)] = strings.ToLower(a.CurrencyID)
 	}
-	var apply []model.OnboardingAccountCurrency
-	for _, c := range changes {
+	byID := map[string]*model.OnboardingAccountRevision{}
+	var order []string
+	revision := func(id string) *model.OnboardingAccountRevision {
+		if r, ok := byID[id]; ok {
+			return r
+		}
+		r := &model.OnboardingAccountRevision{AccountId: id}
+		byID[id] = r
+		order = append(order, id)
+		return r
+	}
+	for _, c := range currencies {
 		id := strings.ToLower(strings.TrimSpace(c.AccountId))
 		currencyID := strings.ToLower(strings.TrimSpace(c.CurrencyId))
 		was, mine := current[id]
@@ -487,12 +497,23 @@ func (s *Service) changeCurrencies(ctx context.Context, userID vo.Id, changes []
 			}
 			return uerr
 		}
-		apply = append(apply, model.OnboardingAccountCurrency{AccountId: id, CurrencyId: currencyID})
+		revision(id).CurrencyId = currencyID
 	}
-	if len(apply) == 0 {
+	for _, b := range balances {
+		id := strings.ToLower(strings.TrimSpace(b.AccountId))
+		if _, mine := current[id]; !mine {
+			return invalidChoice("balances")
+		}
+		revision(id).Balance = strings.TrimSpace(b.Balance.String())
+	}
+	if len(order) == 0 {
 		return nil
 	}
-	return s.steps.Accounts.ChangeCurrencies(ctx, userID, apply)
+	apply := make([]model.OnboardingAccountRevision, 0, len(order))
+	for _, id := range order {
+		apply = append(apply, *byID[id])
+	}
+	return s.steps.Accounts.ReviseAccounts(ctx, userID, apply)
 }
 
 // followMainCurrency puts the budget in the main currency when nothing was

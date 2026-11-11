@@ -3,6 +3,7 @@ package server_test
 import (
 	"testing"
 
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
@@ -136,5 +137,88 @@ func TestSaveAccounts_BudgetKeepsItsCurrencyWhenPlannedOrShared(t *testing.T) {
 				t.Fatalf("budget currency switched to %s", e.budgetCurrency(budget))
 			}
 		})
+	}
+}
+
+// The import path end to end: finish-import creates the budget starting this
+// month, and the imported history of the three months before it still feeds
+// the suggestions. Archiving the account in the review takes it (and so its
+// history) out of the budget, which leaves nothing to suggest.
+func TestGetPlanSuggestions_FromHistoryBeforeAnOnboardingBudget(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	card, _ := seedImported(e)
+	strata := e.f.Category(fixture.Category{UserID: e.user, Name: "Strata", Type: 0})
+	cashback := e.f.Category(fixture.Category{UserID: e.user, Name: "Cashback", Type: 1})
+	for _, at := range []string{"2025-12-04", "2026-01-04", "2026-02-04"} {
+		e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: card, CategoryID: strata, Type: 0, Amount: "360.13", SpentAt: at + " 00:00:00"})
+	}
+	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: card, CategoryID: cashback, Type: 1, Amount: "0.55", SpentAt: "2026-01-31 10:00:00"})
+	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: card, CategoryID: cashback, Type: 1, Amount: "3", SpentAt: "2026-02-03 10:00:00"})
+	status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()})
+	if status != 200 {
+		t.Fatalf("finish-import %d: %v", status, data)
+	}
+	budget := data["budgetId"].(string)
+	if started := e.str(`SELECT started_at FROM budgets WHERE id = ?`, budget); started[:10] != "2026-03-01" {
+		t.Fatalf("budget starts %s", started)
+	}
+	status, data = e.get("/api/v1/onboarding/get-plan-suggestions")
+	if status != 200 {
+		t.Fatalf("status %d: %v", status, data)
+	}
+	got := suggestions(t, data)
+	if len(got) != 2 || got[strata] != "360.13" || got[cashback] != "1.18" {
+		t.Fatalf("suggestions = %v", got)
+	}
+
+	if status, data := e.post("/api/v1/onboarding/save-accounts", map[string]any{"id": fixture.NewID(), "mainCurrencyId": fixture.USD, "hide": []string{card}}); status != 200 {
+		t.Fatalf("save-accounts %d: %v", status, data)
+	}
+	if _, data := e.get("/api/v1/onboarding/get-plan-suggestions"); len(suggestions(t, data)) != 0 {
+		t.Fatalf("an archived account's history still counts: %v", data)
+	}
+}
+
+func TestSaveAccounts_SetsTheBalanceOfImportedAccounts(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	card, cash := seedImported(e)
+	other := e.f.User(fixture.User{Name: "Other", Email: "other@onboarding.test"})
+	theirs := e.f.Account(fixture.Account{UserID: other, Name: "Theirs"})
+	for name, balances := range map[string][]map[string]string{
+		"foreign account": {{"accountId": theirs, "balance": "1"}},
+		"bad format":      {{"accountId": card, "balance": "1,5"}},
+		"blank":           {{"accountId": card, "balance": ""}},
+		"duplicate":       {{"accountId": card, "balance": "1"}, {"accountId": card, "balance": "2"}},
+	} {
+		status, data := e.post("/api/v1/onboarding/save-accounts", map[string]any{"id": fixture.NewID(), "mainCurrencyId": e.eur, "balances": balances})
+		errsMap, _ := data["errors"].(map[string]any)
+		if status != 400 || errsMap["balances"] == nil {
+			t.Fatalf("%s: %d %v", name, status, data)
+		}
+	}
+	op := fixture.NewID()
+	body := map[string]any{
+		"id": op, "mainCurrencyId": e.eur,
+		"currencies": []map[string]string{{"accountId": card, "currencyId": e.eur}},
+		"balances":   []map[string]string{{"accountId": card, "balance": "100"}, {"accountId": cash, "balance": "-5.25"}},
+	}
+	if status, data := e.post("/api/v1/onboarding/save-accounts", body); status != 200 {
+		t.Fatalf("status %d: %v", status, data)
+	}
+	if e.accountCurrency(card) != e.eur {
+		t.Fatal("currency not changed with the balance")
+	}
+	// card: 120.50 -> 100 is a 20.50 expense correction; cash: 0 -> -5.25 a 5.25 expense
+	for account, amount := range map[string]string{card: "20.5", cash: "5.25"} {
+		got := e.str(`SELECT amount FROM transactions WHERE account_id = ? AND description = 'Balance adjustment' AND type = 0`, account)
+		if vo.NewDecimal(got).String() != amount {
+			t.Fatalf("%s correction = %s, want %s", account, got, amount)
+		}
+	}
+	if status, data := e.post("/api/v1/onboarding/save-accounts", body); status != 200 {
+		t.Fatalf("replay %d: %v", status, data)
+	}
+	if n := e.count(`SELECT COUNT(*) FROM transactions WHERE description = 'Balance adjustment'`); n != 2 {
+		t.Fatalf("corrections after the replay = %d", n)
 	}
 }

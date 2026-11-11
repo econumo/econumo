@@ -92,10 +92,10 @@ type AccountSteps interface {
 	MoveAccount(ctx context.Context, userID vo.Id, req model.MoveAccountRequest) (*model.MoveAccountResult, error)
 	// ReplaceIcon changes the icon only while the account still shows from.
 	ReplaceIcon(ctx context.Context, userID, id vo.Id, from, to string) (bool, error)
-	// ChangeCurrencies moves accounts to another currency through update-account,
-	// resending each account's own name, icon and balance (so no correction is
-	// written).
-	ChangeCurrencies(ctx context.Context, userID vo.Id, changes []model.OnboardingAccountCurrency) error
+	// ReviseAccounts changes accounts' currency and balance through
+	// update-account, resending each account's own name and icon; an unchanged
+	// balance writes no correction.
+	ReviseAccounts(ctx context.Context, userID vo.Id, changes []model.OnboardingAccountRevision) error
 }
 
 // CurrencySteps is the currency feature: the code of a currency the caller may

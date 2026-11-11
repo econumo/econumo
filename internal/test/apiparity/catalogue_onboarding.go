@@ -62,7 +62,8 @@ func init() {
 		finish := map[string]any{"id": importOp}
 		categories := map[string]any{"id": catOp, "categories": []any{}, "archive": []string{CatFood}}
 		accounts := map[string]any{"id": accOp, "accounts": []any{}, "currencyIds": []string{USD}, "mainCurrencyId": USD, "hide": []string{OwnerAccount},
-			"currencies": []any{map[string]any{"accountId": OwnerAccount, "currencyId": &eurID}}}
+			"currencies": []any{map[string]any{"accountId": OwnerAccount, "currencyId": &eurID}},
+			"balances":   []any{map[string]any{"accountId": OwnerAccount, "balance": "1000"}}}
 		return []Call{
 			{Label: "err:finish-import-blank", Method: "POST", Path: "/api/v1/onboarding/finish-import", Auth: "owner", Body: map[string]any{"id": ""}},
 			{Label: "err:finish-import-readonly", Method: "POST", Path: "/api/v1/onboarding/finish-import", Auth: "readonly", Body: finish},
@@ -85,6 +86,8 @@ func init() {
 				CaptureIDInto: &eurID},
 			{Label: "err:save-accounts-currency-shared", Method: "POST", Path: "/api/v1/onboarding/save-accounts", Auth: "owner",
 				Body: map[string]any{"id": otherOp, "mainCurrencyId": USD, "currencies": []any{map[string]any{"accountId": SharedAccount, "currencyId": USD}}}},
+			{Label: "err:save-accounts-balance-format", Method: "POST", Path: "/api/v1/onboarding/save-accounts", Auth: "owner",
+				Body: map[string]any{"id": otherOp, "mainCurrencyId": USD, "balances": []any{map[string]any{"accountId": OwnerAccount, "balance": "1,5"}}}},
 			{Label: "save-accounts-hide", Method: "POST", Path: "/api/v1/onboarding/save-accounts", Auth: "owner", Body: accounts},
 			{Label: "get-folder-list-after", Method: "GET", Path: "/api/v1/account/get-folder-list", Auth: "owner"},
 			{Label: "get-account-list-after", Method: "GET", Path: "/api/v1/account/get-account-list", Auth: "owner"},

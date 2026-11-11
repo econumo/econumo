@@ -2177,6 +2177,13 @@ definitions:
           type: string
         type: array
     type: object
+  model.OnboardingAccountBalance:
+    properties:
+      accountId:
+        type: string
+      balance:
+        type: string
+    type: object
   model.OnboardingAccountCurrency:
     properties:
       accountId:
@@ -2248,6 +2255,10 @@ definitions:
       accounts:
         items:
           $ref: '#/definitions/model.OnboardingAccountRow'
+        type: array
+      balances:
+        items:
+          $ref: '#/definitions/model.OnboardingAccountBalance'
         type: array
       currencies:
         items:
@@ -8993,13 +9004,16 @@ paths:
         opening balance as a correction; the first account of a user with no folder
         creates one), moves each existing account in currencies (the caller''s own
         live accounts and a currency they may use, else a 400 on currencies) to its
-        currency through account/update-account with its name, icon and balance unchanged,
-        sets the profile currency to mainCurrencyId, keeps only the main, listed and
-        account currencies visible, moves the accounts in hide into the user''s hidden
-        archive folder (named in the request language; created hidden when missing,
-        with a number appended when a visible folder holds the name) and those in
-        unhide into the first visible folder (a "General" folder when there is none;
-        the caller''s own live accounts only, another id is a 400 on that list), then
+        currency and sets each existing account in balances (same rules, else a 400
+        on balances) to its balance, both through account/update-account with the
+        account''s name and icon unchanged (a changed balance books a Balance adjustment
+        correction dated now in the caller''s timezone, an untouched one none), sets
+        the profile currency to mainCurrencyId, keeps only the main, listed and account
+        currencies visible, moves the accounts in hide into the user''s hidden archive
+        folder (named in the request language; created hidden when missing, with a
+        number appended when a visible folder holds the name) and those in unhide
+        into the first visible folder (a "General" folder when there is none; the
+        caller''s own live accounts only, another id is a 400 on that list), then
         creates the budget over the user''s live accounts outside hidden folders when
         they have none, else adds the new and unhidden accounts to their default budget
         and removes the hidden ones from it (an account that has transactions in a
