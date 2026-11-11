@@ -740,7 +740,7 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
 
 - [ ] With `ECONUMO_IMPORT_SIMPLEFIN` unset, Apple Wallet and Import rules are
       available; SimpleFIN stays hidden, `/settings/simplefin` shows the
-      not-found page and "Sync bank connections" never appears. Apple Wallet
+      not-found page and "Sync SimpleFIN" never appears. Apple Wallet
       has no switch: a leftover `ECONUMO_IMPORT_APPLE_WALLET=false` in the
       environment changes nothing, and `econumo-config.js` carries no
       `IMPORT_APPLE_WALLET` key.
@@ -1093,7 +1093,7 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Run detail names each row's bank account the way the run summary does
       (the bank's own account name, falling back to the bridge id) — never a
       bare `ACT-…` id when the source's accounts are known. 📱
-- [ ] Settings → Data: "Sync bank connections" is absent without a SimpleFIN
+- [ ] Settings → Data: "Sync SimpleFIN" is absent without a SimpleFIN
       source; with one and a locked device it navigates to Settings →
       SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
       row is disabled (not clickable, dimmed) while the syncs run. 📱

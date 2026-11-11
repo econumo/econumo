@@ -550,7 +550,7 @@
     "data_page": {
       "menu_item": "Importar y exportar",
       "header": "Importar y exportar",
-      "sync_all": "Sincronizar conexiones bancarias",
+      "sync_all": "Sincronizar SimpleFIN",
       "history": "Historial de importaciones",
       "sync_all_done": "{imported} importadas, {matched} emparejadas, {failed} fallidas"
     },
@@ -661,7 +661,7 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Conecta un banco a través de SimpleFIN Bridge. Tus credenciales de la pasarela se cifran en este dispositivo con una frase de contraseña que solo tú conoces; el servidor las almacena cifradas y solo las ve durante una sincronización.",
+      "intro": "Configura la sincronización a través de SimpleFIN Bridge. Tus credenciales de SimpleFIN se cifran en este dispositivo con una frase de contraseña que solo tú conoces; el servidor las almacena cifradas.",
       "disclaimer": "Econumo no está afiliado a SimpleFIN. SimpleFIN Bridge es un servicio de terceros con sus propias condiciones; lo usas bajo tu propia responsabilidad.",
       "disconnect": "Desconectar",
       "disconnect_full": "Desconectar SimpleFIN",
@@ -698,7 +698,7 @@
       },
       "accounts": {
         "header": "Cuentas",
-        "empty": "La pasarela aún no ha informado de ninguna cuenta.",
+        "empty": "SimpleFIN aún no ha informado de ninguna cuenta.",
         "needs_mapping": "Sin asignar",
         "state": {
           "ignored": "Ignorada"
@@ -2289,10 +2289,10 @@
       "link_not_queued": "Este evento no está pendiente de revisión.",
       "link_not_skipped": "Este evento no está omitido.",
       "event_not_failed": "Este evento no ha fallado.",
-      "setup_token_rejected": "SimpleFIN rechazó este token de configuración. Puede que ya se haya reclamado — genera uno nuevo en tu puente SimpleFIN.",
-      "provider_unavailable": "No se pudo contactar con el puente bancario. Inténtalo de nuevo en unos minutos.",
+      "setup_token_rejected": "SimpleFIN rechazó este token de configuración. Puede que ya se haya usado; crea uno nuevo en SimpleFIN Bridge.",
+      "provider_unavailable": "No se pudo conectar con SimpleFIN. Inténtalo de nuevo en unos minutos.",
       "sync_range_invalid": "El rango de fechas no es válido: el inicio no puede ser posterior al final, y el rango no puede superar los 400 días.",
-      "access_url_invalid": "La credencial bancaria guardada no es una URL de acceso válida. Vuelve a conectar SimpleFIN con un nuevo token de configuración.",
+      "access_url_invalid": "La conexión de SimpleFIN guardada no es válida. Vuelve a conectar SimpleFIN con un nuevo token de configuración.",
       "rule_skip_not_applicable": "Una regla de omisión no se puede aplicar a transacciones existentes"
     },
     "label": {

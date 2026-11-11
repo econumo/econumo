@@ -550,7 +550,7 @@
     "data_page": {
       "menu_item": "Import & export",
       "header": "Import & export",
-      "sync_all": "Bankverbindingen synchroniseren",
+      "sync_all": "SimpleFIN synchroniseren",
       "history": "Importgeschiedenis",
       "sync_all_done": "{imported} geïmporteerd, {matched} gematcht, {failed} mislukt"
     },
@@ -661,7 +661,7 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Koppel een bank via SimpleFIN Bridge. Uw bridge-gegevens worden op dit apparaat versleuteld met een wachtwoordzin die alleen u kent; de server bewaart ze versleuteld en ziet ze alleen tijdens een synchronisatie.",
+      "intro": "Stel synchronisatie in via SimpleFIN Bridge. Uw SimpleFIN-gegevens worden op dit apparaat versleuteld met een wachtwoordzin die alleen u kent; de server bewaart ze versleuteld.",
       "disclaimer": "Econumo is niet verbonden aan SimpleFIN. SimpleFIN Bridge is een dienst van derden met eigen voorwaarden; u gebruikt deze op eigen risico.",
       "disconnect": "Loskoppelen",
       "disconnect_full": "SimpleFIN loskoppelen",
@@ -698,7 +698,7 @@
       },
       "accounts": {
         "header": "Rekeningen",
-        "empty": "Nog geen rekeningen gemeld door de bridge.",
+        "empty": "SimpleFIN heeft nog geen rekeningen gemeld.",
         "needs_mapping": "Niet gekoppeld",
         "state": {
           "ignored": "Genegeerd"
@@ -2289,10 +2289,10 @@
       "link_not_queued": "Deze gebeurtenis wacht niet op beoordeling.",
       "link_not_skipped": "Deze gebeurtenis is niet overgeslagen.",
       "event_not_failed": "Deze gebeurtenis is niet mislukt.",
-      "setup_token_rejected": "SimpleFIN heeft dit setup-token geweigerd. Het is mogelijk al gebruikt — genereer een nieuw token in je SimpleFIN-bridge.",
-      "provider_unavailable": "De bankbridge kon niet worden bereikt. Probeer het over een paar minuten opnieuw.",
+      "setup_token_rejected": "SimpleFIN heeft dit installatietoken geweigerd. Mogelijk is het al gebruikt; maak een nieuw token aan in SimpleFIN Bridge.",
+      "provider_unavailable": "SimpleFIN is niet bereikbaar. Probeer het over een paar minuten opnieuw.",
       "sync_range_invalid": "De datumreeks is ongeldig: de startdatum mag niet na de einddatum liggen en de reeks mag niet langer dan 400 dagen zijn.",
-      "access_url_invalid": "De opgeslagen bankgegevens zijn geen geldige toegangs-URL. Verbind SimpleFIN opnieuw met een nieuw setup-token.",
+      "access_url_invalid": "De opgeslagen SimpleFIN-verbinding is ongeldig. Verbind SimpleFIN opnieuw met een nieuw installatietoken.",
       "rule_skip_not_applicable": "Een overslaan-regel kan niet worden toegepast op bestaande transacties"
     },
     "label": {

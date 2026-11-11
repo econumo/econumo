@@ -17,7 +17,7 @@ func TestClaimSetupToken_Handler(t *testing.T) {
 	// The 403 carries errs.CodeImportSetupTokenRejected, so the envelope
 	// message is the server-rendered locales/en.json catalogue text, not the
 	// bare provider sentinel.
-	if status != 403 || env["message"] != "SimpleFIN rejected this setup token. It may have been claimed already — generate a new one in your SimpleFIN bridge." {
+	if status != 403 || env["message"] != "SimpleFIN rejected this setup token. It may have been used already; create a new one in SimpleFIN Bridge." {
 		t.Fatalf("%d %v", status, env)
 	}
 	status, env = call(t, h, "POST", "/api/v1/import/claim-setup-token", map[string]any{"setupToken": ""})

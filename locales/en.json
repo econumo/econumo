@@ -550,7 +550,7 @@
     "data_page": {
       "menu_item": "Import & export",
       "header": "Import & export",
-      "sync_all": "Sync bank connections",
+      "sync_all": "Sync SimpleFIN",
       "history": "Import history",
       "sync_all_done": "{imported} imported, {matched} matched, {failed} failed"
     },
@@ -661,7 +661,7 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Connect a bank through SimpleFIN Bridge. Your bridge credentials are encrypted on this device with a passphrase only you know; the server stores them encrypted and only sees them for the duration of a sync.",
+      "intro": "Set up syncing through SimpleFIN Bridge. Your SimpleFIN credentials are encrypted on this device with a passphrase only you know; the server stores them encrypted.",
       "disclaimer": "Econumo is not affiliated with SimpleFIN. SimpleFIN Bridge is a third-party service with its own terms; you use it at your own risk.",
       "disconnect": "Disconnect",
       "disconnect_full": "Disconnect SimpleFIN",
@@ -698,7 +698,7 @@
       },
       "accounts": {
         "header": "Accounts",
-        "empty": "No accounts reported by the bridge yet.",
+        "empty": "SimpleFIN has not reported any accounts yet.",
         "needs_mapping": "Needs mapping",
         "state": {
           "ignored": "Ignored"
@@ -2289,10 +2289,10 @@
       "link_not_queued": "This event is not waiting for review.",
       "link_not_skipped": "This event is not skipped.",
       "event_not_failed": "This event did not fail.",
-      "setup_token_rejected": "SimpleFIN rejected this setup token. It may have been claimed already — generate a new one in your SimpleFIN bridge.",
-      "provider_unavailable": "The bank bridge could not be reached. Try again in a few minutes.",
+      "setup_token_rejected": "SimpleFIN rejected this setup token. It may have been used already; create a new one in SimpleFIN Bridge.",
+      "provider_unavailable": "SimpleFIN could not be reached. Try again in a few minutes.",
       "sync_range_invalid": "The date range is invalid: the start must not be after the end, and the range must not exceed 400 days.",
-      "access_url_invalid": "The stored bank credential is not a valid access URL. Reconnect SimpleFIN with a new setup token.",
+      "access_url_invalid": "The saved SimpleFIN connection is not valid. Reconnect SimpleFIN with a new setup token.",
       "rule_skip_not_applicable": "A skip rule cannot be applied to existing transactions"
     },
     "label": {

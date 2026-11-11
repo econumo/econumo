@@ -59,13 +59,13 @@ it('holds no Apple Wallet section, import history or import rules — they have 
 it('Sync all is hidden without a pull source and routes to SimpleFIN settings while the device is locked', async () => {
   renderPage()
   expect(await screen.findByText('Import & export')).toBeInTheDocument()
-  expect(screen.queryByText('Sync bank connections')).toBeNull()
+  expect(screen.queryByText('Sync SimpleFIN')).toBeNull()
 })
 
 it('Sync all navigates to SimpleFIN settings when the device key is locked', async () => {
   const user = userEvent.setup()
   renderPage({ importSources: [simplefinSource], importCredentialKey: wrappedKey })
-  await user.click(await screen.findByText('Sync bank connections'))
+  await user.click(await screen.findByText('Sync SimpleFIN'))
   expect(await screen.findByText('SIMPLEFIN PAGE')).toBeInTheDocument()
 })
 

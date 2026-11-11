@@ -550,7 +550,7 @@
     "data_page": {
       "menu_item": "Import & Export",
       "header": "Import & Export",
-      "sync_all": "Bankverbindungen synchronisieren",
+      "sync_all": "SimpleFIN synchronisieren",
       "history": "Importverlauf",
       "sync_all_done": "{imported} importiert, {matched} abgeglichen, {failed} fehlgeschlagen"
     },
@@ -661,7 +661,7 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Verbinden Sie eine Bank über SimpleFIN Bridge. Ihre Bridge-Zugangsdaten werden auf diesem Gerät mit einer Passphrase verschlüsselt, die nur Sie kennen; der Server speichert sie verschlüsselt und sieht sie nur für die Dauer einer Synchronisierung.",
+      "intro": "Richten Sie die Synchronisierung über SimpleFIN Bridge ein. Ihre SimpleFIN-Zugangsdaten werden auf diesem Gerät mit einer Passphrase verschlüsselt, die nur Sie kennen; der Server speichert sie verschlüsselt.",
       "disclaimer": "Econumo steht in keiner Verbindung zu SimpleFIN. SimpleFIN Bridge ist ein Dienst eines Drittanbieters mit eigenen Bedingungen; Sie nutzen ihn auf eigenes Risiko.",
       "disconnect": "Trennen",
       "disconnect_full": "SimpleFIN trennen",
@@ -698,7 +698,7 @@
       },
       "accounts": {
         "header": "Konten",
-        "empty": "Die Bridge hat noch keine Konten gemeldet.",
+        "empty": "SimpleFIN hat noch keine Konten gemeldet.",
         "needs_mapping": "Nicht zugeordnet",
         "state": {
           "ignored": "Ignoriert"
@@ -2289,10 +2289,10 @@
       "link_not_queued": "Dieses Ereignis wartet nicht auf Prüfung.",
       "link_not_skipped": "Dieses Ereignis ist nicht übersprungen.",
       "event_not_failed": "Dieses Ereignis ist nicht fehlgeschlagen.",
-      "setup_token_rejected": "SimpleFIN hat dieses Setup-Token abgelehnt. Es wurde möglicherweise bereits eingelöst – erstelle ein neues in deiner SimpleFIN-Bridge.",
-      "provider_unavailable": "Die Bank-Bridge konnte nicht erreicht werden. Versuche es in ein paar Minuten erneut.",
+      "setup_token_rejected": "SimpleFIN hat dieses Setup-Token abgelehnt. Möglicherweise wurde es bereits verwendet; erstellen Sie ein neues in SimpleFIN Bridge.",
+      "provider_unavailable": "SimpleFIN ist nicht erreichbar. Versuchen Sie es in einigen Minuten erneut.",
       "sync_range_invalid": "Der Zeitraum ist ungültig: Der Beginn darf nicht nach dem Ende liegen, und der Zeitraum darf 400 Tage nicht überschreiten.",
-      "access_url_invalid": "Die gespeicherte Bank-Anmeldeinformation ist keine gültige Zugriffs-URL. Verbinde SimpleFIN mit einem neuen Setup-Token erneut.",
+      "access_url_invalid": "Die gespeicherte SimpleFIN-Verbindung ist ungültig. Verbinden Sie SimpleFIN mit einem neuen Setup-Token erneut.",
       "rule_skip_not_applicable": "Eine Ausschlussregel kann nicht auf vorhandene Transaktionen angewendet werden"
     },
     "label": {
