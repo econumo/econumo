@@ -1,6 +1,15 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { CreateDebtDto, DebtDetailsDto, DebtDto, DebtForecastDto, DeleteDebtForm, UpdateDebtDto } from './dto/debt'
+import type {
+  CreateDebtDto,
+  DebtDetailsDto,
+  DebtDto,
+  DebtForecastDto,
+  DeleteDebtForm,
+  DeleteDebtReconciliationForm,
+  ReconcileDebtForm,
+  UpdateDebtDto,
+} from './dto/debt'
 
 interface Envelope<T> {
   data: T
@@ -42,5 +51,15 @@ export async function deleteDebt(form: DeleteDebtForm): Promise<void> {
 
 export async function markDebtPaidOff(id: Id): Promise<DebtDto> {
   const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/mark-debt-paid-off'), { id })
+  return response.data.data
+}
+
+export async function reconcileDebt(form: ReconcileDebtForm): Promise<DebtDto> {
+  const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/reconcile-debt'), form)
+  return response.data.data
+}
+
+export async function deleteDebtReconciliation(form: DeleteDebtReconciliationForm): Promise<DebtDto> {
+  const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/delete-debt-reconciliation'), form)
   return response.data.data
 }

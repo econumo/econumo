@@ -517,10 +517,6 @@
       "amount_borrowed": {
         "label": "Montant emprunté"
       },
-      "balance": {
-        "label": "Dû actuellement (facultatif)",
-        "hint": "Seulement si les paiements enregistrés ne correspondent pas à votre relevé"
-      },
       "payment": {
         "label": "Paiement"
       },
@@ -591,6 +587,33 @@
     "terms": {
       "finish_setup": "Terminer la configuration"
     },
+    "balance": {
+      "econumo": "Solde d'Econumo aujourd'hui",
+      "last_statement": "Dernier relevé",
+      "statement_on": "{amount} le {date}",
+      "difference": "Écart",
+      "form": {
+        "title": "Rapprocher avec un relevé",
+        "hint": "Saisissez le solde du relevé de votre prêteur. À partir de sa date, Econumo compte à partir de lui, et les échéances jusqu'à cette date sont considérées comme payées.",
+        "balance": "Solde du relevé",
+        "date": "Date du relevé",
+        "date_range": "Choisissez une date entre la date de début et aujourd'hui",
+        "save": "Rapprocher"
+      },
+      "history": "Relevés",
+      "column": {
+        "date": "Date",
+        "statement": "Relevé",
+        "econumo": "Econumo",
+        "difference": "Écart"
+      },
+      "origin": "Montant emprunté",
+      "delete": "Supprimer le relevé du {date}",
+      "delete_confirm": {
+        "title": "Supprimer ce relevé ?",
+        "question": "Les paiements postérieurs à sa date sont de nouveau comptés à partir du solde précédent."
+      }
+    },
     "review": {
       "progress": "{paid} sur {total} payés",
       "owed_now": "Dû actuellement : {amount}",
@@ -611,6 +634,7 @@
       },
       "tab": {
         "overview": "Aperçu",
+        "balance": "Solde",
         "settings": "Paramètres"
       }
     }

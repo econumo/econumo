@@ -56,7 +56,7 @@ const details: DebtDetailsDto = {
     lastPaymentDate: '2050-07-05',
     nextDueDate: '2026-12-05',
   },
-  snapshots: [{ asOf: '2026-10-01', balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05' }],
+  snapshots: [{ id: 's0', isOrigin: 1, computedBalance: '', asOf: '2026-10-01', balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05' }],
   payments: [
     { transactionId: 't1', date: '2026-11-05 00:00:00', amount: '100', interest: '10', principal: '90', balance: '1090' },
     { transactionId: 't2', date: '2026-10-05 00:00:00', amount: '100', interest: '5.5', principal: '94.5', balance: '1180' },
@@ -121,12 +121,12 @@ async function openDanger(user: ReturnType<typeof userEvent.setup>) {
   return screen.getByRole('tabpanel', { name: 'Danger zone' })
 }
 
-it('opens on the Overview tab, with Settings and Danger zone tabs beside it and no actions menu', async () => {
+it('opens on the Overview tab, with Balance, Settings and Danger zone tabs beside it and no actions menu', async () => {
   renderScreen()
   await openScreen()
 
   const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent)
-  expect(tabs).toEqual(['Overview', 'Settings', 'Danger zone'])
+  expect(tabs).toEqual(['Overview', 'Balance', 'Settings', 'Danger zone'])
   expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
   expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'false')
   expect(screen.getByRole('tab', { name: 'Danger zone' })).toHaveAttribute('aria-selected', 'false')
@@ -509,7 +509,6 @@ it('after Mark as paid off, Settings starts from the paid-off debt, so a later e
   renderScreen()
   await openScreen()
   await openSettings(user)
-  expect(screen.getByLabelText('Owed now (optional)')).toHaveValue('')
 
   await user.click(within(await openDanger(user)).getByRole('button', { name: 'Mark as paid off' }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Mark as paid off?' })).getByRole('button', { name: 'Mark as paid off' }))
@@ -517,7 +516,7 @@ it('after Mark as paid off, Settings starts from the paid-off debt, so a later e
   await waitFor(() => expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true'))
 
   await openSettings(user)
-  await waitFor(() => expect(screen.getByLabelText('Owed now (optional)')).toHaveValue(''))
+  await waitFor(() => expect(screen.getByLabelText('Payment')).toHaveValue('100'))
   const payment = screen.getByLabelText('Payment')
   await user.clear(payment)
   await user.type(payment, '120')
@@ -835,4 +834,114 @@ describe('future payments', () => {
 
     expect(screen.queryByRole('button', { name: 'Show future payments' })).toBeNull()
   })
+})
+
+const withStatement: DebtDetailsDto = {
+  ...details,
+  item: { ...details.item, balance: '1000', currentBalance: '990' },
+  snapshots: [
+    details.snapshots[0],
+    { id: 's1', isOrigin: 0, computedBalance: '1120', asOf: '2026-10-31', balance: '1000', payment: '100', schedule: 'monthly', lastPaymentDate: '2050-07-05' },
+  ],
+}
+
+async function openBalance(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('tab', { name: 'Balance' }))
+  return screen.getByRole('tabpanel', { name: 'Balance' })
+}
+
+it('a debt not set up has no Balance tab', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
+  renderScreen()
+  await openScreen()
+  expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Overview', 'Settings', 'Danger zone'])
+})
+
+it('the Balance tab shows Econumo today, the last statement and the difference, and the history with the origin first', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(withStatement)))
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  const panel = await openBalance(user)
+
+  const summary = within(panel).getByTestId('debt-balance-summary')
+  const figure = (label: string) => within(summary).getByText(label).nextElementSibling
+  expect(figure("Econumo's balance today")).toHaveTextContent('990.00 $')
+  expect(figure('Last statement')).toHaveTextContent('1,000.00 $ on Oct 31, 2026')
+  expect(figure('Difference')).toHaveTextContent('-120.00 $')
+  const rows = within(panel).getAllByTestId('debt-reconciliation')
+  expect(rows).toHaveLength(2)
+  expect(rows[0]).toHaveTextContent('Oct 1, 2026')
+  expect(rows[0]).toHaveTextContent('Amount borrowed')
+  expect(within(rows[0]).queryByRole('button')).toBeNull()
+  expect(within(rows[1]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Oct 31, 2026', '1,000.00 $', '1,120.00 $', '-120.00 $', ''])
+})
+
+it('reconciling sends the statement balance and date and fires DEBT_RECONCILE', async () => {
+  const bodies: Record<string, unknown>[] = []
+  server.use(
+    http.post('*/api/v1/debt/reconcile-debt', async ({ request }) => {
+      bodies.push((await request.json()) as Record<string, unknown>)
+      return ok({ ...details.item, currentBalance: '950' })
+    }),
+  )
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  const panel = await openBalance(user)
+
+  await user.type(within(panel).getByLabelText('Statement balance'), '1 050')
+  await user.click(within(panel).getByRole('button', { name: 'Statement date' }))
+  await user.click(await screen.findByRole('button', { name: /November 2nd, 2026/ }))
+  await user.click(within(panel).getByRole('button', { name: 'Reconcile' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toEqual({ id: 'd1', balance: '1050', balanceDate: '2026-11-02' })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_RECONCILE)
+  await waitFor(() => expect(within(panel).getByLabelText('Statement balance')).toHaveValue(''))
+})
+
+it('the statement date defaults to today and must not precede the start date', async () => {
+  let called = false
+  server.use(
+    http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, startDate: '2026-11-05' } })),
+    http.post('*/api/v1/debt/reconcile-debt', () => { called = true; return ok(details.item) }),
+  )
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  const panel = await openBalance(user)
+
+  expect(within(panel).getByRole('button', { name: 'Statement date' })).toHaveTextContent('2026-11-08')
+  await user.click(within(panel).getByRole('button', { name: 'Reconcile' }))
+  expect(await within(panel).findByText('Required field')).toBeInTheDocument()
+  await user.type(within(panel).getByLabelText('Statement balance'), '1000')
+  await user.click(within(panel).getByRole('button', { name: 'Statement date' }))
+  await user.click(await screen.findByRole('button', { name: /November 2nd, 2026/ }))
+  await user.click(within(panel).getByRole('button', { name: 'Reconcile' }))
+  expect(await within(panel).findByText('Pick a date between the start date and today')).toBeInTheDocument()
+  expect(called).toBe(false)
+})
+
+it('deleting a statement asks first, then sends its id and fires DEBT_RECONCILIATION_DELETE', async () => {
+  const bodies: Record<string, unknown>[] = []
+  server.use(
+    http.get('*/api/v1/debt/get-debt', () => ok(withStatement)),
+    http.post('*/api/v1/debt/delete-debt-reconciliation', async ({ request }) => {
+      bodies.push((await request.json()) as Record<string, unknown>)
+      return ok(details.item)
+    }),
+  )
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  const panel = await openBalance(user)
+
+  await user.click(within(panel).getByRole('button', { name: 'Delete the statement of Oct 31, 2026' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Delete this statement?' })
+  await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toEqual({ id: 'd1', reconciliationId: 's1' })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_RECONCILIATION_DELETE)
 })

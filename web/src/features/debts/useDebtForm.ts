@@ -77,8 +77,6 @@ export interface DebtTermsState extends PaymentsFrom {
   lastPaymentDate: string
   payment: string
   schedule: RecurringSchedule
-  /** owed now, an optional override of what the recorded payments give: always starts empty */
-  balance: string
 }
 
 export function initialTermsState(debt: DebtDto): DebtTermsState {
@@ -94,7 +92,6 @@ export function initialTermsState(debt: DebtDto): DebtTermsState {
     lastPaymentDate: debt.lastPaymentDate,
     payment: normalizeNumber(debt.payment),
     schedule: debt.schedule,
-    balance: '',
   }
 }
 
@@ -168,15 +165,18 @@ function factsTouched(form: DebtTermsState, initial: DebtTermsState): boolean {
 
 /** the loan's facts are asked together: once one is typed, or the debt is set up */
 export function factsAsked(form: DebtTermsState, debt: DebtDto): boolean {
-  return debt.isSetUp === 1 || isNotEmpty(form.amountBorrowed) || form.lastPaymentDate !== '' || isNotEmpty(form.balance)
+  return debt.isSetUp === 1 || isNotEmpty(form.amountBorrowed) || form.lastPaymentDate !== ''
 }
 
 /** The one update the Settings tab saves. A currency left as loaded goes as
     none, so the server keeps the stored one (another device may have changed it
     since); the loan's facts likewise go only when one was touched, all of them
-    then, so the server reads them as one correction. The start date is always
-    sent: it says which payments count. Owed now goes only when typed. */
+    then, so the server reads them as one correction, and a set-up debt's start
+    date only when changed (left out, the server keeps it). A debt not set up
+    always sends its start date: it says which payments count, and null clears
+    it. */
 export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState, debt: DebtDto): UpdateDebtDto {
+  const setUp = debt.isSetUp === 1
   const base = {
     id: debt.id,
     name: form.name.trim(),
@@ -186,24 +186,18 @@ export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState,
     payeeId: form.payeeId,
     tagId: form.tagId,
     labelId: form.labelId,
-    startDate: form.startDate || null,
+    ...(!setUp || form.startDate !== initial.startDate ? { startDate: form.startDate || null } : {}),
   }
-  const owed = isNotEmpty(form.balance) ? { balance: sentAmount(form.balance) } : {}
   const facts = { amountBorrowed: sentAmount(form.amountBorrowed), lastPaymentDate: form.lastPaymentDate }
-  if (debt.isSetUp !== 1) {
+  if (!setUp) {
     // without the loan's facts the save only updates payment, repeats and start date
     const complete = isNotEmpty(form.amountBorrowed) && form.lastPaymentDate !== ''
-    return {
-      ...base,
-      payment: sentAmount(form.payment),
-      schedule: form.schedule,
-      ...(complete ? { ...facts, ...owed } : {}),
-    }
+    return { ...base, payment: sentAmount(form.payment), schedule: form.schedule, ...(complete ? facts : {}) }
   }
   if (!factsTouched(form, initial)) {
-    return { ...base, ...owed }
+    return base
   }
-  return { ...base, ...facts, payment: sentAmount(form.payment), schedule: form.schedule, ...owed }
+  return { ...base, ...facts, payment: sentAmount(form.payment), schedule: form.schedule }
 }
 
 export function useDebtTermsForm(debt: DebtDto) {

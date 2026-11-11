@@ -381,14 +381,14 @@ describe('Clear cache and reload', () => {
   })
 })
 
-it('lists Debts right after Categories in the classification group', async () => {
+it('lists Debts right after Budgets in the finances group', async () => {
   const user = userEvent.setup()
   mockViewport(false)
   renderPage()
 
   const debts = await screen.findByRole('link', { name: /Debts/ })
   const links = screen.getAllByRole('link')
-  expect(links[links.indexOf(debts) - 1]).toBe(screen.getByRole('link', { name: /Categories/ }))
+  expect(links[links.indexOf(debts) - 1]).toBe(screen.getByRole('link', { name: /^Budgets/ }))
 
   await user.click(debts)
   expect(await screen.findByText('DEBTS PAGE')).toBeInTheDocument()

@@ -38,7 +38,13 @@ export interface DebtDto {
   isSetUp: 0 | 1
 }
 
+/** one history entry: the origin (isOrigin 1, the amount borrowed as of the
+ *  start date) or a statement balance after it */
 export interface DebtSnapshotDto {
+  id: Id
+  isOrigin: 0 | 1
+  /** what Econumo had worked out for asOf before the statement; "" for the origin */
+  computedBalance: string
   asOf: string
   balance: string
   payment: string
@@ -92,23 +98,36 @@ export interface CreateDebtDto {
   /** the loan's facts, amountBorrowed, startDate and lastPaymentDate, come
    *  together: without them the debt is not set up */
   amountBorrowed?: string
-  /** owed now, optional: a snapshot as of today over what the recorded
-   *  payments give */
+  /** a statement balance (as of balanceDate, default today) over what the
+   *  recorded payments give; the SPA states it through reconcile-debt */
   balance?: string
+  balanceDate?: string
   /** must be positive (the server refuses 0 and blank) */
   payment: string
   schedule: RecurringSchedule
   lastPaymentDate?: string
 }
 
-/** currencyId "" keeps the stored currency. A set-up debt needs its startDate;
- *  amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored
- *  ones, one that differs corrects the loan's facts; a balance alone adds what
- *  is owed now */
+/** currencyId "" keeps the stored currency. amountBorrowed and lastPaymentDate
+ *  come as a pair; they, payment, schedule and (on a set-up debt) startDate left
+ *  out keep the stored ones, one that differs corrects the loan's facts */
 export interface UpdateDebtDto extends Omit<CreateDebtDto, 'payment' | 'schedule'> {
   id: Id
   payment?: string
   schedule?: RecurringSchedule
+}
+
+/** a statement balance as of balanceDate (Y-m-d; omitted = today), between the
+ *  start date and today; a second one on the same date replaces the first */
+export interface ReconcileDebtForm {
+  id: Id
+  balance: string
+  balanceDate?: string
+}
+
+export interface DeleteDebtReconciliationForm {
+  id: Id
+  reconciliationId: Id
 }
 
 export interface DeleteDebtForm {

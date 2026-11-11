@@ -56,7 +56,7 @@ export interface OpenDebtParams {
   budgetId?: Id
 }
 
-export type DebtDetailsTab = 'overview' | 'settings' | 'danger'
+export type DebtDetailsTab = 'overview' | 'balance' | 'settings' | 'danger'
 
 export interface RulePromptParams {
   link: TransactionImportLinkDto

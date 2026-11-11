@@ -517,10 +517,6 @@
       "amount_borrowed": {
         "label": "Importe prestado"
       },
-      "balance": {
-        "label": "Debes ahora (opcional)",
-        "hint": "Solo si los pagos registrados no coinciden con tu extracto"
-      },
       "payment": {
         "label": "Pago"
       },
@@ -591,6 +587,33 @@
     "terms": {
       "finish_setup": "Terminar configuración"
     },
+    "balance": {
+      "econumo": "Saldo de Econumo hoy",
+      "last_statement": "Último extracto",
+      "statement_on": "{amount} el {date}",
+      "difference": "Diferencia",
+      "form": {
+        "title": "Conciliar con un extracto",
+        "hint": "Introduce el saldo del extracto de tu prestamista. Desde su fecha Econumo cuenta a partir de él, y los pagos vencidos hasta entonces cuentan como pagados.",
+        "balance": "Saldo del extracto",
+        "date": "Fecha del extracto",
+        "date_range": "Elige una fecha entre la fecha de inicio y hoy",
+        "save": "Conciliar"
+      },
+      "history": "Extractos",
+      "column": {
+        "date": "Fecha",
+        "statement": "Extracto",
+        "econumo": "Econumo",
+        "difference": "Diferencia"
+      },
+      "origin": "Importe prestado",
+      "delete": "Eliminar el extracto del {date}",
+      "delete_confirm": {
+        "title": "¿Eliminar este extracto?",
+        "question": "Los pagos posteriores a su fecha vuelven a contarse desde el saldo anterior."
+      }
+    },
     "review": {
       "progress": "{paid} de {total} pagados",
       "owed_now": "Debes ahora {amount}",
@@ -611,6 +634,7 @@
       },
       "tab": {
         "overview": "Resumen",
+        "balance": "Saldo",
         "settings": "Ajustes"
       }
     }

@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as debtApi from '@/api/debt'
-import type { CreateDebtDto, DebtDetailsDto, DebtDto, UpdateDebtDto, DeleteDebtForm } from '@/api/dto/debt'
+import type { CreateDebtDto, DebtDetailsDto, DebtDto, UpdateDebtDto, DeleteDebtForm, DeleteDebtReconciliationForm, ReconcileDebtForm } from '@/api/dto/debt'
 import type { Id } from '@/api/types'
-import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { isDebtForecastKey, queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import type { Metric } from '@/lib/metrics'
 
 export function useDebts() {
   return useQuery({ queryKey: queryKeys.debts, queryFn: debtApi.getDebtList, staleTime: TEN_MINUTES })
@@ -31,9 +32,10 @@ export function useDebtForecast(id: Id, budgetId: Id | null, enabled: boolean) {
   })
 }
 
-/** Loads the debt afresh for the Settings tab: the form pre-fills the balance
- *  with the current one, and a cached balance from before a payment would store
- *  a snapshot that loses the payment's principal. */
+/** Loads the debt afresh for the Settings tab: the form starts from the loan's
+ *  facts as stored now (amountBorrowed and lastPaymentDate, which go together,
+ *  payment, repeats, start date), so a cached copy cannot send back facts
+ *  another device has corrected since. */
 export function useFetchDebtForEdit() {
   const queryClient = useQueryClient()
   return (id: Id) => queryClient.fetchQuery({ queryKey: queryKeys.debt(id), queryFn: () => debtApi.getDebt(id), staleTime: 0 })
@@ -111,4 +113,30 @@ export function useMarkDebtPaidOff() {
       trackEvent(METRICS.DEBT_MARK_PAID_OFF)
     },
   })
+}
+
+// A statement written or removed moves the debt's history, every split after
+// its date, the figures and the projected payments.
+function useReconciliationWrite<T>(write: (form: T) => Promise<DebtDto>, metric: Metric) {
+  const queryClient = useQueryClient()
+  const invalidate = useInvalidateDebts()
+  const storeSaved = useStoreSavedDebt()
+  return useMutation({
+    mutationFn: write,
+    onSuccess: (saved) => {
+      storeSaved(saved)
+      invalidate()
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debt(saved.id) })
+      void queryClient.invalidateQueries({ predicate: (q) => isDebtForecastKey(q.queryKey) })
+      trackEvent(metric)
+    },
+  })
+}
+
+export function useReconcileDebt() {
+  return useReconciliationWrite((form: ReconcileDebtForm) => debtApi.reconcileDebt(form), METRICS.DEBT_RECONCILE)
+}
+
+export function useDeleteDebtReconciliation() {
+  return useReconciliationWrite((form: DeleteDebtReconciliationForm) => debtApi.deleteDebtReconciliation(form), METRICS.DEBT_RECONCILIATION_DELETE)
 }

@@ -517,10 +517,6 @@
       "amount_borrowed": {
         "label": "Pożyczona kwota"
       },
-      "balance": {
-        "label": "Do spłaty teraz (opcjonalnie)",
-        "hint": "Tylko jeśli zapisane płatności nie zgadzają się z wyciągiem"
-      },
       "payment": {
         "label": "Płatność"
       },
@@ -591,6 +587,33 @@
     "terms": {
       "finish_setup": "Dokończ konfigurację"
     },
+    "balance": {
+      "econumo": "Saldo w Econumo dziś",
+      "last_statement": "Ostatni wyciąg",
+      "statement_on": "{amount} z dnia {date}",
+      "difference": "Różnica",
+      "form": {
+        "title": "Uzgodnij z wyciągiem",
+        "hint": "Wpisz saldo z wyciągu od pożyczkodawcy. Od jego daty Econumo liczy od niego, a raty należne do tego dnia liczą się jako zapłacone.",
+        "balance": "Saldo z wyciągu",
+        "date": "Data wyciągu",
+        "date_range": "Wybierz datę między datą rozpoczęcia a dzisiaj",
+        "save": "Uzgodnij"
+      },
+      "history": "Wyciągi",
+      "column": {
+        "date": "Data",
+        "statement": "Wyciąg",
+        "econumo": "Econumo",
+        "difference": "Różnica"
+      },
+      "origin": "Pożyczona kwota",
+      "delete": "Usuń wyciąg z dnia {date}",
+      "delete_confirm": {
+        "title": "Usunąć ten wyciąg?",
+        "question": "Płatności po jego dacie znów liczą się od wcześniejszego salda."
+      }
+    },
     "review": {
       "progress": "Opłacono {paid} z {total}",
       "owed_now": "Do spłaty teraz: {amount}",
@@ -611,6 +634,7 @@
       },
       "tab": {
         "overview": "Przegląd",
+        "balance": "Saldo",
         "settings": "Ustawienia"
       }
     }

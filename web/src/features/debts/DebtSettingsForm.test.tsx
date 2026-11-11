@@ -63,9 +63,8 @@ const TERM_KEYS = ['amountBorrowed', 'balance', 'payment', 'schedule', 'lastPaym
 
 const startChip = () => screen.getByRole('button', { name: 'Start date' })
 const lastPaymentChip = () => screen.getByRole('button', { name: 'Last payment date' })
-const owedNow = () => screen.getByLabelText('Owed now (optional)')
 
-it('asks for the loan facts in order: borrowed, the dates, payment, owed now, currency', () => {
+it('asks for the loan facts in order: borrowed, the dates, payment, currency', () => {
   renderForm(wireDebt)
   expect(screen.getByLabelText('Name')).toHaveValue('Car loan')
   expect(screen.getByRole('button', { name: 'Category: Food' })).toBeInTheDocument()
@@ -74,10 +73,9 @@ it('asks for the loan facts in order: borrowed, the dates, payment, owed now, cu
   expect(startChip()).toHaveTextContent('2026-11-05')
   expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
   expect(screen.getByRole('group', { name: 'Payment, Repeats' })).toBeInTheDocument()
-  // the override starts empty: what is owed follows from the recorded payments
-  expect(owedNow()).toHaveValue('')
-  expect(screen.getByText("Only if recorded payments don't match your statement")).toBeInTheDocument()
-  const order = [borrowed, startChip(), lastPaymentChip(), screen.getByLabelText('Payment'), owedNow(), screen.getByRole('button', { name: /^Currency/ })]
+  // a statement balance is the Balance tab's
+  expect(screen.queryByLabelText(/Owed now/)).toBeNull()
+  const order = [borrowed, startChip(), lastPaymentChip(), screen.getByLabelText('Payment'), screen.getByRole('button', { name: /^Currency/ })]
   for (let i = 1; i < order.length; i++) {
     expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   }
@@ -98,7 +96,7 @@ it('the dates share one row: Start date first, Last payment date second', () => 
   expect(screen.queryByRole('button', { name: 'Clear the start date' })).toBeNull()
 })
 
-it('saving untouched terms sends none but the start date, so the server keeps the stored ones', async () => {
+it('saving untouched terms sends none, nor the start date, so the server keeps the stored ones', async () => {
   const bodies = captureUpdate()
   const user = userEvent.setup()
   const onSaved = renderForm({ ...wireDebt, currentBalance: '900' })
@@ -106,7 +104,8 @@ it('saving untouched terms sends none but the start date, so the server keeps th
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', currencyId: '', categoryId: 'cat-food', labelId: null, startDate: '2026-11-05' })
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', currencyId: '', categoryId: 'cat-food', labelId: null })
+  expect(bodies[0]).not.toHaveProperty('startDate')
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
@@ -125,7 +124,7 @@ it('a corrected amount borrowed sends every loan fact, typed plain', async () =>
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ amountBorrowed: '1500', startDate: '2026-11-05', lastPaymentDate: '2027-11-05', payment: '100', schedule: 'monthly' })
+  expect(bodies[0]).toMatchObject({ amountBorrowed: '1500', lastPaymentDate: '2027-11-05', payment: '100', schedule: 'monthly' })
   expect(bodies[0]).not.toHaveProperty('balance')
 })
 
@@ -143,35 +142,6 @@ it('an amount borrowed typed back as stored is untouched', async () => {
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
-})
-
-it('owed now goes alone, without the loan facts', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebt)
-
-  const name = screen.getByLabelText('Name')
-  await user.clear(name)
-  await user.type(name, 'Van loan')
-  await user.type(owedNow(), '1 100.50')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ name: 'Van loan', balance: '1100.5', startDate: '2026-11-05' })
-  expect(bodies[0]).not.toHaveProperty('amountBorrowed')
-  expect(bodies[0]).not.toHaveProperty('payment')
-})
-
-it('a negative owed now is refused before sending', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebt)
-
-  await user.type(owedNow(), '-5')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  expect(await screen.findByText('Enter a valid number')).toBeInTheDocument()
-  expect(bodies).toHaveLength(0)
 })
 
 it('shows a server refusal under its field', async () => {
@@ -195,7 +165,6 @@ it('shows a server refusal under its field', async () => {
 it('setup starts with payment and repeats filled, the loan facts empty', () => {
   renderForm(wireDebtNotSetUp)
   expect(screen.getByLabelText('Amount borrowed')).toHaveValue('')
-  expect(owedNow()).toHaveValue('')
   expect(screen.getByLabelText('Payment')).toHaveValue('100')
   expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('every month')
   expect(startChip()).toHaveTextContent('Choose a date')
@@ -212,17 +181,6 @@ it('setup asks for the dates once an amount borrowed is typed', async () => {
 
   expect(await screen.findByText('Required field')).toBeInTheDocument()
   expect(called).toBe(false)
-})
-
-it('setup asks for the loan facts once owed now is typed', async () => {
-  const bodies = captureUpdate()
-  const user = userEvent.setup()
-  renderForm(wireDebtNotSetUp)
-  await user.type(owedNow(), '600')
-  await user.click(screen.getByRole('button', { name: 'Save' }))
-
-  expect((await screen.findAllByText('Required field')).length).toBeGreaterThan(0)
-  expect(bodies).toHaveLength(0)
 })
 
 it('saving a debt not set up with the loan facts finishes its setup and fires DEBT_FINISH_SETUP once', async () => {
@@ -419,12 +377,10 @@ it('Cancel puts back what was loaded', async () => {
   const borrowed = screen.getByLabelText('Amount borrowed')
   await user.clear(borrowed)
   await user.type(borrowed, '600')
-  await user.type(owedNow(), '300')
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
   expect(screen.getByLabelText('Name')).toHaveValue('Car loan')
   expect(screen.getByLabelText('Amount borrowed')).toHaveValue('1200')
-  expect(owedNow()).toHaveValue('')
 })
 
 it('asked to, it focuses the first missing loan fact of a debt not set up', () => {

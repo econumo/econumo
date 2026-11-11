@@ -517,10 +517,6 @@
       "amount_borrowed": {
         "label": "借款金额"
       },
-      "balance": {
-        "label": "当前欠款（可选）",
-        "hint": "仅当已记录的还款与对账单不符时填写"
-      },
       "payment": {
         "label": "还款额"
       },
@@ -591,6 +587,33 @@
     "terms": {
       "finish_setup": "完成设置"
     },
+    "balance": {
+      "econumo": "Econumo 今日余额",
+      "last_statement": "最近对账单",
+      "statement_on": "{date} 为 {amount}",
+      "difference": "差额",
+      "form": {
+        "title": "与对账单核对",
+        "hint": "输入贷款方对账单上的余额。自该日期起 Econumo 以此计算，截至该日期的应还款视为已还。",
+        "balance": "对账单余额",
+        "date": "对账单日期",
+        "date_range": "请选择开始日期到今天之间的日期",
+        "save": "核对"
+      },
+      "history": "对账单",
+      "column": {
+        "date": "日期",
+        "statement": "对账单",
+        "econumo": "Econumo",
+        "difference": "差额"
+      },
+      "origin": "借款金额",
+      "delete": "删除 {date} 的对账单",
+      "delete_confirm": {
+        "title": "删除此对账单？",
+        "question": "该日期之后的还款将重新从之前的余额计算。"
+      }
+    },
     "review": {
       "progress": "已还 {paid}/{total} 期",
       "owed_now": "当前欠款 {amount}",
@@ -611,6 +634,7 @@
       },
       "tab": {
         "overview": "概览",
+        "balance": "余额",
         "settings": "设置"
       }
     }

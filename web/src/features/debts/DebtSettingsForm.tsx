@@ -28,7 +28,6 @@ const SERVER_FIELDS = [
   'labelId',
   'currencyId',
   'amountBorrowed',
-  'balance',
   'payment',
   'schedule',
   'lastPaymentDate',
@@ -48,7 +47,7 @@ export interface DebtSettingsFormProps {
 /**
  * The debt's Settings tab: name, which payments count, the loan's facts from
  * its contract (amount borrowed, start and last payment dates, the payment and
- * its repeats), an optional owed-now override and the currency (the amounts
+ * its repeats) and the currency (the amounts
  * are read in it, never converted), saved in ONE update. Saving a debt not set
  * up with the loan's facts finishes its setup; without them the other fields
  * still save.
@@ -107,7 +106,6 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
       next.startDate = form.startDate ? undefined : required
       next.lastPaymentDate = form.lastPaymentDate ? undefined : required
     }
-    next.balance = isNotEmpty(form.balance) ? amountError(form.balance, t, false) : undefined
     const found = Object.fromEntries(Object.entries(next).filter(([, v]) => v))
     setErrors(found)
     return Object.keys(found).length === 0
@@ -217,20 +215,6 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
             patch({ schedule })
           }}
         />
-        <AmountField
-          id={`${formId}-balance`}
-          label={t('debts.form.balance.label')}
-          hint={t('debts.form.balance.hint')}
-          value={form.balance}
-          symbol={symbol}
-          error={errors.balance}
-          echo={amountEcho(form.balance, currency)}
-          onChange={(balance) => {
-            clearError('balance')
-            patch({ balance })
-          }}
-        />
-
         <CardField label={currencyLabel} error={errors.currencyId}>
           <button
             type="button"

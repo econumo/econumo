@@ -517,10 +517,6 @@
       "amount_borrowed": {
         "label": "Amount borrowed"
       },
-      "balance": {
-        "label": "Owed now (optional)",
-        "hint": "Only if recorded payments don't match your statement"
-      },
       "payment": {
         "label": "Payment"
       },
@@ -591,6 +587,33 @@
     "terms": {
       "finish_setup": "Finish setup"
     },
+    "balance": {
+      "econumo": "Econumo's balance today",
+      "last_statement": "Last statement",
+      "statement_on": "{amount} on {date}",
+      "difference": "Difference",
+      "form": {
+        "title": "Reconcile with a statement",
+        "hint": "Enter the balance from your lender's statement. From its date on Econumo counts from it, and the payments due up to it count as paid.",
+        "balance": "Statement balance",
+        "date": "Statement date",
+        "date_range": "Pick a date between the start date and today",
+        "save": "Reconcile"
+      },
+      "history": "Statements",
+      "column": {
+        "date": "Date",
+        "statement": "Statement",
+        "econumo": "Econumo",
+        "difference": "Difference"
+      },
+      "origin": "Amount borrowed",
+      "delete": "Delete the statement of {date}",
+      "delete_confirm": {
+        "title": "Delete this statement?",
+        "question": "Payments after its date are counted from the earlier balance again."
+      }
+    },
     "review": {
       "progress": "{paid} of {total} paid",
       "owed_now": "Owed now {amount}",
@@ -611,6 +634,7 @@
       },
       "tab": {
         "overview": "Overview",
+        "balance": "Balance",
         "settings": "Settings"
       }
     }

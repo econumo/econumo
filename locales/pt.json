@@ -517,10 +517,6 @@
       "amount_borrowed": {
         "label": "Montante emprestado"
       },
-      "balance": {
-        "label": "Em dívida agora (opcional)",
-        "hint": "Apenas se os pagamentos registados não coincidirem com o seu extrato"
-      },
       "payment": {
         "label": "Pagamento"
       },
@@ -591,6 +587,33 @@
     "terms": {
       "finish_setup": "Concluir configuração"
     },
+    "balance": {
+      "econumo": "Saldo no Econumo hoje",
+      "last_statement": "Último extrato",
+      "statement_on": "{amount} a {date}",
+      "difference": "Diferença",
+      "form": {
+        "title": "Reconciliar com um extrato",
+        "hint": "Introduza o saldo do extrato do seu credor. A partir da sua data o Econumo conta a partir dele, e as prestações vencidas até lá contam como pagas.",
+        "balance": "Saldo do extrato",
+        "date": "Data do extrato",
+        "date_range": "Escolha uma data entre a data de início e hoje",
+        "save": "Reconciliar"
+      },
+      "history": "Extratos",
+      "column": {
+        "date": "Data",
+        "statement": "Extrato",
+        "econumo": "Econumo",
+        "difference": "Diferença"
+      },
+      "origin": "Montante emprestado",
+      "delete": "Eliminar o extrato de {date}",
+      "delete_confirm": {
+        "title": "Eliminar este extrato?",
+        "question": "Os pagamentos posteriores à sua data voltam a ser contados a partir do saldo anterior."
+      }
+    },
     "review": {
       "progress": "{paid} de {total} pagos",
       "owed_now": "Em dívida agora: {amount}",
@@ -611,6 +634,7 @@
       },
       "tab": {
         "overview": "Resumo",
+        "balance": "Saldo",
         "settings": "Definições"
       }
     }

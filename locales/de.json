@@ -517,10 +517,6 @@
       "amount_borrowed": {
         "label": "Geliehener Betrag"
       },
-      "balance": {
-        "label": "Aktuell geschuldet (optional)",
-        "hint": "Nur wenn die erfassten Zahlungen nicht zu Ihrem Kontoauszug passen"
-      },
       "payment": {
         "label": "Rate"
       },
@@ -591,6 +587,33 @@
     "terms": {
       "finish_setup": "Einrichtung abschließen"
     },
+    "balance": {
+      "econumo": "Saldo in Econumo heute",
+      "last_statement": "Letzter Kontoauszug",
+      "statement_on": "{amount} am {date}",
+      "difference": "Differenz",
+      "form": {
+        "title": "Mit einem Kontoauszug abgleichen",
+        "hint": "Geben Sie den Saldo aus dem Kontoauszug Ihres Kreditgebers ein. Ab seinem Datum rechnet Econumo damit, und die bis dahin fälligen Raten gelten als bezahlt.",
+        "balance": "Saldo laut Auszug",
+        "date": "Datum des Auszugs",
+        "date_range": "Wählen Sie ein Datum zwischen dem Startdatum und heute",
+        "save": "Abgleichen"
+      },
+      "history": "Kontoauszüge",
+      "column": {
+        "date": "Datum",
+        "statement": "Auszug",
+        "econumo": "Econumo",
+        "difference": "Differenz"
+      },
+      "origin": "Geliehener Betrag",
+      "delete": "Auszug vom {date} löschen",
+      "delete_confirm": {
+        "title": "Diesen Auszug löschen?",
+        "question": "Zahlungen nach seinem Datum werden wieder vom früheren Saldo aus gerechnet."
+      }
+    },
     "review": {
       "progress": "{paid} von {total} bezahlt",
       "owed_now": "Aktuell geschuldet: {amount}",
@@ -611,6 +634,7 @@
       },
       "tab": {
         "overview": "Übersicht",
+        "balance": "Saldo",
         "settings": "Einstellungen"
       }
     }

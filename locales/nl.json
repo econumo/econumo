@@ -517,10 +517,6 @@
       "amount_borrowed": {
         "label": "Geleend bedrag"
       },
-      "balance": {
-        "label": "Nu verschuldigd (optioneel)",
-        "hint": "Alleen als de geregistreerde betalingen niet overeenkomen met uw afschrift"
-      },
       "payment": {
         "label": "Betaling"
       },
@@ -591,6 +587,33 @@
     "terms": {
       "finish_setup": "Instellen voltooien"
     },
+    "balance": {
+      "econumo": "Saldo in Econumo vandaag",
+      "last_statement": "Laatste afschrift",
+      "statement_on": "{amount} op {date}",
+      "difference": "Verschil",
+      "form": {
+        "title": "Afstemmen met een afschrift",
+        "hint": "Vul het saldo in van het afschrift van uw kredietverstrekker. Vanaf die datum rekent Econumo daarmee, en de termijnen tot dan gelden als betaald.",
+        "balance": "Saldo volgens afschrift",
+        "date": "Datum van het afschrift",
+        "date_range": "Kies een datum tussen de startdatum en vandaag",
+        "save": "Afstemmen"
+      },
+      "history": "Afschriften",
+      "column": {
+        "date": "Datum",
+        "statement": "Afschrift",
+        "econumo": "Econumo",
+        "difference": "Verschil"
+      },
+      "origin": "Geleend bedrag",
+      "delete": "Afschrift van {date} verwijderen",
+      "delete_confirm": {
+        "title": "Dit afschrift verwijderen?",
+        "question": "Betalingen na de datum ervan worden weer vanaf het eerdere saldo berekend."
+      }
+    },
     "review": {
       "progress": "{paid} van {total} betaald",
       "owed_now": "Nu verschuldigd: {amount}",
@@ -611,6 +634,7 @@
       },
       "tab": {
         "overview": "Overzicht",
+        "balance": "Saldo",
         "settings": "Instellingen"
       }
     }

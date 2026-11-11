@@ -517,10 +517,6 @@
       "amount_borrowed": {
         "label": "Importo preso in prestito"
       },
-      "balance": {
-        "label": "Dovuto ora (facoltativo)",
-        "hint": "Solo se i pagamenti registrati non corrispondono al tuo estratto conto"
-      },
       "payment": {
         "label": "Pagamento"
       },
@@ -591,6 +587,33 @@
     "terms": {
       "finish_setup": "Completa la configurazione"
     },
+    "balance": {
+      "econumo": "Saldo di Econumo oggi",
+      "last_statement": "Ultimo estratto conto",
+      "statement_on": "{amount} il {date}",
+      "difference": "Differenza",
+      "form": {
+        "title": "Riconcilia con un estratto conto",
+        "hint": "Inserisci il saldo dell'estratto conto del tuo finanziatore. Dalla sua data Econumo parte da lì, e le rate dovute fino ad allora contano come pagate.",
+        "balance": "Saldo dell'estratto",
+        "date": "Data dell'estratto",
+        "date_range": "Scegli una data tra la data di inizio e oggi",
+        "save": "Riconcilia"
+      },
+      "history": "Estratti conto",
+      "column": {
+        "date": "Data",
+        "statement": "Estratto",
+        "econumo": "Econumo",
+        "difference": "Differenza"
+      },
+      "origin": "Importo preso in prestito",
+      "delete": "Elimina l'estratto del {date}",
+      "delete_confirm": {
+        "title": "Eliminare questo estratto?",
+        "question": "I pagamenti successivi alla sua data vengono di nuovo calcolati dal saldo precedente."
+      }
+    },
     "review": {
       "progress": "{paid} di {total} pagati",
       "owed_now": "Dovuto ora: {amount}",
@@ -611,6 +634,7 @@
       },
       "tab": {
         "overview": "Panoramica",
+        "balance": "Saldo",
         "settings": "Impostazioni"
       }
     }

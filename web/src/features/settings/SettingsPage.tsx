@@ -169,12 +169,12 @@ export function SettingsPage() {
             <MenuRow label={t('settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
             <MenuRow label={t('connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
             <MenuRow label={t('budgets.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
+            <MenuRow label={t('debts.menu_item')} to={RouterPage.SETTINGS_DEBTS} />
             <MenuRow label={t('settings.recurring.menu_item')} to={RouterPage.SETTINGS_RECURRING} />
           </MenuGroup>
 
           <MenuGroup label={t('settings.page.groups.classification')}>
             <MenuRow label={t('classifications.categories.pages.settings.menu_item')} to={RouterPage.SETTINGS_CATEGORIES} />
-            <MenuRow label={t('debts.menu_item')} to={RouterPage.SETTINGS_DEBTS} />
             <MenuRow label={t('classifications.tags.pages.settings.menu_item')} to={RouterPage.SETTINGS_TAGS} />
             <MenuRow label={t('classifications.payees.pages.settings.menu_item')} to={RouterPage.SETTINGS_PAYEES} />
             <MenuRow label={t('classifications.currencies.pages.settings.menu_item')} to={RouterPage.SETTINGS_CURRENCIES} />

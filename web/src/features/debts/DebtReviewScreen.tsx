@@ -23,6 +23,7 @@ import type { DebtDetailsDto, DebtDto } from '@/api/dto/debt'
 import type { Id } from '@/api/types'
 import { useCurrencies } from '@/features/currencies/queries'
 import { debtDay, debtMonth } from './debtDates'
+import { DebtBalanceTab } from './DebtBalanceTab'
 import { DebtSettingsForm } from './DebtSettingsForm'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
 import { useDeleteDebt, useDebt, useDebtForecast, useFetchDebtForEdit, useMarkDebtPaidOff } from './queries'
@@ -97,8 +98,11 @@ function DangerZone({
 const tabClass =
   '-mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 text-sm font-normal text-muted-foreground shadow-none after:hidden hover:text-foreground focus-visible:ring-0 focus-visible:outline-none focus-visible:underline data-active:border-foreground data-active:bg-transparent data-active:text-foreground dark:data-active:border-foreground dark:data-active:bg-transparent'
 
-const TABS: { value: DebtDetailsTab; label: string }[] = [
+// Balance (reconciling with a statement) needs the loan's facts: a debt not
+// set up has no such tab
+const TABS: { value: DebtDetailsTab; label: string; setUpOnly?: boolean }[] = [
   { value: 'overview', label: 'debts.review.tab.overview' },
+  { value: 'balance', label: 'debts.review.tab.balance', setUpOnly: true },
   { value: 'settings', label: 'debts.review.tab.settings' },
   { value: 'danger', label: 'debts.review.danger.title' },
 ]
@@ -106,6 +110,7 @@ const TABS: { value: DebtDetailsTab; label: string }[] = [
 function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string; budgetId: Id | null; initialTab: DebtDetailsTab; onClose: () => void }) {
   const { t, i18n } = useTranslation()
   const { data, error: loadError } = useDebt(debtId)
+  const money = useDebtMoney()
   const fetchDebtForEdit = useFetchDebtForEdit()
   const markPaidOff = useMarkDebtPaidOff()
   const deleteDebt = useDeleteDebt()
@@ -197,7 +202,7 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
   const tabBar = item ? (
     <div className="w-full">
       <TabsList variant="line" className="h-auto w-full items-end justify-start gap-5 rounded-none bg-transparent p-0">
-        {TABS.map(({ value, label }) => (
+        {TABS.filter((tab) => !tab.setUpOnly || item.isSetUp === 1).map(({ value, label }) => (
           <TabsTrigger key={value} value={value} className={tabClass}>
             {t(label)}
           </TabsTrigger>
@@ -231,6 +236,11 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
                   }}
                 />
               </TabsContent>
+              {item.isSetUp === 1 ? (
+                <TabsContent value="balance" className="flex flex-col gap-5">
+                  <DebtBalanceTab details={data} amount={(value) => money(value, item)} lang={i18n.language} />
+                </TabsContent>
+              ) : null}
               {/* kept mounted: edits survive a look at the Overview */}
               <TabsContent value="settings" forceMount hidden={tab !== 'settings'} className="flex flex-col gap-6">
                 {editDebt ? (
