@@ -38,6 +38,7 @@ export const METRICS = {
   ONBOARDING_IMPORT_FINISHED: 'appOnboardingImportFinished',
   ONBOARDING_STEP_DONE: 'appOnboardingStepDone',
   ONBOARDING_STEP_SKIP: 'appOnboardingStepSkip',
+  ICON_SUGGESTION_APPLIED: 'appIconSuggestionApplied',
   USER_UPDATE_DEFAULT_BUDGET: 'appUserUpdateDefaultBudget',
   USER_UPDATE_LANGUAGE: 'appUserUpdateLanguage',
   USER_REMIND_PASSWORD: 'appUserRemindPassword',

@@ -9,6 +9,7 @@ import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
+import { IconSuggestion } from '@/features/iconSuggestion/useIconSuggestion'
 import { usableCurrencies } from '@/features/currencies/selectable'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -296,6 +297,15 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
           const showName = invalidName.has(row.key) && nameTouched.has(row.key)
           return (
             <li key={row.key} className="px-3 py-2" data-testid="account-row">
+              {/* a name the user typed or edited (the untouched Cash row keeps its cash icon) */}
+              <IconSuggestion
+                kind="account"
+                name={row.name}
+                currency={codeOf(currencyOf(row)) || undefined}
+                enabled={!row.labelKey && !row.iconPicked}
+                current={row.icon}
+                onApply={(icon) => update(row.key, { icon })}
+              />
               <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"

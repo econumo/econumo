@@ -363,6 +363,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/connection/get-connection-list', () => envelope({ items: data.connections })),
     http.get('*/api/v1/account/get-account-list', () => envelope({ items: data.accounts })),
     http.get('*/api/v1/account/get-folder-list', () => envelope({ items: data.folders })),
+    http.get('*/api/v1/onboarding/suggest-icon', () => envelope({ icon: '' })),
     http.get('*/api/v1/onboarding/get-plan-suggestions', ({ request }) =>
       envelope({ budgetId: new URL(request.url).searchParams.get('budgetId') ?? '', items: [] }),
     ),

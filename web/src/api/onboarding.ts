@@ -124,3 +124,18 @@ export async function getOnboardingPlanSuggestions(budgetId: Id): Promise<PlanSu
   const response = await api.get<Envelope<PlanSuggestions>>(apiUrl('/api/v1/onboarding/get-plan-suggestions'), { params: { budgetId } })
   return response.data.data
 }
+
+export interface SuggestIconParams {
+  kind: 'category' | 'account'
+  name: string
+  type?: 'expense' | 'income'
+  // the account's currency code
+  currency?: string
+}
+
+// The icon the server's AI provider picks for a name being typed; '' when there is none (no
+// provider, over the per-user limit, a failed or late answer). Never an error for those.
+export async function suggestIcon(params: SuggestIconParams, signal?: AbortSignal): Promise<string> {
+  const response = await api.get<Envelope<{ icon: string }>>(apiUrl('/api/v1/onboarding/suggest-icon'), { params, signal })
+  return response.data.data.icon
+}
