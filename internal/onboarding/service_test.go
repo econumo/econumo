@@ -80,9 +80,18 @@ func replying(s string) *fakeCompleter {
 	return &fakeCompleter{reply: func(context.Context) (string, error) { return s, nil }}
 }
 
+// fakeAccountSteps has no account on a default icon, so the icon request of
+// the save-accounts review never goes out.
+type fakeAccountSteps struct{ onboarding.AccountSteps }
+
+func (fakeAccountSteps) OwnLiveAccounts(context.Context, vo.Id) ([]model.OnboardingAccount, error) {
+	return nil, nil
+}
+
 func newSvc(c onboarding.Completer, l onboarding.AttemptLimiter) (*onboarding.Service, *fakeBudgets) {
 	b := &fakeBudgets{}
 	svc := onboarding.NewService(b, fakeAccounts{}, fakeTimezones{})
+	svc.SetSteps(onboarding.Steps{Accounts: fakeAccountSteps{}})
 	if c != nil {
 		svc.SetAdvisor(c, l)
 	}

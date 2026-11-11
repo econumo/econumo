@@ -136,10 +136,15 @@ func invalidChoice(key string) error {
 // creates the budget when the user has accounts but no budget yet, and marks
 // the step done, all in one transaction. A row named like one of the user's
 // active categories of its type (or like an earlier row) maps to that category
-// instead of creating a second one.
+// instead of creating a second one. After the commit, when an AI provider is
+// configured, a background request picks icons for the categories still on a
+// default icon, the rows created on an icon nobody chose included.
 func (s *Service) SaveCategories(ctx context.Context, userID vo.Id, req model.OnboardingSaveCategoriesRequest) (*model.OnboardingSaveCategoriesResult, error) {
 	out := &model.OnboardingSaveCategoriesResult{Categories: map[string]string{}}
+	var review bool
+	var auto map[string]string
 	err := s.steps.Tx.WithTx(ctx, func(ctx context.Context) error {
+		review, auto = false, map[string]string{}
 		user, proceed, err := s.begin(ctx, userID, req.Id, StepCategories)
 		if err != nil {
 			return err
@@ -177,6 +182,9 @@ func (s *Service) SaveCategories(ctx context.Context, userID vo.Id, req model.On
 			}
 			out.Categories[row.Key] = res.Item.Id
 			known[nameKey(row.Type, name)] = res.Item.Id
+			if row.AutoIcon {
+				auto[strings.ToLower(res.Item.Id)] = res.Item.Icon
+			}
 		}
 		if len(req.Order) > 0 {
 			wanted := make([]string, 0, len(req.Order))
@@ -214,10 +222,14 @@ func (s *Service) SaveCategories(ctx context.Context, userID vo.Id, req model.On
 			return err
 		}
 		out.User = *done
+		review = true
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+	if review {
+		s.startCategoryReview(ctx, userID, auto)
 	}
 	return out, nil
 }
@@ -321,14 +333,17 @@ func (s *Service) applyCategoryOrder(ctx context.Context, userID vo.Id, wanted [
 // the visible currencies, then puts the new accounts in a budget: a new one
 // over all the user's live accounts when they have none, else their default
 // budget. The step is marked done in the same transaction. After the commit,
-// when an AI provider is configured, the new accounts are classified as savings
-// or not in the background.
+// when an AI provider is configured, background requests pick icons for the
+// accounts still on a default icon (the rows created on an icon nobody chose
+// included) and classify the new accounts as savings or not.
 func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.OnboardingSaveAccountsRequest) (*model.OnboardingSaveAccountsResult, error) {
 	out := &model.OnboardingSaveAccountsResult{Accounts: map[string]string{}}
 	var classify []vo.Id
 	var classifyBudget vo.Id
+	var review bool
+	var auto map[string]string
 	err := s.steps.Tx.WithTx(ctx, func(ctx context.Context) error {
-		classify = nil
+		classify, review, auto = nil, false, map[string]string{}
 		user, proceed, err := s.begin(ctx, userID, req.Id, StepAccounts)
 		if err != nil {
 			return err
@@ -382,6 +397,9 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 			}
 			out.Accounts[row.Key] = res.Item.Id
 			created = append(created, vo.MustParseId(res.Item.Id))
+			if row.AutoIcon {
+				auto[strings.ToLower(res.Item.Id)] = res.Item.Icon
+			}
 		}
 
 		if cerr := s.reviseAccounts(ctx, userID, req.Currencies, req.Balances); cerr != nil {
@@ -445,12 +463,15 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 			return err
 		}
 		out.User = *done
+		review = true
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	s.schedule(ctx, userID, classifyBudget, classify)
+	if review {
+		s.startAccountsReview(ctx, userID, auto, classifyBudget, classify)
+	}
 	return out, nil
 }
 

@@ -8,7 +8,7 @@ import { queryKeys } from '@/app/queryKeys'
 import { useAccounts } from '@/features/accounts/queries'
 import { useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { claimedElsewhere, finishImportStep, notUser } from './finishImport'
+import { claimedElsewhere, finishImportStep, notUser, scheduleAiRefresh } from './finishImport'
 import { emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft, type Day0Step } from './draft'
 
 export type CategoryReview = { archive: Id[]; restore: Id[] }
@@ -126,7 +126,8 @@ export function useDay0() {
         (id) =>
           saveOnboardingCategories({
             id,
-            categories: rows.map((r) => ({ key: r.key, name: r.name, type: r.type, icon: r.icon })),
+            // a default's icon was picked for it; a custom row's only when the user chose one
+            categories: rows.map((r) => ({ key: r.key, name: r.name, type: r.type, icon: r.icon, autoIcon: !r.defaultKey && !r.iconPicked })),
             ...(order && order.length > 0 ? { order } : {}),
             ...(review.archive.length > 0 ? { archive: review.archive } : {}),
             ...(review.restore.length > 0 ? { restore: review.restore } : {}),
@@ -142,6 +143,8 @@ export function useDay0() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+      // the AI review picks icons for the rows still on their default one
+      if (userId) scheduleAiRefresh(queryClient, userId)
       if (order && order.length > 0) {
         trackEvent(METRICS.CATEGORY_ORDER_LIST)
       }
@@ -158,7 +161,7 @@ export function useDay0() {
         restored: review.restore.length,
       })
     },
-    [runStep, queryClient],
+    [runStep, queryClient, userId],
   )
 
   // `rows` lists the user's existing accounts too (with accountId): their currencies stay
@@ -176,7 +179,15 @@ export function useDay0() {
         (id) =>
           saveOnboardingAccounts({
             id,
-            accounts: fresh.map((r) => ({ key: r.key, name: r.name, balance: r.balance, currencyId: r.currencyId, icon: r.icon })),
+            // the untouched Cash row keeps its cash icon
+            accounts: fresh.map((r) => ({
+              key: r.key,
+              name: r.name,
+              balance: r.balance,
+              currencyId: r.currencyId,
+              icon: r.icon,
+              autoIcon: !r.iconPicked && !r.labelKey,
+            })),
             currencyIds: [...new Set([...extraCurrencyIds, ...rows.map((r) => r.currencyId)])],
             mainCurrencyId,
             ...(review.hide.length > 0 ? { hide: review.hide } : {}),
@@ -193,6 +204,7 @@ export function useDay0() {
       }
       // accounts, folders, visible currencies, the profile currency and the budget all moved
       void queryClient.invalidateQueries({ predicate: notUser })
+      if (userId) scheduleAiRefresh(queryClient, userId)
       const selected = new Set([mainCurrencyId, ...extraCurrencyIds, ...rows.map((r) => r.currencyId)])
       trackEvent(METRICS.ONBOARDING_ACCOUNTS_COMPLETE, {
         accounts: fresh.length,
@@ -203,7 +215,7 @@ export function useDay0() {
         balanceChanged: review.balances?.length ?? 0,
       })
     },
-    [runStep, queryClient],
+    [runStep, queryClient, userId],
   )
 
   // `amounts` are the rows to write: blank and unchanged ones are left out by the caller.
@@ -226,7 +238,7 @@ export function useDay0() {
       }
       trackEvent(METRICS.ONBOARDING_PLAN_COMPLETE, { rows: amounts.length })
     },
-    [runStep, queryClient],
+    [runStep, queryClient, userId],
   )
 
   return { draft, ready: Boolean(user) && !accountsQuery.isPending, finishImport, saveCategories, saveAccounts, savePlan, pending, error }

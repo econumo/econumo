@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -48,6 +49,19 @@ func (c *recordingCompleter) Complete(ctx context.Context, _, system, user strin
 		return reply()
 	}
 	return `{"savings":[]}`, nil
+}
+
+// promptsFor are the prompts sent with a system prompt carrying marker.
+func (c *recordingCompleter) promptsFor(marker string) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var out []string
+	for i, sys := range c.systems {
+		if strings.Contains(sys, marker) {
+			out = append(out, c.prompts[i])
+		}
+	}
+	return out
 }
 
 type onbEnv struct {
@@ -326,8 +340,10 @@ func TestSaveAccounts_AccountsFirstCreatesTheBudget(t *testing.T) {
 	if user["currency"] != "EUR" || e.onboarding() != "accounts" {
 		t.Fatalf("currency %v, onboarding %q", user["currency"], e.onboarding())
 	}
-	// Only the new accounts reach the classifier, never the earlier one.
-	if len(e.ai.prompts) != 1 || strings.Contains(e.ai.prompts[0], earlier) || !strings.Contains(e.ai.prompts[0], ids["s"]) {
+	// Only the new accounts reach the classifier, never the earlier one; the
+	// icon request asks about every account still on the import's icon.
+	savings := e.ai.promptsFor(`{"savings":`)
+	if len(e.ai.prompts) != 2 || len(savings) != 1 || strings.Contains(savings[0], earlier) || !strings.Contains(savings[0], ids["s"]) {
 		t.Fatalf("prompts = %v", e.ai.prompts)
 	}
 
@@ -335,7 +351,7 @@ func TestSaveAccounts_AccountsFirstCreatesTheBudget(t *testing.T) {
 	if status != 200 || stringMap(t, again["accounts"])["s"] != ids["s"] || again["budgetId"] != budgetID {
 		t.Fatalf("replay %d: %v", status, again)
 	}
-	if n := e.count(`SELECT COUNT(*) FROM accounts WHERE user_id = ?`, e.user); n != 4 || len(e.ai.prompts) != 1 {
+	if n := e.count(`SELECT COUNT(*) FROM accounts WHERE user_id = ?`, e.user); n != 4 || len(e.ai.prompts) != 2 {
 		t.Fatalf("accounts after replay = %d, prompts = %d", n, len(e.ai.prompts))
 	}
 }
@@ -379,7 +395,8 @@ func TestSaveAccounts_AddsToTheExistingBudget(t *testing.T) {
 	if n := e.count(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id = ?`, budget); n != 2 {
 		t.Fatalf("members = %d", n)
 	}
-	if len(e.ai.prompts) != 1 || strings.Contains(e.ai.prompts[0], old) || !strings.Contains(e.ai.prompts[0], newID) {
+	savings := e.ai.promptsFor(`{"savings":`)
+	if len(savings) != 1 || strings.Contains(savings[0], old) || !strings.Contains(savings[0], newID) {
 		t.Fatalf("prompts = %v", e.ai.prompts)
 	}
 }
@@ -615,5 +632,72 @@ func TestUpdateOnboarding_NeverReopensAStepTheServerMarked(t *testing.T) {
 	}
 	if got := e.onboarding(); got != "!import,categories" {
 		t.Fatalf("onboarding = %q", got)
+	}
+}
+
+func TestSaveCategories_ReviewsTheIconsOfNewRows(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	stale := e.f.Category(fixture.Category{UserID: e.user, Name: "Stale", Type: 0, Icon: model.DefaultIcon})
+	body := map[string]any{"id": fixture.NewID(), "categories": []map[string]any{
+		{"key": "a", "name": "Kredit", "type": "expense", "icon": "home", "autoIcon": true},
+		{"key": "b", "name": "Wohnen", "type": "expense", "icon": "home"},
+		{"key": "c", "name": "Kino", "type": "expense", "icon": "movie", "autoIcon": false},
+	}}
+	// the reply is read once the ids are known
+	e.ai.bySystem = func(string) (string, error) {
+		ids := map[string]string{}
+		for _, name := range []string{"Kredit", "Wohnen", "Kino"} {
+			ids[name] = e.str(`SELECT id FROM categories WHERE user_id = ? AND name = ?`, e.user, name)
+		}
+		return `{"categories":{"` + ids["Kredit"] + `":"account_balance","` + ids["Wohnen"] + `":"payments","` + ids["Kino"] + `":"theaters","` + stale + `":"star"}}`, nil
+	}
+	status, data := e.post("/api/v1/onboarding/save-categories", body)
+	if status != 200 {
+		t.Fatalf("status %d: %v", status, data)
+	}
+	ids := stringMap(t, data["categories"])
+	prompts := e.ai.promptsFor(`{"categories":`)
+	if len(prompts) != 1 || len(e.ai.prompts) != 1 || !strings.Contains(prompts[0], ids["a"]) || !strings.Contains(prompts[0], stale) ||
+		strings.Contains(prompts[0], ids["b"]) || strings.Contains(prompts[0], ids["c"]) {
+		t.Fatalf("prompts = %v", e.ai.prompts)
+	}
+	if e.icon("categories", ids["a"]) != "account_balance" || e.icon("categories", stale) != "star" ||
+		e.icon("categories", ids["b"]) != "home" || e.icon("categories", ids["c"]) != "movie" {
+		t.Fatalf("icons: a %s, stale %s, b %s, c %s", e.icon("categories", ids["a"]), e.icon("categories", stale), e.icon("categories", ids["b"]), e.icon("categories", ids["c"]))
+	}
+	// a replay starts no job
+	if status, _ := e.post("/api/v1/onboarding/save-categories", body); status != 200 || len(e.ai.prompts) != 1 {
+		t.Fatalf("replay %d, prompts %d", status, len(e.ai.prompts))
+	}
+}
+
+func TestSaveAccounts_ReviewsTheIconsOfNewRowsBesideSavings(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	body := map[string]any{"id": fixture.NewID(), "mainCurrencyId": e.eur, "accounts": []map[string]any{
+		{"key": "a", "name": "Revolut", "balance": "", "currencyId": e.eur, "icon": "credit_card", "autoIcon": true},
+		{"key": "b", "name": "Bargeld", "balance": "", "currencyId": e.eur, "icon": "payments"},
+	}}
+	e.ai.bySystem = func(system string) (string, error) {
+		a := e.str(`SELECT id FROM accounts WHERE user_id = ? AND name = 'Revolut'`, e.user)
+		b := e.str(`SELECT id FROM accounts WHERE user_id = ? AND name = 'Bargeld'`, e.user)
+		if strings.Contains(system, `{"accounts":`) {
+			return `{"accounts":{"` + a + `":"account_balance","` + b + `":"wallet"}}`, nil
+		}
+		return `{"savings":["` + a + `"]}`, nil
+	}
+	status, data := e.post("/api/v1/onboarding/save-accounts", body)
+	if status != 200 {
+		t.Fatalf("status %d: %v", status, data)
+	}
+	ids := stringMap(t, data["accounts"])
+	icons := e.ai.promptsFor(`{"accounts":`)
+	if len(e.ai.prompts) != 2 || len(icons) != 1 || !strings.Contains(icons[0], ids["a"]) || strings.Contains(icons[0], ids["b"]) {
+		t.Fatalf("prompts = %v", e.ai.prompts)
+	}
+	if e.icon("accounts", ids["a"]) != "account_balance" || e.icon("accounts", ids["b"]) != "payments" {
+		t.Fatalf("icons: a %s, b %s", e.icon("accounts", ids["a"]), e.icon("accounts", ids["b"]))
+	}
+	if !e.isSavings(data["budgetId"].(string), ids["a"]) {
+		t.Fatal("savings not applied")
 	}
 }

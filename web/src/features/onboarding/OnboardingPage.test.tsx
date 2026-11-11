@@ -382,6 +382,33 @@ it('without AI, an import schedules no extra refetches', async () => {
   }
 })
 
+it('with AI, a manual step refetches the lists at the AI refresh delays too', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    window.econumoConfig = { AI_ENABLED: true }
+    serve('import')
+    // the accounts step shows the account list, which the refresh refetches
+    let accountListCalls = 0
+    server.use(
+      http.get('*/api/v1/account/get-account-list', () => {
+        accountListCalls++
+        return ok({ items: [] })
+      }),
+    )
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPage()
+    await heading('What do you spend on?')
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+    await heading("Where's your money right now?")
+    await vi.advanceTimersByTimeAsync(1000)
+    const before = accountListCalls
+    await vi.advanceTimersByTimeAsync(AI_REFRESH_DELAYS_MS[AI_REFRESH_DELAYS_MS.length - 1])
+    await waitFor(() => expect(accountListCalls).toBe(before + AI_REFRESH_DELAYS_MS.length))
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 it('an import that brought nothing in marks nothing', async () => {
   serve('')
   importedRows = 0

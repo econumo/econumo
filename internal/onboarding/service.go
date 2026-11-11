@@ -1,8 +1,8 @@
 // Package onboarding holds the Day 0 setup writes the SPA's first-run flow
 // makes. Each write answers at once; when an AI provider is configured, a
-// background job then asks it which of the new accounts are savings accounts
-// (and, after an import, which icons fit the categories and accounts) and
-// applies the answer.
+// background job then asks it which icons fit the categories and accounts
+// still on a default icon and which of the new accounts are savings accounts,
+// and applies the answer.
 package onboarding
 
 import (
@@ -59,17 +59,6 @@ func (s *Service) SetSteps(steps Steps) { s.steps = steps }
 // SetRunner replaces how background jobs start (tests run them inline).
 func (s *Service) SetRunner(r Runner) { s.run = r }
 
-// schedule starts the classification of accountIDs for budgetID, unless AI is
-// off or the user is over the cap.
-func (s *Service) schedule(ctx context.Context, userID, budgetID vo.Id, accountIDs []vo.Id) {
-	if len(accountIDs) == 0 {
-		return
-	}
-	s.startJob(ctx, userID, jobClassify, func(jobCtx context.Context, facts promptFacts) error {
-		return s.classify(jobCtx, userID, budgetID, accountIDs, facts)
-	})
-}
-
 // jobSpec is a background job's time budget and static log messages; part
 // names the request of a job split in several (logged as "part").
 type jobSpec struct {
@@ -91,16 +80,13 @@ var (
 		panicked: "onboarding import review panicked",
 		failed:   "onboarding import review failed",
 	}
-)
-
-// startJob runs one background AI job for the user, unless AI is off or the
-// user is over the cap (every job counts against it).
-func (s *Service) startJob(ctx context.Context, userID vo.Id, logs jobSpec, job func(context.Context, promptFacts) error) {
-	if !s.reserveJob(ctx, userID, logs) {
-		return
+	jobStepReview = jobSpec{
+		timeout:  reviewTimeout,
+		skipped:  "onboarding step review skipped",
+		panicked: "onboarding step review panicked",
+		failed:   "onboarding step review failed",
 	}
-	s.runJob(userID, logs, s.promptContext(ctx, userID), job)
-}
+)
 
 // reserveJob reports whether a job may start: AI is configured and the user
 // is under the cap, which this call counts against.

@@ -2427,6 +2427,8 @@ definitions:
     type: object
   model.OnboardingAccountRow:
     properties:
+      autoIcon:
+        type: boolean
       balance:
         type: string
       currencyId:
@@ -2440,6 +2442,8 @@ definitions:
     type: object
   model.OnboardingCategoryRow:
     properties:
+      autoIcon:
+        type: boolean
       icon:
         type: string
       key:

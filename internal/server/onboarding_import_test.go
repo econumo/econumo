@@ -316,9 +316,10 @@ func TestFinishImport_ClaimedIDStartsNoJob(t *testing.T) {
 	if status, _ := e.post("/api/v1/onboarding/save-categories", categoriesBody(op)); status != 200 {
 		t.Fatal("save-categories")
 	}
-	// save-categories created the budget; its id is now claimed
+	// save-categories created the budget and reviewed the icons; its id is now claimed
+	before := len(e.ai.prompts)
 	status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": op})
-	if status != 400 || len(e.ai.prompts) != 0 || e.onboarding() != "categories" {
+	if status != 400 || len(e.ai.prompts) != before || e.onboarding() != "categories" {
 		t.Fatalf("status %d: %v, prompts %d, onboarding %q", status, data, len(e.ai.prompts), e.onboarding())
 	}
 	if status, _ := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": "nope"}); status != 400 {

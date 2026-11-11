@@ -72,12 +72,15 @@ func validateRowKeys(field string, keys []string) error {
 }
 
 // OnboardingCategoryRow is one category the categories step creates. Key is
-// the client's own row key; the response maps it to the category id.
+// the client's own row key; the response maps it to the category id. AutoIcon
+// marks an icon nobody chose (the row's default): with an AI provider, the
+// review after the step may replace it.
 type OnboardingCategoryRow struct {
-	Key  string `json:"key"`
-	Name string `json:"name"`
-	Type string `json:"type"`
-	Icon string `json:"icon"`
+	Key      string `json:"key"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Icon     string `json:"icon"`
+	AutoIcon bool   `json:"autoIcon"`
 }
 
 // OnboardingSaveCategoriesRequest is the save-categories body. Categories are
@@ -152,13 +155,14 @@ type OnboardingSaveCategoriesResult struct {
 }
 
 // OnboardingAccountRow is one account the accounts step creates. Balance is
-// the opening balance; "" means zero.
+// the opening balance; "" means zero. AutoIcon is as on a category row.
 type OnboardingAccountRow struct {
 	Key        string        `json:"key"`
 	Name       string        `json:"name"`
 	Balance    vo.FlexString `json:"balance" swaggertype:"string"`
 	CurrencyId string        `json:"currencyId"`
 	Icon       string        `json:"icon"`
+	AutoIcon   bool          `json:"autoIcon"`
 }
 
 // OnboardingAccountCurrency moves an existing own account to another currency

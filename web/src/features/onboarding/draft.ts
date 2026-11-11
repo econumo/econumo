@@ -13,7 +13,16 @@ export type AccountRow = {
   labelKey?: string
   iconPicked?: boolean
 }
-export type CategoryRow = { key: string; name: string; type: 'expense' | 'income'; icon: string; labelKey?: string; defaultKey?: string }
+// iconPicked: as on an account row
+export type CategoryRow = {
+  key: string
+  name: string
+  type: 'expense' | 'income'
+  icon: string
+  labelKey?: string
+  defaultKey?: string
+  iconPicked?: boolean
+}
 export type Day0Step = 'import' | 'categories' | 'accounts' | 'plan'
 export type Day0Draft = {
   // the operation id of a step's submit, minted on its first Continue and kept until the

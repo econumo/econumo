@@ -17693,6 +17693,9 @@ const docTemplate = `{
         "model.OnboardingAccountRow": {
             "type": "object",
             "properties": {
+                "autoIcon": {
+                    "type": "boolean"
+                },
                 "balance": {
                     "type": "string"
                 },
@@ -17713,6 +17716,9 @@ const docTemplate = `{
         "model.OnboardingCategoryRow": {
             "type": "object",
             "properties": {
+                "autoIcon": {
+                    "type": "boolean"
+                },
                 "icon": {
                     "type": "string"
                 },

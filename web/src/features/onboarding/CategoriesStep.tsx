@@ -318,7 +318,7 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
           <IconPicker
             value={editing.icon}
             onChange={(icon) => {
-              update(editing.key, { icon })
+              update(editing.key, { icon, iconPicked: true })
               setPickingKey(null)
             }}
             aria-label={t('onboarding.categories_step.icon_label')}
