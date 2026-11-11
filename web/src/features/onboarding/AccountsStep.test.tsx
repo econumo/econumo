@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/app/i18n'
@@ -540,6 +540,43 @@ it('reseeds from a stored draft: rows standing for existing accounts stay locked
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   const [out] = onContinue.mock.calls[0]
   expect(out.map((r: AccountRow) => [r.key, r.accountId])).toEqual([['account:acc-imp', 'acc-imp'], ['k2', undefined]])
+})
+
+it('a draft restored after a failed submit keeps the untouched accounts following the first row', async () => {
+  const gbp = { id: 'cur-gbp', code: 'GBP', name: 'Pound', symbol: '£', fractionDigits: 2, scope: 'global', isHidden: 0, isDeleted: 0 }
+  const card: ExistingAccount = { id: 'acc-card', name: 'Card', icon: 'credit_card', balance: '5', currencyId: 'cur-usd' }
+  const cash: ExistingAccount = { id: 'acc-cash', name: 'Cash', icon: 'payments', balance: '7', currencyId: 'cur-usd' }
+  const user = userEvent.setup()
+  const first = renderStep({ existing: [card, cash] }, { currencies: [fixtureUsd, fixtureEur, gbp] })
+  await ready()
+  await pickCurrency(user, 0, 'EUR')
+  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  // the submit failed: the form comes back from the rows it sent
+  const [sent] = first.onContinue.mock.calls[0]
+  cleanup()
+  const second = renderStep({ existing: [card, cash], initialRows: sent }, { currencies: [fixtureUsd, fixtureEur, gbp] })
+  await ready()
+  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
+  await pickCurrency(user, 0, 'GBP')
+  expect(within(rowsEls()[1]).getByRole('button', { name: 'Currency' })).toHaveTextContent('GBP')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(second.onContinue.mock.calls[0][3].currencies).toEqual([
+    { accountId: 'acc-card', currencyId: 'cur-gbp' },
+    { accountId: 'acc-cash', currencyId: 'cur-gbp' },
+  ])
+})
+
+it('a cleared balance on an existing account is no change, never a zero balance', async () => {
+  const user = userEvent.setup()
+  const { onContinue } = renderStep({ existing: [imported] })
+  await ready()
+  await user.clear(screen.getByLabelText('Balance of Imported card'))
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  const [rows, , , review] = onContinue.mock.calls[0]
+  expect(review.balances).toEqual([])
+  expect(rows[0]).toMatchObject({ accountId: 'acc-imp', balance: '' })
 })
 
 it('ignores a bad balance on a row with no name', async () => {

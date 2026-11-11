@@ -287,8 +287,11 @@ right, no bold, the accent colour only for progress and the primary button.
 1. **Categories.** The checklist from before, checkbox moved to the right of each row.
    Existing categories (from an import or a revisit) are listed ticked and locked.
 2. **Accounts and currencies.** As before (today's balances, savings switch, currencies
-   block), in the compact row style. Existing accounts are listed locked. After an import
-   no balance is asked for.
+   block), in the compact row style. Existing accounts (from an import or a revisit) are
+   listed first with their name read-only and their balance and currency editable (a CSV
+   import creates every account in the instance base currency); a changed balance books a
+   Balance adjustment. Each has an Archive / Restore toggle (an archived one reads
+   "Archived"); there is no hint line under the list.
 3. **Budget and plan.** Entering the step creates the budget (all accounts, savings
    flags, kept categories) if none exists. Then "Plan this month": an Income group (expected
    income per income category) and an Expenses group (one amount per expense category), a

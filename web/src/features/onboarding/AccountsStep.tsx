@@ -84,15 +84,22 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
     .map((r) => labelled(r, t))
   const [extraIds, setExtraIds] = useState<Id[]>(initialExtraCurrencyIds ?? [])
   const [mainOverride, setMainOverride] = useState<Id | null>(null)
+  // a failed submit's draft stores each existing account with the currency it was sent with
+  const restoredCurrency = (a: ExistingAccount) => (initialRows ?? []).find((r) => r.accountId === a.id)?.currencyId || a.currencyId
+  const restoredLead = existing.find((a) => !a.hidden)
+  const restoredShared = restoredLead && restoredCurrency(restoredLead) !== restoredLead.currencyId ? restoredCurrency(restoredLead) : null
   // the first row's pick (the first shown existing account, else the first new row): rows the
   // user has not changed by hand follow it
-  const [sharedId, setSharedId] = useState<Id | null>(existing.length === 0 ? leftover[0]?.currencyId || null : null)
-  // existing accounts whose currency the user picked by hand; a failed submit's picks come back
+  const [sharedId, setSharedId] = useState<Id | null>(existing.length === 0 ? leftover[0]?.currencyId || null : restoredShared)
+  // existing accounts whose currency the user picked by hand. From a draft only a currency that
+  // is neither the account's own nor the lead's counts as a pick: one equal to the lead's was
+  // following it, and must keep following
   const [picked, setPicked] = useState<Readonly<Record<Id, Id>>>(() => {
     const out: Record<Id, Id> = {}
-    for (const r of initialRows ?? []) {
-      const a = r.accountId ? existing.find((e) => e.id === r.accountId) : undefined
-      if (a && r.currencyId && r.currencyId !== a.currencyId) out[a.id] = r.currencyId
+    for (const a of existing) {
+      if (a.id === restoredLead?.id) continue
+      const c = restoredCurrency(a)
+      if (c !== a.currencyId && c !== (restoredShared ?? restoredLead?.currencyId)) out[a.id] = c
     }
     return out
   })
@@ -176,7 +183,8 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   }
   // a shown account's balance as typed, '' while untouched or unchanged, null when unreadable
   const balanceOf = (a: ExistingAccount): string | null => {
-    if (isHidden(a) || balanceEdits[a.id] === undefined) return ''
+    // a cleared balance on an existing account means unchanged, never zero
+    if (isHidden(a) || balanceEdits[a.id] === undefined || balanceEdits[a.id].trim() === '') return ''
     const value = parse(balanceEdits[a.id])
     return value === null ? null : cmp(value, a.balance) === 0 ? '' : value
   }
