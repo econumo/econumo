@@ -97,11 +97,12 @@ func TestReconcile_SameDateReplaces(t *testing.T) {
 func TestReconcile_DateBetweenTheStartAndToday(t *testing.T) {
 	e := newEnv(t)
 	res := e.createOrigin(t, nil)
-	for _, date := range []string{"2025-02-28", "2026-03-11"} {
+	// the start day's balance is the amount borrowed: corrected in the facts
+	for _, date := range []string{"2025-02-28", "2025-03-01", "2026-03-11"} {
 		_, err := e.reconcile(res.Id, "100", date)
 		requireField(t, err, "balanceDate", errs.CodeOutOfRange)
 	}
-	for _, date := range []string{"2025-03-01", "2026-03-10"} {
+	for _, date := range []string{"2025-03-02", "2026-03-10"} {
 		if _, err := e.reconcile(res.Id, "7000", date); err != nil {
 			t.Fatalf("%s: %v", date, err)
 		}
@@ -217,4 +218,22 @@ func TestUpdateDebt_DatedStatement(t *testing.T) {
 	req.BalanceDate = "2025-01-01"
 	_, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
 	requireField(t, err, "balanceDate", errs.CodeOutOfRange)
+}
+
+// Mark paid off is a statement of 0 as of today: it replaces one entered
+// today rather than adding a second snapshot on that day.
+func TestMarkPaidOff_ReplacesTodaysStatement(t *testing.T) {
+	e := newEnv(t)
+	res := e.createOrigin(t, nil)
+	if _, err := e.reconcile(res.Id, "6000", ""); err != nil {
+		t.Fatal(err)
+	}
+	got, err := e.svc.MarkDebtPaidOff(context.Background(), e.uid(), model.MarkDebtPaidOffRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	snaps := e.snapshots(t, res.Id)
+	if len(snaps) != 2 || !snaps[1].Balance.IsZero() || got.IsPaidOff != 1 {
+		t.Fatalf("snapshots = %+v, result %+v", snaps, got)
+	}
 }

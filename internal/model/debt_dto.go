@@ -76,7 +76,7 @@ func (r UpdateDebtRequest) Validate() error {
 }
 
 // ReconcileDebtRequest states a set-up debt's balance from a statement as of
-// BalanceDate (Y-m-d; empty = today), between its start date and today.
+// BalanceDate (Y-m-d; empty = today), after its start date and no later than today.
 type ReconcileDebtRequest struct {
 	Id          string        `json:"id"`
 	Balance     vo.FlexString `json:"balance"`

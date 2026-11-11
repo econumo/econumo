@@ -30,7 +30,8 @@ type debtState struct {
 func (st *debtState) mathSnaps() []model.MathSnapshot {
 	out := make([]model.MathSnapshot, 0, len(st.snaps))
 	for i, s := range st.snaps {
-		// the first snapshot of a set-up debt is its origin
+		// the first snapshot of a set-up debt is its origin (by position: see
+		// Repository.Snapshots for why the ordering keeps it first)
 		out = append(out, model.MathSnapshot{AsOf: s.AsOf, Balance: toFloat(s.Balance), Payment: toFloat(s.Payment),
 			Schedule: s.Schedule, Last: s.LastPaymentDate, Digits: st.digits, Origin: i == 0})
 	}

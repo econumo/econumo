@@ -369,9 +369,9 @@ type UpdateDebtSnapshotParams struct {
 	ID              string
 }
 
-// Only the origin (a debt's first snapshot) is ever rewritten, and a later
-// snapshot's payment, schedule and last payment date with it: correcting the
-// loan's facts is a correction, not a change of terms.
+// A correction of the loan's facts rewrites the origin (a debt's first
+// snapshot) and every later snapshot's payment, schedule and last payment
+// date; a statement on a date that already has one replaces its balance.
 func (q *Queries) UpdateDebtSnapshot(ctx context.Context, arg UpdateDebtSnapshotParams) error {
 	_, err := q.db.ExecContext(ctx, updateDebtSnapshot,
 		arg.AsOf,

@@ -719,9 +719,9 @@ type Querier interface {
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
-	// Only the origin (a debt's first snapshot) is ever rewritten, and a later
-	// snapshot's payment, schedule and last payment date with it: correcting the
-	// loan's facts is a correction, not a change of terms.
+	// A correction of the loan's facts rewrites the origin (a debt's first
+	// snapshot) and every later snapshot's payment, schedule and last payment
+	// date; a statement on a date that already has one replaces its balance.
 	UpdateDebtSnapshot(ctx context.Context, arg UpdateDebtSnapshotParams) error
 	UpdateGlobalOAuthClient(ctx context.Context, arg UpdateGlobalOAuthClientParams) (int64, error)
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)

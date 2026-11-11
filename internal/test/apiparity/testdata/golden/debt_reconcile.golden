@@ -31,6 +31,12 @@
 == delete-reconciliation POST /api/v1/debt/delete-debt-reconciliation [owner] -> 200
 {"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Car loan","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","categoryId":"c0000000-0000-0000-0000-000000000001","payeeId":null,"tagId":null,"labelId":null,"startDate":"<date>","amountBorrowed":"300","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"periodsPaid":2,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"0","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","isPaidOff":0,"isSetUp":1}}
 
+== err:guest-delete-reconciliation POST /api/v1/debt/delete-debt-reconciliation [guest] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:readonly-delete-reconciliation POST /api/v1/debt/delete-debt-reconciliation [readonly] -> 402
+{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}
+
 == err:delete-reconciliation-again POST /api/v1/debt/delete-debt-reconciliation [owner] -> 400
 {"success":false,"message":"Reconciliation not found","code":0,"errors":{}}
 

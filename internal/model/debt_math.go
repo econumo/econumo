@@ -687,7 +687,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 	}
 	out.PeriodsPaid = len(paidDues)
 
-	firstDue := firstUnpaidDue(latest, pays, today)
+	firstDue := firstUnpaidDue(latest, snaps[0], pays, today)
 	sd := in.PeriodStartDay
 	base := runProjection(latest, rate, current, eps, today, firstDue, nil, sd)
 	currentMonth := PeriodOf(today, sd)
@@ -842,14 +842,16 @@ func stillDueBefore(run projRun, end time.Time) float64 {
 // firstUnpaidDue is the earliest due, from the one whose window holds today,
 // that falls after the snapshot and has no payment dated up to today in its
 // window.
-func firstUnpaidDue(s MathSnapshot, pays []MathPayment, today time.Time) time.Time {
+// first is the debt's first snapshot: a payment on the origin's day pays no
+// due, whichever snapshot is the latest.
+func firstUnpaidDue(s, first MathSnapshot, pays []MathPayment, today time.Time) time.Time {
 	anchor := int16(debtDay(s.Last).Day())
 	due := dueContaining(s.Schedule, s.Last, today)
 	if due.IsZero() {
 		due = today
 	}
 	for i := 0; i < maxProjectMonths*5; i++ {
-		if due.After(s.AsOf) && !paidWindow(s, pays, due, today) {
+		if due.After(s.AsOf) && !paidWindow(s, first, pays, due, today) {
 			break
 		}
 		due = NextOccurrence(due, s.Schedule, anchor)
@@ -863,10 +865,10 @@ func instalment(first MathSnapshot, p MathPayment) bool {
 	return !first.Origin || p.Date.After(debtDay(first.AsOf))
 }
 
-func paidWindow(s MathSnapshot, pays []MathPayment, due, today time.Time) bool {
+func paidWindow(s, first MathSnapshot, pays []MathPayment, due, today time.Time) bool {
 	start, end := DueWindow(s.Schedule, s.Last, due)
 	for _, p := range pays {
-		if instalment(s, p) && !p.Date.After(today) && !p.Date.Before(start) && p.Date.Before(end) {
+		if instalment(first, p) && !p.Date.After(today) && !p.Date.Before(start) && p.Date.Before(end) {
 			return true
 		}
 	}

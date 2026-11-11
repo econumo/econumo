@@ -50,6 +50,7 @@ func TestUpdateDebt_ValidatesChangedTermsOnly(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	res := e.create(t, nil)
+	e.clock.now = e.clock.now.AddDate(0, 0, 1)
 
 	req := e.updateReq(res)
 	req.Balance = vo.NewFlexString("30000")

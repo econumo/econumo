@@ -225,13 +225,16 @@ func (s *Service) MarkDebtPaidOff(ctx context.Context, userID vo.Id, req model.M
 			d = cur
 			return nil
 		}
-		cur.Current.AsOf, cur.Current.Balance = today, vo.NewDecimal("0")
-		cur.UpdatedAt = now
-		if err := s.repo.Save(ctx, cur); err != nil {
+		// a statement of 0 as of today: it replaces one already entered today,
+		// and the splits after today are dropped like any statement's
+		zero := *cur.Current
+		zero.AsOf, zero.Balance = today, vo.NewDecimal("0")
+		if err := s.storeStatement(ctx, cur, zero); err != nil {
 			return err
 		}
+		cur.UpdatedAt = now
 		d = cur
-		return s.repo.AddSnapshot(ctx, s.snapshotOf(cur.ID, *cur.Current, now))
+		return s.repo.Save(ctx, cur)
 	})
 	if err != nil {
 		return nil, err

@@ -112,18 +112,16 @@ func (s *Service) withSetUpDebt(ctx context.Context, userID, id vo.Id,
 }
 
 // validateStatement checks a statement balance as of t.AsOf, which must lie
-// between the loan's start and today.
+// after the loan's start (a balance on the start day is the amount borrowed,
+// corrected in the loan's facts) and no later than today.
 func validateStatement(t model.DebtTerms, start, today time.Time, digits int) error {
-	if t.AsOf.Before(start) || t.AsOf.After(today) {
+	if !t.AsOf.After(start) || t.AsOf.After(today) {
 		return fieldError("balanceDate", "This value is out of range.", errs.CodeOutOfRange)
 	}
 	return validateTerms(t, digits)
 }
 
-// writeStatement stores a statement balance on a set-up debt: it replaces a
-// statement of the same date, else it is added; the splits of the payments
-// after its date are dropped so the next sync splits them from it, and the
-// debt's current terms follow the latest snapshot.
+// writeStatement validates a statement balance on a set-up debt and stores it.
 func (s *Service) writeStatement(ctx context.Context, cur *model.Debt, t model.DebtTerms, today time.Time, digits int) error {
 	snaps, err := s.repo.Snapshots(ctx, []vo.Id{cur.ID})
 	if err != nil {
@@ -135,6 +133,21 @@ func (s *Service) writeStatement(ctx context.Context, cur *model.Debt, t model.D
 	if err := validateStatement(t, snaps[0].AsOf, today, digits); err != nil {
 		return err
 	}
+	return s.storeStatement(ctx, cur, t)
+}
+
+// storeStatement replaces the statement of the same date (never the origin,
+// the first snapshot), else adds one; the splits of the payments after its
+// date are dropped so the next sync splits them from it, and the debt's
+// current terms follow the latest snapshot.
+func (s *Service) storeStatement(ctx context.Context, cur *model.Debt, t model.DebtTerms) error {
+	snaps, err := s.repo.Snapshots(ctx, []vo.Id{cur.ID})
+	if err != nil {
+		return err
+	}
+	if len(snaps) == 0 {
+		return errs.NewNotFound("Debt not found")
+	}
 	replaced := false
 	for _, sn := range snaps[1:] {
 		if sn.AsOf.Equal(t.AsOf) {
@@ -143,6 +156,7 @@ func (s *Service) writeStatement(ctx context.Context, cur *model.Debt, t model.D
 				return err
 			}
 			replaced = true
+			break
 		}
 	}
 	if !replaced {

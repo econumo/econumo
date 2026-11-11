@@ -31,8 +31,10 @@ func init() {
 	}
 
 	// debt_crud walks one debt through its life: create, list, get, correct
-	// the loan's facts (the origin rewritten), state a balance now (a new
-	// snapshot), rename without terms, mark paid off, delete. A second debt is
+	// the loan's facts (the origin rewritten, the start a week earlier), state
+	// a statement balance today (a new snapshot), rename without terms (the
+	// start date left out is kept), mark paid off (replacing today's
+	// statement), delete. A second debt is
 	// created without terms, matching by a label, and then set up.
 	register(Scenario{Name: "debt_crud", Calls: func() []Call {
 		var debtID, draftID string
@@ -43,17 +45,17 @@ func init() {
 			{Label: "get", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 			{Label: "update-terms", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{
-					"id": &debtID, "name": "Car loan 2", "categoryId": CatFood, "payeeId": PayeeShop, "startDate": day(0),
+					"id": &debtID, "name": "Car loan 2", "categoryId": CatFood, "payeeId": PayeeShop, "startDate": day(-7),
 					"amountBorrowed": "200", "payment": "104", "schedule": "weekly", "lastPaymentDate": day(14),
 				}},
 			{Label: "get-after-update", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 			{Label: "update-balance-now", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{"id": &debtID, "name": "Car loan 2", "categoryId": CatFood, "payeeId": PayeeShop,
-					"startDate": day(0), "balance": "150"}},
+					"balance": "150"}},
 			// no amount borrowed, balance, payment, schedule or last payment
 			// date: the terms stay
 			{Label: "rename-keeps-terms", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": &debtID, "name": "Car loan 3", "categoryId": CatFood, "payeeId": PayeeShop, "startDate": day(0)}},
+				Body: map[string]any{"id": &debtID, "name": "Car loan 3", "categoryId": CatFood, "payeeId": PayeeShop}},
 			{Label: "mark-paid-off", Method: "POST", Path: "/api/v1/debt/mark-debt-paid-off", Auth: "owner",
 				Body: map[string]any{"id": &debtID}},
 			{Label: "delete", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
@@ -353,6 +355,10 @@ func init() {
 				Body: map[string]any{"id": &debtID, "name": "Car loan", "categoryId": CatFood, "startDate": day(-2),
 					"amountBorrowed": "200", "lastPaymentDate": day(7)}},
 			{Label: "delete-reconciliation", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "reconciliationId": &statementID}},
+			{Label: "err:guest-delete-reconciliation", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "guest",
+				Body: map[string]any{"id": &debtID, "reconciliationId": &statementID}},
+			{Label: "err:readonly-delete-reconciliation", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "readonly",
 				Body: map[string]any{"id": &debtID, "reconciliationId": &statementID}},
 			{Label: "err:delete-reconciliation-again", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "owner",
 				Body: map[string]any{"id": &debtID, "reconciliationId": &statementID}},

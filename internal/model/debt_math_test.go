@@ -843,3 +843,18 @@ func TestProjectDebt_ReconciliationCountsTheDuesBeforeIt(t *testing.T) {
 		t.Fatalf("PeriodsPaid without a statement = %d, want 1", q.PeriodsPaid)
 	}
 }
+
+// A start-day payment pays no due even once a statement is the latest
+// snapshot: the first due stays the next one.
+func TestProjectDebt_StartDayPaymentPaysNoDueAfterAStatement(t *testing.T) {
+	origin := MathSnapshot{AsOf: ymd(2026, time.January, 10), Balance: 1200, Payment: 100,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2026, time.December, 15), Digits: 2, Origin: true}
+	rec := origin
+	rec.Origin, rec.AsOf, rec.Balance = false, ymd(2026, time.January, 12), 1100
+	snaps := []MathSnapshot{origin, rec}
+	pays := []MathPayment{pay("down", ymd(2026, time.January, 10), 100)}
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: snaps, Pays: pays, Interest: SplitPayments(snaps, pays), Today: ymd(2026, time.January, 13)})
+	if !p.NextDueDate.Equal(ymd(2026, time.January, 15)) || p.PeriodsPaid != 0 {
+		t.Fatalf("next due %v, periods paid %d; want 15 Jan and 0", p.NextDueDate, p.PeriodsPaid)
+	}
+}

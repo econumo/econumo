@@ -42,9 +42,9 @@ VALUES (sqlc.arg(id), sqlc.arg(debt_id), sqlc.arg(as_of)::text::date, sqlc.arg(b
     sqlc.arg(last_payment_date)::text::date, sqlc.arg(created_at));
 
 -- name: UpdateDebtSnapshot :exec
--- Only the origin (a debt's first snapshot) is ever rewritten, and a later
--- snapshot's payment, schedule and last payment date with it: correcting the
--- loan's facts is a correction, not a change of terms.
+-- A correction of the loan's facts rewrites the origin (a debt's first
+-- snapshot) and every later snapshot's payment, schedule and last payment
+-- date; a statement on a date that already has one replaces its balance.
 UPDATE debts_snapshots
 SET as_of = sqlc.arg(as_of)::text::date, balance = sqlc.arg(balance), payment = sqlc.arg(payment), schedule = sqlc.arg(schedule),
     last_payment_date = sqlc.arg(last_payment_date)::text::date

@@ -170,7 +170,7 @@ func (h *Handlers) MarkDebtPaidOff(w http.ResponseWriter, r *http.Request) {
 // ReconcileDebt handles POST /api/v1/debt/reconcile-debt (auth).
 //
 // @Summary     Reconcile a debt with a statement
-// @Description Writes the balance a statement gives for a set-up debt as of balanceDate (default today; between the start date and today, inclusive, else common.out_of_range on balanceDate): a snapshot under the latest terms that overrides what the recorded payments give from that date on. A statement on a date that already has one replaces it. The payments after that date are split again from it, and every due up to the latest statement counts as paid. A debt not set up is refused (debt.not_set_up).
+// @Description Writes the balance a statement gives for a set-up debt as of balanceDate (default today; after the start date and no later than today, else common.out_of_range on balanceDate). The balance is the principal still owed: interest since the last payment comes with the next due: a snapshot under the latest terms that overrides what the recorded payments give from that date on. A statement on a date that already has one replaces it. The payments after that date are split again from it, and every due up to the latest statement counts as paid. A debt not set up is refused (debt.not_set_up).
 // @Tags        Debt
 // @Accept      json
 // @Produce     json

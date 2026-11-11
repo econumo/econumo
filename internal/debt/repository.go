@@ -40,7 +40,11 @@ type Repository interface {
 	UpdateSnapshot(ctx context.Context, s *model.DebtSnapshot) error
 	// DeleteSnapshot removes a statement balance (never the origin).
 	DeleteSnapshot(ctx context.Context, id vo.Id) error
-	// Snapshots are ordered by debt, as_of, created_at.
+	// Snapshots are ordered by debt, as_of, created_at, id. A debt's first is
+	// its origin: the service tells it by position, with no flag stored. No
+	// statement may precede the start (validateStatement, laterConflict), and
+	// on a shared date the origin, written first, sorts first by created_at
+	// (then by its UUIDv7 id, minted earlier).
 	Snapshots(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtSnapshot, error)
 	Splits(ctx context.Context, debtIDs []vo.Id) ([]model.DebtSplit, error)
 	// InsertSplit upserts on the transaction id: a payment has one split.
