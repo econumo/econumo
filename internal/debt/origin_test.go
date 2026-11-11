@@ -290,3 +290,32 @@ func TestSetUpDebt_StartDayPaymentReducesTheBalance(t *testing.T) {
 		t.Fatalf("item = %+v, payments = %+v", got.Item, got.Payments)
 	}
 }
+
+// The Settings form sends a set-up debt's corrected facts without its unchanged
+// start date: the request validates and the stored start is kept. A debt not set
+// up has no start to keep, so the service asks for one.
+func TestUpdateDebt_FactsWithoutTheStartDate(t *testing.T) {
+	e := newEnv(t)
+	res := e.createOrigin(t, nil)
+	req := e.updateReq(res)
+	req.StartDate, req.AmountBorrowed = nil, vo.NewFlexString("11000")
+	if err := req.Validate(); err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.StartDate != res.StartDate || got.AmountBorrowed != "11000" {
+		t.Fatalf("result = %+v", got)
+	}
+
+	bare := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Name = "Second"; r.StartDate = ptr("2024-01-01") })
+	req = e.updateReq(bare)
+	req.StartDate, req.AmountBorrowed, req.LastPaymentDate = nil, vo.NewFlexString("12000"), "2027-03-01"
+	if err := req.Validate(); err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	_, err = e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	requireField(t, err, "startDate", errs.CodeIsBlank)
+}

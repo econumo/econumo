@@ -180,8 +180,16 @@ func TestUpdateDebtRequest_SetupTrio(t *testing.T) {
 	}
 	half := up
 	half.AmountBorrowed = vo.NewFlexString("10")
-	if got := debtFieldCodes(t, half.Validate()); got["lastPaymentDate"] != errs.CodeIsBlank || got["startDate"] != errs.CodeIsBlank {
-		t.Errorf("amount borrowed without the dates: %v", got)
+	if got := debtFieldCodes(t, half.Validate()); got["lastPaymentDate"] != errs.CodeIsBlank {
+		t.Errorf("amount borrowed without the last payment date: %v", got)
+	} else if _, ok := got["startDate"]; ok {
+		t.Errorf("an update may leave the start date out: %v", got)
+	}
+	// a set-up debt's corrected facts without its unchanged start date
+	facts := up
+	facts.AmountBorrowed, facts.LastPaymentDate = vo.NewFlexString("10"), "2030-01-01"
+	if err := facts.Validate(); err != nil {
+		t.Errorf("facts without the start date are valid on an update: %v", err)
 	}
 }
 

@@ -339,8 +339,8 @@ func debtFields(f debtTermFields, keepable bool) []errs.FieldError {
 		}
 	}
 	// The loan's facts come together: amount borrowed and last payment date
-	// both or neither, and with them the start date. A balance now on create
-	// needs them too; on an update it may stand alone (a set-up debt).
+	// both or neither, and on create the start date with them. A balance now
+	// on create needs them too; on an update it may stand alone (a set-up debt).
 	hasBorrowed, hasLast, hasBalance := filled(f.amountBorrowed.String()), filled(f.lastPaymentDate), filled(f.balance.String())
 	setup := hasBorrowed || hasLast || (hasBalance && !keepable)
 	if setup {
@@ -353,7 +353,9 @@ func debtFields(f debtTermFields, keepable bool) []errs.FieldError {
 	case filled(f.balanceDate):
 		fields = append(fields, blankField("balance"))
 	}
-	if setup && !hasStart {
+	// an update may leave the start out: a set-up debt keeps its stored one,
+	// and the service refuses one that is not set up (it has none to keep)
+	if setup && !hasStart && !keepable {
 		fields = append(fields, blankField("startDate"))
 	}
 	if !keepable || filled(f.payment.String()) {
