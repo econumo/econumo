@@ -157,6 +157,28 @@ it('unlocked device: Sync now posts the decrypted access URL and shows the run s
   expect(screen.getByText(/ACT-SAV: unsupported currency/)).toBeInTheDocument()
 })
 
+it('a failed sync keeps the sync window where it was', async () => {
+  const wrapped = await createKey('pw')
+  const ciphertext = await encryptCredential(ACCESS_URL)
+  server.use(
+    http.post('*/api/v1/import/list-external-accounts', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+    http.post('*/api/v1/import/sync-source', () =>
+      HttpResponse.json({ success: true, message: '', data: { run: run({ status: 'failed', finishedAt: '2026-09-07 10:00:02' }), accounts: [] } })),
+  )
+  renderPage({
+    importSources: [source({ credentialCiphertext: ciphertext, lastSyncedAt: '2026-09-05 08:00:00' })],
+    importCredentialKey: { ...wrapped, updatedAt: '2026-09-07 10:00:00' },
+    importRuns: [],
+  })
+  const user = userEvent.setup()
+  const syncButton = await screen.findByRole('button', { name: 'Sync now' })
+  await waitFor(() => expect(syncButton).toBeEnabled())
+  await user.click(syncButton)
+  await waitFor(() => expect(syncButton).toBeEnabled())
+  // the failed run finished on 09-07; the window still starts 3 days before the last good sync
+  expect(screen.getByText(/Syncs transactions since 2026-09-02/)).toBeInTheDocument()
+}, 20_000)
+
 it('connected page: Reconnect can be cancelled, Disconnect asks first and a refusal says so', async () => {
   const { toast } = await import('sonner')
   const wrapped = await createKey('pw')

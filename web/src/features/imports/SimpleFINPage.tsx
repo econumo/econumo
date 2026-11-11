@@ -88,8 +88,11 @@ export function SimpleFINPage() {
     }
     sync.mutate({ sourceId: source.id, accessUrl, startDate }, {
       onSuccess: (result) => {
-        setStartDate(syncStartDate({ ...source, lastSyncedAt: result.run.finishedAt || source.lastSyncedAt }))
-        setEditingDate(false)
+        // a failed run does not move the server's lastSyncedAt, so the window stays put
+        if (result.run.status !== 'failed') {
+          setStartDate(syncStartDate({ ...source, lastSyncedAt: result.run.finishedAt || source.lastSyncedAt }))
+          setEditingDate(false)
+        }
         if (result.run.status === 'completed') {
           toast.success(t('imports.simplefin.sync.done_toast', { imported: result.run.importedCount, matched: result.run.matchedCount }))
         }
@@ -167,7 +170,7 @@ export function SimpleFINPage() {
                 />
               </span>
             )}
-            <Button type="button" className="h-10 max-sm:w-full" disabled={sync.isPending || !accessUrl || !online} onClick={runSync}>
+            <Button type="button" className="h-10 max-sm:w-full" disabled={sync.isPending || disconnect.isPending || !accessUrl || !online} onClick={runSync}>
               {sync.isPending ? t('imports.simplefin.sync.running') : t('imports.simplefin.sync.button')}
             </Button>
           </div>
@@ -185,7 +188,7 @@ export function SimpleFINPage() {
         {external.isError ? <p role="alert" className="px-1 text-sm text-destructive">{apiErrorMessage(external.error)}</p> : null}
         <ImportCards source={source} cards={cards} variant="account" />
         <div className="flex flex-wrap justify-center gap-2 pt-4">
-          <Button type="button" variant="ghost" disabled={!online} onClick={() => { setReconnecting(true); setUserReconnect(true) }}>{t('imports.simplefin.unlock.reconnect')}</Button>
+          <Button type="button" variant="ghost" disabled={!online || disconnect.isPending} onClick={() => { setReconnecting(true); setUserReconnect(true) }}>{t('imports.simplefin.unlock.reconnect')}</Button>
           <Button type="button" variant="ghost" onClick={() => setForgetOpen(true)}>{t('imports.simplefin.forget_device')}</Button>
           <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" disabled={!online || sync.isPending || disconnect.isPending} onClick={() => setDisconnectOpen(true)}>
             {t('imports.simplefin.disconnect_full')}
@@ -209,12 +212,17 @@ export function SimpleFINPage() {
           open={disconnectOpen}
           onClose={() => setDisconnectOpen(false)}
           onConfirm={() => {
+            if (disconnect.isPending) {
+              return
+            }
             setDisconnectOpen(false)
             disconnect.mutate(source.id, {
               onSuccess: () => {
                 setAccessUrl(null)
                 setStartDate('')
                 setEditingDate(false)
+                setReconnecting(false)
+                setUserReconnect(false)
               },
               onError: (err) => toast.error(apiErrorMessage(err)),
             })
@@ -222,6 +230,7 @@ export function SimpleFINPage() {
           title={t('imports.simplefin.disconnect_modal.title')}
           question={t('imports.simplefin.disconnect_modal.question')}
           confirmLabel={t('imports.simplefin.disconnect')}
+          confirmDisabled={disconnect.isPending}
           cancelLabel={t('common.button.cancel.label')}
           destructive
         />
