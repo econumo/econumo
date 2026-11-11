@@ -83,7 +83,10 @@ export function SimpleFINConnect({ keyState, onConnected, onCancel, reconnect = 
         void submit()
       }}
     >
-      <p className="text-muted-foreground">{t(reconnect ? 'imports.simplefin.connect.reconnect_intro' : 'imports.simplefin.intro')}</p>
+      <div className="flex flex-col gap-2">
+        <p className="text-muted-foreground">{t(reconnect ? 'imports.simplefin.connect.reconnect_intro' : 'imports.simplefin.intro')}</p>
+        <p className="text-xs text-muted-foreground">{t('imports.simplefin.disclaimer')}</p>
+      </div>
       <div className="flex flex-col gap-1.5">
         <CardField className={onCard} label={t('imports.simplefin.connect.token_label')} htmlFor="simplefin-token">
           <Textarea

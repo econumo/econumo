@@ -662,6 +662,7 @@
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
       "intro": "Collega una banca tramite SimpleFIN Bridge. Le tue credenziali del bridge sono cifrate su questo dispositivo con una passphrase che solo tu conosci; il server le memorizza cifrate e le vede solo per la durata di una sincronizzazione.",
+      "disclaimer": "Econumo non è affiliato a SimpleFIN. SimpleFIN Bridge è un servizio di terze parti con i propri termini; lo usi a tuo rischio.",
       "forget_device": "Dimentica questo dispositivo",
       "forget_modal": {
         "title": "Dimenticare questo dispositivo?",

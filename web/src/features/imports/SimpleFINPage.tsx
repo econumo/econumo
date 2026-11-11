@@ -178,6 +178,7 @@ export function SimpleFINPage() {
             {t('imports.simplefin.disconnect_full')}
           </Button>
         </div>
+        <p className="px-1 pt-2 text-center text-xs text-muted-foreground">{t('imports.simplefin.disclaimer')}</p>
         <ConfirmDialog
           open={forgetOpen}
           onClose={() => setForgetOpen(false)}

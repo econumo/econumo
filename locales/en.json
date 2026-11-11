@@ -662,6 +662,7 @@
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
       "intro": "Connect a bank through SimpleFIN Bridge. Your bridge credentials are encrypted on this device with a passphrase only you know; the server stores them encrypted and only sees them for the duration of a sync.",
+      "disclaimer": "Econumo is not affiliated with SimpleFIN. SimpleFIN Bridge is a third-party service with its own terms; you use it at your own risk.",
       "forget_device": "Forget this device",
       "forget_modal": {
         "title": "Forget this device?",

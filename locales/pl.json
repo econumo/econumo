@@ -662,6 +662,7 @@
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
       "intro": "Połącz bank przez SimpleFIN Bridge. Twoje dane logowania do mostka są szyfrowane na tym urządzeniu hasłem, które znasz tylko ty; serwer przechowuje je zaszyfrowane i widzi je wyłącznie na czas synchronizacji.",
+      "disclaimer": "Econumo nie jest powiązane z SimpleFIN. SimpleFIN Bridge to usługa zewnętrzna z własnym regulaminem; korzystasz z niej na własne ryzyko.",
       "forget_device": "Zapomnij to urządzenie",
       "forget_modal": {
         "title": "Zapomnieć to urządzenie?",

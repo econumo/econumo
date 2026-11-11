@@ -662,6 +662,7 @@
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
       "intro": "Connectez une banque via SimpleFIN Bridge. Vos identifiants de connexion sont chiffrés sur cet appareil avec une phrase secrète que vous seul connaissez ; le serveur les stocke chiffrés et ne les voit que le temps d'une synchronisation.",
+      "disclaimer": "Econumo n’est pas affilié à SimpleFIN. SimpleFIN Bridge est un service tiers soumis à ses propres conditions ; vous l’utilisez à vos propres risques.",
       "forget_device": "Oublier cet appareil",
       "forget_modal": {
         "title": "Oublier cet appareil ?",
