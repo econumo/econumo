@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -72,11 +74,15 @@ func (s *Service) SuggestIcon(ctx context.Context, userID vo.Id, req model.Onboa
 			return out, nil
 		}
 	}
-	icon, err := s.askIcon(ctx, userID, facts)
+	// The form drops a request as soon as the name changes; the call it paid for
+	// still finishes, so its answer is cached for the next time that name is asked.
+	icon, err := s.askIcon(context.WithoutCancel(ctx), userID, facts)
 	if err != nil {
 		reqctx.AddLogAttr(ctx, "outcome", "failed")
-		// Never log the prompt, the reply or the error text: they can carry the name.
-		slog.WarnContext(ctx, "onboarding icon suggestion failed", "user_id", userID.String(), "kind", req.Kind, "err_type", fmt.Sprintf("%T", err))
+		if !errors.Is(err, context.Canceled) {
+			// Never log the prompt, the reply or the error text: they can carry the name.
+			slog.WarnContext(ctx, "onboarding icon suggestion failed", "user_id", userID.String(), "kind", req.Kind, "err_type", fmt.Sprintf("%T", err))
+		}
 		return out, nil
 	}
 	s.iconCache.put(key, icon)
@@ -159,4 +165,36 @@ func (c *iconCache) put(key, icon string) {
 		c.order.Remove(oldest)
 		delete(c.items, oldest.Value.(*iconCacheEntry).key)
 	}
+}
+
+// ApplySuggestedIcon gives the caller's category a catalogue icon the client
+// was suggested after creating it, through the category feature's conditional
+// icon write: only while the category still shows ExpectedIcon, so an icon the
+// user changed meanwhile wins, and never touching the name.
+func (s *Service) ApplySuggestedIcon(ctx context.Context, userID vo.Id, req model.OnboardingApplySuggestedIconRequest) (*model.OnboardingApplySuggestedIconResult, error) {
+	icon := strings.TrimSpace(req.Icon)
+	if !iconSet[icon] {
+		return nil, invalidChoice("icon")
+	}
+	id := vo.MustParseId(strings.TrimSpace(req.CategoryId))
+	own, err := s.steps.Categories.OwnCategories(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	found := false
+	for _, c := range own {
+		if strings.EqualFold(c.Id, id.String()) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, errs.NewNotFound("Category not found")
+	}
+	applied, err := s.steps.Categories.ReplaceIcon(ctx, userID, id, strings.TrimSpace(req.ExpectedIcon), icon)
+	if err != nil {
+		return nil, err
+	}
+	reqctx.AddLogAttr(ctx, "category_id", id.String())
+	return &model.OnboardingApplySuggestedIconResult{Applied: applied}, nil
 }

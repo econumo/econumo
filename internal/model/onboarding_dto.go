@@ -424,3 +424,36 @@ func (r OnboardingSuggestIconRequest) Validate() error {
 type OnboardingSuggestIconResult struct {
 	Icon string `json:"icon"`
 }
+
+// OnboardingApplySuggestedIconRequest sets a suggested icon on the caller's
+// category, but only while it still shows ExpectedIcon (the icon the client
+// created it with).
+type OnboardingApplySuggestedIconRequest struct {
+	CategoryId   string `json:"categoryId"`
+	Icon         string `json:"icon"`
+	ExpectedIcon string `json:"expectedIcon"`
+}
+
+func (r OnboardingApplySuggestedIconRequest) Validate() error {
+	id := strings.TrimSpace(r.CategoryId)
+	if id == "" {
+		return blankError("categoryId")
+	}
+	if _, err := vo.ParseId(id); err != nil {
+		return invalidUUIDError("categoryId")
+	}
+	if strings.TrimSpace(r.Icon) == "" {
+		return blankError("icon")
+	}
+	if strings.TrimSpace(r.ExpectedIcon) == "" {
+		return blankError("expectedIcon")
+	}
+	return nil
+}
+
+// OnboardingApplySuggestedIconResult reports whether the icon changed: false
+// when the category no longer showed the expected icon (or already showed the
+// suggested one).
+type OnboardingApplySuggestedIconResult struct {
+	Applied bool `json:"applied"`
+}

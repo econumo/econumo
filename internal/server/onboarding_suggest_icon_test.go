@@ -1,10 +1,13 @@
 package server_test
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 func suggestIconPath(kind, name string) string {
@@ -63,5 +66,43 @@ func TestSuggestIcon_ValidatesTheQuery(t *testing.T) {
 	}
 	if len(e.ai.prompts) != 0 {
 		t.Fatalf("prompts = %v", e.ai.prompts)
+	}
+}
+
+func TestApplySuggestedIcon_ChangesOnlyAnUnchangedIcon(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	cat := e.f.Category(fixture.Category{UserID: e.user, Name: "Mortgage", Icon: "home"})
+	const path = "/api/v1/onboarding/apply-suggested-icon"
+	// the icon moved since the client read it: nothing is written
+	status, data := e.post(path, map[string]any{"categoryId": cat, "icon": "house", "expectedIcon": "wallet"})
+	if status != 200 || data["applied"] != false || e.icon("categories", cat) != "home" {
+		t.Fatalf("stale: status %d: %v, icon %s", status, data, e.icon("categories", cat))
+	}
+	status, data = e.post(path, map[string]any{"categoryId": cat, "icon": "house", "expectedIcon": "home"})
+	if status != 200 || data["applied"] != true || e.icon("categories", cat) != "house" {
+		t.Fatalf("status %d: %v, icon %s", status, data, e.icon("categories", cat))
+	}
+	if name := e.str(`SELECT name FROM categories WHERE id = ?`, cat); name != "Mortgage" {
+		t.Fatalf("name = %s", name)
+	}
+}
+
+func TestApplySuggestedIcon_Refusals(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	other := e.f.User(fixture.User{Name: "Other", Email: "other@example.test"})
+	theirs := e.f.Category(fixture.Category{UserID: other, Name: "Theirs", Icon: "home"})
+	mine := e.f.Category(fixture.Category{UserID: e.user, Name: "Mine", Icon: "home"})
+	const path = "/api/v1/onboarding/apply-suggested-icon"
+	if status, data := e.post(path, map[string]any{"categoryId": theirs, "icon": "house", "expectedIcon": "home"}); status != 400 || data["message"] != "Category not found" {
+		t.Fatalf("foreign: status %d: %v", status, data)
+	}
+	if status, data := e.post(path, map[string]any{"categoryId": mine, "icon": "rocket_ship", "expectedIcon": "home"}); status != 400 || !strings.Contains(fmt.Sprint(data["errors"]), "icon") {
+		t.Fatalf("unknown icon: status %d: %v", status, data)
+	}
+	if status, _ := e.post(path, map[string]any{"categoryId": "nope", "icon": "house", "expectedIcon": "home"}); status != 400 {
+		t.Fatalf("bad id: status %d", status)
+	}
+	if e.icon("categories", theirs) != "home" || e.icon("categories", mine) != "home" {
+		t.Fatal("an icon changed")
 	}
 }

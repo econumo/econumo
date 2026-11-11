@@ -42,3 +42,33 @@ func TestOnboardingSuggestIconRequestValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestOnboardingApplySuggestedIconRequestValidate(t *testing.T) {
+	const id = "019a0000-0000-7000-8000-000000000001"
+	cases := []struct {
+		name              string
+		req               model.OnboardingApplySuggestedIconRequest
+		wantKey, wantCode string
+	}{
+		{"ok", model.OnboardingApplySuggestedIconRequest{CategoryId: id, Icon: "house", ExpectedIcon: "home"}, "", ""},
+		{"no id", model.OnboardingApplySuggestedIconRequest{Icon: "house", ExpectedIcon: "home"}, "categoryId", errs.CodeIsBlank},
+		{"bad id", model.OnboardingApplySuggestedIconRequest{CategoryId: "nope", Icon: "house", ExpectedIcon: "home"}, "categoryId", errs.CodeInvalidUUID},
+		{"no icon", model.OnboardingApplySuggestedIconRequest{CategoryId: id, ExpectedIcon: "home"}, "icon", errs.CodeIsBlank},
+		{"no expected icon", model.OnboardingApplySuggestedIconRequest{CategoryId: id, Icon: "house"}, "expectedIcon", errs.CodeIsBlank},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.req.Validate()
+			if tc.wantCode == "" {
+				if err != nil {
+					t.Fatalf("Validate() = %v, want nil", err)
+				}
+				return
+			}
+			verr, ok := errs.AsValidation(err)
+			if !ok || len(verr.Fields) != 1 || verr.Fields[0].Key != tc.wantKey || verr.Fields[0].Code != tc.wantCode {
+				t.Fatalf("Validate() = %v, want %s/%s", err, tc.wantKey, tc.wantCode)
+			}
+		})
+	}
+}

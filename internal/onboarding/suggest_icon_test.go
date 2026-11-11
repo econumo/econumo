@@ -144,3 +144,22 @@ func TestSuggestIcon_FailuresAreNotCached(t *testing.T) {
 		t.Fatalf("icon %q, calls %d", icon, c.calls)
 	}
 }
+
+func TestSuggestIcon_AClientGoneMidCallStillCachesTheAnswer(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	c := &fakeCompleter{reply: func(callCtx context.Context) (string, error) {
+		cancel() // the client aborts while the provider is answering
+		if err := callCtx.Err(); err != nil {
+			return "", err
+		}
+		if _, ok := callCtx.Deadline(); !ok {
+			return "", errors.New("no deadline")
+		}
+		return `{"icon":"house"}`, nil
+	}}
+	svc, _ := newSvc(c, nil)
+	suggest(t, svc, ctx, mortgage)
+	if icon := suggest(t, svc, context.Background(), mortgage); icon != "house" || c.calls != 1 {
+		t.Fatalf("icon %q, calls %d", icon, c.calls)
+	}
+}

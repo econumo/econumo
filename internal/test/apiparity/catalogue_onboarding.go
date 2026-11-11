@@ -1,10 +1,14 @@
 package apiparity
 
 func init() {
-	// The harness has no AI provider, so every valid request answers icon "".
-	// A read: a readonly user is answered too.
+	// The harness has no AI provider, so every valid suggest-icon answers icon
+	// "" (a read: a readonly user is answered too). apply-suggested-icon writes
+	// only while the category still shows the expected icon.
 	register(Scenario{Name: "onboarding_suggest_icon", Calls: func() []Call {
-		const path = "/api/v1/onboarding/suggest-icon"
+		const (
+			path  = "/api/v1/onboarding/suggest-icon"
+			apply = "/api/v1/onboarding/apply-suggested-icon"
+		)
 		return []Call{
 			{Label: "suggest-icon-category", Method: "GET", Path: path + "?kind=category&name=Mortgage&type=expense", Auth: "owner"},
 			{Label: "suggest-icon-account", Method: "GET", Path: path + "?kind=account&name=Revolut&currency=EUR", Auth: "owner"},
@@ -13,6 +17,14 @@ func init() {
 			{Label: "err:suggest-icon-bad-kind", Method: "GET", Path: path + "?kind=payee&name=Mortgage", Auth: "owner"},
 			{Label: "err:suggest-icon-blank-name", Method: "GET", Path: path + "?kind=category&name=%20%20", Auth: "owner"},
 			{Label: "err:suggest-icon-bad-type", Method: "GET", Path: path + "?kind=category&name=Mortgage&type=transfer", Auth: "owner"},
+			// The fixture's Food category shows icon "i".
+			{Label: "apply-suggested-icon-stale", Method: "POST", Path: apply, Auth: "owner", Body: map[string]any{"categoryId": CatFood, "icon": "restaurant", "expectedIcon": "home"}},
+			{Label: "apply-suggested-icon", Method: "POST", Path: apply, Auth: "owner", Body: map[string]any{"categoryId": CatFood, "icon": "restaurant", "expectedIcon": "i"}},
+			{Label: "get-category-list-after-apply", Method: "GET", Path: "/api/v1/category/get-category-list", Auth: "owner"},
+			{Label: "err:apply-suggested-icon-unknown-icon", Method: "POST", Path: apply, Auth: "owner", Body: map[string]any{"categoryId": CatFood, "icon": "rocket_ship", "expectedIcon": "restaurant"}},
+			{Label: "err:apply-suggested-icon-blank-id", Method: "POST", Path: apply, Auth: "owner", Body: map[string]any{"categoryId": "", "icon": "home", "expectedIcon": "restaurant"}},
+			{Label: "err:apply-suggested-icon-foreign", Method: "POST", Path: apply, Auth: "guest", Body: map[string]any{"categoryId": CatFood, "icon": "home", "expectedIcon": "restaurant"}},
+			{Label: "err:apply-suggested-icon-readonly", Method: "POST", Path: apply, Auth: "readonly", Body: map[string]any{"categoryId": CatFood, "icon": "home", "expectedIcon": "restaurant"}},
 		}
 	}})
 

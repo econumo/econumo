@@ -19,3 +19,24 @@
 == err:suggest-icon-bad-type GET /api/v1/onboarding/suggest-icon?kind=category&name=Mortgage&type=transfer [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"type":["The value you selected is not a valid choice."]}}
 
+== apply-suggested-icon-stale POST /api/v1/onboarding/apply-suggested-icon [owner] -> 200
+{"success":true,"message":"","data":{"applied":false}}
+
+== apply-suggested-icon POST /api/v1/onboarding/apply-suggested-icon [owner] -> 200
+{"success":true,"message":"","data":{"applied":true}}
+
+== get-category-list-after-apply GET /api/v1/category/get-category-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"c0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Food","position":0,"type":"expense","icon":"restaurant","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"c0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Salary","position":1,"type":"income","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+
+== err:apply-suggested-icon-unknown-icon POST /api/v1/onboarding/apply-suggested-icon [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"icon":["The value you selected is not a valid choice."]}}
+
+== err:apply-suggested-icon-blank-id POST /api/v1/onboarding/apply-suggested-icon [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"categoryId":["This value should not be blank."]}}
+
+== err:apply-suggested-icon-foreign POST /api/v1/onboarding/apply-suggested-icon [guest] -> 400
+{"success":false,"message":"Category not found","code":0,"errors":{}}
+
+== err:apply-suggested-icon-readonly POST /api/v1/onboarding/apply-suggested-icon [readonly] -> 402
+{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}
+

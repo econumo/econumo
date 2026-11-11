@@ -166,3 +166,22 @@ func (h *Handlers) SuggestIcon(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.OK(w, res)
 }
+
+// ApplySuggestedIcon handles POST /api/v1/onboarding/apply-suggested-icon (auth).
+//
+// @Summary     Apply a suggested icon to a new category
+// @Description Sets the icon of the caller's own category to icon (one from the app's icon catalogue, else a 400 on icon), but only while the category still shows expectedIcon: one conditional write, so an icon changed in the meantime is kept and nothing is written. The name and everything else stay as they are. applied reports whether the icon changed. Used after a category is created inline from a picker and suggest-icon answered for its name. Another user's or an unknown category is refused as not found.
+// @Tags        Onboarding
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.OnboardingApplySuggestedIconRequest true "Apply suggested icon request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.OnboardingApplySuggestedIconResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/onboarding/apply-suggested-icon [post]
+func (h *Handlers) ApplySuggestedIcon(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.ApplySuggestedIcon)
+}

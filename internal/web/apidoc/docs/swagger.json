@@ -9237,6 +9237,81 @@
                 }
             }
         },
+        "/api/v1/onboarding/apply-suggested-icon": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Sets the icon of the caller's own category to icon (one from the app's icon catalogue, else a 400 on icon), but only while the category still shows expectedIcon: one conditional write, so an icon changed in the meantime is kept and nothing is written. The name and everything else stay as they are. applied reports whether the icon changed. Used after a category is created inline from a picker and suggest-icon answered for its name. Another user's or an unknown category is refused as not found.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Onboarding"
+                ],
+                "summary": "Apply a suggested icon to a new category",
+                "parameters": [
+                    {
+                        "description": "Apply suggested icon request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.OnboardingApplySuggestedIconRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OnboardingApplySuggestedIconResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/onboarding/finish-import": {
             "post": {
                 "security": [
@@ -17783,6 +17858,28 @@
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "model.OnboardingApplySuggestedIconRequest": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "expectedIcon": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OnboardingApplySuggestedIconResult": {
+            "type": "object",
+            "properties": {
+                "applied": {
+                    "type": "boolean"
                 }
             }
         },
