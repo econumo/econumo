@@ -402,10 +402,10 @@ describe('App lock row', () => {
     expect(await screen.findByRole('link', { name: /App lock/ })).toHaveTextContent('On')
   })
 
-  it('is shown disabled without HTTPS', async () => {
+  it('is available over plain http', async () => {
+    signIn('u1')
+    writeConfig(testConfig())
     renderPage()
-    await screen.findByText('Personal settings')
-    expect(screen.queryByRole('link', { name: /App lock/ })).not.toBeInTheDocument()
-    expect(screen.getByText('Needs HTTPS').closest('[aria-disabled="true"]')).toHaveTextContent('App lock')
+    expect(await screen.findByRole('link', { name: /App lock/ })).toHaveTextContent('On')
   })
 })

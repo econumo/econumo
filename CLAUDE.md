@@ -690,16 +690,18 @@ events fire when the server confirms, `METRICS.WRITE_QUEUED`/`WRITE_RETRIED`/`WR
 at those points.
 
 **App lock** (`web/src/features/appLock`; spec `docs/superpowers/specs/2026-11-11-app-lock-design.md`,
-"Revision 1" wins): a per-device PIN (4-8 digits, PBKDF2 in `pin.ts`) with optional biometrics (a
-platform passkey, `biometric.ts`: no signature check, the clientData challenge/origin and the UV flag
+"Revision 1" wins): a per-device PIN (4-8 digits, PBKDF2-HMAC-SHA256 in `pin.ts`: `crypto.subtle` with 150 000
+iterations, else, on plain http, the pure-JS `@noble/hashes` derive with 25 000; the count is stored
+with the hash and either implementation verifies the other's) with optional biometrics (a
+platform passkey, `biometric.ts`, https only: no signature check, the clientData challenge/origin and the UV flag
 only; the device passcode also satisfies it), frontend only, never sent to the server. Storage:
 localStorage `econumo.appLock` (config: owner `userId`, PIN hash, `lockAfterMs` 0/1/5/15 min, passkey
 id) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
 sessionStorage marker `econumo.appLock.fresh` that `setToken` sets so the reload after a sign-in does
 not ask for the PIN (it counts for 30 s; any lock but the one taken as the page hides, and turning the
 lock on, spend it). `setToken` is also the only place that deletes another user's lock (both ids
-known and different); `activeConfig()` fails closed (no `sessionUserId` yet still locks) and is null
-without a secure context (plain http: the Profile row reads "Needs HTTPS"). `initAppLock()`
+known and different); `activeConfig()` fails closed (no `sessionUserId` yet still locks) and works the same over plain
+http, where the settings page shows biometrics disabled with "Face ID / fingerprint needs HTTPS". `initAppLock()`
 (`lockStore.ts`, from `main.tsx` before the first render) starts every page load locked, locks after
 `lockAfterMs` in the background or a slept device (15 s heartbeat), toggles a static `#privacy-cover`
 on hide outside React, and reloads a locked tab when another tab changes the lock in any way or

@@ -1,3 +1,5 @@
+import { pbkdf2Async } from '@noble/hashes/pbkdf2.js'
+import { sha256 } from '@noble/hashes/sha2.js'
 import {
   MAX_FAILED_ATTEMPTS,
   readAttempts,
@@ -8,6 +10,9 @@ import {
 } from './config'
 
 export const PIN_ITERATIONS = 150_000
+// Plain http has no crypto.subtle, and the pure-JS derive is roughly 7x slower
+// than the native one: 150k rounds would hold a phone's unlock for seconds.
+export const PIN_ITERATIONS_JS = 25_000
 const PIN_PATTERN = /^\d{4,8}$/
 
 export function isValidPin(pin: string): boolean {
@@ -35,13 +40,31 @@ function fromBase64(value: string): Uint8Array<ArrayBuffer> | null {
   }
 }
 
-async function derive(pin: string, salt: Uint8Array<ArrayBuffer>, iterations: number): Promise<Uint8Array> {
+export function nativeCryptoAvailable(): boolean {
+  return typeof globalThis.crypto?.subtle?.deriveBits === 'function'
+}
+
+export function defaultPinIterations(): number {
+  return nativeCryptoAvailable() ? PIN_ITERATIONS : PIN_ITERATIONS_JS
+}
+
+export async function deriveJs(pin: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+  return pbkdf2Async(sha256, new TextEncoder().encode(pin), salt, { c: iterations, dkLen: 32 })
+}
+
+export async function deriveNative(pin: string, salt: Uint8Array<ArrayBuffer>, iterations: number): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits'])
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256)
   return new Uint8Array(bits)
 }
 
-export async function hashPin(pin: string, iterations: number = PIN_ITERATIONS): Promise<PinHash> {
+// Both produce the same PBKDF2-HMAC-SHA256 bytes, so a stored hash verifies
+// with either; the stored iteration count always wins.
+function derive(pin: string, salt: Uint8Array<ArrayBuffer>, iterations: number): Promise<Uint8Array> {
+  return nativeCryptoAvailable() ? deriveNative(pin, salt, iterations) : deriveJs(pin, salt, iterations)
+}
+
+export async function hashPin(pin: string, iterations: number = defaultPinIterations()): Promise<PinHash> {
   if (!isValidPin(pin)) {
     throw new Error('invalid PIN')
   }

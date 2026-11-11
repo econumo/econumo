@@ -1,5 +1,6 @@
 import {
   biometricAvailable,
+  biometricNeedsHttps,
   ceremonyInFlight,
   fromBase64Url,
   isIpAddress,
@@ -79,6 +80,15 @@ describe('biometricAvailable', () => {
     delete window.Capacitor
     setSecureContext(false)
     await expect(biometricAvailable()).resolves.toBe(false)
+  })
+
+  it('names plain http as the reason, but not in the native app', () => {
+    expect(biometricNeedsHttps()).toBe(false)
+    setSecureContext(false)
+    expect(biometricNeedsHttps()).toBe(true)
+    window.Capacitor = { isNativePlatform: () => true }
+    expect(biometricNeedsHttps()).toBe(false)
+    delete window.Capacitor
   })
 
   it('treats IP hosts as unsupported', () => {

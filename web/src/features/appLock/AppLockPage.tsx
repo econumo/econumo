@@ -11,10 +11,9 @@ import { SettingsShell } from '@/features/settings/SettingsShell'
 import { useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { getSessionUserId } from '@/lib/storage'
-import { biometricAvailable, prepareBiometricRegistration, type RegisterResult } from './biometric'
+import { biometricAvailable, biometricNeedsHttps, prepareBiometricRegistration, type RegisterResult } from './biometric'
 import {
   activeConfig,
-  appLockSupported,
   clearConfig,
   DEFAULT_LOCK_AFTER_MS,
   LOCK_AFTER_OPTIONS,
@@ -34,7 +33,6 @@ export function AppLockPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: user } = useUserData()
-  const supported = appLockSupported()
   const [config, setConfig] = useState<AppLockConfig | null>(() => activeConfig())
   const [flow, setFlow] = useState<{ kind: PinFlow; seq: number; open: boolean } | null>(null)
   const flowSeq = useRef(0)
@@ -222,19 +220,17 @@ export function AppLockPage() {
       <InfoBox>{t('appLock.settings.about')}</InfoBox>
 
       <div className="flex max-w-md flex-col gap-2 py-2">
-        <div className={`${rowClass} ${supported ? '' : 'opacity-60'}`}>
+        <div className={rowClass}>
           <div className="flex min-w-0 flex-col gap-0.5">
             <label htmlFor="app-lock-enabled" className="text-sm">
               {t('appLock.settings.enabled_label')}
             </label>
-            <span className="text-xs text-muted-foreground">
-              {supported ? t('appLock.settings.enabled_hint') : t('appLock.settings.needs_https')}
-            </span>
+            <span className="text-xs text-muted-foreground">{t('appLock.settings.enabled_hint')}</span>
           </div>
           <Switch
             id="app-lock-enabled"
             checked={enabled}
-            disabled={!supported || (!enabled && userId === null)}
+            disabled={!enabled && userId === null}
             onCheckedChange={(checked) => openFlow(checked ? 'enable' : 'disable')}
           />
         </div>
@@ -264,6 +260,14 @@ export function AppLockPage() {
                   disabled={registering}
                   onCheckedChange={onBiometricChange}
                 />
+              </div>
+            ) : biometricNeedsHttps() ? (
+              <div aria-disabled="true" className={`${rowClass} opacity-60`}>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-sm">{t('appLock.settings.biometric_label')}</span>
+                  <span className="text-xs text-muted-foreground">{t('appLock.settings.biometric_needs_https')}</span>
+                </div>
+                <Switch aria-label={t('appLock.settings.biometric_label')} checked={false} disabled />
               </div>
             ) : null}
 

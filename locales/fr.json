@@ -2202,7 +2202,7 @@
       "title": "Verrouillage de l'app",
       "on": "Activé",
       "off": "Désactivé",
-      "needs_https": "Nécessite HTTPS",
+      "biometric_needs_https": "Face ID / empreinte digitale nécessite HTTPS",
       "about": "Le verrouillage protège Econumo sur cet appareil uniquement. Si vous oubliez le code PIN, vous devrez vous reconnecter. Il ne chiffre pas les données stockées sur l'appareil.",
       "enabled_label": "Verrouillage de l'app",
       "enabled_hint": "Demander un code PIN à l'ouverture d'Econumo",

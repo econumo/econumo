@@ -210,10 +210,10 @@ describe('app_lock', () => {
     expect(profileAttributes().app_lock).toBe('biometric')
   })
 
-  it('is off where the lock cannot run (plain http)', () => {
+  it('reports the PIN lock over plain http too', () => {
     writeConfig(testConfig())
     setSecureContext(false)
-    expect(profileAttributes().app_lock).toBe('off')
+    expect(profileAttributes().app_lock).toBe('pin')
   })
 })
 

@@ -2202,7 +2202,7 @@
       "title": "Blocco app",
       "on": "Attivo",
       "off": "Disattivo",
-      "needs_https": "Richiede HTTPS",
+      "biometric_needs_https": "Face ID / impronta digitale richiede HTTPS",
       "about": "Il blocco protegge Econumo solo su questo dispositivo. Se dimentichi il PIN, dovrai accedere di nuovo. Non cifra i dati salvati sul dispositivo.",
       "enabled_label": "Blocco app",
       "enabled_hint": "Chiedi un PIN all'apertura di Econumo",

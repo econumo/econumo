@@ -103,16 +103,10 @@ export function clearConfig(): void {
   drop(APP_LOCK_ATTEMPTS_KEY)
 }
 
-// Plain-http self-hosting has no crypto.subtle (and no WebAuthn): the lock can
-// neither be set up nor checked there, so it never activates.
-export function appLockSupported(): boolean {
-  return window.isSecureContext === true && typeof globalThis.crypto?.subtle !== 'undefined'
-}
-
 // Fails closed: a session that has not recorded its user yet still locks. Only
 // setToken, which knows both ids, ever deletes another user's config.
 export function activeConfig(): AppLockConfig | null {
-  if (!appLockSupported() || getToken() === null) {
+  if (getToken() === null) {
     return null
   }
   const config = readConfig()

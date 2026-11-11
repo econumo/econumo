@@ -1,6 +1,5 @@
 import {
   activeConfig,
-  appLockSupported,
   attemptsExceeded,
   clearConfig,
   lockoutMs,
@@ -69,12 +68,11 @@ describe('activeConfig', () => {
     expect(activeConfig()?.userId).toBe('u1')
   })
 
-  it('is off without a secure context', () => {
+  it('stays on without a secure context (plain http)', () => {
     writeConfig(testConfig())
     signIn('u1')
     setSecureContext(false)
-    expect(appLockSupported()).toBe(false)
-    expect(activeConfig()).toBeNull()
+    expect(activeConfig()?.userId).toBe('u1')
   })
 })
 

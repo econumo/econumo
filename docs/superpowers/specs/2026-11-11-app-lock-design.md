@@ -1,7 +1,7 @@
 # App lock (PIN + biometrics) — design
 
-Date: 2026-11-11. Status: approved for implementation. **Revision 1 (end of file) overrides
-anything above it that it contradicts.**
+Date: 2026-11-11. Status: approved for implementation. **Revisions 1-3 (end of file) override
+anything above them that they contradict; a later revision wins.**
 
 ## Problem
 
@@ -382,3 +382,25 @@ format with `pluralPick`.
   survives sign-out. One synced keychain entry per device: re-enabling on the
   same device replaces its own entry, and turning biometrics on for a second
   device no longer overwrites the first device's passkey.
+
+## Revision 3 — the PIN lock over plain http (overrides the text above)
+
+The owner's rule: a PIN unlock MUST work on http and https; biometric unlock may
+be https-only.
+
+- **R12 replaced.** There is no secure-context gate: `activeConfig()` and the
+  Profile row work the same on plain http (`appLockSupported()` is gone).
+- **Hashing.** `pin.ts` derives with `crypto.subtle` when it exists and with a
+  pure-JS PBKDF2-HMAC-SHA256 (`@noble/hashes`, `pbkdf2Async`, so the UI keeps
+  painting) when it does not (plain http). The stored shape (salt, hash,
+  iterations, length) is unchanged and both produce the same bytes, so either
+  verifies a hash made by the other; verification always uses the stored count.
+- **Iterations.** A new PIN gets 150 000 iterations with `crypto.subtle` and
+  25 000 (`PIN_ITERATIONS_JS`) without: the JS derive took about 1 s for 150 000
+  on the reference desktop (an Intel N150), several seconds on a phone, and
+  about 150 ms for 25 000, under 1 s on a phone. The count is stored per config,
+  as before. A PIN the 4-8 digit space limits anyway gains little from more.
+- **R11 amended (biometrics).** Still https-only. On plain http the settings page
+  shows the "Use biometrics" row disabled with "Face ID / fingerprint needs
+  HTTPS" (`biometricNeedsHttps()`); in the native app and where the platform
+  authenticator is unavailable on https the row stays hidden.

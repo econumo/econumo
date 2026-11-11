@@ -2202,7 +2202,7 @@
       "title": "App-Sperre",
       "on": "An",
       "off": "Aus",
-      "needs_https": "Erfordert HTTPS",
+      "biometric_needs_https": "Face ID / Fingerabdruck erfordert HTTPS",
       "about": "Die Sperre schützt Econumo nur auf diesem Gerät. Wenn Sie die PIN vergessen, müssen Sie sich erneut anmelden. Die auf dem Gerät gespeicherten Daten werden nicht verschlüsselt.",
       "enabled_label": "App-Sperre",
       "enabled_hint": "Beim Öffnen von Econumo nach einer PIN fragen",

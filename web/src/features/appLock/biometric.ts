@@ -61,6 +61,11 @@ export function isIpAddress(hostname: string): boolean {
   return hostname.includes(':') || /^\[.*\]$/.test(hostname)
 }
 
+// Plain http has no WebAuthn; the PIN lock still works there.
+export function biometricNeedsHttps(): boolean {
+  return !isNativeApp() && window.isSecureContext !== true
+}
+
 // WebAuthn needs a registrable domain: an IP-addressed self-hosted instance
 // would let the user turn biometrics on and then never get a passkey.
 export async function biometricAvailable(): Promise<boolean> {

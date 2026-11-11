@@ -1,6 +1,6 @@
 import type { AppLockConfig } from './config'
 
-// jsdom reports no secure context; the lock is off without one.
+// jsdom reports no secure context; biometrics are off without one.
 export function setSecureContext(value: boolean): void {
   Object.defineProperty(window, 'isSecureContext', { value, configurable: true })
 }

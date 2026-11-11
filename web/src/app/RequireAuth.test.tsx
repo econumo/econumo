@@ -96,6 +96,16 @@ describe('the app lock', () => {
     expect(screen.queryByText('SECRET')).not.toBeInTheDocument()
   })
 
+  it('locks on a cold start over plain http too', () => {
+    setSecureContext(false)
+    signIn('u1')
+    writeConfig(testConfig({ userId: 'u1' }))
+    initAppLock()
+    renderLocked()
+    expect(screen.getByRole('heading', { name: 'Enter PIN' })).toBeInTheDocument()
+    expect(screen.queryByText('SECRET')).not.toBeInTheDocument()
+  })
+
   it("ignores another user's lock", () => {
     signIn('u1')
     writeConfig(testConfig({ userId: 'u2' }))

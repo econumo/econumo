@@ -2202,7 +2202,7 @@
       "title": "Bloqueio da app",
       "on": "Ativado",
       "off": "Desativado",
-      "needs_https": "Requer HTTPS",
+      "biometric_needs_https": "Face ID / impressão digital requer HTTPS",
       "about": "O bloqueio protege o Econumo apenas neste dispositivo. Se se esquecer do PIN, terá de iniciar sessão novamente. Não encripta os dados guardados no dispositivo.",
       "enabled_label": "Bloqueio da app",
       "enabled_hint": "Pedir um PIN ao abrir o Econumo",

@@ -10,7 +10,7 @@ import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { biometricAvailable, prepareBiometricRegistration, verifyBiometric } from './biometric'
 import { readAttempts, readConfig, recordFailedAttempt, writeConfig } from './config'
 import { resetAppLockForTests, useLockStore } from './lockStore'
-import { checkPin, hashPin, verifyPin } from './pin'
+import { checkPin, hashPin, PIN_ITERATIONS_JS, verifyPin } from './pin'
 import { setSecureContext, signIn, testConfig } from './testUtils'
 import { AppLockPage } from './AppLockPage'
 
@@ -273,11 +273,29 @@ it('turning the lock off accepts biometrics instead of the PIN', async () => {
   expect(verifyBiometric).toHaveBeenCalledWith('cred-1')
 })
 
-it('is unavailable without HTTPS', () => {
+it('works over plain http, showing biometrics as needing HTTPS', async () => {
   setSecureContext(false)
+  const realCrypto = globalThis.crypto
+  vi.stubGlobal('crypto', { getRandomValues: realCrypto.getRandomValues.bind(realCrypto), randomUUID: realCrypto.randomUUID.bind(realCrypto) })
+  onTestFinished(() => {
+    vi.unstubAllGlobals()
+  })
+  const user = userEvent.setup()
   renderPage()
-  expect(lockSwitch()).toBeDisabled()
-  expect(screen.getByText('Needs HTTPS')).toBeInTheDocument()
+  expect(screen.queryByText('Face ID / fingerprint needs HTTPS')).not.toBeInTheDocument()
+  await user.click(lockSwitch())
+  let dialog = await screen.findByRole('dialog', { name: 'Choose a PIN' })
+  await typePin(user, dialog, '2580')
+  await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+  dialog = await screen.findByRole('dialog', { name: 'Enter the PIN again' })
+  await typePin(user, dialog, '2580')
+  await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(readConfig()).not.toBeNull())
+  expect(readConfig()!.pin.iterations).toBe(PIN_ITERATIONS_JS)
+  expect(lockSwitch()).toBeChecked()
+  const note = await screen.findByText('Face ID / fingerprint needs HTTPS')
+  expect(note.closest('[aria-disabled="true"]')).toHaveTextContent('Use biometrics')
+  expect(screen.getByRole('switch', { name: 'Use biometrics' })).toBeDisabled()
 })
 
 it('turning the lock on spends the sign-in marker, so a reload locks', async () => {

@@ -2792,10 +2792,11 @@ User C sees none of it.
       tab 1 reloads tab 2 onto the login page; changing the PIN (to another
       length) or turning biometrics off in tab 1 reloads tab 2, whose lock
       screen then matches; unlocking one tab never unlocks the other.
-- [ ] App lock on a plain-http instance (not localhost): the Profile row is
-      greyed out with "Needs HTTPS" and is not a link; opening
-      `/settings/profile/app-lock` directly shows the switch disabled with the
-      same hint, and the app never locks.
+- [ ] App lock on a plain-http instance (not localhost): the PIN lock works end
+      to end: the Profile row is a link, turning the lock on with a PIN works,
+      a reload shows the lock screen and the PIN unlocks it in about a second;
+      the "Use biometrics" row is greyed out with "Face ID / fingerprint needs
+      HTTPS".
 
 ## 12a. Connected apps (MCP OAuth)
 

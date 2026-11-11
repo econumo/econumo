@@ -2202,7 +2202,7 @@
       "title": "应用锁",
       "on": "开",
       "off": "关",
-      "needs_https": "需要 HTTPS",
+      "biometric_needs_https": "面容 ID / 指纹需要 HTTPS",
       "about": "应用锁仅在此设备上保护 Econumo。如果忘记 PIN 码，需要重新登录。它不会加密设备上存储的数据。",
       "enabled_label": "应用锁",
       "enabled_hint": "打开 Econumo 时要求输入 PIN 码",

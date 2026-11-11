@@ -2202,7 +2202,7 @@
       "title": "App-vergrendeling",
       "on": "Aan",
       "off": "Uit",
-      "needs_https": "Vereist HTTPS",
+      "biometric_needs_https": "Face ID / vingerafdruk vereist HTTPS",
       "about": "De vergrendeling beschermt Econumo alleen op dit apparaat. Als u de pincode vergeet, moet u opnieuw inloggen. De gegevens op het apparaat worden niet versleuteld.",
       "enabled_label": "App-vergrendeling",
       "enabled_hint": "Om een pincode vragen bij het openen van Econumo",

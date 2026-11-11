@@ -2202,7 +2202,7 @@
       "title": "Blokada aplikacji",
       "on": "Włączona",
       "off": "Wyłączona",
-      "needs_https": "Wymaga HTTPS",
+      "biometric_needs_https": "Face ID / odcisk palca wymaga HTTPS",
       "about": "Blokada chroni Econumo tylko na tym urządzeniu. Jeśli zapomnisz PIN-u, trzeba będzie zalogować się ponownie. Nie szyfruje danych zapisanych na urządzeniu.",
       "enabled_label": "Blokada aplikacji",
       "enabled_hint": "Pytaj o PIN przy otwieraniu Econumo",
