@@ -11,6 +11,7 @@ import type { RecurringDto } from '@/api/dto/recurring'
 import type { TagDto } from '@/api/dto/tag'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { suggestIconForCreatedCategory } from '@/features/iconSuggestion/inline'
 import { patchTransactions } from '@/features/transactions/revisionTracking'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { OwnErrorHandling } from '@/lib/appQueryClient'
@@ -51,6 +52,8 @@ export function useCreateCategory({ handlesOwnErrors = false }: OwnErrorHandling
       const item = await categoryApi.createCategory({ id: uuidv7(), name: form.name, type: form.type, accountId: form.accountId, icon: form.icon })
       // in mutationFn, not onSuccess: the dedupe path above is not a create
       trackEvent(METRICS.CATEGORY_CREATE)
+      // no icon given: created inline from a picker, so nobody chose one
+      if (form.icon === undefined) void suggestIconForCreatedCategory(queryClient, item)
       return item
     },
     onSuccess: (item) => {
