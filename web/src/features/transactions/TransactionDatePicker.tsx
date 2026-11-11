@@ -7,8 +7,9 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { calendarLocale } from '@/lib/calendarLocale'
 import { parseDateTime } from '@/lib/datetime'
+import { cn } from '@/lib/utils'
 
-export function TransactionDatePicker({ value, onChange }: { value: string; onChange: (day: Date) => void }) {
+export function TransactionDatePicker({ value, onChange, label, className, disabled = false }: { value: string; onChange: (day: Date) => void; label?: string; className?: string; disabled?: boolean }) {
   const { t, i18n } = useTranslation()
   const isPhone = useIsPhone()
   const [open, setOpen] = useState(false)
@@ -20,8 +21,9 @@ export function TransactionDatePicker({ value, onChange }: { value: string; onCh
       ref={triggerRef}
       type="button"
       variant="secondary"
-      className="h-7 rounded-lg bg-econumo-card px-2 text-xs font-normal max-sm:h-11 max-sm:px-3"
-      aria-label="date"
+      className={cn('h-7 rounded-lg bg-econumo-card px-2 text-xs font-normal max-sm:h-11 max-sm:px-3', className)}
+      aria-label={label ?? 'date'}
+      disabled={disabled}
       aria-haspopup="dialog"
       aria-expanded={open}
       onClick={isPhone ? () => setOpen(true) : undefined}
@@ -61,7 +63,7 @@ export function TransactionDatePicker({ value, onChange }: { value: string; onCh
         <ResponsiveDialog
           open={open}
           onOpenChange={setOpen}
-          title={t('transactions.modal.form.date.label')}
+          title={label ?? t('transactions.modal.form.date.label')}
           onCloseAutoFocus={(event) => {
             event.preventDefault()
             triggerRef.current?.focus()

@@ -7,6 +7,8 @@ import { installTransactionTracking, resetRevisions } from '@/features/transacti
 import { delayTransactionCompletion } from '@/test/idbDelay'
 import { createAppQueryClient } from './appQueryClient'
 import { resetDbForTests } from './db'
+import { rememberedEmail } from './config'
+import { createKey, loadStoredKey } from './importCrypto'
 import { QUERY_CACHE_KEY, clearPersistedQueryCache, createPersistOptions } from './queryPersist'
 import { STORE_TIMEOUT_MS, loadBuckets, putBuckets, putSnapshot, resetTransactionStoreForTests, storeBuster, tryLoadStored, type Bucket } from './transactionStore'
 
@@ -275,6 +277,17 @@ describe('restoring the stored transactions', () => {
     await putBuckets(fixtureUser.id, [bucket('a1', ['t1'])])
     snapshot({ user: fixtureUser, accounts: fixtureAccounts.map(({ transactionsRevision: _r, ...a }) => a) })
     expect(await restoredTransactions()).toBeUndefined()
+  })
+
+  it('a clear forgets the SimpleFIN device key and keeps the remembered email', async () => {
+    rememberedEmail('me@example.test')
+    await createKey('correct horse')
+    expect(await loadStoredKey()).not.toBeNull()
+
+    await clearPersistedQueryCache()
+
+    expect(await loadStoredKey()).toBeNull()
+    expect(rememberedEmail()).toBe('me@example.test')
   })
 
   it('a clear forgets the restored revisions, so the next user adopts none of them', async () => {

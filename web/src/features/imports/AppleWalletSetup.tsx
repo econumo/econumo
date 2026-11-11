@@ -417,7 +417,7 @@ export function AppleWalletSetup({ setup }: { setup: WalletSetup }) {
 export function AppleWalletDisconnect({ source }: { source: ImportSourceDto }) {
   const { t } = useTranslation()
   const online = useOnline()
-  const deleteSource = useDeleteImportSource()
+  const deleteSource = useDeleteImportSource({ handlesOwnErrors: true })
   const [disconnectOpen, setDisconnectOpen] = useState(false)
   return (
     <div className="flex justify-center pt-4">
@@ -430,7 +430,7 @@ export function AppleWalletDisconnect({ source }: { source: ImportSourceDto }) {
         onConfirm={() => {
           setDisconnectOpen(false)
           forgetSetupTicks(source.id)
-          deleteSource.mutate(source.id)
+          deleteSource.mutate(source.id, { onError: (err) => toast.error(apiErrorMessage(err)) })
         }}
         title={t('imports.apple_wallet.disconnect_modal.title')}
         question={t('imports.apple_wallet.disconnect_modal.question')}

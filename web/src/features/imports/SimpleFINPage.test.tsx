@@ -63,7 +63,7 @@ it('first connect: creates a key, claims the token, and stores only ciphertext',
   const user = userEvent.setup()
   await user.type(await screen.findByLabelText('Setup token'), 'tok-1')
   await user.type(screen.getByLabelText('Passphrase'), 'correct horse')
-  await user.type(screen.getByPlaceholderText('Repeat passphrase'), 'correct horse')
+  await user.type(screen.getByLabelText('Repeat passphrase'), 'correct horse')
   await user.click(screen.getByRole('button', { name: 'Connect' }))
   await waitFor(() => expect(posted.source).toBeDefined(), { timeout: 15_000 })
   expect(posted.claim).toEqual({ setupToken: 'tok-1' })
@@ -73,6 +73,8 @@ it('first connect: creates a key, claims the token, and stores only ciphertext',
   expect(src.credentialCiphertext).toMatch(/^v1:/)
   expect(JSON.stringify(posted)).not.toContain(ACCESS_URL)
   expect(await screen.findByRole('button', { name: 'Sync now' })).toBeInTheDocument()
+  // before the first sync the date is a picker right away
+  expect(screen.getByRole('button', { name: 'From' })).toBeInTheDocument()
 }, 20_000)
 
 it('locked device: wrong passphrase is rejected, right one unlocks and lists bridge accounts', async () => {
@@ -89,11 +91,11 @@ it('locked device: wrong passphrase is rejected, right one unlocks and lists bri
   }))
   renderPage({ importSources: [source({ credentialCiphertext: ciphertext })], importCredentialKey: { ...wrapped, updatedAt: '2026-09-07 10:00:00' } })
   const user = userEvent.setup()
-  await user.type(await screen.findByPlaceholderText('Passphrase'), 'nope')
+  await user.type(await screen.findByLabelText('Passphrase'), 'nope')
   await user.click(screen.getByRole('button', { name: 'Unlock' }))
   expect(await screen.findByRole('alert', {}, { timeout: 15_000 })).toHaveTextContent('Wrong passphrase.')
-  await user.clear(screen.getByPlaceholderText('Passphrase'))
-  await user.type(screen.getByPlaceholderText('Passphrase'), 'pw')
+  await user.clear(screen.getByLabelText('Passphrase'))
+  await user.type(screen.getByLabelText('Passphrase'), 'pw')
   await user.click(screen.getByRole('button', { name: 'Unlock' }))
   expect(await screen.findByText('Checking', {}, { timeout: 15_000 })).toBeInTheDocument()
   expect(listBody).toEqual({ sourceId: 's2', accessUrl: ACCESS_URL })
@@ -112,7 +114,7 @@ it('stale device: a key reset elsewhere asks for the new passphrase instead of a
   expect(await screen.findByText(/passphrase was changed on another device/)).toBeInTheDocument()
   expect(screen.queryByPlaceholderText('aHR0cHM6Ly9…')).not.toBeInTheDocument()
   const user = userEvent.setup()
-  await user.type(screen.getByPlaceholderText('Passphrase'), 'new')
+  await user.type(screen.getByLabelText('Passphrase'), 'new')
   await user.click(screen.getByRole('button', { name: 'Unlock' }))
   expect(await screen.findByRole('button', { name: 'Sync now' }, { timeout: 15_000 })).toBeInTheDocument()
 }, 40_000)
@@ -140,6 +142,11 @@ it('unlocked device: Sync now posts the decrypted access URL and shows the run s
   ] } })))
   const user = userEvent.setup()
   expect(await screen.findByText('Last synced 2026-09-05 08:00:00')).toBeInTheDocument()
+  // after a first sync the window is the default one, shown as text; Change opens the picker
+  expect(screen.getByText(/Syncs transactions since 2026-09-02/)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'From' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Change' }))
+  expect(screen.getByRole('button', { name: 'From' })).toHaveTextContent('2026-09-02')
   const syncButton = await screen.findByRole('button', { name: 'Sync now' })
   // the button stays disabled until the stored credential is decrypted, which
   // finishes after first paint; a click before that is a no-op
@@ -148,6 +155,67 @@ it('unlocked device: Sync now posts the decrypted access URL and shows the run s
   await waitFor(() => expect(syncBody).toEqual({ sourceId: 's2', accessUrl: ACCESS_URL, startDate: '2026-09-02' }))
   expect(await screen.findByText('Completed with errors')).toBeInTheDocument()
   expect(screen.getByText(/ACT-SAV: unsupported currency/)).toBeInTheDocument()
+})
+
+it('a failed sync keeps the sync window where it was', async () => {
+  const wrapped = await createKey('pw')
+  const ciphertext = await encryptCredential(ACCESS_URL)
+  server.use(
+    http.post('*/api/v1/import/list-external-accounts', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+    http.post('*/api/v1/import/sync-source', () =>
+      HttpResponse.json({ success: true, message: '', data: { run: run({ status: 'failed', finishedAt: '2026-09-07 10:00:02' }), accounts: [] } })),
+  )
+  renderPage({
+    importSources: [source({ credentialCiphertext: ciphertext, lastSyncedAt: '2026-09-05 08:00:00' })],
+    importCredentialKey: { ...wrapped, updatedAt: '2026-09-07 10:00:00' },
+    importRuns: [],
+  })
+  const user = userEvent.setup()
+  const syncButton = await screen.findByRole('button', { name: 'Sync now' })
+  await waitFor(() => expect(syncButton).toBeEnabled())
+  await user.click(syncButton)
+  await waitFor(() => expect(syncButton).toBeEnabled())
+  // the failed run finished on 09-07; the window still starts 3 days before the last good sync
+  expect(screen.getByText(/Syncs transactions since 2026-09-02/)).toBeInTheDocument()
+}, 20_000)
+
+it('connected page: Reconnect can be cancelled, Disconnect asks first and a refusal says so', async () => {
+  const { toast } = await import('sonner')
+  const wrapped = await createKey('pw')
+  const ciphertext = await encryptCredential(ACCESS_URL)
+  let deleted = 0
+  server.use(
+    http.post('*/api/v1/import/list-external-accounts', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+    http.post('*/api/v1/import/delete-source', () => {
+      deleted += 1
+      return HttpResponse.json({ success: false, message: 'Source not found', code: 400, errors: {} }, { status: 400 })
+    }),
+  )
+  renderPage({
+    importSources: [source({ credentialCiphertext: ciphertext, lastSyncedAt: '2026-09-05 08:00:00' })],
+    importCredentialKey: { ...wrapped, updatedAt: '2026-09-07 10:00:00' },
+    importRuns: [],
+  })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Reconnect' }))
+  expect(screen.getByLabelText('Setup token')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(await screen.findByRole('button', { name: 'Sync now' })).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Disconnect SimpleFIN' }))
+  expect(screen.getByText('Disconnect SimpleFIN?')).toBeInTheDocument()
+  expect(deleted).toBe(0)
+  await user.click(screen.getByRole('button', { name: 'Disconnect' }))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Source not found'))
+  expect(deleted).toBe(1)
+}, 20_000)
+
+it('on a plain-http page it explains that SimpleFIN needs https instead of showing the form', async () => {
+  Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true })
+  onTestFinished(() => { Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true }) })
+  renderPage({ importSources: [], importCredentialKey: null, importRuns: [] })
+  expect(await screen.findByRole('alert')).toHaveTextContent(/needs Econumo opened over https/)
+  expect(screen.queryByLabelText('Setup token')).not.toBeInTheDocument()
 })
 
 describe('offline', () => {

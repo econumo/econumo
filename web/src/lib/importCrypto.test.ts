@@ -86,3 +86,17 @@ it('rejects a tampered iv and tampered key parameters', async () => {
   }
   await expect(unlockKey('pw', { ...wrapped, kdf: 'not json' })).rejects.toThrow(/key parameters/)
 })
+
+it('a forget the page left before IndexedDB finished is completed by the next read', async () => {
+  localStorage.clear()
+  const wrapped = await createKey('correct horse')
+  // what a sign-out leaves when it navigates away before the delete lands
+  localStorage.setItem('econumo.import-key-forget-pending', '1')
+  expect(await loadStoredKey()).toBeNull()
+  expect(localStorage.getItem('econumo.import-key-forget-pending')).toBeNull()
+  expect(await loadStoredKey()).toBeNull()
+  // unlocking again stores a key the next read returns
+  localStorage.setItem('econumo.import-key-forget-pending', '1')
+  await unlockKey('correct horse', wrapped)
+  expect(await loadStoredKey()).not.toBeNull()
+})

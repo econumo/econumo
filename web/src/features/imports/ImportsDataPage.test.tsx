@@ -59,13 +59,13 @@ it('holds no Apple Wallet section, import history or import rules — they have 
 it('Sync all is hidden without a pull source and routes to SimpleFIN settings while the device is locked', async () => {
   renderPage()
   expect(await screen.findByText('Import & export')).toBeInTheDocument()
-  expect(screen.queryByText('Sync bank connections')).toBeNull()
+  expect(screen.queryByText('Sync SimpleFIN')).toBeNull()
 })
 
 it('Sync all navigates to SimpleFIN settings when the device key is locked', async () => {
   const user = userEvent.setup()
   renderPage({ importSources: [simplefinSource], importCredentialKey: wrappedKey })
-  await user.click(await screen.findByText('Sync bank connections'))
+  await user.click(await screen.findByText('Sync SimpleFIN'))
   expect(await screen.findByText('SIMPLEFIN PAGE')).toBeInTheDocument()
 })
 
@@ -77,4 +77,11 @@ it('offline: Import and Export CSV are disabled (both need the server)', async (
   onTestFinished(() => act(() => onlineManager.setOnline(true)))
   expect(screen.getByRole('button', { name: 'Import CSV' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDisabled()
+})
+
+it('offers no SimpleFIN sync when the server turned SimpleFIN off, even with a cached source', async () => {
+  window.econumoConfig = { IMPORT_SIMPLEFIN: false }
+  renderPage({ importSources: [simplefinSource] })
+  expect(await screen.findByText('Import CSV')).toBeInTheDocument()
+  expect(screen.queryByText('Sync SimpleFIN')).toBeNull()
 })

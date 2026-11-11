@@ -736,11 +736,16 @@ navigation (single-pane vs sidebar).
 
 ## 5a. Imports — Apple Wallet
 
-Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
+Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the default).
 
-- [ ] With `ECONUMO_IMPORT_SIMPLEFIN` unset, Apple Wallet and Import rules are
+- [ ] Econumo opened over plain http from another machine (e.g. `http://192.168.1.10:8181`):
+      Settings → SimpleFIN shows only "SimpleFIN needs Econumo opened over https (or on
+      localhost)…", no connect form; Settings → Data shows no "Sync SimpleFIN". Over https or
+      on localhost the form shows as usual. 📱
+- [ ] With `ECONUMO_IMPORT_SIMPLEFIN` unset, Settings lists SimpleFIN (on by default);
+      with `ECONUMO_IMPORT_SIMPLEFIN=false`, Apple Wallet and Import rules are
       available; SimpleFIN stays hidden, `/settings/simplefin` shows the
-      not-found page and "Sync bank connections" never appears. Apple Wallet
+      not-found page and "Sync SimpleFIN" never appears. Apple Wallet
       has no switch: a leftover `ECONUMO_IMPORT_APPLE_WALLET=false` in the
       environment changes nothing, and `econumo-config.js` carries no
       `IMPORT_APPLE_WALLET` key.
@@ -1008,9 +1013,13 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
 
 Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fresh setup token.
 
-- [ ] Settings → SimpleFIN on a device with no key: the connect form asks for a
-      setup token and a passphrase (+ repeat); a passphrase under 8 characters or
-      a mismatch is rejected inline before any request. 📱
+- [ ] Settings → SimpleFIN on a device with no key: one card holds the intro, the setup
+      token and passphrase (+ repeat) fields, each a card-style field with its label
+      inside (as in the transaction and account dialogs); a passphrase under 8
+      characters or a mismatch is rejected inline before any request. 📱
+- [ ] The connect card and the foot of the connected page both say Econumo is not
+      affiliated with SimpleFIN and that SimpleFIN Bridge is used at the user's own
+      risk. 📱
 - [ ] Connect: after "Connect" the page lists the bridge's accounts under "Needs mapping",
       the source row reads "Never synced", and the network log shows
       `create-source` carrying `credentialCiphertext` starting `v1:` — the access
@@ -1018,13 +1027,28 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       bodies.
 - [ ] A used/invalid setup token shows the server's error inline; nothing is
       created (Settings → SimpleFIN still shows the connect form after reload).
-- [ ] Second device (or same browser after "Forget this device"): the page shows
+- [ ] Sign out and back in on an unlocked browser (same user): Settings → SimpleFIN asks for
+      the passphrase again; the login form still has the remembered email when "Remember
+      me" was on. 📱
+- [ ] Second device (or the same browser after its site data is cleared): the page shows
       the unlock prompt; a wrong passphrase reads "Wrong passphrase."; the right
       one lists the accounts. 📱
-- [ ] "Forget this device" returns the page to the unlock prompt; "Reconnect"
+- [ ] "Reconnect"
       from the unlock prompt with "I forgot my passphrase" ticked accepts a new
       setup token + new passphrase and replaces the connection (account mappings
       kept).
+- [ ] Connected page layout 📱: the sync card has the source name and last-synced time
+      over a divider, then "Sync now" and, before the first sync, "From" with a calendar
+      date picker (a sheet on a phone); after it, "Syncs transactions since <date>" (3 days
+      before the last sync) with a "Change" link that opens the picker, back to the text
+      after the next sync; "Import history" is a card row with a chevron (shown once a run
+      exists); a bridge account with nothing queued shows its currency, not "0 to
+      review"; only Reconnect and the red "Disconnect SimpleFIN" sit centered at the
+      bottom (there is no "Forget this device"). "Reconnect" there opens the reconnect form with a Cancel
+      that returns to the page.
+- [ ] "Disconnect SimpleFIN" asks "Disconnect SimpleFIN?"; confirming removes the
+      source (the page shows the connect form without a passphrase, the key stays on
+      the device) and keeps the previously imported transactions.
 - [ ] After that passphrase reset, a device still unlocked under the OLD
       passphrase opens Settings → SimpleFIN to the unlock prompt reading "Your
       passphrase was changed on another device…" (not the reconnect form); the
@@ -1042,7 +1066,7 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Sync with a "From" date after today, or a range longer than 400 days, is
       accepted by the form (there is no client-side check) but rejected by the
       server (`import.sync_range_invalid`) and surfaced as a toast; "From"
-      defaults to 3 days before the last sync (30 days back before the first).
+      (after "Change" once synced) defaults to 3 days before the last sync (30 days back before the first).
 - [ ] Sync twice with the same window: the second run reports 0 imported, 0
       matched (exact duplicates are skipped) and the last-synced timestamp
       advances.
@@ -1074,7 +1098,7 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Run detail names each row's bank account the way the run summary does
       (the bank's own account name, falling back to the bridge id) — never a
       bare `ACT-…` id when the source's accounts are known. 📱
-- [ ] Settings → Data: "Sync bank connections" is absent without a SimpleFIN
+- [ ] Settings → Data: "Sync SimpleFIN" is absent without a SimpleFIN
       source; with one and a locked device it navigates to Settings →
       SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
       row is disabled (not clickable, dimmed) while the syncs run. 📱

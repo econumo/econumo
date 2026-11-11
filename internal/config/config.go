@@ -42,9 +42,10 @@ type Config struct {
 	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
 	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
 
-	// ImportSimpleFIN is ECONUMO_IMPORT_SIMPLEFIN (default off). Apple Wallet
-	// import, import rules, the queue and run history are always on.
-	ImportSimpleFIN bool
+	// SimpleFINDisabled is ECONUMO_IMPORT_SIMPLEFIN (default true) inverted, so a
+	// zero Config in tests keeps SimpleFIN on. Apple Wallet import, import
+	// rules, the queue and run history are always on.
+	SimpleFINDisabled bool
 	// FeedbackDisabled is ECONUMO_FEEDBACK (default true) inverted, so a zero
 	// Config in tests keeps the in-app feedback form on.
 	FeedbackDisabled      bool
@@ -307,9 +308,11 @@ func Load() (Config, error) {
 		*p.dst = n
 	}
 
-	if c.ImportSimpleFIN, err = getBoolStrict("ECONUMO_IMPORT_SIMPLEFIN", false); err != nil {
+	simpleFIN, err := getBoolStrict("ECONUMO_IMPORT_SIMPLEFIN", true)
+	if err != nil {
 		return Config{}, err
 	}
+	c.SimpleFINDisabled = !simpleFIN
 	feedback, err := getBoolStrict("ECONUMO_FEEDBACK", true)
 	if err != nil {
 		return Config{}, err

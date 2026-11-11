@@ -550,7 +550,7 @@
     "data_page": {
       "menu_item": "Import & Export",
       "header": "Import & Export",
-      "sync_all": "Bankverbindungen synchronisieren",
+      "sync_all": "SimpleFIN synchronisieren",
       "history": "Importverlauf",
       "sync_all_done": "{imported} importiert, {matched} abgeglichen, {failed} fehlgeschlagen"
     },
@@ -661,39 +661,45 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Verbinde eine Bank über SimpleFIN Bridge. Deine Bridge-Zugangsdaten werden auf diesem Gerät mit einer Passphrase verschlüsselt, die nur du kennst; der Server speichert sie verschlüsselt und sieht sie nur für die Dauer einer Synchronisierung.",
-      "forget_device": "Dieses Gerät vergessen",
+      "intro": "Richten Sie die Synchronisierung über SimpleFIN Bridge ein. Ihre SimpleFIN-Zugangsdaten werden auf diesem Gerät mit einer Passphrase verschlüsselt, die nur Sie kennen; der Server speichert sie verschlüsselt.",
+      "disclaimer": "Econumo steht in keiner Verbindung zu SimpleFIN. SimpleFIN Bridge ist ein Dienst eines Drittanbieters mit eigenen Bedingungen; Sie nutzen ihn auf eigenes Risiko.",
+      "insecure": "SimpleFIN setzt voraus, dass Econumo über https (oder auf localhost) geöffnet wird: Der Browser verschlüsselt Ihre SimpleFIN-Zugangsdaten nur auf einer sicheren Seite. Bitten Sie Ihre Administration, Econumo über https bereitzustellen.",
+      "disconnect": "Trennen",
+      "disconnect_full": "SimpleFIN trennen",
+      "disconnect_modal": {
+        "title": "SimpleFIN trennen?",
+        "question": "Die SimpleFIN-Verbindung wird aus Econumo entfernt. Bereits importierte Transaktionen bleiben erhalten."
+      },
       "connect": {
-        "intro": "Füge das Setup-Token deines SimpleFIN-Bridge-Kontos ein und wähle eine Passphrase. Die Passphrase wird niemals an den Server gesendet — falls du sie vergisst, musst du dich mit einem neuen Setup-Token erneut verbinden.",
-        "reconnect_intro": "Füge ein neues Setup-Token von SimpleFIN Bridge ein. Die vorherige Verbindung wird ersetzt; deine Kontozuordnungen bleiben erhalten.",
+        "reconnect_intro": "Fügen Sie ein neues Setup-Token von SimpleFIN Bridge ein. Die vorherige Verbindung wird ersetzt; Ihre Kontozuordnungen bleiben erhalten.",
         "token_label": "Setup-Token",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → Neue Verbindung → Setup-Token kopieren. Ein Token kann nur einmal verwendet werden.",
-        "forgot_passphrase": "Ich habe meine Passphrase vergessen — neue festlegen",
+        "forgot_passphrase": "Ich habe meine Passphrase vergessen, neue festlegen",
         "passphrase_new": "Passphrase",
-        "passphrase_existing": "Deine Passphrase",
+        "passphrase_existing": "Ihre Passphrase",
         "passphrase_confirm": "Passphrase wiederholen",
         "passphrase_help": "Mindestens 8 Zeichen. Nicht wiederherstellbar: Niemand, auch wir nicht, kann sie wiederherstellen.",
         "submit": "Verbinden",
         "submit_reconnect": "Erneut verbinden",
         "errors": {
-          "token_required": "Füge zuerst das Setup-Token ein.",
+          "token_required": "Fügen Sie zuerst das Setup-Token ein.",
           "passphrase_short": "Die Passphrase muss mindestens 8 Zeichen lang sein.",
           "passphrase_mismatch": "Die Passphrasen stimmen nicht überein."
         }
       },
       "unlock": {
-        "intro": "Gib deine Passphrase ein, um SimpleFIN auf diesem Gerät zu nutzen.",
+        "intro": "Geben Sie Ihre Passphrase ein, um SimpleFIN auf diesem Gerät zu nutzen.",
         "passphrase": "Passphrase",
         "submit": "Entsperren",
         "reconnect": "Erneut verbinden",
         "wrong_passphrase": "Falsche Passphrase.",
-        "forgot_help": "Vergessen? Verbinde dich mit einem neuen Setup-Token und einer neuen Passphrase erneut.",
-        "stale_intro": "Deine Passphrase wurde auf einem anderen Gerät geändert. Gib die neue Passphrase ein, um SimpleFIN hier weiter zu nutzen."
+        "forgot_help": "Vergessen? Verbinden Sie sich erneut mit einem neuen Setup-Token und einer neuen Passphrase.",
+        "stale_intro": "Ihre Passphrase wurde auf einem anderen Gerät geändert. Geben Sie die neue Passphrase ein, um SimpleFIN hier weiter zu nutzen."
       },
       "accounts": {
         "header": "Konten",
-        "empty": "Die Bridge hat noch keine Konten gemeldet.",
+        "empty": "SimpleFIN hat noch keine Konten gemeldet.",
         "needs_mapping": "Nicht zugeordnet",
         "state": {
           "ignored": "Ignoriert"
@@ -707,7 +713,7 @@
         "unlink": "Zuordnung aufheben",
         "unlink_modal": {
           "title": "Zuordnung von {card} aufheben?",
-          "question": "Neue Transaktionen dieses Kontos warten auf Prüfung, bis du es erneut zuordnest."
+          "question": "Neue Transaktionen dieses Kontos warten auf Prüfung, bis Sie es erneut zuordnen."
         },
         "map_modal": {
           "header": "{card} zuordnen",
@@ -718,8 +724,10 @@
       },
       "sync": {
         "button": "Jetzt synchronisieren",
-        "running": "Synchronisiere…",
+        "running": "Wird synchronisiert…",
         "from": "Von",
+        "since": "Synchronisiert Transaktionen ab {date}",
+        "change": "Ändern",
         "last_synced": "Zuletzt synchronisiert {date}",
         "never": "Noch nie synchronisiert",
         "done_toast": "{imported} importiert, {matched} abgeglichen"
@@ -2282,10 +2290,10 @@
       "link_not_queued": "Dieses Ereignis wartet nicht auf Prüfung.",
       "link_not_skipped": "Dieses Ereignis ist nicht übersprungen.",
       "event_not_failed": "Dieses Ereignis ist nicht fehlgeschlagen.",
-      "setup_token_rejected": "SimpleFIN hat dieses Setup-Token abgelehnt. Es wurde möglicherweise bereits eingelöst – erstelle ein neues in deiner SimpleFIN-Bridge.",
-      "provider_unavailable": "Die Bank-Bridge konnte nicht erreicht werden. Versuche es in ein paar Minuten erneut.",
+      "setup_token_rejected": "SimpleFIN hat dieses Setup-Token abgelehnt. Möglicherweise wurde es bereits verwendet; erstellen Sie ein neues in SimpleFIN Bridge.",
+      "provider_unavailable": "SimpleFIN ist nicht erreichbar. Versuchen Sie es in einigen Minuten erneut.",
       "sync_range_invalid": "Der Zeitraum ist ungültig: Der Beginn darf nicht nach dem Ende liegen, und der Zeitraum darf 400 Tage nicht überschreiten.",
-      "access_url_invalid": "Die gespeicherte Bank-Anmeldeinformation ist keine gültige Zugriffs-URL. Verbinde SimpleFIN mit einem neuen Setup-Token erneut.",
+      "access_url_invalid": "Die gespeicherte SimpleFIN-Verbindung ist ungültig. Verbinden Sie SimpleFIN mit einem neuen Setup-Token erneut.",
       "rule_skip_not_applicable": "Eine Ausschlussregel kann nicht auf vorhandene Transaktionen angewendet werden"
     },
     "label": {

@@ -550,7 +550,7 @@
     "data_page": {
       "menu_item": "Importar e exportar",
       "header": "Importar e exportar",
-      "sync_all": "Sincronizar ligações bancárias",
+      "sync_all": "Sincronizar o SimpleFIN",
       "history": "Histórico de importações",
       "sync_all_done": "{imported} importadas, {matched} correspondidas, {failed} falhadas"
     },
@@ -661,15 +661,21 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Ligue um banco através do SimpleFIN Bridge. As suas credenciais da ponte são cifradas neste dispositivo com uma frase-passe que só você conhece; o servidor guarda-as cifradas e só as vê durante uma sincronização.",
-      "forget_device": "Esquecer este dispositivo",
+      "intro": "Configure a sincronização através do SimpleFIN Bridge. As suas credenciais do SimpleFIN são cifradas neste dispositivo com uma frase-passe que só você conhece; o servidor guarda-as cifradas.",
+      "disclaimer": "O Econumo não está associado ao SimpleFIN. O SimpleFIN Bridge é um serviço de terceiros com os seus próprios termos; utiliza-o por sua conta e risco.",
+      "insecure": "O SimpleFIN requer que o Econumo seja aberto por https (ou em localhost): o navegador só cifra as suas credenciais do SimpleFIN numa página segura. Peça ao seu administrador para disponibilizar o Econumo por https.",
+      "disconnect": "Desligar",
+      "disconnect_full": "Desligar o SimpleFIN",
+      "disconnect_modal": {
+        "title": "Desligar o SimpleFIN?",
+        "question": "A ligação ao SimpleFIN será removida do Econumo. As transações já importadas serão mantidas."
+      },
       "connect": {
-        "intro": "Cole o token de configuração da sua conta SimpleFIN Bridge e escolha uma frase-passe. A frase-passe nunca é enviada ao servidor — se a esquecer, terá de voltar a ligar-se com um novo token de configuração.",
         "reconnect_intro": "Cole um novo token de configuração do SimpleFIN Bridge. A ligação anterior será substituída; as suas associações de contas são mantidas.",
         "token_label": "Token de configuração",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → Nova ligação → copie o token de configuração. Um token só pode ser usado uma vez.",
-        "forgot_passphrase": "Esqueci a minha frase-passe — definir uma nova",
+        "forgot_passphrase": "Esqueci a minha frase-passe, definir uma nova",
         "passphrase_new": "Frase-passe",
         "passphrase_existing": "A sua frase-passe",
         "passphrase_confirm": "Repita a frase-passe",
@@ -693,7 +699,7 @@
       },
       "accounts": {
         "header": "Contas",
-        "empty": "A ponte ainda não reportou contas.",
+        "empty": "O SimpleFIN ainda não reportou nenhuma conta.",
         "needs_mapping": "Sem associação",
         "state": {
           "ignored": "Ignorada"
@@ -720,6 +726,8 @@
         "button": "Sincronizar agora",
         "running": "A sincronizar…",
         "from": "Desde",
+        "since": "Sincroniza as transações desde {date}",
+        "change": "Alterar",
         "last_synced": "Última sincronização {date}",
         "never": "Nunca sincronizado",
         "done_toast": "{imported} importadas, {matched} correspondidas"
@@ -2282,10 +2290,10 @@
       "link_not_queued": "Este evento não está a aguardar revisão.",
       "link_not_skipped": "Este evento não está ignorado.",
       "event_not_failed": "Este evento não falhou.",
-      "setup_token_rejected": "O SimpleFIN rejeitou este token de configuração. Pode já ter sido utilizado — gere um novo no seu bridge SimpleFIN.",
-      "provider_unavailable": "Não foi possível contactar o bridge bancário. Tente novamente dentro de alguns minutos.",
+      "setup_token_rejected": "O SimpleFIN rejeitou este token de configuração. Pode já ter sido usado; crie um novo no SimpleFIN Bridge.",
+      "provider_unavailable": "Não foi possível contactar o SimpleFIN. Tente novamente dentro de alguns minutos.",
       "sync_range_invalid": "O intervalo de datas é inválido: o início não pode ser posterior ao fim, e o intervalo não pode exceder 400 dias.",
-      "access_url_invalid": "A credencial bancária guardada não é um URL de acesso válido. Volte a ligar o SimpleFIN com um novo token de configuração.",
+      "access_url_invalid": "A ligação ao SimpleFIN guardada não é válida. Volte a ligar o SimpleFIN com um novo token de configuração.",
       "rule_skip_not_applicable": "Uma regra de ignorar não pode ser aplicada a transações existentes"
     },
     "label": {

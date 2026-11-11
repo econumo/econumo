@@ -71,7 +71,6 @@ func newLimitHarness(t *testing.T, mutate func(*config.Config)) limitHarness {
 		DatabaseDriver:              db.Engine,
 		CurrencyBase:                "USD",
 		AllowRegistration:           true,
-		ImportSimpleFIN:             true,
 		AppURL:                      "https://app.example.test",
 		RateLimitLogin:              perKey,
 		RateLimitReset:              perKey,

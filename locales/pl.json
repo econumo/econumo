@@ -550,7 +550,7 @@
     "data_page": {
       "menu_item": "Import i eksport",
       "header": "Import i eksport",
-      "sync_all": "Synchronizuj połączenia bankowe",
+      "sync_all": "Synchronizuj SimpleFIN",
       "history": "Historia importów",
       "sync_all_done": "zaimportowano: {imported}, dopasowano: {matched}, niepowodzeń: {failed}"
     },
@@ -661,15 +661,21 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Połącz bank przez SimpleFIN Bridge. Twoje dane logowania do mostka są szyfrowane na tym urządzeniu hasłem, które znasz tylko ty; serwer przechowuje je zaszyfrowane i widzi je wyłącznie na czas synchronizacji.",
-      "forget_device": "Zapomnij to urządzenie",
+      "intro": "Skonfiguruj synchronizację przez SimpleFIN Bridge. Twoje dane logowania do SimpleFIN są szyfrowane na tym urządzeniu hasłem, które znasz tylko ty; serwer przechowuje je zaszyfrowane.",
+      "disclaimer": "Econumo nie jest powiązane z SimpleFIN. SimpleFIN Bridge to usługa zewnętrzna z własnym regulaminem; korzystasz z niej na własne ryzyko.",
+      "insecure": "SimpleFIN wymaga otwarcia Econumo przez https (lub na localhost): przeglądarka szyfruje dane logowania do SimpleFIN tylko na bezpiecznej stronie. Poproś administratora o udostępnienie Econumo przez https.",
+      "disconnect": "Rozłącz",
+      "disconnect_full": "Rozłącz SimpleFIN",
+      "disconnect_modal": {
+        "title": "Rozłączyć SimpleFIN?",
+        "question": "Połączenie z SimpleFIN zostanie usunięte z Econumo. Wcześniej zaimportowane transakcje pozostaną."
+      },
       "connect": {
-        "intro": "Wklej token konfiguracyjny z konta SimpleFIN Bridge i wybierz hasło. Hasło nigdy nie jest wysyłane na serwer — jeśli je zapomnisz, będziesz musiał połączyć się ponownie za pomocą nowego tokenu konfiguracyjnego.",
         "reconnect_intro": "Wklej nowy token konfiguracyjny z SimpleFIN Bridge. Poprzednie połączenie zostanie zastąpione; przypisania kont zostają zachowane.",
         "token_label": "Token konfiguracyjny",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → Nowe połączenie → skopiuj token konfiguracyjny. Token można wykorzystać tylko raz.",
-        "forgot_passphrase": "Zapomniałem hasła — ustaw nowe",
+        "forgot_passphrase": "Nie pamiętam hasła, ustaw nowe",
         "passphrase_new": "Hasło",
         "passphrase_existing": "Twoje hasło",
         "passphrase_confirm": "Powtórz hasło",
@@ -688,12 +694,12 @@
         "submit": "Odblokuj",
         "reconnect": "Połącz ponownie",
         "wrong_passphrase": "Nieprawidłowe hasło.",
-        "forgot_help": "Zapomniałeś? Połącz się ponownie za pomocą nowego tokenu konfiguracyjnego i nowego hasła.",
+        "forgot_help": "Nie pamiętasz? Połącz się ponownie za pomocą nowego tokenu konfiguracyjnego i nowego hasła.",
         "stale_intro": "Twoje hasło zostało zmienione na innym urządzeniu. Wpisz nowe hasło, aby dalej korzystać z SimpleFIN tutaj."
       },
       "accounts": {
         "header": "Konta",
-        "empty": "Mostek nie zgłosił jeszcze żadnych kont.",
+        "empty": "SimpleFIN nie zgłosił jeszcze żadnych kont.",
         "needs_mapping": "Nieprzypisane",
         "state": {
           "ignored": "Ignorowane"
@@ -701,7 +707,7 @@
         "taps": "{count} transakcja | {count} transakcje | {count} transakcji",
         "waiting": "do przejrzenia: {count}",
         "map": "Przypisz do konta",
-        "mapped_to": "przypisana do",
+        "mapped_to": "przypisane do",
         "remap": "Przypisz ponownie",
         "ignore": "Ignoruj",
         "unlink": "Odłącz",
@@ -720,6 +726,8 @@
         "button": "Synchronizuj teraz",
         "running": "Synchronizowanie…",
         "from": "Od",
+        "since": "Synchronizuje transakcje od {date}",
+        "change": "Zmień",
         "last_synced": "Ostatnia synchronizacja {date}",
         "never": "Nigdy nie synchronizowano",
         "done_toast": "zaimportowano: {imported}, dopasowano: {matched}"
@@ -2282,10 +2290,10 @@
       "link_not_queued": "To zdarzenie nie czeka na sprawdzenie.",
       "link_not_skipped": "To zdarzenie nie jest pominięte.",
       "event_not_failed": "To zdarzenie nie zakończyło się błędem.",
-      "setup_token_rejected": "SimpleFIN odrzucił ten token konfiguracyjny. Mógł już zostać wykorzystany — wygeneruj nowy w swoim moście SimpleFIN.",
-      "provider_unavailable": "Nie udało się połączyć z mostem bankowym. Spróbuj ponownie za kilka minut.",
+      "setup_token_rejected": "SimpleFIN odrzucił ten token konfiguracyjny. Mógł już zostać użyty; utwórz nowy w SimpleFIN Bridge.",
+      "provider_unavailable": "Nie udało się połączyć z SimpleFIN. Spróbuj ponownie za kilka minut.",
       "sync_range_invalid": "Zakres dat jest nieprawidłowy: data początkowa nie może być późniejsza niż końcowa, a zakres nie może przekraczać 400 dni.",
-      "access_url_invalid": "Zapisane dane uwierzytelniające banku nie są prawidłowym adresem URL dostępu. Połącz ponownie SimpleFIN za pomocą nowego tokenu konfiguracyjnego.",
+      "access_url_invalid": "Zapisane połączenie z SimpleFIN jest nieprawidłowe. Połącz SimpleFIN ponownie, używając nowego tokenu konfiguracyjnego.",
       "rule_skip_not_applicable": "Reguła pomijania nie może być zastosowana do istniejących transakcji"
     },
     "label": {

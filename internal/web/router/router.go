@@ -262,7 +262,7 @@ func New(deps Deps) http.Handler {
 		"FEEDBACK": !deps.Cfg.FeedbackDisabled,
 		// The SPA hides SimpleFIN while it is off; the server does not mount
 		// its routes.
-		"IMPORT_SIMPLEFIN": deps.Cfg.ImportSimpleFIN,
+		"IMPORT_SIMPLEFIN": !deps.Cfg.SimpleFINDisabled,
 		// Present even when empty: the backend decides whether create-billing-link
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.

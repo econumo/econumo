@@ -1041,8 +1041,11 @@ it). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
-- `ECONUMO_IMPORT_SIMPLEFIN` — the SimpleFIN pull provider (strict boolean, default `false`;
-  malformed fails at boot). Apple Wallet import has no switch and is always on (the former
+- `ECONUMO_IMPORT_SIMPLEFIN` — the SimpleFIN pull provider (strict boolean, default `true`;
+  malformed fails at boot; the config field is inverted, `SimpleFINDisabled`, so a zero
+  `config.Config` keeps it on). Connecting needs a secure page (https or localhost): the browser
+  encrypts the access URL with WebCrypto, so on a plain-http page the SimpleFIN page shows only an
+  explanation (`window.isSecureContext`) and Settings → Data offers no sync. Apple Wallet import has no switch and is always on (the former
   `ECONUMO_IMPORT_APPLE_WALLET` is ignored), so `internal/imports/api` is always mounted with
   import rules, the queue and run history. While SimpleFIN is off it loses its own routes
   (`claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
@@ -1052,8 +1055,7 @@ it). Key vars:
   `IMPORT_SIMPLEFIN` key for SimpleFIN's settings pages and routes; Apple Wallet, Import rules,
   import history and the Inbox's import sections are always shown (there is no
   `IMPORT_APPLE_WALLET` key any more). CSV import/export is not part of it and is always on.
-  The apiparity harness turns SimpleFIN on so the catalogue keeps
-  covering its routes.
+  The apiparity harness relies on the default (on) so the catalogue keeps covering its routes.
 - `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
   fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
   it on). Served as `FEEDBACK`; `false` hides its entry points (the Settings row and Reports'
@@ -1950,7 +1952,7 @@ data unreadable. Most are also asserted by the test suite.
   through `claim-setup-token` (the server returns the access URL and keeps nothing), encrypts
   it in the browser with a passphrase-wrapped data key (`web/src/lib/importCrypto.ts`; the
   wrapped key lives in `import_credential_keys`, one row per user; the unwrapped key stays
-  non-extractable in the `importKeys` store of the `econumo` IndexedDB), and stores only the ciphertext on the source. Every
+  non-extractable in the `importKeys` store of the `econumo` IndexedDB, removed by `clearPersistedQueryCache` on every sign-in and sign-out like the rest of the user's local data, so each sign-in asks for the passphrase once), and stores only the ciphertext on the source. Every
   `list-external-accounts`/`sync-source` call carries the plaintext access URL in the body —
   "at rest zero-knowledge, in flight trusted" — and it is never persisted, logged, or
   formatted into an error. A sync is one `import_runs` row; per-account failures leave the
