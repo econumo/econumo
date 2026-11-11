@@ -4,8 +4,8 @@ import type { KeyboardInset } from '@/hooks/useKeyboardInset'
 
 // px kept free above the sheet
 export const SHEET_TOP_GAP = 24
-// a sheet without the keyboard is at most this share of the screen
-const MAX_SHARE = 0.8
+// px between the status bar and a sheet that fills the screen
+const STATUS_BAR_GAP = 8
 // px of list the keyboard must leave (about two rows) before the sheet's top
 // moves up
 const MIN_LIST = 100
@@ -17,19 +17,36 @@ export interface SheetAnchor {
   natural: number
   /** px of it that is not the scrolling list: handle, title, search */
   chrome: number
+  /** px the top never goes above: clear of the status bar */
+  minTop: number
+}
+
+let safeTop: { width: number; px: number } | null = null
+
+// the status bar's height on an edge-to-edge screen (viewport-fit=cover)
+function safeAreaTop(): number {
+  if (safeTop?.width !== window.innerWidth) {
+    const probe = document.createElement('div')
+    probe.style.cssText = 'position:fixed;top:0;visibility:hidden;height:env(safe-area-inset-top, 0px)'
+    document.body.append(probe)
+    safeTop = { width: window.innerWidth, px: probe.offsetHeight }
+    probe.remove()
+  }
+  return safeTop.px
 }
 
 /** where the sheet's top sits on screen for the visible area left by the keyboard */
 export function anchoredTop(anchor: SheetAnchor, visibleHeight: number): number {
   const room = Math.min(anchor.chrome + MIN_LIST, anchor.natural)
-  return Math.max(SHEET_TOP_GAP, Math.min(anchor.top, visibleHeight - room))
+  return Math.max(anchor.minTop, Math.min(anchor.top, visibleHeight - room))
 }
 
 /**
  * A sheet whose top stays where it opened: the keyboard coming and going only
  * moves its bottom edge, and the list in between gets shorter or taller. The
- * top is set once from the content (as tall as the content, up to 80% of the
- * screen), moves up when the content grows (data arriving), never down when
+ * top is set once from the content: as tall as the content, and a list
+ * longer than the screen fills it up to the status bar, so the keyboard
+ * leaves it room for several rows. It moves up when the content grows (data arriving), never down when
  * it shrinks (a filter), and moves up only as far as needed when the keyboard
  * would leave less than about two rows of list.
  */
@@ -59,9 +76,10 @@ export function useAnchoredSheet(
     const chrome = el.offsetHeight - body.clientHeight
     const natural = chrome + body.scrollHeight
     const layout = document.documentElement.clientHeight || window.innerHeight
-    const top = Math.max(SHEET_TOP_GAP, layout - Math.min(natural, Math.round(layout * MAX_SHARE)))
+    const minTop = Math.max(SHEET_TOP_GAP, safeAreaTop() + STATUS_BAR_GAP)
+    const top = Math.max(minTop, layout - natural)
     if (anchor === null || top < anchor.top - 1) {
-      setAnchor({ top, natural, chrome })
+      setAnchor({ top, natural, chrome, minTop })
     }
   })
   if (!enabled || anchor === null) {

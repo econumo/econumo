@@ -3272,8 +3272,10 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       in the wrong place. The sheet's top stays where it opened: the keyboard
       coming and going (✓, tapping the search, the number keyboard switching
       to the text one) only moves its bottom edge and the list between them
-      scrolls; filtering does not move the top either. A short list rises
-      just enough to stay above the keyboard. The Add transaction page behind
+      scrolls; filtering does not move the top either. A list longer than
+      the screen opens up to just below the status bar, so with the keyboard
+      up about 4 rows stay visible. A short list rises just enough to stay
+      above the keyboard. The Add transaction page behind
       it stays still.
 - [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
       Savings accounts checklist, Category, Currency, Merge into) have the
