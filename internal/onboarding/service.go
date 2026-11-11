@@ -42,7 +42,7 @@ type Service struct {
 	limiter   AttemptLimiter
 	run       Runner
 	steps     Steps
-	debts     DebtCreator
+	debts     DebtSteps
 }
 
 func NewService(budgets BudgetWriter, accounts AccountReader, timezones TimezoneReader) *Service {
@@ -60,7 +60,7 @@ func (s *Service) SetSteps(steps Steps) { s.steps = steps }
 
 // SetDebts enables the debt detection; the debt service is built after this
 // one, so it cannot be a constructor argument.
-func (s *Service) SetDebts(d DebtCreator) { s.debts = d }
+func (s *Service) SetDebts(d DebtSteps) { s.debts = d }
 
 // SetRunner replaces how background jobs start (tests run them inline).
 func (s *Service) SetRunner(r Runner) { s.run = r }

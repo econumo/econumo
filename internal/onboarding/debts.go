@@ -3,6 +3,7 @@ package onboarding
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"slices"
 	"strings"
@@ -44,31 +45,78 @@ type debtCandidate struct {
 	payment  vo.DecimalNumber
 }
 
-// startPlanDebts starts save-plan's debt detection over the planned categories
-// (lower-cased id -> amount); nothing starts when no plan is above zero.
+// startPlanDebts follows save-plan's commit over the planned categories
+// (lower-cased id -> amount). A planned category a debt already covers hands
+// its plan to the debt's row at once (the user planned the loan, and the
+// category's row hides behind the debt's), with or without AI. The active own
+// expense categories planned above zero that no debt covers then go to the
+// debt detection; with none, no job starts and no cap slot is used.
 func (s *Service) startPlanDebts(ctx context.Context, userID vo.Id, budget string, planned map[string]vo.DecimalNumber) {
 	if s.debts == nil || budget == "" || !anyPositive(planned) {
 		return
 	}
-	if !s.reserveJob(ctx, userID, jobDebts) {
+	covered, err := s.coveredCategories(ctx, userID)
+	if err != nil {
+		slog.WarnContext(ctx, jobDebts.failed, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+		return
+	}
+	own, err := s.steps.Categories.OwnCategories(ctx, userID)
+	if err != nil {
+		slog.WarnContext(ctx, jobDebts.failed, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+		return
+	}
+	detect := map[string]vo.DecimalNumber{}
+	for _, c := range own {
+		key := strings.ToLower(c.Id)
+		if c.IsArchived == 1 || c.Type != model.TypeExpense.Alias() || !positive(planned[key]) {
+			continue
+		}
+		if !covered[key] {
+			detect[key] = planned[key]
+			continue
+		}
+		if _, err := s.debts.TakeCategoryPlans(ctx, userID, vo.MustParseId(c.Id)); err != nil {
+			slog.WarnContext(ctx, "onboarding debt plan handover failed", "user_id", userID.String(), "category_id", c.Id, "err_type", fmt.Sprintf("%T", err))
+		}
+	}
+	if len(detect) == 0 || !s.reserveJob(ctx, userID, jobDebts) {
 		return
 	}
 	budgetID := vo.MustParseId(budget)
 	s.runJob(userID, jobDebts, s.promptContext(ctx, userID), func(jobCtx context.Context, facts promptFacts) error {
-		return s.detectDebts(jobCtx, userID, budgetID, facts, planned)
+		return s.detectDebts(jobCtx, userID, budgetID, facts, detect)
 	})
+}
+
+// coveredCategories are the lower-cased ids of the categories the user's debts
+// count in.
+func (s *Service) coveredCategories(ctx context.Context, userID vo.Id) (map[string]bool, error) {
+	ids, err := s.debts.CoveredCategories(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		out[strings.ToLower(id.String())] = true
+	}
+	return out, nil
 }
 
 // detectDebts asks the AI which of the user's active own expense categories
 // repay a loan and creates a debt, not set up and paid monthly, for each one it
-// names. The payment is the category's plan when planned is set (a category
-// without a plan above zero is not asked about), else the median of its paid
-// months in the history (fewer than two: not asked about). A category the debt
-// feature refuses (it already has a debt, for one) is skipped. An unusable
-// reply creates nothing.
+// names. A category a debt already covers is never asked about. The payment is
+// the category's plan when planned is set (a category without a plan above
+// zero is not asked about), else the median of its paid months in the history
+// (fewer than two: not asked about), in the category's element currency. A
+// category whose currency cannot be read, or that the debt feature refuses, is
+// skipped. An unusable reply creates nothing.
 func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts promptFacts, planned map[string]vo.DecimalNumber) error {
 	if loc, err := time.LoadLocation(facts.Timezone); err == nil && facts.Timezone != "" {
 		ctx = reqctx.WithLocation(ctx, loc)
+	}
+	covered, err := s.coveredCategories(ctx, userID)
+	if err != nil {
+		return err
 	}
 	own, err := s.steps.Categories.OwnCategories(ctx, userID)
 	if err != nil {
@@ -84,9 +132,19 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 			byID[strings.ToLower(h.CategoryID)] = h
 		}
 	}
-	_, budgetCurrency, _, err := s.steps.Budgets.UnplannedOwnBudget(ctx, userID, budgetID)
-	if err != nil {
-		return err
+	budgetCurrency := ""
+	currencyOf := func(key string) (string, error) {
+		if h, ok := byID[key]; ok {
+			return h.CurrencyID, nil
+		}
+		if budgetCurrency == "" {
+			_, cur, _, err := s.steps.Budgets.UnplannedOwnBudget(ctx, userID, budgetID)
+			if err != nil {
+				return "", err
+			}
+			budgetCurrency = cur
+		}
+		return budgetCurrency, nil
 	}
 	digits := map[string]int{}
 	digitsOf := func(currencyID string) (int, error) {
@@ -94,37 +152,43 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 			return d, nil
 		}
 		d, err := s.steps.Currencies.FractionDigits(ctx, currencyID)
-		digits[currencyID] = d
+		if err == nil {
+			digits[currencyID] = d
+		}
 		return d, err
 	}
 
 	prompt := debtFacts{Timezone: facts.Timezone, Language: facts.Language, Categories: []debtCategory{}}
 	candidates := map[string]debtCandidate{}
 	for _, c := range own {
-		if c.IsArchived == 1 || c.Type != model.TypeExpense.Alias() {
+		key := strings.ToLower(c.Id)
+		if c.IsArchived == 1 || c.Type != model.TypeExpense.Alias() || covered[key] {
 			continue
 		}
-		key := strings.ToLower(c.Id)
-		h, hasHistory := byID[key]
-		currency := budgetCurrency
-		if hasHistory {
-			currency = h.CurrencyID
-		}
-		fd, err := digitsOf(currency)
-		if err != nil {
-			return err
-		}
+		h := byID[key]
 		var payment vo.DecimalNumber
 		if planned != nil {
 			payment = planned[key]
-		} else if hasHistory {
-			payment = medianPaid(h.Amounts).Round(fd)
+		} else {
+			payment = medianPaid(h.Amounts)
 		}
 		if !positive(payment) {
 			continue
 		}
+		currency, err := currencyOf(key)
+		if err != nil {
+			return err
+		}
+		fd, err := digitsOf(currency)
+		if err != nil {
+			slog.DebugContext(ctx, "onboarding debt skipped", "user_id", userID.String(), "category_id", c.Id)
+			continue
+		}
+		if payment = payment.Round(fd); !positive(payment) {
+			continue
+		}
 		item := debtCategory{ID: c.Id, Name: c.Name}
-		if hasHistory {
+		if slices.ContainsFunc(h.Amounts, func(a string) bool { return a != "" }) {
 			for _, a := range h.Amounts {
 				item.Monthly = append(item.Monthly, vo.NewDecimal(orZero(a)).Round(fd).String())
 			}

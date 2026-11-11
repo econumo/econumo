@@ -235,20 +235,22 @@ func (c *OnboardingCurrencies) UsableCurrencyCode(ctx context.Context, userID vo
 
 type onboardingDebtService interface {
 	CreateDebt(ctx context.Context, userID vo.Id, req model.CreateDebtRequest) (*model.DebtResult, error)
+	CoveredCategories(ctx context.Context, ownerID vo.Id) ([]vo.Id, error)
+	TakeCategoryPlans(ctx context.Context, ownerID, categoryID vo.Id) (bool, error)
 }
 
-// OnboardingDebts adapts the debt service to onboarding.DebtCreator: a debt
+// OnboardingDebts adapts the debt service to onboarding.DebtSteps: a debt
 // detection found creates a debt not set up through create-debt's own
 // validation, and a refusal (the category already has a debt, is not an
 // expense category, the currency cannot be used) creates nothing.
 type OnboardingDebts struct {
-	debts onboardingDebtService
+	onboardingDebtService
 }
 
-var _ apponboarding.DebtCreator = OnboardingDebts{}
+var _ apponboarding.DebtSteps = OnboardingDebts{}
 
 func NewOnboardingDebts(debts onboardingDebtService) OnboardingDebts {
-	return OnboardingDebts{debts: debts}
+	return OnboardingDebts{onboardingDebtService: debts}
 }
 
 func (d OnboardingDebts) CreateDebt(ctx context.Context, userID vo.Id, name string, categoryID, currencyID vo.Id, payment vo.DecimalNumber, schedule model.RecurringSchedule) (bool, error) {
@@ -258,7 +260,7 @@ func (d OnboardingDebts) CreateDebt(ctx context.Context, userID vo.Id, name stri
 	}
 	err := req.Validate()
 	if err == nil {
-		_, err = d.debts.CreateDebt(ctx, userID, req)
+		_, err = d.onboardingDebtService.CreateDebt(ctx, userID, req)
 	}
 	if err == nil {
 		return true, nil

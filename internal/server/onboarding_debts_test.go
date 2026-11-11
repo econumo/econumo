@@ -210,6 +210,8 @@ func TestSavePlan_CreatesADebtFromAPlannedLoanCategory(t *testing.T) {
 	budget := e.f.Budget(fixture.Budget{UserID: e.user, StartedAt: "2026-03-01 00:00:00"})
 	e.f.BudgetAccount(budget, card)
 	loan := e.f.Category(fixture.Category{UserID: e.user, Name: "Kredit", Type: 0})
+	// the loan's row is planned in euros: the debt follows its element currency
+	e.f.BudgetElement(fixture.BudgetElement{BudgetID: budget, ExternalID: loan, Type: int(model.ElementCategory), CurrencyID: e.eur})
 	lease := e.f.Category(fixture.Category{UserID: e.user, Name: "Leasing", Type: 0})
 	food := e.f.Category(fixture.Category{UserID: e.user, Name: "Food", Type: 0})
 	salary := e.f.Category(fixture.Category{UserID: e.user, Name: "Salary", Type: 1})
@@ -225,7 +227,7 @@ func TestSavePlan_CreatesADebtFromAPlannedLoanCategory(t *testing.T) {
 	}
 	got := e.debts()
 	if len(got) != 1 || got[0].name != "Ratenkredit" || got[0].category != loan || got[0].payment != "450.5" ||
-		got[0].schedule != string(model.RecurringScheduleMonthly) || got[0].currency != fixture.USD || got[0].setUp {
+		got[0].schedule != string(model.RecurringScheduleMonthly) || got[0].currency != e.eur || got[0].setUp {
 		t.Fatalf("debts = %+v", got)
 	}
 	// the whole-category debt took the category's plan with it
@@ -275,5 +277,39 @@ func TestSavePlan_AfterAnImportSkipsCategoriesAlreadyCovered(t *testing.T) {
 	got := e.debts()
 	if len(got) != 2 || got[0].category != w.carLoan || got[0].payment != "300" || got[1].category != w.mortgage || got[1].payment != "1000" {
 		t.Fatalf("debts = %+v", got)
+	}
+	// the covered category was never asked about again, and its plan went to
+	// the import's debt rather than to a second row
+	if strings.Contains(e.ai.promptsFor(debtsMarker)[1], w.mortgage) {
+		t.Fatal("a covered category was asked about")
+	}
+	mortgageDebt := e.str(`SELECT id FROM debts WHERE category_id = ?`, w.mortgage)
+	limitsOn := func(externalID string) int {
+		return e.count(`SELECT COUNT(*) FROM budgets_elements_limits l JOIN budgets_elements el ON el.id = l.element_id WHERE el.budget_id = ? AND el.external_id = ?`, budget, externalID)
+	}
+	if limitsOn(mortgageDebt) != 1 || limitsOn(w.mortgage) != 0 {
+		t.Fatalf("limits: debt %d, category %d", limitsOn(mortgageDebt), limitsOn(w.mortgage))
+	}
+	status, view := e.get("/api/v1/budget/get-budget?id=" + budget + "&date=2026-03-01")
+	if status != 200 {
+		t.Fatalf("get-budget %d: %v", status, view)
+	}
+	structure := view["item"].(map[string]any)["structure"].(map[string]any)
+	planned := map[string]string{}
+	var walk func(list any)
+	walk = func(list any) {
+		items, _ := list.([]any)
+		for _, it := range items {
+			row := it.(map[string]any)
+			if row["isBudgeted"] == float64(1) {
+				planned[row["id"].(string)] = row["budgeted"].(string)
+			}
+			walk(row["children"])
+		}
+	}
+	walk(structure["elements"])
+	walk(structure["debts"])
+	if len(planned) != 2 || planned[mortgageDebt] != "1000" || planned[w.mortgage] != "" {
+		t.Fatalf("planned rows = %v", planned)
 	}
 }

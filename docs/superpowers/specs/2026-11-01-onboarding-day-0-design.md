@@ -345,4 +345,5 @@ without one nothing below runs.
     period; a category without a plan above zero gets no debt. This also runs after an
     import, adding categories the history could not cover.
   - A category that already has a debt is skipped, so running detection again never makes a
-    second one.
+    second one; a plan entered for it moves to the debt's row instead of staying on the
+    category.

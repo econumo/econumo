@@ -465,7 +465,9 @@ navigation (single-pane vs sidebar).
       450) on Budget & plan creates a not-set-up monthly debt with payment 450
       shortly after Save and continue; an unplanned (blank or 0) loan category
       gets none; a category that already has a debt (e.g. one the import
-      created) never gets a second. Without AI no debt is ever created.
+      created) never gets a second, and the amount planned for it lands on
+      that debt's row (one "Mortgage" row with the plan, no category row
+      carrying it), with or without AI. Without AI no debt is ever created.
 - [ ] Steps per device: Install app appears only where the browser can
       install or show home-screen instructions (a standalone PWA shows
       none); the Install button or "Done" marks it done and Skip skips it. On

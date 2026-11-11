@@ -88,17 +88,38 @@ func (fakeAccountSteps) OwnLiveAccounts(context.Context, vo.Id) ([]model.Onboard
 	return nil, nil
 }
 
-type fakeDebts struct{ calls int }
+// fakeCategorySteps owns an expense category (id cash) and an income one
+// (id deposit).
+type fakeCategorySteps struct{ onboarding.CategorySteps }
+
+func (fakeCategorySteps) OwnCategories(context.Context, vo.Id) ([]model.CategoryResult, error) {
+	return []model.CategoryResult{{Id: cash, Name: "Loan", Type: "expense"}, {Id: deposit, Name: "Salary", Type: "income"}}, nil
+}
+
+// fakeDebts covers the categories in covered; taken lists the categories
+// whose plans were handed to their debt.
+type fakeDebts struct {
+	calls   int
+	covered []vo.Id
+	taken   []vo.Id
+}
 
 func (f *fakeDebts) CreateDebt(context.Context, vo.Id, string, vo.Id, vo.Id, vo.DecimalNumber, model.RecurringSchedule) (bool, error) {
 	f.calls++
 	return true, nil
 }
 
+func (f *fakeDebts) CoveredCategories(context.Context, vo.Id) ([]vo.Id, error) { return f.covered, nil }
+
+func (f *fakeDebts) TakeCategoryPlans(_ context.Context, _, categoryID vo.Id) (bool, error) {
+	f.taken = append(f.taken, categoryID)
+	return true, nil
+}
+
 func newSvc(c onboarding.Completer, l onboarding.AttemptLimiter) (*onboarding.Service, *fakeBudgets) {
 	b := &fakeBudgets{}
 	svc := onboarding.NewService(b, fakeAccounts{}, fakeTimezones{})
-	svc.SetSteps(onboarding.Steps{Accounts: fakeAccountSteps{}})
+	svc.SetSteps(onboarding.Steps{Accounts: fakeAccountSteps{}, Categories: fakeCategorySteps{}})
 	if c != nil {
 		svc.SetAdvisor(c, l)
 	}
@@ -229,7 +250,7 @@ func TestPlanDebts_NoAIOrOverTheCapStartsNothing(t *testing.T) {
 			}
 			debts := &fakeDebts{}
 			svc.SetDebts(debts)
-			// the steps are not wired: a job that started would panic and log
+			// the budget steps are not wired: a job that started would panic and log
 			svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, planned)
 			if debts.calls != 0 || (c != nil && c.calls != 0) {
 				t.Fatalf("debts %d", debts.calls)
@@ -238,14 +259,40 @@ func TestPlanDebts_NoAIOrOverTheCapStartsNothing(t *testing.T) {
 	}
 }
 
-func TestPlanDebts_NoPlanAboveZeroReservesNothing(t *testing.T) {
-	c := replying(`{"debts":[]}`)
-	reserved := &countingLimiter{}
-	svc, _ := newSvc(c, reserved)
-	svc.SetDebts(&fakeDebts{})
-	svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("0")})
-	if reserved.n != 0 || c.calls != 0 {
-		t.Fatalf("reserved %d, calls %d", reserved.n, c.calls)
+func TestPlanDebts_NoPositiveUncoveredExpensePlanReservesNothing(t *testing.T) {
+	for name, tc := range map[string]struct {
+		planned map[string]vo.DecimalNumber
+		covered []vo.Id
+		taken   int
+	}{
+		"zero plan":        {planned: map[string]vo.DecimalNumber{cash: vo.NewDecimal("0")}},
+		"income only":      {planned: map[string]vo.DecimalNumber{deposit: vo.NewDecimal("3000")}},
+		"unknown category": {planned: map[string]vo.DecimalNumber{gone: vo.NewDecimal("10")}},
+		// a debt covers it: its plan goes to the debt, nothing is asked
+		"covered": {planned: map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")}, covered: ids(cash), taken: 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := replying(`{"debts":[]}`)
+			reserved := &countingLimiter{}
+			svc, _ := newSvc(c, reserved)
+			debts := &fakeDebts{covered: tc.covered}
+			svc.SetDebts(debts)
+			svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, tc.planned)
+			if reserved.n != 0 || c.calls != 0 || len(debts.taken) != tc.taken {
+				t.Fatalf("reserved %d, calls %d, taken %v", reserved.n, c.calls, debts.taken)
+			}
+		})
+	}
+}
+
+// Without AI a plan on a covered category still moves to the debt.
+func TestPlanDebts_HandsACoveredPlanToTheDebtWithoutAI(t *testing.T) {
+	svc, _ := newSvc(nil, nil)
+	debts := &fakeDebts{covered: ids(cash)}
+	svc.SetDebts(debts)
+	svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")})
+	if len(debts.taken) != 1 || debts.taken[0].String() != cash {
+		t.Fatalf("taken %v", debts.taken)
 	}
 }
 
