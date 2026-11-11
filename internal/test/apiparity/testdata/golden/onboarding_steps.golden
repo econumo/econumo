@@ -1,0 +1,45 @@
+== err:save-categories-blank POST /api/v1/onboarding/save-categories [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+
+== err:save-categories-short-name POST /api/v1/onboarding/save-categories [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"name":["Category name must be 3-64 characters"]}}
+
+== err:save-categories-readonly POST /api/v1/onboarding/save-categories [readonly] -> 402
+{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}
+
+== save-categories POST /api/v1/onboarding/save-categories [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","createdAt":"<datetime>","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"categories"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly","accessLevel":"full","accessUntil":"","hasPassword":true},"categories":{"row-bonus":"<generated-uuid>","row-coffee":"<generated-uuid>","row-food":"c0000000-0000-0000-0000-000000000001"},"budgetId":"b0000000-0000-0000-0000-000000000001"}}
+
+== save-categories-replay POST /api/v1/onboarding/save-categories [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","createdAt":"<datetime>","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"categories"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly","accessLevel":"full","accessUntil":"","hasPassword":true},"categories":{"row-bonus":"<generated-uuid>","row-coffee":"<generated-uuid>","row-food":"c0000000-0000-0000-0000-000000000001"},"budgetId":"b0000000-0000-0000-0000-000000000001"}}
+
+== get-category-list-after GET /api/v1/category/get-category-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Coffee","position":0,"type":"expense","icon":"local_cafe","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"<generated-uuid>","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Bonus","position":1,"type":"income","icon":"payments","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"c0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Food","position":2,"type":"expense","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"c0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Salary","position":3,"type":"income","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+
+== err:save-accounts-bad-balance POST /api/v1/onboarding/save-accounts [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"balance":["This value is not valid."]}}
+
+== err:save-accounts-readonly POST /api/v1/onboarding/save-accounts [readonly] -> 402
+{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}
+
+== save-accounts POST /api/v1/onboarding/save-accounts [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","createdAt":"<datetime>","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"categories,accounts"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly","accessLevel":"full","accessUntil":"","hasPassword":true},"accounts":{"row-card":"<generated-uuid>","row-cash":"<generated-uuid>"},"budgetId":"b0000000-0000-0000-0000-000000000001"}}
+
+== save-accounts-replay POST /api/v1/onboarding/save-accounts [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","createdAt":"<datetime>","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"categories,accounts"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly","accessLevel":"full","accessUntil":"","hasPassword":true},"accounts":{"row-card":"<generated-uuid>","row-cash":"<generated-uuid>"},"budgetId":"b0000000-0000-0000-0000-000000000001"}}
+
+== err:save-plan-negative POST /api/v1/onboarding/save-plan [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"amount":["This value is not valid."]}}
+
+== err:save-plan-readonly POST /api/v1/onboarding/save-plan [readonly] -> 402
+{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}
+
+== save-plan POST /api/v1/onboarding/save-plan [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","createdAt":"<datetime>","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"categories,accounts,plan"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly","accessLevel":"full","accessUntil":"","hasPassword":true},"budgetId":"b0000000-0000-0000-0000-000000000001"}}
+
+== save-plan-replay POST /api/v1/onboarding/save-plan [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","createdAt":"<datetime>","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"categories,accounts,plan"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly","accessLevel":"full","accessUntil":"","hasPassword":true},"budgetId":"b0000000-0000-0000-0000-000000000001"}}
+
+== get-budget-after GET /api/v1/budget/get-budget?id=b0000000-0000-0000-0000-000000000001 [owner] -> 200
+{"success":true,"message":"","data":{"item":{"meta":{"id":"b0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Budget","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"periodStartDay":1,"access":[{"user":{"id":"22222222-2222-2222-2222-222222222222","avatar":"diamond:sky","name":"User 2222"},"role":"user","isAccepted":0},{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]},"filters":{"periodStart":"<datetime>","periodEnd":"<datetime>","accounts":[{"id":"a0000000-0000-0000-0000-000000000001","removable":false,"isSavings":false},{"id":"<generated-uuid>","removable":true,"isSavings":false},{"id":"<generated-uuid>","removable":true,"isSavings":false}]},"balances":[{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startBalance":"987.5","endBalance":null,"income":"12.5","expenses":"0","exchanges":"0","holdings":"0"}],"currencyRates":[],"structure":{"folders":[{"id":"bf000000-0000-0000-0000-000000000001","name":"Bills","position":0,"side":"expense"}],"elements":[{"id":"c0000000-0000-0000-0000-000000000001","type":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":0,"budgeted":"300","isBudgeted":1,"available":"0","spent":"0","budgetSpent":"0","children":[],"ownerUserId":"11111111-1111-1111-1111-111111111111","upcoming":"0","budgetUpcoming":"0"},{"id":"be000000-0000-0000-0000-000000000001","type":0,"name":"Envelope","icon":"cart","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":1,"budgeted":"0","isBudgeted":0,"available":"0","spent":"0","budgetSpent":"0","children":[],"ownerUserId":null,"upcoming":"0","budgetUpcoming":"0"},{"id":"<generated-uuid>","type":1,"name":"Coffee","icon":"local_cafe","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":2,"budgeted":"0","isBudgeted":0,"available":"0","spent":"0","budgetSpent":"0","children":[],"ownerUserId":"11111111-1111-1111-1111-111111111111","upcoming":"0","budgetUpcoming":"0"}],"labels":[],"savings":[]}}}}
+

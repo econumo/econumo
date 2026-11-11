@@ -50,3 +50,7 @@ func (sqliteQuerier) MarkOperationHandled(ctx context.Context, db backend.DBTX, 
 func (sqliteQuerier) ReassignCategoryRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return sqlitegen.New(db).ReassignCategoryRecurring(ctx, p)
 }
+
+func (sqliteQuerier) ReplaceCategoryIcon(ctx context.Context, db backend.DBTX, p replaceIconParams) (int64, error) {
+	return sqlitegen.New(db).ReplaceCategoryIcon(ctx, p)
+}

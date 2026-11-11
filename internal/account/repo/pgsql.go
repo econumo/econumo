@@ -130,3 +130,7 @@ func (pgsqlBalance) ListAccountBalancesForUser(ctx context.Context, db backend.D
 func (pgsqlQuerier) ListAccountIDsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]string, error) {
 	return pgsqlgen.New(db).ListAccountIDsByOwner(ctx, userID)
 }
+
+func (pgsqlQuerier) ReplaceAccountIcon(ctx context.Context, db backend.DBTX, p replaceIconP) (int64, error) {
+	return pgsqlgen.New(db).ReplaceAccountIcon(ctx, pgsqlgen.ReplaceAccountIconParams(p))
+}

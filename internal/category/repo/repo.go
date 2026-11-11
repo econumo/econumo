@@ -26,6 +26,7 @@ type (
 	markOpParams      = sqlitegen.MarkOperationHandledParams
 	reassignParams    = sqlitegen.ReassignCategoryTransactionsParams
 	reassignRecParams = sqlitegen.ReassignCategoryRecurringParams
+	replaceIconParams = sqlitegen.ReplaceCategoryIconParams
 )
 
 type querier interface {
@@ -33,6 +34,7 @@ type querier interface {
 	ListCategoriesByOwner(ctx context.Context, db backend.DBTX, userID string) ([]categoryRow, error)
 	UpsertCategory(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteCategory(ctx context.Context, db backend.DBTX, id string) error
+	ReplaceCategoryIcon(ctx context.Context, db backend.DBTX, p replaceIconParams) (int64, error)
 	ReassignCategoryTransactions(ctx context.Context, db backend.DBTX, p reassignParams) error
 	ReassignCategoryRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error
 	GetOperationId(ctx context.Context, db backend.DBTX, id string) (opRow, error)
@@ -70,6 +72,13 @@ func NewPgsqlRepo(tx *backend.TxManager) *Repo {
 func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
+
+func (r *Repo) ReplaceIcon(ctx context.Context, id, ownerID vo.Id, from, to string, now time.Time) (bool, error) {
+	n, err := r.q.ReplaceCategoryIcon(ctx, r.db(ctx), replaceIconParams{
+		Icon: to, UpdatedAt: now, ID: id.String(), UserID: ownerID.String(), Icon_2: from,
+	})
+	return n > 0, err
+}
 
 func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Category, error) {
 	row, err := r.q.GetCategoryByID(ctx, r.db(ctx), id.String())

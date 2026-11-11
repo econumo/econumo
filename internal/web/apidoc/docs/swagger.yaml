@@ -2411,6 +2411,171 @@ definitions:
           type: string
         type: array
     type: object
+  model.OnboardingAccountBalance:
+    properties:
+      accountId:
+        type: string
+      balance:
+        type: string
+    type: object
+  model.OnboardingAccountCurrency:
+    properties:
+      accountId:
+        type: string
+      currencyId:
+        type: string
+    type: object
+  model.OnboardingAccountRow:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      icon:
+        type: string
+      key:
+        type: string
+      name:
+        type: string
+    type: object
+  model.OnboardingCategoryRow:
+    properties:
+      icon:
+        type: string
+      key:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  model.OnboardingFinishImportRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.OnboardingFinishImportResult:
+    properties:
+      budgetId:
+        type: string
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.OnboardingGetPlanSuggestionsResult:
+    properties:
+      budgetId:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/model.OnboardingPlanSuggestion'
+        type: array
+    type: object
+  model.OnboardingPlanAmount:
+    properties:
+      amount:
+        type: string
+      categoryId:
+        type: string
+    type: object
+  model.OnboardingPlanSuggestion:
+    properties:
+      amount:
+        type: string
+      categoryId:
+        type: string
+    type: object
+  model.OnboardingSaveAccountsRequest:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.OnboardingAccountRow'
+        type: array
+      balances:
+        items:
+          $ref: '#/definitions/model.OnboardingAccountBalance'
+        type: array
+      currencies:
+        items:
+          $ref: '#/definitions/model.OnboardingAccountCurrency'
+        type: array
+      currencyIds:
+        items:
+          type: string
+        type: array
+      hide:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      mainCurrencyId:
+        type: string
+      unhide:
+        items:
+          type: string
+        type: array
+    type: object
+  model.OnboardingSaveAccountsResult:
+    properties:
+      accounts:
+        additionalProperties:
+          type: string
+        type: object
+      budgetId:
+        type: string
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.OnboardingSaveCategoriesRequest:
+    properties:
+      archive:
+        items:
+          type: string
+        type: array
+      categories:
+        items:
+          $ref: '#/definitions/model.OnboardingCategoryRow'
+        type: array
+      id:
+        type: string
+      order:
+        items:
+          type: string
+        type: array
+      restore:
+        items:
+          type: string
+        type: array
+    type: object
+  model.OnboardingSaveCategoriesResult:
+    properties:
+      budgetId:
+        type: string
+      categories:
+        additionalProperties:
+          type: string
+        type: object
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.OnboardingSavePlanRequest:
+    properties:
+      amounts:
+        items:
+          $ref: '#/definitions/model.OnboardingPlanAmount'
+        type: array
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.OnboardingSavePlanResult:
+    properties:
+      budgetId:
+        type: string
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
   model.OpeningBalanceResult:
     properties:
       amount:
@@ -3679,6 +3844,16 @@ definitions:
         type: string
     type: object
   model.UpdateNameResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateOnboardingRequest:
+    properties:
+      value:
+        type: string
+    type: object
+  model.UpdateOnboardingResult:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
@@ -9475,6 +9650,288 @@ paths:
       summary: Unlink a provider from the current account
       tags:
       - OAuth
+  /api/v1/onboarding/finish-import:
+    post:
+      consumes:
+      - application/json
+      description: 'In one transaction: creates the budget when the user has none
+        (over their live accounts outside hidden folders, in the profile currency,
+        named in the request language; no budget without such an account) and marks
+        the import step done. The categories and accounts steps stay open for review.
+        After the commit, when the server has an AI provider, a background job sends
+        the user''s active categories still on a default icon (names and types) and
+        live accounts (names and currencies), with the caller''s timezone and language,
+        and applies the icons it picks from the app''s icon catalogue (only to items
+        still on a default icon that has not changed since) and flags the savings
+        accounts it picks in the budget this call created. Idempotent on the operation
+        id like onboarding/save-categories.'
+      parameters:
+      - description: Finish import request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OnboardingFinishImportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OnboardingFinishImportResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Finish the onboarding import step
+      tags:
+      - Onboarding
+  /api/v1/onboarding/get-plan-suggestions:
+    get:
+      description: For the current period of the budget (budgetId, which the caller
+        must be able to update; else the user's default budget, when they can update
+        it), suggests per own active category, income and expense, the average monthly
+        amount over the last three complete periods (sum divided by three, in the
+        element currency, rounded to its fraction digits), only for categories with
+        transactions in at least two of them. The history is read over every account
+        the caller owns (archived and deleted ones included), not the budget's members;
+        accounts other users share are left out. Read-only. budgetId is "" and items
+        empty when the user has no default budget they can update.
+      parameters:
+      - description: 'Budget id (default: the user''s default budget)'
+        in: query
+        name: budgetId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OnboardingGetPlanSuggestionsResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Suggest the onboarding plan
+      tags:
+      - Onboarding
+  /api/v1/onboarding/save-accounts:
+    post:
+      consumes:
+      - application/json
+      description: 'In one transaction: creates the accounts (validated like account/create-account,
+        opening balance as a correction; the first account of a user with no folder
+        creates one), moves each existing account in currencies (the caller''s own
+        live accounts and a currency they may use, else a 400 on currencies) to its
+        currency and sets each existing account in balances (same rules, else a 400
+        on balances) to its balance, both through account/update-account with the
+        account''s name and icon unchanged (a changed balance books a Balance adjustment
+        correction dated now in the caller''s timezone, an untouched one none), sets
+        the profile currency to mainCurrencyId, keeps only the main, listed and account
+        currencies visible, moves the accounts in hide into the user''s hidden archive
+        folder (named in the request language; created hidden when missing, with a
+        number appended when a visible folder holds the name) and those in unhide
+        into the first visible folder (a "General" folder when there is none; the
+        caller''s own live accounts only, another id is a 400 on that list), then
+        creates the budget over the user''s live accounts outside hidden folders when
+        they have none, else adds the new and unhidden accounts to their default budget
+        and removes the hidden ones from it (an account that has transactions in a
+        past period, or a savings member with plans or comments, stays a member),
+        and switches that budget to mainCurrencyId when the caller owns it alone (no
+        participant, invited or accepted) and it has no limit in any period yet, and
+        marks the accounts step done. After the commit, when the server has an AI
+        provider, a background job sends the new accounts'' names and currencies with
+        the caller''s timezone and language to it and flags the ones it judges savings
+        in that budget. Idempotent on the operation id like onboarding/save-categories.'
+      parameters:
+      - description: Save accounts request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OnboardingSaveAccountsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OnboardingSaveAccountsResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Save the onboarding accounts step
+      tags:
+      - Onboarding
+  /api/v1/onboarding/save-categories:
+    post:
+      consumes:
+      - application/json
+      description: 'In one transaction: creates the categories in display order (validated
+        like category/create-category; a row named like an active category of its
+        type, or like an earlier row, maps to that category instead), applies the
+        optional order (existing category ids and row keys, each type ordered on its
+        own), archives the categories in archive and restores those in restore (the
+        caller''s own; another id is a 400 on that list), creates the budget when
+        the user owns a live account but has no budget, and marks the categories step
+        done. The operation id makes it idempotent: a replay, or a call after the
+        step is done, writes nothing and answers with the current state (row keys
+        matched by name).'
+      parameters:
+      - description: Save categories request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OnboardingSaveCategoriesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OnboardingSaveCategoriesResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Save the onboarding categories step
+      tags:
+      - Onboarding
+  /api/v1/onboarding/save-plan:
+    post:
+      consumes:
+      - application/json
+      description: 'In one transaction: writes each amount as the category''s limit
+        for the budget''s current period (budgetId, else the user''s default budget;
+        the caller must be able to update it) like budget/set-limit, and marks the
+        plan step done. Idempotent on the operation id like onboarding/save-categories.'
+      parameters:
+      - description: Save plan request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OnboardingSavePlanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OnboardingSavePlanResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Save the onboarding plan step
+      tags:
+      - Onboarding
   /api/v1/payee/archive-payee:
     post:
       consumes:
@@ -12056,6 +12513,53 @@ paths:
       security:
       - Bearer: []
       summary: Update name
+      tags:
+      - User
+  /api/v1/user/update-onboarding:
+    post:
+      consumes:
+      - application/json
+      description: Stores which onboarding steps the authenticated user finished or
+        skipped ("started" = none yet) and returns the refreshed user. A completed
+        onboarding is left unchanged.
+      parameters:
+      - description: Update onboarding request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateOnboardingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateOnboardingResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update onboarding progress
       tags:
       - User
   /api/v1/user/update-password:

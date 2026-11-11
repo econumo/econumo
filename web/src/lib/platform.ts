@@ -30,6 +30,16 @@ export function isIOS(): boolean {
   return /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
+// Apple Wallet's card-tap automation exists on iPhone only, so iPad is out.
+export function isIPhone(): boolean {
+  return /iPhone|iPod/.test(navigator.userAgent)
+}
+
+// iPadOS also reports Macintosh, so isIOS() has the final word.
+export function isMac(): boolean {
+  return /Macintosh/.test(navigator.userAgent) && !isIOS()
+}
+
 // Hands a custom-scheme URL (shortcuts://…) to the OS by navigating the page.
 // A thin wrapper so callers can be tested; jsdom cannot navigate.
 export function openAppUrl(url: string): void {

@@ -73,7 +73,7 @@ navigation (single-pane vs sidebar).
       the server's reason ("User already exists", localized), no account
       created.
 - [ ] Login with correct credentials → lands on `/` (onboarding for a fresh
-      user); wrong password → error dialog, no session created.
+      user, Day 0 step 1); wrong password → error dialog, no session created.
 - [ ] "Remember email" checkbox pre-fills the email on next visit.
 - [ ] Forgot password: send code → email arrives (console transport prints to
       server stdout in dev) → enter code + new password → old password rejected,
@@ -261,13 +261,262 @@ navigation (single-pane vs sidebar).
 
 ## 3. Onboarding (fresh user)
 
-- [ ] 📱 A fresh user lands on onboarding; steps show completion checkmarks as
-      they are done (account created, transactions, classifications, avatar,
-      connections, budget).
-- [ ] Inline actions work from the onboarding page: add account, import CSV,
-      pick avatar.
-- [ ] "Complete onboarding" navigates to `/budget`; the sidebar onboarding link
-      disappears; `/` now renders the budget.
+- [ ] 📱 A fresh user lands on Getting started at `/` (on a phone too, instead
+      of the nav list). Desktop shows a horizontal stepper (Import "optional",
+      Categories, Accounts, Budget & plan, plus Install app where the browser
+      can install and Apple Wallet on an iPhone or Mac): done steps are filled
+      with ✓, skipped ones dashed, the selected one outlined. A phone shows
+      "Getting started · N of M" over a segmented bar.
+- [ ] The stepper shows no focus outline after page load or a click; Tab
+      onto a step shows a focus ring.
+- [ ] Clicking an open or skipped step (or its bar segment on a phone) opens
+      it; Save and continue or Skip on a step moves to the next open step after it, and
+      the stepper shows the new state. A done step is read-only: it keeps its
+      ✓, shows no hover, cannot be opened (clicking or tapping it changes
+      nothing) and is still announced as done.
+- [ ] On Budget & plan, "Add categories" / "Add an account" open the
+      Categories / Accounts step while it is open or skipped, and the
+      Categories / Accounts settings page once that step is done.
+- [ ] A freshly registered user's answers are saved: after Skip on Import and
+      Save and continue on Categories and Accounts, a reload keeps those steps checked
+      and opens Budget & plan; finishing it completes onboarding.
+- [ ] 📱 A screen reader announces the page heading "Getting started" and each
+      step with its state ("Import, done", "Categories, skipped"); each phone
+      bar segment is a comfortable (24px tall) tap target.
+- [ ] Answering the last open step completes onboarding and lands on
+      `/budget`; the sidebar onboarding link disappears; `/` now renders the
+      budget (and on a phone the nav list again).
+- [ ] "Complete setup" (top right) skips every open step, completes
+      onboarding and lands on `/budget`.
+- [ ] A user whose every visible step is already done or skipped (answered
+      on another device) is completed on arrival and lands on `/budget`; if
+      that request fails, the error shows with a Finish button that retries.
+- [ ] 📱 On a phone, the menu button at the top left of Getting started opens
+      the navigation list (Settings, accounts, logout reachable) without
+      completing onboarding; its "Getting started" link returns to the page.
+- [ ] With both import providers off, Getting started still opens at once
+      (no wait on the failing import-source request).
+- [ ] 📱 While onboarding is incomplete neither the "Econumo works best as an
+      app" banner nor the one-time install popup appears in the app; both
+      appear once onboarding is completed.
+- [ ] The main button on Categories, Accounts and Plan reads "Save and continue"
+      (translated), whether or not anything changed.
+- [ ] Every step's skip button reads "Skip" (Plan included, translated);
+      Import also has "I don't have one".
+- [ ] 📱 The step's buttons stay visible at the bottom while a long list
+      scrolls (Categories with every default row, a long Plan): the bar sits
+      on the page background with a thin top border only while rows run
+      under it, the last row is never hidden behind it, on an iPhone it clears
+      the home indicator, focusing a balance or plan input near the bottom
+      (with the keyboard open) scrolls it into view above the bar, and on a
+      desktop dragging a category to the bottom of the list still works.
+- [ ] Skip on Categories or Accounts creates nothing; Save and continue on Categories
+      creates every category still listed (in the listed order), Save and continue on Accounts only the new
+      accounts (and sets the main currency and visible currencies). Each Save and continue
+      sends one request (Network tab: `onboarding/save-categories` /
+      `save-accounts`); a user who already has categories or accounts can
+      Continue without adding any. The budget is created by whichever of the
+      two steps comes second with an account present (over every own account),
+      and not at all while the user has no account.
+- [ ] Categories: one card per type, a trash button on the right of each new
+      row ("Remove {name}" for a screen reader), an "Add your own" row at the
+      end. On a fresh account every default is listed; the trash button drops
+      a row from the list, and a removed name typed again under "Add your own"
+      comes back as a normal row. Save and continue is disabled only when no category
+      would be left at all (every row archived or removed and nothing new).
+      Categories the user already has (after an import) are listed with their
+      name read-only (no trash button, no checkbox) and an Archive button
+      ("Archive {name}"; icon only on a phone, "Archive" next to it from a
+      tablet width up); archived ones (also the user's earlier archived
+      categories) read muted, "Archived" next to the name from a tablet width,
+      with a "Restore" button. Then no defaults are offered; defaults named
+      like any category the user has, archived ones included, are not offered
+      either. Typing the name of an archived category under "Add your own"
+      (or renaming a new row to it) restores that category instead of adding
+      a duplicate. Save and continue sends `archive`/`restore` in `save-categories` only for
+      the rows flipped against the server (flipping a row twice sends
+      nothing); after it the archived ones are gone from the category pickers
+      and restored ones are back. The defaults are, for
+      expenses, Groceries, Housing, Utilities, Transport, Eating out, Health,
+      Shopping, Entertainment, Kids, Pets, Subscriptions and, for income,
+      Salary, Bonus, Other income (translated in every UI language).
+- [ ] 📱 In dark mode the Getting started page scrolls with a thin, dark
+      scrollbar (no bright default one), and the list has no scroll box of
+      its own.
+- [ ] Categories on a desktop width: each row has a drag handle, and dragging
+      (or focusing the handle, Space, arrow keys, Space) reorders rows within
+      Expenses or Income, existing read-only categories included; a row never
+      moves to the other card. After Save and continue the Categories settings page
+      lists them in that order; a reload before Save and continue keeps the order.
+      On a phone or tablet width there are no handles.
+- [ ] Accounts: one card of compact rows (icon, name, balance, currency chip,
+      and on a new row an ✕ that removes it), with no label under the name and
+      no savings switch or details expander (a cash-like name picks the cash
+      icon; a savings-like name picks nothing special, and no icon makes the
+      account a savings account); tapping a new row's icon opens the icon picker, the chosen icon is kept when the name changes and is
+      used for the created account, and an existing account's icon is not
+      tappable; "Add account" adds a row. Accounts the user already has are
+      listed first with their name locked and their balance and currency
+      editable, each with an Archive button (an archive box; "Archive" next to
+      it from a tablet width up); an archived one (also an account already in
+      a hidden folder) reads muted with "Archived" instead of its balance and
+      a Restore button. Save and continue sends `hide`/`unhide` in `save-accounts`
+      for the flipped rows only: an archived account then sits in the hidden
+      "Archive" folder (translated) and is gone from the budget (unless it has
+      history in an earlier month, then it stays a member); a shown one moves
+      back to a visible folder and into the budget. Save and continue is disabled while
+      every account is archived and no new row has a name. A user with no accounts starts with one row named "Cash" (cash
+      icon, blank balance saved as 0, the default currency) that
+      can be renamed or removed like any row; a user who already has accounts,
+      or resumes a draft with rows, gets no Cash row. Under the Currencies
+      label a hint reads "Select the currencies you use most often. You can
+      add more later in Settings." above the currency chips. No note about missing exchange rates appears.
+- [ ] 📱 Accounts after a CSV import (accounts arrive in the instance base
+      currency): an existing, shown account's currency chip is tappable and
+      opens the currency list, and its balance is an input prefilled with the
+      current balance (to the currency's decimals, in the UI language's
+      number format); its name stays read-only and an archived one shows
+      "Archived" with no chip or input. Changing the FIRST row's currency also
+      moves every row whose currency was not changed by hand (other imported
+      accounts and new rows) and the main currency; changing another row moves
+      only that row. Save and continue sends the changed existing accounts as
+      `currencies` and edited balances as `balances` in `save-accounts`:
+      afterwards they show the new currency on Accounts, an untouched balance
+      unchanged with no correction, an edited one at the typed amount with one
+      "Balance adjustment" transaction dated today; an unreadable balance shows
+      the error and blocks Save and continue. The budget the import created (nothing
+      planned, not shared) switches to the main currency; a budget that has a
+      plan, or is shared with someone (also a pending invite), keeps its
+      currency.
+- [ ] 📱 Accounts layout: on a phone and on a desktop the balance inputs,
+      currency chips and the trailing Archive / ✕ buttons line up in columns
+      across existing and new rows. Existing rows' toggle reads "Archive"
+      (an archive-box icon; the word from a tablet width up) and "Restore" on
+      an archived row; there is no hint line under the list.
+- [ ] 📱 Currencies block: under the hint one wrapping row of chips, the main
+      currency first (filled, star, "· Main"), then the other selected
+      currencies (outlined), then "+ Add currency", and under them "Tap a
+      currency to make it main or remove it." Tapping the main chip opens the
+      full searchable currency list: the pick becomes main and is added to the
+      chips, the old main stays. Tapping another chip opens a menu with "Make
+      main" and "Remove"; Remove is missing for a currency a listed account
+      uses. "+ Add currency" adds a chip and leaves the main currency alone.
+      Both lists also offer currencies hidden in Settings → Currencies (but
+      no deleted one); a hidden one picked here is visible again after Save
+      and continue.
+- [ ] 📱 Plan step: every category row shows its currency code next to the
+      amount (the budget's, or the element's own currency).
+- [ ] Default names follow the UI language: switching the language on
+      Categories or Accounts (or reloading in another language mid-flow)
+      re-labels the default categories and the Cash row that were not
+      renamed, and Save and continue creates them in that language; a renamed row
+      keeps the typed name; categories and accounts that already exist keep
+      their stored names.
+- [ ] Accounts skipped, then opened again after Budget & plan: a new account
+      joins the budget at once: without AI as an everyday account, whatever
+      its name or icon; with AI (`ECONUMO_AI_DSN` set) it turns into a savings
+      account a few seconds later when the AI judges it one (e.g. "Emergency
+      fund"; reload the budget to see it); the user's other accounts keep
+      their budget membership and savings flags.
+- [ ] 📱 Categories and Accounts render usably on a phone, tablet and desktop
+      width (each account row stays on one line; no horizontal scroll;
+      Save and continue and Skip reachable).
+- [ ] Import step: "Choose a CSV file" (a dashed, accent-tinted area) opens
+      the CSV import dialog; under it sit "Skip" on the left and "I don't
+      have one" on the right, both skipping the step (there is no separate
+      Import button). On a desktop the area also reads "or
+      drop it here": dragging a file over it highlights it, dropping a .csv
+      opens the dialog with that file already read (column mapping shown),
+      and dropping another kind of file opens nothing and shows "Only CSV
+      files can be imported here."; a successful import sends one
+      `onboarding/finish-import` (it creates the budget when the user has
+      none), ticks Import only and opens Categories: Categories and Accounts
+      stay open as review steps of what the import brought in (they are not
+      ticked); closing the dialog or importing nothing leaves the step open;
+      "Skip" and "I don't have one" skip only Import. A failed finish-import shows the
+      error with "Try again", which resends the same operation id; the drop
+      area is disabled meanwhile. The Network tab shows no
+      `update-onboarding` carrying `import`.
+- [ ] While onboarding is in progress, a CSV import from Settings → Data also
+      settles the Import step through `finish-import` (the budget appears and,
+      with AI, icons arrive).
+- [ ] With AI (`ECONUMO_AI_DSN` set), after an import the imported categories
+      and accounts get matching icons later without a reload (the review
+      screens refetch about 10 s, 30 s and 90 s after the import, also when
+      onboarding was completed meanwhile; without AI there are no such
+      refetches), the
+      budget the import created flags the accounts the AI judges savings, and
+      an icon the user changed meanwhile is kept. Without AI the icons stay
+      as imported.
+- [ ] Steps per device: Install app appears only where the browser can
+      install or show home-screen instructions (a standalone PWA shows
+      none); the Install button or "Done" marks it done and Skip skips it. On
+      an iPhone or Mac, Apple Wallet appears with a line saying it can be set
+      up any time later in Settings (no Shortcut tile); Set up opens the Apple
+      Wallet settings, Skip skips it. When Categories and Accounts are both done, Set up first
+      skips every other open step and completes onboarding, then opens the Apple Wallet settings
+      (not `/budget`); if completing fails, the error shows, nothing navigates, and Finish then
+      opens the Apple Wallet settings. Install instructions render as a grouped rounded card
+      with dividers and icon tiles.
+- [ ] An existing user who owns accounts (upgraded instance) is not sent to
+      onboarding.
+- [ ] 📱 Reloading mid-flow (or retrying after a failed request) resumes at the
+      same step with the same rows and creates nothing twice. With the network
+      cut (DevTools offline) Save and continue shows an error and stays on the step;
+      back online, Save and continue again creates each row once; a step whose request
+      landed but whose answer was lost shows done after the user reloads.
+- [ ] An invalid balance in a row with no name does not block Save and continue; Skip is
+      disabled while a save is running.
+- [ ] Balances follow the UI language: in English "2,500" saves 2500 and
+      "2.50" saves 2.50; in German "2.500" saves 2500 and "2,50" saves 2.50;
+      a mark that is not the language's own followed by exactly three digits
+      (e.g. "2.500" in Russian) shows the "Enter a number" error.
+- [ ] An account or category name shorter than 3 or longer than 64 characters
+      shows the server's length message under the row once the field is left,
+      and Save and continue stays disabled until it is fixed (or, for a new row,
+      removed). In Chinese every default category saves without an error.
+- [ ] 📱 Opening "Budget & plan" writes nothing: it plans the budget the
+      Categories/Accounts steps created (over every own account; without AI
+      none of them is savings, even one named "Savings" with the piggy-bank
+      icon; with AI the Accounts step moves on without waiting for the AI, and
+      a few seconds later the accounts it judges savings (e.g. "Tagesgeld" for
+      a German user) become savings members, never accounts the user does not
+      own; an AI failure or timeout leaves them all everyday), or the
+      default/first budget the user already has (its savings flags are left
+      alone). With no budget (Accounts skipped and no account) it says a budget
+      needs an account and "Add an account" opens the Accounts step; Skip stays
+      available.
+- [ ] "Plan this month" lists an "Income · {month}" card (the user's own
+      income categories, e.g. Salary right after Day 0) and an "Expenses ·
+      {month}" card (own expense categories, not archived ones nor those inside
+      an envelope), one amount per row, prefilled with this month's existing
+      plan exactly as stored; a row with no plan is blank, not 0. With history
+      (e.g. after an import) a blank row is then prefilled with the suggestion from the last
+      three complete months (`onboarding/get-plan-suggestions`: only a
+      category with transactions in at least 2 of those 3 months, the total
+      divided by 3, rounded to the currency's digits, in the budget currency;
+      counted over every account the user owns, so archiving the imported
+      account on the Accounts step, or one deleted earlier, still leaves the
+      suggestions, while a partner's shared account adds nothing);
+      a stored plan is never replaced, and an amount typed (or a row cleared)
+      before the suggestions arrive is kept. A prefilled amount is saved by
+      "Save and continue" like a typed one; an archived category is never listed. The
+      step reads "Enter rough planned amounts — you can adjust them later." and
+      shows no "Planned X of Y" total.
+- [ ] "Save and continue" on Plan writes only changed rows for this month in one request
+      (`onboarding/save-plan`): a typed 0 is saved as a zero plan, a blank row
+      is never written (clearing an existing plan here leaves it); the step is
+      then marked done and the next open step opens. An unreadable or negative amount shows an inline error and
+      disables "Save and continue"; "Skip" skips the step and writes nothing.
+- [ ] Reusing a budget whose months start on another day (e.g. the 15th) plans
+      that budget's current period: its month name heads the cards and the
+      saved plan shows in that period on the budget page.
+- [ ] A budget with no income or expense categories shows a hint and an "Add
+      categories" button that opens the Categories step; "Save and continue" is
+      disabled.
+- [ ] 📱 The budget page never shows get-ready cards (an empty budget shows the
+      normal table or the create-budget prompt), and the Inbox has no "Next
+      steps" section, for a user still getting started or not.
 
 ## 4. Accounts & folders
 
@@ -691,7 +940,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
       imports; skipped rows are not counted.
 - [ ] Inbox page 📱: sections appear in order Due, To review, Sync problems,
       Failed imports, Skipped (collapsed), Sharing; empty sections are hidden; with
-      nothing pending it reads "All caught up".
+      nothing pending it reads "All caught up". On desktop the heading has no
+      breadcrumb above it (the Inbox is not part of Settings).
 - [ ] Inbox clears itself 📱: accepting/declining an invite, importing/skipping
       every queued row, and a successful re-sync each remove the item and lower
       the badge without a reload.
@@ -3127,7 +3377,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       Launched from the Home Screen icon, neither the banner nor the row
       appears.
 - [ ] 📱 Install popup, iOS Safari: on a device that never saw it, the first
-      signed-in page opens the install steps by itself, once; after "Got it"
+      signed-in page once onboarding is complete opens the install steps by
+      itself, once; after "Got it"
       it never opens again on that device (reload, logout and login included),
       and it never opens after the banner was dismissed, in the installed app,
       or in Chrome/Edge (they get the browser's own install dialog instead).
@@ -3462,6 +3713,14 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       carries a check mark. Search-first pickers (Category, Recipient, account,
       Currency) raise the keyboard on open; the checklist and Merge into do
       not. Desktop keeps the search above the list, with the same keys.
+- [ ] 📱 iPhone home-screen app: open Category on Add transaction with 10+
+      categories, hide the keyboard, then tap the search (repeat a few times,
+      and with another keyboard language). Every time the sheet shrinks to
+      the space above the keyboard: the handle, the title and the first rows
+      stay on screen and the rest of the list scrolls; the top of the sheet
+      never goes off the screen. Hiding the keyboard (✓) lets the sheet grow
+      back down to its full height without first jumping up to the top of
+      the screen.
 - [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
       Savings accounts checklist, Category, Currency, Merge into) have the
       same rounded corners as the sheet's search field and OK button, not

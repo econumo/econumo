@@ -70,3 +70,26 @@ it('mobile back falls back to the main screen on a deep link (no origin)', async
   await user.click(screen.getByRole('button', { name: 'back' }))
   expect(await screen.findByText('MAIN SCREEN')).toBeInTheDocument()
 })
+
+function renderDesktopShell(crumbs?: { label: string; to: string }[]) {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  const router = createMemoryRouter(
+    [{ path: '/', element: <SettingsShell title="Page" backTo="/" crumbs={crumbs}><div>BODY</div></SettingsShell> }],
+    { initialEntries: ['/'] },
+  )
+  render(<RouterProvider router={router} />)
+}
+
+it('desktop shows the Settings breadcrumb by default', () => {
+  renderDesktopShell()
+  expect(screen.getByRole('navigation')).toBeInTheDocument()
+  expect(screen.getByRole('link')).toHaveAttribute('href', '/settings')
+})
+
+it('desktop shows no breadcrumb row for a page outside Settings (empty crumbs)', () => {
+  renderDesktopShell([])
+  expect(screen.getByText('BODY')).toBeInTheDocument()
+  expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+})

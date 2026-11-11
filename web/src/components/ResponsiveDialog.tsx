@@ -276,6 +276,11 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         <DrawerContent
           ref={contentRef}
           style={sheetStyle}
+          // a fixed element's 100% is the layout viewport, which the iOS
+          // home-screen app sometimes shrinks with the keyboard: the cap then
+          // follows it the moment it changes, while the keyboard measurement
+          // (sheetStyle) is still catching up, e.g. as the keyboard goes away
+          className="data-[vaul-drawer-direction=bottom]:max-h-[min(80vh,calc(100%-24px))]"
           onInteractOutside={onInteractOutside}
           onEscapeKeyDown={onEscapeKeyDown}
           onCloseAutoFocus={onCloseAutoFocus}

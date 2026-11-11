@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { OfflineUnavailable } from '@/components/OfflineUnavailable'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight } from 'lucide-react'
@@ -9,18 +9,10 @@ import { SettingsShell } from '@/features/settings/SettingsShell'
 import { FailedImportsSection, SkippedSection, ToReviewSection } from '@/features/imports/QueueSections'
 import { DueRecurringSection } from './DueRecurringSection'
 import { FailedWritesSection } from './FailedWritesSection'
+import { InboxSection } from './InboxSection'
 import { SharingSection } from './SharingSection'
 import { SyncProblemsSection } from './SyncProblemsSection'
 import { useInbox } from './useInbox'
-
-export function InboxSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="px-1 text-xs uppercase text-muted-foreground">{title}</h2>
-      {children}
-    </section>
-  )
-}
 
 export function SkippedInboxSection({ skipped }: { skipped: ImportQueuedEventDto[] }) {
   const { t } = useTranslation()
@@ -45,7 +37,7 @@ export function InboxPage() {
   const empty = inbox.isLoaded && !inbox.importsError && inbox.count === 0 && inbox.skipped.length === 0
 
   return (
-    <SettingsShell title={t('inbox.title')} backTo={RouterPage.HOME} editableOffline>
+    <SettingsShell title={t('inbox.title')} backTo={RouterPage.HOME} crumbs={[]} editableOffline>
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
         {empty ? <p className="px-1 text-sm text-muted-foreground">{t('inbox.empty')}</p> : null}
         {inbox.failedWrites.length > 0 ? (

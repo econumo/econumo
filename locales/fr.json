@@ -1360,46 +1360,112 @@
     }
   },
   "onboarding": {
-    "header": "Premiers pas",
-    "title": "Bienvenue dans Econumo !",
-    "complete": "Terminer la configuration",
-    "add_account": "Ajouter un compte",
-    "import_transactions": "Importer des transactions",
-    "steps": {
-      "accounts": {
-        "title": "Ajoutez vos comptes",
-        "text": "Pour commencer, ajoutez un compte en cliquant sur le bouton ci-dessous. Vous pouvez aussi à tout moment ouvrir la page <settings>Paramètres</settings> -> <accounts>Comptes</accounts> pour gérer vos comptes et les organiser en dossiers."
-      },
-      "transactions": {
-        "title": "Saisissez votre première transaction",
-        "text": "Vous pouvez saisir des transactions en sélectionnant un compte dans le menu latéral gauche et en cliquant sur le bouton <action>Ajouter une transaction</action>.",
-        "hint": "Vous pouvez créer des catégories, des tags et des bénéficiaires directement depuis la fenêtre de transaction : saisissez leur nom et appuyez sur Entrée."
-      },
-      "classifications": {
-        "title": "Gérez les catégories, tags et bénéficiaires",
-        "text": "Pour gérer les catégories, tags et bénéficiaires, ouvrez <settings>Paramètres</settings> -> <categories>Catégories</categories>, <tags>Tags</tags> ou <payees>Bénéficiaires</payees>. Vous pouvez aussi les trier ou les archiver selon vos besoins."
-      },
-      "avatar": {
-        "title": "Mettez à jour votre avatar",
-        "text": "Choisissez une icône et une couleur pour votre avatar — il vous représente dans les comptes partagés. <choose>Choisir votre avatar</choose>"
-      },
-      "connections": {
-        "title": "Partagez l’accès avec votre partenaire",
-        "text": "Pour créer une connexion avec votre partenaire et gérer l’accès partagé à votre budget ou à vos comptes, ouvrez <settings>Paramètres</settings> -> <connections>Accès partagé</connections>."
-      },
-      "budget": {
-        "title": "Créez votre budget",
-        "text": "Vous pouvez créer votre premier budget sur la page <budget>Budget</budget>.",
-        "text_secondary": "Vous pouvez également ouvrir la page <settings>Paramètres</settings> -> <budgets>Budgets</budgets> pour gérer vos budgets, l’accès partagé et bien plus."
-      }
+    "categories": {
+      "groceries": "Courses",
+      "housing": "Logement",
+      "utilities": "Factures",
+      "transport": "Transport",
+      "eating_out": "Restaurants",
+      "health": "Santé",
+      "shopping": "Shopping",
+      "entertainment": "Loisirs",
+      "kids": "Enfants",
+      "pets": "Animaux",
+      "subscriptions": "Abonnements",
+      "salary": "Salaire",
+      "bonus": "Primes",
+      "other_income": "Autres revenus"
     },
-    "user_guide": {
-      "accounts": "Guide utilisateur : comptes",
-      "transactions": "Guide utilisateur : transactions",
-      "classifications": "Guide utilisateur : classification",
-      "user_profile": "Guide utilisateur : profil",
-      "shared_access": "Guide utilisateur : accès partagé",
-      "budgets": "Guide utilisateur : budgets"
+    "archive_folder": "Archives",
+    "budget_name": "Mon budget",
+    "accounts": {
+      "heading": "Où est votre argent en ce moment ?",
+      "subtext": "Les soldes actuels suffisent, pas besoin d'historique.",
+      "name_label": "Nom du compte",
+      "balance_label": "Solde",
+      "balance_invalid": "Saisissez un nombre, par exemple 1234,50",
+      "currency_title": "Devise",
+      "add": "Ajouter un compte",
+      "default_cash": "Espèces",
+      "balance_of": "Solde de {name}"
+    },
+    "categories_step": {
+      "heading": "Où va votre argent ?",
+      "subtext": "Supprimez ce dont vous n'avez pas besoin. Vous pourrez modifier cette liste plus tard.",
+      "expenses": "Dépenses",
+      "income": "Revenus",
+      "name_label": "Nom de la catégorie",
+      "icon_label": "Changer l'icône",
+      "reorder_label": "Déplacer {name}",
+      "add_placeholder": "Ajouter la vôtre"
+    },
+    "currencies": {
+      "title": "Devises",
+      "main_title": "Devise principale",
+      "add": "Ajouter une devise",
+      "hint": "Sélectionnez les devises que vous utilisez le plus souvent. Vous pourrez en ajouter d'autres plus tard dans les Paramètres.",
+      "selected": "Devises sélectionnées",
+      "main_label": "Devise principale : {code}",
+      "main_suffix": "Principale",
+      "make_main": "Définir comme principale",
+      "chips_hint": "Touchez une devise pour la définir comme principale ou la retirer."
+    },
+    "steps_nav": {
+      "title": "Premiers pas",
+      "progress": "Premiers pas · {current} sur {total}",
+      "complete_setup": "Terminer la configuration",
+      "optional": "facultatif",
+      "import": "Importer",
+      "categories": "Catégories",
+      "accounts": "Comptes",
+      "plan": "Budget et plan",
+      "home_screen": "Installer l'app",
+      "apple_wallet": "Apple Wallet",
+      "menu": "Menu",
+      "finish": "Terminer",
+      "state_done": "terminé",
+      "state_skipped": "ignoré"
+    },
+    "import_step": {
+      "heading": "Importez votre historique",
+      "text": "Vous avez un export CSV de votre banque ou d'une autre appli ? Il crée comptes, catégories et transactions en une seule fois.",
+      "choose": "Choisir un fichier CSV",
+      "no_file": "Je n'en ai pas",
+      "drop_here": "ou déposez-le ici",
+      "not_csv": "Seuls les fichiers CSV peuvent être importés ici."
+    },
+    "install_step": {
+      "heading": "Econumo à portée de main",
+      "text": "Ajoutez-le à votre écran d'accueil pour noter un café en quelques secondes.",
+      "install": "Installer",
+      "done": "Terminé"
+    },
+    "wallet_step": {
+      "heading": "Paiements par carte, saisis pour vous",
+      "text": "Connectez Apple Wallet et chaque paiement par carte apparaît tout seul dans Econumo.",
+      "setup": "Configurer",
+      "later": "Vous pourrez configurer l'intégration Apple Wallet à tout moment dans les Paramètres."
+    },
+    "retry": "Réessayer",
+    "save_continue": "Enregistrer et continuer",
+    "skip": "Passer",
+    "archive": "Archiver",
+    "restore": "Restaurer",
+    "archive_label": "Archiver {name}",
+    "restore_label": "Restaurer {name}",
+    "archived": "Aux archives",
+    "remove": "Retirer",
+    "remove_label": "Supprimer {name}",
+    "plan_step": {
+      "heading": "Planifier ce mois-ci",
+      "subtext": "Saisissez des montants prévus approximatifs : vous pourrez les ajuster plus tard.",
+      "income": "Revenus · {month}",
+      "expenses": "Dépenses · {month}",
+      "needs_account": "Un budget nécessite au moins un compte. Ajoutez-en un d'abord.",
+      "add_account": "Ajouter un compte",
+      "no_categories": "Il n'y a pas encore de catégories à planifier. Ajoutez-en d'abord quelques-unes.",
+      "add_categories": "Ajouter des catégories",
+      "amount_invalid": "Saisissez un montant de zéro ou plus, par exemple 250,50"
     }
   },
   "budgets": {

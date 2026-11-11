@@ -9,7 +9,9 @@ package model
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -284,6 +286,87 @@ func (u *User) SetAnalytics(enabled bool, id vo.Id, now time.Time) {
 		return
 	}
 	u.Options = append(u.Options, NewUserOption(id, OptionAnalytics, &v, now))
+}
+
+// SetOnboardingProgress stores the step states of an onboarding still in
+// progress ("started" or a step list, see UpdateOnboardingRequest). Completion is
+// terminal and written only by CompleteOnboarding, so a completed (or absent,
+// i.e. predating the option) onboarding is left alone. Reports whether the
+// option is still in progress.
+func (u *User) SetOnboardingProgress(value string, now time.Time) bool {
+	o := u.Option(OptionOnboarding)
+	if o == nil || o.Value == nil || *o.Value == OnboardingCompleted || value == OnboardingCompleted {
+		return false
+	}
+	v := keepServerSteps(*o.Value, value)
+	o.setValue(&v, now)
+	return true
+}
+
+// serverSteps are the steps the onboarding step writes mark done after
+// creating their rows. A stale client write must not reopen one: a later save
+// under a new operation id would then create the rows a second time.
+var serverSteps = []string{"import", "categories", "accounts", "plan"}
+
+// keepServerSteps returns next with every server step done in stored kept
+// done, replacing a skipped entry for it.
+func keepServerSteps(stored, next string) string {
+	listed := func(value, step string) bool {
+		return value != OnboardingStarted && slices.Contains(strings.Split(value, ","), step)
+	}
+	var items []string
+	if next != OnboardingStarted && next != "" {
+		items = strings.Split(next, ",")
+	}
+	changed := false
+	for _, step := range serverSteps {
+		if !listed(stored, step) || listed(next, step) {
+			continue
+		}
+		items = append(slices.DeleteFunc(items, func(item string) bool { return item == "!"+step }), step)
+		changed = true
+	}
+	if !changed {
+		return next
+	}
+	return strings.Join(items, ",")
+}
+
+// OnboardingStepDone reports whether step needs no more work: it is in the
+// stored step list unskipped, or onboarding is completed or predates the
+// option (neither is ever reopened).
+func OnboardingStepDone(value *string, step string) bool {
+	if value == nil || *value == OnboardingCompleted {
+		return true
+	}
+	if *value == OnboardingStarted {
+		return false
+	}
+	for _, item := range strings.Split(*value, ",") {
+		if item == step {
+			return true
+		}
+	}
+	return false
+}
+
+// MarkOnboardingStep records step as finished in an onboarding still in
+// progress, replacing a skipped entry for it; a completed or absent onboarding
+// is left alone. Reports whether the option changed.
+func (u *User) MarkOnboardingStep(step string, now time.Time) bool {
+	o := u.Option(OptionOnboarding)
+	if o == nil || OnboardingStepDone(o.Value, step) {
+		return false
+	}
+	var items []string
+	if *o.Value != OnboardingStarted {
+		for _, item := range strings.Split(*o.Value, ",") {
+			if item != "!"+step {
+				items = append(items, item)
+			}
+		}
+	}
+	return u.SetOnboardingProgress(strings.Join(append(items, step), ","), now)
 }
 
 // SetLastSeenVersion records the release whose "what's new" notice the user has

@@ -173,3 +173,18 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 	}
 	return &model.UpdateAccountResult{Item: item, Transaction: correction}, nil
 }
+
+// ReplaceIcon sets the icon of a live account the caller owns, but only while
+// it still shows from: one conditional write, so a change the user made in the
+// meantime wins and a failed compare writes nothing. Reports whether the icon
+// changed.
+func (s *Service) ReplaceIcon(ctx context.Context, userID, id vo.Id, from, to string) (bool, error) {
+	icon, err := newIcon(to)
+	if err != nil {
+		return false, err
+	}
+	if icon == from {
+		return false, nil
+	}
+	return s.accounts.ReplaceIcon(ctx, id, userID, from, icon, s.clock.Now())
+}

@@ -32,6 +32,9 @@ const (
 // DefaultIcon is the create-time fallback icon used when none is provided.
 const DefaultIcon = "local_offer"
 
+// ImportCategoryIcon is the icon the CSV import gives the categories it creates.
+const ImportCategoryIcon = "category"
+
 func (t CategoryType) Int16() int16 { return int16(t) }
 
 // Alias returns the wire alias ("expense" / "income").

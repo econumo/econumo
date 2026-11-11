@@ -60,3 +60,7 @@ func (pgsqlQuerier) MarkOperationHandled(ctx context.Context, db backend.DBTX, p
 func (pgsqlQuerier) ReassignCategoryRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return pgsqlgen.New(db).ReassignCategoryRecurring(ctx, pgsqlgen.ReassignCategoryRecurringParams(p))
 }
+
+func (pgsqlQuerier) ReplaceCategoryIcon(ctx context.Context, db backend.DBTX, p replaceIconParams) (int64, error) {
+	return pgsqlgen.New(db).ReplaceCategoryIcon(ctx, pgsqlgen.ReplaceCategoryIconParams(p))
+}

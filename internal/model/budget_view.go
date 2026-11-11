@@ -188,3 +188,15 @@ type PayeeMeta struct {
 	ID   string
 	Name string
 }
+
+// BudgetCategoryHistory is one budget category's actuals over consecutive
+// periods, converted to the category element's currency. Amounts aligns with
+// the periods asked for; "" marks a period with no transaction in it.
+type BudgetCategoryHistory struct {
+	CategoryID string
+	OwnerID    string
+	IsIncome   bool
+	IsArchived bool
+	CurrencyID string
+	Amounts    []string
+}

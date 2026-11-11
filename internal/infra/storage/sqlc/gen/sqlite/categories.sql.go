@@ -137,6 +137,35 @@ func (q *Queries) ReassignCategoryTransactions(ctx context.Context, arg Reassign
 	return err
 }
 
+const replaceCategoryIcon = `-- name: ReplaceCategoryIcon :execrows
+UPDATE categories SET icon = ?, updated_at = ?
+WHERE id = ? AND user_id = ? AND icon = ?
+`
+
+type ReplaceCategoryIconParams struct {
+	Icon      string
+	UpdatedAt time.Time
+	ID        string
+	UserID    string
+	Icon_2    string
+}
+
+// A compare-and-set on the icon: a category whose icon changed since it was
+// read is left alone, and nothing is written.
+func (q *Queries) ReplaceCategoryIcon(ctx context.Context, arg ReplaceCategoryIconParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, replaceCategoryIcon,
+		arg.Icon,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.UserID,
+		arg.Icon_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const upsertCategory = `-- name: UpsertCategory :exec
 INSERT INTO categories (id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

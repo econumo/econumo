@@ -1360,46 +1360,112 @@
     }
   },
   "onboarding": {
-    "header": "快速入门",
-    "title": "欢迎使用 Econumo！",
-    "complete": "完成设置",
-    "add_account": "添加账户",
-    "import_transactions": "导入交易",
-    "steps": {
-      "accounts": {
-        "title": "添加您的账户",
-        "text": "首先，您可以点击下方按钮添加账户。您也可以随时前往<settings>设置</settings> -> <accounts>账户</accounts>页面管理账户，并将它们整理到文件夹中。"
-      },
-      "transactions": {
-        "title": "添加第一笔交易",
-        "text": "在左侧边栏中选择任意账户，然后点击<action>添加交易</action>按钮，即可录入交易。",
-        "hint": "您可以直接在交易窗口中创建分类、标签和收款人：输入名称后按 Enter 键即可。"
-      },
-      "classifications": {
-        "title": "管理分类、标签和收款人",
-        "text": "要管理分类、标签和收款人，请前往<settings>设置</settings> -> <categories>分类</categories>、<tags>标签</tags>或<payees>收款人</payees>页面。您还可以根据需要对它们排序或归档。"
-      },
-      "avatar": {
-        "title": "更新您的头像",
-        "text": "为您的头像选择一个图标和颜色，它将在共享账户中代表您。<choose>选择头像</choose>"
-      },
-      "connections": {
-        "title": "与您的伴侣建立关联",
-        "text": "要与伴侣一起管理预算或账户的共享访问，请前往<settings>设置</settings> -> <connections>共享访问</connections>。"
-      },
-      "budget": {
-        "title": "创建您的预算",
-        "text": "您可以在<budget>预算</budget>页面创建第一个预算。",
-        "text_secondary": "此外，您还可以在<settings>设置</settings> -> <budgets>预算</budgets>页面管理预算、共享访问等内容。"
-      }
+    "categories": {
+      "groceries": "日常买菜",
+      "housing": "住房开支",
+      "utilities": "水电燃气",
+      "transport": "交通出行",
+      "eating_out": "外出就餐",
+      "health": "医疗健康",
+      "shopping": "日常购物",
+      "entertainment": "休闲娱乐",
+      "kids": "子女开销",
+      "pets": "宠物开销",
+      "subscriptions": "订阅服务",
+      "salary": "工资收入",
+      "bonus": "奖金收入",
+      "other_income": "其他收入"
     },
-    "user_guide": {
-      "accounts": "用户指南：账户",
-      "transactions": "用户指南：交易",
-      "classifications": "用户指南：分类管理",
-      "user_profile": "用户指南：个人资料",
-      "shared_access": "用户指南：共享访问",
-      "budgets": "用户指南：预算"
+    "archive_folder": "已归档",
+    "budget_name": "我的预算",
+    "accounts": {
+      "heading": "您的钱现在在哪里？",
+      "subtext": "只需当前余额，无需历史记录。",
+      "name_label": "账户名称",
+      "balance_label": "余额",
+      "balance_invalid": "请输入数字，例如 1234.50",
+      "currency_title": "币种",
+      "add": "添加账户",
+      "default_cash": "现金账户",
+      "balance_of": "{name} 的余额"
+    },
+    "categories_step": {
+      "heading": "你的钱花在哪里？",
+      "subtext": "移除不需要的项目。之后可以编辑此列表。",
+      "expenses": "支出",
+      "income": "收入",
+      "name_label": "分类名称",
+      "icon_label": "更换图标",
+      "reorder_label": "移动{name}",
+      "add_placeholder": "添加自定义分类"
+    },
+    "currencies": {
+      "title": "币种",
+      "main_title": "主币种",
+      "add": "添加币种",
+      "hint": "选择你最常用的币种。之后可以在设置中添加更多。",
+      "selected": "已选币种",
+      "main_label": "主币种：{code}",
+      "main_suffix": "主",
+      "make_main": "设为主币种",
+      "chips_hint": "点按币种可将其设为主币种或移除。"
+    },
+    "steps_nav": {
+      "title": "开始使用",
+      "progress": "开始使用 · 第 {current} 步，共 {total} 步",
+      "complete_setup": "完成设置",
+      "optional": "可选",
+      "import": "导入",
+      "categories": "分类",
+      "accounts": "账户",
+      "plan": "预算与计划",
+      "home_screen": "安装应用",
+      "apple_wallet": "Apple Wallet",
+      "menu": "菜单",
+      "finish": "完成",
+      "state_done": "已完成",
+      "state_skipped": "已跳过"
+    },
+    "import_step": {
+      "heading": "导入你的历史记录",
+      "text": "有银行或其他应用导出的 CSV 吗？它会一次性创建账户、分类和交易。",
+      "choose": "选择 CSV 文件",
+      "no_file": "我没有",
+      "drop_here": "或拖放到这里",
+      "not_csv": "这里只能导入 CSV 文件。"
+    },
+    "install_step": {
+      "heading": "让 Econumo 触手可及",
+      "text": "添加到主屏幕，几秒钟就能记下一杯咖啡。",
+      "install": "安装",
+      "done": "完成"
+    },
+    "wallet_step": {
+      "heading": "刷卡支付，自动记录",
+      "text": "连接 Apple Wallet，每一笔刷卡都会自动出现在 Econumo 中。",
+      "setup": "设置",
+      "later": "你可以随时在设置中配置 Apple Wallet 集成。"
+    },
+    "retry": "重试",
+    "save_continue": "保存并继续",
+    "skip": "跳过",
+    "archive": "归档",
+    "restore": "恢复",
+    "archive_label": "归档 {name}",
+    "restore_label": "恢复 {name}",
+    "archived": "已归档",
+    "remove": "移除",
+    "remove_label": "移除{name}",
+    "plan_step": {
+      "heading": "规划本月",
+      "subtext": "填写大致的计划金额——之后可以调整。",
+      "income": "收入 · {month}",
+      "expenses": "支出 · {month}",
+      "needs_account": "预算至少需要一个账户。请先添加账户。",
+      "add_account": "添加账户",
+      "no_categories": "还没有可规划的分类。请先添加几个。",
+      "add_categories": "添加分类",
+      "amount_invalid": "请输入零或更大的金额，例如 250.50"
     }
   },
   "budgets": {

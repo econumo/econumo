@@ -53,6 +53,9 @@ type Account struct {
 	TransactionsRevision int64
 }
 
+// ImportAccountIcon is the icon the CSV import gives the accounts it creates.
+const ImportAccountIcon = "wallet"
+
 // NewAccount constructs a freshly-created account (always CREDIT_CARD). The
 // initial balance is applied separately by the service as a correction
 // transaction; position is stored per-user.

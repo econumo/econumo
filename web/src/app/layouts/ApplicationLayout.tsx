@@ -1,5 +1,5 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react'
-import { Link, Outlet, useLocation } from 'react-router'
+import { Link, Outlet, useLocation, useSearchParams } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
 import { ChartColumn, RefreshCw, Rocket, Search, Settings, Wallet, WifiOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -90,6 +90,7 @@ function useLastSyncAt(): string {
 export function ApplicationLayout() {
   const { t, i18n } = useTranslation()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   // Recorded during render (idempotent per pathname) so children mounting in
   // this same pass can already read their origin via previousPathname().
   recordPathname(location.pathname)
@@ -119,8 +120,14 @@ export function ApplicationLayout() {
 
   const showLogoutEscape = useLogoutEscape(showBootLoader)
 
-  const showSidebar = !isCompact || location.pathname === '/'
-  const showWorkspace = !isCompact || location.pathname !== '/'
+  // a user still loading counts as not onboarded, so the install prompts never flash before getting started
+  const onboarded = isOnboardingCompleted(user)
+  const onboardingPending = user !== undefined && !onboarded
+  // On a phone `/` is the nav list, except while getting started takes its
+  // place; its menu button opens the list at `/?menu=1` without finishing.
+  const homeIsOnboarding = onboardingPending && searchParams.get('menu') !== '1'
+  const showSidebar = !isCompact || (location.pathname === '/' && !homeIsOnboarding)
+  const showWorkspace = !isCompact || location.pathname !== '/' || homeIsOnboarding
   const isFetching = useIsFetching() > 0
   const lastSyncAt = useLastSyncAt()
   const online = useOnline()
@@ -209,8 +216,8 @@ export function ApplicationLayout() {
       className={`flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${showWorkspace ? '' : 'bg-sidebar'}`}
       data-surface={showWorkspace ? undefined : 'sidebar'}
     >
-      <TopBanner />
-      <InstallPopup />
+      <TopBanner installHidden={!onboarded} />
+      {onboarded ? <InstallPopup /> : null}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
           <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">
