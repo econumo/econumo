@@ -100,6 +100,23 @@ export function sheetVisibleHeight(layout: number, keyboardVisible: number, reme
   return room && !noKeyboard ? remembered : layout
 }
 
+// The height the body's content takes, whatever height the body is drawn at:
+// the body stretches to the sheet's fixed height, so its own scrollHeight
+// never reports content shorter than that (a list shorter than last time)
+function contentHeight(body: HTMLElement): number {
+  const first = body.firstElementChild
+  const last = body.lastElementChild
+  if (!first || !last) {
+    return body.scrollHeight
+  }
+  const style = getComputedStyle(body)
+  const padding = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0)
+  // rows that scroll inside a list of their own
+  const list = body.querySelector<HTMLElement>('[cmdk-list]')
+  const inner = list ? list.scrollHeight - list.clientHeight : 0
+  return Math.ceil(last.getBoundingClientRect().bottom - first.getBoundingClientRect().top + padding + inner)
+}
+
 export interface AnchoredSheet {
   style: CSSProperties
   /** px from the top of the visible area to the sheet's top */
@@ -115,6 +132,17 @@ export function useAnchoredSheet(
 ): AnchoredSheet | undefined {
   const [anchor, setAnchor] = useState<SheetAnchor | null>(null)
   const measured = useRef(false)
+  // state, so a resize or a rotation with no keyboard up re-renders the sheet
+  const [layout, setLayout] = useState(layoutHeight)
+  useEffect(() => {
+    if (!enabled || !open) {
+      return
+    }
+    const update = () => setLayout(layoutHeight())
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [enabled, open])
   // after every render, since the content can grow without the keyboard
   // changing; it only ever sets the anchor higher, so it settles
   // oxlint-disable-next-line react-hooks/exhaustive-deps
@@ -136,12 +164,8 @@ export function useAnchoredSheet(
     if (!el || !body) {
       return
     }
-    // the content's own height, however tall the sheet is drawn now; a
-    // picker's rows scroll inside their own list, which the body does not see
     const chrome = el.offsetHeight - body.clientHeight
-    const list = body.querySelector<HTMLElement>('[cmdk-list]')
-    const natural = chrome + body.scrollHeight + (list ? list.scrollHeight - list.clientHeight : 0)
-    const layout = layoutHeight()
+    const natural = chrome + contentHeight(body)
     const minTop = Math.max(SHEET_TOP_GAP, safeAreaTop() + STATUS_BAR_GAP)
     const top = Math.max(minTop, layout - natural)
     // the content grew (rows arriving, the query reset), or the screen changed
@@ -160,7 +184,6 @@ export function useAnchoredSheet(
   // it waited and none came
   const [noKeyboard, setNoKeyboard] = useState(false)
   const [remembered, setRemembered] = useState<number | undefined>(undefined)
-  const layout = layoutHeight()
   useLayoutEffect(() => {
     if (active) {
       setRemembered(rememberedVisible(layout))
