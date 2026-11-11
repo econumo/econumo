@@ -17,7 +17,6 @@ import { guessCurrencyCode } from '@/lib/regionCurrency'
 import { cn } from '@/lib/utils'
 import type { Id } from '@/api/types'
 import type { AccountRow } from './draft'
-import { guessAccountIcon } from './defaults'
 import { decimalInput, parseBalance } from './balance'
 import { labelled, nameLengthValid, NAME_MAX, NAME_MIN } from './names'
 import { CurrenciesBlock, CurrencyListSheet } from './CurrenciesBlock'
@@ -63,7 +62,6 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   const { t, i18n } = useTranslation()
   const { data: currencies } = useCurrencies()
   const { data: user } = useUserData()
-  const words = () => ({ cash: t('onboarding.words.cash') })
 
   // rows of a submit that failed come back editable; the user's accounts are listed apart
   const leftover = useMemo(
@@ -142,9 +140,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   const update = (key: string, patch: Partial<AccountRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
 
   const rename = (row: AccountRow, name: string) => {
-    const patch: Partial<AccountRow> = { name, labelKey: undefined }
-    if (!row.iconPicked) patch.icon = guessAccountIcon(name, words())
-    update(row.key, patch)
+    update(row.key, { name, labelKey: undefined })
   }
 
   const addRow = () => {

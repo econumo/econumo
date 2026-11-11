@@ -66,7 +66,7 @@ balances are enough and no history is needed.
 - Each row has a **Savings** switch, switched on automatically when the name looks like
   savings, in the user's language. The user can flip it.
 - *Superseded (2026-11-09):* there is no Savings switch and no name-based savings guess; the
-  icon guess covers cash only. Savings membership comes only from the server's AI provider
+  name guesses nothing (new rows start with the card icon, the default Cash row with the cash icon). Savings membership comes only from the server's AI provider
   when `ECONUMO_AI_DSN` is set: `onboarding/save-accounts` answers at once and, after its
   commit, classifies the accounts it created in a background job (names, account currencies,
   timezone, language; never the profile currency). Without AI, no account is savings.

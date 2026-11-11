@@ -22,18 +22,3 @@ export const DEFAULT_INCOME_CATEGORIES: readonly DefaultCategory[] = [
   { key: 'bonus', icon: 'redeem' },
   { key: 'other_income', icon: 'paid' },
 ]
-
-function matchesWords(name: string, words: string): boolean {
-  const haystack = name.toLowerCase()
-  return words
-    .split('|')
-    .map((w) => w.trim().toLowerCase())
-    .filter(Boolean)
-    .some((w) => haystack.includes(w))
-}
-
-// Only cash is guessed from the name; savings is never guessed (the AI may flag it in the budget).
-export function guessAccountIcon(name: string, words: { cash: string }): string {
-  if (matchesWords(name, words.cash)) return 'payments'
-  return 'credit_card'
-}

@@ -2,7 +2,7 @@ import type { Id } from '@/api/types'
 
 // accountId: the row stands for an account the user already has, so it is never created
 // labelKey: a default the user has not renamed; its name follows the UI language
-// iconPicked: the icon was chosen by hand, so renaming no longer re-guesses it
+// iconPicked: the icon was chosen by hand
 export type AccountRow = {
   key: string
   name: string

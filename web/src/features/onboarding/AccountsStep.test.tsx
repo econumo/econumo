@@ -154,7 +154,7 @@ it('submits a typed balance as a normalized decimal string and the main currency
   expect(onContinue).toHaveBeenCalledTimes(1)
   const [rows, extras, main] = onContinue.mock.calls[0]
   expect(rows).toHaveLength(1)
-  expect(rows[0]).toMatchObject({ name: 'Card', balance: '1234.50', currencyId: 'cur-usd', icon: 'credit_card' })
+  expect(rows[0]).toMatchObject({ name: 'Card', balance: '1234.50', currencyId: 'cur-usd', icon: 'payments' })
   expect(extras).toEqual([])
   expect(main).toBe('cur-usd')
 })
