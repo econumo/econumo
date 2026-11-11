@@ -36,6 +36,8 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, titleAc
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
+  // an empty list means the page lives outside Settings (the Inbox): no breadcrumb row
+  const trail = crumbs ?? [{ label: t('settings.page.header_desktop'), to: '/settings' }]
 
   // Where the user arrived from, captured at mount (the in-app trail, not the
   // browser history — that can hold restored/redirect entries).
@@ -62,19 +64,21 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, titleAc
       ) : (
         // Vue anatomy: breadcrumb chip, large light title, wide action button UNDER the title
         <header className="flex flex-col gap-1">
-          <nav className="flex items-center gap-1">
-            {(crumbs ?? [{ label: t('settings.page.header_desktop'), to: '/settings' }]).map((crumb, i) => (
-              <Fragment key={crumb.to}>
-                {i > 0 ? <ChevronRight className="size-3 text-muted-foreground" aria-hidden="true" /> : null}
-                <Link
-                  to={crumb.to}
-                  className="rounded bg-econumo-card px-2 py-0.5 text-xs text-muted-foreground hover:bg-econumo-hover"
-                >
-                  {crumb.label}
-                </Link>
-              </Fragment>
-            ))}
-          </nav>
+          {trail.length > 0 ? (
+            <nav className="flex items-center gap-1">
+              {trail.map((crumb, i) => (
+                <Fragment key={crumb.to}>
+                  {i > 0 ? <ChevronRight className="size-3 text-muted-foreground" aria-hidden="true" /> : null}
+                  <Link
+                    to={crumb.to}
+                    className="rounded bg-econumo-card px-2 py-0.5 text-xs text-muted-foreground hover:bg-econumo-hover"
+                  >
+                    {crumb.label}
+                  </Link>
+                </Fragment>
+              ))}
+            </nav>
+          ) : null}
           {titleAction ? (
             <div className="flex items-center gap-2 lg:max-w-xl">
               <h1 className="min-w-0 truncate text-[26px] font-normal leading-snug">{heading ?? title}</h1>
