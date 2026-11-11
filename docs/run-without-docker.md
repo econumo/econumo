@@ -31,7 +31,7 @@ $ sudoedit /etc/econumo/env
 ```
 
 A minimal `/etc/econumo/env` (all other settings from
-[`.env.example`](../.env.example) work here too):
+[`full.env.example`](full.env.example) work here too):
 
 ```
 DATABASE_URL=sqlite:///var/lib/econumo/db.sqlite
@@ -71,7 +71,7 @@ WantedBy=multi-user.target
 ## Configuration
 
 Everything is configured through environment variables — see
-[`.env.example`](../.env.example) for the full, commented reference. The web UI
+[`full.env.example`](full.env.example) for the full, commented reference. The web UI
 is embedded, so there is no directory to point at; instance-specific frontend
 values (analytics, billing URL, liltag config, the version label, …) are set
 through `ECONUMO_*` variables and merged into the served config at runtime.

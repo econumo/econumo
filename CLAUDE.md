@@ -874,7 +874,10 @@ artifact (`.github/workflows/go-tests.yml`).
 
 ## Configuration
 
-The Go server reads its environment from `.env` (see `.env.example`). Key vars:
+The Go server reads its environment from `.env`. The root `.env.example` is the short
+quick-start template (the settings most self-hosters need); `docs/full.env.example` documents
+every setting, so a new variable goes there (and into `.env.example` only if most setups need
+it). Key vars:
 
 - `DATABASE_URL` — `sqlite:///abs/path/db.sqlite` or `postgres://…`. Selects the engine.
   Required, and sourced from `.env` only — it is NOT baked into the image.

@@ -47,12 +47,13 @@ Then visit `http://localhost:8181` and create the first user.
 
 ### Configuration
 
-Everything is configured through environment variables in `.env` —
-[`.env.example`](.env.example) is the full, commented reference for every
-setting (database, mail, currencies, CORS, logging). The defaults
-work out of the box: SQLite storage and registration enabled; the only
-variables most setups ever touch are `DATABASE_URL` (to switch to PostgreSQL)
-and `MAILER_DSN` (to send password-recovery email).
+Everything is configured through environment variables in `.env`.
+[`.env.example`](.env.example) holds the settings most setups need (database,
+port, registration, currencies, update check, single sign-on), and the
+defaults work out of the box: SQLite storage and registration enabled.
+[`docs/full.env.example`](docs/full.env.example) is the full, commented
+reference for every other setting (email, sign-in options, imports, AI, rate
+limits, logging, ...).
 
 CLI commands (create users, update currency rates, …) run through the binary
 inside the container, e.g.:
