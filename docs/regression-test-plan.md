@@ -3291,7 +3291,21 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       stay on screen and the rest of the list scrolls; the top of the sheet
       never goes off the screen. Hiding the keyboard (✓) lets the sheet grow
       back down to its full height without first jumping up to the top of
-      the screen.
+      the screen. Opening Category from the amount (number keyboard up),
+      hiding and re-raising the keyboard show no one-frame blink of the sheet
+      in the wrong place. The sheet's top stays where it opened: the keyboard
+      coming and going (✓, tapping the search, the number keyboard switching
+      to the text one) only moves its bottom edge and the list between them
+      scrolls; filtering does not move the top either. A list longer than
+      the screen opens up to just below the status bar, so with the keyboard
+      up about 4 rows stay visible. A short list rises just enough to stay
+      above the keyboard. The Add transaction page behind
+      it stays still. From the second time a picker's keyboard has been up
+      on the device, the sheet is already keyboard-sized when the search is
+      tapped or the picker opens with the keyboard coming (it then fades in
+      instead of sliding up), and the screen does not slide as the keyboard
+      comes or goes. The "Type a name to create it" row stays reachable at
+      the end of the list, with and without the keyboard.
 - [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
       Savings accounts checklist, Category, Currency, Merge into) have the
       same rounded corners as the sheet's search field and OK button, not
