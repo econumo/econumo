@@ -663,11 +663,6 @@
       "title": "SimpleFIN",
       "intro": "Conecta un banco a través de SimpleFIN Bridge. Tus credenciales de la pasarela se cifran en este dispositivo con una frase de contraseña que solo tú conoces; el servidor las almacena cifradas y solo las ve durante una sincronización.",
       "disclaimer": "Econumo no está afiliado a SimpleFIN. SimpleFIN Bridge es un servicio de terceros con sus propias condiciones; lo usas bajo tu propia responsabilidad.",
-      "forget_device": "Olvidar este dispositivo",
-      "forget_modal": {
-        "title": "¿Olvidar este dispositivo?",
-        "question": "Este dispositivo volverá a pedir tu frase de contraseña antes de la próxima sincronización. Tu conexión y tus otros dispositivos no se ven afectados."
-      },
       "disconnect": "Desconectar",
       "disconnect_full": "Desconectar SimpleFIN",
       "disconnect_modal": {

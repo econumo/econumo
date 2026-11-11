@@ -20,7 +20,7 @@ import { decryptCredential } from '@/lib/importCrypto'
 import { ImportCards } from './ImportCards'
 import { ImportRunSummary } from './ImportRunSummary'
 import { SimpleFINConnect } from './SimpleFINConnect'
-import { SimpleFINUnlock, forgetThisDevice } from './SimpleFINUnlock'
+import { SimpleFINUnlock } from './SimpleFINUnlock'
 import { syncStartDate } from './syncWindow'
 import { useImportKey } from './useImportKey'
 import { useDeleteImportSource, useExternalAccounts, useImportRuns, useImportSources, useSyncImportSource } from './queries'
@@ -46,7 +46,6 @@ export function SimpleFINPage() {
   const [editingDate, setEditingDate] = useState(false)
   const sync = useSyncImportSource()
   const disconnect = useDeleteImportSource({ handlesOwnErrors: true })
-  const [forgetOpen, setForgetOpen] = useState(false)
   const [disconnectOpen, setDisconnectOpen] = useState(false)
   const { data: runs = [] } = useImportRuns(source?.id)
   const external = useExternalAccounts(source?.id ?? '', accessUrl)
@@ -111,12 +110,6 @@ export function SimpleFINPage() {
     if (source) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importExternalAccounts(source.id) })
     }
-    refreshKey()
-  }
-
-  const forget = async () => {
-    await forgetThisDevice()
-    setAccessUrl(null)
     refreshKey()
   }
 
@@ -189,25 +182,11 @@ export function SimpleFINPage() {
         <ImportCards source={source} cards={cards} variant="account" />
         <div className="flex flex-wrap justify-center gap-2 pt-4">
           <Button type="button" variant="ghost" disabled={!online || disconnect.isPending} onClick={() => { setReconnecting(true); setUserReconnect(true) }}>{t('imports.simplefin.unlock.reconnect')}</Button>
-          <Button type="button" variant="ghost" onClick={() => setForgetOpen(true)}>{t('imports.simplefin.forget_device')}</Button>
           <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" disabled={!online || sync.isPending || disconnect.isPending} onClick={() => setDisconnectOpen(true)}>
             {t('imports.simplefin.disconnect_full')}
           </Button>
         </div>
         <p className="px-1 pt-2 text-center text-xs text-muted-foreground">{t('imports.simplefin.disclaimer')}</p>
-        <ConfirmDialog
-          open={forgetOpen}
-          onClose={() => setForgetOpen(false)}
-          onConfirm={() => {
-            setForgetOpen(false)
-            void forget()
-          }}
-          title={t('imports.simplefin.forget_modal.title')}
-          question={t('imports.simplefin.forget_modal.question')}
-          confirmLabel={t('imports.simplefin.forget_device')}
-          cancelLabel={t('common.button.cancel.label')}
-          offlineOk
-        />
         <ConfirmDialog
           open={disconnectOpen}
           onClose={() => setDisconnectOpen(false)}

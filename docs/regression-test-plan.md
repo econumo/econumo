@@ -1022,11 +1022,10 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       bodies.
 - [ ] A used/invalid setup token shows the server's error inline; nothing is
       created (Settings → SimpleFIN still shows the connect form after reload).
-- [ ] Second device (or same browser after "Forget this device"): the page shows
+- [ ] Second device (or the same browser after its site data is cleared): the page shows
       the unlock prompt; a wrong passphrase reads "Wrong passphrase."; the right
       one lists the accounts. 📱
-- [ ] "Forget this device" asks first ("Forget this device?"; Cancel changes
-      nothing), then returns the page to the unlock prompt; "Reconnect"
+- [ ] "Reconnect"
       from the unlock prompt with "I forgot my passphrase" ticked accepts a new
       setup token + new passphrase and replaces the connection (account mappings
       kept).
@@ -1036,8 +1035,8 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       before the last sync) with a "Change" link that opens the picker, back to the text
       after the next sync; "Import history" is a card row with a chevron (shown once a run
       exists); a bridge account with nothing queued shows its currency, not "0 to
-      review"; Reconnect, Forget this device and the red "Disconnect SimpleFIN" sit
-      centered at the bottom. "Reconnect" there opens the reconnect form with a Cancel
+      review"; only Reconnect and the red "Disconnect SimpleFIN" sit centered at the
+      bottom (there is no "Forget this device"). "Reconnect" there opens the reconnect form with a Cancel
       that returns to the page.
 - [ ] "Disconnect SimpleFIN" asks "Disconnect SimpleFIN?"; confirming removes the
       source (the page shows the connect form without a passphrase, the key stays on

@@ -5,7 +5,7 @@ import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
 import { apiErrorMessage } from '@/lib/apiError'
-import { WrongPassphraseError, forgetKey, unlockKey } from '@/lib/importCrypto'
+import { WrongPassphraseError, unlockKey } from '@/lib/importCrypto'
 
 // the form is itself a card, so its field takes the page background
 const onCard = 'bg-background'
@@ -62,9 +62,4 @@ export function SimpleFINUnlock({ wrapped, stale, onUnlocked, onReconnect }: {
       <p className="text-xs text-muted-foreground">{t('imports.simplefin.unlock.forgot_help')}</p>
     </form>
   )
-}
-
-// "Forget this device" lives on the page (it is also offered while unlocked).
-export async function forgetThisDevice(): Promise<void> {
-  await forgetKey()
 }

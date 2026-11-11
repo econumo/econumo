@@ -663,11 +663,6 @@
       "title": "SimpleFIN",
       "intro": "Koppel een bank via SimpleFIN Bridge. Je bridge-gegevens worden op dit apparaat versleuteld met een wachtwoordzin die alleen jij kent; de server bewaart ze versleuteld en ziet ze alleen tijdens een synchronisatie.",
       "disclaimer": "Econumo is niet verbonden aan SimpleFIN. SimpleFIN Bridge is een dienst van derden met eigen voorwaarden; u gebruikt deze op eigen risico.",
-      "forget_device": "Dit apparaat vergeten",
-      "forget_modal": {
-        "title": "Dit apparaat vergeten?",
-        "question": "Dit apparaat vraagt vóór de volgende synchronisatie opnieuw om uw wachtwoordzin. Uw verbinding en uw andere apparaten blijven ongewijzigd."
-      },
       "disconnect": "Loskoppelen",
       "disconnect_full": "SimpleFIN loskoppelen",
       "disconnect_modal": {
