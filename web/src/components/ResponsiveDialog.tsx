@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { useKeyboardInset } from '@/hooks/useKeyboardInset'
+import { useSheetGlide } from '@/hooks/useSheetGlide'
 
 const STACKED_CONTENT = '[data-slot="dialog-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"]'
 const STACKED_OVERLAY = '[data-slot="dialog-overlay"], [data-slot="drawer-overlay"], [data-slot="alert-dialog-overlay"]'
@@ -158,6 +159,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
     return () => coverParent(-1)
   }, [open, coverParent])
   const sheetStyle = keyboard.height > 0 ? { bottom: keyboard.bottom, maxHeight: keyboard.height - SHEET_TOP_GAP } : undefined
+  useSheetGlide(contentRef, open && isMobile && !fullScreen, `${keyboard.top}:${keyboard.height}:${keyboard.bottom}`)
   // a full-screen page shrinks to the visible area instead: left at h-dvh, iOS
   // pans it so the header and the fields above the focused one go off-screen
   // and the rest hides behind the keyboard; fitted, the header and footer stay
@@ -168,7 +170,10 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
     // keys go when the autofocused field takes focus, and in that gap every
     // other field counts as covered. A stacked sheet brings its own overlay
     pointerEvents: 'auto' as const,
-    ...(keyboard.height > 0 ? { top: keyboard.top, height: keyboard.height, maxHeight: keyboard.height } : {}),
+    // held at its size, but placed where iOS has panned the screen: a sheet's
+    // taller keyboard pans further (measured: 21px -> 365px), and a page left at
+    // the old pan would show its lower part behind the sheet for that moment
+    ...(keyboard.height > 0 ? { top: held ? liveKeyboard.top : keyboard.top, height: keyboard.height, maxHeight: keyboard.height } : {}),
   }
   // edge-to-edge viewport: content that reaches the screen bottom must clear
   // the home indicator itself; a pinned footer carries its own inset instead

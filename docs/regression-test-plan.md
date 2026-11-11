@@ -3269,7 +3269,9 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       back down to its full height without first jumping up to the top of
       the screen. Opening Category from the amount (number keyboard up),
       hiding and re-raising the keyboard show no one-frame blink of the sheet
-      in the wrong place.
+      in the wrong place: tapping the search glides the sheet quickly up onto
+      the keyboard, and ✓ glides it back down to its full size; the Add
+      transaction page behind it stays still.
 - [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
       Savings accounts checklist, Category, Currency, Merge into) have the
       same rounded corners as the sheet's search field and OK button, not
