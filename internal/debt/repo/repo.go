@@ -41,6 +41,7 @@ type querier interface {
 	DeleteDebt(ctx context.Context, db backend.DBTX, id string) error
 	InsertDebtSnapshot(ctx context.Context, db backend.DBTX, p snapshotParams) error
 	UpdateDebtSnapshot(ctx context.Context, db backend.DBTX, p updateSnapshotParams) error
+	DeleteDebtSnapshot(ctx context.Context, db backend.DBTX, id string) error
 	InsertDebtSplit(ctx context.Context, db backend.DBTX, p splitParams) error
 	CandidateDebtTransactions(ctx context.Context, db backend.DBTX, categoryID *string) ([]candidateRow, error)
 	DebtUsesCategory(ctx context.Context, db backend.DBTX, id string) (bool, error)
@@ -166,6 +167,10 @@ func (r *Repo) UpdateSnapshot(ctx context.Context, s *model.DebtSnapshot) error 
 		Schedule:        string(s.Schedule),
 		LastPaymentDate: dateText(s.LastPaymentDate),
 	})
+}
+
+func (r *Repo) DeleteSnapshot(ctx context.Context, id vo.Id) error {
+	return r.q.DeleteDebtSnapshot(ctx, r.db(ctx), id.String())
 }
 
 func (r *Repo) InsertSplit(ctx context.Context, s model.DebtSplit) error {

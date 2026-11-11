@@ -50,6 +50,9 @@ SET as_of = CAST(sqlc.arg(as_of) AS TEXT), balance = sqlc.arg(balance), payment 
     last_payment_date = CAST(sqlc.arg(last_payment_date) AS TEXT)
 WHERE id = sqlc.arg(id);
 
+-- name: DeleteDebtSnapshot :exec
+DELETE FROM debts_snapshots WHERE id = ?;
+
 -- name: InsertDebtSplit :exec
 -- Through the transaction row: a payment deleted since it was read inserts
 -- nothing instead of failing the foreign key.

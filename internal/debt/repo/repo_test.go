@@ -220,6 +220,12 @@ func TestRepo_UpdateSnapshotRewritesTheOrigin(t *testing.T) {
 		s.Schedule != model.RecurringScheduleWeekly || !s.LastPaymentDate.Equal(at.AddDate(3, 0, 0)) || !s.CreatedAt.Equal(fixedTime) {
 		t.Errorf("snapshot = %+v", s)
 	}
+	if err := e.repo.DeleteSnapshot(ctx, origin.ID); err != nil {
+		t.Fatalf("DeleteSnapshot: %v", err)
+	}
+	if got, err := e.repo.Snapshots(ctx, []vo.Id{d.ID}); err != nil || len(got) != 0 {
+		t.Fatalf("Snapshots after delete = %v, %v", got, err)
+	}
 }
 
 func (e *env) expense(t *testing.T, typ int, amount string) string {

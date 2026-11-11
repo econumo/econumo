@@ -52,6 +52,10 @@ type Call struct {
 	// of this pointer (e.g. as a *string Body value, which json.Marshal
 	// dereferences) rather than the client-supplied operation id.
 	CaptureIDInto *string
+	// CapturePath, when set, makes CaptureIDInto read this dot path of the
+	// response instead ("data.snapshots.1.id": a number indexes an array),
+	// for an id the response nests deeper than data.item.id.
+	CapturePath string
 }
 
 // Scenario returns the ordered list of calls to replay. Calls is a func (not a

@@ -118,3 +118,7 @@ func (pgsqlQuerier) ListDebtCandidateLabels(ctx context.Context, db backend.DBTX
 func (pgsqlQuerier) ReassignDebtLabel(ctx context.Context, db backend.DBTX, p reassignLblParam) error {
 	return pgsqlgen.New(db).ReassignDebtLabel(ctx, pgsqlgen.ReassignDebtLabelParams(p))
 }
+
+func (pgsqlQuerier) DeleteDebtSnapshot(ctx context.Context, db backend.DBTX, id string) error {
+	return pgsqlgen.New(db).DeleteDebtSnapshot(ctx, id)
+}

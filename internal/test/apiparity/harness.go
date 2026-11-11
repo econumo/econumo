@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -325,10 +326,38 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 		}
 		statuses[i], bodies[i] = h.do(t, c.Method, path, tok, c.Body, c.Form, c.RawBody, c.ContentType)
 		if c.CaptureIDInto != nil {
-			*c.CaptureIDInto = extractItemID(bodies[i])
+			if c.CapturePath != "" {
+				*c.CaptureIDInto = extractPath(bodies[i], c.CapturePath)
+			} else {
+				*c.CaptureIDInto = extractItemID(bodies[i])
+			}
 		}
 	}
 	return statuses, bodies
+}
+
+// extractPath reads a string at a dot path of a JSON body ("" when absent).
+func extractPath(body []byte, path string) string {
+	var node any
+	if err := json.Unmarshal(body, &node); err != nil {
+		return ""
+	}
+	for _, part := range strings.Split(path, ".") {
+		switch n := node.(type) {
+		case map[string]any:
+			node = n[part]
+		case []any:
+			i, err := strconv.Atoi(part)
+			if err != nil || i < 0 || i >= len(n) {
+				return ""
+			}
+			node = n[i]
+		default:
+			return ""
+		}
+	}
+	v, _ := node.(string)
+	return v
 }
 
 // extractItemID pulls "data.item.id" out of a create-endpoint response —

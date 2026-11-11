@@ -325,6 +325,51 @@ func init() {
 		}
 	}})
 
+	// debt_reconcile: a loan of 300 taken two weeks ago (three weekly dues of
+	// 105 left from then) is reconciled with statements: today's sets what is
+	// owed, one three days ago lands between, a second one on that date
+	// replaces it, and deleting it splits the payments again from the origin.
+	// The dates and the payment fall on the fixed weekly offsets, so the
+	// figures do not depend on the day the suite runs.
+	register(Scenario{Name: "debt_reconcile", Calls: func() []Call {
+		const unknownDebt = "d0000000-0000-0000-0000-0000000000ff"
+		var debtID, draftID, statementID, categoryID string
+		reconcile := func(label string, body map[string]any) Call {
+			return Call{Label: label, Method: "POST", Path: "/api/v1/debt/reconcile-debt", Auth: "owner", Body: body}
+		}
+		return []Call{
+			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: debtBody(map[string]any{"amountBorrowed": "300", "startDate": day(-14)}), CaptureIDInto: &debtID},
+			reconcile("reconcile-today", map[string]any{"id": &debtID, "balance": "100"}),
+			reconcile("reconcile-earlier", map[string]any{"id": &debtID, "balance": "200", "balanceDate": day(-3)}),
+			reconcile("reconcile-same-date-replaces", map[string]any{"id": &debtID, "balance": "190", "balanceDate": day(-3)}),
+			{Label: "get", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID,
+				CaptureIDInto: &statementID, CapturePath: "data.snapshots.1.id"},
+			reconcile("err:before-start", map[string]any{"id": &debtID, "balance": "100", "balanceDate": day(-15)}),
+			reconcile("err:after-today", map[string]any{"id": &debtID, "balance": "100", "balanceDate": day(1)}),
+			reconcile("err:bad-balance", map[string]any{"id": &debtID, "balance": "-1"}),
+			reconcile("err:unknown", map[string]any{"id": unknownDebt, "balance": "1"}),
+			{Label: "err:correction-conflicts", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "name": "Car loan", "categoryId": CatFood, "startDate": day(-2),
+					"amountBorrowed": "200", "lastPaymentDate": day(7)}},
+			{Label: "delete-reconciliation", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "reconciliationId": &statementID}},
+			{Label: "err:delete-reconciliation-again", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "reconciliationId": &statementID}},
+			{Label: "get-after-delete", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+			{Label: "err:guest-reconcile", Method: "POST", Path: "/api/v1/debt/reconcile-debt", Auth: "guest",
+				Body: map[string]any{"id": &debtID, "balance": "1"}},
+			{Label: "create-loan-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
+				Body:          map[string]any{"id": "d5000000-0000-0000-0000-0000000000a1", "name": "Student loan", "type": "expense", "icon": "school"},
+				CaptureIDInto: &categoryID},
+			{Label: "create-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: withoutTerms(map[string]any{"name": "Student loan", "categoryId": &categoryID}), CaptureIDInto: &draftID},
+			reconcile("err:not-set-up", map[string]any{"id": &draftID, "balance": "1"}),
+			{Label: "err:readonly-reconcile", Method: "POST", Path: "/api/v1/debt/reconcile-debt", Auth: "readonly",
+				Body: map[string]any{"id": unknownDebt, "balance": "1"}},
+		}
+	}})
+
 	// debt_readonly: a lapsed-trial user may read but not write.
 	register(Scenario{Name: "debt_readonly", Calls: func() []Call {
 		return []Call{

@@ -7,7 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-// RegisterAPI mounts the 7 debt endpoints, each wrapped in the auth middleware.
+// RegisterAPI mounts the 9 debt endpoints, each wrapped in the auth middleware.
 func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
 		authMw := middleware.Auth(authn)
@@ -20,5 +20,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/debt/update-debt", auth(h.UpdateDebt))
 		mux.Handle("POST /api/v1/debt/delete-debt", auth(h.DeleteDebt))
 		mux.Handle("POST /api/v1/debt/mark-debt-paid-off", auth(h.MarkDebtPaidOff))
+		mux.Handle("POST /api/v1/debt/reconcile-debt", auth(h.ReconcileDebt))
+		mux.Handle("POST /api/v1/debt/delete-debt-reconciliation", auth(h.DeleteDebtReconciliation))
 	}
 }

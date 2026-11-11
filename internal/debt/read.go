@@ -136,9 +136,16 @@ func (s *Service) GetDebt(ctx context.Context, userID vo.Id, req model.GetDebtRe
 		return nil, err
 	}
 	res := &model.DebtDetailsResult{Item: items[0], Snapshots: []model.DebtSnapshotResult{}, Payments: []model.DebtPaymentResult{}}
-	for _, sn := range st.snaps {
-		res.Snapshots = append(res.Snapshots, model.DebtSnapshotResult{AsOf: dateString(sn.AsOf), Balance: sn.Balance.String(),
-			Payment: sn.Payment.String(), Schedule: string(sn.Schedule), LastPaymentDate: dateString(sn.LastPaymentDate)})
+	computed := st.computedBalances()
+	for i, sn := range st.snaps {
+		item := model.DebtSnapshotResult{Id: sn.ID.String(), AsOf: dateString(sn.AsOf), Balance: sn.Balance.String(),
+			Payment: sn.Payment.String(), Schedule: string(sn.Schedule), LastPaymentDate: dateString(sn.LastPaymentDate)}
+		if i == 0 {
+			item.IsOrigin = 1
+		} else {
+			item.ComputedBalance = amountString(computed[i], st.digits)
+		}
+		res.Snapshots = append(res.Snapshots, item)
 	}
 	balances := st.balancesAfter()
 	for i := len(st.pays) - 1; i >= 0; i-- {
@@ -152,6 +159,19 @@ func (s *Service) GetDebt(ctx context.Context, userID vo.Id, req model.GetDebtRe
 		res.Payments = append(res.Payments, pay)
 	}
 	return res, nil
+}
+
+// computedBalances is, for each snapshot after the origin, what the snapshots
+// before it and the recorded payments gave for its date: what Econumo had
+// worked out before the statement.
+func (st *debtState) computedBalances() []float64 {
+	snaps := st.mathSnaps()
+	pays, interest := st.mathPays()
+	out := make([]float64, len(snaps))
+	for i := 1; i < len(snaps); i++ {
+		out[i] = math.Max(model.BalanceAt(snaps[:i], pays, interest, snaps[i].AsOf), 0)
+	}
+	return out
 }
 
 // balancesAfter is what was owed after each payment (st.pays order), nil for

@@ -92,7 +92,7 @@ func (s *Service) ReassignClassification(ctx context.Context, kind string, oldID
 		if checkKeys(d, others) != nil {
 			return &errs.ValidationError{Msg: "Another debt could match the same payments.", MsgCode: errs.CodeDebtKeyConflict}
 		}
-		if kind == KindCategory && isWholeCategory(d) {
+		if kind == KindCategory && isWholeCategory(d, others) {
 			if err := s.moveToDebt(ctx, d); err != nil {
 				return err
 			}
@@ -100,7 +100,11 @@ func (s *Service) ReassignClassification(ctx context.Context, kind string, oldID
 		categories[d.CategoryID] = true
 	}
 	for _, d := range present {
-		if isWholeCategory(d) {
+		whole, err := s.wholeCategory(ctx, d)
+		if err != nil {
+			return err
+		}
+		if whole {
 			if err := s.moveToDebt(ctx, d); err != nil {
 				return err
 			}

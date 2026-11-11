@@ -38,6 +38,8 @@ type Repository interface {
 	// UpdateSnapshot rewrites a snapshot's as-of, balance and terms: only the
 	// origin's facts and, with them, a later snapshot's terms are corrected.
 	UpdateSnapshot(ctx context.Context, s *model.DebtSnapshot) error
+	// DeleteSnapshot removes a statement balance (never the origin).
+	DeleteSnapshot(ctx context.Context, id vo.Id) error
 	// Snapshots are ordered by debt, as_of, created_at.
 	Snapshots(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtSnapshot, error)
 	Splits(ctx context.Context, debtIDs []vo.Id) ([]model.DebtSplit, error)

@@ -118,7 +118,11 @@ func (s *Service) moveHead(ctx context.Context, d *model.Debt, category vo.Id, w
 			FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
 			CurrencyID: currency, SumOnClash: true, BeforeDay: first,
 		})
-	case first.Before(wasFirst) && isWholeCategory(d) && d.CategoryID.Equal(category):
+	case first.Before(wasFirst) && d.CategoryID.Equal(category):
+		whole, werr := s.wholeCategory(ctx, d)
+		if werr != nil || !whole {
+			return werr
+		}
 		_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
 			FromID: category, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
 			CurrencyID: currency, SumOnClash: true, FirstDay: first, BeforeDay: wasFirst,
@@ -204,11 +208,32 @@ func (s *Service) ownedDebt(ctx context.Context, userID, id vo.Id) (*model.Debt,
 }
 
 // isWholeCategory: the debt takes every expense of its category, from its
-// start date on. A set-up debt always has a start date (the loan's), so the
-// start does not make a debt partial; months before it stay the category's
-// through the planning bounds.
-func isWholeCategory(d *model.Debt) bool {
-	return d.PayeeID == nil && d.TagID == nil && d.LabelID == nil
+// start date on, and is the only debt there with no payee, tag or label. A
+// set-up debt always has a start date (the loan's), so the start does not
+// make a debt partial; months before it stay the category's through the
+// planning bounds. Two such debts told apart only by their start dates share
+// the category's months, so neither takes the category's plans or hands its
+// own back: a move could give one debt's months to the other or to the
+// category.
+func isWholeCategory(d *model.Debt, others []*model.Debt) bool {
+	if d.PayeeID != nil || d.TagID != nil || d.LabelID != nil {
+		return false
+	}
+	for _, o := range others {
+		if !o.ID.Equal(d.ID) && o.CategoryID.Equal(d.CategoryID) && o.PayeeID == nil && o.TagID == nil && o.LabelID == nil {
+			return false
+		}
+	}
+	return true
+}
+
+// wholeCategory is isWholeCategory against the debts stored in d's category.
+func (s *Service) wholeCategory(ctx context.Context, d *model.Debt) (bool, error) {
+	others, err := s.repo.ListByCategory(ctx, d.CategoryID)
+	if err != nil {
+		return false, err
+	}
+	return isWholeCategory(d, others), nil
 }
 
 func sameIdPtr(a, b *vo.Id) bool {
@@ -416,7 +441,8 @@ func isNotFound(err error) bool {
 // debtInput is a create/update body parsed into domain values; the amounts
 // are rounded to the debt currency once its digits are known. hasOrigin: the
 // body carries the loan's facts (amount borrowed and last payment date, with
-// a start date); hasOwed: a balance now. Without hasPayment or hasSchedule an
+// a start date); hasOwed: a statement balance, as of owedOn (zero = today).
+// Without hasPayment or hasSchedule an
 // update keeps the stored one.
 type debtInput struct {
 	name                    string
@@ -425,7 +451,7 @@ type debtInput struct {
 	start                   *time.Time
 	borrowed, owed, payment vo.DecimalNumber
 	schedule                model.RecurringSchedule
-	lastPayment             time.Time
+	lastPayment, owedOn     time.Time
 	hasOrigin, hasOwed      bool
 	hasPayment, hasSchedule bool
 }
@@ -436,6 +462,7 @@ type debtBody struct {
 	payeeID, tagID, labelID, start *string
 	borrowed, balance, payment     vo.FlexString
 	schedule, lastPayment          string
+	balanceDate                    string
 }
 
 func parseOptionalID(v *string) (*vo.Id, error) {
@@ -487,13 +514,19 @@ func parseInput(b debtBody) (debtInput, error) {
 		in.schedule = sched
 	}
 	in.hasOwed = strings.TrimSpace(b.balance.String()) != ""
-	// The loan's facts come together, the start date with them.
+	if strings.TrimSpace(b.balanceDate) != "" {
+		if in.owedOn, err = time.Parse(datetime.DateLayout, b.balanceDate); err != nil {
+			return in, err
+		}
+	}
+	// The amount borrowed and the last payment date come together; the start
+	// date with them is checked by the caller (a set-up debt keeps its own).
 	hasBorrowed, hasLast := strings.TrimSpace(b.borrowed.String()) != "", strings.TrimSpace(b.lastPayment) != ""
 	if !hasBorrowed && !hasLast {
 		return in, nil
 	}
-	if !hasBorrowed || !hasLast || in.start == nil {
-		return in, missingFacts(!hasBorrowed, in.start == nil, !hasLast)
+	if !hasBorrowed || !hasLast {
+		return in, missingFacts(!hasBorrowed, false, !hasLast)
 	}
 	if in.lastPayment, err = time.Parse(datetime.DateLayout, b.lastPayment); err != nil {
 		return in, err
@@ -550,8 +583,12 @@ func (in debtInput) origin(base model.DebtTerms, digits int) model.DebtTerms {
 	return o
 }
 
-// owedNow is the balance now as a snapshot as of today under terms t.
-func (in debtInput) owedNow(t model.DebtTerms, today time.Time, digits int) model.DebtTerms {
+// statement is the body's statement balance as a snapshot under terms t, as
+// of its date (today when none).
+func (in debtInput) statement(t model.DebtTerms, today time.Time, digits int) model.DebtTerms {
 	t.AsOf, t.Balance = today, in.owed.Round(digits)
+	if !in.owedOn.IsZero() {
+		t.AsOf = in.owedOn
+	}
 	return t
 }

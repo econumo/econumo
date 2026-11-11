@@ -94,7 +94,7 @@ func (h *Handlers) GetDebtForecast(w http.ResponseWriter, r *http.Request) {
 // CreateDebt handles POST /api/v1/debt/create-debt (auth).
 //
 // @Summary     Create a debt
-// @Description Creates a debt tracked through an expense category, optionally narrowed by payee, tag and label. amountBorrowed, startDate and lastPaymentDate are the loan's facts and come together (a missing one is common.is_blank): the debt's first snapshot is amountBorrowed as of startDate (debt.start_in_future after today, debt.last_payment_before_start unless lastPaymentDate is later), and what is owed follows from the payments recorded since. An optional balance (owed now) adds a snapshot as of today. Without the facts the debt is created not set up (isSetUp 0), collecting its payments without figures; a startDate alone then only bounds which payments count.
+// @Description Creates a debt tracked through an expense category, optionally narrowed by payee, tag and label. amountBorrowed, startDate and lastPaymentDate are the loan's facts and come together (a missing one is common.is_blank): the debt's first snapshot is amountBorrowed as of startDate (debt.start_in_future after today, debt.last_payment_before_start unless lastPaymentDate is later), and what is owed follows from the payments recorded since. An optional balance adds a statement balance as of balanceDate (default today). Without the facts the debt is created not set up (isSetUp 0), collecting its payments without figures; a startDate alone then only bounds which payments count.
 // @Tags        Debt
 // @Accept      json
 // @Produce     json
@@ -113,7 +113,7 @@ func (h *Handlers) CreateDebt(w http.ResponseWriter, r *http.Request) {
 // UpdateDebt handles POST /api/v1/debt/update-debt (auth).
 //
 // @Summary     Update a debt
-// @Description Updates a debt's name, key and terms. A debt not set up is set up by a body carrying amountBorrowed, startDate and lastPaymentDate (its first snapshot as of startDate, plus one as of today with a balance); without them only its payment, schedule, start date and key change. On a set-up debt startDate is required, and amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored ones; one that differs corrects the loan's facts: the first snapshot is rewritten (a later one takes the corrected payment, schedule and last payment date, keeping its balance) and every payment is split again. A balance (owed now) adds a snapshot as of today. A currencyId other than the stored one moves the debt to that currency (refused with currency.not_available when the user may not use it): the amounts sent, or the stored ones when left out, are read in it unconverted, the payments are split again and the budget rows follow; empty keeps the stored currency. tagId and labelId are exclusive (common.invalid_choice on labelId).
+// @Description Updates a debt's name, key and terms. A debt not set up is set up by a body carrying amountBorrowed, startDate and lastPaymentDate (its first snapshot as of startDate, plus a statement balance when a balance is sent); without them only its payment, schedule, start date and key change. On a set-up debt startDate, amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored ones; one that differs corrects the loan's facts: the first snapshot is rewritten (a later one takes the corrected payment, schedule and last payment date, keeping its date and balance; debt.conflicts_with_reconciliation when the new start would follow it or the new last payment date not follow it) and every payment is split again. amountBorrowed and lastPaymentDate come as a pair. A balance adds a statement balance as of balanceDate (default today), as reconcile-debt does. A currencyId other than the stored one moves the debt to that currency (refused with currency.not_available when the user may not use it): the amounts sent, or the stored ones when left out, are read in it unconverted, the payments are split again and the budget rows follow; empty keeps the stored currency. tagId and labelId are exclusive (common.invalid_choice on labelId).
 // @Tags        Debt
 // @Accept      json
 // @Produce     json
@@ -165,4 +165,42 @@ func (h *Handlers) DeleteDebt(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/v1/debt/mark-debt-paid-off [post]
 func (h *Handlers) MarkDebtPaidOff(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.MarkDebtPaidOff)
+}
+
+// ReconcileDebt handles POST /api/v1/debt/reconcile-debt (auth).
+//
+// @Summary     Reconcile a debt with a statement
+// @Description Writes the balance a statement gives for a set-up debt as of balanceDate (default today; between the start date and today, inclusive, else common.out_of_range on balanceDate): a snapshot under the latest terms that overrides what the recorded payments give from that date on. A statement on a date that already has one replaces it. The payments after that date are split again from it, and every due up to the latest statement counts as paid. A debt not set up is refused (debt.not_set_up).
+// @Tags        Debt
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.ReconcileDebtRequest true "Reconcile debt request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DebtResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/debt/reconcile-debt [post]
+func (h *Handlers) ReconcileDebt(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.ReconcileDebt)
+}
+
+// DeleteDebtReconciliation handles POST /api/v1/debt/delete-debt-reconciliation (auth).
+//
+// @Summary     Delete a debt's statement balance
+// @Description Removes one statement balance (a history entry after the origin, by its id); the payments after its date are split again from what comes before it. The origin cannot be deleted (not found).
+// @Tags        Debt
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.DeleteDebtReconciliationRequest true "Delete debt reconciliation request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DebtResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/debt/delete-debt-reconciliation [post]
+func (h *Handlers) DeleteDebtReconciliation(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.DeleteDebtReconciliation)
 }

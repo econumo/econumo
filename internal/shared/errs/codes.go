@@ -148,15 +148,16 @@ const (
 	CodeOAuthProviderAlreadyLinked  = "oauth.provider_already_linked"
 	CodeOAuthLastSignInMethod       = "oauth.last_sign_in_method"
 
-	CodeDebtPaymentsDontCover      = "debt.payments_dont_cover"
-	CodeDebtKeyConflict            = "debt.key_conflict"
-	CodeDebtStartDateTaken         = "debt.start_date_taken"
-	CodeDebtCategoryNotExpense     = "debt.category_not_expense"
-	CodeDebtRemovalUnconfirmed     = "debt.removal_unconfirmed"
-	CodeDebtLastPaymentInPast      = "debt.last_payment_in_past"
-	CodeDebtLastPaymentBeforeStart = "debt.last_payment_before_start"
-	CodeDebtStartInFuture          = "debt.start_in_future"
-	CodeDebtNotSetUp               = "debt.not_set_up"
+	CodeDebtPaymentsDontCover           = "debt.payments_dont_cover"
+	CodeDebtKeyConflict                 = "debt.key_conflict"
+	CodeDebtStartDateTaken              = "debt.start_date_taken"
+	CodeDebtCategoryNotExpense          = "debt.category_not_expense"
+	CodeDebtRemovalUnconfirmed          = "debt.removal_unconfirmed"
+	CodeDebtLastPaymentInPast           = "debt.last_payment_in_past"
+	CodeDebtLastPaymentBeforeStart      = "debt.last_payment_before_start"
+	CodeDebtStartInFuture               = "debt.start_in_future"
+	CodeDebtNotSetUp                    = "debt.not_set_up"
+	CodeDebtConflictsWithReconciliation = "debt.conflicts_with_reconciliation"
 
 	CodeAuthServerDisabled         = "authserver.disabled"
 	CodeAuthServerClientNotFound   = "authserver.client_not_found"
@@ -320,4 +321,5 @@ var AllCodes = []string{
 	CodeDebtLastPaymentBeforeStart,
 	CodeDebtStartInFuture,
 	CodeDebtNotSetUp,
+	CodeDebtConflictsWithReconciliation,
 }

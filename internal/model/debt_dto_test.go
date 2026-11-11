@@ -235,3 +235,38 @@ func TestUpdateDebtRequest_ValidatesAChangedCurrency(t *testing.T) {
 		t.Errorf("no currency keeps the stored one: %v", err)
 	}
 }
+
+func TestDebtRequests_BalanceDate(t *testing.T) {
+	create := validDebtRequest()
+	create.Balance, create.BalanceDate = vo.NewFlexString("100"), "2026-02-01"
+	if err := create.Validate(); err != nil {
+		t.Fatalf("a dated balance: %v", err)
+	}
+	create.BalanceDate = "1 Feb"
+	if got := debtFieldCodes(t, create.Validate()); got["balanceDate"] != errs.CodeInvalidFormat {
+		t.Errorf("bad balance date: %v", got)
+	}
+	create.Balance, create.BalanceDate = vo.FlexString{}, "2026-02-01"
+	if got := debtFieldCodes(t, create.Validate()); got["balance"] != errs.CodeIsBlank {
+		t.Errorf("a date without a balance: %v", got)
+	}
+}
+
+func TestReconcileDebtRequest_Validate(t *testing.T) {
+	ok := ReconcileDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000001", Balance: vo.NewFlexString("0")}
+	if err := ok.Validate(); err != nil {
+		t.Fatalf("valid: %v", err)
+	}
+	bad := ReconcileDebtRequest{Id: "x", Balance: vo.NewFlexString("-1"), BalanceDate: "soon"}
+	got := debtFieldCodes(t, bad.Validate())
+	if got["id"] != errs.CodeInvalidUUID || got["balance"] != errs.CodeOutOfRange || got["balanceDate"] != errs.CodeInvalidFormat {
+		t.Errorf("codes = %v", got)
+	}
+	if got := debtFieldCodes(t, (ReconcileDebtRequest{Id: ok.Id}).Validate()); got["balance"] != errs.CodeIsBlank {
+		t.Errorf("no balance: %v", got)
+	}
+	del := DeleteDebtReconciliationRequest{Id: ok.Id}
+	if got := debtFieldCodes(t, del.Validate()); got["reconciliationId"] != errs.CodeIsBlank {
+		t.Errorf("delete without a reconciliation: %v", got)
+	}
+}

@@ -5471,7 +5471,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Creates a debt tracked through an expense category, optionally narrowed by payee, tag and label. amountBorrowed, startDate and lastPaymentDate are the loan's facts and come together (a missing one is common.is_blank): the debt's first snapshot is amountBorrowed as of startDate (debt.start_in_future after today, debt.last_payment_before_start unless lastPaymentDate is later), and what is owed follows from the payments recorded since. An optional balance (owed now) adds a snapshot as of today. Without the facts the debt is created not set up (isSetUp 0), collecting its payments without figures; a startDate alone then only bounds which payments count.",
+                "description": "Creates a debt tracked through an expense category, optionally narrowed by payee, tag and label. amountBorrowed, startDate and lastPaymentDate are the loan's facts and come together (a missing one is common.is_blank): the debt's first snapshot is amountBorrowed as of startDate (debt.start_in_future after today, debt.last_payment_before_start unless lastPaymentDate is later), and what is owed follows from the payments recorded since. An optional balance adds a statement balance as of balanceDate (default today). Without the facts the debt is created not set up (isSetUp 0), collecting its payments without figures; a startDate alone then only bounds which payments count.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5581,6 +5581,81 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/model.DeleteDebtResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/debt/delete-debt-reconciliation": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Removes one statement balance (a history entry after the origin, by its id); the payments after its date are split again from what comes before it. The origin cannot be deleted (not found).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Delete a debt's statement balance",
+                "parameters": [
+                    {
+                        "description": "Delete debt reconciliation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DeleteDebtReconciliationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtResult"
                                         }
                                     }
                                 }
@@ -5872,6 +5947,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/debt/reconcile-debt": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Writes the balance a statement gives for a set-up debt as of balanceDate (default today; between the start date and today, inclusive, else common.out_of_range on balanceDate): a snapshot under the latest terms that overrides what the recorded payments give from that date on. A statement on a date that already has one replaces it. The payments after that date are split again from it, and every due up to the latest statement counts as paid. A debt not set up is refused (debt.not_set_up).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Reconcile a debt with a statement",
+                "parameters": [
+                    {
+                        "description": "Reconcile debt request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ReconcileDebtRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/debt/update-debt": {
             "post": {
                 "security": [
@@ -5879,7 +6029,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Updates a debt's name, key and terms. A debt not set up is set up by a body carrying amountBorrowed, startDate and lastPaymentDate (its first snapshot as of startDate, plus one as of today with a balance); without them only its payment, schedule, start date and key change. On a set-up debt startDate is required, and amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored ones; one that differs corrects the loan's facts: the first snapshot is rewritten (a later one takes the corrected payment, schedule and last payment date, keeping its balance) and every payment is split again. A balance (owed now) adds a snapshot as of today. A currencyId other than the stored one moves the debt to that currency (refused with currency.not_available when the user may not use it): the amounts sent, or the stored ones when left out, are read in it unconverted, the payments are split again and the budget rows follow; empty keeps the stored currency. tagId and labelId are exclusive (common.invalid_choice on labelId).",
+                "description": "Updates a debt's name, key and terms. A debt not set up is set up by a body carrying amountBorrowed, startDate and lastPaymentDate (its first snapshot as of startDate, plus a statement balance when a balance is sent); without them only its payment, schedule, start date and key change. On a set-up debt startDate, amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored ones; one that differs corrects the loan's facts: the first snapshot is rewritten (a later one takes the corrected payment, schedule and last payment date, keeping its date and balance; debt.conflicts_with_reconciliation when the new start would follow it or the new last payment date not follow it) and every payment is split again. amountBorrowed and lastPaymentDate come as a pair. A balance adds a statement balance as of balanceDate (default today), as reconcile-debt does. A currencyId other than the stored one moves the debt to that currency (refused with currency.not_available when the user may not use it): the amounts sent, or the stored ones when left out, are read in it unconverted, the payments are split again and the budget rows follow; empty keeps the stored currency. tagId and labelId are exclusive (common.invalid_choice on labelId).",
                 "consumes": [
                     "application/json"
                 ],
@@ -14699,6 +14849,9 @@ const docTemplate = `{
                 "balance": {
                     "$ref": "#/definitions/vo.FlexString"
                 },
+                "balanceDate": {
+                    "type": "string"
+                },
                 "categoryId": {
                     "type": "string"
                 },
@@ -15469,6 +15622,15 @@ const docTemplate = `{
                 "balance": {
                     "type": "string"
                 },
+                "computedBalance": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isOrigin": {
+                    "type": "integer"
+                },
                 "lastPaymentDate": {
                     "type": "string"
                 },
@@ -15570,6 +15732,17 @@ const docTemplate = `{
         },
         "model.DeleteCurrencyResult": {
             "type": "object"
+        },
+        "model.DeleteDebtReconciliationRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "reconciliationId": {
+                    "type": "string"
+                }
+            }
         },
         "model.DeleteDebtRequest": {
             "type": "object",
@@ -17621,6 +17794,20 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ReconcileDebtRequest": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "$ref": "#/definitions/vo.FlexString"
+                },
+                "balanceDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
         "model.RecurringTransactionResult": {
             "type": "object",
             "properties": {
@@ -18713,6 +18900,9 @@ const docTemplate = `{
                 },
                 "balance": {
                     "$ref": "#/definitions/vo.FlexString"
+                },
+                "balanceDate": {
+                    "type": "string"
                 },
                 "categoryId": {
                     "type": "string"

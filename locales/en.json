@@ -2392,7 +2392,8 @@
       "last_payment_in_past": "The last payment date must be after today.",
       "last_payment_before_start": "The last payment date must be after the start date.",
       "start_in_future": "The start date must be today or earlier.",
-      "not_set_up": "Finish setting up this debt first."
+      "not_set_up": "Finish setting up this debt first.",
+      "conflicts_with_reconciliation": "This conflicts with a balance you entered from a statement. Change or delete that reconciliation first."
     },
     "authserver": {
       "disabled": "Connecting apps is not available on this server.",

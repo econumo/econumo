@@ -2392,7 +2392,8 @@
       "last_payment_in_past": "De datum van de laatste betaling moet na vandaag liggen.",
       "last_payment_before_start": "De datum van de laatste betaling moet na de startdatum liggen.",
       "start_in_future": "De startdatum moet vandaag of eerder zijn.",
-      "not_set_up": "Rond eerst het instellen van deze schuld af."
+      "not_set_up": "Rond eerst het instellen van deze schuld af.",
+      "conflicts_with_reconciliation": "Dit botst met een saldo dat u van een afschrift hebt ingevoerd. Wijzig of verwijder eerst die afstemming."
     },
     "authserver": {
       "disabled": "Apps koppelen is niet beschikbaar op deze server.",

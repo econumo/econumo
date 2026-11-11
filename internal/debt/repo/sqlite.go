@@ -86,3 +86,7 @@ func (sqliteQuerier) ListDebtCandidateLabels(ctx context.Context, db backend.DBT
 func (sqliteQuerier) ReassignDebtLabel(ctx context.Context, db backend.DBTX, p reassignLblParam) error {
 	return sqlitegen.New(db).ReassignDebtLabel(ctx, p)
 }
+
+func (sqliteQuerier) DeleteDebtSnapshot(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).DeleteDebtSnapshot(ctx, id)
+}

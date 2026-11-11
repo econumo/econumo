@@ -111,6 +111,15 @@ func (q *Queries) DeleteDebt(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteDebtSnapshot = `-- name: DeleteDebtSnapshot :exec
+DELETE FROM debts_snapshots WHERE id = $1
+`
+
+func (q *Queries) DeleteDebtSnapshot(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteDebtSnapshot, id)
+	return err
+}
+
 const getDebtByID = `-- name: GetDebtByID :one
 
 SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at

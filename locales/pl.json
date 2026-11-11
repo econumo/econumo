@@ -2392,7 +2392,8 @@
       "last_payment_in_past": "Data ostatniej płatności musi być późniejsza niż dzisiaj.",
       "last_payment_before_start": "Data ostatniej płatności musi być późniejsza niż data rozpoczęcia.",
       "start_in_future": "Data rozpoczęcia nie może być późniejsza niż dzisiaj.",
-      "not_set_up": "Najpierw dokończ konfigurowanie tego długu."
+      "not_set_up": "Najpierw dokończ konfigurowanie tego długu.",
+      "conflicts_with_reconciliation": "To jest sprzeczne z saldem wpisanym z wyciągu. Najpierw zmień lub usuń to uzgodnienie."
     },
     "authserver": {
       "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",

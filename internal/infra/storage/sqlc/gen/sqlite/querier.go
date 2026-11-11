@@ -71,6 +71,7 @@ type Querier interface {
 	DeleteDeadOAuthAccessTokens(ctx context.Context, arg DeleteDeadOAuthAccessTokensParams) (int64, error)
 	DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuthGrantsParams) (int64, error)
 	DeleteDebt(ctx context.Context, id string) error
+	DeleteDebtSnapshot(ctx context.Context, id string) error
 	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error

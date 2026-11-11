@@ -27,7 +27,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 	}
 	in, err := parseInput(debtBody{name: req.Name, currencyID: req.CurrencyId, categoryID: req.CategoryId,
 		payeeID: req.PayeeId, tagID: req.TagId, labelID: req.LabelId, start: req.StartDate, borrowed: req.AmountBorrowed,
-		balance: req.Balance, payment: req.Payment, schedule: req.Schedule, lastPayment: req.LastPaymentDate})
+		balance: req.Balance, balanceDate: req.BalanceDate, payment: req.Payment, schedule: req.Schedule, lastPayment: req.LastPaymentDate})
 	if err != nil {
 		return nil, err
 	}
@@ -68,13 +68,18 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if err != nil {
 			return err
 		}
+		// a set-up debt always has its start: left out, the stored one stays
 		if cur.IsSetUp() && in.start == nil {
-			return missingFacts(false, true, false)
+			in.start = cur.StartDate
 		}
-		if !cur.IsSetUp() && !in.hasOrigin && in.hasOwed {
-			return missingFacts(true, in.start == nil, true)
+		if !cur.IsSetUp() && ((!in.hasOrigin && in.hasOwed) || (in.hasOrigin && in.start == nil)) {
+			return missingFacts(!in.hasOrigin, in.start == nil, !in.hasOrigin)
 		}
-		wasWhole, wasCategory, wasSetUp := isWholeCategory(cur), cur.CategoryID, cur.IsSetUp()
+		wasWhole, err := s.wholeCategory(ctx, cur)
+		if err != nil {
+			return err
+		}
+		wasCategory, wasSetUp := cur.CategoryID, cur.IsSetUp()
 		keyChanged := !cur.CategoryID.Equal(in.category) || !sameIdPtr(cur.PayeeID, in.payee) ||
 			!sameIdPtr(cur.TagID, in.tag) || !sameIdPtr(cur.LabelID, in.label) || !sameDay(cur.StartDate, in.start)
 		// the start of the months the debt row shows, before this update
@@ -96,7 +101,6 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 				return err
 			}
 		}
-		resplit := false
 		var added []model.DebtTerms
 		switch {
 		case !cur.IsSetUp() && in.hasOrigin:
@@ -106,7 +110,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 			cur.AmountBorrowed = added[0].Balance
 			cur.SetTerms(added[len(added)-1])
 		case cur.IsSetUp():
-			if resplit, added, err = s.correctTerms(ctx, cur, in, today, digits); err != nil {
+			if err := s.correctTerms(ctx, cur, in, today, digits); err != nil {
 				return err
 			}
 		default:
@@ -130,7 +134,7 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 			}
 		}
 		// splits are in the debt's currency: the next sync splits again
-		if currencyChanged || resplit || (!wasSetUp && cur.IsSetUp()) {
+		if currencyChanged || (!wasSetUp && cur.IsSetUp()) {
 			if err := s.dropSplits(ctx, cur.ID); err != nil {
 				return err
 			}
@@ -158,7 +162,11 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 		// Now covering a whole category it did not cover before, the debt
 		// takes that category's plans, as a conversion does. Going the other
 		// way the debt keeps its own: they plan the loan's payments.
-		if isWholeCategory(cur) && (!wasWhole || !cur.CategoryID.Equal(wasCategory)) {
+		isWhole, err := s.wholeCategory(ctx, cur)
+		if err != nil {
+			return err
+		}
+		if isWhole && (!wasWhole || !cur.CategoryID.Equal(wasCategory)) {
 			if err := s.moveToDebt(ctx, cur); err != nil {
 				return err
 			}
@@ -253,58 +261,65 @@ func (s *Service) stateNow(ctx context.Context, d *model.Debt) (*debtState, erro
 // correctTerms applies a body to a set-up debt: a fact that differs from the
 // stored origin (amounts compared as the request can state them in the
 // debt's currency) rewrites the origin and, with the corrected payment,
-// schedule and last payment date, every later snapshot, their balances kept;
-// resplit then asks for every payment to be split again. A balance now is
-// returned as a snapshot to add, unless the latest one already says it as of
-// today. cur's current terms follow.
-func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInput, today time.Time, digits int) (resplit bool, added []model.DebtTerms, err error) {
+// schedule and last payment date, every later snapshot, their dates and
+// balances kept, and drops every split so the next sync splits again. A
+// statement balance is then written as of its date. cur's current terms
+// follow the latest snapshot.
+func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInput, today time.Time, digits int) error {
 	snaps, err := s.repo.Snapshots(ctx, []vo.Id{cur.ID})
 	if err != nil {
-		return false, nil, err
+		return err
 	}
 	if len(snaps) == 0 {
-		return false, nil, errs.NewNotFound("Debt not found")
+		return errs.NewNotFound("Debt not found")
 	}
 	stored := roundedTerms(snapshotTerms(snaps[0]), digits)
 	origin := in.origin(stored, digits)
-	latest := snapshotTerms(snaps[len(snaps)-1])
 	if termsDiffer(stored, origin) {
 		if err := validateOrigin(origin, today, digits); err != nil {
-			return false, nil, err
+			return err
 		}
 		for i, sn := range snaps {
 			t := origin
 			if i > 0 {
 				t = snapshotTerms(sn)
 				t.Payment, t.Schedule, t.LastPaymentDate = origin.Payment, origin.Schedule, origin.LastPaymentDate
-				if t.AsOf.Before(origin.AsOf) {
-					return false, nil, fieldError("startDate", "This value is out of range.", errs.CodeOutOfRange)
+				if err := laterConflict(t, origin); err != nil {
+					return err
 				}
 				if err := validateTerms(t, digits); err != nil {
-					return false, nil, err
+					return err
 				}
 			}
 			sn.AsOf, sn.Balance, sn.Payment, sn.Schedule, sn.LastPaymentDate = t.AsOf, t.Balance, t.Payment, t.Schedule, t.LastPaymentDate
 			if err := s.repo.UpdateSnapshot(ctx, sn); err != nil {
-				return false, nil, err
+				return err
 			}
-			latest = t
 		}
-		cur.AmountBorrowed, resplit = origin.Balance, true
+		cur.AmountBorrowed = origin.Balance
+		cur.SetTerms(snapshotTerms(snaps[len(snaps)-1]))
+		if err := s.dropSplits(ctx, cur.ID); err != nil {
+			return err
+		}
 	}
 	if in.hasOwed {
-		owed := in.owedNow(latest, today, digits)
-		if !latest.AsOf.Equal(today) || !roundedTerms(latest, digits).Balance.Equals(owed.Balance) {
-			if err := validateTerms(owed, digits); err != nil {
-				return false, nil, err
-			}
-			added, latest = append(added, owed), owed
-		}
+		return s.writeStatement(ctx, cur, in.statement(snapshotTerms(snaps[len(snaps)-1]), today, digits), today, digits)
 	}
-	if resplit || len(added) > 0 {
-		cur.SetTerms(latest)
+	return nil
+}
+
+// laterConflict refuses a correction that leaves a statement balance before
+// the new start, or on or after the new last payment date while something is
+// still owed.
+func laterConflict(t, origin model.DebtTerms) error {
+	msg := "This conflicts with a balance you entered from a statement. Change or delete that reconciliation first."
+	if t.AsOf.Before(origin.AsOf) {
+		return fieldError("startDate", msg, errs.CodeDebtConflictsWithReconciliation)
 	}
-	return resplit, added, nil
+	if t.Balance.IsGreaterThan(vo.NewDecimal("0")) && !t.LastPaymentDate.After(t.AsOf) {
+		return fieldError("lastPaymentDate", msg, errs.CodeDebtConflictsWithReconciliation)
+	}
+	return nil
 }
 
 // dropSplits removes a debt's stored splits (the provisional zero-interest

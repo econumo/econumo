@@ -30,7 +30,11 @@ func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 		if err := s.lockRows(ctx, d.ID); err != nil {
 			return err
 		}
-		if isWholeCategory(d) {
+		whole, err := s.wholeCategory(ctx, d)
+		if err != nil {
+			return err
+		}
+		if whole {
 			left, err := s.moveToCategory(ctx, d)
 			if err != nil {
 				return err

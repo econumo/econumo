@@ -17,9 +17,9 @@ const debtNameMaxLength = 64
 
 // CreateDebtRequest: AmountBorrowed, StartDate and LastPaymentDate are the
 // loan's facts and come together (a debt without them is created not set up,
-// a StartDate alone only bounding which payments count); Balance is the
-// optional balance now, for when the recorded payments do not tell the whole
-// story.
+// a StartDate alone only bounding which payments count); Balance is an
+// optional statement balance as of BalanceDate (default today), for when the
+// recorded payments do not tell the whole story.
 type CreateDebtRequest struct {
 	Name            string        `json:"name"`
 	CurrencyId      string        `json:"currencyId"`
@@ -30,6 +30,7 @@ type CreateDebtRequest struct {
 	StartDate       *string       `json:"startDate"`
 	AmountBorrowed  vo.FlexString `json:"amountBorrowed"`
 	Balance         vo.FlexString `json:"balance"`
+	BalanceDate     string        `json:"balanceDate"`
 	Payment         vo.FlexString `json:"payment"`
 	Schedule        string        `json:"schedule"`
 	LastPaymentDate string        `json:"lastPaymentDate"`
@@ -37,7 +38,7 @@ type CreateDebtRequest struct {
 
 func (r CreateDebtRequest) Validate() error {
 	fields := debtFields(debtTermFields{r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate,
-		r.AmountBorrowed, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate}, false)
+		r.AmountBorrowed, r.Balance, r.BalanceDate, r.Payment, r.Schedule, r.LastPaymentDate}, false)
 	fields = append(fields, debtIDField("currencyId", r.CurrencyId, true)...)
 	return debtValidation(fields)
 }
@@ -45,9 +46,10 @@ func (r CreateDebtRequest) Validate() error {
 // UpdateDebtRequest carries the same fields as create. An empty CurrencyId
 // keeps the stored currency; another one moves the debt to it, the amounts in
 // the request (or, when left out, the stored ones, unconverted) then being in
-// that currency. AmountBorrowed, LastPaymentDate, Payment and Schedule left
-// out keep the stored ones; StartDate is always the debt's (nil = none, which
-// a set-up debt refuses). A Balance alone gives a set-up debt its balance now.
+// that currency. AmountBorrowed and LastPaymentDate come as a pair; they,
+// Payment, Schedule and (on a set-up debt) StartDate left out keep the stored
+// ones; on a debt not set up a StartDate left out means none. A Balance alone
+// gives a set-up debt a statement balance as of BalanceDate (default today).
 type UpdateDebtRequest struct {
 	Id              string        `json:"id"`
 	Name            string        `json:"name"`
@@ -59,6 +61,7 @@ type UpdateDebtRequest struct {
 	StartDate       *string       `json:"startDate"`
 	AmountBorrowed  vo.FlexString `json:"amountBorrowed"`
 	Balance         vo.FlexString `json:"balance"`
+	BalanceDate     string        `json:"balanceDate"`
 	Payment         vo.FlexString `json:"payment"`
 	Schedule        string        `json:"schedule"`
 	LastPaymentDate string        `json:"lastPaymentDate"`
@@ -66,10 +69,36 @@ type UpdateDebtRequest struct {
 
 func (r UpdateDebtRequest) Validate() error {
 	fields := debtFields(debtTermFields{r.Name, r.CategoryId, r.PayeeId, r.TagId, r.LabelId, r.StartDate,
-		r.AmountBorrowed, r.Balance, r.Payment, r.Schedule, r.LastPaymentDate}, true)
+		r.AmountBorrowed, r.Balance, r.BalanceDate, r.Payment, r.Schedule, r.LastPaymentDate}, true)
 	fields = append(fields, debtIDField("id", r.Id, true)...)
 	fields = append(fields, debtIDField("currencyId", r.CurrencyId, false)...)
 	return debtValidation(fields)
+}
+
+// ReconcileDebtRequest states a set-up debt's balance from a statement as of
+// BalanceDate (Y-m-d; empty = today), between its start date and today.
+type ReconcileDebtRequest struct {
+	Id          string        `json:"id"`
+	Balance     vo.FlexString `json:"balance"`
+	BalanceDate string        `json:"balanceDate"`
+}
+
+func (r ReconcileDebtRequest) Validate() error {
+	fields := debtIDField("id", r.Id, true)
+	fields = append(fields, debtAmountField("balance", r.Balance.String(), true)...)
+	fields = append(fields, debtDateField("balanceDate", r.BalanceDate)...)
+	return debtValidation(fields)
+}
+
+// DeleteDebtReconciliationRequest removes one statement balance (a snapshot
+// after the origin) from a debt.
+type DeleteDebtReconciliationRequest struct {
+	Id               string `json:"id"`
+	ReconciliationId string `json:"reconciliationId"`
+}
+
+func (r DeleteDebtReconciliationRequest) Validate() error {
+	return debtValidation(append(debtIDField("id", r.Id, true), debtIDField("reconciliationId", r.ReconciliationId, true)...))
 }
 
 type DeleteDebtRequest struct {
@@ -175,7 +204,14 @@ type DebtListResult struct {
 	Items []DebtResult `json:"items"`
 }
 
+// DebtSnapshotResult is one entry of a debt's history: the origin (isOrigin
+// 1, the amount borrowed as of the start date) and the statement balances
+// after it. computedBalance is what Econumo had worked out for that date
+// from the entries before it and the recorded payments ("" for the origin).
 type DebtSnapshotResult struct {
+	Id              string `json:"id"`
+	IsOrigin        int    `json:"isOrigin"`
+	ComputedBalance string `json:"computedBalance"`
 	AsOf            string `json:"asOf"`
 	Balance         string `json:"balance"`
 	Payment         string `json:"payment"`
@@ -260,8 +296,20 @@ func debtOptionalIDField(key string, v *string) []errs.FieldError {
 type debtTermFields struct {
 	name, categoryID                   string
 	payeeID, tagID, labelID, startDate *string
-	amountBorrowed, balance, payment   vo.FlexString
+	amountBorrowed, balance            vo.FlexString
+	balanceDate                        string
+	payment                            vo.FlexString
 	schedule, lastPaymentDate          string
+}
+
+func debtDateField(key, v string) []errs.FieldError {
+	if !filled(v) {
+		return nil
+	}
+	if _, err := time.Parse(datetime.DateLayout, v); err != nil {
+		return []errs.FieldError{debtInvalidField(key)}
+	}
+	return nil
 }
 
 func filled(v string) bool { return strings.TrimSpace(v) != "" }
@@ -295,11 +343,15 @@ func debtFields(f debtTermFields, keepable bool) []errs.FieldError {
 	// needs them too; on an update it may stand alone (a set-up debt).
 	hasBorrowed, hasLast, hasBalance := filled(f.amountBorrowed.String()), filled(f.lastPaymentDate), filled(f.balance.String())
 	setup := hasBorrowed || hasLast || (hasBalance && !keepable)
-	if setup || hasBorrowed {
+	if setup {
 		fields = append(fields, debtAmountField("amountBorrowed", f.amountBorrowed.String(), false)...)
 	}
-	if hasBalance {
+	switch {
+	case hasBalance:
 		fields = append(fields, debtAmountField("balance", f.balance.String(), true)...)
+		fields = append(fields, debtDateField("balanceDate", f.balanceDate)...)
+	case filled(f.balanceDate):
+		fields = append(fields, blankField("balance"))
 	}
 	if setup && !hasStart {
 		fields = append(fields, blankField("startDate"))

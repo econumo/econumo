@@ -242,15 +242,6 @@ func TestSetUpDebt_TermValidation(t *testing.T) {
 	}
 }
 
-func TestUpdateDebt_SetUpDebtKeepsItsStartDate(t *testing.T) {
-	e := newEnv(t)
-	res := e.createOrigin(t, nil)
-	req := e.updateReq(res)
-	req.StartDate = nil
-	_, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
-	requireField(t, err, "startDate", errs.CodeIsBlank)
-}
-
 func TestUpdateDebt_NotSetUpNeedsTheLoanFactsForABalance(t *testing.T) {
 	e := newEnv(t)
 	res := e.createWithoutTerms(t, nil)

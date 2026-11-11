@@ -16,15 +16,15 @@ import (
 func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.CreateDebtRequest) (*model.DebtResult, error) {
 	in, err := parseInput(debtBody{name: req.Name, currencyID: req.CurrencyId, categoryID: req.CategoryId,
 		payeeID: req.PayeeId, tagID: req.TagId, labelID: req.LabelId, start: req.StartDate, borrowed: req.AmountBorrowed,
-		balance: req.Balance, payment: req.Payment, schedule: req.Schedule, lastPayment: req.LastPaymentDate})
+		balance: req.Balance, balanceDate: req.BalanceDate, payment: req.Payment, schedule: req.Schedule, lastPayment: req.LastPaymentDate})
 	if err != nil {
 		return nil, err
 	}
 	if err := in.requirePaymentAndSchedule(); err != nil {
 		return nil, err
 	}
-	if in.hasOwed && !in.hasOrigin {
-		return nil, missingFacts(true, in.start == nil, true)
+	if (in.hasOwed && !in.hasOrigin) || (in.hasOrigin && in.start == nil) {
+		return nil, missingFacts(!in.hasOrigin, in.start == nil, !in.hasOrigin)
 	}
 	if err := s.currencies.EnsureUsable(ctx, userID.String(), in.currency.String()); err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 				return err
 			}
 		}
-		if isWholeCategory(d) {
+		if isWholeCategory(d, others) {
 			return s.moveToDebt(ctx, d)
 		}
 		return nil
@@ -90,7 +90,7 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 
 // setupTerms are the snapshots that set a debt up: the origin from the body's
 // facts (base filling the payment and schedule it leaves out) and, with a
-// balance now, one as of today under the same terms.
+// statement balance, one as of its date under the same terms.
 func (in debtInput) setupTerms(base model.DebtTerms, today time.Time, digits int) ([]model.DebtTerms, error) {
 	origin := in.origin(base, digits)
 	if err := validateOrigin(origin, today, digits); err != nil {
@@ -98,8 +98,8 @@ func (in debtInput) setupTerms(base model.DebtTerms, today time.Time, digits int
 	}
 	out := []model.DebtTerms{origin}
 	if in.hasOwed {
-		owed := in.owedNow(origin, today, digits)
-		if err := validateTerms(owed, digits); err != nil {
+		owed := in.statement(origin, today, digits)
+		if err := validateStatement(owed, origin.AsOf, today, digits); err != nil {
 			return nil, err
 		}
 		out = append(out, owed)
