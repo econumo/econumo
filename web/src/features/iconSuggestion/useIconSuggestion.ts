@@ -37,7 +37,9 @@ export function useIconSuggestion({ kind, name, type, currency, enabled }: IconS
       }
       suggestIcon({ kind, name: trimmed, ...(type ? { type } : {}), ...(currency ? { currency } : {}) }, controller.signal)
         .then((icon) => {
-          answers.set(key, icon)
+          // "" may be a passing refusal (the limit, a slow provider): asked again next time,
+          // which the server answers from its own cache when it was final
+          if (icon) answers.set(key, icon)
           if (!controller.signal.aborted) setSettled(key)
         })
         // a failed request is no suggestion; typing never shows an error
@@ -56,7 +58,9 @@ export function useIconSuggestion({ kind, name, type, currency, enabled }: IconS
 export type IconSuggestionSource = 'dialog' | 'onboarding' | 'inline'
 
 // Applies a suggestion through onApply while the hook is enabled; the metric fires the first
-// time a suggestion changes the item's icon. `current` is the icon shown now.
+// time a suggestion changes the item's icon. `current` is the icon shown now. An icon put there
+// for an earlier name gives way to the item's starting icon as soon as the name changes, until
+// the new name has a suggestion of its own; an icon set any other way is never touched.
 export function useApplyIconSuggestion(
   options: IconSuggestionOptions,
   current: string,
@@ -66,22 +70,42 @@ export function useApplyIconSuggestion(
   const suggestion = useIconSuggestion(options)
   const apply = useRef(onApply)
   const reported = useRef(false)
+  // the icon this hook put there (while it is still shown) and the one it replaced
+  const applied = useRef<string | null>(null)
+  const start = useRef<string | null>(null)
+  const subject = [options.kind, options.type ?? '', options.currency ?? '', options.name.trim().toLowerCase()].join('\0')
   useEffect(() => {
     apply.current = onApply
   })
   useEffect(() => {
-    if (!options.enabled) reported.current = false
-  }, [options.enabled])
-  useEffect(() => {
-    if (!suggestion || suggestion === current) return
-    apply.current(suggestion)
-    if (!reported.current) {
-      reported.current = true
-      trackEvent(METRICS.ICON_SUGGESTION_APPLIED, { kind: options.kind, source })
+    if (!options.enabled) {
+      reported.current = false
+      applied.current = null
+      start.current = null
+      return
     }
-    // only a new suggestion applies; the icon moving because of it must not re-run this
+    if (applied.current !== null && current !== applied.current) {
+      // changed by other means since: no longer ours to change back
+      applied.current = null
+      start.current = null
+    }
+    if (suggestion) {
+      if (suggestion === current) return
+      if (applied.current === null) start.current = current
+      applied.current = suggestion
+      apply.current(suggestion)
+      if (!reported.current) {
+        reported.current = true
+        trackEvent(METRICS.ICON_SUGGESTION_APPLIED, { kind: options.kind, source })
+      }
+    } else if (applied.current !== null && start.current !== null) {
+      apply.current(start.current)
+      applied.current = null
+      start.current = null
+    }
+    // runs when the name or the suggestion moves, not when the icon does because of it
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suggestion])
+  }, [subject, suggestion, options.enabled])
 }
 
 // useApplyIconSuggestion for an onboarding row, rendered by a callback where a hook cannot be called.

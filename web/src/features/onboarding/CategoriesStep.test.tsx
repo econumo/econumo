@@ -317,7 +317,8 @@ describe('icon suggestions', () => {
       http.get('*/api/v1/onboarding/suggest-icon', ({ request }) => {
         const name = new URL(request.url).searchParams.get('name') ?? ''
         asked.push(name)
-        return HttpResponse.json({ success: true, message: '', data: { icon: name === 'Mortgage' ? 'house' : 'pets' } })
+        const icons: Record<string, string> = { Mortgage: 'house', Salary: '' }
+        return HttpResponse.json({ success: true, message: '', data: { icon: icons[name] ?? 'pets' } })
       }),
     )
   })
@@ -334,6 +335,20 @@ describe('icon suggestions', () => {
     await user.click(screen.getByRole('button', { name: 'Save and continue' }))
     expect(submitted(onContinue).find((r) => r.name === 'Mortgage')).toMatchObject({ icon: 'house' })
     expect(submitted(onContinue)[0]).toMatchObject({ name: 'Groceries', icon: 'shopping_cart' })
+  })
+
+  it('a row renamed to a name with no suggestion goes back to its starting icon', async () => {
+    const user = userEvent.setup()
+    const { onContinue } = renderStep()
+    await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'Mortgage{Enter}')
+    await waitFor(() => expect(suggested()).toHaveLength(1), { timeout: 3000 })
+    const row = screen.getAllByTestId('category-row').find((r) => within(r).queryByDisplayValue('Mortgage'))!
+    const input = within(row).getByLabelText('Category name')
+    await user.clear(input)
+    await user.type(input, 'Salary')
+    await waitFor(() => expect(asked).toEqual(['Mortgage', 'Salary']), { timeout: 3000 })
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+    expect(submitted(onContinue).find((r) => r.name === 'Salary')).toMatchObject({ icon: 'home' })
   })
 
   it('a renamed default asks for its new name', async () => {

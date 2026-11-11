@@ -80,10 +80,14 @@ it('asks nothing for a short name, while disabled, offline, or without AI', asyn
   expect(result.current).toBeNull()
 })
 
-it('an empty answer is no suggestion', async () => {
+it('an empty answer is no suggestion and is asked again later (it may have been a passing failure)', async () => {
   serve(() => '')
-  const { result } = renderSuggestion({ kind: 'category', name: 'Misc', enabled: true })
+  const { result, rerender } = renderSuggestion({ kind: 'category', name: 'Misc', enabled: true })
   await eventually(() => expect(asked).toHaveLength(1))
   await settle(100)
   expect(result.current).toBeNull()
+  rerender({ kind: 'category', name: 'Other', enabled: true })
+  await eventually(() => expect(asked).toHaveLength(2))
+  rerender({ kind: 'category', name: 'Misc', enabled: true })
+  await eventually(() => expect(asked).toHaveLength(3))
 })

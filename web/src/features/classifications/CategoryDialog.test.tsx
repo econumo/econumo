@@ -36,7 +36,8 @@ beforeEach(() => {
     http.get('*/api/v1/onboarding/suggest-icon', ({ request }) => {
       const params = new URL(request.url).searchParams
       asked.push(params)
-      return HttpResponse.json({ success: true, message: '', data: { icon: params.get('name') === 'Mortgage' ? 'house' : 'pets' } })
+      const icons: Record<string, string> = { Mortgage: 'house', Salary: '' }
+      return HttpResponse.json({ success: true, message: '', data: { icon: icons[params.get('name') ?? ''] ?? 'pets' } })
     }),
   )
 })
@@ -61,6 +62,19 @@ it('a new category takes the icon suggested for its name, once reported', async 
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ name: 'Vet bills', type: 'expense', icon: 'pets' }))
   expect(applied(track)).toHaveLength(1)
+})
+
+it('renamed to a name with no suggestion, the icon goes back to the default', async () => {
+  const user = userEvent.setup()
+  const onSubmit = renderDialog()
+  await user.type(screen.getByLabelText('Name'), 'Mortgage')
+  await waitFor(() => expect(screen.getByRole('option', { name: 'home' })).toHaveAttribute('aria-selected', 'false'), { timeout: 3000 })
+  await user.clear(screen.getByLabelText('Name'))
+  await user.type(screen.getByLabelText('Name'), 'Salary')
+  await waitFor(() => expect(asked).toHaveLength(2), { timeout: 3000 })
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+  expect(onSubmit).toHaveBeenCalledWith({ name: 'Salary', type: 'expense', icon: 'home' })
 })
 
 it('an icon the user picked is never replaced', async () => {
