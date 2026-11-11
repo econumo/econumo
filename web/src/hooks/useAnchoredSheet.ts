@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import { layoutHeight } from '@/hooks/useKeyboardInset'
 import type { KeyboardInset } from '@/hooks/useKeyboardInset'
+import { ownsKeyboard } from '@/lib/ownsKeyboard'
 
 // px kept free above the sheet
 export const SHEET_TOP_GAP = 24
@@ -10,6 +11,41 @@ const STATUS_BAR_GAP = 8
 // px of list the keyboard must leave (about two rows) before the sheet's top
 // moves up
 const MIN_LIST = 100
+// ms a focused field may wait for a keyboard before the sheet stops leaving
+// room for one (a hardware keyboard raises none)
+const KEYBOARD_WAIT_MS = 800
+// ms a shorter keyboard must stay before it replaces the remembered one: the
+// number keyboard is still up for a moment while the text one replaces it
+const KEYBOARD_SETTLE_MS = 600
+// px a vaul sheet slides in from when a field takes focus as it opens: less
+// than the gap under the search, so the field is never below the keyboard's
+// edge while iOS decides whether to pan
+const FOCUSED_OPEN_SLIDE = '10px'
+const KEYBOARD_STORE = 'econumo.keyboardVisible'
+
+// The visible height the on-screen keyboard left the last time a sheet's field
+// had it up, per layout height (portrait and landscape differ). iOS pans the
+// screen for a field the keyboard would cover, animating the pan while
+// reporting only where it ends, so a sheet cannot follow it. A sheet that is
+// already this tall when its field takes focus keeps the field above the
+// keyboard, and iOS pans nothing. Unknown until a keyboard was seen once.
+function rememberedVisible(layout: number): number | undefined {
+  try {
+    const value = (JSON.parse(localStorage.getItem(KEYBOARD_STORE) ?? '{}') as Record<string, unknown>)[layout]
+    return typeof value === 'number' && value > 0 && value < layout ? value : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function rememberVisible(layout: number, visible: number) {
+  try {
+    const all = JSON.parse(localStorage.getItem(KEYBOARD_STORE) ?? '{}') as Record<string, unknown>
+    localStorage.setItem(KEYBOARD_STORE, JSON.stringify({ ...all, [layout]: visible }))
+  } catch {
+    // private mode: the sheet simply does not make room in advance
+  }
+}
 
 export interface SheetAnchor {
   /** px from the top of the visible area, chosen as the sheet opens */
@@ -54,6 +90,16 @@ export function anchoredTop(anchor: SheetAnchor, visibleHeight: number): number 
  * as needed when the keyboard would leave less than about two rows of list.
  * A closing sheet keeps its place while it slides out.
  */
+/** the height the sheet lays itself out in: what the keyboard leaves, or will leave */
+export function sheetVisibleHeight(layout: number, keyboardVisible: number, remembered: number | undefined, expectsField: boolean, noKeyboard: boolean): number {
+  const room = expectsField && remembered !== undefined
+  if (keyboardVisible > 0) {
+    // the number keyboard is still up while the taller text one replaces it
+    return room ? Math.min(keyboardVisible, remembered) : keyboardVisible
+  }
+  return room && !noKeyboard ? remembered : layout
+}
+
 export interface AnchoredSheet {
   style: CSSProperties
   /** px from the top of the visible area to the sheet's top */
@@ -104,16 +150,131 @@ export function useAnchoredSheet(
       setAnchor({ top, natural, chrome, minTop, layout })
     }
   })
+
+  const active = enabled && open
+  // a field of the sheet is about to raise the keyboard, or has it up
+  const [fieldTaken, setFieldTaken] = useState(false)
+  const expectsField = active && fieldTaken
+  // a field took focus as the sheet opened
+  const [focusedOpen, setFocusedOpen] = useState(false)
+  // it waited and none came
+  const [noKeyboard, setNoKeyboard] = useState(false)
+  const [remembered, setRemembered] = useState<number | undefined>(undefined)
+  const layout = layoutHeight()
+  useLayoutEffect(() => {
+    if (active) {
+      setRemembered(rememberedVisible(layout))
+    }
+  }, [active, layout])
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!active || !el || !body) {
+      return
+    }
+    const focused = () => ownsKeyboard(document.activeElement) && el.contains(document.activeElement)
+    setFieldTaken(focused())
+    setFocusedOpen(focused())
+    // a touch on the field comes before its focus, and so before the keyboard
+    let touched = false
+    const onPointerDown = (e: PointerEvent) => {
+      touched = true
+      if (e.pointerType === 'touch' && ownsKeyboard(e.target)) {
+        setFieldTaken(true)
+      }
+    }
+    const onFocusIn = (e: FocusEvent) => {
+      if (ownsKeyboard(e.target)) {
+        setFieldTaken(true)
+        // focus nobody touched the sheet for is the sheet's own, as it opens
+        if (!touched) {
+          setFocusedOpen(true)
+        }
+      }
+    }
+    const onFocusOut = (e: FocusEvent) => {
+      if (!ownsKeyboard(e.relatedTarget)) {
+        setFieldTaken(false)
+      }
+    }
+    el.addEventListener('pointerdown', onPointerDown, true)
+    el.addEventListener('focusin', onFocusIn)
+    el.addEventListener('focusout', onFocusOut)
+    return () => {
+      el.removeEventListener('pointerdown', onPointerDown, true)
+      el.removeEventListener('focusin', onFocusIn)
+      el.removeEventListener('focusout', onFocusOut)
+      setFieldTaken(false)
+      setFocusedOpen(false)
+    }
+  }, [active, body, ref])
+  useEffect(() => {
+    if (!expectsField || keyboard.height > 0) {
+      setNoKeyboard(false)
+      return
+    }
+    const el = ref.current
+    const timer = setTimeout(() => {
+      if (el && ownsKeyboard(document.activeElement) && el.contains(document.activeElement)) {
+        setNoKeyboard(true)
+      } else {
+        // a touch that never focused the field (a scroll that began on it)
+        setFieldTaken(false)
+      }
+    }, KEYBOARD_WAIT_MS)
+    return () => clearTimeout(timer)
+  }, [expectsField, keyboard.height, ref])
+  useEffect(() => {
+    if (!expectsField || keyboard.height === 0 || keyboard.height === remembered) {
+      return
+    }
+    const keep = () => {
+      rememberVisible(layout, keyboard.height)
+      setRemembered(keyboard.height)
+    }
+    // a taller keyboard needs its room at once
+    if (remembered === undefined || keyboard.height < remembered) {
+      keep()
+      return
+    }
+    const timer = setTimeout(keep, KEYBOARD_SETTLE_MS)
+    return () => clearTimeout(timer)
+  }, [expectsField, keyboard.height, remembered, layout])
+
+  // with next to no slide, the sheet fades in
+  const shortSlide = open && focusedOpen && remembered !== undefined
+  useLayoutEffect(() => {
+    if (shortSlide) {
+      ref.current?.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' })
+    }
+  }, [shortSlide, ref])
+
+  // a closing sheet slides out as it stood, whatever its field and the
+  // keyboard do meanwhile
+  const closing = useRef<{ top: number; height: number } | null>(null)
   if (!enabled || anchor === null) {
     return undefined
   }
-  const layout = layoutHeight()
-  const visibleHeight = keyboard.height > 0 ? keyboard.height : layout
-  const top = anchoredTop(anchor, visibleHeight)
+  let top: number
+  let height: number
+  if (!open && closing.current) {
+    ;({ top, height } = closing.current)
+  } else {
+    const visibleHeight = sheetVisibleHeight(layout, keyboard.height, remembered, expectsField, noKeyboard)
+    top = anchoredTop(anchor, visibleHeight)
+    height = visibleHeight - top
+    closing.current = { top, height }
+  }
   return {
     top,
-    // placed in the layout viewport, which iOS pans by keyboard.top;
-    // marginTop: the drawer's mt-24 only kept a bottom-anchored sheet off the top
-    style: { top: keyboard.top + top, bottom: 'auto', marginTop: 0, height: visibleHeight - top, maxHeight: 'none' },
+    style: {
+      // placed in the layout viewport, which iOS pans by keyboard.top
+      top: keyboard.top + top,
+      bottom: 'auto',
+      // the drawer's mt-24 only kept a bottom-anchored sheet off the top
+      marginTop: 0,
+      height,
+      maxHeight: 'none',
+      ...(shortSlide ? { '--initial-transform': FOCUSED_OPEN_SLIDE } : {}),
+    } as CSSProperties,
   }
 }

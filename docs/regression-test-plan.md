@@ -3276,7 +3276,12 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       the screen opens up to just below the status bar, so with the keyboard
       up about 4 rows stay visible. A short list rises just enough to stay
       above the keyboard. The Add transaction page behind
-      it stays still.
+      it stays still. From the second time a picker's keyboard has been up
+      on the device, the sheet is already keyboard-sized when the search is
+      touched or the picker opens with the keyboard coming (it then fades in
+      instead of sliding up), and the screen does not slide as the keyboard
+      comes or goes. The "Type a name to create it" row stays reachable at
+      the end of the list, with and without the keyboard.
 - [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
       Savings accounts checklist, Category, Currency, Merge into) have the
       same rounded corners as the sheet's search field and OK button, not

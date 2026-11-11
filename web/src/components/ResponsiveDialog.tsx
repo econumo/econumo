@@ -5,6 +5,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { useKeyboardInset } from '@/hooks/useKeyboardInset'
 import { useSheetGlide } from '@/hooks/useSheetGlide'
+import { ownsKeyboard } from '@/lib/ownsKeyboard'
 import { SHEET_TOP_GAP, useAnchoredSheet } from '@/hooks/useAnchoredSheet'
 
 const STACKED_CONTENT = '[data-slot="dialog-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"]'
@@ -16,18 +17,6 @@ const STACKED_OVERLAY = '[data-slot="dialog-overlay"], [data-slot="drawer-overla
 // px left between a field brought into view and the form's edge
 const FIELD_REVEAL_GAP = 8
 const FIELD_REVEAL_DELAY_MS = 100
-
-const NO_KEYBOARD_INPUTS = new Set(['button', 'checkbox', 'radio', 'range', 'color', 'file', 'submit', 'reset', 'image', 'hidden'])
-
-function ownsKeyboard(target: EventTarget): boolean {
-  if (target instanceof HTMLTextAreaElement) {
-    return target.inputMode !== 'none'
-  }
-  if (target instanceof HTMLInputElement) {
-    return target.inputMode !== 'none' && !NO_KEYBOARD_INPUTS.has(target.type)
-  }
-  return target instanceof HTMLElement && target.isContentEditable
-}
 
 const CoverPage = createContext<((delta: 1 | -1) => void) | null>(null)
 
