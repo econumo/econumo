@@ -118,7 +118,7 @@ export function CurrenciesBlock({
                 {extras.includes(id) && (
                   <DropdownMenuItem variant="destructive" onSelect={() => onRemoveExtra(id)}>
                     <X className="size-4" />
-                    {t('onboarding.currencies.remove_action')}
+                    {t('onboarding.remove')}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

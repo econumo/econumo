@@ -773,19 +773,9 @@
       "header": "Importiert aus"
     },
     "rules": {
-      "field": {
-        "external_payee": "Zahlungsempfänger",
-        "description": "Beschreibung"
-      },
-      "type": {
-        "contains": "enthält",
-        "prefix": "beginnt mit",
-        "exact": "ist genau"
-      },
-      "action": {
-        "classify": "Klassifizieren",
-        "skip": "Überspringen"
-      },
+      "field": { "external_payee": "Zahlungsempfänger", "description": "Beschreibung" },
+      "type": { "contains": "enthält", "prefix": "beginnt mit", "exact": "ist genau" },
+      "action": { "classify": "Klassifizieren", "skip": "Überspringen" },
       "prompt": {
         "title": "Importregel erstellen",
         "changed_category": "Du hast die Kategorie auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
@@ -1230,16 +1220,9 @@
       "name_label": "Kontoname",
       "balance_label": "Kontostand",
       "balance_invalid": "Geben Sie eine Zahl ein, z. B. 1234,50",
-      "remove": "Konto entfernen",
       "currency_title": "Währung",
-      "skip": "Überspringen",
       "add": "Konto hinzufügen",
       "default_cash": "Bargeld",
-      "hide": "Archivieren",
-      "show": "Wiederherstellen",
-      "hide_label": "{name} archivieren",
-      "show_label": "{name} wiederherstellen",
-      "hidden": "Archiviert",
       "balance_of": "Kontostand von {name}"
     },
     "categories_step": {
@@ -1250,14 +1233,7 @@
       "name_label": "Kategoriename",
       "icon_label": "Symbol ändern",
       "reorder_label": "{name} verschieben",
-      "remove_label": "{name} entfernen",
-      "add_placeholder": "Eigene hinzufügen",
-      "skip": "Überspringen",
-      "archive": "Archivieren",
-      "restore": "Wiederherstellen",
-      "archive_label": "{name} archivieren",
-      "restore_label": "{name} wiederherstellen",
-      "archived": "Archiviert"
+      "add_placeholder": "Eigene hinzufügen"
     },
     "currencies": {
       "title": "Währungen",
@@ -1268,7 +1244,6 @@
       "main_label": "Hauptwährung: {code}",
       "main_suffix": "Haupt",
       "make_main": "Als Hauptwährung festlegen",
-      "remove_action": "Entfernen",
       "chips_hint": "Tippen Sie auf eine Währung, um sie zur Hauptwährung zu machen oder zu entfernen."
     },
     "steps_nav": {
@@ -1291,8 +1266,7 @@
       "heading": "Bringen Sie Ihre Historie mit",
       "text": "Haben Sie einen CSV-Export Ihrer Bank oder einer anderen App? Er legt Konten, Kategorien und Buchungen in einem Schritt an.",
       "choose": "CSV-Datei auswählen",
-      "skip": "Ich habe keine",
-      "skip_short": "Überspringen",
+      "no_file": "Ich habe keine",
       "drop_here": "oder hier ablegen",
       "not_csv": "Hier können nur CSV-Dateien importiert werden."
     },
@@ -1300,18 +1274,24 @@
       "heading": "Econumo immer griffbereit",
       "text": "Fügen Sie es zum Home-Bildschirm hinzu, damit Sie einen Kaffee in Sekunden erfassen.",
       "install": "Installieren",
-      "done": "Fertig",
-      "skip": "Überspringen"
+      "done": "Fertig"
     },
     "wallet_step": {
       "heading": "Kartenzahlungen, automatisch erfasst",
       "text": "Verbinden Sie Apple Wallet, und jede Kartenzahlung erscheint von selbst in Econumo.",
       "setup": "Einrichten",
-      "skip": "Überspringen",
       "later": "Sie können die Apple-Wallet-Integration jederzeit später in den Einstellungen einrichten."
     },
     "retry": "Erneut versuchen",
     "save_continue": "Speichern und weiter",
+    "skip": "Überspringen",
+    "archive": "Archivieren",
+    "restore": "Wiederherstellen",
+    "archive_label": "{name} archivieren",
+    "restore_label": "{name} wiederherstellen",
+    "archived": "Archiviert",
+    "remove": "Entfernen",
+    "remove_label": "{name} entfernen",
     "plan_step": {
       "heading": "Diesen Monat planen",
       "subtext": "Ihr Budget ist bereit. Tragen Sie grobe Beträge für das ein, was Ihnen wichtig ist – Sie können sie jederzeit anpassen.",
@@ -1319,7 +1299,6 @@
       "expenses": "Ausgaben · {month}",
       "planned_of_income": "{planned} von {total} erwarteten Einnahmen geplant",
       "planned_of_accounts": "{planned} von {total} auf Ihren Konten geplant",
-      "skip": "Später",
       "needs_account": "Ein Budget braucht mindestens ein Konto. Legen Sie zuerst eines an.",
       "add_account": "Konto hinzufügen",
       "no_categories": "Es gibt noch keine Kategorien zum Planen. Legen Sie zuerst ein paar an.",

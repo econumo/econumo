@@ -773,19 +773,9 @@
       "header": "Importada de"
     },
     "rules": {
-      "field": {
-        "external_payee": "Beneficiário",
-        "description": "Descrição"
-      },
-      "type": {
-        "contains": "contém",
-        "prefix": "começa com",
-        "exact": "é exatamente"
-      },
-      "action": {
-        "classify": "Classificar",
-        "skip": "Ignorar"
-      },
+      "field": { "external_payee": "Beneficiário", "description": "Descrição" },
+      "type": { "contains": "contém", "prefix": "começa com", "exact": "é exatamente" },
+      "action": { "classify": "Classificar", "skip": "Ignorar" },
       "prompt": {
         "title": "Criar uma regra de importação",
         "changed_category": "Definiu a categoria como {name}. Criar uma regra para importações semelhantes?",
@@ -1230,16 +1220,9 @@
       "name_label": "Nome da conta",
       "balance_label": "Saldo",
       "balance_invalid": "Introduza um número, por exemplo 1234,50",
-      "remove": "Remover conta",
       "currency_title": "Moeda",
-      "skip": "Pular",
       "add": "Adicionar conta",
       "default_cash": "Dinheiro",
-      "hide": "Arquivar",
-      "show": "Restaurar",
-      "hide_label": "Arquivar {name}",
-      "show_label": "Restaurar {name}",
-      "hidden": "Arquivada",
       "balance_of": "Saldo de {name}"
     },
     "categories_step": {
@@ -1250,14 +1233,7 @@
       "name_label": "Nome da categoria",
       "icon_label": "Alterar ícone",
       "reorder_label": "Reordenar {name}",
-      "remove_label": "Remover {name}",
-      "add_placeholder": "Adicione as suas",
-      "skip": "Pular",
-      "archive": "Arquivar",
-      "restore": "Restaurar",
-      "archive_label": "Arquivar {name}",
-      "restore_label": "Restaurar {name}",
-      "archived": "Arquivada"
+      "add_placeholder": "Adicione as suas"
     },
     "currencies": {
       "title": "Moedas",
@@ -1268,7 +1244,6 @@
       "main_label": "Moeda principal: {code}",
       "main_suffix": "Principal",
       "make_main": "Definir como principal",
-      "remove_action": "Remover",
       "chips_hint": "Toque numa moeda para a definir como principal ou a remover."
     },
     "steps_nav": {
@@ -1291,8 +1266,7 @@
       "heading": "Traga o seu histórico",
       "text": "Tem uma exportação CSV do seu banco ou de outra app? Ela cria contas, categorias e transações de uma só vez.",
       "choose": "Escolher um ficheiro CSV",
-      "skip": "Não tenho",
-      "skip_short": "Pular",
+      "no_file": "Não tenho",
       "drop_here": "ou largue-o aqui",
       "not_csv": "Aqui só é possível importar ficheiros CSV."
     },
@@ -1300,18 +1274,24 @@
       "heading": "Econumo a um toque",
       "text": "Adicione-o ao ecrã principal para registar um café em segundos.",
       "install": "Instalar",
-      "done": "Concluído",
-      "skip": "Ignorar"
+      "done": "Concluído"
     },
     "wallet_step": {
       "heading": "Pagamentos com cartão, registados por si",
       "text": "Ligue o Apple Wallet e cada pagamento com o cartão aparece sozinho no Econumo.",
       "setup": "Configurar",
-      "skip": "Ignorar",
       "later": "Pode configurar a integração com o Apple Wallet a qualquer momento nas Definições."
     },
     "retry": "Tentar novamente",
     "save_continue": "Guardar e continuar",
+    "skip": "Ignorar",
+    "archive": "Arquivar",
+    "restore": "Restaurar",
+    "archive_label": "Arquivar {name}",
+    "restore_label": "Restaurar {name}",
+    "archived": "Arquivada",
+    "remove": "Remover",
+    "remove_label": "Remover {name}",
     "plan_step": {
       "heading": "Planeie este mês",
       "subtext": "O seu orçamento está pronto. Coloque um valor aproximado junto ao que importa — pode ajustá-lo a qualquer momento.",
@@ -1319,7 +1299,6 @@
       "expenses": "Despesas · {month}",
       "planned_of_income": "Planeado {planned} de {total} de receitas previstas",
       "planned_of_accounts": "Planeado {planned} de {total} nas suas contas",
-      "skip": "Agora não",
       "needs_account": "Um orçamento precisa de pelo menos uma conta. Adicione uma primeiro.",
       "add_account": "Adicionar uma conta",
       "no_categories": "Ainda não há categorias para planear. Adicione algumas primeiro.",

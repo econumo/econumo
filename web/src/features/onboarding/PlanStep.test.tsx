@@ -263,7 +263,7 @@ it('without a budget it asks for an account and opens the Accounts step, and Ski
   expect(onGoTo).toHaveBeenCalledWith('accounts')
   expect(screen.getByText('A budget needs at least one account. Add one first.')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDisabled()
-  await user.click(screen.getByRole('button', { name: 'Skip for now' }))
+  await user.click(screen.getByRole('button', { name: 'Skip' }))
   expect(onSkip).toHaveBeenCalled()
   expect(routes.srv.calls).toEqual([])
 })
@@ -279,11 +279,11 @@ it('a budget shared with edit rights is planned', async () => {
   expect(await input('Groceries')).toBeInTheDocument()
 })
 
-it('Skip for now skips the step', async () => {
+it('Skip skips the step', async () => {
   const user = userEvent.setup()
   const { onSkip } = setup()
   await input('Groceries')
-  await user.click(screen.getByRole('button', { name: 'Skip for now' }))
+  await user.click(screen.getByRole('button', { name: 'Skip' }))
   expect(onSkip).toHaveBeenCalled()
 })
 

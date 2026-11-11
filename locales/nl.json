@@ -773,19 +773,9 @@
       "header": "Geïmporteerd uit"
     },
     "rules": {
-      "field": {
-        "external_payee": "Begunstigde",
-        "description": "Omschrijving"
-      },
-      "type": {
-        "contains": "bevat",
-        "prefix": "begint met",
-        "exact": "is precies"
-      },
-      "action": {
-        "classify": "Classificeren",
-        "skip": "Overslaan"
-      },
+      "field": { "external_payee": "Begunstigde", "description": "Omschrijving" },
+      "type": { "contains": "bevat", "prefix": "begint met", "exact": "is precies" },
+      "action": { "classify": "Classificeren", "skip": "Overslaan" },
       "prompt": {
         "title": "Importregel maken",
         "changed_category": "Je hebt de categorie ingesteld op {name}. Een regel maken voor vergelijkbare imports?",
@@ -1230,16 +1220,9 @@
       "name_label": "Rekeningnaam",
       "balance_label": "Saldo",
       "balance_invalid": "Voer een getal in, bijvoorbeeld 1234,50",
-      "remove": "Rekening verwijderen",
       "currency_title": "Valuta",
-      "skip": "Overslaan",
       "add": "Rekening toevoegen",
       "default_cash": "Contant",
-      "hide": "Archiveren",
-      "show": "Herstellen",
-      "hide_label": "{name} archiveren",
-      "show_label": "{name} herstellen",
-      "hidden": "Gearchiveerd",
       "balance_of": "Saldo van {name}"
     },
     "categories_step": {
@@ -1250,14 +1233,7 @@
       "name_label": "Categorienaam",
       "icon_label": "Pictogram wijzigen",
       "reorder_label": "{name} verplaatsen",
-      "remove_label": "{name} verwijderen",
-      "add_placeholder": "Voeg uw eigen toe",
-      "skip": "Overslaan",
-      "archive": "Archiveren",
-      "restore": "Herstellen",
-      "archive_label": "{name} archiveren",
-      "restore_label": "{name} herstellen",
-      "archived": "Gearchiveerd"
+      "add_placeholder": "Voeg uw eigen toe"
     },
     "currencies": {
       "title": "Valuta's",
@@ -1268,7 +1244,6 @@
       "main_label": "Hoofdvaluta: {code}",
       "main_suffix": "Hoofd",
       "make_main": "Als hoofdvaluta instellen",
-      "remove_action": "Verwijderen",
       "chips_hint": "Tik op een valuta om deze als hoofdvaluta in te stellen of te verwijderen."
     },
     "steps_nav": {
@@ -1291,8 +1266,7 @@
       "heading": "Neem uw geschiedenis mee",
       "text": "Hebt u een CSV-export van uw bank of een andere app? Die maakt rekeningen, categorieën en transacties in één keer aan.",
       "choose": "Kies een CSV-bestand",
-      "skip": "Ik heb er geen",
-      "skip_short": "Overslaan",
+      "no_file": "Ik heb er geen",
       "drop_here": "of sleep het hierheen",
       "not_csv": "Hier kunnen alleen CSV-bestanden worden geïmporteerd."
     },
@@ -1300,18 +1274,24 @@
       "heading": "Econumo altijd binnen handbereik",
       "text": "Zet het op uw beginscherm, zodat een koffie loggen maar een paar seconden kost.",
       "install": "Installeren",
-      "done": "Klaar",
-      "skip": "Overslaan"
+      "done": "Klaar"
     },
     "wallet_step": {
       "heading": "Kaartbetalingen, vanzelf vastgelegd",
       "text": "Koppel Apple Wallet en elke betaling met uw kaart verschijnt vanzelf in Econumo.",
       "setup": "Instellen",
-      "skip": "Overslaan",
       "later": "U kunt de Apple Wallet-koppeling op elk moment later instellen in Instellingen."
     },
     "retry": "Opnieuw proberen",
     "save_continue": "Opslaan en doorgaan",
+    "skip": "Overslaan",
+    "archive": "Archiveren",
+    "restore": "Herstellen",
+    "archive_label": "{name} archiveren",
+    "restore_label": "{name} herstellen",
+    "archived": "Gearchiveerd",
+    "remove": "Verwijderen",
+    "remove_label": "{name} verwijderen",
     "plan_step": {
       "heading": "Plan deze maand",
       "subtext": "Uw budget staat klaar. Zet een globaal bedrag bij wat belangrijk is – u kunt het altijd aanpassen.",
@@ -1319,7 +1299,6 @@
       "expenses": "Uitgaven · {month}",
       "planned_of_income": "{planned} gepland van {total} verwachte inkomsten",
       "planned_of_accounts": "{planned} gepland van {total} op uw rekeningen",
-      "skip": "Later",
       "needs_account": "Een budget heeft minstens één rekening nodig. Voeg er eerst een toe.",
       "add_account": "Rekening toevoegen",
       "no_categories": "Er zijn nog geen categorieën om te plannen. Voeg er eerst een paar toe.",

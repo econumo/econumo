@@ -27,7 +27,7 @@ export function InstallStep({ onDone, onSkip }: StepBodyProps) {
       ) : null}
       <div className="mt-6 flex items-center justify-between">
         <Button type="button" variant="ghost" disabled={pending} onClick={run(onSkip)}>
-          {t('onboarding.install_step.skip')}
+          {t('onboarding.skip')}
         </Button>
         {mode === 'prompt' ? (
           <Button type="button" disabled={pending} onClick={run(install)}>

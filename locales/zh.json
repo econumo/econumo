@@ -773,19 +773,9 @@
       "header": "导入自"
     },
     "rules": {
-      "field": {
-        "external_payee": "收款人",
-        "description": "说明"
-      },
-      "type": {
-        "contains": "包含",
-        "prefix": "开头是",
-        "exact": "完全等于"
-      },
-      "action": {
-        "classify": "分类",
-        "skip": "跳过"
-      },
+      "field": { "external_payee": "收款人", "description": "说明" },
+      "type": { "contains": "包含", "prefix": "开头是", "exact": "完全等于" },
+      "action": { "classify": "分类", "skip": "跳过" },
       "prompt": {
         "title": "创建导入规则",
         "changed_category": "分类已设置为“{name}”。是否为类似的导入创建规则？",
@@ -1230,16 +1220,9 @@
       "name_label": "账户名称",
       "balance_label": "余额",
       "balance_invalid": "请输入数字，例如 1234.50",
-      "remove": "移除账户",
       "currency_title": "币种",
-      "skip": "跳过",
       "add": "添加账户",
       "default_cash": "现金账户",
-      "hide": "归档",
-      "show": "恢复",
-      "hide_label": "归档 {name}",
-      "show_label": "恢复 {name}",
-      "hidden": "已归档",
       "balance_of": "{name} 的余额"
     },
     "categories_step": {
@@ -1250,14 +1233,7 @@
       "name_label": "分类名称",
       "icon_label": "更换图标",
       "reorder_label": "移动{name}",
-      "remove_label": "移除{name}",
-      "add_placeholder": "添加自定义分类",
-      "skip": "跳过",
-      "archive": "归档",
-      "restore": "恢复",
-      "archive_label": "归档 {name}",
-      "restore_label": "恢复 {name}",
-      "archived": "已归档"
+      "add_placeholder": "添加自定义分类"
     },
     "currencies": {
       "title": "币种",
@@ -1268,7 +1244,6 @@
       "main_label": "主币种：{code}",
       "main_suffix": "主",
       "make_main": "设为主币种",
-      "remove_action": "移除",
       "chips_hint": "点按币种可将其设为主币种或移除。"
     },
     "steps_nav": {
@@ -1291,8 +1266,7 @@
       "heading": "导入你的历史记录",
       "text": "有银行或其他应用导出的 CSV 吗？它会一次性创建账户、分类和交易。",
       "choose": "选择 CSV 文件",
-      "skip": "我没有",
-      "skip_short": "跳过",
+      "no_file": "我没有",
       "drop_here": "或拖放到这里",
       "not_csv": "这里只能导入 CSV 文件。"
     },
@@ -1300,18 +1274,24 @@
       "heading": "让 Econumo 触手可及",
       "text": "添加到主屏幕，几秒钟就能记下一杯咖啡。",
       "install": "安装",
-      "done": "完成",
-      "skip": "跳过"
+      "done": "完成"
     },
     "wallet_step": {
       "heading": "刷卡支付，自动记录",
       "text": "连接 Apple Wallet，每一笔刷卡都会自动出现在 Econumo 中。",
       "setup": "设置",
-      "skip": "跳过",
       "later": "你可以随时在设置中配置 Apple Wallet 集成。"
     },
     "retry": "重试",
     "save_continue": "保存并继续",
+    "skip": "跳过",
+    "archive": "归档",
+    "restore": "恢复",
+    "archive_label": "归档 {name}",
+    "restore_label": "恢复 {name}",
+    "archived": "已归档",
+    "remove": "移除",
+    "remove_label": "移除{name}",
     "plan_step": {
       "heading": "规划本月",
       "subtext": "预算已准备好。为重要的项目填一个大概金额——随时都可以调整。",
@@ -1319,7 +1299,6 @@
       "expenses": "支出 · {month}",
       "planned_of_income": "已规划 {planned}，预期收入 {total}",
       "planned_of_accounts": "已规划 {planned}，账户余额 {total}",
-      "skip": "暂时跳过",
       "needs_account": "预算至少需要一个账户。请先添加账户。",
       "add_account": "添加账户",
       "no_categories": "还没有可规划的分类。请先添加几个。",

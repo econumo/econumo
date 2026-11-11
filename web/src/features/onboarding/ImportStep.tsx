@@ -101,10 +101,10 @@ export function ImportStep({ onDone, onSkip }: StepBodyProps) {
       )}
       <div className="mt-6 flex items-center justify-between">
         <Button type="button" variant="ghost" disabled={pending || day0.pending} onClick={skip}>
-          {t('onboarding.import_step.skip_short')}
+          {t('onboarding.skip')}
         </Button>
         <Button type="button" variant="ghost" disabled={pending || day0.pending} onClick={skip}>
-          {t('onboarding.import_step.skip')}
+          {t('onboarding.import_step.no_file')}
         </Button>
       </div>
       <ImportCsvDialog

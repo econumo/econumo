@@ -773,19 +773,9 @@
       "header": "Zaimportowano z"
     },
     "rules": {
-      "field": {
-        "external_payee": "Odbiorca",
-        "description": "Opis"
-      },
-      "type": {
-        "contains": "zawiera",
-        "prefix": "zaczyna się od",
-        "exact": "jest dokładnie równa"
-      },
-      "action": {
-        "classify": "Klasyfikuj",
-        "skip": "Pomiń"
-      },
+      "field": { "external_payee": "Odbiorca", "description": "Opis" },
+      "type": { "contains": "zawiera", "prefix": "zaczyna się od", "exact": "jest dokładnie równa" },
+      "action": { "classify": "Klasyfikuj", "skip": "Pomiń" },
       "prompt": {
         "title": "Utwórz regułę importu",
         "changed_category": "Kategoria została zmieniona na {name}. Utworzyć regułę dla podobnych importów?",
@@ -1230,16 +1220,9 @@
       "name_label": "Nazwa konta",
       "balance_label": "Saldo",
       "balance_invalid": "Wpisz liczbę, na przykład 1234,50",
-      "remove": "Usuń konto",
       "currency_title": "Waluta",
-      "skip": "Pomiń",
       "add": "Dodaj konto",
       "default_cash": "Gotówka",
-      "hide": "Archiwizuj",
-      "show": "Przywróć",
-      "hide_label": "Archiwizuj {name}",
-      "show_label": "Przywróć {name}",
-      "hidden": "Zarchiwizowane",
       "balance_of": "Saldo konta {name}"
     },
     "categories_step": {
@@ -1250,14 +1233,7 @@
       "name_label": "Nazwa kategorii",
       "icon_label": "Zmień ikonę",
       "reorder_label": "Przenieś {name}",
-      "remove_label": "Usuń {name}",
-      "add_placeholder": "Dodaj własną",
-      "skip": "Pomiń",
-      "archive": "Archiwizuj",
-      "restore": "Przywróć",
-      "archive_label": "Archiwizuj {name}",
-      "restore_label": "Przywróć {name}",
-      "archived": "Zarchiwizowana"
+      "add_placeholder": "Dodaj własną"
     },
     "currencies": {
       "title": "Waluty",
@@ -1268,7 +1244,6 @@
       "main_label": "Waluta główna: {code}",
       "main_suffix": "Główna",
       "make_main": "Ustaw jako główną",
-      "remove_action": "Usuń",
       "chips_hint": "Dotknij waluty, aby ustawić ją jako główną lub usunąć."
     },
     "steps_nav": {
@@ -1291,8 +1266,7 @@
       "heading": "Przenieś swoją historię",
       "text": "Masz eksport CSV z banku lub innej aplikacji? Utworzy konta, kategorie i transakcje za jednym razem.",
       "choose": "Wybierz plik CSV",
-      "skip": "Nie mam",
-      "skip_short": "Pomiń",
+      "no_file": "Nie mam",
       "drop_here": "lub upuść go tutaj",
       "not_csv": "Tutaj można importować tylko pliki CSV."
     },
@@ -1300,18 +1274,24 @@
       "heading": "Econumo zawsze pod ręką",
       "text": "Dodaj go do ekranu głównego, by zapisanie kawy zajmowało sekundy.",
       "install": "Zainstaluj",
-      "done": "Gotowe",
-      "skip": "Pomiń"
+      "done": "Gotowe"
     },
     "wallet_step": {
       "heading": "Płatności kartą zapisują się same",
       "text": "Połącz Apple Wallet, a każda płatność kartą pojawi się w Econumo automatycznie.",
       "setup": "Skonfiguruj",
-      "skip": "Pomiń",
       "later": "Integrację z Apple Wallet możesz skonfigurować w dowolnym momencie później w Ustawieniach."
     },
     "retry": "Spróbuj ponownie",
     "save_continue": "Zapisz i przejdź dalej",
+    "skip": "Pomiń",
+    "archive": "Archiwizuj",
+    "restore": "Przywróć",
+    "archive_label": "Archiwizuj {name}",
+    "restore_label": "Przywróć {name}",
+    "archived": "W archiwum",
+    "remove": "Usuń",
+    "remove_label": "Usuń {name}",
     "plan_step": {
       "heading": "Zaplanuj ten miesiąc",
       "subtext": "Twój budżet jest gotowy. Wpisz przybliżoną kwotę przy tym, co ważne – możesz ją zmienić w dowolnej chwili.",
@@ -1319,7 +1299,6 @@
       "expenses": "Wydatki · {month}",
       "planned_of_income": "Zaplanowano {planned} z {total} oczekiwanych przychodów",
       "planned_of_accounts": "Zaplanowano {planned} z {total} na Twoich kontach",
-      "skip": "Nie teraz",
       "needs_account": "Budżet wymaga co najmniej jednego konta. Najpierw dodaj konto.",
       "add_account": "Dodaj konto",
       "no_categories": "Nie ma jeszcze kategorii do zaplanowania. Najpierw dodaj kilka.",

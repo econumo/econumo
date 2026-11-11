@@ -118,8 +118,8 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   const [nameTouched, setNameTouched] = useState<ReadonlySet<string>>(new Set())
   // existing accounts whose hidden state differs from the server's
   const [flipped, setFlipped] = useState<ReadonlySet<Id>>(new Set())
-  const isHidden = (a: ExistingAccount) => Boolean(a.hidden) !== flipped.has(a.id)
-  const toggleHidden = (id: Id) =>
+  const isArchived = (a: ExistingAccount) => Boolean(a.hidden) !== flipped.has(a.id)
+  const toggleArchived = (id: Id) =>
     setFlipped((prev) => {
       const next = new Set(prev)
       if (!next.delete(id)) next.add(id)
@@ -135,8 +135,8 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
 
   const currencyOf = (row: AccountRow) => row.currencyId || sharedId || defaultId
   // a hidden account keeps its currency; a shown one takes its own pick, else the first row's
-  const lead = existing.find((a) => !isHidden(a))
-  const currencyOfExisting = (a: ExistingAccount) => (isHidden(a) ? a.currencyId : picked[a.id] || (lead ? sharedId : null) || a.currencyId)
+  const lead = existing.find((a) => !isArchived(a))
+  const currencyOfExisting = (a: ExistingAccount) => (isArchived(a) ? a.currencyId : picked[a.id] || (lead ? sharedId : null) || a.currencyId)
   const update = (key: string, patch: Partial<AccountRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
 
   const rename = (row: AccountRow, name: string) => {
@@ -180,13 +180,13 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   // a shown account's balance as typed, '' while untouched or unchanged, null when unreadable
   const balanceOf = (a: ExistingAccount): string | null => {
     // a cleared balance on an existing account means unchanged, never zero
-    if (isHidden(a) || balanceEdits[a.id] === undefined || balanceEdits[a.id].trim() === '') return ''
+    if (isArchived(a) || balanceEdits[a.id] === undefined || balanceEdits[a.id].trim() === '') return ''
     const value = parse(balanceEdits[a.id])
     return value === null ? null : cmp(value, a.balance) === 0 ? '' : value
   }
   const invalidExisting = new Set(existing.filter((a) => balanceOf(a) === null).map((a) => a.id))
   const invalidName = new Set(active.filter((r) => !nameLengthValid(r.name)).map((r) => r.key))
-  const shownExisting = existing.filter((a) => !isHidden(a)).length
+  const shownExisting = existing.filter((a) => !isArchived(a)).length
   const canContinue =
     active.length + shownExisting > 0 && invalid.size === 0 && invalidExisting.size === 0 && invalidName.size === 0 && mainId !== null && !pending
 
@@ -240,7 +240,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
       <ul className="mt-4 divide-y divide-border/60 overflow-hidden rounded-xl border bg-card">
         {existing.map((a) => {
           const cur = currencies?.find((c) => c.id === currencyOfExisting(a))
-          const off = isHidden(a)
+          const off = isArchived(a)
           return (
             <li key={a.id} className="px-3 py-2" data-testid="account-row" data-hidden={off || undefined}>
               <div className="flex items-center gap-2 sm:gap-3">
@@ -250,7 +250,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
                 <div className={cn('min-w-0 flex-1 truncate px-1', off && 'text-muted-foreground')}>{a.name}</div>
                 {off ? (
                   <span className="w-40 shrink-0 text-right text-xs text-muted-foreground sm:w-[10.25rem]">
-                    {t('onboarding.accounts.hidden')}
+                    {t('onboarding.archived')}
                   </span>
                 ) : (
                   <>
@@ -279,11 +279,11 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
                     variant="ghost"
                     size="sm"
                     className="-mr-1 text-muted-foreground"
-                    aria-label={t(off ? 'onboarding.accounts.show_label' : 'onboarding.accounts.hide_label', { name: a.name })}
-                    onClick={() => toggleHidden(a.id)}
+                    aria-label={t(off ? 'onboarding.restore_label' : 'onboarding.archive_label', { name: a.name })}
+                    onClick={() => toggleArchived(a.id)}
                   >
                     {off ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
-                    <span className="hidden sm:inline">{t(off ? 'onboarding.accounts.show' : 'onboarding.accounts.hide')}</span>
+                    <span className="hidden sm:inline">{t(off ? 'onboarding.restore' : 'onboarding.archive')}</span>
                   </Button>
                 </span>
               </div>
@@ -334,7 +334,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
                 <span className={actionCell}>
                   <button
                     type="button"
-                    aria-label={t('onboarding.accounts.remove')}
+                    aria-label={t('onboarding.remove_label', { name: row.name.trim() })}
                     className="-mr-1 grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
                     onClick={() => remove(row.key)}
                   >
@@ -371,7 +371,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
       {error}
       <div className="mt-6 flex items-center justify-between">
         <Button type="button" variant="ghost" disabled={pending} onClick={onSkip}>
-          {t('onboarding.accounts.skip')}
+          {t('onboarding.skip')}
         </Button>
         <Button type="button" disabled={!canContinue} onClick={submit}>
           {t('onboarding.save_continue')}

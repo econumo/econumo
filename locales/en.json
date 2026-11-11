@@ -773,19 +773,9 @@
       "header": "Imported from"
     },
     "rules": {
-      "field": {
-        "external_payee": "Payee",
-        "description": "Description"
-      },
-      "type": {
-        "contains": "contains",
-        "prefix": "starts with",
-        "exact": "is exactly"
-      },
-      "action": {
-        "classify": "Classify",
-        "skip": "Skip"
-      },
+      "field": { "external_payee": "Payee", "description": "Description" },
+      "type": { "contains": "contains", "prefix": "starts with", "exact": "is exactly" },
+      "action": { "classify": "Classify", "skip": "Skip" },
       "prompt": {
         "title": "Create an import rule",
         "changed_category": "You set the category to {name}. Create a rule for similar imports?",
@@ -1230,16 +1220,9 @@
       "name_label": "Account name",
       "balance_label": "Balance",
       "balance_invalid": "Enter a number, for example 1234.50",
-      "remove": "Remove account",
       "currency_title": "Currency",
-      "skip": "Skip",
       "add": "Add account",
       "default_cash": "Cash",
-      "hide": "Archive",
-      "show": "Restore",
-      "hide_label": "Archive {name}",
-      "show_label": "Restore {name}",
-      "hidden": "Archived",
       "balance_of": "Balance of {name}"
     },
     "categories_step": {
@@ -1250,14 +1233,7 @@
       "name_label": "Category name",
       "icon_label": "Change icon",
       "reorder_label": "Reorder {name}",
-      "remove_label": "Remove {name}",
-      "add_placeholder": "Add your own",
-      "skip": "Skip",
-      "archive": "Archive",
-      "restore": "Restore",
-      "archive_label": "Archive {name}",
-      "restore_label": "Restore {name}",
-      "archived": "Archived"
+      "add_placeholder": "Add your own"
     },
     "currencies": {
       "title": "Currencies",
@@ -1268,7 +1244,6 @@
       "main_label": "Main currency: {code}",
       "main_suffix": "Main",
       "make_main": "Make main",
-      "remove_action": "Remove",
       "chips_hint": "Tap a currency to make it main or remove it."
     },
     "steps_nav": {
@@ -1291,8 +1266,7 @@
       "heading": "Bring in your history",
       "text": "Have a CSV export from your bank or another app? It creates accounts, categories and transactions in one go.",
       "choose": "Choose a CSV file",
-      "skip": "I don't have one",
-      "skip_short": "Skip",
+      "no_file": "I don't have one",
       "drop_here": "or drop it here",
       "not_csv": "Only CSV files can be imported here."
     },
@@ -1300,18 +1274,24 @@
       "heading": "Keep Econumo one tap away",
       "text": "Add it to your home screen so logging a coffee takes seconds.",
       "install": "Install",
-      "done": "Done",
-      "skip": "Skip"
+      "done": "Done"
     },
     "wallet_step": {
       "heading": "Card payments, logged for you",
       "text": "Connect Apple Wallet and every tap with your card appears in Econumo on its own.",
       "setup": "Set up",
-      "skip": "Skip",
       "later": "You can set up the Apple Wallet integration any time later in Settings."
     },
     "retry": "Try again",
     "save_continue": "Save and continue",
+    "skip": "Skip",
+    "archive": "Archive",
+    "restore": "Restore",
+    "archive_label": "Archive {name}",
+    "restore_label": "Restore {name}",
+    "archived": "Archived",
+    "remove": "Remove",
+    "remove_label": "Remove {name}",
     "plan_step": {
       "heading": "Plan this month",
       "subtext": "Your budget is ready. Put a rough amount next to what matters — you can refine it any time.",
@@ -1319,7 +1299,6 @@
       "expenses": "Expenses · {month}",
       "planned_of_income": "Planned {planned} of {total} expected income",
       "planned_of_accounts": "Planned {planned} of {total} in your accounts",
-      "skip": "Skip for now",
       "needs_account": "A budget needs at least one account. Add one first.",
       "add_account": "Add an account",
       "no_categories": "There are no categories to plan yet. Add a few first.",

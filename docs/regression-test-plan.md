@@ -301,6 +301,8 @@ navigation (single-pane vs sidebar).
       appear once onboarding is completed.
 - [ ] The main button on Categories, Accounts and Plan reads "Save and continue"
       (translated), whether or not anything changed.
+- [ ] Every step's skip button reads "Skip" (Plan included, translated);
+      Import also has "I don't have one".
 - [ ] Skip on Categories or Accounts creates nothing; Save and continue on Categories
       creates every category still listed (in the listed order), Save and continue on Accounts only the new
       accounts (and sets the main currency and visible currencies). Each Save and continue
@@ -499,7 +501,7 @@ navigation (single-pane vs sidebar).
       (`onboarding/save-plan`): a typed 0 is saved as a zero plan, a blank row
       is never written (clearing an existing plan here leaves it); the step is
       then marked done and the next open step opens. An unreadable or negative amount shows an inline error and
-      disables "Save and continue"; "Skip for now" skips the step and writes nothing.
+      disables "Save and continue"; "Skip" skips the step and writes nothing.
 - [ ] Reusing a budget whose months start on another day (e.g. the 15th) plans
       that budget's current period: its month name heads the cards and the
       saved plan shows in that period on the budget page.

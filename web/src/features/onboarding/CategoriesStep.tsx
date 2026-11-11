@@ -194,18 +194,18 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
             <EntityIcon name={c.icon} className="text-lg" />
           </span>
           <span className={cn('min-w-0 flex-1 truncate px-1', off && 'text-muted-foreground')}>{c.name}</span>
-          {off && <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">{t('onboarding.categories_step.archived')}</span>}
+          {off && <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">{t('onboarding.archived')}</span>}
           <Button
             type="button"
             variant="ghost"
             size="sm"
             className="-mr-1 shrink-0 text-muted-foreground"
-            aria-label={t(off ? 'onboarding.categories_step.restore_label' : 'onboarding.categories_step.archive_label', { name: c.name })}
+            aria-label={t(off ? 'onboarding.restore_label' : 'onboarding.archive_label', { name: c.name })}
             onClick={() => toggleArchived(c.id)}
           >
             {off ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
             {/* on a phone a live row shows the icon alone; Restore keeps its word so an archived row reads as one */}
-            <span className={off ? undefined : 'hidden sm:inline'}>{t(off ? 'onboarding.categories_step.restore' : 'onboarding.categories_step.archive')}</span>
+            <span className={off ? undefined : 'hidden sm:inline'}>{t(off ? 'onboarding.restore' : 'onboarding.archive')}</span>
           </Button>
         </div>
       )
@@ -236,7 +236,7 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
           />
           <button
             type="button"
-            aria-label={t('onboarding.categories_step.remove_label', { name: row.name })}
+            aria-label={t('onboarding.remove_label', { name: row.name })}
             className="-mr-1 grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
             onClick={() => remove(row.key)}
           >
@@ -301,7 +301,7 @@ export function CategoriesStep({ existing, initialRows, initialOrder, onContinue
       {error}
       <div className="mt-6 flex items-center justify-between">
         <Button type="button" variant="ghost" disabled={pending} onClick={onSkip}>
-          {t('onboarding.categories_step.skip')}
+          {t('onboarding.skip')}
         </Button>
         <Button type="button" disabled={!canContinue} onClick={submit}>
           {t('onboarding.save_continue')}

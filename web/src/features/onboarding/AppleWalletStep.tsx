@@ -24,7 +24,7 @@ export function AppleWalletStep({ onSkip, coreStepsDone, onCompleteSetup }: Step
             void onSkip().finally(() => setPending(false))
           }}
         >
-          {t('onboarding.wallet_step.skip')}
+          {t('onboarding.skip')}
         </Button>
         <Button
           type="button"

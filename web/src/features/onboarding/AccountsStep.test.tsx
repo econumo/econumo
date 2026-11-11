@@ -28,7 +28,7 @@ const nameInputs = () => screen.getAllByLabelText('Account name')
 const balanceInputs = () => screen.getAllByLabelText('Balance')
 const rowsEls = () => screen.getAllByTestId('account-row')
 const addAccount = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Add account' }))
-const removeRow = (user: ReturnType<typeof userEvent.setup>, i: number) => user.click(within(rowsEls()[i]).getByRole('button', { name: 'Remove account' }))
+const removeRow = (user: ReturnType<typeof userEvent.setup>, i: number) => user.click(within(rowsEls()[i]).getByRole('button', { name: /^Remove/ }))
 
 const mainChip = () => screen.getByRole('button', { name: /^Main currency/ })
 
@@ -376,7 +376,7 @@ it('lists existing accounts first with their name locked and their balance edita
   expect(within(first).getByText('EUR')).toBeInTheDocument()
   // existing accounts need no new row, and have no remove button or savings switch
   expect(nameInputs).toThrow()
-  expect(within(rowsEls()[0]).queryByRole('button', { name: 'Remove account' })).not.toBeInTheDocument()
+  expect(within(rowsEls()[0]).queryByRole('button', { name: /^Remove/ })).not.toBeInTheDocument()
   expect(screen.queryByRole('switch')).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Save and continue' })).toBeEnabled()
   await user.click(screen.getByRole('button', { name: 'Save and continue' }))
