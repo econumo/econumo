@@ -9,7 +9,7 @@ import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
-import { selectableCurrencies } from '@/features/currencies/selectable'
+import { usableCurrencies } from '@/features/currencies/selectable'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { cmp } from '@/lib/decimal'
@@ -131,7 +131,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
   const defaultId = useMemo(() => {
     const list = currencies ?? []
     const guessed = guessCurrencyCode(navigator.languages ?? [])
-    const byGuess = guessed ? list.find((c) => c.code === guessed && selectableCurrencies([c]).length > 0) : undefined
+    const byGuess = guessed ? list.find((c) => c.code === guessed && usableCurrencies([c]).length > 0) : undefined
     return byGuess?.id ?? userCurrencyId(user) ?? list[0]?.id ?? ''
   }, [currencies, user])
 
@@ -363,7 +363,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
 
       <CurrenciesBlock
         currencies={currencies ?? []}
-        selectableOptions={selectableCurrencies(currencies)}
+        selectableOptions={usableCurrencies(currencies)}
         usedIds={usedIds}
         extraIds={extras}
         mainId={mainId}
@@ -402,7 +402,7 @@ export function AccountsStep({ existing, initialRows, initialExtraCurrencyIds, o
       <CurrencyListSheet
         open={editing !== undefined || editingAccount !== undefined}
         title={t('onboarding.accounts.currency_title')}
-        options={selectableCurrencies(currencies, editingCurrency)}
+        options={usableCurrencies(currencies, editingCurrency)}
         value={editingCurrency ?? null}
         onClose={() => {
           setPickingRow(null)

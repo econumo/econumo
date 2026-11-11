@@ -237,3 +237,27 @@ func TestSaveAccounts_SetsTheBalanceOfImportedAccounts(t *testing.T) {
 		t.Fatalf("corrections after the replay = %d", n)
 	}
 }
+
+// A currency the user hid earlier is still usable: picked as main or as an
+// extra, save-accounts shows it again.
+func TestSaveAccounts_ShowsAHiddenCurrencyAgain(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	chf := e.f.Currency(fixture.Currency{Code: "CHF", Symbol: "Fr", Name: "Franc"})
+	for _, id := range []string{e.eur, chf} {
+		if _, err := e.db.Raw.Exec(e.db.Rebind(`INSERT INTO users_hidden_currencies (user_id, currency_id, created_at) VALUES (?, ?, ?)`), e.user, id, "2026-03-01 00:00:00"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	status, data := e.post("/api/v1/onboarding/save-accounts", accountsBody(fixture.NewID(), e.eur, []string{chf}, [4]string{"a", "Wallet", "", fixture.USD}))
+	if status != 200 {
+		t.Fatalf("status %d: %v", status, data)
+	}
+	if code := e.str(`SELECT value FROM users_options WHERE user_id = ? AND name = 'currency'`, e.user); code != e.eur {
+		t.Fatalf("profile currency = %s", code)
+	}
+	for _, id := range []string{e.eur, chf} {
+		if e.count(`SELECT COUNT(*) FROM users_hidden_currencies WHERE user_id = ? AND currency_id = ?`, e.user, id) != 0 {
+			t.Fatalf("%s is still hidden", id)
+		}
+	}
+}

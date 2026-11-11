@@ -392,6 +392,9 @@ navigation (single-pane vs sidebar).
       chips, the old main stays. Tapping another chip opens a menu with "Make
       main" and "Remove"; Remove is missing for a currency a listed account
       uses. "+ Add currency" adds a chip and leaves the main currency alone.
+      Both lists also offer currencies hidden in Settings → Currencies (but
+      no deleted one); a hidden one picked here is visible again after Save
+      and continue.
 - [ ] 📱 Plan step: every category row shows its currency code next to the
       amount (the budget's, or the element's own currency).
 - [ ] Default names follow the UI language: switching the language on

@@ -546,6 +546,26 @@ it('Add currency only adds: the main currency stays', async () => {
   expect(onContinue.mock.calls[0][2]).toBe('cur-usd')
 })
 
+it('a currency the user hid is still offered by Add and the main chip, and picking it adds a chip', async () => {
+  const user = userEvent.setup()
+  const hiddenGbp = { ...gbp, isHidden: 1 }
+  const hiddenChf = { id: 'cur-chf', code: 'CHF', name: 'Franc', symbol: 'Fr', fractionDigits: 2, scope: 'global', isHidden: 1, isDeleted: 0 }
+  const deleted = { id: 'cur-old', code: 'OLD', name: 'Old', symbol: 'O', fractionDigits: 2, scope: 'own', isHidden: 0, isDeleted: 1 }
+  const { onContinue } = renderStep({ existing: [rainy] }, { currencies: [fixtureUsd, fixtureEur, hiddenGbp, hiddenChf, deleted] })
+  await ready()
+  await user.click(screen.getByRole('button', { name: /Add currency/ }))
+  expect(screen.getAllByRole('option').map((o) => o.textContent?.slice(0, 3))).toEqual(expect.arrayContaining(['EUR', 'GBP', 'CHF']))
+  expect(screen.queryByRole('option', { name: /^OLD/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('option', { name: /^GBP/ }))
+  expect(await screen.findByRole('button', { name: 'GBP' })).toBeInTheDocument()
+  await user.click(mainChip())
+  await user.click(await screen.findByRole('option', { name: /^CHF/ }))
+  await waitFor(() => expect(mainChip()).toHaveAccessibleName('Main currency: CHF'))
+  await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+  expect(onContinue.mock.calls[0][1]).toEqual(['cur-gbp', 'cur-chf'])
+  expect(onContinue.mock.calls[0][2]).toBe('cur-chf')
+})
+
 it('cannot continue with every account hidden and no new row', async () => {
   const user = userEvent.setup()
   renderStep({ existing: [imported] })
