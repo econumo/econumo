@@ -70,10 +70,12 @@ func (s *Service) schedule(ctx context.Context, userID, budgetID vo.Id, accountI
 	})
 }
 
-// jobSpec is a background job's time budget and static log messages.
+// jobSpec is a background job's time budget and static log messages; part
+// names the request of a job split in several (logged as "part").
 type jobSpec struct {
 	timeout                   time.Duration
 	skipped, panicked, failed string
+	part                      string
 }
 
 var (
@@ -92,33 +94,51 @@ var (
 )
 
 // startJob runs one background AI job for the user, unless AI is off or the
-// user is over the cap (every job counts against it). The job gets a fresh
-// context: the request's is cancelled the moment the response is written.
+// user is over the cap (every job counts against it).
 func (s *Service) startJob(ctx context.Context, userID vo.Id, logs jobSpec, job func(context.Context, promptFacts) error) {
-	if s.completer == nil {
+	if !s.reserveJob(ctx, userID, logs) {
 		return
+	}
+	s.runJob(userID, logs, s.promptContext(ctx, userID), job)
+}
+
+// reserveJob reports whether a job may start: AI is configured and the user
+// is under the cap, which this call counts against.
+func (s *Service) reserveJob(ctx context.Context, userID vo.Id, logs jobSpec) bool {
+	if s.completer == nil {
+		return false
 	}
 	if s.limiter != nil {
 		if err := s.limiter.Allow(ctx, RateScopeClassify, userID.String()); err != nil {
 			slog.InfoContext(ctx, logs.skipped, "user_id", userID.String(), "reason", "rate_limited")
-			return
+			return false
 		}
 		if err := s.limiter.Reserve(RateScopeClassify, userID.String()); err != nil {
-			return
+			return false
 		}
 	}
-	facts := s.promptContext(ctx, userID)
+	return true
+}
+
+// runJob starts job through the runner with a fresh context (the request's is
+// cancelled the moment the response is written) and its own timeout; a panic
+// or an error is logged and goes no further.
+func (s *Service) runJob(userID vo.Id, logs jobSpec, facts promptFacts, job func(context.Context, promptFacts) error) {
+	attrs := []any{"user_id", userID.String()}
+	if logs.part != "" {
+		attrs = append(attrs, "part", logs.part)
+	}
 	s.run(func() {
 		defer func() {
 			if r := recover(); r != nil {
-				slog.Error(logs.panicked, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", r))
+				slog.Error(logs.panicked, append(attrs, "err_type", fmt.Sprintf("%T", r))...)
 			}
 		}()
 		jobCtx, cancel := context.WithTimeout(context.Background(), logs.timeout)
 		defer cancel()
 		if err := job(jobCtx, facts); err != nil {
 			// Never log the prompt, the reply or the error text: they can carry names.
-			slog.Warn(logs.failed, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+			slog.Warn(logs.failed, append(attrs, "err_type", fmt.Sprintf("%T", err))...)
 		}
 	})
 }

@@ -27,8 +27,10 @@ type recordingCompleter struct {
 	prompts   []string
 	systems   []string
 	deadlines []time.Time
-	// reply, when set, answers instead of the empty savings list.
-	reply func() (string, error)
+	// reply, when set, answers instead of the empty savings list; bySystem,
+	// when set, answers by the request's system prompt instead.
+	reply    func() (string, error)
+	bySystem func(system string) (string, error)
 }
 
 func (c *recordingCompleter) Complete(ctx context.Context, _, system, user string) (string, error) {
@@ -37,8 +39,11 @@ func (c *recordingCompleter) Complete(ctx context.Context, _, system, user strin
 	c.deadlines = append(c.deadlines, deadline)
 	c.prompts = append(c.prompts, user)
 	c.systems = append(c.systems, system)
-	reply := c.reply
+	reply, bySystem := c.reply, c.bySystem
 	c.mu.Unlock()
+	if bySystem != nil {
+		return bySystem(system)
+	}
 	if reply != nil {
 		return reply()
 	}

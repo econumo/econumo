@@ -17,8 +17,8 @@ const StepImport = "import"
 // account outside a hidden folder, when there is one) and marks the import step
 // done. The categories and accounts steps stay open: they become reviews of
 // what the import created. After the commit, when an AI provider is configured,
-// a background job picks icons for the user's categories and accounts and flags
-// the savings accounts in the budget this call created.
+// background requests pick icons for the user's categories and accounts and
+// flag the savings accounts in the budget this call created.
 func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.OnboardingFinishImportRequest) (*model.OnboardingFinishImportResult, error) {
 	out := &model.OnboardingFinishImportResult{}
 	var review bool
@@ -61,21 +61,56 @@ func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.Onbo
 		return nil, err
 	}
 	if review {
-		s.startJob(ctx, userID, jobReview, func(jobCtx context.Context, facts promptFacts) error {
-			return s.review(jobCtx, userID, savingsBudget, facts)
-		})
+		s.startReview(ctx, userID, savingsBudget)
 	}
 	return out, nil
 }
 
-var reviewSystem = `You help set up a personal budget from the user's imported bank data. ` +
-	`For each category pick the icon that best shows what the money is spent on or comes from; ` +
-	`for each account pick the icon that best shows what kind of account it is (a card, a bank account, cash, savings, an investment). ` +
-	`Also decide which accounts are savings accounts: a savings account holds money the user is putting aside (a savings or deposit account, an emergency fund, a piggy bank, an investment or brokerage account kept for the future); everyday accounts are for spending (cards, checking, cash, wallets). ` +
-	`Names may be in any language; use the user's timezone and language to read local bank and product names. ` +
-	`Use only icons from this list: ` + strings.Join(Icons, ", ") + `. ` +
-	`Reply with JSON only, exactly {"categories":{"<id>":"<icon>"},"accounts":{"<id>":"<icon>"},"savings":["<id>", ...]}; ` +
-	`leave out an item when no icon fits, and use an empty savings list when no account is a savings account.`
+// The import review is three independent requests, so a slow or failing one
+// (the icon replies take real providers 20-60 s) never holds back the others.
+var (
+	reviewCategories = withPart(jobReview, "categories")
+	reviewAccounts   = withPart(jobReview, "accounts")
+	reviewSavings    = withPart(jobReview, "savings")
+)
+
+func withPart(spec jobSpec, part string) jobSpec {
+	spec.part = part
+	return spec
+}
+
+// startReview starts the import review's requests: category icons, account
+// icons and, when this call created the budget, savings. Together they count
+// once against the per-user cap.
+func (s *Service) startReview(ctx context.Context, userID vo.Id, savingsBudget *vo.Id) {
+	if !s.reserveJob(ctx, userID, jobReview) {
+		return
+	}
+	facts := s.promptContext(ctx, userID)
+	s.runJob(userID, reviewCategories, facts, func(jobCtx context.Context, facts promptFacts) error {
+		return s.reviewCategoryIcons(jobCtx, userID, facts)
+	})
+	s.runJob(userID, reviewAccounts, facts, func(jobCtx context.Context, facts promptFacts) error {
+		return s.reviewAccountIcons(jobCtx, userID, facts)
+	})
+	if savingsBudget != nil {
+		budgetID := *savingsBudget
+		s.runJob(userID, reviewSavings, facts, func(jobCtx context.Context, facts promptFacts) error {
+			return s.reviewSavings(jobCtx, userID, budgetID, facts)
+		})
+	}
+}
+
+var iconRules = `Names may be in any language; use the user's timezone and language to read local bank and product names. ` +
+	`Use only icons from this list: ` + strings.Join(Icons, ", ") + `. `
+
+var categoryIconsSystem = `You help set up a personal budget from the user's imported bank data. ` +
+	`For each category pick the icon that best shows what the money is spent on or comes from. ` + iconRules +
+	`Reply with JSON only, exactly {"categories":{"<id>":"<icon>"}}; leave out a category when no icon fits.`
+
+var accountIconsSystem = `You help set up a personal budget from the user's imported bank data. ` +
+	`For each account pick the icon that best shows what kind of account it is (a card, a bank account, cash, savings, an investment). ` + iconRules +
+	`Reply with JSON only, exactly {"accounts":{"<id>":"<icon>"}}; leave out an account when no icon fits.`
 
 type reviewCategory struct {
 	ID   string `json:"id"`
@@ -83,17 +118,10 @@ type reviewCategory struct {
 	Type string `json:"type"`
 }
 
-type reviewFacts struct {
+type categoryIconFacts struct {
 	Timezone   string           `json:"timezone"`
 	Language   string           `json:"language"`
 	Categories []reviewCategory `json:"categories"`
-	Accounts   []promptAccount  `json:"accounts"`
-}
-
-type reviewReply struct {
-	Categories map[string]string `json:"categories"`
-	Accounts   map[string]string `json:"accounts"`
-	Savings    []string          `json:"savings"`
 }
 
 // repaintable are the icons an item still has when nobody chose one: the
@@ -104,110 +132,120 @@ var (
 	repaintableAccount  = map[string]bool{model.ImportAccountIcon: true}
 )
 
-// review asks the AI for an icon per active own category and live own account
-// still on a default icon, and which accounts are savings (every live own
-// account is asked about), then applies the answer: an icon only when it is in
-// the catalogue and the item still has the icon it had when the job read it (a
-// change the user made since wins), savings only in savingsBudget and only for
-// accounts that are still members. An unusable reply changes nothing.
-func (s *Service) review(ctx context.Context, userID vo.Id, savingsBudget *vo.Id, facts promptFacts) error {
+// reviewCategoryIcons asks for an icon per active own category still on a
+// default icon and applies each one in the catalogue, only while the category
+// still has the icon it had when the job read it (a change the user made since
+// wins). An unusable reply changes nothing.
+func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts promptFacts) error {
 	categories, err := s.steps.Categories.OwnCategories(ctx, userID)
 	if err != nil {
 		return err
 	}
+	prompt := categoryIconFacts{Timezone: facts.Timezone, Language: facts.Language, Categories: []reviewCategory{}}
+	from := map[string]string{}
+	for _, c := range categories {
+		if c.IsArchived == 0 && repaintableCategory[c.Icon] {
+			prompt.Categories = append(prompt.Categories, reviewCategory{ID: c.Id, Name: c.Name, Type: c.Type})
+			from[strings.ToLower(c.Id)] = c.Icon
+		}
+	}
+	if len(prompt.Categories) == 0 {
+		return nil
+	}
+	icons, err := s.askIcons(ctx, userID, categoryIconsSystem, prompt, "categories")
+	if err != nil {
+		return err
+	}
+	return s.applyIcons(icons, from, func(id vo.Id, from, to string) error {
+		_, err := s.steps.Categories.ReplaceIcon(ctx, userID, id, from, to)
+		return err
+	})
+}
+
+// reviewAccountIcons does the same for live own accounts still on the
+// import's icon.
+func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts promptFacts) error {
 	accounts, err := s.steps.Accounts.OwnLiveAccounts(ctx, userID)
 	if err != nil {
 		return err
 	}
-	prompt := reviewFacts{Timezone: facts.Timezone, Language: facts.Language, Categories: []reviewCategory{}, Accounts: []promptAccount{}}
-	catIcon := map[string]string{}
-	for _, c := range categories {
-		if c.IsArchived == 0 && repaintableCategory[c.Icon] {
-			prompt.Categories = append(prompt.Categories, reviewCategory{ID: c.Id, Name: c.Name, Type: c.Type})
-			catIcon[strings.ToLower(c.Id)] = c.Icon
-		}
-	}
-	accIcon := map[string]string{}
-	repaint := map[string]bool{}
+	prompt := promptFacts{Timezone: facts.Timezone, Language: facts.Language, Accounts: []promptAccount{}}
+	from := map[string]string{}
 	for _, a := range accounts {
-		prompt.Accounts = append(prompt.Accounts, promptAccount{ID: a.ID, Name: a.Name, Currency: a.CurrencyCode})
-		accIcon[strings.ToLower(a.ID)] = a.Icon
 		if repaintableAccount[a.Icon] {
-			repaint[strings.ToLower(a.ID)] = true
+			prompt.Accounts = append(prompt.Accounts, promptAccount{ID: a.ID, Name: a.Name, Currency: a.CurrencyCode})
+			from[strings.ToLower(a.ID)] = a.Icon
 		}
 	}
-	if len(prompt.Categories) == 0 && len(prompt.Accounts) == 0 {
+	if len(prompt.Accounts) == 0 {
 		return nil
 	}
+	icons, err := s.askIcons(ctx, userID, accountIconsSystem, prompt, "accounts")
+	if err != nil {
+		return err
+	}
+	return s.applyIcons(icons, from, func(id vo.Id, from, to string) error {
+		_, err := s.steps.Accounts.ReplaceIcon(ctx, userID, id, from, to)
+		return err
+	})
+}
+
+// reviewSavings asks which live own accounts are savings, with the
+// save-accounts job's prompt, and flags them in the budget the import created.
+func (s *Service) reviewSavings(ctx context.Context, userID, budgetID vo.Id, facts promptFacts) error {
+	accounts, err := s.steps.Accounts.OwnLiveAccounts(ctx, userID)
+	if err != nil {
+		return err
+	}
+	ids := make([]vo.Id, 0, len(accounts))
+	for _, a := range accounts {
+		ids = append(ids, vo.MustParseId(a.ID))
+	}
+	return s.classify(ctx, userID, budgetID, ids, facts)
+}
+
+// askIcons sends one icon request and reads the {key:{id:icon}} map out of the
+// reply (tolerating a code fence or prose around it), ids lower-cased.
+func (s *Service) askIcons(ctx context.Context, userID vo.Id, system string, prompt any, key string) (map[string]string, error) {
 	body, err := json.Marshal(prompt)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	raw, err := s.completer.Complete(ctx, userID.String(), reviewSystem, string(body))
+	raw, err := s.completer.Complete(ctx, userID.String(), system, string(body))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	reply, ok := parseReview(raw)
-	if !ok {
-		return MalformedReplyError{}
+	start, end := strings.Index(raw, "{"), strings.LastIndex(raw, "}")
+	if start < 0 || end <= start {
+		return nil, MalformedReplyError{}
 	}
+	var parsed map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(raw[start:end+1]), &parsed); err != nil {
+		return nil, MalformedReplyError{}
+	}
+	var icons map[string]string
+	if err := json.Unmarshal(parsed[key], &icons); err != nil && parsed[key] != nil {
+		return nil, MalformedReplyError{}
+	}
+	out := make(map[string]string, len(icons))
+	for id, icon := range icons {
+		out[strings.ToLower(strings.TrimSpace(id))] = strings.TrimSpace(icon)
+	}
+	return out, nil
+}
+
+// applyIcons replaces each asked-about item's icon with a catalogue icon from
+// the reply; the first error is returned after trying them all.
+func (s *Service) applyIcons(icons, from map[string]string, replace func(id vo.Id, from, to string) error) error {
 	var firstErr error
-	keep := func(err error) {
-		if err != nil && firstErr == nil {
+	for id, icon := range icons {
+		old, asked := from[id]
+		if !asked || !iconSet[icon] || icon == old {
+			continue
+		}
+		if err := replace(vo.MustParseId(id), old, icon); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
-	for id, icon := range reply.Categories {
-		if from, asked := catIcon[id]; asked && iconSet[icon] && icon != from {
-			_, rerr := s.steps.Categories.ReplaceIcon(ctx, userID, vo.MustParseId(id), from, icon)
-			keep(rerr)
-		}
-	}
-	for id, icon := range reply.Accounts {
-		if from, asked := accIcon[id]; asked && repaint[id] && iconSet[icon] && icon != from {
-			_, rerr := s.steps.Accounts.ReplaceIcon(ctx, userID, vo.MustParseId(id), from, icon)
-			keep(rerr)
-		}
-	}
-	if savingsBudget != nil {
-		var picked []vo.Id
-		for _, id := range reply.Savings {
-			if _, asked := accIcon[id]; asked {
-				picked = append(picked, vo.MustParseId(id))
-			}
-		}
-		if len(picked) > 0 {
-			keep(s.budgets.MarkSavingsMembers(ctx, userID, *savingsBudget, picked))
-		}
-	}
 	return firstErr
-}
-
-// parseReview reads the reply's JSON object (tolerating a code fence or prose
-// around it), with ids lower-cased and icons trimmed.
-func parseReview(raw string) (reviewReply, bool) {
-	start, end := strings.Index(raw, "{"), strings.LastIndex(raw, "}")
-	if start < 0 || end <= start {
-		return reviewReply{}, false
-	}
-	var parsed reviewReply
-	if err := json.Unmarshal([]byte(raw[start:end+1]), &parsed); err != nil {
-		return reviewReply{}, false
-	}
-	out := reviewReply{Categories: map[string]string{}, Accounts: map[string]string{}}
-	for id, icon := range parsed.Categories {
-		out.Categories[strings.ToLower(strings.TrimSpace(id))] = strings.TrimSpace(icon)
-	}
-	for id, icon := range parsed.Accounts {
-		out.Accounts[strings.ToLower(strings.TrimSpace(id))] = strings.TrimSpace(icon)
-	}
-	seen := map[string]bool{}
-	for _, id := range parsed.Savings {
-		id = strings.ToLower(strings.TrimSpace(id))
-		if !seen[id] {
-			seen[id] = true
-			out.Savings = append(out.Savings, id)
-		}
-	}
-	return out, true
 }

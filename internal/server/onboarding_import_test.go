@@ -124,27 +124,48 @@ func TestFinishImport_CreatesTheBudgetOnceAndOnlyMarksImport(t *testing.T) {
 		t.Fatalf("user = %v", user)
 	}
 
-	// The job ran once, after the commit, with names, types, account currencies,
-	// timezone and language, never the profile currency.
-	if len(e.ai.prompts) != 1 {
+	// Three requests ran, after the commit: category icons, account icons and
+	// savings, each with timezone and language and never the profile currency.
+	if len(e.ai.prompts) != 3 {
 		t.Fatalf("prompts = %d", len(e.ai.prompts))
 	}
-	var prompt struct {
+	type reviewPrompt struct {
 		Timezone, Language string
 		Categories         []struct{ ID, Name, Type string }
 		Accounts           []struct{ ID, Name, Currency string }
 	}
-	if err := json.Unmarshal([]byte(e.ai.prompts[0]), &prompt); err != nil {
-		t.Fatal(err)
+	byPart := map[string]reviewPrompt{}
+	for i, raw := range e.ai.prompts {
+		var p reviewPrompt
+		if err := json.Unmarshal([]byte(raw), &p); err != nil {
+			t.Fatal(err)
+		}
+		if p.Language != "de" || p.Timezone != "Europe/Berlin" || strings.Contains(raw, "CHF") {
+			t.Fatalf("prompt %d = %s", i, raw)
+		}
+		switch sys := e.ai.systems[i]; {
+		case strings.Contains(sys, `{"categories":`):
+			byPart["categories"] = p
+			if !strings.Contains(sys, "shopping_cart") || strings.Contains(raw, "Altes") || strings.Contains(raw, "Miete") || !strings.Contains(raw, `"type":"income"`) {
+				t.Fatalf("categories prompt = %s", raw)
+			}
+		case strings.Contains(sys, `{"accounts":`):
+			byPart["accounts"] = p
+			if !strings.Contains(sys, "shopping_cart") {
+				t.Fatal("the account icon prompt does not list the icon catalogue")
+			}
+		case strings.Contains(sys, `{"savings":`):
+			byPart["savings"] = p
+		}
+		if left := time.Until(e.ai.deadlines[i]); left < 60*time.Second {
+			t.Fatalf("request %d has %s left, want its own 90 s budget", i, left)
+		}
 	}
-	if prompt.Language != "de" || prompt.Timezone != "Europe/Berlin" || len(prompt.Categories) != 2 || len(prompt.Accounts) != 4 {
-		t.Fatalf("prompt = %+v", prompt)
-	}
-	if strings.Contains(e.ai.prompts[0], "CHF") || strings.Contains(e.ai.prompts[0], "Altes") || strings.Contains(e.ai.prompts[0], "Miete") || !strings.Contains(e.ai.prompts[0], `"type":"income"`) {
-		t.Fatalf("prompt = %s", e.ai.prompts[0])
-	}
-	if !strings.Contains(e.ai.systems[0], "shopping_cart") {
-		t.Fatal("the system prompt does not list the icon catalogue")
+	// category icons: the two still on a default icon; account icons: the three
+	// still on the import icon (Sparbuch has one the user picked); savings: all
+	// four live accounts.
+	if len(byPart["categories"].Categories) != 2 || len(byPart["accounts"].Accounts) != 3 || len(byPart["savings"].Accounts) != 4 {
+		t.Fatalf("parts = %+v", byPart)
 	}
 	if e.icon("categories", w.food) != "shopping_cart" || e.icon("categories", w.salary) != model.DefaultIcon ||
 		e.icon("categories", w.old) != model.ImportCategoryIcon || e.icon("categories", w.rent) != "home" || e.icon("accounts", w.savingsCard) != "pets" {
@@ -152,9 +173,6 @@ func TestFinishImport_CreatesTheBudgetOnceAndOnlyMarksImport(t *testing.T) {
 	}
 	if e.icon("accounts", w.card) != "credit_card" || e.icon("accounts", w.deposit) != "savings" {
 		t.Fatal("account icons not applied")
-	}
-	if left := time.Until(e.ai.deadlines[0]); left < 60*time.Second {
-		t.Fatalf("the review job has %s left, want its own 90 s budget", left)
 	}
 	if !e.isSavings(budget, w.deposit) || e.isSavings(budget, w.card) {
 		t.Fatal("savings flags")
@@ -167,7 +185,7 @@ func TestFinishImport_CreatesTheBudgetOnceAndOnlyMarksImport(t *testing.T) {
 			t.Fatalf("again %d: %v", status, again)
 		}
 	}
-	if e.budgetCount() != 1 || len(e.ai.prompts) != 1 || e.onboarding() != "import" {
+	if e.budgetCount() != 1 || len(e.ai.prompts) != 3 || e.onboarding() != "import" {
 		t.Fatalf("budgets %d, prompts %d, onboarding %q", e.budgetCount(), len(e.ai.prompts), e.onboarding())
 	}
 }
@@ -220,10 +238,51 @@ func TestFinishImport_AIFailuresChangeNothing(t *testing.T) {
 				t.Fatalf("status %d: %v", status, data)
 			}
 			budget := data["budgetId"].(string)
-			if len(e.ai.prompts) != 1 || e.icon("categories", w.food) != model.ImportCategoryIcon || e.icon("accounts", w.deposit) != "wallet" || e.isSavings(budget, w.deposit) {
+			if len(e.ai.prompts) != 3 || e.icon("categories", w.food) != model.ImportCategoryIcon || e.icon("accounts", w.deposit) != "wallet" || e.isSavings(budget, w.deposit) {
 				t.Fatal("a failed job changed something")
 			}
 		})
+	}
+}
+
+// Each request stands alone: one that fails, times out or answers garbage
+// leaves the others to apply.
+func TestFinishImport_EachPartAppliesWhenAnotherFails(t *testing.T) {
+	parts := map[string]string{"categories": `{"categories":`, "accounts": `{"accounts":`, "savings": `{"savings":`}
+	for broken := range parts {
+		for _, how := range []string{"error", "garbage", "panic"} {
+			t.Run(broken+"/"+how, func(t *testing.T) {
+				e := newOnbEnv(t, stepNow)
+				w := seedImport(e)
+				good := `{"categories":{"` + w.food + `":"shopping_cart"},"accounts":{"` + w.card + `":"credit_card"},"savings":["` + w.deposit + `"]}`
+				e.ai.bySystem = func(system string) (string, error) {
+					if strings.Contains(system, parts[broken]) {
+						switch how {
+						case "error":
+							return "", errors.New("provider down")
+						case "panic":
+							panic("boom")
+						}
+						return "not json at all", nil
+					}
+					return good, nil
+				}
+				status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()})
+				if status != 200 {
+					t.Fatalf("status %d: %v", status, data)
+				}
+				budget := data["budgetId"].(string)
+				if got := e.icon("categories", w.food) == "shopping_cart"; got != (broken != "categories") {
+					t.Fatalf("category icon applied = %v", got)
+				}
+				if got := e.icon("accounts", w.card) == "credit_card"; got != (broken != "accounts") {
+					t.Fatalf("account icon applied = %v", got)
+				}
+				if got := e.isSavings(budget, w.deposit); got != (broken != "savings") {
+					t.Fatalf("savings applied = %v", got)
+				}
+			})
+		}
 	}
 }
 
@@ -243,6 +302,10 @@ func TestFinishImport_ExistingBudgetGetsNoSavings(t *testing.T) {
 	}
 	if e.icon("accounts", w.deposit) != "savings" || e.isSavings(budget, w.deposit) {
 		t.Fatal("want the icon, not the savings flag")
+	}
+	// no savings request is sent for a budget the import did not create
+	if len(e.ai.prompts) != 2 {
+		t.Fatalf("prompts = %d", len(e.ai.prompts))
 	}
 }
 
