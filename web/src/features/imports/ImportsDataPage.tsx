@@ -35,7 +35,8 @@ function TransactionImportRows() {
   const { state: keyState } = useImportKey()
   const sync = useSyncImportSource()
   const [syncing, setSyncing] = useState(false)
-  const pullSources = sources.filter((s) => s.provider === 'simplefin')
+  // on a plain-http page the browser cannot decrypt the stored access URL
+  const pullSources = window.isSecureContext ? sources.filter((s) => s.provider === 'simplefin') : []
 
   // One source at a time: each sync holds the server's single SQLite writer
   // for a moment, and the summary toast wants the totals.

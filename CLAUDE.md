@@ -1044,7 +1044,8 @@ it). Key vars:
 - `ECONUMO_IMPORT_SIMPLEFIN` — the SimpleFIN pull provider (strict boolean, default `true`;
   malformed fails at boot; the config field is inverted, `SimpleFINDisabled`, so a zero
   `config.Config` keeps it on). Connecting needs a secure page (https or localhost): the browser
-  encrypts the access URL with WebCrypto. Apple Wallet import has no switch and is always on (the former
+  encrypts the access URL with WebCrypto, so on a plain-http page the SimpleFIN page shows only an
+  explanation (`window.isSecureContext`) and Settings → Data offers no sync. Apple Wallet import has no switch and is always on (the former
   `ECONUMO_IMPORT_APPLE_WALLET` is ignored), so `internal/imports/api` is always mounted with
   import rules, the queue and run history. While SimpleFIN is off it loses its own routes
   (`claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,

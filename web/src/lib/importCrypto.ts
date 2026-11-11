@@ -155,17 +155,18 @@ export async function loadStoredKey(): Promise<StoredKey | null> {
     return null
   }
   const value = await dbRequest<StoredKey | CryptoKey | undefined>(STORE_IMPORT_KEYS, 'readonly', (s) => s.get(RECORD))
-  if (value instanceof CryptoKey) {
+  // a plain-http page has no CryptoKey global; such a page shows no SimpleFIN form
+  if (typeof CryptoKey !== 'undefined' && value instanceof CryptoKey) {
     return { key: value, tag: '' }  // untagged record from before tags existed: forces one re-unlock
   }
-  return value ?? null
+  return (value as StoredKey | undefined) ?? null
 }
 
 async function storeKey(key: CryptoKey, tag: string): Promise<void> {
   const record: StoredKey = { key, tag }
-  // the put replaces whatever an unfinished forget left behind
-  setForgetPending(false)
   await dbRequest(STORE_IMPORT_KEYS, 'readwrite', (s) => s.put(record, RECORD))
+  // only once the put has replaced whatever an unfinished forget left behind
+  setForgetPending(false)
 }
 
 export async function forgetKey(): Promise<void> {

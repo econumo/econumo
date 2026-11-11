@@ -663,6 +663,7 @@
       "title": "SimpleFIN",
       "intro": "Stel synchronisatie in via SimpleFIN Bridge. Uw SimpleFIN-gegevens worden op dit apparaat versleuteld met een wachtwoordzin die alleen u kent; de server bewaart ze versleuteld.",
       "disclaimer": "Econumo is niet verbonden aan SimpleFIN. SimpleFIN Bridge is een dienst van derden met eigen voorwaarden; u gebruikt deze op eigen risico.",
+      "insecure": "SimpleFIN vereist dat Econumo via https (of op localhost) wordt geopend: de browser versleutelt uw SimpleFIN-gegevens alleen op een beveiligde pagina. Vraag uw beheerder Econumo via https aan te bieden.",
       "disconnect": "Loskoppelen",
       "disconnect_full": "SimpleFIN loskoppelen",
       "disconnect_modal": {

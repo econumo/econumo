@@ -210,6 +210,14 @@ it('connected page: Reconnect can be cancelled, Disconnect asks first and a refu
   expect(deleted).toBe(1)
 }, 20_000)
 
+it('on a plain-http page it explains that SimpleFIN needs https instead of showing the form', async () => {
+  Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true })
+  onTestFinished(() => { Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true }) })
+  renderPage({ importSources: [], importCredentialKey: null, importRuns: [] })
+  expect(await screen.findByRole('alert')).toHaveTextContent(/needs Econumo opened over https/)
+  expect(screen.queryByLabelText('Setup token')).not.toBeInTheDocument()
+})
+
 describe('offline', () => {
   function renderCached(seed: (qc: QueryClient) => void) {
     onlineManager.setOnline(false)

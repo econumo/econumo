@@ -738,6 +738,10 @@ navigation (single-pane vs sidebar).
 
 Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the default).
 
+- [ ] Econumo opened over plain http from another machine (e.g. `http://192.168.1.10:8181`):
+      Settings → SimpleFIN shows only "SimpleFIN needs Econumo opened over https (or on
+      localhost)…", no connect form; Settings → Data shows no "Sync SimpleFIN". Over https or
+      on localhost the form shows as usual. 📱
 - [ ] With `ECONUMO_IMPORT_SIMPLEFIN` unset, Settings lists SimpleFIN (on by default);
       with `ECONUMO_IMPORT_SIMPLEFIN=false`, Apple Wallet and Import rules are
       available; SimpleFIN stays hidden, `/settings/simplefin` shows the

@@ -663,6 +663,7 @@
       "title": "SimpleFIN",
       "intro": "Set up syncing through SimpleFIN Bridge. Your SimpleFIN credentials are encrypted on this device with a passphrase only you know; the server stores them encrypted.",
       "disclaimer": "Econumo is not affiliated with SimpleFIN. SimpleFIN Bridge is a third-party service with its own terms; you use it at your own risk.",
+      "insecure": "SimpleFIN needs Econumo opened over https (or on localhost): the browser only encrypts your SimpleFIN credentials on a secure page. Ask your administrator to serve Econumo over https.",
       "disconnect": "Disconnect",
       "disconnect_full": "Disconnect SimpleFIN",
       "disconnect_modal": {

@@ -663,6 +663,7 @@
       "title": "SimpleFIN",
       "intro": "通过 SimpleFIN Bridge 设置同步。您的 SimpleFIN 凭据会在此设备上使用只有您知道的密码加密；服务器只存储加密后的凭据。",
       "disclaimer": "Econumo 与 SimpleFIN 没有关联。SimpleFIN Bridge 是第三方服务，适用其自身条款；使用风险由您自行承担。",
+      "insecure": "SimpleFIN 需要通过 https（或在 localhost 上）打开 Econumo：浏览器仅在安全页面上加密您的 SimpleFIN 凭据。请让管理员通过 https 提供 Econumo。",
       "disconnect": "断开连接",
       "disconnect_full": "断开 SimpleFIN",
       "disconnect_modal": {

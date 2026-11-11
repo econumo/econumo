@@ -25,7 +25,24 @@ import { syncStartDate } from './syncWindow'
 import { useImportKey } from './useImportKey'
 import { useDeleteImportSource, useExternalAccounts, useImportRuns, useImportSources, useSyncImportSource } from './queries'
 
+// The browser only offers WebCrypto (which encrypts the access URL) on a secure
+// page, so a plain-http instance gets an explanation instead of a form that
+// would fail on submit.
 export function SimpleFINPage() {
+  const { t } = useTranslation()
+  if (!window.isSecureContext) {
+    return (
+      <SettingsShell title={t('imports.simplefin.title')} backTo={RouterPage.SETTINGS}>
+        <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
+          <p role="alert" className="rounded-lg bg-econumo-card px-4 py-3.5 text-sm text-muted-foreground">{t('imports.simplefin.insecure')}</p>
+        </div>
+      </SettingsShell>
+    )
+  }
+  return <SimpleFINSettings />
+}
+
+function SimpleFINSettings() {
   const { t } = useTranslation()
   const online = useOnline()
   const queryClient = useQueryClient()
