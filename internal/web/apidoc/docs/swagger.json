@@ -9618,6 +9618,89 @@
                 }
             }
         },
+        "/api/v1/onboarding/suggest-icon": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Asks the server's AI provider for the icon from the app's icon catalogue that fits a category or account name the user is typing (with the category's type or the account's currency code when given, and the caller's language and timezone). Answers icon \"\" when there is no suggestion: no AI provider configured, the caller over their per-user limit, a failed, late (8 s) or unusable reply, or no icon that fits. Answers are cached per user and name. Read-only; the name is never logged.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Onboarding"
+                ],
+                "summary": "Suggest an icon for a name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "category or account",
+                        "name": "kind",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The name typed (1-64 characters after trimming)",
+                        "name": "name",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "expense or income (categories)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Currency code (accounts)",
+                        "name": "currency",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OnboardingSuggestIconResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/payee/archive-payee": {
             "post": {
                 "security": [
@@ -17913,6 +17996,14 @@
                 },
                 "user": {
                     "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.OnboardingSuggestIconResult": {
+            "type": "object",
+            "properties": {
+                "icon": {
+                    "type": "string"
                 }
             }
         },

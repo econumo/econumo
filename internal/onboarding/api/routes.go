@@ -17,5 +17,6 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/onboarding/save-plan", auth(h.SavePlan))
 		mux.Handle("POST /api/v1/onboarding/finish-import", auth(h.FinishImport))
 		mux.Handle("GET /api/v1/onboarding/get-plan-suggestions", auth(h.GetPlanSuggestions))
+		mux.Handle("GET /api/v1/onboarding/suggest-icon", auth(h.SuggestIcon))
 	}
 }

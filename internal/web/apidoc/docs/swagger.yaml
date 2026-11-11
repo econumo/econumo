@@ -2576,6 +2576,11 @@ definitions:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
     type: object
+  model.OnboardingSuggestIconResult:
+    properties:
+      icon:
+        type: string
+    type: object
   model.OpeningBalanceResult:
     properties:
       amount:
@@ -9930,6 +9935,63 @@ paths:
       security:
       - Bearer: []
       summary: Save the onboarding plan step
+      tags:
+      - Onboarding
+  /api/v1/onboarding/suggest-icon:
+    get:
+      description: 'Asks the server''s AI provider for the icon from the app''s icon
+        catalogue that fits a category or account name the user is typing (with the
+        category''s type or the account''s currency code when given, and the caller''s
+        language and timezone). Answers icon "" when there is no suggestion: no AI
+        provider configured, the caller over their per-user limit, a failed, late
+        (8 s) or unusable reply, or no icon that fits. Answers are cached per user
+        and name. Read-only; the name is never logged.'
+      parameters:
+      - description: category or account
+        in: query
+        name: kind
+        required: true
+        type: string
+      - description: The name typed (1-64 characters after trimming)
+        in: query
+        name: name
+        required: true
+        type: string
+      - description: expense or income (categories)
+        in: query
+        name: type
+        type: string
+      - description: Currency code (accounts)
+        in: query
+        name: currency
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OnboardingSuggestIconResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Suggest an icon for a name
       tags:
       - Onboarding
   /api/v1/payee/archive-payee:

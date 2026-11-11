@@ -1,6 +1,21 @@
 package apiparity
 
 func init() {
+	// The harness has no AI provider, so every valid request answers icon "".
+	// A read: a readonly user is answered too.
+	register(Scenario{Name: "onboarding_suggest_icon", Calls: func() []Call {
+		const path = "/api/v1/onboarding/suggest-icon"
+		return []Call{
+			{Label: "suggest-icon-category", Method: "GET", Path: path + "?kind=category&name=Mortgage&type=expense", Auth: "owner"},
+			{Label: "suggest-icon-account", Method: "GET", Path: path + "?kind=account&name=Revolut&currency=EUR", Auth: "owner"},
+			{Label: "suggest-icon-readonly", Method: "GET", Path: path + "?kind=account&name=Cash", Auth: "readonly"},
+			{Label: "err:suggest-icon-no-kind", Method: "GET", Path: path + "?name=Mortgage", Auth: "owner"},
+			{Label: "err:suggest-icon-bad-kind", Method: "GET", Path: path + "?kind=payee&name=Mortgage", Auth: "owner"},
+			{Label: "err:suggest-icon-blank-name", Method: "GET", Path: path + "?kind=category&name=%20%20", Auth: "owner"},
+			{Label: "err:suggest-icon-bad-type", Method: "GET", Path: path + "?kind=category&name=Mortgage&type=transfer", Auth: "owner"},
+		}
+	}})
+
 	// The owner already has an account and a budget, so save-categories creates
 	// no budget and save-accounts adds to the default one. Each step answers a
 	// replay of its id with the same state and writes nothing.

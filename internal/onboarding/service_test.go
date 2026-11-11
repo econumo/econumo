@@ -58,14 +58,15 @@ func (fakeTimezones) StoredTimezone(context.Context, vo.Id) (string, error) {
 }
 
 type fakeCompleter struct {
-	calls int
-	user  string
-	reply func(ctx context.Context) (string, error)
+	calls  int
+	system string
+	user   string
+	reply  func(ctx context.Context) (string, error)
 }
 
-func (f *fakeCompleter) Complete(ctx context.Context, _, _, user string) (string, error) {
+func (f *fakeCompleter) Complete(ctx context.Context, _, system, user string) (string, error) {
 	f.calls++
-	f.user = user
+	f.system, f.user = system, user
 	return f.reply(ctx)
 }
 

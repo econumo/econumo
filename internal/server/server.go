@@ -218,6 +218,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
 		// Each onboarding classification is a paid AI round trip; Day 0 needs a handful.
 		apponboarding.RateScopeClassify: 20,
+		// The new category and account forms ask while the user types (after a
+		// pause, and only for names not answered before); 60 covers a long Day 0.
+		apponboarding.RateScopeSuggestIcon: 60,
 		// No per-key cap: the caller of start-login/start-link is anonymous
 		// until the provider answers. The per-IP per-minute cap applies.
 		appoauth.RateScopeOAuthStart: 0,
@@ -228,9 +231,10 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	limiterIPExempt := map[string]bool{
 		// One user's own limit could fill the cap for a household behind one IP, and
 		// their effects stay inside the caller's account.
-		appimports.RateScopeIngest:      true,
-		appimports.RateScopePreviewRule: true,
-		apponboarding.RateScopeClassify: true,
+		appimports.RateScopeIngest:         true,
+		appimports.RateScopePreviewRule:    true,
+		apponboarding.RateScopeClassify:    true,
+		apponboarding.RateScopeSuggestIcon: true,
 	}
 	// Ceilings per email address across all client IPs, above the per-address-and-IP
 	// limits. Reset and confirm-email take a 6-digit code, so their guess budget stays

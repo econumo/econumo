@@ -4,6 +4,7 @@ package model
 import (
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -372,4 +373,54 @@ type OnboardingPlanSuggestion struct {
 type OnboardingGetPlanSuggestionsResult struct {
 	BudgetId string                     `json:"budgetId"`
 	Items    []OnboardingPlanSuggestion `json:"items"`
+}
+
+// Icon suggestions: the kinds of item, and the longest name asked about (a
+// category's and an account's name limit).
+const (
+	SuggestIconCategory      = "category"
+	SuggestIconAccount       = "account"
+	maxSuggestIconNameLength = 64
+)
+
+var suggestIconCurrencyRe = regexp.MustCompile(`^[A-Za-z]{3,4}$`)
+
+// OnboardingSuggestIconRequest is the name being typed in a new category or
+// account form. Type (expense or income) only describes a category, Currency
+// (a currency code) an account; both are optional.
+type OnboardingSuggestIconRequest struct {
+	Kind     string `json:"kind"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Currency string `json:"currency"`
+}
+
+func (r OnboardingSuggestIconRequest) Validate() error {
+	switch r.Kind {
+	case "":
+		return blankError("kind")
+	case SuggestIconCategory, SuggestIconAccount:
+	default:
+		return onboardingFieldError("kind", "The value you selected is not a valid choice.", errs.CodeInvalidChoice)
+	}
+	name := strings.TrimSpace(r.Name)
+	if name == "" {
+		return blankError("name")
+	}
+	if utf8.RuneCountInString(name) > maxSuggestIconNameLength {
+		return tooLongError("name")
+	}
+	if r.Type != "" && r.Type != "expense" && r.Type != "income" {
+		return onboardingFieldError("type", "The value you selected is not a valid choice.", errs.CodeInvalidChoice)
+	}
+	if r.Currency != "" && !suggestIconCurrencyRe.MatchString(r.Currency) {
+		return invalidFormatError("currency")
+	}
+	return nil
+}
+
+// OnboardingSuggestIconResult answers suggest-icon: an icon from the app's
+// catalogue, or "" when there is no suggestion.
+type OnboardingSuggestIconResult struct {
+	Icon string `json:"icon"`
 }

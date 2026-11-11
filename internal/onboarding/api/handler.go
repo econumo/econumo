@@ -131,3 +131,38 @@ func (h *Handlers) GetPlanSuggestions(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.OK(w, res)
 }
+
+// SuggestIcon handles GET /api/v1/onboarding/suggest-icon (auth).
+//
+// @Summary     Suggest an icon for a name
+// @Description Asks the server's AI provider for the icon from the app's icon catalogue that fits a category or account name the user is typing (with the category's type or the account's currency code when given, and the caller's language and timezone). Answers icon "" when there is no suggestion: no AI provider configured, the caller over their per-user limit, a failed, late (8 s) or unusable reply, or no icon that fits. Answers are cached per user and name. Read-only; the name is never logged.
+// @Tags        Onboarding
+// @Produce     json
+// @Param       kind     query    string true  "category or account"
+// @Param       name     query    string true  "The name typed (1-64 characters after trimming)"
+// @Param       type     query    string false "expense or income (categories)"
+// @Param       currency query    string false "Currency code (accounts)"
+// @Success     200      {object} apidoc.JsonResponseOk{data=model.OnboardingSuggestIconResult}
+// @Failure     400      {object} apidoc.JsonResponseError
+// @Failure     401      {object} apidoc.JsonResponseUnauthorized
+// @Failure     500      {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/onboarding/suggest-icon [get]
+func (h *Handlers) SuggestIcon(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	req := model.OnboardingSuggestIconRequest{Kind: q.Get("kind"), Name: q.Get("name"), Type: q.Get("type"), Currency: q.Get("currency")}
+	if err := req.Validate(); err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	res, err := h.svc.SuggestIcon(r.Context(), userID, req)
+	if err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	httpx.OK(w, res)
+}

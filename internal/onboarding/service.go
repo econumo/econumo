@@ -43,10 +43,11 @@ type Service struct {
 	run       Runner
 	steps     Steps
 	debts     DebtSteps
+	iconCache *iconCache
 }
 
 func NewService(budgets BudgetWriter, accounts AccountReader, timezones TimezoneReader) *Service {
-	return &Service{budgets: budgets, accounts: accounts, timezones: timezones, run: GoRunner}
+	return &Service{budgets: budgets, accounts: accounts, timezones: timezones, run: GoRunner, iconCache: newIconCache(suggestIconCacheSize)}
 }
 
 // SetAdvisor enables the background savings classification. A nil completer

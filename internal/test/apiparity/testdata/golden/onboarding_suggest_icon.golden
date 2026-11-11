@@ -1,0 +1,21 @@
+== suggest-icon-category GET /api/v1/onboarding/suggest-icon?kind=category&name=Mortgage&type=expense [owner] -> 200
+{"success":true,"message":"","data":{"icon":""}}
+
+== suggest-icon-account GET /api/v1/onboarding/suggest-icon?kind=account&name=Revolut&currency=EUR [owner] -> 200
+{"success":true,"message":"","data":{"icon":""}}
+
+== suggest-icon-readonly GET /api/v1/onboarding/suggest-icon?kind=account&name=Cash [readonly] -> 200
+{"success":true,"message":"","data":{"icon":""}}
+
+== err:suggest-icon-no-kind GET /api/v1/onboarding/suggest-icon?name=Mortgage [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"kind":["This value should not be blank."]}}
+
+== err:suggest-icon-bad-kind GET /api/v1/onboarding/suggest-icon?kind=payee&name=Mortgage [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"kind":["The value you selected is not a valid choice."]}}
+
+== err:suggest-icon-blank-name GET /api/v1/onboarding/suggest-icon?kind=category&name=%20%20 [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"name":["This value should not be blank."]}}
+
+== err:suggest-icon-bad-type GET /api/v1/onboarding/suggest-icon?kind=category&name=Mortgage&type=transfer [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"type":["The value you selected is not a valid choice."]}}
+
