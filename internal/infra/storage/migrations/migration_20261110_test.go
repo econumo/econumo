@@ -71,9 +71,15 @@ func checkOnboardingBackfill(t *testing.T, db *sql.DB, rebind func(string) strin
 	transaction(ownTxn, account(ownTxn, false), "")
 	want[ownTxn] = "completed"
 
+	// the partner writes on the user's deleted account: the owner side alone counts
 	deletedTxn := user("deleted_txn", "accounts")
-	transaction(deletedTxn, account(deletedTxn, true), "")
+	transaction(partner, account(deletedTxn, true), "")
 	want[deletedTxn] = "completed"
+
+	// the partner writes a plain transaction on an account the user owns
+	sourceSide := user("source_side", "started")
+	transaction(partner, account(sourceSide, false), "")
+	want[sourceSide] = "completed"
 
 	authored := user("authored_on_partner", "started")
 	transaction(authored, shared, "")
