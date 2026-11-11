@@ -10,7 +10,7 @@ import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { biometricAvailable, prepareBiometricRegistration, verifyBiometric } from './biometric'
 import { readAttempts, readConfig, recordFailedAttempt, writeConfig } from './config'
 import { resetAppLockForTests, useLockStore } from './lockStore'
-import { hashPin, verifyPin } from './pin'
+import { checkPin, hashPin, verifyPin } from './pin'
 import { setSecureContext, signIn, testConfig } from './testUtils'
 import { AppLockPage } from './AppLockPage'
 
@@ -20,6 +20,11 @@ vi.mock('@/lib/metrics', async (importOriginal) => {
 })
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+vi.mock('./pin', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./pin')>()
+  return { ...actual, hashPin: vi.fn(actual.hashPin), checkPin: vi.fn(actual.checkPin) }
+})
 
 vi.mock('./biometric', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./biometric')>()
@@ -67,6 +72,7 @@ const lockSwitch = () => screen.getByRole('switch', { name: 'App lock' })
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()
   server.use(...coreHandlers())
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(),
@@ -79,6 +85,8 @@ beforeEach(() => {
   vi.mocked(biometricAvailable).mockResolvedValue(false)
   vi.mocked(prepareBiometricRegistration).mockReset()
   vi.mocked(verifyBiometric).mockReset()
+  vi.mocked(hashPin).mockClear()
+  vi.mocked(checkPin).mockClear()
 })
 
 afterEach(() => {
@@ -270,4 +278,91 @@ it('is unavailable without HTTPS', () => {
   renderPage()
   expect(lockSwitch()).toBeDisabled()
   expect(screen.getByText('Needs HTTPS')).toBeInTheDocument()
+})
+
+it('turning the lock on spends the sign-in marker, so a reload locks', async () => {
+  sessionStorage.setItem('econumo.appLock.fresh', String(Date.now()))
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(lockSwitch())
+  let dialog = await screen.findByRole('dialog', { name: 'Choose a PIN' })
+  await typePin(user, dialog, '1234')
+  await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+  dialog = await screen.findByRole('dialog', { name: 'Enter the PIN again' })
+  await typePin(user, dialog, '1234')
+  await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(readConfig()).not.toBeNull())
+  expect(sessionStorage.getItem('econumo.appLock.fresh')).toBeNull()
+})
+
+describe('closing the dialog while it is working', () => {
+  function deferred<T>() {
+    let resolve: (value: T) => void = () => {}
+    const promise = new Promise<T>((r) => (resolve = r))
+    return { promise, resolve }
+  }
+
+  it('does not turn the lock on', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(lockSwitch())
+    let dialog = await screen.findByRole('dialog', { name: 'Choose a PIN' })
+    await typePin(user, dialog, '1234')
+    await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+    dialog = await screen.findByRole('dialog', { name: 'Enter the PIN again' })
+    await typePin(user, dialog, '1234')
+    const hash = deferred<Awaited<ReturnType<typeof hashPin>>>()
+    vi.mocked(hashPin).mockImplementationOnce(() => hash.promise)
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(hashPin).toHaveBeenCalledWith('1234'))
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    hash.resolve(testConfig().pin)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(readConfig()).toBeNull()
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.APP_LOCK_ENABLED)
+    expect(lockSwitch()).not.toBeChecked()
+  })
+
+  it('does not turn the lock off', async () => {
+    await configure()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(lockSwitch())
+    const dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
+    const check = deferred<Awaited<ReturnType<typeof checkPin>>>()
+    vi.mocked(checkPin).mockImplementationOnce(() => check.promise)
+    await typePin(user, dialog, '1234')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    check.resolve({ status: 'ok' })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(readConfig()).not.toBeNull()
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.APP_LOCK_DISABLED)
+    expect(lockSwitch()).toBeChecked()
+  })
+
+  it('does not change the PIN', async () => {
+    await configure()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Change PIN' }))
+    let dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
+    await typePin(user, dialog, '1234')
+    dialog = await screen.findByRole('dialog', { name: 'Choose a new PIN' })
+    await typePin(user, dialog, '5678')
+    await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+    dialog = await screen.findByRole('dialog', { name: 'Enter the PIN again' })
+    await typePin(user, dialog, '5678')
+    const hash = deferred<Awaited<ReturnType<typeof hashPin>>>()
+    vi.mocked(hashPin).mockImplementationOnce(() => hash.promise)
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(hashPin).toHaveBeenCalledWith('5678'))
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    hash.resolve({ salt: 'bmV3', hash: 'bmV3', iterations: 1000, length: 4 })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(await verifyPin('1234', readConfig()!.pin)).toBe(true)
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.APP_LOCK_PIN_CHANGED)
+  })
 })

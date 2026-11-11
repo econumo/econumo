@@ -13,11 +13,16 @@ export const useLockStore = create<AppLockState>()(() => ({ locked: false, obscu
 
 const HEARTBEAT_MS = 15_000
 const MIN_SLEEP_MS = 30_000
-const FRESH_SIGN_IN_MS = 2 * 60_000
+// A password login's reload follows within moments; a longer window would let
+// a client-side sign-in's leftover marker skip a later cold-start lock.
+const FRESH_SIGN_IN_MS = 30_000
+// Android's passkey prompt hides the page; one left open this long counts as away.
+const CEREMONY_AWAY_MS = 60_000
 export const PRIVACY_COVER_ID = 'privacy-cover'
 
 let initialized = false
 let hiddenAt: number | null = null
+let hiddenInCeremony = false
 let lastTick = 0
 let lockSeen = false
 let heartbeat: ReturnType<typeof setInterval> | null = null
@@ -25,7 +30,7 @@ let cover: HTMLDivElement | null = null
 let reloadPage: () => void = () => window.location.reload()
 const removers: Array<() => void> = []
 
-function clearFreshMarker(): void {
+export function clearFreshMarker(): void {
   try {
     sessionStorage.removeItem(APP_LOCK_FRESH_KEY)
   } catch {
@@ -34,7 +39,8 @@ function clearFreshMarker(): void {
 }
 
 // The marker outlives a client-side sign-in in this tab, so it only counts
-// right after it was set, and any lock spends it.
+// right after it was set; a lock (but the one taken as the page hides) and
+// turning the lock on spend it.
 function consumeFreshMarker(now: number): boolean {
   let value: string | null = null
   try {
@@ -47,12 +53,15 @@ function consumeFreshMarker(now: number): boolean {
   return value !== null && Number.isFinite(at) && now - at >= 0 && now - at < FRESH_SIGN_IN_MS
 }
 
+function setLocked(): void {
+  if (activeConfig() !== null) {
+    useLockStore.setState({ locked: true })
+  }
+}
+
 export function lock(): void {
   clearFreshMarker()
-  if (activeConfig() === null) {
-    return
-  }
-  useLockStore.setState({ locked: true })
+  setLocked()
 }
 
 // Every unlock is a success, PIN or biometric, so the attempt counter starts over.
@@ -100,36 +109,46 @@ function createCover(): void {
 // The cover is toggled here, outside React, so it is painted before the OS
 // takes its app-switcher snapshot, as far as the platform allows.
 function onHide(): void {
+  // visibilitychange and pagehide both arrive for one departure; the first one counts.
   if (hiddenAt !== null) {
     return
   }
   const config = activeConfig()
-  // A passkey prompt backgrounds the page on Android; that is not leaving the app.
-  if (config === null || ceremonyInFlight()) {
+  if (config === null) {
     return
   }
   lockSeen = true
-  setCover(true)
   hiddenAt = Date.now()
+  // A passkey prompt backgrounds the page on Android; that alone is not leaving the app.
+  hiddenInCeremony = ceremonyInFlight()
+  if (hiddenInCeremony) {
+    return
+  }
+  setCover(true)
+  // Not lock(): a password login hides the page on its way to the reload,
+  // which still needs the sign-in marker.
   if (config.lockAfterMs === 0) {
-    lock()
+    setLocked()
   }
   useLockStore.setState({ obscured: true })
 }
 
 function onShow(): void {
   const at = hiddenAt
+  const ceremony = hiddenInCeremony
   hiddenAt = null
+  hiddenInCeremony = false
   const now = Date.now()
   if (at !== null) {
     const config = activeConfig()
     const away = now - at
+    const limit = config === null ? 0 : ceremony ? Math.max(config.lockAfterMs, CEREMONY_AWAY_MS) : config.lockAfterMs
     // A clock set back reads as a negative time away: lock rather than trust it.
-    if (config !== null && (away < 0 || away >= config.lockAfterMs)) {
+    if (config !== null && (away < 0 || away >= limit)) {
       lock()
     }
+    lastTick = now
   }
-  lastTick = now
   useLockStore.setState({ obscured: false })
   if (!useLockStore.getState().locked) {
     setCover(false)
@@ -183,9 +202,10 @@ function ownerOf(raw: string | null): string | null {
   }
 }
 
-// Another tab never unlocks this one. When it removes the lock or changes who
-// is signed in, a tab that is locked or showing data reloads and boots into
-// whatever the new state is (unlocked, locked, or the login page).
+// Another tab never unlocks this one. When it changes who is signed in, a tab
+// that is locked or showing data reloads and boots into whatever the new state
+// is (unlocked, locked, or the login page); any change to the lock reloads a
+// locked tab, while an unlocked one just reads the new settings.
 function onStorage(event: StorageEvent): void {
   if (event.storageArea !== null && event.storageArea !== localStorage) {
     return
@@ -203,7 +223,9 @@ function onStorage(event: StorageEvent): void {
     if (before !== null || after !== null) {
       lockSeen = true
     }
-    if (locked && before !== after) {
+    // A locked tab's lock screen was drawn from the old config (PIN length,
+    // biometrics, owner); it boots again from the new one.
+    if (locked && event.oldValue !== event.newValue) {
       reloadPage()
     }
     return
@@ -267,6 +289,7 @@ export function resetAppLockForTests(options: { reload?: () => void } = {}): voi
   setSignInListener(null)
   initialized = false
   hiddenAt = null
+  hiddenInCeremony = false
   lastTick = 0
   lockSeen = false
   reloadPage = options.reload ?? (() => window.location.reload())

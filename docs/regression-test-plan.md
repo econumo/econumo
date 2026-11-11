@@ -2776,16 +2776,22 @@ User C sees none of it.
       prompt; cancelling it leaves the switch off with a toast; once on, the
       lock screen offers the fingerprint button (and on a phone tries
       biometrics by itself on appearing), and it unlocks; the device passcode
-      may be offered instead and also unlocks. Turning it off needs no PIN.
+      may be offered instead and also unlocks; a lock screen that appeared
+      while the app was in the background tries biometrics once it comes
+      forward. Leaving the passkey prompt open for over a minute (or longer
+      than "Lock after") locks on return. Turning it off needs no PIN.
       The hint mentions the passcode and where to delete the passkey.
 - [ ] App lock with two users on one browser: user A turns the lock on and logs
       out; user B logs in and is never asked for a PIN, and B's Profile row
       reads Off.
 - [ ] App lock fresh login: logging in with a password (or a provider) right
-      after a sign-out or a "Set a password" never asks for the PIN in that tab.
+      after a sign-out or a "Set a password" never asks for the PIN in that tab,
+      also with "Immediately". Turning the lock on right after a login and then
+      reloading shows the lock screen.
 - [ ] App lock in two tabs: with the lock on and tab 2 locked, logging out in
-      tab 1 reloads tab 2 onto the login page; unlocking one tab never unlocks
-      the other.
+      tab 1 reloads tab 2 onto the login page; changing the PIN (to another
+      length) or turning biometrics off in tab 1 reloads tab 2, whose lock
+      screen then matches; unlocking one tab never unlocks the other.
 - [ ] App lock on a plain-http instance (not localhost): the Profile row is
       greyed out with "Needs HTTPS" and is not a link; opening
       `/settings/profile/app-lock` directly shows the switch disabled with the

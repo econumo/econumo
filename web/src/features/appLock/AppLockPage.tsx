@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -24,7 +24,7 @@ import {
   type AppLockConfig,
 } from './config'
 import { APP_LOCK_CONFIG_KEY } from './keys'
-import { unlock } from './lockStore'
+import { clearFreshMarker, unlock } from './lockStore'
 import { hashPin } from './pin'
 import { SetPinDialog, type PinFlow } from './SetPinDialog'
 
@@ -37,6 +37,10 @@ export function AppLockPage() {
   const supported = appLockSupported()
   const [config, setConfig] = useState<AppLockConfig | null>(() => activeConfig())
   const [flow, setFlow] = useState<{ kind: PinFlow; seq: number; open: boolean } | null>(null)
+  const flowSeq = useRef(0)
+  // The flow still on screen; a check or hash finishing after the dialog was
+  // dismissed must not change the lock.
+  const openSeq = useRef<number | null>(null)
   const [biometrics, setBiometrics] = useState(false)
   const [register, setRegister] = useState<(() => Promise<RegisterResult>) | null>(null)
   const [registering, setRegistering] = useState(false)
@@ -95,8 +99,15 @@ export function AppLockPage() {
     }
   }, [biometrics, enabled, userId, email, credentialId])
 
-  const openFlow = (kind: PinFlow) => setFlow((prev) => ({ kind, seq: (prev?.seq ?? 0) + 1, open: true }))
-  const closeFlow = () => setFlow((prev) => (prev ? { ...prev, open: false } : prev))
+  const openFlow = (kind: PinFlow) => {
+    const seq = ++flowSeq.current
+    openSeq.current = seq
+    setFlow({ kind, seq, open: true })
+  }
+  const closeFlow = () => {
+    openSeq.current = null
+    setFlow((prev) => (prev ? { ...prev, open: false } : prev))
+  }
 
   // Every write starts from what is stored now, so a change from another tab survives.
   const update = (change: Partial<AppLockConfig>): boolean => {
@@ -114,18 +125,33 @@ export function AppLockPage() {
     if (flow === null) {
       return
     }
+    const seq = flow.seq
+    const stillOpen = () => openSeq.current === seq
+    if (!stillOpen()) {
+      return
+    }
     if (flow.kind === 'disable') {
       clearConfig()
       unlock()
       trackEvent(METRICS.APP_LOCK_DISABLED)
     } else if (flow.kind === 'enable' && pin && userId) {
       const hash = await hashPin(pin)
+      if (!stillOpen()) {
+        return
+      }
       resetAttempts()
-      // Turning the lock on does not lock this tab: the user just proved who they are.
+      // Turning the lock on does not lock this tab: the user just proved who
+      // they are. A sign-in marker left in this tab would skip the next cold
+      // start's lock, so it is spent.
+      clearFreshMarker()
       writeConfig({ v: 1, userId, pin: hash, lockAfterMs: DEFAULT_LOCK_AFTER_MS, biometric: null })
       trackEvent(METRICS.APP_LOCK_ENABLED)
     } else if (flow.kind === 'change' && pin) {
-      if (update({ pin: await hashPin(pin) })) {
+      const hash = await hashPin(pin)
+      if (!stillOpen()) {
+        return
+      }
+      if (update({ pin: hash })) {
         trackEvent(METRICS.APP_LOCK_PIN_CHANGED)
         toast.success(t('appLock.settings.pin_changed'))
       }

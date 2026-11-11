@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { Fingerprint } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -39,10 +39,10 @@ function autoBiometricAllowed(): boolean {
 export function LockScreen() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const { config } = useAppLock()
-  // Read from the cache only: a request would be data fetched behind the lock.
-  const user = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
+  // Read from the cache only, watching for the persisted cache to restore: a
+  // request would be data fetched behind the lock.
+  const { data: user } = useQuery<CurrentUserDto>({ queryKey: queryKeys.user, queryFn: skipToken })
   const [error, setError] = useState('')
   const [lockout, setLockout] = useState(() => lockoutRemainingMs())
   const [remaining, setRemaining] = useState(remainingAttempts)
@@ -82,23 +82,42 @@ export function LockScreen() {
 
   // Once per appearance, and only where the prompt is likely to be allowed
   // without a tap; a browser that wants a gesture rejects it and the user
-  // taps the button. The timer lets StrictMode's throwaway mount cancel itself.
+  // taps the button. A screen that appeared in the background waits until the
+  // page comes forward. The timer lets StrictMode's throwaway mount cancel itself.
   useEffect(() => {
-    if (credentialId === null || autoTried.current || !autoBiometricAllowed()) {
+    if (credentialId === null || autoTried.current) {
       return
     }
+    const id: string = credentialId
     const controller = new AbortController()
-    const timer = setTimeout(() => {
-      autoTried.current = true
-      autoAttempt.current = controller
-      void verifyBiometric(credentialId, controller.signal).then((result) => {
-        if (result === 'ok' && !controller.signal.aborted) {
-          unlockWith('biometric')
-        }
-      })
-    }, 0)
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const stopWaiting = () => {
+      document.removeEventListener('visibilitychange', attempt)
+      window.removeEventListener('focus', attempt)
+    }
+    function attempt() {
+      if (timer !== null || autoTried.current || !autoBiometricAllowed()) {
+        return
+      }
+      timer = setTimeout(() => {
+        autoTried.current = true
+        autoAttempt.current = controller
+        stopWaiting()
+        void verifyBiometric(id, controller.signal).then((result) => {
+          if (result === 'ok' && !controller.signal.aborted) {
+            unlockWith('biometric')
+          }
+        })
+      }, 0)
+    }
+    document.addEventListener('visibilitychange', attempt)
+    window.addEventListener('focus', attempt)
+    attempt()
     return () => {
-      clearTimeout(timer)
+      stopWaiting()
+      if (timer !== null) {
+        clearTimeout(timer)
+      }
       controller.abort()
     }
   }, [credentialId])

@@ -696,13 +696,15 @@ only; the device passcode also satisfies it), frontend only, never sent to the s
 localStorage `econumo.appLock` (config: owner `userId`, PIN hash, `lockAfterMs` 0/1/5/15 min, passkey
 id) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
 sessionStorage marker `econumo.appLock.fresh` that `setToken` sets so the reload after a sign-in does
-not ask for the PIN. `setToken` is also the only place that deletes another user's lock (both ids
+not ask for the PIN (it counts for 30 s; any lock but the one taken as the page hides, and turning the
+lock on, spend it). `setToken` is also the only place that deletes another user's lock (both ids
 known and different); `activeConfig()` fails closed (no `sessionUserId` yet still locks) and is null
 without a secure context (plain http: the Profile row reads "Needs HTTPS"). `initAppLock()`
 (`lockStore.ts`, from `main.tsx` before the first render) starts every page load locked, locks after
 `lockAfterMs` in the background or a slept device (15 s heartbeat), toggles a static `#privacy-cover`
-on hide outside React, and reloads a locked tab when another tab removes the lock or changes the
-session (a storage event never unlocks). The gate is in `RequireAuth`, which renders `LockScreen`
+on hide outside React, and reloads a locked tab when another tab changes the lock in any way or
+changes the session (a storage event never unlocks). A passkey prompt hiding the page neither covers
+nor locks it, but time away with one open counts once it passes max(`lockAfterMs`, 1 min). The gate is in `RequireAuth`, which renders `LockScreen`
 INSTEAD of its outlet, so nothing financial stays mounted. Every current-PIN prompt (lock screen and
 settings, `AppLockPage` at `/settings/profile/app-lock`) goes through `checkPin`, which stores the
 failure before deriving; from the 5th failure a lockout, the 10th signs out. Sign-out:

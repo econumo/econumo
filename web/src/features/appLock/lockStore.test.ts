@@ -82,9 +82,20 @@ describe('cold start', () => {
 
   it('ignores a stale sign-in marker', () => {
     configure()
-    sessionStorage.setItem('econumo.appLock.fresh', String(Date.now() - 5 * 60_000))
+    sessionStorage.setItem('econumo.appLock.fresh', String(Date.now() - 31_000))
     initAppLock()
     expect(locked()).toBe(true)
+  })
+
+  it('the page unloading after a password login keeps the marker for the reload', () => {
+    configure(0)
+    initAppLock()
+    setToken('tok2', 'u1')
+    window.dispatchEvent(new Event('pagehide'))
+    setVisibility('hidden')
+    resetAppLockForTests({ reload })
+    initAppLock()
+    expect(locked()).toBe(false)
   })
 
   it('is idempotent', () => {
@@ -187,6 +198,44 @@ describe('background', () => {
     setVisibility('visible')
     expect(locked()).toBe(false)
   })
+
+  it('locks on return when a passkey prompt was left open for a long time away', async () => {
+    configure(0)
+    initAppLock()
+    unlock()
+    let finish: (value: unknown) => void = () => {}
+    Object.defineProperty(navigator, 'credentials', {
+      value: { get: () => new Promise((resolve) => (finish = resolve)) },
+      configurable: true,
+    })
+    const pending = verifyBiometric('AQID')
+    setVisibility('hidden')
+    vi.advanceTimersByTime(59_000)
+    finish(null)
+    await pending
+    vi.advanceTimersByTime(2_000)
+    setVisibility('visible')
+    expect(locked()).toBe(true)
+  })
+
+  it('a passkey prompt answered quickly with a longer timeout set keeps the tab unlocked', async () => {
+    configure(300_000)
+    initAppLock()
+    unlock()
+    let finish: (value: unknown) => void = () => {}
+    Object.defineProperty(navigator, 'credentials', {
+      value: { get: () => new Promise((resolve) => (finish = resolve)) },
+      configurable: true,
+    })
+    const pending = verifyBiometric('AQID')
+    setVisibility('hidden')
+    vi.advanceTimersByTime(120_000)
+    finish(null)
+    await pending
+    setVisibility('visible')
+    expect(locked()).toBe(false)
+    expect(cover().hidden).toBe(true)
+  })
 })
 
 describe('heartbeat', () => {
@@ -275,6 +324,16 @@ describe('other tabs', () => {
     localStorage.removeItem('econumo.appLock')
     storageEvent('econumo.appLock', old, null)
     expect(reload).not.toHaveBeenCalled()
+  })
+
+  it('a locked tab reloads when another tab changes the lock in any way', () => {
+    configure()
+    initAppLock()
+    const old = localStorage.getItem('econumo.appLock')
+    writeConfig(testConfig({ pin: { salt: 'c2FsdA==', hash: 'bmV3', iterations: 1000, length: 6 } }))
+    storageEvent('econumo.appLock', old, localStorage.getItem('econumo.appLock'))
+    expect(reload).toHaveBeenCalledOnce()
+    expect(locked()).toBe(true)
   })
 
   it('a tab showing data reloads when the session changes elsewhere', () => {

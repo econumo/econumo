@@ -363,3 +363,17 @@ format with `pluralPick`.
   theme (CSS var), logo. No `PrivacyCover` React component.
 - **R23 Guards.** Add `AppLockPage` to `NO_NOTICE` in
   `offline-notice-coverage.test.ts` ("local device setting, works offline").
+
+## Revision 2 — review fixes (overrides the text above)
+
+- **R1/R6 amended.** Any change to `econumo.appLock` from another tab reloads
+  a LOCKED tab (PIN length, biometrics, owner); an unlocked tab still just
+  reads the new settings. Hiding the page during a ceremony records
+  `hiddenAt` but neither covers nor locks it; on return the tab locks when
+  away for max(`lockAfterMs`, 60 s) or more (or a negative time).
+- **R17 amended.** The marker counts for 30 s. The lock taken as the page
+  hides ("Immediately") does not spend it, so a password login's reload
+  boots unlocked; every other lock and turning the lock on spend it.
+- Closing a settings PIN dialog while its check or hash is running changes
+  nothing. Enter in the PIN pad only submits in create mode, and never when
+  a button or link outside the pad has focus.

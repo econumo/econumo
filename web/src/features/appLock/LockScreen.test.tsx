@@ -1,5 +1,5 @@
 import { StrictMode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
@@ -116,6 +116,15 @@ it('shows the cached user without fetching', async () => {
   renderLockScreen(queryClient)
   expect(screen.getByText('Dmitry')).toBeInTheDocument()
   expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', 'face:blue')
+})
+
+it('shows the user once the persisted cache restores it', async () => {
+  await configure()
+  const queryClient = new QueryClient()
+  renderLockScreen(queryClient)
+  expect(screen.queryByText('Dmitry')).not.toBeInTheDocument()
+  act(() => queryClient.setQueryData(queryKeys.user, { id: 'u1', name: 'Dmitry', avatar: 'face:blue' }))
+  expect(await screen.findByText('Dmitry')).toBeInTheDocument()
 })
 
 it('a wrong PIN says so and stays locked', async () => {
@@ -249,6 +258,28 @@ describe('the automatic biometric attempt', () => {
     expect(screen.queryByText(/Couldn't verify/)).not.toBeInTheDocument()
     expect(useLockStore.getState().locked).toBe(true)
     vi.mocked(document.hasFocus).mockRestore()
+  })
+
+  it('runs once the page it appeared on in the background comes forward', async () => {
+    pointer(true)
+    const focus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    await configure({ biometric: { credentialId: 'AAAA' } })
+    vi.mocked(verifyBiometric).mockResolvedValue('cancelled')
+    renderLockScreen()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(verifyBiometric).not.toHaveBeenCalled()
+    focus.mockReturnValue(true)
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+    })
+    await waitFor(() => expect(verifyBiometric).toHaveBeenCalledTimes(1))
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(verifyBiometric).toHaveBeenCalledTimes(1)
+    focus.mockRestore()
   })
 
   it('does not run with a mouse', async () => {

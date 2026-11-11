@@ -98,3 +98,64 @@ it('renders the biometric slot', () => {
   render(<PinPad mode="verify" length={4} onSubmit={vi.fn()} biometric={<button type="button">Bio</button>} />)
   expect(screen.getByRole('button', { name: 'Bio' })).toBeInTheDocument()
 })
+
+describe('Enter outside the pad', () => {
+  it('still activates a focused button on the lock screen', async () => {
+    const user = userEvent.setup()
+    const onForgot = vi.fn()
+    render(
+      <>
+        <PinPad mode="verify" length={4} onSubmit={vi.fn()} />
+        <button type="button" onClick={onForgot}>
+          Forgot PIN?
+        </button>
+      </>,
+    )
+    screen.getByRole('button', { name: 'Forgot PIN?' }).focus()
+    await user.keyboard('{Enter}')
+    expect(onForgot).toHaveBeenCalledOnce()
+  })
+
+  it('in create mode activates a focused outside button instead of submitting', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    const onClose = vi.fn()
+    render(
+      <>
+        <PinPad mode="create" onSubmit={onSubmit} />
+        <button type="button" onClick={onClose}>
+          Close
+        </button>
+      </>,
+    )
+    await tap(user, '1234')
+    screen.getByRole('button', { name: 'Close' }).focus()
+    await user.keyboard('{Enter}')
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('in create mode submits when nothing outside has focus', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockReturnValue(true)
+    render(<PinPad mode="create" onSubmit={onSubmit} />)
+    await tap(user, '1234')
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('1234'))
+  })
+
+  it('in create mode submits when focus is on the dialog around it', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockReturnValue(true)
+    render(
+      <div role="dialog" tabIndex={-1} data-testid="dialog">
+        <PinPad mode="create" onSubmit={onSubmit} />
+      </div>,
+    )
+    await tap(user, '1234')
+    screen.getByTestId('dialog').focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('1234'))
+  })
+})

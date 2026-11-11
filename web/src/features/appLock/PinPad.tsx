@@ -34,6 +34,8 @@ function typingInField(target: EventTarget | null): boolean {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
+const INTERACTIVE = 'button, a[href], input, select, textarea, summary, [role="button"], [role="link"]'
+
 export function PinPad({
   mode,
   length = PIN_MIN_LENGTH,
@@ -52,6 +54,7 @@ export function PinPad({
   const pinRef = useRef('')
   const busyRef = useRef(false)
   const mounted = useRef(true)
+  const root = useRef<HTMLDivElement>(null)
   const max = mode === 'verify' ? length : PIN_MAX_LENGTH
   const blocked = disabled || busy
 
@@ -126,6 +129,13 @@ export function PinPad({
       } else if (event.key === 'Backspace') {
         actionsRef.current.erase()
       } else if (event.key === 'Enter') {
+        // Enter belongs to whatever else has focus ("Forgot PIN?", a dialog's close button).
+        const target = event.target
+        const elsewhere =
+          target instanceof Element && target.closest(INTERACTIVE) !== null && !root.current?.contains(target)
+        if (mode !== 'create' || elsewhere) {
+          return
+        }
         actionsRef.current.confirm()
       } else {
         return
@@ -134,13 +144,13 @@ export function PinPad({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [keyboard])
+  }, [keyboard, mode])
 
   const dots = mode === 'verify' ? length : Math.max(PIN_MIN_LENGTH, pin.length)
   const keyClass = 'size-16 rounded-full text-2xl font-normal'
 
   return (
-    <div className={cn('flex flex-col items-center gap-6', className)}>
+    <div ref={root} className={cn('flex flex-col items-center gap-6', className)}>
       <div
         key={shakes}
         role="img"
