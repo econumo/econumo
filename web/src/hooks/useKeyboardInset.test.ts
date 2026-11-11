@@ -61,6 +61,9 @@ describe('useKeyboardInset', () => {
   })
 
   it('sees a keyboard that shrank the layout viewport as well', () => {
+    const field = document.createElement('input')
+    document.body.append(field)
+    field.focus()
     const { result } = renderHook(() => useKeyboardInset(true))
     act(() => {
       Object.defineProperty(window, 'innerHeight', { configurable: true, value: 450 })
@@ -68,6 +71,21 @@ describe('useKeyboardInset', () => {
     // iOS reports a pan it has not done (measured: 396 of a 416px viewport)
     resize(450, 430)
     expect(result.current).toEqual({ bottom: 0, height: 450, top: 0 })
+    // and a third of a pixel short of it
+    resize(449.67, 430)
+    expect(result.current).toEqual({ bottom: 0, height: 450, top: 0 })
+    resize(449.4, 396)
+    expect(result.current).toEqual({ bottom: 0, height: 449, top: 1 })
+    field.remove()
+  })
+
+  it('takes a window that shrank with no field focused for its real size', () => {
+    const { result } = renderHook(() => useKeyboardInset(true))
+    act(() => {
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 450 })
+    })
+    resize(450)
+    expect(result.current).toEqual({ bottom: 0, height: 0, top: 0 })
   })
 
   it('takes a small drop of both heights for a toolbar, not a keyboard', () => {

@@ -18,18 +18,33 @@ const MIN_KEYBOARD_PX = 150
 // resizing, and then fires nothing more: measure again once it has settled
 const SETTLE_MS = [100, 300, 600]
 
-// the tallest layout viewport seen at the current width (a rotation resets
-// it). The iOS home-screen app sometimes shrinks the layout viewport with the
-// keyboard too, so the visible area then matches innerHeight and only this
-// baseline still shows the keyboard
-let tallest = { width: 0, height: 0 }
+const NO_KEYBOARD_INPUTS = new Set(['button', 'checkbox', 'radio', 'range', 'color', 'file', 'submit', 'reset', 'image', 'hidden'])
+
+function keyboardFieldFocused(): boolean {
+  const el = document.activeElement
+  if (el instanceof HTMLTextAreaElement) {
+    return el.inputMode !== 'none'
+  }
+  if (el instanceof HTMLInputElement) {
+    return el.inputMode !== 'none' && !NO_KEYBOARD_INPUTS.has(el.type)
+  }
+  return el instanceof HTMLElement && el.isContentEditable
+}
+
+// the full layout viewport height per window width. The iOS home-screen app
+// sometimes shrinks the layout viewport with the keyboard too, so the visible
+// area then matches innerHeight and only this baseline still shows the
+// keyboard. It only keeps a larger height while a field that raises a
+// keyboard has focus; otherwise the window really is that size (split screen,
+// a resized desktop window) and the current height is the baseline
+const tallest = new Map<number, number>()
 
 function tallestHeight(): number {
-  if (tallest.width !== window.innerWidth) {
-    tallest = { width: window.innerWidth, height: 0 }
-  }
-  tallest.height = Math.max(tallest.height, window.innerHeight)
-  return tallest.height
+  const width = window.innerWidth
+  const seen = tallest.get(width)
+  const height = seen !== undefined && keyboardFieldFocused() ? Math.max(seen, window.innerHeight) : window.innerHeight
+  tallest.set(width, height)
+  return height
 }
 
 // recorded from app start, not only while a sheet is open: a picker opened
@@ -42,7 +57,7 @@ if (typeof window !== 'undefined') {
 
 /** test-only: forget the tallest viewport seen */
 export function resetKeyboardBaseline() {
-  tallest = { width: 0, height: 0 }
+  tallest.clear()
 }
 
 function measure(): KeyboardInset {
@@ -58,9 +73,10 @@ function measure(): KeyboardInset {
   if (height >= window.innerHeight && height > tallestHeight() - MIN_KEYBOARD_PX) {
     return NONE
   }
-  // with the layout viewport shrunk to the visible area there is nothing to
-  // pan, yet iOS still reports an offsetTop (396 of a 416px viewport, measured)
-  const top = height >= window.innerHeight ? 0 : Math.round(vv.offsetTop)
+  // the visible area never reaches below the layout viewport: with the layout
+  // viewport shrunk to it, iOS still reports an offsetTop (396 of a 416px
+  // viewport, measured) for a pan it has not done
+  const top = Math.min(Math.round(vv.offsetTop), Math.max(0, window.innerHeight - height))
   return { bottom: Math.max(0, window.innerHeight - top - height), height, top }
 }
 
@@ -90,14 +106,17 @@ export function useKeyboardInset(enabled: boolean): KeyboardInset {
     vv.addEventListener('resize', settle)
     vv.addEventListener('scroll', update)
     window.addEventListener('resize', settle)
-    // a field tapped in an open sheet raises the keyboard
+    // a field tapped in an open sheet raises the keyboard, also a tap on the
+    // field that already has focus after the keyboard was hidden
     document.addEventListener('focusin', settle)
+    document.addEventListener('touchend', settle)
     return () => {
       timers.forEach(clearTimeout)
       vv.removeEventListener('resize', settle)
       vv.removeEventListener('scroll', update)
       window.removeEventListener('resize', settle)
       document.removeEventListener('focusin', settle)
+      document.removeEventListener('touchend', settle)
     }
   }, [enabled])
   return inset
