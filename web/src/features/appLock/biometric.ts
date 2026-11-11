@@ -1,4 +1,5 @@
 import { isNativeApp } from '@/lib/platform'
+import { APP_LOCK_DEVICE_KEY } from './keys'
 
 export type BiometricResult = 'ok' | 'cancelled' | 'failed'
 
@@ -13,7 +14,9 @@ let pendingCeremonies = 0
 let ceremonyEndedAt = Number.NEGATIVE_INFINITY
 
 export function ceremonyInFlight(now: number = Date.now()): boolean {
-  return pendingCeremonies > 0 || now - ceremonyEndedAt < CEREMONY_GRACE_MS
+  const elapsed = now - ceremonyEndedAt
+  // A clock set back must not hold the grace open.
+  return pendingCeremonies > 0 || (elapsed >= 0 && elapsed < CEREMONY_GRACE_MS)
 }
 
 function track<T>(promise: Promise<T>): Promise<T> {
@@ -79,6 +82,15 @@ function randomBytes(length: number): Uint8Array<ArrayBuffer> {
   return crypto.getRandomValues(new Uint8Array(length))
 }
 
+function deviceId(): string {
+  let id = localStorage.getItem(APP_LOCK_DEVICE_KEY)
+  if (!id) {
+    id = toBase64Url(randomBytes(16))
+    localStorage.setItem(APP_LOCK_DEVICE_KEY, id)
+  }
+  return id
+}
+
 function isCancel(error: unknown): boolean {
   const name = (error as { name?: unknown } | null)?.name
   return name === 'NotAllowedError' || name === 'AbortError'
@@ -95,9 +107,12 @@ export async function prepareBiometricRegistration(
   user: BiometricUser,
   existingCredentialId: string | null = null,
 ): Promise<() => Promise<RegisterResult>> {
-  // A stable user handle makes a second registration replace the keychain
-  // entry instead of piling up passkeys.
-  const userHandle = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(user.userId)))
+  // Stable per user and device: re-enabling here replaces this device's
+  // keychain entry instead of piling up passkeys, while the passkey synced from
+  // another device has a different handle and is left alone.
+  const userHandle = new Uint8Array(
+    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${user.userId}:${deviceId()}`)),
+  )
   const existing = existingCredentialId ? fromBase64Url(existingCredentialId) : null
   return () => {
     const options: CredentialCreationOptions = {

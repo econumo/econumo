@@ -377,3 +377,8 @@ format with `pluralPick`.
 - Closing a settings PIN dialog while its check or hash is running changes
   nothing. Enter in the PIN pad only submits in create mode, and never when
   a button or link outside the pad has focus.
+- R7 amended: the passkey `user.id` is SHA-256(`<userId>:<deviceId>`), where
+  `deviceId` is a random id in localStorage `econumo.appLock.device` that
+  survives sign-out. One synced keychain entry per device: re-enabling on the
+  same device replaces its own entry, and turning biometrics on for a second
+  device no longer overwrites the first device's passkey.

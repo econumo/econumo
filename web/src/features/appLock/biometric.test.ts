@@ -131,22 +131,38 @@ describe('verifyBiometric', () => {
     await pending
     expect(ceremonyInFlight()).toBe(true)
     expect(ceremonyInFlight(Date.now() + 2_001)).toBe(false)
+    expect(ceremonyInFlight(Date.now() - 60_000)).toBe(false)
   })
 })
 
 describe('prepareBiometricRegistration', () => {
   const user = { userId: 'u1', email: 'a@example.test' }
 
-  it('registers a platform passkey with a stable user handle', async () => {
+  it('registers a platform passkey with a per-device user handle', async () => {
+    localStorage.setItem('econumo.appLock.device', 'dev-1')
     credentials.create.mockResolvedValue({ rawId: buffer(new Uint8Array([9, 8, 7])) })
     const start = await prepareBiometricRegistration(user)
     await expect(start()).resolves.toEqual({ status: 'ok', credentialId: toBase64Url(new Uint8Array([9, 8, 7])) })
     const options = (credentials.create.mock.calls[0][0] as CredentialCreationOptions).publicKey!
-    const handle = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('u1')))
+    const handle = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('u1:dev-1')))
     expect(new Uint8Array(options.user.id as ArrayBuffer)).toEqual(handle)
     expect(options.user.name).toBe('a@example.test (app lock)')
     expect(options.authenticatorSelection).toMatchObject({ authenticatorAttachment: 'platform', userVerification: 'required' })
     expect(options.excludeCredentials).toEqual([])
+  })
+
+  it('keeps one handle per device and gives another device its own', async () => {
+    credentials.create.mockResolvedValue({ rawId: buffer(new Uint8Array([1])) })
+    localStorage.removeItem('econumo.appLock.device')
+    await (await prepareBiometricRegistration(user))()
+    await (await prepareBiometricRegistration(user))()
+    localStorage.setItem('econumo.appLock.device', 'other-device')
+    await (await prepareBiometricRegistration(user))()
+    const ids = credentials.create.mock.calls.map((c) =>
+      Array.from(new Uint8Array((c[0] as CredentialCreationOptions).publicKey!.user.id as ArrayBuffer)).join(','),
+    )
+    expect(ids[0]).toBe(ids[1])
+    expect(ids[2]).not.toBe(ids[0])
   })
 
   it('calls create() synchronously from the prepared start', async () => {
