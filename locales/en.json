@@ -2196,6 +2196,25 @@
     "notice": "What's new in {version}",
     "dismiss": "Dismiss"
   },
+  "appLock": {
+    "lock_screen": {
+      "title": "Enter PIN",
+      "wrong_pin": "Wrong PIN",
+      "attempts_left": "{count} attempt left | {count} attempts left",
+      "try_again_in": "Try again in {time}",
+      "biometric": "Unlock with biometrics",
+      "biometric_failed": "Couldn't verify it's you. Enter your PIN.",
+      "forgot_pin": "Forgot PIN?",
+      "forgot_title": "Log out to reset the PIN?",
+      "forgot_question": "You'll need to log in again.",
+      "forgot_confirm": "Log out"
+    },
+    "pin_pad": {
+      "entered": "Digits entered: {count}",
+      "delete": "Delete digit",
+      "continue": "Continue"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "This value should not be blank.",

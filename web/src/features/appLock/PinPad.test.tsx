@@ -1,0 +1,100 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { PinPad } from './PinPad'
+
+function dots(): number {
+  return Number(screen.getByTestId('pin-dots').dataset.filled)
+}
+
+async function tap(user: ReturnType<typeof userEvent.setup>, digits: string) {
+  for (const d of digits) {
+    await user.click(screen.getByRole('button', { name: d }))
+  }
+}
+
+it('verify mode submits on its own once the stored length is typed', async () => {
+  const user = userEvent.setup()
+  const onSubmit = vi.fn().mockResolvedValue(true)
+  render(<PinPad mode="verify" length={4} onSubmit={onSubmit} />)
+  expect(screen.getByTestId('pin-dots').children).toHaveLength(4)
+  await tap(user, '123')
+  expect(dots()).toBe(3)
+  expect(onSubmit).not.toHaveBeenCalled()
+  await tap(user, '4')
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('1234'))
+  await waitFor(() => expect(dots()).toBe(0))
+  expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+})
+
+it('a rejected PIN shakes and clears the dots', async () => {
+  const user = userEvent.setup()
+  render(<PinPad mode="verify" length={4} onSubmit={() => false} error="Wrong PIN" />)
+  await tap(user, '1111')
+  await waitFor(() => expect(screen.getByTestId('pin-dots')).toHaveClass('pin-shake'))
+  expect(dots()).toBe(0)
+  expect(screen.getByText('Wrong PIN')).toHaveAttribute('aria-live', 'assertive')
+})
+
+it('backspace removes the last digit', async () => {
+  const user = userEvent.setup()
+  render(<PinPad mode="verify" length={4} onSubmit={vi.fn()} />)
+  expect(screen.getByRole('button', { name: 'Delete digit' })).toBeDisabled()
+  await tap(user, '12')
+  await user.click(screen.getByRole('button', { name: 'Delete digit' }))
+  expect(dots()).toBe(1)
+})
+
+it('create mode takes 4 to 8 digits and submits on Continue', async () => {
+  const user = userEvent.setup()
+  const onSubmit = vi.fn().mockResolvedValue(true)
+  render(<PinPad mode="create" onSubmit={onSubmit} />)
+  const next = screen.getByRole('button', { name: 'Continue' })
+  await tap(user, '123')
+  expect(next).toBeDisabled()
+  await tap(user, '456789')
+  expect(dots()).toBe(8)
+  expect(screen.getByTestId('pin-dots').children).toHaveLength(8)
+  expect(onSubmit).not.toHaveBeenCalled()
+  await user.click(next)
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('12345678'))
+})
+
+it('takes digits, Backspace and Enter from the keyboard, but not from a text field', async () => {
+  const user = userEvent.setup()
+  const onSubmit = vi.fn().mockResolvedValue(true)
+  render(
+    <>
+      <input aria-label="other" />
+      <PinPad mode="create" onSubmit={onSubmit} />
+    </>,
+  )
+  await user.keyboard('12345')
+  expect(dots()).toBe(5)
+  await user.keyboard('{Backspace}')
+  expect(dots()).toBe(4)
+  await user.click(screen.getByLabelText('other'))
+  await user.keyboard('9')
+  expect(dots()).toBe(4)
+  fireEvent.keyDown(window, { key: 'Enter' })
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('1234'))
+})
+
+it('ignores the keyboard when another surface is on top', async () => {
+  const user = userEvent.setup()
+  render(<PinPad mode="verify" length={4} onSubmit={vi.fn()} keyboard={false} />)
+  await user.keyboard('12')
+  expect(dots()).toBe(0)
+})
+
+it('disabled blocks the keypad and the keyboard', async () => {
+  const user = userEvent.setup()
+  render(<PinPad mode="verify" length={4} onSubmit={vi.fn()} disabled />)
+  expect(screen.getByRole('button', { name: '1' })).toBeDisabled()
+  await user.keyboard('12')
+  expect(dots()).toBe(0)
+})
+
+it('renders the biometric slot', () => {
+  render(<PinPad mode="verify" length={4} onSubmit={vi.fn()} biometric={<button type="button">Bio</button>} />)
+  expect(screen.getByRole('button', { name: 'Bio' })).toBeInTheDocument()
+})

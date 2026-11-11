@@ -2196,6 +2196,25 @@
     "notice": "{version} 新功能",
     "dismiss": "关闭"
   },
+  "appLock": {
+    "lock_screen": {
+      "title": "输入 PIN 码",
+      "wrong_pin": "PIN 码错误",
+      "attempts_left": "还剩 {count} 次机会",
+      "try_again_in": "{time} 后重试",
+      "biometric": "使用生物识别解锁",
+      "biometric_failed": "无法验证您的身份，请输入 PIN 码。",
+      "forgot_pin": "忘记 PIN 码？",
+      "forgot_title": "退出登录以重置 PIN 码？",
+      "forgot_question": "您需要重新登录。",
+      "forgot_confirm": "退出登录"
+    },
+    "pin_pad": {
+      "entered": "已输入 {count} 位数字",
+      "delete": "删除数字",
+      "continue": "继续"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "此值不能为空。",

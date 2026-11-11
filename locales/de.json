@@ -2196,6 +2196,25 @@
     "notice": "Neu in {version}",
     "dismiss": "Ausblenden"
   },
+  "appLock": {
+    "lock_screen": {
+      "title": "PIN eingeben",
+      "wrong_pin": "Falsche PIN",
+      "attempts_left": "Noch {count} Versuch | Noch {count} Versuche",
+      "try_again_in": "Erneut versuchen in {time}",
+      "biometric": "Mit Biometrie entsperren",
+      "biometric_failed": "Ihre Identität konnte nicht bestätigt werden. Geben Sie Ihre PIN ein.",
+      "forgot_pin": "PIN vergessen?",
+      "forgot_title": "Abmelden, um die PIN zurückzusetzen?",
+      "forgot_question": "Sie müssen sich danach erneut anmelden.",
+      "forgot_confirm": "Abmelden"
+    },
+    "pin_pad": {
+      "entered": "Eingegebene Ziffern: {count}",
+      "delete": "Ziffer löschen",
+      "continue": "Weiter"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Dieser Wert darf nicht leer sein.",

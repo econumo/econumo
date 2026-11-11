@@ -2196,6 +2196,25 @@
     "notice": "Що нового у {version}",
     "dismiss": "Сховати"
   },
+  "appLock": {
+    "lock_screen": {
+      "title": "Введіть PIN-код",
+      "wrong_pin": "Неправильний PIN-код",
+      "attempts_left": "Залишилася {count} спроба | Залишилося {count} спроби | Залишилося {count} спроб",
+      "try_again_in": "Повторіть через {time}",
+      "biometric": "Розблокувати біометрією",
+      "biometric_failed": "Не вдалося підтвердити особу. Введіть PIN-код.",
+      "forgot_pin": "Забули PIN-код?",
+      "forgot_title": "Вийти, щоб скинути PIN-код?",
+      "forgot_question": "Доведеться увійти знову.",
+      "forgot_confirm": "Вийти"
+    },
+    "pin_pad": {
+      "entered": "Введено цифр: {count}",
+      "delete": "Стерти цифру",
+      "continue": "Продовжити"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Це значення не повинно бути порожнім.",

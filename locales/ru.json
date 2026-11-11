@@ -2196,6 +2196,25 @@
     "notice": "Что нового в {version}",
     "dismiss": "Скрыть"
   },
+  "appLock": {
+    "lock_screen": {
+      "title": "Введите PIN-код",
+      "wrong_pin": "Неверный PIN-код",
+      "attempts_left": "Осталась {count} попытка | Осталось {count} попытки | Осталось {count} попыток",
+      "try_again_in": "Повторите через {time}",
+      "biometric": "Разблокировать биометрией",
+      "biometric_failed": "Не удалось подтвердить личность. Введите PIN-код.",
+      "forgot_pin": "Забыли PIN-код?",
+      "forgot_title": "Выйти, чтобы сбросить PIN-код?",
+      "forgot_question": "Потребуется войти снова.",
+      "forgot_confirm": "Выйти"
+    },
+    "pin_pad": {
+      "entered": "Введено цифр: {count}",
+      "delete": "Стереть цифру",
+      "continue": "Продолжить"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Это значение не должно быть пустым.",

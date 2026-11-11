@@ -2196,6 +2196,25 @@
     "notice": "Nouveautés de la {version}",
     "dismiss": "Ignorer"
   },
+  "appLock": {
+    "lock_screen": {
+      "title": "Saisissez le code PIN",
+      "wrong_pin": "Code PIN incorrect",
+      "attempts_left": "Il reste {count} tentative | Il reste {count} tentatives",
+      "try_again_in": "Réessayez dans {time}",
+      "biometric": "Déverrouiller avec la biométrie",
+      "biometric_failed": "Impossible de vérifier votre identité. Saisissez votre code PIN.",
+      "forgot_pin": "Code PIN oublié ?",
+      "forgot_title": "Se déconnecter pour réinitialiser le code PIN ?",
+      "forgot_question": "Vous devrez vous reconnecter.",
+      "forgot_confirm": "Se déconnecter"
+    },
+    "pin_pad": {
+      "entered": "Chiffres saisis : {count}",
+      "delete": "Effacer le chiffre",
+      "continue": "Continuer"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Cette valeur ne doit pas être vide.",

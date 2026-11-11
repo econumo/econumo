@@ -2196,6 +2196,25 @@
     "notice": "Novedades de {version}",
     "dismiss": "Descartar"
   },
+  "appLock": {
+    "lock_screen": {
+      "title": "Introduce el PIN",
+      "wrong_pin": "PIN incorrecto",
+      "attempts_left": "Queda {count} intento | Quedan {count} intentos",
+      "try_again_in": "Vuelve a intentarlo en {time}",
+      "biometric": "Desbloquear con biometría",
+      "biometric_failed": "No se pudo verificar tu identidad. Introduce tu PIN.",
+      "forgot_pin": "¿Olvidaste el PIN?",
+      "forgot_title": "¿Cerrar sesión para restablecer el PIN?",
+      "forgot_question": "Tendrás que volver a iniciar sesión.",
+      "forgot_confirm": "Cerrar sesión"
+    },
+    "pin_pad": {
+      "entered": "Dígitos introducidos: {count}",
+      "delete": "Borrar dígito",
+      "continue": "Continuar"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Este valor no debe estar vacío.",

@@ -203,6 +203,9 @@ export const METRICS = {
   FEEDBACK_SEND: 'appFeedbackSend',
   WHATS_NEW_OPEN: 'appWhatsNewOpen',
   WHATS_NEW_DISMISS: 'appWhatsNewDismiss',
+  APP_LOCK_UNLOCKED: 'appAppLockUnlocked',
+  APP_LOCK_FORGOT_PIN: 'appAppLockForgotPin',
+  APP_LOCK_ATTEMPTS_EXCEEDED: 'appAppLockAttemptsExceeded',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

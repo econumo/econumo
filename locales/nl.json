@@ -2196,6 +2196,25 @@
     "notice": "Nieuw in {version}",
     "dismiss": "Sluiten"
   },
+  "appLock": {
+    "lock_screen": {
+      "title": "Voer uw pincode in",
+      "wrong_pin": "Onjuiste pincode",
+      "attempts_left": "Nog {count} poging | Nog {count} pogingen",
+      "try_again_in": "Probeer het opnieuw over {time}",
+      "biometric": "Ontgrendelen met biometrie",
+      "biometric_failed": "Uw identiteit kon niet worden bevestigd. Voer uw pincode in.",
+      "forgot_pin": "Pincode vergeten?",
+      "forgot_title": "Uitloggen om de pincode opnieuw in te stellen?",
+      "forgot_question": "U moet daarna opnieuw inloggen.",
+      "forgot_confirm": "Uitloggen"
+    },
+    "pin_pad": {
+      "entered": "Ingevoerde cijfers: {count}",
+      "delete": "Cijfer wissen",
+      "continue": "Doorgaan"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Deze waarde mag niet leeg zijn.",
