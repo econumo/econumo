@@ -119,7 +119,7 @@ it('turns the lock on after the PIN is typed twice, starting over on a mismatch'
 
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   const config = readConfig()
-  expect(config).toMatchObject({ userId: 'u1', lockAfterMs: 60_000, biometric: null })
+  expect(config).toMatchObject({ userId: 'u1', lockAfterMs: 0, biometric: null })
   expect(await verifySecret('1234', config!.secret)).toBe(true)
   expect(lockSwitch()).toBeChecked()
   // Turning it on does not lock the tab that just set it up.

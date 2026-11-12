@@ -28,7 +28,7 @@ export interface AppLockAttempts {
 }
 
 export const LOCK_AFTER_OPTIONS = [0, 60_000, 300_000, 900_000] as const
-export const DEFAULT_LOCK_AFTER_MS = 60_000
+export const DEFAULT_LOCK_AFTER_MS = 0
 export const MAX_FAILED_ATTEMPTS = 10
 export const MAX_LOCKOUT_MS = 15 * 60_000
 

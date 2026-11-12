@@ -699,7 +699,7 @@ with the hash and either implementation verifies the other's) with optional biom
 platform passkey, `biometric.ts`, https only: no signature check, the clientData challenge/origin and the UV flag
 only; the device passcode also satisfies it), frontend only, never sent to the server. Storage:
 localStorage `econumo.appLock` (config: owner `userId`, `secret` {kind, hash, length; a config from before
-patterns holds `pin` and reads as kind pin}, `lockAfterMs` 0/1/5/15 min, passkey id) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
+patterns holds `pin` and reads as kind pin}, `lockAfterMs` 0/1/5/15 min (default 0, Immediately), passkey id) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
 sessionStorage marker `econumo.appLock.fresh` that `setToken` sets so the reload after a sign-in does
 not ask for the PIN (it counts for 30 s; any lock but the one taken as the page hides, and turning the
 lock on, spend it). `setToken` is also the only place that deletes another user's lock (both ids

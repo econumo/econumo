@@ -2742,7 +2742,7 @@ User C sees none of it.
       enabled from 4) and then for it again; typing a different PIN the second
       time shows "The PINs don't match" and starts over; closing the dialog
       leaves the lock off. After confirming, the switch reads on, the current
-      tab stays unlocked, and Change PIN, Lock after (default 1 minute) and,
+      tab stays unlocked, and Change PIN, Lock after (default Immediately) and,
       where the device supports it, Use biometrics appear. Everything works
       offline.
 - [ ] App lock: Change PIN asks for the current PIN first (a wrong one says
