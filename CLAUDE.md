@@ -2346,8 +2346,10 @@ data unreadable. Most are also asserted by the test suite.
   from its additive summary (`paymentsLeft`, `payoffDate` and `overpaymentLeft` (both unused by
   the SPA): the same plan-aware projection run from today, equal to `get-debt`'s with no plans;
   `extraPlanned`, the planned extras that run applies, "0" with none; 0/"" while not set up),
-  falling back to the debt's own payments left while it loads, on an error or offline (no
-  `OfflineUnavailable`), and hiding Planned extra meanwhile rather than show a plan-free number.
+  falling back to the debt's own payments left while it loads, offline with nothing loaded yet
+  (no `OfflineUnavailable`) and whenever its last fetch failed, even with an earlier answer cached
+  (that answer may predate a plan change; a forecast already loaded keeps standing offline), and
+  hiding Planned extra meanwhile rather than show a plan-free number.
   The principal repaid does not depend on plans.
   The rules read-only (`RulesReadOnly`, one sentence each, a category of another participant
   named with its owner, "Anna's Mortgage", `ruleOwnerLabel`), payments (with a Balance column on a set-up debt: `get-debt`'s

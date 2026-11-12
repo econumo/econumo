@@ -302,6 +302,21 @@ describe('the Overview follows the budget\'s plans', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  // TanStack keeps the last answer when a refetch fails: those figures may predate a plan change
+  it('a refetch that fails drops the forecast loaded earlier for the debt\'s own figures', async () => {
+    captureSummary()
+    const { queryClient } = renderScreenWithClient()
+    await openScreen()
+    const top = screen.getByTestId('debt-review-top')
+    await waitFor(() => expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('200 payments left'))
+
+    server.use(http.get('*/api/v1/debt/get-debt-forecast', () => HttpResponse.json({ success: false, message: 'Boom', code: 0, errors: {} }, { status: 400 })))
+    await queryClient.invalidateQueries({ queryKey: queryKeys.debtForecast('d1') })
+
+    await waitFor(() => expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('283 payments left'))
+    expect(within(screen.getByRole('region', { name: 'Loan' })).queryByText('Planned extra')).toBeNull()
+  })
+
   it('Planned extra waits for the forecast to answer', async () => {
     let answer: () => void = () => {}
     const answered = new Promise<void>((resolve) => {
@@ -739,6 +754,34 @@ it('Settings shows a loader, not just its buttons, while the debt loads', async 
   expect(await within(panel).findByLabelText('Name')).toBeInTheDocument()
   expect(within(panel).queryByRole('status')).toBeNull()
   expect(within(panel).getByRole('button', { name: 'Save' })).toBeInTheDocument()
+})
+
+// the form of the previous visit is not editable while its replacement loads: an edit made then
+// would mark it dirty, drop the fresh debt and send the old loan facts back
+it('a second visit to Settings shows the loader, not the previous form, while the debt reloads', async () => {
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  await openSettings(user)
+  await user.click(screen.getByRole('tab', { name: 'Overview' }))
+  let release: () => void = () => {}
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  server.use(
+    http.get('*/api/v1/debt/get-debt', async () => {
+      await gate
+      return ok({ ...details, item: { ...details.item, amountBorrowed: '1500' } })
+    }),
+  )
+
+  await user.click(screen.getByRole('tab', { name: 'Settings' }))
+
+  const panel = screen.getByRole('tabpanel', { name: 'Settings' })
+  expect(within(panel).getByRole('status')).toBeInTheDocument()
+  expect(within(panel).queryByLabelText('Name')).toBeNull()
+  release()
+  expect(await within(panel).findByLabelText('Amount borrowed')).toHaveValue('1500')
 })
 
 it('a removal_unconfirmed answer asks and resends with confirmDataRemoval', async () => {

@@ -226,7 +226,8 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
                 <>
                   {/* kept mounted: edits survive a look at the Overview */}
                   <TabsContent value="settings" forceMount hidden={tab !== 'settings'} className="flex flex-col gap-6">
-                    {editDebt ? (
+                    {/* a clean form is replaced by the reload: editing it meanwhile would be lost or send stale facts */}
+                    {editDebt && !reloading ? (
                       <DebtSettingsForm
                         key={formKey}
                         debt={editDebt}
@@ -425,7 +426,8 @@ function PaymentsSection({ payments, splits, canForecast, forecast, amount, lang
     }
     setOpen(!open)
   }
-  const shown = open && canForecast && data ? data : null
+  // after a failed refetch the error shows, not the rows of an earlier answer
+  const shown = open && canForecast && data && !error ? data : null
   const booked = payments.map((p) => ({ key: p.transactionId, date: p.date, payment: p.amount, interest: p.interest, principal: p.principal, balance: p.balance }))
   return (
     <section aria-labelledby={headingId}>
@@ -484,9 +486,11 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
   const canForecast = setUp && item.isPaidOff === 0
   // The debt's own figures ignore the budgets' plans; the forecast's follow
   // them (a planned extra pays the loan off sooner). Until it answers, or when
-  // it cannot (an error, offline), the debt's own figures stand in.
+  // it cannot, the debt's own figures stand in. Offline a forecast loaded
+  // earlier keeps standing; after a failed refetch it does not, since TanStack
+  // keeps that answer and it may predate a plan change.
   const forecast = useDebtForecast(item.id, canForecast)
-  const summary = canForecast ? forecast.data : undefined
+  const summary = canForecast && !forecast.isError ? forecast.data : undefined
   const left = summary ? summary.paymentsLeft : item.paymentsLeft
   // the last payment the plans lead to; the contract's date until the forecast answers
   const lastPayment = summary?.payoffDate || item.lastPaymentDate
