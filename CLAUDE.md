@@ -2099,7 +2099,10 @@ data unreadable. Most are also asserted by the test suite.
   owner-only). The rows ride additively on `structure.debts` in `get-budget` (planned, paid,
   `budgetSpent`, available with the element carry-over, `closingBalance`, payments left, payoff
   figures with and without the planned extras, `upcoming` = the unpaid scheduled dues, `isPlannable`)
-  and on `get-budget-plan` (per-cell figures, `scheduledTotal`, `isPaidOff`). **Planning bounds**:
+  and on `get-budget-plan` (per-cell figures, `scheduledTotal`, `isPaidOff`). A period's payments
+  left (the Budget view's Left and every Plan cell) are what that period's closing balance needs at
+  the regular payment, so a planned extra lowers the count in its own period, never before it; the
+  row's payoff date and the review screen count every plan. **Planning bounds**:
   a month is plannable from the start month (start date's month, always there once set up,
   else the earliest of the creation day's month (`debts.created_day`, the day in the OWNER's stored `users.timezone`, UTC
   when none, written once at creation, so it is the same for every viewer and for the conversion's

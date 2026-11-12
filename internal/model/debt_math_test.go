@@ -252,6 +252,35 @@ func TestProjectDebt_PlannedExtraShortens(t *testing.T) {
 	}
 }
 
+// A period's payments left are what its closing balance needs at the regular
+// payment: a planned extra lowers the count in its own period, not before it,
+// and the last period's count agrees with the whole projection.
+func TestProjectDebt_MonthPaymentsLeftDropWithTheirOwnExtra(t *testing.T) {
+	asOf := ymd(2026, time.October, 20)
+	snap := MathSnapshot{AsOf: asOf, Balance: 300000, Payment: 2000,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2046, time.September, 25)}
+	months := []time.Time{ymd(2026, time.October, 1), ymd(2026, time.November, 1), ymd(2026, time.December, 1), ymd(2027, time.January, 1)}
+	base := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Today: asOf, Months: months})
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Today: asOf, Months: months,
+		Plans: map[string]float64{"2026-12-01": 50000}})
+	for _, k := range []string{"2026-10-01", "2026-11-01"} {
+		if got, want := p.Months[k].PaymentsLeft, base.Months[k].PaymentsLeft; got != want {
+			t.Fatalf("%s payments left = %d, want %d (December's extra is not paid yet)", k, got, want)
+		}
+	}
+	nov, dec, jan := p.Months["2026-11-01"].PaymentsLeft, p.Months["2026-12-01"].PaymentsLeft, p.Months["2027-01-01"].PaymentsLeft
+	if dec >= nov-1 {
+		t.Fatalf("December's extra should drop the count by more than one: November %d, December %d", nov, dec)
+	}
+	if jan != dec-1 {
+		t.Fatalf("January = %d, want December's %d less one", jan, dec)
+	}
+	// dues on the 25th: October to January pay four
+	if jan != p.PaymentsLeft-4 {
+		t.Fatalf("January = %d, want the projection's %d less the four payments up to January", jan, p.PaymentsLeft)
+	}
+}
+
 func TestProjectDebt_NoPaymentsYet(t *testing.T) {
 	asOf := ymd(2026, time.October, 10)
 	snap := MathSnapshot{AsOf: asOf, Balance: 300000, Payment: 2000,

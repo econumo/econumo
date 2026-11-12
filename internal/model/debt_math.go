@@ -781,10 +781,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 			if !date.Before(ws) {
 				stepsReach = true
 			}
-			switch {
-			case date.After(monthEnd):
-				pm.PaymentsLeft++
-			case !date.Before(ws):
+			if !date.Before(ws) && !date.After(monthEnd) {
 				pm.StillDue += st.pay
 			}
 		}
@@ -803,6 +800,9 @@ func ProjectDebt(in ProjectionInput) Projection {
 				closing = run.endBalance
 			}
 			pm.ClosingBalance = closing
+			// What is left after this period at the regular payment: a later
+			// period's planned extra lowers the count in that period, not before.
+			pm.PaymentsLeft = paymentsLeftAt(snaps, math.Max(closing, 0), monthEnd, eps)
 		}
 		out.Months[monthKey(m)] = pm
 	}
