@@ -219,18 +219,36 @@ root package holds no provider-specific code: each provider is a subpackage —
 `EventParser` and `Provider` registries in `internal/server/server.go` (a new
 provider = one subpackage + one registration line). Rules (stage 4) live in
 the root package (`rules.go` matcher, `rule_*.go` use cases). The optional
-`Completer` (`internal/infra/ai`, an OpenAI-compatible / Anthropic Messages client)
-and its injection in `internal/server` are retained for future AI features;
-bulk rule suggestions have been removed. It has `repository.go`, `ports.go` (account /
+`Completer` (`internal/infra/ai`, an OpenAI-compatible / Anthropic Messages client,
+injected in `internal/server`) drives **rule suggestions** (`suggest.go`, `suggest_job.go`,
+`suggestion.go`; spec `docs/superpowers/specs/2026-11-11-ai-import-rule-suggestions-design.md`):
+with AI on, after a LIVE import (an Apple Wallet push or a SimpleFIN sync, posted at most 7 days
+before import; never the `link-account`/retry/queued-import replays) leaves a non-transfer row
+without a category or payee after the account OWNER's rules ran (owner not `readonly`), a
+background job (50 rows/request, 60 s timeout, scope `import-ai-suggest` 30 jobs per rate-limit
+window, IP-exempt) asks for a match text, category and payee drawn from the owner's own
+non-archived names; the suggestion lands in the OWNER's Inbox only (a partner's tap included).
+Match text is at least 3 characters and must occur in the payee (the description when the payee
+is empty); there is one open suggestion per (owner, merchant, income/expense): a row or group joins
+an open one without an AI call only when its text contains the suggestion's text and the
+suggestion fills a field the row lacks. Dismissal is not remembered (the next tap may suggest
+again). Accept opens the rule prompt (`RulePromptDialog`); preview/apply skip rows the rule would
+not change, and the prompt asks to apply to all imports only when at least one OTHER transaction
+would change. `suggest-match-text` (owner of the link's account, 10 s, counted under
+`preview-rule`'s limit, skipped for readonly users, not persisted in the query cache) gives the
+rule editor an AI match text. The SPA suggestion query is invalidated after every successful write
+(`invalidateAfterWrite`); analytics `appImportSuggestionAccept`, `appImportSuggestionDismiss`,
+`appImportRuleAiMatchUsed`. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
-`repo/`, and `api/` with 28 routes under `/api/v1/import/` (`create-source`,
+`repo/`, and `api/` with 32 routes under `/api/v1/import/` (`create-source`,
 `get-source-list`, `delete-source`, `link-account`, `ignore-account`,
 `unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
 `import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
 `discard-event`, `get-transaction-import-list`, `claim-setup-token`,
 `get-credential-key`, `set-credential-key`, `list-external-accounts`,
 `sync-source`, `get-run-list`, `get-run`, `get-source-history`, `get-rule-list`, `create-rule`,
-`update-rule`, `delete-rule`, `preview-rule`, `apply-rule`).
+`update-rule`, `delete-rule`, `preview-rule`, `apply-rule`, `get-suggestion-list`,
+`accept-suggestion`, `dismiss-suggestion`, `suggest-match-text`).
 The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
 
@@ -1085,7 +1103,10 @@ it). Key vars:
   accounts' names and their own currencies, plus the user's timezone and UI language, to the
   configured provider for savings detection; after `finish-import`, three separate requests go out (category
   names and types for category icons, the names and currencies of accounts still on the import
-  icon for account icons, and every live account's name and currency for savings). Bulk import-rule suggestions are removed.
+  icon for account icons, and every live account's name and currency for savings); import rule suggestions
+  send the new transactions' details (payee, description, amount, currency, income/expense, date, account
+  name) with the account owner's category and payee names (payees capped at 500), language and timezone,
+  and `suggest-match-text` sends one transaction's details (see the imports paragraph).
   The key is optional for local servers (`openai://localhost:11434?model=llama3.1`).
   Unset (default) leaves the provider disabled. A bad scheme/missing host/missing `model`
   fails at boot.
@@ -1188,8 +1209,8 @@ it). Key vars:
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,
-  always present, `true` iff `ECONUMO_AI_DSN` is set) advertises the retained
-  AI provider configuration; bulk rule suggestions are removed.
+  always present, `true` iff `ECONUMO_AI_DSN` is set) advertises the AI
+  provider configuration; the import rule prompt reads it to ask for an AI match text.
   `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
   when empty, since the app's version-check treats a present-but-empty value
   differently from an absent one. The composition root resolves the FS

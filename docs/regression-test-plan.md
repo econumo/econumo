@@ -993,6 +993,23 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       matching it closes with "Updated <n> transactions"; otherwise it asks "Also apply
       to all your imports?". Save is disabled offline and when neither a category nor a
       payee is set.
+- [ ] Suggestion creation (server with `ECONUMO_AI_DSN`): an Apple Pay tap at a merchant with
+      no matching rule, whose category or payee stays empty, adds a Suggested rules row to the
+      Inbox within about a minute; with no AI configured, none appears. 📱
+- [ ] Suggestions come only from live imports: the first SimpleFIN sync's rows older than a
+      week, and the queue replayed by mapping a card to an account, suggest nothing. A
+      transfer, or a row the owner's rules already fully classify, suggests nothing. 📱
+- [ ] A partner's tap on a shared account suggests to the account owner only: it appears in the
+      owner's Inbox and never in the partner's. 📱
+- [ ] Repeat taps at the same merchant (income and expense kept apart) join the one open
+      suggestion: its "<n> transactions" count grows and no second row appears; a different
+      merchant gets its own row. 📱
+- [ ] Dismiss, then the next tap at that merchant suggests again (dismissal is not
+      remembered). 📱
+- [ ] The AI match text in "Create an import rule" (server with AI): opening the editor from an
+      imported transaction fills the match with a short merchant text found in the payee
+      (description when the payee is empty), at least 3 characters, still editable; with no
+      AI, offline or a readonly account it stays the plain default. 📱
 - [ ] A second tap with the same amount on the same card within ±3 days of a
       hand-entered transaction of that amount is adopted (no duplicate); a tap
       already linked from this source is never adopted twice.
