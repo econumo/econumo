@@ -25,13 +25,18 @@ func (e *onbEnv) answer(debts string) {
 }
 
 type debtRow struct {
-	name, category, currency, payment, schedule string
-	setUp                                       bool
+	name, budget, category, currency, payment, schedule string
+	rules                                               int
+	narrowed                                            int
+	setUp                                               bool
 }
 
 func (e *onbEnv) debts() []debtRow {
 	e.t.Helper()
-	rows, err := e.db.Raw.Query(e.db.Rebind(`SELECT name, category_id, currency_id, payment, schedule, amount_borrowed IS NOT NULL FROM debts WHERE user_id = ? ORDER BY name`), e.user)
+	rows, err := e.db.Raw.Query(e.db.Rebind(`SELECT d.name, d.budget_id, r.category_id, d.currency_id, d.payment, d.schedule, d.amount_borrowed IS NOT NULL,
+		(SELECT COUNT(*) FROM debts_rules WHERE debt_id = d.id),
+		(SELECT COUNT(*) FROM debts_rules WHERE debt_id = d.id AND (payee_id IS NOT NULL OR tag_id IS NOT NULL OR label_id IS NOT NULL))
+		FROM debts d JOIN debts_rules r ON r.debt_id = d.id JOIN budgets b ON b.id = d.budget_id WHERE b.user_id = ? ORDER BY d.name`), e.user)
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -39,7 +44,7 @@ func (e *onbEnv) debts() []debtRow {
 	var out []debtRow
 	for rows.Next() {
 		var d debtRow
-		if err := rows.Scan(&d.name, &d.category, &d.currency, &d.payment, &d.schedule, &d.setUp); err != nil {
+		if err := rows.Scan(&d.name, &d.budget, &d.category, &d.currency, &d.payment, &d.schedule, &d.setUp, &d.rules, &d.narrowed); err != nil {
 			e.t.Fatal(err)
 		}
 		d.payment = vo.NewDecimal(d.payment).String()
@@ -139,6 +144,10 @@ func TestFinishImport_CreatesADebtFromALoanCategory(t *testing.T) {
 	if d.name != "Hypothekendarlehen" || d.category != w.mortgage || d.payment != "1000" || d.schedule != string(model.RecurringScheduleMonthly) || d.setUp {
 		t.Fatalf("debt = %+v", d)
 	}
+	// created in the import's budget with one whole-category rule
+	if d.budget != budget || d.rules != 1 || d.narrowed != 0 {
+		t.Fatalf("debt budget %s (want %s), rules %d, narrowed %d", d.budget, budget, d.rules, d.narrowed)
+	}
 	if want := e.str(`SELECT currency_id FROM budgets WHERE id = ?`, budget); d.currency != want {
 		t.Fatalf("debt currency %s, budget %s", d.currency, want)
 	}
@@ -231,7 +240,7 @@ func TestSavePlan_CreatesADebtFromAPlannedLoanCategory(t *testing.T) {
 		t.Fatalf("debts = %+v", got)
 	}
 	// the whole-category debt took the category's plan with it
-	debtID := e.str(`SELECT id FROM debts WHERE user_id = ?`, e.user)
+	debtID := e.str(`SELECT id FROM debts WHERE budget_id = ?`, budget)
 	if n := e.count(`SELECT COUNT(*) FROM budgets_elements_limits l JOIN budgets_elements el ON el.id = l.element_id WHERE el.budget_id = ? AND el.external_id = ?`, budget, debtID); n != 1 {
 		t.Fatalf("plans on the debt row = %d", n)
 	}
@@ -283,7 +292,7 @@ func TestSavePlan_AfterAnImportSkipsCategoriesAlreadyCovered(t *testing.T) {
 	if strings.Contains(e.ai.promptsFor(debtsMarker)[1], w.mortgage) {
 		t.Fatal("a covered category was asked about")
 	}
-	mortgageDebt := e.str(`SELECT id FROM debts WHERE category_id = ?`, w.mortgage)
+	mortgageDebt := e.str(`SELECT debt_id FROM debts_rules WHERE category_id = ?`, w.mortgage)
 	limitsOn := func(externalID string) int {
 		return e.count(`SELECT COUNT(*) FROM budgets_elements_limits l JOIN budgets_elements el ON el.id = l.element_id WHERE el.budget_id = ? AND el.external_id = ?`, budget, externalID)
 	}

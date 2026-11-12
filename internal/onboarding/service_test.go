@@ -89,23 +89,38 @@ func (fakeCategorySteps) OwnCategories(context.Context, vo.Id) ([]model.Category
 	return []model.CategoryResult{{Id: cash, Name: "Loan", Type: "expense"}, {Id: deposit, Name: "Salary", Type: "income"}}, nil
 }
 
-// fakeDebts covers the categories in covered; taken lists the categories
-// whose plans were handed to their debt.
+// fakeDebts covers the categories in covered, as the debts of coveredIn (the
+// test budget when empty); taken lists the categories whose plans were handed
+// to their debt, created the budget each debt was created in.
 type fakeDebts struct {
-	calls   int
-	covered []vo.Id
-	taken   []vo.Id
+	calls     int
+	covered   []vo.Id
+	coveredIn string
+	taken     []vo.Id
+	takenIn   []vo.Id
+	created   []vo.Id
 }
 
-func (f *fakeDebts) CreateDebt(context.Context, vo.Id, string, vo.Id, vo.Id, vo.DecimalNumber, model.RecurringSchedule) (bool, error) {
+func (f *fakeDebts) CreateDebt(_ context.Context, _, budgetID vo.Id, _ string, _, _ vo.Id, _ vo.DecimalNumber, _ model.RecurringSchedule) (bool, error) {
 	f.calls++
+	f.created = append(f.created, budgetID)
 	return true, nil
 }
 
-func (f *fakeDebts) CoveredCategories(context.Context, vo.Id) ([]vo.Id, error) { return f.covered, nil }
+func (f *fakeDebts) CoveredCategories(_ context.Context, budget vo.Id) ([]vo.Id, error) {
+	in := f.coveredIn
+	if in == "" {
+		in = budgetID
+	}
+	if budget.String() != in {
+		return nil, nil
+	}
+	return f.covered, nil
+}
 
-func (f *fakeDebts) TakeCategoryPlans(_ context.Context, _, categoryID vo.Id) (bool, error) {
+func (f *fakeDebts) TakeCategoryPlans(_ context.Context, budgetID, categoryID vo.Id) (bool, error) {
 	f.taken = append(f.taken, categoryID)
+	f.takenIn = append(f.takenIn, budgetID)
 	return true, nil
 }
 

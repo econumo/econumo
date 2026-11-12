@@ -46,16 +46,18 @@ type debtCandidate struct {
 }
 
 // startPlanDebts follows save-plan's commit over the planned categories
-// (lower-cased id -> amount). A planned category a debt already covers hands
-// its plan to the debt's row at once (the user planned the loan, and the
-// category's row hides behind the debt's), with or without AI. The active own
-// expense categories planned above zero that no debt covers then go to the
-// debt detection; with none, no job starts and no cap slot is used.
+// (lower-cased id -> amount). A planned category a debt of the plan's budget
+// already covers hands its plan to the debt's row at once (the user planned
+// the loan, and the category's row hides behind the debt's), with or without
+// AI. The active own expense categories planned above zero that no debt of
+// the budget covers then go to the debt detection; with none, no job starts
+// and no cap slot is used.
 func (s *Service) startPlanDebts(ctx context.Context, userID vo.Id, budget string, planned map[string]vo.DecimalNumber) {
 	if s.debts == nil || budget == "" || !anyPositive(planned) {
 		return
 	}
-	covered, err := s.coveredCategories(ctx, userID)
+	budgetID := vo.MustParseId(budget)
+	covered, err := s.coveredCategories(ctx, budgetID)
 	if err != nil {
 		slog.WarnContext(ctx, jobDebts.failed, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
 		return
@@ -75,23 +77,22 @@ func (s *Service) startPlanDebts(ctx context.Context, userID vo.Id, budget strin
 			detect[key] = planned[key]
 			continue
 		}
-		if _, err := s.debts.TakeCategoryPlans(ctx, userID, vo.MustParseId(c.Id)); err != nil {
+		if _, err := s.debts.TakeCategoryPlans(ctx, budgetID, vo.MustParseId(c.Id)); err != nil {
 			slog.WarnContext(ctx, "onboarding debt plan handover failed", "user_id", userID.String(), "category_id", c.Id, "err_type", fmt.Sprintf("%T", err))
 		}
 	}
 	if len(detect) == 0 || !s.reserveJob(ctx, userID, jobDebts) {
 		return
 	}
-	budgetID := vo.MustParseId(budget)
 	s.runJob(userID, jobDebts, s.promptContext(ctx, userID), func(jobCtx context.Context, facts promptFacts) error {
 		return s.detectDebts(jobCtx, userID, budgetID, facts, detect)
 	})
 }
 
-// coveredCategories are the lower-cased ids of the categories the user's debts
-// count in.
-func (s *Service) coveredCategories(ctx context.Context, userID vo.Id) (map[string]bool, error) {
-	ids, err := s.debts.CoveredCategories(ctx, userID)
+// coveredCategories are the lower-cased ids of the categories the budget's
+// debts count in; another budget's debts cover nothing here.
+func (s *Service) coveredCategories(ctx context.Context, budgetID vo.Id) (map[string]bool, error) {
+	ids, err := s.debts.CoveredCategories(ctx, budgetID)
 	if err != nil {
 		return nil, err
 	}
@@ -104,9 +105,9 @@ func (s *Service) coveredCategories(ctx context.Context, userID vo.Id) (map[stri
 
 // detectDebts asks the AI which of the user's active own expense categories
 // repay a loan and creates a debt, not set up and paid monthly, for each one it
-// names. A category a debt already covers is never asked about. The payment is
-// the category's plan when planned is set (a category without a plan above
-// zero is not asked about), else the median of its paid months in the history
+// names. A category a debt of the budget already covers is never asked about.
+// The payment is the category's plan when planned is set (a category without a
+// plan above zero is not asked about), else the median of its paid months in the history
 // (fewer than two: not asked about), in the category's element currency. A
 // category whose currency cannot be read, or that the debt feature refuses, is
 // skipped. An unusable reply creates nothing.
@@ -114,7 +115,7 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 	if loc, err := time.LoadLocation(facts.Timezone); err == nil && facts.Timezone != "" {
 		ctx = reqctx.WithLocation(ctx, loc)
 	}
-	covered, err := s.coveredCategories(ctx, userID)
+	covered, err := s.coveredCategories(ctx, budgetID)
 	if err != nil {
 		return err
 	}
@@ -225,7 +226,7 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 		if name == "" || utf8.RuneCountInString(name) > debtNameMax {
 			name = c.name
 		}
-		ok, err := s.debts.CreateDebt(ctx, userID, name, c.id, c.currency, c.payment, model.RecurringScheduleMonthly)
+		ok, err := s.debts.CreateDebt(ctx, userID, budgetID, name, c.id, c.currency, c.payment, model.RecurringScheduleMonthly)
 		switch {
 		case err != nil:
 			if firstErr == nil {
