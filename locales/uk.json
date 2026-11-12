@@ -674,7 +674,7 @@
         "reconnect_intro": "Вставте новий токен налаштування з SimpleFIN Bridge. Попереднє підключення буде замінено; прив’язки рахунків збережуться.",
         "token_label": "Токен налаштування",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → New connection → скопіюйте токен налаштування. Токен можна використати лише один раз.",
+        "token_help": "{bridge} → New connection → скопіюйте токен налаштування. Токен можна використати лише один раз.",
         "forgot_passphrase": "Не пам’ятаю кодову фразу, встановити нову",
         "passphrase_new": "Кодова фраза",
         "passphrase_existing": "Ваша кодова фраза",

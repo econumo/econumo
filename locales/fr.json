@@ -674,7 +674,7 @@
         "reconnect_intro": "Collez un nouveau jeton de configuration de SimpleFIN Bridge. La connexion précédente sera remplacée ; vos associations de comptes sont conservées.",
         "token_label": "Jeton de configuration",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → Nouvelle connexion → copiez le jeton de configuration. Un jeton ne peut être utilisé qu’une fois.",
+        "token_help": "{bridge} → Nouvelle connexion → copiez le jeton de configuration. Un jeton ne peut être utilisé qu’une fois.",
         "forgot_passphrase": "J’ai oublié ma phrase secrète, en définir une nouvelle",
         "passphrase_new": "Phrase secrète",
         "passphrase_existing": "Votre phrase secrète",

@@ -674,7 +674,7 @@
         "reconnect_intro": "Incolla un nuovo token di configurazione da SimpleFIN Bridge. La connessione precedente sarà sostituita; le associazioni dei tuoi conti vengono mantenute.",
         "token_label": "Token di configurazione",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → Nuova connessione → copia il token di configurazione. Un token può essere usato una sola volta.",
+        "token_help": "{bridge} → Nuova connessione → copia il token di configurazione. Un token può essere usato una sola volta.",
         "forgot_passphrase": "Ho dimenticato la passphrase, impostane una nuova",
         "passphrase_new": "Passphrase",
         "passphrase_existing": "La tua passphrase",
