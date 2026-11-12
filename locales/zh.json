@@ -1299,11 +1299,12 @@
       "simplefin": {
         "title": "SimpleFIN",
         "text": "SimpleFIN Bridge 是一项付费的第三方服务，可连接你的银行（主要在美国和加拿大）。每次同步时 Econumo 都会从中拉取交易。",
-        "link": "设置 SimpleFIN"
+        "link": "设置 SimpleFIN",
+        "site": "SimpleFIN Bridge 官网"
       },
       "mcp": {
         "title": "AI 助手（MCP）",
-        "text": "将此地址添加到 Claude、ChatGPT 或其他支持 MCP 的应用，即可询问你的财务情况。"
+        "text": "将此地址添加到 Claude、ChatGPT 或其他支持 MCP 的应用，即可管理你的财务。"
       },
       "copy": "复制",
       "copied": "已复制",

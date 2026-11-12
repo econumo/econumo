@@ -1299,11 +1299,12 @@
       "simplefin": {
         "title": "SimpleFIN",
         "text": "SimpleFIN Bridge is een betaalde dienst van derden die verbinding maakt met uw bank (vooral in de VS en Canada). Econumo haalt uw transacties daar op bij elke synchronisatie.",
-        "link": "SimpleFIN instellen"
+        "link": "SimpleFIN instellen",
+        "site": "Website van SimpleFIN Bridge"
       },
       "mcp": {
         "title": "AI-assistenten (MCP)",
-        "text": "Voeg dit adres toe aan Claude, ChatGPT of een andere app met MCP-ondersteuning om vragen over uw financiën te stellen."
+        "text": "Voeg dit adres toe aan Claude, ChatGPT of een andere app met MCP-ondersteuning om uw financiën te beheren."
       },
       "copy": "Kopiëren",
       "copied": "Gekopieerd",

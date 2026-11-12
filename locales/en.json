@@ -1299,11 +1299,12 @@
       "simplefin": {
         "title": "SimpleFIN",
         "text": "SimpleFIN Bridge is a paid third-party service that connects to your bank (mostly in the US and Canada). Econumo pulls your transactions from it each time you sync.",
-        "link": "Set up SimpleFIN"
+        "link": "Set up SimpleFIN",
+        "site": "SimpleFIN Bridge website"
       },
       "mcp": {
         "title": "AI assistants (MCP)",
-        "text": "Add this address to Claude, ChatGPT or another app that supports MCP to ask about your finances."
+        "text": "Add this address to Claude, ChatGPT or another app that supports MCP to manage your finances."
       },
       "copy": "Copy",
       "copied": "Copied",

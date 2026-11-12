@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Copy } from 'lucide-react'
+import { Check, Copy, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,8 @@ const SETTINGS: Record<Exclude<ConnectOption, 'mcp'>, string> = {
   apple_wallet: RouterPage.SETTINGS_APPLE_WALLET,
   simplefin: RouterPage.SETTINGS_SIMPLEFIN,
 }
+
+const SIMPLEFIN_BRIDGE_URL = 'https://beta-bridge.simplefin.org/'
 
 export function ConnectStep({ onDone, coreStepsDone, onCompleteSetup }: StepBodyProps) {
   const { t } = useTranslation()
@@ -69,9 +71,23 @@ export function ConnectStep({ onDone, coreStepsDone, onCompleteSetup }: StepBody
                 </Button>
               </div>
             ) : (
-              <Button type="button" variant="link" className="h-auto self-start p-0" disabled={pending} onClick={() => open(option)}>
-                {t(`onboarding.connect_step.${option}.link`)}
-              </Button>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+                <Button type="button" variant="link" className="h-auto p-0" disabled={pending} onClick={() => open(option)}>
+                  {t(`onboarding.connect_step.${option}.link`)}
+                </Button>
+                {option === 'simplefin' ? (
+                  <a
+                    href={SIMPLEFIN_BRIDGE_URL}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex items-center gap-1.5 text-sm text-econumo-link underline-offset-2 hover:underline"
+                    onClick={() => trackEvent(METRICS.ONBOARDING_CONNECT_OPEN, { option: 'simplefin_site' })}
+                  >
+                    {t('onboarding.connect_step.simplefin.site')}
+                    <ExternalLink className="size-3.5" />
+                  </a>
+                ) : null}
+              </div>
             )}
           </div>
         ))}
