@@ -350,6 +350,22 @@ func TestSuggestOptOutDuringTheCallStoresNothing(t *testing.T) {
 	}
 }
 
+// The opt-out lands while the write commits (its in-transaction read still saw
+// "on"): the post-commit check removes what the job stored.
+func TestSuggestOptOutDuringTheWriteIsUndone(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.wireSuggest(c, &optOutAfter{n: 3})
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 0 {
+		t.Fatalf("calls = %d, suggestions = %+v", len(c.calls), openSuggestions(t, h, userA))
+	}
+}
+
 func TestSuggestRespectsCap(t *testing.T) {
 	h, c, facts := suggestSetup(t)
 	h.svc = imports.NewService(h.repo, h.accounts, h.conv, h.txns, h.txns, h.entities, denyScope(imports.RateScopeSuggest), h.db.TX, clock{now}, imports.DefaultMatcherConfig())

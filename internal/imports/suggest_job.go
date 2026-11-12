@@ -226,7 +226,10 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		return nil
 	}
 	groups, groupMissing := groupRowsMissing(valid)
-	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+	var inserted []vo.Id
+	joined := map[vo.Id][]vo.Id{}
+	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
+		inserted, joined = nil, map[vo.Id][]vo.Id{}
 		// The call took seconds: a user who opted out meanwhile gets nothing
 		// stored, and one who settled suggestions gets them re-read.
 		if off, err := s.optedOut(ctx, owner); err != nil || off {
@@ -254,6 +257,15 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 				rest[p.group] = append(rest[p.group], p.links...)
 			}
 		}
+		goneSet := map[vo.Id]bool{}
+		for _, id := range gone {
+			goneSet[id] = true
+		}
+		for id, links := range joins {
+			if !goneSet[id] {
+				joined[id] = links
+			}
+		}
 		now := s.clk.Now().UTC()
 		for i, links := range rest {
 			if len(links) == 0 {
@@ -265,9 +277,43 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 			if err := s.repo.InsertSuggestion(ctx, &g); err != nil {
 				return err
 			}
+			inserted = append(inserted, g.ID)
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	s.undoIfOptedOut(ctx, owner, inserted, joined)
+	return nil
+}
+
+// undoIfOptedOut covers an opt-out (and its suggestion cleanup) that committed
+// while the write was in flight, unseen by the write's own read: what this job
+// stored is removed again, best effort.
+func (s *Service) undoIfOptedOut(ctx context.Context, owner vo.Id, inserted []vo.Id, joined map[vo.Id][]vo.Id) {
+	if len(inserted) == 0 && len(joined) == 0 {
+		return
+	}
+	if off, err := s.optedOut(ctx, owner); err != nil || !off {
+		return
+	}
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		for _, id := range inserted {
+			if err := s.repo.DeleteSuggestion(ctx, id); err != nil {
+				return err
+			}
+		}
+		for id, links := range joined {
+			if _, err := s.repo.ReleaseSuggestionLinks(ctx, id, links); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		slog.Warn("import suggest undo failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", err))
+	}
 }
 
 func (s *Service) optedOut(ctx context.Context, owner vo.Id) (bool, error) {
