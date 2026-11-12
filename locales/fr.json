@@ -1293,12 +1293,12 @@
       "text": "Laissez vos transactions arriver d’elles-mêmes au lieu de les saisir.",
       "apple_wallet": {
         "title": "Apple Wallet",
-        "text": "Une automatisation Raccourcis sur votre iPhone envoie chaque paiement Apple Pay à Econumo, où il apparaît comme une transaction sur le compte que vous associez à cette carte.",
+        "text": "Une automatisation Raccourcis sur votre iPhone envoie chaque paiement Apple Pay à Econumo.",
         "link": "Configurer Apple Wallet"
       },
       "simplefin": {
         "title": "SimpleFIN",
-        "text": "SimpleFIN Bridge est un service payant qui se connecte à votre banque (surtout aux États-Unis et au Canada). Econumo y récupère vos transactions à chaque synchronisation ; la clé d’accès est chiffrée avec une phrase secrète que vous seul connaissez.",
+        "text": "SimpleFIN Bridge est un service tiers payant qui se connecte à votre banque (surtout aux États-Unis et au Canada). Econumo y récupère vos transactions à chaque synchronisation.",
         "link": "Configurer SimpleFIN"
       },
       "mcp": {
