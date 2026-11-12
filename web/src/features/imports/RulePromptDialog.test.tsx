@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { queryKeys } from '@/app/queryKeys'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureCategories, fixtureUser } from '@/test/fixtures'
@@ -31,6 +32,7 @@ function renderPrompt(data: Record<string, unknown> = {}) {
   server.use(...coreHandlers({ categories: fixtureCategories, importSuggestions: [suggestion], ...data }))
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(<QueryClientProvider client={queryClient}><RulePromptDialog /></QueryClientProvider>)
+  return queryClient
 }
 
 const posted: Record<string, unknown[]> = {}
@@ -579,15 +581,37 @@ describe('suggestion mode', () => {
 
 describe('AI match text', () => {
   beforeEach(() => { vi.mocked(trackEvent).mockClear() })
-  const aiHandler = (matchText: string, matchField = 'description', delay = 0) => server.use(
+  const aiHandler = (matchText: string, matchField = 'description', gate?: Promise<void>) => server.use(
     http.post('*/api/v1/import/suggest-match-text', async () => {
       ;(posted.suggest ??= []).push(1)
-      if (delay) {
-        await new Promise((r) => setTimeout(r, delay))
-      }
+      await gate
       return HttpResponse.json({ success: true, message: '', data: { matchField, matchText } })
     }),
   )
+  const deferred = () => {
+    let release: () => void = () => {}
+    const promise = new Promise<void>((r) => { release = r })
+    return { promise, release }
+  }
+  const matchTextKey = ['importMatchText', 'l1']
+  // the AI answer is in the cache and every effect it triggers has run
+  const answerLanded = async (qc: QueryClient) => {
+    await waitFor(() => expect(qc.getQueryState(matchTextKey)?.status).toBe('success'))
+    await act(async () => {})
+  }
+  // everything the dialog waits on before asking is loaded and rendered, so a call would have started
+  const askingSettled = async (qc: QueryClient, rules = true) => {
+    await waitFor(() => {
+      expect(qc.getQueryState(queryKeys.user)?.status).toBe('success')
+      if (rules) expect(qc.getQueryState(queryKeys.importRules)?.status).toBe('success')
+    })
+    await act(async () => {})
+  }
+  const notAsked = (qc: QueryClient) => {
+    expect(qc.getQueryState(matchTextKey)?.fetchStatus ?? 'idle').toBe('idle')
+    expect(qc.getQueryState(matchTextKey)?.status ?? 'pending').toBe('pending')
+    expect(posted.suggest).toBeUndefined()
+  }
 
   it('uses the AI match text when it arrives', async () => {
     window.econumoConfig = { AI_ENABLED: true }
@@ -599,25 +623,27 @@ describe('AI match text', () => {
 
   it('keeps what the user typed when the AI answer arrives later', async () => {
     window.econumoConfig = { AI_ENABLED: true }
-    renderPrompt()
-    aiHandler('BLUE BOTTLE', 'description', 300)
+    const qc = renderPrompt()
+    const ai = deferred()
+    aiHandler('BLUE BOTTLE', 'description', ai.promise)
     useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
     const user = userEvent.setup()
     const value = await screen.findByLabelText('Payee contains')
     await user.clear(value)
     await user.type(value, 'MINE')
     await waitFor(() => expect(posted.suggest).toHaveLength(1))
-    await new Promise((r) => setTimeout(r, 450))
+    ai.release()
+    await answerLanded(qc)
     expect((screen.getByLabelText('Payee contains') as HTMLInputElement).value).toBe('MINE')
   })
 
   it('never calls suggest-match-text when AI is off', async () => {
-    renderPrompt()
+    const qc = renderPrompt()
     aiHandler('BLUE BOTTLE')
     useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
     expect(await screen.findByLabelText('Payee contains')).toBeInTheDocument()
-    await new Promise((r) => setTimeout(r, 100))
-    expect(posted.suggest).toBeUndefined()
+    await askingSettled(qc)
+    notAsked(qc)
   })
 
   it('fires the AI-match metric when saved unchanged', async () => {
@@ -636,12 +662,13 @@ describe('AI match text', () => {
     const { onlineManager } = await import('@tanstack/react-query')
     onlineManager.setOnline(false)
     try {
-      renderPrompt()
+      const qc = renderPrompt()
       aiHandler('BLUE BOTTLE')
       useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
       expect(await screen.findByLabelText('Payee contains')).toBeInTheDocument()
-      await new Promise((r) => setTimeout(r, 100))
-      expect(posted.suggest).toBeUndefined()
+      // offline nothing loads, so there is nothing to wait for: the field is up and no call started
+      await act(async () => {})
+      notAsked(qc)
     } finally {
       onlineManager.setOnline(true)
     }
@@ -649,37 +676,37 @@ describe('AI match text', () => {
 
   it('does not call suggest-match-text for a readonly user', async () => {
     window.econumoConfig = { AI_ENABLED: true }
-    renderPrompt({ user: { ...fixtureUser, accessLevel: 'readonly' } })
+    const qc = renderPrompt({ user: { ...fixtureUser, accessLevel: 'readonly' } })
     aiHandler('BLUE BOTTLE')
     useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
     expect(await screen.findByLabelText('Payee contains')).toBeInTheDocument()
-    await new Promise((r) => setTimeout(r, 150))
-    expect(posted.suggest).toBeUndefined()
+    await askingSettled(qc)
+    notAsked(qc)
   })
 
   it('does not call suggest-match-text for a user who opted out of AI', async () => {
     window.econumoConfig = { AI_ENABLED: true }
-    renderPrompt({ user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] } })
+    const qc = renderPrompt({ user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] } })
     aiHandler('BLUE BOTTLE')
     useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
     expect(await screen.findByLabelText('Payee contains')).toBeInTheDocument()
-    await new Promise((r) => setTimeout(r, 150))
-    expect(posted.suggest).toBeUndefined()
+    await askingSettled(qc)
+    notAsked(qc)
   })
 
   it('never calls suggest-match-text for a link a rule classified', async () => {
     window.econumoConfig = { AI_ENABLED: true }
-    renderPrompt({ importRules: [rule] })
+    const qc = renderPrompt({ importRules: [rule] })
     aiHandler('BLUE BOTTLE')
     useUiStore.getState().setRulePrompt({ kind: 'edit', link: link({ appliedRuleId: 'rule1', appliedCategoryId: 'cat-salary' }), diff: { categoryId: 'cat-food' } })
     expect(await screen.findByRole('button', { name: 'Update rule' })).toBeInTheDocument()
-    await new Promise((r) => setTimeout(r, 150))
-    expect(posted.suggest).toBeUndefined()
+    await askingSettled(qc)
+    notAsked(qc)
   })
 
   it('waits for the rule list before calling suggest-match-text', async () => {
     window.econumoConfig = { AI_ENABLED: true }
-    renderPrompt()
+    const qc = renderPrompt()
     let releaseRules: () => void = () => {}
     const rulesReady = new Promise<void>((r) => { releaseRules = r })
     server.use(http.get('*/api/v1/import/get-rule-list', async () => {
@@ -689,20 +716,22 @@ describe('AI match text', () => {
     aiHandler('BLUE BOTTLE')
     useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
     expect(await screen.findByLabelText('Payee contains')).toBeInTheDocument()
-    await new Promise((r) => setTimeout(r, 150))
-    expect(posted.suggest).toBeUndefined()
+    await askingSettled(qc, false)
+    notAsked(qc)
     releaseRules()
     await waitFor(() => expect(posted.suggest).toHaveLength(1))
   })
 
   it('ignores an AI answer that arrives once the save has started', async () => {
     window.econumoConfig = { AI_ENABLED: true }
-    renderPrompt()
-    aiHandler('BLUE BOTTLE', 'description', 200)
+    const qc = renderPrompt()
+    const ai = deferred()
+    const created = deferred()
+    aiHandler('BLUE BOTTLE', 'description', ai.promise)
     server.use(http.post('*/api/v1/import/create-rule', async ({ request }) => {
       const body = await request.json() as Record<string, unknown>
       ;(posted.create ??= []).push(body)
-      await new Promise((r) => setTimeout(r, 1000))
+      await created.promise
       return HttpResponse.json({ success: true, message: '', data: { ...rule, ...body, id: 'rule-new' } })
     }))
     useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
@@ -710,12 +739,17 @@ describe('AI match text', () => {
     await screen.findByLabelText('Payee contains')
     await waitFor(() => expect(posted.suggest).toHaveLength(1))
     await user.click(screen.getByRole('button', { name: 'Create rule' }))
+    // the save is in flight; only now does the AI answer arrive
+    await waitFor(() => expect(posted.create).toHaveLength(1))
+    ai.release()
+    await answerLanded(qc)
+    created.release()
     expect(await screen.findByText('Apply this rule to 5 matching transactions in this import?')).toBeInTheDocument()
-    const created = posted.create![0] as Record<string, unknown>
-    expect(created.matchField).toBe('external_payee')
+    const saved = posted.create![0] as Record<string, unknown>
+    expect(saved.matchField).toBe('external_payee')
     // the answer landed while the create was in flight; it must not have moved the form
     const previews = posted.preview as Record<string, unknown>[]
-    expect(previews.every((p) => p.matchField === 'external_payee' && p.matchValue === created.matchValue)).toBe(true)
+    expect(previews.every((p) => p.matchField === 'external_payee' && p.matchValue === saved.matchValue)).toBe(true)
     expect(vi.mocked(trackEvent)).not.toHaveBeenCalledWith(METRICS.IMPORT_RULE_AI_MATCH_USED)
   })
 
