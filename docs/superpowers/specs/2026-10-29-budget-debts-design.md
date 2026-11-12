@@ -1,6 +1,7 @@
 # Budget debts: tracking loans without an account
 
 **Date:** 2026-10-29 · **Status:** design, awaiting approval · builder-checked
+**Amended by:** `2026-11-12-shared-budget-debts-design.md` (a debt belongs to a budget and matches through rules).
 
 ## Why
 

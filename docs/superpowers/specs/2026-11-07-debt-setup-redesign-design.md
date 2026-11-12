@@ -4,6 +4,7 @@
 **Builds on:** `docs/superpowers/specs/2026-10-29-budget-debts-design.md` (branch
 `feature/budget-debts`, PR #424, not released). Everything not changed here stays
 as that design and the code on the branch describe it.
+**Amended by:** `2026-11-12-shared-budget-debts-design.md` (a debt belongs to a budget and matches through rules).
 
 ## Why
 

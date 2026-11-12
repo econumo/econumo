@@ -234,15 +234,19 @@ currency / transaction-creation ports, wired in `internal/server/glue_imports.go
 The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
 
-`debt` (loans the owner pays down through an expense category) exposes nine routes under
-`/api/v1/debt/` (`get-debt-list`, `get-debt`, `get-debt-forecast`, `create-debt`, `update-debt`,
-`delete-debt`, `mark-debt-paid-off`, `reconcile-debt`, `delete-debt-reconciliation`); a debt belongs to its owner alone, so another user gets not-found.
-A debt is created with a name, what counts as its payments, a payment and a schedule; its terms
+`debt` (loans a budget pays down through expense categories) exposes eleven routes under
+`/api/v1/debt/` (`get-debt-list`, `get-debt`, `get-debt-forecast`, `get-debt-rule-options`,
+`create-debt`, `update-debt`, `add-debt-rule`, `delete-debt`, `mark-debt-paid-off`,
+`reconcile-debt`, `delete-debt-reconciliation`); a debt belongs to a budget, not a user: a caller
+without accepted access to it gets not-found, a guest reads it, writes need the right to plan there.
+A debt is created in a budget with a name, its payment rules, a payment and a schedule; its terms
 (the loan contract's amount borrowed, start date and last payment date) are optional and can be
 added later (see "Budget debts").
-Its ports (classification ownership, rates, the budget's element rows, a budget's plans of a debt
-row for the forecast) are wired in `internal/server/glue_debt.go` and `glue_budget_debt.go`; budget
-reads debts through its own `DebtSource` port.
+Its ports (classifications with their owners, rates, currencies, users' timezones and names, the
+budget's access, member accounts, rule options and debt-row plans, the budget's element rows) are
+wired in `internal/server/glue_debt.go` and `glue_budget_debt.go`; budget reads debts through its
+own `DebtSource` port, and category, payee, tag and label reach the debt rules through their
+`DebtUsage` port (`Prepare`/`Release`/`Reassign`, glued in `glue_debt.go`).
 
 ### Dependency rule
 
@@ -478,7 +482,7 @@ and `apple_wallet`. A done step is read-only (the stepper will not open it; a li
 another step opens its settings page instead); skipped steps can be reopened, and "Complete
 setup" skips every open step (so does Apple Wallet's Set up once categories and accounts are
 done, landing on the Apple Wallet settings instead of the budget). New category rows are created unless removed (trash button);
-there is no savings toggle and no name-based savings guess (new rows start with the card icon and the default Cash row with the cash icon, the name never changes it; the user picks any icon freely and the icon never decides savings), and the client sends no savings at all. The client is thin: each of those three steps is ONE server write in the `internal/onboarding` feature (`internal/onboarding/steps.go`), and `useDay0` only keeps the submitted form plus one operation id per step in the draft (minted on the first "Save and continue", the main button of Categories, Accounts and Plan whatever changed, replayed by every retry until the server answers, cleared after success), puts the answered `user` into the user query cache (so the stepper's ticks come from the server, and `useOnboardingSteps` writes no option for a step already marked) and keeps the answered `budgetId` for the plan step. A failed call refetches every query (the step may have committed with its answer lost), and a 400 on `id` (claimed by another write) drops the step's id so the next "Save and continue" mints a fresh one. The plan step only plans a budget the user may edit (owner, admin or user role). `POST /api/v1/onboarding/save-categories` (`{id, categories:[{key,name,type,icon}] 0..60, order?}`: creates the rows through category create, a row named like an active category of its type or an earlier row maps to that one, applies `order` (existing ids and row keys, each type in its own slots), and creates the budget only when the user owns a live account and has none), `save-accounts` (`{id, accounts:[{key,name,balance,currencyId,icon}] 0..50, currencyIds, mainCurrencyId}`; the client sends only the new rows, and `currencyIds` carries the picked extras plus every listed account's currency: creates the accounts through account create (the first one of a user without folders creates "General"), sets the profile currency, hides every global then shows main + listed + the accounts' currencies (refusals skipped), then creates the budget over all live own accounts when there is none (and the user has one), else adds the new accounts to the default budget (the `budget` option when readable, else the first owned/accepted one; a read-only budget takes none)) and `save-plan` (`{id, budgetId?, amounts:[{categoryId,amount}] 0..200}`, non-negative decimals, `"0"` a real plan: set-limit for each in the budget's current period, `budget.CurrentPeriod`). No rows is valid on the first two: a user who already has categories or accounts still finishes the step. So the budget appears at whichever of categories/accounts comes second with accounts present, named `onboarding.budget_name` in the request language, in the profile currency; the plan step never creates one (a user without a budget sees "needs an account" with a button to the Accounts step). Each runs in ONE transaction that first takes the user row lock (`user.LockForOnboarding`), then claims `id` with the operation guard; the nested feature use cases join it as savepoints, so a failure on any row rolls back every row, the claim and the revision bumps. A step already done (in the option, or onboarding completed/absent; also the replay of the `id` that marked it) writes nothing and answers the current state, row keys matched back by name (accounts newest first, so an older account of the same name is never taken); an `id` already claimed while the step is open (the operation id table is shared by every create endpoint) is a 400 on `id` (`common.invalid_choice`). `mainCurrencyId` must be usable by the caller (a global or their own live custom, else `mainCurrencyId` invalid_choice), and the visible set always keeps the currencies of every live account the user owns. Each marks its step done (`user.MarkOnboardingStep`, replacing a `!step`) and answers `{user, categories|accounts: {key: id}, budgetId}` (`save-plan`: `{user, budgetId}`). When the server has an AI provider (`ECONUMO_AI_DSN`), `save-accounts` then starts a background job, after the commit and only for the accounts it created, into the budget it created or added them to (goroutine, fresh context, 15 s timeout, panics recovered; the runner is injectable so tests run it inline) that sends the caller's own non-deleted accounts among those ids (id, name, the account's own currency code) plus the caller's timezone (header, else stored) and UI language, never the profile currency, asks for `{"savings":[ids]}`, and flags the chosen accounts that are still live members through the budget feature's `MarkSavingsMembers` (add-account's access rules, never adds a member, skips deleted ones). Jobs are not drained on shutdown and a replay starts none, so a restart can leave the accounts unclassified. A failure, a timeout or an unusable reply changes nothing and logs a WARN with `user_id` + `err_type` only. The job is capped at 20 per user per rate-limit window (over the cap the write still succeeds, unclassified). Without AI nothing is ever marked savings. The SPA invalidates its queries after the write and does not poll, so savings show up on the next budget fetch after the job lands. A reused budget and the user's pre-existing accounts keep their flags. The former per-entity orchestration routes `onboarding/create-budget` and `onboarding/add-budget-accounts` are gone. **Import path**: `POST /api/v1/onboarding/finish-import` (`{id}` -> `{user, budgetId}`, same lock/claim/replay rules) creates the budget when the user has none (over their live own accounts outside hidden folders, every category seeded as budget create does, `onboarding.budget_name`, profile currency) and marks ONLY `import` (`import` is a server step too: `update-onboarding` never reopens it); categories and accounts stay open as review steps. After the commit, with AI configured, the import review (`internal/onboarding/review.go`) sends up to four independent requests, each through the injectable runner (so concurrent in production, inline in tests) with its own 90 s timeout (the icon replies take real providers 20-60 s; the savings-only job keeps 15 s), its own panic recovery and its own WARN (`user_id` + `err_type` + `part`: `categories`/`accounts`/`savings`/`debts`), so one that fails, times out or answers garbage never affects the others; together they count ONCE against the per-user cap. (a) category icons: the user's active categories still on a default icon (`model.DefaultIcon` or the CSV import's `model.ImportCategoryIcon`; names + types), reply `{categories:{id:icon}}`; (b) account icons: live accounts still on the import's `model.ImportAccountIcon` (names + own currencies), reply `{accounts:{id:icon}}`; (c) savings, only when this call created the budget: every live own account through the save-accounts job's savings prompt (`classify`, reply `{savings:[ids]}`), flagged through `MarkSavingsMembers` in that budget. Each carries the timezone and language and never the profile currency. Icons are kept only from `internal/onboarding/icons.go` (a copy of `web/src/lib/icons.ts`, kept in sync by a test) and applied through the owning feature's `ReplaceIcon` (one conditional `UPDATE ... WHERE icon = <read when the request started>`, so a user edit wins and a failed compare writes nothing; an icon the user picked is never repainted). **Icon suggestions while typing** (the manual steps never repaint an icon after the save): `GET /api/v1/onboarding/suggest-icon?kind=category|account&name=[&type=expense|income][&currency=<code>]` (`internal/onboarding/suggest_icon.go`; name trimmed 1-64 characters, else a 400) asks the AI provider, with the caller's language and timezone, for the one catalogue icon that fits and answers `{icon}`. Every way to no suggestion answers `""` with a 200, never an error: no provider (asks nothing), over the per-user limit (60 per rate-limit window, scope `onboarding-icon`, hardcoded like `onboarding-ai`, exempt from the per-IP cap), a failure, an 8 s timeout, a malformed reply or an icon outside the catalogue. Answers (a well-formed `""` included, failures not) sit in an in-memory LRU of 2048 keyed per user, language, kind, type, currency and lowercased name, consulted before the limiter. The AI call runs without the request's cancellation (`context.WithoutCancel`, still 8 s), so a request the form drops mid-call (the name changed) still caches the answer it paid for; a `context.Canceled` logs no WARN. The operation log line carries `kind` and `outcome` (`no_ai`/`cached`/`rate_limited`/`failed`/`none`/`suggested`), never the name; a failure also WARNs `onboarding icon suggestion failed` with `user_id`, `kind`, `err_type`. The SPA's `useIconSuggestion` (`web/src/features/iconSuggestion`) asks only with `AI_ENABLED` and online, 600 ms after the typing pauses, for 2-64 characters, cancels a stale request and keeps each non-empty answer for the page's lifetime (per session user; an empty one may be a passing refusal, so it is asked again and the server's cache answers when it was final). It applies while the user has not picked an icon (picking one sets `iconPicked` for good): onboarding category and account rows whose name the user typed or edited (an untouched default or Cash row, `labelKey` still set, keeps its curated icon; CSV-imported items are existing rows and keep the import review), and the New category / New account dialogs in create mode only (editing never changes an icon). An icon a suggestion put there gives way to the item's starting icon as soon as the name changes, until the new name has a suggestion of its own (`useApplyIconSuggestion`; an icon set any other way is never touched). A category created INLINE from a picker ("Create <name>" in the transaction and import-rule dialogs: `useCreateCategory` with no `icon`) is saved at once on the default icon; then, in the background (`suggestIconForCreatedCategory`, `inline.ts`), it asks suggest-icon and hands the answer to `POST /api/v1/onboarding/apply-suggested-icon` (`{categoryId, icon, expectedIcon}` -> `{applied}`: a catalogue icon, else a 400 on `icon`; the caller's own category, else not found; written through the category feature's conditional `ReplaceIcon`, `UPDATE ... WHERE icon = expectedIcon`, so a change made meanwhile on any device wins and the name is never sent or touched), then refreshes the category list (and, when applied, the budget views), showing nothing on failure. The first suggestion an item takes fires `appIconSuggestionApplied` `{kind, source: onboarding|dialog|inline}` (inline only when the server applied it). `save-accounts` keeps only its savings job; after `save-plan` (only when it sent amounts) the SPA refetches categories/accounts/budgets/plan/debts at the same 10, 30 and 90 s (`scheduleAiRefresh`). **Debt detection** (`internal/onboarding/debts.go`): (d) a fourth import-review part (`debts`, when the user may plan the default budget) and a `save-plan` post-commit job ask which of the user's active own EXPENSE categories that no debt of theirs covers yet (`DebtSteps.CoveredCategories`) repay a loan (a mortgage, a car, student or personal loan, credit-line instalments; never rent, utilities, subscriptions, insurance or card spending), reply `{"debts":[{"categoryId","name"}]}` (the name in the user's language, a blank or over-64-character one falling back to the category's; ids not asked about dropped; a malformed reply creates nothing). Only categories with a payment are asked about: in the import review the median of the months with spending above zero among the six complete periods before the current one (`budget.CategoryHistory`, which lists every category of the budget, one without transactions too, so its element currency is known; fewer than two such months: not asked; rounded to the currency), after `save-plan` the category's amount in that call (> 0). `save-plan` first, synchronously and with or without AI, hands the plan of every planned category a debt already covers to that debt's row (`DebtSteps.TakeCategoryPlans` -> `debt.Service.TakeCategoryPlans`: the owner's whole-category debt that is not set up takes the category's plans and comments through the same `TransferData`/`SumOnClash` move create-debt makes), so a plan typed after the import created the debt never sits on a second row; it reserves a cap slot and starts the job only when an uncovered active own expense category is planned above zero (WARN `onboarding debt detection failed`). Categories the import review judged not to be loans are asked about again after `save-plan` (left as is: the plan may make the answer clearer). A category whose currency's fraction digits cannot be read is skipped, not the job. A category with history carries `monthly`, its six totals oldest first in the element currency (no currency code), plus the timezone and language. Each one named gets a debt through the debt feature's own create (`onboarding.DebtCreator`, glued in `internal/server/glue_onboarding.go` over `CreateDebtRequest.Validate` + `debt.Service.CreateDebt`, wired with `SetDebts` since the debt service is built later): NOT set up, monthly, that payment, in the category's element currency (the budget's when it has no row), whole-category, so it takes the category's plans and shows in the budget's Debts block with Finish setup. A refusal (a debt already covers the category, `debt.key_conflict`/`debt.start_date_taken`, when one appeared after the covered read; not an expense category; an unusable currency; any validation or not-found error) skips the category silently (DEBUG `onboarding debt skipped`), so a rerun never duplicates a debt and the plan pass after an import adds only the categories the history could not cover. `save-categories` also takes `archive`/`restore` (own category ids; another id, or one id in both, is a 400 on that list) applied through category archive/unarchive in the step's transaction. `save-accounts` also takes `hide`/`unhide` (own live account ids, same 400s): hide moves the account into the user's hidden folder named `onboarding.archive_folder` in the request language (created hidden when missing; a visible folder of that name is the user's and is never hidden, the archive then gets a numbered name) and removes it from the default budget through remove-account, never confirming a savings removal (`budget.account_not_removable`, history in a past period, and `budget.savings_removal_unconfirmed`, a savings member with plans or comments, are tolerated: the account stays a member); unhide moves it into the first visible folder (a `General` folder, shown again or created, when there is none) and adds it back. New accounts also go to the first visible folder, and a budget a step creates leaves hidden-folder accounts out. `save-accounts` also takes `currencies` (`[{accountId, currencyId}]`, own live accounts and a currency usable like `mainCurrencyId`, one entry per account, else a 400 on `currencies`), and `balances` (`[{accountId, balance}]`, same ownership rule, a plain decimal, else a 400 on `balances`), both applied in the step's transaction through account update-account with the account's own name and icon (an untouched balance is resent as shown, so it writes no correction; a changed one books update-account's "Balance adjustment" dated now in the caller's timezone); those currencies join the visible set. The CSV import creates every account in the instance base currency, so the review screen gives existing rows the same currency chip and balance input (parsed in the UI language) as new ones, with the name read-only and an Archive / Restore toggle (the hide/unhide above); balance, currency and action cells have fixed widths so the columns line up. The Currencies block is one wrapping row of chips: the main currency first (filled, a star, "· Main"), then the other selected currencies, then "+ Add currency", with a hint under them. Tapping the main chip opens the full searchable currency list (the same PickerSheet as Add; both, like the account rows' currency picker, offer every live global and the user's own live customs, currencies the user hid included, `usableCurrencies`, since save-accounts shows the chosen ones again): the pick becomes main and joins the chips, the old main stays selected. Tapping another chip opens a menu with "Make main" and, unless a listed account uses that currency (those always stay visible), "Remove". "Add currency" only adds; it never changes the main currency; the plan step shows each row's currency code (its element's, else the budget's). In the account list the first row of the combined list (the first shown existing account, else the first new row) leads, its pick moves every row the user has not changed by hand (existing ones go out in `currencies`) and the main currency. When `save-accounts` lands in an existing default budget that the caller owns alone (no participant, invited or accepted), that is not archived and has no limit in any period, it also switches that budget to `mainCurrencyId` through budget update-budget: the budget finish-import or save-categories created took the profile currency of that moment. There is no marker for an onboarding-created budget; an owned budget of a user still in the accounts step was created after onboarding began, and "unshared, nothing planned" is what makes the switch harmless. `GET /api/v1/onboarding/get-plan-suggestions?budgetId=` (a named budget needs update access, else 403; without it the default budget, or `{budgetId:"", items:[]}` when the user has none they can update; read-only) answers `{budgetId, items:[{categoryId, amount}]}`: for each own active category, income and expense, the average over the three complete periods before the budget's current one (`budget.CategoryHistory`: the plan sheet's per-category actuals, but over every account the CALLER owns, hidden-folder (archived) and soft-deleted ones included, rather than the budget's members, so archiving the account that holds the history keeps the suggestions while membership rules are unchanged (an archived account still leaves the budget); another user's account shared into the budget never counts; tagged expenses counted for their category, converted into the element currency with each period's average rates), sum divided by three and rounded to the element currency's fraction digits, only when at least two of those periods have a transaction and the average is positive. Categories and accounts the user already has are
+there is no savings toggle and no name-based savings guess (new rows start with the card icon and the default Cash row with the cash icon, the name never changes it; the user picks any icon freely and the icon never decides savings), and the client sends no savings at all. The client is thin: each of those three steps is ONE server write in the `internal/onboarding` feature (`internal/onboarding/steps.go`), and `useDay0` only keeps the submitted form plus one operation id per step in the draft (minted on the first "Save and continue", the main button of Categories, Accounts and Plan whatever changed, replayed by every retry until the server answers, cleared after success), puts the answered `user` into the user query cache (so the stepper's ticks come from the server, and `useOnboardingSteps` writes no option for a step already marked) and keeps the answered `budgetId` for the plan step. A failed call refetches every query (the step may have committed with its answer lost), and a 400 on `id` (claimed by another write) drops the step's id so the next "Save and continue" mints a fresh one. The plan step only plans a budget the user may edit (owner, admin or user role). `POST /api/v1/onboarding/save-categories` (`{id, categories:[{key,name,type,icon}] 0..60, order?}`: creates the rows through category create, a row named like an active category of its type or an earlier row maps to that one, applies `order` (existing ids and row keys, each type in its own slots), and creates the budget only when the user owns a live account and has none), `save-accounts` (`{id, accounts:[{key,name,balance,currencyId,icon}] 0..50, currencyIds, mainCurrencyId}`; the client sends only the new rows, and `currencyIds` carries the picked extras plus every listed account's currency: creates the accounts through account create (the first one of a user without folders creates "General"), sets the profile currency, hides every global then shows main + listed + the accounts' currencies (refusals skipped), then creates the budget over all live own accounts when there is none (and the user has one), else adds the new accounts to the default budget (the `budget` option when readable, else the first owned/accepted one; a read-only budget takes none)) and `save-plan` (`{id, budgetId?, amounts:[{categoryId,amount}] 0..200}`, non-negative decimals, `"0"` a real plan: set-limit for each in the budget's current period, `budget.CurrentPeriod`). No rows is valid on the first two: a user who already has categories or accounts still finishes the step. So the budget appears at whichever of categories/accounts comes second with accounts present, named `onboarding.budget_name` in the request language, in the profile currency; the plan step never creates one (a user without a budget sees "needs an account" with a button to the Accounts step). Each runs in ONE transaction that first takes the user row lock (`user.LockForOnboarding`), then claims `id` with the operation guard; the nested feature use cases join it as savepoints, so a failure on any row rolls back every row, the claim and the revision bumps. A step already done (in the option, or onboarding completed/absent; also the replay of the `id` that marked it) writes nothing and answers the current state, row keys matched back by name (accounts newest first, so an older account of the same name is never taken); an `id` already claimed while the step is open (the operation id table is shared by every create endpoint) is a 400 on `id` (`common.invalid_choice`). `mainCurrencyId` must be usable by the caller (a global or their own live custom, else `mainCurrencyId` invalid_choice), and the visible set always keeps the currencies of every live account the user owns. Each marks its step done (`user.MarkOnboardingStep`, replacing a `!step`) and answers `{user, categories|accounts: {key: id}, budgetId}` (`save-plan`: `{user, budgetId}`). When the server has an AI provider (`ECONUMO_AI_DSN`), `save-accounts` then starts a background job, after the commit and only for the accounts it created, into the budget it created or added them to (goroutine, fresh context, 15 s timeout, panics recovered; the runner is injectable so tests run it inline) that sends the caller's own non-deleted accounts among those ids (id, name, the account's own currency code) plus the caller's timezone (header, else stored) and UI language, never the profile currency, asks for `{"savings":[ids]}`, and flags the chosen accounts that are still live members through the budget feature's `MarkSavingsMembers` (add-account's access rules, never adds a member, skips deleted ones). Jobs are not drained on shutdown and a replay starts none, so a restart can leave the accounts unclassified. A failure, a timeout or an unusable reply changes nothing and logs a WARN with `user_id` + `err_type` only. The job is capped at 20 per user per rate-limit window (over the cap the write still succeeds, unclassified). Without AI nothing is ever marked savings. The SPA invalidates its queries after the write and does not poll, so savings show up on the next budget fetch after the job lands. A reused budget and the user's pre-existing accounts keep their flags. The former per-entity orchestration routes `onboarding/create-budget` and `onboarding/add-budget-accounts` are gone. **Import path**: `POST /api/v1/onboarding/finish-import` (`{id}` -> `{user, budgetId}`, same lock/claim/replay rules) creates the budget when the user has none (over their live own accounts outside hidden folders, every category seeded as budget create does, `onboarding.budget_name`, profile currency) and marks ONLY `import` (`import` is a server step too: `update-onboarding` never reopens it); categories and accounts stay open as review steps. After the commit, with AI configured, the import review (`internal/onboarding/review.go`) sends up to four independent requests, each through the injectable runner (so concurrent in production, inline in tests) with its own 90 s timeout (the icon replies take real providers 20-60 s; the savings-only job keeps 15 s), its own panic recovery and its own WARN (`user_id` + `err_type` + `part`: `categories`/`accounts`/`savings`/`debts`), so one that fails, times out or answers garbage never affects the others; together they count ONCE against the per-user cap. (a) category icons: the user's active categories still on a default icon (`model.DefaultIcon` or the CSV import's `model.ImportCategoryIcon`; names + types), reply `{categories:{id:icon}}`; (b) account icons: live accounts still on the import's `model.ImportAccountIcon` (names + own currencies), reply `{accounts:{id:icon}}`; (c) savings, only when this call created the budget: every live own account through the save-accounts job's savings prompt (`classify`, reply `{savings:[ids]}`), flagged through `MarkSavingsMembers` in that budget. Each carries the timezone and language and never the profile currency. Icons are kept only from `internal/onboarding/icons.go` (a copy of `web/src/lib/icons.ts`, kept in sync by a test) and applied through the owning feature's `ReplaceIcon` (one conditional `UPDATE ... WHERE icon = <read when the request started>`, so a user edit wins and a failed compare writes nothing; an icon the user picked is never repainted). **Icon suggestions while typing** (the manual steps never repaint an icon after the save): `GET /api/v1/onboarding/suggest-icon?kind=category|account&name=[&type=expense|income][&currency=<code>]` (`internal/onboarding/suggest_icon.go`; name trimmed 1-64 characters, else a 400) asks the AI provider, with the caller's language and timezone, for the one catalogue icon that fits and answers `{icon}`. Every way to no suggestion answers `""` with a 200, never an error: no provider (asks nothing), over the per-user limit (60 per rate-limit window, scope `onboarding-icon`, hardcoded like `onboarding-ai`, exempt from the per-IP cap), a failure, an 8 s timeout, a malformed reply or an icon outside the catalogue. Answers (a well-formed `""` included, failures not) sit in an in-memory LRU of 2048 keyed per user, language, kind, type, currency and lowercased name, consulted before the limiter. The AI call runs without the request's cancellation (`context.WithoutCancel`, still 8 s), so a request the form drops mid-call (the name changed) still caches the answer it paid for; a `context.Canceled` logs no WARN. The operation log line carries `kind` and `outcome` (`no_ai`/`cached`/`rate_limited`/`failed`/`none`/`suggested`), never the name; a failure also WARNs `onboarding icon suggestion failed` with `user_id`, `kind`, `err_type`. The SPA's `useIconSuggestion` (`web/src/features/iconSuggestion`) asks only with `AI_ENABLED` and online, 600 ms after the typing pauses, for 2-64 characters, cancels a stale request and keeps each non-empty answer for the page's lifetime (per session user; an empty one may be a passing refusal, so it is asked again and the server's cache answers when it was final). It applies while the user has not picked an icon (picking one sets `iconPicked` for good): onboarding category and account rows whose name the user typed or edited (an untouched default or Cash row, `labelKey` still set, keeps its curated icon; CSV-imported items are existing rows and keep the import review), and the New category / New account dialogs in create mode only (editing never changes an icon). An icon a suggestion put there gives way to the item's starting icon as soon as the name changes, until the new name has a suggestion of its own (`useApplyIconSuggestion`; an icon set any other way is never touched). A category created INLINE from a picker ("Create <name>" in the transaction and import-rule dialogs: `useCreateCategory` with no `icon`) is saved at once on the default icon; then, in the background (`suggestIconForCreatedCategory`, `inline.ts`), it asks suggest-icon and hands the answer to `POST /api/v1/onboarding/apply-suggested-icon` (`{categoryId, icon, expectedIcon}` -> `{applied}`: a catalogue icon, else a 400 on `icon`; the caller's own category, else not found; written through the category feature's conditional `ReplaceIcon`, `UPDATE ... WHERE icon = expectedIcon`, so a change made meanwhile on any device wins and the name is never sent or touched), then refreshes the category list (and, when applied, the budget views), showing nothing on failure. The first suggestion an item takes fires `appIconSuggestionApplied` `{kind, source: onboarding|dialog|inline}` (inline only when the server applied it). `save-accounts` keeps only its savings job; after `save-plan` (only when it sent amounts) the SPA refetches categories/accounts/budgets/plan/debts at the same 10, 30 and 90 s (`scheduleAiRefresh`). **Debt detection** (`internal/onboarding/debts.go`): (d) a fourth import-review part (`debts`, in the budget `finish-import` created, else the default budget when the user may plan it) and a `save-plan` post-commit job (in the plan's budget) ask which of the user's active own EXPENSE categories that no debt of that budget covers yet (`DebtSteps.CoveredCategories(budgetID)`; another budget's debts cover nothing here) repay a loan (a mortgage, a car, student or personal loan, credit-line instalments; never rent, utilities, subscriptions, insurance or card spending), reply `{"debts":[{"categoryId","name"}]}` (the name in the user's language, a blank or over-64-character one falling back to the category's; ids not asked about dropped; a malformed reply creates nothing). Only categories with a payment are asked about: in the import review the median of the months with spending above zero among the six complete periods before the current one (`budget.CategoryHistory`, which lists every category of the budget, one without transactions too, so its element currency is known; fewer than two such months: not asked; rounded to the currency), after `save-plan` the category's amount in that call (> 0). `save-plan` first, synchronously and with or without AI, hands the plan of every planned category a debt of the plan's budget already covers to that debt's row (`DebtSteps.TakeCategoryPlans(budgetID, categoryID)` -> `debt.Service.TakeCategoryPlans`: the budget's debt not set up with a whole-category rule on it takes the category's plans and comments through the same `TransferData`/`SumOnClash` move create-debt makes), so a plan typed after the import created the debt never sits on a second row; it reserves a cap slot and starts the job only when an uncovered active own expense category is planned above zero (WARN `onboarding debt detection failed`). Categories the import review judged not to be loans are asked about again after `save-plan` (left as is: the plan may make the answer clearer). A category whose currency's fraction digits cannot be read is skipped, not the job. A category with history carries `monthly`, its six totals oldest first in the element currency (no currency code), plus the timezone and language. Each one named gets a debt through the debt feature's own create (`onboarding.DebtSteps`, glued in `internal/server/glue_onboarding.go` (`OnboardingDebts`) over `CreateDebtRequest.Validate` + `debt.Service.CreateDebt`, wired with `SetDebts` since the debt service is built later): in that budget, NOT set up, monthly, that payment, in the category's element currency (the budget's when it has no row), one whole-category rule, so it takes the category's plans and shows in the budget's Debts block with Finish setup. A refusal (a debt of the budget already covers the category, `debt.key_conflict`/`debt.start_date_taken`, when one appeared after the covered read; not an expense category; an unusable currency; the caller may not plan the budget; any validation, access or not-found error) skips the category silently (DEBUG `onboarding debt skipped`), so a rerun never duplicates a debt and the plan pass after an import adds only the categories the history could not cover. `save-categories` also takes `archive`/`restore` (own category ids; another id, or one id in both, is a 400 on that list) applied through category archive/unarchive in the step's transaction. `save-accounts` also takes `hide`/`unhide` (own live account ids, same 400s): hide moves the account into the user's hidden folder named `onboarding.archive_folder` in the request language (created hidden when missing; a visible folder of that name is the user's and is never hidden, the archive then gets a numbered name) and removes it from the default budget through remove-account, never confirming a savings removal (`budget.account_not_removable`, history in a past period, and `budget.savings_removal_unconfirmed`, a savings member with plans or comments, are tolerated: the account stays a member); unhide moves it into the first visible folder (a `General` folder, shown again or created, when there is none) and adds it back. New accounts also go to the first visible folder, and a budget a step creates leaves hidden-folder accounts out. `save-accounts` also takes `currencies` (`[{accountId, currencyId}]`, own live accounts and a currency usable like `mainCurrencyId`, one entry per account, else a 400 on `currencies`), and `balances` (`[{accountId, balance}]`, same ownership rule, a plain decimal, else a 400 on `balances`), both applied in the step's transaction through account update-account with the account's own name and icon (an untouched balance is resent as shown, so it writes no correction; a changed one books update-account's "Balance adjustment" dated now in the caller's timezone); those currencies join the visible set. The CSV import creates every account in the instance base currency, so the review screen gives existing rows the same currency chip and balance input (parsed in the UI language) as new ones, with the name read-only and an Archive / Restore toggle (the hide/unhide above); balance, currency and action cells have fixed widths so the columns line up. The Currencies block is one wrapping row of chips: the main currency first (filled, a star, "· Main"), then the other selected currencies, then "+ Add currency", with a hint under them. Tapping the main chip opens the full searchable currency list (the same PickerSheet as Add; both, like the account rows' currency picker, offer every live global and the user's own live customs, currencies the user hid included, `usableCurrencies`, since save-accounts shows the chosen ones again): the pick becomes main and joins the chips, the old main stays selected. Tapping another chip opens a menu with "Make main" and, unless a listed account uses that currency (those always stay visible), "Remove". "Add currency" only adds; it never changes the main currency; the plan step shows each row's currency code (its element's, else the budget's). In the account list the first row of the combined list (the first shown existing account, else the first new row) leads, its pick moves every row the user has not changed by hand (existing ones go out in `currencies`) and the main currency. When `save-accounts` lands in an existing default budget that the caller owns alone (no participant, invited or accepted), that is not archived and has no limit in any period, it also switches that budget to `mainCurrencyId` through budget update-budget: the budget finish-import or save-categories created took the profile currency of that moment. There is no marker for an onboarding-created budget; an owned budget of a user still in the accounts step was created after onboarding began, and "unshared, nothing planned" is what makes the switch harmless. `GET /api/v1/onboarding/get-plan-suggestions?budgetId=` (a named budget needs update access, else 403; without it the default budget, or `{budgetId:"", items:[]}` when the user has none they can update; read-only) answers `{budgetId, items:[{categoryId, amount}]}`: for each own active category, income and expense, the average over the three complete periods before the budget's current one (`budget.CategoryHistory`: the plan sheet's per-category actuals, but over every account the CALLER owns, hidden-folder (archived) and soft-deleted ones included, rather than the budget's members, so archiving the account that holds the history keeps the suggestions while membership rules are unchanged (an archived account still leaves the budget); another user's account shared into the budget never counts; tagged expenses counted for their category, converted into the element currency with each period's average rates), sum divided by three and rounded to the element currency's fraction digits, only when at least two of those periods have a transaction and the average is positive. Categories and accounts the user already has are
 reviewed with their names read-only (category rows wholly; an account's balance and currency
 stay editable, see `balances`/`currencies` above): every own category (archived ones too, muted,
 with Restore) carries an Archive/Restore toggle and every own account (one in a hidden folder
@@ -1908,8 +1912,8 @@ data unreadable. Most are also asserted by the test suite.
   unarchive/delete/revoke/decline/accept (and archive itself, idempotent). Readers clamp periods
   to the end month; `set-limit` refuses periods past it; the membership removal window ends at
   `min(current month, end month + 1)`. `clone-budget` is an owner-or-admin single-transaction deep
-  copy (structure, sharing, membership, optionally plans from a chosen start month; envelope
-  elements' `external_id` remapped) — the copy starts open-ended and unarchived, owned by the
+  copy (structure, sharing, membership, debts (see "Budget debts"), optionally plans from a chosen
+  start month; envelope and debt elements' `external_id` remapped) — the copy starts open-ended and unarchived, owned by the
   cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
@@ -1986,33 +1990,63 @@ data unreadable. Most are also asserted by the test suite.
   Balance/Savings-balance split follows the savings DATA rather than only the visible
   rows, so a deleted savings account with a balance but no row in the window still
   moves its money out of the everyday Balance.
-- **Budget debts** (`internal/debt`; spec `docs/superpowers/specs/2026-10-29-budget-debts-design.md`):
-  a loan paid down through an expense category, deliberately NOT an account (in no account list,
-  total or report). **Matching** is by data, never a field on the transaction: an EXPENSE
-  (transfers never) is a payment when its category is the debt's, its payee/tag/label match when
-  the debt names one (a debt with a label matches only a transaction carrying that label; a
-  debt with none ignores labels), and it is dated inside the debt's range. Debts with the same
-  category/payee/tag/label are partitioned by start date (a debt owns its start date up to the day
-  before the next one's; empty = from the beginning, which only a debt not set up can have; a
-  shared start date is refused); keys that
-  could both match one transaction (category alone vs category + payee, a labelled debt vs an
-  unlabelled one) are refused (`debt.key_conflict`, `debt.start_date_taken`), except that two
-  debts naming DIFFERENT labels never conflict (labels alone tell debts apart). A transaction
-  carrying both debts' labels matches both, and `model.AssignDebt` gives it to the OLDER debt
-  (`created_at`, then `id`), so a payment is still counted on exactly one debt everywhere (sync,
-  budget attribution, templates; real-row drill-downs follow the stored split the sync assigned).
-  `debts_payments` (one row per matched transaction: debt and interest; the debt part is the
-  amount less the interest, never stored) is materialized by the debt sync on read, in date order, under the owner's user row lock and one
-  DB transaction per category: stale splits of payments that stopped matching are deleted, newly
-  matching ones are split as late entries (a payment that moved to another debt's category takes
-  its row with it, the insert upserts on the transaction), stored splits are never recomputed (a corrected
+- **Budget debts** (`internal/debt`; specs `docs/superpowers/specs/2026-10-29-budget-debts-design.md`,
+  `2026-11-07-debt-setup-redesign-design.md` and `2026-11-12-shared-budget-debts-design.md`):
+  a loan a budget pays down through expense categories, deliberately NOT an account (in no account
+  list, total or report). **A debt belongs to one budget** (`debts.budget_id`, deleted with the
+  budget); there is no owner, and a loan tracked in two budgets is two independent debts. Access is
+  the budget's (`debt.Budgets` port over `budget.Service.DebtBudget`): no accepted access (a
+  pending invite included) is not found (`Debt not found` / `Budget not found`), any reader reads
+  it, the owner, an admin or a user writes it (a guest gets 403 `Access denied`), and every write
+  on an archived budget is 403 `budget.archived`. **Rules**: a debt matches through 1..10 rules
+  (`debts_rules`, ordered `created_at`, `id`; none is `common.is_blank`, eleven
+  `common.out_of_range`, both on `rules`), each an expense category of a participant of the
+  budget (the owner or an accepted non-guest, whose categories the budget shows; any other
+  category is not found, an income one `debt.category_not_expense`), optionally narrowed by that
+  same participant's payee and by a tag OR a label (both: `common.invalid_choice` on `labelId`).
+  The debt's icon is its first rule's category icon (`model.DefaultIcon` with no rules). A rule's
+  classification keys are NO ACTION foreign keys: the deletes release the rules first (below).
+  `get-debt-list` lists the debts of every budget the caller can read, archived ones included,
+  budget by budget in the budget list's order. `DebtResult` carries `budgetId`, `budgetName`,
+  `canEdit` (0/1: the right to plan in an unarchived budget) and `rules[]` (each with its
+  category's name, icon, `ownerUserId` and `ownerName`, and the payee/tag/label ids and names, so
+  every reader can render it). `get-debt-rule-options?budgetId=` (plan access; a guest gets 403)
+  lists the participants, the caller first, then by name, each with their active expense
+  categories, payees, tags and labels: the SPA's only source for a partner's classifications.
+  **Matching** is by data, never a field on the transaction: an EXPENSE (transfers never) on one
+  of the budget's member accounts (soft-deleted members included, the population the budget
+  counts; a payment on any other account does not exist for the debt) is a payment when it
+  matches ANY rule (its category, plus the payee/tag/label the rule names; a rule with a label
+  matches only a transaction carrying that label, one without ignores labels) and is dated inside
+  the debt's range. Conflicts are checked rule by rule within the budget (debts of different
+  budgets never conflict): rules of two debts with an IDENTICAL key are partitioned by start date
+  (a debt owns its start date up to the day before the next one's; empty = from the beginning,
+  which only a debt not set up can have; a shared start date is `debt.start_date_taken` on
+  `startDate`); keys that could both match one transaction (category alone vs category + payee, a
+  labelled rule vs an unlabelled one) are `debt.key_conflict` on `rules`, except that rules naming
+  DIFFERENT labels never conflict; two overlapping rules of ONE debt are refused the same way (two
+  labels on one category are fine). Only new and changed rules are validated, so a kept rule on a
+  category of a participant who has left never blocks an edit. One loan, one range: a
+  later-starting debt of the budget with a rule identical to one of a debt's rules ends that debt
+  at its start on EVERY rule (`model.DebtUntil`, the refinancing case). A transaction matching
+  several debts of the budget (e.g. both debts' labels) goes to the OLDER one (`model.AssignDebt`,
+  `created_at`, then `id`), so within a budget a payment counts on exactly one debt everywhere
+  (sync, budget attribution, templates; real-row drill-downs follow the stored split the sync
+  assigned). `debts_payments` (keyed `(debt_id, transaction_id)`: a transaction on an account two
+  budgets share can count for one debt in each; debt and interest; the debt part is the amount
+  less the interest, never stored) is materialized by the debt sync on read, budget by budget, in
+  date order, under the budget's row lock and one DB transaction per budget; it reads and writes
+  only that budget's debts' splits: stale splits of payments that stopped matching (another
+  category, an account that left the budget) are deleted, newly matching ones are split as late
+  entries (a payment that moved to another debt of the budget takes its split there), stored
+  splits are never recomputed (a corrected
   amount keeps its interest, capped at the new amount). Splits of payments dated after today are
   provisional (every Sync recomputes them, so a payment takes the terms in force on its date once
   it arrives). **Snapshots** (`debts_snapshots`: balance after the as-of day's payments, payment,
   schedule, last payment date) are history; the debt row also carries a copy of the latest
   snapshot's values ("current terms"), written with every snapshot write in the same transaction.
-  **Terms are the loan contract's facts**: a debt is created with a name, what counts (category,
-  optional payee/tag/label), payment and schedule only; `amountBorrowed`, `startDate` and
+  **Terms are the loan contract's facts**: a debt is created (`create-debt`: `budgetId`, `rules`)
+  with a name, its rules, payment and schedule only; `amountBorrowed`, `startDate` and
   `lastPaymentDate` are the setup trio (amount borrowed and last payment date both or neither,
   `startDate` required with them; each missing one is `common.is_blank`; a start date alone only
   bounds which payments count), and the debt stays NOT SET UP (`isSetUp` 0, no snapshot,
@@ -2058,22 +2092,23 @@ data unreadable. Most are also asserted by the test suite.
   stored splits are dropped so the next sync splits every payment again. Finishing setup (SPA
   event `appDebtFinishSetup`) writes the origin with the payment and schedule stored when left
   out, and deletes the
-  debt's provisional zero splits in the same transaction; a debt that covered a whole category
-  before setup hands that category back its plans and comments after the new end, whatever key
-  the same update gives it (it took them with no end). A whole-category debt (no payee, tag or
-  label, and the only such debt in its category: a set-up debt always has a start date, so the
-  start does not make it partial, but debts told apart only by their start dates share the
-  category's months, so none of them moves plans to or from the category; deleting either of two
-  such debts therefore keeps its plans on the debt row and asks to drop them, `confirmDataRemoval`,
-  instead of handing them back) whose
-  update moves its first planning day later (setup, a correction, set up or not) hands the
-  category back its plans and comments in the periods before the new start (`BeforeDay` bound on
-  the transfer, a month both rows plan adding up); one whose first planning day moves earlier,
-  still covering the same whole category, takes the category's plans and comments of the periods
-  it now starts in (`FirstDay`..`BeforeDay`). The Settings form sends no currency (`currencyId`
-  "") unless it changed, the loan's facts only when one was touched (all of them then) and a
-  set-up debt's start date only when it changed, so a stale screen never writes back a currency
-  or terms another device changed. A rename writes no snapshot; `mark-debt-paid-off` stores a
+  debt's provisional zero splits in the same transaction; a debt whose sole rule was
+  whole-category before setup hands that category back its plans and comments after the new end,
+  whatever rules the same update gives it (it took them with no end). A whole-category rule has no
+  payee, tag or label, and no other debt of the budget has a whole rule on its category
+  (`model.IsWholeCategoryRule`: a set-up debt always has a start date, so the start does not make
+  it partial, but debts told apart only by their start dates share the category's months, so none
+  of them moves plans to or from the category). Plans go BACK to a category only from a debt whose
+  ONE rule is whole-category (`model.SoleWholeCategory`); a debt with several rules keeps them on
+  its row, since they cannot be split back by category. Such a sole-rule debt whose update moves
+  its first planning day later (setup, a correction, set up or not) hands the category back its
+  plans and comments in the periods before the new start (`BeforeDay` bound on the transfer, a
+  month both rows plan adding up); a debt whose first planning day moves earlier takes, for each
+  whole-category rule it had and still has, the category's plans and comments of the periods it
+  now starts in (`FirstDay`..`BeforeDay`). The Settings form sends no currency (`currencyId`
+  "") unless it changed, the loan's facts only when one was touched (all of them then), the rules
+  only when they changed (`rulesChanged`) and a set-up debt's start date only when it changed, so
+  a stale screen never writes back a currency, rules or terms another device changed. A rename writes no snapshot; `mark-debt-paid-off` stores a
   statement of 0 as of today (replacing one entered today, dropping the splits after today) and is
   refused on a debt not set up (`debt.not_set_up`). **Not set up**:
   payments still match and are stored in `debts_payments` with interest 0 (no projection exists;
@@ -2093,17 +2128,24 @@ data unreadable. Most are also asserted by the test suite.
   payments (in the debt currency) less the payment of the snapshot in force on its due), so a
   missed window followed by a double payment counts the second payment as extra and the dues a
   statement settles add only what was recorded in them; a start-day payment counts in full.
-  Create refuses a currency the user may not use (deleted, or another
-  user's custom one: `currency.not_available`, the same `EnsureUsable` check budgets use).
-  A debt names a tag OR a label, never both (create/update refuse the pair: `common.invalid_choice`
-  on `labelId`). Category, payee, tag, label and start date are editable, rechecked by the same
-  key checks, and so is the currency: an update whose `currencyId` differs from the stored one
-  (empty keeps it; `EnsureUsable` applies to the new one only) moves the debt to it. The amounts
+  `currencyId` is optional on create: none takes the budget's currency (the SPA sends the
+  converted category row's). A currency the budget already uses (its own or an element row's) is
+  accepted from anyone; any other must be usable by the caller (deleted, or another user's custom
+  one: `currency.not_available`, the same `EnsureUsable` check budgets use). The rules and the
+  start date are editable: `update-debt` without `rules` keeps them, with `rules` replaces them (a
+  rule matched by its `id`, else by an identical key, keeps its id and creation time; `[]` is
+  `common.is_blank`), and the budget never changes; `add-debt-rule` (`{id, rule}`, "Add to a
+  debt") adds one (an eleventh is `common.out_of_range`). Both are rechecked by the checks above,
+  and new rule categories are key-share-locked first (`LockRuleCategories`, PostgreSQL only,
+  inside the budget lock), so a concurrent category delete waits and then releases the new rule
+  instead of failing its foreign key. So is the currency: an update whose `currencyId` differs
+  from the stored one (empty keeps it; the usability check applies to the new one only) moves the
+  debt to it. The amounts
   in that request are in the new currency, and with terms left out the stored numbers are kept and
   read in it, unconverted; the change alone writes no snapshot (snapshots are read in the debt's
   current currency), and terms sent that differ from the stored ones only by rounding into the new
   currency's digits are no change of terms either. The currency is resolved from the row read
-  under the owner lock. In the same transaction it drops the debt's stored splits, so the next
+  under the budget lock. In the same transaction it drops the debt's stored splits, so the next
   sync splits every payment again from its amount converted into the new currency, hands plans
   back to the category (setup tail, later start) in the OLD currency, and only then moves the
   debt's budget rows to the new one (`BudgetElements.SetRowsCurrency`; `syncElements` also keeps
@@ -2133,9 +2175,11 @@ data unreadable. Most are also asserted by the test suite.
   **Budget rows**: element type `ElementDebt = 6` / alias `"debt"` is persisted and frozen
   (the wire parser, like savings, rejects it); the row's external id is the debt id, it lives in its
   own ordering group (never a folder: `budget.debt_folder_not_allowed`), is in the debt's
-  currency (`change-element-currency` is refused), exists in every budget whose participants
-  include the owner, and is visible to every participant, guests included (details and edits stay
-  owner-only). The rows ride additively on `structure.debts` in `get-budget` (planned, paid,
+  currency (`change-element-currency` is refused), lives in the debt's own budget only (created in
+  `create-debt`'s transaction under the budget lock, so a later plan's self-heal never inserts it
+  unseen by a concurrent delete), and is visible to every participant, guests included (the row
+  carries no owner: the SPA reads the right to edit from the budget's access). The rows ride
+  additively on `structure.debts` in `get-budget` (planned, paid,
   `budgetSpent`, available with the element carry-over, `closingBalance`, payments left, payoff
   figures with and without the planned extras, `upcoming` = the unpaid scheduled dues, `isPlannable`)
   and on `get-budget-plan` (per-cell figures, `scheduledTotal`, `isPaidOff`). A period's payments
@@ -2143,11 +2187,11 @@ data unreadable. Most are also asserted by the test suite.
   the regular payment, so a planned extra lowers the count in its own period, never before it; the
   row's payoff date and the review screen count every plan. **Planning bounds**:
   a month is plannable from the start month (start date's month, always there once set up,
-  else the earliest of the creation day's month (`debts.created_day`, the day in the OWNER's stored `users.timezone`, UTC
-  when none, written once at creation, so it is the same for every viewer and for the conversion's
-  plan move and a later timezone change does not move it: a debt created at 20:00 on 31 Oct by an
-  owner in New York plans from October; the timezone is read through the debt feature's `Owners`
-  port, the user repo),
+  else the earliest of the creation day's month (`debts.created_day`, the day in the CREATING
+  user's stored `users.timezone`, UTC when none, written once at creation, so it is the same for
+  every viewer and for the conversion's plan move and a later timezone change does not move it: a
+  debt created at 20:00 on 31 Oct by a user in New York plans from October; the timezone is read
+  through the debt feature's `Users` port, the user repo),
   the first matched payment's and the first snapshot's) to the end
   month (latest snapshot's last payment date's month, the payoff month once paid off; OPEN while the
   debt is not set up, so any month from the start is plannable); `set-limit` and `create-comment` outside it are refused
@@ -2155,8 +2199,10 @@ data unreadable. Most are also asserted by the test suite.
   allowed; stored plans outside the life stay in the database, show as not plannable and never reach
   the projection; a row outside its life is emitted only when something was paid or its available
   is non-zero; a debt row's carried Available sums only the plans of months in its life, so plans
-  left past an early payoff neither grow it nor keep the row on screen. **Attribution**: a matched payment (joined through `debts_payments`, valid only
-  while the row still carries the debt's category and tag) leaves its category, tag and
+  left past an early payoff neither grow it nor keep the row on screen. **Attribution**: a matched
+  payment (joined through `debts_payments` for the budget's OWN debts only, since a payment split
+  for a debt in each of two budgets would otherwise fan out and count twice; valid only while the
+  row still carries a category, and tag, one of the debt's rules names) leaves its category, tag and
   envelope rows and their drill-downs and counts on the debt row (the debt row has its own
   drill-down, `debtId` on `get-transaction-list`); labels keep counting it (they overlap and
   never sum); a payment booked on a savings member stays in the savings row; Paid is the
@@ -2170,33 +2216,58 @@ data unreadable. Most are also asserted by the test suite.
   count nothing). **Reads**:
   the sync writes splits and runs from the budget's read paths (`Service.Sync`: `GetBudget`,
   `GetBudgetPlan`, build results), outside any budget transaction, and from the debt
-  service's own reads and writes (`get-debt`, update, delete, a classification merge) for the
-  debt's category; `Views` and `Timelines`
-  are read-only (no owner lock, no writes: stale splits ignored, missing ones split in memory),
-  which is what `syncElements`, `set-limit` and the transaction lists call, so partners'
-  owner-row locks can never invert inside a budget write. **Converting**: "Track as debt" on an
-  expense category row (also inside an envelope) opens the short create form (category locked);
-  creating a WHOLE-category debt (no payee/tag/label; the start date does not count) moves the category row's plans and comments (`TransferData`,
-  only where the target row's currency matches, only for the months of the debt's planning
-  life: the rest stays on the category row, whose Available keeps counting it) to the debt row
-  in every budget in the same transaction; an edit that makes a debt whole-category (or moves a
-  whole-category debt to another category) and a category merge onto a whole-category debt (the
-  source's debt moving there, or one already on the target) do the same, a month both rows plan
-  adding up; deleting it moves them back (the category's plan wins a clash; a category inside an
-  envelope takes nothing, its child row showing no plan, and gives nothing when converted:
-  its own plans count nowhere, so they stay hidden on it rather than surface on the debt row), and a delete that would leave data behind (or a
-  partial debt's plans) needs `confirmDataRemoval` (`debt.removal_unconfirmed`, a field error on
+  service's own reads and writes (`get-debt`, `get-debt-list` for each budget holding debts,
+  update, delete, a classification merge) for the debt's budget; `Views` and `Timelines`
+  are read-only (no budget lock, no writes: stale splits ignored, missing ones split in memory),
+  which is what `syncElements`, `set-limit` and the transaction lists call, so the budget lock
+  can never invert inside a budget write. **Converting**: "Track as debt" on any participant's
+  expense category row (also inside an envelope) opens the short create form (category locked) in
+  that budget, and "Add to a debt..." adds the category to an existing debt of the budget as a new
+  rule (`add-debt-rule`). Each WHOLE-category rule (the start date does not count) moves its
+  category row's plans and comments (`TransferData`, only where the target row's currency
+  matches, only for the months of the debt's planning life: the rest stays on the category row,
+  whose Available keeps counting it) to the debt row, in the debt's budget only, in the same
+  transaction: on create, on `add-debt-rule`, on an edit that makes a rule whole-category (or
+  moves one to another category), and on a category merge onto a whole-category rule (the
+  source's rule moving there, or one already on the target); a month both rows plan adds up.
+  Removing or narrowing a rule leaves the debt row's plans where they are. Deleting a debt whose
+  sole rule is whole-category moves them back (the category's plan wins a clash; a category inside
+  an envelope takes nothing, its child row showing no plan, and gives nothing when converted:
+  its own plans count nowhere, so they stay hidden on it rather than surface on the debt row); a
+  delete that would leave data behind (what the category cannot take back, another currency or
+  a month it plans, or any other debt's plans and comments) needs `confirmDataRemoval` (`debt.removal_unconfirmed`, a field error on
   that field); the delete write-locks the debt's rows first (`LockElementsByExternal`, like the
   savings guard), so a concurrent plan is either seen or refused, and deletes the debt's budget
   rows (plans and comments) in the same transaction rather than leaving them to the next
   structure sync. Payments are never touched by a delete. Every plan transfer between a category
   row and a debt row write-locks both rows in id order (`LockElementPair`) before reading their
-  plans, so a concurrent `set-limit` (which share-locks its row) is either moved or waits. **Lock order**: the debt owner's
-  user row before any budget row, everywhere; a category/payee/tag merge therefore locks the
-  owners of the debts on either side first (`DebtUsage.PrepareMerge`), before it writes. **Classifications**: deleting a
-  category, payee, tag or label a debt uses is refused (`*.used_by_debt`, incl.
-  `label.used_by_debt`); a merge moves the debt to
-  the target and refuses with `debt.key_conflict` when that would overlap another debt. No MCP
+  plans, so a concurrent `set-limit` (which share-locks its row) is either moved or waits.
+  **Lock order**: the debt's BUDGET row (`LockBudget`: `SELECT id FROM budgets WHERE id = $1 FOR
+  NO KEY UPDATE` on PostgreSQL, which child inserts' key-share locks pass; a no-op on SQLite)
+  before any budget element row, budgets in id order, everywhere: the sync, every debt write
+  (`lockedDebt` checks access, locks, then re-reads the debt and re-checks the right to edit, so a
+  caller without access never holds the lock), clone, onboarding's plan handover and a
+  classification delete or merge. **Classifications**: deleting a category, payee, tag or label a
+  rule names is never refused (there is no `*.used_by_debt`) and needs no access to the debt (a
+  former participant or a guest must be able to clean up their own categories). The delete or
+  merge calls its `DebtUsage.Prepare` first (`debt.Service.LockForClassification`: the budgets of
+  the debts whose rules name the ids), then locks its own row (a merge both rows, in id order), and
+  in its transaction `Release` (before the row goes) or `Reassign` (after the transactions and
+  budget rows moved): a deleted category's rules go (a debt may be left with none, and then
+  matches nothing until someone adds a category), a deleted payee, tag or label stops narrowing
+  its rule (it widens), and a merge re-points the rules to the target. Rules that then duplicate
+  or conflict are resolved by `model.NormalizeBudgetRules`, never refused: oldest debt first
+  (`created_at`, `id`), a rule conflicting with an older debt's rule is dropped, then a rule another
+  rule of the same debt covers (of two identical, the newer). A category merge then moves the
+  merged row's plans onto every whole-category rule on the target, and the budgets involved are
+  synced in the merge's transaction. A delete leaves the plans where they are; splits of payments
+  that no longer match go on the next sync. **Participants and clones**: a participant who leaves the budget takes
+  their accounts with them, so their payments stop counting (their splits go on the next sync);
+  the debts and their rows stay, and rules on the leaver's categories match nothing more.
+  `clone-budget` copies the debts (rules, snapshots, start date, terms) under new ids, keeping
+  each one's `created_at` and `created_day` (the tiebreak and planning start are the same in the
+  copy; `debt.Service.CloneDebts` through `DebtSource`), maps the debt rows onto the copies, and
+  copies no splits: the copy's next sync rebuilds them on its accounts. No MCP
   tool of its own: `get_budget` lists `structure.debts` and `set_limit` accepts a debt id.
   **Shifted periods**: in a budget whose months start on another day (see "Budget period start
   day"), every debt figure follows the budget's periods, keys still `YYYY-MM-01`: Paid reads the
@@ -2208,29 +2279,53 @@ data unreadable. Most are also asserted by the test suite.
   way). Day 1 gives exactly the calendar figures. The debt service's own figures (Settings,
   details) stay calendar-month and today based; the SPA's red debt hint takes the budget's
   start day (`planHint` `startDay`).
-  **Debt SPA flow** (`web/src/features/debts`): create is a short form (name, a "payments from"
-  sentence of chip pickers `PaymentsFromEditor` for category/payee and ONE tag slot whose picker
-  lists tags and reporting tags in two headed groups, setting `tagId` or `labelId` and clearing the
-  other, with "any ..." rows and expense-only categories, and one Payment row, `PaymentField`: the
-  amount card and, beside it at the same height on every breakpoint, an "every month" schedule
+  **Debt SPA flow** (`web/src/features/debts`): create is a short form (name, the rule list
+  `RulesEditor`, a "Which payments count" card with one "payments from" sentence per rule, each a
+  `PaymentsFromEditor` of chip pickers for category/payee and ONE tag slot whose picker lists tags
+  and reporting tags in two headed groups, setting `tagId` or `labelId` and clearing the other,
+  with "any ..." rows; "+ Add a category" adds a line, hidden at 10, and every line but a locked
+  first one has a remove button while there are two or more. The options come from
+  `get-debt-rule-options` (`useDebtRuleOptions(budgetId)`): the category picker lists every
+  participant's active expense categories grouped by participant (the caller first, headings only
+  with two or more), the payee/tag/label pickers the chosen category's owner's; picking a partner's
+  category clears the line's payee, tag and label, the caller's own keeps them. A stored rule whose
+  category or narrowing is no longer offered still shows by its stored name. From a budget row the
+  budget is the row's (no picker) and the first line's category is locked; from Settings a budget
+  picker (`PickerSheet`, `rankByName`) lists `usePlannableBudgets()` (unarchived, owner/admin/user
+  role), defaulting once to the `budget` user option when listed, else the first, and switching
+  budget keeps only the lines on the caller's own categories. Then one Payment row, `PaymentField`:
+  the amount card and, beside it at the same height on every breakpoint, an "every month" schedule
   card). Amounts (payment, amount borrowed, a statement balance) are plain `inputMode="decimal"` inputs, no calculator:
   `plainAmount` reads "2000", "2 000", "2,000.50", "1,200" and "1,5" (a lone comma is the decimal
   mark unless exactly three digits follow it, as the app displays amounts) and anything else is
   `common.validation.invalid_number`; while the text holds a "," or "." the field echoes how it
-  is read in the display format (`amountEcho`, "= 1,500.00 $"), so a misread is visible. It asks no currency: it sends the converted category row's
-  currency, else the user's default, and shows a Currency row only after a `currencyId` refusal
-  (like the start date); the start date field appears only after
-  `debt.start_date_taken` (the one refusal a date can resolve; `debt.key_conflict` just shows its
-  message) and the form creates a debt with no terms, then opens the review screen. The ONLY way
-  into a debt is its Details entry (Settings → Debts row, in the Finances group right after
-  Budgets; budget row menu; item sheet; owner only; the budget's debt row menu, Budget view and
-  Plan grid, also offers the Danger zone's Mark as paid off and Delete), opening
+  is read in the display format (`amountEcho`, "= 1,500.00 $"), so a misread is visible. It asks
+  no currency: it sends the converted category row's currency when known, else none (the server
+  takes the budget's, whose symbol the payment shows), and shows a Currency row only after a
+  `currencyId` refusal (like the start date); the start date field appears only after
+  `debt.start_date_taken` (the one refusal a date can resolve; `debt.key_conflict` shows its
+  message under the rules) and the form creates a debt with no terms, then opens the review
+  screen. **Row menus** (`useBudgetLineMenus`): on any participant's expense category row (also
+  inside an envelope), with the right to plan in an unarchived budget, "Track as debt" opens that
+  form and, when the budget has a debt (`useDebts({ enabled })`, never fetched for a guest), "Add to
+  a debt..." opens `AddToDebtDialog` (a `PickerSheet`: a dialog on desktop, a sheet on a phone)
+  listing the budget's debts with icon, name and "Payments in ..." (the rules, `ruleOwnerLabel`),
+  searchable from seven; a debt whose rules already cover the category, or that a new rule would
+  conflict with, is disabled with the reason (`addRuleBlocker`), every entry is disabled offline,
+  and a pick sends `add-debt-rule`, fires `appDebtRuleAdd` and closes (a refusal shows inline).
+  The ONLY way into a debt is its Details entry (Settings → Debts row, in the Finances group right
+  after Budgets; budget row menu; item sheet; every reader, guests included, who get the read-only
+  review; the budget's debt row menu, Budget view and Plan grid, also offers the Danger zone's Mark
+  as paid off and Delete with the right to plan in an unarchived budget), opening
   `DebtReviewScreen`: on desktop a centred dialog 90% of the viewport high and a reading column
   wide (min(90vw, 52rem)) that scrolls inside (`ResponsiveDialog` `size="column"`; the page-sized
   sizes clip to their rounded corners with `overflow-hidden`), full screen on a phone (`fullScreen`). Its header is the
   icon, name and close X (no menu); under it the tabs **Overview**, **Balance** (set-up debts
-  only), **Settings** and **Danger zone** (`components/ui/tabs`, `openDebtDetails(id, tab, budgetId)` picks the first; `debtDetailsTab`
-  and `debtDetailsBudgetId`, the budget the screen was opened from, in `uiStore`). The tab bar is
+  only), **Settings** and **Danger zone** (`components/ui/tabs`, `openDebtDetails(id, tab)` picks
+  the first; `debtDetailsTab` in `uiStore`). With `canEdit` 0 (a guest, an archived budget) the
+  screen is read-only: no Settings or Danger zone tab (opened on one, it shows the Overview), no
+  Finish setup, and the Balance tab keeps its summary and history without the form or the delete
+  buttons. The tab bar is
   the dialog's `subheader`: title and tabs are one opaque, bordered block outside the scrolling
   body (the Tabs root wraps the dialog, its context reaching both through the portal), each tab's
   2px underline as wide as its label and overlapping the block's border. Overview is read-only: payments left in large text with an X-of-Y progress bar whose
@@ -2246,29 +2341,27 @@ data unreadable. Most are also asserted by the test suite.
   table's), owed now, left to pay or currency row; a debt not set up shows payment, its start
   date or "From the first payment", and currency).
   The debt service's own figures (`get-debt`, Settings → Debts) stay plan-free, but the
-  Overview of a set-up debt that is not paid off follows the budgets' plans: it loads
-  `get-debt-forecast` on open (the screen's budget, else none so the server picks the active
-  one; no metric) and takes payments left (count and progress total) and the Planned extra
+  Overview of a set-up debt that is not paid off follows its budget's plans: it loads
+  `get-debt-forecast?id=` on open (no metric) and takes payments left (count and progress total) and the Planned extra
   from its additive summary (`paymentsLeft`, `payoffDate` and `overpaymentLeft` (both unused by
   the SPA): the same plan-aware projection run from today, equal to `get-debt`'s with no plans;
   `extraPlanned`, the planned extras that run applies, "0" with none; 0/"" while not set up),
   falling back to the debt's own payments left while it loads, on an error or offline (no
   `OfflineUnavailable`), and hiding Planned extra meanwhile rather than show a plan-free number.
   The principal repaid does not depend on plans.
-  The payments-from sentence read-only
-  (`PaymentsFromEditor readOnly`), payments (with a Balance column on a set-up debt: `get-debt`'s
+  The rules read-only (`RulesReadOnly`, one sentence each, a category of another participant
+  named with its owner, "Anna's Mortgage", `ruleOwnerLabel`), payments (with a Balance column on a set-up debt: `get-debt`'s
   additive `balance` per payment, what was owed after it, from the snapshots and stored splits,
   `""` while not set up; Principal is left out on a phone); the history of the loan's entries is
   the Balance tab's.
   Beside the Payments heading of a set-up debt that is not paid off, "Show future payments" shows
-  `get-debt-forecast?id=&budgetId=`, the query the Overview already loaded (no second request;
+  `get-debt-forecast?id=`, the query the Overview already loaded (no second request;
   fires `appDebtForecastView`): the projection's own run
   (`model.Projection.Payments`, a planned extra riding on its period's first payment, an extra of
-  a period with no due as a payment of its own at the period's end) with the plans the given
-  budget, else the owner's active budget, holds for the debt's row (plans outside the debt's
-  planning life ignored, on that budget's periods), read through the debt feature's `BudgetPlans`
-  port (`budget.Service.DebtRowPlans`, which answers nothing for a budget the caller cannot read);
-  `budgetId`/`budgetName` name the budget only when its plans add an extra, so the SPA's note
+  a period with no due as a payment of its own at the period's end) with the plans the debt's own
+  budget holds for its row (plans outside the debt's planning life ignored, on that budget's
+  periods), read through the `Budgets.DebtPlans` port (`budget.Service.DebtRowPlans`; the forecast
+  takes no budget); `budgetId`/`budgetName` name the budget only when its plans add an extra, so the SPA's note
   reads "Includes extra payments planned in X" or "Regular payments only". The run starts on the
   later of today and the last recorded payment's day, so a payment recorded ahead of today is not
   projected again and the first row follows the booked list's last balance. The projected rows
@@ -2282,11 +2375,13 @@ data unreadable. Most are also asserted by the test suite.
   `patchPlanCells`) patches a debt row's plan and moves its Available by the change, like a savings
   row's, while Left and payments left wait for the next read; the metric fires on
   the click that opens the list. "Track as debt" passes the row's budget through
-  `OpenDebtParams.budgetId` to the screen opened after create. A debt not set up has no items. Settings is ONE
-  form, `DebtSettingsForm`, asking for the loan contract's facts (name, payments from, Amount
+  `OpenDebtParams.budgetId`, the budget the debt is created in. A debt not set up has no items. Settings is ONE
+  form, `DebtSettingsForm`, asking for the loan contract's facts (name, the rule list, `RulesEditor`
+  fed by the debt's budget's rule options, a line with no category being "Required field", Amount
   borrowed, one `DatesRow` of two cards, Start date first and Last payment date second, hints
   screen-reader only, the clear X only on a debt not set up, the payment row, currency; Cancel
-  resets it, Save sends one `update-debt`, built by `buildTermsPayload`: the facts (amount
+  resets it, Save sends one `update-debt`, built by `buildTermsPayload`: the rules (all of them,
+  with their stored ids) only when they changed, the facts (amount
   borrowed, last payment date, payment, schedule) only when one was touched and then all of them,
   a set-up debt's start date only when it changed (a debt not set up always sends it, null
   clearing it), and an unchanged currency as `""`, so the server keeps what another device may
@@ -2312,9 +2407,14 @@ data unreadable. Most are also asserted by the test suite.
   Overview, so a later edit never sends facts from before it. A debt not set up shows "Paid so far" (its payments dated up to the caller's today),
   a hint and a Finish setup button that switches to Settings and focuses the first missing fact
   (amount borrowed, then the start date, then the last payment date; once one fact is typed all
-  three are required; saving with the facts fires `appDebtFinishSetup`); the Settings row, the budget row's Left cell and the item sheet's
-  Details button read "Finish setup" for the owner and open the screen on Settings, a partner
-  sees a dash; Left sums, Plan cells and payoff lines skip it. With an AI provider, onboarding
+  three are required; saving with the facts fires `appDebtFinishSetup`); the Settings row, the
+  budget row's Left cell and the item sheet's Details button read "Finish setup" for a reader who
+  may plan in the unarchived budget (`canEdit`, `canPlan`) and open the screen on Settings; a guest
+  sees a dash in Left, no link on the Settings row and Details in the sheet, all opening the
+  Overview; Left sums, Plan cells and payoff lines skip it. **Settings → Debts** lists the debts of
+  every budget the user can read (`get-debt-list`, archived budgets included), one section per
+  budget headed by its name in the server's order, open debts first in each; Create is disabled,
+  saying why (`debts.settings.no_budget`), while the user can plan in no unarchived budget. With an AI provider, onboarding
   creates such debts by itself from loan-like categories (see "Debt detection" under Onboarding
   Day 0); the user finishes their setup or deletes them like any other.
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per
