@@ -618,6 +618,7 @@
     },
     "review": {
       "progress": "{paid} of {total} paid",
+      "progress_repaid": "{paid} of {total} paid ({repaid} of {borrowed})",
       "owed_now": "Owed now {amount}",
       "paid_so_far": "Paid so far",
       "not_set_up": "Add the amount borrowed and the loan's dates to see payments left",

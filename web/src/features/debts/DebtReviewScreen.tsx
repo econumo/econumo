@@ -13,14 +13,14 @@ import { useOnline } from '@/hooks/useOnline'
 import { apiErrorMessage } from '@/lib/apiError'
 import { formatDate } from '@/lib/datetime'
 import { pluralPick } from '@/lib/plural'
-import { add } from '@/lib/decimal'
+import { add, isNegative, sub } from '@/lib/decimal'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useUiStore } from '@/app/uiStore'
 import type { DebtDetailsTab } from '@/app/uiStore'
 import type { DebtDetailsDto, DebtDto } from '@/api/dto/debt'
 import type { Id } from '@/api/types'
 import { useCurrencies } from '@/features/currencies/queries'
-import { debtDay, debtMonth } from './debtDates'
+import { debtDay } from './debtDates'
 import { DebtBalanceTab } from './DebtBalanceTab'
 import { DebtSettingsForm } from './DebtSettingsForm'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
@@ -478,7 +478,6 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
   const forecast = useDebtForecast(item.id, budgetId, canForecast)
   const summary = canForecast ? forecast.data : undefined
   const left = summary ? summary.paymentsLeft : item.paymentsLeft
-  const payoffDate = summary ? summary.payoffDate : item.payoffDate
   const overpaymentLeft = summary ? summary.overpaymentLeft : item.overpaymentLeft
   const amount = (value: string) => money(value, item)
   const currency = currencies?.find((c) => c.id === item.currencyId)
@@ -489,8 +488,14 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
   const today = formatDate(new Date())
   const paidSoFar = payments.filter((p) => p.date.slice(0, 10) <= today).reduce((sum, p) => add(sum, p.amount), '0')
   const total = item.periodsPaid + left
-  const owed = t('debts.review.owed_now', { amount: amount(item.currentBalance) })
-  const payoff = item.isPaidOff === 0 && payoffDate !== '' ? t('budgets.page.debts.payoff_by', { date: debtMonth(payoffDate, lang) }) : null
+  const progress = t('debts.review.progress', { paid: item.periodsPaid, total })
+  // the bar counts payments; the caption adds the principal repaid of the
+  // amount borrowed (a balance above it, from a statement, repaid nothing)
+  const repaid = sub(item.amountBorrowed || '0', item.currentBalance || '0')
+  const caption =
+    item.isPaidOff === 0
+      ? t('debts.review.progress_repaid', { paid: item.periodsPaid, total, repaid: amount(isNegative(repaid) ? '0' : repaid), borrowed: amount(item.amountBorrowed) })
+      : progress
 
   return (
     <>
@@ -503,11 +508,11 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
             {total > 0 ? (
               <div className="flex flex-col gap-1.5">
                 {/* the track is the whole loan, the filled part what is paid */}
-                <Progress value={(item.periodsPaid / total) * 100} aria-label={t('debts.review.progress', { paid: item.periodsPaid, total })} className="h-2 bg-foreground/15" />
-                <span className="text-xs text-muted-foreground">{t('debts.review.progress', { paid: item.periodsPaid, total })}</span>
+                <Progress value={(item.periodsPaid / total) * 100} aria-label={progress} className="h-2 bg-foreground/15" />
+                <span className="text-xs text-muted-foreground">{caption}</span>
               </div>
             ) : null}
-            <p className="text-sm text-muted-foreground">{payoff ? `${owed} · ${payoff}` : owed}</p>
+            {item.isPaidOff === 1 ? <p className="text-sm text-muted-foreground">{t('debts.review.owed_now', { amount: amount(item.currentBalance) })}</p> : null}
           </>
         ) : (
           <>

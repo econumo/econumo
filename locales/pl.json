@@ -618,6 +618,7 @@
     },
     "review": {
       "progress": "Opłacono {paid} z {total}",
+      "progress_repaid": "Opłacono {paid} z {total} ({repaid} z {borrowed})",
       "owed_now": "Do spłaty teraz: {amount}",
       "paid_so_far": "Zapłacono dotąd",
       "not_set_up": "Dodaj pożyczoną kwotę i daty pożyczki, aby zobaczyć pozostałe płatności",

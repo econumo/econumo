@@ -618,6 +618,7 @@
     },
     "review": {
       "progress": "{paid} sur {total} payés",
+      "progress_repaid": "{paid} sur {total} payés ({repaid} sur {borrowed})",
       "owed_now": "Dû actuellement : {amount}",
       "paid_so_far": "Payé jusqu'ici",
       "not_set_up": "Indiquez le montant emprunté et les dates du prêt pour voir les paiements restants",

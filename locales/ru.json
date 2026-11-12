@@ -618,6 +618,7 @@
     },
     "review": {
       "progress": "Оплачено {paid} из {total}",
+      "progress_repaid": "Оплачено {paid} из {total} ({repaid} из {borrowed})",
       "owed_now": "Долг сейчас: {amount}",
       "paid_so_far": "Уже оплачено",
       "not_set_up": "Укажите сумму кредита и его даты, чтобы увидеть, сколько платежей осталось",

@@ -146,8 +146,10 @@ it('set-up debt shows payments left first with an X of Y progress', async () => 
 
   const top = screen.getByTestId('debt-review-top')
   expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('283 payments left')
-  expect(top).toHaveTextContent('77 of 360 paid')
-  expect(top).toHaveTextContent('Owed now 1,090.00 $ · Paid off by Jul 2050')
+  // the payments, then the principal repaid of the amount borrowed (1,200 less the 1,090 owed)
+  expect(top).toHaveTextContent('77 of 360 paid (110.00 $ of 1,200.00 $)')
+  expect(top).not.toHaveTextContent('Owed now')
+  expect(top).not.toHaveTextContent('Paid off by')
   // the count leads the screen, before the loan's details
   const loan = screen.getByRole('region', { name: 'Loan' })
   expect(top.compareDocumentPosition(loan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -179,7 +181,20 @@ it('a paid-off debt says so instead of counting payments', async () => {
   await openScreen()
 
   expect(screen.getByTestId('debt-review-payments-left')).toHaveTextContent('Paid off')
-  expect(screen.getByTestId('debt-review-top')).not.toHaveTextContent('Paid off by')
+  const top = screen.getByTestId('debt-review-top')
+  expect(top).not.toHaveTextContent('Paid off by')
+  // unchanged once paid off: the count alone, and what is owed
+  expect(top).toHaveTextContent('77 of 77 paid')
+  expect(top).not.toHaveTextContent('(')
+  expect(top).toHaveTextContent('Owed now 0.00 $')
+})
+
+it('the principal repaid never reads below zero', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, currentBalance: '1300' } })))
+  renderScreen()
+  await openScreen()
+
+  expect(screen.getByTestId('debt-review-top')).toHaveTextContent('77 of 360 paid (0.00 $ of 1,200.00 $)')
 })
 
 it('the Loan card holds the loan\'s figures and nothing to edit', async () => {
@@ -237,9 +252,9 @@ describe('the Overview follows the budget\'s plans', () => {
     await waitFor(() => expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('200 payments left'))
     expect(asked).toHaveLength(1)
     expect(asked[0].get('budgetId')).toBe('b1')
-    expect(top).toHaveTextContent('77 of 277 paid')
-    // what is owed now does not depend on plans
-    expect(top).toHaveTextContent('Owed now 1,090.00 $ · Paid off by Feb 2043')
+    // the principal repaid does not depend on plans
+    expect(top).toHaveTextContent('77 of 277 paid (110.00 $ of 1,200.00 $)')
+    expect(top).not.toHaveTextContent('Paid off by')
     const loan = screen.getByRole('region', { name: 'Loan' })
     expect(within(loan).getByText('Planned overpayment').nextElementSibling).toHaveTextContent('4.25 $')
     // loading the figures is no view of the future payments
@@ -273,9 +288,8 @@ describe('the Overview follows the budget\'s plans', () => {
     await openScreen()
 
     const top = screen.getByTestId('debt-review-top')
-    await waitFor(() => expect(top).toHaveTextContent('77 of 360 paid'))
+    await waitFor(() => expect(top).toHaveTextContent('77 of 360 paid (110.00 $ of 1,200.00 $)'))
     expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('283 payments left')
-    expect(top).toHaveTextContent('Paid off by Jul 2050')
     expect(within(screen.getByRole('region', { name: 'Loan' })).getByText('Planned overpayment').nextElementSibling).toHaveTextContent('10.00 $')
     expect(screen.queryByRole('alert')).toBeNull()
   })

@@ -618,6 +618,7 @@
     },
     "review": {
       "progress": "{paid} von {total} bezahlt",
+      "progress_repaid": "{paid} von {total} bezahlt ({repaid} von {borrowed})",
       "owed_now": "Aktuell geschuldet: {amount}",
       "paid_so_far": "Bisher bezahlt",
       "not_set_up": "Geben Sie den geliehenen Betrag und die Daten des Kredits an, um die verbleibenden Zahlungen zu sehen",

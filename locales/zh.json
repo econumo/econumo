@@ -618,6 +618,7 @@
     },
     "review": {
       "progress": "已还 {paid}/{total} 期",
+      "progress_repaid": "已还 {paid}/{total} 期（{repaid}/{borrowed}）",
       "owed_now": "当前欠款 {amount}",
       "paid_so_far": "已还金额",
       "not_set_up": "填写借款金额和贷款日期，即可查看剩余还款笔数",
