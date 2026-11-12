@@ -67,7 +67,7 @@ func TestTransferElementData_WaitsForAConcurrentLimitWrite(t *testing.T) {
 			moved := make(chan error, 1)
 			go func() {
 				_, err := r.svc1.TransferElementData(ctx, model.ElementDataTransfer{
-					FromID: vo.MustParseId(src), FromType: model.ElementCategory, ToID: vo.MustParseId(dst), ToType: model.ElementCategory,
+					BudgetID: r.budgetID, FromID: vo.MustParseId(src), FromType: model.ElementCategory, ToID: vo.MustParseId(dst), ToType: model.ElementCategory,
 					CurrencyID: vo.MustParseId(usdID), SumOnClash: true,
 				})
 				moved <- err

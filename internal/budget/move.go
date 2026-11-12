@@ -283,7 +283,7 @@ func savingsFolderNotAllowedErr() error {
 //   - keep one live, folder-less savings row per savings-account member
 //     (deleted members included), keyed in its own no-folder group, with the
 //     account's currency on creation;
-//   - the same for every debt of a participant, in the debts' own group, with
+//   - the same for every debt of the budget, in the debts' own group, with
 //     the debt's currency on creation;
 //   - force archived elements and envelope-child categories to the unset key
 //     (and, for children, no folder) so they drop out of the listing;
@@ -302,7 +302,7 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 		return err
 	}
 	userIDs := b.participantIDs()
-	debts, err := s.debtViews(ctx, userIDs)
+	debts, err := s.debtViews(ctx, b.debtScope())
 	if err != nil {
 		return err
 	}

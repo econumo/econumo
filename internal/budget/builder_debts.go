@@ -94,7 +94,7 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 		}
 		plans[v.ID][l.Month] = vo.NewDecimal(l.Amount).String()
 	}
-	return s.debts.Timelines(ctx, model.DebtTimelineRequest{DebtIDs: ids, Months: months, Plans: plans, Today: today, PeriodStartDay: f.startDay})
+	return s.debts.Timelines(ctx, model.DebtTimelineRequest{Scope: b.debtScope(), DebtIDs: ids, Months: months, Plans: plans, Today: today, PeriodStartDay: f.startDay})
 }
 
 // timelineMonth is the debt's projection for month, zero when there is none.
@@ -177,7 +177,7 @@ func emitMonthlyDebts(rows []debtRow, month time.Time, startDay int, limits map[
 		mf, pf := monthFigures(tl, v, startDay, month), payoffFigures(tl, v)
 		out = append(out, model.DebtElementResult{
 			Id: v.ID, Type: int(model.ElementDebt.Int16()), Name: v.Name, Icon: v.Icon,
-			CurrencyId: v.CurrencyID, OwnerUserId: v.OwnerID, Position: len(out),
+			CurrencyId: v.CurrencyID, Position: len(out),
 			Budgeted: budgeted.String(), IsBudgeted: boolToInt(hasLimit),
 			Spent: paidNow.String(), BudgetSpent: budgetPaid.String(), Available: available.String(),
 			ClosingBalance: mf.closingBalance, PaymentsLeft: mf.paymentsLeft,
@@ -224,7 +224,7 @@ func emitPlanDebts(rows []debtRow, months []time.Time, startDay int, plannedFor 
 		pf := payoffFigures(tl, v)
 		out = append(out, model.PlanDebtElementResult{
 			Id: v.ID, Type: int(model.ElementDebt.Int16()), Name: v.Name, Icon: v.Icon,
-			CurrencyId: v.CurrencyID, OwnerUserId: v.OwnerID, Position: len(out),
+			CurrencyId: v.CurrencyID, Position: len(out),
 			PayoffDate: pf.payoffDate, BasePayoffDate: pf.basePayoffDate,
 			OverpaymentLeft: pf.overpaymentLeft, BaseOverpaymentLeft: pf.baseOverpaymentLeft,
 			IsPaidOff: boolToInt(v.PaidOff), IsSetUp: boolToInt(v.SetUp), Cells: cells,

@@ -105,6 +105,15 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 				return serr
 			}
 		}
+		// The debts are the budget's own, so the copy gets copies of them
+		// before its rows, which name them.
+		var debtMap map[vo.Id]vo.Id
+		if s.debts != nil {
+			var cerr error
+			if debtMap, cerr = s.debts.CloneDebts(txCtx, sourceID, newID); cerr != nil {
+				return cerr
+			}
+		}
 		folderMap := make(map[vo.Id]vo.Id, len(src.folders))
 		for _, f := range src.folders {
 			nf := model.NewBudgetFolder(vo.NewId(), newID, f.Name, f.Side, now)
@@ -149,6 +158,15 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 				if mapped, ok := envMap[el.ExternalID]; ok {
 					externalID = mapped
 				}
+			}
+			// A debt row names the source budget's debt; one with no copy
+			// (its debt is gone) is left behind with its plans.
+			if el.Type == model.ElementDebt {
+				mapped, ok := debtMap[el.ExternalID]
+				if !ok {
+					continue
+				}
+				externalID = mapped
 			}
 			ne := model.NewBudgetElement(s.elements.NextIdentity(), newID, externalID, el.Type, el.CurrencyID, folderID, now)
 			ne.SetSortKey(el.SortKey)

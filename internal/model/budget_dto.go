@@ -186,7 +186,6 @@ type DebtElementResult struct {
 	Name                string `json:"name"`
 	Icon                string `json:"icon"`
 	CurrencyId          string `json:"currencyId"`
-	OwnerUserId         string `json:"ownerUserId"`
 	IsArchived          int    `json:"isArchived"`
 	Position            int    `json:"position"`
 	Budgeted            string `json:"budgeted"`
@@ -512,7 +511,6 @@ type PlanDebtElementResult struct {
 	Name                string               `json:"name"`
 	Icon                string               `json:"icon"`
 	CurrencyId          string               `json:"currencyId"`
-	OwnerUserId         string               `json:"ownerUserId"`
 	Position            int                  `json:"position"`
 	PayoffDate          string               `json:"payoffDate"`
 	BasePayoffDate      string               `json:"basePayoffDate"`

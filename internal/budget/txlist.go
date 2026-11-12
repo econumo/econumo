@@ -135,7 +135,8 @@ func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters
 			return nil, model.ValidateBlank(map[string]string{"debtId": ""})
 		}
 		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
-			return r.BudgetTransactionsByDebt(ctx, debt, f.everydayAccountIDs, periodStart, periodEnd)
+			rows, err := r.BudgetTransactionsByDebt(ctx, debt, f.everydayAccountIDs, periodStart, periodEnd)
+			return carriedBy(debt, rows, err)
 		}, nil
 	case optIDSet(req.AccountId):
 		accountID, perr := savingsMemberID(f, strings.TrimSpace(*req.AccountId))
@@ -221,7 +222,7 @@ func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters
 			return nil, model.ValidateBlank(map[string]string{"tagId": ""})
 		}
 		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
-			return r.BudgetTransactionsByTag(ctx, tagID, nil, true, f.everydayAccountIDs, periodStart, periodEnd)
+			return r.BudgetTransactionsByTag(ctx, f.budgetID, tagID, nil, true, f.everydayAccountIDs, periodStart, periodEnd)
 		}, nil
 	case cat != "" && tag == "" && env == "":
 		catID, perr := vo.ParseId(cat)
@@ -229,7 +230,7 @@ func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters
 			return nil, model.ValidateBlank(map[string]string{"categoryId": ""})
 		}
 		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
-			return f.withoutDebtPayments(r.BudgetTransactionsByCategories(ctx, []vo.Id{catID}, f.everydayAccountIDs, periodStart, periodEnd))
+			return f.withoutDebtPayments(r.BudgetTransactionsByCategories(ctx, f.budgetID, []vo.Id{catID}, f.everydayAccountIDs, periodStart, periodEnd))
 		}, nil
 	case tag != "" && env == "":
 		tagID, perr := vo.ParseId(tag)
@@ -245,7 +246,7 @@ func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters
 			catFilter = &c
 		}
 		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
-			return f.withoutDebtPayments(r.BudgetTransactionsByTag(ctx, tagID, catFilter, false, f.everydayAccountIDs, periodStart, periodEnd))
+			return f.withoutDebtPayments(r.BudgetTransactionsByTag(ctx, f.budgetID, tagID, catFilter, false, f.everydayAccountIDs, periodStart, periodEnd))
 		}, nil
 	case env != "" && tag == "" && cat == "" && !req.Uncategorized:
 		envID, perr := vo.ParseId(env)
@@ -257,11 +258,27 @@ func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters
 			return nil, cerr
 		}
 		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
-			return f.withoutDebtPayments(r.BudgetTransactionsByCategories(ctx, catIDs, f.everydayAccountIDs, periodStart, periodEnd))
+			return f.withoutDebtPayments(r.BudgetTransactionsByCategories(ctx, f.budgetID, catIDs, f.everydayAccountIDs, periodStart, periodEnd))
 		}, nil
 	default:
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
+}
+
+// carriedBy keeps the debt's payments that still carry one of its rules'
+// category and tag pairs: a recategorised payment counts on its new rows
+// until the next sync drops its split (see debtOf).
+func carriedBy(debt model.DebtView, rows []model.BudgetTransactionRow, err error) ([]model.BudgetTransactionRow, error) {
+	if err != nil {
+		return nil, err
+	}
+	out := rows[:0]
+	for _, row := range rows {
+		if debt.CarriesKey(row.CategoryID, row.TagID) {
+			out = append(out, row)
+		}
+	}
+	return out, nil
 }
 
 // withoutDebtPayments drops the rows a debt row counts instead (see debtOf).

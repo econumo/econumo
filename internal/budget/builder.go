@@ -18,6 +18,8 @@ import (
 
 // filters is the internal filter set the builder derives.
 type filters struct {
+	// budgetID scopes the debt payment splits the spending reads join.
+	budgetID vo.Id
 	// periodKey..keyEnd are the period keys covered ([periodKey, keyEnd));
 	// periodStart..periodEnd is the date window they span on a budget whose
 	// periods start on startDay. Limits and comments read keys, every money
@@ -41,7 +43,7 @@ type filters struct {
 	// expenses booked on a savings account belong to its savings row.
 	savingsAccounts    []model.AccountView
 	everydayAccountIDs []vo.Id
-	// debtViews are the participants' debts, in creation order; the payments
+	// debtViews are the budget's debts, in creation order; the payments
 	// they matched count on their rows instead of category and tag rows.
 	// Empty on the reads that show no debt rows.
 	debtViews []model.DebtView
@@ -50,38 +52,34 @@ type filters struct {
 
 // debtOf returns the debt a spending row is attributed to: the debt its
 // stored payment split names, when that debt is one of the budget's and the
-// row still carries the debt's category (and tag). A split a recategorised
-// payment left behind therefore keeps counting on the category and tag rows.
-// The sync stores at most one split per payment, on the oldest debt whose
-// category, payee, tag and label match (model.AssignDebt), so a payment
-// carrying two debts' labels leaves the category once, for the older debt.
+// row still carries a category (and tag) one of its rules names. A split a
+// recategorised payment left behind therefore keeps counting on the category
+// and tag rows. The reads join only this budget's splits, and its sync stores
+// at most one split per payment, on the oldest matching debt
+// (model.AssignDebt), so a payment leaves its category once.
 func (f filters) debtOf(debtID, categoryID, tagID *string) (model.DebtView, bool) {
-	if debtID == nil || categoryID == nil {
+	if debtID == nil {
 		return model.DebtView{}, false
 	}
 	d, ok := f.debtByID[*debtID]
-	if !ok || d.CategoryID != *categoryID {
-		return model.DebtView{}, false
-	}
-	if d.TagID != nil && (tagID == nil || *tagID != *d.TagID) {
+	if !ok || !d.CarriesKey(categoryID, tagID) {
 		return model.DebtView{}, false
 	}
 	return d, true
 }
 
-// filtersWithDebts is buildFilters plus the participants' debts. Their
-// payment splits are synced first so the spending reads see current ones;
-// the sync takes the debt owners' row locks, so it must run outside any
-// budget transaction.
+// filtersWithDebts is buildFilters plus the budget's debts. Their payment
+// splits are synced first so the spending reads see current ones; the sync
+// takes the budget's row lock, so it must run outside any budget transaction.
 func (s *Service) filtersWithDebts(ctx context.Context, userID vo.Id, b *budgetAggregate, key time.Time, months int) (filters, error) {
 	var views []model.DebtView
 	if s.debts != nil {
-		owners := b.participantIDs()
-		if err := s.debts.Sync(ctx, owners); err != nil {
+		scope := b.debtScope()
+		if err := s.debts.Sync(ctx, scope); err != nil {
 			return filters{}, err
 		}
 		var err error
-		if views, err = s.debts.Views(ctx, owners); err != nil {
+		if views, err = s.debts.Views(ctx, scope); err != nil {
 			return filters{}, err
 		}
 	}
@@ -279,6 +277,7 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	periodStart, _ := model.PeriodWindow(key, startDay)
 	_, periodEnd := model.PeriodWindow(keyEnd.AddDate(0, -1, 0), startDay)
 	return filters{
+		budgetID:  b.budget.ID,
 		periodKey: key, keyEnd: keyEnd,
 		periodStart: periodStart, periodEnd: periodEnd, startDay: startDay,
 		userIDs: userIDs, accountFilters: accountFilters,

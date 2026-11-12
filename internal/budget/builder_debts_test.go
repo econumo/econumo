@@ -19,7 +19,7 @@ func (h *attrHarness) createRefDebt(t *testing.T, extra func(*model.CreateDebtRe
 	t.Helper()
 	start := "2026-06-01"
 	req := model.CreateDebtRequest{
-		Name: "Mortgage", CurrencyId: fixture.USD, CategoryId: h.loan,
+		BudgetId: h.budgetID, Name: "Mortgage", CurrencyId: fixture.USD, Rules: rules(h.loan),
 		StartDate: &start, AmountBorrowed: vo.NewFlexString("300000"), Balance: vo.NewFlexString("300000"), Payment: vo.NewFlexString("2000"),
 		Schedule: "monthly", LastPaymentDate: "2046-05-20",
 	}
@@ -112,7 +112,7 @@ func TestGetBudget_DebtRowFigures(t *testing.T) {
 	if june == nil {
 		t.Fatal("no debt row in June")
 	}
-	if june.Type != 6 || june.Name != "Mortgage" || june.CurrencyId != fixture.USD || june.OwnerUserId != h.owner.String() {
+	if june.Type != 6 || june.Name != "Mortgage" || june.CurrencyId != fixture.USD {
 		t.Errorf("June row meta = %+v", june)
 	}
 	if june.Budgeted != "2000" || june.IsBudgeted != 1 || june.Spent != "2000" || june.BudgetSpent != "2000" || june.Available != "0" {
@@ -238,7 +238,7 @@ func TestGetBudget_PartnerDebtRowVisible(t *testing.T) {
 	h.f.BudgetAccess(h.budgetID, guest, int(model.BudgetRoleGuest), true)
 	car := h.f.Category(fixture.Category{UserID: partner, Name: "Car loan"})
 	res, err := h.debts.CreateDebt(h.ctx, vo.MustParseId(partner), model.CreateDebtRequest{
-		Name: "Car", CurrencyId: fixture.USD, CategoryId: car,
+		BudgetId: h.budgetID, Name: "Car", CurrencyId: fixture.USD, Rules: rules(car),
 		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("6000"), Balance: vo.NewFlexString("6000"), Payment: vo.NewFlexString("500"),
 		Schedule: "monthly", LastPaymentDate: "2027-05-20",
 	})
@@ -253,7 +253,7 @@ func TestGetBudget_PartnerDebtRowVisible(t *testing.T) {
 			t.Errorf("%s sees no partner debt row", name)
 			continue
 		}
-		if row.OwnerUserId != partner || row.Name != "Car" || row.ClosingBalance != "5500" || row.PaymentsLeft != 11 {
+		if row.Name != "Car" || row.ClosingBalance != "5500" || row.PaymentsLeft != 11 {
 			t.Errorf("%s sees %+v", name, row)
 		}
 	}
@@ -360,7 +360,7 @@ func TestGetBudget_DebtRowsStayOutOfElements(t *testing.T) {
 func (h *attrHarness) createLooseDebt(t *testing.T, extra func(*model.CreateDebtRequest)) string {
 	t.Helper()
 	req := model.CreateDebtRequest{
-		Name: "Loose", CurrencyId: fixture.USD, CategoryId: h.loan,
+		BudgetId: h.budgetID, Name: "Loose", CurrencyId: fixture.USD, Rules: rules(h.loan),
 		Payment: vo.NewFlexString("1000"), Schedule: "monthly",
 	}
 	if extra != nil {
@@ -476,8 +476,8 @@ func TestGetBudget_SharedLabelPaymentOnOlderDebtRow(t *testing.T) {
 	h.labelTx(t, both, car, student)
 	h.spend(h.usd, h.loan, "", "40", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
 
-	carDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.LabelId = "Car", &car })
-	studentDebt := h.createRefDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.LabelId = "Student", &student })
+	carDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.Rules[0].LabelId = "Car", &car })
+	studentDebt := h.createRefDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.Rules[0].LabelId = "Student", &student })
 	// The student loan is the older debt, though created second.
 	h.backdateDebt(t, studentDebt, attrToday.AddDate(0, -1, 0))
 
@@ -559,7 +559,7 @@ func TestFinishSetup_PlansPastTheEndReturnToTheCategory(t *testing.T) {
 	}
 
 	if _, err := h.debts.UpdateDebt(h.ctx, h.owner, model.UpdateDebtRequest{
-		Id: debtID, Name: "Loose", CurrencyId: fixture.USD, CategoryId: h.loan,
+		Id: debtID, Name: "Loose", CurrencyId: fixture.USD,
 		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("5800"), Balance: vo.NewFlexString("5800"), Payment: vo.NewFlexString("1000"), Schedule: "monthly", LastPaymentDate: "2026-12-01",
 	}); err != nil {
 		t.Fatal(err)

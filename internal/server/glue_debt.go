@@ -107,6 +107,28 @@ func (r *DebtRates) FractionDigits(ctx context.Context, currencyID vo.Id) (int, 
 	return r.rates.FractionDigits(ctx, currencyID)
 }
 
+type debtUserRepo interface {
+	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
+	GetTimezone(ctx context.Context, id vo.Id) (string, error)
+}
+
+// DebtUsers reads a user's stored timezone and name for the debt service.
+type DebtUsers struct{ users debtUserRepo }
+
+func NewDebtUsers(users debtUserRepo) *DebtUsers { return &DebtUsers{users: users} }
+
+func (u *DebtUsers) GetTimezone(ctx context.Context, id vo.Id) (string, error) {
+	return u.users.GetTimezone(ctx, id)
+}
+
+func (u *DebtUsers) GetName(ctx context.Context, id vo.Id) (string, error) {
+	user, err := u.users.GetByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return user.Name, nil
+}
+
 type debtClassificationUsage interface {
 	LockForClassification(ctx context.Context, kind string, ids ...vo.Id) error
 	ReleaseClassification(ctx context.Context, kind string, id vo.Id) error
@@ -143,5 +165,6 @@ var (
 	_ applabel.DebtUsage    = (*DebtUsage)(nil)
 	_ debt.Classifications  = (*DebtClassifications)(nil)
 	_ debt.Rates            = (*DebtRates)(nil)
+	_ debt.Users            = (*DebtUsers)(nil)
 	_ debt.Currencies       = (*currencyrepo.Lookup)(nil)
 )

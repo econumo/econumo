@@ -12,26 +12,34 @@ import (
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
-type fakeDebts struct{ views []model.DebtView }
+type fakeDebts struct {
+	views []model.DebtView
+	// scopes records every scope the budget passed in.
+	scopes []model.DebtScope
+}
 
-func (f *fakeDebts) Views(_ context.Context, ownerIDs []vo.Id) ([]model.DebtView, error) {
-	owners := map[string]bool{}
-	for _, id := range ownerIDs {
-		owners[id.String()] = true
-	}
+func (f *fakeDebts) Views(_ context.Context, scope model.DebtScope) ([]model.DebtView, error) {
+	f.scopes = append(f.scopes, scope)
 	var out []model.DebtView
 	for _, v := range f.views {
-		if owners[v.OwnerID] {
+		if v.BudgetID == scope.BudgetID.String() {
 			out = append(out, v)
 		}
 	}
 	return out, nil
 }
 
-func (f *fakeDebts) Sync(context.Context, []vo.Id) error { return nil }
+func (f *fakeDebts) Sync(_ context.Context, scope model.DebtScope) error {
+	f.scopes = append(f.scopes, scope)
+	return nil
+}
 
 func (f *fakeDebts) Timelines(context.Context, model.DebtTimelineRequest) (map[string]model.DebtTimeline, error) {
 	return map[string]model.DebtTimeline{}, nil
+}
+
+func (f *fakeDebts) CloneDebts(context.Context, vo.Id, vo.Id) (map[vo.Id]vo.Id, error) {
+	return map[vo.Id]vo.Id{}, nil
 }
 
 func (f *fakeDebts) remove(id string) {
@@ -61,11 +69,12 @@ func newDebtHarness(t *testing.T) *debtHarness {
 
 func month(y int, m time.Month) time.Time { return time.Date(y, m, 1, 0, 0, 0, 0, time.UTC) }
 
-// addDebt registers a debt of owner, plannable from May to August 2026.
-func (h *debtHarness) addDebt(owner vo.Id, currencyID string) string {
+// addDebt registers a debt of the budget, plannable from May to August 2026.
+func (h *debtHarness) addDebt(budgetID vo.Id, currencyID string) string {
 	id := vo.NewId().String()
 	h.debts.views = append(h.debts.views, model.DebtView{
-		ID: id, OwnerID: owner.String(), CurrencyID: currencyID, CategoryID: vo.NewId().String(), Name: "Loan",
+		ID: id, BudgetID: budgetID.String(), CurrencyID: currencyID, Name: "Loan",
+		Rules:      []model.DebtRuleView{{CategoryID: vo.NewId().String()}},
 		StartMonth: month(2026, time.May), EndMonth: month(2026, time.August),
 	})
 	return id
@@ -168,16 +177,16 @@ func amount(s string) string { return vo.NewDecimal(s).String() }
 
 func TestSyncElements_CreatesDebtRows(t *testing.T) {
 	h := newDebtHarness(t)
-	own := h.addDebt(h.owner, h.eur)
-	member := h.addDebt(h.member, fixture.USD)
-	guest := h.addDebt(h.guest, fixture.USD)
-	pending := h.addDebt(h.pending, fixture.USD)
-	stranger := h.addDebt(h.stranger, fixture.USD)
+	own := h.addDebt(h.budgetID, h.eur)
+	second := h.addDebt(h.budgetID, fixture.USD)
+	elsewhere := h.addDebt(vo.NewId(), fixture.USD)
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Food"})
+	account := h.f.Account(fixture.Account{UserID: h.owner.String(), Name: "Cash"})
+	h.f.BudgetAccount(h.budgetID.String(), account)
 
 	h.sync(t)
 
-	for id, cur := range map[string]string{own: h.eur, member: fixture.USD} {
+	for id, cur := range map[string]string{own: h.eur, second: fixture.USD} {
 		el := h.element(t, id)
 		if el.Type != model.ElementDebt {
 			t.Errorf("debt %s: type %d, want %d", id, el.Type, model.ElementDebt)
@@ -192,10 +201,12 @@ func TestSyncElements_CreatesDebtRows(t *testing.T) {
 			t.Errorf("debt %s: no sort key", id)
 		}
 	}
-	for _, id := range []string{guest, pending, stranger} {
-		if h.hasElement(t, id) {
-			t.Errorf("debt %s of a non-participant got a row", id)
-		}
+	if h.hasElement(t, elsewhere) {
+		t.Error("another budget's debt got a row")
+	}
+	last := h.debts.scopes[len(h.debts.scopes)-1]
+	if !last.BudgetID.Equal(h.budgetID) || len(last.AccountIDs) != 1 || last.AccountIDs[0].String() != account {
+		t.Errorf("scope = %+v, want the budget and its member account", last)
 	}
 	// Debt rows are their own ordering group: a new category is appended to
 	// the categories, not after the debts.
@@ -214,7 +225,7 @@ func TestSyncElements_CreatesDebtRows(t *testing.T) {
 
 func TestSyncElements_DropsDebtRowWhenDebtDeleted(t *testing.T) {
 	h := newDebtHarness(t)
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.sync(t)
 	h.mustSetLimit(t, debt, "2026-05-01", "100")
 	if err := h.comment(debt, "2026-05-01"); err != nil {
@@ -238,7 +249,7 @@ func TestSyncElements_DropsDebtRowWhenDebtDeleted(t *testing.T) {
 
 func TestMoveElement_DebtRowRefusesFolder(t *testing.T) {
 	h := newDebtHarness(t)
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.sync(t)
 	folder := h.f.BudgetFolder(fixture.BudgetFolder{BudgetID: h.budgetID.String()})
 
@@ -258,7 +269,7 @@ func TestMoveElement_DebtRowRefusesFolder(t *testing.T) {
 
 func TestSetLimit_DebtOutsideBoundsRefused(t *testing.T) {
 	h := newDebtHarness(t)
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.sync(t)
 
 	for _, period := range []string{"2026-04-01", "2026-09-01"} {
@@ -272,7 +283,7 @@ func TestSetLimit_DebtOutsideBoundsRefused(t *testing.T) {
 
 func TestSetLimit_DebtInsideBounds(t *testing.T) {
 	h := newDebtHarness(t)
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	// No sync first: the row is self-healed by SetLimit.
 	h.mustSetLimit(t, debt, "2026-05-01", "10")
 	h.mustSetLimit(t, debt, "2026-08-01", "20")
@@ -293,13 +304,13 @@ func TestTransferElementData_MovesLimitsAndComments(t *testing.T) {
 	if err := h.comment(cat, "2026-05-01"); err != nil {
 		t.Fatal(err)
 	}
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 
 	has, err := h.svc.ElementHasData(h.ctx, vo.MustParseId(debt), model.ElementDebt)
 	if err != nil || has {
 		t.Fatalf("debt has data before the transfer: %v %v", has, err)
 	}
-	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
 		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD)})
 	if err != nil || left {
 		t.Fatalf("TransferElementData = %v, %v; want everything moved", left, err)
@@ -333,10 +344,10 @@ func TestTransferElementData_SkipsOtherCurrency(t *testing.T) {
 	h := newDebtHarness(t)
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
 	h.mustSetLimit(t, cat, "2026-05-01", "100")
-	debt := h.addDebt(h.owner, h.eur)
+	debt := h.addDebt(h.budgetID, h.eur)
 
 	// The category row is in the budget's currency (USD), the debt in EUR.
-	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
 		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(h.eur)})
 	if err != nil || !left {
 		t.Fatalf("TransferElementData = %v, %v; want the plans reported left behind", left, err)
@@ -354,12 +365,12 @@ func TestTransferElementData_SkipsOtherCurrency(t *testing.T) {
 func TestTransferElementData_KeepsTargetOnPeriodClash(t *testing.T) {
 	h := newDebtHarness(t)
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.mustSetLimit(t, cat, "2026-05-01", "100")
 	h.mustSetLimit(t, cat, "2026-06-01", "70")
 	h.mustSetLimit(t, debt, "2026-05-01", "50")
 
-	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
 		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD)})
 	if err != nil || !left {
 		t.Fatalf("TransferElementData = %v, %v; want the dropped plan reported", left, err)
@@ -373,27 +384,28 @@ func TestTransferElementData_KeepsTargetOnPeriodClash(t *testing.T) {
 	}
 }
 
-func TestRemoveMember_DropsTheirDebtRows(t *testing.T) {
+// The budget's debts are not the leaving member's: their rows and plans stay.
+func TestRemoveMember_KeepsTheBudgetsDebtRows(t *testing.T) {
 	h := newDebtHarness(t)
-	own := h.addDebt(h.owner, fixture.USD)
-	member := h.addDebt(h.member, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.sync(t)
+	h.mustSetLimit(t, debt, "2026-05-01", "100")
 
 	if err := h.svc.RemoveMember(h.ctx, h.budgetID, h.member); err != nil {
 		t.Fatalf("RemoveMember: %v", err)
 	}
-	if h.hasElement(t, member) {
-		t.Error("the departed member's debt row is still there")
+	if !h.hasElement(t, debt) {
+		t.Fatal("the debt row went with the member")
 	}
-	if !h.hasElement(t, own) {
-		t.Error("the owner's debt row went too")
+	if got := h.limits(t, h.element(t, debt).ID); got["2026-05-01"] != amount("100") {
+		t.Errorf("debt row plans = %v, want May's 100 kept", got)
 	}
 }
 
 func TestTransferElementData_SkipsTargetInOtherCurrency(t *testing.T) {
 	h := newDebtHarness(t)
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.mustSetLimit(t, debt, "2026-05-01", "50")
 	if err := h.comment(debt, "2026-05-01"); err != nil {
 		t.Fatal(err)
@@ -404,7 +416,7 @@ func TestTransferElementData_SkipsTargetInOtherCurrency(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
 		ToID: vo.MustParseId(cat), ToType: model.ElementCategory, CurrencyID: vo.MustParseId(fixture.USD)})
 	if err != nil || !left {
 		t.Fatalf("TransferElementData = %v, %v; want the plans reported left behind", left, err)
@@ -424,10 +436,10 @@ func TestTransferElementData_SkipsTargetInOtherCurrency(t *testing.T) {
 func TestTransferElementData_NothingLeftWithoutSourceData(t *testing.T) {
 	h := newDebtHarness(t)
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
-	debt := h.addDebt(h.owner, h.eur)
+	debt := h.addDebt(h.budgetID, h.eur)
 	h.sync(t)
 
-	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
 		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(h.eur)})
 	if err != nil || left {
 		t.Fatalf("TransferElementData = %v, %v; an empty row leaves nothing behind", left, err)
@@ -436,7 +448,7 @@ func TestTransferElementData_NothingLeftWithoutSourceData(t *testing.T) {
 
 func TestChangeElementCurrency_DebtRowRefused(t *testing.T) {
 	h := newDebtHarness(t)
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.sync(t)
 
 	_, err := h.svc.ChangeElementCurrency(h.ctx, h.owner, model.ChangeElementCurrencyRequest{
@@ -451,7 +463,7 @@ func TestChangeElementCurrency_DebtRowRefused(t *testing.T) {
 // A plan stored before the debt's months moved stays clearable.
 func TestSetLimit_DebtClearOutsideBoundsAllowed(t *testing.T) {
 	h := newDebtHarness(t)
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.mustSetLimit(t, debt, "2026-08-01", "20")
 	h.debts.views[0].EndMonth = month(2026, time.July)
 
@@ -471,12 +483,12 @@ func TestSetLimit_DebtClearOutsideBoundsAllowed(t *testing.T) {
 func TestTransferElementData_SumsOnClashWhenAsked(t *testing.T) {
 	h := newDebtHarness(t)
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.mustSetLimit(t, cat, "2026-05-01", "100")
 	h.mustSetLimit(t, cat, "2026-06-01", "70")
 	h.mustSetLimit(t, debt, "2026-05-01", "50")
 
-	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
 		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD), SumOnClash: true})
 	if err != nil || left {
 		t.Fatalf("TransferElementData = %v, %v; want everything moved", left, err)
@@ -492,7 +504,7 @@ func TestTransferElementData_SumsOnClashWhenAsked(t *testing.T) {
 func TestTransferElementData_MovesOnlyTheBoundedMonths(t *testing.T) {
 	h := newDebtHarness(t)
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.mustSetLimit(t, cat, "2026-04-01", "10")
 	h.mustSetLimit(t, cat, "2026-05-01", "100")
 	h.mustSetLimit(t, cat, "2026-06-01", "70")
@@ -502,7 +514,7 @@ func TestTransferElementData_MovesOnlyTheBoundedMonths(t *testing.T) {
 		}
 	}
 
-	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
 		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD),
 		FirstDay: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), LastDay: time.Date(2026, 5, 31, 0, 0, 0, 0, time.UTC)})
 	if err != nil || left {
@@ -531,12 +543,12 @@ func TestTransferElementData_BoundsFollowShiftedPeriods(t *testing.T) {
 		t.Fatal(err)
 	}
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	for _, m := range []string{"2026-04-01", "2026-05-01", "2026-06-01", "2026-07-01"} {
 		h.mustSetLimit(t, cat, m, "10")
 	}
 
-	if _, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+	if _, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
 		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD),
 		FirstDay: time.Date(2026, 5, 20, 0, 0, 0, 0, time.UTC), LastDay: time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC)}); err != nil {
 		t.Fatal(err)
@@ -555,14 +567,14 @@ func TestTransferElementData_BoundsFollowShiftedPeriods(t *testing.T) {
 func TestTransferElementData_EnvelopeChildCannotTakeTheData(t *testing.T) {
 	h := newDebtHarness(t)
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	if _, err := h.svc.CreateEnvelope(h.ctx, h.owner, model.CreateEnvelopeRequest{BudgetId: h.budgetID.String(), Id: vo.NewId().String(),
 		Name: "Bills", Icon: "cart", CurrencyId: fixture.USD, Categories: []string{cat}}); err != nil {
 		t.Fatal(err)
 	}
 	h.mustSetLimit(t, debt, "2026-05-01", "50")
 
-	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
+	left, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
 		ToID: vo.MustParseId(cat), ToType: model.ElementCategory, CurrencyID: vo.MustParseId(fixture.USD)})
 	if err != nil || !left {
 		t.Fatalf("TransferElementData = %v, %v; want the plans reported left behind", left, err)
@@ -576,7 +588,7 @@ func TestTransferElementData_EnvelopeChildCannotTakeTheData(t *testing.T) {
 // budget's next structure sync.
 func TestRemoveElements_DropsTheDebtRowsAndTheirData(t *testing.T) {
 	h := newDebtHarness(t)
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	keep := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Food"})
 	h.mustSetLimit(t, debt, "2026-05-01", "50")
 	h.mustSetLimit(t, keep, "2026-05-01", "20")
@@ -607,7 +619,7 @@ func TestTransferElementData_AfterDayMovesTheLaterPeriods(t *testing.T) {
 		t.Fatal(err)
 	}
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	for _, m := range []string{"2026-05-01", "2026-06-01", "2026-07-01"} {
 		h.mustSetLimit(t, debt, m, "10")
 	}
@@ -618,7 +630,7 @@ func TestTransferElementData_AfterDayMovesTheLaterPeriods(t *testing.T) {
 		}
 	}
 
-	if _, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
+	if _, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
 		ToID: vo.MustParseId(cat), ToType: model.ElementCategory, CurrencyID: vo.MustParseId(fixture.USD), SumOnClash: true,
 		AfterDay: time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)}); err != nil {
 		t.Fatal(err)
@@ -647,7 +659,7 @@ func TestTransferElementData_BeforeDayMovesTheEarlierPeriods(t *testing.T) {
 		t.Fatal(err)
 	}
 	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	for _, m := range []string{"2026-05-01", "2026-06-01", "2026-07-01"} {
 		h.mustSetLimit(t, debt, m, "10")
 	}
@@ -658,7 +670,7 @@ func TestTransferElementData_BeforeDayMovesTheEarlierPeriods(t *testing.T) {
 		}
 	}
 
-	if _, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
+	if _, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(debt), FromType: model.ElementDebt,
 		ToID: vo.MustParseId(cat), ToType: model.ElementCategory, CurrencyID: vo.MustParseId(fixture.USD), SumOnClash: true,
 		BeforeDay: time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)}); err != nil {
 		t.Fatal(err)
@@ -682,7 +694,7 @@ func TestTransferElementData_BeforeDayMovesTheEarlierPeriods(t *testing.T) {
 // keep their numbers.
 func TestSetElementsCurrency_DebtRowsFollowAndKeepPlans(t *testing.T) {
 	h := newDebtHarness(t)
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.mustSetLimit(t, debt, "2026-05-01", "100")
 	el := h.element(t, debt)
 
@@ -700,7 +712,7 @@ func TestSetElementsCurrency_DebtRowsFollowAndKeepPlans(t *testing.T) {
 
 func TestSyncElements_DebtRowFollowsTheDebtCurrency(t *testing.T) {
 	h := newDebtHarness(t)
-	debt := h.addDebt(h.owner, fixture.USD)
+	debt := h.addDebt(h.budgetID, fixture.USD)
 	h.sync(t)
 	h.mustSetLimit(t, debt, "2026-05-01", "100")
 	el := h.element(t, debt)
@@ -720,34 +732,61 @@ func TestSyncElements_DebtRowFollowsTheDebtCurrency(t *testing.T) {
 	}
 }
 
-// DebtRowPlans feeds the debt forecast: a reader of the budget gets the
-// debt row's plans with the budget's name and period start day; anyone else,
-// or a budget without the row, gets nothing.
+// DebtRowPlans feeds the debt forecast: the debt row's plans with the
+// budget's name and period start day; a budget without the row, or no budget,
+// gives nothing. The debt service has checked access to the debt.
 func TestDebtRowPlans(t *testing.T) {
 	h := newDebtHarness(t)
-	own := h.addDebt(h.owner, fixture.USD)
+	own := h.addDebt(h.budgetID, fixture.USD)
 	h.sync(t)
 	h.mustSetLimit(t, own, "2026-06-01", "250")
 
-	got, ok, err := h.svc.DebtRowPlans(h.ctx, h.owner, h.budgetID, vo.MustParseId(own))
+	got, ok, err := h.svc.DebtRowPlans(h.ctx, h.budgetID, vo.MustParseId(own))
 	if err != nil || !ok {
-		t.Fatalf("owner: ok=%v err=%v", ok, err)
+		t.Fatalf("ok=%v err=%v", ok, err)
 	}
 	if got.Name == "" || got.PeriodStartDay != model.MinPeriodStartDay || len(got.Plans) != 1 || amount(got.Plans["2026-06-01"]) != amount("250") {
 		t.Fatalf("plans = %+v", got)
 	}
-	if _, ok, err := h.svc.DebtRowPlans(h.ctx, h.guest, h.budgetID, vo.MustParseId(own)); err != nil || !ok {
-		t.Fatalf("a guest reads the budget: ok=%v err=%v", ok, err)
-	}
-	for name, user := range map[string]vo.Id{"pending": h.pending, "stranger": h.stranger} {
-		if _, ok, err := h.svc.DebtRowPlans(h.ctx, user, h.budgetID, vo.MustParseId(own)); err != nil || ok {
-			t.Fatalf("%s: ok=%v err=%v, want nothing", name, ok, err)
-		}
-	}
-	if _, ok, err := h.svc.DebtRowPlans(h.ctx, h.owner, h.budgetID, vo.NewId()); err != nil || ok {
+	if _, ok, err := h.svc.DebtRowPlans(h.ctx, h.budgetID, vo.NewId()); err != nil || ok {
 		t.Fatalf("no row: ok=%v err=%v", ok, err)
 	}
-	if _, ok, err := h.svc.DebtRowPlans(h.ctx, h.owner, vo.NewId(), vo.MustParseId(own)); err != nil || ok {
+	if _, ok, err := h.svc.DebtRowPlans(h.ctx, vo.NewId(), vo.MustParseId(own)); err != nil || ok {
 		t.Fatalf("unknown budget: ok=%v err=%v", ok, err)
+	}
+}
+
+// A debt's rows live in its own budget: a transfer touches only the budget it
+// names, even where another budget holds rows of the same category.
+func TestTransferElementData_OnlyTheGivenBudget(t *testing.T) {
+	h := newDebtHarness(t)
+	cat := h.f.Category(fixture.Category{UserID: h.owner.String(), Name: "Loan"})
+	started := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	other := vo.MustParseId(h.f.Budget(fixture.Budget{UserID: h.owner.String(), StartedAt: &started}))
+	h.mustSetLimit(t, cat, "2026-05-01", "100")
+	a := vo.NewFlexString("40")
+	if _, err := h.svc.SetLimit(h.ctx, h.owner, model.SetLimitRequest{BudgetId: other.String(), ElementId: cat, Period: "2026-05-01", Amount: &a}); err != nil {
+		t.Fatalf("SetLimit in the other budget: %v", err)
+	}
+	debt := h.addDebt(h.budgetID, fixture.USD)
+
+	if _, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{BudgetID: h.budgetID, FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD)}); err != nil {
+		t.Fatalf("TransferElementData: %v", err)
+	}
+	if got := h.limits(t, h.element(t, debt).ID); got["2026-05-01"] != amount("100") {
+		t.Errorf("debt row = %v, want this budget's 100", got)
+	}
+	otherCat, err := h.budgetRepo.GetElementByExternal(h.ctx, other, vo.MustParseId(cat))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := h.limits(t, otherCat.ID); got["2026-05-01"] != amount("40") {
+		t.Errorf("other budget's category = %v, want its 40 untouched", got)
+	}
+
+	if _, err := h.svc.TransferElementData(h.ctx, model.ElementDataTransfer{FromID: vo.MustParseId(cat), FromType: model.ElementCategory,
+		ToID: vo.MustParseId(debt), ToType: model.ElementDebt, CurrencyID: vo.MustParseId(fixture.USD)}); err == nil {
+		t.Error("a transfer without a budget went through")
 	}
 }

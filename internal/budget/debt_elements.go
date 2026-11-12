@@ -2,6 +2,7 @@ package budget
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -16,7 +17,7 @@ func (s *Service) checkDebtPeriod(ctx context.Context, b *budgetAggregate, el *m
 	if el.Type != model.ElementDebt {
 		return nil
 	}
-	views, err := s.debtViews(ctx, b.participantIDs())
+	views, err := s.debtViews(ctx, b.debtScope())
 	if err != nil {
 		return err
 	}
@@ -35,92 +36,71 @@ func (s *Service) checkDebtPeriod(ctx context.Context, b *budgetAggregate, el *m
 }
 
 // TransferElementData moves the source row's plans and comments to the target
-// row in every budget where both rows are in t.CurrencyID. Each budget's rows
-// are synced first, so a target row that does not exist yet is created.
-// leftBehind reports source data that was not moved: a budget skipped for its
-// currencies, or a plan dropped on a clash. Months outside t's bounds, and the
-// plans of a source category inside an envelope (they count nowhere), stay on
-// the source by design and are not reported.
+// row in t.BudgetID, when both are in t.CurrencyID: a debt's rows live in its
+// own budget only. The budget's rows are synced first, so a target row that
+// does not exist yet is created. leftBehind reports source data that was not
+// moved: a row skipped for its currency, or a plan dropped on a clash. Months
+// outside t's bounds, and the plans of a source category inside an envelope
+// (they count nowhere), stay on the source by design and are not reported.
 func (s *Service) TransferElementData(ctx context.Context, t model.ElementDataTransfer) (leftBehind bool, err error) {
-	fromID, fromType, toID, toType, currencyID := t.FromID, t.FromType, t.ToID, t.ToType, t.CurrencyID
+	if t.BudgetID.IsZero() {
+		return false, errors.New("budget: element data transfer without a budget")
+	}
+	budgetID, fromID, fromType, toID, toType, currencyID := t.BudgetID, t.FromID, t.FromType, t.ToID, t.ToType, t.CurrencyID
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		sources, err := s.elements.ListElementsByExternal(ctx, fromID)
+		src, err := s.elementOfType(ctx, budgetID, fromID, fromType)
+		if err != nil || src == nil {
+			return err
+		}
+		b, err := s.budgets.GetByID(ctx, budgetID)
 		if err != nil {
 			return err
 		}
-		now := s.clock.Now()
 		skip := func(el *model.BudgetElement) error {
 			has, err := s.rowHasData(ctx, el)
 			leftBehind = leftBehind || has
 			return err
 		}
-		for _, src := range sources {
-			if src.Type != fromType {
-				continue
-			}
-			b, err := s.budgets.GetByID(ctx, src.BudgetID)
-			if err != nil {
-				return err
-			}
-			if !rowCurrency(src, b.CurrencyID).Equal(currencyID) {
-				if err := skip(src); err != nil {
-					return err
-				}
-				continue
-			}
-			if err := s.syncElements(ctx, src.BudgetID, now); err != nil {
-				return err
-			}
-			from, err := s.elementOfType(ctx, src.BudgetID, fromID, fromType)
-			if err != nil {
-				return err
-			}
-			if from == nil {
-				continue
-			}
-			// A category inside an envelope never counts its own plans: moving
-			// them would surface them on the target and inflate the totals, so
-			// they stay hidden where they are.
-			if sourceHidden, err := s.inEnvelope(ctx, src.BudgetID, from); err != nil {
-				return err
-			} else if sourceHidden {
-				continue
-			}
-			to, err := s.elementOfType(ctx, src.BudgetID, toID, toType)
-			if err != nil {
-				return err
-			}
-			if to == nil || !rowCurrency(to, b.CurrencyID).Equal(currencyID) {
-				if err := skip(from); err != nil {
-					return err
-				}
-				continue
-			}
-			hidden, err := s.inEnvelope(ctx, src.BudgetID, to)
-			if err != nil {
-				return err
-			}
-			if hidden {
-				if err := skip(from); err != nil {
-					return err
-				}
-				continue
-			}
-			// The owner's user row is already held by the caller, so the
-			// owner-before-budget lock order holds.
-			if n, err := s.budgets.LockElementPair(ctx, from.ID, to.ID); err != nil {
-				return err
-			} else if n < 2 {
-				// a row was deleted while this transfer waited for it
-				continue
-			}
-			dropped, err := s.moveElementData(ctx, from, to, t, b.PeriodStartDay, now)
-			if err != nil {
-				return err
-			}
-			leftBehind = leftBehind || dropped
+		if !rowCurrency(src, b.CurrencyID).Equal(currencyID) {
+			return skip(src)
 		}
-		return nil
+		now := s.clock.Now()
+		if err := s.syncElements(ctx, budgetID, now); err != nil {
+			return err
+		}
+		from, err := s.elementOfType(ctx, budgetID, fromID, fromType)
+		if err != nil || from == nil {
+			return err
+		}
+		// A category inside an envelope never counts its own plans: moving
+		// them would surface them on the target and inflate the totals, so
+		// they stay hidden where they are.
+		if sourceHidden, err := s.inEnvelope(ctx, budgetID, from); err != nil || sourceHidden {
+			return err
+		}
+		to, err := s.elementOfType(ctx, budgetID, toID, toType)
+		if err != nil {
+			return err
+		}
+		if to == nil || !rowCurrency(to, b.CurrencyID).Equal(currencyID) {
+			return skip(from)
+		}
+		if hidden, err := s.inEnvelope(ctx, budgetID, to); err != nil {
+			return err
+		} else if hidden {
+			return skip(from)
+		}
+		// The caller holds the budget's row lock, so the budget-before-element
+		// lock order holds.
+		if n, err := s.budgets.LockElementPair(ctx, from.ID, to.ID); err != nil {
+			return err
+		} else if n < 2 {
+			// a row was deleted while this transfer waited for it
+			return nil
+		}
+		dropped, err := s.moveElementData(ctx, from, to, t, b.PeriodStartDay, now)
+		leftBehind = leftBehind || dropped
+		return err
 	})
 	if err != nil {
 		return false, err
@@ -321,21 +301,15 @@ func inPeriods(first, last, period time.Time) bool {
 
 // DebtRowPlans returns the plans the budget holds for the debt's row, by
 // period key, with the budget's name and period start day; ok is false when
-// the user cannot read the budget or it has no row for the debt.
-func (s *Service) DebtRowPlans(ctx context.Context, userID, budgetID, debtID vo.Id) (model.DebtBudgetPlans, bool, error) {
+// the budget is gone or has no row for the debt. The debt service has
+// checked the caller's access to the debt, and so to its budget.
+func (s *Service) DebtRowPlans(ctx context.Context, budgetID, debtID vo.Id) (model.DebtBudgetPlans, bool, error) {
 	b, err := s.budgets.GetByID(ctx, budgetID)
 	if err != nil {
 		if _, nf := errs.AsNotFound(err); nf {
 			return model.DebtBudgetPlans{}, false, nil
 		}
 		return model.DebtBudgetPlans{}, false, err
-	}
-	access, err := s.access.ListAccess(ctx, budgetID)
-	if err != nil {
-		return model.DebtBudgetPlans{}, false, err
-	}
-	if !s.canRead(&budgetAggregate{budget: b, access: access}, userID) {
-		return model.DebtBudgetPlans{}, false, nil
 	}
 	el, err := s.elementOfType(ctx, budgetID, debtID, model.ElementDebt)
 	if err != nil || el == nil {

@@ -180,13 +180,15 @@ type TagMeta struct {
 	ID         string
 	OwnerID    string
 	Name       string
+	Icon       string
 	IsArchived bool
 }
 
 // PayeeMeta is a payee's display metadata (for the budget transaction list).
 type PayeeMeta struct {
-	ID   string
-	Name string
+	ID         string
+	Name       string
+	IsArchived bool
 }
 
 // BudgetCategoryHistory is one budget category's actuals over consecutive

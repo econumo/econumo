@@ -109,9 +109,15 @@ type RecurringSource interface {
 }
 
 // DebtSource reads the debts shown as budget rows. Satisfied by the debt
-// feature at wiring time. Callers pass only budget participants as owners.
+// feature at wiring time. A scope is one budget and every account it counts,
+// so a debt only ever matches payments on its own budget's members.
 type DebtSource interface {
-	Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView, error)
-	Sync(ctx context.Context, ownerIDs []vo.Id) error
+	Views(ctx context.Context, scope model.DebtScope) ([]model.DebtView, error)
+	// Sync takes the budget's row lock, so it must run outside any budget
+	// transaction that already holds element rows.
+	Sync(ctx context.Context, scope model.DebtScope) error
 	Timelines(ctx context.Context, req model.DebtTimelineRequest) (map[string]model.DebtTimeline, error)
+	// CloneDebts copies the debts of one budget into another, joining the
+	// caller's transaction, and returns the new id of each.
+	CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id) (map[vo.Id]vo.Id, error)
 }

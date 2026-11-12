@@ -145,7 +145,10 @@ func (s *Service) seedMemberAccounts(ctx context.Context, userID, budgetID vo.Id
 // budget: their category/tag elements and the savings elements of their
 // accounts (limits and comments cascade via FK), their member accounts, and
 // their categories' envelope assignments. Runs in the caller's transaction;
-// revoke is deliberate, so the member's limit history goes with them.
+// revoke is deliberate, so the member's limit history goes with them. The
+// budget's debts are the budget's, not the member's: they and their rows
+// stay, and a rule naming the member's category matches nothing once their
+// accounts are gone.
 func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, memberID vo.Id) error {
 	owned := map[vo.Id]bool{}
 	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{memberID})
@@ -165,17 +168,6 @@ func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, m
 	}
 	for _, t := range tags {
 		id, perr := vo.ParseId(t.ID)
-		if perr != nil {
-			return perr
-		}
-		owned[id] = true
-	}
-	debts, err := s.debtViews(ctx, []vo.Id{memberID})
-	if err != nil {
-		return err
-	}
-	for _, d := range debts {
-		id, perr := vo.ParseId(d.ID)
 		if perr != nil {
 			return perr
 		}

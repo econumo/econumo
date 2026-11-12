@@ -112,8 +112,9 @@ func newAttrHarness(t *testing.T) *attrHarness {
 	)
 	debts := appdebt.NewService(debtrepo.NewRepo(engine, txm), txm, clk,
 		server.NewDebtClassifications(categoryRepo, payeeRepo, tagRepo, labelrepo.NewRepo(engine, txm)),
-		server.NewDebtRates(rateProvider, convertor), currencyLookup, userRepo)
+		server.NewDebtRates(rateProvider, convertor), currencyLookup, server.NewDebtUsers(userRepo))
 	svc.SetDebts(debts)
+	debts.SetBudgets(server.NewDebtBudgets(svc))
 	debts.SetBudgetElements(server.NewDebtBudgetElements(svc))
 	rec := &attrRecurring{}
 	svc.SetRecurring(rec)
@@ -135,7 +136,7 @@ func (h *attrHarness) spend(account, category, tag, amount string, at time.Time)
 func (h *attrHarness) createDebt(t *testing.T) string {
 	t.Helper()
 	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
-		Name: "Mortgage", CurrencyId: fixture.USD, CategoryId: h.loan,
+		BudgetId: h.budgetID, Name: "Mortgage", CurrencyId: fixture.USD, Rules: rules(h.loan),
 		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("10000"), Balance: vo.NewFlexString("10000"), Payment: vo.NewFlexString("1000"),
 		Schedule: "monthly", LastPaymentDate: "2027-06-01",
 	})
@@ -143,6 +144,15 @@ func (h *attrHarness) createDebt(t *testing.T) string {
 		t.Fatalf("CreateDebt: %v", err)
 	}
 	return res.Id
+}
+
+// rules is one whole-category rule on each category.
+func rules(categoryIDs ...string) []model.DebtRuleRequest {
+	out := make([]model.DebtRuleRequest, 0, len(categoryIDs))
+	for _, c := range categoryIDs {
+		out = append(out, model.DebtRuleRequest{CategoryId: c})
+	}
+	return out
 }
 
 type debtPaidOnWire struct{ Paid, BudgetPaid, Available string }
@@ -420,8 +430,8 @@ func TestDrilldown_LabelledDebtExcludesOnlyItsPayments(t *testing.T) {
 		template(sharedTemplate, carL, studentL), template(carTemplate, carL), template(plainTemplate),
 	}
 
-	carDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.LabelId = "Car", &car })
-	studentDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.LabelId = "Student", &student })
+	carDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.Rules[0].LabelId = "Car", &car })
+	studentDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.Rules[0].LabelId = "Student", &student })
 	h.backdateDebt(t, studentDebt, attrToday.AddDate(0, -1, 0))
 
 	loanID := h.loan
@@ -460,7 +470,7 @@ func TestUpcoming_TemplateWithDebtLabelDropped(t *testing.T) {
 			Amount: "30", CategoryID: &loan, Schedule: model.RecurringScheduleMonthly, NextPaymentAt: next, ScheduledDay: 20},
 	}
 
-	h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.LabelId = &car })
+	h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &car })
 	res, _ := h.getBudget(t)
 	if el := findElement(res, h.loan, model.ElementCategory); el == nil || el.Upcoming != "30" {
 		t.Errorf("loan upcoming = %+v, want 30 (the labelled template went to the debt)", el)

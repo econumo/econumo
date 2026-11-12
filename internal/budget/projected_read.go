@@ -367,7 +367,7 @@ func (p *projectedRead) spending(categoryIDs, accountIDs []vo.Id, start, end tim
 	return out
 }
 
-func (p *projectedRead) CountSpending(_ context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error) {
+func (p *projectedRead) CountSpending(_ context.Context, _ vo.Id, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error) {
 	s := p.spending(categoryIDs, accountIDs, start, end, false, 0)
 	var out []model.SpendingRow
 	for _, k := range s.keys {
@@ -376,7 +376,7 @@ func (p *projectedRead) CountSpending(_ context.Context, categoryIDs, accountIDs
 	return out, nil
 }
 
-func (p *projectedRead) SpendingByMonth(_ context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
+func (p *projectedRead) SpendingByMonth(_ context.Context, _ vo.Id, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
 	s := p.spending(categoryIDs, accountIDs, from, to, true, startDay)
 	var out []model.MonthlySpendingRow
 	for _, k := range s.keys {
@@ -547,7 +547,7 @@ func (p *projectedRead) expenses(accountIDs []vo.Id, start, end time.Time, keep 
 
 // The category and tag lists leave out what a debt matches, as their figures
 // do (see spending); the debt's own list has it.
-func (p *projectedRead) BudgetTransactionsByCategories(_ context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+func (p *projectedRead) BudgetTransactionsByCategories(_ context.Context, _ vo.Id, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	cats := idSet(categoryIDs)
 	return p.expenses(accountIDs, start, end, func(o *projectedTx) bool {
 		return o.tagID == nil && o.categoryID != nil && cats[*o.categoryID] && !p.paysDebt(o)
@@ -561,7 +561,7 @@ func (p *projectedRead) BudgetTransactionsByDebt(_ context.Context, debt model.D
 	}), nil
 }
 
-func (p *projectedRead) BudgetTransactionsByTag(_ context.Context, tagID vo.Id, categoryID *vo.Id, uncategorized bool, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+func (p *projectedRead) BudgetTransactionsByTag(_ context.Context, _, tagID vo.Id, categoryID *vo.Id, uncategorized bool, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	tag := tagID.String()
 	return p.expenses(accountIDs, start, end, func(o *projectedTx) bool {
 		if o.tagID == nil || *o.tagID != tag || p.paysDebt(o) {

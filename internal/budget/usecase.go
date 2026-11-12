@@ -146,7 +146,7 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 	return &budgetAggregate{budget: b, access: access, accounts: accounts, folders: folders, envelopes: envelopes, elements: elements}, nil
 }
 
-// participantIDs are the users whose categories, tags and debts the budget
+// participantIDs are the users whose categories and tags the budget
 // shows: the owner and every accepted non-guest participant.
 func (a *budgetAggregate) participantIDs() []vo.Id {
 	ids := []vo.Id{a.budget.UserID}
@@ -158,12 +158,22 @@ func (a *budgetAggregate) participantIDs() []vo.Id {
 	return ids
 }
 
-// debtViews returns the participants' debts, none while no source is wired.
-func (s *Service) debtViews(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView, error) {
+// debtScope is what the budget's debts match payments on: every member
+// account, soft-deleted ones included, as the budget counts them.
+func (a *budgetAggregate) debtScope() model.DebtScope {
+	ids := make([]vo.Id, 0, len(a.accounts))
+	for _, m := range a.accounts {
+		ids = append(ids, m.AccountID)
+	}
+	return model.DebtScope{BudgetID: a.budget.ID, AccountIDs: ids}
+}
+
+// debtViews returns the budget's debts, none while no source is wired.
+func (s *Service) debtViews(ctx context.Context, scope model.DebtScope) ([]model.DebtView, error) {
 	if s.debts == nil {
 		return nil, nil
 	}
-	return s.debts.Views(ctx, ownerIDs)
+	return s.debts.Views(ctx, scope)
 }
 
 // hasFolder reports whether folderID is one of this budget's folders. Child

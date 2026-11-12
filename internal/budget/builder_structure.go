@@ -141,7 +141,7 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 	}
 
 	count := func(periodStart, periodEnd time.Time, current bool) error {
-		rows, err := s.read.CountSpending(ctx, categoryIDs, f.everydayAccountIDs, periodStart, periodEnd)
+		rows, err := s.read.CountSpending(ctx, f.budgetID, categoryIDs, f.everydayAccountIDs, periodStart, periodEnd)
 		if err != nil {
 			return err
 		}

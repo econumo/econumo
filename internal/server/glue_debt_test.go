@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -62,59 +64,45 @@ func (stubDigits) FractionDigits(context.Context, vo.Id) (int, error) { return 3
 
 func TestDebtClassifications(t *testing.T) {
 	ctx := context.Background()
-	owner, other := vo.NewId(), vo.NewId()
+	owner := vo.NewId()
 	cat := &model.Category{ID: vo.NewId(), UserID: owner, Name: "Loans", Icon: "bank", Type: model.TypeExpense}
 	c := NewDebtClassifications(
 		stubDebtCategories{cat: cat},
-		stubDebtPayees{p: &model.Payee{ID: vo.NewId(), UserID: owner}},
-		stubDebtTags{t: &model.Tag{ID: vo.NewId(), UserID: owner}},
-		stubDebtLabels{l: &model.Label{ID: vo.NewId(), UserID: owner}},
+		stubDebtPayees{p: &model.Payee{ID: vo.NewId(), UserID: owner, Name: "Bank"}},
+		stubDebtTags{t: &model.Tag{ID: vo.NewId(), UserID: owner, Name: "Home", Icon: "home"}},
+		stubDebtLabels{l: &model.Label{ID: vo.NewId(), UserID: owner, Name: "Car", Icon: "car"}},
 	)
 
-	name, icon, isExpense, err := c.CategoryOf(ctx, owner, cat.ID)
-	if err != nil || name != "Loans" || icon != "bank" || !isExpense {
-		t.Fatalf("CategoryOf owner = %q %q %v %v", name, icon, isExpense, err)
-	}
-	if _, _, _, err := c.CategoryOf(ctx, other, cat.ID); err == nil {
-		t.Fatal("a category of another user must be not found")
-	} else if _, nf := errs.AsNotFound(err); !nf {
-		t.Fatalf("err = %v, want not found", err)
+	for kind, want := range map[string]model.DebtClassification{
+		"category": {OwnerID: owner, Name: "Loans", Icon: "bank", IsExpense: true},
+		"payee":    {OwnerID: owner, Name: "Bank"},
+		"tag":      {OwnerID: owner, Name: "Home", Icon: "home"},
+		"label":    {OwnerID: owner, Name: "Car", Icon: "car"},
+	} {
+		got, err := c.Classification(ctx, kind, vo.NewId())
+		if err != nil || got != want {
+			t.Errorf("%s = %+v, %v; want %+v", kind, got, err, want)
+		}
 	}
 	cat.Type = model.TypeIncome
-	if _, _, isExpense, _ := c.CategoryOf(ctx, owner, cat.ID); isExpense {
-		t.Fatal("an income category is not an expense")
+	if got, _ := c.Classification(ctx, "category", cat.ID); got.IsExpense {
+		t.Error("an income category is not an expense")
 	}
-
-	if ok, err := c.PayeeOwned(ctx, owner, vo.NewId()); err != nil || !ok {
-		t.Fatalf("PayeeOwned owner = %v, %v", ok, err)
-	}
-	if ok, err := c.PayeeOwned(ctx, other, vo.NewId()); err != nil || ok {
-		t.Fatalf("PayeeOwned other = %v, %v", ok, err)
-	}
-	if ok, err := c.TagOwned(ctx, owner, vo.NewId()); err != nil || !ok {
-		t.Fatalf("TagOwned owner = %v, %v", ok, err)
-	}
-	if ok, err := c.TagOwned(ctx, other, vo.NewId()); err != nil || ok {
-		t.Fatalf("TagOwned other = %v, %v", ok, err)
-	}
-
-	if ok, err := c.LabelOwned(ctx, owner, vo.NewId()); err != nil || !ok {
-		t.Fatalf("LabelOwned owner = %v, %v", ok, err)
-	}
-	if ok, err := c.LabelOwned(ctx, other, vo.NewId()); err != nil || ok {
-		t.Fatalf("LabelOwned other = %v, %v", ok, err)
+	if _, err := c.Classification(ctx, "account", vo.NewId()); err == nil {
+		t.Error("an unknown kind went through")
 	}
 
 	missing := NewDebtClassifications(stubDebtCategories{}, stubDebtPayees{}, stubDebtTags{}, stubDebtLabels{})
-	if ok, err := missing.PayeeOwned(ctx, owner, vo.NewId()); err != nil || ok {
-		t.Fatalf("missing payee = %v, %v", ok, err)
+	for _, kind := range []string{"category", "payee", "tag", "label"} {
+		if _, err := missing.Classification(ctx, kind, vo.NewId()); !isNotFoundErr(err) {
+			t.Errorf("missing %s: err = %v, want not found", kind, err)
+		}
 	}
-	if ok, err := missing.TagOwned(ctx, owner, vo.NewId()); err != nil || ok {
-		t.Fatalf("missing tag = %v, %v", ok, err)
-	}
-	if ok, err := missing.LabelOwned(ctx, owner, vo.NewId()); err != nil || ok {
-		t.Fatalf("missing label = %v, %v", ok, err)
-	}
+}
+
+func isNotFoundErr(err error) bool {
+	_, ok := errs.AsNotFound(err)
+	return ok
 }
 
 func TestDebtRates_ConvertOnDay(t *testing.T) {
@@ -142,28 +130,63 @@ func TestDebtRates_ConvertOnDay(t *testing.T) {
 
 type recordingDebtUsage struct{ calls []string }
 
-func (r *recordingDebtUsage) InUse(context.Context, string, vo.Id) (bool, error) { return false, nil }
+func (r *recordingDebtUsage) LockForClassification(_ context.Context, kind string, ids ...vo.Id) error {
+	r.calls = append(r.calls, fmt.Sprintf("lock %s %d", kind, len(ids)))
+	return nil
+}
+
+func (r *recordingDebtUsage) ReleaseClassification(_ context.Context, kind string, _ vo.Id) error {
+	r.calls = append(r.calls, "release "+kind)
+	return nil
+}
 
 func (r *recordingDebtUsage) ReassignClassification(_ context.Context, kind string, _, _ vo.Id) error {
 	r.calls = append(r.calls, "reassign "+kind)
 	return nil
 }
 
-func (r *recordingDebtUsage) LockForMerge(_ context.Context, kind string, _, _ vo.Id) error {
-	r.calls = append(r.calls, "lock "+kind)
-	return nil
-}
-
 func TestDebtUsage_PassesItsKind(t *testing.T) {
 	rec := &recordingDebtUsage{}
 	u := NewDebtUsage(rec, "tag")
-	if err := u.PrepareMerge(context.Background(), vo.NewId(), vo.NewId()); err != nil {
+	ctx := context.Background()
+	if err := u.Prepare(ctx, vo.NewId(), vo.NewId()); err != nil {
 		t.Fatal(err)
 	}
-	if err := u.Reassign(context.Background(), vo.NewId(), vo.NewId()); err != nil {
+	if err := u.Release(ctx, vo.NewId()); err != nil {
 		t.Fatal(err)
 	}
-	if len(rec.calls) != 2 || rec.calls[0] != "lock tag" || rec.calls[1] != "reassign tag" {
-		t.Fatalf("calls = %v", rec.calls)
+	if err := u.Reassign(ctx, vo.NewId(), vo.NewId()); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"lock tag 2", "release tag", "reassign tag"}; !slices.Equal(rec.calls, want) {
+		t.Fatalf("calls = %v, want %v", rec.calls, want)
+	}
+}
+
+type stubDebtUserRepo struct{ user *model.User }
+
+func (s stubDebtUserRepo) GetByID(context.Context, vo.Id) (*model.User, error) {
+	if s.user == nil {
+		return nil, errs.NewNotFound("User not found")
+	}
+	return s.user, nil
+}
+
+func (s stubDebtUserRepo) GetTimezone(context.Context, vo.Id) (string, error) {
+	return "Europe/Berlin", nil
+}
+
+func TestDebtUsers(t *testing.T) {
+	ctx := context.Background()
+	u := model.NewUser(vo.NewId(), "u@example.test", "Una", "face:sky", "", "", time.Now())
+	users := NewDebtUsers(stubDebtUserRepo{user: u})
+	if name, err := users.GetName(ctx, u.ID); err != nil || name != "Una" {
+		t.Errorf("GetName = %q, %v", name, err)
+	}
+	if tz, err := users.GetTimezone(ctx, u.ID); err != nil || tz != "Europe/Berlin" {
+		t.Errorf("GetTimezone = %q, %v", tz, err)
+	}
+	if _, err := NewDebtUsers(stubDebtUserRepo{}).GetName(ctx, vo.NewId()); !isNotFoundErr(err) {
+		t.Errorf("missing user: err = %v, want not found", err)
 	}
 }

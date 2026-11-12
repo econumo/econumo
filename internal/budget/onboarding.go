@@ -175,7 +175,7 @@ func (s *Service) CategoryHistory(ctx context.Context, userID, budgetID vo.Id, m
 	if len(owned) == 0 {
 		return historyItems(items, order, months, nil), nil
 	}
-	spending, err := s.read.SpendingByMonth(ctx, expenseIDs, owned, f.periodStart, f.periodEnd, f.startDay)
+	spending, err := s.read.SpendingByMonth(ctx, f.budgetID, expenseIDs, owned, f.periodStart, f.periodEnd, f.startDay)
 	if err != nil {
 		return nil, err
 	}

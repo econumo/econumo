@@ -24,7 +24,7 @@ func newShiftedDebtHarness(t *testing.T) (*attrHarness, string) {
 	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 12, 10, 0, 0, 0, time.UTC))
 	start := "2026-06-01"
 	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
-		Name: "Car loan", CurrencyId: fixture.USD, CategoryId: h.loan,
+		BudgetId: h.budgetID, Name: "Car loan", CurrencyId: fixture.USD, Rules: rules(h.loan),
 		StartDate: &start, AmountBorrowed: vo.NewFlexString("13000"), Balance: vo.NewFlexString("12000"), Payment: vo.NewFlexString("1000"),
 		Schedule: "monthly", LastPaymentDate: "2027-06-10",
 	})

@@ -341,7 +341,7 @@ func (r *ReadRepo) holdingsSQL(toHoldings bool, ids []any, start, end time.Time)
 }
 
 // CountSpending implements ReadModel.
-func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error) {
+func (r *ReadRepo) CountSpending(ctx context.Context, budgetID vo.Id, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error) {
 	// accountIDs feeds an "IN (...)" clause; an empty list is a no-op on SQLite
 	// but a syntax error on PostgreSQL (reachable whenever a budget's categories
 	// are non-empty but every account is excluded from it). An empty categoryIDs
@@ -351,36 +351,24 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 	}
 	catArgs := idArgs(categoryIDs)
 	accArgs := idArgs(accountIDs)
-	var sql string
-	var args []any
-	if r.driver == "postgresql" {
-		accIn := r.ph(1, len(accArgs))
-		// With no categories selected the predicate must be the IS NULL half
-		// alone: "IN ()" is a syntax error here.
-		catWhere := "t.category_id IS NULL"
-		if len(catArgs) > 0 {
-			catWhere = "(t.category_id IN (" + r.ph(1+len(accArgs), len(catArgs)) + ") OR t.category_id IS NULL)"
-		}
-		// Args are appended accounts, categories, start, end — so the date
-		// params sit after both lists (and catArgs contributes 0 when empty).
-		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
-		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY t.category_id, t.tag_id, dp.debt_id, a.currency_id"
-		args = append(args, accArgs...)
-		args = append(args, catArgs...)
-		args = append(args, start, end)
-	} else {
-		accIn := r.ph(1, len(accArgs))
-		catWhere := "t.category_id IS NULL"
-		if len(catArgs) > 0 {
-			catWhere = "(t.category_id IN (" + r.ph(1, len(catArgs)) + ") OR t.category_id IS NULL)"
-		}
-		// See sqliteDatetime.
-		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, dp.debt_id, a.currency_id"
-		args = append(args, accArgs...)
-		args = append(args, catArgs...)
-		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
+	// Args follow the placeholders' order in the text: accounts (the accounts
+	// join), the budget (the split join), categories, start, end.
+	accIn := r.ph(1, len(accArgs))
+	budgetP := r.ph(1+len(accArgs), 1)
+	// With no categories selected the predicate must be the IS NULL half
+	// alone: "IN ()" is a syntax error on PostgreSQL.
+	catWhere := "t.category_id IS NULL"
+	if len(catArgs) > 0 {
+		catWhere = "(t.category_id IN (" + r.ph(2+len(accArgs), len(catArgs)) + ") OR t.category_id IS NULL)"
 	}
+	dates := r.ph(2+len(accArgs)+len(catArgs), 2)
+	dStart, dEnd, _ := strings.Cut(dates, ",")
+	sql := "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ")" + debtSplitJoin(budgetP) + " WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY t.category_id, t.tag_id, dp.debt_id, a.currency_id"
+	args := make([]any, 0, len(accArgs)+len(catArgs)+3)
+	args = append(args, accArgs...)
+	args = append(args, budgetArg(budgetID))
+	args = append(args, catArgs...)
+	args = append(args, r.timeArg(start), r.timeArg(end))
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -636,7 +624,7 @@ func foldPeriods[R any, K comparable](rows []R, startDay int, month func(*R) *st
 }
 
 // SpendingByMonth implements ReadModel.
-func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
+func (r *ReadRepo) SpendingByMonth(ctx context.Context, budgetID vo.Id, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
 	// Empty IN () is a no-op on SQLite but a syntax error on PostgreSQL (same
 	// guard as CountSpending); an empty category set is NOT a short-circuit —
 	// the NULL-category rows still have to come back.
@@ -646,32 +634,21 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 	catArgs := idArgs(categoryIDs)
 	accArgs := idArgs(accountIDs)
 	month := r.periodExpr("t.spent_at", startDay)
-	var sql string
-	var args []any
-	if r.driver == "postgresql" {
-		accIn := r.ph(1, len(accArgs))
-		catWhere := "t.category_id IS NULL"
-		if len(catArgs) > 0 {
-			catWhere = "(t.category_id IN (" + r.ph(1+len(accArgs), len(catArgs)) + ") OR t.category_id IS NULL)"
-		}
-		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
-		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, t.category_id, t.tag_id, dp.debt_id, a.currency_id"
-		args = append(args, accArgs...)
-		args = append(args, catArgs...)
-		args = append(args, from, to)
-	} else {
-		accIn := r.ph(1, len(accArgs))
-		catWhere := "t.category_id IS NULL"
-		if len(catArgs) > 0 {
-			catWhere = "(t.category_id IN (" + r.ph(1, len(catArgs)) + ") OR t.category_id IS NULL)"
-		}
-		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") LEFT JOIN debts_payments dp ON dp.transaction_id = t.id WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, t.tag_id, dp.debt_id, a.currency_id"
-		args = append(args, accArgs...)
-		args = append(args, catArgs...)
-		// See sqliteDatetime.
-		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
+	// Placeholder order as in CountSpending.
+	accIn := r.ph(1, len(accArgs))
+	budgetP := r.ph(1+len(accArgs), 1)
+	catWhere := "t.category_id IS NULL"
+	if len(catArgs) > 0 {
+		catWhere = "(t.category_id IN (" + r.ph(2+len(accArgs), len(catArgs)) + ") OR t.category_id IS NULL)"
 	}
+	dates := r.ph(2+len(accArgs)+len(catArgs), 2)
+	dStart, dEnd, _ := strings.Cut(dates, ",")
+	sql := "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, dp.debt_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ")" + debtSplitJoin(budgetP) + " WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, t.category_id, t.tag_id, dp.debt_id, a.currency_id"
+	args := make([]any, 0, len(accArgs)+len(catArgs)+3)
+	args = append(args, accArgs...)
+	args = append(args, budgetArg(budgetID))
+	args = append(args, catArgs...)
+	args = append(args, r.timeArg(from), r.timeArg(to))
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -1093,12 +1070,34 @@ func (r *ReadRepo) LimitsByMonth(ctx context.Context, budgetID vo.Id, from, to t
 const budgetTxCols = "t.id, t.user_id, a.currency_id, t.amount, t.description, t.spent_at, t.category_id, t.payee_id, t.tag_id"
 
 // budgetTxDebtCols is budgetTxCols plus the debt a stored payment split names
-// (debtPaymentsJoin).
+// (debtSplitJoin, or the debt drill-down's own join).
 const budgetTxDebtCols = budgetTxCols + ", dp.debt_id"
 
-// debtPaymentsJoin adds a transaction's payment split; transaction_id is the
-// key, so it never fans a row out.
-const debtPaymentsJoin = " LEFT JOIN debts_payments dp ON dp.transaction_id = t.id"
+// debtSplitJoin joins a transaction's payment split for one of the budget's
+// own debts. A payment can be split for a debt in each of two budgets that
+// share its account, so joining every split would fan the row out and count
+// it twice; within one budget the sync stores at most one split per payment.
+func debtSplitJoin(budgetPlaceholder string) string {
+	return " LEFT JOIN debts_payments dp ON dp.transaction_id = t.id AND dp.debt_id IN (SELECT d.id FROM debts d WHERE d.budget_id = " + budgetPlaceholder + ")"
+}
+
+// budgetArg binds the budget whose splits debtSplitJoin joins; no budget
+// binds NULL, which joins none.
+func budgetArg(id vo.Id) any {
+	if id.IsZero() {
+		return nil
+	}
+	return id.String()
+}
+
+// timeArg binds a range bound: PostgreSQL takes the time, SQLite the frozen
+// layout text (see sqliteDatetime).
+func (r *ReadRepo) timeArg(t time.Time) any {
+	if r.driver == "postgresql" {
+		return t
+	}
+	return sqliteDatetime(t)
+}
 
 // dayKeyOrder is the transaction-list order: day, then the row's place in it,
 // then id; the time of day takes no part.
@@ -1160,34 +1159,30 @@ func scanBudgetTxDebtRows(rows interface {
 
 // BudgetTransactionsByDebt implements ReadModel.
 func (r *ReadRepo) BudgetTransactionsByDebt(ctx context.Context, debt model.DebtView, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
-	if len(accountIDs) == 0 {
+	categories := make([]any, 0, len(debt.Rules))
+	seen := map[string]bool{}
+	for _, rule := range debt.Rules {
+		if !seen[rule.CategoryID] {
+			seen[rule.CategoryID] = true
+			categories = append(categories, rule.CategoryID)
+		}
+	}
+	if len(accountIDs) == 0 || len(categories) == 0 {
 		return nil, nil
 	}
 	accArgs := idArgs(accountIDs)
-	args := append([]any{}, accArgs...)
-	args = append(args, debt.ID, debt.CategoryID)
-	next := 1 + len(accArgs)
-	ph := func() string {
-		if r.driver != "postgresql" {
-			return "?"
-		}
-		next++
-		return "$" + itoa(next-1)
-	}
 	accIn := r.ph(1, len(accArgs))
-	where := "t.account_id IN (" + accIn + ") AND t.type = 0 AND dp.debt_id = " + ph() + " AND t.category_id = " + ph()
-	if debt.TagID != nil {
-		where += " AND t.tag_id = " + ph()
-		args = append(args, *debt.TagID)
-	}
-	where += " AND t.spent_at >= " + ph() + " AND t.spent_at < " + ph()
-	if r.driver == "postgresql" {
-		args = append(args, start, end)
-	} else {
-		// See sqliteDatetime.
-		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
-	}
-	sql := "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id JOIN debts_payments dp ON dp.transaction_id = t.id WHERE " + where +
+	debtP := r.ph(1+len(accArgs), 1)
+	catIn := r.ph(2+len(accArgs), len(categories))
+	dStart, dEnd, _ := strings.Cut(r.ph(2+len(accArgs)+len(categories), 2), ",")
+	args := make([]any, 0, len(accArgs)+len(categories)+3)
+	args = append(args, accArgs...)
+	args = append(args, debt.ID)
+	args = append(args, categories...)
+	args = append(args, r.timeArg(start), r.timeArg(end))
+	sql := "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id JOIN debts_payments dp ON dp.transaction_id = t.id" +
+		" WHERE t.account_id IN (" + accIn + ") AND t.type = 0 AND dp.debt_id = " + debtP + " AND t.category_id IN (" + catIn + ")" +
+		" AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
 		r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
@@ -1198,30 +1193,26 @@ func (r *ReadRepo) BudgetTransactionsByDebt(ctx context.Context, debt model.Debt
 }
 
 // BudgetTransactionsByCategories implements ReadModel.
-func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, budgetID vo.Id, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	if len(categoryIDs) == 0 || len(accountIDs) == 0 {
 		return nil, nil
 	}
 	accArgs := idArgs(accountIDs)
 	catArgs := idArgs(categoryIDs)
-	var sql string
-	args := make([]any, 0, len(accArgs)+len(catArgs)+2)
+	// Args follow the text: the budget (the split join), accounts,
+	// categories, start, end.
+	budgetP := r.ph(1, 1)
+	accIn := r.ph(2, len(accArgs))
+	catIn := r.ph(2+len(accArgs), len(catArgs))
+	dStart, dEnd, _ := strings.Cut(r.ph(2+len(accArgs)+len(catArgs), 2), ",")
+	args := make([]any, 0, len(accArgs)+len(catArgs)+3)
+	args = append(args, budgetArg(budgetID))
 	args = append(args, accArgs...)
 	args = append(args, catArgs...)
-	if r.driver == "postgresql" {
-		accIn := r.ph(1, len(accArgs))
-		catIn := r.ph(1+len(accArgs), len(catArgs))
-		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
-		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id" + debtPaymentsJoin + " WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
-		args = append(args, start, end)
-	} else {
-		accIn := r.ph(1, len(accArgs))
-		catIn := r.ph(1, len(catArgs))
-		sql = "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id" + debtPaymentsJoin + " WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= ? AND t.spent_at < ?" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
-		// See sqliteDatetime.
-		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
-	}
+	args = append(args, r.timeArg(start), r.timeArg(end))
+	sql := "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id" + debtSplitJoin(budgetP) +
+		" WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
+		r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -1232,49 +1223,32 @@ func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryI
 
 // BudgetTransactionsByTag implements ReadModel. categoryID and uncategorized
 // are mutually exclusive narrowing modes (see the ReadModel doc comment); the
-// "category_id IS NULL" fragment binds no argument, so in the pgsql branch it
-// must not advance the `next` placeholder counter.
-func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, categoryID *vo.Id, uncategorized bool, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+// "category_id IS NULL" fragment binds no argument.
+func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, budgetID, tagID vo.Id, categoryID *vo.Id, uncategorized bool, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
 	accArgs := idArgs(accountIDs)
-	var sql string
-	var args []any
-	if r.driver == "postgresql" {
-		accIn := r.ph(1, len(accArgs))
-		next := 1 + len(accArgs)
-		tagP := "$" + itoa(next)
+	// Args follow the text: the budget (the split join), accounts, tag,
+	// the category when narrowing to one, start, end.
+	args := make([]any, 0, len(accArgs)+5)
+	args = append(args, budgetArg(budgetID))
+	args = append(args, accArgs...)
+	args = append(args, tagID.String())
+	next := 3 + len(accArgs)
+	where := "t.account_id IN (" + r.ph(2, len(accArgs)) + ") AND t.tag_id = " + r.ph(2+len(accArgs), 1) + " AND t.type = 0"
+	if categoryID != nil {
+		where += " AND t.category_id = " + r.ph(next, 1)
 		next++
-		where := "t.account_id IN (" + accIn + ") AND t.tag_id = " + tagP + " AND t.type = 0"
-		args = append(args, accArgs...)
-		args = append(args, tagID.String())
-		if categoryID != nil {
-			where += " AND t.category_id = $" + itoa(next)
-			next++
-			args = append(args, categoryID.String())
-		} else if uncategorized {
-			where += " AND t.category_id IS NULL"
-		}
-		where += " AND t.spent_at >= $" + itoa(next) + " AND t.spent_at < $" + itoa(next+1)
-		args = append(args, start, end)
-		sql = "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id" + debtPaymentsJoin + " WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
-	} else {
-		accIn := r.ph(1, len(accArgs))
-		where := "t.account_id IN (" + accIn + ") AND t.tag_id = ? AND t.type = 0"
-		args = append(args, accArgs...)
-		args = append(args, tagID.String())
-		if categoryID != nil {
-			where += " AND t.category_id = ?"
-			args = append(args, categoryID.String())
-		} else if uncategorized {
-			where += " AND t.category_id IS NULL"
-		}
-		where += " AND t.spent_at >= ? AND t.spent_at < ?"
-		// See sqliteDatetime.
-		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
-		sql = "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id" + debtPaymentsJoin + " WHERE " + where + "" + r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
+		args = append(args, categoryID.String())
+	} else if uncategorized {
+		where += " AND t.category_id IS NULL"
 	}
+	dStart, dEnd, _ := strings.Cut(r.ph(next, 2), ",")
+	where += " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd
+	args = append(args, r.timeArg(start), r.timeArg(end))
+	sql := "SELECT " + budgetTxDebtCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id" + debtSplitJoin(r.ph(1, 1)) + " WHERE " + where +
+		r.dayKeyOrder("t.spent_at", "t.sort_key", "t.id")
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err

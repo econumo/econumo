@@ -239,7 +239,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 		expenseCategoryIDs = append(expenseCategoryIDs, id)
 	}
-	spendRows, err := s.read.SpendingByMonth(ctx, expenseCategoryIDs, f.everydayAccountIDs, f.periodStart, f.periodEnd, f.startDay)
+	spendRows, err := s.read.SpendingByMonth(ctx, f.budgetID, expenseCategoryIDs, f.everydayAccountIDs, f.periodStart, f.periodEnd, f.startDay)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
