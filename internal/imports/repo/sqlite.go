@@ -223,6 +223,10 @@ func (sqliteQuerier) InsertImportSuggestionLink(ctx context.Context, db backend.
 	return sqlitegen.New(db).InsertImportSuggestionLink(ctx, p)
 }
 
+func (sqliteQuerier) TouchOpenImportSuggestion(ctx context.Context, db backend.DBTX, p touchSuggestionParams) (int64, error) {
+	return sqlitegen.New(db).TouchOpenImportSuggestion(ctx, p)
+}
+
 func (sqliteQuerier) GetImportSuggestionByID(ctx context.Context, db backend.DBTX, id string) (suggestionRow, error) {
 	return sqlitegen.New(db).GetImportSuggestionByID(ctx, id)
 }

@@ -339,6 +339,10 @@ func (pgsqlQuerier) InsertImportSuggestionLink(ctx context.Context, db backend.D
 	return pgsqlgen.New(db).InsertImportSuggestionLink(ctx, pgsqlgen.InsertImportSuggestionLinkParams(p))
 }
 
+func (pgsqlQuerier) TouchOpenImportSuggestion(ctx context.Context, db backend.DBTX, p touchSuggestionParams) (int64, error) {
+	return pgsqlgen.New(db).TouchOpenImportSuggestion(ctx, pgsqlgen.TouchOpenImportSuggestionParams(p))
+}
+
 func (pgsqlQuerier) GetImportSuggestionByID(ctx context.Context, db backend.DBTX, id string) (suggestionRow, error) {
 	row, err := pgsqlgen.New(db).GetImportSuggestionByID(ctx, id)
 	return suggestionRow(row), err

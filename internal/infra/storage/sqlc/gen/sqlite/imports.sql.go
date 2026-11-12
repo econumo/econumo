@@ -291,7 +291,7 @@ func (q *Queries) GetImportSourceByUserProvider(ctx context.Context, arg GetImpo
 }
 
 const getImportSuggestionByID = `-- name: GetImportSuggestionByID :one
-SELECT id, user_id, match_field, match_text, category_id, payee_id, status, created_at, updated_at
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
 FROM import_suggestions
 WHERE id = ?
 `
@@ -306,6 +306,7 @@ func (q *Queries) GetImportSuggestionByID(ctx context.Context, id string) (Impor
 		&i.MatchText,
 		&i.CategoryID,
 		&i.PayeeID,
+		&i.TransactionType,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -606,20 +607,21 @@ func (q *Queries) InsertImportSource(ctx context.Context, arg InsertImportSource
 }
 
 const insertImportSuggestion = `-- name: InsertImportSuggestion :exec
-INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertImportSuggestionParams struct {
-	ID         string
-	UserID     string
-	MatchField string
-	MatchText  string
-	CategoryID *string
-	PayeeID    *string
-	Status     string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID              string
+	UserID          string
+	MatchField      string
+	MatchText       string
+	CategoryID      *string
+	PayeeID         *string
+	TransactionType string
+	Status          string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 func (q *Queries) InsertImportSuggestion(ctx context.Context, arg InsertImportSuggestionParams) error {
@@ -630,6 +632,7 @@ func (q *Queries) InsertImportSuggestion(ctx context.Context, arg InsertImportSu
 		arg.MatchText,
 		arg.CategoryID,
 		arg.PayeeID,
+		arg.TransactionType,
 		arg.Status,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -1467,7 +1470,7 @@ func (q *Queries) ListOpenImportSuggestionLinksByUser(ctx context.Context, userI
 }
 
 const listOpenImportSuggestionsByUser = `-- name: ListOpenImportSuggestionsByUser :many
-SELECT id, user_id, match_field, match_text, category_id, payee_id, status, created_at, updated_at
+SELECT id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at
 FROM import_suggestions
 WHERE user_id = ? AND status = 'open'
 ORDER BY created_at, id
@@ -1489,6 +1492,7 @@ func (q *Queries) ListOpenImportSuggestionsByUser(ctx context.Context, userID st
 			&i.MatchText,
 			&i.CategoryID,
 			&i.PayeeID,
+			&i.TransactionType,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -1504,6 +1508,23 @@ func (q *Queries) ListOpenImportSuggestionsByUser(ctx context.Context, userID st
 		return nil, err
 	}
 	return items, nil
+}
+
+const touchOpenImportSuggestion = `-- name: TouchOpenImportSuggestion :execrows
+UPDATE import_suggestions SET updated_at = ? WHERE id = ? AND status = 'open'
+`
+
+type TouchOpenImportSuggestionParams struct {
+	UpdatedAt time.Time
+	ID        string
+}
+
+func (q *Queries) TouchOpenImportSuggestion(ctx context.Context, arg TouchOpenImportSuggestionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, touchOpenImportSuggestion, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updateImportAccountLink = `-- name: UpdateImportAccountLink :exec

@@ -116,20 +116,44 @@ func TestGroupRowsTieGoesToNewest(t *testing.T) {
 	require.Equal(t, dining, *got[0].CategoryID)
 }
 
+var missAll = []missingFields{{Category: true, Payee: true}}
+
 func TestMergeIntoOpenJoinsContainedMatchText(t *testing.T) {
 	coffee, dining := vo.NewId(), vo.NewId()
 	open := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE", CategoryID: &coffee}
 	g := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE COFFEE", CategoryID: &dining, LinkIDs: []vo.Id{vo.NewId(), vo.NewId()}}
-	fresh, joins := mergeIntoOpen([]model.ImportSuggestion{g}, []model.TransactionType{model.TransactionTypeExpense}, []model.ImportSuggestion{open}, nil)
+	fresh, joins := mergeIntoOpen([]model.ImportSuggestion{g}, missAll, []model.ImportSuggestion{open}, nil)
 	require.Empty(t, fresh)
-	require.Equal(t, g.LinkIDs, joins[open.ID])
+	require.Equal(t, []int{0}, joins[open.ID])
 }
 
 func TestMergeIntoOpenKeepsDifferentField(t *testing.T) {
-	open := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldDescription, MatchText: "BLUE BOTTLE"}
+	p := vo.NewId()
+	open := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldDescription, MatchText: "BLUE BOTTLE", PayeeID: &p}
 	g := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE", LinkIDs: []vo.Id{vo.NewId()}}
-	fresh, joins := mergeIntoOpen([]model.ImportSuggestion{g}, []model.TransactionType{model.TransactionTypeExpense}, []model.ImportSuggestion{open}, nil)
+	fresh, joins := mergeIntoOpen([]model.ImportSuggestion{g}, missAll, []model.ImportSuggestion{open}, nil)
 	require.Len(t, fresh, 1)
+	require.Empty(t, joins)
+}
+
+func TestMergeIntoOpenRequiresAFieldTheGroupLacks(t *testing.T) {
+	p, coffee := vo.NewId(), vo.NewId()
+	open := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE", PayeeID: &p}
+	g := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE", CategoryID: &coffee, LinkIDs: []vo.Id{vo.NewId()}}
+	fresh, joins := mergeIntoOpen([]model.ImportSuggestion{g}, []missingFields{{Category: true}}, []model.ImportSuggestion{open}, nil)
+	require.Equal(t, []int{0}, fresh)
+	require.Empty(t, joins)
+	fresh, joins = mergeIntoOpen([]model.ImportSuggestion{g}, missAll, []model.ImportSuggestion{open}, nil)
+	require.Empty(t, fresh)
+	require.Equal(t, []int{0}, joins[open.ID])
+}
+
+func TestMergeIntoOpenRequiresSameType(t *testing.T) {
+	p := vo.NewId()
+	open := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "ACME", PayeeID: &p, Type: model.TransactionTypeExpense}
+	g := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "ACME", Type: model.TransactionTypeIncome, LinkIDs: []vo.Id{vo.NewId()}}
+	fresh, joins := mergeIntoOpen([]model.ImportSuggestion{g}, missAll, []model.ImportSuggestion{open}, nil)
+	require.Equal(t, []int{0}, fresh)
 	require.Empty(t, joins)
 }
 
@@ -144,9 +168,10 @@ func TestMatchTextInRejectsShort(t *testing.T) {
 }
 
 func TestMergeIntoOpenDoesNotJoinWhenGroupTextShorter(t *testing.T) {
-	open := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE COFFEE"}
+	p := vo.NewId()
+	open := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE COFFEE", PayeeID: &p}
 	g := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE", LinkIDs: []vo.Id{vo.NewId()}}
-	fresh, joins := mergeIntoOpen([]model.ImportSuggestion{g}, []model.TransactionType{model.TransactionTypeExpense}, []model.ImportSuggestion{open}, nil)
+	fresh, joins := mergeIntoOpen([]model.ImportSuggestion{g}, missAll, []model.ImportSuggestion{open}, nil)
 	require.Len(t, fresh, 1)
 	require.Empty(t, joins)
 }
@@ -154,34 +179,42 @@ func TestMergeIntoOpenDoesNotJoinWhenGroupTextShorter(t *testing.T) {
 func TestMergeIntoOpenChecksCategoryType(t *testing.T) {
 	salary := vo.NewId()
 	income := map[vo.Id]bool{salary: true}
-	open := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "ACME", CategoryID: &salary}
+	open := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "ACME", CategoryID: &salary, Type: model.TransactionTypeIncome}
 	g := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "ACME CORP", LinkIDs: []vo.Id{vo.NewId()}}
-	fresh, _ := mergeIntoOpen([]model.ImportSuggestion{g}, []model.TransactionType{model.TransactionTypeExpense}, []model.ImportSuggestion{open}, income)
+	fresh, _ := mergeIntoOpen([]model.ImportSuggestion{g}, missAll, []model.ImportSuggestion{open}, income)
 	require.Len(t, fresh, 1)
-	fresh, joins := mergeIntoOpen([]model.ImportSuggestion{g}, []model.TransactionType{model.TransactionTypeIncome}, []model.ImportSuggestion{open}, income)
+	g.Type = model.TransactionTypeIncome
+	fresh, joins := mergeIntoOpen([]model.ImportSuggestion{g}, missAll, []model.ImportSuggestion{open}, income)
 	require.Empty(t, fresh)
 	require.Len(t, joins[open.ID], 1)
 }
 
 func TestMergeIntoOpenPicksOldest(t *testing.T) {
 	now := time.Now()
-	newer := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "ACME", CreatedAt: now}
-	older := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "ACM", CreatedAt: now.Add(-time.Hour)}
+	p := vo.NewId()
+	newer := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "ACME", PayeeID: &p, CreatedAt: now}
+	older := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "ACM", PayeeID: &p, CreatedAt: now.Add(-time.Hour)}
 	g := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "ACME CORP", LinkIDs: []vo.Id{vo.NewId()}}
-	_, joins := mergeIntoOpen([]model.ImportSuggestion{g}, []model.TransactionType{model.TransactionTypeExpense}, []model.ImportSuggestion{newer, older}, nil)
+	_, joins := mergeIntoOpen([]model.ImportSuggestion{g}, missAll, []model.ImportSuggestion{newer, older}, nil)
 	require.Len(t, joins[older.ID], 1)
 	require.Empty(t, joins[newer.ID])
 }
 
-func TestGroupRowsSplitsByType(t *testing.T) {
+func TestGroupRowsSplitsByTypeAndCarriesMissing(t *testing.T) {
 	c := vo.NewId()
 	a := validOf(sLink("ACME", "", time.Time{}), "ACME", &c)
+	a.Row.Missing = missingFields{Category: true}
+	a2 := validOf(sLink("ACME", "", time.Time{}), "ACME", &c)
+	a2.Row.Missing = missingFields{Payee: true}
 	b := validOf(sLink("ACME", "", time.Time{}), "ACME", &c)
 	b.Row.Type = model.TransactionTypeIncome
-	groups, types := groupRowsTyped([]validSuggestion{a, b})
+	b.Row.Missing = missingFields{Category: true}
+	groups, missing := groupRowsMissing([]validSuggestion{a, a2, b})
 	require.Len(t, groups, 2)
-	require.Len(t, types, 2)
-	require.True(t, types[0].IsIncome() != types[1].IsIncome())
+	require.Equal(t, model.TransactionTypeExpense, groups[0].Type)
+	require.Equal(t, model.TransactionTypeIncome, groups[1].Type)
+	require.Equal(t, missingFields{Category: true, Payee: true}, missing[0])
+	require.Equal(t, missingFields{Category: true}, missing[1])
 }
 
 func TestOpenForRequiresAFieldTheRowLacks(t *testing.T) {
@@ -192,6 +225,18 @@ func TestOpenForRequiresAFieldTheRowLacks(t *testing.T) {
 	_, ok := openFor(row, []model.ImportSuggestion{o}, nil)
 	require.False(t, ok)
 	row.Missing.Payee = true
+	_, ok = openFor(row, []model.ImportSuggestion{o}, nil)
+	require.True(t, ok)
+}
+
+func TestOpenForRequiresSameType(t *testing.T) {
+	p := vo.NewId()
+	row := sRow(sLink("BLUE BOTTLE", "", time.Time{}))
+	row.Type = model.TransactionTypeIncome
+	o := model.ImportSuggestion{ID: vo.NewId(), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "blue bottle", PayeeID: &p, Type: model.TransactionTypeExpense}
+	_, ok := openFor(row, []model.ImportSuggestion{o}, nil)
+	require.False(t, ok)
+	o.Type = model.TransactionTypeIncome
 	_, ok = openFor(row, []model.ImportSuggestion{o}, nil)
 	require.True(t, ok)
 }

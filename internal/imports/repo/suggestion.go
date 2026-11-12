@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -13,16 +15,28 @@ import (
 func (r *Repo) InsertSuggestion(ctx context.Context, s *model.ImportSuggestion) error {
 	err := r.q.InsertImportSuggestion(ctx, r.db(ctx), insertSuggestionParams{
 		ID: s.ID.String(), UserID: s.UserID.String(), MatchField: s.MatchField, MatchText: s.MatchText,
-		CategoryID: optionalID(s.CategoryID), PayeeID: optionalID(s.PayeeID), Status: s.Status,
+		CategoryID: optionalID(s.CategoryID), PayeeID: optionalID(s.PayeeID), TransactionType: s.Type.Alias(), Status: s.Status,
 		CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
 	})
 	if err != nil {
 		return err
 	}
-	return r.AddSuggestionLinks(ctx, s.ID, s.LinkIDs)
+	return r.insertSuggestionLinks(ctx, s.ID, s.LinkIDs)
 }
 
-func (r *Repo) AddSuggestionLinks(ctx context.Context, suggestionID vo.Id, linkIDs []vo.Id) error {
+// AddSuggestionLinks answers false, writing nothing, when the suggestion is no
+// longer open. The touch takes the row lock first, so on PostgreSQL a delete
+// racing it either waits for this transaction or has already made it a miss,
+// never a foreign-key failure on the link insert.
+func (r *Repo) AddSuggestionLinks(ctx context.Context, suggestionID vo.Id, linkIDs []vo.Id, now time.Time) (bool, error) {
+	n, err := r.q.TouchOpenImportSuggestion(ctx, r.db(ctx), touchSuggestionParams{UpdatedAt: now, ID: suggestionID.String()})
+	if err != nil || n == 0 {
+		return false, err
+	}
+	return true, r.insertSuggestionLinks(ctx, suggestionID, linkIDs)
+}
+
+func (r *Repo) insertSuggestionLinks(ctx context.Context, suggestionID vo.Id, linkIDs []vo.Id) error {
 	for _, id := range linkIDs {
 		if err := r.q.InsertImportSuggestionLink(ctx, r.db(ctx), insertSuggestionLinkPs{SuggestionID: suggestionID.String(), LinkID: id.String()}); err != nil {
 			return err
@@ -108,6 +122,14 @@ func suggestionFromRow(row suggestionRow) (*model.ImportSuggestion, error) {
 	}
 	if s.PayeeID, err = parseOptionalID(row.PayeeID); err != nil {
 		return nil, err
+	}
+	switch row.TransactionType {
+	case model.TransactionTypeExpense.Alias():
+		s.Type = model.TransactionTypeExpense
+	case model.TransactionTypeIncome.Alias():
+		s.Type = model.TransactionTypeIncome
+	default:
+		return nil, fmt.Errorf("import suggestion %s: unknown transaction type", row.ID)
 	}
 	return s, nil
 }

@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/model"
@@ -361,5 +363,172 @@ func TestSuggestPanicForOneOwnerStillServesOthers(t *testing.T) {
 	}
 	if got := openSuggestions(t, h, userB); len(got) != 1 {
 		t.Fatalf("owner B suggestions = %+v", got)
+	}
+}
+
+func TestSuggestOpenSuggestionOfOtherTypeDoesNotCover(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	pyID := vo.MustParseId(py)
+	income := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+		PayeeID: &pyID, Type: model.TransactionTypeIncome, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := h.repo.InsertSuggestion(context.Background(), income); err != nil {
+		t.Fatal(err)
+	}
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","payeeId":"` + py + `"}}}`
+	ingest(t, h, tap)
+	if len(c.calls) != 1 {
+		t.Fatalf("an income suggestion must not cover an expense row: calls = %d", len(c.calls))
+	}
+	got := openSuggestions(t, h, userA)
+	if len(got) != 2 {
+		t.Fatalf("suggestions = %+v", got)
+	}
+	for _, s := range got {
+		if s.ID == income.ID && len(s.LinkIDs) != 0 {
+			t.Fatalf("the income suggestion absorbed an expense row: %+v", s)
+		}
+		if s.ID != income.ID && (s.Type != model.TransactionTypeExpense || len(s.LinkIDs) != 1) {
+			t.Fatalf("new suggestion = %+v", s)
+		}
+	}
+}
+
+// vanishingRepo deletes the suggestions a chosen ListOpenSuggestionsByUser
+// call returns, right after reading them: a list read's cleanup landing
+// between the job's read and its write. hideFirst makes the first read see
+// nothing.
+type vanishingRepo struct {
+	imports.Repository
+	deleteOn  int
+	hideFirst bool
+	calls     int
+}
+
+func (r *vanishingRepo) ListOpenSuggestionsByUser(ctx context.Context, userID vo.Id) ([]model.ImportSuggestion, error) {
+	r.calls++
+	if r.hideFirst && r.calls == 1 {
+		return nil, nil
+	}
+	list, err := r.Repository.ListOpenSuggestionsByUser(ctx, userID)
+	if err != nil || r.calls != r.deleteOn {
+		return list, err
+	}
+	for _, s := range list {
+		if err := r.Repository.DeleteSuggestion(ctx, s.ID); err != nil {
+			return nil, err
+		}
+	}
+	return list, nil
+}
+
+func seedPayeeSuggestion(t *testing.T, h *harness, py string) vo.Id {
+	t.Helper()
+	pyID := vo.MustParseId(py)
+	s := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+		PayeeID: &pyID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := h.repo.InsertSuggestion(context.Background(), s); err != nil {
+		t.Fatal(err)
+	}
+	return s.ID
+}
+
+func TestSuggestCoveringSuggestionDeletedSendsRowsToAI(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	h.withRepo(&vanishingRepo{Repository: h.repo, deleteOn: 1})
+	h.wireSuggest(c, facts)
+	h.mapCard(t, "Apple Card")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	old := seedPayeeSuggestion(t, h, py)
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","payeeId":"` + py + `"}}}`
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 1 {
+		t.Fatalf("the row must go to the AI once its suggestion is gone: calls = %d", len(c.calls))
+	}
+	got := openSuggestions(t, h, userA)
+	if len(got) != 1 || got[0].ID == old || len(got[0].LinkIDs) != 1 {
+		t.Fatalf("suggestions = %+v", got)
+	}
+}
+
+func TestSuggestJoinTargetDeletedOpensFreshSuggestion(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	h.withRepo(&vanishingRepo{Repository: h.repo, deleteOn: 2, hideFirst: true})
+	h.wireSuggest(c, facts)
+	h.mapCard(t, "Apple Card")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	old := seedPayeeSuggestion(t, h, py)
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","payeeId":"` + py + `"}}}`
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d", len(c.calls))
+	}
+	got := openSuggestions(t, h, userA)
+	if len(got) != 1 || got[0].ID == old || len(got[0].LinkIDs) != 1 || got[0].PayeeID == nil || got[0].PayeeID.String() != py {
+		t.Fatalf("suggestions = %+v", got)
+	}
+}
+
+// gatedCompleter answers only once both jobs have started, so without the
+// per-owner lock both would ask the AI before either wrote.
+type gatedCompleter struct {
+	mu      sync.Mutex
+	calls   int
+	reply   string
+	started chan struct{}
+}
+
+func (c *gatedCompleter) Complete(context.Context, string, string, string) (string, error) {
+	c.mu.Lock()
+	c.calls++
+	c.mu.Unlock()
+	for i := 0; i < 2; i++ {
+		select {
+		case <-c.started:
+		case <-time.After(2 * time.Second):
+		}
+	}
+	time.Sleep(100 * time.Millisecond)
+	return c.reply, nil
+}
+
+func TestSuggestJobsForOneOwnerRunOneAtATime(t *testing.T) {
+	h, _, facts := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	c := &gatedCompleter{reply: `{"rows":{"0":{"matchText":"Blue Bottle","payeeId":"` + py + `"}}}`, started: make(chan struct{}, 2)}
+	h.svc.SetSuggester(c, facts)
+	var queued []func()
+	h.svc.SetJobRunner(func(run func()) { queued = append(queued, run) })
+	ingest(t, h, tap)
+	ingest(t, h, pushWithPayee("Blue Bottle", "evt-2"))
+	if len(queued) != 2 {
+		t.Fatalf("jobs = %d", len(queued))
+	}
+	var wg sync.WaitGroup
+	for _, run := range queued {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			c.started <- struct{}{}
+			run()
+		}()
+	}
+	wg.Wait()
+	got := openSuggestions(t, h, userA)
+	if len(got) != 1 || len(got[0].LinkIDs) != 2 {
+		t.Fatalf("suggestions = %+v", got)
+	}
+	if c.calls != 1 {
+		t.Fatalf("calls = %d, want 1: the second job reuses the first one's suggestion", c.calls)
 	}
 }

@@ -62,9 +62,8 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 			sg.PayeeID = nil
 		}
 		var rows []model.ImportSuggestionTransactionResult
-		var txType string
 		if sg.CategoryID != nil || sg.PayeeID != nil {
-			rows, txType, err = s.pendingSuggestionRows(ctx, userID, sg, income, look)
+			rows, err = s.pendingSuggestionRows(ctx, userID, sg, income, look)
 			if err != nil {
 				return nil, err
 			}
@@ -78,7 +77,7 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 			continue
 		}
 		out.Items = append(out.Items, model.ImportSuggestionResult{
-			Id: sg.ID.String(), MatchField: sg.MatchField, MatchText: sg.MatchText, Type: txType,
+			Id: sg.ID.String(), MatchField: sg.MatchField, MatchText: sg.MatchText, Type: sg.Type.Alias(),
 			CategoryId: idString(sg.CategoryID), PayeeId: idString(sg.PayeeID), Transactions: rows,
 		})
 	}
@@ -93,9 +92,9 @@ type suggestionLookup struct {
 }
 
 // pendingSuggestionRows keeps a transaction while it is live, on an account
-// the caller owns, and still empty in a field the suggestion would set. The
-// type is the newest kept row's; grouping gives a suggestion one type.
-func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, string, error) {
+// the caller owns, still of the suggestion's type (an edit can change it) and
+// still empty in a field the suggestion would set.
+func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, error) {
 	type pending struct {
 		live *model.Transaction
 		link *model.ImportTransactionLink
@@ -104,9 +103,9 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 	for _, linkID := range sg.LinkIDs {
 		l, live, err := s.suggestionTargetCached(ctx, userID, linkID, look.owned)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
-		if live == nil {
+		if live == nil || live.Type != sg.Type {
 			continue
 		}
 		wantsCategory := sg.CategoryID != nil && live.CategoryID == nil && categoryFits(*sg.CategoryID, income, live.Type)
@@ -116,7 +115,7 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		}
 	}
 	if len(kept) == 0 {
-		return nil, "", nil
+		return nil, nil
 	}
 	sort.SliceStable(kept, func(i, j int) bool {
 		a, b := kept[i].live, kept[j].live
@@ -131,7 +130,7 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 		if !ok {
 			var err error
 			if code, err = s.accounts.AccountCurrencyCode(ctx, p.live.AccountID); err != nil {
-				return nil, "", err
+				return nil, err
 			}
 			look.codes[p.live.AccountID] = code
 		}
@@ -140,7 +139,7 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 			Currency: code, Date: p.live.SpentAt.Format(datetime.Layout), ExternalPayee: p.link.ExternalPayee,
 		})
 	}
-	return rows, kept[0].live.Type.Alias(), nil
+	return rows, nil
 }
 
 // suggestionTarget resolves a suggestion's link to its live transaction, or
@@ -240,26 +239,33 @@ func (s *Service) AcceptSuggestion(ctx context.Context, userID vo.Id, req model.
 			continue
 		}
 		next := model.ImportClassification{CategoryID: live.CategoryID, PayeeID: live.PayeeID, TagID: live.TagID, LabelIDs: live.LabelIDs}
-		filled := false
-		if live.CategoryID == nil && rule.TargetCategoryID != nil && categoryFits(*rule.TargetCategoryID, own.incomeCategories, live.Type) {
-			next.CategoryID, filled = rule.TargetCategoryID, true
-		}
-		if live.PayeeID == nil && rule.TargetPayeeID != nil {
-			next.PayeeID, filled = rule.TargetPayeeID, true
-		}
-		if !filled {
+		fillCategory := live.CategoryID == nil && rule.TargetCategoryID != nil && categoryFits(*rule.TargetCategoryID, own.incomeCategories, live.Type)
+		fillPayee := live.PayeeID == nil && rule.TargetPayeeID != nil
+		if !fillCategory && !fillPayee {
 			continue
+		}
+		if fillCategory {
+			next.CategoryID = rule.TargetCategoryID
+		}
+		if fillPayee {
+			next.PayeeID = rule.TargetPayeeID
 		}
 		next.RuleID = &rule.ID
 		err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 			if _, err := s.txns.UpdateTransaction(ctx, userID, updateRequest(live, next)); err != nil {
 				return err
 			}
-			setApplied(l, next)
-			if err := s.repo.UpdateLink(ctx, l); err != nil {
-				return err
+			// The snapshot moves only for the fields written here: one the user set
+			// by hand must still read as edited, or a later apply-rule would
+			// overwrite it.
+			if fillCategory {
+				l.AppliedCategoryID = next.CategoryID
 			}
-			return s.repo.ReplaceLinkAppliedLabels(ctx, l.ID, next.LabelIDs)
+			if fillPayee {
+				l.AppliedPayeeID = next.PayeeID
+			}
+			l.AppliedRuleID = next.RuleID
+			return s.repo.UpdateLink(ctx, l)
 		})
 		if err != nil {
 			return nil, err

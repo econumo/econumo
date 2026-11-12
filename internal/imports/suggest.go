@@ -20,7 +20,13 @@ type suggestRow struct {
 	Amount   string
 	Currency string
 	Account  string
-	Missing  struct{ Category, Payee bool }
+	Missing  missingFields
+}
+
+type missingFields struct{ Category, Payee bool }
+
+func (m missingFields) filledBy(o model.ImportSuggestion) bool {
+	return (m.Category && o.CategoryID != nil) || (m.Payee && o.PayeeID != nil)
 }
 
 type suggestVocabulary struct {
@@ -205,13 +211,14 @@ func idPtrKey(id *vo.Id) string {
 }
 
 func groupRows(valid []validSuggestion) []model.ImportSuggestion {
-	groups, _ := groupRowsTyped(valid)
+	groups, _ := groupRowsMissing(valid)
 	return groups
 }
 
-// groupRowsTyped also returns each group's transaction type (parallel
-// slice) so mergeIntoOpen can check a joined suggestion's category fits it.
-func groupRowsTyped(valid []validSuggestion) ([]model.ImportSuggestion, []model.TransactionType) {
+// groupRowsMissing also returns, parallel to the groups, which fields any
+// of a group's rows lack, so mergeIntoOpen joins a group only to a
+// suggestion that fills one of them.
+func groupRowsMissing(valid []validSuggestion) ([]model.ImportSuggestion, []missingFields) {
 	type bucket struct {
 		field, text string
 		rows        []validSuggestion
@@ -230,14 +237,17 @@ func groupRowsTyped(valid []validSuggestion) ([]model.ImportSuggestion, []model.
 		b.rows = append(b.rows, s)
 	}
 	out := make([]model.ImportSuggestion, 0, len(order))
-	types := make([]model.TransactionType, 0, len(order))
+	missing := make([]missingFields, 0, len(order))
 	for _, k := range order {
 		b := buckets[k]
-		types = append(types, b.rows[0].Row.Type)
+		var m missingFields
 		count := map[string]int{}
 		for _, s := range b.rows {
 			count[idPtrKey(s.CategoryID)+"\x00"+idPtrKey(s.PayeeID)]++
+			m.Category = m.Category || s.Row.Missing.Category
+			m.Payee = m.Payee || s.Row.Missing.Payee
 		}
+		missing = append(missing, m)
 		best := b.rows[0]
 		bestN := count[idPtrKey(best.CategoryID)+"\x00"+idPtrKey(best.PayeeID)]
 		for _, s := range b.rows[1:] {
@@ -248,14 +258,14 @@ func groupRowsTyped(valid []validSuggestion) ([]model.ImportSuggestion, []model.
 		}
 		sug := model.ImportSuggestion{
 			ID: vo.NewId(), MatchField: b.field, MatchText: b.text,
-			CategoryID: best.CategoryID, PayeeID: best.PayeeID, Status: model.ImportSuggestionStatusOpen,
+			CategoryID: best.CategoryID, PayeeID: best.PayeeID, Type: b.rows[0].Row.Type, Status: model.ImportSuggestionStatusOpen,
 		}
 		for _, s := range b.rows {
 			sug.LinkIDs = append(sug.LinkIDs, s.Row.Link.ID)
 		}
 		out = append(out, sug)
 	}
-	return out, types
+	return out, missing
 }
 
 func sortedOldestFirst(open []model.ImportSuggestion) []model.ImportSuggestion {
@@ -264,28 +274,32 @@ func sortedOldestFirst(open []model.ImportSuggestion) []model.ImportSuggestion {
 	return sorted
 }
 
-// groupTypes is parallel to groups (see groupRowsTyped). A group joins the
-// oldest open suggestion whose rule ("contains <open text>") would match it
-// and whose category, when set, fits the group's type.
-func mergeIntoOpen(groups []model.ImportSuggestion, groupTypes []model.TransactionType, open []model.ImportSuggestion, income map[vo.Id]bool) (fresh []model.ImportSuggestion, joins map[vo.Id][]vo.Id) {
-	joins = map[vo.Id][]vo.Id{}
+// groupMissing is parallel to groups (see groupRowsMissing). A group joins
+// the oldest open suggestion of its type whose rule ("contains <open text>")
+// would match it and that fills a field the group's rows lack; joins maps
+// that suggestion's id to the indexes of the groups joining it.
+func mergeIntoOpen(groups []model.ImportSuggestion, groupMissing []missingFields, open []model.ImportSuggestion, income map[vo.Id]bool) (fresh []int, joins map[vo.Id][]int) {
+	joins = map[vo.Id][]int{}
 	sorted := sortedOldestFirst(open)
 	for i, g := range groups {
 		gt := strings.ToLower(g.MatchText)
 		joined := false
 		for _, o := range sorted {
-			if o.MatchField != g.MatchField || !strings.Contains(gt, strings.ToLower(o.MatchText)) {
+			if o.Type != g.Type || o.MatchField != g.MatchField || !strings.Contains(gt, strings.ToLower(o.MatchText)) {
 				continue
 			}
-			if o.CategoryID != nil && !categoryFits(*o.CategoryID, income, groupTypes[i]) {
+			if o.CategoryID != nil && !categoryFits(*o.CategoryID, income, g.Type) {
 				continue
 			}
-			joins[o.ID] = append(joins[o.ID], g.LinkIDs...)
+			if !groupMissing[i].filledBy(o) {
+				continue
+			}
+			joins[o.ID] = append(joins[o.ID], i)
 			joined = true
 			break
 		}
 		if !joined {
-			fresh = append(fresh, g)
+			fresh = append(fresh, i)
 		}
 	}
 	return fresh, joins
@@ -295,15 +309,13 @@ func openFor(row suggestRow, open []model.ImportSuggestion, income map[vo.Id]boo
 	ev := model.IngestEvent{Payee: row.Link.ExternalPayee, Description: row.Link.ExternalDescription}
 	for _, o := range sortedOldestFirst(open) {
 		r := model.ImportRule{MatchField: o.MatchField, MatchValue: o.MatchText, MatchType: model.ImportRuleMatchTypeContains}
-		if !matchRule(r, ev) {
+		if o.Type != row.Type || !matchRule(r, ev) {
 			continue
 		}
 		if o.CategoryID != nil && !categoryFits(*o.CategoryID, income, row.Type) {
 			continue
 		}
-		fillsCategory := row.Missing.Category && o.CategoryID != nil
-		fillsPayee := row.Missing.Payee && o.PayeeID != nil
-		if !fillsCategory && !fillsPayee {
+		if !row.Missing.filledBy(o) {
 			continue
 		}
 		return o.ID, true

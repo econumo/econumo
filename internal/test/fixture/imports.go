@@ -249,6 +249,7 @@ type ImportSuggestion struct {
 	MatchText  string // default "Rule"
 	CategoryID string // "" -> NULL
 	PayeeID    string
+	Type       string // default expense
 	Status     string // default open
 	LinkIDs    []string
 }
@@ -265,10 +266,13 @@ func (b *Builder) ImportSuggestion(s ImportSuggestion) string {
 	if s.Status == "" {
 		s.Status = "open"
 	}
+	if s.Type == "" {
+		s.Type = "expense"
+	}
 	now := b.now()
-	b.insert(`INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, s.UserID, s.MatchField, s.MatchText, nullable(s.CategoryID), nullable(s.PayeeID), s.Status, now, now)
+	b.insert(`INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, transaction_type, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, s.UserID, s.MatchField, s.MatchText, nullable(s.CategoryID), nullable(s.PayeeID), s.Type, s.Status, now, now)
 	for _, l := range s.LinkIDs {
 		b.insert(`INSERT INTO import_suggestion_links (suggestion_id, link_id) VALUES (?, ?)`, id, l)
 	}

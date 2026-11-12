@@ -675,7 +675,7 @@ func TestSuggestionRepoRoundTrip(t *testing.T) {
 	catID := vo.NewId()
 	s := &model.ImportSuggestion{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee,
-		MatchText: "coffee shop", CategoryID: &catID, Status: model.ImportSuggestionStatusOpen,
+		MatchText: "coffee shop", CategoryID: &catID, Type: model.TransactionTypeIncome, Status: model.ImportSuggestionStatusOpen,
 		LinkIDs: []vo.Id{l1.ID, l2.ID}, CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
 	if err := repo.InsertSuggestion(ctx, s); err != nil {
@@ -685,11 +685,11 @@ func TestSuggestionRepoRoundTrip(t *testing.T) {
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list = %v, %v", list, err)
 	}
-	if got := list[0]; len(got.LinkIDs) != 2 || got.MatchText != "coffee shop" || got.CategoryID == nil || *got.CategoryID != catID || got.PayeeID != nil || !got.CreatedAt.Equal(fixedTime) {
+	if got := list[0]; len(got.LinkIDs) != 2 || got.MatchText != "coffee shop" || got.CategoryID == nil || *got.CategoryID != catID || got.PayeeID != nil || got.Type != model.TransactionTypeIncome || !got.CreatedAt.Equal(fixedTime) {
 		t.Errorf("mismatch: %+v", got)
 	}
-	if err := repo.AddSuggestionLinks(ctx, s.ID, []vo.Id{l2.ID, l3.ID}); err != nil {
-		t.Fatalf("AddSuggestionLinks: %v", err)
+	if ok, err := repo.AddSuggestionLinks(ctx, s.ID, []vo.Id{l2.ID, l3.ID}, fixedTime); err != nil || !ok {
+		t.Fatalf("AddSuggestionLinks: %v, %v", ok, err)
 	}
 	got, err := repo.GetSuggestion(ctx, s.ID)
 	if err != nil || len(got.LinkIDs) != 3 {
@@ -716,6 +716,9 @@ func TestSuggestionRepoRoundTrip(t *testing.T) {
 	}
 	if _, err := repo.GetSuggestion(ctx, s.ID); err == nil {
 		t.Error("deleted suggestion still readable")
+	}
+	if ok, err := repo.AddSuggestionLinks(ctx, s.ID, []vo.Id{l1.ID}, fixedTime); err != nil || ok {
+		t.Errorf("AddSuggestionLinks on a deleted suggestion = %v, %v; want false, nil", ok, err)
 	}
 	if n := countLinks(); n != 0 {
 		t.Errorf("link rows after delete = %d", n)

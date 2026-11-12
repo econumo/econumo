@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -104,6 +105,8 @@ func (s *Service) suggestForOwnerSafe(ctx context.Context, owner vo.Id, candidat
 			slog.Warn("import suggest failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", r))
 		}
 	}()
+	unlock := s.suggestLocks.lock(owner)
+	defer unlock()
 	if err := s.suggestForOwner(ctx, owner, candidates); err != nil {
 		slog.Warn("import suggest failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", err))
 	}
@@ -142,8 +145,27 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		rest = append(rest, r)
 	}
 	if len(covered) > 0 {
-		if err := s.tx.WithTx(ctx, func(ctx context.Context) error { return s.addSuggestionLinks(ctx, covered) }); err != nil {
+		var gone []vo.Id
+		err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+			var err error
+			gone, err = s.addSuggestionLinks(ctx, covered)
 			return err
+		})
+		if err != nil {
+			return err
+		}
+		// A suggestion the list read deleted meanwhile covers nothing: its rows
+		// go to the AI like any other.
+		goneLinks := map[vo.Id]bool{}
+		for _, id := range gone {
+			for _, l := range covered[id] {
+				goneLinks[l] = true
+			}
+		}
+		for _, r := range rows {
+			if goneLinks[r.Link.ID] {
+				rest = append(rest, r)
+			}
 		}
 	}
 	if len(rest) == 0 {
@@ -170,23 +192,40 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	if len(valid) == 0 {
 		return nil
 	}
-	groups, groupTypes := groupRowsTyped(valid)
+	groups, groupMissing := groupRowsMissing(valid)
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		// Re-read: the call took seconds, and another job or the user may have
-		// opened or settled suggestions meanwhile.
+		// Re-read: the call took seconds, and the user may have settled
+		// suggestions meanwhile.
 		open, err := s.repo.ListOpenSuggestionsByUser(ctx, owner)
 		if err != nil {
 			return err
 		}
-		fresh, joins := mergeIntoOpen(groups, groupTypes, open, vocab.income)
+		fresh, joinIdx := mergeIntoOpen(groups, groupMissing, open, vocab.income)
+		joins := make(map[vo.Id][]vo.Id, len(joinIdx))
+		for id, idx := range joinIdx {
+			for _, i := range idx {
+				joins[id] = append(joins[id], groups[i].LinkIDs...)
+			}
+		}
+		gone, err := s.addSuggestionLinks(ctx, joins)
+		if err != nil {
+			return err
+		}
+		// A suggestion deleted between the re-read and the join: its groups
+		// open suggestions of their own.
+		for _, id := range gone {
+			fresh = append(fresh, joinIdx[id]...)
+		}
+		sort.Ints(fresh)
 		now := s.clk.Now().UTC()
-		for i := range fresh {
-			fresh[i].UserID, fresh[i].CreatedAt, fresh[i].UpdatedAt = owner, now, now
-			if err := s.repo.InsertSuggestion(ctx, &fresh[i]); err != nil {
+		for _, i := range fresh {
+			g := groups[i]
+			g.UserID, g.CreatedAt, g.UpdatedAt = owner, now, now
+			if err := s.repo.InsertSuggestion(ctx, &g); err != nil {
 				return err
 			}
 		}
-		return s.addSuggestionLinks(ctx, joins)
+		return nil
 	})
 }
 
@@ -244,17 +283,58 @@ func (s *Service) suggestRows(ctx context.Context, owner vo.Id, candidates []sug
 }
 
 // addSuggestionLinks writes the joins in id order, a stable order for
-// concurrent writers.
-func (s *Service) addSuggestionLinks(ctx context.Context, joins map[vo.Id][]vo.Id) error {
+// concurrent writers, and returns the suggestions that were no longer open.
+func (s *Service) addSuggestionLinks(ctx context.Context, joins map[vo.Id][]vo.Id) ([]vo.Id, error) {
 	ids := make([]vo.Id, 0, len(joins))
 	for id := range joins {
 		ids = append(ids, id)
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
+	now := s.clk.Now().UTC()
+	var gone []vo.Id
 	for _, id := range ids {
-		if err := s.repo.AddSuggestionLinks(ctx, id, joins[id]); err != nil {
-			return err
+		ok, err := s.repo.AddSuggestionLinks(ctx, id, joins[id], now)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			gone = append(gone, id)
 		}
 	}
-	return nil
+	return gone, nil
+}
+
+type ownerLocks struct {
+	mu sync.Mutex
+	m  map[vo.Id]*ownerLock
+}
+
+type ownerLock struct {
+	mu   sync.Mutex
+	refs int
+}
+
+// lock holds the owner's lock until the returned func runs; an entry lives
+// only while someone holds or waits for it.
+func (l *ownerLocks) lock(owner vo.Id) func() {
+	l.mu.Lock()
+	if l.m == nil {
+		l.m = map[vo.Id]*ownerLock{}
+	}
+	e := l.m[owner]
+	if e == nil {
+		e = &ownerLock{}
+		l.m[owner] = e
+	}
+	e.refs++
+	l.mu.Unlock()
+	e.mu.Lock()
+	return func() {
+		e.mu.Unlock()
+		l.mu.Lock()
+		if e.refs--; e.refs == 0 {
+			delete(l.m, owner)
+		}
+		l.mu.Unlock()
+	}
 }

@@ -284,15 +284,16 @@ type ImportSource struct {
 }
 
 type ImportSuggestion struct {
-	ID         string
-	UserID     string
-	MatchField string
-	MatchText  string
-	CategoryID *string
-	PayeeID    *string
-	Status     string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID              string
+	UserID          string
+	MatchField      string
+	MatchText       string
+	CategoryID      *string
+	PayeeID         *string
+	TransactionType string
+	Status          string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type ImportSuggestionLink struct {

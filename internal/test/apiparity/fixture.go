@@ -245,7 +245,7 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkTxn2, SourceID: ImportSourcePhone,
 		ExternalAccountID: "wallet", ExternalTransactionID: "tap-1", TransactionID: Txn2,
 		ExternalPayee: "Employer", ExternalAmount: "1000.00000000", ExternalPostedAt: ClockTime})
-	f.ImportSuggestion(fixture.ImportSuggestion{ID: ImportSuggestionEmployer, UserID: OwnerID, MatchText: "EMPLOYER",
+	f.ImportSuggestion(fixture.ImportSuggestion{ID: ImportSuggestionEmployer, UserID: OwnerID, MatchText: "EMPLOYER", Type: "income",
 		PayeeID: PayeeShop, LinkIDs: []string{ImportLinkTxn2}})
 
 	// A queued tap on the same "wallet" card: 12.50 at "Shop" received at

@@ -51,6 +51,7 @@ type (
 	suggestionLinkRow         = sqlitegen.ImportSuggestionLink
 	insertSuggestionParams    = sqlitegen.InsertImportSuggestionParams
 	insertSuggestionLinkPs    = sqlitegen.InsertImportSuggestionLinkParams
+	touchSuggestionParams     = sqlitegen.TouchOpenImportSuggestionParams
 )
 
 // querier method signatures mirror the sqlc-generated ones exactly, including
@@ -108,6 +109,7 @@ type querier interface {
 	ListImportLinkAppliedLabels(ctx context.Context, db backend.DBTX, linkID string) ([]linkAppliedLabelRow, error)
 	InsertImportSuggestion(ctx context.Context, db backend.DBTX, p insertSuggestionParams) error
 	InsertImportSuggestionLink(ctx context.Context, db backend.DBTX, p insertSuggestionLinkPs) error
+	TouchOpenImportSuggestion(ctx context.Context, db backend.DBTX, p touchSuggestionParams) (int64, error)
 	GetImportSuggestionByID(ctx context.Context, db backend.DBTX, id string) (suggestionRow, error)
 	ListOpenImportSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionRow, error)
 	ListImportSuggestionLinks(ctx context.Context, db backend.DBTX, suggestionID string) ([]suggestionLinkRow, error)

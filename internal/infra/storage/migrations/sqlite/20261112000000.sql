@@ -5,6 +5,7 @@ CREATE TABLE import_suggestions (
     match_text TEXT NOT NULL,
     category_id TEXT DEFAULT NULL,
     payee_id TEXT DEFAULT NULL,
+    transaction_type TEXT NOT NULL,
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,

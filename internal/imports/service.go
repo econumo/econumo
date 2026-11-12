@@ -29,6 +29,10 @@ type Service struct {
 	providers map[string]Provider
 	parsers   map[string]EventParser
 	disabled  map[string]bool
+	// suggestLocks runs one owner's suggestion jobs one at a time, so two
+	// imports landing together cannot each open a suggestion for the same
+	// merchant.
+	suggestLocks ownerLocks
 }
 
 func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionWriter, lister TransactionLister, entities ClassificationLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {

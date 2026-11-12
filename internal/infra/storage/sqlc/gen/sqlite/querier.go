@@ -698,6 +698,7 @@ type Querier interface {
 	// reclaim has revoked: a request that read the row before the revoke must not
 	// be able to write a stale NULL back.
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
+	TouchOpenImportSuggestion(ctx context.Context, arg TouchOpenImportSuggestionParams) (int64, error)
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateGlobalOAuthClient(ctx context.Context, arg UpdateGlobalOAuthClientParams) (int64, error)

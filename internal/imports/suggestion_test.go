@@ -210,11 +210,28 @@ func TestAcceptFillsOnlyEmptyFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if link.AppliedCategoryID == nil || link.AppliedCategoryID.String() != cat || link.AppliedPayeeID == nil || link.AppliedPayeeID.String() != mine || link.AppliedRuleID == nil || link.AppliedRuleID.String() != rule {
+	// The hand-set payee stays out of the snapshot, so the row still reads
+	// as edited.
+	if link.AppliedCategoryID == nil || link.AppliedCategoryID.String() != cat || link.AppliedPayeeID != nil || link.AppliedRuleID == nil || link.AppliedRuleID.String() != rule {
 		t.Fatalf("applied = %+v", link)
 	}
 	if items := suggestionList(t, h, userA); len(items) != 0 {
 		t.Fatalf("an accepted suggestion is not listed: %+v", items)
+	}
+	uA := vo.MustParseId(userA)
+	preview, err := h.svc.PreviewRule(context.Background(), uA, model.PreviewImportRuleRequest{ImportRuleSpec: model.ImportRuleSpec{
+		Action: model.ImportRuleActionClassify, MatchField: model.ImportRuleMatchFieldExternalPayee, MatchType: model.ImportRuleMatchTypeContains,
+		MatchValue: "blue bottle", PayeeId: &py,
+	}, Scope: model.ImportRuleScopeAll})
+	if err != nil || preview.Matched != 1 || preview.AlreadyEdited != 1 {
+		t.Fatalf("preview = %+v, %v", preview, err)
+	}
+	applied, err := h.svc.ApplyRule(context.Background(), uA, model.ApplyImportRuleRequest{RuleId: rule, Scope: model.ImportRuleScopeAll})
+	if err != nil || applied.Updated != 0 || applied.Skipped != 1 {
+		t.Fatalf("apply = %+v, %v", applied, err)
+	}
+	if tx, _ := h.txns.GetByID(context.Background(), *links[0].TransactionID); tx.PayeeID == nil || tx.PayeeID.String() != mine {
+		t.Fatalf("apply overwrote the hand-set payee: %+v", tx)
 	}
 }
 
@@ -378,5 +395,20 @@ func TestSuggestMatchTextCompleterError(t *testing.T) {
 	res, err := suggestMatchText(h, userA, l)
 	if err != nil || res.MatchField != "" || res.MatchText != "" {
 		t.Fatalf("result = %+v, %v", res, err)
+	}
+}
+
+func TestSuggestionListKeepsOnlyRowsOfStoredType(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	_, links := seedSuggestion(t, h, c, "", py, "Blue Bottle", "SQ *BLUE BOTTLE #12")
+	h.setTx(t, links[0].TransactionID, "type", "1")
+	items := suggestionList(t, h, userA)
+	if len(items) != 1 || items[0].Type != "expense" || len(items[0].Transactions) != 1 || items[0].Transactions[0].TransactionId != links[1].TransactionID.String() {
+		t.Fatalf("list = %+v", items)
+	}
+	h.setTx(t, links[1].TransactionID, "type", "1")
+	if items := suggestionList(t, h, userA); len(items) != 0 {
+		t.Fatalf("an expense suggestion must not offer income rows: %+v", items)
 	}
 }
