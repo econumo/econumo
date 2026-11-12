@@ -9,12 +9,14 @@ import type { LabelDto } from '@/api/dto/label'
 import type { PayeeDto } from '@/api/dto/payee'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TagDto } from '@/api/dto/tag'
+import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { suggestIconForCreatedCategory } from '@/features/iconSuggestion/inline'
 import { patchTransactions } from '@/features/transactions/revisionTracking'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { OwnErrorHandling } from '@/lib/appQueryClient'
+import { getSessionUserId } from '@/lib/storage'
 
 const byPosition = <T extends { position: number }>(items: T[]) => [...items].sort((a, b) => a.position - b.position)
 
@@ -52,8 +54,10 @@ export function useCreateCategory({ handlesOwnErrors = false }: OwnErrorHandling
       const item = await categoryApi.createCategory({ id: uuidv7(), name: form.name, type: form.type, accountId: form.accountId, icon: form.icon })
       // in mutationFn, not onSuccess: the dedupe path above is not a create
       trackEvent(METRICS.CATEGORY_CREATE)
-      // no icon given: created inline from a picker, so nobody chose one
-      if (form.icon === undefined) void suggestIconForCreatedCategory(queryClient, item)
+      // no icon given: created inline from a picker, so nobody chose one. A category created on
+      // a partner's account belongs to that partner, and only its owner may change its icon.
+      const me = getSessionUserId() ?? queryClient.getQueryData<CurrentUserDto>(queryKeys.user)?.id
+      if (form.icon === undefined && item.ownerUserId === me) void suggestIconForCreatedCategory(queryClient, item)
       return item
     },
     onSuccess: (item) => {

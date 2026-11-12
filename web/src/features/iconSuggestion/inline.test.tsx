@@ -7,6 +7,7 @@ import { queryKeys } from '@/app/queryKeys'
 import type { CategoryDto } from '@/api/dto/category'
 import { useCreateCategory } from '@/features/classifications/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { removeToken, setToken } from '@/lib/storage'
 
 vi.mock('@/lib/metrics', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/metrics')>()),
@@ -35,6 +36,7 @@ const applied = () => vi.mocked(trackEvent).mock.calls.filter(([name]) => name =
 const iconOf = (queryClient: QueryClient) => queryClient.getQueryData<CategoryDto[]>(queryKeys.categories)?.find((c) => c.id === created.id)?.icon
 
 beforeEach(() => {
+  setToken('token', 'u1')
   window.econumoConfig = { AI_ENABLED: true }
   vi.mocked(trackEvent).mockClear()
   suggested = async () => 'house'
@@ -61,6 +63,7 @@ beforeEach(() => {
 
 afterEach(() => {
   window.econumoConfig = {}
+  removeToken()
 })
 
 it('an inline create answers at once, then takes the suggested icon while it still has its first one', async () => {
@@ -110,4 +113,28 @@ it('no suggestion, no AI, or an icon given by a form changes nothing', async () 
   expect(asked).toBe(1)
   expect(updates).toEqual([])
   expect(applied()).toEqual([])
+})
+
+// A category created on a partner's account is stored under the account's owner, so the caller
+// could not apply an icon to it: the suggestion would only be a paid request answered by a 404.
+it("a category created on someone else's account asks for no icon", async () => {
+  server.use(
+    http.post('*/api/v1/category/create-category', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: { ...created, ownerUserId: 'partner' } } }),
+    ),
+  )
+  const { result } = setup()
+  const item = await result.current.mutateAsync({ name: 'Mortgage', type: 'expense', accountId: 'partner-account', ownerUserId: 'partner' })
+  expect(item.ownerUserId).toBe('partner')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  expect(asked).toBe(0)
+  expect(updates).toEqual([])
+})
+
+it('without a known session user the cached user decides', async () => {
+  removeToken()
+  const { queryClient, result } = setup()
+  queryClient.setQueryData(queryKeys.user, { id: 'u1' })
+  await result.current.mutateAsync({ name: 'Mortgage', type: 'expense' })
+  await waitFor(() => expect(asked).toBe(1))
 })
