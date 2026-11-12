@@ -2494,23 +2494,11 @@ its setup (amount borrowed 10,000.00, start date four months ago, last payment
 date 20 months out), and add a second budget member account in USD, before
 running these.
 
-- [ ] 📱 **Settings → Debts** (in the Finances group, right after Budgets) lists the debts
-      of every budget the user can read, archived budgets included, grouped under a
-      heading per budget (the budget's name, in the budget list's order): icon, name,
-      current balance and "N payments left" (or a "Paid off" badge), open debts first
-      in each group; the create button opens the short debt form; a row opens the
-      debt's review screen. A debt without terms shows "Finish setup" (link colour)
-      instead of the payments count and no amount, for a user who may plan in its
-      budget; a guest sees no link and the row opens the Overview. The partner sees
-      the same debt under the shared budget's heading; a user with no access to the
-      budget (or only a pending invite) never sees it. A user who can plan in no
-      unarchived budget (only guest access, or only archived budgets) gets a
-      disabled create button and the line "Debts belong to a budget. Create a
-      budget, or ask to plan in one, to add a debt."
-- [ ] 📱 **Create form** is short: an intro line, Name, from Settings → Debts a
-      Budget row (a searchable picker listing only the unarchived budgets the user
-      may plan in, set to the default budget when it is one of them; opened from a
-      budget row there is no Budget row and the debt goes to that budget), a "Which
+- [ ] 📱 Settings has no Debts entry (the Finances group goes Accounts,
+      Connections, Budgets, Recurring) and `/settings/debts` is not a page: a
+      debt is reached only from its budget's row.
+- [ ] 📱 **Create form** (a budget category row's "Track as debt") is short: an
+      intro line, Name (no Budget row: the debt goes to that row's budget), a "Which
       payments count" card holding one "Payments from" sentence per category (chips:
       Category, then an optional payee and an optional tag, each opening a
       searchable picker with an "any ..." row at the top that is hidden while
@@ -2525,17 +2513,15 @@ running these.
       line under the field shows how it is read ("= 1,500.00 $" for "1,500",
       "= 1.50 $" for "1.500"); "5+5" or letters show "Enter a valid
       number". There is no
-      currency line: a debt converted from a budget row takes that row's
-      currency, one created in Settings → Debts the chosen budget's currency
-      (check both on the review screen's Loan card). Name defaults to the
+      currency line: the debt takes the converted row's currency, else the
+      budget's (check on the review screen's Loan card). Name defaults to the
       category name. The category picker offers the active expense categories
       of every participant who may plan in the budget (income categories and a
       guest's never), the user's own group first and each other participant's
       under their name; the payee and tag pickers list the payees, tags and
       reporting tags of the chosen category's owner. Picking a partner's
       category clears a payee or tag picked on that line; picking one of your
-      own keeps it. Changing the budget keeps only the lines on your own
-      categories. Saving with two lines creates one debt counting payments in
+      own keeps it. Saving with two lines creates one debt counting payments in
       both categories. No balance or last payment date is
       asked. Saving creates the debt and opens its review screen (no list
       flash). A payment of 0 or less, or a missing name or category, shows a
@@ -2675,7 +2661,7 @@ running these.
       two devices, edit the terms on the second, then rename (or change the
       sentence) on the first without reloading: the debt keeps the second
       device's terms and the history does not grow.
-- [ ] 📱 **Review screen** (one entry, "Details": the Settings row, the
+- [ ] 📱 **Review screen** (one entry, "Details": the
       budget row's ⋮ menu, the desktop row, or on a phone/tablet the item
       sheet's "Details" button; for every participant, there is no separate
       Edit entry or pencil): on desktop a centred dialog about 90% of the screen's
@@ -2725,8 +2711,8 @@ running these.
       the progress moves by one when the payment lands in a new due window
       (several payments in one window count once; payments from before setup
       count).
-- [ ] 📱 **Guest review**: a guest of the budget opens the debt's Details (row menu,
-      item sheet or Settings → Debts) and gets a read-only screen: the Overview and,
+- [ ] 📱 **Guest review**: a guest of the budget opens the debt's Details (row menu or
+      item sheet) and gets a read-only screen: the Overview and,
       for a set-up debt, the Balance tab with the summary and the history but no
       reconcile form and no delete buttons; there is no Settings or Danger zone tab
       and no Finish setup button. The sentences under "Which payments count" read
@@ -2736,8 +2722,7 @@ running these.
       its regular payment in a coming month, then open the debt's Details: "N payments left" and the "X of Y paid" total drop (an
       earlier payoff) and Planned extra shows the plan above the regular
       payment (a plan of 5,000 against a payment of 450: 4,550.00) while the repaid
-      amount in brackets stays; Settings → Debts still shows the plan-free
-      figures. Clear the plan:
+      amount in brackets stays. Clear the plan:
       the Overview returns to them. Opening the screen fires no "future payments"
       analytics event. Offline, or while the server cannot answer, the Overview
       shows the plan-free figures with no error and no Planned extra row.
@@ -2753,7 +2738,7 @@ running these.
       plan they follow sits under the heading, above the table; the link
       turns into "Hide future payments", which takes the projected rows, the
       Recorded line and the note away again. Wherever the screen was
-      opened from (a budget row, the item sheet, Settings → Debts), the plans
+      opened from (a budget row or the item sheet), the plans
       are those of the debt's own budget: a month whose plan for the debt row
       is above the regular payments adds the difference to that month's first
       payment and the note reads "Includes extra payments planned in
@@ -2777,8 +2762,8 @@ running these.
       paid off is not offered (and the server refuses it). Finish setup
       switches to the Settings tab with the Amount borrowed field focused (the
       start date chip when the amount is there, then the last payment date);
-      the budget row's "Finish setup", the item sheet's "Finish setup" button
-      and the Settings → Debts row of such a debt open the screen straight on
+      the budget row's "Finish setup" and the item sheet's "Finish setup" button
+      of such a debt open the screen straight on
       that tab (offline the budget row's Left cell shows a dash instead). Saving with the amount borrowed, start date and last payment
       date finishes the setup (Owed now optional on top); once any of them or
       Owed now is typed the missing ones are field errors, and with none of

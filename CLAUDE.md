@@ -2284,7 +2284,10 @@ data unreadable. Most are also asserted by the test suite.
   way). Day 1 gives exactly the calendar figures. The debt service's own figures (Settings,
   details) stay calendar-month and today based; the SPA's red debt hint takes the budget's
   start day (`planHint` `startDay`).
-  **Debt SPA flow** (`web/src/features/debts`): create is a short form (name, the rule list
+  **Debt SPA flow** (`web/src/features/debts`): a debt belongs to its budget and is reached only
+  from its budget row (there is no Settings page for debts). Create is a short form opened by the
+  row's "Track as debt" (`OpenDebtParams.budgetId` required: the form never asks for a budget):
+  name, the rule list
   `RulesEditor`, a "Which payments count" card with one "payments from" sentence per rule, each a
   `PaymentsFromEditor` of chip pickers for category/payee and ONE tag slot whose picker lists tags
   and reporting tags in two headed groups, setting `tagId` or `labelId` and clearing the other,
@@ -2294,11 +2297,8 @@ data unreadable. Most are also asserted by the test suite.
   participant's active expense categories grouped by participant (the caller first, headings only
   with two or more), the payee/tag/label pickers the chosen category's owner's; picking a partner's
   category clears the line's payee, tag and label, the caller's own keeps them. A stored rule whose
-  category or narrowing is no longer offered still shows by its stored name. From a budget row the
-  budget is the row's (no picker) and the first line's category is locked; from Settings a budget
-  picker (`PickerSheet`, `rankByName`) lists `usePlannableBudgets()` (unarchived, owner/admin/user
-  role), defaulting once to the `budget` user option when listed, else the first, and switching
-  budget keeps only the lines on the caller's own categories. Then one Payment row, `PaymentField`:
+  category or narrowing is no longer offered still shows by its stored name. The budget is the
+  row's and the first line's category is locked. Then one Payment row, `PaymentField`:
   the amount card and, beside it at the same height on every breakpoint, an "every month" schedule
   card). Amounts (payment, amount borrowed, a statement balance) are plain `inputMode="decimal"` inputs, no calculator:
   `plainAmount` reads "2000", "2 000", "2,000.50", "1,200" and "1,5" (a lone comma is the decimal
@@ -2318,8 +2318,7 @@ data unreadable. Most are also asserted by the test suite.
   searchable from seven; a debt whose rules already cover the category, or that a new rule would
   conflict with, is disabled with the reason (`addRuleBlocker`), every entry is disabled offline,
   and a pick sends `add-debt-rule`, fires `appDebtRuleAdd` and closes (a refusal shows inline).
-  The ONLY way into a debt is its Details entry (Settings → Debts row, in the Finances group right
-  after Budgets; budget row menu; item sheet; every reader, guests included, who get the read-only
+  The ONLY way into a debt is its Details entry (budget row menu; item sheet; every reader, guests included, who get the read-only
   review; the budget's debt row menu, Budget view and Plan grid, also offers the Danger zone's Mark
   as paid off and Delete with the right to plan in an unarchived budget), opening
   `DebtReviewScreen`: on desktop a centred dialog 90% of the viewport high and a reading column
@@ -2345,7 +2344,7 @@ data unreadable. Most are also asserted by the test suite.
   `extraPlanned`, shown only once the forecast has answered); no interest (that is the payments
   table's), owed now, left to pay or currency row; a debt not set up shows payment, its start
   date or "From the first payment", and currency).
-  The debt service's own figures (`get-debt`, Settings → Debts) stay plan-free, but the
+  The debt service's own figures (`get-debt`, `get-debt-list`) stay plan-free, but the
   Overview of a set-up debt that is not paid off follows its budget's plans: it loads
   `get-debt-forecast?id=` on open (no metric) and takes payments left (count and progress total) and the Planned extra
   from its additive summary (`paymentsLeft`, `payoffDate` and `overpaymentLeft` (both unused by
@@ -2415,14 +2414,11 @@ data unreadable. Most are also asserted by the test suite.
   Overview, so a later edit never sends facts from before it. A debt not set up shows "Paid so far" (its payments dated up to the caller's today),
   a hint and a Finish setup button that switches to Settings and focuses the first missing fact
   (amount borrowed, then the start date, then the last payment date; once one fact is typed all
-  three are required; saving with the facts fires `appDebtFinishSetup`); the Settings row, the
+  three are required; saving with the facts fires `appDebtFinishSetup`); the
   budget row's Left cell and the item sheet's Details button read "Finish setup" for a reader who
   may plan in the unarchived budget (`canEdit`, `canPlan`) and open the screen on Settings; a guest
-  sees a dash in Left, no link on the Settings row and Details in the sheet, all opening the
-  Overview (offline the Left cell shows the dash too: Settings cannot load); Left sums, Plan cells and payoff lines skip it. **Settings → Debts** lists the debts of
-  every budget the user can read (`get-debt-list`, archived budgets included), one section per
-  budget headed by its name in the server's order, open debts first in each; Create is disabled,
-  saying why (`debts.settings.no_budget`), while the user can plan in no unarchived budget. With an AI provider, onboarding
+  sees a dash in Left and Details in the sheet, both opening the
+  Overview (offline the Left cell shows the dash too: Settings cannot load); Left sums, Plan cells and payoff lines skip it. `get-debt-list` (`useDebts`) still feeds "Add to a debt...". With an AI provider, onboarding
   creates such debts by itself from loan-like categories (see "Debt detection" under Onboarding
   Day 0); the user finishes their setup or deletes them like any other.
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per

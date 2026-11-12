@@ -5,6 +5,10 @@
 (branch `feature/budget-debts`, PR #424, not released). Everything not changed here stays as those
 designs and the code on the branch describe it.
 
+**Revision 2026-11-12:** Settings → Debts is removed (decision 6 and the SPA's Settings → Debts
+items no longer apply): a debt is created from a budget category row ("Track as debt") and reached
+from its budget row, so the create form never asks for a budget.
+
 ## Why
 
 A couple shares a mortgage. Sometimes he pays it, sometimes she does; each records the payment from
