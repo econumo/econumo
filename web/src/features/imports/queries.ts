@@ -1,4 +1,5 @@
 import { type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import * as importsApi from '@/api/imports'
 import type { Id } from '@/api/types'
@@ -16,7 +17,7 @@ import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { isAiEnabled } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useApplyTransactionItem } from '@/features/transactions/queries'
-import type { OwnErrorHandling } from '@/lib/appQueryClient'
+import { retryPolicy, type OwnErrorHandling } from '@/lib/appQueryClient'
 
 // The queries reached from surfaces that exist with transaction import off
 // (the Inbox, the transaction dialogs) never fetch then: the server does not
@@ -38,7 +39,13 @@ export function useImportSuggestions() {
     queryFn: importsApi.getImportSuggestionList,
     staleTime: 60_000,
     refetchOnWindowFocus: true,
+    retry: suggestionRetry,
   })
+}
+
+// A 404 is an older server without the route: asking again cannot help.
+export function suggestionRetry(failureCount: number, error: unknown): boolean {
+  return !(isAxiosError(error) && error.response?.status === 404) && retryPolicy(failureCount, error)
 }
 
 // when, after a sync, the suggestion list is refetched for the AI job's answer
@@ -86,7 +93,7 @@ export function useAcceptImportSuggestion() {
     meta: { handlesOwnErrors: true },
     mutationFn: ({ id, ruleId }: { id: Id; ruleId: Id; changes: SuggestionChanges }) => importsApi.acceptImportSuggestion(id, ruleId),
     onSuccess: (_result, { changes }) => {
-      for (const queryKey of [queryKeys.importSuggestions, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetTransactions]) {
+      for (const queryKey of [queryKeys.importSuggestions, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
         void queryClient.invalidateQueries({ queryKey })
       }
       void queryClient.invalidateQueries({ queryKey: ['transactionImports'] })

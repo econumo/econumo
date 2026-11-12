@@ -22,7 +22,7 @@ const pendingAccount = {
 }
 
 function makeWrapper() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 }, mutations: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -322,4 +322,21 @@ it('an older server without the suggestion route is no failure', async () => {
   await waitFor(() => expect(result.current.isLoaded).toBe(true))
   expect(result.current.importsError).toBe(false)
   expect(result.current.suggestions).toEqual([])
+})
+
+it('offline, a readonly user\'s never-loaded suggestion list does not raise the offline notice', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  queryClient.setQueryData(queryKeys.importQueue, { queued: [], skipped: [], failed: [] })
+  queryClient.setQueryData(queryKeys.importSources, [])
+  queryClient.setQueryData(queryKeys.user, { ...fixtureUser, accessLevel: 'readonly' })
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly' } }))
+  act(() => onlineManager.setOnline(false))
+  try {
+    const { result } = renderHook(() => useInbox(), { wrapper })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(result.current.importsOffline).toBe(false)
+  } finally {
+    act(() => onlineManager.setOnline(true))
+  }
 })

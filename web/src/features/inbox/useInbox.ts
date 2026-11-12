@@ -68,12 +68,14 @@ export function useInbox(): Inbox {
   const queue = useImportQueue()
   const sources = useImportSources()
   const suggestionList = useImportSuggestions()
-  const importsOffline = useUnavailableOffline(queue, sources, suggestionList)
+  const { data: user } = useUserData()
+  const readonly = user?.accessLevel === 'readonly'
+  // a readonly user is shown no suggestions, so their list never decides the offline notice
+  const importsOffline = useUnavailableOffline(queue, sources, ...(readonly ? [] : [suggestionList]))
   const recurring = useRecurring()
   const { data: accounts } = useAccounts()
   const folders = useFolders()
   const foldersKnown = folders.data !== undefined || folders.isError
-  const { data: user } = useUserData()
   // a hidden folder's accounts are out of the way on purpose, so they don't ask for attention
   const hiddenAccountIds = hiddenFolderAccountIds(accounts ?? [], folders.data ?? [])
   // useRecurring already sorts by next payment, so the oldest debt leads
@@ -84,7 +86,6 @@ export function useInbox(): Inbox {
   const queued = queue.data?.queued ?? []
   const skipped = queue.data?.skipped ?? []
   const failed = queue.data?.failed ?? []
-  const readonly = user?.accessLevel === 'readonly'
   const suggestions = readonly ? [] : (suggestionList.data ?? [])
   // a 404 is an older server without the route: there is nothing to suggest, not a failure
   const suggestionsError =

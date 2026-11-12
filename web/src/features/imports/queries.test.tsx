@@ -12,7 +12,10 @@ import { profileAttributes, setAnalyticsQueryClient } from '@/lib/analyticsProfi
 import {
   cancelSuggestionRefresh,
   scheduleSuggestionRefresh,
+  suggestionRetry,
+  useAcceptImportSuggestion,
   useApplyImportRule,
+  useImportSuggestions,
   useCreateImportRule,
   useCreateImportSource,
   useDeleteImportSource,
@@ -183,6 +186,39 @@ it('useSyncImportSource refreshes ledger caches only when the run wrote somethin
   expect(body).toEqual({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' })
   expect(queryClient.getQueryState(queryKeys.transactions)?.isInvalidated).toBe(true)
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SYNC, { trigger: 'manual', imported: 2, matched: 1 })
+})
+
+it('useAcceptImportSuggestion invalidates the plan with the other ledger views', async () => {
+  server.use(http.post('*/api/v1/import/accept-suggestion', () => HttpResponse.json({ success: true, message: '', data: { updated: 1 } })))
+  const { queryClient, wrapper } = makeWrapper()
+  for (const key of [queryKeys.budgetPlan, queryKeys.budget, queryKeys.budgetTransactions, queryKeys.transactions, queryKeys.accounts]) {
+    queryClient.setQueryData(key, { stale: true })
+  }
+  const { result } = renderHook(() => useAcceptImportSuggestion(), { wrapper })
+  await act(() => result.current.mutateAsync({ id: 'sg1', ruleId: 'r1', changes: { changedMatch: false, changedCategory: false, changedPayee: false } }))
+  for (const key of [queryKeys.budgetPlan, queryKeys.budget, queryKeys.budgetTransactions, queryKeys.transactions, queryKeys.accounts]) {
+    expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
+  }
+})
+
+it('the suggestion list does not retry a 404 from an older server', async () => {
+  let calls = 0
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => {
+    calls += 1
+    return HttpResponse.json({ success: false, message: 'Not found', code: 0, errors: {} }, { status: 404 })
+  }))
+  const queryClient = new QueryClient()
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  const { result } = renderHook(() => useImportSuggestions(), { wrapper })
+  await waitFor(() => expect(result.current.isError).toBe(true))
+  expect(calls).toBe(1)
+})
+
+it('suggestionRetry retries other failures like every read', () => {
+  const httpError = (status: number) => Object.assign(new Error('x'), { isAxiosError: true, response: { status } })
+  expect(suggestionRetry(0, httpError(404))).toBe(false)
+  expect(suggestionRetry(0, httpError(500))).toBe(true)
+  expect(suggestionRetry(3, httpError(500))).toBe(false)
 })
 
 describe('suggestion refresh after a sync', () => {

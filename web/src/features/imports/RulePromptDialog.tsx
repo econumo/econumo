@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type {
@@ -12,6 +14,8 @@ import type {
 } from '@/api/dto/imports'
 import type { RuleDiff } from '@/lib/importMatch'
 import { useUiStore } from '@/app/uiStore'
+import { queryKeys } from '@/app/queryKeys'
+import { getImportRuleList } from '@/api/imports'
 import { Button } from '@/components/ui/button'
 import { useOnline } from '@/hooks/useOnline'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -216,15 +220,16 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
   const alreadyEdited = preview.data?.alreadyEdited ?? 0
 
   // The import-wide step: shown only when the rule would change something
-  // there, else the prompt is finished. A failed count shows the step anyway
-  // (its own loading/zero text), since the answer is unknown.
+  // there, else the prompt is finished. A failed count also finishes it, as in
+  // the suggestion flow: the rule is saved, and a step with no count would
+  // wait forever.
   const goToAll = async () => {
     if (!link.runId) {
       onDone()
       return
     }
     const all = await allPreview.mutateAsync({ spec, scope: ALL_SCOPE }).catch(() => undefined)
-    if (all?.matched === 0) {
+    if (all === undefined || all.matched === 0) {
       onDone()
       return
     }
@@ -344,6 +349,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
 // the rule and accepts the suggestion, which fills the group's empty fields.
 function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestionDto; onDone: () => void }) {
   const { t, i18n } = useTranslation()
+  const queryClient = useQueryClient()
   const online = useOnline()
   const { data: categories = [] } = useCategories()
   const { data: payees = [] } = usePayees()
@@ -386,34 +392,59 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const fieldLabel = matchField === 'description' ? t('imports.rules.field.description') : t('imports.rules.field.external_payee')
   const typeLabel = t(`imports.rules.type.${matchType}`)
 
+  // The rule created by an earlier Save whose accept failed is kept in the
+  // store (it outlives Cancel and a reopen) and reused, updated to the
+  // current spec, so one suggestion never leaves two rules behind.
+  const saveAndAccept = async () => {
+    const saved = useUiStore.getState().suggestionRules[suggestion.id]
+    let id: string
+    if (!saved) {
+      id = (await create.mutateAsync({ spec })).id
+      setSuggestionRule(suggestion.id, { ruleId: id, spec })
+    } else {
+      id = saved.ruleId
+      if (JSON.stringify(saved.spec) !== JSON.stringify(spec)) {
+        await update.mutateAsync({ id, spec })
+        setSuggestionRule(suggestion.id, { ruleId: id, spec })
+      }
+    }
+    setRuleId(id)
+    return accept.mutateAsync({
+      id: suggestion.id,
+      ruleId: id,
+      changes: {
+        changedMatch: matchField !== suggestion.matchField || matchType !== 'contains' || matchValue !== suggestion.matchText,
+        changedCategory: categoryId !== suggestion.categoryId,
+        changedPayee: payeeId !== suggestion.payeeId,
+      },
+    })
+  }
+
+  // The stored rule may have been deleted since (Import rules, another device): then every retry
+  // would fail on it. A refused update or accept checks the rule list, and a rule no longer there
+  // is forgotten and a fresh one created in the same Save.
+  const storedRuleGone = async (err: unknown) => {
+    const saved = useUiStore.getState().suggestionRules[suggestion.id]
+    if (!saved || !isAxiosError(err) || err.response === undefined || err.response.status >= 500) {
+      return false
+    }
+    const rules = await queryClient.fetchQuery({ queryKey: queryKeys.importRules, queryFn: getImportRuleList, staleTime: 0 }).catch(() => undefined)
+    return rules !== undefined && !rules.some((r) => r.id === saved.ruleId)
+  }
+
   const save = async () => {
     setBusy(true)
     try {
-      // The rule created by an earlier Save whose accept failed is kept in the
-      // store (it outlives Cancel and a reopen) and reused, updated to the
-      // current spec, so one suggestion never leaves two rules behind.
-      const saved = useUiStore.getState().suggestionRules[suggestion.id]
-      let id: string
-      if (!saved) {
-        id = (await create.mutateAsync({ spec })).id
-        setSuggestionRule(suggestion.id, { ruleId: id, spec })
-      } else {
-        id = saved.ruleId
-        if (JSON.stringify(saved.spec) !== JSON.stringify(spec)) {
-          await update.mutateAsync({ id, spec })
-          setSuggestionRule(suggestion.id, { ruleId: id, spec })
+      let accepted
+      try {
+        accepted = await saveAndAccept()
+      } catch (err) {
+        if (!(await storedRuleGone(err))) {
+          throw err
         }
+        setSuggestionRule(suggestion.id, null)
+        accepted = await saveAndAccept()
       }
-      setRuleId(id)
-      const accepted = await accept.mutateAsync({
-        id: suggestion.id,
-        ruleId: id,
-        changes: {
-          changedMatch: matchField !== suggestion.matchField || matchType !== 'contains' || matchValue !== suggestion.matchText,
-          changedCategory: categoryId !== suggestion.categoryId,
-          changedPayee: payeeId !== suggestion.payeeId,
-        },
-      })
       setSuggestionRule(suggestion.id, null)
       // the accept filled the suggestion's own rows, so this counts the others
       const all = await allPreview.mutateAsync({ spec, scope: ALL_SCOPE }).catch(() => undefined)

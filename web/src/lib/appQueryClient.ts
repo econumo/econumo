@@ -22,7 +22,7 @@ export const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000
 // An unreachable backend (network error — no HTTP response) retries forever
 // with capped backoff, so the boot loader recovers by itself once the backend
 // is back. HTTP errors keep the default three attempts.
-function retryPolicy(failureCount: number, error: unknown): boolean {
+export function retryPolicy(failureCount: number, error: unknown): boolean {
   if (axios.isAxiosError(error) && !error.response) {
     return true
   }
