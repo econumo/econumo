@@ -2205,8 +2205,7 @@
       "about": "Il blocco protegge Econumo solo su questo dispositivo. Se dimentichi il PIN o la sequenza, dovrai accedere di nuovo. Non cifra i dati salvati sul dispositivo.",
       "enabled_label": "Blocco app",
       "enabled_hint": "Chiedi un PIN o una sequenza all'apertura di Econumo",
-      "change_pin": "Cambia PIN",
-      "change_pattern": "Cambia sequenza",
+      "change_secret": "Cambia PIN o sequenza",
       "pin_changed": "PIN cambiato",
       "pattern_changed": "Sequenza cambiata",
       "lock_after": {
@@ -2229,8 +2228,8 @@
         "pattern_hint": "Collega almeno 4 punti",
         "mismatch": "I PIN non coincidono. Riprova.",
         "mismatch_pattern": "Le sequenze non coincidono. Riprova.",
-        "use_pattern": "Usa una sequenza",
-        "use_pin": "Usa un PIN",
+        "kind_pin": "PIN",
+        "kind_pattern": "Sequenza",
         "save": "Salva"
       }
     },

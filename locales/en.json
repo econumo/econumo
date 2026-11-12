@@ -2205,8 +2205,7 @@
       "about": "The lock protects Econumo on this device only. If you forget the PIN or pattern, you'll need to log in again. It doesn't encrypt the data stored on the device.",
       "enabled_label": "App lock",
       "enabled_hint": "Ask for a PIN or pattern when Econumo opens",
-      "change_pin": "Change PIN",
-      "change_pattern": "Change pattern",
+      "change_secret": "Change PIN or pattern",
       "pin_changed": "PIN changed",
       "pattern_changed": "Pattern changed",
       "lock_after": {
@@ -2229,8 +2228,8 @@
         "pattern_hint": "Connect at least 4 dots",
         "mismatch": "The PINs don't match. Try again.",
         "mismatch_pattern": "The patterns don't match. Try again.",
-        "use_pattern": "Use a pattern instead",
-        "use_pin": "Use a PIN instead",
+        "kind_pin": "PIN",
+        "kind_pattern": "Pattern",
         "save": "Save"
       }
     },

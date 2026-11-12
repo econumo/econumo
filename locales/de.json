@@ -2205,8 +2205,7 @@
       "about": "Die Sperre schützt Econumo nur auf diesem Gerät. Wenn Sie die PIN oder das Muster vergessen, müssen Sie sich erneut anmelden. Die auf dem Gerät gespeicherten Daten werden nicht verschlüsselt.",
       "enabled_label": "App-Sperre",
       "enabled_hint": "Beim Öffnen von Econumo nach einer PIN oder einem Muster fragen",
-      "change_pin": "PIN ändern",
-      "change_pattern": "Muster ändern",
+      "change_secret": "PIN oder Muster ändern",
       "pin_changed": "PIN geändert",
       "pattern_changed": "Muster geändert",
       "lock_after": {
@@ -2229,8 +2228,8 @@
         "pattern_hint": "Verbinden Sie mindestens 4 Punkte",
         "mismatch": "Die PINs stimmen nicht überein. Versuchen Sie es erneut.",
         "mismatch_pattern": "Die Muster stimmen nicht überein. Versuchen Sie es erneut.",
-        "use_pattern": "Stattdessen ein Muster verwenden",
-        "use_pin": "Stattdessen eine PIN verwenden",
+        "kind_pin": "PIN",
+        "kind_pattern": "Muster",
         "save": "Speichern"
       }
     },

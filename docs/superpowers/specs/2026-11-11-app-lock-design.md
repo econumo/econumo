@@ -489,3 +489,11 @@ Native Face ID / fingerprint in the Capacitor app is a possible follow-up.
   `initAppLock()` starts unlocked when that time is within `lockAfterMs`
   (and not in the future). A new tab and a fresh app launch have no
   sessionStorage and start locked; "Immediately" (0) always locks.
+
+## Revision 7 — switching between PIN and pattern is visible (overrides the text above)
+
+- The owner could not find how to switch kinds when changing the secret. The
+  "Use a pattern instead" link under the pad is replaced by a PIN | Pattern
+  segmented switch at the top of every "choose" step (set-up and change,
+  after the current secret is confirmed). The settings row is "Change PIN or
+  pattern" and shows the current kind on the right.

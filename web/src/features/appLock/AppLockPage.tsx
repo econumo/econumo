@@ -177,7 +177,10 @@ export function AppLockPage() {
               className={`${rowClass} text-left text-sm hover:bg-econumo-hover`}
               onClick={() => openFlow('change')}
             >
-              {config.secret.kind === 'pattern' ? t('appLock.settings.change_pattern') : t('appLock.settings.change_pin')}
+              <span className="min-w-0 flex-1">{t('appLock.settings.change_secret')}</span>
+              <span className="shrink-0 text-muted-foreground">
+                {config.secret.kind === 'pattern' ? t('appLock.settings.dialog.kind_pattern') : t('appLock.settings.dialog.kind_pin')}
+              </span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </button>
 

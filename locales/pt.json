@@ -2205,8 +2205,7 @@
       "about": "O bloqueio protege o Econumo apenas neste dispositivo. Se se esquecer do PIN ou do padrão, terá de iniciar sessão novamente. Não encripta os dados guardados no dispositivo.",
       "enabled_label": "Bloqueio da app",
       "enabled_hint": "Pedir um PIN ou um padrão ao abrir o Econumo",
-      "change_pin": "Alterar PIN",
-      "change_pattern": "Alterar padrão",
+      "change_secret": "Alterar PIN ou padrão",
       "pin_changed": "PIN alterado",
       "pattern_changed": "Padrão alterado",
       "lock_after": {
@@ -2229,8 +2228,8 @@
         "pattern_hint": "Ligue pelo menos 4 pontos",
         "mismatch": "Os PIN não coincidem. Tente novamente.",
         "mismatch_pattern": "Os padrões não coincidem. Tente novamente.",
-        "use_pattern": "Usar um padrão",
-        "use_pin": "Usar um PIN",
+        "kind_pin": "PIN",
+        "kind_pattern": "Padrão",
         "save": "Guardar"
       }
     },

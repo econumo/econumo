@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
-import { Button } from '@/components/ui/button'
 import { pluralPick } from '@/lib/plural'
 import { lockoutRemainingMs, MAX_FAILED_ATTEMPTS, readAttempts, type SecretKind } from './config'
 import { formatCountdown } from './format'
@@ -102,9 +101,12 @@ export function SecretDialog({ open, flow, current, onClose, onComplete, onExcee
     return true
   }
 
-  const switchKind = () => {
+  const selectKind = (next: SecretKind) => {
+    if (next === kind) {
+      return
+    }
     firstSecret.current = ''
-    setKind(kind === 'pin' ? 'pattern' : 'pin')
+    setKind(next)
     goTo('create')
   }
 
@@ -139,6 +141,26 @@ export function SecretDialog({ open, flow, current, onClose, onComplete, onExcee
   return (
     <ResponsiveDialog open={open} onOpenChange={(value) => !value && onClose()} title={title}>
       <div className="flex flex-col items-center pt-1 pb-3">
+        {step === 'create' && (
+          <div
+            className="mb-4 flex w-full max-w-64 rounded-md border p-0.5"
+            role="radiogroup"
+            aria-label={t('appLock.settings.change_secret')}
+          >
+            {(['pin', 'pattern'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                role="radio"
+                aria-checked={kind === option}
+                className={`flex-1 rounded px-2 py-1.5 text-sm ${kind === option ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+                onClick={() => selectKind(option)}
+              >
+                {option === 'pin' ? t('appLock.settings.dialog.kind_pin') : t('appLock.settings.dialog.kind_pattern')}
+              </button>
+            ))}
+          </div>
+        )}
         {pattern ? (
           <PatternPad
             key={`${step}-${round}`}
@@ -161,16 +183,6 @@ export function SecretDialog({ open, flow, current, onClose, onComplete, onExcee
           />
         )}
         {attemptsLeft && <p className="mt-3 text-center text-sm text-muted-foreground">{attemptsLeft}</p>}
-        {step === 'create' && (
-          <Button
-            type="button"
-            variant="link"
-            className="mt-3 h-9 normal-case! tracking-normal!"
-            onClick={switchKind}
-          >
-            {kind === 'pin' ? t('appLock.settings.dialog.use_pattern') : t('appLock.settings.dialog.use_pin')}
-          </Button>
-        )}
       </div>
     </ResponsiveDialog>
   )

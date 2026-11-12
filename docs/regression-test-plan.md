@@ -2742,9 +2742,9 @@ User C sees none of it.
       enabled from 4) and then for it again; typing a different PIN the second
       time shows "The PINs don't match" and starts over; closing the dialog
       leaves the lock off. After confirming, the switch reads on, the current
-      tab stays unlocked, and Change PIN and Lock after (default 1 minute)
+      tab stays unlocked, and "Change PIN or pattern" and Lock after (default 1 minute)
       appear; there is no biometrics option. Everything works offline.
-- [ ] App lock: Change PIN asks for the current PIN first (a wrong one says
+- [ ] App lock: "Change PIN or pattern" asks for the current PIN first (a wrong one says
       "Wrong PIN" and counts towards the same limit as the lock screen; once
       fewer than 5 attempts are left, "N attempts left" stays under the pad
       after a wrong try and through the lockout countdown), then
@@ -2798,14 +2798,14 @@ User C sees none of it.
       ring on it (Tab still shows one); a wrong PIN turns the dots red and
       shakes them (no shake with reduced motion), then clears. Set-up's
       "Continue"/"Save" is a full-width button in sentence case.
-- [ ] App lock pattern set-up 📱: in the set-up dialog "Use a pattern instead"
-      swaps the keypad for a 3x3 grid ("Draw a pattern", "Connect at least 4
-      dots") and "Use a PIN instead" swaps back. A line follows the finger;
+- [ ] App lock pattern set-up 📱: the PIN | Pattern switch at the top of the set-up
+      dialog swaps the keypad for a 3x3 grid ("Draw a pattern", "Connect at least 4
+      dots") and back. A line follows the finger;
       crossing a dot straight on (corner to corner) picks up the dot in
       between; fewer than 4 dots shows "Connect at least 4 dots" in red and
       clears; 4 or more ask to draw it again, a different second pattern says
-      "The patterns don't match" and starts over. Then the row reads "Change
-      pattern". Swiping on the grid never scrolls the page nor drags the sheet
+      "The patterns don't match" and starts over. Then the row "Change PIN or
+      pattern" shows "Pattern". Swiping on the grid never scrolls the page nor drags the sheet
       closed; dragging the sheet by its handle still closes it.
 - [ ] App lock pattern unlock 📱: a reload shows "Draw your pattern" with the
       grid; the
