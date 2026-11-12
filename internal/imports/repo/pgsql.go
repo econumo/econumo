@@ -330,3 +330,60 @@ func (pgsqlQuerier) ListImportTransactionLinksIntoUserAccounts(ctx context.Conte
 	}
 	return out, nil
 }
+
+func (pgsqlQuerier) InsertImportSuggestion(ctx context.Context, db backend.DBTX, p insertSuggestionParams) error {
+	return pgsqlgen.New(db).InsertImportSuggestion(ctx, pgsqlgen.InsertImportSuggestionParams(p))
+}
+
+func (pgsqlQuerier) InsertImportSuggestionLink(ctx context.Context, db backend.DBTX, p insertSuggestionLinkPs) error {
+	return pgsqlgen.New(db).InsertImportSuggestionLink(ctx, pgsqlgen.InsertImportSuggestionLinkParams(p))
+}
+
+func (pgsqlQuerier) GetImportSuggestionByID(ctx context.Context, db backend.DBTX, id string) (suggestionRow, error) {
+	row, err := pgsqlgen.New(db).GetImportSuggestionByID(ctx, id)
+	return suggestionRow(row), err
+}
+
+func (pgsqlQuerier) ListOpenImportSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionRow, error) {
+	rows, err := pgsqlgen.New(db).ListOpenImportSuggestionsByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]suggestionRow, len(rows))
+	for i, row := range rows {
+		out[i] = suggestionRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) ListImportSuggestionLinks(ctx context.Context, db backend.DBTX, suggestionID string) ([]suggestionLinkRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportSuggestionLinks(ctx, suggestionID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]suggestionLinkRow, len(rows))
+	for i, row := range rows {
+		out[i] = suggestionLinkRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) ListOpenImportSuggestionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionLinkRow, error) {
+	rows, err := pgsqlgen.New(db).ListOpenImportSuggestionLinksByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]suggestionLinkRow, len(rows))
+	for i, row := range rows {
+		out[i] = suggestionLinkRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) UpdateImportSuggestionStatus(ctx context.Context, db backend.DBTX, p suggestionStatusParams) error {
+	return pgsqlgen.New(db).UpdateImportSuggestionStatus(ctx, pgsqlgen.UpdateImportSuggestionStatusParams(p))
+}
+
+func (pgsqlQuerier) DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error {
+	return pgsqlgen.New(db).DeleteImportSuggestion(ctx, id)
+}

@@ -249,3 +249,21 @@ type ImportClassification struct {
 	LabelIDs   []vo.Id
 	RuleID     *vo.Id // the first classify rule that contributed, nil when none fired
 }
+
+const (
+	ImportSuggestionStatusOpen     = "open"
+	ImportSuggestionStatusAccepted = "accepted"
+)
+
+type ImportSuggestion struct {
+	ID         vo.Id
+	UserID     vo.Id // the account owner
+	MatchField string
+	MatchText  string // normalized
+	CategoryID *vo.Id
+	PayeeID    *vo.Id
+	Status     string
+	LinkIDs    []vo.Id // filled by the read methods
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}

@@ -232,3 +232,37 @@ JOIN transactions t ON t.id = l.transaction_id
 JOIN accounts a ON a.id = t.account_id
 WHERE a.user_id = ? AND s.user_id <> a.user_id
 ORDER BY l.imported_at, l.id;
+
+-- name: InsertImportSuggestion :exec
+INSERT INTO import_suggestions (id, user_id, match_field, match_text, category_id, payee_id, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: InsertImportSuggestionLink :exec
+INSERT INTO import_suggestion_links (suggestion_id, link_id) VALUES (?, ?) ON CONFLICT (suggestion_id, link_id) DO NOTHING;
+
+-- name: GetImportSuggestionByID :one
+SELECT id, user_id, match_field, match_text, category_id, payee_id, status, created_at, updated_at
+FROM import_suggestions
+WHERE id = ?;
+
+-- name: ListOpenImportSuggestionsByUser :many
+SELECT id, user_id, match_field, match_text, category_id, payee_id, status, created_at, updated_at
+FROM import_suggestions
+WHERE user_id = ? AND status = 'open'
+ORDER BY created_at, id;
+
+-- name: ListImportSuggestionLinks :many
+SELECT suggestion_id, link_id FROM import_suggestion_links WHERE suggestion_id = ? ORDER BY link_id;
+
+-- name: ListOpenImportSuggestionLinksByUser :many
+SELECT sl.suggestion_id, sl.link_id
+FROM import_suggestion_links sl
+JOIN import_suggestions s ON s.id = sl.suggestion_id
+WHERE s.user_id = ? AND s.status = 'open'
+ORDER BY sl.suggestion_id, sl.link_id;
+
+-- name: UpdateImportSuggestionStatus :exec
+UPDATE import_suggestions SET status = ?, updated_at = ? WHERE id = ?;
+
+-- name: DeleteImportSuggestion :exec
+DELETE FROM import_suggestions WHERE id = ?;

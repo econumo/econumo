@@ -214,3 +214,35 @@ func (sqliteQuerier) ListImportTransactionLinksByUser(ctx context.Context, db ba
 func (sqliteQuerier) ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
 	return sqlitegen.New(db).ListImportTransactionLinksIntoUserAccounts(ctx, userID)
 }
+
+func (sqliteQuerier) InsertImportSuggestion(ctx context.Context, db backend.DBTX, p insertSuggestionParams) error {
+	return sqlitegen.New(db).InsertImportSuggestion(ctx, p)
+}
+
+func (sqliteQuerier) InsertImportSuggestionLink(ctx context.Context, db backend.DBTX, p insertSuggestionLinkPs) error {
+	return sqlitegen.New(db).InsertImportSuggestionLink(ctx, p)
+}
+
+func (sqliteQuerier) GetImportSuggestionByID(ctx context.Context, db backend.DBTX, id string) (suggestionRow, error) {
+	return sqlitegen.New(db).GetImportSuggestionByID(ctx, id)
+}
+
+func (sqliteQuerier) ListOpenImportSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionRow, error) {
+	return sqlitegen.New(db).ListOpenImportSuggestionsByUser(ctx, userID)
+}
+
+func (sqliteQuerier) ListImportSuggestionLinks(ctx context.Context, db backend.DBTX, suggestionID string) ([]suggestionLinkRow, error) {
+	return sqlitegen.New(db).ListImportSuggestionLinks(ctx, suggestionID)
+}
+
+func (sqliteQuerier) ListOpenImportSuggestionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionLinkRow, error) {
+	return sqlitegen.New(db).ListOpenImportSuggestionLinksByUser(ctx, userID)
+}
+
+func (sqliteQuerier) UpdateImportSuggestionStatus(ctx context.Context, db backend.DBTX, p suggestionStatusParams) error {
+	return sqlitegen.New(db).UpdateImportSuggestionStatus(ctx, p)
+}
+
+func (sqliteQuerier) DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).DeleteImportSuggestion(ctx, id)
+}

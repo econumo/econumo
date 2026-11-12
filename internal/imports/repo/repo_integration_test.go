@@ -660,3 +660,74 @@ func TestRepo_ListRunsByUserAndLinksByRun(t *testing.T) {
 		t.Fatalf("links by run: %v err %v", links, err)
 	}
 }
+
+func TestSuggestionRepoRoundTrip(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	srcID := f.ImportSource(fixture.ImportSource{UserID: userA, Name: "iPhone"})
+	l1, l2, l3 := newLink(srcID, "ext-1", nil, model.ImportLinkStatusQueued), newLink(srcID, "ext-2", nil, model.ImportLinkStatusQueued), newLink(srcID, "ext-3", nil, model.ImportLinkStatusQueued)
+	for _, l := range []*model.ImportTransactionLink{l1, l2, l3} {
+		if err := repo.InsertLink(ctx, l); err != nil {
+			t.Fatal(err)
+		}
+	}
+	catID := vo.NewId()
+	s := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee,
+		MatchText: "coffee shop", CategoryID: &catID, Status: model.ImportSuggestionStatusOpen,
+		LinkIDs: []vo.Id{l1.ID, l2.ID}, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+	}
+	if err := repo.InsertSuggestion(ctx, s); err != nil {
+		t.Fatalf("InsertSuggestion: %v", err)
+	}
+	list, err := repo.ListOpenSuggestionsByUser(ctx, s.UserID)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list = %v, %v", list, err)
+	}
+	if got := list[0]; len(got.LinkIDs) != 2 || got.MatchText != "coffee shop" || got.CategoryID == nil || *got.CategoryID != catID || got.PayeeID != nil || !got.CreatedAt.Equal(fixedTime) {
+		t.Errorf("mismatch: %+v", got)
+	}
+	if err := repo.AddSuggestionLinks(ctx, s.ID, []vo.Id{l2.ID, l3.ID}); err != nil {
+		t.Fatalf("AddSuggestionLinks: %v", err)
+	}
+	got, err := repo.GetSuggestion(ctx, s.ID)
+	if err != nil || len(got.LinkIDs) != 3 {
+		t.Fatalf("get = %+v, %v", got, err)
+	}
+	if _, err := repo.GetSuggestion(ctx, vo.NewId()); err == nil {
+		t.Fatal("GetSuggestion(miss) must error")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Errorf("miss = %T, want NotFound", err)
+	}
+	countLinks := func() int {
+		var n int
+		if err := db.Raw.QueryRow(db.Rebind(`SELECT COUNT(*) FROM import_suggestion_links WHERE suggestion_id = ?`), s.ID.String()).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	db.Exec(t, db.Rebind(`DELETE FROM import_transaction_links WHERE id = ?`), l3.ID.String())
+	if n := countLinks(); n != 2 {
+		t.Errorf("link rows after ledger delete = %d, want 2", n)
+	}
+	later := fixedTime.Add(time.Hour)
+	if err := repo.SetSuggestionStatus(ctx, s.ID, model.ImportSuggestionStatusAccepted, later); err != nil {
+		t.Fatal(err)
+	}
+	if list, _ := repo.ListOpenSuggestionsByUser(ctx, s.UserID); len(list) != 0 {
+		t.Errorf("accepted still open: %+v", list)
+	}
+	if got, _ := repo.GetSuggestion(ctx, s.ID); got.Status != model.ImportSuggestionStatusAccepted || !got.UpdatedAt.Equal(later) {
+		t.Errorf("status/updated = %+v", got)
+	}
+	if err := repo.DeleteSuggestion(ctx, s.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.GetSuggestion(ctx, s.ID); err == nil {
+		t.Error("deleted suggestion still readable")
+	}
+	if n := countLinks(); n != 0 {
+		t.Errorf("link rows after delete = %d", n)
+	}
+}

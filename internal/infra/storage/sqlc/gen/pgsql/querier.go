@@ -71,6 +71,7 @@ type Querier interface {
 	DeleteImportRule(ctx context.Context, id string) error
 	DeleteImportRuleLabels(ctx context.Context, ruleID string) error
 	DeleteImportSource(ctx context.Context, id string) error
+	DeleteImportSuggestion(ctx context.Context, id string) error
 	DeleteLabel(ctx context.Context, id string) error
 	DeleteOAuthClient(ctx context.Context, id string) (int64, error)
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
@@ -183,6 +184,7 @@ type Querier interface {
 	GetImportRunByID(ctx context.Context, id string) (GetImportRunByIDRow, error)
 	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
 	GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error)
+	GetImportSuggestionByID(ctx context.Context, id string) (ImportSuggestion, error)
 	// Card identity is case-insensitive (Apple Wallet may report the same card
 	// with different casing between taps), so the account-id half of the key
 	// folds case; external_transaction_id stays exact.
@@ -301,6 +303,8 @@ type Querier interface {
 	// Transaction import: sources, the push-event inbox, runs, and the link
 	// ledger. Liveness/tombstone logic lives in Go (model.ImportTransactionLink).
 	InsertImportSource(ctx context.Context, arg InsertImportSourceParams) error
+	InsertImportSuggestion(ctx context.Context, arg InsertImportSuggestionParams) error
+	InsertImportSuggestionLink(ctx context.Context, arg InsertImportSuggestionLinkParams) error
 	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
 	// See the sqlite sibling.
 	InsertOAuthAccessTokenIfGeneration(ctx context.Context, arg InsertOAuthAccessTokenIfGenerationParams) (int64, error)
@@ -391,6 +395,7 @@ type Querier interface {
 	ListImportRunsBySource(ctx context.Context, arg ListImportRunsBySourceParams) ([]ListImportRunsBySourceRow, error)
 	ListImportRunsByUser(ctx context.Context, arg ListImportRunsByUserParams) ([]ListImportRunsByUserRow, error)
 	ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error)
+	ListImportSuggestionLinks(ctx context.Context, suggestionID string) ([]ImportSuggestionLink, error)
 	ListImportTransactionLinksByRun(ctx context.Context, runID *string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksBySourcePage(ctx context.Context, arg ListImportTransactionLinksBySourcePageParams) ([]ImportTransactionLink, error)
@@ -407,6 +412,8 @@ type Querier interface {
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
 	ListOAuthClientGrants(ctx context.Context, clientID string) ([]OauthGrant, error)
 	ListOAuthClients(ctx context.Context) ([]OauthClient, error)
+	ListOpenImportSuggestionLinksByUser(ctx context.Context, userID string) ([]ImportSuggestionLink, error)
+	ListOpenImportSuggestionsByUser(ctx context.Context, userID string) ([]ImportSuggestion, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
@@ -525,6 +532,7 @@ type Querier interface {
 	UpdateImportRule(ctx context.Context, arg UpdateImportRuleParams) error
 	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
 	UpdateImportSource(ctx context.Context, arg UpdateImportSourceParams) error
+	UpdateImportSuggestionStatus(ctx context.Context, arg UpdateImportSuggestionStatusParams) error
 	UpdateImportTransactionLink(ctx context.Context, arg UpdateImportTransactionLinkParams) error
 	// See the sqlite sibling: the confirm-email-change path writes only the email
 	// columns, under the generation read after the row lock.
