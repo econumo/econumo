@@ -1,34 +1,28 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { CommandEmpty, CommandItem } from '@/components/ui/command'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { OfflineNotice } from '@/components/OfflineNotice'
-import { PickerSheet } from '@/components/PickerSheet'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { useOnline } from '@/hooks/useOnline'
 import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
-import { rankByName } from '@/lib/search'
 import { isNotEmpty } from '@/lib/validation'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenDebtParams } from '@/app/uiStore'
 import type { DebtDto, DebtRuleDto } from '@/api/dto/debt'
-import { UserOptions } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import type { CategoryDto } from '@/api/dto/category'
 import { useBudgets } from '@/features/budgets/queries'
 import { useCategories } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
-import { useUserData, userOption } from '@/features/user/queries'
-import { useCreateDebt, useDebtRuleOptions, usePlannableBudgets } from './queries'
+import { useCreateDebt, useDebtRuleOptions } from './queries'
 import { PaymentField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { RulesEditor } from './RulesEditor'
-import { emptyRule } from './rules'
 import { amountEcho, amountError, buildCreatePayload, useDebtCreateForm } from './useDebtForm'
 
 // the fields a server refusal can name; anything else lands in the form's alert
@@ -46,78 +40,31 @@ function lockedFallback(categoryId: Id | undefined, categories: CategoryDto[]): 
   }]
 }
 
-/** Which budget a debt from Settings goes into: the budgets the user plans in */
-function BudgetField({ value, budgets, error, onPick }: { value: Id | null; budgets: { id: Id; name: string }[]; error?: string; onPick: (id: Id) => void }) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const label = t('debts.form.budget')
-  const name = budgets.find((b) => b.id === value)?.name ?? '—'
-  return (
-    <CardField label={label} error={error}>
-      <button type="button" aria-label={`${label}: ${name}`} className="min-w-0 truncate text-left text-sm text-econumo-link" onClick={() => setOpen(true)}>
-        {name}
-      </button>
-      <PickerSheet open={open} onClose={() => setOpen(false)} title={label} searchLabel={t('common.select.search_placeholder')} currentValue={value ?? undefined}>
-        {(search) => (
-          <>
-            <CommandEmpty />
-            {rankByName(budgets, (b) => b.name, search).map((budget) => (
-              <CommandItem
-                key={budget.id}
-                value={budget.id}
-                data-checked={budget.id === value}
-                onSelect={() => {
-                  onPick(budget.id)
-                  setOpen(false)
-                }}
-              >
-                <span className="flex-1">{budget.name}</span>
-              </CommandItem>
-            ))}
-          </>
-        )}
-      </PickerSheet>
-    </CardField>
-  )
-}
-
 /** A new debt: what identifies it, and nothing else. The terms come later,
     with Finish setup on the debt's own screen. It goes into the budget row's
-    budget, or from Settings into a budget the user picks (their default one
-    first). The currency is not asked: it is the category row's when
+    budget. The currency is not asked: it is the category row's when
     converting one, else the budget's, and can be changed on the debt's
     screen; only a refused one (deleted, or no longer shared) brings up a
     currency row to pick another. */
 function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: () => void }) {
   const { t } = useTranslation()
   const online = useOnline()
-  const { data: user } = useUserData()
   const { data: categories = [] } = useCategories()
   const { data: currencies } = useCurrencies()
   const { data: budgets } = useBudgets()
-  const plannable = usePlannableBudgets()
   const createDebt = useCreateDebt({ fromBudget: params.fromBudget })
   const openDebtDetails = useUiStore((s) => s.openDebtDetails)
 
   const { form, patch } = useDebtCreateForm(params, categories)
   const { errors, setErrors, clear: clearError } = useFormErrors<FieldErrors>()
   const [serverError, setServerError] = useState<string | null>(null)
-  const [pickedBudgetId, setPickedBudgetId] = useState<Id | null>(null)
   // asked only once another debt turns out to have the same filters and start
   // date: a start date then tells a second loan in the same category apart
   const [askStartDate, setAskStartDate] = useState(false)
   const [askCurrency, setAskCurrency] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [nameTouched, setNameTouched] = useState(false)
-  // taken once, when the budgets first arrive: a reload of the list must not
-  // move the debt to another budget under the user
-  const [defaultBudgetId, setDefaultBudgetId] = useState<Id | null | undefined>(undefined)
-  if (defaultBudgetId === undefined && plannable) {
-    setDefaultBudgetId(plannable.find((b) => b.id === userOption(user, UserOptions.BUDGET))?.id ?? plannable[0]?.id ?? null)
-  }
-
-  const askBudget = !params.budgetId
-  const budgetId = params.budgetId ?? pickedBudgetId ?? defaultBudgetId ?? null
+  const budgetId = params.budgetId
   const budget = budgets?.find((b) => b.id === budgetId)
   const { data: options } = useDebtRuleOptions(budgetId)
 
@@ -134,21 +81,10 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
   const currencyId = form.currencyId ?? budget?.currencyId ?? null
   const currency = currencies?.find((c) => c.id === currencyId)
 
-  const pickBudget = (id: Id) => {
-    setPickedBudgetId(id)
-    clearError('budgetId')
-    clearError('rules')
-    // the user's own categories are offered in every budget they plan in; a
-    // partner's may not be
-    const own = form.rules.filter((r) => !r.categoryId || categories.some((c) => c.id === r.categoryId && c.ownerUserId === user?.id))
-    patch({ rules: own.length > 0 ? own : [emptyRule()] })
-  }
-
   const validate = (): boolean => {
     const required = t('common.validation.required_field')
     const next: FieldErrors = {
       name: isNotEmpty(form.name.trim()) ? undefined : required,
-      budgetId: budgetId ? undefined : required,
       rules: form.rules.every((r) => r.categoryId) ? undefined : required,
       payment: amountError(form.payment, t, true),
     }
@@ -159,7 +95,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
 
   const submit = async () => {
     setServerError(null)
-    if (!validate() || !budgetId) {
+    if (!validate()) {
       return
     }
     let saved: DebtDto
@@ -180,8 +116,8 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
       if (named.currencyId) {
         setAskCurrency(true)
       }
-      // a row's budget has no field to show its refusal under
-      const shown = Object.entries(named).some(([field, message]) => message && (field !== 'budgetId' || askBudget))
+      // the budget has no field to show its refusal under
+      const shown = Object.entries(named).some(([field, message]) => message && field !== 'budgetId')
       if (!shown) {
         setServerError(named.budgetId ?? apiErrorMessage(err))
       }
@@ -235,8 +171,6 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
             }}
           />
         </CardField>
-
-        {askBudget ? <BudgetField value={budgetId} budgets={plannable ?? []} error={errors.budgetId} onPick={pickBudget} /> : null}
 
         <RulesEditor
           value={form.rules}
@@ -320,5 +254,5 @@ export function DebtDialog() {
     return null
   }
   // a different request is a different form
-  return <DebtCreateForm key={`${params.budgetId ?? ''}:${params.categoryId ?? ''}:${params.currencyId ?? ''}`} params={params} onDone={close} />
+  return <DebtCreateForm key={`${params.budgetId}:${params.categoryId ?? ''}:${params.currencyId ?? ''}`} params={params} onDone={close} />
 }

@@ -52,8 +52,8 @@ export interface OpenDebtParams {
   currencyId?: Id
   /** the debt is created from a budget row, which analytics counts as a conversion */
   fromBudget?: boolean
-  /** that row's budget: the debt is created there (from Settings the form asks) */
-  budgetId?: Id
+  /** that row's budget: the debt is created there */
+  budgetId: Id
 }
 
 export type DebtDetailsTab = 'overview' | 'balance' | 'settings' | 'danger'

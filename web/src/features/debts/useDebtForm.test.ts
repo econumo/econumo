@@ -83,7 +83,7 @@ it('a new debt is created in its budget without terms, every rule kept', () => {
 })
 
 it('a new debt without a currency from its row sends none: the budget\'s is taken', () => {
-  const state = { ...initialCreateState({}, []), name: 'Car', payment: '50' }
+  const state = { ...initialCreateState({ budgetId: 'b2' }, []), name: 'Car', payment: '50' }
   expect(buildCreatePayload(state, 'b2')).not.toHaveProperty('currencyId')
 })
 

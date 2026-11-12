@@ -26,7 +26,6 @@ import { TagsPage } from '@/features/classifications/TagsPage'
 import { CurrenciesPage } from '@/features/currencies/CurrenciesPage'
 import { BudgetsPage } from '@/features/budgets/BudgetsPage'
 import { ConnectionsPage } from '@/features/connections/ConnectionsPage'
-import { DebtsSettingsPage } from '@/features/debts/DebtsSettingsPage'
 import { RecurringSettingsPage } from '@/features/recurring/RecurringSettingsPage'
 import { ImportsDataPage } from '@/features/imports/ImportsDataPage'
 import { AppleWalletHistoryPage } from '@/features/imports/AppleWalletHistoryPage'
@@ -84,7 +83,6 @@ export function createRouter() {
                 { path: '/settings/categories', element: <CategoriesPage /> },
                 { path: '/settings/payees', element: <PayeesPage /> },
                 { path: '/settings/tags', element: <TagsPage /> },
-                { path: '/settings/debts', element: <DebtsSettingsPage /> },
                 { path: '/settings/currencies', element: <CurrenciesPage /> },
                 { path: '/settings/connections', element: <ConnectionsPage /> },
                 { path: '/settings/budgets', element: <BudgetsPage /> },

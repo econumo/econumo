@@ -23,7 +23,6 @@ export const RouterPage = {
   SETTINGS_CATEGORIES: '/settings/categories',
   SETTINGS_PAYEES: '/settings/payees',
   SETTINGS_TAGS: '/settings/tags',
-  SETTINGS_DEBTS: '/settings/debts',
   SETTINGS_CURRENCIES: '/settings/currencies',
   SETTINGS_CONNECTIONS: '/settings/connections',
   SETTINGS_BUDGETS: '/settings/budgets',

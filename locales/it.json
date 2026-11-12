@@ -479,14 +479,6 @@
     }
   },
   "debts": {
-    "menu_item": "Debiti",
-    "settings": {
-      "header": "Debiti",
-      "info": "Prestiti e crediti tracciati senza un conto. Le spese nelle categorie di un debito si sottraggono a ciò che devi, e il budget del debito le mostra in una sezione Debiti.",
-      "empty": "Ancora nessun debito",
-      "create": "Aggiungi debito",
-      "no_budget": "I debiti appartengono a un budget. Crea un budget, o chiedi di poter pianificare in uno, per aggiungere un debito."
-    },
     "list": {
       "payments_left": "Manca {count} pagamento | Mancano {count} pagamenti",
       "paid_off": "Estinto"
@@ -494,7 +486,6 @@
     "form": {
       "header": "Debito",
       "intro": "Segui un prestito senza conto. Potrai perfezionarlo in seguito.",
-      "budget": "Budget",
       "name": {
         "label": "Nome"
       },

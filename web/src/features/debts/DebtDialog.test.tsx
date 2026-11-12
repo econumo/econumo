@@ -4,9 +4,10 @@ import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureBudgets, fixtureCategories, fixtureLabels, fixtureOwner, fixturePayees, fixtureTags, fixtureUser } from '@/test/fixtures'
+import { coreHandlers, fixtureCategories, fixtureLabels, fixturePayees, fixtureTags } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
+import type { OpenDebtParams } from '@/app/uiStore'
 import { DebtDialog } from './DebtDialog'
 import { wireDebtNotSetUp, wireRuleOptions } from './testDebt'
 
@@ -45,11 +46,6 @@ function captureCreate(answer: (body: Record<string, unknown>, call: number) => 
   return bodies
 }
 
-const withBudgetOption = (budgetId: string | null) => ({
-  ...fixtureUser,
-  options: fixtureUser.options.map((o) => (o.name === 'budget' ? { ...o, value: budgetId } : o)),
-})
-
 const ruleOptionRequests: string[] = []
 
 beforeEach(() => {
@@ -57,7 +53,7 @@ beforeEach(() => {
   window.econumoConfig = {}
   ruleOptionRequests.length = 0
   server.use(
-    ...coreHandlers({ user: withBudgetOption('b1') }),
+    ...coreHandlers(),
     http.get('*/api/v1/debt/get-debt-rule-options', ({ request }) => {
       ruleOptionRequests.push(new URL(request.url).searchParams.get('budgetId') ?? '')
       return ok(wireRuleOptions)
@@ -67,19 +63,20 @@ beforeEach(() => {
   useUiStore.setState({ debtModal: null, debtDetailsId: null })
 })
 
-async function openCreate(params = {}) {
-  useUiStore.getState().openDebtModal(params)
+async function openCreate(params: Partial<OpenDebtParams> = {}) {
+  useUiStore.getState().openDebtModal({ budgetId: 'b1', ...params })
   await screen.findByRole('heading', { name: 'Debt' })
 }
 
-it('create form asks only name, budget, payments from, payment and repeats', async () => {
+it('create form asks only name, payments from, payment and repeats', async () => {
   renderDialog()
   await openCreate()
 
   expect(screen.getByText('Track a loan without an account. You can fine-tune it afterwards.')).toBeInTheDocument()
   expect(screen.getByLabelText('Name')).toBeInTheDocument()
-  expect(await screen.findByRole('button', { name: 'Budget: Main budget' })).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Category: choose a category' })).toBeInTheDocument()
+  // the budget is always the caller's: never asked here
+  expect(screen.queryByRole('button', { name: /^Budget:/ })).toBeNull()
+  expect(await screen.findByRole('button', { name: 'Category: choose a category' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Tag (optional): any tag' })).toBeInTheDocument()
   expect(screen.getByLabelText('Payment')).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('every month')
@@ -181,13 +178,13 @@ it('from a budget row the budget is the row\'s: no budget picker, the first cate
   })
 })
 
-it('from Settings the budget defaults to the budget option and the payload carries it and every rule', async () => {
+it('the payload carries the given budget and every rule', async () => {
   const bodies = captureCreate()
   const user = userEvent.setup()
   renderDialog()
   await openCreate()
 
-  expect(await screen.findByRole('button', { name: 'Budget: Main budget' })).toBeInTheDocument()
+  await waitFor(() => expect(ruleOptionRequests).toContain('b1'))
   await user.type(screen.getByLabelText('Name'), 'House')
   await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Food'))
@@ -206,34 +203,6 @@ it('from Settings the budget defaults to the budget option and the payload carri
     ],
     startDate: null, payment: '50', schedule: 'monthly',
   })
-})
-
-it('the budget picker lists only budgets the user can plan in that are not archived', async () => {
-  const guest = { user: fixtureOwner, role: 'guest', isAccepted: 1 }
-  server.use(
-    ...coreHandlers({
-      user: withBudgetOption(null),
-      budgets: [
-        ...fixtureBudgets,
-        { ...fixtureBudgets[0], id: 'b3', name: 'Archived plan', isArchived: 1 },
-        { ...fixtureBudgets[0], id: 'b4', name: 'Their plan', ownerUserId: 'u2', access: [guest] },
-      ],
-    }),
-  )
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate()
-
-  // without a default budget option the first one is taken
-  await user.click(await screen.findByRole('button', { name: 'Budget: Alpha plan' }))
-  const sheet = await screen.findByRole('dialog', { name: 'Budget' })
-  expect(within(sheet).getByText('Main budget')).toBeInTheDocument()
-  expect(within(sheet).queryByText('Archived plan')).toBeNull()
-  expect(within(sheet).queryByText('Their plan')).toBeNull()
-
-  await user.click(within(sheet).getByText('Main budget'))
-  expect(screen.getByRole('button', { name: 'Budget: Main budget' })).toBeInTheDocument()
-  await waitFor(() => expect(ruleOptionRequests).toContain('b1'))
 })
 
 it('saving opens the debt\'s review screen', async () => {
@@ -296,42 +265,6 @@ it('a start date already taken reveals the start date field and resends with it'
   expect(bodies[0].startDate).toBeNull()
   expect(bodies[1].startDate).toBe(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`)
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
-})
-
-it('another budget keeps the rules on the user\'s own categories and drops a partner\'s', async () => {
-  const bodies = captureCreate()
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate()
-
-  await user.click(await screen.findByRole('button', { name: 'Category: choose a category' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Food'))
-  await user.click(screen.getByRole('button', { name: 'Add a category' }))
-  await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Mortgage'))
-
-  await user.click(screen.getByRole('button', { name: 'Budget: Main budget' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Budget' })).getByText('Alpha plan'))
-  await user.type(screen.getByLabelText('Name'), 'Food loan')
-  await user.type(screen.getByLabelText('Payment'), '50')
-  await user.click(screen.getByRole('button', { name: 'Add' }))
-
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ budgetId: 'b2', rules: [{ categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null }] })
-})
-
-it('the default budget does not change under the form when the budget list reloads', async () => {
-  let budgets = [fixtureBudgets[1]]
-  server.use(http.get('*/api/v1/budget/get-budget-list', () => ok({ items: budgets })))
-  const queryClient = renderDialog()
-  await openCreate()
-  expect(await screen.findByRole('button', { name: 'Budget: Alpha plan' })).toBeInTheDocument()
-
-  budgets = fixtureBudgets
-  await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.budgets }))
-  await waitFor(() => expect(queryClient.getQueryData<unknown[]>(queryKeys.budgets)).toHaveLength(2))
-  // the user option names b1, which only now arrives: the form keeps Alpha plan
-  expect(screen.getByRole('button', { name: 'Budget: Alpha plan' })).toBeInTheDocument()
 })
 
 it('sends no currency when no category row names one: the budget\'s is taken', async () => {

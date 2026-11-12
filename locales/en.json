@@ -479,14 +479,6 @@
     }
   },
   "debts": {
-    "menu_item": "Debts",
-    "settings": {
-      "header": "Debts",
-      "info": "Loans and credit tracked without an account. Expense payments in a debt's categories count against what you owe, and the debt's budget shows them in a Debts section.",
-      "empty": "No debts yet",
-      "create": "Add debt",
-      "no_budget": "Debts belong to a budget. Create a budget, or ask to plan in one, to add a debt."
-    },
     "list": {
       "payments_left": "{count} payment left | {count} payments left",
       "paid_off": "Paid off"
@@ -494,7 +486,6 @@
     "form": {
       "header": "Debt",
       "intro": "Track a loan without an account. You can fine-tune it afterwards.",
-      "budget": "Budget",
       "name": {
         "label": "Name"
       },

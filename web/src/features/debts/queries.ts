@@ -5,8 +5,6 @@ import type { Id } from '@/api/types'
 import { isDebtForecastKey, queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { Metric } from '@/lib/metrics'
-import { canEditBudget, useBudgets } from '@/features/budgets/queries'
-import { useUserData } from '@/features/user/queries'
 
 export function useDebts({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({ queryKey: queryKeys.debts, queryFn: debtApi.getDebtList, staleTime: TEN_MINUTES, enabled })
@@ -45,14 +43,6 @@ export function useDebtRuleOptions(budgetId: Id | null) {
     enabled: !!budgetId,
     staleTime: 0,
   })
-}
-
-/** the budgets a new debt can go into: the user plans in them (owner, admin
- *  or user) and they are not archived. undefined while loading */
-export function usePlannableBudgets() {
-  const { data: user } = useUserData()
-  const { data: budgets } = useBudgets()
-  return user && budgets ? budgets.filter((b) => b.isArchived === 0 && canEditBudget(b, user.id)) : undefined
 }
 
 /** Loads the debt afresh for the Settings tab: the form starts from the loan's

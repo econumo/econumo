@@ -479,14 +479,6 @@
     }
   },
   "debts": {
-    "menu_item": "Dettes",
-    "settings": {
-      "header": "Dettes",
-      "info": "Suivez prêts et crédits sans compte. Les dépenses des catégories d'une dette sont déduites de ce que vous devez, et le budget de la dette les affiche dans une section Dettes.",
-      "empty": "Aucune dette pour l’instant",
-      "create": "Ajouter une dette",
-      "no_budget": "Les dettes appartiennent à un budget. Créez un budget, ou demandez à pouvoir planifier dans l'un d'eux, pour ajouter une dette."
-    },
     "list": {
       "payments_left": "{count} paiement restant | {count} paiements restants",
       "paid_off": "Remboursée"
@@ -494,7 +486,6 @@
     "form": {
       "header": "Dette",
       "intro": "Suivez un prêt sans compte. Vous pourrez l'ajuster ensuite.",
-      "budget": "Budget",
       "name": {
         "label": "Nom"
       },

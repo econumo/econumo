@@ -479,14 +479,6 @@
     }
   },
   "debts": {
-    "menu_item": "Schulden",
-    "settings": {
-      "header": "Schulden",
-      "info": "Kredite und Schulden ohne eigenes Konto verfolgen. Ausgaben in den Kategorien einer Schuld werden auf den offenen Betrag angerechnet, und das Budget der Schuld zeigt sie im Bereich Schulden.",
-      "empty": "Noch keine Schulden",
-      "create": "Schuld hinzufügen",
-      "no_budget": "Schulden gehören zu einem Budget. Erstellen Sie ein Budget oder lassen Sie sich die Planung in einem erlauben, um eine Schuld hinzuzufügen."
-    },
     "list": {
       "payments_left": "Noch {count} Zahlung | Noch {count} Zahlungen",
       "paid_off": "Abbezahlt"
@@ -494,7 +486,6 @@
     "form": {
       "header": "Schuld",
       "intro": "Verfolgen Sie einen Kredit ohne Konto. Die Details können Sie später anpassen.",
-      "budget": "Budget",
       "name": {
         "label": "Name"
       },
