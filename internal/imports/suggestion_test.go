@@ -162,10 +162,12 @@ func TestSuggestionListLooksUpEachAccountOnce(t *testing.T) {
 	}
 }
 
-// failingDelete makes the lazy cleanup fail.
-type failingDelete struct{ *importsrepo.Repo }
+// failingRelease makes the lazy cleanup fail.
+type failingRelease struct{ *importsrepo.Repo }
 
-func (failingDelete) DeleteSuggestion(context.Context, vo.Id) error { return errors.New("db down") }
+func (failingRelease) ReleaseSuggestionLinks(context.Context, vo.Id, []vo.Id) (bool, error) {
+	return false, errors.New("db down")
+}
 
 func TestSuggestionListCleanupFailureStillAnswers(t *testing.T) {
 	h, c, facts := suggestSetup(t)
@@ -173,11 +175,15 @@ func TestSuggestionListCleanupFailureStillAnswers(t *testing.T) {
 	other := h.category(t, userA, "Food")
 	_, links := seedSuggestion(t, h, c, cat, "")
 	h.setTx(t, links[0].TransactionID, "category_id", other)
-	h.svc = imports.NewService(failingDelete{h.repo}, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+	h.svc = imports.NewService(failingRelease{h.repo}, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
 	h.wireSuggest(c, facts)
 	res, err := h.svc.GetSuggestionList(context.Background(), vo.MustParseId(userA))
 	if err != nil || len(res.Items) != 0 {
 		t.Fatalf("list = %+v, %v", res, err)
+	}
+	// the cleanup really failed: the suggestion is still stored, for a later read
+	if got := openSuggestions(t, h, userA); len(got) != 1 {
+		t.Fatalf("suggestions = %+v", got)
 	}
 }
 
