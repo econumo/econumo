@@ -281,6 +281,19 @@ func TestProjectDebt_MonthPaymentsLeftDropWithTheirOwnExtra(t *testing.T) {
 	}
 }
 
+// A month that ends before an origin's first due counts the loan's payments
+// with the first period prorated: 12,000 borrowed on 15 Jan, 24 monthly
+// payments of 600 from 1 Feb, reads 24 left in January, not 25.
+func TestProjectDebt_MonthBeforeTheFirstDueProratesIt(t *testing.T) {
+	start := ymd(2026, time.January, 15)
+	snap := MathSnapshot{AsOf: start, Balance: 12000, Payment: 600, Schedule: RecurringScheduleMonthly,
+		Last: ymd(2028, time.January, 1), Origin: true}
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{snap}, Today: start, Months: []time.Time{ymd(2026, time.January, 1)}})
+	if got := p.Months["2026-01-01"].PaymentsLeft; got != p.PaymentsLeft || got != 24 {
+		t.Fatalf("January payments left = %d (projection %d), want 24", got, p.PaymentsLeft)
+	}
+}
+
 func TestProjectDebt_NoPaymentsYet(t *testing.T) {
 	asOf := ymd(2026, time.October, 10)
 	snap := MathSnapshot{AsOf: asOf, Balance: 300000, Payment: 2000,

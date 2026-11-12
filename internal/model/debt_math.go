@@ -865,10 +865,22 @@ func paymentsLeftAt(snaps []MathSnapshot, balance float64, t time.Time, eps floa
 		return 0
 	}
 	rate := snapshotRate(terms)
-	horizon := len(DueDatesBetween(terms.Schedule, terms.Last, t, t.AddDate(0, maxProjectMonths, 0)))
+	dues := DueDatesBetween(terms.Schedule, terms.Last, t, t.AddDate(0, maxProjectMonths, 0))
+	horizon := len(dues)
+	// before the origin's first due, that due accrues only its prorated share,
+	// as SnapshotRate and the projection count it
+	firstShare := 1.0
+	if terms.Origin && horizon > 0 {
+		if first, share := originFirst(terms); dues[0].Equal(first) {
+			firstShare = share
+		}
+	}
 	n := 0
 	for ; balance >= eps && n < horizon; n++ {
 		interest := balance * rate
+		if n == 0 {
+			interest *= firstShare
+		}
 		if terms.Payment <= interest {
 			return horizon
 		}
