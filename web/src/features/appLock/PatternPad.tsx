@@ -95,6 +95,7 @@ export function PatternPad({ onSubmit, disabled = false, error, hint, className 
     setNodes([])
     setPointer(null)
     setStep(false)
+    setTooShort(false)
     setPhase('idle')
   }
 
@@ -146,6 +147,18 @@ export function PatternPad({ onSubmit, disabled = false, error, hint, className 
     }
   }
 
+  // A fast swipe can jump past a dot between two events.
+  const traceTo = (current: NonNullable<typeof press.current>, point: Point) => {
+    const dx = point.x - current.last.x
+    const dy = point.y - current.last.y
+    const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / SAMPLE_STEP))
+    for (let i = 1; i <= steps; i++) {
+      pickUp({ x: current.last.x + (dx * i) / steps, y: current.last.y + (dy * i) / steps })
+    }
+    current.travel = Math.max(current.travel, Math.hypot(point.x - current.start.x, point.y - current.start.y))
+    current.last = point
+  }
+
   // The drawer around the pad must neither scroll nor follow the finger.
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.stopPropagation()
@@ -178,20 +191,10 @@ export function PatternPad({ onSubmit, disabled = false, error, hint, className 
       return
     }
     const point = toGrid(event)
-    if (!point) {
-      return
+    if (point) {
+      traceTo(current, point)
+      setPointer(point)
     }
-    const dx = point.x - current.last.x
-    const dy = point.y - current.last.y
-    const distance = Math.hypot(dx, dy)
-    // A fast swipe can jump past a dot between two events.
-    const steps = Math.max(1, Math.ceil(distance / SAMPLE_STEP))
-    for (let i = 1; i <= steps; i++) {
-      pickUp({ x: current.last.x + (dx * i) / steps, y: current.last.y + (dy * i) / steps })
-    }
-    current.travel = Math.max(current.travel, Math.hypot(point.x - current.start.x, point.y - current.start.y))
-    current.last = point
-    setPointer(point)
   }
 
   const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -200,6 +203,11 @@ export function PatternPad({ onSubmit, disabled = false, error, hint, className 
     press.current = null
     if (current === null || phaseRef.current !== 'drawing') {
       return
+    }
+    // A flick can lift on a dot no move event reached.
+    const point = toGrid(event)
+    if (point) {
+      traceTo(current, point)
     }
     setPointer(null)
     const drawn = nodesRef.current
@@ -252,7 +260,8 @@ export function PatternPad({ onSubmit, disabled = false, error, hint, className 
     submit(nodesRef.current)
   }
 
-  const message = error || (tooShort ? t('appLock.pattern_pad.too_short') : hint)
+  // The stroke just drawn is newer than any error the parent still shows.
+  const message = tooShort ? t('appLock.pattern_pad.too_short') : error || hint
   const failed = phase === 'error'
   const last = nodes.at(-1)
   const points = nodes.map((n) => {

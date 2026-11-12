@@ -2745,7 +2745,9 @@ User C sees none of it.
       tab stays unlocked, and Change PIN and Lock after (default 1 minute)
       appear; there is no biometrics option. Everything works offline.
 - [ ] App lock: Change PIN asks for the current PIN first (a wrong one says
-      "Wrong PIN" and counts towards the same limit as the lock screen), then
+      "Wrong PIN" and counts towards the same limit as the lock screen; once
+      fewer than 5 attempts are left, "N attempts left" stays under the pad
+      after a wrong try and through the lockout countdown), then
       the new one twice; the next lock asks for the new PIN. Turning the lock
       off asks for the current PIN and the Profile row then reads Off.
 - [ ] App lock 📱 cold start: with the lock on, a reload, a new tab and opening
@@ -2807,7 +2809,9 @@ User C sees none of it.
       right pattern opens the app; a wrong one turns the line red with "Wrong
       pattern" for a moment, clears, and counts towards the same 5-failure
       lockout (grid greyed with the countdown) and 10-failure sign-out as a
-      PIN; a too-short pattern is not counted. "Forgot pattern?" logs out like
+      PIN; a too-short pattern is not counted and says "Connect at least 4 dots"
+      even right after a wrong try; a fast flick that lifts on a dot keeps
+      that dot. "Forgot pattern?" logs out like
       "Forgot PIN?". Change pattern and turning the lock off ask for the
       current pattern; changing can switch to a PIN and back.
 - [ ] App lock pattern with a keyboard or screen reader: Tab reaches each dot

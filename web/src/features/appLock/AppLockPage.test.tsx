@@ -308,6 +308,23 @@ describe('closing the dialog while it is working', () => {
     expect(await verifySecret('1234', readConfig()!.secret)).toBe(true)
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.APP_LOCK_SECRET_CHANGED)
   })
+
+  it('does not sign out when the tenth failure lands after the dialog closed', async () => {
+    await configure()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Change PIN' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
+    const check = deferred<Awaited<ReturnType<typeof checkSecret>>>()
+    vi.mocked(checkSecret).mockImplementationOnce(() => check.promise)
+    await typePin(user, dialog, '0000')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    check.resolve({ status: 'exceeded' })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(screen.queryByTestId('logout')).not.toBeInTheDocument()
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.APP_LOCK_ATTEMPTS_EXCEEDED)
+  })
 })
 
 describe('patterns', () => {
@@ -416,4 +433,32 @@ it('a config from before patterns (no kind) still works for the change flow', as
   const dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
   await typePin(user, dialog, '1234')
   expect(await screen.findByRole('dialog', { name: 'Choose a new PIN' })).toBeInTheDocument()
+})
+
+describe('attempts left in the current-secret prompt', () => {
+  it('stays visible after a wrong PIN and through the lockout', async () => {
+    await configure()
+    for (let i = 0; i < 6; i++) {
+      recordFailedAttempt(Date.now() - 3_600_000)
+    }
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Change PIN' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
+    expect(within(dialog).getByText('4 attempts left')).toBeInTheDocument()
+    await typePin(user, dialog, '0000')
+    expect(await within(dialog).findByText('3 attempts left')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Try again in/)).toBeInTheDocument()
+  })
+
+  it('stays visible after a wrong pattern', async () => {
+    writeConfig(testConfig({ secret: await hashSecret('p:0-1-2-5-8', 1000) }))
+    localStorage.setItem('econumo.appLock.attempts', JSON.stringify({ failedAttempts: 6, lockedUntil: null }))
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Change pattern' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Draw your current pattern' })
+    drawPattern(fireEvent, within(dialog).getByTestId('pattern-grid'), [6, 7, 8, 5])
+    expect(await within(dialog).findByText('3 attempts left')).toBeInTheDocument()
+  })
 })

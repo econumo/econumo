@@ -125,3 +125,30 @@ it('ignores input while disabled', () => {
   expect(onSubmit).not.toHaveBeenCalled()
 })
 
+
+it('keeps the dot a fast flick lifts on', async () => {
+  const onSubmit = vi.fn().mockResolvedValue(true)
+  render(<PatternPad onSubmit={onSubmit} />)
+  layOutGrid(grid())
+  const init = { pointerId: 1, pointerType: 'touch' }
+  fireEvent.pointerDown(grid(), { ...init, ...dotCentre(0) })
+  fireEvent.pointerMove(grid(), { ...init, ...dotCentre(1) })
+  fireEvent.pointerMove(grid(), { ...init, ...dotCentre(2) })
+  // no move reaches dot 5: the finger lifts on it
+  fireEvent.pointerUp(grid(), { ...init, ...dotCentre(5) })
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('p:0-1-2-5'))
+})
+
+it('a too-short stroke says so even while the parent still shows an error', async () => {
+  render(<PatternPad onSubmit={vi.fn()} error="Wrong pattern" />)
+  drawPattern(fireEvent, grid(), [0, 1])
+  expect(await screen.findByText('Connect at least 4 dots')).toBeInTheDocument()
+  expect(screen.queryByText('Wrong pattern')).not.toBeInTheDocument()
+})
+
+it('drops the too-short message once the flash is over', async () => {
+  render(<PatternPad onSubmit={vi.fn()} hint="Draw it" />)
+  drawPattern(fireEvent, grid(), [0, 1])
+  await screen.findByText('Connect at least 4 dots')
+  expect(await screen.findByText('Draw it', {}, { timeout: PATTERN_FLASH_MS + 500 })).toBeInTheDocument()
+})

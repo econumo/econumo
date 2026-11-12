@@ -115,7 +115,11 @@ export function AppLockPage() {
     closeFlow()
   }
 
-  const onExceeded = () => {
+  // A tenth failure answered after the dialog was dismissed is not this flow's.
+  const onExceeded = (seq: number) => {
+    if (openSeq.current !== seq) {
+      return
+    }
     closeFlow()
     trackEvent(METRICS.APP_LOCK_ATTEMPTS_EXCEEDED)
     void navigate(RouterPage.LOGOUT, { state: { keepPendingWrites: true, resetAppLock: true } })
@@ -203,7 +207,7 @@ export function AppLockPage() {
           current={config ? { kind: config.secret.kind, length: config.secret.length } : null}
           onClose={closeFlow}
           onComplete={onComplete}
-          onExceeded={onExceeded}
+          onExceeded={() => onExceeded(flow.seq)}
         />
       ) : null}
     </SettingsShell>

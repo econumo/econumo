@@ -128,13 +128,12 @@ export function SecretDialog({ open, flow, current, onClose, onComplete, onExcee
 
   const shownError = lockedOut ? t('appLock.lock_screen.try_again_in', { time: formatCountdown(lockout) }) : error
   const hint =
-    step === 'create'
-      ? pattern
-        ? t('appLock.settings.dialog.pattern_hint')
-        : t('appLock.settings.dialog.pin_hint')
-      : step === 'verify' && remaining < WARN_REMAINING
-        ? pluralPick(t('appLock.lock_screen.attempts_left'), remaining, i18n.language)
-        : undefined
+    step === 'create' ? (pattern ? t('appLock.settings.dialog.pattern_hint') : t('appLock.settings.dialog.pin_hint')) : undefined
+  // Its own line, so a wrong try or the lockout countdown never hides it.
+  const attemptsLeft =
+    step === 'verify' && remaining < WARN_REMAINING
+      ? pluralPick(t('appLock.lock_screen.attempts_left'), remaining, i18n.language)
+      : null
   const onSubmit = step === 'verify' ? onVerify : step === 'create' ? onCreate : onConfirm
 
   return (
@@ -161,6 +160,7 @@ export function SecretDialog({ open, flow, current, onClose, onComplete, onExcee
             submitLabel={step === 'confirm' ? t('appLock.settings.dialog.save') : undefined}
           />
         )}
+        {attemptsLeft && <p className="mt-3 text-center text-sm text-muted-foreground">{attemptsLeft}</p>}
         {step === 'create' && (
           <Button
             type="button"
