@@ -2,6 +2,7 @@ package debt_test
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -332,5 +333,48 @@ func TestLockForClassification_LocksTheBudgetsOfBothSides(t *testing.T) {
 	}
 	if err := svc.LockForClassification(context.Background(), "currency", vo.NewId()); err == nil {
 		t.Fatal("an unknown kind must be refused")
+	}
+}
+
+// A rule committed between Prepare's read and the classification row lock
+// names a budget Prepare did not lock. Locking it then, after the row, would
+// invert the budget-first order every debt write keeps (a PostgreSQL deadlock
+// with a debt write waiting for that row), so Release and Reassign refuse
+// with a retryable error instead and change nothing.
+func TestClassification_RuleAddedAfterPrepareIsRetried(t *testing.T) {
+	e := newEnv(t)
+	payee, target := e.newPayee(), e.newPayee()
+	res := e.create(t, nil)
+	for _, run := range []func(ctx context.Context) error{
+		func(ctx context.Context) error {
+			return e.svc.ReleaseClassification(ctx, debt.KindPayee, vo.MustParseId(payee))
+		},
+		func(ctx context.Context) error {
+			return e.svc.ReassignClassification(ctx, debt.KindPayee, vo.MustParseId(payee), vo.MustParseId(target))
+		},
+	} {
+		err := e.db.TX.WithTx(context.Background(), func(ctx context.Context) error {
+			// no debt names the payee yet: Prepare locks nothing
+			if err := e.svc.LockForClassification(ctx, debt.KindPayee, vo.MustParseId(payee)); err != nil {
+				return err
+			}
+			// a concurrent rule write, as the row lock would let it commit
+			d, err := e.repo.GetByID(ctx, vo.MustParseId(res.Id))
+			if err != nil {
+				return err
+			}
+			id := vo.MustParseId(payee)
+			d.Rules[0].PayeeID = &id
+			if err := e.repo.Save(ctx, d); err != nil {
+				return err
+			}
+			return run(ctx)
+		})
+		if !errors.Is(err, debt.ErrRulesChangedConcurrently) {
+			t.Fatalf("err = %v, want ErrRulesChangedConcurrently", err)
+		}
+		if r := e.debtOf(t, res.Id).Rules; len(r) != 1 || r[0].PayeeID != nil {
+			t.Fatalf("rules = %+v, want the rule as before the rolled-back transaction", r)
+		}
 	}
 }

@@ -476,8 +476,21 @@ func TestRepo_ListByBudgetLoadsRulesInOrder(t *testing.T) {
 func TestRepo_LockBudget(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
+	budget := vo.MustParseId(e.budget)
 	err := e.db.TX.WithTx(ctx, func(ctx context.Context) error {
-		if err := e.repo.LockBudget(ctx, vo.MustParseId(e.budget)); err != nil {
+		if e.repo.HoldsBudgetLock(ctx, budget) {
+			t.Error("held before LockBudget")
+		}
+		if err := e.repo.LockBudget(ctx, budget); err != nil {
+			return err
+		}
+		// a savepoint shares the transaction's locks
+		if err := e.db.TX.WithTx(ctx, func(ctx context.Context) error {
+			if !e.repo.HoldsBudgetLock(ctx, budget) {
+				t.Error("not held after LockBudget")
+			}
+			return nil
+		}); err != nil {
 			return err
 		}
 		if err := e.repo.LockBudget(ctx, vo.NewId()); err != nil {
@@ -487,6 +500,18 @@ func TestRepo_LockBudget(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("locks: %v", err)
+	}
+	// a lock ends with its transaction
+	if e.repo.HoldsBudgetLock(ctx, budget) {
+		t.Error("held outside the transaction")
+	}
+	if err := e.db.TX.WithTx(ctx, func(ctx context.Context) error {
+		if e.repo.HoldsBudgetLock(ctx, budget) {
+			t.Error("held by the next transaction")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
 	}
 	if err := e.repo.LockRuleCategories(ctx, nil); err != nil {
 		t.Fatalf("no categories: %v", err)

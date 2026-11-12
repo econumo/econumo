@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/econumo/econumo/internal/debt"
@@ -74,8 +75,35 @@ func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
 
+type heldBudgetsKey struct{}
+
+type heldBudgets struct {
+	mu  sync.Mutex
+	ids map[string]bool
+}
+
 func (r *Repo) LockBudget(ctx context.Context, budgetID vo.Id) error {
-	return r.q.LockBudget(ctx, r.db(ctx), budgetID.String())
+	if err := r.q.LockBudget(ctx, r.db(ctx), budgetID.String()); err != nil {
+		return err
+	}
+	if v, ok := r.tx.TxValue(ctx, heldBudgetsKey{}, func() any { return &heldBudgets{ids: map[string]bool{}} }); ok {
+		held := v.(*heldBudgets)
+		held.mu.Lock()
+		held.ids[budgetID.String()] = true
+		held.mu.Unlock()
+	}
+	return nil
+}
+
+func (r *Repo) HoldsBudgetLock(ctx context.Context, budgetID vo.Id) bool {
+	v, ok := r.tx.TxValue(ctx, heldBudgetsKey{}, func() any { return &heldBudgets{ids: map[string]bool{}} })
+	if !ok {
+		return false
+	}
+	held := v.(*heldBudgets)
+	held.mu.Lock()
+	defer held.mu.Unlock()
+	return held.ids[budgetID.String()]
 }
 
 // LockRuleCategories reads the categories, key-share-locking them on

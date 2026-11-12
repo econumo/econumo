@@ -73,9 +73,7 @@ func TestViews_RangesAndPlanningBounds(t *testing.T) {
 	empty := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = e.newCategory(e.user, true) })
 	// a classification delete can leave a debt with no rules: it keeps the
 	// default icon and matches nothing
-	if err := e.svc.ReleaseClassification(ctx, debt.KindCategory, vo.MustParseId(empty.Rules[0].CategoryId)); err != nil {
-		t.Fatal(err)
-	}
+	e.release(t, debt.KindCategory, empty.Rules[0].CategoryId)
 
 	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: e.account, CategoryID: cat2, PayeeID: payee, Type: 0, Amount: "1000", SpentAt: ymd(2026, 4, 20)})
 

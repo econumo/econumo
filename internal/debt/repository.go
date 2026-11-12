@@ -28,6 +28,9 @@ type Repository interface {
 	// (PostgreSQL, FOR NO KEY UPDATE; a missing budget succeeds); a no-op on
 	// SQLite.
 	LockBudget(ctx context.Context, budgetID vo.Id) error
+	// HoldsBudgetLock reports whether this transaction took LockBudget on the
+	// budget (also on SQLite, where the lock itself is a no-op).
+	HoldsBudgetLock(ctx context.Context, budgetID vo.Id) bool
 	// GetByID and the lists load the debts' rules, ordered by created_at, id.
 	GetByID(ctx context.Context, id vo.Id) (*model.Debt, error)
 	// ListByBudget is ordered by created_at, id; ListByBudgets too.

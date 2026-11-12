@@ -2,6 +2,7 @@ package debt
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	"github.com/econumo/econumo/internal/model"
@@ -15,9 +16,16 @@ const (
 	KindLabel    = "label"
 )
 
+// ErrRulesChangedConcurrently: a debt rule naming the classification was
+// committed after Prepare read them, so its budget is not locked. Taking that
+// lock after the classification row would invert the order every debt write
+// keeps; the delete or merge fails instead (a 5xx, so clients retry it).
+var ErrRulesChangedConcurrently = errors.New("debt: a rule naming the classification changed meanwhile; try again")
+
 // A classification's owner may delete or merge it whatever their access to
 // the debts that name it (a former participant, a guest): the debt rules
-// follow, and nothing is ever refused. These run inside the delete's or the
+// follow, and nothing is refused (ErrRulesChangedConcurrently is a race to
+// retry, not a refusal). These run inside the delete's or the
 // merge's transaction and take no access check.
 
 // budgetsNaming are the budgets of the debts with a rule naming any of ids,
@@ -63,7 +71,7 @@ func (s *Service) LockForClassification(ctx context.Context, kind string, ids ..
 // payments already split keep their splits until the next sync.
 func (s *Service) ReleaseClassification(ctx context.Context, kind string, id vo.Id) error {
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		budgets, err := s.lockNaming(ctx, kind, id)
+		budgets, err := s.heldNaming(ctx, kind, id)
 		if err != nil {
 			return err
 		}
@@ -110,7 +118,7 @@ func releaseRule(kind string, id vo.Id, r model.DebtRule) (out model.DebtRule, k
 // budgets involved are then synced, in the merge's transaction.
 func (s *Service) ReassignClassification(ctx context.Context, kind string, oldID, newID vo.Id) error {
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		budgets, err := s.lockNaming(ctx, kind, oldID, newID)
+		budgets, err := s.heldNaming(ctx, kind, oldID, newID)
 		if err != nil {
 			return err
 		}
@@ -167,14 +175,16 @@ func reassignRule(kind string, oldID, newID vo.Id, r model.DebtRule) (out model.
 	return r, true, changed
 }
 
-func (s *Service) lockNaming(ctx context.Context, kind string, ids ...vo.Id) ([]vo.Id, error) {
+// heldNaming re-reads the budgets of the debts naming ids, under the
+// classification row lock; LockForClassification must already hold each.
+func (s *Service) heldNaming(ctx context.Context, kind string, ids ...vo.Id) ([]vo.Id, error) {
 	budgets, err := s.budgetsNaming(ctx, kind, ids...)
 	if err != nil {
 		return nil, err
 	}
 	for _, b := range budgets {
-		if err := s.repo.LockBudget(ctx, b); err != nil {
-			return nil, err
+		if !s.repo.HoldsBudgetLock(ctx, b) {
+			return nil, ErrRulesChangedConcurrently
 		}
 	}
 	return budgets, nil

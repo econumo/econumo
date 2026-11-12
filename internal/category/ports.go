@@ -38,9 +38,10 @@ type BudgetElementMerger interface {
 // (Repository.LockRow): a debt write adding a rule on one of them commits
 // first, and Release or Reassign sees its rule. One window is left: a rule
 // committed between Prepare's read and those row locks names a budget Prepare
-// did not lock, which Release or Reassign then locks; if another debt write
-// on that budget is waiting for the row, PostgreSQL aborts one side with a
-// deadlock (40P01), which is safe to retry.
+// did not lock. Release or Reassign then fails with
+// debt.ErrRulesChangedConcurrently (a 5xx, safe to retry) rather than lock that
+// budget after the row, which could deadlock with a debt write waiting for the
+// row.
 type DebtUsage interface {
 	// Prepare locks the budgets of the debts whose rules name any of ids;
 	// first in the transaction.

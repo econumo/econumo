@@ -2255,7 +2255,12 @@ data unreadable. Most are also asserted by the test suite.
   in its transaction `Release` (before the row goes) or `Reassign` (after the transactions and
   budget rows moved): a deleted category's rules go (a debt may be left with none, and then
   matches nothing until someone adds a category), a deleted payee, tag or label stops narrowing
-  its rule (it widens), and a merge re-points the rules to the target. Rules that then duplicate
+  its rule (it widens), and a merge re-points the rules to the target. `Release`/`Reassign` re-read
+  the budgets under the row lock and lock none themselves: a rule committed after `Prepare` read
+  them names a budget the transaction does not hold (`Repository.HoldsBudgetLock`, recorded by
+  `LockBudget` per transaction), so the write fails with `debt.ErrRulesChangedConcurrently` (a
+  5xx, safe to retry) instead of locking a budget after the row and risking a PostgreSQL
+  deadlock. Rules that then duplicate
   or conflict are resolved by `model.NormalizeBudgetRules`, never refused: oldest debt first
   (`created_at`, `id`), a rule conflicting with an older debt's rule is dropped, then a rule another
   rule of the same debt covers (of two identical, the newer). A category merge then moves the

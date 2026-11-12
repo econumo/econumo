@@ -39,15 +39,15 @@ type BudgetElementMerger interface {
 // or moved to the target (merge), whatever access the caller has to those
 // debts.
 //
-// Lock order: a debt write locks its budget row before it touches a tag row
-// or a budget element row, so a delete or merge calls Prepare first. Then the
-// delete locks its tag row, a merge both rows in id order
-// (Repository.LockRow): a debt write adding a rule on one of them commits
-// first, and Release or Reassign sees its rule. One window is left: a rule
-// committed between Prepare's read and those row locks names a budget Prepare
-// did not lock, which Release or Reassign then locks; if another debt write
-// on that budget is waiting for the row, PostgreSQL aborts one side with a
-// deadlock (40P01), which is safe to retry.
+// Lock order: a debt write locks its budget row before it touches a tag row or
+// a budget element row, so a delete or merge calls Prepare first. Then the
+// delete locks its tag row, a merge both rows in id order (Repository.LockRow):
+// a debt write adding a rule on one of them commits first, and Release or
+// Reassign sees its rule. One window is left: a rule committed between
+// Prepare's read and those row locks names a budget Prepare did not lock.
+// Release or Reassign then fails with debt.ErrRulesChangedConcurrently (a 5xx,
+// safe to retry) rather than lock that budget after the row, which could
+// deadlock with a debt write waiting for the row.
 type DebtUsage interface {
 	// Prepare locks the budgets of the debts whose rules name any of ids;
 	// first in the transaction.

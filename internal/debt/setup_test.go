@@ -312,22 +312,17 @@ func TestSync_LabelRemovedFromPaymentUnmatches(t *testing.T) {
 
 func TestReassignClassification_LabelFollowsTarget(t *testing.T) {
 	e := newEnv(t)
-	ctx := context.Background()
 	src, dst, other := e.newLabel(), e.newLabel(), e.newLabel()
 	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &src })
 	otherDebt := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &other })
 
-	if err := e.svc.ReassignClassification(ctx, "label", vo.MustParseId(src), vo.MustParseId(dst)); err != nil {
-		t.Fatal(err)
-	}
+	e.reassign(t, "label", src, dst)
 	if d := e.debtOf(t, res.Id); d.Rules[0].LabelID == nil || d.Rules[0].LabelID.String() != dst {
 		t.Fatalf("label = %v, want %s", d.Rules[0].LabelID, dst)
 	}
 	// merging into the other debt's label leaves two debts with the same key
 	// and start date: never refused, the newer debt loses the rule
-	if err := e.svc.ReassignClassification(ctx, "label", vo.MustParseId(dst), vo.MustParseId(other)); err != nil {
-		t.Fatal(err)
-	}
+	e.reassign(t, "label", dst, other)
 	if d := e.debtOf(t, res.Id); len(d.Rules) != 1 || d.Rules[0].LabelID.String() != other {
 		t.Fatalf("older debt rules = %+v", d.Rules)
 	}
