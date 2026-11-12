@@ -899,4 +899,41 @@ func TestReimportLink(t *testing.T) {
 	if len(links) != 1 || links[0].TransactionID == nil || links[0].Status != model.ImportLinkStatusLinked {
 		t.Fatalf("ledger = %+v", links)
 	}
+	if links[0].ID.String() != linkID {
+		t.Fatalf("the row must keep its id (and so its place in the run): %s != %s", links[0].ID, linkID)
+	}
+}
+
+// A reimport that adopts a hand-entered transaction moves the row from
+// imported to matched in its run's summary.
+func TestReimportLink_MatchedMovesTheRunCount(t *testing.T) {
+	h := setup(t)
+	h.mapCard(t, "Apple Card")
+	ctx := context.Background()
+	run := h.f.ImportRun(fixture.ImportRun{UserID: userA, SourceID: source, Provider: model.ImportProviderAppleWallet, Status: model.ImportRunStatusCompleted, ImportedCount: 1, StartedAt: now})
+	ingest(t, h, tap)
+	links, _ := h.repo.ListLinksBySource(ctx, vo.MustParseId(source))
+	if _, err := h.db.Raw.ExecContext(ctx, h.db.Rebind(`UPDATE import_transaction_links SET run_id = ? WHERE id = ?`), run, links[0].ID.String()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.db.Raw.ExecContext(ctx, h.db.Rebind(`DELETE FROM transactions WHERE id = ?`), links[0].TransactionID.String()); err != nil {
+		t.Fatal(err)
+	}
+	// the user enters it by hand, then imports the deleted row again
+	existing := vo.NewId()
+	at := time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)
+	h.f.Transaction(fixture.Transaction{ID: existing.String(), UserID: userA, AccountID: acct1, Type: 0, Amount: "4.75000000", SpentAt: at})
+	h.txns.candidates = []*model.Transaction{{ID: existing, AccountID: vo.MustParseId(acct1), Type: model.TransactionTypeExpense, Amount: "4.75000000", SpentAt: at}}
+	res, err := h.svc.ReimportLink(ctx, vo.MustParseId(userA), model.ImportLinkActionRequest{LinkId: links[0].ID.String()})
+	if err != nil || res.Status != model.ImportIngestStatusMatched {
+		t.Fatalf("reimport = %+v, %v", res, err)
+	}
+	got, _ := h.repo.GetRun(ctx, vo.MustParseId(run))
+	if got.ImportedCount != 0 || got.MatchedCount != 1 {
+		t.Fatalf("run counts = imported %d, matched %d", got.ImportedCount, got.MatchedCount)
+	}
+	moved, _ := h.repo.ListLinksByRun(ctx, vo.MustParseId(run))
+	if len(moved) != 1 || moved[0].TransactionID == nil || !moved[0].TransactionID.Equal(existing) {
+		t.Fatalf("run rows = %+v", moved)
+	}
 }

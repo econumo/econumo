@@ -1971,7 +1971,9 @@ data unreadable. Most are also asserted by the test suite.
   adopts never take a transfer. Deleting an imported transaction leaves its ledger row as a
   tombstone, so no sync or re-fired push brings it back; `reimport-link` (the history's
   "Import again" on a deleted row) deletes the tombstone and runs its stored event through the
-  pipeline again, keeping the row's run.
+  pipeline again. The new row keeps the old one's id, run and import time, so it keeps its place in
+  the run, and the run summary moves it from imported to matched, queued or skipped when that is
+  the outcome (the deleted row is taken to have been created; the ledger does not say).
 - **Transaction import (rules)**: one `import_rules` row per rule, per user, optionally scoped
   to a source; `classify` rules only fill empty fields on newly imported rows (first match per
   field in priority order, labels unioned up to 10), `skip` rules drop the row after currency

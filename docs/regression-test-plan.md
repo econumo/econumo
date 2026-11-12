@@ -1122,7 +1122,7 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Import again 📱: delete an imported SimpleFIN transaction, then sync again — it is
       NOT re-imported. Open its "Deleted since" row in the run detail → "Import again":
       the dialog closes with "Imported again", the row reads Imported (no strike-through)
-      in the same run, and the transaction is back on the account. Offline the button is
+      in the same place in the same run, and the transaction is back on the account. Offline the button is
       disabled. The same works for an Apple Wallet tap from Apple Wallet → Import history.
 - [ ] Card payment as a transfer 📱: enter a transfer checking → credit card by hand,
       then sync SimpleFIN with both accounts mapped. The checking debit and the card's
@@ -1131,7 +1131,8 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       two currencies matches the card side by the recipient amount. Fixing an earlier
       wrong import: delete the income transaction the card payment created, enter the
       transfer, open the deleted row → "Import again" toasts "Matched to an existing
-      transaction" and creates nothing.
+      transaction" and creates nothing; the run summary now counts it as matched (one
+      fewer imported, one more matched) and the row stays where it was.
 - [ ] Apple Wallet → status card → "Import history" (shown once a tap has
       arrived; `/settings/apple-wallet/history`; crumbs Settings › Apple
       Wallet) lists every tap newest first, grouped by day on the device's

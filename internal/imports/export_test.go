@@ -14,7 +14,7 @@ func (s *Service) ApplyEventForTest(ctx context.Context, src *model.ImportSource
 	if err != nil {
 		return "", false, err
 	}
-	return s.applyEvent(ctx, src, eventID, ev, runID, correctAmount, rules)
+	return s.applyEvent(ctx, src, eventID, ev, runID, correctAmount, rules, nil)
 }
 
 var CandidateLeg = candidateLeg
