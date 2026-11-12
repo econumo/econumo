@@ -1293,12 +1293,12 @@
       "text": "Lascia che le transazioni arrivino da sole invece di digitarle.",
       "apple_wallet": {
         "title": "Apple Wallet",
-        "text": "Ogni pagamento con la tua carta compare da solo in Econumo.",
+        "text": "Un'automazione di Comandi sul tuo iPhone invia ogni pagamento Apple Pay a Econumo, dove compare come transazione sul conto che scegli per quella carta.",
         "link": "Configura Apple Wallet"
       },
       "simplefin": {
         "title": "SimpleFIN",
-        "text": "Importa le transazioni della tua banca tramite una connessione SimpleFIN Bridge.",
+        "text": "SimpleFIN Bridge è un servizio a pagamento che si collega alla tua banca (soprattutto negli Stati Uniti e in Canada). Econumo ne importa le transazioni a ogni sincronizzazione; la chiave di accesso è cifrata con una passphrase che conosci solo tu.",
         "link": "Configura SimpleFIN"
       },
       "mcp": {

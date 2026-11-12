@@ -1293,12 +1293,12 @@
       "text": "让交易自动进来，无需手动输入。",
       "apple_wallet": {
         "title": "Apple Wallet",
-        "text": "每次刷卡付款都会自动出现在 Econumo 中。",
+        "text": "iPhone 上的快捷指令自动化会把每笔 Apple Pay 付款发送到 Econumo，并在你为该卡选择的账户中显示为一笔交易。",
         "link": "设置 Apple Wallet"
       },
       "simplefin": {
         "title": "SimpleFIN",
-        "text": "通过 SimpleFIN Bridge 连接导入银行交易。",
+        "text": "SimpleFIN Bridge 是一项付费服务，可连接你的银行（主要在美国和加拿大）。每次同步时 Econumo 都会从中拉取交易；访问密钥由只有你知道的密码短语加密。",
         "link": "设置 SimpleFIN"
       },
       "mcp": {

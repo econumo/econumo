@@ -1293,12 +1293,12 @@
       "text": "Laat uw transacties vanzelf binnenkomen in plaats van ze in te typen.",
       "apple_wallet": {
         "title": "Apple Wallet",
-        "text": "Elke betaling met uw kaart verschijnt vanzelf in Econumo.",
+        "text": "Een Opdrachten-automatisering op uw iPhone stuurt elke Apple Pay-betaling naar Econumo, waar die verschijnt als transactie op de rekening die u aan die kaart koppelt.",
         "link": "Apple Wallet instellen"
       },
       "simplefin": {
         "title": "SimpleFIN",
-        "text": "Haal transacties van uw bank op via een SimpleFIN Bridge-koppeling.",
+        "text": "SimpleFIN Bridge is een betaalde dienst die verbinding maakt met uw bank (vooral in de VS en Canada). Econumo haalt uw transacties daar op bij elke synchronisatie; de toegangssleutel wordt versleuteld met een wachtwoordzin die alleen u kent.",
         "link": "SimpleFIN instellen"
       },
       "mcp": {

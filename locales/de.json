@@ -1293,12 +1293,12 @@
       "text": "Lassen Sie Ihre Buchungen von selbst ankommen, statt sie einzutippen.",
       "apple_wallet": {
         "title": "Apple Wallet",
-        "text": "Jede Zahlung mit Ihrer Karte erscheint von selbst in Econumo.",
+        "text": "Eine Kurzbefehle-Automation auf Ihrem iPhone sendet jede Apple-Pay-Zahlung an Econumo, wo sie als Buchung auf dem Konto erscheint, das Sie dieser Karte zuordnen.",
         "link": "Apple Wallet einrichten"
       },
       "simplefin": {
         "title": "SimpleFIN",
-        "text": "Holen Sie Buchungen Ihrer Bank über eine SimpleFIN-Bridge-Verbindung ab.",
+        "text": "SimpleFIN Bridge ist ein kostenpflichtiger Dienst, der sich mit Ihrer Bank verbindet (vor allem in den USA und Kanada). Econumo holt bei jeder Synchronisierung Ihre Buchungen darüber ab; der Zugangsschlüssel wird mit einer Passphrase verschlüsselt, die nur Sie kennen.",
         "link": "SimpleFIN einrichten"
       },
       "mcp": {
