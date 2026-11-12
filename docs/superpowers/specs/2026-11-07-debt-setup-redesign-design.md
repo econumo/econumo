@@ -240,3 +240,15 @@ create form stays short and sets none of them.
   the event) and uses it for payments left, the progress total and Planned
   overpayment (its `payoffDate` is answered but not shown), falling back to the debt's own figures until it answers, on
   an error or offline.
+- **Extra payments instead of interest** (same day, later decision): the Loan card
+  shows no interest. **Overpaid** becomes **Paid extra**, `get-debt`'s additive
+  `extraPaid`: over the due windows periodsPaid uses, up to today, each window adds
+  what its recorded payments went above the regular payment of the snapshot in
+  force on its due (never below 0); a start-day payment counts in full, a window a
+  statement settles counts only what was recorded in it, and a missed window
+  followed by a double payment counts the second payment as extra (it is measured
+  by window). **Planned overpayment** becomes **Planned extra**, the forecast
+  summary's additive `extraPlanned`: the planned extras its run applies ("0" with
+  no plans). Planned extra shows only once the forecast has answered (hidden while
+  it loads, on an error or offline with nothing cached), never a plan-free number;
+  Paid extra shows 0 too. Interest stays in the payments table.

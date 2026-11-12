@@ -2623,8 +2623,17 @@ account in USD, before running these.
       or "Paid off by" line. Once paid off: "Paid off", "N of N paid" with no
       amounts, and "Owed now 0.00 $".
       The "Loan" card (no Edit button) lists Borrowed (the amount · the start
-      date), payment · repeats, next payment, loan ends, Overpaid and Planned
-      overpayment (no Owed now, Left to pay or Currency row);
+      date), payment · repeats, next payment, loan ends, Paid extra and Planned
+      extra (no interest, Owed now, Left to pay or Currency row; interest
+      stays in the payments table). Paid extra is what the payments went
+      above the regular payment, due window by due window, up to today: a
+      payment of 1,000 against a payment of 450 shows 550.00; a second
+      payment of 300 in a window already paid 450 shows 300.00; a payment on
+      the start date counts in full; a future-dated payment adds nothing
+      until its day; with nothing extra it reads 0.00 (not hidden). Planned
+      extra is what the budget plans above the regular payment from now on
+      (0.00 with no plans); it appears only once the plans have loaded and
+      stays hidden offline with nothing loaded before;
       below it "Which payments count" as a plain sentence (no pickers), the
       payments (Date / Payment / Interest / Principal / Balance, newest
       first; Balance is what was owed after that payment, the newest one
@@ -2639,13 +2648,14 @@ account in USD, before running these.
       count).
 - [ ] 📱 **Overview follows the plans**: in a budget, plan the debt row above
       its regular payment in a coming month, then open the debt's Details from
-      that budget: "N payments left", the "X of Y paid" total and Planned
-      overpayment drop (an earlier payoff, less interest) while the repaid
+      that budget: "N payments left" and the "X of Y paid" total drop (an
+      earlier payoff) and Planned extra shows the plan above the regular
+      payment (a plan of 5,000 against a payment of 450: 4,550.00) while the repaid
       amount in brackets stays; Settings → Debts still shows the plan-free
       figures. Clear the plan:
       the Overview returns to them. Opening the screen fires no "future payments"
       analytics event. Offline, or while the server cannot answer, the Overview
-      shows the plan-free figures with no error.
+      shows the plan-free figures with no error and no Planned extra row.
 - [ ] 📱 **Future payments**: on a set-up debt that is not paid off, "Show
       future payments" sits beside the PAYMENTS heading. It adds the
       projected payments to the TOP of the same payments table (one table,

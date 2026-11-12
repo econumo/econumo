@@ -2041,14 +2041,20 @@ data unreadable. Most are also asserted by the test suite.
   a payment dated up to today keeps its zero split until setup drops it, one dated after today is
   provisional like any other and is dropped and re-inserted by every sync). With `isSetUp` 0,
   `DebtResult` sends `balance`, `lastPaymentDate`, `currentBalance`, `moneyLeft`,
-  `overpaymentLeft`, `overpaidSoFar`, `payoffDate`, `nextDueDate` and `periodRate` as `""` and
+  `overpaymentLeft`, `overpaidSoFar`, `extraPaid`, `payoffDate`, `nextDueDate` and `periodRate` as `""` and
   `paymentsLeft`/`periodsPaid` 0 (payment and schedule as stored); the budget rows
   (`get-budget` debt rows and `get-budget-plan` rows and cells) send `closingBalance`,
   `payoffDate`, `basePayoffDate`, `overpaymentLeft` and `baseOverpaymentLeft` as `""`,
   `paymentsLeft` 0 and `scheduledTotal`/`upcoming` `"0"` (the SPA keys on `isSetUp`, not on
   empty strings); `Timelines` leaves such a debt out. `periodsPaid` counts the schedule's due
   windows holding at least one payment dated up to today (payments from before setup count, a
-  start-day payment does not), plus every due up to the latest statement. Create refuses a currency the user may not use (deleted, or another
+  start-day payment does not), plus every due up to the latest statement. `extraPaid` (additive
+  on `get-debt`/`get-debt-list`) is what the recorded payments went above the regular payment:
+  over the same windows, those holding payments dated up to today, each adds max(0, its
+  payments (in the debt currency) less the payment of the snapshot in force on its due), so a
+  missed window followed by a double payment counts the second payment as extra and the dues a
+  statement settles add only what was recorded in them; a start-day payment counts in full.
+  Create refuses a currency the user may not use (deleted, or another
   user's custom one: `currency.not_available`, the same `EnsureUsable` check budgets use).
   A debt names a tag OR a label, never both (create/update refuse the pair: `common.invalid_choice`
   on `labelId`). Category, payee, tag, label and start date are editable, rechecked by the same
@@ -2191,16 +2197,20 @@ data unreadable. Most are also asserted by the test suite.
   (`amountBorrowed - currentBalance`, never below 0) of the amount borrowed, in the debt currency
   (a paid-off debt keeps "N of N paid" and "Owed now X" under it; no payoff date shows), a
   "Loan" card (borrowed: the amount and the start date, payment, repeats, next payment,
-  loan ends, Overpaid (`overpaidSoFar`), Planned overpayment; no owed now, left to pay or currency
-  row; a debt not set up shows payment, its start date or "From the first payment", and currency).
+  loan ends, Paid extra (`extraPaid`, 0 included), Planned extra (the forecast summary's
+  `extraPlanned`, shown only once the forecast has answered); no interest (that is the payments
+  table's), owed now, left to pay or currency row; a debt not set up shows payment, its start
+  date or "From the first payment", and currency).
   The debt service's own figures (`get-debt`, Settings → Debts) stay plan-free, but the
   Overview of a set-up debt that is not paid off follows the budgets' plans: it loads
   `get-debt-forecast` on open (the screen's budget, else none so the server picks the active
-  one; no metric) and takes payments left (count and progress total) and the Planned
-  overpayment from its additive summary (`paymentsLeft`, `payoffDate` (unused by the SPA),
-  `overpaymentLeft`: the same plan-aware projection run from today, equal to `get-debt`'s with no
-  plans; 0/"" while not set up), falling back to the debt's own while it loads, on an error or
-  offline (no `OfflineUnavailable`). The principal repaid does not depend on plans.
+  one; no metric) and takes payments left (count and progress total) and the Planned extra
+  from its additive summary (`paymentsLeft`, `payoffDate` and `overpaymentLeft` (both unused by
+  the SPA): the same plan-aware projection run from today, equal to `get-debt`'s with no plans;
+  `extraPlanned`, the planned extras that run applies, "0" with none; 0/"" while not set up),
+  falling back to the debt's own payments left while it loads, on an error or offline (no
+  `OfflineUnavailable`), and hiding Planned extra meanwhile rather than show a plan-free number.
+  The principal repaid does not depend on plans.
   The payments-from sentence read-only
   (`PaymentsFromEditor readOnly`), payments (with a Balance column on a set-up debt: `get-debt`'s
   additive `balance` per payment, what was owed after it, from the snapshots and stored splits,
