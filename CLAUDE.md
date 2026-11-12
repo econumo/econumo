@@ -228,16 +228,24 @@ without a category or payee after the account OWNER's rules ran (owner not `read
 background job (50 rows/request, 60 s timeout, scope `import-ai-suggest` 30 jobs per rate-limit
 window, IP-exempt) asks for a match text, category and payee drawn from the owner's own
 non-archived names; the suggestion lands in the OWNER's Inbox only (a partner's tap included).
-Match text is at least 3 characters and must occur in the payee (the description when the payee
+Match text holds at least 3 letters or digits and must occur in the payee (the description when the payee
 is empty); there is one open suggestion per (owner, merchant, income/expense): a row or group joins
 an open one without an AI call only when its text contains the suggestion's text and the
-suggestion fills a field the row lacks. Dismissal is not remembered (the next tap may suggest
-again). Accept opens the rule prompt (`RulePromptDialog`); preview/apply skip rows the rule would
-not change, and the prompt asks to apply to all imports only when at least one OTHER transaction
-would change. `suggest-match-text` (owner of the link's account, 10 s, counted under
-`preview-rule`'s limit, skipped for readonly users, not persisted in the query cache) gives the
-rule editor an AI match text. The SPA suggestion query is invalidated after every successful write
-(`invalidateAfterWrite`); analytics `appImportSuggestionAccept`, `appImportSuggestionDismiss`,
+suggestion fills a field the row lacks. `get-suggestion-list` is computed at read time (archived
+categories and payees dropped, rows already filled left out, each item's `type` the income/expense
+of its transactions); a suggestion left with nothing is deleted there, best effort. Dismissal is
+not remembered (the next tap may suggest again); accept deletes the suggestion. Accept opens the
+rule prompt (`RulePromptDialog`), whose category picker offers only categories of the suggestion's
+`type`; the rule a Save created is kept per suggestion in the ui store until the accept lands, so a
+retry (even after Cancel and a reopen) updates that rule rather than creating a second one.
+preview/apply skip rows the rule would not change, and the prompt asks to apply to all imports only
+when at least one OTHER transaction would change. The Inbox hides suggestions (section and badge)
+from a `readonly` user, who could neither accept nor dismiss them. `suggest-match-text` (owner of
+the link's account, 10 s, counted under `preview-rule`'s limit, not persisted in the query cache)
+gives the rule editor an AI match text; it answers an empty text, never an error, when AI is off or
+the call fails, and the SPA (not the server) skips it for readonly users and offline. The SPA
+suggestion query is invalidated after every successful write (`invalidateAfterWrite`; a read sent as
+a POST, `preview-rule` and `claim-setup-token`, opts out with `meta: { skipInvalidate: true }`); analytics `appImportSuggestionAccept`, `appImportSuggestionDismiss`,
 `appImportRuleAiMatchUsed`. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
 `repo/`, and `api/` with 32 routes under `/api/v1/import/` (`create-source`,

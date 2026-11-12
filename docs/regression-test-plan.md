@@ -992,7 +992,16 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       fills the empty fields of the suggestion's transactions: with no other import
       matching it closes with "Updated <n> transactions"; otherwise it asks "Also apply
       to all your imports?". Save is disabled offline and when neither a category nor a
-      payee is set.
+      payee is set. The category picker lists only categories of the suggestion's kind
+      (expense or income).
+- [ ] Suggested rule retry 📱: when Save created the rule but the accept failed (an error
+      toast), Cancel, reopen the row and Save again: Import rules shows ONE rule for it, and an
+      edited match on the retry is saved into that same rule.
+- [ ] A readonly (lapsed trial) user sees no Suggested rules section and no suggestions in
+      the Inbox badge. 📱
+- [ ] Offline, on a device that never loaded the suggestions, the Inbox shows the offline
+      notice rather than loading forever. 📱
+- [ ] In the rule prompt after an edit, tapping "Create rule" twice quickly creates one rule. 📱
 - [ ] Suggestion creation (server with `ECONUMO_AI_DSN`): an Apple Pay tap at a merchant with
       no matching rule, whose category or payee stays empty, adds a Suggested rules row to the
       Inbox within about a minute; with no AI configured, none appears. 📱

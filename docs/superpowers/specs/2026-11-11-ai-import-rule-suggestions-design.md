@@ -195,7 +195,7 @@ match text, the category and the payee. The user may change anything, as in toda
 1. creates the rule (`create-rule`);
 2. accepts the suggestion: `POST /api/v1/import/accept-suggestion {id, ruleId}` fills the
    rule's category and payee into the **empty** fields of the suggestion's pending transactions
-   and marks it `accepted`. This is its own apply path, not `apply-rule`: `apply-rule` skips any
+   and deletes it (no `accepted` row is kept). This is its own apply path, not `apply-rule`: `apply-rule` skips any
    row the user touched (`edited()`), which would skip a row whose payee was filled by hand and
    whose category is still empty. A field the user set is never overwritten. A transaction the
    saved rule no longer matches (the user edited the match text), or whose type the rule's
