@@ -532,3 +532,51 @@ func TestSuggestJobsForOneOwnerRunOneAtATime(t *testing.T) {
 		t.Fatalf("calls = %d, want 1: the second job reuses the first one's suggestion", c.calls)
 	}
 }
+
+func TestSuggestIgnoresOpenSuggestionWithArchivedCategory(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		hideFirst bool
+	}{{"before the AI call", false}, {"after the AI call", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			h, c, facts := suggestSetup(t)
+			if tc.hideFirst {
+				h.withRepo(&vanishingRepo{Repository: h.repo, hideFirst: true})
+				h.wireSuggest(c, facts)
+			}
+			h.mapCard(t, "Apple Card")
+			coffee := h.category(t, userA, "Coffee")
+			cafe := h.category(t, userA, "Cafe")
+			coffeeID := vo.MustParseId(coffee)
+			old := &model.ImportSuggestion{
+				ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BLUE BOTTLE",
+				CategoryID: &coffeeID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+			}
+			if err := h.repo.InsertSuggestion(context.Background(), old); err != nil {
+				t.Fatal(err)
+			}
+			uA := vo.MustParseId(userA)
+			for i := range h.entities.categories[uA] {
+				if h.entities.categories[uA][i].ID == coffee {
+					h.entities.categories[uA][i].Archived = true
+				}
+			}
+			c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cafe + `"}}}`
+			ingest(t, h, tap)
+			if len(c.calls) != 1 {
+				t.Fatalf("calls = %d", len(c.calls))
+			}
+			for _, s := range openSuggestions(t, h, userA) {
+				if s.ID == old.ID && len(s.LinkIDs) != 0 {
+					t.Fatalf("the row joined a suggestion with an archived category: %+v", s)
+				}
+				if s.ID != old.ID && (s.CategoryID == nil || s.CategoryID.String() != cafe || len(s.LinkIDs) != 1) {
+					t.Fatalf("new suggestion = %+v", s)
+				}
+			}
+			if items := suggestionList(t, h, userA); len(items) != 1 || items[0].CategoryId != cafe {
+				t.Fatalf("list = %+v", items)
+			}
+		})
+	}
+}

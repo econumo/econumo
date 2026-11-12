@@ -412,3 +412,21 @@ func TestSuggestionListKeepsOnlyRowsOfStoredType(t *testing.T) {
 		t.Fatalf("an expense suggestion must not offer income rows: %+v", items)
 	}
 }
+
+func TestAcceptSkipsRowsOfAnotherType(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	s, links := seedSuggestion(t, h, c, "", py)
+	h.setTx(t, links[0].TransactionID, "type", "1")
+	rule := h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", PayeeID: py})
+	res, err := h.svc.AcceptSuggestion(context.Background(), vo.MustParseId(userA), model.AcceptImportSuggestionRequest{Id: s.ID.String(), RuleId: rule})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Updated != 0 {
+		t.Fatalf("updated = %d", res.Updated)
+	}
+	if tx, _ := h.txns.GetByID(context.Background(), *links[0].TransactionID); tx.PayeeID != nil {
+		t.Fatalf("an income row took an expense suggestion's payee: %+v", tx)
+	}
+}

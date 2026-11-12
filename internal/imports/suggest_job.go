@@ -135,6 +135,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	if err != nil {
 		return err
 	}
+	open = vocab.liveOpen(open)
 	covered := map[vo.Id][]vo.Id{}
 	var rest []suggestRow
 	for _, r := range rows {
@@ -200,26 +201,31 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		if err != nil {
 			return err
 		}
-		fresh, joinIdx := mergeIntoOpen(groups, groupMissing, open, vocab.income)
-		joins := make(map[vo.Id][]vo.Id, len(joinIdx))
-		for id, idx := range joinIdx {
-			for _, i := range idx {
-				joins[id] = append(joins[id], groups[i].LinkIDs...)
+		rest, parts := mergeIntoOpen(groups, groupMissing, vocab.liveOpen(open), vocab.income)
+		joins := make(map[vo.Id][]vo.Id, len(parts))
+		for id, ps := range parts {
+			for _, p := range ps {
+				joins[id] = append(joins[id], p.links...)
 			}
 		}
 		gone, err := s.addSuggestionLinks(ctx, joins)
 		if err != nil {
 			return err
 		}
-		// A suggestion deleted between the re-read and the join: its groups
-		// open suggestions of their own.
+		// A suggestion deleted between the re-read and the join: its rows open
+		// suggestions under their own group's classification.
 		for _, id := range gone {
-			fresh = append(fresh, joinIdx[id]...)
+			for _, p := range parts[id] {
+				rest[p.group] = append(rest[p.group], p.links...)
+			}
 		}
-		sort.Ints(fresh)
 		now := s.clk.Now().UTC()
-		for _, i := range fresh {
+		for i, links := range rest {
+			if len(links) == 0 {
+				continue
+			}
 			g := groups[i]
+			g.LinkIDs = links
 			g.UserID, g.CreatedAt, g.UpdatedAt = owner, now, now
 			if err := s.repo.InsertSuggestion(ctx, &g); err != nil {
 				return err

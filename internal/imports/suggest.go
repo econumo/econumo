@@ -33,6 +33,8 @@ type suggestVocabulary struct {
 	Categories []model.ImportNamed
 	Payees     []model.ImportNamed
 	income     map[vo.Id]bool
+	// every active category and payee, the payees beyond the prompt's cap too
+	active map[vo.Id]bool
 }
 
 type validSuggestion struct {
@@ -50,16 +52,46 @@ type suggestReplyRow struct {
 }
 
 func newSuggestVocabulary(categories, payees []model.ImportNamed) suggestVocabulary {
-	if len(payees) > maxSuggestPayees {
-		payees = payees[:maxSuggestPayees]
-	}
-	v := suggestVocabulary{Categories: categories, Payees: payees, income: map[vo.Id]bool{}}
+	v := suggestVocabulary{Categories: categories, income: map[vo.Id]bool{}, active: map[vo.Id]bool{}}
 	for _, c := range categories {
-		if id, err := vo.ParseId(c.ID); err == nil && c.Income {
+		id, err := vo.ParseId(c.ID)
+		if err != nil {
+			continue
+		}
+		v.active[id] = true
+		if c.Income {
 			v.income[id] = true
 		}
 	}
+	for _, p := range payees {
+		if id, err := vo.ParseId(p.ID); err == nil {
+			v.active[id] = true
+		}
+	}
+	if len(payees) > maxSuggestPayees {
+		payees = payees[:maxSuggestPayees]
+	}
+	v.Payees = payees
 	return v
+}
+
+// liveOpen drops the fields of open suggestions whose category or payee the
+// owner has since archived or deleted, and the suggestions left with none:
+// the list read hides such a suggestion, so rows joined to it would be lost.
+func (v suggestVocabulary) liveOpen(open []model.ImportSuggestion) []model.ImportSuggestion {
+	out := make([]model.ImportSuggestion, 0, len(open))
+	for _, o := range open {
+		if o.CategoryID != nil && !v.active[*o.CategoryID] {
+			o.CategoryID = nil
+		}
+		if o.PayeeID != nil && !v.active[*o.PayeeID] {
+			o.PayeeID = nil
+		}
+		if o.CategoryID != nil || o.PayeeID != nil {
+			out = append(out, o)
+		}
+	}
+	return out
 }
 
 func (v suggestVocabulary) hasCategory(id string) (vo.Id, bool) {
@@ -215,10 +247,10 @@ func groupRows(valid []validSuggestion) []model.ImportSuggestion {
 	return groups
 }
 
-// groupRowsMissing also returns, parallel to the groups, which fields any
-// of a group's rows lack, so mergeIntoOpen joins a group only to a
-// suggestion that fills one of them.
-func groupRowsMissing(valid []validSuggestion) ([]model.ImportSuggestion, []missingFields) {
+// groupRowsMissing also returns, parallel to each group's LinkIDs, which
+// fields each row lacks, so mergeIntoOpen joins a row only to a suggestion
+// that fills one of them.
+func groupRowsMissing(valid []validSuggestion) ([]model.ImportSuggestion, [][]missingFields) {
 	type bucket struct {
 		field, text string
 		rows        []validSuggestion
@@ -237,15 +269,14 @@ func groupRowsMissing(valid []validSuggestion) ([]model.ImportSuggestion, []miss
 		b.rows = append(b.rows, s)
 	}
 	out := make([]model.ImportSuggestion, 0, len(order))
-	missing := make([]missingFields, 0, len(order))
+	missing := make([][]missingFields, 0, len(order))
 	for _, k := range order {
 		b := buckets[k]
-		var m missingFields
+		m := make([]missingFields, 0, len(b.rows))
 		count := map[string]int{}
 		for _, s := range b.rows {
 			count[idPtrKey(s.CategoryID)+"\x00"+idPtrKey(s.PayeeID)]++
-			m.Category = m.Category || s.Row.Missing.Category
-			m.Payee = m.Payee || s.Row.Missing.Payee
+			m = append(m, s.Row.Missing)
 		}
 		missing = append(missing, m)
 		best := b.rows[0]
@@ -274,16 +305,24 @@ func sortedOldestFirst(open []model.ImportSuggestion) []model.ImportSuggestion {
 	return sorted
 }
 
-// groupMissing is parallel to groups (see groupRowsMissing). A group joins
-// the oldest open suggestion of its type whose rule ("contains <open text>")
-// would match it and that fills a field the group's rows lack; joins maps
-// that suggestion's id to the indexes of the groups joining it.
-func mergeIntoOpen(groups []model.ImportSuggestion, groupMissing []missingFields, open []model.ImportSuggestion, income map[vo.Id]bool) (fresh []int, joins map[vo.Id][]int) {
-	joins = map[vo.Id][]int{}
+// joinPart is the rows of one group that join one open suggestion.
+type joinPart struct {
+	group int
+	links []vo.Id
+}
+
+// groupMissing is parallel to groups (see groupRowsMissing). Each row joins
+// the oldest open suggestion of its group's type whose rule ("contains <open
+// text>") would match the group and that fills a field the row lacks; rest
+// keeps, per group, the rows no open suggestion takes, still under the
+// group's own classification.
+func mergeIntoOpen(groups []model.ImportSuggestion, groupMissing [][]missingFields, open []model.ImportSuggestion, income map[vo.Id]bool) (rest [][]vo.Id, joins map[vo.Id][]joinPart) {
+	joins = map[vo.Id][]joinPart{}
+	rest = make([][]vo.Id, len(groups))
 	sorted := sortedOldestFirst(open)
 	for i, g := range groups {
 		gt := strings.ToLower(g.MatchText)
-		joined := false
+		var candidates []model.ImportSuggestion
 		for _, o := range sorted {
 			if o.Type != g.Type || o.MatchField != g.MatchField || !strings.Contains(gt, strings.ToLower(o.MatchText)) {
 				continue
@@ -291,18 +330,31 @@ func mergeIntoOpen(groups []model.ImportSuggestion, groupMissing []missingFields
 			if o.CategoryID != nil && !categoryFits(*o.CategoryID, income, g.Type) {
 				continue
 			}
-			if !groupMissing[i].filledBy(o) {
-				continue
-			}
-			joins[o.ID] = append(joins[o.ID], i)
-			joined = true
-			break
+			candidates = append(candidates, o)
 		}
-		if !joined {
-			fresh = append(fresh, i)
+		parts := map[vo.Id]int{}
+		for r, link := range g.LinkIDs {
+			joined := false
+			for _, o := range candidates {
+				if !groupMissing[i][r].filledBy(o) {
+					continue
+				}
+				k, ok := parts[o.ID]
+				if !ok {
+					k = len(joins[o.ID])
+					parts[o.ID] = k
+					joins[o.ID] = append(joins[o.ID], joinPart{group: i})
+				}
+				joins[o.ID][k].links = append(joins[o.ID][k].links, link)
+				joined = true
+				break
+			}
+			if !joined {
+				rest[i] = append(rest[i], link)
+			}
 		}
 	}
-	return fresh, joins
+	return rest, joins
 }
 
 func openFor(row suggestRow, open []model.ImportSuggestion, income map[vo.Id]bool) (vo.Id, bool) {

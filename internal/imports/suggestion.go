@@ -235,7 +235,7 @@ func (s *Service) AcceptSuggestion(ctx context.Context, userID vo.Id, req model.
 		if err != nil {
 			return nil, err
 		}
-		if live == nil || (rule.SourceID != nil && *rule.SourceID != l.SourceID) || !matchRule(*rule, linkEvent(l)) {
+		if live == nil || live.Type != sg.Type || (rule.SourceID != nil && *rule.SourceID != l.SourceID) || !matchRule(*rule, linkEvent(l)) {
 			continue
 		}
 		next := model.ImportClassification{CategoryID: live.CategoryID, PayeeID: live.PayeeID, TagID: live.TagID, LabelIDs: live.LabelIDs}
