@@ -104,13 +104,13 @@ func (s *Service) coveredCategories(ctx context.Context, budgetID vo.Id) (map[st
 }
 
 // detectDebts asks the AI which of the user's active own expense categories
-// repay a loan and creates a debt, not set up and paid monthly, for each one it
-// names. A category a debt of the budget already covers is never asked about.
-// The payment is the category's plan when planned is set (a category without a
-// plan above zero is not asked about), else the median of its paid months in the history
-// (fewer than two: not asked about), in the category's element currency. A
-// category whose currency cannot be read, or that the debt feature refuses, is
-// skipped. An unusable reply creates nothing.
+// repay a loan and creates a debt, not set up and paid monthly, for each one
+// it names. A category a debt of the budget already covers is never asked
+// about. The payment is the category's plan when planned is set (a category
+// without a plan above zero is not asked about), else the median of its paid
+// months in the history (fewer than two: not asked about), in the category's
+// element currency. A category whose currency cannot be read, or that the
+// debt feature refuses, is skipped. An unusable reply creates nothing.
 func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts promptFacts, planned map[string]vo.DecimalNumber) error {
 	if loc, err := time.LoadLocation(facts.Timezone); err == nil && facts.Timezone != "" {
 		ctx = reqctx.WithLocation(ctx, loc)

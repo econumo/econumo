@@ -27,7 +27,7 @@ func (e *onbEnv) answer(debts string) {
 type debtRow struct {
 	name, budget, category, currency, payment, schedule string
 	rules                                               int
-	narrowed                                            int
+	ruleFilters                                         int
 	setUp                                               bool
 }
 
@@ -44,7 +44,7 @@ func (e *onbEnv) debts() []debtRow {
 	var out []debtRow
 	for rows.Next() {
 		var d debtRow
-		if err := rows.Scan(&d.name, &d.budget, &d.category, &d.currency, &d.payment, &d.schedule, &d.setUp, &d.rules, &d.narrowed); err != nil {
+		if err := rows.Scan(&d.name, &d.budget, &d.category, &d.currency, &d.payment, &d.schedule, &d.setUp, &d.rules, &d.ruleFilters); err != nil {
 			e.t.Fatal(err)
 		}
 		d.payment = vo.NewDecimal(d.payment).String()
@@ -145,8 +145,8 @@ func TestFinishImport_CreatesADebtFromALoanCategory(t *testing.T) {
 		t.Fatalf("debt = %+v", d)
 	}
 	// created in the import's budget with one whole-category rule
-	if d.budget != budget || d.rules != 1 || d.narrowed != 0 {
-		t.Fatalf("debt budget %s (want %s), rules %d, narrowed %d", d.budget, budget, d.rules, d.narrowed)
+	if d.budget != budget || d.rules != 1 || d.ruleFilters != 0 {
+		t.Fatalf("debt budget %s (want %s), rules %d, rule filters %d", d.budget, budget, d.rules, d.ruleFilters)
 	}
 	if want := e.str(`SELECT currency_id FROM budgets WHERE id = ?`, budget); d.currency != want {
 		t.Fatalf("debt currency %s, budget %s", d.currency, want)
