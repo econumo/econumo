@@ -590,10 +590,10 @@
       "difference": "Difference",
       "form": {
         "title": "Reconcile with a statement",
-        "hint": "Enter the principal still owed on your lender's statement. From its date on Econumo counts from it, and the payments due up to it count as paid; interest since the last payment is charged at the next payment, for a full period.",
+        "hint": "Enter the principal still owed from your loan statement. From the statement's date, Econumo counts from this balance, and every payment due before it counts as paid. Interest since the last payment is added to the next one.",
         "balance": "Statement balance",
         "date": "Statement date",
-        "date_range": "Pick a date after the start date and no later than today. To change what was borrowed, correct Amount borrowed in Settings.",
+        "date_range": "Pick a date after the loan's start and no later than today. To change the amount borrowed, edit it in Settings.",
         "save": "Reconcile"
       },
       "history": "Statements",
@@ -608,11 +608,11 @@
       "delete": "Delete the statement of {date}",
       "delete_confirm": {
         "title": "Delete this statement?",
-        "question": "Payments after its date are counted from the earlier balance again."
+        "question": "Payments after this statement's date will be counted from the previous balance again."
       },
       "delete_paid_off_confirm": {
         "title": "Delete the paid-off mark?",
-        "question": "The debt reopens: what is owed is counted again from the earlier entries and the payments."
+        "question": "The debt will be open again: what's owed is recalculated from the earlier statements and payments."
       }
     },
     "review": {
@@ -632,7 +632,7 @@
       "planned_extra": "Planned extra",
       "danger": {
         "title": "Danger zone",
-        "paid_off": "Sets the balance to 0 and stops the countdown.",
+        "paid_off": "Sets what's owed to 0 and stops counting down the payments.",
         "delete": "Removes the debt. Its payments go back to the category."
       },
       "tab": {

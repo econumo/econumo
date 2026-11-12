@@ -589,7 +589,7 @@ it('the Danger zone tab holds Mark as paid off and Delete, each with what it doe
   const paidOff = within(zone).getByRole('button', { name: 'Mark as paid off' })
   const del = within(zone).getByRole('button', { name: 'Delete' })
   expect(paidOff.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(zone).toHaveTextContent('Sets the balance to 0 and stops the countdown.')
+  expect(zone).toHaveTextContent("Sets what's owed to 0 and stops counting down the payments.")
   expect(zone).toHaveTextContent('Removes the debt. Its payments go back to the category.')
 })
 
@@ -601,7 +601,7 @@ it('Danger zone hides Mark as paid off while not set up', async () => {
   const zone = await openDanger(user)
 
   expect(within(zone).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
-  expect(within(zone).queryByText('Sets the balance to 0 and stops the countdown.')).toBeNull()
+  expect(within(zone).queryByText("Sets what's owed to 0 and stops counting down the payments.")).toBeNull()
   expect(within(zone).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
 })
 
@@ -1063,7 +1063,7 @@ it('the statement date defaults to today and must not precede the start date', a
   await user.click(within(panel).getByRole('button', { name: 'Statement date' }))
   await user.click(await screen.findByRole('button', { name: /November 2nd, 2026/ }))
   await user.click(within(panel).getByRole('button', { name: 'Reconcile' }))
-  expect(await within(panel).findByText(/Pick a date after the start date/)).toBeInTheDocument()
+  expect(await within(panel).findByText(/Pick a date after the loan's start/)).toBeInTheDocument()
   expect(called).toBe(false)
 })
 
@@ -1108,7 +1108,7 @@ it('a statement of 0 reads "Marked paid off", shows no difference, and deleting 
   expect(within(row).getAllByRole('cell')[3]).toHaveTextContent('—')
   await user.click(within(row).getByRole('button', { name: 'Delete the statement of Oct 31, 2026' }))
   const dialog = await screen.findByRole('dialog', { name: 'Delete the paid-off mark?' })
-  expect(dialog).toHaveTextContent('The debt reopens')
+  expect(dialog).toHaveTextContent('The debt will be open again')
 })
 
 it('the Overview has no history of terms: the Balance tab holds the history', async () => {
