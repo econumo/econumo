@@ -43,13 +43,9 @@ category). The loan is the household's, and the household's place in Econumo is 
 - **Schema changes go in a NEW migration** (both engines, same version, numbered above every
   migration on `main` and above `20261110000500`), never by editing `20261110000500`: the `dev`
   image published from this branch has already applied it to real databases. The new migration
-  converts existing debts: each debt's budget is its owner's default budget (the `budget` user
-  option when it names a budget the owner can plan in, else the first budget they own, else the
-  first they are an accepted admin/user of); its category/payee/tag/label become its single rule;
-  a debt whose owner has no such budget is deleted with its snapshots and splits (it showed in no
-  budget). Its `debts_payments` rows keep their splits under the new key. *My call* on the budget
-  choice and the delete. A debt row (`ElementDebt`) in any other budget than the chosen one is
-  deleted with its plans and comments.
+  **deletes every existing debt** (agreed: the feature is unreleased), with its snapshots and
+  splits, and every budget element row of type `ElementDebt` with its plans and comments, then
+  reshapes the tables. Nothing is converted.
 - New `debts_rules`: `id`, `debt_id` (FK, cascade), `category_id`, `payee_id`, `tag_id`, `label_id`
   (FKs NO ACTION as today, so the coded in-use check refuses a delete), `created_at`; indexed by
   debt and by each classification. A debt is created with at least one rule and an edit may not
