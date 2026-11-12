@@ -285,6 +285,18 @@ describe('Connect your accounts', () => {
     Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true })
   })
 
+  it('Complete setup on a reopened skipped Connect marks it done and skips the rest', async () => {
+    const state = serve('import,categories,accounts,!apple_wallet')
+    const user = userEvent.setup()
+    renderPage()
+    await heading('Plan this month')
+    await user.click(screen.getByRole('button', { name: /Connect/ }))
+    await connectHeading()
+    await user.click(screen.getByRole('button', { name: 'Complete setup' }))
+    expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
+    expect(state.stored.split(',').sort()).toEqual(['!apple_wallet', '!plan', 'accounts', 'categories', 'connect', 'import'])
+  })
+
   it('a failed completion shows the error and stays; Finish then lands on the Wallet settings', async () => {
     const state = serve('import,categories,accounts,plan')
     state.failComplete = true

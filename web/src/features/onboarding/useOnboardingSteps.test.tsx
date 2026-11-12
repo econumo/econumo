@@ -6,6 +6,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { listenForInstallPrompt, resetInstallStateForTests } from '@/features/install/installPrompt'
 import * as metrics from '@/lib/metrics'
+import { useServerConfig } from '@/lib/appConfig'
 import { markOnboardingStepDone } from './onboardingProgress'
 import { HOME_SCREEN_KEY, setHomeScreenState } from './homeScreen'
 import { connectOptions, useOnboardingSteps } from './useOnboardingSteps'
@@ -96,6 +97,17 @@ it('offers Connect on any device when the server serves an MCP address or Simple
   expect(connectOptions()).toEqual(['simplefin'])
   Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true })
   expect(connectOptions()).toEqual([])
+})
+
+it('adds Connect when the server config arrives after the steps were built', async () => {
+  const { result } = setup(userWith(''))
+  await waitFor(() => expect(result.current.ready).toBe(true))
+  expect(keys(result.current.steps)).not.toContain('connect')
+  act(() => {
+    window.econumoConfig = { MCP_URL: `/mcp` }
+    useServerConfig.setState((s) => ({ revision: s.revision + 1 }))
+  })
+  expect(keys(result.current.steps).at(-1)).toBe('connect')
 })
 
 it('reads an answer given to the former Apple Wallet step as the Connect answer', async () => {

@@ -107,7 +107,9 @@ export function OnboardingPage() {
     if (to) landing.current = to
     else trackEvent(METRICS.ONBOARDING_SKIP, { step: active })
     try {
-      await Promise.all(steps.filter((s) => s.state === 'open').map((s) => (s.key === doneKey ? markDone(s.key) : skip(s.key))))
+      // a skipped step reopened and finished from counts as done too
+      const answered = steps.filter((s) => s.state === 'open' || (s.key === doneKey && s.state === 'skipped'))
+      await Promise.all(answered.map((s) => (s.key === doneKey ? markDone(s.key) : skip(s.key))))
       autoCompleted.current = true
       await finish()
     } catch {
