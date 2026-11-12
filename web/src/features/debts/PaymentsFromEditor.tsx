@@ -14,6 +14,8 @@ export interface Option {
   id: Id
   name: string
   icon?: string
+  /** what the chip says once picked, when the list's heading is not there to say it ("Anna's Mortgage") */
+  chosenName?: string
 }
 
 /** options under a heading; a group with no heading lists its options bare */
@@ -70,7 +72,7 @@ function SlotPicker({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const selected = groups.flatMap((g) => g.options).find((o) => o.id === value)
-  const shown = selected?.name ?? placeholder
+  const shown = selected?.chosenName ?? selected?.name ?? placeholder
   if (readOnly) {
     return (
       <span className={cn('inline-flex max-w-full items-center gap-1', !selected && 'text-muted-foreground')}>

@@ -79,6 +79,7 @@ export function RulesReadOnly({ rules, canEdit = false }: { rules: DebtRuleDto[]
  */
 export function RulesEditor({ value, onChange, options, initialRules = [], lockedCategoryId, error, readOnly = false }: RulesEditorProps) {
   const { t } = useTranslation()
+  const { data: user } = useUserData()
   // a line's React key follows its draft through edits (each edit is a new
   // object), so removing a line never hands its picker to the next one
   const lineKeys = useRef(new WeakMap<RuleDraft, number>())
@@ -107,12 +108,19 @@ export function RulesEditor({ value, onChange, options, initialRules = [], locke
     null
 
   const choicesFor = (rule: PaymentsFrom): PaymentsFromChoices => {
-    const groups: (OptionGroup & { userId: Id })[] = participants.map((p) => ({ userId: p.userId, heading: p.name, options: p.categories.map(categoryOption) }))
+    // a partner's category names its owner on the chip
+    const owned = (option: Option, ownerId: Id, ownerName: string): Option =>
+      !user || ownerId === user.id ? option : { ...option, chosenName: t('debts.rules.owned_category', { owner: ownerName, category: option.name }) }
+    const groups: (OptionGroup & { userId: Id })[] = participants.map((p) => ({
+      userId: p.userId,
+      heading: p.name,
+      options: p.categories.map((c) => owned(categoryOption(c), p.userId, p.name)),
+    }))
     const chosen = rule.categoryId
     if (chosen && !groups.some((g) => g.options.some((o) => o.id === chosen))) {
       const known = stored((r) => r.categoryId === chosen)
       if (known) {
-        const option = categoryOption({ id: chosen, name: known.categoryName, icon: known.categoryIcon })
+        const option = owned(categoryOption({ id: chosen, name: known.categoryName, icon: known.categoryIcon }), known.ownerUserId, known.ownerName)
         const group = groups.find((g) => g.userId === known.ownerUserId)
         if (group) {
           group.options = [...group.options, option]

@@ -92,6 +92,17 @@ it('the category picker lists the caller\'s categories first, then the partner\'
   expect(within(sheet).getByText('Mortgage').compareDocumentPosition(anna) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
 })
 
+it('a partner\'s category reads with its owner\'s name on the chip, the caller\'s without', async () => {
+  const user = userEvent.setup()
+  renderEditor({ initial: [food, { categoryId: 'cat-mortgage', payeeId: null, tagId: null, labelId: null }] })
+
+  expect(screen.getByRole('button', { name: 'Category: Food' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: "Category: Anna's Mortgage" })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: "Category: Anna's Mortgage" }))
+  // the list keeps the bare name under the owner's heading
+  expect(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Mortgage')).toBeInTheDocument()
+})
+
 it('the payee picker lists the chosen category owner\'s payees', async () => {
   const user = userEvent.setup()
   const changes = renderEditor({ initial: [{ ...food, payeeId: 'p1' }] })
@@ -135,7 +146,7 @@ it('removing a line keeps the other lines\' state with them', async () => {
   renderEditor({ initial: [food, { categoryId: 'cat-mortgage', payeeId: 'p-bank', tagId: null, labelId: null }] })
 
   await user.click(screen.getAllByRole('button', { name: 'Remove this category' })[0])
-  expect(screen.getByRole('button', { name: 'Category: Mortgage' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: "Category: Anna's Mortgage" })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Payee (optional): Bank' })).toBeInTheDocument()
 })
 
@@ -155,7 +166,7 @@ it('a rule naming classifications missing from the options shows them by name an
   const kept: RuleDraft = { id: 'r-gone', categoryId: 'cat-old', payeeId: 'p-gone', tagId: null, labelId: null }
   const changes = renderEditor({ initial: [kept], initialRules: [gone] })
 
-  expect(screen.getByRole('button', { name: 'Category: Old loan' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: "Category: Max's Old loan" })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Payee (optional): Old bank' })).toBeInTheDocument()
 
   // another rule added leaves this one as it was
