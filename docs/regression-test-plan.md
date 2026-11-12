@@ -2633,7 +2633,8 @@ running these.
 - [ ] 📱 **Danger zone tab** (the fourth tab): a red-tinted card lists Mark as
       paid off (set-up debts that are not paid off only; "Sets the balance to
       0 and stops the countdown.") and Delete ("Removes the debt. Its payments
-      go back to the category."), each a row with its description and button,
+      count in their categories again."; its confirm says the debt leaves its
+      budget and the payments themselves are not changed), each a row with its description and button,
       both asking first; on a phone the button sits under its description.
       Neither is on the Settings tab. After Mark as paid off the screen
       returns to the Overview; changing only the payment in Settings then

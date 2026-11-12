@@ -564,7 +564,7 @@
       },
       "delete_confirm": {
         "title": "¿Eliminar esta deuda?",
-        "question": "La deuda desaparece de tus presupuestos. Tus pagos no cambian."
+        "question": "La deuda desaparece del presupuesto. Los pagos en sí no cambian."
       },
       "removal_confirm": {
         "title": "¿Eliminar importes planificados y comentarios?",
@@ -647,7 +647,7 @@
       "danger": {
         "title": "Zona de peligro",
         "paid_off": "Pone el saldo a 0 y detiene la cuenta atrás.",
-        "delete": "Elimina la deuda. Sus pagos vuelven a la categoría."
+        "delete": "Elimina la deuda. Sus pagos vuelven a contar en sus categorías."
       },
       "tab": {
         "overview": "Resumen",

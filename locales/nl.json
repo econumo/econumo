@@ -564,7 +564,7 @@
       },
       "delete_confirm": {
         "title": "Deze schuld verwijderen?",
-        "question": "De schuld verdwijnt uit uw budgetten. Uw betalingen blijven ongemoeid."
+        "question": "De schuld verdwijnt uit het budget. De betalingen zelf blijven ongewijzigd."
       },
       "removal_confirm": {
         "title": "Geplande bedragen en opmerkingen verwijderen?",
@@ -647,7 +647,7 @@
       "danger": {
         "title": "Gevarenzone",
         "paid_off": "Zet het saldo op 0 en stopt het aftellen.",
-        "delete": "Verwijdert de schuld. De betalingen gaan terug naar de categorie."
+        "delete": "Verwijdert de schuld. De betalingen tellen weer mee in hun categorieën."
       },
       "tab": {
         "overview": "Overzicht",

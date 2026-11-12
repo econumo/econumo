@@ -564,7 +564,7 @@
       },
       "delete_confirm": {
         "title": "Diese Schuld löschen?",
-        "question": "Die Schuld verschwindet aus Ihren Budgets. Ihre Zahlungen bleiben unberührt."
+        "question": "Die Schuld verschwindet aus dem Budget. Die Zahlungen selbst bleiben unverändert."
       },
       "removal_confirm": {
         "title": "Planbeträge und Kommentare löschen?",
@@ -647,7 +647,7 @@
       "danger": {
         "title": "Gefahrenbereich",
         "paid_off": "Setzt den Saldo auf 0 und beendet den Countdown.",
-        "delete": "Entfernt die Schuld. Die Zahlungen zählen wieder zur Kategorie."
+        "delete": "Entfernt die Schuld. Die Zahlungen zählen wieder in ihren Kategorien."
       },
       "tab": {
         "overview": "Übersicht",

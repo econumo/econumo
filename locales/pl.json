@@ -564,7 +564,7 @@
       },
       "delete_confirm": {
         "title": "Usunąć ten dług?",
-        "question": "Dług zniknie z Twoich budżetów. Twoje płatności nie zostaną zmienione."
+        "question": "Dług zniknie z budżetu. Same płatności nie zostaną zmienione."
       },
       "removal_confirm": {
         "title": "Usunąć zaplanowane kwoty i komentarze?",
@@ -647,7 +647,7 @@
       "danger": {
         "title": "Strefa zagrożenia",
         "paid_off": "Ustawia saldo na 0 i zatrzymuje odliczanie.",
-        "delete": "Usuwa dług. Jego płatności wracają do kategorii."
+        "delete": "Usuwa dług. Jego płatności znów liczą się w swoich kategoriach."
       },
       "tab": {
         "overview": "Przegląd",

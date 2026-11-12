@@ -564,7 +564,7 @@
       },
       "delete_confirm": {
         "title": "Delete this debt?",
-        "question": "The debt leaves your budgets. Your payments are not touched."
+        "question": "The debt leaves its budget. The payments themselves are not changed."
       },
       "removal_confirm": {
         "title": "Delete plans and comments?",
@@ -647,7 +647,7 @@
       "danger": {
         "title": "Danger zone",
         "paid_off": "Sets what's owed to 0 and stops counting down the payments.",
-        "delete": "Removes the debt. Its payments go back to the category."
+        "delete": "Removes the debt. Its payments count in their categories again."
       },
       "tab": {
         "overview": "Overview",

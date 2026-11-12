@@ -564,7 +564,7 @@
       },
       "delete_confirm": {
         "title": "Eliminar esta dívida?",
-        "question": "A dívida sai dos seus orçamentos. Os seus pagamentos não são alterados."
+        "question": "A dívida sai do orçamento. Os pagamentos em si não são alterados."
       },
       "removal_confirm": {
         "title": "Eliminar montantes planeados e comentários?",
@@ -647,7 +647,7 @@
       "danger": {
         "title": "Zona de perigo",
         "paid_off": "Põe o saldo a 0 e para a contagem decrescente.",
-        "delete": "Remove a dívida. Os pagamentos voltam à categoria."
+        "delete": "Remove a dívida. Os pagamentos voltam a contar nas respetivas categorias."
       },
       "tab": {
         "overview": "Resumo",

@@ -657,7 +657,7 @@ it('the Danger zone tab holds Mark as paid off and Delete, each with what it doe
   const del = within(zone).getByRole('button', { name: 'Delete' })
   expect(paidOff.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(zone).toHaveTextContent("Sets what's owed to 0 and stops counting down the payments.")
-  expect(zone).toHaveTextContent('Removes the debt. Its payments go back to the category.')
+  expect(zone).toHaveTextContent('Removes the debt. Its payments count in their categories again.')
 })
 
 it('Danger zone hides Mark as paid off while not set up', async () => {
@@ -829,7 +829,10 @@ it('a delete the server accepts closes the screen without a second question', as
   renderScreen()
   await openScreen()
   await user.click(within(await openDanger(user)).getByRole('button', { name: 'Delete' }))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Delete this debt?' })).getByRole('button', { name: 'Delete' }))
+  const confirm = await screen.findByRole('dialog', { name: 'Delete this debt?' })
+  // a debt has one budget, and the payments, a partner's included, stay as they are
+  expect(confirm).toHaveTextContent('The debt leaves its budget. The payments themselves are not changed.')
+  await user.click(within(confirm).getByRole('button', { name: 'Delete' }))
 
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBeNull())
   expect(bodies).toEqual([{ id: 'd1' }])
