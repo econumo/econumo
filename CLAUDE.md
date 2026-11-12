@@ -2197,7 +2197,9 @@ data unreadable. Most are also asserted by the test suite.
   (`amountBorrowed - currentBalance`, never below 0) of the amount borrowed, in the debt currency
   (a paid-off debt keeps "N of N paid" and "Owed now X" under it; no payoff date shows), a
   "Loan" card (borrowed: the amount and the start date, payment, repeats, next payment,
-  loan ends, Paid extra (`extraPaid`, 0 included), Planned extra (the forecast summary's
+  Last payment: the forecast summary's `payoffDate`, so planned extras move it, with
+  "contract: <last payment date>" beside it when they differ, the contract's date until the
+  forecast answers; Paid extra (`extraPaid`, 0 included), Planned extra (the forecast summary's
   `extraPlanned`, shown only once the forecast has answered); no interest (that is the payments
   table's), owed now, left to pay or currency row; a debt not set up shows payment, its start
   date or "From the first payment", and currency).

@@ -206,12 +206,13 @@ it('the Loan card holds the loan\'s figures and nothing to edit', async () => {
   const figure = (label: string) => within(loan).getByText(label).nextElementSibling
   // the forecast fails here: Planned extra waits for it rather than show a plan-free number
   expect(within(loan).getAllByRole('term').map((dt) => dt.textContent)).toEqual([
-    'Borrowed', 'Payment', 'Next payment', 'Loan ends', 'Paid extra',
+    'Borrowed', 'Payment', 'Next payment', 'Last payment', 'Paid extra',
   ])
   expect(figure('Borrowed')).toHaveTextContent('1,200.00 $ · Oct 1, 2026')
   expect(figure('Payment')).toHaveTextContent('100.00 $ · Monthly')
   expect(figure('Next payment')).toHaveTextContent('Dec 5, 2026')
-  expect(figure('Loan ends')).toHaveTextContent('Jul 5, 2050')
+  // without the forecast it is the contract's last payment date, with nothing beside it
+  expect(figure('Last payment')).toHaveTextContent(/^Jul 5, 2050$/)
   expect(figure('Paid extra')).toHaveTextContent('40.00 $')
   // what is owed is the hero's, interest the payments table's; the currency shows on every amount
   for (const gone of ['Owed now', 'Left to pay', 'Currency', 'Start date', 'Overpaid', 'Planned overpayment', 'Planned extra']) {
@@ -266,9 +267,11 @@ describe('the Overview follows the budget\'s plans', () => {
     expect(top).not.toHaveTextContent('Paid off by')
     const loan = screen.getByRole('region', { name: 'Loan' })
     expect(within(loan).getAllByRole('term').map((dt) => dt.textContent)).toEqual([
-      'Borrowed', 'Payment', 'Next payment', 'Loan ends', 'Paid extra', 'Planned extra',
+      'Borrowed', 'Payment', 'Next payment', 'Last payment', 'Paid extra', 'Planned extra',
     ])
     expect(within(loan).getByText('Planned extra').nextElementSibling).toHaveTextContent('3,000.00 $')
+    // the plans pay the loan off before the contract's date, which stays beside it
+    expect(within(loan).getByText('Last payment').nextElementSibling).toHaveTextContent('Feb 5, 2043contract: Jul 5, 2050')
     expect(within(loan).queryByText('Planned overpayment')).toBeNull()
     // loading the figures is no view of the future payments
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FORECAST_VIEW)

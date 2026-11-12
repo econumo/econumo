@@ -478,6 +478,8 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
   const forecast = useDebtForecast(item.id, budgetId, canForecast)
   const summary = canForecast ? forecast.data : undefined
   const left = summary ? summary.paymentsLeft : item.paymentsLeft
+  // the last payment the plans lead to; the contract's date until the forecast answers
+  const lastPayment = summary?.payoffDate || item.lastPaymentDate
   const amount = (value: string) => money(value, item)
   const currency = currencies?.find((c) => c.id === item.currencyId)
   const schedule = t(`recurring.schedule.${item.schedule}`)
@@ -537,7 +539,13 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
           {setUp ? (
             <>
               <Figure label={t('debts.review.next_payment')}>{item.nextDueDate ? debtDay(item.nextDueDate, lang) : '—'}</Figure>
-              <Figure label={t('debts.review.loan_ends')}>{item.lastPaymentDate ? debtDay(item.lastPaymentDate, lang) : '—'}</Figure>
+              <Figure label={t('debts.review.last_payment')}>
+                {lastPayment ? debtDay(lastPayment, lang) : '—'}
+                {/* planned extras pay the loan off before the contract's last payment date */}
+                {lastPayment && item.lastPaymentDate && lastPayment !== item.lastPaymentDate ? (
+                  <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.review.last_payment_contract', { date: debtDay(item.lastPaymentDate, lang) })}</span>
+                ) : null}
+              </Figure>
             </>
           ) : null}
           {/* a set-up debt's start is in Borrowed */}

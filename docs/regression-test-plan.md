@@ -2623,9 +2623,12 @@ account in USD, before running these.
       or "Paid off by" line. Once paid off: "Paid off", "N of N paid" with no
       amounts, and "Owed now 0.00 $".
       The "Loan" card (no Edit button) lists Borrowed (the amount · the start
-      date), payment · repeats, next payment, loan ends, Paid extra and Planned
-      extra (no interest, Owed now, Left to pay or Currency row; interest
-      stays in the payments table). Paid extra is what the payments went
+      date), payment · repeats, next payment, Last payment, Paid extra and
+      Planned extra (no interest, Owed now, Left to pay or Currency row; interest
+      stays in the payments table). Last payment is where the budget's plans
+      end the loan: plan an extra payment and it moves earlier, with
+      "contract: <date>" beside it in grey; with no extras it is the
+      contract's last payment date alone. Paid extra is what the payments went
       above the regular payment, due window by due window, up to today: a
       payment of 1,000 against a payment of 450 shows 550.00; a second
       payment of 300 in a window already paid 450 shows 300.00; a payment on
