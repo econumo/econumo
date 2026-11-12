@@ -16520,6 +16520,10 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.ImportSuggestionTransactionResult"
                     }
+                },
+                "type": {
+                    "description": "\"income\" | \"expense\", of every listed transaction",
+                    "type": "string"
                 }
             }
         },

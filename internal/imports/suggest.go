@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode/utf8"
+	"unicode"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -149,11 +149,22 @@ func matchTextIn(link model.ImportTransactionLink, raw string) (field, normalize
 		field, text = model.ImportRuleMatchFieldDescription, link.ExternalDescription
 	}
 	normalized = NormalizeText(raw)
-	// A 1-2 character text would let openFor's reuse swallow unrelated rows.
-	if utf8.RuneCountInString(normalized) < 3 || !strings.Contains(strings.ToLower(NormalizeText(text)), strings.ToLower(normalized)) {
+	// A text with under three letters or digits ("SQ *") would let openFor's
+	// reuse swallow unrelated rows.
+	if alnumCount(normalized) < 3 || !strings.Contains(strings.ToLower(NormalizeText(text)), strings.ToLower(normalized)) {
 		return "", "", false
 	}
 	return field, normalized, true
+}
+
+func alnumCount(s string) int {
+	n := 0
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			n++
+		}
+	}
+	return n
 }
 
 func validateReply(rows []suggestRow, reply map[string]suggestReplyRow, v suggestVocabulary) []validSuggestion {

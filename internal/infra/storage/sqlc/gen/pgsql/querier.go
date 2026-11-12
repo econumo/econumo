@@ -532,7 +532,6 @@ type Querier interface {
 	UpdateImportRule(ctx context.Context, arg UpdateImportRuleParams) error
 	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
 	UpdateImportSource(ctx context.Context, arg UpdateImportSourceParams) error
-	UpdateImportSuggestionStatus(ctx context.Context, arg UpdateImportSuggestionStatusParams) error
 	UpdateImportTransactionLink(ctx context.Context, arg UpdateImportTransactionLinkParams) error
 	// See the sqlite sibling: the confirm-email-change path writes only the email
 	// columns, under the generation read after the row lock.

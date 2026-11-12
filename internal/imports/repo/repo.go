@@ -51,7 +51,6 @@ type (
 	suggestionLinkRow         = sqlitegen.ImportSuggestionLink
 	insertSuggestionParams    = sqlitegen.InsertImportSuggestionParams
 	insertSuggestionLinkPs    = sqlitegen.InsertImportSuggestionLinkParams
-	suggestionStatusParams    = sqlitegen.UpdateImportSuggestionStatusParams
 )
 
 // querier method signatures mirror the sqlc-generated ones exactly, including
@@ -113,7 +112,6 @@ type querier interface {
 	ListOpenImportSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionRow, error)
 	ListImportSuggestionLinks(ctx context.Context, db backend.DBTX, suggestionID string) ([]suggestionLinkRow, error)
 	ListOpenImportSuggestionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionLinkRow, error)
-	UpdateImportSuggestionStatus(ctx context.Context, db backend.DBTX, p suggestionStatusParams) error
 	DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error
 	ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
 	ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)

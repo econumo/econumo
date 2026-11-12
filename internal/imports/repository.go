@@ -2,7 +2,6 @@ package imports
 
 import (
 	"context"
-	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -71,7 +70,6 @@ type Repository interface {
 	AddSuggestionLinks(ctx context.Context, suggestionID vo.Id, linkIDs []vo.Id) error
 	GetSuggestion(ctx context.Context, id vo.Id) (*model.ImportSuggestion, error)
 	ListOpenSuggestionsByUser(ctx context.Context, userID vo.Id) ([]model.ImportSuggestion, error)
-	SetSuggestionStatus(ctx context.Context, id vo.Id, status string, at time.Time) error
 	DeleteSuggestion(ctx context.Context, id vo.Id) error
 	// scope=all for preview/apply
 	ListLinksByUser(ctx context.Context, userID vo.Id) ([]model.ImportTransactionLink, error)

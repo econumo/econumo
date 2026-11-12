@@ -708,7 +708,6 @@ type Querier interface {
 	UpdateImportRule(ctx context.Context, arg UpdateImportRuleParams) error
 	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
 	UpdateImportSource(ctx context.Context, arg UpdateImportSourceParams) error
-	UpdateImportSuggestionStatus(ctx context.Context, arg UpdateImportSuggestionStatusParams) error
 	UpdateImportTransactionLink(ctx context.Context, arg UpdateImportTransactionLinkParams) error
 	// The confirm-email-change path writes ONLY the email columns, under the
 	// generation it read after taking the user row's lock, so a stale aggregate can

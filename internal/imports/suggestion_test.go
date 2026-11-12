@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/econumo/econumo/internal/imports"
+	importsrepo "github.com/econumo/econumo/internal/imports/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -73,7 +75,7 @@ func TestSuggestionListOwnerOnly(t *testing.T) {
 	cat := h.category(t, userA, "Coffee")
 	s, links := seedSuggestion(t, h, c, cat, "")
 	items := suggestionList(t, h, userA)
-	if len(items) != 1 || items[0].Id != s.ID.String() || items[0].CategoryId != cat || items[0].PayeeId != "" || items[0].MatchField != model.ImportRuleMatchFieldExternalPayee {
+	if len(items) != 1 || items[0].Id != s.ID.String() || items[0].CategoryId != cat || items[0].PayeeId != "" || items[0].MatchField != model.ImportRuleMatchFieldExternalPayee || items[0].Type != "expense" {
 		t.Fatalf("owner list = %+v", items)
 	}
 	tx := items[0].Transactions
@@ -134,6 +136,51 @@ func TestSuggestionListDropsArchivedCategory(t *testing.T) {
 	}
 }
 
+func TestSuggestionListDropsArchivedPayee(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	py := h.payee(t, userA, "Blue Bottle Coffee")
+	seedSuggestion(t, h, c, "", py)
+	uA := vo.MustParseId(userA)
+	for i := range h.entities.payees[uA] {
+		h.entities.payees[uA][i].Archived = true
+	}
+	if items := suggestionList(t, h, userA); len(items) != 0 {
+		t.Fatalf("list = %+v", items)
+	}
+}
+
+func TestSuggestionListLooksUpEachAccountOnce(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	seedSuggestion(t, h, c, cat, "", "Blue Bottle", "Blue Bottle Mission", "Blue Bottle Hayes")
+	h.accounts.ownerCalls = 0
+	if items := suggestionList(t, h, userA); len(items) != 1 || len(items[0].Transactions) != 3 {
+		t.Fatalf("list = %+v", items)
+	}
+	if h.accounts.ownerCalls != 1 {
+		t.Fatalf("AccountOwner calls = %d, want 1", h.accounts.ownerCalls)
+	}
+}
+
+// failingDelete makes the lazy cleanup fail.
+type failingDelete struct{ *importsrepo.Repo }
+
+func (failingDelete) DeleteSuggestion(context.Context, vo.Id) error { return errors.New("db down") }
+
+func TestSuggestionListCleanupFailureStillAnswers(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	other := h.category(t, userA, "Food")
+	_, links := seedSuggestion(t, h, c, cat, "")
+	h.setTx(t, links[0].TransactionID, "category_id", other)
+	h.svc = imports.NewService(failingDelete{h.repo}, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+	h.wireSuggest(c, facts)
+	res, err := h.svc.GetSuggestionList(context.Background(), vo.MustParseId(userA))
+	if err != nil || len(res.Items) != 0 {
+		t.Fatalf("list = %+v, %v", res, err)
+	}
+}
+
 func TestAcceptFillsOnlyEmptyFields(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	cat := h.category(t, userA, "Coffee")
@@ -157,10 +204,8 @@ func TestAcceptFillsOnlyEmptyFields(t *testing.T) {
 	if tx.CategoryID == nil || tx.CategoryID.String() != cat || tx.PayeeID == nil || tx.PayeeID.String() != mine {
 		t.Fatalf("transaction = %+v", tx)
 	}
-	got, err := h.repo.GetSuggestion(context.Background(), s.ID)
-	if err != nil || got.Status != model.ImportSuggestionStatusAccepted {
-		t.Fatalf("suggestion = %+v, %v", got, err)
-	}
+	_, err = h.repo.GetSuggestion(context.Background(), s.ID)
+	wantNotFound(t, err)
 	link, err := h.repo.GetLink(context.Background(), links[0].ID)
 	if err != nil {
 		t.Fatal(err)

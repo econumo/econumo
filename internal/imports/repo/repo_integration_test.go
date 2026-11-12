@@ -711,16 +711,6 @@ func TestSuggestionRepoRoundTrip(t *testing.T) {
 	if n := countLinks(); n != 2 {
 		t.Errorf("link rows after ledger delete = %d, want 2", n)
 	}
-	later := fixedTime.Add(time.Hour)
-	if err := repo.SetSuggestionStatus(ctx, s.ID, model.ImportSuggestionStatusAccepted, later); err != nil {
-		t.Fatal(err)
-	}
-	if list, _ := repo.ListOpenSuggestionsByUser(ctx, s.UserID); len(list) != 0 {
-		t.Errorf("accepted still open: %+v", list)
-	}
-	if got, _ := repo.GetSuggestion(ctx, s.ID); got.Status != model.ImportSuggestionStatusAccepted || !got.UpdatedAt.Equal(later) {
-		t.Errorf("status/updated = %+v", got)
-	}
 	if err := repo.DeleteSuggestion(ctx, s.ID); err != nil {
 		t.Fatal(err)
 	}

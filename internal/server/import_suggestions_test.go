@@ -100,7 +100,7 @@ func TestImportSuggestionsEndToEnd(t *testing.T) {
 		t.Fatalf("accept: %d %v", status, res)
 	}
 	var got string
-	if err := db.Raw.QueryRow(db.Rebind(`SELECT COALESCE(category_id, '') FROM transactions WHERE id = ?`), txID).Scan(&got); err != nil || got != cat {
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COALESCE(CAST(category_id AS TEXT), '') FROM transactions WHERE id = ?`), txID).Scan(&got); err != nil || got != cat {
 		t.Fatalf("category = %q, %v", got, err)
 	}
 	status, list = do(full, http.MethodGet, "/api/v1/import/get-suggestion-list", nil)

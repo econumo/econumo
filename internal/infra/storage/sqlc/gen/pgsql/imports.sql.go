@@ -1650,21 +1650,6 @@ func (q *Queries) UpdateImportSource(ctx context.Context, arg UpdateImportSource
 	return err
 }
 
-const updateImportSuggestionStatus = `-- name: UpdateImportSuggestionStatus :exec
-UPDATE import_suggestions SET status = $1, updated_at = $2 WHERE id = $3
-`
-
-type UpdateImportSuggestionStatusParams struct {
-	Status    string
-	UpdatedAt time.Time
-	ID        string
-}
-
-func (q *Queries) UpdateImportSuggestionStatus(ctx context.Context, arg UpdateImportSuggestionStatusParams) error {
-	_, err := q.db.ExecContext(ctx, updateImportSuggestionStatus, arg.Status, arg.UpdatedAt, arg.ID)
-	return err
-}
-
 const updateImportTransactionLink = `-- name: UpdateImportTransactionLink :exec
 UPDATE import_transaction_links
 SET run_id = $1, transaction_id = $2, status = $3, external_amount = $4, external_currency = $5, applied_category_id = $6, applied_payee_id = $7, applied_tag_id = $8, applied_rule_id = $9

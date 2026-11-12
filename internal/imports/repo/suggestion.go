@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -85,10 +84,6 @@ func (r *Repo) ListOpenSuggestionsByUser(ctx context.Context, userID vo.Id) ([]m
 		out = append(out, *s)
 	}
 	return out, nil
-}
-
-func (r *Repo) SetSuggestionStatus(ctx context.Context, id vo.Id, status string, at time.Time) error {
-	return r.q.UpdateImportSuggestionStatus(ctx, r.db(ctx), suggestionStatusParams{Status: status, UpdatedAt: at, ID: id.String()})
 }
 
 func (r *Repo) DeleteSuggestion(ctx context.Context, id vo.Id) error {

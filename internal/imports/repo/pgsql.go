@@ -380,10 +380,6 @@ func (pgsqlQuerier) ListOpenImportSuggestionLinksByUser(ctx context.Context, db 
 	return out, nil
 }
 
-func (pgsqlQuerier) UpdateImportSuggestionStatus(ctx context.Context, db backend.DBTX, p suggestionStatusParams) error {
-	return pgsqlgen.New(db).UpdateImportSuggestionStatus(ctx, pgsqlgen.UpdateImportSuggestionStatusParams(p))
-}
-
 func (pgsqlQuerier) DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteImportSuggestion(ctx, id)
 }

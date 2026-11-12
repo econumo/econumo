@@ -239,10 +239,6 @@ func (sqliteQuerier) ListOpenImportSuggestionLinksByUser(ctx context.Context, db
 	return sqlitegen.New(db).ListOpenImportSuggestionLinksByUser(ctx, userID)
 }
 
-func (sqliteQuerier) UpdateImportSuggestionStatus(ctx context.Context, db backend.DBTX, p suggestionStatusParams) error {
-	return sqlitegen.New(db).UpdateImportSuggestionStatus(ctx, p)
-}
-
 func (sqliteQuerier) DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteImportSuggestion(ctx, id)
 }

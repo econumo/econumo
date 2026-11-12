@@ -294,8 +294,5 @@ JOIN import_suggestions s ON s.id = sl.suggestion_id
 WHERE s.user_id = $1 AND s.status = 'open'
 ORDER BY sl.suggestion_id, sl.link_id;
 
--- name: UpdateImportSuggestionStatus :exec
-UPDATE import_suggestions SET status = $1, updated_at = $2 WHERE id = $3;
-
 -- name: DeleteImportSuggestion :exec
 DELETE FROM import_suggestions WHERE id = $1;

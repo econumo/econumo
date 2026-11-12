@@ -48,52 +48,63 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 			income[id] = true
 		}
 	}
-	ownPayees, err := idSet(payees, nil)
+	activePayees, err := idSet(activeNamed(payees), nil)
 	if err != nil {
 		return nil, err
 	}
-	codes := map[vo.Id]string{}
+	look := &suggestionLookup{codes: map[vo.Id]string{}, owned: map[vo.Id]bool{}}
 	for i := range open {
 		sg := &open[i]
 		if sg.CategoryID != nil && !activeCategories[*sg.CategoryID] {
 			sg.CategoryID = nil
 		}
-		if sg.PayeeID != nil && !ownPayees[*sg.PayeeID] {
+		if sg.PayeeID != nil && !activePayees[*sg.PayeeID] {
 			sg.PayeeID = nil
 		}
 		var rows []model.ImportSuggestionTransactionResult
+		var txType string
 		if sg.CategoryID != nil || sg.PayeeID != nil {
-			rows, err = s.pendingSuggestionRows(ctx, userID, sg, income, codes)
+			rows, txType, err = s.pendingSuggestionRows(ctx, userID, sg, income, look)
 			if err != nil {
 				return nil, err
 			}
 		}
 		if len(rows) == 0 {
+			// Best effort: the suggestion is hidden either way, and a later read
+			// retries the delete.
 			if err := s.repo.DeleteSuggestion(ctx, sg.ID); err != nil {
-				return nil, err
+				slog.Warn("import suggestion cleanup failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
 			}
 			continue
 		}
 		out.Items = append(out.Items, model.ImportSuggestionResult{
-			Id: sg.ID.String(), MatchField: sg.MatchField, MatchText: sg.MatchText,
+			Id: sg.ID.String(), MatchField: sg.MatchField, MatchText: sg.MatchText, Type: txType,
 			CategoryId: idString(sg.CategoryID), PayeeId: idString(sg.PayeeID), Transactions: rows,
 		})
 	}
 	return out, nil
 }
 
+// suggestionLookup caches per-account answers within one list read: many
+// suggestions share a handful of accounts.
+type suggestionLookup struct {
+	codes map[vo.Id]string
+	owned map[vo.Id]bool
+}
+
 // pendingSuggestionRows keeps a transaction while it is live, on an account
-// the caller owns, and still empty in a field the suggestion would set.
-func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, income map[vo.Id]bool, codes map[vo.Id]string) ([]model.ImportSuggestionTransactionResult, error) {
+// the caller owns, and still empty in a field the suggestion would set. The
+// type is the newest kept row's; grouping gives a suggestion one type.
+func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *model.ImportSuggestion, income map[vo.Id]bool, look *suggestionLookup) ([]model.ImportSuggestionTransactionResult, string, error) {
 	type pending struct {
 		live *model.Transaction
 		link *model.ImportTransactionLink
 	}
 	var kept []pending
 	for _, linkID := range sg.LinkIDs {
-		l, live, err := s.suggestionTarget(ctx, userID, linkID)
+		l, live, err := s.suggestionTargetCached(ctx, userID, linkID, look.owned)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		if live == nil {
 			continue
@@ -104,6 +115,9 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 			kept = append(kept, pending{live: live, link: l})
 		}
 	}
+	if len(kept) == 0 {
+		return nil, "", nil
+	}
 	sort.SliceStable(kept, func(i, j int) bool {
 		a, b := kept[i].live, kept[j].live
 		if !a.SpentAt.Equal(b.SpentAt) {
@@ -113,26 +127,30 @@ func (s *Service) pendingSuggestionRows(ctx context.Context, userID vo.Id, sg *m
 	})
 	rows := make([]model.ImportSuggestionTransactionResult, 0, len(kept))
 	for _, p := range kept {
-		code, ok := codes[p.live.AccountID]
+		code, ok := look.codes[p.live.AccountID]
 		if !ok {
 			var err error
 			if code, err = s.accounts.AccountCurrencyCode(ctx, p.live.AccountID); err != nil {
-				return nil, err
+				return nil, "", err
 			}
-			codes[p.live.AccountID] = code
+			look.codes[p.live.AccountID] = code
 		}
 		rows = append(rows, model.ImportSuggestionTransactionResult{
-			TransactionId: p.live.ID.String(), AccountId: p.live.AccountID.String(), Amount: p.live.Amount,
+			TransactionId: p.live.ID.String(), AccountId: p.live.AccountID.String(), Amount: vo.NewDecimal(p.live.Amount).String(),
 			Currency: code, Date: p.live.SpentAt.Format(datetime.Layout), ExternalPayee: p.link.ExternalPayee,
 		})
 	}
-	return rows, nil
+	return rows, kept[0].live.Type.Alias(), nil
 }
 
 // suggestionTarget resolves a suggestion's link to its live transaction, or
 // nil when the row no longer qualifies (gone, unlinked, a transfer, or on an
 // account the caller does not own).
 func (s *Service) suggestionTarget(ctx context.Context, userID, linkID vo.Id) (*model.ImportTransactionLink, *model.Transaction, error) {
+	return s.suggestionTargetCached(ctx, userID, linkID, nil)
+}
+
+func (s *Service) suggestionTargetCached(ctx context.Context, userID, linkID vo.Id, owned map[vo.Id]bool) (*model.ImportTransactionLink, *model.Transaction, error) {
 	l, err := s.repo.GetLink(ctx, linkID)
 	if isNotFoundErr(err) {
 		return nil, nil, nil
@@ -153,9 +171,17 @@ func (s *Service) suggestionTarget(ctx context.Context, userID, linkID vo.Id) (*
 	if live.Type == model.TransactionTypeTransfer {
 		return nil, nil, nil
 	}
-	owned, err := s.ownsAccount(ctx, userID, live.AccountID)
-	if err != nil || !owned {
-		return nil, nil, err
+	isOwner, cached := owned[live.AccountID]
+	if !cached {
+		if isOwner, err = s.ownsAccount(ctx, userID, live.AccountID); err != nil {
+			return nil, nil, err
+		}
+		if owned != nil {
+			owned[live.AccountID] = isOwner
+		}
+	}
+	if !isOwner {
+		return nil, nil, nil
 	}
 	return l, live, nil
 }
@@ -241,9 +267,12 @@ func (s *Service) AcceptSuggestion(ctx context.Context, userID vo.Id, req model.
 		out.Updated++
 	}
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.repo.SetSuggestionStatus(ctx, sg.ID, model.ImportSuggestionStatusAccepted, s.clk.Now().UTC()); err != nil {
+		if err := s.repo.DeleteSuggestion(ctx, sg.ID); err != nil {
 			return err
 		}
+		// The key is already recorded by the first row's write; a failure before
+		// this point releases it so the accept can be sent again. Pinned with the
+		// delete, it stays once the suggestion is gone and a retry is a replay.
 		reqctx.PinIdempotency(ctx)
 		return nil
 	})
@@ -272,7 +301,7 @@ const suggestMatchTextTimeout = 10 * time.Second
 
 const suggestMatchTextSystem = `You help write a bank-import rule. Given one imported transaction as JSON, reply with JSON only: {"matchText":"..."}.
 matchText is the shortest substring of the payee (or of the description when the payee is empty) that identifies the merchant, copied exactly from the text, with no store numbers, dates or reference codes.
-Reply in the user's language context where relevant; the timezone is only for reading dates.`
+Copy the merchant part character for character as it appears in the text; never translate, expand or correct it. The language and timezone only help you recognise local merchant names and date formats.`
 
 // SuggestMatchText answers empty, never an error, when the AI is off or
 // fails: the dialog then simply falls back to the raw payee. A text the row

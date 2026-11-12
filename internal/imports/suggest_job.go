@@ -44,7 +44,7 @@ func (s *Service) startSuggestJob(links []model.ImportTransactionLink) {
 	run(func() {
 		defer func() {
 			if r := recover(); r != nil {
-				slog.Error("import suggest panicked", "err_type", fmt.Sprintf("%T", r))
+				slog.Warn("import suggest failed", "err_type", fmt.Sprintf("%T", r))
 			}
 		}()
 		ctx, cancel := context.WithTimeout(context.Background(), suggestTimeout)
@@ -91,11 +91,22 @@ func (s *Service) suggest(ctx context.Context, links []model.ImportTransactionLi
 		byOwner[owner] = append(byOwner[owner], suggestCandidate{link: l, tx: t})
 	}
 	for _, owner := range owners {
-		if err := s.suggestForOwner(ctx, owner, byOwner[owner]); err != nil {
-			slog.Warn("import suggest failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", err))
-		}
+		s.suggestForOwnerSafe(ctx, owner, byOwner[owner])
 	}
 	return nil
+}
+
+// suggestForOwnerSafe keeps one owner's error or panic from reaching the
+// others. Never the error text, the prompt or the reply: they can carry names.
+func (s *Service) suggestForOwnerSafe(ctx context.Context, owner vo.Id, candidates []suggestCandidate) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Warn("import suggest failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", r))
+		}
+	}()
+	if err := s.suggestForOwner(ctx, owner, candidates); err != nil {
+		slog.Warn("import suggest failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", err))
+	}
 }
 
 func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates []suggestCandidate) error {

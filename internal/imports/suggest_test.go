@@ -139,6 +139,8 @@ func TestMatchTextInRejectsShort(t *testing.T) {
 	require.False(t, ok)
 	_, _, ok = matchTextIn(l, "COS")
 	require.True(t, ok)
+	_, _, ok = matchTextIn(sLink("SQ *COFFEE", "", time.Time{}), "SQ *")
+	require.False(t, ok)
 }
 
 func TestMergeIntoOpenDoesNotJoinWhenGroupTextShorter(t *testing.T) {

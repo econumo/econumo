@@ -324,3 +324,42 @@ func TestSuggestNoCompleterDoesNothing(t *testing.T) {
 		t.Fatal("no AI, no suggestions")
 	}
 }
+
+// panicFor panics for one owner and replies for every other.
+type panicFor struct {
+	fakeCompleter
+	owner string
+}
+
+func (c *panicFor) Complete(ctx context.Context, userID, system, user string) (string, error) {
+	if userID == c.owner {
+		c.calls = append(c.calls, completerCall{userID: userID})
+		panic("boom")
+	}
+	return c.fakeCompleter.Complete(ctx, userID, system, user)
+}
+
+func TestSuggestPanicForOneOwnerStillServesOthers(t *testing.T) {
+	h, p := bankHarness(t)
+	h.accounts.shared = true
+	kaffee := h.category(t, userB, "Kaffee")
+	h.category(t, userA, "Coffee")
+	c := &panicFor{owner: userA, fakeCompleter: fakeCompleter{reply: `{"rows":{"0":{"matchText":"Shop B","categoryId":"` + kaffee + `"}}}`}}
+	h.wireSuggest(c, fakeFacts{userA: {language: "en"}, userB: {language: "de"}})
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-2", AccountID: acctB})
+	p.accounts = append(p.accounts, model.ExternalAccount{ID: "ACT-2", Name: "Shared", Currency: "USD", Balance: "1", OrgName: "Big Bank"})
+	p.txs = []model.ExternalTransaction{
+		extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "Shop A"),
+		extTx("ACT-2", "b", "-6.00", now.AddDate(0, 0, -1).Unix(), "Shop B"),
+	}
+	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.calls) != 2 || c.calls[0].userID != userA || c.calls[1].userID != userB {
+		t.Fatalf("calls = %+v", c.calls)
+	}
+	if got := openSuggestions(t, h, userB); len(got) != 1 {
+		t.Fatalf("owner B suggestions = %+v", got)
+	}
+}

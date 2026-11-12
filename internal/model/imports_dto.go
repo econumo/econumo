@@ -640,6 +640,7 @@ type ImportSuggestionResult struct {
 	Id           string                              `json:"id"`
 	MatchField   string                              `json:"matchField"`
 	MatchText    string                              `json:"matchText"`
+	Type         string                              `json:"type"` // "income" | "expense", of every listed transaction
 	CategoryId   string                              `json:"categoryId"`
 	PayeeId      string                              `json:"payeeId"`
 	Transactions []ImportSuggestionTransactionResult `json:"transactions"` // newest first

@@ -40,6 +40,7 @@ func (c clock) Now() time.Time { return c.t }
 type fakeAccounts struct {
 	deleted, shared bool
 	db              *dbtest.DB
+	ownerCalls      int
 }
 
 // AccountListForUser reports acct1 (acctB for userB) with its revision as the caller's
@@ -59,6 +60,7 @@ func (f *fakeAccounts) AccountListForUser(ctx context.Context, userID vo.Id) ([]
 }
 
 func (f *fakeAccounts) AccountOwner(_ context.Context, id vo.Id) (vo.Id, error) {
+	f.ownerCalls++
 	switch id.String() {
 	case acct1:
 		return vo.MustParseId(userA), nil
