@@ -166,6 +166,7 @@ export const METRICS = {
   IMPORT_ACCOUNT_UNMAP: 'appImportAccountUnmap',
   IMPORT_QUEUE_IMPORT: 'appImportQueueImport',
   IMPORT_QUEUE_SKIP: 'appImportQueueSkip',
+  IMPORT_REIMPORT: 'appImportReimport',
   IMPORT_SHORTCUT_DOWNLOAD: 'appImportShortcutDownload',
   IMPORT_SHORTCUT_CONFIGURE: 'appImportShortcutConfigure',
   IMPORT_SHORTCUT_TEST: 'appImportShortcutTest',

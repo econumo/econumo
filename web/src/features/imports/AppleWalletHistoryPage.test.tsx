@@ -105,13 +105,14 @@ it('a skipped tap explains it was not added and offers to create the transaction
   expect(useUiStore.getState().transactionModal).toMatchObject({ importQueued: { linkId: '4', type: 'expense', accountId: 'a1', payee: 'Parking' } })
 })
 
-it('a tap whose transaction was deleted says so, with nothing to create', async () => {
+it('a tap whose transaction was deleted says so and offers to import it again, not to create it', async () => {
   renderPage({ 0: { items: [row('2', { externalPayee: 'Refunded', transactionId: '' })], hasMore: false } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: /Refunded/ }))
   const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getByText('This transaction was imported and deleted later.')).toBeInTheDocument()
+  expect(within(dialog).getByText(/^This transaction was imported and deleted later\. Import it again/)).toBeInTheDocument()
   expect(within(dialog).queryByRole('button', { name: 'Create transaction' })).toBeNull()
+  expect(within(dialog).getByRole('button', { name: 'Import again' })).toBeEnabled()
 })
 
 it('offline with nothing loaded on this device, the tap history says so instead of an empty or loading page', async () => {

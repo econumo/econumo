@@ -46,3 +46,18 @@
 == get-queued-event-list-final GET /api/v1/import/get-queued-event-list [owner] -> 200
 {"success":true,"message":"","data":{"queued":[{"linkId":"0d000000-0000-0000-0000-000000000003","sourceId":"0c000000-0000-0000-0000-000000000001","externalAccountId":"eurocard","accountId":"","payee":"Bakery","amount":"3","currency":"EUR","type":"expense","postedAt":"<datetime>","reason":"unmapped"}],"skipped":[],"failed":[]}}
 
+== err:reimport-link-live POST /api/v1/import/reimport-link [owner] -> 400
+{"success":false,"message":"This transaction was not deleted.","code":400,"errors":{}}
+
+== err:reimport-link-foreign POST /api/v1/import/reimport-link [guest] -> 400
+{"success":false,"message":"Import link not found","code":0,"errors":{}}
+
+== err:reimport-link-blank POST /api/v1/import/reimport-link [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"linkId":["This value should not be blank."]}}
+
+== reimport-link POST /api/v1/import/reimport-link [owner] -> 200
+{"success":true,"message":"","data":{"status":"created","eventId":"0e000000-0000-0000-0000-000000000003"}}
+
+== get-run-after-reimport GET /api/v1/import/get-run?id=0c000000-0000-0000-0000-000000000003 [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"0c000000-0000-0000-0000-000000000003","sourceId":"0c000000-0000-0000-0000-000000000002","provider":"simplefin","status":"completed","trigger":"manual","importedCount":2,"matchedCount":0,"amountsUpdatedCount":0,"queuedCount":0,"skippedCount":0,"failedCount":0,"errors":[],"startedAt":"<datetime>","finishedAt":"<datetime>"},"links":[{"id":"<generated-uuid>","externalAccountId":"ACT-CHK","externalTransactionId":"seed-1","transactionId":"d0000000-0000-0000-0000-000000000002","status":"linked","externalPayee":"Seeded Shop","externalAmount":"12.5","externalCurrency":"USD","externalPostedAt":"<datetime>"},{"id":"0d000000-0000-0000-0000-000000000005","externalAccountId":"ACT-CHK","externalTransactionId":"seed-0","transactionId":"<generated-uuid>","status":"linked","externalPayee":"Deleted Later","externalAmount":"3","externalCurrency":"USD","externalPostedAt":"<datetime>"}]}}
+

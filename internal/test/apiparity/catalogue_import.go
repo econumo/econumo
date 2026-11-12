@@ -144,6 +144,17 @@ func init() {
 			{Label: "err:discard-event-gone", Method: "POST", Path: "/api/v1/import/discard-event", Auth: "owner",
 				Body: map[string]any{"eventId": ImportEventFailed}},
 			{Label: "get-queued-event-list-final", Method: "GET", Path: "/api/v1/import/get-queued-event-list", Auth: "owner"},
+			// A bank row whose transaction was deleted: it is never re-imported
+			// on its own; reimport-link runs its stored event again on request.
+			{Label: "err:reimport-link-live", Method: "POST", Path: "/api/v1/import/reimport-link", Auth: "owner",
+				Body: map[string]any{"linkId": ImportLinkTxn2}},
+			{Label: "err:reimport-link-foreign", Method: "POST", Path: "/api/v1/import/reimport-link", Auth: "guest",
+				Body: map[string]any{"linkId": ImportLinkGone}},
+			{Label: "err:reimport-link-blank", Method: "POST", Path: "/api/v1/import/reimport-link", Auth: "owner",
+				Body: map[string]any{"linkId": ""}},
+			{Label: "reimport-link", Method: "POST", Path: "/api/v1/import/reimport-link", Auth: "owner",
+				Body: map[string]any{"linkId": ImportLinkGone}},
+			{Label: "get-run-after-reimport", Method: "GET", Path: "/api/v1/import/get-run?id=" + ImportRunSeeded, Auth: "owner"},
 		}
 	}})
 

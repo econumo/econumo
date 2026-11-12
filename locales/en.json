@@ -848,7 +848,11 @@
       "waiting": "This transaction is waiting in the Inbox.",
       "deleted": "This transaction was imported and deleted later.",
       "create": "Create transaction",
-      "unavailable": "This transaction was imported, but it isn't available to you."
+      "unavailable": "This transaction was imported, but it isn't available to you.",
+      "account": "Account",
+      "reimport": "Import again",
+      "reimport_hint": "Import it again to add it back, or to match a transaction you entered yourself, such as a transfer.",
+      "reimported": { "created": "Imported again", "matched": "Matched to an existing transaction", "queued": "Imported again; it is waiting in the Inbox", "skipped": "Not added: a skip rule or an ignored account matched it" }
     }
   },
   "user": {
@@ -2290,6 +2294,7 @@
       "link_not_queued": "This event is not waiting for review.",
       "link_not_skipped": "This event is not skipped.",
       "event_not_failed": "This event did not fail.",
+      "link_not_deleted": "This transaction was not deleted.",
       "setup_token_rejected": "SimpleFIN rejected this setup token. It may have been used already; create a new one in SimpleFIN Bridge.",
       "provider_unavailable": "SimpleFIN could not be reached. Try again in a few minutes.",
       "sync_range_invalid": "The date range is invalid: the start must not be after the end, and the range must not exceed 400 days.",

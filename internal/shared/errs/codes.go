@@ -127,6 +127,7 @@ const (
 	CodeImportLinkNotQueued         = "import.link_not_queued"
 	CodeImportLinkNotSkipped        = "import.link_not_skipped"
 	CodeImportEventNotFailed        = "import.event_not_failed"
+	CodeImportLinkNotDeleted        = "import.link_not_deleted"
 	CodeImportSetupTokenRejected    = "import.setup_token_rejected"
 	CodeImportProviderUnavailable   = "import.provider_unavailable"
 	CodeImportSyncRangeInvalid      = "import.sync_range_invalid"
@@ -267,6 +268,7 @@ var AllCodes = []string{
 	CodeImportLinkNotQueued,
 	CodeImportLinkNotSkipped,
 	CodeImportEventNotFailed,
+	CodeImportLinkNotDeleted,
 	CodeImportSetupTokenRejected,
 	CodeImportProviderUnavailable,
 	CodeImportSyncRangeInvalid,

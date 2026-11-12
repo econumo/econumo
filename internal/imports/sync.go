@@ -144,7 +144,7 @@ func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run 
 			if parsed.Currency == "" {
 				parsed.Currency = account.Currency
 			}
-			status, amountUpdated, err := s.applyEvent(ctx, src, ev.ID, parsed, &run.ID, true, rules)
+			status, amountUpdated, err := s.applyEvent(ctx, src, ev.ID, parsed, &run.ID, true, rules, nil)
 			if err != nil {
 				return err
 			}

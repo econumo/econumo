@@ -169,3 +169,54 @@ func TestMatch_ExactAmountBeatsTip(t *testing.T) {
 		t.Fatalf("got %+v, want plain adopt of txB", got)
 	}
 }
+
+func TestMatch_AdoptsEitherLegOfATransfer(t *testing.T) {
+	// a card payment entered by hand as a transfer checking -> card; the
+	// candidate list is built per account, so each leg arrives already turned
+	// into the type and amount that account sees
+	checkingLeg := []model.ImportCandidate{{TransactionID: txA, Type: model.TransactionTypeExpense, Transfer: true, Amount: "500", SpentAt: day(0)}}
+	if got := imports.Match(event("500", day(1), "PAYMENT"), srcBank, checkingLeg, imports.DefaultMatcherConfig()); got.Kind != imports.MatchAdopt || !got.TransactionID.Equal(txA) {
+		t.Fatalf("checking leg: got %+v, want adopt txA", got)
+	}
+	cardEv := event("500", day(1), "PAYMENT THANK YOU")
+	cardEv.Type = model.TransactionTypeIncome
+	cardEv.ExternalAccountID = "visa"
+	cardLeg := []model.ImportCandidate{{TransactionID: txA, Type: model.TransactionTypeIncome, Transfer: true, Amount: "500", SpentAt: day(0),
+		// the checking leg was already adopted from the same bridge
+		Links: []model.ImportCandidateLink{{SourceID: srcBank, Provider: model.ImportProviderSimpleFIN, ExternalAccountID: "card", ExternalAmount: "-500"}}}}
+	if got := imports.Match(cardEv, srcBank, cardLeg, imports.DefaultMatcherConfig()); got.Kind != imports.MatchAdopt || !got.TransactionID.Equal(txA) {
+		t.Fatalf("card leg: got %+v, want adopt txA", got)
+	}
+	cardLeg[0].Links[0].ExternalAccountID = "VISA"
+	if got := imports.Match(cardEv, srcBank, cardLeg, imports.DefaultMatcherConfig()); got.Kind != imports.MatchCreate {
+		t.Fatalf("leg already taken by this external account: got %+v, want create", got)
+	}
+}
+
+func TestMatch_TipAdoptIgnoresTransfers(t *testing.T) {
+	cands := []model.ImportCandidate{{TransactionID: txA, Type: model.TransactionTypeExpense, Transfer: true, Amount: "40", SpentAt: day(0),
+		Links: []model.ImportCandidateLink{pushLink("40", "BLUE BOTTLE")}}}
+	if got := imports.Match(event("46", day(1), "BLUE BOTTLE COFFEE"), srcBank, cands, imports.DefaultMatcherConfig()); got.Kind != imports.MatchCreate {
+		t.Fatalf("got %+v, want create", got)
+	}
+}
+
+func TestCandidateLeg_TransferSides(t *testing.T) {
+	checking, card := vo.MustParseId("0a000000-0000-0000-0000-0000000000c1"), vo.MustParseId("0a000000-0000-0000-0000-0000000000c2")
+	recipAmount := "450"
+	tr := &model.Transaction{ID: txA, Type: model.TransactionTypeTransfer, AccountID: checking, AccountRecipID: &card, Amount: "500", AmountRecipient: &recipAmount, SpentAt: day(0)}
+	if c := imports.CandidateLeg(tr, checking); c.Type != model.TransactionTypeExpense || c.Amount != "500" || !c.Transfer {
+		t.Fatalf("source leg = %+v", c)
+	}
+	if c := imports.CandidateLeg(tr, card); c.Type != model.TransactionTypeIncome || c.Amount != "450" || !c.Transfer {
+		t.Fatalf("recipient leg = %+v", c)
+	}
+	tr.AmountRecipient = nil
+	if c := imports.CandidateLeg(tr, card); c.Amount != "500" {
+		t.Fatalf("recipient leg without its own amount = %+v", c)
+	}
+	exp := &model.Transaction{ID: txB, Type: model.TransactionTypeExpense, AccountID: checking, Amount: "7", SpentAt: day(0)}
+	if c := imports.CandidateLeg(exp, checking); c.Type != model.TransactionTypeExpense || c.Transfer {
+		t.Fatalf("expense = %+v", c)
+	}
+}

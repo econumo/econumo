@@ -848,7 +848,11 @@
       "waiting": "Ta transakcja czeka w skrzynce odbiorczej.",
       "deleted": "Ta transakcja została zaimportowana, a później usunięta.",
       "create": "Utwórz transakcję",
-      "unavailable": "Ta transakcja została zaimportowana, ale nie jest dla Ciebie dostępna."
+      "unavailable": "Ta transakcja została zaimportowana, ale nie jest dla Ciebie dostępna.",
+      "account": "Konto",
+      "reimport": "Importuj ponownie",
+      "reimport_hint": "Zaimportuj ją ponownie, aby ją przywrócić lub dopasować do transakcji wprowadzonej przez Ciebie, np. przelewu.",
+      "reimported": { "created": "Zaimportowano ponownie", "matched": "Dopasowano do istniejącej transakcji", "queued": "Zaimportowano ponownie; czeka w skrzynce odbiorczej", "skipped": "Nie dodano: pasuje reguła pomijania lub ignorowane konto" }
     }
   },
   "user": {
@@ -2290,6 +2294,7 @@
       "link_not_queued": "To zdarzenie nie czeka na sprawdzenie.",
       "link_not_skipped": "To zdarzenie nie jest pominięte.",
       "event_not_failed": "To zdarzenie nie zakończyło się błędem.",
+      "link_not_deleted": "Ta transakcja nie została usunięta.",
       "setup_token_rejected": "SimpleFIN odrzucił ten token konfiguracyjny. Mógł już zostać użyty; utwórz nowy w SimpleFIN Bridge.",
       "provider_unavailable": "Nie udało się połączyć z SimpleFIN. Spróbuj ponownie za kilka minut.",
       "sync_range_invalid": "Zakres dat jest nieprawidłowy: data początkowa nie może być późniejsza niż końcowa, a zakres nie może przekraczać 400 dni.",

@@ -78,6 +78,86 @@ func (s *Service) RetryEvent(ctx context.Context, userID vo.Id, req model.RetryI
 	return res, nil
 }
 
+// ReimportLink runs a deleted transaction's stored event through the pipeline
+// again. Deleting an imported transaction leaves its ledger row behind so a
+// later sync or a re-fired push never brings it back; this is the user's way
+// to undo that, e.g. after entering the transfer it should have matched. The
+// row keeps its run so the run's history still lists it.
+func (s *Service) ReimportLink(ctx context.Context, userID vo.Id, req model.ImportLinkActionRequest) (*model.IngestEventResult, error) {
+	var res *model.IngestEventResult
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		link, src, err := s.ownedLink(ctx, userID, req.LinkId)
+		if err != nil {
+			return err
+		}
+		if !link.IsTombstone() {
+			return &errs.ValidationError{Msg: "This transaction was not deleted", MsgCode: errs.CodeImportLinkNotDeleted}
+		}
+		if link.EventID == nil {
+			return errs.NewNotFound("Import event not found")
+		}
+		ev, err := s.repo.GetEvent(ctx, *link.EventID)
+		if err != nil {
+			return err
+		}
+		parsed, err := s.parse(ctx, src, ev)
+		if err != nil {
+			return err
+		}
+		rules, err := s.loadRules(ctx, src)
+		if err != nil {
+			return err
+		}
+		if err := s.repo.DeleteLink(ctx, link.ID); err != nil {
+			return err
+		}
+		status, _, err := s.applyEvent(ctx, src, ev.ID, parsed, link.RunID, false, rules, link)
+		if err != nil {
+			return err
+		}
+		if err := s.recountReimport(ctx, link.RunID, status); err != nil {
+			return err
+		}
+		res = &model.IngestEventResult{Status: status, EventId: ev.ID.String()}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+// recountReimport moves a reimported row's count in its run's summary to
+// what the row is now. The ledger does not record whether the deleted row
+// was created or adopted, so it is taken as created: deleting a wrongly
+// imported transaction is what leaves one to reimport.
+func (s *Service) recountReimport(ctx context.Context, runID *vo.Id, status string) error {
+	if runID == nil || status == model.ImportIngestStatusCreated {
+		return nil
+	}
+	run, err := s.repo.GetRun(ctx, *runID)
+	if err != nil {
+		if _, ok := errs.AsNotFound(err); ok {
+			return nil
+		}
+		return err
+	}
+	switch status {
+	case model.ImportIngestStatusMatched:
+		run.MatchedCount++
+	case model.ImportIngestStatusQueued:
+		run.QueuedCount++
+	case model.ImportIngestStatusSkipped:
+		run.SkippedCount++
+	default:
+		return nil
+	}
+	if run.ImportedCount > 0 {
+		run.ImportedCount--
+	}
+	return s.repo.UpdateRun(ctx, run)
+}
+
 // processEvent runs stages 0-3 for one stored event and records the outcome
 // on the event row. It returns the ingest status; only infrastructure
 // failures are errors.
@@ -93,7 +173,7 @@ func (s *Service) processEvent(ctx context.Context, src *model.ImportSource, ev 
 	}
 	// A retried event is reprocessed exactly like the original push: it never
 	// carries a run id and never corrects an already-adopted amount.
-	status, _, err := s.applyEvent(ctx, src, ev.ID, parsed, nil, false, rules)
+	status, _, err := s.applyEvent(ctx, src, ev.ID, parsed, nil, false, rules, nil)
 	if err != nil {
 		return "", err
 	}
@@ -181,7 +261,10 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 // sync run's id for a pull event; correctAmount lets a tip-adopt overwrite a
 // stale tap-time amount (a bank sync only — a push never rewrites a
 // hand-entered amount).
-func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool, rules *ruleBook) (status string, amountUpdated bool, err error) {
+//
+// prior is the ledger row a reimport replaces (nil otherwise): the new row
+// keeps its id and import time, so it stays where it was in its run.
+func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool, rules *ruleBook, prior *model.ImportTransactionLink) (status string, amountUpdated bool, err error) {
 	// The ledger stores the card name in its original case (the queue page
 	// displays it), so the dedup lookup itself is case-insensitive on the
 	// card name at the query layer (GetLinkByExternalKey) rather than being
@@ -214,6 +297,9 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 		Status: model.ImportLinkStatusQueued, ExternalPayee: ev.Payee, ExternalDescription: ev.Description,
 		ExternalAmount: ev.Amount, ExternalCurrency: optionalString(ev.Currency),
 		ExternalPostedAt: wallClock(ev.PostedAt), ImportedAt: s.clk.Now().UTC(),
+	}
+	if prior != nil {
+		link.ID, link.ImportedAt = prior.ID, prior.ImportedAt
 	}
 	r, err := s.resolve(ctx, src, ev, rules)
 	if err != nil {
@@ -248,6 +334,25 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 	return status, amountUpdated, nil
 }
 
+// candidateLeg presents t as the matched account sees it, so a transfer
+// entered by hand (paying a card from checking) matches the bank's debit on
+// one account and its credit on the other.
+func candidateLeg(t *model.Transaction, accountID vo.Id) model.ImportCandidate {
+	c := model.ImportCandidate{TransactionID: t.ID, Type: t.Type, Amount: t.Amount, SpentAt: t.SpentAt}
+	if !t.Type.IsTransfer() {
+		return c
+	}
+	c.Transfer = true
+	c.Type = model.TransactionTypeExpense
+	if t.AccountRecipID != nil && t.AccountRecipID.Equal(accountID) && !t.AccountID.Equal(accountID) {
+		c.Type = model.TransactionTypeIncome
+		if t.AmountRecipient != nil {
+			c.Amount = *t.AmountRecipient
+		}
+	}
+	return c
+}
+
 // place is stage 3: adopt an existing transaction the matcher recognizes
 // (adopted=true), else create one through the transaction feature's own use
 // case. correctAmount lets a tip-adopt overwrite the candidate's tap-time
@@ -270,7 +375,7 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 	candidates := make([]model.ImportCandidate, 0, len(txs))
 	for _, t := range txs {
 		byID[t.ID] = t
-		c := model.ImportCandidate{TransactionID: t.ID, Type: t.Type, Amount: t.Amount, SpentAt: t.SpentAt}
+		c := candidateLeg(t, r.accountID)
 		links, err := s.repo.ListLinksByTransaction(ctx, t.ID)
 		if err != nil {
 			return vo.Id{}, false, false, model.ImportClassification{}, err
@@ -285,7 +390,7 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 				provider = ls.Provider
 				providers[l.SourceID] = provider
 			}
-			c.Links = append(c.Links, model.ImportCandidateLink{SourceID: l.SourceID, Provider: provider, ExternalAmount: l.ExternalAmount, ExternalPayee: l.ExternalPayee})
+			c.Links = append(c.Links, model.ImportCandidateLink{SourceID: l.SourceID, Provider: provider, ExternalAccountID: l.ExternalAccountID, ExternalAmount: l.ExternalAmount, ExternalPayee: l.ExternalPayee})
 		}
 		candidates = append(candidates, c)
 	}

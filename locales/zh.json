@@ -848,7 +848,11 @@
       "waiting": "此交易正在收件箱中等待处理。",
       "deleted": "此交易已导入，之后被删除。",
       "create": "创建交易",
-      "unavailable": "此交易已导入，但你无法查看。"
+      "unavailable": "此交易已导入，但你无法查看。",
+      "account": "账户",
+      "reimport": "重新导入",
+      "reimport_hint": "重新导入可将其添加回来，或与您手动输入的交易（例如转账）匹配。",
+      "reimported": { "created": "已重新导入", "matched": "已与现有交易匹配", "queued": "已重新导入，正在收件箱中等待", "skipped": "未添加：匹配了跳过规则或已忽略的账户" }
     }
   },
   "user": {
@@ -2290,6 +2294,7 @@
       "link_not_queued": "此事件不在待审核状态。",
       "link_not_skipped": "此事件未被跳过。",
       "event_not_failed": "此事件没有失败。",
+      "link_not_deleted": "此交易未被删除。",
       "setup_token_rejected": "SimpleFIN 拒绝了此设置令牌。它可能已被使用；请在 SimpleFIN Bridge 中创建一个新令牌。",
       "provider_unavailable": "无法连接到 SimpleFIN。请几分钟后重试。",
       "sync_range_invalid": "日期范围无效：开始日期不能晚于结束日期，且范围不能超过 400 天。",

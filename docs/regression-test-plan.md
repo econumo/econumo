@@ -1098,6 +1098,12 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Run detail names each row's bank account the way the run summary does
       (the bank's own account name, falling back to the bridge id) — never a
       bare `ACT-…` id when the source's accounts are known. 📱
+- [ ] Sidebar sync button 📱: with SimpleFIN connected and unlocked on this device, a tap
+      also syncs SimpleFIN and, when anything came in, toasts "N imported, M matched, F
+      failed"; a second tap within 10 minutes (or a tap within 10 minutes of a sync from the
+      SimpleFIN page) only refreshes, no new run in Import history. After 10 minutes a tap
+      syncs again. Locked on this device, on plain http or with SimpleFIN off, a tap never
+      syncs and never asks for the passphrase. The SimpleFIN page's Sync now has no limit.
 - [ ] Settings → Data: "Sync SimpleFIN" is absent without a SimpleFIN
       source; with one and a locked device it navigates to Settings →
       SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
@@ -1109,8 +1115,24 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       status, counts and errors; a run opens its detail
       (`/settings/simplefin/history/<id>`, back returns to the list); a
       transaction deleted after import shows struck-through with "Deleted
-      since"; queued rows read "Waiting for review". Rows have no actions in
-      this version. 📱
+      since"; queued rows read "Waiting for review". Only a "Deleted since"
+      row opens: a dialog with the payee, amount, Account (the bank's name),
+      date, the deleted explanation and "Import again" (see below); the other
+      rows have no actions. 📱
+- [ ] Import again 📱: delete an imported SimpleFIN transaction, then sync again — it is
+      NOT re-imported. Open its "Deleted since" row in the run detail → "Import again":
+      the dialog closes with "Imported again", the row reads Imported (no strike-through)
+      in the same place in the same run, and the transaction is back on the account. Offline the button is
+      disabled. The same works for an Apple Wallet tap from Apple Wallet → Import history.
+- [ ] Card payment as a transfer 📱: enter a transfer checking → credit card by hand,
+      then sync SimpleFIN with both accounts mapped. The checking debit and the card's
+      payment credit (same amount, within 3 days) are both matched to that one transfer
+      (matched count 2, no new income or expense), in one sync or in two. A transfer in
+      two currencies matches the card side by the recipient amount. Fixing an earlier
+      wrong import: delete the income transaction the card payment created, enter the
+      transfer, open the deleted row → "Import again" toasts "Matched to an existing
+      transaction" and creates nothing; the run summary now counts it as matched (one
+      fewer imported, one more matched) and the row stays where it was.
 - [ ] Apple Wallet → status card → "Import history" (shown once a tap has
       arrived; `/settings/apple-wallet/history`; crumbs Settings › Apple
       Wallet) lists every tap newest first, grouped by day on the device's
@@ -1132,7 +1154,8 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       tap — the row reads Imported, it leaves the Inbox's Skipped list, and no
       unskip happens if the form is cancelled. A Waiting row says it is waiting
       in the Inbox and offers the same button; a Deleted-since row says it was
-      imported and deleted later, with no button.
+      imported and deleted later and offers "Import again" instead (no "Create
+      transaction").
 - [ ] Rate limits: the 6th `claim-setup-token` within 15 minutes and the 11th
       `sync-source` return 429 with the standard envelope.
 - [ ] Ingest-scoped PATs get 401 on every SimpleFIN endpoint; a read-only

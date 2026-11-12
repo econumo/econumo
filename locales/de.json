@@ -848,7 +848,11 @@
       "waiting": "Diese Transaktion wartet im Posteingang.",
       "deleted": "Diese Transaktion wurde importiert und später gelöscht.",
       "create": "Transaktion erstellen",
-      "unavailable": "Diese Transaktion wurde importiert, ist für Sie aber nicht verfügbar."
+      "unavailable": "Diese Transaktion wurde importiert, ist für Sie aber nicht verfügbar.",
+      "account": "Konto",
+      "reimport": "Erneut importieren",
+      "reimport_hint": "Importieren Sie sie erneut, um sie wieder hinzuzufügen oder einer selbst erfassten Transaktion zuzuordnen, etwa einer Umbuchung.",
+      "reimported": { "created": "Erneut importiert", "matched": "Einer vorhandenen Transaktion zugeordnet", "queued": "Erneut importiert; sie wartet im Posteingang", "skipped": "Nicht hinzugefügt: Eine Überspringen-Regel oder ein ignoriertes Konto trifft zu" }
     }
   },
   "user": {
@@ -2290,6 +2294,7 @@
       "link_not_queued": "Dieses Ereignis wartet nicht auf Prüfung.",
       "link_not_skipped": "Dieses Ereignis ist nicht übersprungen.",
       "event_not_failed": "Dieses Ereignis ist nicht fehlgeschlagen.",
+      "link_not_deleted": "Diese Transaktion wurde nicht gelöscht.",
       "setup_token_rejected": "SimpleFIN hat dieses Setup-Token abgelehnt. Möglicherweise wurde es bereits verwendet; erstellen Sie ein neues in SimpleFIN Bridge.",
       "provider_unavailable": "SimpleFIN ist nicht erreichbar. Versuchen Sie es in einigen Minuten erneut.",
       "sync_range_invalid": "Der Zeitraum ist ungültig: Der Beginn darf nicht nach dem Ende liegen, und der Zeitraum darf 400 Tage nicht überschreiten.",

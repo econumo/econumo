@@ -848,7 +848,11 @@
       "waiting": "Deze transactie wacht in de inbox.",
       "deleted": "Deze transactie is geïmporteerd en later verwijderd.",
       "create": "Transactie aanmaken",
-      "unavailable": "Deze transactie is geïmporteerd, maar is niet voor u beschikbaar."
+      "unavailable": "Deze transactie is geïmporteerd, maar is niet voor u beschikbaar.",
+      "account": "Rekening",
+      "reimport": "Opnieuw importeren",
+      "reimport_hint": "Importeer haar opnieuw om haar terug te zetten, of om haar te koppelen aan een transactie die u zelf hebt ingevoerd, zoals een overboeking.",
+      "reimported": { "created": "Opnieuw geïmporteerd", "matched": "Gekoppeld aan een bestaande transactie", "queued": "Opnieuw geïmporteerd; ze wacht in de inbox", "skipped": "Niet toegevoegd: een overslaanregel of een genegeerde rekening is van toepassing" }
     }
   },
   "user": {
@@ -2290,6 +2294,7 @@
       "link_not_queued": "Deze gebeurtenis wacht niet op beoordeling.",
       "link_not_skipped": "Deze gebeurtenis is niet overgeslagen.",
       "event_not_failed": "Deze gebeurtenis is niet mislukt.",
+      "link_not_deleted": "Deze transactie is niet verwijderd.",
       "setup_token_rejected": "SimpleFIN heeft dit installatietoken geweigerd. Mogelijk is het al gebruikt; maak een nieuw token aan in SimpleFIN Bridge.",
       "provider_unavailable": "SimpleFIN is niet bereikbaar. Probeer het over een paar minuten opnieuw.",
       "sync_range_invalid": "De datumreeks is ongeldig: de startdatum mag niet na de einddatum liggen en de reeks mag niet langer dan 400 dagen zijn.",

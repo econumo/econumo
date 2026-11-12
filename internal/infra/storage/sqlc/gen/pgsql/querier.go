@@ -71,6 +71,7 @@ type Querier interface {
 	DeleteImportRule(ctx context.Context, id string) error
 	DeleteImportRuleLabels(ctx context.Context, ruleID string) error
 	DeleteImportSource(ctx context.Context, id string) error
+	DeleteImportTransactionLink(ctx context.Context, id string) error
 	DeleteLabel(ctx context.Context, id string) error
 	DeleteOAuthClient(ctx context.Context, id string) (int64, error)
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
