@@ -2208,6 +2208,70 @@
     "notice": "Що нового у {version}",
     "dismiss": "Сховати"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "Захист застосунку",
+      "title": "Захист застосунку",
+      "on": "Увімк.",
+      "off": "Вимк.",
+      "about": "Захист працює лише на цьому пристрої. Якщо ви забудете PIN-код, доведеться увійти знову. Дані на пристрої не шифруються.",
+      "enabled_label": "Захист застосунку",
+      "enabled_hint": "Запитувати PIN-код або графічний пароль під час відкриття Econumo",
+      "change_secret": "Змінити PIN-код або графічний пароль",
+      "pin_changed": "PIN-код змінено",
+      "pattern_changed": "Графічний пароль змінено",
+      "lock_after": {
+        "label": "Блокувати через",
+        "immediately": "Одразу",
+        "one_minute": "1 хвилину",
+        "five_minutes": "5 хвилин",
+        "fifteen_minutes": "15 хвилин"
+      },
+      "dialog": {
+        "create_title": "Придумайте PIN-код",
+        "create_title_pattern": "Намалюйте графічний пароль",
+        "new_title": "Придумайте новий PIN-код",
+        "new_title_pattern": "Намалюйте новий графічний пароль",
+        "current_title": "Введіть поточний PIN-код",
+        "current_title_pattern": "Намалюйте поточний графічний пароль",
+        "confirm_title": "Введіть PIN-код ще раз",
+        "confirm_title_pattern": "Намалюйте графічний пароль ще раз",
+        "pin_hint": "Від 4 до 8 цифр",
+        "pattern_hint": "З’єднайте щонайменше 4 точки",
+        "mismatch": "PIN-коди не збігаються. Спробуйте ще раз.",
+        "mismatch_pattern": "Графічні паролі не збігаються. Спробуйте ще раз.",
+        "kind_pin": "PIN-код",
+        "kind_pattern": "Графічний пароль",
+        "save": "Зберегти"
+      }
+    },
+    "lock_screen": {
+      "title": "Введіть PIN-код",
+      "title_pattern": "Намалюйте графічний пароль",
+      "wrong_pin": "Неправильний PIN-код",
+      "wrong_pattern": "Неправильний графічний пароль",
+      "attempts_left": "Залишилася {count} спроба | Залишилося {count} спроби | Залишилося {count} спроб",
+      "try_again_in": "Повторіть через {time}",
+      "forgot_pin": "Забули PIN-код?",
+      "forgot_pattern": "Забули графічний пароль?",
+      "forgot_title": "Вийти, щоб скинути PIN-код?",
+      "forgot_title_pattern": "Вийти, щоб скинути графічний пароль?",
+      "forgot_question": "Доведеться увійти знову.",
+      "forgot_confirm": "Вийти"
+    },
+    "pin_pad": {
+      "entered": "Введено цифр: {count}",
+      "delete": "Стерти цифру",
+      "continue": "Продовжити"
+    },
+    "pattern_pad": {
+      "grid": "Графічний пароль",
+      "dot": "Точка {n}",
+      "too_short": "З’єднайте щонайменше 4 точки",
+      "clear": "Очистити",
+      "done": "Готово"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Це значення не повинно бути порожнім.",

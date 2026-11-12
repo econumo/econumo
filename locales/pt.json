@@ -2208,6 +2208,70 @@
     "notice": "Novidades da {version}",
     "dismiss": "Dispensar"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "Bloqueio da app",
+      "title": "Bloqueio da app",
+      "on": "Ativado",
+      "off": "Desativado",
+      "about": "O bloqueio protege o Econumo apenas neste dispositivo. Se se esquecer do PIN ou do padrão, terá de iniciar sessão novamente. Não encripta os dados guardados no dispositivo.",
+      "enabled_label": "Bloqueio da app",
+      "enabled_hint": "Pedir um PIN ou um padrão ao abrir o Econumo",
+      "change_secret": "Alterar PIN ou padrão",
+      "pin_changed": "PIN alterado",
+      "pattern_changed": "Padrão alterado",
+      "lock_after": {
+        "label": "Bloquear após",
+        "immediately": "Imediatamente",
+        "one_minute": "1 minuto",
+        "five_minutes": "5 minutos",
+        "fifteen_minutes": "15 minutos"
+      },
+      "dialog": {
+        "create_title": "Escolha um PIN",
+        "create_title_pattern": "Desenhe um padrão",
+        "new_title": "Escolha um novo PIN",
+        "new_title_pattern": "Desenhe um novo padrão",
+        "current_title": "Introduza o PIN atual",
+        "current_title_pattern": "Desenhe o padrão atual",
+        "confirm_title": "Introduza o PIN novamente",
+        "confirm_title_pattern": "Desenhe o padrão novamente",
+        "pin_hint": "4 a 8 dígitos",
+        "pattern_hint": "Ligue pelo menos 4 pontos",
+        "mismatch": "Os PIN não coincidem. Tente novamente.",
+        "mismatch_pattern": "Os padrões não coincidem. Tente novamente.",
+        "kind_pin": "PIN",
+        "kind_pattern": "Padrão",
+        "save": "Guardar"
+      }
+    },
+    "lock_screen": {
+      "title": "Introduza o PIN",
+      "title_pattern": "Desenhe o padrão",
+      "wrong_pin": "PIN incorreto",
+      "wrong_pattern": "Padrão incorreto",
+      "attempts_left": "Resta {count} tentativa | Restam {count} tentativas",
+      "try_again_in": "Tente novamente dentro de {time}",
+      "forgot_pin": "Esqueceu-se do PIN?",
+      "forgot_pattern": "Esqueceu-se do padrão?",
+      "forgot_title": "Terminar sessão para repor o PIN?",
+      "forgot_title_pattern": "Terminar sessão para repor o padrão?",
+      "forgot_question": "Terá de iniciar sessão novamente.",
+      "forgot_confirm": "Terminar sessão"
+    },
+    "pin_pad": {
+      "entered": "Dígitos introduzidos: {count}",
+      "delete": "Apagar dígito",
+      "continue": "Continuar"
+    },
+    "pattern_pad": {
+      "grid": "Padrão",
+      "dot": "Ponto {n}",
+      "too_short": "Ligue pelo menos 4 pontos",
+      "clear": "Limpar",
+      "done": "Concluir"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Este valor não deve estar vazio.",

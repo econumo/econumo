@@ -2208,6 +2208,70 @@
     "notice": "Nieuw in {version}",
     "dismiss": "Sluiten"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "App-vergrendeling",
+      "title": "App-vergrendeling",
+      "on": "Aan",
+      "off": "Uit",
+      "about": "De vergrendeling beschermt Econumo alleen op dit apparaat. Als u de pincode of het patroon vergeet, moet u opnieuw inloggen. De gegevens op het apparaat worden niet versleuteld.",
+      "enabled_label": "App-vergrendeling",
+      "enabled_hint": "Om een pincode of patroon vragen bij het openen van Econumo",
+      "change_secret": "Pincode of patroon wijzigen",
+      "pin_changed": "Pincode gewijzigd",
+      "pattern_changed": "Patroon gewijzigd",
+      "lock_after": {
+        "label": "Vergrendelen na",
+        "immediately": "Direct",
+        "one_minute": "1 minuut",
+        "five_minutes": "5 minuten",
+        "fifteen_minutes": "15 minuten"
+      },
+      "dialog": {
+        "create_title": "Kies een pincode",
+        "create_title_pattern": "Teken een patroon",
+        "new_title": "Kies een nieuwe pincode",
+        "new_title_pattern": "Teken een nieuw patroon",
+        "current_title": "Voer uw huidige pincode in",
+        "current_title_pattern": "Teken uw huidige patroon",
+        "confirm_title": "Voer de pincode nogmaals in",
+        "confirm_title_pattern": "Teken het patroon nogmaals",
+        "pin_hint": "4 tot 8 cijfers",
+        "pattern_hint": "Verbind minstens 4 punten",
+        "mismatch": "De pincodes komen niet overeen. Probeer het opnieuw.",
+        "mismatch_pattern": "De patronen komen niet overeen. Probeer het opnieuw.",
+        "kind_pin": "Pincode",
+        "kind_pattern": "Patroon",
+        "save": "Opslaan"
+      }
+    },
+    "lock_screen": {
+      "title": "Voer uw pincode in",
+      "title_pattern": "Teken uw patroon",
+      "wrong_pin": "Onjuiste pincode",
+      "wrong_pattern": "Onjuist patroon",
+      "attempts_left": "Nog {count} poging | Nog {count} pogingen",
+      "try_again_in": "Probeer het opnieuw over {time}",
+      "forgot_pin": "Pincode vergeten?",
+      "forgot_pattern": "Patroon vergeten?",
+      "forgot_title": "Uitloggen om de pincode opnieuw in te stellen?",
+      "forgot_title_pattern": "Uitloggen om het patroon opnieuw in te stellen?",
+      "forgot_question": "U moet daarna opnieuw inloggen.",
+      "forgot_confirm": "Uitloggen"
+    },
+    "pin_pad": {
+      "entered": "Ingevoerde cijfers: {count}",
+      "delete": "Cijfer wissen",
+      "continue": "Doorgaan"
+    },
+    "pattern_pad": {
+      "grid": "Patroon",
+      "dot": "Punt {n}",
+      "too_short": "Verbind minstens 4 punten",
+      "clear": "Wissen",
+      "done": "Klaar"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Deze waarde mag niet leeg zijn.",

@@ -1,4 +1,4 @@
-import { getSessionUserId, getToken, hasToken, rememberSessionUser, setToken, removeToken, getItem, setItem } from './storage'
+import { getSessionUserId, getToken, hasToken, rememberSessionUser, setSignInListener, setToken, removeToken, getItem, setItem } from './storage'
 
 beforeEach(() => localStorage.clear())
 
@@ -48,5 +48,38 @@ describe('JSON item storage', () => {
     expect(getItem('missing')).toBeNull()
     localStorage.setItem('bad', '{oops')
     expect(getItem('bad')).toBeNull()
+  })
+})
+
+describe('app lock at sign-in', () => {
+  const lockConfig = (userId: string) => JSON.stringify({ v: 1, userId })
+
+  beforeEach(() => {
+    sessionStorage.clear()
+    setSignInListener(null)
+  })
+
+  it('deletes another user\'s lock and keeps the signed-in user\'s', () => {
+    localStorage.setItem('econumo.appLock', lockConfig('u1'))
+    localStorage.setItem('econumo.appLock.attempts', '{"failedAttempts":3,"lockedUntil":null}')
+    setToken('abc', 'u1')
+    expect(localStorage.getItem('econumo.appLock')).toBe(lockConfig('u1'))
+    expect(localStorage.getItem('econumo.appLock.attempts')).toBeNull()
+    setToken('def', 'u2')
+    expect(localStorage.getItem('econumo.appLock')).toBeNull()
+  })
+
+  it('keeps the lock when the new session\'s user is unknown', () => {
+    localStorage.setItem('econumo.appLock', lockConfig('u1'))
+    setToken('abc')
+    expect(localStorage.getItem('econumo.appLock')).toBe(lockConfig('u1'))
+  })
+
+  it('marks the tab as freshly signed in and tells the lock', () => {
+    const listener = vi.fn()
+    setSignInListener(listener)
+    setToken('abc', 'u1')
+    expect(sessionStorage.getItem('econumo.appLock.fresh')).not.toBeNull()
+    expect(listener).toHaveBeenCalledOnce()
   })
 })

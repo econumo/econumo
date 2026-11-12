@@ -2208,6 +2208,70 @@
     "notice": "Co nowego w {version}",
     "dismiss": "Zamknij"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "Blokada aplikacji",
+      "title": "Blokada aplikacji",
+      "on": "Włączona",
+      "off": "Wyłączona",
+      "about": "Blokada chroni Econumo tylko na tym urządzeniu. Jeśli zapomnisz PIN-u lub wzoru, trzeba będzie zalogować się ponownie. Nie szyfruje danych zapisanych na urządzeniu.",
+      "enabled_label": "Blokada aplikacji",
+      "enabled_hint": "Pytaj o PIN lub wzór przy otwieraniu Econumo",
+      "change_secret": "Zmień PIN lub wzór",
+      "pin_changed": "PIN zmieniony",
+      "pattern_changed": "Wzór zmieniony",
+      "lock_after": {
+        "label": "Czas do blokady",
+        "immediately": "Natychmiast",
+        "one_minute": "1 minuta",
+        "five_minutes": "5 minut",
+        "fifteen_minutes": "15 minut"
+      },
+      "dialog": {
+        "create_title": "Ustaw PIN",
+        "create_title_pattern": "Narysuj wzór",
+        "new_title": "Ustaw nowy PIN",
+        "new_title_pattern": "Narysuj nowy wzór",
+        "current_title": "Wpisz obecny PIN",
+        "current_title_pattern": "Narysuj obecny wzór",
+        "confirm_title": "Wpisz PIN ponownie",
+        "confirm_title_pattern": "Narysuj wzór ponownie",
+        "pin_hint": "Od 4 do 8 cyfr",
+        "pattern_hint": "Połącz co najmniej 4 punkty",
+        "mismatch": "PIN-y nie są zgodne. Spróbuj ponownie.",
+        "mismatch_pattern": "Wzory nie są zgodne. Spróbuj ponownie.",
+        "kind_pin": "PIN",
+        "kind_pattern": "Wzór",
+        "save": "Zapisz"
+      }
+    },
+    "lock_screen": {
+      "title": "Wpisz PIN",
+      "title_pattern": "Narysuj wzór",
+      "wrong_pin": "Nieprawidłowy PIN",
+      "wrong_pattern": "Nieprawidłowy wzór",
+      "attempts_left": "Pozostała {count} próba | Pozostały {count} próby | Pozostało {count} prób",
+      "try_again_in": "Spróbuj ponownie za {time}",
+      "forgot_pin": "Nie pamiętasz PIN-u?",
+      "forgot_pattern": "Nie pamiętasz wzoru?",
+      "forgot_title": "Wylogować się, aby zresetować PIN?",
+      "forgot_title_pattern": "Wylogować się, aby zresetować wzór?",
+      "forgot_question": "Trzeba będzie zalogować się ponownie.",
+      "forgot_confirm": "Wyloguj się"
+    },
+    "pin_pad": {
+      "entered": "Wpisane cyfry: {count}",
+      "delete": "Usuń cyfrę",
+      "continue": "Dalej"
+    },
+    "pattern_pad": {
+      "grid": "Wzór",
+      "dot": "Punkt {n}",
+      "too_short": "Połącz co najmniej 4 punkty",
+      "clear": "Wyczyść",
+      "done": "Gotowe"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Ta wartość nie powinna być pusta.",

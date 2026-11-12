@@ -2208,6 +2208,70 @@
     "notice": "{version} 新功能",
     "dismiss": "关闭"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "应用锁",
+      "title": "应用锁",
+      "on": "已开启",
+      "off": "已关闭",
+      "about": "应用锁仅在此设备上保护 Econumo。如果忘记 PIN 码或图案，需要重新登录。它不会加密设备上存储的数据。",
+      "enabled_label": "应用锁",
+      "enabled_hint": "打开 Econumo 时要求输入 PIN 码或图案",
+      "change_secret": "更改 PIN 码或图案",
+      "pin_changed": "PIN 码已更改",
+      "pattern_changed": "图案已更改",
+      "lock_after": {
+        "label": "自动锁定",
+        "immediately": "立即",
+        "one_minute": "1 分钟",
+        "five_minutes": "5 分钟",
+        "fifteen_minutes": "15 分钟"
+      },
+      "dialog": {
+        "create_title": "设置 PIN 码",
+        "create_title_pattern": "绘制图案",
+        "new_title": "设置新 PIN 码",
+        "new_title_pattern": "绘制新图案",
+        "current_title": "输入当前 PIN 码",
+        "current_title_pattern": "绘制当前图案",
+        "confirm_title": "再次输入 PIN 码",
+        "confirm_title_pattern": "再次绘制图案",
+        "pin_hint": "4 到 8 位数字",
+        "pattern_hint": "至少连接 4 个点",
+        "mismatch": "两次输入的 PIN 码不一致，请重试。",
+        "mismatch_pattern": "两次绘制的图案不一致，请重试。",
+        "kind_pin": "PIN 码",
+        "kind_pattern": "图案",
+        "save": "保存"
+      }
+    },
+    "lock_screen": {
+      "title": "输入 PIN 码",
+      "title_pattern": "绘制图案",
+      "wrong_pin": "PIN 码错误",
+      "wrong_pattern": "图案错误",
+      "attempts_left": "还剩 {count} 次机会",
+      "try_again_in": "{time} 后重试",
+      "forgot_pin": "忘记 PIN 码？",
+      "forgot_pattern": "忘记图案？",
+      "forgot_title": "退出登录以重置 PIN 码？",
+      "forgot_title_pattern": "退出登录以重置图案？",
+      "forgot_question": "您需要重新登录。",
+      "forgot_confirm": "退出登录"
+    },
+    "pin_pad": {
+      "entered": "已输入 {count} 位数字",
+      "delete": "删除数字",
+      "continue": "继续"
+    },
+    "pattern_pad": {
+      "grid": "图案",
+      "dot": "第 {n} 个点",
+      "too_short": "至少连接 4 个点",
+      "clear": "清除",
+      "done": "完成"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "此值不能为空。",

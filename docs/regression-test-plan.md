@@ -2782,6 +2782,92 @@ User C sees none of it.
       password, a second linked provider, or where the new email already
       belongs to another user leaves the stored email unchanged.
 
+- [ ] **App lock** 📱 (Settings → Profile → App lock, the row after Sessions,
+      reading On/Off): the page explains the lock covers this device only,
+      a forgotten PIN or pattern means logging in again and data on the device
+      is not encrypted. Turning the switch on asks for a PIN (4–8 digits, Continue
+      enabled from 4) and then for it again; typing a different PIN the second
+      time shows "The PINs don't match" and starts over; closing the dialog
+      leaves the lock off. After confirming, the switch reads on, the current
+      tab stays unlocked, and "Change PIN or pattern" and Lock after (default 1 minute)
+      appear; there is no biometrics option. Everything works offline.
+- [ ] App lock: "Change PIN or pattern" asks for the current PIN first (a wrong one says
+      "Wrong PIN" and counts towards the same limit as the lock screen; once
+      fewer than 5 attempts are left, "N attempts left" stays under the pad
+      after a wrong try and through the lockout countdown), then
+      the new one twice; the next lock asks for the new PIN. Turning the lock
+      off asks for the current PIN and the Profile row then reads Off.
+- [ ] App lock 📱 cold start: with the lock on, a new tab and opening the
+      installed PWA show the lock screen (logo, avatar, name, "Enter PIN") with
+      no balance or transaction visible; the right PIN opens the page that was
+      asked for.
+- [ ] App lock reload: with "1 minute", reloading an unlocked tab stays
+      unlocked; reloading after more than a minute away, reloading a locked
+      tab, or any reload with "Immediately" shows the lock screen.
+- [ ] App lock 📱 background timeout: with "1 minute", leaving the app for under
+      a minute returns unlocked and for over a minute returns locked; with
+      "Immediately" any switch away locks; a phone left asleep with the app
+      open past the timeout is locked on wake.
+- [ ] App lock 📱 app switcher: with the lock on, the app-switcher preview shows
+      the Econumo logo on a plain background, not the page (best effort: note
+      the platform if a snapshot still shows data).
+- [ ] App lock wrong PINs: dots shake and "Wrong PIN" shows; from the 5th
+      failure the keypad is disabled with a "Try again in 0:30" countdown
+      (longer after each further failure) that survives a reload; the
+      remaining attempts show once fewer than 5 are left; the 10th failure
+      logs out, and after logging back in as the same user the changes that
+      were waiting to be sent (make one offline first) are still sent. A right
+      PIN before that resets the count.
+- [ ] App lock "Forgot PIN?": confirming logs out; logging back in opens
+      without a PIN and the Profile row reads Off; the offline queue survives
+      as above.
+- [ ] App lock with two users on one browser: user A turns the lock on and logs
+      out; user B logs in and is never asked for a PIN, and B's Profile row
+      reads Off.
+- [ ] App lock fresh login: logging in with a password (or a provider) right
+      after a sign-out or a "Set a password" never asks for the PIN in that tab,
+      also with "Immediately". Turning the lock on right after a login and then
+      reloading shows the lock screen.
+- [ ] App lock in two tabs: with the lock on and tab 2 locked, logging out in
+      tab 1 reloads tab 2 onto the login page; changing the PIN (to another
+      length) or switching to a pattern in tab 1 reloads tab 2, whose lock
+      screen then matches; unlocking one tab never unlocks the other.
+- [ ] App lock on a plain-http instance (not localhost): the PIN lock works end
+      to end: the Profile row is a link, turning the lock on with a PIN works,
+      a reload shows the lock screen and the PIN unlocks it in about a second;
+      the settings page looks the same as over https.
+- [ ] App lock PIN pad 📱 (set-up sheet, settings prompts, lock screen; phone and
+      desktop, light and dark): the title, then the dots, then one quiet line
+      under them ("4 to 8 digits", attempts left, or the error in red) that
+      never makes the keypad jump; a typed digit fills its dot with a short
+      pop; set-up shows empty slots up to 4 that grow to 8; the delete key
+      appears only once something is typed and the key left of 0 stays blank; tapping a key leaves no focus
+      ring on it (Tab still shows one); a wrong PIN turns the dots red and
+      shakes them (no shake with reduced motion), then clears. Set-up's
+      "Continue"/"Save" is a full-width button in sentence case.
+- [ ] App lock pattern set-up 📱: the PIN | Pattern switch at the top of the set-up
+      dialog swaps the keypad for a 3x3 grid ("Draw a pattern", "Connect at least 4
+      dots") and back. A line follows the finger;
+      crossing a dot straight on (corner to corner) picks up the dot in
+      between; fewer than 4 dots shows "Connect at least 4 dots" in red and
+      clears; 4 or more ask to draw it again, a different second pattern says
+      "The patterns don't match" and starts over. Then the row "Change PIN or
+      pattern" shows "Pattern". Swiping on the grid never scrolls the page nor drags the sheet
+      closed; dragging the sheet by its handle still closes it.
+- [ ] App lock pattern unlock 📱: a reload shows "Draw your pattern" with the
+      grid; the
+      right pattern opens the app; a wrong one turns the line red with "Wrong
+      pattern" for a moment, clears, and counts towards the same 5-failure
+      lockout (grid greyed with the countdown) and 10-failure sign-out as a
+      PIN; a too-short pattern is not counted and says "Connect at least 4 dots"
+      even right after a wrong try; a fast flick that lifts on a dot keeps
+      that dot. "Forgot pattern?" logs out like
+      "Forgot PIN?". Change pattern and turning the lock off ask for the
+      current pattern; changing can switch to a PIN and back.
+- [ ] App lock pattern with a keyboard or screen reader: Tab reaches each dot
+      ("Dot 1" ... "Dot 9"); Enter or Space picks it (a single tap does the
+      same), Clear and Done appear, and Done submits once 4 dots are picked.
+
 ## 12a. Connected apps (MCP OAuth)
 
 Needs `ECONUMO_URL` set (for a local run, `ECONUMO_URL=http://localhost:8181`)

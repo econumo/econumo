@@ -27,6 +27,7 @@ import { AnalyticsDialog } from './AnalyticsDialog'
 import { ThemeDialog } from './ThemeDialog'
 import { themePreference } from '@/lib/theme'
 import { useTheme } from 'next-themes'
+import { activeConfig } from '@/features/appLock/config'
 
 
 export function ProfilePage() {
@@ -250,6 +251,16 @@ export function ProfilePage() {
         >
           {t('user.page.settings.profile.sessions.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
+        <Link
+          to={RouterPage.SETTINGS_APP_LOCK}
+          className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        >
+          {t('appLock.settings.menu_item')}
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            {activeConfig() ? t('appLock.settings.on') : t('appLock.settings.off')}
+            <ChevronRight className="size-4" />
+          </span>
         </Link>
         <Link
           to={RouterPage.SETTINGS_TOKENS}

@@ -2208,6 +2208,70 @@
     "notice": "Neu in {version}",
     "dismiss": "Ausblenden"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "App-Sperre",
+      "title": "App-Sperre",
+      "on": "An",
+      "off": "Aus",
+      "about": "Die Sperre schützt Econumo nur auf diesem Gerät. Wenn Sie die PIN oder das Muster vergessen, müssen Sie sich erneut anmelden. Die auf dem Gerät gespeicherten Daten werden nicht verschlüsselt.",
+      "enabled_label": "App-Sperre",
+      "enabled_hint": "Beim Öffnen von Econumo nach einer PIN oder einem Muster fragen",
+      "change_secret": "PIN oder Muster ändern",
+      "pin_changed": "PIN geändert",
+      "pattern_changed": "Muster geändert",
+      "lock_after": {
+        "label": "Sperren nach",
+        "immediately": "Sofort",
+        "one_minute": "1 Minute",
+        "five_minutes": "5 Minuten",
+        "fifteen_minutes": "15 Minuten"
+      },
+      "dialog": {
+        "create_title": "PIN festlegen",
+        "create_title_pattern": "Muster zeichnen",
+        "new_title": "Neue PIN festlegen",
+        "new_title_pattern": "Neues Muster zeichnen",
+        "current_title": "Aktuelle PIN eingeben",
+        "current_title_pattern": "Aktuelles Muster zeichnen",
+        "confirm_title": "PIN erneut eingeben",
+        "confirm_title_pattern": "Muster erneut zeichnen",
+        "pin_hint": "4 bis 8 Ziffern",
+        "pattern_hint": "Verbinden Sie mindestens 4 Punkte",
+        "mismatch": "Die PINs stimmen nicht überein. Versuchen Sie es erneut.",
+        "mismatch_pattern": "Die Muster stimmen nicht überein. Versuchen Sie es erneut.",
+        "kind_pin": "PIN",
+        "kind_pattern": "Muster",
+        "save": "Speichern"
+      }
+    },
+    "lock_screen": {
+      "title": "PIN eingeben",
+      "title_pattern": "Muster zeichnen",
+      "wrong_pin": "Falsche PIN",
+      "wrong_pattern": "Falsches Muster",
+      "attempts_left": "Noch {count} Versuch | Noch {count} Versuche",
+      "try_again_in": "Erneut versuchen in {time}",
+      "forgot_pin": "PIN vergessen?",
+      "forgot_pattern": "Muster vergessen?",
+      "forgot_title": "Abmelden, um die PIN zurückzusetzen?",
+      "forgot_title_pattern": "Abmelden, um das Muster zurückzusetzen?",
+      "forgot_question": "Sie müssen sich danach erneut anmelden.",
+      "forgot_confirm": "Abmelden"
+    },
+    "pin_pad": {
+      "entered": "Eingegebene Ziffern: {count}",
+      "delete": "Ziffer löschen",
+      "continue": "Weiter"
+    },
+    "pattern_pad": {
+      "grid": "Muster",
+      "dot": "Punkt {n}",
+      "too_short": "Verbinden Sie mindestens 4 Punkte",
+      "clear": "Löschen",
+      "done": "Fertig"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Dieser Wert darf nicht leer sein.",

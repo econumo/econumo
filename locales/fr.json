@@ -2208,6 +2208,70 @@
     "notice": "Nouveautés de la {version}",
     "dismiss": "Ignorer"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "Verrouillage de l’app",
+      "title": "Verrouillage de l’app",
+      "on": "Activé",
+      "off": "Désactivé",
+      "about": "Le verrouillage protège Econumo sur cet appareil uniquement. Si vous oubliez le code PIN ou le schéma, vous devrez vous reconnecter. Il ne chiffre pas les données stockées sur l’appareil.",
+      "enabled_label": "Verrouillage de l’app",
+      "enabled_hint": "Demander un code PIN ou un schéma à l’ouverture d’Econumo",
+      "change_secret": "Modifier le code PIN ou le schéma",
+      "pin_changed": "Code PIN modifié",
+      "pattern_changed": "Schéma modifié",
+      "lock_after": {
+        "label": "Verrouiller après",
+        "immediately": "Immédiatement",
+        "one_minute": "1 minute",
+        "five_minutes": "5 minutes",
+        "fifteen_minutes": "15 minutes"
+      },
+      "dialog": {
+        "create_title": "Choisissez un code PIN",
+        "create_title_pattern": "Dessinez un schéma",
+        "new_title": "Choisissez un nouveau code PIN",
+        "new_title_pattern": "Dessinez un nouveau schéma",
+        "current_title": "Saisissez votre code PIN actuel",
+        "current_title_pattern": "Dessinez votre schéma actuel",
+        "confirm_title": "Saisissez à nouveau le code PIN",
+        "confirm_title_pattern": "Dessinez à nouveau le schéma",
+        "pin_hint": "4 à 8 chiffres",
+        "pattern_hint": "Reliez au moins 4 points",
+        "mismatch": "Les codes PIN ne correspondent pas. Réessayez.",
+        "mismatch_pattern": "Les schémas ne correspondent pas. Réessayez.",
+        "kind_pin": "Code PIN",
+        "kind_pattern": "Schéma",
+        "save": "Enregistrer"
+      }
+    },
+    "lock_screen": {
+      "title": "Saisissez le code PIN",
+      "title_pattern": "Dessinez votre schéma",
+      "wrong_pin": "Code PIN incorrect",
+      "wrong_pattern": "Schéma incorrect",
+      "attempts_left": "Il reste {count} tentative | Il reste {count} tentatives",
+      "try_again_in": "Réessayez dans {time}",
+      "forgot_pin": "Code PIN oublié ?",
+      "forgot_pattern": "Schéma oublié ?",
+      "forgot_title": "Se déconnecter pour réinitialiser le code PIN ?",
+      "forgot_title_pattern": "Se déconnecter pour réinitialiser le schéma ?",
+      "forgot_question": "Vous devrez vous reconnecter.",
+      "forgot_confirm": "Se déconnecter"
+    },
+    "pin_pad": {
+      "entered": "Chiffres saisis : {count}",
+      "delete": "Effacer le chiffre",
+      "continue": "Continuer"
+    },
+    "pattern_pad": {
+      "grid": "Schéma",
+      "dot": "Point {n}",
+      "too_short": "Reliez au moins 4 points",
+      "clear": "Effacer",
+      "done": "Terminé"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Cette valeur ne doit pas être vide.",

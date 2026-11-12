@@ -123,7 +123,7 @@ func TestPlaceholderParity(t *testing.T) {
 
 // tCallRe matches t('some.key' — string-literal i18next lookups. Dynamic keys
 // (t('errors.' + code)) don't match and are covered by the code-registry check.
-var tCallRe = regexp.MustCompile(`[^a-zA-Z0-9_]t\(\s*'([a-z0-9_]+(?:\.[a-z0-9_]+)+)'`)
+var tCallRe = regexp.MustCompile(`[^a-zA-Z0-9_]t\(\s*'([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)+)'`)
 
 func TestFrontendKeysExist(t *testing.T) {
 	ref := catalogue(t, "en")

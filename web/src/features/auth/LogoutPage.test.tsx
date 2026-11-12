@@ -10,6 +10,7 @@ import { resetDbForTests } from '@/lib/db'
 import { resetTransactionStoreForTests } from '@/lib/transactionStore'
 import { addChange } from '@/features/pendingWrites/queue'
 import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
+import { APP_LOCK_ATTEMPTS_KEY, APP_LOCK_CONFIG_KEY } from '@/features/appLock/keys'
 import { LogoutPage } from './LogoutPage'
 
 // Tracks real call order (not just "was called") so a refactor that moves
@@ -216,4 +217,52 @@ it('in the app ignores the end-session url and logs out locally', async () => {
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
   expect(assign).not.toHaveBeenCalledWith('https://idp/end')
   delete (window as { Capacitor?: unknown }).Capacitor
+})
+
+describe('the app lock', () => {
+  const configure = () => {
+    server.use(http.post('*/api/v1/user/logout-user', () => HttpResponse.json({ success: true, message: '', data: {} })))
+    setToken('tok', 'u1')
+    localStorage.setItem(APP_LOCK_CONFIG_KEY, '{"v":1}')
+    localStorage.setItem(APP_LOCK_ATTEMPTS_KEY, '{"failedAttempts":3,"lockedUntil":null}')
+  }
+
+  it('is removed by a sign-out, after the token', async () => {
+    configure()
+    const removeItem = vi.spyOn(Storage.prototype, 'removeItem')
+    try {
+      renderPage()
+      await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
+      expect(localStorage.getItem(APP_LOCK_CONFIG_KEY)).toBeNull()
+      expect(localStorage.getItem(APP_LOCK_ATTEMPTS_KEY)).toBeNull()
+      const keys = removeItem.mock.calls.map(([key]) => key)
+      expect(keys.indexOf('token')).toBeLessThan(keys.indexOf(APP_LOCK_CONFIG_KEY))
+    } finally {
+      removeItem.mockRestore()
+    }
+  })
+
+  it('is removed when the session is already gone', async () => {
+    configure()
+    localStorage.removeItem('token')
+    renderPage()
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
+    expect(localStorage.getItem(APP_LOCK_CONFIG_KEY)).toBeNull()
+  })
+
+  it('stays when the same user signs back in after setting a password', async () => {
+    configure()
+    renderPage({ keepPendingWrites: true })
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(localStorage.getItem(APP_LOCK_CONFIG_KEY)).toBe('{"v":1}')
+  })
+
+  it('is removed by Forgot PIN and the attempts limit, which keep the queue', async () => {
+    configure()
+    renderPage({ keepPendingWrites: true, resetAppLock: true })
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
+    expect(localStorage.getItem(APP_LOCK_CONFIG_KEY)).toBeNull()
+    expect(localStorage.getItem(APP_LOCK_ATTEMPTS_KEY)).toBeNull()
+  })
 })
