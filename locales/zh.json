@@ -633,7 +633,7 @@
       "danger": {
         "title": "危险操作",
         "paid_off": "将余额设为 0 并停止倒计时。",
-        "delete": "删除这笔债务。其付款将回到该类别。"
+        "delete": "删除这笔债务。其还款将重新计入该分类。"
       },
       "tab": {
         "overview": "概览",
@@ -2433,7 +2433,7 @@
       "not_found": "未找到该分类。",
       "cannot_be_merged": "无法合并所选分类。",
       "list_empty": "分类列表为空。",
-      "used_by_debt": "有债务正在使用此类别。请先删除或修改该债务。"
+      "used_by_debt": "有债务正在使用此分类。请先删除或修改该债务。"
     },
     "connection": {
       "invalid_uuid": "这不是有效的 UUID。",
@@ -2478,7 +2478,7 @@
     },
     "debt": {
       "payments_dont_cover": "还款金额不足以还清余额。请提高每期还款额，或将最后还款日设得更晚。",
-      "key_conflict": "另一笔债务可能匹配相同的付款。请使用不同的收款人或标签，为每笔债务设置不同的统计标签，或使用不同的起始日期。",
+      "key_conflict": "另一笔债务可能匹配相同的还款。请使用不同的收款人或标签，为每笔债务设置不同的统计标签，或使用不同的起始日期。",
       "start_date_taken": "已有另一笔债务使用相同的分类、收款人、标签和统计标签，并且起始日期相同。",
       "category_not_expense": "债务需要使用支出分类。",
       "removal_unconfirmed": "这将删除此债务在你的预算中的计划金额和评论；请确认以继续。",
@@ -2486,7 +2486,7 @@
       "last_payment_before_start": "最后还款日必须晚于开始日期。",
       "start_in_future": "开始日期不能晚于今天。",
       "not_set_up": "请先完成此债务的设置。",
-      "conflicts_with_reconciliation": "这与您根据对账单输入的余额冲突。请先修改或删除该对账记录。"
+      "conflicts_with_reconciliation": "这与你根据对账单输入的余额冲突。请先修改或删除该对账记录。"
     },
     "authserver": {
       "disabled": "此服务器不支持连接应用。",
@@ -2510,7 +2510,7 @@
       "already_exists": "该收款人已存在。",
       "cannot_be_merged": "无法合并所选收款人。",
       "list_empty": "收款人列表为空。",
-      "used_by_debt": "有债务正在使用此收款方。请先删除或修改该债务。"
+      "used_by_debt": "有债务正在使用此收款人。请先删除或修改该债务。"
     },
     "tag": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",

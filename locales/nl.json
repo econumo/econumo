@@ -487,7 +487,7 @@
       "create": "Schuld toevoegen"
     },
     "list": {
-      "payments_left": "{count} betaling resterend | {count} betalingen resterend",
+      "payments_left": "Nog {count} betaling | Nog {count} betalingen",
       "paid_off": "Afbetaald"
     },
     "form": {
@@ -1792,8 +1792,8 @@
         "left": "Resterend",
         "left_hint": "Nog te betalen aan het einde van de maand.",
         "payoff_by": "Naar verwachting afbetaald in {date}",
-        "payments_left": "{count} betaling resterend | {count} betalingen resterend",
-        "extra_effect": "{months} maand eerder afbetaald, {amount} minder meerkosten | {months} maanden eerder afbetaald, {amount} minder meerkosten",
+        "payments_left": "Nog {count} betaling | Nog {count} betalingen",
+        "extra_effect": "{months} maand eerder afbetaald, {amount} minder rente | {months} maanden eerder afbetaald, {amount} minder rente",
         "extra_effect_earlier": "{months} maand eerder afbetaald | {months} maanden eerder afbetaald",
         "track": "Volgen als schuld",
         "details": "Details"

@@ -562,7 +562,7 @@
       },
       "delete_confirm": {
         "title": "¿Eliminar esta deuda?",
-        "question": "La deuda desaparece de tus presupuestos. Tus pagos no se tocan."
+        "question": "La deuda desaparece de tus presupuestos. Tus pagos no cambian."
       },
       "removal_confirm": {
         "title": "¿Eliminar importes planificados y comentarios?",
@@ -1793,7 +1793,7 @@
         "left_hint": "Lo que falta por pagar al final del mes.",
         "payoff_by": "Liquidación prevista: {date}",
         "payments_left": "Queda {count} pago | Quedan {count} pagos",
-        "extra_effect": "Pagada {months} mes antes, {amount} menos de sobrecoste | Pagada {months} meses antes, {amount} menos de sobrecoste",
+        "extra_effect": "Pagada {months} mes antes, {amount} menos de intereses | Pagada {months} meses antes, {amount} menos de intereses",
         "extra_effect_earlier": "Pagada {months} mes antes | Pagada {months} meses antes",
         "track": "Seguir como deuda",
         "details": "Detalles"

@@ -1793,7 +1793,7 @@
         "left_hint": "Falta pagar no fim do mês.",
         "payoff_by": "Liquidação prevista: {date}",
         "payments_left": "Falta {count} pagamento | Faltam {count} pagamentos",
-        "extra_effect": "Liquidada {months} mês mais cedo, menos {amount} de custo adicional | Liquidada {months} meses mais cedo, menos {amount} de custo adicional",
+        "extra_effect": "Liquidada {months} mês mais cedo, menos {amount} de juros | Liquidada {months} meses mais cedo, menos {amount} de juros",
         "extra_effect_earlier": "Liquidada {months} mês mais cedo | Liquidada {months} meses mais cedo",
         "track": "Acompanhar como dívida",
         "details": "Detalhes"

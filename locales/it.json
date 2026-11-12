@@ -487,7 +487,7 @@
       "create": "Aggiungi debito"
     },
     "list": {
-      "payments_left": "{count} pagamento rimasto | {count} pagamenti rimasti",
+      "payments_left": "Manca {count} pagamento | Mancano {count} pagamenti",
       "paid_off": "Estinto"
     },
     "form": {
@@ -562,7 +562,7 @@
       },
       "delete_confirm": {
         "title": "Eliminare questo debito?",
-        "question": "Il debito esce dai tuoi budget. I tuoi pagamenti non vengono toccati."
+        "question": "Il debito viene rimosso dai tuoi budget. I tuoi pagamenti restano invariati."
       },
       "removal_confirm": {
         "title": "Eliminare importi pianificati e commenti?",
@@ -591,23 +591,23 @@
       "form": {
         "title": "Riconcilia con un estratto conto",
         "hint": "Inserisci il capitale ancora dovuto secondo l'estratto conto del tuo finanziatore. Dalla sua data Econumo parte da lì, e le rate dovute fino ad allora contano come pagate; gli interessi dall'ultimo pagamento vengono addebitati alla rata successiva, per un periodo intero.",
-        "balance": "Saldo dell'estratto",
-        "date": "Data dell'estratto",
+        "balance": "Saldo dell'estratto conto",
+        "date": "Data dell'estratto conto",
         "date_range": "Scegli una data successiva alla data di inizio e non oltre oggi. Per cambiare l'importo preso in prestito, correggilo nelle impostazioni.",
         "save": "Riconcilia"
       },
       "history": "Estratti conto",
       "column": {
         "date": "Data",
-        "statement": "Estratto",
+        "statement": "Estratto conto",
         "econumo": "Econumo",
         "difference": "Differenza"
       },
       "origin": "Importo preso in prestito",
       "paid_off": "Segnato come estinto",
-      "delete": "Elimina l'estratto del {date}",
+      "delete": "Elimina l'estratto conto del {date}",
       "delete_confirm": {
-        "title": "Eliminare questo estratto?",
+        "title": "Eliminare questo estratto conto?",
         "question": "I pagamenti successivi alla sua data vengono di nuovo calcolati dal saldo precedente."
       },
       "delete_paid_off_confirm": {
@@ -620,7 +620,7 @@
       "progress_repaid": "{paid} di {total} pagati ({repaid} di {borrowed})",
       "owed_now": "Dovuto ora: {amount}",
       "paid_so_far": "Pagato finora",
-      "not_set_up": "Aggiungi l'importo preso in prestito e le date del prestito per vedere i pagamenti rimasti",
+      "not_set_up": "Aggiungi l'importo preso in prestito e le date del prestito per vedere i pagamenti rimanenti",
       "loan": "Prestito",
       "borrowed": "Preso in prestito",
       "next_payment": "Prossimo pagamento",
@@ -1792,8 +1792,8 @@
         "left": "Residuo",
         "left_hint": "Ancora da pagare a fine mese.",
         "payoff_by": "Estinzione prevista: {date}",
-        "payments_left": "{count} pagamento rimasto | {count} pagamenti rimasti",
-        "extra_effect": "Estinto {months} mese prima, {amount} di costo aggiuntivo in meno | Estinto {months} mesi prima, {amount} di costo aggiuntivo in meno",
+        "payments_left": "Manca {count} pagamento | Mancano {count} pagamenti",
+        "extra_effect": "Estinto {months} mese prima, {amount} di interessi in meno | Estinto {months} mesi prima, {amount} di interessi in meno",
         "extra_effect_earlier": "Estinto {months} mese prima | Estinto {months} mesi prima",
         "track": "Segui come debito",
         "details": "Dettagli"

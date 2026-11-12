@@ -487,7 +487,7 @@
       "create": "Schuld hinzufügen"
     },
     "list": {
-      "payments_left": "{count} Zahlung übrig | {count} Zahlungen übrig",
+      "payments_left": "Noch {count} Zahlung | Noch {count} Zahlungen",
       "paid_off": "Abbezahlt"
     },
     "form": {
@@ -591,23 +591,23 @@
       "form": {
         "title": "Mit einem Kontoauszug abgleichen",
         "hint": "Geben Sie die noch offene Restschuld laut Kontoauszug Ihres Kreditgebers ein. Ab seinem Datum rechnet Econumo damit, und die bis dahin fälligen Raten gelten als bezahlt; Zinsen seit der letzten Zahlung werden mit der nächsten Rate für eine volle Periode berechnet.",
-        "balance": "Saldo laut Auszug",
-        "date": "Datum des Auszugs",
+        "balance": "Saldo laut Kontoauszug",
+        "date": "Datum des Kontoauszugs",
         "date_range": "Wählen Sie ein Datum nach dem Startdatum und spätestens heute. Um den geliehenen Betrag zu ändern, korrigieren Sie ihn in den Einstellungen.",
         "save": "Abgleichen"
       },
       "history": "Kontoauszüge",
       "column": {
         "date": "Datum",
-        "statement": "Auszug",
+        "statement": "Kontoauszug",
         "econumo": "Econumo",
         "difference": "Differenz"
       },
       "origin": "Geliehener Betrag",
       "paid_off": "Als abbezahlt markiert",
-      "delete": "Auszug vom {date} löschen",
+      "delete": "Kontoauszug vom {date} löschen",
       "delete_confirm": {
-        "title": "Diesen Auszug löschen?",
+        "title": "Diesen Kontoauszug löschen?",
         "question": "Zahlungen nach seinem Datum werden wieder vom früheren Saldo aus gerechnet."
       },
       "delete_paid_off_confirm": {
@@ -628,12 +628,12 @@
       "last_payment_contract": "laut Vertrag: {date}",
       "start_date": "Startdatum",
       "from_first_payment": "Ab der ersten Zahlung",
-      "paid_extra": "Gezahlte Sonderzahlungen",
+      "paid_extra": "Geleistete Sonderzahlungen",
       "planned_extra": "Geplante Sonderzahlungen",
       "danger": {
         "title": "Gefahrenbereich",
         "paid_off": "Setzt den Saldo auf 0 und beendet den Countdown.",
-        "delete": "Entfernt die Schuld. Ihre Zahlungen gehen zurück an die Kategorie."
+        "delete": "Entfernt die Schuld. Die Zahlungen zählen wieder zur Kategorie."
       },
       "tab": {
         "overview": "Übersicht",
@@ -1792,8 +1792,8 @@
         "left": "Offen",
         "left_hint": "Am Monatsende noch zu zahlen.",
         "payoff_by": "Voraussichtlich abbezahlt im {date}",
-        "payments_left": "{count} Zahlung übrig | {count} Zahlungen übrig",
-        "extra_effect": "{months} Monat früher abbezahlt, {amount} weniger Mehrkosten | {months} Monate früher abbezahlt, {amount} weniger Mehrkosten",
+        "payments_left": "Noch {count} Zahlung | Noch {count} Zahlungen",
+        "extra_effect": "{months} Monat früher abbezahlt, {amount} weniger Zinsen | {months} Monate früher abbezahlt, {amount} weniger Zinsen",
         "extra_effect_earlier": "{months} Monat früher abbezahlt | {months} Monate früher abbezahlt",
         "track": "Als Schuld verfolgen",
         "details": "Details"
@@ -2477,7 +2477,7 @@
       "used_by_debt": "Eine Schuld verwendet diesen Auswertungs-Tag. Löschen oder ändern Sie zuerst die Schuld."
     },
     "debt": {
-      "payments_dont_cover": "Die Zahlungen decken den Restbetrag nicht. Erhöhen Sie die Rate oder legen Sie ein späteres Datum der letzten Zahlung fest.",
+      "payments_dont_cover": "Die Zahlungen decken die Restschuld nicht. Erhöhen Sie die Rate oder legen Sie ein späteres Datum der letzten Zahlung fest.",
       "key_conflict": "Eine andere Schuld könnte dieselben Zahlungen erfassen. Wählen Sie unterschiedliche Zahlungsempfänger oder Tags, geben Sie jeder Schuld einen anderen Auswertungs-Tag oder verwenden Sie unterschiedliche Startdaten.",
       "start_date_taken": "Eine andere Schuld mit derselben Kategorie, demselben Zahlungsempfänger, demselben Tag und demselben Auswertungs-Tag beginnt bereits an diesem Datum.",
       "category_not_expense": "Eine Schuld benötigt eine Ausgabenkategorie.",
