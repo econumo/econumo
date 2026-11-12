@@ -1004,7 +1004,17 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
 - [ ] In the rule prompt after an edit, tapping "Create rule" twice quickly creates one rule. 📱
 - [ ] Suggestion creation (server with `ECONUMO_AI_DSN`): an Apple Pay tap at a merchant with
       no matching rule, whose category or payee stays empty, adds a Suggested rules row to the
-      Inbox within about a minute; with no AI configured, none appears. 📱
+      Inbox within about a minute, without a reload once the app is refocused (or within 60 s
+      of a SimpleFIN sync on the page that ran it); with no AI configured, none appears. 📱
+- [ ] Two taps at the same new merchant a second apart give ONE Suggested rules row with
+      "2 transactions". 📱
+- [ ] A payee-only expense suggestion never takes an income row from the same merchant (a refund
+      gets its own row, read as income). 📱
+- [ ] Accepting a suggestion whose transaction already had a payee set by hand fills only the
+      category; "Apply to all imports" afterwards counts that transaction as edited and, without
+      "include edited", leaves its payee alone. 📱
+- [ ] If the suggestion list fails to load, the Inbox shows the import error and Retry loads
+      it again. 📱
 - [ ] Suggestions come only from live imports: the first SimpleFIN sync's rows older than a
       week, and the queue replayed by mapping a card to an account, suggest nothing. A
       transfer, or a row the owner's rules already fully classify, suggests nothing. 📱
@@ -1018,7 +1028,9 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
 - [ ] The AI match text in "Create an import rule" (server with AI): opening the editor from an
       imported transaction fills the match with a short merchant text found in the payee
       (description when the payee is empty), at least 3 characters, still editable; with no
-      AI, offline or a readonly account it stays the plain default. 📱
+      AI, offline, a readonly account or a transaction a rule classified (the prompt updates
+      that rule) it stays the plain default, and an answer arriving after "Create rule" was
+      pressed changes nothing. 📱
 - [ ] A second tap with the same amount on the same card within ±3 days of a
       hand-entered transaction of that amount is adopted (no duplicate); a tap
       already linked from this source is never adopted twice.

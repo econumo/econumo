@@ -229,11 +229,18 @@ background job (50 rows/request, 60 s timeout, scope `import-ai-suggest` 30 jobs
 window, IP-exempt) asks for a match text, category and payee drawn from the owner's own
 non-archived names; the suggestion lands in the OWNER's Inbox only (a partner's tap included).
 Match text holds at least 3 letters or digits and must occur in the payee (the description when the payee
-is empty); there is one open suggestion per (owner, merchant, income/expense): a row or group joins
-an open one without an AI call only when its text contains the suggestion's text and the
-suggestion fills a field the row lacks. `get-suggestion-list` is computed at read time (archived
-categories and payees dropped, rows already filled left out, each item's `type` the income/expense
-of its transactions); a suggestion left with nothing is deleted there, best effort. Dismissal is
+is empty); there is one open suggestion per (owner, merchant, income/expense): the suggestion
+stores its type (`import_suggestions.transaction_type`), and a row (before the AI call) or a
+group (after it) joins an open one only when the types are equal, its text contains the
+suggestion's text and the suggestion fills a field the row or group lacks. One owner's jobs run
+one at a time in-process (`ownerLocks`), so imports landing together do not open two suggestions
+for one merchant. A join first touches the suggestion row (`TouchOpenImportSuggestion`, a row
+lock): one the list read deleted meanwhile sends its rows to the AI (before the call) or into a
+new suggestion (after it), never a foreign-key failure. `get-suggestion-list` is computed at read
+time (archived categories and payees dropped, rows already filled or no longer of the stored type
+left out, each item's `type` the stored one); a suggestion left with nothing is deleted there,
+best effort. Accept moves a row's `applied_*` snapshot only for the fields it wrote, so a field
+the user set by hand still reads as edited for apply-rule. Dismissal is
 not remembered (the next tap may suggest again); accept deletes the suggestion. Accept opens the
 rule prompt (`RulePromptDialog`), whose category picker offers only categories of the suggestion's
 `type`; the rule a Save created is kept per suggestion in the ui store until the accept lands, so a
@@ -243,9 +250,15 @@ when at least one OTHER transaction would change. The Inbox hides suggestions (s
 from a `readonly` user, who could neither accept nor dismiss them. `suggest-match-text` (owner of
 the link's account, 10 s, counted under `preview-rule`'s limit, not persisted in the query cache)
 gives the rule editor an AI match text; it answers an empty text, never an error, when AI is off or
-the call fails, and the SPA (not the server) skips it for readonly users and offline. The SPA
-suggestion query is invalidated after every successful write (`invalidateAfterWrite`; a read sent as
-a POST, `preview-rule` and `claim-setup-token`, opts out with `meta: { skipInvalidate: true }`); analytics `appImportSuggestionAccept`, `appImportSuggestionDismiss`,
+the call fails, and the SPA (not the server) skips it for readonly users, offline, for a link a
+rule classified (it updates that rule) and until the rule list has loaded; an answer arriving once
+Save has started is ignored. The SPA suggestion query is stale after 60 s and refetches on focus
+(the job writes after the import answers, and an Apple Wallet push never reaches the device), is
+invalidated after every successful write (`invalidateAfterWrite`; a read sent as a POST,
+`preview-rule` and `claim-setup-token`, opts out with `meta: { skipInvalidate: true }`), and after
+a sync that imported rows, with AI on, again at 15 s and 60 s (`scheduleSuggestionRefresh`,
+module-level timers). A failed suggestion list shows the Inbox's import error and Retry refetches
+it; a 404 (an older server) does not; analytics `appImportSuggestionAccept`, `appImportSuggestionDismiss`,
 `appImportRuleAiMatchUsed`. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
 `repo/`, and `api/` with 32 routes under `/api/v1/import/` (`create-source`,

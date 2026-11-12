@@ -140,8 +140,8 @@ more simply.
   `external_payee`), or in the description when the payee is empty (field `description`).
   Otherwise the row is dropped, because a rule needs a working match text;
 - a row with neither a valid category nor a valid payee is dropped;
-- reuse (attaching to an open suggestion without asking) also checks that the suggestion's
-  category fits the row's type, else the row goes to the AI;
+- reuse (attaching to an open suggestion without asking) also checks that the suggestion is of
+  the row's type and fills a field the row lacks, else the row goes to the AI;
 - a field the transaction already carries is dropped (a rule may have set one of the two).
 
 **One open suggestion per merchant (decided by the owner).** The owner never gets a new
@@ -150,7 +150,11 @@ grouped by (owner, match field, normalized match text). A group whose match text
 an open suggestion of the same owner, or that an open suggestion's match text matches, or whose
 match text matches the open suggestion's (one contains the other), joins that suggestion and
 keeps the open suggestion's category and payee, even when the AI proposed different ones this
-time. Otherwise the group becomes a new suggestion. Within one reply, rows sharing a match text
+time, provided the open suggestion is of the group's type and fills a field one of the group's
+rows lacks. Otherwise the group becomes a new suggestion. A join locks the suggestion's row first;
+one deleted meanwhile (the list read's cleanup) sends its rows to the AI, or, after the call, into
+a new suggestion. One owner's jobs run one at a time in the process, so two imports landing
+together cannot each open a suggestion for the same merchant. Within one reply, rows sharing a match text
 but given different categories or payees take the classification of the most rows (ties: the
 newest row).
 
@@ -159,8 +163,9 @@ newest row).
 A new table pair, migrated on both engines (version above every released migration):
 
 - `import_suggestions`: `id`, `user_id` (the account owner), `match_field`, `match_text`,
-  `category_id` (nullable), `payee_id` (nullable), `status` (`open` / `dismissed` / `accepted`),
-  `created_at`, `updated_at`.
+  `category_id` (nullable), `payee_id` (nullable), `transaction_type` (`expense` / `income`, the
+  group's type; a payee-only suggestion has no category to tell it), `status` (`open` /
+  `dismissed` / `accepted`), `created_at`, `updated_at` (moved when rows join).
 - `import_suggestion_links`: `suggestion_id`, `link_id` (the ledger row), primary key on both.
 
 *Builder's call:* deleting a category or payee leaves the suggestion. The read below drops its
@@ -185,6 +190,11 @@ row shows the match text, "→ Category · Payee" (whichever are set), and "N tr
 the latest amount and date. The row has one button, **Dismiss**. Tapping the row opens the rule
 editor. Writes are disabled offline (`useOnline`), as for every other write.
 
+The job writes after the import has answered, and an Apple Wallet push never reaches the device,
+so the list is stale after 60 s and refetches on focus; after a sync that imported rows, with AI
+on, it is refetched again at 15 s and 60 s. A failed list read shows the Inbox's import error
+(Retry refetches it), except a 404 from an older server without the route.
+
 ### Saving a suggestion
 
 Tapping opens the rule editor (the existing `RulePromptDialog`, given a suggestion instead of a
@@ -199,8 +209,9 @@ match text, the category and the payee. The user may change anything, as in toda
    row the user touched (`edited()`), which would skip a row whose payee was filled by hand and
    whose category is still empty. A field the user set is never overwritten. A transaction the
    saved rule no longer matches (the user edited the match text), or whose type the rule's
-   category does not fit, keeps that field empty. The ledger's `applied_*` snapshot is updated to
-   what was written, so a later edit compares against it as for any rule-classified row;
+   category does not fit, keeps that field empty. The ledger's `applied_*` snapshot moves only for
+   the fields accept wrote, so a field the user set by hand still reads as edited and a later
+   apply-rule (without "include edited") leaves it alone;
 3. previews the rule over all the owner's imports (`preview-rule`, scope `all`, run after the
    accept so the suggestion's own rows no longer count as matched). If it would change at least
    one more transaction, it asks "Apply to N imported transactions?" (the existing apply step,
@@ -227,7 +238,9 @@ like `preview-rule`, *builder's call*) asks the AI for the merchant substring of
 payee or description, validated as above, with a 10 s timeout. It answers `{matchField,
 matchText}` or an empty `matchText` on any failure. The dialog shows the heuristic value at
 once and replaces it with the AI's when it arrives, unless the user has already typed in the
-field. The SPA calls it only when the served `AI_ENABLED` is true.
+field, or until Save has started. The SPA calls it only when the served `AI_ENABLED` is true,
+never for a link a rule classified (that prompt updates the rule and keeps its match), and only
+once the rule list has loaded.
 
 ### The apply question in today's flow
 
