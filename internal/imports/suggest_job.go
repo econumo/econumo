@@ -204,6 +204,10 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	if len(rest) > suggestMaxRows {
 		rest = rest[:suggestMaxRows]
 	}
+	// The candidates took a while to gather: an opt-out meanwhile still wins.
+	if off, err := s.optedOut(ctx, owner); err != nil || off {
+		return err
+	}
 	if err := s.countAttempt(ctx, RateScopeSuggest, owner); err != nil {
 		slog.Info("import suggest skipped", "user_id", owner.String(), "reason", "rate_limited")
 		return nil
@@ -223,8 +227,11 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	}
 	groups, groupMissing := groupRowsMissing(valid)
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		// Re-read: the call took seconds, and the user may have settled
-		// suggestions meanwhile.
+		// The call took seconds: a user who opted out meanwhile gets nothing
+		// stored, and one who settled suggestions gets them re-read.
+		if off, err := s.optedOut(ctx, owner); err != nil || off {
+			return err
+		}
 		open, err := s.repo.ListOpenSuggestionsByUser(ctx, owner)
 		if err != nil {
 			return err
@@ -261,6 +268,14 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		}
 		return nil
 	})
+}
+
+func (s *Service) optedOut(ctx context.Context, owner vo.Id) (bool, error) {
+	facts, err := s.facts.OwnerFacts(ctx, owner)
+	if err != nil {
+		return false, err
+	}
+	return facts.AIOff, nil
 }
 
 // suggestVocabulary is the owner's non-archived categories and payees, payees

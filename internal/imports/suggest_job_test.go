@@ -18,14 +18,18 @@ import (
 type completerCall struct{ userID, system, user string }
 
 type fakeCompleter struct {
-	calls []completerCall
-	reply string
-	err   error
-	panic bool
+	calls  []completerCall
+	reply  string
+	err    error
+	panic  bool
+	onCall func()
 }
 
 func (c *fakeCompleter) Complete(_ context.Context, userID, system, user string) (string, error) {
 	c.calls = append(c.calls, completerCall{userID: userID, system: system, user: user})
+	if c.onCall != nil {
+		c.onCall()
+	}
 	if c.panic {
 		panic("boom")
 	}
@@ -301,6 +305,48 @@ func TestSuggestSharedAccountOwnerOptedOut(t *testing.T) {
 	}
 	if len(c.calls) != 0 || len(openSuggestions(t, h, userA)) != 0 || len(openSuggestions(t, h, userB)) != 0 {
 		t.Fatalf("calls = %+v", c.calls)
+	}
+}
+
+// optOutAfter answers "on" for the first n reads, then "opted out".
+type optOutAfter struct {
+	n, reads int
+}
+
+func (f *optOutAfter) OwnerFacts(context.Context, vo.Id) (imports.OwnerInfo, error) {
+	f.reads++
+	return imports.OwnerInfo{Language: "en", AIOff: f.reads > f.n}, nil
+}
+
+// The job's first look found AI on; the user opted out before the call.
+func TestSuggestOptOutBeforeTheCallSendsNothing(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.wireSuggest(c, &optOutAfter{n: 1})
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 0 || len(openSuggestions(t, h, userA)) != 0 {
+		t.Fatalf("calls = %+v", c.calls)
+	}
+}
+
+// The user opted out while the provider was answering: nothing is stored.
+func TestSuggestOptOutDuringTheCallStoresNothing(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	facts := &optOutAfter{n: 1 << 30}
+	h.wireSuggest(c, facts)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	c.onCall = func() { facts.n = facts.reads }
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 0 {
+		t.Fatalf("calls = %d, suggestions = %+v", len(c.calls), openSuggestions(t, h, userA))
 	}
 }
 
