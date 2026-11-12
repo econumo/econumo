@@ -187,7 +187,7 @@ func TestMatch_AdoptsEitherLegOfATransfer(t *testing.T) {
 	if got := imports.Match(cardEv, srcBank, cardLeg, imports.DefaultMatcherConfig()); got.Kind != imports.MatchAdopt || !got.TransactionID.Equal(txA) {
 		t.Fatalf("card leg: got %+v, want adopt txA", got)
 	}
-	cardLeg[0].Links[0].ExternalAccountID = "visa"
+	cardLeg[0].Links[0].ExternalAccountID = "VISA"
 	if got := imports.Match(cardEv, srcBank, cardLeg, imports.DefaultMatcherConfig()); got.Kind != imports.MatchCreate {
 		t.Fatalf("leg already taken by this external account: got %+v, want create", got)
 	}

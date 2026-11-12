@@ -33,7 +33,11 @@ export function ImportedTapDialog({ row, cardName, cardLabel, onCreate, onClose 
   if (!row) {
     return null
   }
+  // a running reimport keeps the dialog: its outcome toast needs the callback
   const close = () => {
+    if (reimport.isPending) {
+      return
+    }
     reimport.reset()
     onClose()
   }
@@ -46,7 +50,8 @@ export function ImportedTapDialog({ row, cardName, cardLabel, onCreate, onClose 
           skipped: t('imports.history.reimported.skipped'),
         }[res.status as string]
         toast.success(outcome ?? t('imports.history.reimported.created'))
-        close()
+        reimport.reset()
+        onClose()
       },
     })
   }
@@ -78,7 +83,7 @@ export function ImportedTapDialog({ row, cardName, cardLabel, onCreate, onClose 
         </dl>
         {reimport.isError ? <p role="alert" className="text-sm text-destructive">{apiErrorMessage(reimport.error)}</p> : null}
         <div className={dialogActionsClass}>
-          <Button type="button" variant="secondary" onClick={close}>{t('common.button.close.label')}</Button>
+          <Button type="button" variant="secondary" onClick={close} disabled={reimport.isPending}>{t('common.button.close.label')}</Button>
           {onCreate ? <Button type="button" onClick={onCreate}>{t('imports.history.create')}</Button> : null}
           {status === 'deleted' ? (
             <Button type="button" onClick={runReimport} disabled={!online || reimport.isPending}>{t('imports.history.reimport')}</Button>

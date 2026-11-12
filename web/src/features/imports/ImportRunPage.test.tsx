@@ -80,6 +80,23 @@ it('a deleted row can be imported again', async () => {
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Import again' })).toBeNull())
 })
 
+it('Close waits while Import again is running', async () => {
+  let release: () => void = () => {}
+  server.use(http.post('*/api/v1/import/reimport-link', async () => {
+    await new Promise<void>((r) => { release = r })
+    return HttpResponse.json({ success: true, message: '', data: { status: 'created', eventId: 'e2' } })
+  }))
+  renderAt('/settings/simplefin/history/r1')
+  await userEvent.click(await screen.findByRole('button', { name: /Payroll/ }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Import again' }))
+  // the dialog's own X refuses too (close() returns while pending); the text button shows it
+  await waitFor(() => expect(screen.getAllByRole('button', { name: 'Close' }).find((b) => b.textContent === 'Close')).toBeDisabled())
+  await userEvent.keyboard('{Escape}')
+  expect(screen.getByRole('button', { name: 'Import again' })).toBeInTheDocument()
+  release()
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Import again' })).toBeNull())
+})
+
 it('a refused reimport shows the server message and keeps the dialog open', async () => {
   server.use(http.post('*/api/v1/import/reimport-link', () =>
     HttpResponse.json({ success: false, message: 'This transaction was not deleted.', code: 400, errors: {} }, { status: 400 })))

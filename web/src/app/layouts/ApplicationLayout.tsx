@@ -153,8 +153,9 @@ export function ApplicationLayout() {
     onClick: () => {
       void queryClient.invalidateQueries()
       void syncPullSourcesIfDue(queryClient).then((totals) => {
-        if (totals && totals.imported + totals.matched + totals.failed > 0) {
-          toast[totals.failed ? 'error' : 'success'](t('imports.data_page.sync_all_done', { imported: totals.imported, matched: totals.matched, failed: totals.failed }))
+        // a failure stays quiet here: the Inbox lists a failing sync
+        if (totals && totals.imported + totals.matched > 0) {
+          toast.success(t('imports.data_page.sync_all_done', { imported: totals.imported, matched: totals.matched, failed: totals.failed }))
         }
       })
     },

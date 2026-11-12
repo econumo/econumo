@@ -129,7 +129,8 @@ func Match(ev model.IngestEvent, sourceID vo.Id, candidates []model.ImportCandid
 // only a link from the same external account counts.
 func linkedFrom(c model.ImportCandidate, sourceID vo.Id, externalAccountID string) bool {
 	for _, l := range c.Links {
-		if l.SourceID.Equal(sourceID) && (!c.Transfer || l.ExternalAccountID == externalAccountID) {
+		// card names are matched case-insensitively, as the ledger lookup does
+		if l.SourceID.Equal(sourceID) && (!c.Transfer || strings.EqualFold(l.ExternalAccountID, externalAccountID)) {
 			return true
 		}
 	}
