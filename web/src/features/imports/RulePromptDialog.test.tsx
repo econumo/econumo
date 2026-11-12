@@ -221,11 +221,11 @@ it('the unioned label set is capped at the server maximum', async () => {
   expect((posted.update![0] as { labelIds: string[] }).labelIds).toEqual(existingIds)
 })
 
-function previewCounts(run: number, all: number) {
+function previewCounts(run: number, all: number, allEdited = 0) {
   server.use(http.post('*/api/v1/import/preview-rule', async ({ request }) => {
     const body = await request.json() as Record<string, unknown>
     ;(posted.preview ??= []).push(body)
-    return HttpResponse.json({ success: true, message: '', data: { matched: body.scope === 'all' ? all : run, alreadyEdited: 0 } })
+    return HttpResponse.json({ success: true, message: '', data: { matched: body.scope === 'all' ? all : run, alreadyEdited: body.scope === 'all' ? allEdited : 0 } })
   }))
 }
 
@@ -343,6 +343,20 @@ describe('suggestion mode', () => {
     await user.click(screen.getByRole('button', { name: 'Apply to all imports' }))
     await waitFor(() => expect(posted.apply![0]).toEqual({ ruleId: 'rule-new', scope: 'all', runId: '', scopeSourceId: '', includeEdited: false }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  // a suggestion row whose payee the user set by hand still matches, but only as an edited row:
+  // offering it would update nothing, or overwrite the hand-set payee
+  it('saving closes with the accept toast when every other match is an edited row', async () => {
+    renderPrompt()
+    previewCounts(0, 1, 1)
+    acceptHandler(2)
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posted.apply).toBeUndefined()
+    expect(vi.mocked(toast.success)).toHaveBeenCalledWith('Updated 2 transactions')
   })
 
   it('the accept metric reports changed fields', async () => {

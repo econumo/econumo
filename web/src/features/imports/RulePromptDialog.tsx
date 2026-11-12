@@ -451,9 +451,10 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
         accepted = await saveAndAccept()
       }
       setSuggestionRule(suggestion.id, null)
-      // the accept filled the suggestion's own rows, so this counts the others
+      // the accept filled the suggestion's own rows, so this counts the others; a row the user
+      // edited by hand (one of the suggestion's own included) is left for them, never offered
       const all = await allPreview.mutateAsync({ spec, scope: ALL_SCOPE }).catch(() => undefined)
-      if (all !== undefined && all.matched > 0) {
+      if (all !== undefined && all.matched - all.alreadyEdited > 0) {
         setStep('all')
         return
       }
