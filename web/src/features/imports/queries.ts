@@ -38,8 +38,9 @@ export interface SuggestionChanges {
   changedPayee: boolean
 }
 
-// The AI's match text for an edited import; an empty answer (no AI, a failure,
-// a 429) just leaves the heuristic in place, so errors are never surfaced.
+// The AI's match text for an edited import. An empty answer (no AI) and a
+// failed request (an error with no data, a 429 included) both leave the
+// heuristic in place; no error is surfaced.
 export function useSuggestMatchText(linkId: Id, enabled: boolean) {
   return useQuery({
     queryKey: ['importMatchText', linkId],

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureCategories } from '@/test/fixtures'
+import { coreHandlers, fixtureCategories, fixtureUser } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import type { ImportSuggestionDto, TransactionImportLinkDto } from '@/api/dto/imports'
 import { toast } from 'sonner'
@@ -342,6 +342,7 @@ describe('suggestion mode', () => {
 })
 
 describe('AI match text', () => {
+  beforeEach(() => { vi.mocked(trackEvent).mockClear() })
   const aiHandler = (matchText: string, matchField = 'description', delay = 0) => server.use(
     http.post('*/api/v1/import/suggest-match-text', async () => {
       ;(posted.suggest ??= []).push(1)
@@ -392,5 +393,45 @@ describe('AI match text', () => {
     await waitFor(() => expect((screen.getByLabelText('Description contains') as HTMLInputElement).value).toBe('BLUE BOTTLE'))
     await user.click(screen.getByRole('button', { name: 'Create rule' }))
     await waitFor(() => expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_RULE_AI_MATCH_USED))
+  })
+
+  it('does not call suggest-match-text offline', async () => {
+    window.econumoConfig = { AI_ENABLED: true }
+    const { onlineManager } = await import('@tanstack/react-query')
+    onlineManager.setOnline(false)
+    try {
+      renderPrompt()
+      aiHandler('BLUE BOTTLE')
+      useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+      expect(await screen.findByLabelText('Payee contains')).toBeInTheDocument()
+      await new Promise((r) => setTimeout(r, 100))
+      expect(posted.suggest).toBeUndefined()
+    } finally {
+      onlineManager.setOnline(true)
+    }
+  })
+
+  it('does not call suggest-match-text for a readonly user', async () => {
+    window.econumoConfig = { AI_ENABLED: true }
+    renderPrompt({ user: { ...fixtureUser, accessLevel: 'readonly' } })
+    aiHandler('BLUE BOTTLE')
+    useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+    expect(await screen.findByLabelText('Payee contains')).toBeInTheDocument()
+    await new Promise((r) => setTimeout(r, 150))
+    expect(posted.suggest).toBeUndefined()
+  })
+
+  it('does not fire the AI-match metric when the user typed over the AI text', async () => {
+    window.econumoConfig = { AI_ENABLED: true }
+    renderPrompt()
+    aiHandler('BLUE BOTTLE')
+    useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+    const user = userEvent.setup()
+    const value = await screen.findByLabelText('Description contains')
+    await waitFor(() => expect((value as HTMLInputElement).value).toBe('BLUE BOTTLE'))
+    await user.type(value, 'X')
+    await user.click(screen.getByRole('button', { name: 'Create rule' }))
+    await waitFor(() => expect(posted.create).toHaveLength(1))
+    expect(vi.mocked(trackEvent)).not.toHaveBeenCalledWith(METRICS.IMPORT_RULE_AI_MATCH_USED)
   })
 })

@@ -194,6 +194,8 @@ export function createPersistOptions({ throttleTime = 1000 }: { throttleTime?: n
       shouldDehydrateQuery: (query: { queryKey: readonly unknown[]; state: { status: string; data?: unknown } }) =>
         query.queryKey[0] !== 'authserver' &&
         query.queryKey[0] !== queryKeys.transactions[0] &&
+        // a metered AI answer: a restored one would be applied with AI off
+        query.queryKey[0] !== 'importMatchText' &&
         query.state.status === 'success' &&
         !isLongReport(query.queryKey, query.state.data),
       // A paused login carries the password, and a restored mutation has no

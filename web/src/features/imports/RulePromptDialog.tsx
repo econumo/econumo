@@ -146,17 +146,21 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
   const [includeEdited, setIncludeEdited] = useState(false)
   const [ruleId, setRuleId] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
-  const [aiText, setAiText] = useState('')
+  const [aiPick, setAiPick] = useState<{ field: ImportRuleMatchField; text: string } | null>(null)
 
-  const aiMatch = useSuggestMatchText(link.id, !existing && isAiEnabled() && online)
-  const aiAnswer = aiMatch.data
+  const { data: user } = useUserData()
+  // a lapsed-trial user's POST would only answer 402; wait until the access level is known
+  const aiOn = !existing && isAiEnabled() && online && user !== undefined && user.accessLevel !== 'readonly'
+  const aiMatch = useSuggestMatchText(link.id, aiOn)
+  const aiAnswer = aiOn ? aiMatch.data : undefined
   useEffect(() => {
     if (!aiAnswer || aiAnswer.matchText === '' || touched) {
       return
     }
-    setMatchField(aiAnswer.matchField || 'external_payee')
+    const field = aiAnswer.matchField || 'external_payee'
+    setMatchField(field)
     setMatchValue(aiAnswer.matchText)
-    setAiText(aiAnswer.matchText)
+    setAiPick({ field, text: aiAnswer.matchText })
   }, [aiAnswer, touched])
 
   // The rule spec: the existing rule's match (when updating) or the editable
@@ -230,7 +234,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
       // exists to avoid.
       const saved = existing ? await update.mutateAsync({ id: existing.id, spec }) : await create.mutateAsync({ spec })
       setRuleId(saved.id)
-      if (!existing && aiText !== '' && matchValue === aiText) {
+      if (!existing && aiPick !== null && matchValue === aiPick.text && matchField === aiPick.field) {
         trackEvent(METRICS.IMPORT_RULE_AI_MATCH_USED)
       }
       // the debounced live-count preview may not have settled yet (e.g. the
