@@ -2779,7 +2779,7 @@ running these.
       start date chip when the amount is there, then the last payment date);
       the budget row's "Finish setup", the item sheet's "Finish setup" button
       and the Settings → Debts row of such a debt open the screen straight on
-      that tab. Saving with the amount borrowed, start date and last payment
+      that tab (offline the budget row's Left cell shows a dash instead). Saving with the amount borrowed, start date and last payment
       date finishes the setup (Owed now optional on top); once any of them or
       Owed now is typed the missing ones are field errors, and with none of
       them Save keeps just the other fields (name, sentence, payment, repeats,

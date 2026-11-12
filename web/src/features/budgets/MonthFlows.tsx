@@ -32,6 +32,7 @@ import type { DropIndicator, ElementContainer, ElementMoveItem } from './element
 import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
 import { isEnvelopeType } from './elementEdit'
 import { periodOf, periodStartDayOf } from './period'
+import { useOnline } from '@/hooks/useOnline'
 
 export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' } | { kind: 'debt' }>
 
@@ -178,7 +179,9 @@ export function MonthFlows({
 }: MonthFlowsProps) {
   const { t } = useTranslation()
   const base = budget.meta.currencyId
-  const canPlanDebts = budget.meta.isArchived !== 1 && canEditBudget(budget.meta, userId)
+  const online = useOnline()
+  // Finish setup opens Settings, which needs the server
+  const canPlanDebts = online && budget.meta.isArchived !== 1 && canEditBudget(budget.meta, userId)
   const currencyOf = (id: Id | null) => currencies.find((c) => c.id === (id ?? base))
   const fmt = (amount: string, currencyId: Id | null = base) => {
     const c = currencyOf(currencyId)

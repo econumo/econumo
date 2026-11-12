@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import { onlineManager } from '@tanstack/react-query'
 import userEvent from '@testing-library/user-event'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { fixtureDebtRow, fixtureWireBudget } from '@/test/fixtures'
@@ -94,6 +95,19 @@ it('an archived budget shows a dash in place of Finish setup', () => {
     b.meta.isArchived = 1
   })
   expect(within(screen.getByTestId('month-debts-row-debt-1')).getByTestId('flow-third')).toHaveTextContent('—')
+})
+
+// Finish setup opens Settings, which cannot load offline: the row reads a dash like the menus
+it('offline a debt not set up shows a dash in place of Finish setup', () => {
+  onlineManager.setOnline(false)
+  try {
+    renderFlows([notSetUpRow()])
+    const left = within(screen.getByTestId('month-debts-row-debt-1')).getByTestId('flow-third')
+    expect(left).toHaveTextContent('—')
+    expect(within(left).queryByRole('button')).toBeNull()
+  } finally {
+    onlineManager.setOnline(true)
+  }
 })
 
 it('the Left total counts only the debts set up', () => {

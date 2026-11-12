@@ -2413,7 +2413,7 @@ data unreadable. Most are also asserted by the test suite.
   budget row's Left cell and the item sheet's Details button read "Finish setup" for a reader who
   may plan in the unarchived budget (`canEdit`, `canPlan`) and open the screen on Settings; a guest
   sees a dash in Left, no link on the Settings row and Details in the sheet, all opening the
-  Overview; Left sums, Plan cells and payoff lines skip it. **Settings → Debts** lists the debts of
+  Overview (offline the Left cell shows the dash too: Settings cannot load); Left sums, Plan cells and payoff lines skip it. **Settings → Debts** lists the debts of
   every budget the user can read (`get-debt-list`, archived budgets included), one section per
   budget headed by its name in the server's order, open debts first in each; Create is disabled,
   saying why (`debts.settings.no_budget`), while the user can plan in no unarchived budget. With an AI provider, onboarding
