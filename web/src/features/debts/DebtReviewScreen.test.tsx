@@ -394,11 +394,18 @@ describe('a guest reads the debt without changing it', () => {
     expect(screen.queryByRole('button', { name: /^Delete/ })).toBeNull()
   })
 
-  it('opened on Settings, it shows the Overview', async () => {
+  it('opened on Settings, it shows the Overview and loads no form', async () => {
+    let loads = 0
+    server.use(http.get('*/api/v1/debt/get-debt', () => {
+      loads++
+      return ok(guestView)
+    }))
     renderScreen()
     useUiStore.getState().openDebtDetails('d1', 'settings')
     expect(await screen.findByTestId('debt-review-top', {}, { timeout: 5000 })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(loads).toBe(1)
   })
 
   it('a debt not set up offers a guest no Finish setup', async () => {

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 import type { TFunction } from 'i18next'
@@ -50,6 +51,19 @@ function RulesCard({ children, footer }: { children: ReactNode; footer?: ReactNo
   )
 }
 
+/** The debt's stored rules read out, a partner's category with its owner's name */
+export function RulesReadOnly({ rules }: { rules: DebtRuleDto[] }) {
+  const { t } = useTranslation()
+  const { data: user } = useUserData()
+  return (
+    <RulesCard>
+      {rules.map((rule) => (
+        <PaymentsFromEditor key={rule.id} value={ruleDraft(rule)} onChange={noop} choices={storedChoices(rule, user?.id, t)} readOnly />
+      ))}
+    </RulesCard>
+  )
+}
+
 /**
  * Which payments count as the debt's: one sentence per rule (1..10), each on
  * a category of any participant of the budget. The category picker groups
@@ -59,25 +73,32 @@ function RulesCard({ children, footer }: { children: ReactNode; footer?: ReactNo
  */
 export function RulesEditor({ value, onChange, options, initialRules = [], lockedCategoryId, error, readOnly = false }: RulesEditorProps) {
   const { t } = useTranslation()
-  const { data: user } = useUserData()
-  const viewerId = user?.id
+  // a line's React key follows its draft through edits (each edit is a new
+  // object), so removing a line never hands its picker to the next one
+  const lineKeys = useRef(new WeakMap<RuleDraft, number>())
+  const nextKey = useRef(0)
+  const keyOf = (rule: RuleDraft) => {
+    let key = lineKeys.current.get(rule)
+    if (key === undefined) {
+      key = nextKey.current++
+      lineKeys.current.set(rule, key)
+    }
+    return key
+  }
 
   if (readOnly) {
-    return (
-      <RulesCard>
-        {initialRules.map((rule) => (
-          <PaymentsFromEditor key={rule.id} value={ruleDraft(rule)} onChange={noop} choices={storedChoices(rule, viewerId, t)} readOnly />
-        ))}
-      </RulesCard>
-    )
+    return <RulesReadOnly rules={initialRules} />
   }
 
   const participants = options?.participants ?? []
   const stored = (pick: (rule: DebtRuleDto) => boolean) => initialRules.find(pick)
+  // with no category chosen yet, the caller's (listed first) stand in
   const ownerOf = (categoryId: Id | null): Id | null =>
-    categoryId === null
+    (categoryId === null
       ? null
-      : (participants.find((p) => p.categories.some((c) => c.id === categoryId))?.userId ?? stored((r) => r.categoryId === categoryId)?.ownerUserId ?? null)
+      : (participants.find((p) => p.categories.some((c) => c.id === categoryId))?.userId ?? stored((r) => r.categoryId === categoryId)?.ownerUserId)) ??
+    participants[0]?.userId ??
+    null
 
   const choicesFor = (rule: PaymentsFrom): PaymentsFromChoices => {
     const groups: (OptionGroup & { userId: Id })[] = participants.map((p) => ({ userId: p.userId, heading: p.name, options: p.categories.map(categoryOption) }))
@@ -94,8 +115,7 @@ export function RulesEditor({ value, onChange, options, initialRules = [], locke
         }
       }
     }
-    // with no category chosen yet, the caller's (listed first) stand in
-    const owner = participants.find((p) => p.userId === (ownerOf(chosen) ?? participants[0]?.userId))
+    const owner = participants.find((p) => p.userId === ownerOf(chosen))
     // a pick the owner's lists no longer hold keeps its stored name
     const withChosen = (list: Option[], id: Id | null, name: (r: DebtRuleDto) => string, idOf: (r: DebtRuleDto) => Id | null): Option[] => {
       if (!id || list.some((o) => o.id === id)) {
@@ -118,6 +138,7 @@ export function RulesEditor({ value, onChange, options, initialRules = [], locke
     // another owner's category: the previous owner's payee and tags narrow nothing there
     const narrowed =
       next.categoryId !== before.categoryId && ownerOf(next.categoryId) !== ownerOf(before.categoryId) ? { ...next, payeeId: null, tagId: null, labelId: null } : next
+    lineKeys.current.set(narrowed, keyOf(before))
     onChange(value.map((rule, i) => (i === index ? narrowed : rule)))
   }
 
@@ -135,8 +156,7 @@ export function RulesEditor({ value, onChange, options, initialRules = [], locke
       >
         {value.map((rule, index) => (
           <PaymentsFromEditor
-            // a rule has no stable id until saved; the position is its identity here
-            key={index}
+            key={keyOf(rule)}
             value={rule}
             onChange={(next) => change(index, next)}
             choices={choicesFor(rule)}

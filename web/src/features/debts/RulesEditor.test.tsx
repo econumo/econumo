@@ -109,6 +109,36 @@ it('the payee picker lists the chosen category owner\'s payees', async () => {
   expect(changes.at(-1)).toEqual([{ categoryId: 'cat-mortgage', payeeId: 'p-bank', tagId: null, labelId: null }])
 })
 
+it('a payee picked before the category stays when the caller\'s own category is picked', async () => {
+  const user = userEvent.setup()
+  const changes = renderEditor({ initial: [{ categoryId: null, payeeId: null, tagId: null, labelId: null }] })
+
+  // with no category yet the caller's payees are listed
+  await user.click(screen.getByRole('button', { name: 'Payee (optional): any payee' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Payee (optional)' })).getByText('Grocer'))
+  await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Food'))
+  expect(changes.at(-1)).toEqual([{ categoryId: 'cat-food', payeeId: 'p1', tagId: null, labelId: null }])
+})
+
+it('a payee picked before the category goes when a partner\'s category is picked', async () => {
+  const user = userEvent.setup()
+  const changes = renderEditor({ initial: [{ categoryId: null, payeeId: 'p1', tagId: null, labelId: null }] })
+
+  await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Mortgage'))
+  expect(changes.at(-1)).toEqual([{ categoryId: 'cat-mortgage', payeeId: null, tagId: null, labelId: null }])
+})
+
+it('removing a line keeps the other lines\' state with them', async () => {
+  const user = userEvent.setup()
+  renderEditor({ initial: [food, { categoryId: 'cat-mortgage', payeeId: 'p-bank', tagId: null, labelId: null }] })
+
+  await user.click(screen.getAllByRole('button', { name: 'Remove this category' })[0])
+  expect(screen.getByRole('button', { name: 'Category: Mortgage' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Payee (optional): Bank' })).toBeInTheDocument()
+})
+
 it('offers no more categories at ten rules', () => {
   renderEditor({ initial: Array.from({ length: 10 }, (_, i) => ({ ...food, labelId: `l${i}` })) })
   expect(screen.getAllByRole('button', { name: /^Category:/ })).toHaveLength(10)

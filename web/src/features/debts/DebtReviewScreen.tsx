@@ -22,7 +22,7 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { debtDay } from './debtDates'
 import { DebtBalanceTab } from './DebtBalanceTab'
 import { DebtSettingsForm } from './DebtSettingsForm'
-import { RulesEditor } from './RulesEditor'
+import { RulesReadOnly } from './RulesEditor'
 import { useDebt, useDebtForecast, useFetchDebtForEdit } from './queries'
 import { useDebtDangerActions } from './useDebtDangerActions'
 import { useDebtMoney, usePaymentsLeft } from './useDebtMoney'
@@ -146,12 +146,15 @@ function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTa
   }, [debtId, fetchDebtForEdit])
 
   const opened = useRef(false)
+  // a reader who cannot edit has no Settings tab: nothing to load for it
   useEffect(() => {
-    if (!opened.current && initialTab === 'settings') {
+    if (!opened.current && initialTab === 'settings' && item) {
       opened.current = true
-      loadSettings()
+      if (canEdit) {
+        loadSettings()
+      }
     }
-  }, [initialTab, loadSettings])
+  }, [initialTab, item, canEdit, loadSettings])
 
   const switchTab = (next: DebtDetailsTab) => {
     setTab(next)
@@ -575,7 +578,7 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
         </dl>
       </section>
 
-      <RulesEditor value={[]} onChange={() => {}} options={undefined} initialRules={item.rules} readOnly />
+      <RulesReadOnly rules={item.rules} />
 
       <PaymentsSection payments={payments} splits={setUp} canForecast={canForecast} forecast={forecast} amount={amount} lang={lang} />
 

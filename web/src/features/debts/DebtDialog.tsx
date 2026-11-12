@@ -109,10 +109,15 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
   const [askCurrency, setAskCurrency] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [nameTouched, setNameTouched] = useState(false)
+  // taken once, when the budgets first arrive: a reload of the list must not
+  // move the debt to another budget under the user
+  const [defaultBudgetId, setDefaultBudgetId] = useState<Id | null | undefined>(undefined)
+  if (defaultBudgetId === undefined && plannable) {
+    setDefaultBudgetId(plannable.find((b) => b.id === userOption(user, UserOptions.BUDGET))?.id ?? plannable[0]?.id ?? null)
+  }
 
   const askBudget = !params.budgetId
-  const defaultBudgetId = plannable?.find((b) => b.id === userOption(user, UserOptions.BUDGET))?.id ?? plannable?.[0]?.id ?? null
-  const budgetId = params.budgetId ?? pickedBudgetId ?? defaultBudgetId
+  const budgetId = params.budgetId ?? pickedBudgetId ?? defaultBudgetId ?? null
   const budget = budgets?.find((b) => b.id === budgetId)
   const { data: options } = useDebtRuleOptions(budgetId)
 
@@ -135,7 +140,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
     clearError('rules')
     // the user's own categories are offered in every budget they plan in; a
     // partner's may not be
-    const own = form.rules.filter((r) => !r.categoryId || options?.participants.find((p) => p.categories.some((c) => c.id === r.categoryId))?.userId === user?.id)
+    const own = form.rules.filter((r) => !r.categoryId || categories.some((c) => c.id === r.categoryId && c.ownerUserId === user?.id))
     patch({ rules: own.length > 0 ? own : [emptyRule()] })
   }
 

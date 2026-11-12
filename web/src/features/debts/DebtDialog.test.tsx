@@ -298,6 +298,42 @@ it('a start date already taken reveals the start date field and resends with it'
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
 })
 
+it('another budget keeps the rules on the user\'s own categories and drops a partner\'s', async () => {
+  const bodies = captureCreate()
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate()
+
+  await user.click(await screen.findByRole('button', { name: 'Category: choose a category' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Food'))
+  await user.click(screen.getByRole('button', { name: 'Add a category' }))
+  await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Mortgage'))
+
+  await user.click(screen.getByRole('button', { name: 'Budget: Main budget' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Budget' })).getByText('Alpha plan'))
+  await user.type(screen.getByLabelText('Name'), 'Food loan')
+  await user.type(screen.getByLabelText('Payment'), '50')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ budgetId: 'b2', rules: [{ categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null }] })
+})
+
+it('the default budget does not change under the form when the budget list reloads', async () => {
+  let budgets = [fixtureBudgets[1]]
+  server.use(http.get('*/api/v1/budget/get-budget-list', () => ok({ items: budgets })))
+  const queryClient = renderDialog()
+  await openCreate()
+  expect(await screen.findByRole('button', { name: 'Budget: Alpha plan' })).toBeInTheDocument()
+
+  budgets = fixtureBudgets
+  await act(() => queryClient.invalidateQueries({ queryKey: queryKeys.budgets }))
+  await waitFor(() => expect(queryClient.getQueryData<unknown[]>(queryKeys.budgets)).toHaveLength(2))
+  // the user option names b1, which only now arrives: the form keeps Alpha plan
+  expect(screen.getByRole('button', { name: 'Budget: Alpha plan' })).toBeInTheDocument()
+})
+
 it('sends no currency when no category row names one: the budget\'s is taken', async () => {
   const bodies = captureCreate()
   const user = userEvent.setup()
