@@ -168,6 +168,10 @@ func TestImportSuggestionsStopWhenUserOptsOutOfAI(t *testing.T) {
 		t.Fatalf("before opting out: calls = %d, items = %v", len(ai.prompts), items)
 	}
 	do(full, http.MethodPost, "/api/v1/user/update-ai", map[string]any{"enabled": false})
+	var stored int
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COUNT(*) FROM import_suggestions WHERE user_id = ?`), user).Scan(&stored); err != nil || stored != 0 {
+		t.Fatalf("turning AI off kept %d suggestions, %v", stored, err)
+	}
 	if items, _ := do(full, http.MethodGet, "/api/v1/import/get-suggestion-list", nil)["items"].([]any); len(items) != 0 {
 		t.Fatalf("list after opting out = %v", items)
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
+	appuser "github.com/econumo/econumo/internal/user"
 )
 
 type importsAccountSource interface {
@@ -317,4 +318,7 @@ func (f *ImportsOwnerFacts) OwnerFacts(ctx context.Context, userID vo.Id) (impor
 	}, nil
 }
 
-var _ imports.OwnerFacts = (*ImportsOwnerFacts)(nil)
+var (
+	_ imports.OwnerFacts          = (*ImportsOwnerFacts)(nil)
+	_ appuser.AISuggestionClearer = (*imports.Service)(nil)
+)

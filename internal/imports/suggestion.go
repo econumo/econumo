@@ -102,7 +102,25 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 // dropSuggestions deletes the open suggestions of a user who opted out of AI,
 // best effort: they are hidden either way and the next read retries.
 func (s *Service) dropSuggestions(ctx context.Context, userID vo.Id, open []model.ImportSuggestion) {
-	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+	if err := s.deleteSuggestions(ctx, open); err != nil {
+		slog.Warn("import suggestion cleanup failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+	}
+}
+
+// ClearSuggestions deletes the user's open suggestions: they turned AI off.
+func (s *Service) ClearSuggestions(ctx context.Context, userID vo.Id) error {
+	open, err := s.repo.ListOpenSuggestionsByUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return s.deleteSuggestions(ctx, open)
+}
+
+func (s *Service) deleteSuggestions(ctx context.Context, open []model.ImportSuggestion) error {
+	if len(open) == 0 {
+		return nil
+	}
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
 		for _, sg := range open {
 			if err := s.repo.DeleteSuggestion(ctx, sg.ID); err != nil {
 				return err
@@ -110,9 +128,6 @@ func (s *Service) dropSuggestions(ctx context.Context, userID vo.Id, open []mode
 		}
 		return nil
 	})
-	if err != nil {
-		slog.Warn("import suggestion cleanup failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
-	}
 }
 
 // suggestionLookup caches per-account answers within one list read: many
@@ -330,7 +345,13 @@ func (s *Service) DismissSuggestion(ctx context.Context, userID vo.Id, req model
 		return nil, err
 	}
 	reqctx.AddLogAttr(ctx, "suggestion_id", sg.ID.String())
-	if err := s.repo.DeleteSuggestion(ctx, sg.ID); err != nil {
+	// Only the links read here: rows a job joined meanwhile keep the
+	// suggestion open for them, as accept does.
+	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
+		_, err := s.repo.ReleaseSuggestionLinks(ctx, sg.ID, sg.LinkIDs)
+		return err
+	})
+	if err != nil {
 		return nil, err
 	}
 	return s.GetSuggestionList(ctx, userID)

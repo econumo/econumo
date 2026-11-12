@@ -400,6 +400,24 @@ func TestSuggestionListEmptyAndClearedWhenOptedOut(t *testing.T) {
 	}
 }
 
+func TestClearSuggestionsDropsTheUsersOpenSuggestions(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	seedSuggestion(t, h, c, cat, "")
+	if err := h.svc.ClearSuggestions(context.Background(), vo.MustParseId(userB)); err != nil {
+		t.Fatal(err)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 {
+		t.Fatalf("another user's clear touched these: %+v", got)
+	}
+	if err := h.svc.ClearSuggestions(context.Background(), vo.MustParseId(userA)); err != nil {
+		t.Fatal(err)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 0 {
+		t.Fatalf("open suggestions kept: %+v", got)
+	}
+}
+
 func TestSuggestMatchTextCountsLimiter(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	l := matchTextLink(t, h, "Blue Bottle")
@@ -551,6 +569,26 @@ func TestAcceptKeepsRowsJoinedMeanwhile(t *testing.T) {
 	}
 	if tx, _ := h.txns.GetByID(context.Background(), *first.TransactionID); tx.CategoryID == nil {
 		t.Fatalf("the accepted row was not filled: %+v", tx)
+	}
+	got, err := h.repo.GetSuggestion(context.Background(), s.ID)
+	if err != nil || len(got.LinkIDs) != 1 || got.LinkIDs[0] != late.ID {
+		t.Fatalf("the suggestion stays open for the row joined meanwhile: %+v, %v", got, err)
+	}
+}
+
+func TestDismissKeepsRowsJoinedMeanwhile(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	s, _, late := lateRow(t, h, c, cat)
+	rp := &joinAfterRead{Repository: h.repo, on: "get", hook: func(ctx context.Context) {
+		if ok, err := h.repo.AddSuggestionLinks(ctx, s.ID, []vo.Id{late.ID}, now); err != nil || !ok {
+			t.Fatalf("join: %v, %v", ok, err)
+		}
+	}}
+	h.withRepo(rp)
+	h.wireSuggest(c, facts)
+	if _, err := h.svc.DismissSuggestion(context.Background(), vo.MustParseId(userA), model.DismissImportSuggestionRequest{Id: s.ID.String()}); err != nil {
+		t.Fatal(err)
 	}
 	got, err := h.repo.GetSuggestion(context.Background(), s.ID)
 	if err != nil || len(got.LinkIDs) != 1 || got.LinkIDs[0] != late.ID {
