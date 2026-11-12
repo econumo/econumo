@@ -147,6 +147,8 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
   const [ruleId, setRuleId] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
   const [aiPick, setAiPick] = useState<{ field: ImportRuleMatchField; text: string } | null>(null)
+  // covers the save AND the count refreshes after it, so a second tap cannot create a second rule
+  const [busy, setBusy] = useState(false)
 
   const { data: user } = useUserData()
   // a lapsed-trial user's POST would only answer 402; wait until the access level is known
@@ -225,6 +227,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
   }
 
   const save = async () => {
+    setBusy(true)
     try {
       // the create/update and the count refresh are independent outcomes: if
       // the rule is saved but the refresh then fails, we must still record
@@ -250,6 +253,8 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
       setStep('apply')
     } catch (err) {
       toast.error(apiErrorMessage(err))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -313,7 +318,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
         </p>
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.not_now')}</Button>
-          <Button type="button" disabled={create.isPending || update.isPending || !online || spec.matchValue.trim() === ''} onClick={() => void save()}>
+          <Button type="button" disabled={busy || create.isPending || update.isPending || !online || spec.matchValue.trim() === ''} onClick={() => void save()}>
             {existing ? t('imports.rules.prompt.update_rule') : t('imports.rules.prompt.create_rule')}
           </Button>
         </div>
@@ -344,7 +349,6 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const [categoryId, setCategoryId] = useState(suggestion.categoryId)
   const [payeeId, setPayeeId] = useState(suggestion.payeeId)
   const [step, setStep] = useState<'define' | 'all'>('define')
-  // kept across a failed accept, so a second Save never creates a second rule
   const [ruleId, setRuleId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -358,7 +362,9 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const preview = usePreviewImportRule()
   const allPreview = usePreviewImportRule()
   const create = useCreateImportRule()
+  const update = useUpdateImportRule()
   const accept = useAcceptImportSuggestion()
+  const setSuggestionRule = useUiStore((s) => s.setSuggestionRule)
   const { mutate: runPreview } = preview
 
   useEffect(() => {
@@ -377,11 +383,22 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const save = async () => {
     setBusy(true)
     try {
-      let id = ruleId
-      if (!id) {
+      // The rule created by an earlier Save whose accept failed is kept in the
+      // store (it outlives Cancel and a reopen) and reused, updated to the
+      // current spec, so one suggestion never leaves two rules behind.
+      const saved = useUiStore.getState().suggestionRules[suggestion.id]
+      let id: string
+      if (!saved) {
         id = (await create.mutateAsync({ spec })).id
-        setRuleId(id)
+        setSuggestionRule(suggestion.id, { ruleId: id, spec })
+      } else {
+        id = saved.ruleId
+        if (JSON.stringify(saved.spec) !== JSON.stringify(spec)) {
+          await update.mutateAsync({ id, spec })
+          setSuggestionRule(suggestion.id, { ruleId: id, spec })
+        }
       }
+      setRuleId(id)
       const accepted = await accept.mutateAsync({
         id: suggestion.id,
         ruleId: id,
@@ -391,6 +408,7 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
           changedPayee: payeeId !== suggestion.payeeId,
         },
       })
+      setSuggestionRule(suggestion.id, null)
       // the accept filled the suggestion's own rows, so this counts the others
       const all = await allPreview.mutateAsync({ spec, scope: ALL_SCOPE }).catch(() => undefined)
       if (all !== undefined && all.matched > 0) {
@@ -436,7 +454,7 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
         <SelectCard label={t('imports.rules.editor.category')}>
           <EntitySelect aria-label={t('imports.rules.editor.category')} value={categoryId || null} clearable placeholder={t('imports.rules.editor.not_set')}
             onChange={(id) => setCategoryId(id ?? '')}
-            options={own(categories).filter((c) => !c.isArchived || c.id === categoryId).map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))} />
+            options={own(categories).filter((c) => (!c.isArchived || c.id === categoryId) && (!suggestion.type || c.type === suggestion.type)).map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))} />
         </SelectCard>
         <SelectCard label={t('imports.rules.editor.payee')}>
           <EntitySelect aria-label={t('imports.rules.editor.payee')} value={payeeId || null} clearable placeholder={t('imports.rules.editor.not_set')}

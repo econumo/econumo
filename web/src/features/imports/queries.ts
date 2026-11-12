@@ -278,7 +278,7 @@ export function useSetImportCredentialKey() {
 }
 
 export function useClaimSetupToken() {
-  return useMutation({ meta: { handlesOwnErrors: true }, mutationFn: importsApi.claimSetupToken })
+  return useMutation({ meta: { handlesOwnErrors: true, skipInvalidate: true }, mutationFn: importsApi.claimSetupToken })
 }
 
 // The access URL is a per-request secret: it is the query's input, never
@@ -392,6 +392,7 @@ export function useDeleteImportRule() {
 // never cached — the count must reflect the value the user is typing.
 export function usePreviewImportRule() {
   return useMutation({
+    meta: { skipInvalidate: true },
     mutationFn: ({ spec, scope }: { spec: ImportRuleSpecDto; scope: ImportRuleScopeDto }) => importsApi.previewImportRule(spec, scope),
   })
 }

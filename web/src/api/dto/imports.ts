@@ -237,6 +237,8 @@ export interface ImportSuggestionDto {
   id: Id
   matchField: ImportRuleMatchField
   matchText: string
+  /** the type of every listed transaction; the category picker offers only categories of this type */
+  type: 'income' | 'expense'
   categoryId: Id | ''
   payeeId: Id | ''
   /** newest first */

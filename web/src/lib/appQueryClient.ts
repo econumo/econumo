@@ -6,7 +6,8 @@ import { apiErrorMessage } from './apiError'
 
 declare module '@tanstack/react-query' {
   interface Register {
-    mutationMeta: { handlesOwnErrors?: boolean }
+    // skipInvalidate: a read that travels as a POST changes nothing.
+    mutationMeta: { handlesOwnErrors?: boolean; skipInvalidate?: boolean }
   }
 }
 
@@ -50,7 +51,9 @@ export function createAppQueryClient() {
   onlineManager.setOnline(navigator.onLine !== false)
   const client: QueryClient = new QueryClient({
     mutationCache: new MutationCache({
-      onSuccess: () => invalidateAfterWrite(client),
+      onSuccess: (_data, _variables, _context, mutation) => {
+        if (!mutation.meta?.skipInvalidate) invalidateAfterWrite(client)
+      },
       // With networkMode 'always' an offline write fails at once, and a site
       // with no error handling of its own would otherwise fail silently. A
       // `mutate(v, { onError })` or a try around `mutateAsync` is invisible here,

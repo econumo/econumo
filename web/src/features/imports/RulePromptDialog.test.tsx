@@ -38,7 +38,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({ matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
-  useUiStore.setState({ rulePrompt: null })
+  useUiStore.setState({ rulePrompt: null, suggestionRules: {} })
   for (const k of Object.keys(posted)) delete posted[k]
   server.use(
     http.post('*/api/v1/import/preview-rule', async ({ request }) => {
@@ -141,6 +141,25 @@ it('a preview refresh failure after a successful create still advances to apply,
   // stale (zero) count rather than getting stuck on "define" and inviting a
   // second, duplicate create-rule click
   expect(await screen.findByText('Apply this rule to 0 matching transactions in this import?')).toBeInTheDocument()
+  expect(posted.create).toHaveLength(1)
+})
+
+ it('a second tap on Create rule while the counts refresh creates nothing more', async () => {
+  renderPrompt()
+  let release: () => void = () => {}
+  const held = new Promise<void>((resolve) => { release = resolve })
+  server.use(http.post('*/api/v1/import/preview-rule', async () => {
+    if (posted.create) await held
+    return HttpResponse.json({ success: true, message: '', data: { matched: 5, alreadyEdited: 0 } })
+  }))
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  const button = await screen.findByRole('button', { name: 'Create rule' })
+  await user.click(button)
+  await waitFor(() => expect(posted.create).toHaveLength(1))
+  await user.click(button)
+  release()
+  expect(await screen.findByRole('button', { name: 'Apply' })).toBeInTheDocument()
   expect(posted.create).toHaveLength(1)
 })
 
@@ -253,7 +272,7 @@ it('closes after applying to the run when no other import would change', async (
 })
 
 const suggestion: ImportSuggestionDto = {
-  id: 'sg1', matchField: 'external_payee', matchText: 'BLUE BOTTLE', categoryId: 'cat-food', payeeId: 'p1',
+  id: 'sg1', matchField: 'external_payee', matchText: 'BLUE BOTTLE', type: 'expense', categoryId: 'cat-food', payeeId: 'p1',
   transactions: [
     { transactionId: 't1', accountId: 'a1', amount: '4.75', currency: 'USD', date: '2026-09-03 10:00:00', externalPayee: 'BLUE BOTTLE #1' },
     { transactionId: 't2', accountId: 'a1', amount: '5.25', currency: 'USD', date: '2026-09-01 10:00:00', externalPayee: 'BLUE BOTTLE #2' },
@@ -328,6 +347,66 @@ describe('suggestion mode', () => {
     await waitFor(() => expect(posted.accept).toHaveLength(1))
     expect(posted.create![0]).toMatchObject({ matchValue: 'BLUE', categoryId: 'cat-food', payeeId: '' })
     await waitFor(() => expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_ACCEPT, { changedMatch: true, changedCategory: false, changedPayee: true }))
+  })
+
+  it('the category picker offers only categories of the suggestion\'s type', async () => {
+    renderPrompt()
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('Food'))
+    await user.click(screen.getByRole('combobox', { name: 'Category' }))
+    expect(await screen.findByRole('option', { name: 'Food' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Salary' })).not.toBeInTheDocument()
+  })
+
+  it('a failed accept, Cancel and a reopen reuse the created rule instead of creating another', async () => {
+    renderPrompt()
+    previewCounts(0, 0)
+    let fail = true
+    server.use(http.post('*/api/v1/import/accept-suggestion', async ({ request }) => {
+      ;(posted.accept ??= []).push(await request.json())
+      if (fail) return HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 400 })
+      return HttpResponse.json({ success: true, message: '', data: { updated: 2 } })
+    }))
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(posted.accept).toHaveLength(1))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(useUiStore.getState().rulePrompt).toBeNull())
+    fail = false
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posted.create).toHaveLength(1)
+    expect(posted.update).toBeUndefined()
+    expect(posted.accept).toEqual([{ id: 'sg1', ruleId: 'rule-new' }, { id: 'sg1', ruleId: 'rule-new' }])
+    expect(useUiStore.getState().suggestionRules).toEqual({})
+  })
+
+  it('a retry after an edit updates the created rule to the new spec', async () => {
+    renderPrompt()
+    previewCounts(0, 0)
+    let fail = true
+    server.use(http.post('*/api/v1/import/accept-suggestion', async ({ request }) => {
+      ;(posted.accept ??= []).push(await request.json())
+      if (fail) return HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 400 })
+      return HttpResponse.json({ success: true, message: '', data: { updated: 2 } })
+    }))
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(posted.accept).toHaveLength(1))
+    fail = false
+    const value = screen.getByLabelText('Payee contains')
+    await user.clear(value)
+    await user.type(value, 'BLUE B')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posted.create).toHaveLength(1)
+    expect(posted.update).toHaveLength(1)
+    expect(posted.update![0]).toMatchObject({ id: 'rule-new', matchValue: 'BLUE B' })
+    expect(posted.accept![1]).toEqual({ id: 'sg1', ruleId: 'rule-new' })
   })
 
   it('cancel leaves the suggestion', async () => {

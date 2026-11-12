@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { persist } from 'zustand/middleware'
 import type { AccountDto } from '@/api/dto/account'
-import type { ImportSuggestionDto, TransactionImportLinkDto } from '@/api/dto/imports'
+import type { ImportRuleSpecDto, ImportSuggestionDto, TransactionImportLinkDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionPrefill, TransactionType } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
@@ -63,6 +63,9 @@ interface UiState {
   setSwitchAccountPrompt: (id: Id | null) => void
   rulePrompt: RulePromptParams | null
   setRulePrompt: (params: RulePromptParams | null) => void
+  /** the rule already created for a suggestion whose accept has not landed, so a retry never creates a second one */
+  suggestionRules: Record<Id, { ruleId: Id; spec: ImportRuleSpecDto }>
+  setSuggestionRule: (suggestionId: Id, entry: { ruleId: Id; spec: ImportRuleSpecDto } | null) => void
   searchOpen: boolean
   openSearch: () => void
   closeSearch: () => void
@@ -92,6 +95,17 @@ export const useUiStore = create<UiState>()((set) => ({
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),
   rulePrompt: null,
   setRulePrompt: (params) => set({ rulePrompt: params }),
+  suggestionRules: {},
+  setSuggestionRule: (suggestionId, entry) =>
+    set((state) => {
+      const next = { ...state.suggestionRules }
+      if (entry) {
+        next[suggestionId] = entry
+      } else {
+        delete next[suggestionId]
+      }
+      return { suggestionRules: next }
+    }),
   searchOpen: false,
   openSearch: () => {
     trackEvent(METRICS.GLOBAL_SEARCH_OPEN)

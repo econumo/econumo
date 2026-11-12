@@ -17,7 +17,7 @@ const category = fixtureCategories.find((c) => c.type === 'expense')!
 const payee = fixturePayees[0]
 
 const suggestion = (over: Partial<ImportSuggestionDto> = {}): ImportSuggestionDto => ({
-  id: 'sg1', matchField: 'external_payee', matchText: 'BLUE BOTTLE', categoryId: category.id, payeeId: payee.id,
+  id: 'sg1', matchField: 'external_payee', matchText: 'BLUE BOTTLE', type: 'expense', categoryId: category.id, payeeId: payee.id,
   transactions: [
     { transactionId: 't1', accountId: 'a1', amount: '4.75', currency: 'USD', date: '2026-09-03 10:00:00', externalPayee: 'BLUE BOTTLE #1' },
     { transactionId: 't2', accountId: 'a1', amount: '5.25', currency: 'USD', date: '2026-09-01 10:00:00', externalPayee: 'BLUE BOTTLE #2' },

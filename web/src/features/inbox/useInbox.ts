@@ -24,7 +24,7 @@ export interface Inbox {
   failed: ImportFailedEventDto[]
   queued: ImportQueuedEventDto[]
   skipped: ImportQueuedEventDto[]
-  /** rules the server proposes for imported transactions */
+  /** rules the server proposes for imported transactions; none for a readonly user, who can neither accept nor dismiss them */
   suggestions: ImportSuggestionDto[]
   /** failedWrites + dueRecurring + invites + syncProblems + failed + queued + suggestions; skipped is never counted */
   count: number
@@ -32,7 +32,7 @@ export interface Inbox {
   isLoaded: boolean
   /** the import queue or the source list request failed; either section may be showing stale/partial data */
   importsError: boolean
-  // offline with the import queue or sources never loaded on this device
+  // offline with the import queue, sources or suggestions never loaded on this device
   importsOffline: boolean
   retryImports: () => void
 }
@@ -67,7 +67,7 @@ export function useInbox(): Inbox {
   const queue = useImportQueue()
   const sources = useImportSources()
   const suggestionList = useImportSuggestions()
-  const importsOffline = useUnavailableOffline(queue, sources)
+  const importsOffline = useUnavailableOffline(queue, sources, suggestionList)
   const recurring = useRecurring()
   const { data: accounts } = useAccounts()
   const folders = useFolders()
@@ -83,7 +83,8 @@ export function useInbox(): Inbox {
   const queued = queue.data?.queued ?? []
   const skipped = queue.data?.skipped ?? []
   const failed = queue.data?.failed ?? []
-  const suggestions = suggestionList.data ?? []
+  const readonly = user?.accessLevel === 'readonly'
+  const suggestions = readonly ? [] : (suggestionList.data ?? [])
   return {
     failedWrites,
     dueRecurring,
@@ -97,7 +98,7 @@ export function useInbox(): Inbox {
     isLoaded:
       storedQueueSettled &&
       (queue.data !== undefined || queue.isError) &&
-      (suggestionList.data !== undefined || suggestionList.isError) &&
+      (readonly || suggestionList.data !== undefined || suggestionList.isError) &&
       (sources.data !== undefined || sources.isError) &&
       (recurring.data !== undefined || recurring.isError) &&
       foldersKnown,

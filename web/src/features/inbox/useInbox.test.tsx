@@ -1,9 +1,10 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
+import { queryKeys } from '@/app/queryKeys'
 import type { ReactNode } from 'react'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
 import { formatDateTime } from '@/lib/datetime'
 import { addChange } from '@/features/pendingWrites/queue'
 import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
@@ -266,4 +267,33 @@ it('counts suggestions in the badge', async () => {
   await waitFor(() => expect(result.current.isLoaded).toBe(true))
   expect(result.current.suggestions.map((s) => s.id)).toEqual(['sg1', 'sg2'])
   expect(result.current.count).toBe(1 + 2)
+})
+
+it('hides suggestions from a readonly user, who cannot accept or dismiss them', async () => {
+  const wrapper = makeWrapper()
+  const sg = { id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }
+  server.use(...coreHandlers({
+    user: { ...fixtureUser, accessLevel: 'readonly' },
+    importQueue: { queued: [q('l1')], skipped: [], failed: [] },
+    importSuggestions: [sg],
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.count).toBe(1))
+  expect(result.current.suggestions).toEqual([])
+})
+
+it('offline, suggestions never loaded on this device read as unavailable rather than loading forever', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  queryClient.setQueryData(queryKeys.importQueue, { queued: [], skipped: [], failed: [] })
+  queryClient.setQueryData(queryKeys.importSources, [])
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  server.use(...coreHandlers())
+  act(() => onlineManager.setOnline(false))
+  try {
+    const { result } = renderHook(() => useInbox(), { wrapper })
+    await waitFor(() => expect(result.current.importsOffline).toBe(true))
+  } finally {
+    act(() => onlineManager.setOnline(true))
+  }
 })
