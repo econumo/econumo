@@ -97,6 +97,21 @@ func (q *Queries) ListLabelsByOwner(ctx context.Context, userID string) ([]Label
 	return items, nil
 }
 
+const lockLabelForDelete = `-- name: LockLabelForDelete :one
+SELECT id FROM labels WHERE id = $1 FOR UPDATE
+`
+
+// Taken by a delete or merge after the debt budgets are locked and before the
+// debt rules are released: FOR UPDATE conflicts with the FOR KEY SHARE a debt
+// write takes on the row while adding a rule, so the delete waits for that
+// write to commit and then releases the new rule too, instead of failing the
+// debts_rules foreign key.
+func (q *Queries) LockLabelForDelete(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, lockLabelForDelete, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
 const reassignRecurringLabels = `-- name: ReassignRecurringLabels :exec
 INSERT INTO recurring_transactions_labels (recurring_transaction_id, label_id)
 SELECT rtl.recurring_transaction_id, $1 FROM recurring_transactions_labels rtl WHERE rtl.label_id = $2

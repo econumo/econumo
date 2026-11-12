@@ -39,3 +39,11 @@ UPDATE transactions SET payee_id = $1 WHERE payee_id = $2;
 
 -- name: ReassignPayeeRecurring :exec
 UPDATE recurring_transactions SET payee_id = $1 WHERE payee_id = $2;
+
+-- name: LockPayeeForDelete :one
+-- Taken by a delete or merge after the debt budgets are locked and before the
+-- debt rules are released: FOR UPDATE conflicts with the FOR KEY SHARE a debt
+-- write takes on the row while adding a rule, so the delete waits for that
+-- write to commit and then releases the new rule too, instead of failing the
+-- debts_rules foreign key.
+SELECT id FROM payees WHERE id = $1 FOR UPDATE;

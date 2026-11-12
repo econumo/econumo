@@ -31,6 +31,7 @@ type querier interface {
 	ListPayeesByOwner(ctx context.Context, db backend.DBTX, userID string) ([]payeeRow, error)
 	UpsertPayee(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeletePayee(ctx context.Context, db backend.DBTX, id string) error
+	LockPayeeForDelete(ctx context.Context, db backend.DBTX, id string) error
 	ReassignPayeeTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error
 	ReassignPayeeRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error
 }
@@ -111,6 +112,10 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 		return err
 	}
 	return r.q.DeletePayee(ctx, r.db(ctx), id.String())
+}
+
+func (r *Repo) LockForDelete(ctx context.Context, id vo.Id) error {
+	return r.q.LockPayeeForDelete(ctx, r.db(ctx), id.String())
 }
 
 // ReassignTransactions points every transaction on oldID at newID.

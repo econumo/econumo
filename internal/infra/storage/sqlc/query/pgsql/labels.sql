@@ -47,3 +47,11 @@ ON CONFLICT DO NOTHING;
 INSERT INTO recurring_transactions_labels (recurring_transaction_id, label_id)
 SELECT rtl.recurring_transaction_id, $1 FROM recurring_transactions_labels rtl WHERE rtl.label_id = $2
 ON CONFLICT DO NOTHING;
+
+-- name: LockLabelForDelete :one
+-- Taken by a delete or merge after the debt budgets are locked and before the
+-- debt rules are released: FOR UPDATE conflicts with the FOR KEY SHARE a debt
+-- write takes on the row while adding a rule, so the delete waits for that
+-- write to commit and then releases the new rule too, instead of failing the
+-- debts_rules foreign key.
+SELECT id FROM labels WHERE id = $1 FOR UPDATE;

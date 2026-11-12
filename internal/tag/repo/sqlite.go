@@ -38,3 +38,7 @@ func (sqliteQuerier) ReassignTagTransactions(ctx context.Context, db backend.DBT
 func (sqliteQuerier) ReassignTagRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return sqlitegen.New(db).ReassignTagRecurring(ctx, p)
 }
+
+// SQLite has no row-level lock modes; its single writer already serializes
+// the delete against a debt write.
+func (sqliteQuerier) LockTagForDelete(context.Context, backend.DBTX, string) error { return nil }

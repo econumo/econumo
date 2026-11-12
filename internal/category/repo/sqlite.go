@@ -54,3 +54,7 @@ func (sqliteQuerier) ReassignCategoryRecurring(ctx context.Context, db backend.D
 func (sqliteQuerier) ReplaceCategoryIcon(ctx context.Context, db backend.DBTX, p replaceIconParams) (int64, error) {
 	return sqlitegen.New(db).ReplaceCategoryIcon(ctx, p)
 }
+
+// SQLite has no row-level lock modes; its single writer already serializes
+// the delete against a debt write.
+func (sqliteQuerier) LockCategoryForDelete(context.Context, backend.DBTX, string) error { return nil }
