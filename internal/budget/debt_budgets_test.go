@@ -307,3 +307,56 @@ func TestDeleteBudget_DeletesItsDebts(t *testing.T) {
 		t.Error("the other budget's debt went too")
 	}
 }
+
+// The tag drill-down joins only this budget's splits: another budget's debt
+// on the same payment neither duplicates the row nor keeps it listed here.
+func TestTxList_TagDrillDownJoinsOnlyThisBudgetsSplits(t *testing.T) {
+	h := newAttrHarness(t)
+	second := h.secondBudget(t)
+	paid := h.spend(h.usd, h.loan, h.tag, "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
+	other := h.spend(h.usd, h.food, h.tag, "40", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
+	if _, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
+		BudgetId: h.budgetID, Name: "Home loan", CurrencyId: fixture.USD,
+		Rules:   []model.DebtRuleRequest{{CategoryId: h.loan, TagId: &h.tag}},
+		Payment: vo.NewFlexString("1000"), Schedule: "monthly",
+	}); err != nil {
+		t.Fatalf("CreateDebt: %v", err)
+	}
+	h.wholeDebtIn(t, second, "Everything", h.loan)
+	h.budgetIn(t, second, "2026-06-01") // syncs the second budget's splits
+	h.budgetIn(t, h.budgetID, "2026-06-01")
+
+	list := h.txList(t, model.BudgetTransactionListRequest{TagId: &h.tag})
+	if got := itemIDs(list); !sameIDs(got, []string{other}) {
+		t.Errorf("tag list = %v, want only the payment no debt of this budget takes (not %s)", got, paid)
+	}
+	if got := spentOf(t, h.budgetIn(t, h.budgetID, "2026-06-01"), h.tag, model.ElementTag); got != "40" {
+		t.Errorf("tag row = %s, want 40 as the list adds up", got)
+	}
+}
+
+// Onboarding's category history reads the spending once per payment, however
+// many budgets' debts split it.
+func TestCategoryHistory_PaymentSplitInTwoBudgetsCountsOnce(t *testing.T) {
+	h := newAttrHarness(t)
+	second := h.secondBudget(t)
+	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 5, 3, 10, 0, 0, 0, time.UTC))
+	h.wholeDebtIn(t, h.budgetID, "Mortgage", h.loan)
+	h.wholeDebtIn(t, second, "Mortgage", h.loan)
+	h.budgetIn(t, h.budgetID, "2026-06-01")
+	h.budgetIn(t, second, "2026-06-01")
+
+	items, err := h.svc.CategoryHistory(h.ctx, h.owner, vo.MustParseId(h.budgetID), 3)
+	if err != nil {
+		t.Fatalf("CategoryHistory: %v", err)
+	}
+	for _, it := range items {
+		if it.CategoryID == h.loan {
+			if got := it.Amounts[2]; vo.NewDecimal(got).String() != "1000" {
+				t.Errorf("loan May = %q, want 1000 once (amounts %v)", got, it.Amounts)
+			}
+			return
+		}
+	}
+	t.Fatalf("no history for the loan category: %+v", items)
+}

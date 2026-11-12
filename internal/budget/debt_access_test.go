@@ -119,7 +119,7 @@ func TestDebtRuleOptions_CallerFirstActiveExpenseOnly(t *testing.T) {
 	h.f.Category(fixture.Category{UserID: own, Name: "Old loan", Archived: true})
 	bank := h.f.Payee(fixture.Payee{UserID: own, Name: "Bank"})
 	h.f.Payee(fixture.Payee{UserID: own, Name: "Closed bank", Archived: true})
-	home := h.f.Tag(fixture.Tag{UserID: own, Name: "Home"})
+	home := h.f.Tag(fixture.Tag{UserID: own, Name: "Home", Icon: "house"})
 	h.f.Tag(fixture.Tag{UserID: own, Name: "Old", Archived: true})
 	car := h.f.Label(fixture.Label{UserID: own, Name: "Car", Icon: "car"})
 	h.f.Label(fixture.Label{UserID: own, Name: "Gone", Archived: true})
@@ -146,11 +146,11 @@ func TestDebtRuleOptions_CallerFirstActiveExpenseOnly(t *testing.T) {
 	if len(o.Categories) != 1 || o.Categories[0].Id != loan || o.Categories[0].Name != "Loan" || o.Categories[0].Icon != "home" {
 		t.Errorf("owner's categories = %+v, want only the active expense one", o.Categories)
 	}
-	if len(o.Payees) != 1 || o.Payees[0].Id != bank {
-		t.Errorf("owner's payees = %+v, want only the active one", o.Payees)
+	if len(o.Payees) != 1 || o.Payees[0].Id != bank || o.Payees[0].Name != "Bank" {
+		t.Errorf("owner's payees = %+v, want only Bank: the archived Closed bank is left out", o.Payees)
 	}
-	if len(o.Tags) != 1 || o.Tags[0].Id != home {
-		t.Errorf("owner's tags = %+v, want only the active one", o.Tags)
+	if len(o.Tags) != 1 || o.Tags[0].Id != home || o.Tags[0].Icon != "house" {
+		t.Errorf("owner's tags = %+v, want only the active one, with its icon", o.Tags)
 	}
 	if len(o.Labels) != 1 || o.Labels[0].Id != car || o.Labels[0].Icon != "car" {
 		t.Errorf("owner's labels = %+v, want only the active one", o.Labels)

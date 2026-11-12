@@ -360,3 +360,39 @@ func TestSync_LaterDebtEndsEveryRule(t *testing.T) {
 		t.Fatalf("new loan splits = %v", n)
 	}
 }
+
+// A payment that moves to another debt of the same budget leaves the first
+// one's split in the same sync that stores the second's: it never counts twice.
+func TestSync_PaymentMovingBetweenDebtsKeepsOneSplit(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	kept, taken := e.newCategory(e.user, true), e.newCategory(e.user, true)
+	a := e.create(t, func(r *model.CreateDebtRequest) {
+		r.Rules = []model.DebtRuleRequest{{CategoryId: e.category}, {CategoryId: kept}}
+	})
+	b := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = taken })
+	e.clock.now = ymd(2026, 7, 1)
+	tx := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	e.sync(t)
+	if got := e.splits(t, a.Id); got[tx] == "" {
+		t.Fatalf("A's splits = %v, want the payment", got)
+	}
+
+	req := e.updateReq(a)
+	req.Rules = []model.DebtRuleRequest{{CategoryId: kept}}
+	if _, err := e.svc.UpdateDebt(ctx, e.uid(), req); err != nil {
+		t.Fatalf("UpdateDebt: %v", err)
+	}
+	if _, err := e.svc.AddDebtRule(ctx, e.uid(), model.AddDebtRuleRequest{Id: b.Id, Rule: model.DebtRuleRequest{CategoryId: e.category}}); err != nil {
+		t.Fatalf("AddDebtRule: %v", err)
+	}
+	e.sync(t)
+
+	var n int
+	if err := e.db.Raw.QueryRowContext(ctx, e.db.Rebind("SELECT COUNT(*) FROM debts_payments WHERE transaction_id = ?"), tx).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 || e.splits(t, b.Id)[tx] == "" || len(e.splits(t, a.Id)) != 0 {
+		t.Fatalf("splits of the payment = %d (A %v, B %v), want one, on B", n, e.splits(t, a.Id), e.splits(t, b.Id))
+	}
+}
