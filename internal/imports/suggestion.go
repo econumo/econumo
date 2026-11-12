@@ -27,6 +27,16 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 	if err != nil || len(open) == 0 {
 		return out, err
 	}
+	if s.facts != nil {
+		facts, err := s.facts.OwnerFacts(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if facts.AIOff {
+			s.dropSuggestions(ctx, userID, open)
+			return out, nil
+		}
+	}
 	categories, err := s.entities.CategoriesByOwner(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -87,6 +97,22 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 		})
 	}
 	return out, nil
+}
+
+// dropSuggestions deletes the open suggestions of a user who opted out of AI,
+// best effort: they are hidden either way and the next read retries.
+func (s *Service) dropSuggestions(ctx context.Context, userID vo.Id, open []model.ImportSuggestion) {
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		for _, sg := range open {
+			if err := s.repo.DeleteSuggestion(ctx, sg.ID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		slog.Warn("import suggestion cleanup failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+	}
 }
 
 // suggestionLookup caches per-account answers within one list read: many
@@ -336,14 +362,18 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 	if s.completer == nil || s.facts == nil {
 		return empty, nil
 	}
-	if err := s.countAttempt(ctx, RateScopePreviewRule, userID); err != nil {
-		return nil, err
-	}
-	language, timezone, _, err := s.facts.OwnerFacts(ctx, userID)
+	facts, err := s.facts.OwnerFacts(ctx, userID)
 	if err != nil {
 		slog.Warn("import match text failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
 		return empty, nil
 	}
+	if facts.AIOff {
+		return empty, nil
+	}
+	if err := s.countAttempt(ctx, RateScopePreviewRule, userID); err != nil {
+		return nil, err
+	}
+	language, timezone := facts.Language, facts.Timezone
 	if language == "" {
 		language = "en"
 	}

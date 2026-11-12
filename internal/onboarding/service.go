@@ -36,15 +36,15 @@ func GoRunner(job func()) { go job() }
 type Service struct {
 	budgets   BudgetWriter
 	accounts  AccountReader
-	timezones TimezoneReader
+	users     UserFacts
 	completer Completer
 	limiter   AttemptLimiter
 	run       Runner
 	steps     Steps
 }
 
-func NewService(budgets BudgetWriter, accounts AccountReader, timezones TimezoneReader) *Service {
-	return &Service{budgets: budgets, accounts: accounts, timezones: timezones, run: GoRunner}
+func NewService(budgets BudgetWriter, accounts AccountReader, users UserFacts) *Service {
+	return &Service{budgets: budgets, accounts: accounts, users: users, run: GoRunner}
 }
 
 // SetAdvisor enables the background savings classification. A nil completer
@@ -102,11 +102,18 @@ func (s *Service) startJob(ctx context.Context, userID vo.Id, logs jobSpec, job 
 	s.runJob(userID, logs, s.promptContext(ctx, userID), job)
 }
 
-// reserveJob reports whether a job may start: AI is configured and the user
-// is under the cap, which this call counts against.
+// reserveJob reports whether a job may start: AI is configured, the user has
+// not opted out of it and is under the cap, which this call counts against.
+// An unreadable preference starts nothing.
 func (s *Service) reserveJob(ctx context.Context, userID vo.Id, logs jobSpec) bool {
 	if s.completer == nil {
 		return false
+	}
+	if s.users != nil {
+		off, err := s.users.AIOptedOut(ctx, userID)
+		if err != nil || off {
+			return false
+		}
 	}
 	if s.limiter != nil {
 		if err := s.limiter.Allow(ctx, RateScopeClassify, userID.String()); err != nil {

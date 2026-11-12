@@ -24,9 +24,11 @@ type AccountReader interface {
 	AccountsByIDs(ctx context.Context, ids []vo.Id) ([]model.OnboardingAccount, error)
 }
 
-// TimezoneReader returns the user's stored IANA timezone ("" when never seen).
-type TimezoneReader interface {
+// UserFacts is what the AI jobs read about the user: the stored IANA timezone
+// ("" when never seen) and whether they opted out of AI (then no job starts).
+type UserFacts interface {
 	StoredTimezone(ctx context.Context, userID vo.Id) (string, error)
+	AIOptedOut(ctx context.Context, userID vo.Id) (bool, error)
 }
 
 // Completer is one chat completion with the configured AI provider. userID

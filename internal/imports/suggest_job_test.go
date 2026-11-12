@@ -34,14 +34,14 @@ func (c *fakeCompleter) Complete(_ context.Context, userID, system, user string)
 
 type ownerFact struct {
 	language, timezone string
-	readonly           bool
+	readonly, aiOff    bool
 }
 
 type fakeFacts map[string]ownerFact
 
-func (f fakeFacts) OwnerFacts(_ context.Context, userID vo.Id) (string, string, bool, error) {
+func (f fakeFacts) OwnerFacts(_ context.Context, userID vo.Id) (imports.OwnerInfo, error) {
 	o := f[userID.String()]
-	return o.language, o.timezone, o.readonly, nil
+	return imports.OwnerInfo{Language: o.language, Timezone: o.timezone, Readonly: o.readonly, AIOff: o.aiOff}, nil
 }
 
 // denyScope refuses one rate-limit scope and lets every other through.
@@ -270,6 +270,37 @@ func TestSuggestSkipsReadonlyOwner(t *testing.T) {
 	}
 	if len(c.calls) != 0 || len(openSuggestions(t, h, userA)) != 0 {
 		t.Fatalf("readonly owner: calls = %+v", c.calls)
+	}
+}
+
+func TestSuggestSkipsOwnerWhoOptedOut(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	facts[userA] = ownerFact{language: "en", aiOff: true}
+	h.mapCard(t, "Apple Card")
+	h.category(t, userA, "Coffee")
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 0 || len(openSuggestions(t, h, userA)) != 0 {
+		t.Fatalf("opted-out owner: calls = %+v", c.calls)
+	}
+}
+
+// The owner's choice decides, whoever tapped: a partner who left AI on still
+// sends nothing about the owner's account.
+func TestSuggestSharedAccountOwnerOptedOut(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	facts[userB] = ownerFact{language: "de", aiOff: true}
+	h.accounts.shared = true
+	if _, err := h.svc.LinkAccount(context.Background(), vo.MustParseId(userA), model.LinkImportAccountRequest{SourceId: source, ExternalAccountId: "Apple Card", AccountId: acctB}); err != nil {
+		t.Fatal(err)
+	}
+	h.category(t, userB, "Kaffee")
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 0 || len(openSuggestions(t, h, userA)) != 0 || len(openSuggestions(t, h, userB)) != 0 {
+		t.Fatalf("calls = %+v", c.calls)
 	}
 }
 

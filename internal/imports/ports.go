@@ -72,11 +72,17 @@ type Completer interface {
 	Complete(ctx context.Context, userID, system, user string) (string, error)
 }
 
-// OwnerFacts is what the suggestion job needs about an account owner: the
-// stored language and timezone ("" when unknown) for the prompt, and whether
-// the effective access level is readonly (a lapsed user gets no AI calls).
+// OwnerFacts is what the suggestion job needs about an account owner.
 type OwnerFacts interface {
-	OwnerFacts(ctx context.Context, userID vo.Id) (language, timezone string, readonly bool, err error)
+	OwnerFacts(ctx context.Context, userID vo.Id) (OwnerInfo, error)
+}
+
+// OwnerInfo: the stored language and timezone ("" when unknown) for the
+// prompt; Readonly when the effective access level is readonly and AIOff when
+// the user opted out of AI. Either one means no AI call with their data.
+type OwnerInfo struct {
+	Language, Timezone string
+	Readonly, AIOff    bool
 }
 
 // AttemptLimiter caps the unbounded import endpoints per user; every request

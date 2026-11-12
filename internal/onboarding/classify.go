@@ -29,8 +29,8 @@ func (s *Service) promptContext(ctx context.Context, userID vo.Id) promptFacts {
 	f := promptFacts{Language: reqctx.Language(ctx)}
 	if reqctx.IsLocationExplicit(ctx) {
 		f.Timezone = reqctx.Location(ctx).String()
-	} else if s.timezones != nil {
-		f.Timezone, _ = s.timezones.StoredTimezone(ctx, userID)
+	} else if s.users != nil {
+		f.Timezone, _ = s.users.StoredTimezone(ctx, userID)
 	}
 	return f
 }

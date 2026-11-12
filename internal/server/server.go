@@ -426,7 +426,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	budgetSvc.SetShiftedPeriodRates(appcurrency.NewConvertor(shiftedRates), shiftedRates)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
 
-	onboardingSvc := apponboarding.NewService(budgetSvc, NewOnboardingAccountReader(accountRepo, accountCurrencyLookup), NewOnboardingTimezones(userRepo))
+	onboardingSvc := apponboarding.NewService(budgetSvc, NewOnboardingAccountReader(accountRepo, accountCurrencyLookup), NewOnboardingUserFacts(userRepo))
 	onboardingSvc.SetSteps(apponboarding.Steps{
 		Tx: txm, Ops: opGuard, Clock: clk,
 		Users:      userSvc,

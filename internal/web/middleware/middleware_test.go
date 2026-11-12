@@ -669,6 +669,14 @@ func TestReadonlyMayUpdateAnalytics(t *testing.T) {
 	}
 }
 
+// Opting out of AI is a privacy choice, so a lapsed user can still make it.
+func TestReadonlyMayUpdateAI(t *testing.T) {
+	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/update-ai", readonlyStub())
+	if !ran || rec.Code == http.StatusPaymentRequired {
+		t.Fatalf("status = %d, ran = %v, want the handler to run", rec.Code, ran)
+	}
+}
+
 // The "what's new" notice must stay dismissable for a lapsed user.
 func TestReadonlyMayUpdateLastSeenVersion(t *testing.T) {
 	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/update-last-seen-version", readonlyStub())

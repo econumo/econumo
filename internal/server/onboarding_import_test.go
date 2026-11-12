@@ -651,3 +651,23 @@ func TestGetPlanSuggestions_ADefaultBudgetTheUserCannotPlanSuggestsNothing(t *te
 		t.Fatalf("status %d: %v", status, data)
 	}
 }
+
+// A user who opted out of AI gets the step writes with no job at all: no
+// import review after finish-import, no savings classification after
+// save-accounts.
+func TestOnboarding_OptedOutUserStartsNoAIJob(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	off := "0"
+	e.f.Option(e.user, model.OptionAI, &off)
+	seedImport(e)
+	if status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()}); status != 200 {
+		t.Fatalf("finish-import %d: %v", status, data)
+	}
+	body := accountsBody(fixture.NewID(), e.eur, nil, [4]string{"s", "Savings", "100", e.eur})
+	if status, data := e.post("/api/v1/onboarding/save-accounts", body); status != 200 {
+		t.Fatalf("save-accounts %d: %v", status, data)
+	}
+	if len(e.ai.prompts) != 0 {
+		t.Fatalf("prompts = %d", len(e.ai.prompts))
+	}
+}

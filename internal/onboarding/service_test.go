@@ -51,11 +51,13 @@ func (fakeAccounts) AccountsByIDs(_ context.Context, ids []vo.Id) ([]model.Onboa
 	return out, nil
 }
 
-type fakeTimezones struct{}
+type fakeTimezones struct{ aiOff bool }
 
 func (fakeTimezones) StoredTimezone(context.Context, vo.Id) (string, error) {
 	return "Europe/Zurich", nil
 }
+
+func (f fakeTimezones) AIOptedOut(context.Context, vo.Id) (bool, error) { return f.aiOff, nil }
 
 type fakeCompleter struct {
 	calls int
@@ -189,6 +191,18 @@ func TestClassification_OnlyForeignOrDeletedAsksNothing(t *testing.T) {
 	schedule(context.Background(), svc, gone, theirs)
 	if c.calls != 0 {
 		t.Fatalf("AI asked %d times", c.calls)
+	}
+}
+
+func TestClassification_OptedOutUserStartsNoJob(t *testing.T) {
+	c := replying(`{"savings":["` + deposit + `"]}`)
+	b := &fakeBudgets{}
+	svc := onboarding.NewService(b, fakeAccounts{}, fakeTimezones{aiOff: true})
+	svc.SetAdvisor(c, nil)
+	svc.SetRunner(func(job func()) { job() })
+	schedule(context.Background(), svc, allIDs...)
+	if len(b.marked) != 0 || c.calls != 0 {
+		t.Fatalf("marked = %v, calls = %d", b.marked, c.calls)
 	}
 }
 

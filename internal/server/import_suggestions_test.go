@@ -108,3 +108,75 @@ func TestImportSuggestionsEndToEnd(t *testing.T) {
 		t.Fatalf("list after accept: %d %v", status, list)
 	}
 }
+
+// update-ai off: the open suggestion disappears and later imports ask nothing.
+func TestImportSuggestionsStopWhenUserOptsOutOfAI(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	user := f.User(fixture.User{Name: "Me"})
+	f.DefaultOptions(user)
+	exp := time.Now().UTC().Add(24 * time.Hour)
+	full := "eco_pat_import-suggestions-optout-full-000000000000"
+	ingest := "eco_pat_import-suggestions-optout-ingest-0000000000"
+	f.AccessToken(fixture.AccessToken{UserID: user, Kind: "personal", TokenHash: appuser.HashAccessToken(full), ExpiresAt: &exp})
+	f.AccessToken(fixture.AccessToken{UserID: user, Kind: "personal", Scope: "ingest", TokenHash: appuser.HashAccessToken(ingest), ExpiresAt: &exp})
+	account := f.Account(fixture.Account{UserID: user, CurrencyID: "dffc2a06-6f29-4704-8575-31709adee926", Name: "Card"})
+	src := f.ImportSource(fixture.ImportSource{UserID: user, Name: "iPhone"})
+	f.ImportAccountLink(fixture.ImportAccountLink{SourceID: src, ExternalAccountID: "Apple Card", AccountID: account})
+	cat := f.Category(fixture.Category{UserID: user, Name: "Coffee"})
+	ai := &recordingCompleter{reply: func() (string, error) {
+		return `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`, nil
+	}}
+	ts := httptest.NewServer(server.BuildAPI(baseTestConfig(db.Engine), db.Raw, server.Seams{
+		Avatars:          appuser.FixedAvatarPicker(appuser.DefaultAvatar),
+		ImportsCompleter: ai,
+		ImportsJobRunner: func(job func()) { job() },
+	}))
+	t.Cleanup(ts.Close)
+	do := func(token, method, path string, body any) map[string]any {
+		t.Helper()
+		var r io.Reader
+		if body != nil {
+			raw, _ := json.Marshal(body)
+			r = strings.NewReader(string(raw))
+		}
+		req, _ := http.NewRequest(method, ts.URL+path, r)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		var env map[string]any
+		if err := json.Unmarshal(b, &env); err != nil || resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s: %d %s", path, resp.StatusCode, b)
+		}
+		data, _ := env["data"].(map[string]any)
+		return data
+	}
+	tap := func(payee, id string) {
+		do(ingest, http.MethodPost, "/api/v1/import/ingest-apple-wallet-event", map[string]any{
+			"account": "Apple Card", "payee": payee, "amount": "4.75", "currency": "USD",
+			"occurredAt": time.Now().UTC().Add(-time.Hour).Format(time.RFC3339), "eventId": id,
+		})
+	}
+
+	tap("Blue Bottle", "evt-1")
+	if items, _ := do(full, http.MethodGet, "/api/v1/import/get-suggestion-list", nil)["items"].([]any); len(ai.prompts) != 1 || len(items) != 1 {
+		t.Fatalf("before opting out: calls = %d, items = %v", len(ai.prompts), items)
+	}
+	do(full, http.MethodPost, "/api/v1/user/update-ai", map[string]any{"enabled": false})
+	if items, _ := do(full, http.MethodGet, "/api/v1/import/get-suggestion-list", nil)["items"].([]any); len(items) != 0 {
+		t.Fatalf("list after opting out = %v", items)
+	}
+	tap("Starbucks", "evt-2")
+	if len(ai.prompts) != 1 {
+		t.Fatalf("AI asked after opting out: %d calls", len(ai.prompts))
+	}
+	var open int
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COUNT(*) FROM import_suggestions WHERE user_id = ?`), user).Scan(&open); err != nil || open != 0 {
+		t.Fatalf("stored suggestions = %d, %v", open, err)
+	}
+}

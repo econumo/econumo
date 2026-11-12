@@ -27,6 +27,9 @@ const (
 	OptionBudget       = "budget"
 	OptionOnboarding   = "onboarding"
 	OptionAnalytics    = "analytics"
+	// OptionAI is the user's consent to AI features ("0" off, "1" on); absent
+	// reads as on, so no backfill is needed.
+	OptionAI = "ai"
 	// OptionLastSeenVersion is the newest release whose "what's new" notice the
 	// user has seen (a vX.Y.Z string); absent for users predating it.
 	OptionLastSeenVersion = "last_seen_version"
@@ -197,6 +200,16 @@ func (u *User) AnalyticsEnabled() bool {
 	return *o.Value != "0"
 }
 
+// AIEnabled reports whether the user lets their data reach the configured AI
+// provider. Absent or empty reads as enabled, like AnalyticsEnabled.
+func (u *User) AIEnabled() bool {
+	o := u.Option(OptionAI)
+	if o == nil || o.Value == nil || *o.Value == "" {
+		return true
+	}
+	return *o.Value != "0"
+}
+
 func (u *User) UpdateName(name string, now time.Time) {
 	u.Name = name
 	u.UpdatedAt = now
@@ -286,6 +299,20 @@ func (u *User) SetAnalytics(enabled bool, id vo.Id, now time.Time) {
 		return
 	}
 	u.Options = append(u.Options, NewUserOption(id, OptionAnalytics, &v, now))
+}
+
+// SetAI writes the AI preference, appending the option row when absent (like
+// SetAnalytics).
+func (u *User) SetAI(enabled bool, id vo.Id, now time.Time) {
+	v := "0"
+	if enabled {
+		v = "1"
+	}
+	if o := u.Option(OptionAI); o != nil {
+		o.setValue(&v, now)
+		return
+	}
+	u.Options = append(u.Options, NewUserOption(id, OptionAI, &v, now))
 }
 
 // SetOnboardingProgress stores the step states of an onboarding still in

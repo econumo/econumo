@@ -91,6 +91,24 @@ func (s *Service) UpdateAnalytics(ctx context.Context, userID vo.Id, req model.U
 	return &model.UpdateAnalyticsResult{User: cur}, nil
 }
 
+// UpdateAI writes the caller's AI preference and returns the refreshed current
+// user. Open import suggestions are not touched here: the imports feature hides
+// and drops them while the option is off.
+func (s *Service) UpdateAI(ctx context.Context, userID vo.Id, req model.UpdateAIRequest) (*model.UpdateAIResult, error) {
+	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
+		u.SetAI(*req.Enabled, s.repo.NextIdentity(), now)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	cur, err := s.toCurrentUser(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return &model.UpdateAIResult{User: cur}, nil
+}
+
 // UpdateOnboarding stores the step states of the caller's onboarding and
 // returns the refreshed current user. Once onboarding is completed the write is
 // a no-op: completion is terminal, so a late write from another tab cannot

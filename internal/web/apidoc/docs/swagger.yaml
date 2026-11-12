@@ -3316,6 +3316,16 @@ definitions:
     type: object
   model.UnlinkIdentityResult:
     type: object
+  model.UpdateAIRequest:
+    properties:
+      enabled:
+        type: boolean
+    type: object
+  model.UpdateAIResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
   model.UpdateAccountRequest:
     properties:
       balance:
@@ -11698,6 +11708,49 @@ paths:
       security:
       - Bearer: []
       summary: Revoke a session
+      tags:
+      - User
+  /api/v1/user/update-ai:
+    post:
+      consumes:
+      - application/json
+      description: Enables or disables AI features for the authenticated user (nothing
+        of theirs is sent to the AI provider while off) and returns the refreshed
+        user.
+      parameters:
+      - description: Update AI request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateAIRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateAIResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update AI preference
       tags:
       - User
   /api/v1/user/update-analytics:

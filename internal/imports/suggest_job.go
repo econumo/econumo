@@ -131,13 +131,14 @@ func (s *Service) suggestForOwnerSafe(owner vo.Id, candidates []suggestCandidate
 }
 
 func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates []suggestCandidate) error {
-	language, timezone, readonly, err := s.facts.OwnerFacts(ctx, owner)
+	facts, err := s.facts.OwnerFacts(ctx, owner)
 	if err != nil {
 		return err
 	}
-	if readonly {
+	if facts.Readonly || facts.AIOff {
 		return nil
 	}
+	language, timezone := facts.Language, facts.Timezone
 	if language == "" {
 		language = "en"
 	}

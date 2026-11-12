@@ -365,6 +365,41 @@ func TestSuggestMatchTextNoAI(t *testing.T) {
 	}
 }
 
+func TestSuggestMatchTextOptedOut(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "Blue Bottle")
+	h.withLimiter()
+	h.wireSuggest(c, fakeFacts{userA: {language: "en", aiOff: true}})
+	c.calls, c.reply = nil, `{"matchText":"Blue Bottle"}`
+	before := *h.lim
+	res, err := suggestMatchText(h, userA, l)
+	if err != nil || res.MatchField != "" || res.MatchText != "" {
+		t.Fatalf("result = %+v, %v", res, err)
+	}
+	if len(c.calls) != 0 || *h.lim != before {
+		t.Fatalf("calls = %+v, limiter = %+v", c.calls, h.lim)
+	}
+}
+
+// Opting out hides the open suggestions and drops them, so turning AI back on
+// later brings only suggestions for new imports.
+func TestSuggestionListEmptyAndClearedWhenOptedOut(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	seedSuggestion(t, h, c, cat, "")
+	facts[userA] = ownerFact{language: "en", aiOff: true}
+	if got := suggestionList(t, h, userA); len(got) != 0 {
+		t.Fatalf("list = %+v", got)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 0 {
+		t.Fatalf("open suggestions kept: %+v", got)
+	}
+	facts[userA] = ownerFact{language: "en"}
+	if got := suggestionList(t, h, userA); len(got) != 0 {
+		t.Fatalf("list after opting back in = %+v", got)
+	}
+}
+
 func TestSuggestMatchTextCountsLimiter(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	l := matchTextLink(t, h, "Blue Bottle")

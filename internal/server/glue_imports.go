@@ -297,20 +297,24 @@ func NewImportsOwnerFacts(users importsOwnerFactsRepo, clk port.Clock) *ImportsO
 	return &ImportsOwnerFacts{users: users, clk: clk}
 }
 
-func (f *ImportsOwnerFacts) OwnerFacts(ctx context.Context, userID vo.Id) (string, string, bool, error) {
+func (f *ImportsOwnerFacts) OwnerFacts(ctx context.Context, userID vo.Id) (imports.OwnerInfo, error) {
 	u, err := f.users.GetByID(ctx, userID)
 	if err != nil {
-		return "", "", false, err
+		return imports.OwnerInfo{}, err
 	}
 	language, err := f.users.GetLanguage(ctx, userID)
 	if err != nil {
-		return "", "", false, err
+		return imports.OwnerInfo{}, err
 	}
 	timezone, err := f.users.GetTimezone(ctx, userID)
 	if err != nil {
-		return "", "", false, err
+		return imports.OwnerInfo{}, err
 	}
-	return language, timezone, u.EffectiveAccessLevel(f.clk.Now()) == model.AccessLevelReadonly, nil
+	return imports.OwnerInfo{
+		Language: language, Timezone: timezone,
+		Readonly: u.EffectiveAccessLevel(f.clk.Now()) == model.AccessLevelReadonly,
+		AIOff:    !u.AIEnabled(),
+	}, nil
 }
 
 var _ imports.OwnerFacts = (*ImportsOwnerFacts)(nil)

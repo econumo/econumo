@@ -350,12 +350,19 @@ func TestImportsOwnerFacts(t *testing.T) {
 	}
 	facts := NewImportsOwnerFacts(userrepo.NewRepo("sqlite", db.TX), fixedImportsClock{now})
 
-	lang, tz, readonly, err := facts.OwnerFacts(ctx, vo.MustParseId(lapsed))
-	if err != nil || lang != "de" || tz != "Europe/Berlin" || !readonly {
-		t.Fatalf("lapsed = %q %q %v %v", lang, tz, readonly, err)
+	off := "0"
+	optedOut := f.User(fixture.User{Email: "optout@example.test"})
+	f.Option(optedOut, model.OptionAI, &off)
+
+	o, err := facts.OwnerFacts(ctx, vo.MustParseId(lapsed))
+	if err != nil || o.Language != "de" || o.Timezone != "Europe/Berlin" || !o.Readonly || o.AIOff {
+		t.Fatalf("lapsed = %+v %v", o, err)
 	}
-	if _, _, readonly, err := facts.OwnerFacts(ctx, vo.MustParseId(active)); err != nil || readonly {
-		t.Fatalf("active readonly = %v %v", readonly, err)
+	if o, err := facts.OwnerFacts(ctx, vo.MustParseId(active)); err != nil || o.Readonly || o.AIOff {
+		t.Fatalf("active = %+v %v", o, err)
+	}
+	if o, err := facts.OwnerFacts(ctx, vo.MustParseId(optedOut)); err != nil || !o.AIOff {
+		t.Fatalf("opted out = %+v %v", o, err)
 	}
 }
 
