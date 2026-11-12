@@ -65,7 +65,10 @@ func (s *Service) TransferElementData(ctx context.Context, t model.ElementDataTr
 			return skip(src)
 		}
 		now := s.clock.Now()
-		if err := s.syncElements(ctx, budgetID, now); err != nil {
+		// A debt whose currency changes moves its data in the currency its
+		// rows are in, and recolors them only after its last transfer: a
+		// sync here must not recolor them between two of its transfers.
+		if err := s.syncElementsKeeping(ctx, budgetID, now, true); err != nil {
 			return err
 		}
 		from, err := s.elementOfType(ctx, budgetID, fromID, fromType)

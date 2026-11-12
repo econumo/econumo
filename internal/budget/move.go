@@ -297,6 +297,12 @@ func savingsFolderNotAllowedErr() error {
 // All budget element-mutating use cases (move, envelope create/update/delete)
 // run this as their last step.
 func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Time) error {
+	return s.syncElementsKeeping(ctx, budgetID, now, false)
+}
+
+// syncElementsKeeping is syncElements; keepDebtCurrency leaves an existing
+// debt row in the currency it is in, for a caller that recolors it itself.
+func (s *Service) syncElementsKeeping(ctx context.Context, budgetID vo.Id, now time.Time, keepDebtCurrency bool) error {
 	b, err := s.loadAggregate(ctx, budgetID)
 	if err != nil {
 		return err
@@ -468,7 +474,7 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 		if perr != nil {
 			return perr
 		}
-		if e.CurrencyID == nil || !e.CurrencyID.Equal(cid) {
+		if e.CurrencyID == nil || (!keepDebtCurrency && !e.CurrencyID.Equal(cid)) {
 			e.UpdateCurrency(&cid, now)
 			mark(e)
 		}
