@@ -16,6 +16,7 @@ import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useApplyTransactionItem } from '@/features/transactions/queries'
 import type { OwnErrorHandling } from '@/lib/appQueryClient'
+import { afterFailedPullSync, afterPullSync } from './sidebarSync'
 
 // The queries reached from surfaces that exist with transaction import off
 // (the Inbox, the transaction dialogs) never fetch then: the server does not
@@ -262,25 +263,8 @@ export function useSyncImportSource() {
     meta: { handlesOwnErrors: true },
     mutationFn: ({ sourceId, accessUrl, startDate, endDate }: { sourceId: Id; accessUrl: string; startDate: string; endDate?: string }) =>
       importsApi.syncImportSource(sourceId, accessUrl, startDate, endDate),
-    onSuccess: (result, vars) => {
-      queryClient.setQueryData(queryKeys.importExternalAccounts(vars.sourceId), result.accounts)
-      void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
-      void queryClient.invalidateQueries({ queryKey: ['importRuns'] })
-      if (result.run.importedCount + result.run.matchedCount + result.run.amountsUpdatedCount > 0) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
-        void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
-        void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
-        void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
-      }
-      trackEvent(METRICS.IMPORT_SYNC, { trigger: result.run.trigger, imported: result.run.importedCount, matched: result.run.matchedCount })
-    },
-    // a failed sync still wrote a run row, and the source's lastRunStatus
-    // must reach the Inbox badge immediately
-    onError: () => {
-      void queryClient.invalidateQueries({ queryKey: ['importRuns'] })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
-    },
+    onSuccess: (result, vars) => afterPullSync(queryClient, vars.sourceId, result, 'settings'),
+    onError: () => afterFailedPullSync(queryClient),
   })
 }
 

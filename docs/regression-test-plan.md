@@ -1098,6 +1098,12 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Run detail names each row's bank account the way the run summary does
       (the bank's own account name, falling back to the bridge id) — never a
       bare `ACT-…` id when the source's accounts are known. 📱
+- [ ] Sidebar sync button 📱: with SimpleFIN connected and unlocked on this device, a tap
+      also syncs SimpleFIN and, when anything came in, toasts "N imported, M matched, F
+      failed"; a second tap within 10 minutes (or a tap within 10 minutes of a sync from the
+      SimpleFIN page) only refreshes, no new run in Import history. After 10 minutes a tap
+      syncs again. Locked on this device, on plain http or with SimpleFIN off, a tap never
+      syncs and never asks for the passphrase. The SimpleFIN page's Sync now has no limit.
 - [ ] Settings → Data: "Sync SimpleFIN" is absent without a SimpleFIN
       source; with one and a locked device it navigates to Settings →
       SimpleFIN; unlocked it syncs every pull source and toasts the totals; the

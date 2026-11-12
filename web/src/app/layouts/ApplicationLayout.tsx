@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 // still shows.
 import logo from '@/assets/econumo.svg?inline'
 import darkLogo from '@/assets/econumo-dark.svg?inline'
+import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UpdateNotice } from '@/components/UpdateNotice'
@@ -34,6 +35,7 @@ import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
 import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
+import { syncPullSourcesIfDue } from '@/features/imports/sidebarSync'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
 import { FeedbackDialog } from '@/features/feedback/FeedbackDialog'
@@ -148,7 +150,14 @@ export function ApplicationLayout() {
   }
   const fullReload = useFullReload()
   const syncPress = useLongPress({
-    onClick: () => void queryClient.invalidateQueries(),
+    onClick: () => {
+      void queryClient.invalidateQueries()
+      void syncPullSourcesIfDue(queryClient).then((totals) => {
+        if (totals && totals.imported + totals.matched + totals.failed > 0) {
+          toast[totals.failed ? 'error' : 'success'](t('imports.data_page.sync_all_done', { imported: totals.imported, matched: totals.matched, failed: totals.failed }))
+        }
+      })
+    },
     onLongPress: () => void fullReload('sync_button'),
   })
   // constant geometry (-m/p cancel out) so the amber circle appears without

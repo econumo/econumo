@@ -601,7 +601,11 @@ Hidden-folder accounts are included and pending share invites skipped; against a
 whose accounts carry no revisions it falls back to `get-transaction-list` (hidden-folder
 account pages then show no transactions). The user's own edits are recorded locally without
 a download when the response revision is exactly +1 of the stored one. The sync button
-(`ApplicationLayout`, via `useLongPress`): a tap is an incremental refresh; holding it
+(`ApplicationLayout`, via `useLongPress`): a tap is an incremental refresh, and also syncs
+every SimpleFIN source when this device holds the unlocked key and no SimpleFIN sync ran
+from this device in the last 10 minutes (`syncPullSourcesIfDue`,
+`web/src/features/imports/sidebarSync.ts`; the SimpleFIN page's own button stamps the same
+time and has no limit; silent unless something came in, failures surface in the Inbox); holding it
 >= 600 ms or Shift+click is a full reload (every account re-downloaded, toast,
 `METRICS.DATA_FULL_RELOAD` with `source: 'sync_button'`). The same full reload
 (`useFullReload`, `web/src/features/transactions/useFullReload.ts`) is the last row of
