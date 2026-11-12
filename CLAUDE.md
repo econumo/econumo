@@ -63,7 +63,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `FEEDBACK` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL`, `FEEDBACK` and `AI_ENABLED` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. The merge is per server: typing a
@@ -248,7 +248,8 @@ categories and payees dropped, rows already filled or no longer of the stored ty
 item's `type` the stored one); a suggestion left with nothing is released there, best effort.
 Accept skips rows no longer of the stored type, moves a row's `applied_*` snapshot only for the
 fields it wrote, so a field the user set by hand still reads as edited for apply-rule, and
-releases only the links it walked. Dismissal is not remembered (the next tap may suggest again).
+releases only the links it walked; dismiss likewise releases only the links it read, so a row a
+job joined meanwhile keeps the suggestion open. Dismissal is not remembered (the next tap may suggest again).
 Accept opens the rule prompt (`RulePromptDialog`), whose category picker offers only categories
 of the suggestion's `type`; the rule a Save makes is kept per suggestion in the ui store until the
 accept lands, its id minted and stored before create-rule is sent, so a retry (even after Cancel
@@ -1147,9 +1148,13 @@ it). Key vars:
   A user who turned the per-user `ai` option off (`update-ai`) sends nothing: no onboarding
   job starts for them (an unreadable preference starts none either), the suggestion job skips
   every account they OWN (the owner decides, also for a partner's taps on it),
-  `suggest-match-text` answers empty without counting the limiter, and `get-suggestion-list`
-  answers empty and deletes their open suggestions on that read (the imports feature reads the
-  option through its `OwnerFacts` port, so the user feature never reaches into imports).
+  and it re-reads the option right before the AI call and again in the write's transaction, so
+  turning AI off mid-job sends or stores nothing; `suggest-match-text` answers empty without
+  counting the limiter. Turning the option off deletes the user's open suggestions in the same
+  request (best effort, through the user feature's `AISuggestionClearer` port, implemented by
+  the imports service and wired in `internal/server`), and `get-suggestion-list` also answers
+  empty and deletes them on any read while it is off (the imports feature reads the option
+  through its `OwnerFacts` port).
   Turning it back on affects only new imports. The SPA hides suggestions and skips
   `suggest-match-text` for such a user.
   The key is optional for local servers (`openai://localhost:11434?model=llama3.1`).
