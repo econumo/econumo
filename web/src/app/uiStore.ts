@@ -49,6 +49,12 @@ export type RulePromptParams =
   | { kind: 'edit'; link: TransactionImportLinkDto; diff: RuleDiff }
   | { kind: 'suggestion'; suggestion: ImportSuggestionDto }
 
+export interface SuggestionRuleEntry {
+  ruleId: Id
+  spec: ImportRuleSpecDto
+  created: boolean
+}
+
 interface UiState {
   transactionModal: OpenTransactionParams | null
   openTransactionModal: (params: OpenTransactionParams) => void
@@ -63,9 +69,13 @@ interface UiState {
   setSwitchAccountPrompt: (id: Id | null) => void
   rulePrompt: RulePromptParams | null
   setRulePrompt: (params: RulePromptParams | null) => void
-  /** the rule already created for a suggestion whose accept has not landed, so a retry never creates a second one */
-  suggestionRules: Record<Id, { ruleId: Id; spec: ImportRuleSpecDto }>
-  setSuggestionRule: (suggestionId: Id, entry: { ruleId: Id; spec: ImportRuleSpecDto } | null) => void
+  /**
+   * the rule a suggestion's Save made, kept until its accept lands, so a retry never creates a
+   * second one. The id is minted before create-rule is sent; `created` is false until it answers,
+   * and a retry then sends the same create again (the server answers a stored id with its rule).
+   */
+  suggestionRules: Record<Id, SuggestionRuleEntry>
+  setSuggestionRule: (suggestionId: Id, entry: SuggestionRuleEntry | null) => void
   searchOpen: boolean
   openSearch: () => void
   closeSearch: () => void

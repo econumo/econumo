@@ -11,6 +11,7 @@ import type {
   ImportRuleScopeDto,
   ImportRuleSpecDto,
   ImportSourceDto,
+  ImportSuggestionDto,
   UpdateImportAccountDto,
 } from '@/api/dto/imports'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
@@ -87,11 +88,29 @@ export function useSuggestMatchText(linkId: Id, enabled: boolean) {
   })
 }
 
+// A refused accept or dismiss whose suggestion is no longer listed already
+// happened: a retry after a lost answer, or another device. Answers the fresh
+// list then, else null (the refusal stands).
+async function listWithout(err: unknown, id: Id): Promise<ImportSuggestionDto[] | null> {
+  if (!isAxiosError(err) || err.response === undefined || err.response.status >= 500) {
+    return null
+  }
+  const items = await importsApi.getImportSuggestionList().catch(() => undefined)
+  return items !== undefined && !items.some((s) => s.id === id) ? items : null
+}
+
 export function useAcceptImportSuggestion() {
   const queryClient = useQueryClient()
   return useMutation({
     meta: { handlesOwnErrors: true },
-    mutationFn: ({ id, ruleId }: { id: Id; ruleId: Id; changes: SuggestionChanges }) => importsApi.acceptImportSuggestion(id, ruleId),
+    mutationFn: async ({ id, ruleId }: { id: Id; ruleId: Id; changes: SuggestionChanges }): Promise<{ updated: number; alreadyGone?: true }> => {
+      try {
+        return await importsApi.acceptImportSuggestion(id, ruleId)
+      } catch (err) {
+        if ((await listWithout(err, id)) === null) throw err
+        return { updated: 0, alreadyGone: true }
+      }
+    },
     onSuccess: (_result, { changes }) => {
       for (const queryKey of [queryKeys.importSuggestions, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
         void queryClient.invalidateQueries({ queryKey })
@@ -106,7 +125,15 @@ export function useDismissImportSuggestion() {
   const queryClient = useQueryClient()
   return useMutation({
     meta: { handlesOwnErrors: true },
-    mutationFn: (id: Id) => importsApi.dismissImportSuggestion(id),
+    mutationFn: async (id: Id) => {
+      try {
+        return await importsApi.dismissImportSuggestion(id)
+      } catch (err) {
+        const items = await listWithout(err, id)
+        if (items === null) throw err
+        return items
+      }
+    },
     onSuccess: (items) => {
       queryClient.setQueryData(queryKeys.importSuggestions, items)
       trackEvent(METRICS.IMPORT_SUGGESTION_DISMISS)

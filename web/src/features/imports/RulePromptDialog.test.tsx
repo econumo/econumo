@@ -28,7 +28,7 @@ const rule = {
 }
 
 function renderPrompt(data: Record<string, unknown> = {}) {
-  server.use(...coreHandlers({ categories: fixtureCategories, ...data }))
+  server.use(...coreHandlers({ categories: fixtureCategories, importSuggestions: [suggestion], ...data }))
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(<QueryClientProvider client={queryClient}><RulePromptDialog /></QueryClientProvider>)
 }
@@ -487,6 +487,69 @@ describe('suggestion mode', () => {
     expect(posted.create).toHaveLength(2)
     expect(posted.create![1]).toMatchObject({ matchValue: 'BLUE B' })
     expect(posted.accept!.at(-1)).toEqual({ id: 'sg1', ruleId: 'rule-b' })
+  })
+
+  it('a create whose answer was lost is sent again under the same id, and no second rule is made', async () => {
+    renderPrompt()
+    previewCounts(0, 0)
+    acceptHandler(2)
+    const stored = new Map<string, Record<string, unknown>>()
+    let lose = true
+    server.use(http.post('*/api/v1/import/create-rule', async ({ request }) => {
+      const body = await request.json() as Record<string, unknown>
+      ;(posted.create ??= []).push(body)
+      // the server answers a stored id with the rule it stored
+      const id = body.id as string
+      if (!stored.has(id)) stored.set(id, { ...rule, ...body })
+      if (lose) {
+        lose = false
+        return HttpResponse.error()
+      }
+      return HttpResponse.json({ success: true, message: '', data: stored.get(id) })
+    }))
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(posted.create).toHaveLength(1))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+    expect(posted.accept).toBeUndefined()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const ids = (posted.create as Record<string, unknown>[]).map((c) => c.id)
+    expect(ids).toHaveLength(2)
+    expect(ids[1]).toBe(ids[0])
+    expect(stored.size).toBe(1)
+    expect(posted.accept).toEqual([{ id: 'sg1', ruleId: ids[0] }])
+  })
+
+  it('an accept refused because its first attempt already landed closes as done', async () => {
+    renderPrompt({ importRules: [{ ...rule, id: 'rule-new' }] })
+    previewCounts(0, 0)
+    let listed = true
+    server.use(
+      http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: listed ? [suggestion] : [] } })),
+      http.post('*/api/v1/import/accept-suggestion', async ({ request }) => {
+        ;(posted.accept ??= []).push(await request.json())
+        if (posted.accept!.length === 1) {
+          listed = false
+          return HttpResponse.error()
+        }
+        return HttpResponse.json({ success: false, message: 'Import suggestion not found', code: 0, errors: {} }, { status: 400 })
+      }),
+    )
+    vi.mocked(toast.error).mockClear()
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(posted.accept).toHaveLength(1))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+    vi.mocked(toast.error).mockClear()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posted.accept).toHaveLength(2)
+    expect(posted.create).toHaveLength(1)
+    expect(vi.mocked(toast.error)).not.toHaveBeenCalled()
+    expect(useUiStore.getState().suggestionRules).toEqual({})
   })
 
   it('cancel leaves the suggestion', async () => {

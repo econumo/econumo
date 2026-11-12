@@ -15,6 +15,7 @@ import {
   suggestionRetry,
   useAcceptImportSuggestion,
   useApplyImportRule,
+  useDismissImportSuggestion,
   useImportSuggestions,
   useCreateImportRule,
   useCreateImportSource,
@@ -199,6 +200,29 @@ it('useAcceptImportSuggestion invalidates the plan with the other ledger views',
   for (const key of [queryKeys.budgetPlan, queryKeys.budget, queryKeys.budgetTransactions, queryKeys.transactions, queryKeys.accounts]) {
     expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
   }
+})
+
+it('a dismiss refused because the suggestion is already gone counts as done', async () => {
+  server.use(
+    http.post('*/api/v1/import/dismiss-suggestion', () => HttpResponse.json({ success: false, message: 'Import suggestion not found', code: 0, errors: {} }, { status: 400 })),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.importSuggestions, [{ id: 'sg1' }])
+  const { result } = renderHook(() => useDismissImportSuggestion(), { wrapper })
+  await act(() => result.current.mutateAsync('sg1'))
+  expect(queryClient.getQueryData(queryKeys.importSuggestions)).toEqual([])
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_DISMISS)
+})
+
+it('a dismiss refused for a suggestion still listed stays an error', async () => {
+  server.use(
+    http.post('*/api/v1/import/dismiss-suggestion', () => HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 400 })),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'sg1' }] } })),
+  )
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useDismissImportSuggestion(), { wrapper })
+  await act(async () => { await expect(result.current.mutateAsync('sg1')).rejects.toThrow() })
 })
 
 it('the suggestion list does not retry a 404 from an older server', async () => {

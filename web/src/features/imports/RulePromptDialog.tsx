@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
+import { v7 as uuidv7 } from 'uuid'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type {
@@ -396,17 +397,21 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   // store (it outlives Cancel and a reopen) and reused, updated to the
   // current spec, so one suggestion never leaves two rules behind.
   const saveAndAccept = async () => {
-    const saved = useUiStore.getState().suggestionRules[suggestion.id]
-    let id: string
-    if (!saved) {
-      id = (await create.mutateAsync({ spec })).id
-      setSuggestionRule(suggestion.id, { ruleId: id, spec })
-    } else {
-      id = saved.ruleId
-      if (JSON.stringify(saved.spec) !== JSON.stringify(spec)) {
-        await update.mutateAsync({ id, spec })
-        setSuggestionRule(suggestion.id, { ruleId: id, spec })
-      }
+    let saved = useUiStore.getState().suggestionRules[suggestion.id]
+    if (!saved || !saved.created) {
+      // The id is minted and stored before create-rule is sent, so a create whose answer was lost
+      // is sent again under the same id (with the spec it carried) and the server answers the rule
+      // it stored, rather than a second rule being made.
+      saved = saved ?? { ruleId: uuidv7(), spec, created: false }
+      setSuggestionRule(suggestion.id, saved)
+      const rule = await create.mutateAsync({ spec: saved.spec, id: saved.ruleId })
+      saved = { ...saved, ruleId: rule.id, created: true }
+      setSuggestionRule(suggestion.id, saved)
+    }
+    const id = saved.ruleId
+    if (JSON.stringify(saved.spec) !== JSON.stringify(spec)) {
+      await update.mutateAsync({ id, spec })
+      setSuggestionRule(suggestion.id, { ruleId: id, spec, created: true })
     }
     setRuleId(id)
     return accept.mutateAsync({
@@ -452,7 +457,10 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
         setStep('all')
         return
       }
-      toast.success(t('imports.rules.prompt.applied_toast', { count: accepted.updated }))
+      // an accept that had already landed (its answer lost) has no count to report
+      if (!accepted.alreadyGone) {
+        toast.success(t('imports.rules.prompt.applied_toast', { count: accepted.updated }))
+      }
       onDone()
     } catch (err) {
       toast.error(apiErrorMessage(err))
