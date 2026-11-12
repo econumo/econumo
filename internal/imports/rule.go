@@ -30,18 +30,8 @@ func (s *Service) CreateRule(ctx context.Context, userID vo.Id, req model.Create
 	if err != nil {
 		return nil, errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value is not valid.", Code: errs.CodeInvalidUUID})
 	}
-	// The id is the client's idempotency key: a retry after a lost answer finds
-	// its rule already stored and gets it back as it was saved. Another user's
-	// id reads as an invalid one, so ids cannot be probed.
-	if existing, err := s.repo.GetRule(ctx, id); err == nil {
-		if existing.UserID != userID {
-			return nil, errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value is not valid.", Code: errs.CodeInvalidUUID})
-		}
-		reqctx.AddLogAttr(ctx, "rule_id", id.String())
-		out := ruleResult(existing)
-		return &out, nil
-	} else if !isNotFoundErr(err) {
-		return nil, err
+	if out, found, err := s.storedRule(ctx, userID, id); found || err != nil {
+		return out, err
 	}
 	r, err := s.ruleFromSpec(ctx, userID, req.ImportRuleSpec)
 	if err != nil {
@@ -51,10 +41,34 @@ func (s *Service) CreateRule(ctx context.Context, userID vo.Id, req model.Create
 	r.ID, r.UserID, r.CreatedAt, r.UpdatedAt = id, userID, now, now
 	reqctx.AddLogAttr(ctx, "rule_id", id.String())
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error { return s.repo.InsertRule(ctx, r) }); err != nil {
+		// An overlapping create with the same id committed first: answer it
+		// like a replay rather than surfacing the key conflict.
+		if out, found, rerr := s.storedRule(ctx, userID, id); found || rerr != nil {
+			return out, rerr
+		}
 		return nil, err
 	}
 	out := ruleResult(r)
 	return &out, nil
+}
+
+// storedRule: the id is the client's idempotency key, so a retry after a lost
+// answer finds its rule already stored and gets it back as it was saved.
+// Another user's id reads as an invalid one, so ids cannot be probed.
+func (s *Service) storedRule(ctx context.Context, userID, id vo.Id) (*model.ImportRuleResult, bool, error) {
+	existing, err := s.repo.GetRule(ctx, id)
+	if isNotFoundErr(err) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	if existing.UserID != userID {
+		return nil, true, errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value is not valid.", Code: errs.CodeInvalidUUID})
+	}
+	reqctx.AddLogAttr(ctx, "rule_id", id.String())
+	out := ruleResult(existing)
+	return &out, true, nil
 }
 
 func (s *Service) UpdateRule(ctx context.Context, userID vo.Id, req model.UpdateImportRuleRequest) (*model.ImportRuleResult, error) {

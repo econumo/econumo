@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -126,4 +127,71 @@ func TestCreateRuleReplayAnswersTheStoredRule(t *testing.T) {
 	if !errors.As(err, &ve) || !hasField(ve, "id") {
 		t.Fatalf("foreign id = %v", err)
 	}
+}
+
+// racingInsert stores a rule under the asked id right after the service's
+// lookup found none: an overlapping create-rule that committed first.
+type racingInsert struct {
+	imports.Repository
+	owner vo.Id
+	rule  model.ImportRule
+	done  bool
+}
+
+func (r *racingInsert) GetRule(ctx context.Context, id vo.Id) (*model.ImportRule, error) {
+	got, err := r.Repository.GetRule(ctx, id)
+	if !r.done {
+		r.done = true
+		first := r.rule
+		first.ID, first.UserID, first.MatchValue = id, r.owner, "first writer"
+		if ierr := r.Repository.InsertRule(ctx, &first); ierr != nil {
+			return nil, ierr
+		}
+	}
+	return got, err
+}
+
+func TestCreateRuleOverlappingCreatesAnswerTheStoredRule(t *testing.T) {
+	h := setup(t)
+	uid := vo.MustParseId(userA)
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	h.entities.add(h.entities.categories, uid, cat, "Coffee")
+	req := classifyReq(h, cat)
+	h.withRepo(&racingInsert{Repository: h.repo, owner: uid, rule: storedRuleTemplate(t, h, uid, cat)})
+	got, err := h.svc.CreateRule(context.Background(), uid, req)
+	if err != nil || got.Id != req.Id || got.MatchValue != "first writer" {
+		t.Fatalf("create = %+v, %v", got, err)
+	}
+}
+
+func TestCreateRuleOverlappingForeignIdIsRefused(t *testing.T) {
+	h := setup(t)
+	uid := vo.MustParseId(userA)
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	h.entities.add(h.entities.categories, uid, cat, "Coffee")
+	req := classifyReq(h, cat)
+	h.withRepo(&racingInsert{Repository: h.repo, owner: vo.MustParseId(userB), rule: storedRuleTemplate(t, h, uid, cat)})
+	_, err := h.svc.CreateRule(context.Background(), uid, req)
+	var ve *errs.ValidationError
+	if !errors.As(err, &ve) || !hasField(ve, "id") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+// storedRuleTemplate is a valid rule row to race with, built by a real create
+// and then deleted.
+func storedRuleTemplate(t *testing.T, h *harness, uid vo.Id, cat string) model.ImportRule {
+	t.Helper()
+	req := classifyReq(h, cat)
+	if _, err := h.svc.CreateRule(context.Background(), uid, req); err != nil {
+		t.Fatal(err)
+	}
+	r, err := h.repo.GetRule(context.Background(), vo.MustParseId(req.Id))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.repo.DeleteRule(context.Background(), r.ID); err != nil {
+		t.Fatal(err)
+	}
+	return *r
 }
