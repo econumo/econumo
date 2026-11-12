@@ -1302,7 +1302,7 @@
         "link": "Set up SimpleFIN"
       },
       "mcp": {
-        "title": "AI assistants",
+        "title": "AI assistants (MCP)",
         "text": "Add this address to Claude, ChatGPT or another app that supports MCP to ask about your finances."
       },
       "copy": "Copy",

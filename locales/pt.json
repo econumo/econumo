@@ -1302,7 +1302,7 @@
         "link": "Configurar SimpleFIN"
       },
       "mcp": {
-        "title": "Assistentes de IA",
+        "title": "Assistentes de IA (MCP)",
         "text": "Adicione este endereço ao Claude, ChatGPT ou outra aplicação compatível com MCP para fazer perguntas sobre as suas finanças."
       },
       "copy": "Copiar",

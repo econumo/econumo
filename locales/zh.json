@@ -1302,7 +1302,7 @@
         "link": "设置 SimpleFIN"
       },
       "mcp": {
-        "title": "AI 助手",
+        "title": "AI 助手（MCP）",
         "text": "将此地址添加到 Claude、ChatGPT 或其他支持 MCP 的应用，即可询问你的财务情况。"
       },
       "copy": "复制",
