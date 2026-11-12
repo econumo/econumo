@@ -28,8 +28,9 @@ category). The loan is the household's, and the household's place in Econumo is 
    member accounts. A payment on an account outside the budget does not exist for the debt, exactly
    as it does not exist for the budget.
 5. **"Track as debt" works on any participant's expense category** in the budget, and the row menu
-   also offers **"Add to <debt>"** for each debt of that budget: it adds the category as another
-   rule, and the category row's plans move onto the debt row, adding to what is there.
+   also offers **"Add to a debt…"** (shown when the budget has at least one debt the caller can
+   edit): it opens a modal listing the budget's debts to pick from; picking one adds the category
+   as another rule, and the category row's plans move onto the debt row, adding to what is there.
 6. Settings → Debts lists the debts of every budget the user is in, grouped by budget.
 7. When a participant leaves the budget, their accounts leave with them, so their payments stop
    counting. Their rules stay on the debt and simply match nothing.
@@ -134,7 +135,7 @@ places that took the owner's lock (merges' `PrepareMerge`, partner revocation, o
 - `create-debt` takes `budgetId` and `rules: [{categoryId, payeeId?, tagId?, labelId?}]` (1..10)
   instead of the single category/payee/tag/label; `update-debt` takes the full `rules` list
   (replace-set, ids for kept rules optional) and may not change `budgetId`.
-- New `add-debt-rule` (`{id, rule}`) behind "Add to <debt>", returning the debt. *My call:* a
+- New `add-debt-rule` (`{id, rule}`) behind "Add to a debt…", returning the debt. *My call:* a
   separate route keeps the menu action a single request with its own plan move.
 - `DebtResult` replaces `categoryId/payeeId/tagId/labelId` with `rules[]` (each with the category's
   name/icon and its owner's display name for the SPA) and adds `budgetId`, `budgetName`, `canEdit`.
@@ -149,14 +150,18 @@ places that took the owner's lock (merges' `PrepareMerge`, partner revocation, o
   grouped by participant (own first), with `rankByName`. From Settings → Debts the form also asks
   for the budget (default: the default budget); from a budget row the budget is that row's.
 - **Row menu** (any plan-capable participant): Details, Mark as paid off, Delete as now, plus on
-  category rows "Track as debt" and one "Add to <debt name>" per debt of the budget.
+  category rows "Track as debt" and "Add to a debt…". The latter opens a modal (`ResponsiveDialog`,
+  a `PickerSheet` on a phone) listing the budget's debts with their icon, name and current rules
+  ("Payments in his Mortgage, her Mortgage"), searchable with `rankByName` when long; a debt whose
+  rules already cover the category, or that a new rule would conflict with, is shown disabled with
+  the reason. Picking one sends `add-debt-rule` and closes; a refusal shows inline.
 - **Review screen:** opens for every participant; guests see it read-only (no Settings, Balance
   form or Danger zone actions). "Which payments count" lists the rules, each naming the category's
   owner when it is not the viewer ("her Mortgage" style: the owner's display name).
 - **Settings → Debts:** grouped by budget, each group headed by the budget name.
 - **Onboarding** auto-detection creates its debts in the budget the step created or reused (the
   default budget), one rule each. The plan handover (`TakeCategoryPlans`) works per budget.
-- Analytics: `DEBT_RULE_ADD` ("Add to"); the others keep firing.
+- Analytics: `DEBT_RULE_ADD` (a rule added from the "Add to a debt…" modal); the others keep firing.
 
 ## Non-goals
 
