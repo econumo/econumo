@@ -223,11 +223,11 @@ the root package (`rules.go` matcher, `rule_*.go` use cases). The optional
 and its injection in `internal/server` are retained for future AI features;
 bulk rule suggestions have been removed. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
-`repo/`, and `api/` with 28 routes under `/api/v1/import/` (`create-source`,
+`repo/`, and `api/` with 29 routes under `/api/v1/import/` (`create-source`,
 `get-source-list`, `delete-source`, `link-account`, `ignore-account`,
 `unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
 `import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
-`discard-event`, `get-transaction-import-list`, `claim-setup-token`,
+`discard-event`, `reimport-link`, `get-transaction-import-list`, `claim-setup-token`,
 `get-credential-key`, `set-credential-key`, `list-external-accounts`,
 `sync-source`, `get-run-list`, `get-run`, `get-source-history`, `get-rule-list`, `create-rule`,
 `update-rule`, `delete-rule`, `preview-rule`, `apply-rule`).
@@ -1958,6 +1958,16 @@ data unreadable. Most are also asserted by the test suite.
   formatted into an error. A sync is one `import_runs` row; per-account failures leave the
   run `partial` (so do rows the bridge returned in an unparsable shape), a bridge failure leaves it `failed`; `last_synced_at` moves only on
   `completed`/`partial`. Sync is manual (a button); sync-on-open is a follow-up.
+- **Transaction import (matching and deleted rows)**: before creating, the matcher adopts an
+  existing transaction on the mapped account of the same kind and amount within
+  `ECONUMO_IMPORT_MATCH_DAYS`. A transfer counts as its leg (expense with the source amount on
+  its source account, income with the recipient amount on its recipient account), so a card
+  payment entered by hand as a transfer adopts both the bank's debit and the card's credit; a
+  link from the same source blocks a transfer only for the same external account, and tip
+  adopts never take a transfer. Deleting an imported transaction leaves its ledger row as a
+  tombstone, so no sync or re-fired push brings it back; `reimport-link` (the history's
+  "Import again" on a deleted row) deletes the tombstone and runs its stored event through the
+  pipeline again, keeping the row's run.
 - **Transaction import (rules)**: one `import_rules` row per rule, per user, optionally scoped
   to a source; `classify` rules only fill empty fields on newly imported rows (first match per
   field in priority order, labels unioned up to 10), `skip` rules drop the row after currency

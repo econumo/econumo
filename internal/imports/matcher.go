@@ -53,7 +53,7 @@ func Match(ev model.IngestEvent, sourceID vo.Id, candidates []model.ImportCandid
 	}
 	var adopt []scored
 	for _, c := range candidates {
-		if c.Type != ev.Type || linkedFrom(c, sourceID) {
+		if c.Type != ev.Type || linkedFrom(c, sourceID, ev.ExternalAccountID) {
 			continue
 		}
 		if !vo.NewDecimal(c.Amount).Equals(amount) {
@@ -83,7 +83,9 @@ func Match(ev model.IngestEvent, sourceID vo.Id, candidates []model.ImportCandid
 	evTokens := tokens(ev.Payee+" "+ev.Description, 1)
 	pct := vo.NewDecimal(strconv.Itoa(cfg.TipTolerancePct))
 	for _, c := range candidates {
-		if c.Type != ev.Type || linkedFrom(c, sourceID) {
+		// a tap is a purchase; a tip-adopt would also rewrite the amount,
+		// which on a transfer leg is not the amount of the whole transfer
+		if c.Transfer || c.Type != ev.Type || linkedFrom(c, sourceID, ev.ExternalAccountID) {
 			continue
 		}
 		days := daysBetween(dayOf(c.SpentAt), evDay) // positive = bank posted after the tap
@@ -122,9 +124,12 @@ func Match(ev model.IngestEvent, sourceID vo.Id, candidates []model.ImportCandid
 	return MatchResult{Kind: MatchTipAdopt, TransactionID: best.c.TransactionID, CorrectAmount: best.correct}
 }
 
-func linkedFrom(c model.ImportCandidate, sourceID vo.Id) bool {
+// linkedFrom reports a candidate this source already claimed. A transfer has
+// two legs, each imported from its own external account, so for a transfer
+// only a link from the same external account counts.
+func linkedFrom(c model.ImportCandidate, sourceID vo.Id, externalAccountID string) bool {
 	for _, l := range c.Links {
-		if l.SourceID.Equal(sourceID) {
+		if l.SourceID.Equal(sourceID) && (!c.Transfer || l.ExternalAccountID == externalAccountID) {
 			return true
 		}
 	}

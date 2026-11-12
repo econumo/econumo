@@ -866,3 +866,37 @@ func linkByExternalID(t *testing.T, h *harness, externalTxID string) model.Impor
 	t.Fatalf("no link for %s in %+v", externalTxID, links)
 	return model.ImportTransactionLink{}
 }
+
+func TestReimportLink(t *testing.T) {
+	h := setup(t)
+	h.mapCard(t, "Apple Card")
+	ctx := context.Background()
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("ingest = %+v", res)
+	}
+	links, _ := h.repo.ListLinksBySource(ctx, vo.MustParseId(source))
+	linkID := links[0].ID.String()
+	_, err := h.svc.ReimportLink(ctx, vo.MustParseId(userA), model.ImportLinkActionRequest{LinkId: linkID})
+	if verr, isV := errs.AsValidation(err); !isV || verr.MsgCode != errs.CodeImportLinkNotDeleted {
+		t.Fatalf("reimport of a live link = %v", err)
+	}
+	// the user deletes the imported transaction: the row becomes a tombstone,
+	// and a re-fired push stays a duplicate
+	if _, err := h.db.Raw.ExecContext(ctx, h.db.Rebind(`DELETE FROM transactions WHERE id = ?`), links[0].TransactionID.String()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.svc.ReimportLink(ctx, vo.MustParseId(userB), model.ImportLinkActionRequest{LinkId: linkID}); err == nil {
+		t.Fatal("foreign user must not reimport")
+	}
+	res, err := h.svc.ReimportLink(ctx, vo.MustParseId(userA), model.ImportLinkActionRequest{LinkId: linkID})
+	if err != nil || res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("reimport = %+v, %v", res, err)
+	}
+	if len(h.txns.created) != 2 {
+		t.Fatalf("created = %d, want the original and the reimport", len(h.txns.created))
+	}
+	links, _ = h.repo.ListLinksBySource(ctx, vo.MustParseId(source))
+	if len(links) != 1 || links[0].TransactionID == nil || links[0].Status != model.ImportLinkStatusLinked {
+		t.Fatalf("ledger = %+v", links)
+	}
+}

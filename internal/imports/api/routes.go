@@ -30,6 +30,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, providers Pro
 		mux.Handle("POST /api/v1/import/unskip-queued-event", auth(h.UnskipQueuedEvent))
 		mux.Handle("POST /api/v1/import/retry-event", auth(h.RetryEvent))
 		mux.Handle("POST /api/v1/import/discard-event", auth(h.DiscardEvent))
+		mux.Handle("POST /api/v1/import/reimport-link", auth(h.ReimportLink))
 		mux.Handle("GET /api/v1/import/get-transaction-import-list", auth(h.GetTransactionImportList))
 		mux.Handle("GET /api/v1/import/get-run-list", auth(h.GetRunList))
 		mux.Handle("GET /api/v1/import/get-run", auth(h.GetRun))

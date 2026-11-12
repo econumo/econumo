@@ -1109,8 +1109,23 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       status, counts and errors; a run opens its detail
       (`/settings/simplefin/history/<id>`, back returns to the list); a
       transaction deleted after import shows struck-through with "Deleted
-      since"; queued rows read "Waiting for review". Rows have no actions in
-      this version. 📱
+      since"; queued rows read "Waiting for review". Only a "Deleted since"
+      row opens: a dialog with the payee, amount, Account (the bank's name),
+      date, the deleted explanation and "Import again" (see below); the other
+      rows have no actions. 📱
+- [ ] Import again 📱: delete an imported SimpleFIN transaction, then sync again — it is
+      NOT re-imported. Open its "Deleted since" row in the run detail → "Import again":
+      the dialog closes with "Imported again", the row reads Imported (no strike-through)
+      in the same run, and the transaction is back on the account. Offline the button is
+      disabled. The same works for an Apple Wallet tap from Apple Wallet → Import history.
+- [ ] Card payment as a transfer 📱: enter a transfer checking → credit card by hand,
+      then sync SimpleFIN with both accounts mapped. The checking debit and the card's
+      payment credit (same amount, within 3 days) are both matched to that one transfer
+      (matched count 2, no new income or expense), in one sync or in two. A transfer in
+      two currencies matches the card side by the recipient amount. Fixing an earlier
+      wrong import: delete the income transaction the card payment created, enter the
+      transfer, open the deleted row → "Import again" toasts "Matched to an existing
+      transaction" and creates nothing.
 - [ ] Apple Wallet → status card → "Import history" (shown once a tap has
       arrived; `/settings/apple-wallet/history`; crumbs Settings › Apple
       Wallet) lists every tap newest first, grouped by day on the device's
@@ -1132,7 +1147,8 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       tap — the row reads Imported, it leaves the Inbox's Skipped list, and no
       unskip happens if the form is cancelled. A Waiting row says it is waiting
       in the Inbox and offers the same button; a Deleted-since row says it was
-      imported and deleted later, with no button.
+      imported and deleted later and offers "Import again" instead (no "Create
+      transaction").
 - [ ] Rate limits: the 6th `claim-setup-token` within 15 minutes and the 11th
       `sync-source` return 429 with the standard envelope.
 - [ ] Ingest-scoped PATs get 401 on every SimpleFIN endpoint; a read-only

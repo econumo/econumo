@@ -75,6 +75,7 @@ type querier interface {
 	GetImportAccountLinkByID(ctx context.Context, db backend.DBTX, id string) (accountLinkRow, error)
 	ListImportAccountLinksBySource(ctx context.Context, db backend.DBTX, sourceID string) ([]accountLinkRow, error)
 	DeleteImportEvent(ctx context.Context, db backend.DBTX, id string) error
+	DeleteImportTransactionLink(ctx context.Context, db backend.DBTX, id string) error
 	ListImportEventsBySourceStatus(ctx context.Context, db backend.DBTX, p eventsBySourceStatusPs) ([]eventRow, error)
 	GetImportTransactionLinkByID(ctx context.Context, db backend.DBTX, id string) (linkRow, error)
 	UpdateImportTransactionLink(ctx context.Context, db backend.DBTX, p updateLinkParams) error
@@ -501,6 +502,10 @@ func accountLinkFromRow(row accountLinkRow) (*model.ImportAccountLink, error) {
 
 func (r *Repo) DeleteEvent(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteImportEvent(ctx, r.db(ctx), id.String())
+}
+
+func (r *Repo) DeleteLink(ctx context.Context, id vo.Id) error {
+	return r.q.DeleteImportTransactionLink(ctx, r.db(ctx), id.String())
 }
 
 func (r *Repo) ListEventsBySourceStatus(ctx context.Context, sourceID vo.Id, status string) ([]model.ImportEvent, error) {

@@ -201,6 +201,23 @@ export function useRetryImportEvent() {
   })
 }
 
+// "Import again" on a row whose transaction was deleted: it may create a
+// transaction or adopt an existing one (a transfer entered by hand), and the
+// row gets a new id in its run and history.
+export function useReimportImportLink() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: importsApi.reimportLink,
+    onSuccess: (res) => {
+      for (const key of [['importRun'], ['importSourceHistory'], queryKeys.importQueue, queryKeys.importSources, queryKeys.transactions, queryKeys.accounts, queryKeys.budget]) {
+        void queryClient.invalidateQueries({ queryKey: key })
+      }
+      trackEvent(METRICS.IMPORT_REIMPORT, { status: res.status })
+    },
+  })
+}
+
 export function useTransactionImportLinks(transactionId: Id, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.transactionImports(transactionId),

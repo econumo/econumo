@@ -848,7 +848,11 @@
       "waiting": "Esta transação está aguardando na caixa de entrada.",
       "deleted": "Esta transação foi importada e depois excluída.",
       "create": "Criar transação",
-      "unavailable": "Esta transação foi importada, mas não está disponível para você."
+      "unavailable": "Esta transação foi importada, mas não está disponível para você.",
+      "account": "Conta",
+      "reimport": "Importar novamente",
+      "reimport_hint": "Importe-a novamente para a voltar a adicionar, ou para a associar a uma transação que introduziu, como uma transferência.",
+      "reimported": { "created": "Importada novamente", "matched": "Associada a uma transação existente", "queued": "Importada novamente; está à espera na caixa de entrada", "skipped": "Não adicionada: corresponde a uma regra de exclusão ou a uma conta ignorada" }
     }
   },
   "user": {
@@ -2290,6 +2294,7 @@
       "link_not_queued": "Este evento não está a aguardar revisão.",
       "link_not_skipped": "Este evento não está ignorado.",
       "event_not_failed": "Este evento não falhou.",
+      "link_not_deleted": "Esta transação não foi eliminada.",
       "setup_token_rejected": "O SimpleFIN rejeitou este token de configuração. Pode já ter sido usado; crie um novo no SimpleFIN Bridge.",
       "provider_unavailable": "Não foi possível contactar o SimpleFIN. Tente novamente dentro de alguns minutos.",
       "sync_range_invalid": "O intervalo de datas é inválido: o início não pode ser posterior ao fim, e o intervalo não pode exceder 400 dias.",

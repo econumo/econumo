@@ -119,6 +119,26 @@ func (h *Handlers) DiscardEvent(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.DiscardEvent)
 }
 
+// ReimportLink handles POST /api/v1/import/reimport-link (auth).
+//
+// @Summary     Import a deleted transaction again
+// @Description Runs the stored event of a ledger row whose transaction was deleted through the pipeline again: it adopts a matching transaction or creates one. Only deleted rows qualify; a sync never re-imports them on its own.
+// @Tags        Import
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.ImportLinkActionRequest true "Reimport request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.IngestEventResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     404     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/import/reimport-link [post]
+func (h *Handlers) ReimportLink(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.ReimportLink)
+}
+
 // GetTransactionImportList handles GET /api/v1/import/get-transaction-import-list (auth).
 // Required query param: transactionId.
 //
