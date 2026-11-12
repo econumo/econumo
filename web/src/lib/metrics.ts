@@ -204,13 +204,13 @@ export const METRICS = {
   WHATS_NEW_OPEN: 'appWhatsNewOpen',
   WHATS_NEW_DISMISS: 'appWhatsNewDismiss',
   APP_LOCK_UNLOCKED: 'appAppLockUnlocked',
-  APP_LOCK_FORGOT_PIN: 'appAppLockForgotPin',
+  APP_LOCK_FORGOT_SECRET: 'appAppLockForgotSecret',
   APP_LOCK_ATTEMPTS_EXCEEDED: 'appAppLockAttemptsExceeded',
   APP_LOCK_ENABLED: 'appAppLockEnabled',
   APP_LOCK_DISABLED: 'appAppLockDisabled',
   APP_LOCK_BIOMETRIC_ENABLED: 'appAppLockBiometricEnabled',
   APP_LOCK_BIOMETRIC_DISABLED: 'appAppLockBiometricDisabled',
-  APP_LOCK_PIN_CHANGED: 'appAppLockPinChanged',
+  APP_LOCK_SECRET_CHANGED: 'appAppLockSecretChanged',
   APP_LOCK_TIMEOUT_CHANGED: 'appAppLockTimeoutChanged',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]

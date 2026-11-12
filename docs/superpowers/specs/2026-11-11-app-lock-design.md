@@ -404,3 +404,53 @@ be https-only.
   shows the "Use biometrics" row disabled with "Face ID / fingerprint needs
   HTTPS" (`biometricNeedsHttps()`); in the native app and where the platform
   authenticator is unavailable on https the row stays hidden.
+
+## Revision 4 — pattern unlock and a redesigned PIN pad (overrides the text above)
+
+The owner asked for a better PIN pad and for "swipe support", chosen as an
+Android-style pattern.
+
+- **One secret per device, PIN or pattern.** The config holds
+  `secret: { kind: 'pin' | 'pattern', salt, hash, iterations, length }`
+  (`config.ts`). A config written before this revision has `pin` and no kind; it
+  reads as `kind: 'pin'` and is stored in the new shape on its next write. The
+  PIN stays available everywhere, plain http included; a pattern works over http
+  too (same derive).
+- **The pattern** (`pattern.ts`) is the ordered dots 0-8 of a 3x3 grid, 4 to 9 of
+  them, each once, encoded as `p:0-4-8-5`. A dot the line passes straight over
+  joins first unless already used (0->2 adds 1, 0->8 adds 4). The encoded string
+  goes through the same PBKDF2 derive as a PIN (`secret.ts`: `hashSecret`,
+  `verifySecret`; `secretKind` tells them apart, so a PIN never matches a
+  pattern lock). `checkSecret` replaces `checkPin` with the same counter,
+  lockouts and 10-try sign-out. `length` is the dot count.
+- **PatternPad.** Pointer events with pointer capture on the grid, which is
+  `touch-action: none`, carries `data-vaul-no-drag` and stops `pointerdown` from
+  reaching the drawer, so a swipe neither scrolls nor drags the sheet. A dot is
+  hit within 0.42 of a cell from its centre, and moves are sampled every 0.15
+  cell so a fast swipe does not skip one. Release with fewer than 4 dots shows
+  "Connect at least 4 dots" and is not an attempt; 4+ are submitted. A rejected
+  pattern stays red for 600 ms and clears; an accepted one clears at once. Each
+  dot is a button: Enter/Space (and a tap on one dot) pick dots one at a time,
+  then Clear and Done appear, and Done submits.
+- **Settings.** The set-up and change dialogs (`SecretDialog.tsx`, formerly
+  `SetPinDialog.tsx`) offer "Use a pattern instead" / "Use a PIN instead" on the
+  create step; the confirm step must match, else it starts over. The current-
+  secret step uses the stored kind. The page's row reads "Change PIN" or
+  "Change pattern".
+- **Lock screen.** A pattern lock shows "Draw your pattern", the grid, the
+  biometric button under it, the countdown and attempts left, and "Forgot
+  pattern?" with the same sign-out.
+- **PIN pad redesign.** Title, then the dots, then one line under them for the
+  hint, the attempts left or the error. Dots fill in the primary colour with a
+  short pop; a rejected entry stays red while it shakes (reduced motion: no
+  animation). Keys are 68 px round, take no focus from a pointer (so a tap
+  leaves no ring; `focus-visible` still shows one for the keyboard), and press
+  in on `:active`. Delete is key-sized and hidden while empty. The create
+  step's confirm is the app's primary button, h-11, the keypad's width, in
+  sentence case.
+- **Analytics.** `APP_LOCK_ENABLED` and `APP_LOCK_SECRET_CHANGED` (was
+  `APP_LOCK_PIN_CHANGED`) carry `{ kind }`, `APP_LOCK_FORGOT_SECRET` (was
+  `APP_LOCK_FORGOT_PIN`) carries `{ kind }`, and `APP_LOCK_UNLOCKED`'s method
+  can be `pattern`. Profile facts: `app_lock` off | pin | pattern and
+  `app_lock_biometric` on | off.
+

@@ -2203,11 +2203,13 @@
       "on": "Aan",
       "off": "Uit",
       "biometric_needs_https": "Face ID / vingerafdruk vereist HTTPS",
-      "about": "De vergrendeling beschermt Econumo alleen op dit apparaat. Als u de pincode vergeet, moet u opnieuw inloggen. De gegevens op het apparaat worden niet versleuteld.",
+      "about": "De vergrendeling beschermt Econumo alleen op dit apparaat. Als u de pincode of het patroon vergeet, moet u opnieuw inloggen. De gegevens op het apparaat worden niet versleuteld.",
       "enabled_label": "App-vergrendeling",
-      "enabled_hint": "Om een pincode vragen bij het openen van Econumo",
+      "enabled_hint": "Om een pincode of patroon vragen bij het openen van Econumo",
       "change_pin": "Pincode wijzigen",
+      "change_pattern": "Patroon wijzigen",
       "pin_changed": "Pincode gewijzigd",
+      "pattern_changed": "Patroon gewijzigd",
       "biometric_label": "Biometrie gebruiken",
       "biometric_hint": "Face ID, Touch ID of vingerafdruk, als het apparaat dit ondersteunt. Uw apparaat accepteert mogelijk ook zijn toegangscode. De passkey wordt gesynchroniseerd met uw wachtwoordbeheerder; u kunt hem verwijderen in de wachtwoordinstellingen van het apparaat.",
       "biometric_failed": "Biometrie kon niet worden ingeschakeld",
@@ -2220,23 +2222,36 @@
       },
       "dialog": {
         "create_title": "Kies een pincode",
+        "create_title_pattern": "Teken een patroon",
         "new_title": "Kies een nieuwe pincode",
+        "new_title_pattern": "Teken een nieuw patroon",
         "current_title": "Voer uw huidige pincode in",
+        "current_title_pattern": "Teken uw huidige patroon",
         "confirm_title": "Voer de pincode nogmaals in",
+        "confirm_title_pattern": "Teken het patroon nogmaals",
         "pin_hint": "4 tot 8 cijfers",
+        "pattern_hint": "Verbind minstens 4 punten",
         "mismatch": "De pincodes komen niet overeen. Probeer het opnieuw.",
+        "mismatch_pattern": "De patronen komen niet overeen. Probeer het opnieuw.",
+        "use_pattern": "Een patroon gebruiken",
+        "use_pin": "Een pincode gebruiken",
         "save": "Opslaan"
       }
     },
     "lock_screen": {
       "title": "Voer uw pincode in",
+      "title_pattern": "Teken uw patroon",
       "wrong_pin": "Onjuiste pincode",
+      "wrong_pattern": "Onjuist patroon",
       "attempts_left": "Nog {count} poging | Nog {count} pogingen",
       "try_again_in": "Probeer het opnieuw over {time}",
       "biometric": "Ontgrendelen met biometrie",
       "biometric_failed": "Uw identiteit kon niet worden bevestigd. Voer uw pincode in.",
+      "biometric_failed_pattern": "Uw identiteit kon niet worden bevestigd. Teken uw patroon.",
       "forgot_pin": "Pincode vergeten?",
+      "forgot_pattern": "Patroon vergeten?",
       "forgot_title": "Uitloggen om de pincode opnieuw in te stellen?",
+      "forgot_title_pattern": "Uitloggen om het patroon opnieuw in te stellen?",
       "forgot_question": "U moet daarna opnieuw inloggen.",
       "forgot_confirm": "Uitloggen"
     },
@@ -2244,6 +2259,13 @@
       "entered": "Ingevoerde cijfers: {count}",
       "delete": "Cijfer wissen",
       "continue": "Doorgaan"
+    },
+    "pattern_pad": {
+      "grid": "Patroon",
+      "dot": "Punt {n}",
+      "too_short": "Verbind minstens 4 punten",
+      "clear": "Wissen",
+      "done": "Klaar"
     }
   },
   "errors": {

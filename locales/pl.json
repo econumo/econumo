@@ -2203,11 +2203,13 @@
       "on": "Włączona",
       "off": "Wyłączona",
       "biometric_needs_https": "Face ID / odcisk palca wymaga HTTPS",
-      "about": "Blokada chroni Econumo tylko na tym urządzeniu. Jeśli zapomnisz PIN-u, trzeba będzie zalogować się ponownie. Nie szyfruje danych zapisanych na urządzeniu.",
+      "about": "Blokada chroni Econumo tylko na tym urządzeniu. Jeśli zapomnisz PIN-u lub wzoru, trzeba będzie zalogować się ponownie. Nie szyfruje danych zapisanych na urządzeniu.",
       "enabled_label": "Blokada aplikacji",
-      "enabled_hint": "Pytaj o PIN przy otwieraniu Econumo",
+      "enabled_hint": "Pytaj o PIN lub wzór przy otwieraniu Econumo",
       "change_pin": "Zmień PIN",
+      "change_pattern": "Zmień wzór",
       "pin_changed": "PIN zmieniony",
+      "pattern_changed": "Wzór zmieniony",
       "biometric_label": "Używaj biometrii",
       "biometric_hint": "Face ID, Touch ID lub odcisk palca, jeśli urządzenie to obsługuje. Urządzenie może też przyjąć swój kod blokady. Klucz dostępu synchronizuje się z menedżerem haseł; możesz go usunąć w ustawieniach haseł urządzenia.",
       "biometric_failed": "Nie udało się włączyć biometrii",
@@ -2220,23 +2222,36 @@
       },
       "dialog": {
         "create_title": "Ustaw PIN",
+        "create_title_pattern": "Narysuj wzór",
         "new_title": "Ustaw nowy PIN",
+        "new_title_pattern": "Narysuj nowy wzór",
         "current_title": "Wpisz obecny PIN",
+        "current_title_pattern": "Narysuj obecny wzór",
         "confirm_title": "Wpisz PIN ponownie",
+        "confirm_title_pattern": "Narysuj wzór ponownie",
         "pin_hint": "Od 4 do 8 cyfr",
+        "pattern_hint": "Połącz co najmniej 4 punkty",
         "mismatch": "PIN-y nie są zgodne. Spróbuj ponownie.",
+        "mismatch_pattern": "Wzory nie są zgodne. Spróbuj ponownie.",
+        "use_pattern": "Użyj wzoru",
+        "use_pin": "Użyj PIN-u",
         "save": "Zapisz"
       }
     },
     "lock_screen": {
       "title": "Wpisz PIN",
+      "title_pattern": "Narysuj wzór",
       "wrong_pin": "Nieprawidłowy PIN",
+      "wrong_pattern": "Nieprawidłowy wzór",
       "attempts_left": "Pozostała {count} próba | Pozostały {count} próby | Pozostało {count} prób",
       "try_again_in": "Spróbuj ponownie za {time}",
       "biometric": "Odblokuj biometrią",
       "biometric_failed": "Nie udało się potwierdzić tożsamości. Wpisz PIN.",
+      "biometric_failed_pattern": "Nie udało się potwierdzić tożsamości. Narysuj wzór.",
       "forgot_pin": "Nie pamiętasz PIN-u?",
+      "forgot_pattern": "Nie pamiętasz wzoru?",
       "forgot_title": "Wylogować się, aby zresetować PIN?",
+      "forgot_title_pattern": "Wylogować się, aby zresetować wzór?",
       "forgot_question": "Trzeba będzie zalogować się ponownie.",
       "forgot_confirm": "Wyloguj się"
     },
@@ -2244,6 +2259,13 @@
       "entered": "Wpisane cyfry: {count}",
       "delete": "Usuń cyfrę",
       "continue": "Dalej"
+    },
+    "pattern_pad": {
+      "grid": "Wzór",
+      "dot": "Punkt {n}",
+      "too_short": "Połącz co najmniej 4 punkty",
+      "clear": "Wyczyść",
+      "done": "Gotowe"
     }
   },
   "errors": {

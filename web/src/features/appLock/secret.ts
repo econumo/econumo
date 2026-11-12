@@ -6,8 +6,10 @@ import {
   readConfig,
   recordFailedAttempt,
   resetAttempts,
-  type PinHash,
+  type SecretHash,
+  type SecretKind,
 } from './config'
+import { isValidPattern, patternLength } from './pattern'
 
 export const PIN_ITERATIONS = 150_000
 // Plain http has no crypto.subtle, and the pure-JS derive is roughly 7x slower
@@ -17,6 +19,19 @@ const PIN_PATTERN = /^\d{4,8}$/
 
 export function isValidPin(pin: string): boolean {
   return PIN_PATTERN.test(pin)
+}
+
+// A secret is a string either way: the PIN's digits, or the pattern encoded
+// as "p:0-4-8-5", so both go through the same derive and attempt counter.
+export function secretKind(value: string): SecretKind | null {
+  if (isValidPin(value)) {
+    return 'pin'
+  }
+  return isValidPattern(value) ? 'pattern' : null
+}
+
+function secretLength(value: string, kind: SecretKind): number {
+  return kind === 'pin' ? value.length : patternLength(value)
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -48,38 +63,40 @@ export function defaultPinIterations(): number {
   return nativeCryptoAvailable() ? PIN_ITERATIONS : PIN_ITERATIONS_JS
 }
 
-export async function deriveJs(pin: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
-  return pbkdf2Async(sha256, new TextEncoder().encode(pin), salt, { c: iterations, dkLen: 32 })
+export async function deriveJs(secret: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+  return pbkdf2Async(sha256, new TextEncoder().encode(secret), salt, { c: iterations, dkLen: 32 })
 }
 
-export async function deriveNative(pin: string, salt: Uint8Array<ArrayBuffer>, iterations: number): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits'])
+export async function deriveNative(secret: string, salt: Uint8Array<ArrayBuffer>, iterations: number): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), 'PBKDF2', false, ['deriveBits'])
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256)
   return new Uint8Array(bits)
 }
 
 // Both produce the same PBKDF2-HMAC-SHA256 bytes, so a stored hash verifies
 // with either; the stored iteration count always wins.
-function derive(pin: string, salt: Uint8Array<ArrayBuffer>, iterations: number): Promise<Uint8Array> {
-  return nativeCryptoAvailable() ? deriveNative(pin, salt, iterations) : deriveJs(pin, salt, iterations)
+function derive(secret: string, salt: Uint8Array<ArrayBuffer>, iterations: number): Promise<Uint8Array> {
+  return nativeCryptoAvailable() ? deriveNative(secret, salt, iterations) : deriveJs(secret, salt, iterations)
 }
 
-export async function hashPin(pin: string, iterations: number = defaultPinIterations()): Promise<PinHash> {
-  if (!isValidPin(pin)) {
-    throw new Error('invalid PIN')
+export async function hashSecret(value: string, iterations: number = defaultPinIterations()): Promise<SecretHash> {
+  const kind = secretKind(value)
+  if (kind === null) {
+    throw new Error('invalid secret')
   }
   const salt = crypto.getRandomValues(new Uint8Array(16))
-  const hash = await derive(pin, salt, iterations)
-  return { salt: toBase64(salt), hash: toBase64(hash), iterations, length: pin.length }
+  const hash = await derive(value, salt, iterations)
+  return { kind, salt: toBase64(salt), hash: toBase64(hash), iterations, length: secretLength(value, kind) }
 }
 
-export async function verifyPin(pin: string, stored: PinHash): Promise<boolean> {
+export async function verifySecret(value: string, stored: SecretHash): Promise<boolean> {
   const salt = fromBase64(stored.salt)
   const expected = fromBase64(stored.hash)
-  if (!salt || !expected || !isValidPin(pin) || pin.length !== stored.length) {
+  const kind = secretKind(value)
+  if (!salt || !expected || kind !== stored.kind || secretLength(value, kind) !== stored.length) {
     return false
   }
-  const actual = await derive(pin, salt, stored.iterations)
+  const actual = await derive(value, salt, stored.iterations)
   if (actual.length !== expected.length) {
     return false
   }
@@ -90,16 +107,17 @@ export async function verifyPin(pin: string, stored: PinHash): Promise<boolean> 
   return diff === 0
 }
 
-export type PinCheck =
+export type SecretCheck =
   | { status: 'ok' }
   | { status: 'wrong'; failedAttempts: number; remaining: number; lockedUntil: number | null }
   | { status: 'locked-out'; lockedUntil: number }
   | { status: 'exceeded' }
   | { status: 'unconfigured' }
 
-// The one PIN check for the lock screen and every settings prompt: they share
-// the attempt counter, and the failure is stored before the slow derive runs.
-export async function checkPin(pin: string, now: number = Date.now()): Promise<PinCheck> {
+// The one check for the lock screen and every settings prompt, PIN or
+// pattern: they share the attempt counter, and the failure is stored before
+// the slow derive runs.
+export async function checkSecret(value: string, now: number = Date.now()): Promise<SecretCheck> {
   const config = readConfig()
   if (config === null) {
     return { status: 'unconfigured' }
@@ -112,7 +130,7 @@ export async function checkPin(pin: string, now: number = Date.now()): Promise<P
     return { status: 'locked-out', lockedUntil: before.lockedUntil }
   }
   const counted = recordFailedAttempt(now)
-  if (await verifyPin(pin, config.pin)) {
+  if (await verifySecret(value, config.secret)) {
     resetAttempts()
     return { status: 'ok' }
   }

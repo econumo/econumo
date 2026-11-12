@@ -330,7 +330,7 @@ describe('other tabs', () => {
     configure()
     initAppLock()
     const old = localStorage.getItem('econumo.appLock')
-    writeConfig(testConfig({ pin: { salt: 'c2FsdA==', hash: 'bmV3', iterations: 1000, length: 6 } }))
+    writeConfig(testConfig({ secret: { kind: 'pin', salt: 'c2FsdA==', hash: 'bmV3', iterations: 1000, length: 6 } }))
     storageEvent('econumo.appLock', old, localStorage.getItem('econumo.appLock'))
     expect(reload).toHaveBeenCalledOnce()
     expect(locked()).toBe(true)

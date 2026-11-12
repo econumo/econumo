@@ -2203,11 +2203,13 @@
       "on": "Attivo",
       "off": "Disattivo",
       "biometric_needs_https": "Face ID / impronta digitale richiede HTTPS",
-      "about": "Il blocco protegge Econumo solo su questo dispositivo. Se dimentichi il PIN, dovrai accedere di nuovo. Non cifra i dati salvati sul dispositivo.",
+      "about": "Il blocco protegge Econumo solo su questo dispositivo. Se dimentichi il PIN o la sequenza, dovrai accedere di nuovo. Non cifra i dati salvati sul dispositivo.",
       "enabled_label": "Blocco app",
-      "enabled_hint": "Chiedi un PIN all'apertura di Econumo",
+      "enabled_hint": "Chiedi un PIN o una sequenza all'apertura di Econumo",
       "change_pin": "Cambia PIN",
+      "change_pattern": "Cambia sequenza",
       "pin_changed": "PIN cambiato",
+      "pattern_changed": "Sequenza cambiata",
       "biometric_label": "Usa la biometria",
       "biometric_hint": "Face ID, Touch ID o impronta digitale, se il dispositivo lo supporta. Il dispositivo potrebbe accettare anche il suo codice di sblocco. La passkey si sincronizza con il tuo gestore di password; puoi eliminarla nelle impostazioni password del dispositivo.",
       "biometric_failed": "Impossibile attivare la biometria",
@@ -2220,23 +2222,36 @@
       },
       "dialog": {
         "create_title": "Scegli un PIN",
+        "create_title_pattern": "Disegna una sequenza",
         "new_title": "Scegli un nuovo PIN",
+        "new_title_pattern": "Disegna una nuova sequenza",
         "current_title": "Inserisci il PIN attuale",
+        "current_title_pattern": "Disegna la sequenza attuale",
         "confirm_title": "Inserisci di nuovo il PIN",
+        "confirm_title_pattern": "Disegna di nuovo la sequenza",
         "pin_hint": "Da 4 a 8 cifre",
+        "pattern_hint": "Collega almeno 4 punti",
         "mismatch": "I PIN non coincidono. Riprova.",
+        "mismatch_pattern": "Le sequenze non coincidono. Riprova.",
+        "use_pattern": "Usa una sequenza",
+        "use_pin": "Usa un PIN",
         "save": "Salva"
       }
     },
     "lock_screen": {
       "title": "Inserisci il PIN",
+      "title_pattern": "Disegna la sequenza",
       "wrong_pin": "PIN errato",
+      "wrong_pattern": "Sequenza errata",
       "attempts_left": "Rimane {count} tentativo | Rimangono {count} tentativi",
       "try_again_in": "Riprova tra {time}",
       "biometric": "Sblocca con la biometria",
       "biometric_failed": "Impossibile verificare la tua identità. Inserisci il PIN.",
+      "biometric_failed_pattern": "Impossibile verificare la tua identità. Disegna la sequenza.",
       "forgot_pin": "PIN dimenticato?",
+      "forgot_pattern": "Sequenza dimenticata?",
       "forgot_title": "Uscire per reimpostare il PIN?",
+      "forgot_title_pattern": "Uscire per reimpostare la sequenza?",
       "forgot_question": "Dovrai accedere di nuovo.",
       "forgot_confirm": "Esci"
     },
@@ -2244,6 +2259,13 @@
       "entered": "Cifre inserite: {count}",
       "delete": "Cancella cifra",
       "continue": "Continua"
+    },
+    "pattern_pad": {
+      "grid": "Sequenza",
+      "dot": "Punto {n}",
+      "too_short": "Collega almeno 4 punti",
+      "clear": "Cancella",
+      "done": "Fatto"
     }
   },
   "errors": {

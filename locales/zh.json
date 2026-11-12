@@ -2203,11 +2203,13 @@
       "on": "开",
       "off": "关",
       "biometric_needs_https": "面容 ID / 指纹需要 HTTPS",
-      "about": "应用锁仅在此设备上保护 Econumo。如果忘记 PIN 码，需要重新登录。它不会加密设备上存储的数据。",
+      "about": "应用锁仅在此设备上保护 Econumo。如果忘记 PIN 码或图案，需要重新登录。它不会加密设备上存储的数据。",
       "enabled_label": "应用锁",
-      "enabled_hint": "打开 Econumo 时要求输入 PIN 码",
+      "enabled_hint": "打开 Econumo 时要求输入 PIN 码或图案",
       "change_pin": "更改 PIN 码",
+      "change_pattern": "更改图案",
       "pin_changed": "PIN 码已更改",
+      "pattern_changed": "图案已更改",
       "biometric_label": "使用生物识别",
       "biometric_hint": "在设备支持时使用面容 ID、触控 ID 或指纹。设备也可能接受其锁屏密码。通行密钥会与您的密码管理器同步；可在设备的密码设置中删除。",
       "biometric_failed": "无法开启生物识别",
@@ -2220,23 +2222,36 @@
       },
       "dialog": {
         "create_title": "设置 PIN 码",
+        "create_title_pattern": "绘制图案",
         "new_title": "设置新 PIN 码",
+        "new_title_pattern": "绘制新图案",
         "current_title": "输入当前 PIN 码",
+        "current_title_pattern": "绘制当前图案",
         "confirm_title": "再次输入 PIN 码",
+        "confirm_title_pattern": "再次绘制图案",
         "pin_hint": "4 到 8 位数字",
+        "pattern_hint": "至少连接 4 个点",
         "mismatch": "两次输入的 PIN 码不一致，请重试。",
+        "mismatch_pattern": "两次绘制的图案不一致，请重试。",
+        "use_pattern": "改用图案",
+        "use_pin": "改用 PIN 码",
         "save": "保存"
       }
     },
     "lock_screen": {
       "title": "输入 PIN 码",
+      "title_pattern": "绘制图案",
       "wrong_pin": "PIN 码错误",
+      "wrong_pattern": "图案错误",
       "attempts_left": "还剩 {count} 次机会",
       "try_again_in": "{time} 后重试",
       "biometric": "使用生物识别解锁",
       "biometric_failed": "无法验证您的身份，请输入 PIN 码。",
+      "biometric_failed_pattern": "无法验证您的身份，请绘制图案。",
       "forgot_pin": "忘记 PIN 码？",
+      "forgot_pattern": "忘记图案？",
       "forgot_title": "退出登录以重置 PIN 码？",
+      "forgot_title_pattern": "退出登录以重置图案？",
       "forgot_question": "您需要重新登录。",
       "forgot_confirm": "退出登录"
     },
@@ -2244,6 +2259,13 @@
       "entered": "已输入 {count} 位数字",
       "delete": "删除数字",
       "continue": "继续"
+    },
+    "pattern_pad": {
+      "grid": "图案",
+      "dot": "第 {n} 个点",
+      "too_short": "至少连接 4 个点",
+      "clear": "清除",
+      "done": "完成"
     }
   },
   "errors": {

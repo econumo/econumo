@@ -2203,11 +2203,13 @@
       "on": "An",
       "off": "Aus",
       "biometric_needs_https": "Face ID / Fingerabdruck erfordert HTTPS",
-      "about": "Die Sperre schützt Econumo nur auf diesem Gerät. Wenn Sie die PIN vergessen, müssen Sie sich erneut anmelden. Die auf dem Gerät gespeicherten Daten werden nicht verschlüsselt.",
+      "about": "Die Sperre schützt Econumo nur auf diesem Gerät. Wenn Sie die PIN oder das Muster vergessen, müssen Sie sich erneut anmelden. Die auf dem Gerät gespeicherten Daten werden nicht verschlüsselt.",
       "enabled_label": "App-Sperre",
-      "enabled_hint": "Beim Öffnen von Econumo nach einer PIN fragen",
+      "enabled_hint": "Beim Öffnen von Econumo nach einer PIN oder einem Muster fragen",
       "change_pin": "PIN ändern",
+      "change_pattern": "Muster ändern",
       "pin_changed": "PIN geändert",
+      "pattern_changed": "Muster geändert",
       "biometric_label": "Biometrie verwenden",
       "biometric_hint": "Face ID, Touch ID oder Fingerabdruck, sofern das Gerät es unterstützt. Ihr Gerät akzeptiert eventuell auch seinen Gerätecode. Der Passkey wird mit Ihrem Passwortmanager synchronisiert; Sie können ihn in den Passworteinstellungen Ihres Geräts löschen.",
       "biometric_failed": "Biometrie konnte nicht aktiviert werden",
@@ -2220,23 +2222,36 @@
       },
       "dialog": {
         "create_title": "PIN festlegen",
+        "create_title_pattern": "Muster zeichnen",
         "new_title": "Neue PIN festlegen",
+        "new_title_pattern": "Neues Muster zeichnen",
         "current_title": "Aktuelle PIN eingeben",
+        "current_title_pattern": "Aktuelles Muster zeichnen",
         "confirm_title": "PIN erneut eingeben",
+        "confirm_title_pattern": "Muster erneut zeichnen",
         "pin_hint": "4 bis 8 Ziffern",
+        "pattern_hint": "Verbinden Sie mindestens 4 Punkte",
         "mismatch": "Die PINs stimmen nicht überein. Versuchen Sie es erneut.",
+        "mismatch_pattern": "Die Muster stimmen nicht überein. Versuchen Sie es erneut.",
+        "use_pattern": "Stattdessen ein Muster verwenden",
+        "use_pin": "Stattdessen eine PIN verwenden",
         "save": "Speichern"
       }
     },
     "lock_screen": {
       "title": "PIN eingeben",
+      "title_pattern": "Muster zeichnen",
       "wrong_pin": "Falsche PIN",
+      "wrong_pattern": "Falsches Muster",
       "attempts_left": "Noch {count} Versuch | Noch {count} Versuche",
       "try_again_in": "Erneut versuchen in {time}",
       "biometric": "Mit Biometrie entsperren",
       "biometric_failed": "Ihre Identität konnte nicht bestätigt werden. Geben Sie Ihre PIN ein.",
+      "biometric_failed_pattern": "Ihre Identität konnte nicht bestätigt werden. Zeichnen Sie Ihr Muster.",
       "forgot_pin": "PIN vergessen?",
+      "forgot_pattern": "Muster vergessen?",
       "forgot_title": "Abmelden, um die PIN zurückzusetzen?",
+      "forgot_title_pattern": "Abmelden, um das Muster zurückzusetzen?",
       "forgot_question": "Sie müssen sich danach erneut anmelden.",
       "forgot_confirm": "Abmelden"
     },
@@ -2244,6 +2259,13 @@
       "entered": "Eingegebene Ziffern: {count}",
       "delete": "Ziffer löschen",
       "continue": "Weiter"
+    },
+    "pattern_pad": {
+      "grid": "Muster",
+      "dot": "Punkt {n}",
+      "too_short": "Verbinden Sie mindestens 4 Punkte",
+      "clear": "Löschen",
+      "done": "Fertig"
     }
   },
   "errors": {

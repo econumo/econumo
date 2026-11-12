@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
@@ -10,8 +10,8 @@ import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { biometricAvailable, prepareBiometricRegistration, verifyBiometric } from './biometric'
 import { readAttempts, readConfig, recordFailedAttempt, writeConfig } from './config'
 import { resetAppLockForTests, useLockStore } from './lockStore'
-import { checkPin, hashPin, PIN_ITERATIONS_JS, verifyPin } from './pin'
-import { setSecureContext, signIn, testConfig } from './testUtils'
+import { checkSecret, hashSecret, PIN_ITERATIONS_JS, verifySecret } from './secret'
+import { drawPattern, setSecureContext, signIn, testConfig } from './testUtils'
 import { AppLockPage } from './AppLockPage'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -21,9 +21,9 @@ vi.mock('@/lib/metrics', async (importOriginal) => {
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-vi.mock('./pin', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./pin')>()
-  return { ...actual, hashPin: vi.fn(actual.hashPin), checkPin: vi.fn(actual.checkPin) }
+vi.mock('./secret', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./secret')>()
+  return { ...actual, hashSecret: vi.fn(actual.hashSecret), checkSecret: vi.fn(actual.checkSecret) }
 })
 
 vi.mock('./biometric', async (importOriginal) => {
@@ -59,7 +59,7 @@ function renderPage() {
 }
 
 async function configure(overrides: Parameters<typeof testConfig>[0] = {}) {
-  writeConfig(testConfig({ pin: await hashPin('1234', 1000), ...overrides }))
+  writeConfig(testConfig({ secret: await hashSecret('1234', 1000), ...overrides }))
 }
 
 async function typePin(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement, pin: string) {
@@ -85,8 +85,8 @@ beforeEach(() => {
   vi.mocked(biometricAvailable).mockResolvedValue(false)
   vi.mocked(prepareBiometricRegistration).mockReset()
   vi.mocked(verifyBiometric).mockReset()
-  vi.mocked(hashPin).mockClear()
-  vi.mocked(checkPin).mockClear()
+  vi.mocked(hashSecret).mockClear()
+  vi.mocked(checkSecret).mockClear()
 })
 
 afterEach(() => {
@@ -120,11 +120,11 @@ it('turns the lock on after the PIN is typed twice, starting over on a mismatch'
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   const config = readConfig()
   expect(config).toMatchObject({ userId: 'u1', lockAfterMs: 60_000, biometric: null })
-  expect(await verifyPin('1234', config!.pin)).toBe(true)
+  expect(await verifySecret('1234', config!.secret)).toBe(true)
   expect(lockSwitch()).toBeChecked()
   // Turning it on does not lock the tab that just set it up.
   expect(useLockStore.getState().locked).toBe(false)
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_ENABLED)
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_ENABLED, { kind: 'pin' })
   expect(screen.getByText('Change PIN')).toBeInTheDocument()
 })
 
@@ -158,10 +158,10 @@ it('changes the PIN after the current one, counting a wrong try', async () => {
   await typePin(user, dialog, '567890')
   await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
-  await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_PIN_CHANGED))
+  await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_SECRET_CHANGED, { kind: 'pin' }))
   const config = readConfig()!
-  expect(config.pin.length).toBe(6)
-  expect(await verifyPin('567890', config.pin)).toBe(true)
+  expect(config.secret.length).toBe(6)
+  expect(await verifySecret('567890', config!.secret)).toBe(true)
   expect(config.lockAfterMs).toBe(60_000)
 })
 
@@ -321,7 +321,7 @@ it('works over plain http, showing biometrics as needing HTTPS', async () => {
   await typePin(user, dialog, '2580')
   await user.click(within(dialog).getByRole('button', { name: 'Save' }))
   await waitFor(() => expect(readConfig()).not.toBeNull())
-  expect(readConfig()!.pin.iterations).toBe(PIN_ITERATIONS_JS)
+  expect(readConfig()!.secret.iterations).toBe(PIN_ITERATIONS_JS)
   expect(lockSwitch()).toBeChecked()
   const note = await screen.findByText('Face ID / fingerprint needs HTTPS')
   expect(note.closest('[aria-disabled="true"]')).toHaveTextContent('Use biometrics')
@@ -359,13 +359,13 @@ describe('closing the dialog while it is working', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
     dialog = await screen.findByRole('dialog', { name: 'Enter the PIN again' })
     await typePin(user, dialog, '1234')
-    const hash = deferred<Awaited<ReturnType<typeof hashPin>>>()
-    vi.mocked(hashPin).mockImplementationOnce(() => hash.promise)
+    const hash = deferred<Awaited<ReturnType<typeof hashSecret>>>()
+    vi.mocked(hashSecret).mockImplementationOnce(() => hash.promise)
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(hashPin).toHaveBeenCalledWith('1234'))
+    await waitFor(() => expect(hashSecret).toHaveBeenCalledWith('1234'))
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    hash.resolve(testConfig().pin)
+    hash.resolve(testConfig().secret)
     await new Promise((resolve) => setTimeout(resolve, 20))
     expect(readConfig()).toBeNull()
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.APP_LOCK_ENABLED)
@@ -378,8 +378,8 @@ describe('closing the dialog while it is working', () => {
     renderPage()
     await user.click(lockSwitch())
     const dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
-    const check = deferred<Awaited<ReturnType<typeof checkPin>>>()
-    vi.mocked(checkPin).mockImplementationOnce(() => check.promise)
+    const check = deferred<Awaited<ReturnType<typeof checkSecret>>>()
+    vi.mocked(checkSecret).mockImplementationOnce(() => check.promise)
     await typePin(user, dialog, '1234')
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -402,15 +402,123 @@ describe('closing the dialog while it is working', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
     dialog = await screen.findByRole('dialog', { name: 'Enter the PIN again' })
     await typePin(user, dialog, '5678')
-    const hash = deferred<Awaited<ReturnType<typeof hashPin>>>()
-    vi.mocked(hashPin).mockImplementationOnce(() => hash.promise)
+    const hash = deferred<Awaited<ReturnType<typeof hashSecret>>>()
+    vi.mocked(hashSecret).mockImplementationOnce(() => hash.promise)
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(hashPin).toHaveBeenCalledWith('5678'))
+    await waitFor(() => expect(hashSecret).toHaveBeenCalledWith('5678'))
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    hash.resolve({ salt: 'bmV3', hash: 'bmV3', iterations: 1000, length: 4 })
+    hash.resolve({ kind: 'pin', salt: 'bmV3', hash: 'bmV3', iterations: 1000, length: 4 })
     await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(await verifyPin('1234', readConfig()!.pin)).toBe(true)
-    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.APP_LOCK_PIN_CHANGED)
+    expect(await verifySecret('1234', readConfig()!.secret)).toBe(true)
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.APP_LOCK_SECRET_CHANGED)
   })
+})
+
+describe('patterns', () => {
+  const draw = (dialog: HTMLElement, nodes: number[]) => drawPattern(fireEvent, within(dialog).getByTestId('pattern-grid'), nodes)
+
+  it('sets up a pattern instead of a PIN, starting over on a mismatch', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(lockSwitch())
+    let dialog = await screen.findByRole('dialog', { name: 'Choose a PIN' })
+    await typePin(user, dialog, '12')
+    await user.click(within(dialog).getByRole('button', { name: 'Use a pattern instead' }))
+    dialog = await screen.findByRole('dialog', { name: 'Draw a pattern' })
+    expect(within(dialog).getByText('Connect at least 4 dots')).toBeInTheDocument()
+    draw(dialog, [0, 2, 8])
+    dialog = await screen.findByRole('dialog', { name: 'Draw the pattern again' })
+    draw(dialog, [0, 4, 8, 5])
+    dialog = await screen.findByRole('dialog', { name: 'Draw a pattern' })
+    expect(within(dialog).getByText("The patterns don't match. Try again.")).toBeInTheDocument()
+    expect(readConfig()).toBeNull()
+
+    draw(dialog, [0, 2, 8])
+    dialog = await screen.findByRole('dialog', { name: 'Draw the pattern again' })
+    draw(dialog, [0, 2, 8])
+    await waitFor(() => expect(readConfig()).not.toBeNull())
+    const config = readConfig()!
+    expect(config.secret).toMatchObject({ kind: 'pattern', length: 5 })
+    expect(await verifySecret('p:0-1-2-5-8', config.secret)).toBe(true)
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_ENABLED, { kind: 'pattern' })
+    expect(await screen.findByRole('button', { name: 'Change pattern' })).toBeInTheDocument()
+  })
+
+  it('switches back to a PIN during set-up', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(lockSwitch())
+    let dialog = await screen.findByRole('dialog', { name: 'Choose a PIN' })
+    await user.click(within(dialog).getByRole('button', { name: 'Use a pattern instead' }))
+    dialog = await screen.findByRole('dialog', { name: 'Draw a pattern' })
+    await user.click(within(dialog).getByRole('button', { name: 'Use a PIN instead' }))
+    dialog = await screen.findByRole('dialog', { name: 'Choose a PIN' })
+    expect(within(dialog).getByTestId('pin-dots')).toBeInTheDocument()
+  })
+
+  it('changes a PIN into a pattern after the current PIN', async () => {
+    await configure()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Change PIN' }))
+    let dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
+    expect(within(dialog).queryByRole('button', { name: 'Use a pattern instead' })).not.toBeInTheDocument()
+    await typePin(user, dialog, '1234')
+    dialog = await screen.findByRole('dialog', { name: 'Choose a new PIN' })
+    await user.click(within(dialog).getByRole('button', { name: 'Use a pattern instead' }))
+    dialog = await screen.findByRole('dialog', { name: 'Draw a new pattern' })
+    draw(dialog, [6, 7, 8, 5])
+    dialog = await screen.findByRole('dialog', { name: 'Draw the pattern again' })
+    draw(dialog, [6, 7, 8, 5])
+    await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_SECRET_CHANGED, { kind: 'pattern' }))
+    expect(toast.success).toHaveBeenCalledWith('Pattern changed')
+    expect(readConfig()!.secret.kind).toBe('pattern')
+    expect(await screen.findByRole('button', { name: 'Change pattern' })).toBeInTheDocument()
+  })
+
+  it('asks for the current pattern to change it, offering a PIN as the new secret', async () => {
+    writeConfig(testConfig({ secret: await hashSecret('p:0-1-2-5-8', 1000) }))
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Change pattern' }))
+    let dialog = await screen.findByRole('dialog', { name: 'Draw your current pattern' })
+    draw(dialog, [6, 7, 8, 5])
+    expect(await within(dialog).findByText('Wrong pattern')).toBeInTheDocument()
+    expect(readAttempts().failedAttempts).toBe(1)
+    draw(dialog, [0, 2, 8])
+    dialog = await screen.findByRole('dialog', { name: 'Draw a new pattern' })
+    await user.click(within(dialog).getByRole('button', { name: 'Use a PIN instead' }))
+    dialog = await screen.findByRole('dialog', { name: 'Choose a new PIN' })
+    await typePin(user, dialog, '2580')
+    await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+    dialog = await screen.findByRole('dialog', { name: 'Enter the PIN again' })
+    await typePin(user, dialog, '2580')
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_SECRET_CHANGED, { kind: 'pin' }))
+    expect(await verifySecret('2580', readConfig()!.secret)).toBe(true)
+  })
+
+  it('turning it off needs the current pattern', async () => {
+    writeConfig(testConfig({ secret: await hashSecret('p:0-1-2-5-8', 1000) }))
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(lockSwitch())
+    const dialog = await screen.findByRole('dialog', { name: 'Draw your current pattern' })
+    draw(dialog, [0, 2, 8])
+    await waitFor(() => expect(readConfig()).toBeNull())
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_DISABLED)
+  })
+})
+
+it('a config from before patterns (no kind) still works for the change flow', async () => {
+  const { secret, ...rest } = testConfig({ secret: await hashSecret('1234', 1000) })
+  const { kind: _kind, ...pin } = secret
+  localStorage.setItem('econumo.appLock', JSON.stringify({ ...rest, pin }))
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(screen.getByRole('button', { name: 'Change PIN' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
+  await typePin(user, dialog, '1234')
+  expect(await screen.findByRole('dialog', { name: 'Choose a new PIN' })).toBeInTheDocument()
 })

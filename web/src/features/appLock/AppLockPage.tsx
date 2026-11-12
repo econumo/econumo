@@ -24,8 +24,8 @@ import {
 } from './config'
 import { APP_LOCK_CONFIG_KEY } from './keys'
 import { clearFreshMarker, unlock } from './lockStore'
-import { hashPin } from './pin'
-import { SetPinDialog, type PinFlow } from './SetPinDialog'
+import { hashSecret } from './secret'
+import { SecretDialog, type SecretFlow } from './SecretDialog'
 
 const rowClass = 'flex items-center justify-between gap-4 rounded-lg bg-econumo-card px-4 py-3.5'
 
@@ -34,7 +34,7 @@ export function AppLockPage() {
   const navigate = useNavigate()
   const { data: user } = useUserData()
   const [config, setConfig] = useState<AppLockConfig | null>(() => activeConfig())
-  const [flow, setFlow] = useState<{ kind: PinFlow; seq: number; open: boolean } | null>(null)
+  const [flow, setFlow] = useState<{ kind: SecretFlow; seq: number; open: boolean } | null>(null)
   const flowSeq = useRef(0)
   // The flow still on screen; a check or hash finishing after the dialog was
   // dismissed must not change the lock.
@@ -97,7 +97,7 @@ export function AppLockPage() {
     }
   }, [biometrics, enabled, userId, email, credentialId])
 
-  const openFlow = (kind: PinFlow) => {
+  const openFlow = (kind: SecretFlow) => {
     const seq = ++flowSeq.current
     openSeq.current = seq
     setFlow({ kind, seq, open: true })
@@ -119,7 +119,7 @@ export function AppLockPage() {
     return true
   }
 
-  const onComplete = async (pin?: string) => {
+  const onComplete = async (secret?: string) => {
     if (flow === null) {
       return
     }
@@ -132,8 +132,8 @@ export function AppLockPage() {
       clearConfig()
       unlock()
       trackEvent(METRICS.APP_LOCK_DISABLED)
-    } else if (flow.kind === 'enable' && pin && userId) {
-      const hash = await hashPin(pin)
+    } else if (flow.kind === 'enable' && secret && userId) {
+      const hash = await hashSecret(secret)
       if (!stillOpen()) {
         return
       }
@@ -142,16 +142,16 @@ export function AppLockPage() {
       // they are. A sign-in marker left in this tab would skip the next cold
       // start's lock, so it is spent.
       clearFreshMarker()
-      writeConfig({ v: 1, userId, pin: hash, lockAfterMs: DEFAULT_LOCK_AFTER_MS, biometric: null })
-      trackEvent(METRICS.APP_LOCK_ENABLED)
-    } else if (flow.kind === 'change' && pin) {
-      const hash = await hashPin(pin)
+      writeConfig({ v: 1, userId, secret: hash, lockAfterMs: DEFAULT_LOCK_AFTER_MS, biometric: null })
+      trackEvent(METRICS.APP_LOCK_ENABLED, { kind: hash.kind })
+    } else if (flow.kind === 'change' && secret) {
+      const hash = await hashSecret(secret)
       if (!stillOpen()) {
         return
       }
-      if (update({ pin: hash })) {
-        trackEvent(METRICS.APP_LOCK_PIN_CHANGED)
-        toast.success(t('appLock.settings.pin_changed'))
+      if (update({ secret: hash })) {
+        trackEvent(METRICS.APP_LOCK_SECRET_CHANGED, { kind: hash.kind })
+        toast.success(hash.kind === 'pattern' ? t('appLock.settings.pattern_changed') : t('appLock.settings.pin_changed'))
       }
     }
     refresh()
@@ -242,7 +242,7 @@ export function AppLockPage() {
               className={`${rowClass} text-left text-sm hover:bg-econumo-hover`}
               onClick={() => openFlow('change')}
             >
-              {t('appLock.settings.change_pin')}
+              {config.secret.kind === 'pattern' ? t('appLock.settings.change_pattern') : t('appLock.settings.change_pin')}
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </button>
 
@@ -290,11 +290,11 @@ export function AppLockPage() {
       </div>
 
       {flow ? (
-        <SetPinDialog
+        <SecretDialog
           key={flow.seq}
           open={flow.open}
           flow={flow.kind}
-          pinLength={config?.pin.length ?? 4}
+          current={config ? { kind: config.secret.kind, length: config.secret.length } : null}
           credentialId={credentialId}
           onClose={closeFlow}
           onComplete={onComplete}

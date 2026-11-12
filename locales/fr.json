@@ -2203,11 +2203,13 @@
       "on": "Activé",
       "off": "Désactivé",
       "biometric_needs_https": "Face ID / empreinte digitale nécessite HTTPS",
-      "about": "Le verrouillage protège Econumo sur cet appareil uniquement. Si vous oubliez le code PIN, vous devrez vous reconnecter. Il ne chiffre pas les données stockées sur l'appareil.",
+      "about": "Le verrouillage protège Econumo sur cet appareil uniquement. Si vous oubliez le code PIN ou le schéma, vous devrez vous reconnecter. Il ne chiffre pas les données stockées sur l'appareil.",
       "enabled_label": "Verrouillage de l'app",
-      "enabled_hint": "Demander un code PIN à l'ouverture d'Econumo",
+      "enabled_hint": "Demander un code PIN ou un schéma à l'ouverture d'Econumo",
       "change_pin": "Modifier le code PIN",
+      "change_pattern": "Modifier le schéma",
       "pin_changed": "Code PIN modifié",
+      "pattern_changed": "Schéma modifié",
       "biometric_label": "Utiliser la biométrie",
       "biometric_hint": "Face ID, Touch ID ou empreinte digitale, si l'appareil le permet. Votre appareil peut aussi accepter son code de déverrouillage. La clé d'accès se synchronise avec votre gestionnaire de mots de passe ; vous pouvez la supprimer dans les réglages des mots de passe de l'appareil.",
       "biometric_failed": "Impossible d'activer la biométrie",
@@ -2220,23 +2222,36 @@
       },
       "dialog": {
         "create_title": "Choisissez un code PIN",
+        "create_title_pattern": "Dessinez un schéma",
         "new_title": "Choisissez un nouveau code PIN",
+        "new_title_pattern": "Dessinez un nouveau schéma",
         "current_title": "Saisissez votre code PIN actuel",
+        "current_title_pattern": "Dessinez votre schéma actuel",
         "confirm_title": "Saisissez à nouveau le code PIN",
+        "confirm_title_pattern": "Dessinez à nouveau le schéma",
         "pin_hint": "4 à 8 chiffres",
+        "pattern_hint": "Reliez au moins 4 points",
         "mismatch": "Les codes PIN ne correspondent pas. Réessayez.",
+        "mismatch_pattern": "Les schémas ne correspondent pas. Réessayez.",
+        "use_pattern": "Utiliser un schéma à la place",
+        "use_pin": "Utiliser un code PIN à la place",
         "save": "Enregistrer"
       }
     },
     "lock_screen": {
       "title": "Saisissez le code PIN",
+      "title_pattern": "Dessinez votre schéma",
       "wrong_pin": "Code PIN incorrect",
+      "wrong_pattern": "Schéma incorrect",
       "attempts_left": "Il reste {count} tentative | Il reste {count} tentatives",
       "try_again_in": "Réessayez dans {time}",
       "biometric": "Déverrouiller avec la biométrie",
       "biometric_failed": "Impossible de vérifier votre identité. Saisissez votre code PIN.",
+      "biometric_failed_pattern": "Impossible de vérifier votre identité. Dessinez votre schéma.",
       "forgot_pin": "Code PIN oublié ?",
+      "forgot_pattern": "Schéma oublié ?",
       "forgot_title": "Se déconnecter pour réinitialiser le code PIN ?",
+      "forgot_title_pattern": "Se déconnecter pour réinitialiser le schéma ?",
       "forgot_question": "Vous devrez vous reconnecter.",
       "forgot_confirm": "Se déconnecter"
     },
@@ -2244,6 +2259,13 @@
       "entered": "Chiffres saisis : {count}",
       "delete": "Effacer le chiffre",
       "continue": "Continuer"
+    },
+    "pattern_pad": {
+      "grid": "Schéma",
+      "dot": "Point {n}",
+      "too_short": "Reliez au moins 4 points",
+      "clear": "Effacer",
+      "done": "Terminé"
     }
   },
   "errors": {

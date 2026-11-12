@@ -2737,8 +2737,8 @@ User C sees none of it.
 
 - [ ] **App lock** 📱 (Settings → Profile → App lock, the row after Sessions,
       reading On/Off): the page explains the lock covers this device only,
-      a forgotten PIN means logging in again and data on the device is not
-      encrypted. Turning the switch on asks for a PIN (4–8 digits, Continue
+      a forgotten PIN or pattern means logging in again and data on the device
+      is not encrypted. Turning the switch on asks for a PIN (4–8 digits, Continue
       enabled from 4) and then for it again; typing a different PIN the second
       time shows "The PINs don't match" and starts over; closing the dialog
       leaves the lock off. After confirming, the switch reads on, the current
@@ -2797,6 +2797,35 @@ User C sees none of it.
       a reload shows the lock screen and the PIN unlocks it in about a second;
       the "Use biometrics" row is greyed out with "Face ID / fingerprint needs
       HTTPS".
+- [ ] App lock PIN pad 📱 (set-up sheet, settings prompts, lock screen; phone and
+      desktop, light and dark): the title, then the dots, then one quiet line
+      under them ("4 to 8 digits", attempts left, or the error in red) that
+      never makes the keypad jump; a typed digit fills its dot with a short
+      pop; set-up shows empty slots up to 4 that grow to 8; the delete key
+      appears only once something is typed; tapping a key leaves no focus
+      ring on it (Tab still shows one); a wrong PIN turns the dots red and
+      shakes them (no shake with reduced motion), then clears. Set-up's
+      "Continue"/"Save" is a full-width button in sentence case.
+- [ ] App lock pattern set-up 📱: in the set-up dialog "Use a pattern instead"
+      swaps the keypad for a 3x3 grid ("Draw a pattern", "Connect at least 4
+      dots") and "Use a PIN instead" swaps back. A line follows the finger;
+      crossing a dot straight on (corner to corner) picks up the dot in
+      between; fewer than 4 dots shows "Connect at least 4 dots" in red and
+      clears; 4 or more ask to draw it again, a different second pattern says
+      "The patterns don't match" and starts over. Then the row reads "Change
+      pattern". Swiping on the grid never scrolls the page nor drags the sheet
+      closed; dragging the sheet by its handle still closes it.
+- [ ] App lock pattern unlock 📱: a reload shows "Draw your pattern" with the
+      grid (and the fingerprint button under it when biometrics are on); the
+      right pattern opens the app; a wrong one turns the line red with "Wrong
+      pattern" for a moment, clears, and counts towards the same 5-failure
+      lockout (grid greyed with the countdown) and 10-failure sign-out as a
+      PIN; a too-short pattern is not counted. "Forgot pattern?" logs out like
+      "Forgot PIN?". Change pattern and turning the lock off ask for the
+      current pattern; changing can switch to a PIN and back.
+- [ ] App lock pattern with a keyboard or screen reader: Tab reaches each dot
+      ("Dot 1" ... "Dot 9"); Enter or Space picks it (a single tap does the
+      same), Clear and Done appear, and Done submits once 4 dots are picked.
 
 ## 12a. Connected apps (MCP OAuth)
 

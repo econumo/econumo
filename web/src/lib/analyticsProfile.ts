@@ -27,7 +27,8 @@ function list<T>(key: readonly unknown[]): T[] | undefined {
 type ProfileCount = 'accounts' | 'budgets' | 'categories' | 'payees' | 'tags' | 'labels' | 'connections' | 'signup_year' | 'months_since_signup'
 type ProfileAttributes = Partial<Record<ProfileCount, number>> & {
   import_apple_wallet?: 'on' | 'off'
-  app_lock?: 'off' | 'pin' | 'biometric'
+  app_lock?: 'off' | 'pin' | 'pattern'
+  app_lock_biometric?: 'on' | 'off'
 }
 
 function count(out: ProfileAttributes, key: readonly unknown[], name: ProfileCount): void {
@@ -57,7 +58,10 @@ function monthsSince(createdAt: string, now: Date): number | undefined {
 export function profileAttributes(): ProfileAttributes {
   // A device setting, read from storage at capture time: never in the query cache.
   const lock = activeConfig()
-  const out: ProfileAttributes = { app_lock: lock === null ? 'off' : lock.biometric ? 'biometric' : 'pin' }
+  const out: ProfileAttributes = {
+    app_lock: lock === null ? 'off' : lock.secret.kind,
+    app_lock_biometric: lock?.biometric ? 'on' : 'off',
+  }
   if (!client) {
     return out
   }

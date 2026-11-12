@@ -2203,11 +2203,13 @@
       "on": "Ativado",
       "off": "Desativado",
       "biometric_needs_https": "Face ID / impressão digital requer HTTPS",
-      "about": "O bloqueio protege o Econumo apenas neste dispositivo. Se se esquecer do PIN, terá de iniciar sessão novamente. Não encripta os dados guardados no dispositivo.",
+      "about": "O bloqueio protege o Econumo apenas neste dispositivo. Se se esquecer do PIN ou do padrão, terá de iniciar sessão novamente. Não encripta os dados guardados no dispositivo.",
       "enabled_label": "Bloqueio da app",
-      "enabled_hint": "Pedir um PIN ao abrir o Econumo",
+      "enabled_hint": "Pedir um PIN ou um padrão ao abrir o Econumo",
       "change_pin": "Alterar PIN",
+      "change_pattern": "Alterar padrão",
       "pin_changed": "PIN alterado",
+      "pattern_changed": "Padrão alterado",
       "biometric_label": "Usar biometria",
       "biometric_hint": "Face ID, Touch ID ou impressão digital, se o dispositivo o suportar. O dispositivo pode também aceitar o seu código de desbloqueio. A chave de acesso sincroniza com o seu gestor de palavras-passe; pode eliminá-la nas definições de palavras-passe do dispositivo.",
       "biometric_failed": "Não foi possível ativar a biometria",
@@ -2220,23 +2222,36 @@
       },
       "dialog": {
         "create_title": "Escolha um PIN",
+        "create_title_pattern": "Desenhe um padrão",
         "new_title": "Escolha um novo PIN",
+        "new_title_pattern": "Desenhe um novo padrão",
         "current_title": "Introduza o PIN atual",
+        "current_title_pattern": "Desenhe o padrão atual",
         "confirm_title": "Introduza o PIN novamente",
+        "confirm_title_pattern": "Desenhe o padrão novamente",
         "pin_hint": "4 a 8 dígitos",
+        "pattern_hint": "Ligue pelo menos 4 pontos",
         "mismatch": "Os PIN não coincidem. Tente novamente.",
+        "mismatch_pattern": "Os padrões não coincidem. Tente novamente.",
+        "use_pattern": "Usar um padrão",
+        "use_pin": "Usar um PIN",
         "save": "Guardar"
       }
     },
     "lock_screen": {
       "title": "Introduza o PIN",
+      "title_pattern": "Desenhe o padrão",
       "wrong_pin": "PIN incorreto",
+      "wrong_pattern": "Padrão incorreto",
       "attempts_left": "Resta {count} tentativa | Restam {count} tentativas",
       "try_again_in": "Tente novamente dentro de {time}",
       "biometric": "Desbloquear com biometria",
       "biometric_failed": "Não foi possível confirmar a sua identidade. Introduza o PIN.",
+      "biometric_failed_pattern": "Não foi possível confirmar a sua identidade. Desenhe o padrão.",
       "forgot_pin": "Esqueceu-se do PIN?",
+      "forgot_pattern": "Esqueceu-se do padrão?",
       "forgot_title": "Terminar sessão para repor o PIN?",
+      "forgot_title_pattern": "Terminar sessão para repor o padrão?",
       "forgot_question": "Terá de iniciar sessão novamente.",
       "forgot_confirm": "Terminar sessão"
     },
@@ -2244,6 +2259,13 @@
       "entered": "Dígitos introduzidos: {count}",
       "delete": "Apagar dígito",
       "continue": "Continuar"
+    },
+    "pattern_pad": {
+      "grid": "Padrão",
+      "dot": "Ponto {n}",
+      "too_short": "Ligue pelo menos 4 pontos",
+      "clear": "Limpar",
+      "done": "Concluir"
     }
   },
   "errors": {

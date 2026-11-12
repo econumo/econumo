@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 
 export const PIN_MIN_LENGTH = 4
 export const PIN_MAX_LENGTH = 8
+// How long a rejected entry stays on screen, red, before it clears.
+export const REJECT_FLASH_MS = 450
 
 export interface PinPadProps {
   /** verify: a known number of digits, submitted as soon as the last one is in. create: 4-8 digits and a Continue button. */
@@ -15,8 +17,10 @@ export interface PinPadProps {
   /** Resolve false to reject the PIN: the dots shake and clear. Either way the entry is cleared. */
   onSubmit: (pin: string) => boolean | Promise<boolean>
   disabled?: boolean
-  /** Announced through the pad's live region. */
+  /** Shown under the dots in the error colour and announced; wins over the hint. */
   error?: string
+  /** A quiet line under the dots ("4 to 8 digits", attempts left). */
+  hint?: string
   /** Rendered in the keypad's bottom-left slot (the biometric button). */
   biometric?: ReactNode
   submitLabel?: string
@@ -26,6 +30,42 @@ export interface PinPadProps {
 }
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const
+
+const KEY_CLASS =
+  'flex size-[4.25rem] touch-manipulation items-center justify-center rounded-full text-foreground outline-none select-none [-webkit-tap-highlight-color:transparent] transition-[transform,background-color,opacity] duration-100 active:scale-[0.94] focus-visible:ring-3 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:opacity-40'
+
+interface PadKeyProps {
+  /** digit: a filled round key; icon: a bare key-sized target (backspace, biometrics). */
+  variant?: 'digit' | 'icon'
+  label?: string
+  disabled?: boolean
+  hidden?: boolean
+  onPress: () => void
+  children: ReactNode
+}
+
+// A tap must not leave the focus ring behind, so a key never takes focus from
+// a pointer; the keyboard still reaches it with Tab.
+export function PadKey({ variant = 'digit', label, disabled, hidden, onPress, children }: PadKeyProps) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onPress}
+      className={cn(
+        KEY_CLASS,
+        variant === 'digit'
+          ? 'bg-secondary text-[1.75rem] leading-none font-light tabular-nums hover:bg-econumo-hover active:bg-econumo-hover'
+          : 'text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary',
+        hidden && 'invisible',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
 
 function typingInField(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -42,6 +82,7 @@ export function PinPad({
   onSubmit,
   disabled = false,
   error,
+  hint,
   biometric,
   submitLabel,
   keyboard = true,
@@ -51,9 +92,12 @@ export function PinPad({
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
   const [shakes, setShakes] = useState(0)
+  // The digit count of a rejected entry, shown red while the dots shake.
+  const [flash, setFlash] = useState<number | null>(null)
   const pinRef = useRef('')
   const busyRef = useRef(false)
   const mounted = useRef(true)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const root = useRef<HTMLDivElement>(null)
   const max = mode === 'verify' ? length : PIN_MAX_LENGTH
   const blocked = disabled || busy
@@ -62,8 +106,19 @@ export function PinPad({
     mounted.current = true
     return () => {
       mounted.current = false
+      if (flashTimer.current !== null) {
+        clearTimeout(flashTimer.current)
+      }
     }
   }, [])
+
+  const stopFlash = () => {
+    if (flashTimer.current !== null) {
+      clearTimeout(flashTimer.current)
+      flashTimer.current = null
+    }
+    setFlash(null)
+  }
 
   const setEntry = (value: string) => {
     pinRef.current = value
@@ -85,6 +140,11 @@ export function PinPad({
         setEntry('')
         if (!accepted) {
           setShakes((n) => n + 1)
+          setFlash(value.length)
+          flashTimer.current = setTimeout(() => {
+            flashTimer.current = null
+            setFlash(null)
+          }, REJECT_FLASH_MS)
         }
       })
   }
@@ -94,6 +154,7 @@ export function PinPad({
       if (disabled || busyRef.current || pinRef.current.length >= max) {
         return
       }
+      stopFlash()
       const next = pinRef.current + d
       setEntry(next)
       if (mode === 'verify' && next.length === length) {
@@ -146,55 +207,69 @@ export function PinPad({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [keyboard, mode])
 
-  const dots = mode === 'verify' ? length : Math.max(PIN_MIN_LENGTH, pin.length)
-  const keyClass = 'size-16 rounded-full text-2xl font-normal'
+  const slots = mode === 'verify' ? length : Math.max(PIN_MIN_LENGTH, pin.length, flash ?? 0)
+  const shown = flash ?? pin.length
+  const message = error || hint
 
   return (
-    <div ref={root} className={cn('flex flex-col items-center gap-6', className)}>
+    <div ref={root} className={cn('flex flex-col items-center', className)}>
       <div
         key={shakes}
         role="img"
         aria-label={t('appLock.pin_pad.entered', { count: pin.length })}
         data-testid="pin-dots"
         data-filled={pin.length}
-        className={cn('flex h-4 items-center gap-3', shakes > 0 && 'pin-shake')}
+        className={cn('flex h-4 items-center justify-center gap-4', shakes > 0 && 'pin-shake')}
       >
-        {Array.from({ length: dots }, (_, i) => (
+        {Array.from({ length: slots }, (_, i) => (
           <span
             key={i}
             className={cn(
-              'size-3 rounded-full border border-foreground/40 transition-colors',
-              i < pin.length && 'border-foreground bg-foreground',
+              'size-3.5 rounded-full border-[1.5px] transition-colors duration-150',
+              i < shown
+                ? flash !== null
+                  ? 'border-destructive bg-destructive'
+                  : 'pin-dot-fill border-primary bg-primary'
+                : flash !== null
+                  ? 'border-destructive/50'
+                  : 'border-foreground/25',
             )}
           />
         ))}
       </div>
-      <p aria-live="assertive" className="min-h-5 text-center text-sm text-destructive">
-        {error}
+      <p
+        aria-live="assertive"
+        className={cn('mt-3 min-h-5 max-w-64 text-center text-sm', error ? 'text-destructive' : 'text-muted-foreground')}
+      >
+        {message}
       </p>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="mt-5 grid grid-cols-3 gap-x-6 gap-y-3">
         {KEYS.map((d) => (
-          <Button key={d} type="button" variant="secondary" className={keyClass} disabled={blocked} onClick={() => actions.digit(d)}>
+          <PadKey key={d} disabled={blocked} onPress={() => actions.digit(d)}>
             {d}
-          </Button>
+          </PadKey>
         ))}
-        <div className="flex size-16 items-center justify-center">{biometric}</div>
-        <Button type="button" variant="secondary" className={keyClass} disabled={blocked} onClick={() => actions.digit('0')}>
+        <div className="flex size-[4.25rem] items-center justify-center">{biometric}</div>
+        <PadKey disabled={blocked} onPress={() => actions.digit('0')}>
           0
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className={keyClass}
+        </PadKey>
+        <PadKey
+          variant="icon"
+          label={t('appLock.pin_pad.delete')}
           disabled={blocked || pin.length === 0}
-          aria-label={t('appLock.pin_pad.delete')}
-          onClick={actions.erase}
+          hidden={pin.length === 0}
+          onPress={actions.erase}
         >
-          <Delete className="size-6" aria-hidden="true" />
-        </Button>
+          <Delete className="size-7" strokeWidth={1.5} aria-hidden="true" />
+        </PadKey>
       </div>
       {mode === 'create' && (
-        <Button type="button" className="w-full max-w-60" disabled={blocked || pin.length < PIN_MIN_LENGTH} onClick={actions.confirm}>
+        <Button
+          type="button"
+          className="mt-6 h-11 w-full max-w-[15.75rem] text-[0.9375rem] normal-case! tracking-normal!"
+          disabled={blocked || pin.length < PIN_MIN_LENGTH}
+          onClick={actions.confirm}
+        >
           {submitLabel ?? t('appLock.pin_pad.continue')}
         </Button>
       )}

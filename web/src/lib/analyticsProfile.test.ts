@@ -183,7 +183,7 @@ describe('months_since_signup', () => {
 
 it('holds only the device facts with no client', () => {
   setAnalyticsQueryClient(null)
-  expect(profileAttributes()).toEqual({ app_lock: 'off' })
+  expect(profileAttributes()).toEqual({ app_lock: 'off', app_lock_biometric: 'off' })
 })
 
 describe('app_lock', () => {
@@ -203,11 +203,13 @@ describe('app_lock', () => {
     expect(profileAttributes().app_lock).toBe('off')
   })
 
-  it('tells a PIN-only lock from one with biometrics, read at capture time', () => {
+  it('reports the secret kind and biometrics separately, read at capture time', () => {
     writeConfig(testConfig())
-    expect(profileAttributes().app_lock).toBe('pin')
+    expect(profileAttributes()).toMatchObject({ app_lock: 'pin', app_lock_biometric: 'off' })
     writeConfig(testConfig({ biometric: { credentialId: 'abc' } }))
-    expect(profileAttributes().app_lock).toBe('biometric')
+    expect(profileAttributes()).toMatchObject({ app_lock: 'pin', app_lock_biometric: 'on' })
+    writeConfig(testConfig({ secret: { ...testConfig().secret, kind: 'pattern', length: 5 } }))
+    expect(profileAttributes()).toMatchObject({ app_lock: 'pattern', app_lock_biometric: 'off' })
   })
 
   it('reports the PIN lock over plain http too', () => {

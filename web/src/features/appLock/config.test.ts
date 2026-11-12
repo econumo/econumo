@@ -10,7 +10,7 @@ import {
   resetAttempts,
   writeConfig,
 } from './config'
-import { checkPin, hashPin } from './pin'
+import { checkSecret, hashSecret } from './secret'
 import { setSecureContext, signIn, testConfig } from './testUtils'
 
 beforeEach(() => {
@@ -34,7 +34,10 @@ describe('config storage', () => {
       JSON.stringify({ ...testConfig(), v: 2 }),
       JSON.stringify({ ...testConfig(), userId: '' }),
       JSON.stringify({ ...testConfig(), lockAfterMs: 1234 }),
-      JSON.stringify({ ...testConfig(), pin: { ...testConfig().pin, length: 3 } }),
+      JSON.stringify({ ...testConfig(), secret: { ...testConfig().secret, length: 3 } }),
+      JSON.stringify({ ...testConfig(), secret: { ...testConfig().secret, length: 9 } }),
+      JSON.stringify({ ...testConfig(), secret: { ...testConfig().secret, kind: 'face' } }),
+      JSON.stringify({ ...testConfig(), secret: { ...testConfig().secret, kind: 'pattern', length: 10 } }),
       JSON.stringify({ ...testConfig(), biometric: { credentialId: 5 } }),
     ]) {
       localStorage.setItem('econumo.appLock', raw)
@@ -110,19 +113,19 @@ describe('attempts', () => {
   })
 })
 
-describe('checkPin', () => {
+describe('checkSecret', () => {
   beforeEach(async () => {
-    writeConfig(testConfig({ pin: await hashPin('2468', 1000) }))
+    writeConfig(testConfig({ secret: await hashSecret('2468', 1000) }))
   })
 
   it('unlocks with the right PIN and resets the counter', async () => {
-    await checkPin('0000', 0)
-    await expect(checkPin('2468', 0)).resolves.toEqual({ status: 'ok' })
+    await checkSecret('0000', 0)
+    await expect(checkSecret('2468', 0)).resolves.toEqual({ status: 'ok' })
     expect(readAttempts().failedAttempts).toBe(0)
   })
 
   it('counts the attempt before the PIN is derived', async () => {
-    const pending = checkPin('0000', 0)
+    const pending = checkSecret('0000', 0)
     expect(readAttempts(0).failedAttempts).toBe(1)
     await expect(pending).resolves.toMatchObject({ status: 'wrong', failedAttempts: 1, remaining: 9 })
   })
@@ -130,22 +133,79 @@ describe('checkPin', () => {
   it('refuses during a lockout without counting, and signs out at the tenth failure', async () => {
     let now = 0
     for (let i = 1; i <= 4; i++) {
-      await checkPin('0000', now)
+      await checkSecret('0000', now)
     }
-    await expect(checkPin('0000', now)).resolves.toMatchObject({ status: 'wrong', lockedUntil: 30_000 })
-    await expect(checkPin('2468', now + 1000)).resolves.toEqual({ status: 'locked-out', lockedUntil: 30_000 })
+    await expect(checkSecret('0000', now)).resolves.toMatchObject({ status: 'wrong', lockedUntil: 30_000 })
+    await expect(checkSecret('2468', now + 1000)).resolves.toEqual({ status: 'locked-out', lockedUntil: 30_000 })
     expect(readAttempts(now).failedAttempts).toBe(5)
     for (let i = 6; i <= 9; i++) {
       now = readAttempts(now).lockedUntil!
-      await checkPin('0000', now)
+      await checkSecret('0000', now)
     }
     now = readAttempts(now).lockedUntil!
-    await expect(checkPin('0000', now)).resolves.toEqual({ status: 'exceeded' })
-    await expect(checkPin('2468', now + 10 ** 9)).resolves.toEqual({ status: 'exceeded' })
+    await expect(checkSecret('0000', now)).resolves.toEqual({ status: 'exceeded' })
+    await expect(checkSecret('2468', now + 10 ** 9)).resolves.toEqual({ status: 'exceeded' })
   })
 
   it('reports a missing config', async () => {
     clearConfig()
-    await expect(checkPin('2468')).resolves.toEqual({ status: 'unconfigured' })
+    await expect(checkSecret('2468')).resolves.toEqual({ status: 'unconfigured' })
+  })
+})
+
+describe('checkSecret with a pattern', () => {
+  const RIGHT = 'p:0-1-2-5-8'
+  const WRONG = 'p:6-7-8-5'
+
+  beforeEach(async () => {
+    writeConfig(testConfig({ secret: await hashSecret(RIGHT, 1000) }))
+  })
+
+  it('unlocks with the right pattern, counting the try before the derive', async () => {
+    const pending = checkSecret(WRONG, 0)
+    expect(readAttempts(0).failedAttempts).toBe(1)
+    await expect(pending).resolves.toMatchObject({ status: 'wrong', failedAttempts: 1, remaining: 9 })
+    await expect(checkSecret(RIGHT, 0)).resolves.toEqual({ status: 'ok' })
+    expect(readAttempts().failedAttempts).toBe(0)
+  })
+
+  it('a PIN never opens a pattern lock and counts as a failure', async () => {
+    await expect(checkSecret('0125', 0)).resolves.toMatchObject({ status: 'wrong', failedAttempts: 1 })
+  })
+
+  it('shares the lockout and the ten-try limit', async () => {
+    let now = 0
+    for (let i = 1; i <= 4; i++) {
+      await checkSecret(WRONG, now)
+    }
+    await expect(checkSecret(WRONG, now)).resolves.toMatchObject({ status: 'wrong', lockedUntil: 30_000 })
+    await expect(checkSecret(RIGHT, now + 1000)).resolves.toEqual({ status: 'locked-out', lockedUntil: 30_000 })
+    for (let i = 6; i <= 9; i++) {
+      now = readAttempts(now).lockedUntil!
+      await checkSecret(WRONG, now)
+    }
+    now = readAttempts(now).lockedUntil!
+    await expect(checkSecret(WRONG, now)).resolves.toEqual({ status: 'exceeded' })
+  })
+})
+
+describe('configs from before patterns', () => {
+  it('reads a stored `pin` without a kind as a PIN lock, and unlocks with it', async () => {
+    signIn('u1')
+    const { kind: _kind, ...pin } = await hashSecret('2468', 1000)
+    const { secret: _secret, ...rest } = testConfig()
+    localStorage.setItem('econumo.appLock', JSON.stringify({ ...rest, pin }))
+    expect(readConfig()?.secret).toEqual({ kind: 'pin', ...pin })
+    await expect(checkSecret('2468', 0)).resolves.toEqual({ status: 'ok' })
+  })
+
+  it('rewrites the config in the new shape on the next save', () => {
+    const { secret, ...rest } = testConfig()
+    const { kind: _kind, ...pin } = secret
+    localStorage.setItem('econumo.appLock', JSON.stringify({ ...rest, pin }))
+    writeConfig({ ...readConfig()!, lockAfterMs: 0 })
+    const raw = JSON.parse(localStorage.getItem('econumo.appLock')!)
+    expect(raw.pin).toBeUndefined()
+    expect(raw.secret).toEqual(secret)
   })
 })

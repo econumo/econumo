@@ -435,7 +435,8 @@
   background: var(--preview-line);
 }
 
-/* App lock: a wrong PIN shakes the dots before they clear. */
+/* App lock: a wrong PIN or pattern shakes before it clears; a typed digit's
+   dot fills with a short pop. */
 @keyframes pin-shake {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-0.5rem); }
@@ -446,8 +447,19 @@
   animation: pin-shake 0.4s ease-in-out;
 }
 
+@keyframes pin-dot-fill {
+  0% { transform: scale(0.55); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.pin-dot-fill {
+  animation: pin-dot-fill 0.18s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .pin-shake {
+  .pin-shake,
+  .pin-dot-fill {
     animation: none;
   }
 }

@@ -690,13 +690,16 @@ events fire when the server confirms, `METRICS.WRITE_QUEUED`/`WRITE_RETRIED`/`WR
 at those points.
 
 **App lock** (`web/src/features/appLock`; spec `docs/superpowers/specs/2026-11-11-app-lock-design.md`,
-"Revision 1" wins): a per-device PIN (4-8 digits, PBKDF2-HMAC-SHA256 in `pin.ts`: `crypto.subtle` with 150 000
+"Revision 1" wins, "Revision 4" for patterns): a per-device secret, a PIN (4-8 digits) or an Android-style pattern
+(4-9 of the 3x3 dots, `pattern.ts`, encoded `p:0-4-8-5`, a dot crossed straight on joins first; `PatternPad` with
+pointer capture, `touch-action: none` and `data-vaul-no-drag` so a swipe never drags the sheet, and dot buttons
+plus Done for the keyboard), one or the other, both hashed the same way (PBKDF2-HMAC-SHA256 in `secret.ts`: `crypto.subtle` with 150 000
 iterations, else, on plain http, the pure-JS `@noble/hashes` derive with 25 000; the count is stored
 with the hash and either implementation verifies the other's) with optional biometrics (a
 platform passkey, `biometric.ts`, https only: no signature check, the clientData challenge/origin and the UV flag
 only; the device passcode also satisfies it), frontend only, never sent to the server. Storage:
-localStorage `econumo.appLock` (config: owner `userId`, PIN hash, `lockAfterMs` 0/1/5/15 min, passkey
-id) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
+localStorage `econumo.appLock` (config: owner `userId`, `secret` {kind, hash, length; a config from before
+patterns holds `pin` and reads as kind pin}, `lockAfterMs` 0/1/5/15 min, passkey id) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
 sessionStorage marker `econumo.appLock.fresh` that `setToken` sets so the reload after a sign-in does
 not ask for the PIN (it counts for 30 s; any lock but the one taken as the page hides, and turning the
 lock on, spend it). `setToken` is also the only place that deletes another user's lock (both ids
@@ -708,7 +711,7 @@ on hide outside React, and reloads a locked tab when another tab changes the loc
 changes the session (a storage event never unlocks). A passkey prompt hiding the page neither covers
 nor locks it, but time away with one open counts once it passes max(`lockAfterMs`, 1 min). The gate is in `RequireAuth`, which renders `LockScreen`
 INSTEAD of its outlet, so nothing financial stays mounted. Every current-PIN prompt (lock screen and
-settings, `AppLockPage` at `/settings/profile/app-lock`) goes through `checkPin`, which stores the
+settings, `AppLockPage` at `/settings/profile/app-lock`) goes through `checkSecret`, which stores the
 failure before deriving; from the 5th failure a lockout, the 10th signs out. Sign-out:
 `LogoutPage` drops the lock unless it was sent `{ keepPendingWrites: true }` alone ("Set a password");
 "Forgot PIN" and the attempt limit send `{ keepPendingWrites: true, resetAppLock: true }`, keeping the

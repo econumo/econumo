@@ -159,3 +159,47 @@ describe('Enter outside the pad', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('1234'))
   })
 })
+
+it('shows the hint under the dots, and an error in its place', () => {
+  const { rerender } = render(<PinPad mode="create" onSubmit={vi.fn()} hint="4 to 8 digits" />)
+  const line = screen.getByText('4 to 8 digits')
+  expect(line).toHaveClass('text-muted-foreground')
+  expect(screen.getByTestId('pin-dots').compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  rerender(<PinPad mode="create" onSubmit={vi.fn()} hint="4 to 8 digits" error="The PINs don't match. Try again." />)
+  expect(screen.queryByText('4 to 8 digits')).not.toBeInTheDocument()
+  expect(screen.getByText("The PINs don't match. Try again.")).toHaveClass('text-destructive')
+})
+
+it('create mode shows filled dots plus empty slots up to the minimum', async () => {
+  const user = userEvent.setup()
+  render(<PinPad mode="create" onSubmit={vi.fn()} />)
+  expect(screen.getByTestId('pin-dots').children).toHaveLength(4)
+  await tap(user, '12345')
+  expect(screen.getByTestId('pin-dots').children).toHaveLength(5)
+})
+
+it('hides the delete key while nothing is typed', async () => {
+  const user = userEvent.setup()
+  render(<PinPad mode="verify" length={4} onSubmit={vi.fn()} />)
+  const erase = screen.getByRole('button', { name: 'Delete digit' })
+  expect(erase).toHaveClass('invisible')
+  await tap(user, '1')
+  expect(erase).not.toHaveClass('invisible')
+  expect(erase).toBeEnabled()
+})
+
+it('a key never takes focus from a pointer, so no ring stays behind', () => {
+  render(<PinPad mode="verify" length={4} onSubmit={vi.fn()} />)
+  const key = screen.getByRole('button', { name: '5' })
+  const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+  key.dispatchEvent(down)
+  expect(down.defaultPrevented).toBe(true)
+})
+
+it('a rejected PIN stays on screen in red while it shakes', async () => {
+  const user = userEvent.setup()
+  render(<PinPad mode="verify" length={4} onSubmit={() => false} />)
+  await tap(user, '1111')
+  await waitFor(() => expect(screen.getByTestId('pin-dots').querySelectorAll('.bg-destructive')).toHaveLength(4))
+  await waitFor(() => expect(screen.getByTestId('pin-dots').querySelectorAll('.bg-destructive')).toHaveLength(0))
+})

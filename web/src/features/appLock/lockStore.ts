@@ -64,7 +64,7 @@ export function lock(): void {
   setLocked()
 }
 
-// Every unlock is a success, PIN or biometric, so the attempt counter starts over.
+// Every unlock is a success, PIN, pattern or biometric, so the attempt counter starts over.
 export function unlock(): void {
   resetAttempts()
   lastTick = Date.now()
@@ -223,8 +223,8 @@ function onStorage(event: StorageEvent): void {
     if (before !== null || after !== null) {
       lockSeen = true
     }
-    // A locked tab's lock screen was drawn from the old config (PIN length,
-    // biometrics, owner); it boots again from the new one.
+    // A locked tab's lock screen was drawn from the old config (PIN or
+    // pattern, its length, biometrics, owner); it boots again from the new one.
     if (locked && event.oldValue !== event.newValue) {
       reloadPage()
     }

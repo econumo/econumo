@@ -2,7 +2,12 @@ import { mirrorWrite } from '@/lib/appStorage'
 import { getSessionUserId, getToken } from '@/lib/storage'
 import { APP_LOCK_ATTEMPTS_KEY, APP_LOCK_CONFIG_KEY } from './keys'
 
-export interface PinHash {
+export type SecretKind = 'pin' | 'pattern'
+
+// length: the PIN's digits or the pattern's nodes, so the lock screen can
+// show the right number of dots and the hash input never has to be read.
+export interface SecretHash {
+  kind: SecretKind
   salt: string
   hash: string
   iterations: number
@@ -12,7 +17,7 @@ export interface PinHash {
 export interface AppLockConfig {
   v: 1
   userId: string
-  pin: PinHash
+  secret: SecretHash
   lockAfterMs: number
   biometric: { credentialId: string } | null
 }
@@ -49,22 +54,40 @@ function parse(key: string): unknown {
   }
 }
 
-function isPinHash(value: unknown): value is PinHash {
-  return (
-    isRecord(value) &&
-    nonEmptyString(value.salt) &&
-    nonEmptyString(value.hash) &&
-    Number.isInteger(value.iterations) &&
-    (value.iterations as number) > 0 &&
-    Number.isInteger(value.length) &&
-    (value.length as number) >= 4 &&
-    (value.length as number) <= 8
-  )
+const MAX_LENGTH: Record<SecretKind, number> = { pin: 8, pattern: 9 }
+
+function readSecret(value: unknown, kind: SecretKind): SecretHash | null {
+  if (
+    !isRecord(value) ||
+    !nonEmptyString(value.salt) ||
+    !nonEmptyString(value.hash) ||
+    !Number.isInteger(value.iterations) ||
+    (value.iterations as number) <= 0 ||
+    !Number.isInteger(value.length) ||
+    (value.length as number) < 4 ||
+    (value.length as number) > MAX_LENGTH[kind]
+  ) {
+    return null
+  }
+  return { kind, salt: value.salt, hash: value.hash, iterations: value.iterations as number, length: value.length as number }
+}
+
+// Configs written before patterns existed hold `pin` and no kind.
+function configSecret(value: Record<string, unknown>): SecretHash | null {
+  if (value.secret !== undefined) {
+    const kind = isRecord(value.secret) ? value.secret.kind : undefined
+    return kind === 'pin' || kind === 'pattern' ? readSecret(value.secret, kind) : null
+  }
+  return readSecret(value.pin, 'pin')
 }
 
 export function readConfig(): AppLockConfig | null {
   const value = parse(APP_LOCK_CONFIG_KEY)
-  if (!isRecord(value) || value.v !== 1 || !nonEmptyString(value.userId) || !isPinHash(value.pin)) {
+  if (!isRecord(value) || value.v !== 1 || !nonEmptyString(value.userId)) {
+    return null
+  }
+  const secret = configSecret(value)
+  if (secret === null) {
     return null
   }
   if (!(LOCK_AFTER_OPTIONS as readonly unknown[]).includes(value.lockAfterMs)) {
@@ -77,7 +100,7 @@ export function readConfig(): AppLockConfig | null {
   return {
     v: 1,
     userId: value.userId,
-    pin: { salt: value.pin.salt, hash: value.pin.hash, iterations: value.pin.iterations, length: value.pin.length },
+    secret,
     lockAfterMs: value.lockAfterMs as number,
     biometric: biometric === null ? null : { credentialId: (biometric as { credentialId: string }).credentialId },
   }
@@ -153,8 +176,8 @@ export function attemptsExceeded(): boolean {
   return readAttempts().failedAttempts >= MAX_FAILED_ATTEMPTS
 }
 
-// Written BEFORE the PIN is checked, so a reload during the check cannot buy
-// a free attempt; a correct PIN then resets it.
+// Written BEFORE the secret is checked, so a reload during the check cannot buy
+// a free attempt; a correct one then resets it.
 export function recordFailedAttempt(now: number = Date.now()): AppLockAttempts {
   const failedAttempts = readAttempts(now).failedAttempts + 1
   const delay = lockoutMs(failedAttempts)
