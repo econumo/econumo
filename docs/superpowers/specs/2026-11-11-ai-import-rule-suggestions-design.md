@@ -112,8 +112,7 @@ count as ongoing.
   30 jobs per rate-limit window, a constant, no new env var). Over the cap, no suggestions.
 - **Reuse before asking.** Before calling the AI, a row whose text an open suggestion of the
   same owner already matches (the suggestion's match text, rule matching semantics, `contains`
-  on the same field) is attached to that suggestion without an AI call. A row that a
-  **dismissed** suggestion's match text matches is dropped without an AI call (see Dismiss).
+  on the same field) is attached to that suggestion without an AI call. Dismissed suggestions play no part.
 - At most 50 rows per request (*builder's call*). A larger batch keeps the first 50 by posted
   date, newest first, and drops the rest. Ongoing-only keeps batches small.
 
@@ -145,9 +144,15 @@ more simply.
   category fits the row's type, else the row goes to the AI;
 - a field the transaction already carries is dropped (a rule may have set one of the two).
 
-**Grouping.** The remaining rows are grouped by (owner, match field, normalized match text,
-category, payee). Each group becomes one suggestion, or joins an open suggestion with the same
-key.
+**One open suggestion per merchant (decided by the owner).** The owner never gets a new
+suggestion similar to one still open (not accepted, not dismissed). The remaining rows are
+grouped by (owner, match field, normalized match text). A group whose match text equals that of
+an open suggestion of the same owner, or that an open suggestion's match text matches, or whose
+match text matches the open suggestion's (one contains the other), joins that suggestion and
+keeps the open suggestion's category and payee, even when the AI proposed different ones this
+time. Otherwise the group becomes a new suggestion. Within one reply, rows sharing a match text
+but given different categories or payees take the classification of the most rows (ties: the
+newest row).
 
 ### Storage
 
@@ -209,11 +214,10 @@ Cancel leaves the suggestion open.
 
 ### Dismiss
 
-`POST /api/v1/import/dismiss-suggestion {id}` marks it `dismissed`. *Builder's call:* a
-dismissed suggestion's match text keeps future rows it matches from being sent to the AI or
-suggested again (otherwise every tap would bring the merchant back). There is no undo UI: the
-user can still edit a transaction by hand, and the edit flow offers a rule as today. A dismissed
-row is kept (it is the memory). Rows older than a year may be purged.
+`POST /api/v1/import/dismiss-suggestion {id}` takes it out of the Inbox. **Dismissal is not
+remembered (decided by the owner):** a later tap from the same merchant goes to the AI as usual
+and may bring a fresh suggestion. *Builder's call:* a dismissed suggestion is deleted with its
+link rows (or kept as `dismissed` if that is simpler; nothing reads it).
 
 ### Better match text in the edit flow
 
@@ -249,7 +253,7 @@ used in the edit flow (fired when the rule is saved with the AI's text unchanged
   (accept-suggestion writes transactions through the existing update path).
 - Tests with a recording completer (`internal/server/onboarding_steps_test.go` pattern) for:
   validation (invented ids, wrong-type category, match text not in the text, another user's
-  payee), grouping and reuse, dismissed memory, ongoing-only, owner-only on a shared account,
+  payee), grouping and reuse, no duplicate of an open suggestion, a fresh suggestion after a dismiss, ongoing-only, owner-only on a shared account,
   readonly skip, AI off.
 - i18n keys in all 11 catalogues.
 
