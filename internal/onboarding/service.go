@@ -127,6 +127,16 @@ func (s *Service) reserveJob(ctx context.Context, userID vo.Id, logs jobSpec) bo
 	return true
 }
 
+// mayAsk re-reads the preference right before a provider call: the user may
+// have opted out since the job was scheduled. Unreadable asks nothing.
+func (s *Service) mayAsk(ctx context.Context, userID vo.Id) bool {
+	if s.users == nil {
+		return true
+	}
+	off, err := s.users.AIOptedOut(ctx, userID)
+	return err == nil && !off
+}
+
 // runJob starts job through the runner with a fresh context (the request's is
 // cancelled the moment the response is written) and its own timeout; a panic
 // or an error is logged and goes no further.

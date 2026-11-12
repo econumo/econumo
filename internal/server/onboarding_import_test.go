@@ -671,3 +671,21 @@ func TestOnboarding_OptedOutUserStartsNoAIJob(t *testing.T) {
 		t.Fatalf("prompts = %d", len(e.ai.prompts))
 	}
 }
+
+// Opting out after a job was scheduled but before it calls the provider: no
+// request goes out, for the import review's three parts and the savings job.
+func TestOnboarding_OptOutAfterSchedulingSendsNothing(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	seedImport(e)
+	e.beforeJob = func() {
+		off := "0"
+		e.f.Option(e.user, model.OptionAI, &off)
+		e.beforeJob = nil
+	}
+	if status, data := e.post("/api/v1/onboarding/finish-import", map[string]any{"id": fixture.NewID()}); status != 200 {
+		t.Fatalf("finish-import %d: %v", status, data)
+	}
+	if len(e.ai.prompts) != 0 {
+		t.Fatalf("prompts = %d", len(e.ai.prompts))
+	}
+}

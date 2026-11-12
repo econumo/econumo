@@ -59,6 +59,8 @@ type onbEnv struct {
 	token string
 	ai    *recordingCompleter
 	eur   string
+	// beforeJob runs when a background job starts, after it was scheduled.
+	beforeJob func()
 }
 
 func newOnbEnv(t *testing.T, now time.Time) *onbEnv {
@@ -72,14 +74,21 @@ func newOnbEnv(t *testing.T, now time.Time) *onbEnv {
 	f.AccessToken(fixture.AccessToken{UserID: user, Kind: "personal", TokenHash: appuser.HashAccessToken(token), ExpiresAt: &exp})
 	eur := f.Currency(fixture.Currency{Code: "EUR", Symbol: "€", Name: "Euro"})
 	ai := &recordingCompleter{}
+	e := &onbEnv{t: t, db: db, f: f, user: user, token: token, ai: ai, eur: eur}
 	ts := httptest.NewServer(server.BuildAPI(baseTestConfig(db.Engine), db.Raw, server.Seams{
 		Clock:               stepClock{t: now},
 		Avatars:             appuser.FixedAvatarPicker(appuser.DefaultAvatar),
 		OnboardingCompleter: ai,
-		OnboardingRunner:    func(job func()) { job() },
+		OnboardingRunner: func(job func()) {
+			if e.beforeJob != nil {
+				e.beforeJob()
+			}
+			job()
+		},
 	}))
 	t.Cleanup(ts.Close)
-	return &onbEnv{t: t, db: db, f: f, url: ts.URL, user: user, token: token, ai: ai, eur: eur}
+	e.url = ts.URL
+	return e
 }
 
 func (e *onbEnv) post(path string, body any) (int, map[string]any) {

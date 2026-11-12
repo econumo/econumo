@@ -206,6 +206,29 @@ func TestClassification_OptedOutUserStartsNoJob(t *testing.T) {
 	}
 }
 
+// optOutAfter reads "on" for the first n preference reads, then "off".
+type optOutAfter struct {
+	fakeTimezones
+	n, reads int
+}
+
+func (f *optOutAfter) AIOptedOut(context.Context, vo.Id) (bool, error) {
+	f.reads++
+	return f.reads > f.n, nil
+}
+
+func TestClassification_OptOutAfterSchedulingSendsNothing(t *testing.T) {
+	c := replying(`{"savings":["` + deposit + `"]}`)
+	b := &fakeBudgets{}
+	svc := onboarding.NewService(b, fakeAccounts{}, &optOutAfter{n: 1})
+	svc.SetAdvisor(c, nil)
+	svc.SetRunner(func(job func()) { job() })
+	schedule(context.Background(), svc, allIDs...)
+	if len(b.marked) != 0 || c.calls != 0 {
+		t.Fatalf("marked = %v, calls = %d", b.marked, c.calls)
+	}
+}
+
 func TestClassification_OverTheCapSkipsTheJob(t *testing.T) {
 	c := replying(`{"savings":["` + deposit + `"]}`)
 	svc, b := newSvc(c, denyLimiter{})
