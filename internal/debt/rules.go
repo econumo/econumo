@@ -186,17 +186,18 @@ func ruleCategories(rules []model.DebtRule) []vo.Id {
 	return out
 }
 
-// writeRules validates the fresh rules of d in its budget and takes their
-// categories' key-share locks, so a concurrent category delete waits for this
-// write and then releases the rule instead of failing its foreign key.
+// writeRules validates the fresh rules of d in its budget. Their categories
+// are key-share-locked first, so the owner check reads rows a concurrent
+// delete can no longer remove: that delete waits for this write and then
+// releases the rule. A category deleted before the lock is not found.
 func (s *Service) writeRules(ctx context.Context, b model.DebtBudget, d *model.Debt, fresh []model.DebtRule, budgetDebts []*model.Debt) error {
+	if err := s.repo.LockRuleCategories(ctx, ruleCategories(fresh)); err != nil {
+		return err
+	}
 	for _, r := range fresh {
 		if err := s.checkRuleOwners(ctx, b, r); err != nil {
 			return err
 		}
-	}
-	if err := s.repo.LockRuleCategories(ctx, ruleCategories(fresh)); err != nil {
-		return err
 	}
 	return checkRules(d, fresh, budgetDebts)
 }

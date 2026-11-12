@@ -80,15 +80,16 @@ func (s *Service) editableDebt(ctx context.Context, userID, id vo.Id) (*model.De
 	return d, b, checkPlan(b)
 }
 
-// lockedDebt takes the debt's budget lock, then reads the debt afresh and
-// checks the user may still edit it. It runs first in a write's transaction.
+// lockedDebt checks the user can read the debt, takes its budget's lock, then
+// reads the debt afresh and checks the user may still edit it. It runs first
+// in a write's transaction; a caller without access never holds the lock.
 func (s *Service) lockedDebt(ctx context.Context, userID, id vo.Id) (*model.Debt, model.DebtBudget, error) {
-	d, err := s.repo.GetByID(ctx, id)
+	d, b, err := s.readableDebt(ctx, userID, id)
 	if err != nil {
-		return nil, model.DebtBudget{}, err
+		return nil, b, err
 	}
 	if err := s.repo.LockBudget(ctx, d.BudgetID); err != nil {
-		return nil, model.DebtBudget{}, err
+		return nil, b, err
 	}
 	return s.editableDebt(ctx, userID, id)
 }

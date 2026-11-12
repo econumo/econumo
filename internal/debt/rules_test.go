@@ -97,3 +97,33 @@ func TestAddDebtRule_NeedsPlanAccess(t *testing.T) {
 	_, err = e.svc.AddDebtRule(context.Background(), e.uid(), req)
 	requireArchived(t, err)
 }
+
+// A category deleted (its delete committed) between the owner check's read
+// and the rule write: the write answers not found, not a foreign-key failure.
+// The fake classifications still report the category, as a read taken before
+// the delete would.
+func TestRuleWrite_DeletedCategoryNotFound(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	res := e.create(t, nil)
+	gone := e.newCategory(e.user, true)
+	if _, err := e.db.Raw.ExecContext(ctx, e.db.Rebind("DELETE FROM categories WHERE id = ?"), gone); err != nil {
+		t.Fatal(err)
+	}
+
+	req := e.createReq()
+	req.Rules = []model.DebtRuleRequest{rule(gone)}
+	_, err := e.svc.CreateDebt(ctx, e.uid(), req)
+	requireNotFound(t, err)
+	_, err = e.addRule(res.Id, rule(gone))
+	requireNotFound(t, err)
+	update := e.updateReq(res)
+	update.Rules = []model.DebtRuleRequest{rule(e.category), rule(gone)}
+	_, err = e.svc.UpdateDebt(ctx, e.uid(), update)
+	requireNotFound(t, err)
+
+	debts, err := e.repo.ListByBudget(ctx, uidOf(e.budget))
+	if err != nil || len(debts) != 1 || len(debts[0].Rules) != 1 {
+		t.Fatalf("debts = %+v, %v; want the first one alone, unchanged", debts, err)
+	}
+}

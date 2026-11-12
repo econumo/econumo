@@ -50,6 +50,10 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 	var d *model.Debt
 	var budget model.DebtBudget
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// a caller without access never holds the budget's lock
+		if _, err := s.access(ctx, userID, budgetID); err != nil {
+			return err
+		}
 		if err := s.repo.LockBudget(ctx, budgetID); err != nil {
 			return err
 		}

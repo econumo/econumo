@@ -2,10 +2,12 @@ package debt_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/econumo/econumo/internal/debt"
+	debtrepo "github.com/econumo/econumo/internal/debt/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -283,16 +285,52 @@ func TestReassignClassification_MergeIntoWholeRuleMovesThePlans(t *testing.T) {
 	}
 }
 
+// lockRecorder records the budgets the service locks.
+type lockRecorder struct {
+	*debtrepo.Repo
+	locked []string
+}
+
+func (r *lockRecorder) LockBudget(ctx context.Context, budgetID vo.Id) error {
+	r.locked = append(r.locked, budgetID.String())
+	return r.Repo.LockBudget(ctx, budgetID)
+}
+
+// A merge locks the budgets of the debts naming either side, each once, in id
+// order: the order every debt write takes budget rows in.
 func TestLockForClassification_LocksTheBudgetsOfBothSides(t *testing.T) {
 	e := newEnv(t)
-	e.create(t, nil)
 	other := e.newCategory(e.user, true)
-	for _, kind := range []string{debt.KindCategory, debt.KindPayee, debt.KindTag, debt.KindLabel} {
-		if err := e.svc.LockForClassification(context.Background(), kind, vo.MustParseId(other), vo.MustParseId(e.category)); err != nil {
-			t.Fatalf("LockForClassification(%s): %v", kind, err)
-		}
+	second := e.newBudget(e.user, "Second", e.account)
+	third := e.newBudget(e.user, "Third", e.account)
+	e.create(t, nil)
+	e.create(t, func(r *model.CreateDebtRequest) { r.BudgetId, r.Rules = second, []model.DebtRuleRequest{rule(other)} })
+	e.create(t, func(r *model.CreateDebtRequest) {
+		r.BudgetId = second
+		r.Rules = []model.DebtRuleRequest{rule(e.category)}
+	})
+	e.create(t, func(r *model.CreateDebtRequest) {
+		r.BudgetId, r.Rules = third, []model.DebtRuleRequest{rule(e.newCategory(e.user, true))}
+	})
+
+	rec := &lockRecorder{Repo: e.repo}
+	svc := debt.NewService(rec, e.db.TX, e.clock, e.class, e.rates, e.currency, e.users)
+	svc.SetBudgets(e.budgets)
+	if err := svc.LockForClassification(context.Background(), debt.KindCategory, vo.MustParseId(other), vo.MustParseId(e.category)); err != nil {
+		t.Fatal(err)
 	}
-	if err := e.svc.LockForClassification(context.Background(), "currency", vo.NewId()); err == nil {
+	want := []string{e.budget, second}
+	slices.Sort(want)
+	if !slices.Equal(rec.locked, want) {
+		t.Fatalf("locked = %v, want %v (the third budget names neither side)", rec.locked, want)
+	}
+
+	rec.locked = nil
+	payee := e.newPayee()
+	if err := svc.LockForClassification(context.Background(), debt.KindPayee, vo.MustParseId(payee)); err != nil || len(rec.locked) != 0 {
+		t.Fatalf("a payee no rule names: locked %v, %v", rec.locked, err)
+	}
+	if err := svc.LockForClassification(context.Background(), "currency", vo.NewId()); err == nil {
 		t.Fatal("an unknown kind must be refused")
 	}
 }

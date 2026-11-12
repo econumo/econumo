@@ -483,13 +483,26 @@ func TestRepo_LockBudget(t *testing.T) {
 		if err := e.repo.LockBudget(ctx, vo.NewId()); err != nil {
 			return err
 		}
-		return e.repo.LockRuleCategories(ctx, []vo.Id{vo.MustParseId(e.category), vo.NewId()})
+		return e.repo.LockRuleCategories(ctx, []vo.Id{vo.MustParseId(e.category), vo.MustParseId(e.category)})
 	})
 	if err != nil {
 		t.Fatalf("locks: %v", err)
 	}
 	if err := e.repo.LockRuleCategories(ctx, nil); err != nil {
 		t.Fatalf("no categories: %v", err)
+	}
+}
+
+// A category deleted before the rule write is not found, instead of the rule
+// insert failing its foreign key.
+func TestRepo_LockRuleCategoriesMissingNotFound(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	err := e.db.TX.WithTx(ctx, func(ctx context.Context) error {
+		return e.repo.LockRuleCategories(ctx, []vo.Id{vo.MustParseId(e.category), vo.NewId()})
+	})
+	if !isNotFound(err) {
+		t.Fatalf("err = %v, want not found", err)
 	}
 }
 

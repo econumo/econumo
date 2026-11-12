@@ -16,8 +16,21 @@ import (
 func (s *Service) CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id) (map[vo.Id]vo.Id, error) {
 	ids := map[vo.Id]vo.Id{}
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// The source's lock keeps its rules as read (a category delete
+		// releases them under it); the categories' key-share locks make a
+		// delete of one wait for the copies and then release them too.
+		if err := s.repo.LockBudget(ctx, fromBudgetID); err != nil {
+			return err
+		}
 		debts, err := s.repo.ListByBudget(ctx, fromBudgetID)
 		if err != nil || len(debts) == 0 {
+			return err
+		}
+		var categories []vo.Id
+		for _, d := range debts {
+			categories = append(categories, ruleCategories(d.Rules)...)
+		}
+		if err := s.repo.LockRuleCategories(ctx, categories); err != nil {
 			return err
 		}
 		old := make([]vo.Id, 0, len(debts))

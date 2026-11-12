@@ -78,24 +78,37 @@ func (r *Repo) LockBudget(ctx context.Context, budgetID vo.Id) error {
 	return r.q.LockBudget(ctx, r.db(ctx), budgetID.String())
 }
 
-// LockRuleCategories: SQLite has no row-level lock modes; its single writer
-// already serializes transactions.
+// LockRuleCategories reads the categories, key-share-locking them on
+// PostgreSQL (SQLite has no row-level lock modes; its single writer already
+// serializes transactions). A category already deleted is not found: the
+// rule write would otherwise fail its foreign key.
 func (r *Repo) LockRuleCategories(ctx context.Context, categoryIDs []vo.Id) error {
-	if r.driver != "postgresql" || len(categoryIDs) == 0 {
+	if len(categoryIDs) == 0 {
 		return nil
 	}
 	ids := slices.Clone(categoryIDs)
 	slices.SortFunc(ids, func(a, b vo.Id) int { return strings.Compare(a.String(), b.String()) })
 	ids = slices.CompactFunc(ids, func(a, b vo.Id) bool { return a.Equal(b) })
-	query := "SELECT id FROM categories WHERE id IN (" + placeholders(r.driver, len(ids)) + ") ORDER BY id FOR KEY SHARE"
+	query := "SELECT id FROM categories WHERE id IN (" + placeholders(r.driver, len(ids)) + ") ORDER BY id"
+	if r.driver == "postgresql" {
+		query += " FOR KEY SHARE"
+	}
 	rows, err := r.db(ctx).QueryContext(ctx, query, idArgs(ids)...)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
+	found := 0
 	for rows.Next() {
+		found++
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if found < len(ids) {
+		return errs.NewNotFound("Category not found")
+	}
+	return nil
 }
 
 func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Debt, error) {
