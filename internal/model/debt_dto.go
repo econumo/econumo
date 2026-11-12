@@ -153,7 +153,8 @@ type DebtForecastItem struct {
 // payoff. budgetId/budgetName name the budget whose planned extras it
 // includes, "" when it follows the regular payments alone. paymentsLeft,
 // payoffDate and overpaymentLeft are DebtResult's figures with those plans
-// (equal to them when there are none); 0 and "" while the debt is not set up.
+// (equal to them when there are none), extraPlanned the planned extras the
+// run applies ("0" with none); 0 and "" while the debt is not set up.
 type DebtForecastResult struct {
 	Items           []DebtForecastItem `json:"items"`
 	BudgetId        string             `json:"budgetId"`
@@ -161,6 +162,7 @@ type DebtForecastResult struct {
 	PaymentsLeft    int                `json:"paymentsLeft"`
 	PayoffDate      string             `json:"payoffDate"`
 	OverpaymentLeft string             `json:"overpaymentLeft"`
+	ExtraPlanned    string             `json:"extraPlanned"`
 }
 
 // DebtBudgetPlans is one budget's plans of a debt's row: period key
@@ -175,8 +177,10 @@ type DebtBudgetPlans struct {
 // startDate; the terms (balance .. lastPaymentDate) are the latest snapshot's;
 // amounts are decimal strings in the debt's currency, dates "2006-01-02" (""
 // when none), isPaidOff an int 0/1 and periodRate the implied rate per
-// schedule period with 10 decimals. While isSetUp is 0 the terms and figures
-// are "" and the counts 0.
+// schedule period with 10 decimals. extraPaid is what the payments dated up to
+// today went above the regular payment, window by window (a payment on the
+// start date in full). While isSetUp is 0 the terms and figures are "" and
+// the counts 0.
 type DebtResult struct {
 	Id              string  `json:"id"`
 	Name            string  `json:"name"`
@@ -198,6 +202,7 @@ type DebtResult struct {
 	MoneyLeft       string  `json:"moneyLeft"`
 	OverpaymentLeft string  `json:"overpaymentLeft"`
 	OverpaidSoFar   string  `json:"overpaidSoFar"`
+	ExtraPaid       string  `json:"extraPaid"`
 	PayoffDate      string  `json:"payoffDate"`
 	NextDueDate     string  `json:"nextDueDate"`
 	PeriodRate      string  `json:"periodRate"`

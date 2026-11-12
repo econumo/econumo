@@ -274,3 +274,27 @@ func TestGetDebtForecast_SummaryEmptyWhileNotSetUp(t *testing.T) {
 		t.Fatalf("summary = %d %q %q, want none", got.PaymentsLeft, got.PayoffDate, got.OverpaymentLeft)
 	}
 }
+
+// extraPlanned sums the planned extras the forecast applies: a plan of 5000
+// in a month due 450 adds 4550; with no plans it is "0".
+func TestGetDebtForecast_ExtraPlanned(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, func(r *model.CreateDebtRequest) {
+		r.AmountBorrowed, r.Payment, r.LastPaymentDate = vo.NewFlexString("16500"), vo.NewFlexString("450"), "2030-03-01"
+	})
+	if got := e.forecast(t, res.Id, ""); got.ExtraPlanned != "0" {
+		t.Fatalf("extra planned with no plans = %q, want 0", got.ExtraPlanned)
+	}
+	budget := fixture.NewID()
+	e.svc.SetBudgetPlans(&fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
+		budget: {Name: "Family", PeriodStartDay: 1, Plans: map[string]string{"2026-05-01": "5000"}},
+	}})
+	if got := e.forecast(t, res.Id, budget); got.ExtraPlanned != "4550" {
+		t.Fatalf("extra planned = %q, want 4550", got.ExtraPlanned)
+	}
+
+	bare := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.CategoryId = e.newCategory(e.user, true) })
+	if got := e.forecast(t, bare.Id, ""); got.ExtraPlanned != "" {
+		t.Fatalf("not set up extra planned = %q, want empty", got.ExtraPlanned)
+	}
+}

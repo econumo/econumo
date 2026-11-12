@@ -59,7 +59,10 @@ type Projection struct {
 	// least one payment dated up to today.
 	PeriodsPaid                               int
 	MoneyLeft, OverpaymentLeft, OverpaidSoFar float64
-	PayoffDate, BasePayoffDate                time.Time
+	// ExtraPaid is what the payments dated up to today went above the regular
+	// payment (extraPaid).
+	ExtraPaid                  float64
+	PayoffDate, BasePayoffDate time.Time
 	// NextDueDate is the first projected payment; an unpaid due already past
 	// stays itself (overdue).
 	NextDueDate         time.Time
@@ -702,6 +705,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 		}
 	}
 	out.PeriodsPaid = len(paidDues)
+	out.ExtraPaid = extraPaid(snaps, pays, today)
 
 	firstDue := firstUnpaidDue(latest, snaps[0], pays, today)
 	sd := in.PeriodStartDay
@@ -803,6 +807,47 @@ func ProjectDebt(in ProjectionInput) Projection {
 		out.Months[monthKey(m)] = pm
 	}
 	return out
+}
+
+// extraPaid sums, over the due windows (latest terms' schedule, as
+// PeriodsPaid) holding payments dated up to today, what each window's
+// payments went above the regular payment of the snapshot in force on its
+// due; a window paid short adds nothing. It is measured by window, so a missed
+// window followed by a double payment counts the second payment as extra: the
+// money went above that window's payment, whatever was owed from before. A
+// payment on the origin's day pays no due and counts in full; the dues a
+// statement settles count only the payments recorded in their windows.
+func extraPaid(snaps []MathSnapshot, pays []MathPayment, today time.Time) float64 {
+	latest := snaps[len(snaps)-1]
+	var total float64
+	paid := map[time.Time]float64{}
+	var dues []time.Time
+	for _, p := range pays {
+		if p.Date.After(today) {
+			continue
+		}
+		if !instalment(snaps[0], p) {
+			total += p.Amount
+			continue
+		}
+		due := dueContaining(latest.Schedule, latest.Last, p.Date)
+		if _, ok := paid[due]; !ok {
+			dues = append(dues, due)
+		}
+		paid[due] += p.Amount
+	}
+	for _, due := range dues {
+		terms := snaps[0]
+		for _, s := range snaps {
+			if !s.AsOf.After(due) {
+				terms = s
+			}
+		}
+		if excess := roundDigits(paid[due]-terms.Payment, terms.Digits); excess > 0 {
+			total += excess
+		}
+	}
+	return total
 }
 
 // paymentsLeftAt counts the regular payments that clear balance under the

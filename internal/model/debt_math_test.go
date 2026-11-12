@@ -883,3 +883,48 @@ func TestProjectDebt_ResidueOfOneUnitFoldsIntoTheLastPayment(t *testing.T) {
 		t.Fatalf("last projected payment = %+v", last)
 	}
 }
+
+// extraLoan: 16500 taken on 15 May 2026, 450 a month on the 10th.
+func extraLoan() MathSnapshot {
+	return MathSnapshot{AsOf: ymd(2026, time.May, 15), Balance: 16500, Payment: 450,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2030, time.March, 10), Digits: 2, Origin: true}
+}
+
+func extraPaidOf(snaps []MathSnapshot, pays []MathPayment, today time.Time) float64 {
+	return ProjectDebt(ProjectionInput{Digits: 2, Snaps: snaps, Pays: pays, Interest: SplitPayments(snaps, pays), Today: today}).ExtraPaid
+}
+
+func TestProjectDebt_ExtraPaidIsWhatAWindowPaidAboveThePayment(t *testing.T) {
+	snaps := []MathSnapshot{extraLoan()}
+	today := ymd(2026, time.November, 11)
+	cases := []struct {
+		name string
+		pays []MathPayment
+		want float64
+	}{
+		{"one payment above the regular one", []MathPayment{pay("a", ymd(2026, time.June, 10), 1000)}, 550},
+		{"two payments in one window", []MathPayment{pay("a", ymd(2026, time.June, 10), 450), pay("b", ymd(2026, time.June, 20), 300)}, 300},
+		// by window: July is missed, August's window holds 900, so 450 is extra
+		{"a missed window then a double payment", []MathPayment{pay("a", ymd(2026, time.June, 10), 450), pay("b", ymd(2026, time.August, 10), 900)}, 450},
+		{"the start-day payment counts in full", []MathPayment{pay("down", ymd(2026, time.May, 15), 2000), pay("a", ymd(2026, time.June, 10), 450)}, 2000},
+		{"payments after today do not count", []MathPayment{pay("a", ymd(2026, time.June, 10), 450), pay("f", ymd(2026, time.December, 10), 5000)}, 0},
+		{"a smaller payment is no negative", []MathPayment{pay("a", ymd(2026, time.June, 10), 100), pay("b", ymd(2026, time.July, 10), 500)}, 50},
+		{"nothing paid", nil, 0},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			near(t, "extra paid", extraPaidOf(snaps, c.pays, today), c.want, 1e-9)
+		})
+	}
+}
+
+// Each window is measured against the payment of the snapshot in force on
+// its due; the dues a statement settles add nothing of their own.
+func TestProjectDebt_ExtraPaidUsesThePaymentInForce(t *testing.T) {
+	origin := extraLoan()
+	rec := origin
+	rec.Origin, rec.AsOf, rec.Balance, rec.Payment = false, ymd(2026, time.August, 1), 15000, 500
+	snaps := []MathSnapshot{origin, rec}
+	pays := []MathPayment{pay("jun", ymd(2026, time.June, 10), 600), pay("aug", ymd(2026, time.August, 10), 600)}
+	near(t, "extra paid", extraPaidOf(snaps, pays, ymd(2026, time.November, 11)), 150+100, 1e-9)
+}

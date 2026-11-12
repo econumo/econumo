@@ -5760,7 +5760,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Projects the payments still to come, soonest first, to the payoff: the regular schedule plus the extras planned for the debt's row in budgetId, else in the user's active budget. A budget the caller cannot read, or one that holds no row for the debt, leaves the regular payments alone; budgetId and budgetName name the budget only when its plans add an extra. paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with those extras (get-debt's own when there are none). A debt not set up has no items, 0 payments left and empty figures. A debt of another user is not found.",
+                "description": "Projects the payments still to come, soonest first, to the payoff: the regular schedule plus the extras planned for the debt's row in budgetId, else in the user's active budget. A budget the caller cannot read, or one that holds no row for the debt, leaves the regular payments alone; budgetId and budgetName name the budget only when its plans add an extra. paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with those extras (get-debt's own when there are none); extraPlanned sums the planned extras those payments carry (\"0\" with none). A debt not set up has no items, 0 payments left and empty figures. A debt of another user is not found.",
                 "produces": [
                     "application/json"
                 ],
@@ -16104,6 +16104,9 @@ const docTemplate = `{
                 "budgetName": {
                     "type": "string"
                 },
+                "extraPlanned": {
+                    "type": "string"
+                },
                 "items": {
                     "type": "array",
                     "items": {
@@ -16172,6 +16175,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "currentBalance": {
+                    "type": "string"
+                },
+                "extraPaid": {
                     "type": "string"
                 },
                 "icon": {

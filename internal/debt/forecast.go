@@ -60,6 +60,11 @@ func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.G
 		summary = st.projectPeriods(today, nil, plans, startDay)
 	}
 	res.PaymentsLeft, res.OverpaymentLeft = summary.PaymentsLeft, amountString(summary.OverpaymentLeft, digits)
+	var extraPlanned float64
+	for _, p := range summary.Payments {
+		extraPlanned += p.Extra
+	}
+	res.ExtraPlanned = amountString(extraPlanned, digits)
 	if !summary.PaidOff {
 		res.PayoffDate = dateString(summary.PayoffDate)
 	}

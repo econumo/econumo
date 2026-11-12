@@ -235,3 +235,34 @@ func TestGetDebt_BalanceAroundTheSnapshotDay(t *testing.T) {
 		t.Fatalf("before the snapshot: %q, want %s", before.Balance, want)
 	}
 }
+
+// extraPaid is what the recorded payments went above the regular payment,
+// window by window, in the debt's digits; "" while the debt is not set up.
+func TestGetDebt_ExtraPaid(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	if res.ExtraPaid != "0" {
+		t.Fatalf("extra paid with no payments = %q, want 0", res.ExtraPaid)
+	}
+	e.clock.now = ymd(2026, 7, 1)
+	e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	e.expense(t, e.account, ymd(2026, 5, 1), "1250.5", "")
+	e.expense(t, e.account, ymd(2026, 8, 1), "3000", "")
+
+	got, err := e.svc.GetDebt(context.Background(), e.uid(), model.GetDebtRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Item.ExtraPaid != "250.5" {
+		t.Fatalf("extra paid = %q, want 250.5", got.Item.ExtraPaid)
+	}
+	list, err := e.svc.GetDebtList(context.Background(), e.uid())
+	if err != nil || list.Items[0].ExtraPaid != "250.5" {
+		t.Fatalf("list = %+v, %v", list, err)
+	}
+
+	bare := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.CategoryId = e.newCategory(e.user, true) })
+	if bare.ExtraPaid != "" {
+		t.Fatalf("not set up extra paid = %q, want empty", bare.ExtraPaid)
+	}
+}

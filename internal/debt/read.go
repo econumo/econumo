@@ -60,7 +60,7 @@ func (s *Service) result(st *debtState, proj model.Projection, icon string) mode
 	res.CurrentBalance, res.PaymentsLeft, res.PeriodsPaid = amountString(proj.CurrentBalance, digits), proj.PaymentsLeft, proj.PeriodsPaid
 	res.MoneyLeft, res.OverpaymentLeft = amountString(proj.MoneyLeft, digits), amountString(proj.OverpaymentLeft, digits)
 	res.OverpaidSoFar, res.PayoffDate = amountString(proj.OverpaidSoFar, digits), dateString(payoff)
-	res.NextDueDate = dateString(proj.NextDueDate)
+	res.NextDueDate, res.ExtraPaid = dateString(proj.NextDueDate), amountString(proj.ExtraPaid, digits)
 	snaps := st.mathSnaps()
 	res.PeriodRate = strconv.FormatFloat(model.PeriodRate(snaps[len(snaps)-1]), 'f', 10, 64)
 	return res
