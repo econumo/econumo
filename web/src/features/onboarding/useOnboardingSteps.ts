@@ -4,6 +4,7 @@ import { useImportSources } from '@/features/imports/queries'
 import { isStandalone, useInstallMode } from '@/features/install/installPrompt'
 import { useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { isSimpleFINImportEnabled, mcpUrl } from '@/lib/config'
 import { isIPhone, isMac } from '@/lib/platform'
 import { onboardingProgress, storedStepState, writeStepState, type OnboardingStepKey, type OnboardingStepState } from './onboardingProgress'
 import { setHomeScreenState, useHomeScreenState } from './homeScreen'
@@ -24,6 +25,18 @@ export interface OnboardingSteps {
   ready: boolean
 }
 
+export type ConnectOption = 'apple_wallet' | 'simplefin' | 'mcp'
+
+// What the Connect step offers on this device and server; with none it is left out.
+export function connectOptions(): ConnectOption[] {
+  return [
+    ...(isIPhone() || isMac() ? ['apple_wallet' as const] : []),
+    // the browser encrypts the SimpleFIN access URL, which needs a secure page
+    ...(isSimpleFINImportEnabled() && window.isSecureContext ? ['simplefin' as const] : []),
+    ...(mcpUrl() !== '' ? ['mcp' as const] : []),
+  ]
+}
+
 export function useOnboardingSteps(): OnboardingSteps {
   const queryClient = useQueryClient()
   const { data: user } = useUserData()
@@ -32,9 +45,8 @@ export function useOnboardingSteps(): OnboardingSteps {
   const homeScreen = useHomeScreenState()
 
   const option = onboardingProgress(user)
-  const hasWalletSource = (sources.data ?? []).some((s) => s.provider === 'apple-wallet')
-  // A failed source list (routes off with the import providers) only loses
-  // the automatic Apple Wallet tick, so its retries are not waited for.
+  const hasSource = (sources.data ?? []).length > 0
+  // A failed source list only loses the automatic Connect tick, so its retries are not waited for.
   const ready = user !== undefined && (!sources.isPending || sources.failureCount > 0)
 
   const steps = useMemo(() => {
@@ -47,14 +59,14 @@ export function useOnboardingSteps(): OnboardingSteps {
       'accounts',
       'plan',
       ...(showHomeScreen ? ['home_screen' as const] : []),
-      ...(isIPhone() || isMac() ? ['apple_wallet' as const] : []),
+      ...(connectOptions().length > 0 ? ['connect' as const] : []),
     ]
     return keys.map((key): OnboardingStep => {
       if (key === 'home_screen') return { key, state: homeScreen }
-      if (key === 'apple_wallet' && hasWalletSource) return { key, state: 'done' }
+      if (key === 'connect' && hasSource) return { key, state: 'done' }
       return { key, state: storedStepState(option, key) }
     })
-  }, [option, homeScreen, hasWalletSource, installMode])
+  }, [option, homeScreen, hasSource, installMode])
 
   const current = steps.find((s) => s.state === 'open')?.key ?? null
 

@@ -11,8 +11,8 @@ import { useIsCompact } from '@/hooks/useIsCompact'
 import { apiErrorMessage } from '@/lib/apiError'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { AccountsStepBody } from './AccountsStep'
-import { AppleWalletStep } from './AppleWalletStep'
 import { CategoriesStepBody } from './CategoriesStep'
+import { ConnectStep } from './ConnectStep'
 import { clearDraft } from './draft'
 import { ImportStep } from './ImportStep'
 import { InstallStep } from './InstallStep'
@@ -26,8 +26,8 @@ export interface StepBodyProps {
   onGoTo?: (key: OnboardingStepKey) => void
   // categories and accounts are done, so the rest of the guide may be wrapped up from this step
   coreStepsDone?: boolean
-  // skips every open step, completes onboarding and lands on `to` instead of the budget
-  onCompleteSetup?: (to: string) => Promise<void>
+  // skips every open step but `doneKey` (marked done), completes onboarding and lands on `to`
+  onCompleteSetup?: (to: string, doneKey?: OnboardingStepKey) => Promise<void>
 }
 
 const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
@@ -36,7 +36,7 @@ const STEP_BODIES: Record<OnboardingStepKey, ComponentType<StepBodyProps>> = {
   accounts: AccountsStepBody,
   plan: PlanStep,
   home_screen: InstallStep,
-  apple_wallet: AppleWalletStep,
+  connect: ConnectStep,
 }
 
 const DONE_STEP_PAGES: Partial<Record<OnboardingStepKey, string>> = {
@@ -102,12 +102,12 @@ export function OnboardingPage() {
     setSelected((after ?? open[0]).key)
   }
 
-  const completeSetup = async (to?: string) => {
+  const completeSetup = async (to?: string, doneKey?: OnboardingStepKey) => {
     setSkippingAll(true)
     if (to) landing.current = to
     else trackEvent(METRICS.ONBOARDING_SKIP, { step: active })
     try {
-      await Promise.all(steps.filter((s) => s.state === 'open').map((s) => skip(s.key)))
+      await Promise.all(steps.filter((s) => s.state === 'open').map((s) => (s.key === doneKey ? markDone(s.key) : skip(s.key))))
       autoCompleted.current = true
       await finish()
     } catch {
@@ -139,9 +139,14 @@ export function OnboardingPage() {
         ) : (
           <span />
         )}
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={skippingAll || !online} onClick={() => void completeSetup()}>
-          {t('onboarding.steps_nav.complete_setup')}
-        </Button>
+        {/* the Connect step has its own Complete setup button; the placeholder keeps the row's height */}
+        {active === 'connect' ? (
+          <span className="h-7" />
+        ) : (
+          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={skippingAll || !online} onClick={() => void completeSetup()}>
+            {t('onboarding.steps_nav.complete_setup')}
+          </Button>
+        )}
       </div>
       <OfflineNotice />
       <Stepper steps={steps} current={active} onSelect={setSelected} />

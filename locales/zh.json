@@ -1268,7 +1268,7 @@
       "accounts": "账户",
       "plan": "预算与计划",
       "home_screen": "安装应用",
-      "apple_wallet": "Apple Wallet",
+      "connect": "连接",
       "menu": "菜单",
       "finish": "完成",
       "state_done": "已完成",
@@ -1288,11 +1288,27 @@
       "install": "安装",
       "done": "完成"
     },
-    "wallet_step": {
-      "heading": "刷卡支付，自动记录",
-      "text": "连接 Apple Wallet，每一笔刷卡都会自动出现在 Econumo 中。",
-      "setup": "设置",
-      "later": "你可以随时在设置中配置 Apple Wallet 集成。"
+    "connect_step": {
+      "heading": "连接你的账户",
+      "text": "让交易自动进来，无需手动输入。",
+      "apple_wallet": {
+        "title": "Apple Wallet",
+        "text": "每次刷卡付款都会自动出现在 Econumo 中。",
+        "link": "设置 Apple Wallet"
+      },
+      "simplefin": {
+        "title": "SimpleFIN",
+        "text": "通过 SimpleFIN Bridge 连接导入银行交易。",
+        "link": "设置 SimpleFIN"
+      },
+      "mcp": {
+        "title": "AI 助手",
+        "text": "将此地址添加到 Claude、ChatGPT 或其他支持 MCP 的应用，即可询问你的财务情况。"
+      },
+      "copy": "复制",
+      "copied": "已复制",
+      "later": "你可以稍后随时在设置中进行设置。",
+      "finish": "完成设置"
     },
     "retry": "重试",
     "save_continue": "保存并继续",

@@ -1268,7 +1268,7 @@
       "accounts": "Contas",
       "plan": "Orçamento e plano",
       "home_screen": "Instalar o app",
-      "apple_wallet": "Apple Wallet",
+      "connect": "Ligar",
       "menu": "Menu",
       "finish": "Concluir",
       "state_done": "concluído",
@@ -1288,11 +1288,27 @@
       "install": "Instalar",
       "done": "Concluído"
     },
-    "wallet_step": {
-      "heading": "Pagamentos com cartão, registados por si",
-      "text": "Ligue o Apple Wallet e cada pagamento com o cartão aparece sozinho no Econumo.",
-      "setup": "Configurar",
-      "later": "Pode configurar a integração com o Apple Wallet a qualquer momento nas Definições."
+    "connect_step": {
+      "heading": "Ligue as suas contas",
+      "text": "Deixe as suas transações chegarem sozinhas em vez de as escrever.",
+      "apple_wallet": {
+        "title": "Apple Wallet",
+        "text": "Cada pagamento com o seu cartão aparece sozinho no Econumo.",
+        "link": "Configurar Apple Wallet"
+      },
+      "simplefin": {
+        "title": "SimpleFIN",
+        "text": "Importe as transações do seu banco através de uma ligação SimpleFIN Bridge.",
+        "link": "Configurar SimpleFIN"
+      },
+      "mcp": {
+        "title": "Assistentes de IA",
+        "text": "Adicione este endereço ao Claude, ChatGPT ou outra aplicação compatível com MCP para fazer perguntas sobre as suas finanças."
+      },
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "later": "Pode configurá-los mais tarde nas Definições.",
+      "finish": "Concluir configuração"
     },
     "retry": "Tentar novamente",
     "save_continue": "Guardar e continuar",

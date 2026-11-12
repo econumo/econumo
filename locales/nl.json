@@ -1268,7 +1268,7 @@
       "accounts": "Rekeningen",
       "plan": "Budget & plan",
       "home_screen": "App installeren",
-      "apple_wallet": "Apple Wallet",
+      "connect": "Koppelen",
       "menu": "Menu",
       "finish": "Afronden",
       "state_done": "klaar",
@@ -1288,11 +1288,27 @@
       "install": "Installeren",
       "done": "Klaar"
     },
-    "wallet_step": {
-      "heading": "Kaartbetalingen, vanzelf vastgelegd",
-      "text": "Koppel Apple Wallet en elke betaling met uw kaart verschijnt vanzelf in Econumo.",
-      "setup": "Instellen",
-      "later": "U kunt de Apple Wallet-koppeling op elk moment later instellen in Instellingen."
+    "connect_step": {
+      "heading": "Koppel uw rekeningen",
+      "text": "Laat uw transacties vanzelf binnenkomen in plaats van ze in te typen.",
+      "apple_wallet": {
+        "title": "Apple Wallet",
+        "text": "Elke betaling met uw kaart verschijnt vanzelf in Econumo.",
+        "link": "Apple Wallet instellen"
+      },
+      "simplefin": {
+        "title": "SimpleFIN",
+        "text": "Haal transacties van uw bank op via een SimpleFIN Bridge-koppeling.",
+        "link": "SimpleFIN instellen"
+      },
+      "mcp": {
+        "title": "AI-assistenten",
+        "text": "Voeg dit adres toe aan Claude, ChatGPT of een andere app met MCP-ondersteuning om vragen over uw financiën te stellen."
+      },
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd",
+      "later": "U kunt dit later altijd instellen via Instellingen.",
+      "finish": "Instellen voltooien"
     },
     "retry": "Opnieuw proberen",
     "save_continue": "Opslaan en doorgaan",

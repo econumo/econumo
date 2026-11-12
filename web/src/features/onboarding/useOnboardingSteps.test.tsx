@@ -8,7 +8,7 @@ import { listenForInstallPrompt, resetInstallStateForTests } from '@/features/in
 import * as metrics from '@/lib/metrics'
 import { markOnboardingStepDone } from './onboardingProgress'
 import { HOME_SCREEN_KEY, setHomeScreenState } from './homeScreen'
-import { useOnboardingSteps } from './useOnboardingSteps'
+import { connectOptions, useOnboardingSteps } from './useOnboardingSteps'
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
 const MAC_SAFARI = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
@@ -60,28 +60,50 @@ it('gives Mac Safari all six steps', async () => {
   setDevice(MAC_SAFARI)
   const { result } = setup(userWith(''))
   await waitFor(() => expect(result.current.ready).toBe(true))
-  expect(keys(result.current.steps)).toEqual(['import', 'categories', 'accounts', 'plan', 'home_screen', 'apple_wallet'])
+  expect(keys(result.current.steps)).toEqual(['import', 'categories', 'accounts', 'plan', 'home_screen', 'connect'])
 })
 
 it('gives iPhone Safari all six steps', async () => {
   setDevice(IPHONE)
   const { result } = setup(userWith(''))
   await waitFor(() => expect(result.current.ready).toBe(true))
-  expect(keys(result.current.steps)).toEqual(['import', 'categories', 'accounts', 'plan', 'home_screen', 'apple_wallet'])
+  expect(keys(result.current.steps)).toEqual(['import', 'categories', 'accounts', 'plan', 'home_screen', 'connect'])
 })
 
 it('leaves out the install step on an iPhone already running the installed app', async () => {
   setDevice(IPHONE, true)
   const { result } = setup(userWith(''))
   await waitFor(() => expect(result.current.ready).toBe(true))
-  expect(keys(result.current.steps)).toEqual(['import', 'categories', 'accounts', 'plan', 'apple_wallet'])
+  expect(keys(result.current.steps)).toEqual(['import', 'categories', 'accounts', 'plan', 'connect'])
 })
 
-it('gives an Android phone the install step but not Apple Wallet', async () => {
+it('gives an Android phone the install step but not Connect', async () => {
   setDevice(ANDROID_FIREFOX)
   const { result } = setup(userWith(''))
   await waitFor(() => expect(result.current.ready).toBe(true))
   expect(keys(result.current.steps)).toEqual(['import', 'categories', 'accounts', 'plan', 'home_screen'])
+})
+
+it('offers Connect on any device when the server serves an MCP address or SimpleFIN on a secure page', async () => {
+  window.econumoConfig = { MCP_URL: `${window.location.origin}/mcp` }
+  const { result } = setup(userWith(''))
+  await waitFor(() => expect(result.current.ready).toBe(true))
+  expect(keys(result.current.steps)).toEqual(['import', 'categories', 'accounts', 'plan', 'connect'])
+  expect(connectOptions()).toEqual(['mcp'])
+
+  window.econumoConfig = { IMPORT_SIMPLEFIN: true }
+  Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+  expect(connectOptions()).toEqual(['simplefin'])
+  Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true })
+  expect(connectOptions()).toEqual([])
+})
+
+it('reads an answer given to the former Apple Wallet step as the Connect answer', async () => {
+  setDevice(IPHONE, true)
+  const { result } = setup(userWith('import,categories,accounts,plan,!apple_wallet'))
+  await waitFor(() => expect(result.current.ready).toBe(true))
+  expect(result.current.steps.at(-1)).toEqual({ key: 'connect', state: 'skipped' })
+  expect(result.current.allResolved).toBe(true)
 })
 
 it('the current step is the first one still open', async () => {
@@ -104,11 +126,11 @@ it('is all resolved once every visible step is done or skipped', async () => {
   expect(result.current.allResolved).toBe(true)
 })
 
-it('marks Apple Wallet done once a Wallet source exists, and home screen from this device', async () => {
+it('marks Connect done once an import source exists, and home screen from this device', async () => {
   setDevice(IPHONE)
   localStorage.setItem(HOME_SCREEN_KEY, 'skipped')
   const { result } = setup(userWith(''), { importSources: [{ id: 's1', provider: 'apple-wallet', name: 'Wallet', cards: [] }] })
-  await waitFor(() => expect(result.current.steps.find((s) => s.key === 'apple_wallet')?.state).toBe('done'))
+  await waitFor(() => expect(result.current.steps.find((s) => s.key === 'connect')?.state).toBe('done'))
   expect(result.current.steps.find((s) => s.key === 'home_screen')?.state).toBe('skipped')
 })
 
