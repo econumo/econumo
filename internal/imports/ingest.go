@@ -19,6 +19,7 @@ func (s *Service) IngestAppleWallet(ctx context.Context, userID vo.Id, payload [
 		return nil, err
 	}
 	var res *model.IngestEventResult
+	var created *model.ImportTransactionLink
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		src, err := s.repo.GetSourceByUserProvider(ctx, userID, model.ImportProviderAppleWallet)
 		if err != nil {
@@ -39,15 +40,19 @@ func (s *Service) IngestAppleWallet(ctx context.Context, userID vo.Id, payload [
 			res = &model.IngestEventResult{Status: model.ImportIngestStatusDuplicate}
 			return nil
 		}
-		status, err := s.processEvent(ctx, src, ev)
+		status, link, err := s.processEvent(ctx, src, ev)
 		if err != nil {
 			return err
 		}
+		created = link
 		res = &model.IngestEventResult{Status: status, EventId: ev.ID.String()}
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+	if created != nil {
+		s.startSuggestJob([]model.ImportTransactionLink{*created})
 	}
 	return res, nil
 }
@@ -65,7 +70,8 @@ func (s *Service) RetryEvent(ctx context.Context, userID vo.Id, req model.RetryI
 		if ev.Status != model.ImportEventStatusFailed {
 			return &errs.ValidationError{Msg: "This event did not fail", MsgCode: errs.CodeImportEventNotFailed}
 		}
-		status, err := s.processEvent(ctx, src, ev)
+		// A retry is not a live import: no suggestion job.
+		status, _, err := s.processEvent(ctx, src, ev)
 		if err != nil {
 			return err
 		}
@@ -79,25 +85,25 @@ func (s *Service) RetryEvent(ctx context.Context, userID vo.Id, req model.RetryI
 }
 
 // processEvent runs stages 0-3 for one stored event and records the outcome
-// on the event row. It returns the ingest status; only infrastructure
-// failures are errors.
-func (s *Service) processEvent(ctx context.Context, src *model.ImportSource, ev *model.ImportEvent) (string, error) {
+// on the event row. It returns the ingest status and, for a created
+// transaction, its ledger row; only infrastructure failures are errors.
+func (s *Service) processEvent(ctx context.Context, src *model.ImportSource, ev *model.ImportEvent) (string, *model.ImportTransactionLink, error) {
 	parsed, perr := s.parse(ctx, src, ev)
 	if perr != nil {
 		msg := perr.Error()
-		return model.ImportIngestStatusFailed, s.repo.UpdateEventStatus(ctx, ev.ID, model.ImportEventStatusFailed, &msg)
+		return model.ImportIngestStatusFailed, nil, s.repo.UpdateEventStatus(ctx, ev.ID, model.ImportEventStatusFailed, &msg)
 	}
 	rules, err := s.loadRules(ctx, src)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	// A retried event is reprocessed exactly like the original push: it never
 	// carries a run id and never corrects an already-adopted amount.
-	status, _, err := s.applyEvent(ctx, src, ev.ID, parsed, nil, false, rules)
+	status, _, created, err := s.applyEvent(ctx, src, ev.ID, parsed, nil, false, rules)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	return status, s.repo.UpdateEventStatus(ctx, ev.ID, model.ImportEventStatusProcessed, nil)
+	return status, created, s.repo.UpdateEventStatus(ctx, ev.ID, model.ImportEventStatusProcessed, nil)
 }
 
 func (s *Service) parse(ctx context.Context, src *model.ImportSource, ev *model.ImportEvent) (model.IngestEvent, error) {
@@ -180,8 +186,9 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 // for a new external key. runID is nil for a push event and the enclosing
 // sync run's id for a pull event; correctAmount lets a tip-adopt overwrite a
 // stale tap-time amount (a bank sync only — a push never rewrites a
-// hand-entered amount).
-func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool, rules *ruleBook) (status string, amountUpdated bool, err error) {
+// hand-entered amount). created is the new ledger row, set only for
+// ImportIngestStatusCreated.
+func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool, rules *ruleBook) (status string, amountUpdated bool, created *model.ImportTransactionLink, err error) {
 	// The ledger stores the card name in its original case (the queue page
 	// displays it), so the dedup lookup itself is case-insensitive on the
 	// card name at the query layer (GetLinkByExternalKey) rather than being
@@ -189,11 +196,11 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 	existing, err := s.repo.GetLinkByExternalKey(ctx, src.ID, ev.ExternalAccountID, ev.ExternalTransactionID)
 	if err == nil {
 		if existing.IsSeen() {
-			return model.ImportIngestStatusDuplicate, false, nil
+			return model.ImportIngestStatusDuplicate, false, nil, nil
 		}
-		return model.ImportIngestStatusQueued, false, nil // still waiting on the user; nothing new to record
+		return model.ImportIngestStatusQueued, false, nil, nil // still waiting on the user; nothing new to record
 	} else if _, ok := errs.AsNotFound(err); !ok {
-		return "", false, err
+		return "", false, nil, err
 	}
 	if ev.Currency == "" {
 		// SimpleFIN rows carry no currency of their own — the account does.
@@ -202,7 +209,7 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 		// first time the account was seen.
 		links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
 		if err != nil {
-			return "", false, err
+			return "", false, nil, err
 		}
 		if al := findAccountLink(links, ev.ExternalAccountID); al != nil && al.ExternalCurrency != nil {
 			ev.Currency = *al.ExternalCurrency
@@ -217,35 +224,34 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 	}
 	r, err := s.resolve(ctx, src, ev, rules)
 	if err != nil {
-		return "", false, err
+		return "", false, nil, err
 	}
 	switch r.status {
 	case model.ImportIngestStatusQueued:
-		return r.status, false, s.repo.InsertLink(ctx, link)
+		return r.status, false, nil, s.repo.InsertLink(ctx, link)
 	case model.ImportIngestStatusSkipped:
 		link.Status = model.ImportLinkStatusSkipped
 		link.AppliedRuleID = r.skipRuleID
-		return r.status, false, s.repo.InsertLink(ctx, link)
+		return r.status, false, nil, s.repo.InsertLink(ctx, link)
 	}
 	txID, adopted, amountUpdated, applied, err := s.place(ctx, src, ev, r, correctAmount)
 	if err != nil {
-		return "", false, err
+		return "", false, nil, err
 	}
 	link.Status = model.ImportLinkStatusLinked
 	link.TransactionID = &txID
 	setApplied(link, applied)
 	// the applied-label rows carry an FK on link_id, so the link goes in first
 	if err := s.repo.InsertLink(ctx, link); err != nil {
-		return "", false, err
+		return "", false, nil, err
 	}
 	if err := s.repo.ReplaceLinkAppliedLabels(ctx, link.ID, applied.LabelIDs); err != nil {
-		return "", false, err
+		return "", false, nil, err
 	}
-	status = model.ImportIngestStatusCreated
 	if adopted {
-		status = model.ImportIngestStatusMatched
+		return model.ImportIngestStatusMatched, amountUpdated, nil, nil
 	}
-	return status, amountUpdated, nil
+	return model.ImportIngestStatusCreated, amountUpdated, link, nil
 }
 
 // place is stage 3: adopt an existing transaction the matcher recognizes

@@ -213,6 +213,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
 		appimports.RateScopeSync:            cfg.RateLimitSync,
 		appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
+		// A background AI round trip per import batch; the job is skipped over the cap.
+		appimports.RateScopeSuggest: 30,
 		// Each onboarding classification is a paid AI round trip; Day 0 needs a handful.
 		apponboarding.RateScopeClassify: 20,
 		// No per-key cap: the caller of start-login/start-link is anonymous
@@ -227,6 +229,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		// their effects stay inside the caller's account.
 		appimports.RateScopeIngest:      true,
 		appimports.RateScopePreviewRule: true,
+		appimports.RateScopeSuggest:     true,
 		apponboarding.RateScopeClassify: true,
 	}
 	// Ceilings per email address across all client IPs, above the per-address-and-IP
@@ -503,7 +506,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// The completion client is injected here, never imported by the feature:
 	// internal/imports declares the Completer interface and nothing more.
 	if aiClient != nil {
-		importsSvc.SetCompleter(aiClient)
+		importsSvc.SetSuggester(aiClient, NewImportsOwnerFacts(userRepo, clk))
 	}
 	importsHandlers := handlerimports.NewHandlers(importsSvc)
 

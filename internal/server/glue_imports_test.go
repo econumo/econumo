@@ -12,6 +12,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 type stubAccounts struct {
@@ -335,3 +336,29 @@ func TestTransactionImportCategories_MarksIncomeCategories(t *testing.T) {
 		t.Fatalf("got %+v, %v", got, err)
 	}
 }
+
+func TestImportsOwnerFacts(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.NewSQLite(t)
+	now := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+	f := fixture.New(t, db).At(now)
+	expired := now.Add(-time.Hour)
+	lapsed := f.User(fixture.User{Email: "lapsed@example.test", AccessUntil: &expired})
+	active := f.User(fixture.User{Email: "active@example.test"})
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET language = ?, timezone = ? WHERE id = ?`), "de", "Europe/Berlin", lapsed); err != nil {
+		t.Fatal(err)
+	}
+	facts := NewImportsOwnerFacts(userrepo.NewRepo("sqlite", db.TX), fixedImportsClock{now})
+
+	lang, tz, readonly, err := facts.OwnerFacts(ctx, vo.MustParseId(lapsed))
+	if err != nil || lang != "de" || tz != "Europe/Berlin" || !readonly {
+		t.Fatalf("lapsed = %q %q %v %v", lang, tz, readonly, err)
+	}
+	if _, _, readonly, err := facts.OwnerFacts(ctx, vo.MustParseId(active)); err != nil || readonly {
+		t.Fatalf("active readonly = %v %v", readonly, err)
+	}
+}
+
+type fixedImportsClock struct{ t time.Time }
+
+func (c fixedImportsClock) Now() time.Time { return c.t }

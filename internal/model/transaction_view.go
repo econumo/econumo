@@ -34,6 +34,8 @@ type ImportNamed struct {
 	OwnerID string
 	// Income is set on income categories (categories only).
 	Income bool
+	// Archived entries stay valid rule targets; only AI suggestions skip them.
+	Archived bool
 }
 
 // ImportMapping maps logical fields to CSV column names. Empty string = unmapped.

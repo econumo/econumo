@@ -225,7 +225,7 @@ func (c *TransactionImportCategories) CategoriesByOwner(ctx context.Context, own
 	}
 	out := make([]model.ImportNamed, len(list))
 	for i, cat := range list {
-		out[i] = model.ImportNamed{ID: cat.ID.String(), Name: cat.Name, OwnerID: cat.UserID.String(), Income: cat.Type == model.TypeIncome}
+		out[i] = model.ImportNamed{ID: cat.ID.String(), Name: cat.Name, OwnerID: cat.UserID.String(), Income: cat.Type == model.TypeIncome, Archived: cat.IsArchived}
 	}
 	return out, nil
 }
@@ -320,7 +320,7 @@ func (p *TransactionImportPayees) PayeesByOwner(ctx context.Context, ownerID vo.
 	}
 	out := make([]model.ImportNamed, len(list))
 	for i, py := range list {
-		out[i] = model.ImportNamed{ID: py.ID.String(), Name: py.Name, OwnerID: py.UserID.String()}
+		out[i] = model.ImportNamed{ID: py.ID.String(), Name: py.Name, OwnerID: py.UserID.String(), Archived: py.IsArchived}
 	}
 	return out, nil
 }

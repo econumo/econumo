@@ -21,6 +21,8 @@ type Service struct {
 	entities  ClassificationLister
 	limiter   AttemptLimiter
 	completer Completer
+	facts     OwnerFacts
+	run       func(func())
 	tx        port.TxRunner
 	clk       port.Clock
 	cfg       MatcherConfig
@@ -57,8 +59,11 @@ func (s *Service) enabledSources(ctx context.Context, userID vo.Id) ([]model.Imp
 	return out, nil
 }
 
-// SetCompleter configures the AI client for import features.
-func (s *Service) SetCompleter(c Completer) { s.completer = c }
+// SetSuggester turns on AI rule suggestions for newly imported transactions.
+func (s *Service) SetSuggester(c Completer, facts OwnerFacts) { s.completer, s.facts = c, facts }
+
+// SetJobRunner replaces how background jobs start (tests run them inline).
+func (s *Service) SetJobRunner(run func(func())) { s.run = run }
 
 // ownedSource resolves a source the caller owns; a foreign id reads as
 // not-found so ids cannot be probed.

@@ -72,6 +72,13 @@ type Completer interface {
 	Complete(ctx context.Context, userID, system, user string) (string, error)
 }
 
+// OwnerFacts is what the suggestion job needs about an account owner: the
+// stored language and timezone ("" when unknown) for the prompt, and whether
+// the effective access level is readonly (a lapsed user gets no AI calls).
+type OwnerFacts interface {
+	OwnerFacts(ctx context.Context, userID vo.Id) (language, timezone string, readonly bool, err error)
+}
+
 // AttemptLimiter caps the unbounded import endpoints per user; every request
 // counts. A nil limiter disables protection (tests).
 type AttemptLimiter interface {
@@ -84,4 +91,5 @@ const (
 	RateScopeClaimSetupToken = "import-claim"
 	RateScopeSync            = "import-sync"
 	RateScopePreviewRule     = "import-preview"
+	RateScopeSuggest         = "import-ai-suggest"
 )

@@ -42,16 +42,20 @@ type fakeAccounts struct {
 	db              *dbtest.DB
 }
 
-// AccountListForUser reports acct1 with its revision as the caller's
+// AccountListForUser reports acct1 (acctB for userB) with its revision as the caller's
 // connection sees it: inside the pipeline's transaction that is the value
 // before the commit-time bump.
-func (f *fakeAccounts) AccountListForUser(ctx context.Context, _ vo.Id) ([]model.AccountResult, error) {
+func (f *fakeAccounts) AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error) {
+	id, name := acct1, "Card"
+	if userID.String() == userB {
+		id, name = acctB, "Other"
+	}
 	var rev int64
-	row := f.db.TX.Querier(ctx).QueryRowContext(ctx, f.db.Rebind(`SELECT transactions_revision FROM accounts WHERE id = ?`), acct1)
+	row := f.db.TX.Querier(ctx).QueryRowContext(ctx, f.db.Rebind(`SELECT transactions_revision FROM accounts WHERE id = ?`), id)
 	if err := row.Scan(&rev); err != nil {
 		return nil, err
 	}
-	return []model.AccountResult{{Id: acct1, TransactionsRevision: rev}}, nil
+	return []model.AccountResult{{Id: id, Name: name, TransactionsRevision: rev}}, nil
 }
 
 func (f *fakeAccounts) AccountOwner(_ context.Context, id vo.Id) (vo.Id, error) {

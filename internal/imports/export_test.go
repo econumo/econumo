@@ -14,5 +14,6 @@ func (s *Service) ApplyEventForTest(ctx context.Context, src *model.ImportSource
 	if err != nil {
 		return "", false, err
 	}
-	return s.applyEvent(ctx, src, eventID, ev, runID, correctAmount, rules)
+	status, amountUpdated, _, err := s.applyEvent(ctx, src, eventID, ev, runID, correctAmount, rules)
+	return status, amountUpdated, err
 }
