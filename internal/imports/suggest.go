@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -148,7 +149,8 @@ func matchTextIn(link model.ImportTransactionLink, raw string) (field, normalize
 		field, text = model.ImportRuleMatchFieldDescription, link.ExternalDescription
 	}
 	normalized = NormalizeText(raw)
-	if normalized == "" || !strings.Contains(strings.ToLower(NormalizeText(text)), strings.ToLower(normalized)) {
+	// A 1-2 character text would let openFor's reuse swallow unrelated rows.
+	if utf8.RuneCountInString(normalized) < 3 || !strings.Contains(strings.ToLower(NormalizeText(text)), strings.ToLower(normalized)) {
 		return "", "", false
 	}
 	return field, normalized, true
@@ -192,6 +194,13 @@ func idPtrKey(id *vo.Id) string {
 }
 
 func groupRows(valid []validSuggestion) []model.ImportSuggestion {
+	groups, _ := groupRowsTyped(valid)
+	return groups
+}
+
+// groupRowsTyped also returns each group's transaction type (parallel
+// slice) so mergeIntoOpen can check a joined suggestion's category fits it.
+func groupRowsTyped(valid []validSuggestion) ([]model.ImportSuggestion, []model.TransactionType) {
 	type bucket struct {
 		field, text string
 		rows        []validSuggestion
@@ -200,7 +209,7 @@ func groupRows(valid []validSuggestion) []model.ImportSuggestion {
 	buckets := map[string]*bucket{}
 	for _, s := range valid {
 		text := strings.ToLower(s.MatchText)
-		k := s.MatchField + "\x00" + text
+		k := s.MatchField + "\x00" + text + "\x00" + strconv.FormatBool(s.Row.Type.IsIncome())
 		b, ok := buckets[k]
 		if !ok {
 			b = &bucket{field: s.MatchField, text: s.MatchText}
@@ -210,8 +219,10 @@ func groupRows(valid []validSuggestion) []model.ImportSuggestion {
 		b.rows = append(b.rows, s)
 	}
 	out := make([]model.ImportSuggestion, 0, len(order))
+	types := make([]model.TransactionType, 0, len(order))
 	for _, k := range order {
 		b := buckets[k]
+		types = append(types, b.rows[0].Row.Type)
 		count := map[string]int{}
 		for _, s := range b.rows {
 			count[idPtrKey(s.CategoryID)+"\x00"+idPtrKey(s.PayeeID)]++
@@ -233,21 +244,34 @@ func groupRows(valid []validSuggestion) []model.ImportSuggestion {
 		}
 		out = append(out, sug)
 	}
-	return out
+	return out, types
 }
 
-func mergeIntoOpen(groups []model.ImportSuggestion, open []model.ImportSuggestion) (fresh []model.ImportSuggestion, joins map[vo.Id][]vo.Id) {
+func sortedOldestFirst(open []model.ImportSuggestion) []model.ImportSuggestion {
+	sorted := append([]model.ImportSuggestion(nil), open...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].CreatedAt.Before(sorted[j].CreatedAt) })
+	return sorted
+}
+
+// groupTypes is parallel to groups (see groupRowsTyped). A group joins the
+// oldest open suggestion whose rule ("contains <open text>") would match it
+// and whose category, when set, fits the group's type.
+func mergeIntoOpen(groups []model.ImportSuggestion, groupTypes []model.TransactionType, open []model.ImportSuggestion, income map[vo.Id]bool) (fresh []model.ImportSuggestion, joins map[vo.Id][]vo.Id) {
 	joins = map[vo.Id][]vo.Id{}
-	for _, g := range groups {
+	sorted := sortedOldestFirst(open)
+	for i, g := range groups {
 		gt := strings.ToLower(g.MatchText)
 		joined := false
-		for _, o := range open {
-			ot := strings.ToLower(o.MatchText)
-			if o.MatchField == g.MatchField && (strings.Contains(gt, ot) || strings.Contains(ot, gt)) {
-				joins[o.ID] = append(joins[o.ID], g.LinkIDs...)
-				joined = true
-				break
+		for _, o := range sorted {
+			if o.MatchField != g.MatchField || !strings.Contains(gt, strings.ToLower(o.MatchText)) {
+				continue
 			}
+			if o.CategoryID != nil && !categoryFits(*o.CategoryID, income, groupTypes[i]) {
+				continue
+			}
+			joins[o.ID] = append(joins[o.ID], g.LinkIDs...)
+			joined = true
+			break
 		}
 		if !joined {
 			fresh = append(fresh, g)
@@ -258,15 +282,17 @@ func mergeIntoOpen(groups []model.ImportSuggestion, open []model.ImportSuggestio
 
 func openFor(row suggestRow, open []model.ImportSuggestion, income map[vo.Id]bool) (vo.Id, bool) {
 	ev := model.IngestEvent{Payee: row.Link.ExternalPayee, Description: row.Link.ExternalDescription}
-	// Oldest first so the choice is stable when several open suggestions match.
-	sorted := append([]model.ImportSuggestion(nil), open...)
-	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].CreatedAt.Before(sorted[j].CreatedAt) })
-	for _, o := range sorted {
+	for _, o := range sortedOldestFirst(open) {
 		r := model.ImportRule{MatchField: o.MatchField, MatchValue: o.MatchText, MatchType: model.ImportRuleMatchTypeContains}
 		if !matchRule(r, ev) {
 			continue
 		}
 		if o.CategoryID != nil && !categoryFits(*o.CategoryID, income, row.Type) {
+			continue
+		}
+		fillsCategory := row.Missing.Category && o.CategoryID != nil
+		fillsPayee := row.Missing.Payee && o.PayeeID != nil
+		if !fillsCategory && !fillsPayee {
 			continue
 		}
 		return o.ID, true
