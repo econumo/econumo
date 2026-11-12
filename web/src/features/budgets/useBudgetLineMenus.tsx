@@ -27,6 +27,8 @@ import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { useUpdateCategory } from '@/features/classifications/queries'
+import { AddToDebtDialog } from '@/features/debts/AddToDebtDialog'
+import { useDebts } from '@/features/debts/queries'
 import { useDebtDangerActions } from '@/features/debts/useDebtDangerActions'
 import {
   canConfigureBudget,
@@ -53,7 +55,7 @@ import type { PlanCellFigures, SheetTarget } from './phoneMonth'
 import { folderSides } from './planMath'
 
 /** what a debt row's menu reads: a month-view row or a Plan grid row */
-type DebtRef = Pick<BudgetDebtElementDto, 'id' | 'isSetUp' | 'isPaidOff'> & { ownerUserId: Id | null }
+type DebtRef = Pick<BudgetDebtElementDto, 'id' | 'isSetUp' | 'isPaidOff'>
 
 export interface BudgetLineMenus {
   /** a row of the Budget view (get-budget) */
@@ -64,13 +66,16 @@ export interface BudgetLineMenus {
   /** parent: the envelope, whose currency a debt made from the category starts in */
   envelopeChildMenu: (child: EnvelopeChild, parent?: { currencyId: Id | null }) => MenuAction[]
   savingsRowMenu: (row: BudgetSavingsElementDto) => MenuAction[]
-  /** a Debts row: Details, Mark as paid off and Delete for the debt's owner, nothing for anyone else */
+  /** a Debts row: Details for every reader, Mark as paid off and Delete for those who plan in the budget */
   debtRowMenu: (row: DebtRef) => MenuAction[]
+  /** the caller plans in the budget, which is not archived, and is online: a debt's setup and writes are theirs */
+  debtEditAccess: boolean
   labelMenu: (label: LabelSpendDto) => MenuAction[]
   folderActionsFor: (folder: { id: Id; name: string } | null, empty: boolean, side: BudgetFolderSide) => MenuAction[] | undefined
   sectionMenu: (side: BudgetFolderSide) => MenuAction[] | undefined
   savingsSectionMenu: MenuAction[] | undefined
-  /** whether the caller may open a line's own edit dialog; null: it has none */
+  /** whether the caller may open a line's own edit dialog; null: it has none.
+   *  A debt has no edit dialog: this gates its Details (the review screen) */
   editAccess: (target: SheetTarget) => boolean | null
   /** the element's own edit dialog (sheet pencil, Enter on a name cell) */
   editFromSheet: (target: SheetTarget) => void
@@ -124,6 +129,7 @@ export function useBudgetLineMenus({
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<{ id: Id; currencyId: Id | null } | null>(null)
   const [moveFolderTarget, setMoveFolderTarget] = useState<{ id: Id; side: BudgetFolderSide } | null>(null)
+  const [addToDebtCategory, setAddToDebtCategory] = useState<Id | null>(null)
 
   // An archived budget is read-only regardless of role: archived wins over
   // whatever the caller's grant would otherwise allow (the server enforces the
@@ -131,6 +137,9 @@ export function useBudgetLineMenus({
   const archived = budget?.meta.isArchived === 1
   const configure = budget && !archived ? canConfigureBudget(budget.meta, userId) : false
   const editDetails = budget && !archived ? canEditBudget(budget.meta, userId) : false
+  // the budget's debts belong to everyone who plans in it; a guest only reads them
+  const { data: debts } = useDebts({ enabled: editDetails })
+  const budgetHasDebt = !!budget && (debts ?? []).some((d) => d.budgetId === budget.meta.id)
 
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
@@ -142,16 +151,17 @@ export function useBudgetLineMenus({
     return null
   }
 
-  // a debt is its owner's alone: everyone else sees its row and nothing more
-  const ownsDebt = (row: DebtRef) => !!userId && row.ownerUserId === userId
+  // every reader of the budget, guests included, opens a debt's review screen
+  const debtDetailsAccess = !!budget
+  const debtEditAccess = editDetails && online
   const rawEditAccess = (target: SheetTarget): boolean | null => {
     if (target.kind === 'label') {
       // update-label answers anyone but the tag's owner with NotFound
       return !!userId && target.label.ownerUserId === userId
     }
-    // a debt's sheet shows no pencil: this gates its owner's Details (the review screen)
+    // a debt's sheet shows no pencil: this gates its Details (the review screen)
     if (target.kind === 'debt') {
-      return ownsDebt(target.row) ? true : null
+      return debtDetailsAccess ? true : null
     }
     return elementEditAccess(sheetElement(target), userId, editDetails, accounts)
   }
@@ -166,7 +176,7 @@ export function useBudgetLineMenus({
       return
     }
     if (target.kind === 'debt') {
-      openDebtDetails(target.row.id, 'overview', budget?.meta.id)
+      openDebtDetails(target.row.id, 'overview')
       return
     }
     const el = sheetElement(target)
@@ -227,15 +237,17 @@ export function useBudgetLineMenus({
     const ref = el.id === UNCATEGORIZED_ID ? null : classificationOf(el)
     return ref ? classificationMenu.actionsFor(ref) : []
   }
-  // the caller's own live expense category becomes a debt: the debt form, with the
-  // category and the row's currency filled in; an archived budget is read-only
-  const trackAsDebt = (category: { id: Id; type: BudgetElementType; ownerUserId: Id | null; isArchived?: 0 | 1 }, currencyId: Id | null): MenuAction[] =>
-    budget && !archived && category.type === BudgetElementType.CATEGORY && category.id !== UNCATEGORIZED_ID && category.isArchived !== 1 && !!userId && category.ownerUserId === userId
+  // any participant's live expense category becomes a debt (the debt form, with the
+  // category and the row's currency filled in) or joins one of the budget's debts;
+  // both are for those who plan in the budget, and an archived budget is read-only
+  const trackAsDebt = (category: { id: Id; type: BudgetElementType; isArchived?: 0 | 1 }, currencyId: Id | null): MenuAction[] =>
+    budget && editDetails && category.type === BudgetElementType.CATEGORY && category.id !== UNCATEGORIZED_ID && category.isArchived !== 1
       ? [
           {
             label: t('budgets.page.debts.track'),
             onSelect: () => openDebtModal({ categoryId: category.id, currencyId: currencyId ?? budget.meta.currencyId, fromBudget: true, budgetId: budget.meta.id }),
           },
+          ...(budgetHasDebt ? [{ label: t('budgets.page.debts.add_to'), onSelect: () => setAddToDebtCategory(category.id) }] : []),
         ]
       : []
   // the transaction list opens from a row's figures (Spent, Received, Saved), not from the menu
@@ -293,13 +305,17 @@ export function useBudgetLineMenus({
   }
   const savingsRowMenu = (row: BudgetSavingsElementDto): MenuAction[] => editAction({ kind: 'savings', row })
   const debtRowMenu = (row: DebtRef): MenuAction[] =>
-    ownsDebt(row)
+    debtDetailsAccess
       ? [
-          // the review screen is the one place a debt is edited: its terms, filters and name
-          { label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id, 'overview', budget?.meta.id) },
+          // the review screen is the one place a debt is edited (its terms, rules and name); a guest reads it
+          { label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id, 'overview') },
           // the review screen's Danger zone, with the same confirms
-          ...(row.isSetUp === 1 && row.isPaidOff === 0 ? [{ label: t('debts.details.mark_paid_off'), onSelect: () => debtDanger.askMarkPaidOff(row.id) }] : []),
-          { label: t('common.button.delete.label'), destructive: true, onSelect: () => debtDanger.askDelete(row.id) },
+          ...(editDetails
+            ? [
+                ...(row.isSetUp === 1 && row.isPaidOff === 0 ? [{ label: t('debts.details.mark_paid_off'), onSelect: () => debtDanger.askMarkPaidOff(row.id) }] : []),
+                { label: t('common.button.delete.label'), destructive: true, onSelect: () => debtDanger.askDelete(row.id) },
+              ]
+            : []),
         ]
       : []
   const labelMenu = (label: LabelSpendDto): MenuAction[] => editAction({ kind: 'label', label })
@@ -432,6 +448,10 @@ export function useBudgetLineMenus({
 
       {debtDanger.dialogs}
 
+      {addToDebtCategory ? (
+        <AddToDebtDialog budgetId={budget.meta.id} categoryId={addToDebtCategory} open onOpenChange={(o) => !o && setAddToDebtCategory(null)} />
+      ) : null}
+
       <CategoryDialog
         open={categoryTarget !== null}
         category={categoryTarget}
@@ -540,6 +560,7 @@ export function useBudgetLineMenus({
     envelopeChildMenu: (child, parent) => gate(envelopeChildMenu(child, parent)),
     savingsRowMenu: (row) => gate(savingsRowMenu(row)),
     debtRowMenu: (row) => gate(debtRowMenu(row)),
+    debtEditAccess,
     labelMenu: (label) => gate(labelMenu(label)),
     folderActionsFor: (folder, empty, side) => gateOpt(folderActionsFor(folder, empty, side)),
     sectionMenu: (side) => gateOpt(sectionMenu(side)),

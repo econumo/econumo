@@ -79,8 +79,7 @@ interface UiState {
   debtDetailsId: Id | null
   /** the review screen's tab it opens on: Finish setup opens straight on Settings */
   debtDetailsTab: DebtDetailsTab
-  /** the third argument is ignored: the forecast follows the debt's own budget */
-  openDebtDetails: (id: Id, tab?: DebtDetailsTab, _budgetId?: Id) => void
+  openDebtDetails: (id: Id, tab?: DebtDetailsTab) => void
   closeDebtDetails: () => void
   switchAccountPrompt: Id | null
   setSwitchAccountPrompt: (id: Id | null) => void

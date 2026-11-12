@@ -217,7 +217,6 @@ export interface BudgetDebtElementDto {
   name: string
   icon: string
   currencyId: Id
-  ownerUserId: Id
   isArchived: 0 | 1
   position: number
   /** '' = no plan (getBudget maps isBudgeted 0 to it) */
@@ -369,7 +368,6 @@ export interface PlanDebtElementDto {
   name: string
   icon: string
   currencyId: Id
-  ownerUserId: Id
   position: number
   payoffDate: string
   basePayoffDate: string

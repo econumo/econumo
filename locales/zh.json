@@ -577,6 +577,13 @@
       "remove": "移除此分类",
       "owned_category": "{owner}的{category}"
     },
+    "add_to": {
+      "title": "添加到债务",
+      "covered": "已计入此类别的还款",
+      "conflict": "另一笔债务已计入此类别的还款",
+      "payments_in": "{categories}中的还款",
+      "search": "搜索债务"
+    },
     "payments_from": {
       "in": "分类",
       "from": "收款人",
@@ -1815,6 +1822,7 @@
         "extra_effect": "提前 {months} 个月还清，少付 {amount} 利息与费用",
         "extra_effect_earlier": "提前 {months} 个月还清",
         "track": "作为债务跟踪",
+        "add_to": "添加到债务…",
         "details": "详情"
       },
       "phone": {

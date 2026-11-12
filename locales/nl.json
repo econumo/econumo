@@ -577,6 +577,13 @@
       "remove": "Deze categorie verwijderen",
       "owned_category": "{category} van {owner}"
     },
+    "add_to": {
+      "title": "Toevoegen aan een schuld",
+      "covered": "Telt de betalingen in deze categorie al",
+      "conflict": "Een andere schuld telt de betalingen in deze categorie al",
+      "payments_in": "Betalingen in {categories}",
+      "search": "Schulden zoeken"
+    },
     "payments_from": {
       "in": "Betalingen in categorie",
       "from": "begunstigde",
@@ -1815,6 +1822,7 @@
         "extra_effect": "{months} maand eerder afbetaald, {amount} minder rente | {months} maanden eerder afbetaald, {amount} minder rente",
         "extra_effect_earlier": "{months} maand eerder afbetaald | {months} maanden eerder afbetaald",
         "track": "Volgen als schuld",
+        "add_to": "Toevoegen aan een schuld…",
         "details": "Details"
       },
       "phone": {

@@ -577,6 +577,13 @@
       "remove": "Usuń tę kategorię",
       "owned_category": "{category} ({owner})"
     },
+    "add_to": {
+      "title": "Dodaj do długu",
+      "covered": "Już liczy płatności w tej kategorii",
+      "conflict": "Inny dług już liczy płatności w tej kategorii",
+      "payments_in": "Płatności w: {categories}",
+      "search": "Szukaj długów"
+    },
     "payments_from": {
       "in": "Płatności z kategorii",
       "from": "odbiorca",
@@ -1815,6 +1822,7 @@
         "extra_effect": "Spłata {months} miesiąc wcześniej, {amount} mniej odsetek | Spłata {months} miesiące wcześniej, {amount} mniej odsetek | Spłata {months} miesięcy wcześniej, {amount} mniej odsetek",
         "extra_effect_earlier": "Spłata {months} miesiąc wcześniej | Spłata {months} miesiące wcześniej | Spłata {months} miesięcy wcześniej",
         "track": "Śledź jako dług",
+        "add_to": "Dodaj do długu…",
         "details": "Szczegóły"
       },
       "phone": {

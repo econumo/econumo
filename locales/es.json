@@ -577,6 +577,13 @@
       "remove": "Quitar esta categoría",
       "owned_category": "{category} de {owner}"
     },
+    "add_to": {
+      "title": "Añadir a una deuda",
+      "covered": "Ya cuenta los pagos de esta categoría",
+      "conflict": "Otra deuda ya cuenta los pagos de esta categoría",
+      "payments_in": "Pagos en {categories}",
+      "search": "Buscar deudas"
+    },
     "payments_from": {
       "in": "Pagos de la categoría",
       "from": "beneficiario",
@@ -1815,6 +1822,7 @@
         "extra_effect": "Pagada {months} mes antes, {amount} menos de intereses | Pagada {months} meses antes, {amount} menos de intereses",
         "extra_effect_earlier": "Pagada {months} mes antes | Pagada {months} meses antes",
         "track": "Seguir como deuda",
+        "add_to": "Añadir a una deuda…",
         "details": "Detalles"
       },
       "phone": {

@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { BudgetDebtElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
-import type { Id } from '@/api/types'
 import { useUiStore } from '@/app/uiStore'
 import { debtMonth } from '@/features/debts/debtDates'
 import { isZero } from '@/lib/decimal'
@@ -53,25 +52,22 @@ export function DebtPayoff({ debt }: { debt: PayoffFigures & Pick<BudgetDebtElem
 }
 
 /** a debt row's Left: what is owed at the month's end, and how many payments remain.
- *  A debt not set up owes nothing it knows of: its owner is offered Finish setup
- *  (the debt's review screen), anyone else a dash. */
+ *  A debt not set up owes nothing it knows of: whoever plans in the budget is
+ *  offered Finish setup (the debt's review screen), anyone else a dash. */
 export function DebtLeft({
   row,
   amount,
-  userId,
-  budgetId,
+  canPlan,
 }: {
-  row: Pick<BudgetDebtElementDto, 'id' | 'paymentsLeft' | 'isPaidOff' | 'isSetUp' | 'ownerUserId'>
+  row: Pick<BudgetDebtElementDto, 'id' | 'paymentsLeft' | 'isPaidOff' | 'isSetUp'>
   amount: string
-  userId?: Id
-  /** the budget the row is in: the review screen's future payments follow its plans */
-  budgetId?: Id
+  canPlan: boolean
 }) {
   const { t, i18n } = useTranslation()
   const openDebtDetails = useUiStore((s) => s.openDebtDetails)
   if (row.isSetUp === 0) {
-    return !!userId && row.ownerUserId === userId ? (
-      <button type="button" className="text-econumo-link hover:underline" onClick={() => openDebtDetails(row.id, 'settings', budgetId)}>
+    return canPlan ? (
+      <button type="button" className="text-econumo-link hover:underline" onClick={() => openDebtDetails(row.id, 'settings')}>
         {t('debts.terms.finish_setup')}
       </button>
     ) : (

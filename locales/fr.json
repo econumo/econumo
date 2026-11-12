@@ -577,6 +577,13 @@
       "remove": "Retirer cette catégorie",
       "owned_category": "{category} de {owner}"
     },
+    "add_to": {
+      "title": "Ajouter à une dette",
+      "covered": "Compte déjà les paiements de cette catégorie",
+      "conflict": "Une autre dette compte déjà les paiements de cette catégorie",
+      "payments_in": "Paiements dans {categories}",
+      "search": "Rechercher des dettes"
+    },
     "payments_from": {
       "in": "Paiements de la catégorie",
       "from": "bénéficiaire",
@@ -1815,6 +1822,7 @@
         "extra_effect": "Remboursée {months} mois plus tôt, {amount} d'intérêts en moins | Remboursée {months} mois plus tôt, {amount} d'intérêts en moins",
         "extra_effect_earlier": "Remboursée {months} mois plus tôt | Remboursée {months} mois plus tôt",
         "track": "Suivre comme dette",
+        "add_to": "Ajouter à une dette…",
         "details": "Détails"
       },
       "phone": {

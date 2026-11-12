@@ -2209,11 +2209,12 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
             : undefined
         }
         onDetails={
-          // a debt's review screen is its owner's alone, and its only edit: no pencil
+          // every reader opens a debt's review screen (a guest's is read-only); it is
+          // the debt's only edit: no pencil
           sheetPlanTarget?.kind === 'debt' && sheetEdit === true
             ? () => {
-                // its button reads Finish setup while the debt has no terms
-                openDebtDetails(sheetPlanTarget.row.id, sheetPlanTarget.row.isSetUp === 0 ? 'settings' : 'overview', budget.meta.id)
+                // its button reads Finish setup while the debt has no terms, for those who plan
+                openDebtDetails(sheetPlanTarget.row.id, sheetPlanTarget.row.isSetUp === 0 && menus.debtEditAccess ? 'settings' : 'overview')
                 setSheetCellTarget(null)
               }
             : undefined
@@ -2227,7 +2228,7 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
               }
             : undefined
         }
-        canEdit={sheetEdit === true}
+        canEdit={sheetPlanTarget?.kind === 'debt' ? menus.debtEditAccess : sheetEdit === true}
       />
 
       <CommentsPanel

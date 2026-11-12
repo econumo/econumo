@@ -103,7 +103,7 @@ it('budget transactions pass the element param and amounts through (own wire sha
 
 it('get-budget maps a debt row with isBudgeted 0 to an empty plan and keeps a plan of 0', async () => {
   const debt = {
-    id: 'd1', type: 6, name: 'Car loan', icon: 'directions_car', currencyId: 'cur-usd', ownerUserId: fixtureOwner.id,
+    id: 'd1', type: 6, name: 'Car loan', icon: 'directions_car', currencyId: 'cur-usd',
     isArchived: 0, position: 0, budgeted: '0', isBudgeted: 0, spent: '2000', budgetSpent: '2000', available: '0',
     closingBalance: '298000', paymentsLeft: 239, scheduledTotal: '2000', upcoming: '2000', payoffDate: '2046-05-20',
     basePayoffDate: '2046-05-20', overpaymentLeft: '180000', baseOverpaymentLeft: '180000', isPaidOff: 0, isPlannable: 1, isSetUp: 1,

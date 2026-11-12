@@ -577,6 +577,13 @@
       "remove": "Diese Kategorie entfernen",
       "owned_category": "{category} von {owner}"
     },
+    "add_to": {
+      "title": "Zu einer Schuld hinzufügen",
+      "covered": "Zählt Zahlungen in dieser Kategorie bereits",
+      "conflict": "Eine andere Schuld zählt Zahlungen in dieser Kategorie bereits",
+      "payments_in": "Zahlungen in {categories}",
+      "search": "Schulden durchsuchen"
+    },
     "payments_from": {
       "in": "Zahlungen aus Kategorie",
       "from": "Empfänger",
@@ -1815,6 +1822,7 @@
         "extra_effect": "{months} Monat früher abbezahlt, {amount} weniger Zinsen | {months} Monate früher abbezahlt, {amount} weniger Zinsen",
         "extra_effect_earlier": "{months} Monat früher abbezahlt | {months} Monate früher abbezahlt",
         "track": "Als Schuld verfolgen",
+        "add_to": "Zu einer Schuld hinzufügen…",
         "details": "Details"
       },
       "phone": {

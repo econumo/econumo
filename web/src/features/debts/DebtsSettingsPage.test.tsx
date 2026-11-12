@@ -37,7 +37,7 @@ beforeEach(() => {
 })
 
 it('Settings lists debts with payments left', async () => {
-  server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt-list', () => ok({ items: [paidOff, wireDebt] })))
+  server.use(...coreHandlers({ debts: [paidOff, wireDebt] }))
   renderPage()
 
   const row = await screen.findByTestId('debt-d1')
@@ -54,7 +54,7 @@ it('Settings lists debts with payments left', async () => {
 })
 
 it('Settings list shows Finish setup for a debt without terms', async () => {
-  server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt-list', () => ok({ items: [{ ...wireDebtNotSetUp, id: 'd3', name: 'Study' }] })))
+  server.use(...coreHandlers({ debts: [{ ...wireDebtNotSetUp, id: 'd3', name: 'Study' }] }))
   const user = userEvent.setup()
   renderPage()
 
@@ -69,13 +69,13 @@ it('Settings list shows Finish setup for a debt without terms', async () => {
 })
 
 it('uses the singular for one payment left', async () => {
-  server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt-list', () => ok({ items: [{ ...wireDebt, paymentsLeft: 1 }] })))
+  server.use(...coreHandlers({ debts: [{ ...wireDebt, paymentsLeft: 1 }] }))
   renderPage()
   expect(await screen.findByText('1 payment left')).toBeInTheDocument()
 })
 
 it('tapping a debt opens its details', async () => {
-  server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt-list', () => ok({ items: [wireDebt] })))
+  server.use(...coreHandlers({ debts: [wireDebt] }))
   const user = userEvent.setup()
   renderPage()
 
@@ -86,7 +86,7 @@ it('tapping a debt opens its details', async () => {
 })
 
 it('the create button opens an empty debt form', async () => {
-  server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt-list', () => ok({ items: [] })))
+  server.use(...coreHandlers({ debts: [] }))
   const user = userEvent.setup()
   renderPage()
 
@@ -100,7 +100,7 @@ it('the create button opens an empty debt form', async () => {
 it('groups the debts under a heading per budget, in the server\'s order, open debts first in each', async () => {
   const family = { ...wireDebt, id: 'd4', name: 'Mortgage', budgetId: 'b2', budgetName: 'Family' }
   const familyDone = { ...paidOff, id: 'd5', name: 'Sofa', budgetId: 'b2', budgetName: 'Family' }
-  server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt-list', () => ok({ items: [paidOff, family, familyDone, wireDebt] })))
+  server.use(...coreHandlers({ debts: [paidOff, family, familyDone, wireDebt] }))
   renderPage()
 
   const main = await screen.findByRole('region', { name: 'Main budget' })
@@ -134,7 +134,7 @@ it('Create is disabled, and says why, when no budget can take a new debt', async
 })
 
 it('Create is enabled with a budget the user can plan in', async () => {
-  server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt-list', () => ok({ items: [] })))
+  server.use(...coreHandlers({ debts: [] }))
   renderPage()
 
   await waitFor(() => expect(screen.getByTestId('debt-create')).toBeEnabled())

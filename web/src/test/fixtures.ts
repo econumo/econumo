@@ -145,13 +145,13 @@ export const fixtureWireBudget = {
   },
 }
 
-/** a get-budget debt row owed by the fixture owner (u1): 1,000 a month, planned
+/** a get-budget debt row: 1,000 a month, planned
  *  1,500, 900 paid so far, 24 payments left. Its payoff figures equal the base
  *  ones (as if the plans changed nothing): override payoffDate/overpaymentLeft
  *  to give the extra an effect. */
 export function fixtureDebtRow(overrides: Partial<BudgetDebtElementDto> = {}): BudgetDebtElementDto {
   return {
-    id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
+    id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', isArchived: 0, position: 0,
     budgeted: '1500', isBudgeted: 1, spent: '900', budgetSpent: '900', available: '600',
     closingBalance: '23000', paymentsLeft: 24, scheduledTotal: '1000', upcoming: '100',
     payoffDate: '2028-10-05', basePayoffDate: '2028-10-05', overpaymentLeft: '2000', baseOverpaymentLeft: '2000',
@@ -357,6 +357,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     importRules: [] as unknown[],
     importCredentialKey: null as unknown,
     personalTokens: [] as unknown[],
+    debts: [] as unknown[],
     ...overrides,
   }
   return [
@@ -399,6 +400,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/import/get-credential-key', () =>
       envelope(data.importCredentialKey ?? { wrappedDataKey: '', kdf: '', updatedAt: '' })),
     http.get('*/api/v1/user/get-personal-token-list', () => envelope(data.personalTokens)),
+    http.get('*/api/v1/debt/get-debt-list', () => envelope({ items: data.debts })),
     http.get('*/api/v1/system/get-update-info', () => envelope({ version: 'v0.0.0', url: 'https://econumo.com/releases/v0.0.0/' })),
   ]
 }

@@ -577,6 +577,13 @@
       "remove": "Rimuovi questa categoria",
       "owned_category": "{category} di {owner}"
     },
+    "add_to": {
+      "title": "Aggiungi a un debito",
+      "covered": "Conta già i pagamenti di questa categoria",
+      "conflict": "Un altro debito conta già i pagamenti di questa categoria",
+      "payments_in": "Pagamenti in {categories}",
+      "search": "Cerca debiti"
+    },
     "payments_from": {
       "in": "Pagamenti nella categoria",
       "from": "beneficiario",
@@ -1815,6 +1822,7 @@
         "extra_effect": "Estinto {months} mese prima, {amount} di interessi in meno | Estinto {months} mesi prima, {amount} di interessi in meno",
         "extra_effect_earlier": "Estinto {months} mese prima | Estinto {months} mesi prima",
         "track": "Segui come debito",
+        "add_to": "Aggiungi a un debito…",
         "details": "Dettagli"
       },
       "phone": {

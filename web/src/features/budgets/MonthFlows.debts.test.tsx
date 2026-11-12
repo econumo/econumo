@@ -62,9 +62,14 @@ it('renders the Debts section after Savings with Planned/Paid/Left', () => {
 const notSetUpRow = () =>
   fixtureDebtRow({ closingBalance: '', paymentsLeft: 0, scheduledTotal: '0', upcoming: '0', payoffDate: '', basePayoffDate: '', overpaymentLeft: '', baseOverpaymentLeft: '', isSetUp: 0 })
 
-it('debt row offers its owner Finish setup in Left while not set up', async () => {
+const joinAs = (role: 'user' | 'guest') => (b: BudgetDto) => {
+  b.meta.access.push({ user: { id: 'u2', name: 'Anna', avatar: 'face:fuchsia' }, role, isAccepted: 1 })
+}
+
+it('debt row offers a participant who plans in the budget Finish setup in Left while not set up', async () => {
   useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'overview' })
-  renderFlows([notSetUpRow()])
+  // u2 did not create the debt; a user role plans in the budget
+  renderFlows([notSetUpRow()], joinAs('user'), 'u2')
   const row = screen.getByTestId('month-debts-row-debt-1')
   const left = within(row).getByTestId('flow-third')
   expect(left).not.toHaveTextContent('payments left')
@@ -76,12 +81,19 @@ it('debt row offers its owner Finish setup in Left while not set up', async () =
   expect(within(row).getByTestId('flow-actual')).toHaveTextContent('900.00')
 })
 
-it('debt row shows a dash for a partner when not set up', () => {
-  renderFlows([notSetUpRow()], undefined, 'u2')
+it('debt row shows a dash for a guest when not set up', () => {
+  renderFlows([notSetUpRow()], joinAs('guest'), 'u2')
   const left = within(screen.getByTestId('month-debts-row-debt-1')).getByTestId('flow-third')
   expect(left).toHaveTextContent('—')
   expect(within(left).queryByRole('button')).toBeNull()
   expect(left).not.toHaveTextContent('Finish setup')
+})
+
+it('an archived budget shows a dash in place of Finish setup', () => {
+  renderFlows([notSetUpRow()], (b) => {
+    b.meta.isArchived = 1
+  })
+  expect(within(screen.getByTestId('month-debts-row-debt-1')).getByTestId('flow-third')).toHaveTextContent('—')
 })
 
 it('the Left total counts only the debts set up', () => {

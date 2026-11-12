@@ -645,7 +645,7 @@ it('the Balance at month end counts the debt payments and plans as expenses, as 
     const withDebt = JSON.parse(JSON.stringify(fixtureWirePlan))
     withDebt.structure.debts = [
       {
-        id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', ownerUserId: 'u1', position: 0,
+        id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', position: 0,
         payoffDate: '2028-10-05', basePayoffDate: '2028-10-05', overpaymentLeft: '0', baseOverpaymentLeft: '0', isPaidOff: 0, isSetUp: 1,
         // June (past) paid 1000; July (current) paid 1000 of a 1200 plan
         cells: [debtCell('0', ''), debtCell('1000', '1000'), debtCell('1000', '1200'), debtCell('0', '1200')],
@@ -849,8 +849,8 @@ describe('the ⋮ menus on the Budget view', () => {
     await waitFor(() => expect(queryClient.getQueryData(queryKeys.categories)).toBeTruthy())
     await user.click(within(food).getByRole('button', { name: 'menu Food' }))
     const items = (await screen.findAllByRole('menuitem')).map((i) => i.textContent)
-    // a category is personal: its owner manages it in any budget
-    expect(items).toEqual(['Edit', 'Track as debt', 'Archive', 'Merge into…', 'Delete'])
+    // a category is personal: its owner manages it in any budget; debts are for those who plan
+    expect(items).toEqual(['Edit', 'Archive', 'Merge into…', 'Delete'])
     // and the Expenses line has no Create folder for a guest
     expect(within(screen.getByTestId('column-headers')).queryByRole('button', { name: 'menu Expenses' })).toBeNull()
   })

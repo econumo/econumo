@@ -577,6 +577,13 @@
       "remove": "Remove this category",
       "owned_category": "{owner}'s {category}"
     },
+    "add_to": {
+      "title": "Add to a debt",
+      "covered": "Already counts payments in this category",
+      "conflict": "Another debt already counts payments in this category",
+      "payments_in": "Payments in {categories}",
+      "search": "Search debts"
+    },
     "payments_from": {
       "in": "Payments in",
       "from": "from",
@@ -1815,6 +1822,7 @@
         "extra_effect": "Paid off {months} month earlier, {amount} less overpayment | Paid off {months} months earlier, {amount} less overpayment",
         "extra_effect_earlier": "Paid off {months} month earlier | Paid off {months} months earlier",
         "track": "Track as debt",
+        "add_to": "Add to a debt…",
         "details": "Details"
       },
       "phone": {

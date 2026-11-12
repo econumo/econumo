@@ -8,8 +8,8 @@ import type { Metric } from '@/lib/metrics'
 import { canEditBudget, useBudgets } from '@/features/budgets/queries'
 import { useUserData } from '@/features/user/queries'
 
-export function useDebts() {
-  return useQuery({ queryKey: queryKeys.debts, queryFn: debtApi.getDebtList, staleTime: TEN_MINUTES })
+export function useDebts({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: queryKeys.debts, queryFn: debtApi.getDebtList, staleTime: TEN_MINUTES, enabled })
 }
 
 export function useDebt(id: Id | undefined) {

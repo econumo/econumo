@@ -9,6 +9,7 @@ import type { BudgetPlanDto } from '@/api/dto/budget'
 import { moneyFormat } from '@/lib/money'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
+import { useUiStore } from '@/app/uiStore'
 import { balanceRow, makePlanExchange, planTotals } from './planMath'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -44,7 +45,7 @@ const debtCell = (actual: string, planned: string, closingBalance: string, payme
 
 // plan months May..Aug; the window shows Jun/Jul/Aug
 const mortgage = {
-  id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', ownerUserId: 'u1', position: 0,
+  id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', position: 0,
   payoffDate: '2028-03-05', basePayoffDate: '2028-10-05', overpaymentLeft: '1500', baseOverpaymentLeft: '2000', isPaidOff: 0, isSetUp: 1,
   cells: [
     debtCell('0', '', '0', 0, 0, '0'),
@@ -55,7 +56,7 @@ const mortgage = {
 }
 // paid off in June: July and August are past its life
 const car = {
-  id: 'debt-2', type: 6, name: 'Car', icon: 'directions_car', currencyId: 'cur-usd', ownerUserId: 'u1', position: 1,
+  id: 'debt-2', type: 6, name: 'Car', icon: 'directions_car', currencyId: 'cur-usd', position: 1,
   payoffDate: '2026-06-20', basePayoffDate: '2026-06-20', overpaymentLeft: '0', baseOverpaymentLeft: '0', isPaidOff: 1,
   cells: [
     debtCell('300', '300', '300', 1, 1, '300'),
@@ -249,4 +250,46 @@ it('on a tablet a debt cell opens the debt\'s sheet: Planned, Paid, Left and its
   expect(within(sheet).getByRole('button', { name: 'Details' })).toBeInTheDocument()
   // Details is the one way in: no edit pencil beside it
   expect(within(screen.getByRole('dialog')).queryByRole('button', { name: 'Edit' })).toBeNull()
+})
+
+describe('a guest', () => {
+  // the caller (u1) reads a budget owned by u9
+  const guestMeta = {
+    ...fixtureWireBudget.meta,
+    ownerUserId: 'u9',
+    access: [{ user: { id: 'u9', name: 'Anna', avatar: 'face:fuchsia' }, role: 'owner', isAccepted: 1 }, { user: fixtureUser, role: 'guest', isAccepted: 1 }],
+  }
+  const useGuestHandlers = () => {
+    useHandlers({ ...debtPlan, meta: { ...fixtureWirePlan.meta, ...guestMeta } })
+    server.use(http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: { ...fixtureWireBudget, meta: guestMeta } } })))
+  }
+
+  it('gets only Details in a debt row\'s menu', async () => {
+    useGuestHandlers()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPage()
+    await screen.findByTestId('plan-section-debts')
+    await user.click(await screen.findByRole('button', { name: 'menu Mortgage' }))
+    const items = await screen.findAllByRole('menuitem')
+    expect(items.map((i) => i.textContent)).toEqual(['Details'])
+  })
+
+  it('opening a debt cell\'s sheet sees Details (the read-only review) and no Mark as paid off or Delete', async () => {
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }))
+    useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'settings' })
+    useGuestHandlers()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPage()
+    await screen.findByTestId('plan-section-debts')
+    await user.click(screen.getByTestId('plan-cell-debt-1:1'))
+    const sheet = await screen.findByTestId('element-sheet')
+    expect(within(sheet).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
+    expect(within(sheet).queryByRole('button', { name: 'Delete' })).toBeNull()
+    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: 'Edit' })).toBeNull()
+    await user.click(within(sheet).getByRole('button', { name: 'Details' }))
+    expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
+    expect(useUiStore.getState().debtDetailsTab).toBe('overview')
+  })
 })

@@ -39,11 +39,11 @@ export interface ElementSheetProps {
   onOpenComments: () => void
   /** absent: no transaction list for this target */
   onShowTransactions?: () => void
-  /** a debt's own details (terms history, payments with their split); its owner's only */
+  /** a debt's own details (terms history, payments with their split), for every reader */
   onDetails?: () => void
   /** absent: nothing to edit (Uncategorized) */
   onEdit?: () => void
-  /** false keeps the edit button visible but inactive */
+  /** false keeps the edit button visible but inactive; on a debt, whether its setup can be finished */
   canEdit?: boolean
 }
 
@@ -246,7 +246,7 @@ export function ElementSheet({
             ) : null}
             {onDetails ? (
               <Button type="button" variant="secondary" onClick={onDetails}>
-                {target.kind === 'debt' && target.row.isSetUp === 0 ? t('debts.terms.finish_setup') : t('budgets.page.debts.details')}
+                {target.kind === 'debt' && target.row.isSetUp === 0 && canEdit ? t('debts.terms.finish_setup') : t('budgets.page.debts.details')}
               </Button>
             ) : null}
             {canSetAmount ? (

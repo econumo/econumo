@@ -266,9 +266,9 @@ it('an income plan cell with no plan keeps its Planned figure empty', () => {
 describe('a debt not set up', () => {
   const row = fixtureDebtRow({ closingBalance: '', paymentsLeft: 0, payoffDate: '', basePayoffDate: '', overpaymentLeft: '', baseOverpaymentLeft: '', isSetUp: 0 })
 
-  it('shows a dash for Left, no payments left, and offers its owner Finish setup', async () => {
+  it('shows a dash for Left, no payments left, and offers whoever plans in the budget Finish setup', async () => {
     const onDetails = vi.fn()
-    renderSheet({ target: { kind: 'debt', row }, onDetails })
+    renderSheet({ target: { kind: 'debt', row }, onDetails, canEdit: true })
     expect(screen.getByTestId('sheet-figure-left')).toHaveTextContent('Left—')
     expect(screen.getByTestId('sheet-figure-paid')).toHaveTextContent('900.00')
     expect(screen.queryByTestId('sheet-state')).toBeNull()
@@ -277,9 +277,10 @@ describe('a debt not set up', () => {
     expect(screen.queryByRole('button', { name: 'Details' })).toBeNull()
   })
 
-  it('anyone else gets the dash and no button', () => {
-    renderSheet({ target: { kind: 'debt', row } })
+  it('a guest gets the dash and Details, not Finish setup', () => {
+    renderSheet({ target: { kind: 'debt', row }, onDetails: vi.fn(), canEdit: false })
     expect(screen.getByTestId('sheet-figure-left')).toHaveTextContent('Left—')
     expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Details' })).toBeInTheDocument()
   })
 })

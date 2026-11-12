@@ -18,6 +18,7 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { debtTotals, elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
 import { DebtLeft } from './debtRow'
+import { canEditBudget } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu, TotalLine } from './monthLines'
@@ -140,7 +141,7 @@ interface MonthFlowsProps {
   debtMenu?: (row: BudgetDebtElementDto) => MenuAction[] | undefined
   incomeSectionMenu?: MenuAction[]
   savingsSectionMenu?: MenuAction[]
-  /** the caller: a debt not set up offers its owner Finish setup */
+  /** the caller: a debt not set up offers whoever plans in the budget Finish setup */
   userId?: Id
   /** drag and drop on hover, for anyone who may configure the budget */
   drag?: {
@@ -177,6 +178,7 @@ export function MonthFlows({
 }: MonthFlowsProps) {
   const { t } = useTranslation()
   const base = budget.meta.currencyId
+  const canPlanDebts = budget.meta.isArchived !== 1 && canEditBudget(budget.meta, userId)
   const currencyOf = (id: Id | null) => currencies.find((c) => c.id === (id ?? base))
   const fmt = (amount: string, currencyId: Id | null = base) => {
     const c = currencyOf(currencyId)
@@ -426,7 +428,7 @@ export function MonthFlows({
       muted={row.isPaidOff === 1}
       planned={planned({ kind: 'debt', row }, row.budgeted, row.currencyId)}
       actual={actualCell({ id: row.id, type: BudgetElementType.DEBT, name: row.name, icon: row.icon, currencyId: row.currencyId }, row.spent, row.currencyId)}
-      third={<DebtLeft row={row} amount={fmt(row.closingBalance, row.currencyId)} userId={userId} budgetId={budget.meta.id} />}
+      third={<DebtLeft row={row} amount={fmt(row.closingBalance, row.currencyId)} canPlan={canPlanDebts} />}
       actionsColumn={actionsColumn}
       menu={debtMenu?.(row)}
     />

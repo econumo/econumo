@@ -11,6 +11,8 @@ import type { BudgetDto, BudgetElementDto, BudgetPlanDto, PlanElementDto } from 
 import { useUiStore } from '@/app/uiStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { wireDebt } from '@/features/debts/testDebt'
+import type { DebtDto } from '@/api/dto/debt'
+import { queryKeys } from '@/app/queryKeys'
 import { useBudgetLineMenus } from './useBudgetLineMenus'
 import type { BudgetLineMenus } from './useBudgetLineMenus'
 
@@ -26,10 +28,11 @@ function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
-function renderMenus(userId = 'u1', adjust?: (b: BudgetDto) => void) {
+function renderMenus(userId = 'u1', adjust?: (b: BudgetDto) => void, debts: DebtDto[] = [wireDebt]) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
   adjust?.(budget)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  queryClient.setQueryData(queryKeys.debts, debts)
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   const { result } = renderHook(() => useBudgetLineMenus({ budget, plan: null, userId, onOpenSettings: vi.fn() }), { wrapper })
   const element = (id: string) => budget.structure.elements.find((el) => el.id === id) as BudgetElementDto
@@ -37,6 +40,11 @@ function renderMenus(userId = 'u1', adjust?: (b: BudgetDto) => void) {
 }
 
 const labels = (actions: { label: string }[]) => actions.map((a) => a.label)
+
+// the caller joins the fixture budget (owned by u1) with a role
+const joinAs = (userId: string, role: 'admin' | 'user' | 'guest') => (b: BudgetDto) => {
+  b.meta.access.push({ user: { id: userId, name: 'Anna', avatar: 'face:fuchsia' }, role, isAccepted: 1 })
+}
 
 beforeEach(() => {
   server.use(...coreHandlers())
@@ -61,14 +69,10 @@ describe('Track as debt', () => {
     expect(useUiStore.getState().debtModal).toEqual({ categoryId: 'cat-rent', currencyId: 'cur-eur', fromBudget: true, budgetId: 'b1' })
   })
 
-  it('is offered only on the caller\'s own live expense category', () => {
+  it('is offered only on a live expense category', () => {
     const { result, element } = renderMenus('u1', (b) => {
-      b.structure.elements.push(
-        { ...b.structure.elements[0], id: 'cat-other', name: 'Other', ownerUserId: 'u9' },
-        { ...b.structure.elements[0], id: 'cat-old', name: 'Old', isArchived: 1 },
-      )
+      b.structure.elements.push({ ...b.structure.elements[0], id: 'cat-old', name: 'Old', isArchived: 1 })
     })
-    expect(labels(result.current.expenseRowMenu(element('cat-other')))).not.toContain('Track as debt')
     expect(labels(result.current.expenseRowMenu(element('cat-old')))).not.toContain('Track as debt')
     // an envelope and a tag are not categories
     expect(labels(result.current.expenseRowMenu(element('env-1')))).not.toContain('Track as debt')
@@ -82,13 +86,65 @@ it('the Plan grid\'s expense category row offers it too', () => {
   expect(labels(result.current.planRowMenu(food as never, 0))).toContain('Track as debt')
 })
 
-it('an archived budget offers no Track as debt', () => {
+it('an archived budget offers no Track as debt and no Add to a debt', () => {
   const { result, element } = renderMenus('u1', (b) => {
     b.meta.isArchived = 1
   })
   expect(labels(result.current.expenseRowMenu(element('cat-food')))).not.toContain('Track as debt')
+  expect(labels(result.current.expenseRowMenu(element('cat-food')))).not.toContain('Add to a debt…')
   const envelope = element('env-1')
   expect(labels(result.current.envelopeChildMenu(envelope.children[0], envelope))).not.toContain('Track as debt')
+  expect(labels(result.current.envelopeChildMenu(envelope.children[0], envelope))).not.toContain('Add to a debt…')
+})
+
+describe('a participant\'s category', () => {
+  it('a partner\'s category offers Track as debt and Add to a debt to a user-role participant', () => {
+    // Food belongs to the budget's owner, u1
+    const { result, element } = renderMenus('u2', joinAs('u2', 'user'))
+    const menu = labels(result.current.expenseRowMenu(element('cat-food')))
+    expect(menu).toContain('Track as debt')
+    expect(menu).toContain('Add to a debt…')
+    const envelope = element('env-1')
+    expect(labels(result.current.envelopeChildMenu(envelope.children[0], envelope))).toEqual(expect.arrayContaining(['Track as debt', 'Add to a debt…']))
+  })
+
+  it('a guest gets neither', () => {
+    const { result, element } = renderMenus('u2', joinAs('u2', 'guest'))
+    const menu = labels(result.current.expenseRowMenu(element('cat-food')))
+    expect(menu).not.toContain('Track as debt')
+    expect(menu).not.toContain('Add to a debt…')
+  })
+
+  it('no Add to a debt while the budget has no debt', () => {
+    const elsewhere = { ...wireDebt, budgetId: 'b2' }
+    const { result, element } = renderMenus('u1', undefined, [elsewhere])
+    const menu = labels(result.current.expenseRowMenu(element('cat-food')))
+    expect(menu).toContain('Track as debt')
+    expect(menu).not.toContain('Add to a debt…')
+  })
+
+  it('Add to a debt opens the budget\'s debts to pick from', async () => {
+    const budget = coerceBudgetFixture(fixtureWireBudget)
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    queryClient.setQueryData(queryKeys.debts, [wireDebt])
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({ matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    const menus: { current: BudgetLineMenus | null } = { current: null }
+    function Harness() {
+      const m = useBudgetLineMenus({ budget, plan: null, userId: 'u1', onOpenSettings: vi.fn() })
+      menus.current = m
+      return <>{m.dialogs}</>
+    }
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Harness />
+      </QueryClientProvider>,
+    )
+    const food = budget.structure.elements.find((el) => el.id === 'cat-food') as BudgetElementDto
+    act(() => menus.current!.expenseRowMenu(food).find((a) => a.label === 'Add to a debt…')!.onSelect())
+    const dialog = await screen.findByRole('dialog', { name: 'Add to a debt' })
+    // the car loan already counts Food
+    expect(within(dialog).getByRole('option', { name: /Car loan/ })).toHaveAttribute('aria-disabled', 'true')
+  })
 })
 
 describe('the debt row menu', () => {
@@ -111,7 +167,7 @@ describe('the debt row menu', () => {
   it('the Plan grid\'s debt row reads the debt\'s state from the plan', () => {
     const debt = { id: 'debt-1', isSetUp: 1, isPaidOff: 0 }
     const plan = (over: object) => ({ structure: { folders: [], elements: [], debts: [{ ...debt, ...over }] } }) as unknown as BudgetPlanDto
-    const row = { id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', isArchived: 0, folderId: null, position: 0, ownerUserId: 'u1', cells: [], children: [] } as PlanElementDto
+    const row = { id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', isArchived: 0, folderId: null, position: 0, ownerUserId: null, cells: [], children: [] } as PlanElementDto
     const menusWith = (p: BudgetPlanDto) => renderHook(() => useBudgetLineMenus({ budget: coerceBudgetFixture(fixtureWireBudget), plan: p, userId: 'u1', onOpenSettings: vi.fn() }), { wrapper }).result.current
     expect(labels(menusWith(plan({})).planRowMenu(row, 0))).toEqual(['Details', 'Mark as paid off', 'Delete'])
     expect(labels(menusWith(plan({ isPaidOff: 1 })).planRowMenu(row, 0))).toEqual(['Details', 'Delete'])
@@ -127,14 +183,31 @@ describe('the debt row menu', () => {
     expect(actions.every((a) => a.disabled)).toBe(true)
   })
 
-  it('a guest sees no Details in the debt row menu', () => {
-    const { result } = renderMenus('u2')
-    expect(result.current.debtRowMenu(fixtureDebtRow())).toEqual([])
+  it('a participant who did not create the debt gets every action', () => {
+    const { result } = renderMenus('u2', joinAs('u2', 'user'))
+    expect(labels(result.current.debtRowMenu(fixtureDebtRow()))).toEqual(['Details', 'Mark as paid off', 'Delete'])
+    expect(result.current.debtEditAccess).toBe(true)
   })
 
-  it('the sheet\'s access check (which gates Details) passes the owner, and nobody else', () => {
+  it('a guest gets only Details, which opens the read-only review', () => {
+    const { result } = renderMenus('u2', joinAs('u2', 'guest'))
+    const actions = result.current.debtRowMenu(fixtureDebtRow())
+    expect(labels(actions)).toEqual(['Details'])
+    act(() => actions[0].onSelect())
+    expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
+    expect(result.current.debtEditAccess).toBe(false)
+  })
+
+  it('an archived budget offers Details only', () => {
+    const { result } = renderMenus('u1', (b) => {
+      b.meta.isArchived = 1
+    })
+    expect(labels(result.current.debtRowMenu(fixtureDebtRow()))).toEqual(['Details'])
+  })
+
+  it('the sheet\'s access check (which gates Details) passes every reader, guests included', () => {
     expect(renderMenus('u1').result.current.editAccess({ kind: 'debt', row: fixtureDebtRow() })).toBe(true)
-    expect(renderMenus('u2').result.current.editAccess({ kind: 'debt', row: fixtureDebtRow() })).toBeNull()
+    expect(renderMenus('u2', joinAs('u2', 'guest')).result.current.editAccess({ kind: 'debt', row: fixtureDebtRow() })).toBe(true)
   })
 })
 

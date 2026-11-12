@@ -577,6 +577,13 @@
       "remove": "Remover esta categoria",
       "owned_category": "{category} de {owner}"
     },
+    "add_to": {
+      "title": "Adicionar a uma dívida",
+      "covered": "Já conta os pagamentos desta categoria",
+      "conflict": "Outra dívida já conta os pagamentos desta categoria",
+      "payments_in": "Pagamentos em {categories}",
+      "search": "Pesquisar dívidas"
+    },
     "payments_from": {
       "in": "Pagamentos na categoria",
       "from": "beneficiário",
@@ -1815,6 +1822,7 @@
         "extra_effect": "Liquidada {months} mês mais cedo, menos {amount} de juros | Liquidada {months} meses mais cedo, menos {amount} de juros",
         "extra_effect_earlier": "Liquidada {months} mês mais cedo | Liquidada {months} meses mais cedo",
         "track": "Acompanhar como dívida",
+        "add_to": "Adicionar a uma dívida…",
         "details": "Detalhes"
       },
       "phone": {

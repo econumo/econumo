@@ -980,11 +980,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             : undefined
         }
         onDetails={
-          // a debt's review screen is its owner's alone, and its only edit: no pencil
+          // every reader opens a debt's review screen (a guest's is read-only); it is
+          // the debt's only edit: no pencil
           sheetTarget?.kind === 'debt' && sheetEdit === true
             ? () => {
-                // its button reads Finish setup while the debt has no terms
-                openDebtDetails(sheetTarget.row.id, sheetTarget.row.isSetUp === 0 ? 'settings' : 'overview', budget?.meta.id)
+                // its button reads Finish setup while the debt has no terms, for those who plan
+                openDebtDetails(sheetTarget.row.id, sheetTarget.row.isSetUp === 0 && menus.debtEditAccess ? 'settings' : 'overview')
                 setSheetTarget(null)
               }
             : undefined
@@ -998,7 +999,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               }
             : undefined
         }
-        canEdit={sheetEdit === true}
+        canEdit={sheetTarget?.kind === 'debt' ? menus.debtEditAccess : sheetEdit === true}
       />
 
       <CommentsPanel
