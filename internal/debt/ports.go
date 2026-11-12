@@ -70,4 +70,7 @@ type BudgetElements interface {
 	// SetRowsCurrency moves the rows of the external id to currencyID,
 	// keeping their plans' numbers.
 	SetRowsCurrency(ctx context.Context, externalID vo.Id, typ model.ElementType, currencyID vo.Id) error
+	// EnsureRows brings the budget's rows up to date with what it shows, a
+	// debt saved in the caller's transaction included.
+	EnsureRows(ctx context.Context, budgetID vo.Id) error
 }

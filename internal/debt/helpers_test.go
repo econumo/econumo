@@ -96,7 +96,7 @@ type fakeElements struct {
 	transfers  []transferCall
 	hasData    bool
 	leftBehind bool
-	// calls is the order of the budget calls: "lock", "transfer", "has-data", "remove", "currency".
+	// calls is the order of the budget calls: "ensure", "lock", "transfer", "has-data", "remove", "currency".
 	calls []string
 	// currencies are the currencies the debt rows were moved to, in order
 	currencies []string
@@ -129,6 +129,11 @@ func (b *fakeElements) RemoveRows(context.Context, vo.Id, model.ElementType) err
 func (b *fakeElements) SetRowsCurrency(_ context.Context, _ vo.Id, _ model.ElementType, currencyID vo.Id) error {
 	b.calls = append(b.calls, "currency")
 	b.currencies = append(b.currencies, currencyID.String())
+	return nil
+}
+
+func (b *fakeElements) EnsureRows(context.Context, vo.Id) error {
+	b.calls = append(b.calls, "ensure")
 	return nil
 }
 

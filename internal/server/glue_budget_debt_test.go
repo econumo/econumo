@@ -10,7 +10,12 @@ import (
 
 type recordingBudgetElements struct {
 	from, to, has, locked, removed, currencyType model.ElementType
-	currency                                     vo.Id
+	currency, ensured                            vo.Id
+}
+
+func (r *recordingBudgetElements) EnsureElements(_ context.Context, budgetID vo.Id) error {
+	r.ensured = budgetID
+	return nil
 }
 
 func (r *recordingBudgetElements) SetElementsCurrency(_ context.Context, _ vo.Id, typ model.ElementType, currencyID vo.Id) error {
@@ -60,6 +65,10 @@ func TestDebtBudgetElements_PassesTheStoredTypes(t *testing.T) {
 	}
 	if err := a.RemoveRows(context.Background(), vo.NewId(), model.ElementDebt); err != nil || rec.removed != model.ElementDebt {
 		t.Errorf("RemoveRows = %v, removed type %d; want debt", err, rec.removed)
+	}
+	budget := vo.NewId()
+	if err := a.EnsureRows(context.Background(), budget); err != nil || !rec.ensured.Equal(budget) {
+		t.Errorf("EnsureRows = %v, ensured %s; want %s", err, rec.ensured, budget)
 	}
 	cur := vo.NewId()
 	if err := a.SetRowsCurrency(context.Background(), vo.NewId(), model.ElementDebt, cur); err != nil || rec.currencyType != model.ElementDebt || !rec.currency.Equal(cur) {

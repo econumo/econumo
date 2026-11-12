@@ -466,3 +466,21 @@ func TestCreateDebt_TwoRulesOfTheDebtMayNotOverlap(t *testing.T) {
 		r.Rules = []model.DebtRuleRequest{{CategoryId: e.category, LabelId: &l1}, {CategoryId: e.category, LabelId: &l2}}
 	})
 }
+
+// The debt's budget row is made in the create's own transaction, before any
+// plan moves onto it, partial rule or whole.
+func TestCreateDebt_EnsuresTheBudgetRows(t *testing.T) {
+	e := newEnv(t)
+	payee := e.newPayee()
+	e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].PayeeId = &payee })
+	if e.elements.indexOf("ensure") < 0 {
+		t.Fatalf("calls = %v, want the rows ensured for a partial debt", e.elements.calls)
+	}
+
+	e.elements.calls = nil
+	other := e.newCategory(e.user, true)
+	e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = other })
+	if ensure, transfer := e.elements.indexOf("ensure"), e.elements.indexOf("transfer"); ensure < 0 || transfer < ensure {
+		t.Fatalf("calls = %v, want the rows ensured before the category's plans move", e.elements.calls)
+	}
+}

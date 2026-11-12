@@ -300,7 +300,12 @@ func TestGetBudgetPlan_PlannedExtraMovesPayoff(t *testing.T) {
 func TestGetBudgetPlan_OutOfBoundsCellsNotPlannable(t *testing.T) {
 	h := newAttrHarness(t)
 	debtID := h.createRefDebt(t, nil) // taken on 2026-06-01
-	element := h.f.BudgetElement(fixture.BudgetElement{BudgetID: h.budgetID, ExternalID: debtID, Type: int(model.ElementDebt), CurrencyID: fixture.USD})
+	// create-debt made the row; a plan out of the debt's range is stored
+	// behind its back
+	var element string
+	if err := h.tdb.Raw.QueryRowContext(h.ctx, h.tdb.Rebind("SELECT id FROM budgets_elements WHERE budget_id = ? AND external_id = ?"), h.budgetID, debtID).Scan(&element); err != nil {
+		t.Fatalf("the debt's row: %v", err)
+	}
 	h.f.BudgetLimit(fixture.BudgetLimit{ElementID: element, Period: "2026-05-01 00:00:00", Amount: "50000"})
 	h.setLimit(t, debtID, "2026-06-01", "2000")
 

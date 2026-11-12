@@ -154,6 +154,13 @@ func (s *Service) setRowsCurrency(ctx context.Context, id, currencyID vo.Id) err
 	return s.elements.SetRowsCurrency(ctx, id, model.ElementDebt, currencyID)
 }
 
+func (s *Service) ensureRows(ctx context.Context, budgetID vo.Id) error {
+	if s.elements == nil {
+		return nil
+	}
+	return s.elements.EnsureRows(ctx, budgetID)
+}
+
 func (s *Service) lockRows(ctx context.Context, id vo.Id) error {
 	if s.elements == nil {
 		return nil

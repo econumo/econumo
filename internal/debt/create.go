@@ -104,6 +104,13 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 				return err
 			}
 		}
+		// The debt's row exists from the start, under the budget lock held
+		// here: a row first inserted by a later plan's self-heal would be
+		// invisible to a concurrent delete-debt's row lock, and its plan
+		// would outlive the debt without the delete's confirmation.
+		if err := s.ensureRows(ctx, b.ID); err != nil {
+			return err
+		}
 		for _, r := range d.Rules {
 			if model.IsWholeCategoryRule(d, r, budgetDebts) {
 				if err := s.moveToDebt(ctx, d, r.CategoryID); err != nil {

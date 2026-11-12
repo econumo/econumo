@@ -265,13 +265,10 @@ func (r *debtLockRig) createDebt(t *testing.T, rule model.DebtRuleRequest) strin
 	if err != nil {
 		t.Fatalf("CreateDebt: %v", err)
 	}
-	// The debt's row exists before the race, as it does once the budget has
-	// been read: set and clear a plan through the row's self-heal.
-	if err := r.setLimit(r.one.budget, res.Id, strp("1")); err != nil {
-		t.Fatalf("seed the debt row: %v", err)
-	}
-	if err := r.setLimit(r.one.budget, res.Id, nil); err != nil {
-		t.Fatalf("clear the seed plan: %v", err)
+	// No plan, comment or read before the race: create-debt itself must have
+	// made the row a concurrent delete can lock.
+	if _, rows := r.plan(t, res.Id); rows != 1 {
+		t.Fatalf("debt rows after create = %d, want 1", rows)
 	}
 	return res.Id
 }

@@ -158,6 +158,14 @@ func (s *Service) rowHasData(ctx context.Context, el *model.BudgetElement) (bool
 	return false, nil
 }
 
+// EnsureElements reconciles the budget's rows with what it shows, in the
+// caller's transaction (see syncElements).
+func (s *Service) EnsureElements(ctx context.Context, budgetID vo.Id) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		return s.syncElements(ctx, budgetID, s.clock.Now())
+	})
+}
+
 // LockElements write-locks every budget's row of the external id.
 func (s *Service) LockElements(ctx context.Context, externalID vo.Id, typ model.ElementType) error {
 	return s.budgets.LockElementsByExternal(ctx, externalID, typ)
