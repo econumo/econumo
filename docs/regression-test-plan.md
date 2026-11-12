@@ -1168,6 +1168,13 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       Wallet tap imported straight away) gets one step: "Apply this rule to N
       matching transactions across your imports?". Rules created from the
       prompt or the Import rules page apply to imports from every provider.
+- [ ] The apply question appears only when the rule would change at least one
+      other transaction: after "Create rule", if nothing else in that import
+      would change, the run step is skipped (straight to "Also apply to all
+      your imports?" when older imports would change); if nothing anywhere
+      would change, the dialog just closes. The edited transaction itself is
+      never counted. The all-imports step is likewise skipped after applying
+      to the run when no other import would change.
 - [ ] A transaction that a rule classified (Import rules page shows the rule):
       changing its category offers "Update rule" (match shown read-only, no
       editor) rather than a second rule; the rule's targets change.

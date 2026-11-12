@@ -113,6 +113,23 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
   const matched = preview.data?.matched ?? 0
   const alreadyEdited = preview.data?.alreadyEdited ?? 0
 
+  // The import-wide step: shown only when the rule would change something
+  // there, else the prompt is finished. A failed count shows the step anyway
+  // (its own loading/zero text), since the answer is unknown.
+  const goToAll = async () => {
+    if (!link.runId) {
+      onDone()
+      return
+    }
+    setIncludeEdited(false)
+    const all = await allPreview.mutateAsync({ spec, scope: ALL_SCOPE }).catch(() => undefined)
+    if (all?.matched === 0) {
+      onDone()
+      return
+    }
+    setStep('all')
+  }
+
   const save = async () => {
     try {
       // the create/update and the count refresh are independent outcomes: if
@@ -127,7 +144,12 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
       // user clicked Create right away) — refresh it so the apply step's
       // count is never stale; a refresh failure just leaves the count at 0,
       // it must not undo the save that already succeeded
-      await preview.mutateAsync({ spec, scope: runScope }).catch(() => {})
+      const refreshed = await preview.mutateAsync({ spec, scope: runScope }).catch(() => undefined)
+      if (refreshed?.matched === 0) {
+        // the run step (or, with no run, the only step) has nothing to apply
+        await goToAll()
+        return
+      }
       setStep('apply')
     } catch (err) {
       toast.error(apiErrorMessage(err))
@@ -141,12 +163,10 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
     try {
       const result = await apply.mutateAsync({ ruleId, scope, includeEdited })
       toast.success(t('imports.rules.prompt.applied_toast', { count: result.updated }))
-      if (next && link.runId) {
+      if (next) {
         // applying to every import is a separate, wider-reaching action — the
         // run-scoped "include edited" choice must not silently carry over to it
-        setIncludeEdited(false)
-        allPreview.mutate({ spec, scope: ALL_SCOPE })
-        setStep(next)
+        await goToAll()
       } else {
         onDone()
       }

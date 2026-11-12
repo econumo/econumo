@@ -196,3 +196,53 @@ it('the unioned label set is capped at the server maximum', async () => {
   await waitFor(() => expect(posted.update![0]).toMatchObject({ id: 'rule1' }))
   expect((posted.update![0] as { labelIds: string[] }).labelIds).toEqual(existingIds)
 })
+
+function previewCounts(run: number, all: number) {
+  server.use(http.post('*/api/v1/import/preview-rule', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>
+    ;(posted.preview ??= []).push(body)
+    return HttpResponse.json({ success: true, message: '', data: { matched: body.scope === 'all' ? all : run, alreadyEdited: 0 } })
+  }))
+}
+
+it('skips the run step when the preview matches nothing', async () => {
+  renderPrompt()
+  previewCounts(0, 3)
+  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Create rule' }))
+  expect(await screen.findByText('Also apply to all your imports? 3 transactions match.')).toBeInTheDocument()
+  expect(screen.queryByText(/Apply this rule to/)).not.toBeInTheDocument()
+})
+
+it('closes after saving when neither scope has anything to apply', async () => {
+  renderPrompt()
+  previewCounts(0, 0)
+  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Create rule' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(posted.create).toHaveLength(1)
+  expect(posted.apply).toBeUndefined()
+})
+
+it('a link with no run closes after saving when nothing would change', async () => {
+  renderPrompt()
+  previewCounts(0, 0)
+  useUiStore.getState().setRulePrompt({ link: link({ runId: '' }), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Create rule' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(posted.apply).toBeUndefined()
+})
+
+it('closes after applying to the run when no other import would change', async () => {
+  renderPrompt()
+  previewCounts(5, 0)
+  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Create rule' }))
+  await user.click(await screen.findByRole('button', { name: 'Apply' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(posted.apply).toHaveLength(1)
+})
