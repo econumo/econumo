@@ -27,7 +27,7 @@ func (h *Handlers) GetRuleList(w http.ResponseWriter, r *http.Request) {
 // CreateRule handles POST /api/v1/import/create-rule (auth).
 //
 // @Summary     Create an import rule
-// @Description Creates a classify or skip rule for matching future/existing imports.
+// @Description Creates a classify or skip rule for matching future/existing imports. The id is the idempotency key: sending a stored id of your own again answers that rule as stored.
 // @Tags        Import
 // @Accept      json
 // @Produce     json

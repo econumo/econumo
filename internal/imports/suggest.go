@@ -268,35 +268,55 @@ func groupRowsMissing(valid []validSuggestion) ([]model.ImportSuggestion, [][]mi
 		}
 		b.rows = append(b.rows, s)
 	}
-	out := make([]model.ImportSuggestion, 0, len(order))
-	missing := make([][]missingFields, 0, len(order))
+	var out []model.ImportSuggestion
+	var missing [][]missingFields
 	for _, k := range order {
 		b := buckets[k]
-		m := make([]missingFields, 0, len(b.rows))
-		count := map[string]int{}
-		for _, s := range b.rows {
-			count[idPtrKey(s.CategoryID)+"\x00"+idPtrKey(s.PayeeID)]++
-			m = append(m, s.Row.Missing)
-		}
-		missing = append(missing, m)
-		best := b.rows[0]
-		bestN := count[idPtrKey(best.CategoryID)+"\x00"+idPtrKey(best.PayeeID)]
-		for _, s := range b.rows[1:] {
-			n := count[idPtrKey(s.CategoryID)+"\x00"+idPtrKey(s.PayeeID)]
-			if n > bestN || (n == bestN && s.Row.Link.ExternalPostedAt.After(best.Row.Link.ExternalPostedAt)) {
-				best, bestN = s, n
+		// The classification of the most rows (ties: the newest row) takes the
+		// rows it fills a field of; the others go round again under their own,
+		// so no suggestion lists a row it would leave unchanged.
+		for rows := b.rows; len(rows) > 0; {
+			best := majority(rows)
+			sug := model.ImportSuggestion{
+				ID: vo.NewId(), MatchField: b.field, MatchText: b.text,
+				CategoryID: best.CategoryID, PayeeID: best.PayeeID, Type: rows[0].Row.Type, Status: model.ImportSuggestionStatusOpen,
 			}
+			var m []missingFields
+			var left []validSuggestion
+			for _, s := range rows {
+				if s.Row.Missing.filledBy(sug) {
+					sug.LinkIDs = append(sug.LinkIDs, s.Row.Link.ID)
+					m = append(m, s.Row.Missing)
+				} else {
+					left = append(left, s)
+				}
+			}
+			if len(sug.LinkIDs) == 0 {
+				// nothing the remaining rows propose fills them: they cannot be grouped
+				break
+			}
+			out = append(out, sug)
+			missing = append(missing, m)
+			rows = left
 		}
-		sug := model.ImportSuggestion{
-			ID: vo.NewId(), MatchField: b.field, MatchText: b.text,
-			CategoryID: best.CategoryID, PayeeID: best.PayeeID, Type: b.rows[0].Row.Type, Status: model.ImportSuggestionStatusOpen,
-		}
-		for _, s := range b.rows {
-			sug.LinkIDs = append(sug.LinkIDs, s.Row.Link.ID)
-		}
-		out = append(out, sug)
 	}
 	return out, missing
+}
+
+func majority(rows []validSuggestion) validSuggestion {
+	count := map[string]int{}
+	for _, s := range rows {
+		count[idPtrKey(s.CategoryID)+"\x00"+idPtrKey(s.PayeeID)]++
+	}
+	best := rows[0]
+	bestN := count[idPtrKey(best.CategoryID)+"\x00"+idPtrKey(best.PayeeID)]
+	for _, s := range rows[1:] {
+		n := count[idPtrKey(s.CategoryID)+"\x00"+idPtrKey(s.PayeeID)]
+		if n > bestN || (n == bestN && s.Row.Link.ExternalPostedAt.After(best.Row.Link.ExternalPostedAt)) {
+			best, bestN = s, n
+		}
+	}
+	return best
 }
 
 func sortedOldestFirst(open []model.ImportSuggestion) []model.ImportSuggestion {

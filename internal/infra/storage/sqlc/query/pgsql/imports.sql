@@ -297,5 +297,11 @@ JOIN import_suggestions s ON s.id = sl.suggestion_id
 WHERE s.user_id = $1 AND s.status = 'open'
 ORDER BY sl.suggestion_id, sl.link_id;
 
+-- name: LockImportSuggestion :execrows
+UPDATE import_suggestions SET status = status WHERE id = $1;
+
+-- name: DeleteImportSuggestionLink :exec
+DELETE FROM import_suggestion_links WHERE suggestion_id = $1 AND link_id = $2;
+
 -- name: DeleteImportSuggestion :exec
 DELETE FROM import_suggestions WHERE id = $1;

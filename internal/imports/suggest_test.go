@@ -240,7 +240,7 @@ func TestGroupRowsSplitsByTypeAndCarriesMissing(t *testing.T) {
 	a := validOf(sLink("ACME", "", time.Time{}), "ACME", &c)
 	a.Row.Missing = missingFields{Category: true}
 	a2 := validOf(sLink("ACME", "", time.Time{}), "ACME", &c)
-	a2.Row.Missing = missingFields{Payee: true}
+	a2.Row.Missing = missingFields{Category: true, Payee: true}
 	b := validOf(sLink("ACME", "", time.Time{}), "ACME", &c)
 	b.Row.Type = model.TransactionTypeIncome
 	b.Row.Missing = missingFields{Category: true}
@@ -248,7 +248,7 @@ func TestGroupRowsSplitsByTypeAndCarriesMissing(t *testing.T) {
 	require.Len(t, groups, 2)
 	require.Equal(t, model.TransactionTypeExpense, groups[0].Type)
 	require.Equal(t, model.TransactionTypeIncome, groups[1].Type)
-	require.Equal(t, []missingFields{{Category: true}, {Payee: true}}, missing[0])
+	require.Equal(t, []missingFields{{Category: true}, {Category: true, Payee: true}}, missing[0])
 	require.Equal(t, []missingFields{{Category: true}}, missing[1])
 }
 
@@ -388,4 +388,33 @@ func (requireT) Equal(t *testing.T, want, got any) {
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
+}
+
+func TestGroupRowsSplitsRowsTheMajorityDoesNotFill(t *testing.T) {
+	cat, p := vo.NewId(), vo.NewId()
+	day := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	// a tie: the newer row (category only) wins; the older row lacks only a
+	// payee, which that classification does not fill
+	needsPayee := validSuggestion{Row: sRow(sLink("BB", "", day)), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BB", PayeeID: &p}
+	needsPayee.Row.Missing = missingFields{Payee: true}
+	needsCategory := validSuggestion{Row: sRow(sLink("BB", "", day.AddDate(0, 0, 1))), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "BB", CategoryID: &cat}
+	needsCategory.Row.Missing = missingFields{Category: true}
+	groups, missing := groupRowsMissing([]validSuggestion{needsPayee, needsCategory})
+	require.Len(t, groups, 2)
+	require.Equal(t, cat, *groups[0].CategoryID)
+	require.Nil(t, groups[0].PayeeID)
+	require.Equal(t, []vo.Id{needsCategory.Row.Link.ID}, groups[0].LinkIDs)
+	require.Equal(t, p, *groups[1].PayeeID)
+	require.Equal(t, []vo.Id{needsPayee.Row.Link.ID}, groups[1].LinkIDs)
+	require.Equal(t, []missingFields{{Category: true}}, missing[0])
+}
+
+func TestLiveImportUsesOwnersZone(t *testing.T) {
+	imported := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+	l := model.ImportTransactionLink{ImportedAt: imported, ExternalPostedAt: time.Date(2026, 8, 13, 6, 0, 0, 0, time.UTC)}
+	require.True(t, liveImport(l, "America/Los_Angeles"))
+	require.False(t, liveImport(l, ""))
+	l.ExternalPostedAt = time.Date(2026, 8, 13, 20, 0, 0, 0, time.UTC)
+	require.False(t, liveImport(l, "Asia/Tokyo"))
+	require.True(t, liveImport(l, "Bad/Zone"))
 }

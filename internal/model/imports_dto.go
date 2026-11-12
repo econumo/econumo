@@ -647,7 +647,7 @@ type ImportSuggestionResult struct {
 }
 
 type GetImportSuggestionListResult struct {
-	Items []ImportSuggestionResult `json:"items"`
+	Items []ImportSuggestionResult `json:"items"` // oldest first, so the Inbox order is stable
 }
 
 type AcceptImportSuggestionRequest struct {

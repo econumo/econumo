@@ -72,6 +72,7 @@ type Querier interface {
 	DeleteImportRuleLabels(ctx context.Context, ruleID string) error
 	DeleteImportSource(ctx context.Context, id string) error
 	DeleteImportSuggestion(ctx context.Context, id string) error
+	DeleteImportSuggestionLink(ctx context.Context, arg DeleteImportSuggestionLinkParams) error
 	DeleteLabel(ctx context.Context, id string) error
 	DeleteOAuthClient(ctx context.Context, id string) (int64, error)
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
@@ -442,6 +443,7 @@ type Querier interface {
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	LockImportSuggestion(ctx context.Context, id string) (int64, error)
 	// Plain FOR UPDATE is required: it is the only mode that conflicts with the KEY SHARE
 	// lock a concurrent grant INSERT takes on this row through its foreign key.
 	LockOAuthClient(ctx context.Context, id string) (string, error)

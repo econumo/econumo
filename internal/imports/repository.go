@@ -72,6 +72,7 @@ type Repository interface {
 	GetSuggestion(ctx context.Context, id vo.Id) (*model.ImportSuggestion, error)
 	ListOpenSuggestionsByUser(ctx context.Context, userID vo.Id) ([]model.ImportSuggestion, error)
 	DeleteSuggestion(ctx context.Context, id vo.Id) error
+	ReleaseSuggestionLinks(ctx context.Context, id vo.Id, linkIDs []vo.Id) (bool, error)
 	// scope=all for preview/apply
 	ListLinksByUser(ctx context.Context, userID vo.Id) ([]model.ImportTransactionLink, error)
 	ListLinksIntoUserAccounts(ctx context.Context, userID vo.Id) ([]model.ImportTransactionLink, error)

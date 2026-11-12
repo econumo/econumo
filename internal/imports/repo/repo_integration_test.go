@@ -724,3 +724,144 @@ func TestSuggestionRepoRoundTrip(t *testing.T) {
 		t.Errorf("link rows after delete = %d", n)
 	}
 }
+
+// seedSuggestionWithLinks stores an open suggestion holding the first link,
+// and returns it with every link inserted.
+func seedSuggestionWithLinks(t *testing.T, repo *importsrepo.Repo, db *dbtest.DB, n int) (*model.ImportSuggestion, []*model.ImportTransactionLink) {
+	t.Helper()
+	ctx := context.Background()
+	srcID := fixture.New(t, db).ImportSource(fixture.ImportSource{UserID: userA, Name: "iPhone"})
+	var links []*model.ImportTransactionLink
+	for i := 0; i < n; i++ {
+		l := newLink(srcID, "ext-"+strconv.Itoa(i), nil, model.ImportLinkStatusQueued)
+		if err := repo.InsertLink(ctx, l); err != nil {
+			t.Fatal(err)
+		}
+		links = append(links, l)
+	}
+	catID := vo.NewId()
+	s := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "shop",
+		CategoryID: &catID, Status: model.ImportSuggestionStatusOpen, LinkIDs: []vo.Id{links[0].ID}, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+	}
+	if err := repo.InsertSuggestion(ctx, s); err != nil {
+		t.Fatal(err)
+	}
+	return s, links
+}
+
+func TestReleaseSuggestionLinks(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	s, links := seedSuggestionWithLinks(t, repo, db, 3)
+	if ok, err := repo.AddSuggestionLinks(ctx, s.ID, []vo.Id{links[1].ID}, fixedTime); err != nil || !ok {
+		t.Fatal(ok, err)
+	}
+	var gone bool
+	err := db.TX.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		gone, err = repo.ReleaseSuggestionLinks(ctx, s.ID, []vo.Id{links[0].ID})
+		return err
+	})
+	if err != nil || gone {
+		t.Fatalf("a link outside the released set keeps the suggestion: gone = %v, %v", gone, err)
+	}
+	got, err := repo.GetSuggestion(ctx, s.ID)
+	if err != nil || len(got.LinkIDs) != 1 || got.LinkIDs[0] != links[1].ID {
+		t.Fatalf("suggestion = %+v, %v", got, err)
+	}
+	err = db.TX.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		gone, err = repo.ReleaseSuggestionLinks(ctx, s.ID, []vo.Id{links[1].ID})
+		return err
+	})
+	if err != nil || !gone {
+		t.Fatalf("the last link released deletes it: gone = %v, %v", gone, err)
+	}
+	if _, err := repo.GetSuggestion(ctx, s.ID); err == nil {
+		t.Fatal("suggestion still there")
+	}
+	err = db.TX.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		gone, err = repo.ReleaseSuggestionLinks(ctx, s.ID, nil)
+		return err
+	})
+	if err != nil || !gone {
+		t.Fatalf("an already deleted suggestion reads as gone: %v, %v", gone, err)
+	}
+}
+
+// The two orders of a job's join racing a release, each in its own open
+// transaction: whichever comes second waits for the first to commit (a row
+// lock on PostgreSQL, the single connection on SQLite) and then sees its
+// outcome. A join that wins keeps the suggestion; a release that wins makes
+// the join a miss, never a foreign-key failure.
+func TestReleaseAndJoinRace(t *testing.T) {
+	for _, joinFirst := range []bool{true, false} {
+		name := "release first"
+		if joinFirst {
+			name = "join first"
+		}
+		t.Run(name, func(t *testing.T) {
+			repo, db := setup(t)
+			ctx := context.Background()
+			s, links := seedSuggestionWithLinks(t, repo, db, 2)
+			join := func(ctx context.Context) (bool, error) {
+				return repo.AddSuggestionLinks(ctx, s.ID, []vo.Id{links[1].ID}, fixedTime)
+			}
+			release := func(ctx context.Context) (bool, error) {
+				return repo.ReleaseSuggestionLinks(ctx, s.ID, []vo.Id{links[0].ID})
+			}
+			first, second := join, release
+			if !joinFirst {
+				first, second = release, join
+			}
+			held, letGo := make(chan struct{}), make(chan struct{})
+			firstDone := make(chan error, 1)
+			var firstOK bool
+			go func() {
+				firstDone <- db.TX.WithTx(ctx, func(ctx context.Context) error {
+					var err error
+					firstOK, err = first(ctx)
+					close(held)
+					<-letGo
+					return err
+				})
+			}()
+			<-held
+			secondDone := make(chan error, 1)
+			var secondOK bool
+			go func() {
+				secondDone <- db.TX.WithTx(ctx, func(ctx context.Context) error {
+					var err error
+					secondOK, err = second(ctx)
+					return err
+				})
+			}()
+			select {
+			case err := <-secondDone:
+				t.Fatalf("the second writer did not wait for the first: %v", err)
+			case <-time.After(150 * time.Millisecond):
+			}
+			close(letGo)
+			if err := <-firstDone; err != nil {
+				t.Fatal(err)
+			}
+			if err := <-secondDone; err != nil {
+				t.Fatal(err)
+			}
+			got, err := repo.GetSuggestion(ctx, s.ID)
+			if joinFirst {
+				// join: added; release: kept, the joined link still there
+				if !firstOK || secondOK || err != nil || len(got.LinkIDs) != 1 || got.LinkIDs[0] != links[1].ID {
+					t.Fatalf("join=%v release gone=%v suggestion=%+v err=%v", firstOK, secondOK, got, err)
+				}
+			} else {
+				// release: deleted; join: a miss
+				if !firstOK || secondOK || err == nil {
+					t.Fatalf("release gone=%v join=%v suggestion=%+v", firstOK, secondOK, got)
+				}
+			}
+		})
+	}
+}

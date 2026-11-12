@@ -430,3 +430,95 @@ func TestAcceptSkipsRowsOfAnotherType(t *testing.T) {
 		t.Fatalf("an income row took an expense suggestion's payee: %+v", tx)
 	}
 }
+
+// joinAfterRead runs hook once, right after the suggestion read named by
+// on ("get" or "list") returned: a job joining a row in between.
+type joinAfterRead struct {
+	imports.Repository
+	on   string
+	hook func(ctx context.Context)
+}
+
+func (r *joinAfterRead) fire(ctx context.Context, on string) {
+	if r.on == on && r.hook != nil {
+		h := r.hook
+		r.hook = nil
+		h(ctx)
+	}
+}
+
+func (r *joinAfterRead) GetSuggestion(ctx context.Context, id vo.Id) (*model.ImportSuggestion, error) {
+	s, err := r.Repository.GetSuggestion(ctx, id)
+	r.fire(ctx, "get")
+	return s, err
+}
+
+func (r *joinAfterRead) ListOpenSuggestionsByUser(ctx context.Context, userID vo.Id) ([]model.ImportSuggestion, error) {
+	list, err := r.Repository.ListOpenSuggestionsByUser(ctx, userID)
+	r.fire(ctx, "list")
+	return list, err
+}
+
+// lateRow seeds a suggestion over one Blue Bottle tap and imports a second
+// tap with the job off, so its link is not on the suggestion yet.
+func lateRow(t *testing.T, h *harness, c *fakeCompleter, cat string) (model.ImportSuggestion, model.ImportTransactionLink, model.ImportTransactionLink) {
+	t.Helper()
+	s, links := seedSuggestion(t, h, c, cat, "")
+	h.svc.SetJobRunner(func(func()) {})
+	ingest(t, h, pushWithPayee("Blue Bottle", "evt-late"))
+	all, err := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if err != nil || len(all) != 2 {
+		t.Fatalf("links = %v, %v", all, err)
+	}
+	late := all[0]
+	if late.ID == links[0].ID {
+		late = all[1]
+	}
+	return s, links[0], late
+}
+
+func TestSuggestionListCleanupKeepsRowsJoinedMeanwhile(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	s, first, late := lateRow(t, h, c, cat)
+	h.setTx(t, first.TransactionID, "category_id", cat)
+	rp := &joinAfterRead{Repository: h.repo, on: "list", hook: func(ctx context.Context) {
+		if ok, err := h.repo.AddSuggestionLinks(ctx, s.ID, []vo.Id{late.ID}, now); err != nil || !ok {
+			t.Fatalf("join: %v, %v", ok, err)
+		}
+	}}
+	h.withRepo(rp)
+	h.wireSuggest(c, facts)
+	if items := suggestionList(t, h, userA); len(items) != 0 {
+		t.Fatalf("the read saw nothing pending: %+v", items)
+	}
+	items := suggestionList(t, h, userA)
+	if len(items) != 1 || items[0].Id != s.ID.String() || len(items[0].Transactions) != 1 || items[0].Transactions[0].TransactionId != late.TransactionID.String() {
+		t.Fatalf("the joined row must survive the cleanup: %+v", items)
+	}
+}
+
+func TestAcceptKeepsRowsJoinedMeanwhile(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	s, first, late := lateRow(t, h, c, cat)
+	rule := h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: cat})
+	rp := &joinAfterRead{Repository: h.repo, on: "get", hook: func(ctx context.Context) {
+		if ok, err := h.repo.AddSuggestionLinks(ctx, s.ID, []vo.Id{late.ID}, now); err != nil || !ok {
+			t.Fatalf("join: %v, %v", ok, err)
+		}
+	}}
+	h.withRepo(rp)
+	h.wireSuggest(c, facts)
+	res, err := h.svc.AcceptSuggestion(context.Background(), vo.MustParseId(userA), model.AcceptImportSuggestionRequest{Id: s.ID.String(), RuleId: rule})
+	if err != nil || res.Updated != 1 {
+		t.Fatalf("accept = %+v, %v", res, err)
+	}
+	if tx, _ := h.txns.GetByID(context.Background(), *first.TransactionID); tx.CategoryID == nil {
+		t.Fatalf("the accepted row was not filled: %+v", tx)
+	}
+	got, err := h.repo.GetSuggestion(context.Background(), s.ID)
+	if err != nil || len(got.LinkIDs) != 1 || got.LinkIDs[0] != late.ID {
+		t.Fatalf("the suggestion stays open for the row joined meanwhile: %+v, %v", got, err)
+	}
+}

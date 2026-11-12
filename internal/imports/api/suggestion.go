@@ -9,7 +9,7 @@ import (
 // GetSuggestionList handles GET /api/v1/import/get-suggestion-list (auth).
 //
 // @Summary     List import rule suggestions
-// @Description Returns the caller's open AI rule suggestions with the imported transactions each would still fill, newest first.
+// @Description Returns the caller's open AI rule suggestions, oldest first, each with the imported transactions it would still fill, newest first.
 // @Tags        Import
 // @Produce     json
 // @Success     200 {object} apidoc.JsonResponseOk{data=model.GetImportSuggestionListResult}

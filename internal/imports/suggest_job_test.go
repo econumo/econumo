@@ -580,3 +580,57 @@ func TestSuggestIgnoresOpenSuggestionWithArchivedCategory(t *testing.T) {
 		})
 	}
 }
+
+// The 7-day cut reads the import time as a wall clock in the owner's zone,
+// as the posted time is.
+func TestSuggestAgeUsesOwnersWallClock(t *testing.T) {
+	for _, tc := range []struct {
+		name, zone, occurredAt string
+		want                   bool
+	}{
+		// now = 2026-08-20 12:00 UTC = 05:00 in Los Angeles; posted 6 d 23 h before
+		{"inside the week in Los Angeles", "America/Los_Angeles", "2026-08-13T06:00:00-07:00", true},
+		// now = 21:00 in Tokyo; posted 7 d 1 h before
+		{"outside the week in Tokyo", "Asia/Tokyo", "2026-08-13T20:00:00+09:00", false},
+		{"unknown zone reads as UTC", "Not/AZone", "2026-08-13T13:00:00Z", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h, c, facts := suggestSetup(t)
+			facts[userA] = ownerFact{language: "en", timezone: tc.zone}
+			h.mapCard(t, "Apple Card")
+			cat := h.category(t, userA, "Coffee")
+			c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+			ingest(t, h, strings.Replace(tap, `"occurredAt":"2026-08-20T10:42:03-07:00"`, `"occurredAt":"`+tc.occurredAt+`"`, 1))
+			if got := len(c.calls) == 1; got != tc.want {
+				t.Fatalf("asked the AI = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSuggestTimeoutStartsOnceTheOwnerLockIsHeld(t *testing.T) {
+	h, _, facts := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	var deadline time.Time
+	c := completerFunc(func(ctx context.Context) (string, error) {
+		deadline, _ = ctx.Deadline()
+		return `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`, nil
+	})
+	h.svc.SetSuggester(c, facts)
+	done := make(chan struct{})
+	h.svc.SetJobRunner(func(run func()) { go func() { defer close(done); run() }() })
+	unlock := h.svc.LockSuggestOwnerForTest(vo.MustParseId(userA))
+	ingest(t, h, tap)
+	time.Sleep(500 * time.Millisecond)
+	released := time.Now()
+	unlock()
+	<-done
+	if deadline.IsZero() || deadline.Before(released.Add(imports.SuggestTimeoutForTest-100*time.Millisecond)) {
+		t.Fatalf("deadline %v: the timeout ran while the job waited for the lock (released %v)", deadline, released)
+	}
+}
+
+type completerFunc func(ctx context.Context) (string, error)
+
+func (f completerFunc) Complete(ctx context.Context, _, _, _ string) (string, error) { return f(ctx) }

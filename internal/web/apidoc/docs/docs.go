@@ -5702,7 +5702,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Creates a classify or skip rule for matching future/existing imports.",
+                "description": "Creates a classify or skip rule for matching future/existing imports. The id is the idempotency key: sending a stored id of your own again answers that rule as stored.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6539,7 +6539,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Returns the caller's open AI rule suggestions with the imported transactions each would still fill, newest first.",
+                "description": "Returns the caller's open AI rule suggestions, oldest first, each with the imported transactions it would still fill, newest first.",
                 "produces": [
                     "application/json"
                 ],
@@ -15980,6 +15980,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "items": {
+                    "description": "oldest first, so the Inbox order is stable",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.ImportSuggestionResult"

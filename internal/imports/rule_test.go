@@ -100,3 +100,30 @@ func TestRules_OtherUsersRuleIsNotFound(t *testing.T) {
 		t.Fatal("must not list another user's rule")
 	}
 }
+
+func TestCreateRuleReplayAnswersTheStoredRule(t *testing.T) {
+	h := setup(t)
+	uid := vo.MustParseId(userA)
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	h.entities.add(h.entities.categories, uid, cat, "Coffee")
+	req := classifyReq(h, cat)
+	if _, err := h.svc.CreateRule(context.Background(), uid, req); err != nil {
+		t.Fatal(err)
+	}
+	retry := req
+	retry.MatchValue = "edited since"
+	again, err := h.svc.CreateRule(context.Background(), uid, retry)
+	if err != nil || again.Id != req.Id || again.MatchValue != "Blue Bottle" {
+		t.Fatalf("replay = %+v, %v", again, err)
+	}
+	list, err := h.svc.GetRuleList(context.Background(), uid)
+	if err != nil || len(list.Items) != 1 {
+		t.Fatalf("list = %+v, %v", list, err)
+	}
+	// the same id from another user is refused, not answered
+	_, err = h.svc.CreateRule(context.Background(), vo.MustParseId(userB), req)
+	var ve *errs.ValidationError
+	if !errors.As(err, &ve) || !hasField(ve, "id") {
+		t.Fatalf("foreign id = %v", err)
+	}
+}

@@ -18,7 +18,11 @@ const (
 	suggestTimeout = 60 * time.Second
 	// A row posted longer than this before it was imported is a backfill, not
 	// a live import: the user has had the chance to classify it already.
-	suggestMaxAge  = 7 * 24 * time.Hour
+	suggestMaxAge = 7 * 24 * time.Hour
+	// The posted time is a wall clock in the owner's zone, which is not known
+	// until the job runs: the first cut allows any zone's offset, and the
+	// owner's own zone decides (liveImport).
+	maxZoneOffset  = 14 * time.Hour
 	suggestMaxRows = 50
 )
 
@@ -31,7 +35,7 @@ func (s *Service) startSuggestJob(links []model.ImportTransactionLink) {
 	}
 	var live []model.ImportTransactionLink
 	for _, l := range links {
-		if l.TransactionID != nil && l.ImportedAt.Sub(l.ExternalPostedAt) <= suggestMaxAge {
+		if l.TransactionID != nil && l.ImportedAt.Sub(l.ExternalPostedAt) <= suggestMaxAge+maxZoneOffset {
 			live = append(live, l)
 		}
 	}
@@ -48,9 +52,7 @@ func (s *Service) startSuggestJob(links []model.ImportTransactionLink) {
 				slog.Warn("import suggest failed", "err_type", fmt.Sprintf("%T", r))
 			}
 		}()
-		ctx, cancel := context.WithTimeout(context.Background(), suggestTimeout)
-		defer cancel()
-		if err := s.suggest(ctx, live); err != nil {
+		if err := s.suggest(live); err != nil {
 			// Never the error text, the prompt or the reply: they can carry names.
 			slog.Warn("import suggest failed", "err_type", fmt.Sprintf("%T", err))
 		}
@@ -64,8 +66,12 @@ type suggestCandidate struct {
 
 // suggest groups the rows by account owner (the owner's rules classify a
 // shared account, so the owner gets the suggestions) and runs each owner
-// on its own: one owner's failure does not stop the others.
-func (s *Service) suggest(ctx context.Context, links []model.ImportTransactionLink) error {
+// on its own: one owner's failure does not stop the others. Each owner gets
+// its own timeout, started once its lock is held, so waiting for another job
+// of the same owner does not eat into it.
+func (s *Service) suggest(links []model.ImportTransactionLink) error {
+	ctx, cancel := context.WithTimeout(context.Background(), suggestTimeout)
+	defer cancel()
 	byOwner := map[vo.Id][]suggestCandidate{}
 	var owners []vo.Id
 	for _, l := range links {
@@ -92,14 +98,24 @@ func (s *Service) suggest(ctx context.Context, links []model.ImportTransactionLi
 		byOwner[owner] = append(byOwner[owner], suggestCandidate{link: l, tx: t})
 	}
 	for _, owner := range owners {
-		s.suggestForOwnerSafe(ctx, owner, byOwner[owner])
+		s.suggestForOwnerSafe(owner, byOwner[owner])
 	}
 	return nil
 }
 
+// liveImport: a row posted at most suggestMaxAge before it was imported, both
+// read as wall clocks in the owner's zone (UTC when unknown or invalid).
+func liveImport(l model.ImportTransactionLink, timezone string) bool {
+	loc, err := time.LoadLocation(timezone)
+	if timezone == "" || err != nil {
+		loc = time.UTC
+	}
+	return wallClock(l.ImportedAt.In(loc)).Sub(l.ExternalPostedAt) <= suggestMaxAge
+}
+
 // suggestForOwnerSafe keeps one owner's error or panic from reaching the
 // others. Never the error text, the prompt or the reply: they can carry names.
-func (s *Service) suggestForOwnerSafe(ctx context.Context, owner vo.Id, candidates []suggestCandidate) {
+func (s *Service) suggestForOwnerSafe(owner vo.Id, candidates []suggestCandidate) {
 	defer func() {
 		if r := recover(); r != nil {
 			slog.Warn("import suggest failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", r))
@@ -107,6 +123,8 @@ func (s *Service) suggestForOwnerSafe(ctx context.Context, owner vo.Id, candidat
 	}()
 	unlock := s.suggestLocks.lock(owner)
 	defer unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), suggestTimeout)
+	defer cancel()
 	if err := s.suggestForOwner(ctx, owner, candidates); err != nil {
 		slog.Warn("import suggest failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", err))
 	}
@@ -122,6 +140,15 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	}
 	if language == "" {
 		language = "en"
+	}
+	fresh := candidates[:0:0]
+	for _, c := range candidates {
+		if liveImport(c.link, timezone) {
+			fresh = append(fresh, c)
+		}
+	}
+	if candidates = fresh; len(candidates) == 0 {
+		return nil
 	}
 	vocab, err := s.suggestVocabulary(ctx, owner)
 	if err != nil {

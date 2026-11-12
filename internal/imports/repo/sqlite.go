@@ -227,6 +227,14 @@ func (sqliteQuerier) TouchOpenImportSuggestion(ctx context.Context, db backend.D
 	return sqlitegen.New(db).TouchOpenImportSuggestion(ctx, p)
 }
 
+func (sqliteQuerier) LockImportSuggestion(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	return sqlitegen.New(db).LockImportSuggestion(ctx, id)
+}
+
+func (sqliteQuerier) DeleteImportSuggestionLink(ctx context.Context, db backend.DBTX, p deleteSuggestionLinkPs) error {
+	return sqlitegen.New(db).DeleteImportSuggestionLink(ctx, p)
+}
+
 func (sqliteQuerier) GetImportSuggestionByID(ctx context.Context, db backend.DBTX, id string) (suggestionRow, error) {
 	return sqlitegen.New(db).GetImportSuggestionByID(ctx, id)
 }

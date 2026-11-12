@@ -25,9 +25,12 @@ func (r *Repo) InsertSuggestion(ctx context.Context, s *model.ImportSuggestion) 
 }
 
 // AddSuggestionLinks answers false, writing nothing, when the suggestion is no
-// longer open. The touch takes the row lock first, so on PostgreSQL a delete
-// racing it either waits for this transaction or has already made it a miss,
-// never a foreign-key failure on the link insert.
+// longer open. The touch takes the row lock before any link is written, and
+// ReleaseSuggestionLinks takes the same lock before it decides to delete: on
+// PostgreSQL whichever comes second waits for the other's commit, so a join
+// either lands before the release (which then sees the new links and keeps
+// the suggestion) or finds the suggestion gone (a miss here, never a
+// foreign-key failure and never a link cascaded away).
 func (r *Repo) AddSuggestionLinks(ctx context.Context, suggestionID vo.Id, linkIDs []vo.Id, now time.Time) (bool, error) {
 	n, err := r.q.TouchOpenImportSuggestion(ctx, r.db(ctx), touchSuggestionParams{UpdatedAt: now, ID: suggestionID.String()})
 	if err != nil || n == 0 {
@@ -98,6 +101,28 @@ func (r *Repo) ListOpenSuggestionsByUser(ctx context.Context, userID vo.Id) ([]m
 		out = append(out, *s)
 	}
 	return out, nil
+}
+
+// ReleaseSuggestionLinks drops the given links from the suggestion and
+// deletes it once it has no link left; it answers whether the suggestion is
+// gone. Links a job joined after the caller read the suggestion keep it open.
+// It must run inside a transaction: the row lock it takes first is what
+// orders it against AddSuggestionLinks.
+func (r *Repo) ReleaseSuggestionLinks(ctx context.Context, id vo.Id, linkIDs []vo.Id) (bool, error) {
+	n, err := r.q.LockImportSuggestion(ctx, r.db(ctx), id.String())
+	if err != nil || n == 0 {
+		return n == 0 && err == nil, err
+	}
+	for _, l := range linkIDs {
+		if err := r.q.DeleteImportSuggestionLink(ctx, r.db(ctx), deleteSuggestionLinkPs{SuggestionID: id.String(), LinkID: l.String()}); err != nil {
+			return false, err
+		}
+	}
+	left, err := r.q.ListImportSuggestionLinks(ctx, r.db(ctx), id.String())
+	if err != nil || len(left) > 0 {
+		return false, err
+	}
+	return true, r.q.DeleteImportSuggestion(ctx, r.db(ctx), id.String())
 }
 
 func (r *Repo) DeleteSuggestion(ctx context.Context, id vo.Id) error {

@@ -17,3 +17,9 @@ func (s *Service) ApplyEventForTest(ctx context.Context, src *model.ImportSource
 	status, amountUpdated, _, err := s.applyEvent(ctx, src, eventID, ev, runID, correctAmount, rules)
 	return status, amountUpdated, err
 }
+
+// LockSuggestOwnerForTest holds an owner's suggestion-job lock until the
+// returned func runs.
+func (s *Service) LockSuggestOwnerForTest(owner vo.Id) func() { return s.suggestLocks.lock(owner) }
+
+const SuggestTimeoutForTest = suggestTimeout

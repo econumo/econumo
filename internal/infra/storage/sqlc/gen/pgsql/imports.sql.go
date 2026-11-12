@@ -82,6 +82,20 @@ func (q *Queries) DeleteImportSuggestion(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteImportSuggestionLink = `-- name: DeleteImportSuggestionLink :exec
+DELETE FROM import_suggestion_links WHERE suggestion_id = $1 AND link_id = $2
+`
+
+type DeleteImportSuggestionLinkParams struct {
+	SuggestionID string
+	LinkID       string
+}
+
+func (q *Queries) DeleteImportSuggestionLink(ctx context.Context, arg DeleteImportSuggestionLinkParams) error {
+	_, err := q.db.ExecContext(ctx, deleteImportSuggestionLink, arg.SuggestionID, arg.LinkID)
+	return err
+}
+
 const deleteQueuedImportTransactionLinksByExternalAccount = `-- name: DeleteQueuedImportTransactionLinksByExternalAccount :exec
 DELETE FROM import_transaction_links WHERE source_id = $1 AND lower(external_account_id) = lower($2) AND status = 'queued'
 `
@@ -1508,6 +1522,18 @@ func (q *Queries) ListOpenImportSuggestionsByUser(ctx context.Context, userID st
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockImportSuggestion = `-- name: LockImportSuggestion :execrows
+UPDATE import_suggestions SET status = status WHERE id = $1
+`
+
+func (q *Queries) LockImportSuggestion(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, lockImportSuggestion, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const touchOpenImportSuggestion = `-- name: TouchOpenImportSuggestion :execrows

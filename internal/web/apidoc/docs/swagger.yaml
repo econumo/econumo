@@ -1538,6 +1538,7 @@ definitions:
   model.GetImportSuggestionListResult:
     properties:
       items:
+        description: oldest first, so the Inbox order is stable
         items:
           $ref: '#/definitions/model.ImportSuggestionResult'
         type: array
@@ -7177,7 +7178,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a classify or skip rule for matching future/existing imports.
+      description: 'Creates a classify or skip rule for matching future/existing imports.
+        The id is the idempotency key: sending a stored id of your own again answers
+        that rule as stored.'
       parameters:
       - description: Create rule request
         in: body
@@ -7686,8 +7689,8 @@ paths:
       - Import
   /api/v1/import/get-suggestion-list:
     get:
-      description: Returns the caller's open AI rule suggestions with the imported
-        transactions each would still fill, newest first.
+      description: Returns the caller's open AI rule suggestions, oldest first, each
+        with the imported transactions it would still fill, newest first.
       produces:
       - application/json
       responses:

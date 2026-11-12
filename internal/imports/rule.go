@@ -30,6 +30,19 @@ func (s *Service) CreateRule(ctx context.Context, userID vo.Id, req model.Create
 	if err != nil {
 		return nil, errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value is not valid.", Code: errs.CodeInvalidUUID})
 	}
+	// The id is the client's idempotency key: a retry after a lost answer finds
+	// its rule already stored and gets it back as it was saved. Another user's
+	// id reads as an invalid one, so ids cannot be probed.
+	if existing, err := s.repo.GetRule(ctx, id); err == nil {
+		if existing.UserID != userID {
+			return nil, errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value is not valid.", Code: errs.CodeInvalidUUID})
+		}
+		reqctx.AddLogAttr(ctx, "rule_id", id.String())
+		out := ruleResult(existing)
+		return &out, nil
+	} else if !isNotFoundErr(err) {
+		return nil, err
+	}
 	r, err := s.ruleFromSpec(ctx, userID, req.ImportRuleSpec)
 	if err != nil {
 		return nil, err

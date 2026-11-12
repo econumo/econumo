@@ -70,8 +70,13 @@ func (s *Service) GetSuggestionList(ctx context.Context, userID vo.Id) (*model.G
 		}
 		if len(rows) == 0 {
 			// Best effort: the suggestion is hidden either way, and a later read
-			// retries the delete.
-			if err := s.repo.DeleteSuggestion(ctx, sg.ID); err != nil {
+			// retries. Only the links read here are released, so rows a job joined
+			// meanwhile keep the suggestion for the next read.
+			err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+				_, err := s.repo.ReleaseSuggestionLinks(ctx, sg.ID, sg.LinkIDs)
+				return err
+			})
+			if err != nil {
 				slog.Warn("import suggestion cleanup failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
 			}
 			continue
@@ -273,12 +278,14 @@ func (s *Service) AcceptSuggestion(ctx context.Context, userID vo.Id, req model.
 		out.Updated++
 	}
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.repo.DeleteSuggestion(ctx, sg.ID); err != nil {
+		// Only the links this accept walked: rows a job joined meanwhile keep
+		// the suggestion open for them.
+		if _, err := s.repo.ReleaseSuggestionLinks(ctx, sg.ID, sg.LinkIDs); err != nil {
 			return err
 		}
 		// The key is already recorded by the first row's write; a failure before
 		// this point releases it so the accept can be sent again. Pinned with the
-		// delete, it stays once the suggestion is gone and a retry is a replay.
+		// release, it stays once this accept has committed and a retry is a replay.
 		reqctx.PinIdempotency(ctx)
 		return nil
 	})
