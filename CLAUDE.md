@@ -702,7 +702,9 @@ localStorage `econumo.appLock` (config: owner `userId`, `secret` {kind, hash, le
 patterns holds `pin` and reads as kind pin}, `lockAfterMs` 0/1/5/15 min) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
 sessionStorage marker `econumo.appLock.fresh` that `setToken` sets so the reload after a sign-in does
 not ask for the PIN (it counts for 30 s; any lock but the one taken as the page hides, and turning the
-lock on, spend it). `setToken` is also the only place that deletes another user's lock (both ids
+lock on, spend it), and the sessionStorage `econumo.appLock.seen` (when this tab was last unlocked and
+on screen, written on unlock, hide and heartbeat, dropped by any lock): a reload within `lockAfterMs` of
+it starts unlocked, while a new tab or a fresh launch has none and starts locked. `setToken` is also the only place that deletes another user's lock (both ids
 known and different); `activeConfig()` fails closed (no `sessionUserId` yet still locks) and works the same over plain
 http and https. `initAppLock()`
 (`lockStore.ts`, from `main.tsx` before the first render) starts every page load locked, locks after

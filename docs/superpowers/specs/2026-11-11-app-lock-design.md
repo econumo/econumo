@@ -479,3 +479,13 @@ Native Face ID / fingerprint in the Capacitor app is a possible follow-up.
   There is no ceremony exception.
 - **Keypad.** The PIN pad's key left of 0 is a blank spacer, so 0 stays
   centred; the pattern grid has nothing under it.
+
+## Revision 6 — a reload honours "Lock after" (overrides the text above)
+
+- Owner's report: with "1 minute", refreshing the page asked for the PIN. A
+  reload is not a new launch: the tab keeps, in sessionStorage
+  `econumo.appLock.seen`, the time it was last unlocked and on screen
+  (written on unlock, on hide, on each heartbeat; removed by any lock).
+  `initAppLock()` starts unlocked when that time is within `lockAfterMs`
+  (and not in the future). A new tab and a fresh app launch have no
+  sessionStorage and start locked; "Immediately" (0) always locks.

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { setSignInListener } from '@/lib/storage'
 import { activeConfig, readConfig, resetAttempts, type AppLockConfig } from './config'
-import { APP_LOCK_CONFIG_KEY, APP_LOCK_FRESH_KEY } from './keys'
+import { APP_LOCK_CONFIG_KEY, APP_LOCK_FRESH_KEY, APP_LOCK_SEEN_KEY } from './keys'
 
 interface AppLockState {
   locked: boolean
@@ -49,7 +49,38 @@ function consumeFreshMarker(now: number): boolean {
   return value !== null && Number.isFinite(at) && now - at >= 0 && now - at < FRESH_SIGN_IN_MS
 }
 
+function rememberSeen(at: number): void {
+  try {
+    sessionStorage.setItem(APP_LOCK_SEEN_KEY, String(at))
+  } catch {
+    // no sessionStorage: a reload simply locks
+  }
+}
+
+function forgetSeen(): void {
+  try {
+    sessionStorage.removeItem(APP_LOCK_SEEN_KEY)
+  } catch {
+    // nothing stored either
+  }
+}
+
+// A reload is no new launch: within "Lock after" of the moment this tab was
+// last unlocked and on screen, it comes back unlocked.
+function seenRecently(now: number, config: AppLockConfig): boolean {
+  let value: string | null = null
+  try {
+    value = sessionStorage.getItem(APP_LOCK_SEEN_KEY)
+  } catch {
+    return false
+  }
+  forgetSeen()
+  const at = Number(value)
+  return value !== null && Number.isFinite(at) && now - at >= 0 && now - at < config.lockAfterMs
+}
+
 function setLocked(): void {
+  forgetSeen()
   if (activeConfig() !== null) {
     useLockStore.setState({ locked: true })
   }
@@ -64,6 +95,7 @@ export function lock(): void {
 export function unlock(): void {
   resetAttempts()
   lastTick = Date.now()
+  rememberSeen(lastTick)
   useLockStore.setState({ locked: false })
 }
 
@@ -120,6 +152,8 @@ function onHide(): void {
   // which still needs the sign-in marker.
   if (config.lockAfterMs === 0) {
     setLocked()
+  } else if (!useLockStore.getState().locked) {
+    rememberSeen(hiddenAt)
   }
   useLockStore.setState({ obscured: true })
 }
@@ -175,6 +209,8 @@ function tick(): void {
   lockSeen = true
   if (gap < 0 || gap >= Math.max(config.lockAfterMs, MIN_SLEEP_MS)) {
     lock()
+  } else {
+    rememberSeen(now)
   }
 }
 
@@ -243,7 +279,9 @@ export function initAppLock(): void {
     resetAttempts()
   }
   lockSeen = readConfig() !== null
-  useLockStore.setState({ locked: !fresh && activeConfig() !== null, obscured: false })
+  const config = activeConfig()
+  const recent = config !== null && seenRecently(now, config)
+  useLockStore.setState({ locked: !fresh && !recent && config !== null, obscured: false })
   createCover()
   listen(document, 'visibilitychange', onVisibilityChange)
   listen(window, 'pagehide', onHide)

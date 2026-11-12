@@ -94,6 +94,64 @@ describe('cold start', () => {
     expect(locked()).toBe(false)
   })
 
+  it('a reload within "Lock after" of leaving stays unlocked', () => {
+    configure(60_000)
+    initAppLock()
+    act(() => unlock())
+    window.dispatchEvent(new Event('pagehide'))
+    resetAppLockForTests({ reload })
+    vi.advanceTimersByTime(20_000)
+    initAppLock()
+    expect(locked()).toBe(false)
+  })
+
+  it('a reload after "Lock after" has passed locks', () => {
+    configure(60_000)
+    initAppLock()
+    act(() => unlock())
+    window.dispatchEvent(new Event('pagehide'))
+    resetAppLockForTests({ reload })
+    vi.advanceTimersByTime(60_000)
+    initAppLock()
+    expect(locked()).toBe(true)
+  })
+
+  it('a reload of a locked tab, or with "Immediately", stays locked', () => {
+    configure(60_000)
+    initAppLock()
+    window.dispatchEvent(new Event('pagehide'))
+    resetAppLockForTests({ reload })
+    initAppLock()
+    expect(locked()).toBe(true)
+
+    resetAppLockForTests({ reload })
+    sessionStorage.clear()
+    configure(0)
+    initAppLock()
+    act(() => unlock())
+    window.dispatchEvent(new Event('pagehide'))
+    resetAppLockForTests({ reload })
+    initAppLock()
+    expect(locked()).toBe(true)
+  })
+
+  it('a new tab or launch (no session record) locks, and a clock set back locks', () => {
+    configure(60_000)
+    sessionStorage.setItem('econumo.appLock.seen', String(Date.now() + 5_000))
+    initAppLock()
+    expect(locked()).toBe(true)
+  })
+
+  it('a locked tab forgets that it was seen, so a reload stays locked', () => {
+    configure(60_000)
+    initAppLock()
+    act(() => unlock())
+    act(() => lock())
+    resetAppLockForTests({ reload })
+    initAppLock()
+    expect(locked()).toBe(true)
+  })
+
   it('is idempotent', () => {
     configure()
     initAppLock()

@@ -2750,10 +2750,13 @@ User C sees none of it.
       after a wrong try and through the lockout countdown), then
       the new one twice; the next lock asks for the new PIN. Turning the lock
       off asks for the current PIN and the Profile row then reads Off.
-- [ ] App lock 📱 cold start: with the lock on, a reload, a new tab and opening
-      the installed PWA all show the lock screen (logo, avatar, name, "Enter
-      PIN") with no balance or transaction visible; the right PIN opens the
-      page that was asked for.
+- [ ] App lock 📱 cold start: with the lock on, a new tab and opening the
+      installed PWA show the lock screen (logo, avatar, name, "Enter PIN") with
+      no balance or transaction visible; the right PIN opens the page that was
+      asked for.
+- [ ] App lock reload: with "1 minute", reloading an unlocked tab stays
+      unlocked; reloading after more than a minute away, reloading a locked
+      tab, or any reload with "Immediately" shows the lock screen.
 - [ ] App lock 📱 background timeout: with "1 minute", leaving the app for under
       a minute returns unlocked and for over a minute returns locked; with
       "Immediately" any switch away locks; a phone left asleep with the app
