@@ -71,7 +71,7 @@ func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 func removalUnconfirmed() error {
 	return errs.NewValidation("Validation failed", errs.FieldError{
 		Key:     "confirmDataRemoval",
-		Message: "This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.",
+		Message: "This deletes the planned amounts and comments of this debt in its budget; confirm to continue.",
 		Code:    errs.CodeDebtRemovalUnconfirmed,
 	})
 }

@@ -482,7 +482,7 @@
     "menu_item": "Debiti",
     "settings": {
       "header": "Debiti",
-      "info": "Prestiti e crediti tracciati senza un conto. Le spese della categoria del debito si sottraggono a ciò che devi, e i budget le mostrano in una sezione Debiti.",
+      "info": "Prestiti e crediti tracciati senza un conto. Le spese nelle categorie di un debito si sottraggono a ciò che devi, e il budget del debito le mostra in una sezione Debiti.",
       "empty": "Ancora nessun debito",
       "create": "Aggiungi debito",
       "no_budget": "I debiti appartengono a un budget. Crea un budget, o chiedi di poter pianificare in uno, per aggiungere un debito."
@@ -2571,7 +2571,7 @@
       "key_conflict": "Queste regole di pagamento potrebbero corrispondere agli stessi pagamenti. Assegna loro beneficiari, tag o tag per i report diversi oppure, per debiti diversi, date di inizio diverse.",
       "start_date_taken": "Un altro debito con la stessa categoria, lo stesso beneficiario, lo stesso tag e lo stesso tag per i report inizia già in questa data.",
       "category_not_expense": "Un debito richiede una categoria di spesa.",
-      "removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti di questo debito nei tuoi budget; conferma per continuare.",
+      "removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti di questo debito nel suo budget; conferma per continuare.",
       "last_payment_in_past": "La data dell'ultimo pagamento deve essere successiva a oggi.",
       "last_payment_before_start": "La data dell'ultimo pagamento deve essere successiva alla data di inizio.",
       "start_in_future": "La data di inizio deve essere oggi o precedente.",

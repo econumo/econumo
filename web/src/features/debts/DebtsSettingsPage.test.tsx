@@ -2,7 +2,6 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureBudgets, fixtureOwner } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
@@ -24,8 +23,6 @@ function renderPage() {
     </QueryClientProvider>,
   )
 }
-
-const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
 
 const paidOff = { ...wireDebt, id: 'd2', name: 'Phone plan', currentBalance: '0', paymentsLeft: 0, isPaidOff: 1 as const }
 
@@ -124,8 +121,8 @@ it('Create is disabled, and says why, when no budget can take a new debt', async
         { ...fixtureBudgets[0], isArchived: 1 },
         { ...fixtureBudgets[1], ownerUserId: 'u2', access: [guest] },
       ],
+      debts: [],
     }),
-    http.get('*/api/v1/debt/get-debt-list', () => ok({ items: [] })),
   )
   renderPage()
 

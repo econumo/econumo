@@ -131,7 +131,7 @@
 {"success":false,"message":"Form validation error","code":400,"errors":{"folderId":["Debts cannot be put into a folder"]}}
 
 == err:delete-removal-unconfirmed POST /api/v1/debt/delete-debt [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"confirmDataRemoval":["This deletes the planned amounts and comments of this debt in your budgets; confirm to continue."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"confirmDataRemoval":["This deletes the planned amounts and comments of this debt in its budget; confirm to continue."]}}
 
 == delete-confirmed POST /api/v1/debt/delete-debt [owner] -> 200
 {"success":true,"message":"","data":{}}

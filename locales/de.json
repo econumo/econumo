@@ -482,7 +482,7 @@
     "menu_item": "Schulden",
     "settings": {
       "header": "Schulden",
-      "info": "Kredite und Schulden ohne eigenes Konto verfolgen. Ausgaben in der Kategorie der Schuld werden auf den offenen Betrag angerechnet, und die Budgets zeigen sie im Bereich Schulden.",
+      "info": "Kredite und Schulden ohne eigenes Konto verfolgen. Ausgaben in den Kategorien einer Schuld werden auf den offenen Betrag angerechnet, und das Budget der Schuld zeigt sie im Bereich Schulden.",
       "empty": "Noch keine Schulden",
       "create": "Schuld hinzufügen",
       "no_budget": "Schulden gehören zu einem Budget. Erstellen Sie ein Budget oder lassen Sie sich die Planung in einem erlauben, um eine Schuld hinzuzufügen."
@@ -2571,7 +2571,7 @@
       "key_conflict": "Diese Zahlungsregeln könnten dieselben Zahlungen erfassen. Geben Sie ihnen unterschiedliche Zahlungsempfänger, Tags oder Auswertungs-Tags oder, bei verschiedenen Schulden, unterschiedliche Startdaten.",
       "start_date_taken": "Eine andere Schuld mit derselben Kategorie, demselben Zahlungsempfänger, demselben Tag und demselben Auswertungs-Tag beginnt bereits an diesem Datum.",
       "category_not_expense": "Eine Schuld benötigt eine Ausgabenkategorie.",
-      "removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare dieser Schuld in Ihren Budgets gelöscht; bestätigen Sie, um fortzufahren.",
+      "removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare dieser Schuld im Budget gelöscht; bestätigen Sie, um fortzufahren.",
       "last_payment_in_past": "Das Datum der letzten Zahlung muss nach heute liegen.",
       "last_payment_before_start": "Das Datum der letzten Zahlung muss nach dem Startdatum liegen.",
       "start_in_future": "Das Startdatum darf nicht nach heute liegen.",

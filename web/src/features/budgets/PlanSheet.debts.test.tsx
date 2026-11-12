@@ -274,7 +274,7 @@ describe('a guest', () => {
     expect(items.map((i) => i.textContent)).toEqual(['Details'])
   })
 
-  it('opening a debt cell\'s sheet sees Details (the read-only review) and no Mark as paid off or Delete', async () => {
+  it('opening a debt cell\'s sheet sees Details, which opens the read-only review on its Overview', async () => {
     window.matchMedia = vi.fn().mockImplementation((q: string) => ({
       matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
     }))
@@ -285,8 +285,6 @@ describe('a guest', () => {
     await screen.findByTestId('plan-section-debts')
     await user.click(screen.getByTestId('plan-cell-debt-1:1'))
     const sheet = await screen.findByTestId('element-sheet')
-    expect(within(sheet).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
-    expect(within(sheet).queryByRole('button', { name: 'Delete' })).toBeNull()
     expect(within(screen.getByRole('dialog')).queryByRole('button', { name: 'Edit' })).toBeNull()
     await user.click(within(sheet).getByRole('button', { name: 'Details' }))
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')

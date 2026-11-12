@@ -482,7 +482,7 @@
     "menu_item": "Długi",
     "settings": {
       "header": "Długi",
-      "info": "Pożyczki i kredyty bez osobnego konta. Wydatki z kategorii długu pomniejszają kwotę do spłaty, a budżety pokazują je w sekcji Długi.",
+      "info": "Pożyczki i kredyty bez osobnego konta. Wydatki z kategorii długu pomniejszają kwotę do spłaty, a budżet długu pokazuje je w sekcji Długi.",
       "empty": "Nie masz jeszcze długów",
       "create": "Dodaj dług",
       "no_budget": "Długi należą do budżetu. Utwórz budżet albo poproś o możliwość planowania w jednym z nich, aby dodać dług."
@@ -2571,7 +2571,7 @@
       "key_conflict": "Te reguły płatności mogłyby pasować do tych samych płatności. Nadaj im różnych odbiorców, tagi lub tagi raportowe albo, w przypadku różnych długów, różne daty rozpoczęcia.",
       "start_date_taken": "Inny dług z tą samą kategorią, odbiorcą, tagiem i tagiem raportowym zaczyna się już w tym dniu.",
       "category_not_expense": "Dług wymaga kategorii wydatków.",
-      "removal_unconfirmed": "Spowoduje to usunięcie zaplanowanych kwot i komentarzy tego długu w Twoich budżetach; potwierdź, aby kontynuować.",
+      "removal_unconfirmed": "Spowoduje to usunięcie zaplanowanych kwot i komentarzy tego długu w jego budżecie; potwierdź, aby kontynuować.",
       "last_payment_in_past": "Data ostatniej płatności musi być późniejsza niż dzisiaj.",
       "last_payment_before_start": "Data ostatniej płatności musi być późniejsza niż data rozpoczęcia.",
       "start_in_future": "Data rozpoczęcia nie może być późniejsza niż dzisiaj.",

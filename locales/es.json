@@ -482,7 +482,7 @@
     "menu_item": "Deudas",
     "settings": {
       "header": "Deudas",
-      "info": "Préstamos y créditos sin necesidad de una cuenta. Los gastos de la categoría de la deuda se descuentan de lo que debes, y los presupuestos los muestran en una sección Deudas.",
+      "info": "Préstamos y créditos sin necesidad de una cuenta. Los gastos de las categorías de una deuda se descuentan de lo que debes, y el presupuesto de la deuda los muestra en una sección Deudas.",
       "empty": "Aún no hay deudas",
       "create": "Añadir deuda",
       "no_budget": "Las deudas pertenecen a un presupuesto. Crea un presupuesto, o pide permiso para planificar en uno, para añadir una deuda."
@@ -2571,7 +2571,7 @@
       "key_conflict": "Estas reglas de pago podrían coincidir con los mismos pagos. Dales beneficiarios, etiquetas o etiquetas de informes distintos o, si son de deudas diferentes, fechas de inicio diferentes.",
       "start_date_taken": "Otra deuda con la misma categoría, beneficiario, etiqueta y etiqueta de informes ya empieza en esta fecha.",
       "category_not_expense": "Una deuda necesita una categoría de gastos.",
-      "removal_unconfirmed": "Esto elimina los importes planificados y los comentarios de esta deuda en tus presupuestos; confirma para continuar.",
+      "removal_unconfirmed": "Esto elimina los importes planificados y los comentarios de esta deuda en su presupuesto; confirma para continuar.",
       "last_payment_in_past": "La fecha del último pago debe ser posterior a hoy.",
       "last_payment_before_start": "La fecha del último pago debe ser posterior a la fecha de inicio.",
       "start_in_future": "La fecha de inicio debe ser hoy o anterior.",

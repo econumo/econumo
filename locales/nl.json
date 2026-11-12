@@ -482,7 +482,7 @@
     "menu_item": "Schulden",
     "settings": {
       "header": "Schulden",
-      "info": "Leningen en krediet zonder rekening bijhouden. Uitgaven in de categorie van de schuld tellen mee voor wat u nog moet betalen, en budgetten tonen ze in een sectie Schulden.",
+      "info": "Leningen en krediet zonder rekening bijhouden. Uitgaven in de categorieën van een schuld tellen mee voor wat u nog moet betalen, en het budget van de schuld toont ze in een sectie Schulden.",
       "empty": "Nog geen schulden",
       "create": "Schuld toevoegen",
       "no_budget": "Schulden horen bij een budget. Maak een budget aan, of vraag of u in een budget mag plannen, om een schuld toe te voegen."
@@ -2571,7 +2571,7 @@
       "key_conflict": "Deze betalingsregels kunnen met dezelfde betalingen overeenkomen. Geef ze verschillende begunstigden, tags of rapportagetags, of, bij verschillende schulden, andere startdata.",
       "start_date_taken": "Een andere schuld met dezelfde categorie, begunstigde, tag en rapportagetag begint al op deze datum.",
       "category_not_expense": "Een schuld heeft een uitgavencategorie nodig.",
-      "removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen van deze schuld in uw budgetten verwijderd; bevestig om door te gaan.",
+      "removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen van deze schuld in het budget verwijderd; bevestig om door te gaan.",
       "last_payment_in_past": "De datum van de laatste betaling moet na vandaag liggen.",
       "last_payment_before_start": "De datum van de laatste betaling moet na de startdatum liggen.",
       "start_in_future": "De startdatum moet vandaag of eerder zijn.",

@@ -482,7 +482,7 @@
     "menu_item": "Dettes",
     "settings": {
       "header": "Dettes",
-      "info": "Suivez prêts et crédits sans compte. Les dépenses de la catégorie de la dette sont déduites de ce que vous devez, et les budgets les affichent dans une section Dettes.",
+      "info": "Suivez prêts et crédits sans compte. Les dépenses des catégories d'une dette sont déduites de ce que vous devez, et le budget de la dette les affiche dans une section Dettes.",
       "empty": "Aucune dette pour l’instant",
       "create": "Ajouter une dette",
       "no_budget": "Les dettes appartiennent à un budget. Créez un budget, ou demandez à pouvoir planifier dans l'un d'eux, pour ajouter une dette."
@@ -2571,7 +2571,7 @@
       "key_conflict": "Ces règles de paiement pourraient correspondre aux mêmes paiements. Donnez-leur des bénéficiaires, des tags ou des tags de rapport différents ou, pour des dettes différentes, des dates de début différentes.",
       "start_date_taken": "Une autre dette avec la même catégorie, le même bénéficiaire, le même tag et le même tag de rapport commence déjà à cette date.",
       "category_not_expense": "Une dette nécessite une catégorie de dépenses.",
-      "removal_unconfirmed": "Cela supprime les montants prévus et les commentaires de cette dette dans vos budgets ; confirmez pour continuer.",
+      "removal_unconfirmed": "Cela supprime les montants prévus et les commentaires de cette dette dans son budget ; confirmez pour continuer.",
       "last_payment_in_past": "La date du dernier paiement doit être postérieure à aujourd'hui.",
       "last_payment_before_start": "La date du dernier paiement doit être postérieure à la date de début.",
       "start_in_future": "La date de début doit être aujourd'hui ou antérieure.",

@@ -482,7 +482,7 @@
     "menu_item": "Dívidas",
     "settings": {
       "header": "Dívidas",
-      "info": "Empréstimos e créditos acompanhados sem uma conta. As despesas da categoria da dívida abatem o que deve, e os orçamentos mostram-nas numa secção Dívidas.",
+      "info": "Empréstimos e créditos acompanhados sem uma conta. As despesas nas categorias de uma dívida abatem o que deve, e o orçamento da dívida mostra-as numa secção Dívidas.",
       "empty": "Ainda não existem dívidas",
       "create": "Adicionar dívida",
       "no_budget": "As dívidas pertencem a um orçamento. Crie um orçamento, ou peça para planear num, para adicionar uma dívida."
@@ -2571,7 +2571,7 @@
       "key_conflict": "Estas regras de pagamento poderiam corresponder aos mesmos pagamentos. Atribua-lhes beneficiários, etiquetas ou etiquetas de relatório diferentes ou, no caso de dívidas diferentes, datas de início diferentes.",
       "start_date_taken": "Já existe outra dívida com a mesma categoria, beneficiário, etiqueta e etiqueta de relatório que começa nesta data.",
       "category_not_expense": "Uma dívida precisa de uma categoria de despesa.",
-      "removal_unconfirmed": "Isto elimina os montantes planeados e os comentários desta dívida nos seus orçamentos; confirme para continuar.",
+      "removal_unconfirmed": "Isto elimina os montantes planeados e os comentários desta dívida no respetivo orçamento; confirme para continuar.",
       "last_payment_in_past": "A data do último pagamento tem de ser posterior a hoje.",
       "last_payment_before_start": "A data do último pagamento tem de ser posterior à data de início.",
       "start_in_future": "A data de início tem de ser hoje ou anterior.",

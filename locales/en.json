@@ -482,7 +482,7 @@
     "menu_item": "Debts",
     "settings": {
       "header": "Debts",
-      "info": "Loans and credit tracked without an account. Expense payments in the debt's category count against what you owe, and budgets show them in a Debts section.",
+      "info": "Loans and credit tracked without an account. Expense payments in a debt's categories count against what you owe, and the debt's budget shows them in a Debts section.",
       "empty": "No debts yet",
       "create": "Add debt",
       "no_budget": "Debts belong to a budget. Create a budget, or ask to plan in one, to add a debt."
@@ -2571,7 +2571,7 @@
       "key_conflict": "These payment rules could match the same payments. Give them different payees, tags or reporting tags, or, for different debts, different start dates.",
       "start_date_taken": "Another debt with the same category, payee, tag and reporting tag already starts on this date.",
       "category_not_expense": "A debt needs an expense category.",
-      "removal_unconfirmed": "This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.",
+      "removal_unconfirmed": "This deletes the planned amounts and comments of this debt in its budget; confirm to continue.",
       "last_payment_in_past": "The last payment date must be after today.",
       "last_payment_before_start": "The last payment date must be after the start date.",
       "start_in_future": "The start date must be today or earlier.",

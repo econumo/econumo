@@ -213,14 +213,15 @@ func init() {
 
 	// debt_classification_cleanup: deleting or merging a category, payee,
 	// tag or label a debt's rule names never refuses. A deleted category
-	// takes its rule with it, a deleted payee widens the rule it narrowed, and
-	// when that leaves two debts' rules able to match one payment, the newer
-	// debt loses its rule; a merge that makes two rules identical does the
-	// same.
+	// takes its rule with it, a deleted payee, tag or label widens the rule it
+	// narrowed, and when that leaves two debts' rules able to match one
+	// payment, the newer debt loses its rule; a merge moves a rule to the
+	// target, and one that makes two rules identical does the same.
 	register(Scenario{Name: "debt_classification_cleanup", Calls: func() []Call {
 		op := func(n string) string { return "d1000000-0000-0000-0000-0000000000" + n }
-		var catA, catB, catC, catD, srcCat, dstCat, payeeA, payeeB, payeeC, srcPayee, dstPayee, srcLabel, dstLabel string
-		var debtA, debtB, debtC, debtD, debtE, debtF, debtG, debtH, debtI, debtJ string
+		var catA, catB, catC, catD, catE, catF, catG, srcCat, dstCat, payeeA, payeeB, payeeC, srcPayee, dstPayee, srcLabel, dstLabel string
+		var tagA, srcTag, dstTag, labelA string
+		var debtA, debtB, debtC, debtD, debtE, debtF, debtG, debtH, debtI, debtJ, debtK, debtL, debtM string
 		post := func(label, path string, body map[string]any) Call {
 			return Call{Label: label, Method: "POST", Path: path, Auth: "owner", Body: body}
 		}
@@ -288,6 +289,25 @@ func init() {
 			post("merge-label", "/api/v1/label/merge-label", map[string]any{"sourceId": &srcLabel, "targetId": &dstLabel}),
 			getDebt("get-older-debt-after-label-merge", &debtI),
 			getDebt("get-newer-debt-after-label-merge", &debtJ),
+
+			createCat("create-category-e", op("a7"), "Loan e", &catE),
+			createNamed("create-tag-a", "/api/v1/tag/create-tag", op("f1"), "Debt tag a", &tagA),
+			createDebt("create-debt-narrowed-by-tag-a", &debtK, rule(&catE, map[string]any{"tagId": &tagA})),
+			post("delete-tag-a", "/api/v1/tag/delete-tag", map[string]any{"id": &tagA}),
+			getDebt("get-debt-with-the-tag-rule-widened", &debtK),
+
+			createCat("create-category-f", op("a8"), "Loan f", &catF),
+			createNamed("create-source-tag", "/api/v1/tag/create-tag", op("f2"), "Debt tag one", &srcTag),
+			createNamed("create-target-tag", "/api/v1/tag/create-tag", op("f3"), "Debt tag two", &dstTag),
+			createDebt("create-debt-tag-source", &debtL, rule(&catF, map[string]any{"tagId": &srcTag})),
+			post("merge-tag", "/api/v1/tag/merge-tag", map[string]any{"sourceId": &srcTag, "targetId": &dstTag}),
+			getDebt("get-debt-after-tag-merge", &debtL),
+
+			createCat("create-category-g", op("a9"), "Loan g", &catG),
+			createNamed("create-label-a", "/api/v1/label/create-label", op("e3"), "Debt bike", &labelA),
+			createDebt("create-debt-narrowed-by-label-a", &debtM, rule(&catG, map[string]any{"labelId": &labelA})),
+			post("delete-label-a", "/api/v1/label/delete-label", map[string]any{"id": &labelA}),
+			getDebt("get-debt-with-the-label-rule-widened", &debtM),
 		}
 	}})
 

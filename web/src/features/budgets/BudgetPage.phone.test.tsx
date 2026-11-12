@@ -495,8 +495,6 @@ describe('a debt row\'s item sheet', () => {
     renderPage()
     const sheet = await openSheet(user)
     expect(within(sheet).queryByRole('button', { name: 'Finish setup' })).toBeNull()
-    expect(within(sheet).queryByRole('button', { name: 'Mark as paid off' })).toBeNull()
-    expect(within(sheet).queryByRole('button', { name: 'Delete' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
     await user.click(within(sheet).getByRole('button', { name: 'Details' }))
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')

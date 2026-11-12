@@ -5972,7 +5972,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Lists the participants of a budget, the caller first and then the others by name, each with their active expense categories, payees, tags and labels. Needs the right to plan in the budget: a guest gets 403, a caller who cannot read the budget 404.",
+                "description": "Lists the participants of a budget, the caller first and then the others by name, each with their active expense categories, payees, tags and labels. Needs the right to plan in the budget: a guest gets 403, a caller who cannot read the budget the not-found error.",
                 "produces": [
                     "application/json"
                 ],

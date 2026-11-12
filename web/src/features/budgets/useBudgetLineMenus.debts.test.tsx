@@ -256,7 +256,7 @@ describe('the debt row menu\'s actions', () => {
 
   it('Delete asks, and a removal_unconfirmed answer asks again and resends with confirmDataRemoval', async () => {
     const bodies: Record<string, unknown>[] = []
-    const refusal = 'This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.'
+    const refusal = 'This deletes the planned amounts and comments of this debt in its budget; confirm to continue.'
     server.use(
       http.post('*/api/v1/debt/delete-debt', async ({ request }) => {
         const body = (await request.json()) as Record<string, unknown>
