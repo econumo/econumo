@@ -320,6 +320,11 @@ func TestDebtUntil_LaterIdenticalRuleEndsEveryRule(t *testing.T) {
 	if got := DebtUntil(h, budget); got != nil {
 		t.Errorf("the latest debt: Until = %v, want nil", got)
 	}
+	// f's identical rule starts before this debt's: it does not end it
+	after := ruledDebt(7, startOn(time.May), ruleAt(8, k.Z, nil, nil, nil))
+	if got := DebtUntil(after, []*Debt{after, f}); got != nil {
+		t.Errorf("an identical debt starting earlier: Until = %v, want nil", got)
+	}
 }
 
 func TestDebtView_CarriesKey(t *testing.T) {
@@ -347,6 +352,8 @@ func TestSoleWholeCategory(t *testing.T) {
 		t.Errorf("{X} alone = %v, %v; want X, true", cat, ok)
 	}
 	partial := ruledDebt(3, startOn(time.March), ruleAt(4, k.X, idp(k.P), nil, nil))
+	// unreachable after CheckDebtRules ({X} and {X+P} overlap), checked only
+	// to pin that a partial rule never counts as sharing the category
 	if _, ok := SoleWholeCategory(d, []*Debt{d, partial}); !ok {
 		t.Error("another debt's partial rule on X does not stop {X} being whole")
 	}
