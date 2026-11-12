@@ -231,15 +231,18 @@ non-archived names; the suggestion lands in the OWNER's Inbox only (a partner's 
 Match text holds at least 3 letters or digits and must occur in the payee (the description when the payee
 is empty); there is one open suggestion per (owner, merchant, income/expense): the suggestion
 stores its type (`import_suggestions.transaction_type`), and a row (before the AI call) or a
-group (after it) joins an open one only when the types are equal, its text contains the
-suggestion's text and the suggestion fills a field the row or group lacks. One owner's jobs run
+group's rows (after it) join an open one only when the types are equal, the text contains the
+suggestion's text and the suggestion fills a field that row lacks (a group's other rows open a
+suggestion of their own); an open suggestion's archived or deleted category or payee counts as
+unset there, and one left with neither takes no rows. One owner's jobs run
 one at a time in-process (`ownerLocks`), so imports landing together do not open two suggestions
 for one merchant. A join first touches the suggestion row (`TouchOpenImportSuggestion`, a row
 lock): one the list read deleted meanwhile sends its rows to the AI (before the call) or into a
 new suggestion (after it), never a foreign-key failure. `get-suggestion-list` is computed at read
 time (archived categories and payees dropped, rows already filled or no longer of the stored type
 left out, each item's `type` the stored one); a suggestion left with nothing is deleted there,
-best effort. Accept moves a row's `applied_*` snapshot only for the fields it wrote, so a field
+best effort. Accept skips rows no longer of the stored type and moves a row's `applied_*`
+snapshot only for the fields it wrote, so a field
 the user set by hand still reads as edited for apply-rule. Dismissal is
 not remembered (the next tap may suggest again); accept deletes the suggestion. Accept opens the
 rule prompt (`RulePromptDialog`), whose category picker offers only categories of the suggestion's
@@ -258,7 +261,10 @@ invalidated after every successful write (`invalidateAfterWrite`; a read sent as
 `preview-rule` and `claim-setup-token`, opts out with `meta: { skipInvalidate: true }`), and after
 a sync that imported rows, with AI on, again at 15 s and 60 s (`scheduleSuggestionRefresh`,
 module-level timers). A failed suggestion list shows the Inbox's import error and Retry refetches
-it; a 404 (an older server) does not; analytics `appImportSuggestionAccept`, `appImportSuggestionDismiss`,
+it; a 404 (an older server) does not and is not retried, and a readonly user's list never raises
+the Inbox's offline notice. Accept invalidates the plan with the other ledger views. A Save whose
+stored rule was deleted since (the update or accept refused and the rule list no longer has it)
+forgets it and creates a fresh rule in the same Save; analytics `appImportSuggestionAccept`, `appImportSuggestionDismiss`,
 `appImportRuleAiMatchUsed`. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
 `repo/`, and `api/` with 32 routes under `/api/v1/import/` (`create-source`,

@@ -119,7 +119,8 @@ count as ongoing.
 **What it sends**, per row: an opaque row key, the external payee, the external description,
 the amount, the currency, income or expense, the posted date, the account name. For the owner:
 their non-archived categories (id, name, type), their non-archived payees (id, name;
-*builder's call*: at most 500, most recently used first), language and timezone. Never email
+*builder's call*: at most 500, sorted by name, since there is no usage data to rank them by;
+the order keeps the capped set stable from one request to the next), language and timezone. Never email
 addresses, other users' data, or balances.
 
 **What it asks for**, per row it is confident about:
@@ -141,7 +142,9 @@ more simply.
   Otherwise the row is dropped, because a rule needs a working match text;
 - a row with neither a valid category nor a valid payee is dropped;
 - reuse (attaching to an open suggestion without asking) also checks that the suggestion is of
-  the row's type and fills a field the row lacks, else the row goes to the AI;
+  the row's type and fills a field the row lacks, else the row goes to the AI. A suggestion's
+  category or payee the owner has since archived or deleted counts as unset, and a suggestion
+  left with neither takes no rows (the list hides it, so they would be lost);
 - a field the transaction already carries is dropped (a rule may have set one of the two).
 
 **One open suggestion per merchant (decided by the owner).** The owner never gets a new
@@ -150,8 +153,9 @@ grouped by (owner, match field, normalized match text). A group whose match text
 an open suggestion of the same owner, or that an open suggestion's match text matches, or whose
 match text matches the open suggestion's (one contains the other), joins that suggestion and
 keeps the open suggestion's category and payee, even when the AI proposed different ones this
-time, provided the open suggestion is of the group's type and fills a field one of the group's
-rows lacks. Otherwise the group becomes a new suggestion. A join locks the suggestion's row first;
+time, provided the open suggestion is of the group's type; this is decided per row: a row joins
+only when the open suggestion fills a field that row lacks, and the group's other rows become a
+new suggestion under the AI's classification. A join locks the suggestion's row first;
 one deleted meanwhile (the list read's cleanup) sends its rows to the AI, or, after the call, into
 a new suggestion. One owner's jobs run one at a time in the process, so two imports landing
 together cannot each open a suggestion for the same merchant. Within one reply, rows sharing a match text

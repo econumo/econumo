@@ -1015,6 +1015,12 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       "include edited", leaves its payee alone. 📱
 - [ ] If the suggestion list fails to load, the Inbox shows the import error and Retry loads
       it again. 📱
+- [ ] Archive the category of an open suggestion, then tap the same merchant again: a new
+      Suggested rules row appears with a current category, the tap is not lost. 📱
+- [ ] Suggested rule retry after the rule was deleted in Import rules: Save creates a new rule and
+      the suggestion is accepted (no endless error). 📱
+- [ ] In the rule prompt after an edit, if counting all imports fails after Apply, the dialog
+      closes (the rule is saved) instead of showing "Loading" forever. 📱
 - [ ] Suggestions come only from live imports: the first SimpleFIN sync's rows older than a
       week, and the queue replayed by mapping a card to an account, suggest nothing. A
       transfer, or a row the owner's rules already fully classify, suggests nothing. 📱
