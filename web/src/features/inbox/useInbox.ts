@@ -12,7 +12,7 @@ import { useRecurring } from '@/features/recurring/queries'
 import { useFailedWrites, useStoredQueueSettled } from '@/features/pendingWrites/hooks'
 import type { PendingOp } from '@/features/pendingWrites/types'
 import { hiddenFolderAccountIds } from '@/features/transactions/useTransactionForm'
-import { useUserData } from '@/features/user/queries'
+import { userAiOn, useUserData } from '@/features/user/queries'
 import { isFuture } from '@/lib/datetime'
 
 export interface Inbox {
@@ -25,7 +25,7 @@ export interface Inbox {
   failed: ImportFailedEventDto[]
   queued: ImportQueuedEventDto[]
   skipped: ImportQueuedEventDto[]
-  /** rules the server proposes for imported transactions; none for a readonly user, who can neither accept nor dismiss them */
+  /** rules the server proposes for imported transactions; none for a readonly user (who can neither accept nor dismiss them) or one who opted out of AI */
   suggestions: ImportSuggestionDto[]
   /** failedWrites + dueRecurring + invites + syncProblems + failed + queued + suggestions; skipped is never counted */
   count: number
@@ -69,9 +69,10 @@ export function useInbox(): Inbox {
   const sources = useImportSources()
   const suggestionList = useImportSuggestions()
   const { data: user } = useUserData()
-  const readonly = user?.accessLevel === 'readonly'
-  // a readonly user is shown no suggestions, so their list never decides the offline notice
-  const importsOffline = useUnavailableOffline(queue, sources, ...(readonly ? [] : [suggestionList]))
+  // a readonly user cannot act on suggestions and one who opted out of AI gets none; either
+  // way they are shown none, so their list never decides the offline notice
+  const noSuggestions = user?.accessLevel === 'readonly' || !userAiOn(user)
+  const importsOffline = useUnavailableOffline(queue, sources, ...(noSuggestions ? [] : [suggestionList]))
   const recurring = useRecurring()
   const { data: accounts } = useAccounts()
   const folders = useFolders()
@@ -86,10 +87,10 @@ export function useInbox(): Inbox {
   const queued = queue.data?.queued ?? []
   const skipped = queue.data?.skipped ?? []
   const failed = queue.data?.failed ?? []
-  const suggestions = readonly ? [] : (suggestionList.data ?? [])
+  const suggestions = noSuggestions ? [] : (suggestionList.data ?? [])
   // a 404 is an older server without the route: there is nothing to suggest, not a failure
   const suggestionsError =
-    !readonly && suggestionList.isError && !(isAxiosError(suggestionList.error) && suggestionList.error.response?.status === 404)
+    !noSuggestions && suggestionList.isError && !(isAxiosError(suggestionList.error) && suggestionList.error.response?.status === 404)
   return {
     failedWrites,
     dueRecurring,
@@ -103,7 +104,7 @@ export function useInbox(): Inbox {
     isLoaded:
       storedQueueSettled &&
       (queue.data !== undefined || queue.isError) &&
-      (readonly || suggestionList.data !== undefined || suggestionList.isError) &&
+      (noSuggestions || suggestionList.data !== undefined || suggestionList.isError) &&
       (sources.data !== undefined || sources.isError) &&
       (recurring.data !== undefined || recurring.isError) &&
       foldersKnown,
@@ -112,7 +113,7 @@ export function useInbox(): Inbox {
     retryImports: () => {
       void queue.refetch()
       void sources.refetch()
-      if (!readonly) void suggestionList.refetch()
+      if (!noSuggestions) void suggestionList.refetch()
     },
   }
 }

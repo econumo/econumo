@@ -1098,6 +1098,12 @@
             "label": "Help Econumo verbeteren",
             "description": "Gebruiksstatistieken laten ons zien welke functies van de app het populairst zijn en wat we moeten verbeteren.",
             "promise": "Uw financiële en persoonlijke gegevens blijven privé en komen niet in de statistieken terecht."
+          },
+          "ai": {
+            "menu_item": "AI-functies",
+            "label": "AI-functies gebruiken",
+            "description": "Als dit aan staat, stuurt Econumo de namen van uw geïmporteerde transacties, categorieën, begunstigden en rekeningen naar zijn AI-aanbieder om importregels, pictogrammen en spaarrekeningen voor te stellen.",
+            "off_hint": "Als dit uit staat, worden er geen gegevens van u naar de AI gestuurd en worden openstaande regelsuggesties verwijderd."
           }
         }
       }

@@ -643,6 +643,16 @@ describe('AI match text', () => {
     expect(posted.suggest).toBeUndefined()
   })
 
+  it('does not call suggest-match-text for a user who opted out of AI', async () => {
+    window.econumoConfig = { AI_ENABLED: true }
+    renderPrompt({ user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] } })
+    aiHandler('BLUE BOTTLE')
+    useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+    expect(await screen.findByLabelText('Payee contains')).toBeInTheDocument()
+    await new Promise((r) => setTimeout(r, 150))
+    expect(posted.suggest).toBeUndefined()
+  })
+
   it('never calls suggest-match-text for a link a rule classified', async () => {
     window.econumoConfig = { AI_ENABLED: true }
     renderPrompt({ importRules: [rule] })

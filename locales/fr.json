@@ -1098,6 +1098,12 @@
             "label": "Aider à améliorer Econumo",
             "description": "Les statistiques d'utilisation nous montrent quelles fonctionnalités de l'application sont les plus populaires et ce qu'il faut améliorer.",
             "promise": "Vos données financières et personnelles restent privées et ne figurent pas dans les statistiques."
+          },
+          "ai": {
+            "menu_item": "Fonctionnalités d'IA",
+            "label": "Utiliser les fonctionnalités d'IA",
+            "description": "Lorsque cette option est activée, Econumo envoie les noms de vos transactions importées, catégories, bénéficiaires et comptes à son fournisseur d'IA pour suggérer des règles d'importation, des icônes et des comptes d'épargne.",
+            "off_hint": "Lorsqu'elle est désactivée, aucune de vos données n'est envoyée à l'IA et les suggestions de règles en attente sont supprimées."
           }
         }
       }

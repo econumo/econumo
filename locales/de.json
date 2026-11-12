@@ -1098,6 +1098,12 @@
             "label": "Helfen, Econumo zu verbessern",
             "description": "Nutzungsstatistiken zeigen uns, welche Funktionen der App am beliebtesten sind und was wir verbessern sollten.",
             "promise": "Ihre finanziellen und persönlichen Daten bleiben privat und fließen nicht in die Statistik ein."
+          },
+          "ai": {
+            "menu_item": "KI-Funktionen",
+            "label": "KI-Funktionen verwenden",
+            "description": "Wenn aktiviert, sendet Econumo die Namen Ihrer importierten Buchungen, Kategorien, Empfänger und Konten an seinen KI-Anbieter, um Importregeln, Symbole und Sparkonten vorzuschlagen.",
+            "off_hint": "Wenn deaktiviert, werden keine Ihrer Daten an die KI gesendet und offene Regelvorschläge werden entfernt."
           }
         }
       }

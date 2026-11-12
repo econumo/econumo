@@ -283,6 +283,20 @@ it('hides suggestions from a readonly user, who cannot accept or dismiss them', 
   expect(result.current.suggestions).toEqual([])
 })
 
+it('hides suggestions from a user who opted out of AI', async () => {
+  const wrapper = makeWrapper()
+  const sg = { id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }
+  server.use(...coreHandlers({
+    user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] },
+    importQueue: { queued: [q('l1')], skipped: [], failed: [] },
+    importSuggestions: [sg],
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.count).toBe(1))
+  expect(result.current.suggestions).toEqual([])
+})
+
 it('offline, suggestions never loaded on this device read as unavailable rather than loading forever', async () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   queryClient.setQueryData(queryKeys.importQueue, { queued: [], skipped: [], failed: [] })

@@ -11,6 +11,12 @@ import { recordPathname, resetNavTracking } from '@/lib/navigation'
 import i18n from '@/app/i18n'
 import { ProfilePage } from './ProfilePage'
 import { ThemeProvider } from '@/app/ThemeProvider'
+import { METRICS, trackEvent } from '@/lib/metrics'
+
+vi.mock('@/lib/metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/metrics')>()),
+  trackEvent: vi.fn(),
+}))
 
 function mockViewport(compact = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -277,6 +283,56 @@ it('toggles the analytics preference', async () => {
 
   await waitFor(() => expect(body).toEqual({ enabled: false }))
   await waitFor(() => expect(toggle).not.toBeChecked())
+})
+
+it('hides the AI features row when the server has no AI', async () => {
+  window.econumoConfig = { AI_ENABLED: false }
+  renderPage()
+  expect(await screen.findByText('Sign-in methods')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'AI features' })).not.toBeInTheDocument()
+})
+
+it('turns AI features off, tracks it and refreshes the suggestions', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  vi.mocked(trackEvent).mockClear()
+  let body: unknown
+  server.use(
+    http.post('*/api/v1/user/update-ai', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] } },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  const queryClient = renderPage()
+  queryClient.setQueryData(queryKeys.importSuggestions, [])
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  const toggle = within(dialog).getByRole('switch', { name: /use ai features/i })
+  expect(toggle).toBeChecked()
+
+  await user.click(toggle)
+
+  await waitFor(() => expect(body).toEqual({ enabled: false }))
+  await waitFor(() => expect(toggle).not.toBeChecked())
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_UPDATE_AI, { enabled: false })
+  expect(queryClient.getQueryState(queryKeys.importSuggestions)?.isInvalidated).toBe(true)
+})
+
+it('disables the AI switch offline', async () => {
+  window.econumoConfig = { AI_ENABLED: true }
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  const dialog = await screen.findByRole('dialog')
+  act(() => onlineManager.setOnline(false))
+  try {
+    expect(within(dialog).getByRole('switch', { name: /use ai features/i })).toBeDisabled()
+  } finally {
+    act(() => onlineManager.setOnline(true))
+  }
 })
 
 it('logout confirm has the exact copy and navigates', async () => {
