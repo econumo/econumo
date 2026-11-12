@@ -254,7 +254,8 @@ Accept opens the rule prompt (`RulePromptDialog`), whose category picker offers 
 of the suggestion's `type`; the rule a Save makes is kept per suggestion in the ui store until the
 accept lands, its id minted and stored before create-rule is sent, so a retry (even after Cancel
 and a reopen, or after a create whose answer was lost: `create-rule` answers an id of the
-caller's own already stored with that rule) updates that rule rather than creating a second one.
+caller's own already stored with that rule, also when an overlapping create with that id commits
+first and its insert hits the key) updates that rule rather than creating a second one.
 An accept or dismiss refused for a suggestion no longer listed (its first attempt landed, the
 answer lost) counts as done.
 preview/apply skip rows the rule would not change, and the prompt asks to apply to all imports only
@@ -1146,10 +1147,14 @@ it). Key vars:
   name) with the account owner's category and payee names (payees capped at 500), language and timezone,
   and `suggest-match-text` sends one transaction's details (see the imports paragraph).
   A user who turned the per-user `ai` option off (`update-ai`) sends nothing: no onboarding
-  job starts for them (an unreadable preference starts none either), the suggestion job skips
+  job starts for them (an unreadable preference starts none either), and each onboarding request
+  re-reads the option right before its provider call, so a job queued before the opt-out sends
+  nothing either; the suggestion job skips
   every account they OWN (the owner decides, also for a partner's taps on it),
   and it re-reads the option right before the AI call and again in the write's transaction, so
-  turning AI off mid-job sends or stores nothing; `suggest-match-text` answers empty without
+  turning AI off mid-job sends or stores nothing (and once more after that transaction commits,
+  removing what it just stored when an opt-out committed alongside it unseen, which PostgreSQL's
+  read committed allows); `suggest-match-text` answers empty without
   counting the limiter. Turning the option off deletes the user's open suggestions in the same
   request (best effort, through the user feature's `AISuggestionClearer` port, implemented by
   the imports service and wired in `internal/server`), and `get-suggestion-list` also answers
