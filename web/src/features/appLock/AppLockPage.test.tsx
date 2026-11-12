@@ -146,6 +146,15 @@ it('changes the PIN after the current one, counting a wrong try', async () => {
   expect(config.lockAfterMs).toBe(60_000)
 })
 
+it('turning it off offers no PIN | Pattern switch', async () => {
+  await configure()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(lockSwitch())
+  const dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
+  expect(within(dialog).queryByRole('radiogroup')).not.toBeInTheDocument()
+})
+
 it('turning it off needs the current PIN, and a wrong one counts', async () => {
   await configure()
   useLockStore.setState({ locked: false })
@@ -375,10 +384,11 @@ describe('patterns', () => {
     renderPage()
     await user.click(screen.getByRole('button', { name: /Change PIN or pattern\s*PIN/ }))
     let dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
-    expect(within(dialog).queryByRole('radio', { name: 'Pattern' })).not.toBeInTheDocument()
-    await typePin(user, dialog, '1234')
-    dialog = await screen.findByRole('dialog', { name: 'Choose a new PIN' })
+    // The kind for the new secret is picked before the current PIN is confirmed.
     await user.click(within(dialog).getByRole('radio', { name: 'Pattern' }))
+    dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
+    expect(within(dialog).getByTestId('pin-dots')).toBeInTheDocument()
+    await typePin(user, dialog, '1234')
     dialog = await screen.findByRole('dialog', { name: 'Draw a new pattern' })
     draw(dialog, [6, 7, 8, 5])
     dialog = await screen.findByRole('dialog', { name: 'Draw the pattern again' })
