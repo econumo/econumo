@@ -35,7 +35,7 @@ export interface DebtDto {
   /** the first rule's category icon */
   icon: string
   currencyId: Id
-  /** 1..10, oldest first */
+  /** 0..10 (0 only after a classification delete), oldest first */
   rules: DebtRuleDto[]
   /** the day the loan began (always there once set up); "" when none */
   startDate: string

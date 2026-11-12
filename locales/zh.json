@@ -575,7 +575,9 @@
       "heading": "计入哪些还款",
       "add_category": "添加分类",
       "remove": "移除此分类",
-      "owned_category": "{owner}的{category}"
+      "owned_category": "{owner}的{category}",
+      "none": "没有分类",
+      "none_editor": "没有分类。请在设置中添加。"
     },
     "add_to": {
       "title": "添加到债务",

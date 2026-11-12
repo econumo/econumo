@@ -373,6 +373,21 @@ it('a debt not set up without a start date counts from the first payment', async
   expect(within(loan).getByText('Start date').nextElementSibling).toHaveTextContent('From the first payment')
 })
 
+// deleting the categories of every rule leaves a debt with none: one line says so
+it.each([
+  [1, 'No categories. Add one in Settings.'],
+  [0, 'No categories'],
+] as const)('a debt with no rules left says so (canEdit %s)', async (canEdit, line) => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, canEdit, rules: [] } })))
+  renderScreen()
+  await openScreen()
+  const group = screen.getByRole('group', { name: 'Which payments count' })
+  expect(within(group).getByText(line)).toBeInTheDocument()
+  if (canEdit === 0) {
+    expect(group).not.toHaveTextContent('Settings')
+  }
+})
+
 describe('a guest reads the debt without changing it', () => {
   const anna = {
     id: 'r2', categoryId: 'cat-mortgage', categoryName: 'Mortgage', categoryIcon: 'home', ownerUserId: 'u2', ownerName: 'Anna',

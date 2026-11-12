@@ -575,7 +575,9 @@
       "heading": "Which payments count",
       "add_category": "Add a category",
       "remove": "Remove this category",
-      "owned_category": "{owner}'s {category}"
+      "owned_category": "{owner}'s {category}",
+      "none": "No categories",
+      "none_editor": "No categories. Add one in Settings."
     },
     "add_to": {
       "title": "Add to a debt",

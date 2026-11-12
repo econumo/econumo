@@ -582,7 +582,7 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
         </dl>
       </section>
 
-      <RulesReadOnly rules={item.rules} />
+      <RulesReadOnly rules={item.rules} canEdit={item.canEdit === 1} />
 
       <PaymentsSection payments={payments} splits={setUp} canForecast={canForecast} forecast={forecast} amount={amount} lang={lang} />
 

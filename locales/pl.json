@@ -575,7 +575,9 @@
       "heading": "Które płatności się liczą",
       "add_category": "Dodaj kategorię",
       "remove": "Usuń tę kategorię",
-      "owned_category": "{category} ({owner})"
+      "owned_category": "{category} ({owner})",
+      "none": "Brak kategorii",
+      "none_editor": "Brak kategorii. Dodaj kategorię w Ustawieniach."
     },
     "add_to": {
       "title": "Dodaj do długu",

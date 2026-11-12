@@ -575,7 +575,9 @@
       "heading": "Welke betalingen tellen",
       "add_category": "Categorie toevoegen",
       "remove": "Deze categorie verwijderen",
-      "owned_category": "{category} van {owner}"
+      "owned_category": "{category} van {owner}",
+      "none": "Geen categorieën",
+      "none_editor": "Geen categorieën. Voeg er een toe in Instellingen."
     },
     "add_to": {
       "title": "Toevoegen aan een schuld",

@@ -52,20 +52,26 @@ function RulesCard({ children, footer }: { children: ReactNode; footer?: ReactNo
 }
 
 /** The debt's stored rules read out, a partner's category with its owner's name */
-export function RulesReadOnly({ rules }: { rules: DebtRuleDto[] }) {
+export function RulesReadOnly({ rules, canEdit = false }: { rules: DebtRuleDto[]; canEdit?: boolean }) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   return (
     <RulesCard>
-      {rules.map((rule) => (
-        <PaymentsFromEditor key={rule.id} value={ruleDraft(rule)} onChange={noop} choices={storedChoices(rule, user?.id, t)} readOnly />
-      ))}
+      {/* deleting the categories of every rule leaves none */}
+      {rules.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t(canEdit ? 'debts.rules.none_editor' : 'debts.rules.none')}</p>
+      ) : (
+        rules.map((rule) => (
+          <PaymentsFromEditor key={rule.id} value={ruleDraft(rule)} onChange={noop} choices={storedChoices(rule, user?.id, t)} readOnly />
+        ))
+      )}
     </RulesCard>
   )
 }
 
 /**
- * Which payments count as the debt's: one sentence per rule (1..10), each on
+ * Which payments count as the debt's: one sentence per rule (1..10 when
+ * saved; a stored debt may have 0 after a classification delete), each on
  * a category of any participant of the budget. The category picker groups
  * the categories by participant, the caller's first; the payee and tag
  * pickers list what the chosen category's owner has. Read-only, the stored
