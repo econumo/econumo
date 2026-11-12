@@ -2205,7 +2205,9 @@
       "about": "Le verrouillage protège Econumo sur cet appareil uniquement. Si vous oubliez le code PIN ou le schéma, vous devrez vous reconnecter. Il ne chiffre pas les données stockées sur l'appareil.",
       "enabled_label": "Verrouillage de l'app",
       "enabled_hint": "Demander un code PIN ou un schéma à l'ouverture d'Econumo",
-      "change_secret": "Modifier le code PIN ou le schéma",
+      "unlock_with": "Déverrouiller avec",
+      "change_pin": "Modifier le code PIN",
+      "change_pattern": "Modifier le schéma",
       "pin_changed": "Code PIN modifié",
       "pattern_changed": "Schéma modifié",
       "lock_after": {

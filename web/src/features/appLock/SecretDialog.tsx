@@ -19,6 +19,8 @@ interface SecretDialogProps {
   flow: SecretFlow
   /** the stored secret, for the current-secret step */
   current: { kind: SecretKind; length: number } | null
+  /** change: the kind the new secret starts as (picked on the settings page) */
+  newKind?: SecretKind
   onClose: () => void
   /** enable/change: the new secret (PIN digits or an encoded pattern), confirmed; disable: nothing */
   onComplete: (secret?: string) => void | Promise<void>
@@ -26,10 +28,10 @@ interface SecretDialogProps {
 }
 
 // Remount it (key) for every new flow: the steps keep no state across opens.
-export function SecretDialog({ open, flow, current, onClose, onComplete, onExceeded }: SecretDialogProps) {
+export function SecretDialog({ open, flow, current, newKind, onClose, onComplete, onExceeded }: SecretDialogProps) {
   const { t, i18n } = useTranslation()
   const [step, setStep] = useState<Step>(flow === 'enable' ? 'create' : 'verify')
-  const [kind, setKind] = useState<SecretKind>(flow === 'change' && current ? current.kind : 'pin')
+  const [kind, setKind] = useState<SecretKind>(newKind ?? (flow === 'change' && current ? current.kind : 'pin'))
   const [round, setRound] = useState(0)
   const [error, setError] = useState('')
   const [remaining, setRemaining] = useState(() => MAX_FAILED_ATTEMPTS - readAttempts().failedAttempts)
@@ -145,7 +147,7 @@ export function SecretDialog({ open, flow, current, onClose, onComplete, onExcee
           <div
             className="mb-4 flex w-full max-w-64 rounded-md border p-0.5"
             role="radiogroup"
-            aria-label={t('appLock.settings.change_secret')}
+            aria-label={t('appLock.settings.unlock_with')}
           >
             {(['pin', 'pattern'] as const).map((option) => (
               <button

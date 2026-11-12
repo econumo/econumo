@@ -2205,7 +2205,9 @@
       "about": "Blokada chroni Econumo tylko na tym urządzeniu. Jeśli zapomnisz PIN-u lub wzoru, trzeba będzie zalogować się ponownie. Nie szyfruje danych zapisanych na urządzeniu.",
       "enabled_label": "Blokada aplikacji",
       "enabled_hint": "Pytaj o PIN lub wzór przy otwieraniu Econumo",
-      "change_secret": "Zmień PIN lub wzór",
+      "unlock_with": "Sposób odblokowania",
+      "change_pin": "Zmień PIN",
+      "change_pattern": "Zmień wzór",
       "pin_changed": "PIN zmieniony",
       "pattern_changed": "Wzór zmieniony",
       "lock_after": {

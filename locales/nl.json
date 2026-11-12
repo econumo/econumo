@@ -2205,7 +2205,9 @@
       "about": "De vergrendeling beschermt Econumo alleen op dit apparaat. Als u de pincode of het patroon vergeet, moet u opnieuw inloggen. De gegevens op het apparaat worden niet versleuteld.",
       "enabled_label": "App-vergrendeling",
       "enabled_hint": "Om een pincode of patroon vragen bij het openen van Econumo",
-      "change_secret": "Pincode of patroon wijzigen",
+      "unlock_with": "Ontgrendelen met",
+      "change_pin": "Pincode wijzigen",
+      "change_pattern": "Patroon wijzigen",
       "pin_changed": "Pincode gewijzigd",
       "pattern_changed": "Patroon gewijzigd",
       "lock_after": {

@@ -20,6 +20,7 @@ import {
   resetAttempts,
   writeConfig,
   type AppLockConfig,
+  type SecretKind,
 } from './config'
 import { APP_LOCK_CONFIG_KEY } from './keys'
 import { clearFreshMarker, unlock } from './lockStore'
@@ -33,7 +34,7 @@ export function AppLockPage() {
   const navigate = useNavigate()
   const { data: user } = useUserData()
   const [config, setConfig] = useState<AppLockConfig | null>(() => activeConfig())
-  const [flow, setFlow] = useState<{ kind: SecretFlow; seq: number; open: boolean } | null>(null)
+  const [flow, setFlow] = useState<{ kind: SecretFlow; seq: number; open: boolean; newKind?: SecretKind } | null>(null)
   const flowSeq = useRef(0)
   // The flow still on screen; a check or hash finishing after the dialog was
   // dismissed must not change the lock.
@@ -54,10 +55,10 @@ export function AppLockPage() {
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
-  const openFlow = (kind: SecretFlow) => {
+  const openFlow = (kind: SecretFlow, newKind?: SecretKind) => {
     const seq = ++flowSeq.current
     openSeq.current = seq
-    setFlow({ kind, seq, open: true })
+    setFlow({ kind, seq, open: true, newKind })
   }
   const closeFlow = () => {
     openSeq.current = null
@@ -172,15 +173,30 @@ export function AppLockPage() {
 
         {enabled ? (
           <>
+            <div className={rowClass}>
+              <span className="text-sm">{t('appLock.settings.unlock_with')}</span>
+              <div className="flex w-44 shrink-0 rounded-md border p-0.5" role="radiogroup" aria-label={t('appLock.settings.unlock_with')}>
+                {(['pin', 'pattern'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    role="radio"
+                    aria-checked={config.secret.kind === option}
+                    className={`flex-1 rounded px-2 py-1.5 text-sm ${config.secret.kind === option ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+                    onClick={() => option !== config.secret.kind && openFlow('change', option)}
+                  >
+                    {option === 'pin' ? t('appLock.settings.dialog.kind_pin') : t('appLock.settings.dialog.kind_pattern')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button
               type="button"
               className={`${rowClass} text-left text-sm hover:bg-econumo-hover`}
               onClick={() => openFlow('change')}
             >
-              <span className="min-w-0 flex-1">{t('appLock.settings.change_secret')}</span>
-              <span className="shrink-0 text-muted-foreground">
-                {config.secret.kind === 'pattern' ? t('appLock.settings.dialog.kind_pattern') : t('appLock.settings.dialog.kind_pin')}
-              </span>
+              {config.secret.kind === 'pattern' ? t('appLock.settings.change_pattern') : t('appLock.settings.change_pin')}
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </button>
 
@@ -207,6 +223,7 @@ export function AppLockPage() {
           key={flow.seq}
           open={flow.open}
           flow={flow.kind}
+          newKind={flow.newKind}
           current={config ? { kind: config.secret.kind, length: config.secret.length } : null}
           onClose={closeFlow}
           onComplete={onComplete}
