@@ -1290,7 +1290,7 @@
     },
     "connect_step": {
       "heading": "Połącz swoje konta",
-      "text": "Niech transakcje pojawiają się same, zamiast wpisywać je ręcznie.",
+      "text": "Niech transakcje pojawiają się same, bez ręcznego wpisywania.",
       "apple_wallet": {
         "title": "Apple Wallet",
         "text": "Automatyzacja w aplikacji Skróty na iPhonie wysyła każdą płatność Apple Pay do Econumo.",

@@ -1290,7 +1290,7 @@
     },
     "connect_step": {
       "heading": "连接你的账户",
-      "text": "让交易自动进来，无需手动输入。",
+      "text": "交易自动导入，无需手动录入。",
       "apple_wallet": {
         "title": "Apple Wallet",
         "text": "iPhone 上的快捷指令自动化会把每笔 Apple Pay 付款发送到 Econumo。",
@@ -1307,7 +1307,7 @@
       },
       "copy": "复制",
       "copied": "已复制",
-      "later": "你可以稍后随时在设置中进行设置。",
+      "later": "你可以稍后随时在“设置”中完成。",
       "finish": "完成设置"
     },
     "retry": "重试",

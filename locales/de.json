@@ -1290,7 +1290,7 @@
     },
     "connect_step": {
       "heading": "Verbinden Sie Ihre Konten",
-      "text": "Lassen Sie Ihre Buchungen von selbst ankommen, statt sie einzutippen.",
+      "text": "Lassen Sie Ihre Transaktionen von selbst eintreffen, statt sie einzutippen.",
       "apple_wallet": {
         "title": "Apple Wallet",
         "text": "Eine Kurzbefehle-Automation auf Ihrem iPhone sendet jede Apple-Pay-Zahlung an Econumo.",
@@ -1298,7 +1298,7 @@
       },
       "simplefin": {
         "title": "SimpleFIN",
-        "text": "SimpleFIN Bridge ist ein kostenpflichtiger Drittanbieterdienst, der sich mit Ihrer Bank verbindet (vor allem in den USA und Kanada). Econumo holt bei jeder Synchronisierung Ihre Buchungen darüber ab.",
+        "text": "SimpleFIN Bridge ist ein kostenpflichtiger Drittanbieterdienst, der sich mit Ihrer Bank verbindet (vor allem in den USA und Kanada). Econumo ruft bei jeder Synchronisierung Ihre Transaktionen darüber ab.",
         "link": "SimpleFIN einrichten"
       },
       "mcp": {
