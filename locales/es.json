@@ -2508,8 +2508,7 @@
       "type_invalid": "El tipo de categoría no existe.",
       "not_found": "Categoría no encontrada.",
       "cannot_be_merged": "Las categorías seleccionadas no se pueden combinar.",
-      "list_empty": "La lista de categorías está vacía.",
-      "used_by_debt": "Una deuda usa esta categoría. Elimina o cambia primero la deuda."
+      "list_empty": "La lista de categorías está vacía."
     },
     "connection": {
       "invalid_uuid": "Esto no es un UUID válido.",
@@ -2550,8 +2549,7 @@
     "label": {
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
       "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
-      "list_empty": "La lista de etiquetas está vacía.",
-      "used_by_debt": "Una deuda usa esta etiqueta de informes. Elimina o cambia primero la deuda."
+      "list_empty": "La lista de etiquetas está vacía."
     },
     "debt": {
       "payments_dont_cover": "Los pagos no cubren el saldo. Aumenta el pago o fija una fecha de último pago posterior.",
@@ -2586,15 +2584,13 @@
       "name_length": "El nombre del beneficiario debe tener entre {min} y {max} caracteres.",
       "already_exists": "El beneficiario ya existe.",
       "cannot_be_merged": "Los beneficiarios seleccionados no se pueden combinar.",
-      "list_empty": "La lista de beneficiarios está vacía.",
-      "used_by_debt": "Una deuda usa este beneficiario. Elimina o cambia primero la deuda."
+      "list_empty": "La lista de beneficiarios está vacía."
     },
     "tag": {
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
       "already_exists": "La etiqueta ya existe.",
       "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
-      "list_empty": "La lista de etiquetas está vacía.",
-      "used_by_debt": "Una deuda usa esta etiqueta. Elimina o cambia primero la deuda."
+      "list_empty": "La lista de etiquetas está vacía."
     },
     "token": {
       "name_length": "El nombre del token debe tener entre {min} y {max} caracteres.",

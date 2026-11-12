@@ -3,41 +3,66 @@ package label_test
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
+	"github.com/econumo/econumo/internal/infra/clock"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	applabel "github.com/econumo/econumo/internal/label"
+	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
-	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
-// fakeDebtUsage records the calls and, at Reassign time, whether the source
-// still exists, so the test pins that the debt moves before the source goes.
+// fakeDebtUsage logs the debt calls and, at Release/Reassign time, whether
+// the label still exists, so the tests pin the order the delete and the merge
+// take.
 type fakeDebtUsage struct {
-	used        bool
-	reassignErr error
-	reassigned  [][2]vo.Id
-	// calls is the order of the merge's debt calls: "prepare", "reassign".
-	calls          []string
-	sourceExistsAt func(ctx context.Context) bool
-	sourceExisted  bool
+	calls   []string
+	exists  func(ctx context.Context) bool
+	existed []bool
+	err     error
 }
 
-func (f *fakeDebtUsage) InUse(context.Context, vo.Id) (bool, error) { return f.used, nil }
+func joinIDs(ids ...vo.Id) string {
+	s := make([]string, len(ids))
+	for i, id := range ids {
+		s[i] = id.String()
+	}
+	return strings.Join(s, ",")
+}
 
-func (f *fakeDebtUsage) PrepareMerge(context.Context, vo.Id, vo.Id) error {
-	f.calls = append(f.calls, "prepare")
+func (f *fakeDebtUsage) Prepare(_ context.Context, ids ...vo.Id) error {
+	f.calls = append(f.calls, "prepare "+joinIDs(ids...))
 	return nil
 }
 
+func (f *fakeDebtUsage) Release(ctx context.Context, id vo.Id) error {
+	f.calls = append(f.calls, "release "+id.String())
+	f.existed = append(f.existed, f.exists(ctx))
+	return f.err
+}
+
 func (f *fakeDebtUsage) Reassign(ctx context.Context, oldID, newID vo.Id) error {
-	f.calls = append(f.calls, "reassign")
-	f.reassigned = append(f.reassigned, [2]vo.Id{oldID, newID})
-	if f.sourceExistsAt != nil {
-		f.sourceExisted = f.sourceExistsAt(ctx)
-	}
-	return f.reassignErr
+	f.calls = append(f.calls, "reassign "+joinIDs(oldID, newID))
+	f.existed = append(f.existed, f.exists(ctx))
+	return f.err
+}
+
+func newGuardLabelSvc(t *testing.T, db *dbtest.DB, debts *fakeDebtUsage) (*applabel.Service, *fixture.Builder, string) {
+	t.Helper()
+	f := fixture.New(t, db)
+	owner := f.User(fixture.User{Name: "Owner"})
+	repo := labelrepo.NewRepo(db.Engine, db.TX)
+	readRepo := labelrepo.NewReadRepo(db.Engine, db.TX)
+	access := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, db.TX))
+	svc := applabel.NewService(repo, db.TX, operationrepo.NewGuard(db.Engine, db.TX), clock.New(), readRepo, access)
+	svc.SetDebtUsage(debts)
+	return svc, f, owner
 }
 
 func labelExistsIn(t *testing.T, db *dbtest.DB, ctx context.Context, id string) bool {
@@ -49,57 +74,76 @@ func labelExistsIn(t *testing.T, db *dbtest.DB, ctx context.Context, id string) 
 	return n > 0
 }
 
-func TestDeleteLabel_RefusedWhileDebtUsesIt(t *testing.T) {
+func TestDeleteLabel_ReleasesDebtRules(t *testing.T) {
 	db := dbtest.New(t)
-	f := labelFixture(t, db)
-	svc := newLabelSvc(t, db)
-	id := f.Label(fixture.Label{UserID: labelOwnerID})
-	svc.SetDebtUsage(&fakeDebtUsage{used: true})
+	debts := &fakeDebtUsage{}
+	svc, f, owner := newGuardLabelSvc(t, db, debts)
+	id := f.Label(fixture.Label{UserID: owner})
+	debts.exists = func(ctx context.Context) bool { return labelExistsIn(t, db, ctx, id) }
 
-	_, err := svc.DeleteLabel(context.Background(), vo.MustParseId(labelOwnerID), model.DeleteLabelRequest{Id: id})
-	var verr *errs.ValidationError
-	if !errors.As(err, &verr) || verr.MsgCode != errs.CodeLabelUsedByDebt {
-		t.Fatalf("want used_by_debt refusal, got %v", err)
-	}
-	if !labelExistsIn(t, db, context.Background(), id) {
-		t.Error("label was deleted despite the refusal")
-	}
-}
-
-func TestDeleteLabel_AllowedWhenNoDebtUsesIt(t *testing.T) {
-	db := dbtest.New(t)
-	f := labelFixture(t, db)
-	svc := newLabelSvc(t, db)
-	id := f.Label(fixture.Label{UserID: labelOwnerID})
-	svc.SetDebtUsage(&fakeDebtUsage{})
-
-	if _, err := svc.DeleteLabel(context.Background(), vo.MustParseId(labelOwnerID), model.DeleteLabelRequest{Id: id}); err != nil {
+	if _, err := svc.DeleteLabel(context.Background(), vo.MustParseId(owner), model.DeleteLabelRequest{Id: id}); err != nil {
 		t.Fatal(err)
+	}
+	// the budgets are locked before anything else, the rules released while
+	// the label row still exists (debts_rules has a NO ACTION foreign key)
+	if want := []string{"prepare " + id, "release " + id}; !slices.Equal(debts.calls, want) {
+		t.Fatalf("debt calls = %v, want %v", debts.calls, want)
+	}
+	if !slices.Equal(debts.existed, []bool{true}) {
+		t.Error("Release ran after the label was deleted")
 	}
 	if labelExistsIn(t, db, context.Background(), id) {
 		t.Error("label still exists")
 	}
 }
 
-func TestMergeLabel_DebtFollowsTarget(t *testing.T) {
+func TestDeleteLabel_ForeignLabelTouchesNoDebt(t *testing.T) {
 	db := dbtest.New(t)
-	f := labelFixture(t, db)
-	svc := newLabelSvc(t, db)
-	src := f.Label(fixture.Label{UserID: labelOwnerID, Name: "Car"})
-	dst := f.Label(fixture.Label{UserID: labelOwnerID, Name: "Loan"})
-	debts := &fakeDebtUsage{sourceExistsAt: func(ctx context.Context) bool { return labelExistsIn(t, db, ctx, src) }}
-	svc.SetDebtUsage(debts)
+	debts := &fakeDebtUsage{}
+	svc, f, owner := newGuardLabelSvc(t, db, debts)
+	stranger := f.User(fixture.User{Name: "Stranger", Email: "stranger@example.test"})
+	id := f.Label(fixture.Label{UserID: stranger})
 
-	if _, err := svc.MergeLabel(context.Background(), vo.MustParseId(labelOwnerID), model.MergeLabelRequest{SourceId: src, TargetId: dst}); err != nil {
+	if _, err := svc.DeleteLabel(context.Background(), vo.MustParseId(owner), model.DeleteLabelRequest{Id: id}); err == nil {
+		t.Fatal("deleting another user's label succeeded")
+	}
+	if len(debts.calls) != 0 {
+		t.Errorf("debt calls = %v, want none before the ownership check passes", debts.calls)
+	}
+}
+
+func TestDeleteLabel_DebtErrorRollsBack(t *testing.T) {
+	db := dbtest.New(t)
+	boom := errors.New("boom")
+	debts := &fakeDebtUsage{err: boom}
+	svc, f, owner := newGuardLabelSvc(t, db, debts)
+	id := f.Label(fixture.Label{UserID: owner})
+	debts.exists = func(context.Context) bool { return true }
+
+	if _, err := svc.DeleteLabel(context.Background(), vo.MustParseId(owner), model.DeleteLabelRequest{Id: id}); !errors.Is(err, boom) {
+		t.Fatalf("err = %v, want boom", err)
+	}
+	if !labelExistsIn(t, db, context.Background(), id) {
+		t.Error("label was deleted although releasing its rules failed")
+	}
+}
+
+func TestMergeLabel_ReassignsDebtRules(t *testing.T) {
+	db := dbtest.New(t)
+	debts := &fakeDebtUsage{}
+	svc, f, owner := newGuardLabelSvc(t, db, debts)
+	src := f.Label(fixture.Label{UserID: owner})
+	dst := f.Label(fixture.Label{UserID: owner})
+	debts.exists = func(ctx context.Context) bool { return labelExistsIn(t, db, ctx, src) }
+
+	if _, err := svc.MergeLabel(context.Background(), vo.MustParseId(owner), model.MergeLabelRequest{SourceId: src, TargetId: dst}); err != nil {
 		t.Fatal(err)
 	}
-	if len(debts.reassigned) != 1 || debts.reassigned[0] != [2]vo.Id{vo.MustParseId(src), vo.MustParseId(dst)} {
-		t.Fatalf("Reassign calls = %v", debts.reassigned)
+	want := []string{"prepare " + src + "," + dst, "reassign " + src + "," + dst}
+	if !slices.Equal(debts.calls, want) {
+		t.Fatalf("calls = %v, want %v", debts.calls, want)
 	}
-	if len(debts.calls) != 2 || debts.calls[0] != "prepare" || debts.calls[1] != "reassign" {
-		t.Fatalf("debt calls = %v, want prepare then reassign", debts.calls)
-	}
-	if !debts.sourceExisted {
+	if !slices.Equal(debts.existed, []bool{true}) {
 		t.Error("Reassign ran after the source was deleted")
 	}
 	if labelExistsIn(t, db, context.Background(), src) {
@@ -107,20 +151,19 @@ func TestMergeLabel_DebtFollowsTarget(t *testing.T) {
 	}
 }
 
-func TestMergeLabel_RefusedOnDebtKeyConflict(t *testing.T) {
+func TestMergeLabel_DebtErrorRollsBack(t *testing.T) {
 	db := dbtest.New(t)
-	f := labelFixture(t, db)
-	svc := newLabelSvc(t, db)
-	src := f.Label(fixture.Label{UserID: labelOwnerID, Name: "Car"})
-	dst := f.Label(fixture.Label{UserID: labelOwnerID, Name: "Loan"})
-	conflict := &errs.ValidationError{Msg: "Another debt could match the same payments.", MsgCode: errs.CodeDebtKeyConflict}
-	svc.SetDebtUsage(&fakeDebtUsage{reassignErr: conflict})
+	boom := errors.New("boom")
+	debts := &fakeDebtUsage{err: boom}
+	svc, f, owner := newGuardLabelSvc(t, db, debts)
+	src := f.Label(fixture.Label{UserID: owner})
+	dst := f.Label(fixture.Label{UserID: owner})
+	debts.exists = func(context.Context) bool { return true }
 
-	_, err := svc.MergeLabel(context.Background(), vo.MustParseId(labelOwnerID), model.MergeLabelRequest{SourceId: src, TargetId: dst})
-	if !errors.Is(err, conflict) {
-		t.Fatalf("want the key conflict, got %v", err)
+	if _, err := svc.MergeLabel(context.Background(), vo.MustParseId(owner), model.MergeLabelRequest{SourceId: src, TargetId: dst}); !errors.Is(err, boom) {
+		t.Fatalf("err = %v, want boom", err)
 	}
 	if !labelExistsIn(t, db, context.Background(), src) {
-		t.Error("source was deleted although the merge was refused")
+		t.Error("source was deleted although the merge failed")
 	}
 }

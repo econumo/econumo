@@ -4,6 +4,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	appcategory "github.com/econumo/econumo/internal/category"
@@ -12,7 +13,6 @@ import (
 	applabel "github.com/econumo/econumo/internal/label"
 	"github.com/econumo/econumo/internal/model"
 	apppayee "github.com/econumo/econumo/internal/payee"
-	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	apptag "github.com/econumo/econumo/internal/tag"
 )
@@ -33,8 +33,8 @@ type debtLabels interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.Label, error)
 }
 
-// DebtClassifications answers ownership questions from the category, payee,
-// tag and label repositories.
+// DebtClassifications reads the category, payee, tag or label a debt rule
+// names from its repository; a missing one is the repository's not-found.
 type DebtClassifications struct {
 	categories debtCategories
 	payees     debtPayees
@@ -46,47 +46,34 @@ func NewDebtClassifications(categories debtCategories, payees debtPayees, tags d
 	return &DebtClassifications{categories: categories, payees: payees, tags: tags, labels: labels}
 }
 
-// CategoryOf masks a category of another user as not found.
-func (c *DebtClassifications) CategoryOf(ctx context.Context, ownerID, id vo.Id) (string, string, bool, error) {
-	cat, err := c.categories.GetByID(ctx, id)
-	if err != nil {
-		return "", "", false, err
+func (c *DebtClassifications) Classification(ctx context.Context, kind string, id vo.Id) (model.DebtClassification, error) {
+	switch kind {
+	case debt.KindCategory:
+		cat, err := c.categories.GetByID(ctx, id)
+		if err != nil {
+			return model.DebtClassification{}, err
+		}
+		return model.DebtClassification{OwnerID: cat.UserID, Name: cat.Name, Icon: cat.Icon, IsExpense: cat.Type == model.TypeExpense}, nil
+	case debt.KindPayee:
+		p, err := c.payees.GetByID(ctx, id)
+		if err != nil {
+			return model.DebtClassification{}, err
+		}
+		return model.DebtClassification{OwnerID: p.UserID, Name: p.Name}, nil
+	case debt.KindTag:
+		t, err := c.tags.GetByID(ctx, id)
+		if err != nil {
+			return model.DebtClassification{}, err
+		}
+		return model.DebtClassification{OwnerID: t.UserID, Name: t.Name, Icon: t.Icon}, nil
+	case debt.KindLabel:
+		l, err := c.labels.GetByID(ctx, id)
+		if err != nil {
+			return model.DebtClassification{}, err
+		}
+		return model.DebtClassification{OwnerID: l.UserID, Name: l.Name, Icon: l.Icon}, nil
 	}
-	if !cat.UserID.Equal(ownerID) {
-		return "", "", false, errs.NewNotFound("Category not found")
-	}
-	return cat.Name, cat.Icon, cat.Type == model.TypeExpense, nil
-}
-
-func (c *DebtClassifications) PayeeOwned(ctx context.Context, ownerID, id vo.Id) (bool, error) {
-	p, err := c.payees.GetByID(ctx, id)
-	if err != nil {
-		return false, ignoreNotFound(err)
-	}
-	return p.UserID.Equal(ownerID), nil
-}
-
-func (c *DebtClassifications) TagOwned(ctx context.Context, ownerID, id vo.Id) (bool, error) {
-	t, err := c.tags.GetByID(ctx, id)
-	if err != nil {
-		return false, ignoreNotFound(err)
-	}
-	return t.UserID.Equal(ownerID), nil
-}
-
-func (c *DebtClassifications) LabelOwned(ctx context.Context, ownerID, id vo.Id) (bool, error) {
-	l, err := c.labels.GetByID(ctx, id)
-	if err != nil {
-		return false, ignoreNotFound(err)
-	}
-	return l.UserID.Equal(ownerID), nil
-}
-
-func ignoreNotFound(err error) error {
-	if _, nf := errs.AsNotFound(err); nf {
-		return nil
-	}
-	return err
+	return model.DebtClassification{}, fmt.Errorf("debt glue: unknown classification kind %q", kind)
 }
 
 type debtRateSource interface {
@@ -121,9 +108,9 @@ func (r *DebtRates) FractionDigits(ctx context.Context, currencyID vo.Id) (int, 
 }
 
 type debtClassificationUsage interface {
-	InUse(ctx context.Context, kind string, id vo.Id) (bool, error)
+	LockForClassification(ctx context.Context, kind string, ids ...vo.Id) error
+	ReleaseClassification(ctx context.Context, kind string, id vo.Id) error
 	ReassignClassification(ctx context.Context, kind string, oldID, newID vo.Id) error
-	LockForMerge(ctx context.Context, kind string, oldID, newID vo.Id) error
 }
 
 // DebtUsage adapts the debt service to the DebtUsage port the category, payee,
@@ -137,12 +124,12 @@ func NewDebtUsage(debts debtClassificationUsage, kind string) *DebtUsage {
 	return &DebtUsage{debts: debts, kind: kind}
 }
 
-func (u *DebtUsage) InUse(ctx context.Context, id vo.Id) (bool, error) {
-	return u.debts.InUse(ctx, u.kind, id)
+func (u *DebtUsage) Prepare(ctx context.Context, ids ...vo.Id) error {
+	return u.debts.LockForClassification(ctx, u.kind, ids...)
 }
 
-func (u *DebtUsage) PrepareMerge(ctx context.Context, oldID, newID vo.Id) error {
-	return u.debts.LockForMerge(ctx, u.kind, oldID, newID)
+func (u *DebtUsage) Release(ctx context.Context, id vo.Id) error {
+	return u.debts.ReleaseClassification(ctx, u.kind, id)
 }
 
 func (u *DebtUsage) Reassign(ctx context.Context, oldID, newID vo.Id) error {

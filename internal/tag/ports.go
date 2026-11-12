@@ -34,15 +34,20 @@ type BudgetElementMerger interface {
 	MergeElements(ctx context.Context, oldExternalID, newExternalID vo.Id) error
 }
 
-// DebtUsage is backed by the debt feature: a debt keyed on this tag must
-// block its deletion, and follows a merge to the target. Reassign returns the
-// coded debt.key_conflict refusal when the merge would leave two debts that
-// can match the same payment.
+// DebtUsage is backed by the debt feature. Deleting or merging a tag is never
+// refused because of a debt: the debt rules naming it are released (delete)
+// or moved to the target (merge), whatever access the caller has to those
+// debts.
+//
+// Lock order: a debt write locks its budget row before it touches a tag
+// row or a budget element row, so a delete or merge calls Prepare before it
+// locks the tag row or any budget element row.
 type DebtUsage interface {
-	InUse(ctx context.Context, id vo.Id) (bool, error)
+	// Prepare locks the budgets of the debts whose rules name any of ids;
+	// first in the transaction.
+	Prepare(ctx context.Context, ids ...vo.Id) error
+	// Release takes id out of every debt rule; called before the row is
+	// deleted.
+	Release(ctx context.Context, id vo.Id) error
 	Reassign(ctx context.Context, oldID, newID vo.Id) error
-	// PrepareMerge locks the owners of the debts a merge touches. The merge
-	// calls it before any write: a debt write takes the owner row before the
-	// budget rows, and a merge must take them in the same order.
-	PrepareMerge(ctx context.Context, oldID, newID vo.Id) error
 }

@@ -2508,8 +2508,7 @@
       "type_invalid": "Podany typ kategorii nie istnieje.",
       "not_found": "Nie znaleziono kategorii.",
       "cannot_be_merged": "Nie można scalić wybranych kategorii.",
-      "list_empty": "Lista kategorii jest pusta.",
-      "used_by_debt": "Dług używa tej kategorii. Najpierw usuń lub zmień dług."
+      "list_empty": "Lista kategorii jest pusta."
     },
     "connection": {
       "invalid_uuid": "To nie jest prawidłowy UUID.",
@@ -2550,8 +2549,7 @@
     "label": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
-      "list_empty": "Lista tagów jest pusta.",
-      "used_by_debt": "Dług używa tego tagu raportowego. Najpierw usuń lub zmień dług."
+      "list_empty": "Lista tagów jest pusta."
     },
     "debt": {
       "payments_dont_cover": "Płatności nie pokrywają salda. Zwiększ płatność lub ustaw późniejszą datę ostatniej płatności.",
@@ -2586,15 +2584,13 @@
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki odbiorca już istnieje.",
       "cannot_be_merged": "Nie można scalić wybranych odbiorców.",
-      "list_empty": "Lista odbiorców jest pusta.",
-      "used_by_debt": "Dług używa tego odbiorcy. Najpierw usuń lub zmień dług."
+      "list_empty": "Lista odbiorców jest pusta."
     },
     "tag": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki tag już istnieje.",
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
-      "list_empty": "Lista tagów jest pusta.",
-      "used_by_debt": "Dług używa tego tagu. Najpierw usuń lub zmień dług."
+      "list_empty": "Lista tagów jest pusta."
     },
     "token": {
       "name_length": "Nazwa tokena musi mieć od {min} do {max} znaków.",

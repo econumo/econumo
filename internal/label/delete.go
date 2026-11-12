@@ -13,9 +13,8 @@ import (
 // probe which label ids exist. transactions_labels AND
 // recurring_transactions_labels rows referencing it go with it via their
 // ON DELETE CASCADE FKs — recurring templates silently lose the label, so
-// future postings of those templates no longer carry it. A label a debt
-// matches its payments by cannot be deleted; otherwise to keep them, use
-// merge-label instead.
+// future postings of those templates no longer carry it; to keep them, use
+// merge-label instead. Debt rules naming the label stop narrowing by it.
 func (s *Service) DeleteLabel(ctx context.Context, userID vo.Id, req model.DeleteLabelRequest) (*model.DeleteLabelResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -30,14 +29,8 @@ func (s *Service) DeleteLabel(ctx context.Context, userID vo.Id, req model.Delet
 		if !l.UserID.Equal(userID) {
 			return errs.NewNotFound("Label not found")
 		}
-		if s.debts != nil {
-			used, uerr := s.debts.InUse(ctx, id)
-			if uerr != nil {
-				return uerr
-			}
-			if used {
-				return &errs.ValidationError{Msg: "A debt uses this reporting tag. Delete or change the debt first.", MsgCode: errs.CodeLabelUsedByDebt}
-			}
+		if err := s.releaseDebtRules(ctx, id); err != nil {
+			return err
 		}
 		return s.repo.Delete(ctx, id)
 	}); err != nil {
@@ -45,4 +38,21 @@ func (s *Service) DeleteLabel(ctx context.Context, userID vo.Id, req model.Delet
 	}
 
 	return &model.DeleteLabelResult{}, nil
+}
+
+// releaseDebtRules runs before the delete's first write, in the lock order
+// DebtUsage describes: the debts' budget rows, then the label row (waiting
+// out a debt write adding a rule on it), then the rules are released while
+// the row still exists, since debts_rules refers to it.
+func (s *Service) releaseDebtRules(ctx context.Context, id vo.Id) error {
+	if s.debts == nil {
+		return nil
+	}
+	if err := s.debts.Prepare(ctx, id); err != nil {
+		return err
+	}
+	if err := s.repo.LockForDelete(ctx, id); err != nil {
+		return err
+	}
+	return s.debts.Release(ctx, id)
 }

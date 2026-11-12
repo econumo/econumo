@@ -26,15 +26,19 @@ type TagNames interface {
 	NamesByOwner(ctx context.Context, ownerID vo.Id) ([]string, error)
 }
 
-// DebtUsage is backed by the debt feature: a debt matching payments by this
-// label must block its deletion, and follows a merge to the target. Reassign
-// returns the coded debt.key_conflict refusal when the merge would leave two
-// debts that can match the same payment.
+// DebtUsage is backed by the debt feature. Deleting or merging a label is
+// never refused because of a debt: the debt rules naming it are released
+// (delete) or moved to the target (merge), whatever access the caller has to
+// those debts.
+//
+// Lock order: a debt write locks its budget row before it touches a label
+// row, so a delete or merge calls Prepare before it locks the label row.
 type DebtUsage interface {
-	InUse(ctx context.Context, id vo.Id) (bool, error)
+	// Prepare locks the budgets of the debts whose rules name any of ids;
+	// first in the transaction.
+	Prepare(ctx context.Context, ids ...vo.Id) error
+	// Release takes id out of every debt rule; called before the row is
+	// deleted.
+	Release(ctx context.Context, id vo.Id) error
 	Reassign(ctx context.Context, oldID, newID vo.Id) error
-	// PrepareMerge locks the owners of the debts a merge touches. The merge
-	// calls it before any write: a debt write takes the owner row first, and a
-	// merge must take it in the same order.
-	PrepareMerge(ctx context.Context, oldID, newID vo.Id) error
 }

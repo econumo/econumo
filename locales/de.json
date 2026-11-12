@@ -2508,8 +2508,7 @@
       "type_invalid": "CategoryType existiert nicht",
       "not_found": "Kategorie nicht gefunden",
       "cannot_be_merged": "Die ausgewählten Kategorien können nicht zusammengeführt werden.",
-      "list_empty": "Die Kategorienliste ist leer",
-      "used_by_debt": "Eine Schuld verwendet diese Kategorie. Löschen oder ändern Sie zuerst die Schuld."
+      "list_empty": "Die Kategorienliste ist leer"
     },
     "connection": {
       "invalid_uuid": "Dies ist keine gültige UUID.",
@@ -2550,8 +2549,7 @@
     "label": {
       "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",
       "cannot_be_merged": "Die ausgewählten Tags können nicht zusammengeführt werden.",
-      "list_empty": "Die Tag-Liste ist leer",
-      "used_by_debt": "Eine Schuld verwendet diesen Auswertungs-Tag. Löschen oder ändern Sie zuerst die Schuld."
+      "list_empty": "Die Tag-Liste ist leer"
     },
     "debt": {
       "payments_dont_cover": "Die Zahlungen decken die Restschuld nicht. Erhöhen Sie die Rate oder legen Sie ein späteres Datum der letzten Zahlung fest.",
@@ -2586,15 +2584,13 @@
       "name_length": "Der Name des Zahlungsempfängers muss {min}-{max} Zeichen lang sein",
       "already_exists": "Der Zahlungsempfänger existiert bereits.",
       "cannot_be_merged": "Die ausgewählten Zahlungsempfänger können nicht zusammengeführt werden.",
-      "list_empty": "Die Liste der Zahlungsempfänger ist leer",
-      "used_by_debt": "Eine Schuld verwendet diesen Zahlungsempfänger. Löschen oder ändern Sie zuerst die Schuld."
+      "list_empty": "Die Liste der Zahlungsempfänger ist leer"
     },
     "tag": {
       "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",
       "already_exists": "Das Tag existiert bereits.",
       "cannot_be_merged": "Die ausgewählten Tags können nicht zusammengeführt werden.",
-      "list_empty": "Die Tag-Liste ist leer",
-      "used_by_debt": "Eine Schuld verwendet diesen Tag. Löschen oder ändern Sie zuerst die Schuld."
+      "list_empty": "Die Tag-Liste ist leer"
     },
     "token": {
       "name_length": "Der Token-Name muss {min}-{max} Zeichen lang sein",

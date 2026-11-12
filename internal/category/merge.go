@@ -58,9 +58,14 @@ func (s *Service) MergeCategory(ctx context.Context, userID vo.Id, req model.Mer
 			return cannotMerge
 		}
 
+		// Lock order (see DebtUsage): the debts' budget rows, then the source
+		// row, before any other write.
 		if s.debts != nil {
-			if derr := s.debts.PrepareMerge(txCtx, sourceID, targetID); derr != nil {
+			if derr := s.debts.Prepare(txCtx, sourceID, targetID); derr != nil {
 				return derr
+			}
+			if lerr := s.repo.LockForDelete(txCtx, sourceID); lerr != nil {
+				return lerr
 			}
 		}
 		if rerr := s.repo.ReassignTransactions(txCtx, sourceID, targetID); rerr != nil {
