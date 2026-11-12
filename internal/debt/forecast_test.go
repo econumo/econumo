@@ -217,3 +217,60 @@ func TestGetDebtForecast_FollowsTheBudgetsPeriods(t *testing.T) {
 		t.Fatalf("May %q, June %q; want the extra on June 1", byDate["2026-05-01"], byDate["2026-06-01"])
 	}
 }
+
+// With no plans to follow, the summary is get-debt's own figures; a budget's
+// plans change it.
+func TestGetDebtForecast_SummaryMatchesTheDebtWithoutPlans(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	flat := fixture.NewID()
+	e.svc.SetBudgetPlans(&fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
+		flat: {Name: "Flat", PeriodStartDay: 15, Plans: map[string]string{"2026-06-01": "1000"}},
+	}})
+
+	for _, budget := range []string{"", flat} {
+		got := e.forecast(t, res.Id, budget)
+		if got.PaymentsLeft != res.PaymentsLeft || got.PayoffDate != res.PayoffDate || got.OverpaymentLeft != res.OverpaymentLeft {
+			t.Fatalf("budget %q: summary = %d %q %q, want the debt's %d %q %q", budget, got.PaymentsLeft, got.PayoffDate, got.OverpaymentLeft,
+				res.PaymentsLeft, res.PayoffDate, res.OverpaymentLeft)
+		}
+	}
+	if res.PaymentsLeft == 0 || res.PayoffDate == "" || !vo.NewDecimal(res.OverpaymentLeft).IsGreaterThan(vo.NewDecimal("0")) {
+		t.Fatalf("debt = %+v: the loan should carry interest", res)
+	}
+}
+
+// A plan above the regular payment pays the loan off sooner: fewer payments,
+// less interest, an earlier payoff.
+func TestGetDebtForecast_SummaryFollowsThePlans(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	budget := fixture.NewID()
+	e.svc.SetBudgetPlans(&fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
+		budget: {Name: "Family", PeriodStartDay: 1, Plans: map[string]string{"2026-05-01": "4000"}},
+	}})
+
+	got := e.forecast(t, res.Id, budget)
+	if got.PaymentsLeft >= res.PaymentsLeft {
+		t.Fatalf("payments left = %d, want fewer than the schedule's %d", got.PaymentsLeft, res.PaymentsLeft)
+	}
+	if !vo.NewDecimal(got.OverpaymentLeft).IsLessThan(vo.NewDecimal(res.OverpaymentLeft)) {
+		t.Fatalf("overpayment left = %s, want less than the schedule's %s", got.OverpaymentLeft, res.OverpaymentLeft)
+	}
+	if got.PayoffDate == "" || got.PayoffDate >= res.PayoffDate {
+		t.Fatalf("payoff = %q, want before the schedule's %q", got.PayoffDate, res.PayoffDate)
+	}
+	if last := got.Items[len(got.Items)-1]; last.Date != got.PayoffDate {
+		t.Fatalf("payoff = %q, want the last payment's %q", got.PayoffDate, last.Date)
+	}
+}
+
+func TestGetDebtForecast_SummaryEmptyWhileNotSetUp(t *testing.T) {
+	e := newEnv(t)
+	res := e.createWithoutTerms(t, nil)
+
+	got := e.forecast(t, res.Id, "")
+	if got.PaymentsLeft != 0 || got.PayoffDate != "" || got.OverpaymentLeft != "" {
+		t.Fatalf("summary = %d %q %q, want none", got.PaymentsLeft, got.PayoffDate, got.OverpaymentLeft)
+	}
+}

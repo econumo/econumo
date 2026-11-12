@@ -52,8 +52,18 @@ func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.G
 	if n := len(st.pays); n > 0 && debtDate(st.pays[n-1].date).After(from) {
 		from = debtDate(st.pays[n-1].date)
 	}
-	proj := st.projectPeriods(from, nil, plans, startDay)
 	digits := st.digits
+	// The summary runs from today, as the debt's own figures do, so with no
+	// plans it is exactly them.
+	summary := st.project(today, nil, nil)
+	if len(plans) > 0 {
+		summary = st.projectPeriods(today, nil, plans, startDay)
+	}
+	res.PaymentsLeft, res.OverpaymentLeft = summary.PaymentsLeft, amountString(summary.OverpaymentLeft, digits)
+	if !summary.PaidOff {
+		res.PayoffDate = dateString(summary.PayoffDate)
+	}
+	proj := st.projectPeriods(from, nil, plans, startDay)
 	extra := false
 	for _, p := range proj.Payments {
 		pay, interest := roundTo(p.Payment, digits), roundTo(p.Interest, digits)

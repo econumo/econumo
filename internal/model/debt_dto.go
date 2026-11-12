@@ -151,11 +151,16 @@ type DebtForecastItem struct {
 
 // DebtForecastResult lists the payments still to come, soonest first, to the
 // payoff. budgetId/budgetName name the budget whose planned extras it
-// includes, "" when it follows the regular payments alone.
+// includes, "" when it follows the regular payments alone. paymentsLeft,
+// payoffDate and overpaymentLeft are DebtResult's figures with those plans
+// (equal to them when there are none); 0 and "" while the debt is not set up.
 type DebtForecastResult struct {
-	Items      []DebtForecastItem `json:"items"`
-	BudgetId   string             `json:"budgetId"`
-	BudgetName string             `json:"budgetName"`
+	Items           []DebtForecastItem `json:"items"`
+	BudgetId        string             `json:"budgetId"`
+	BudgetName      string             `json:"budgetName"`
+	PaymentsLeft    int                `json:"paymentsLeft"`
+	PayoffDate      string             `json:"payoffDate"`
+	OverpaymentLeft string             `json:"overpaymentLeft"`
 }
 
 // DebtBudgetPlans is one budget's plans of a debt's row: period key
