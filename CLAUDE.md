@@ -791,7 +791,9 @@ each event at capture time (the SDK has no custom batch attributes). A per-user
 `analytics` option (`users_options`, on by default) gates capture, is
 mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
 resolves after the first pageview), and is toggled via
-`POST /api/v1/user/update-analytics`.
+`POST /api/v1/user/update-analytics`. A per-user `ai` option (absent = on, `"0"` off) is
+the AI opt-out, toggled via `POST /api/v1/user/update-ai` (`{enabled}`, answers the user)
+from a Profile row shown only when the served `AI_ENABLED` is true; see `ECONUMO_AI_DSN`.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 
@@ -1142,6 +1144,14 @@ it). Key vars:
   send the new transactions' details (payee, description, amount, currency, income/expense, date, account
   name) with the account owner's category and payee names (payees capped at 500), language and timezone,
   and `suggest-match-text` sends one transaction's details (see the imports paragraph).
+  A user who turned the per-user `ai` option off (`update-ai`) sends nothing: no onboarding
+  job starts for them (an unreadable preference starts none either), the suggestion job skips
+  every account they OWN (the owner decides, also for a partner's taps on it),
+  `suggest-match-text` answers empty without counting the limiter, and `get-suggestion-list`
+  answers empty and deletes their open suggestions on that read (the imports feature reads the
+  option through its `OwnerFacts` port, so the user feature never reaches into imports).
+  Turning it back on affects only new imports. The SPA hides suggestions and skips
+  `suggest-match-text` for such a user.
   The key is optional for local servers (`openai://localhost:11434?model=llama3.1`).
   Unset (default) leaves the provider disabled. A bad scheme/missing host/missing `model`
   fails at boot.
@@ -1629,7 +1639,8 @@ In the distroless image these run via the binary directly, e.g.
   `authserver/decline-authorization` (declining writes nothing) and
   `authserver/approve-authorization` (so a lapsed user can approve a
   `read` request; an `mcp` approval from such a user still answers 402) —
-  plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
+  plus `update-analytics` and `update-ai`: withdrawing from product analytics or from the AI
+  is a privacy right, not a
   paid feature, so it must work regardless of access level, and `update-last-seen-version`,
   so the "what's new" card stays dismissable); `GET` reads are never restricted.
 

@@ -2718,6 +2718,19 @@ User C sees none of it.
       reload; log out and back in — the switch still reads off; a read-only
       user (lapsed trial) can still flip it, unlike other writes on that
       account. There is no Privacy group on the Profile page any more.
+- [ ] AI features 📱 (Settings → Profile → Preferences, after Usage
+      statistics): the row shows only when the server has an AI provider
+      (`ECONUMO_AI_DSN`); without one it is absent. Tapping it opens a dialog
+      (bottom sheet on a phone) explaining what is sent, with a "Use AI
+      features" switch, on for a user who never touched it. The switch is
+      disabled offline. Switching it off persists across a reload; a read-only
+      user can still flip it. While off: open rule suggestions vanish from the
+      Inbox at once and do not come back after switching on again; a new Apple
+      Wallet tap or SimpleFIN sync brings no suggestion (also for a partner's
+      tap on an account this user owns); the import rule dialog makes no
+      `suggest-match-text` request; onboarding's finish-import and
+      save-accounts start no AI job (icons stay default, no savings flagged).
+      Switching it back on brings suggestions for new imports only.
 - [ ] Create a personal token with scope "full" — it works everywhere; an
       "ingest" token (created via "Configure on this iPhone" or the API) is
       rejected with 401 on every non-import route and accepted on
