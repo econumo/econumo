@@ -81,6 +81,18 @@ definitions:
     type: object
   model.AcceptAccountAccessResult:
     type: object
+  model.AcceptImportSuggestionRequest:
+    properties:
+      id:
+        type: string
+      ruleId:
+        type: string
+    type: object
+  model.AcceptImportSuggestionResult:
+    properties:
+      updated:
+        type: integer
+    type: object
   model.AcceptInviteRequest:
     properties:
       code:
@@ -1318,6 +1330,11 @@ definitions:
       eventId:
         type: string
     type: object
+  model.DismissImportSuggestionRequest:
+    properties:
+      id:
+        type: string
+    type: object
   model.ExchangeHandoffRequest:
     properties:
       code:
@@ -1516,6 +1533,13 @@ definitions:
       items:
         items:
           $ref: '#/definitions/model.ImportSourceResult'
+        type: array
+    type: object
+  model.GetImportSuggestionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ImportSuggestionResult'
         type: array
     type: object
   model.GetLabelListResult:
@@ -1846,6 +1870,40 @@ definitions:
       provider:
         type: string
       status:
+        type: string
+    type: object
+  model.ImportSuggestionResult:
+    properties:
+      categoryId:
+        type: string
+      id:
+        type: string
+      matchField:
+        type: string
+      matchText:
+        type: string
+      payeeId:
+        type: string
+      transactions:
+        description: newest first
+        items:
+          $ref: '#/definitions/model.ImportSuggestionTransactionResult'
+        type: array
+    type: object
+  model.ImportSuggestionTransactionResult:
+    properties:
+      accountId:
+        type: string
+      amount:
+        type: string
+      currency:
+        description: the account's currency code
+        type: string
+      date:
+        type: string
+      externalPayee:
+        type: string
+      transactionId:
         type: string
     type: object
   model.IngestEventResult:
@@ -6949,6 +7007,53 @@ paths:
       summary: Update a custom currency
       tags:
       - Currency
+  /api/v1/import/accept-suggestion:
+    post:
+      consumes:
+      - application/json
+      description: After a rule was created from the suggestion, fills that rule's
+        category and payee into the empty fields of the suggestion's transactions
+        the rule matches, and closes the suggestion.
+      parameters:
+      - description: Accept suggestion request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AcceptImportSuggestionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AcceptImportSuggestionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Accept an import rule suggestion
+      tags:
+      - Import
   /api/v1/import/apply-rule:
     post:
       consumes:
@@ -7274,6 +7379,52 @@ paths:
       summary: Discard a failed event
       tags:
       - Import
+  /api/v1/import/dismiss-suggestion:
+    post:
+      consumes:
+      - application/json
+      description: Deletes the suggestion and returns the remaining list. A later
+        import from the same merchant may bring a new one.
+      parameters:
+      - description: Dismiss suggestion request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DismissImportSuggestionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportSuggestionListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Dismiss an import rule suggestion
+      tags:
+      - Import
   /api/v1/import/get-credential-key:
     get:
       description: Returns the caller's passphrase-wrapped data key and KDF parameters.
@@ -7515,6 +7666,35 @@ paths:
       security:
       - Bearer: []
       summary: List import sources
+      tags:
+      - Import
+  /api/v1/import/get-suggestion-list:
+    get:
+      description: Returns the caller's open AI rule suggestions with the imported
+        transactions each would still fill, newest first.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportSuggestionListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List import rule suggestions
       tags:
       - Import
   /api/v1/import/get-transaction-import-list:

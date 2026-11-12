@@ -1,0 +1,9 @@
+== err:accept-suggestion-blank POST /api/v1/import/accept-suggestion [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."],"ruleId":["This value is not valid."]}}
+
+== err:accept-suggestion-foreign POST /api/v1/import/accept-suggestion [guest] -> 400
+{"success":false,"message":"Import suggestion not found","code":0,"errors":{}}
+
+== err:accept-suggestion-unknown-rule POST /api/v1/import/accept-suggestion [owner] -> 400
+{"success":false,"message":"Import rule not found","code":0,"errors":{}}
+

@@ -295,4 +295,47 @@ func init() {
 		}
 	}})
 
+	// The seed holds one open suggestion of the owner's (PayeeShop for the
+	// Employer tap on Txn2); the harness has no AI, so none is ever created.
+	const suggestionRuleID = "0192b1e4-0000-7000-8000-00000000c010"
+	register(Scenario{Name: "import_suggestion_list", Calls: func() []Call {
+		return []Call{
+			{Label: "get-suggestion-list", Method: "GET", Path: "/api/v1/import/get-suggestion-list", Auth: "owner"},
+			{Label: "get-suggestion-list-guest", Method: "GET", Path: "/api/v1/import/get-suggestion-list", Auth: "guest"},
+		}
+	}})
+
+	register(Scenario{Name: "import_suggestion_accept", Calls: func() []Call {
+		return []Call{
+			{Label: "create-rule", Method: "POST", Path: "/api/v1/import/create-rule", Auth: "owner",
+				Body: map[string]any{"id": suggestionRuleID, "action": "classify", "matchField": "external_payee", "matchType": "contains", "matchValue": "Employer", "payeeId": PayeeShop}},
+			{Label: "accept-suggestion", Method: "POST", Path: "/api/v1/import/accept-suggestion", Auth: "owner",
+				Body: map[string]any{"id": ImportSuggestionEmployer, "ruleId": suggestionRuleID}},
+			{Label: "get-suggestion-list-after-accept", Method: "GET", Path: "/api/v1/import/get-suggestion-list", Auth: "owner"},
+			{Label: "get-transaction-list-after-accept", Method: "GET", Path: "/api/v1/transaction/get-transaction-list?accountId=" + OwnerAccount, Auth: "owner"},
+		}
+	}})
+
+	register(Scenario{Name: "import_suggestion_accept_err", Calls: func() []Call {
+		return []Call{
+			{Label: "err:accept-suggestion-blank", Method: "POST", Path: "/api/v1/import/accept-suggestion", Auth: "owner",
+				Body: map[string]any{"id": "", "ruleId": "nope"}},
+			// another user's suggestion reads as missing
+			{Label: "err:accept-suggestion-foreign", Method: "POST", Path: "/api/v1/import/accept-suggestion", Auth: "guest",
+				Body: map[string]any{"id": ImportSuggestionEmployer, "ruleId": suggestionRuleID}},
+			{Label: "err:accept-suggestion-unknown-rule", Method: "POST", Path: "/api/v1/import/accept-suggestion", Auth: "owner",
+				Body: map[string]any{"id": ImportSuggestionEmployer, "ruleId": suggestionRuleID}},
+		}
+	}})
+
+	register(Scenario{Name: "import_suggestion_dismiss", Calls: func() []Call {
+		return []Call{
+			{Label: "err:dismiss-suggestion-foreign", Method: "POST", Path: "/api/v1/import/dismiss-suggestion", Auth: "guest",
+				Body: map[string]any{"id": ImportSuggestionEmployer}},
+			{Label: "dismiss-suggestion", Method: "POST", Path: "/api/v1/import/dismiss-suggestion", Auth: "owner",
+				Body: map[string]any{"id": ImportSuggestionEmployer}},
+			{Label: "err:dismiss-suggestion-again", Method: "POST", Path: "/api/v1/import/dismiss-suggestion", Auth: "owner",
+				Body: map[string]any{"id": ImportSuggestionEmployer}},
+		}
+	}})
 }

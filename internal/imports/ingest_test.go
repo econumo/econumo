@@ -233,8 +233,16 @@ func (f *fakeTxns) UpdateTransactionReplacingLabels(ctx context.Context, _ vo.Id
 	return &model.UpdateTransactionResult{}, nil
 }
 
-func (f *fakeTxns) UpdateTransaction(_ context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+// UpdateTransaction is the labels-preserving update: it writes the
+// classification columns and leaves the label rows alone.
+func (f *fakeTxns) UpdateTransaction(ctx context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	f.updated = append(f.updated, req)
+	q := f.db.TX.Querier(ctx)
+	if _, err := q.ExecContext(ctx, f.db.Rebind(
+		`UPDATE transactions SET category_id = ?, payee_id = ?, tag_id = ? WHERE id = ?`),
+		optID(req.CategoryId), optID(req.PayeeId), optID(req.TagId), req.Id); err != nil {
+		return nil, err
+	}
 	return &model.UpdateTransactionResult{}, nil
 }
 func (f *fakeTxns) ListByAccount(_ context.Context, _ vo.Id, _, _ time.Time) ([]*model.Transaction, error) {

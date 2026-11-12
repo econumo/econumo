@@ -626,3 +626,67 @@ type ImportRuleResult struct {
 type GetImportRuleListResult struct {
 	Items []ImportRuleResult `json:"items"`
 }
+
+type ImportSuggestionTransactionResult struct {
+	TransactionId string `json:"transactionId"`
+	AccountId     string `json:"accountId"`
+	Amount        string `json:"amount"`
+	Currency      string `json:"currency"` // the account's currency code
+	Date          string `json:"date"`
+	ExternalPayee string `json:"externalPayee"`
+}
+
+type ImportSuggestionResult struct {
+	Id           string                              `json:"id"`
+	MatchField   string                              `json:"matchField"`
+	MatchText    string                              `json:"matchText"`
+	CategoryId   string                              `json:"categoryId"`
+	PayeeId      string                              `json:"payeeId"`
+	Transactions []ImportSuggestionTransactionResult `json:"transactions"` // newest first
+}
+
+type GetImportSuggestionListResult struct {
+	Items []ImportSuggestionResult `json:"items"`
+}
+
+type AcceptImportSuggestionRequest struct {
+	Id     string `json:"id"`
+	RuleId string `json:"ruleId"`
+}
+
+func (r AcceptImportSuggestionRequest) Validate() error {
+	var fields []errs.FieldError
+	requireIDField("id", r.Id, &fields)
+	requireIDField("ruleId", r.RuleId, &fields)
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+type AcceptImportSuggestionResult struct {
+	Updated int `json:"updated"`
+}
+
+type DismissImportSuggestionRequest struct {
+	Id string `json:"id"`
+}
+
+func (r DismissImportSuggestionRequest) Validate() error {
+	var fields []errs.FieldError
+	requireIDField("id", r.Id, &fields)
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+func requireIDField(key, raw string, fields *[]errs.FieldError) {
+	if strings.TrimSpace(raw) == "" {
+		*fields = append(*fields, blankField(key))
+		return
+	}
+	if _, err := vo.ParseId(strings.TrimSpace(raw)); err != nil {
+		*fields = append(*fields, invalidFormatField(key))
+	}
+}

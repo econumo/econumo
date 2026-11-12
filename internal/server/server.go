@@ -129,6 +129,10 @@ type Seams struct {
 	// to observe the job inline without a network.
 	OnboardingCompleter apponboarding.Completer
 	OnboardingRunner    apponboarding.Runner
+	// ImportsCompleter and ImportsJobRunner do the same for the import rule
+	// suggestion job.
+	ImportsCompleter appimports.Completer
+	ImportsJobRunner func(func())
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -505,8 +509,13 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	}
 	// The completion client is injected here, never imported by the feature:
 	// internal/imports declares the Completer interface and nothing more.
-	if aiClient != nil {
+	if seams.ImportsCompleter != nil {
+		importsSvc.SetSuggester(seams.ImportsCompleter, NewImportsOwnerFacts(userRepo, clk))
+	} else if aiClient != nil {
 		importsSvc.SetSuggester(aiClient, NewImportsOwnerFacts(userRepo, clk))
+	}
+	if seams.ImportsJobRunner != nil {
+		importsSvc.SetJobRunner(seams.ImportsJobRunner)
 	}
 	importsHandlers := handlerimports.NewHandlers(importsSvc)
 
