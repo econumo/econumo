@@ -52,7 +52,7 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 			if err != nil {
 				return nil, err
 			}
-			if !owned || !touches(r, income, live.Type) {
+			if !owned || !touches(r, income, live.Type) || !changes(r, live, income) {
 				continue
 			}
 		}
@@ -105,7 +105,7 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 		if err != nil {
 			return nil, err
 		}
-		if !owned || !touches(rule, own.incomeCategories, live.Type) {
+		if !owned || !touches(rule, own.incomeCategories, live.Type) || !changes(rule, live, own.incomeCategories) {
 			continue
 		}
 		if !req.IncludeEdited {
@@ -221,6 +221,13 @@ func (s *Service) appliedOf(ctx context.Context, l *model.ImportTransactionLink)
 // changed since the import means a rule must not silently overwrite it.
 func edited(applied model.ImportClassification, live *model.Transaction) bool {
 	return !sameID(applied.CategoryID, live.CategoryID) || !sameID(applied.PayeeID, live.PayeeID) || !sameID(applied.TagID, live.TagID) || !sameIDs(applied.LabelIDs, live.LabelIDs)
+}
+
+// changes: a row already carrying everything the rule would set is neither
+// counted nor rewritten, so "apply to existing?" counts only rows that move.
+func changes(r *model.ImportRule, live *model.Transaction, income map[vo.Id]bool) bool {
+	next := applyTargets(r, live, income)
+	return !sameID(next.CategoryID, live.CategoryID) || !sameID(next.PayeeID, live.PayeeID) || !sameID(next.TagID, live.TagID) || !sameIDs(next.LabelIDs, live.LabelIDs)
 }
 
 // isNotFoundErr: a linked transaction the user has since deleted is simply
