@@ -1102,8 +1102,8 @@
           "ai": {
             "menu_item": "AI features",
             "label": "Use AI features",
-            "description": "When on, Econumo sends the names of your imported transactions, categories, payees and accounts to its AI provider to suggest import rules, icons and savings accounts.",
-            "off_hint": "When off, none of your data is sent to the AI and open rule suggestions are removed."
+            "description": "When on, the text, amount and date of your imported transactions and the names of your categories, payees and accounts are sent to the AI provider set up on this server to suggest import rules, icons and savings accounts.",
+            "off_hint": "When off, nothing from your accounts is sent to the AI, and open rule suggestions are removed."
           }
         }
       }

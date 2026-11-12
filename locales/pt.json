@@ -1102,8 +1102,8 @@
           "ai": {
             "menu_item": "Funcionalidades de IA",
             "label": "Utilizar funcionalidades de IA",
-            "description": "Quando ativado, o Econumo envia os nomes das suas transações importadas, categorias, beneficiários e contas ao seu fornecedor de IA para sugerir regras de importação, ícones e contas poupança.",
-            "off_hint": "Quando desativado, nenhum dos seus dados é enviado à IA e as sugestões de regras pendentes são removidas."
+            "description": "Quando ativado, o texto, o montante e a data das suas transações importadas e os nomes das suas categorias, beneficiários e contas são enviados ao fornecedor de IA configurado neste servidor para sugerir regras de importação, ícones e contas poupança.",
+            "off_hint": "Quando desativado, nada das suas contas é enviado à IA e as sugestões de regras pendentes são removidas."
           }
         }
       }

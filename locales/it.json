@@ -1102,8 +1102,8 @@
           "ai": {
             "menu_item": "Funzioni IA",
             "label": "Usa le funzioni IA",
-            "description": "Se attivo, Econumo invia i nomi delle tue transazioni importate, categorie, beneficiari e conti al suo fornitore di IA per suggerire regole di importazione, icone e conti di risparmio.",
-            "off_hint": "Se disattivo, nessuno dei tuoi dati viene inviato all'IA e i suggerimenti di regole in sospeso vengono rimossi."
+            "description": "Se attivo, il testo, l'importo e la data delle tue transazioni importate e i nomi delle tue categorie, beneficiari e conti vengono inviati al fornitore di IA configurato su questo server per suggerire regole di importazione, icone e conti di risparmio.",
+            "off_hint": "Se disattivo, nulla dei tuoi conti viene inviato all'IA e i suggerimenti di regole in sospeso vengono rimossi."
           }
         }
       }

@@ -1102,8 +1102,8 @@
           "ai": {
             "menu_item": "AI-functies",
             "label": "AI-functies gebruiken",
-            "description": "Als dit aan staat, stuurt Econumo de namen van uw geïmporteerde transacties, categorieën, begunstigden en rekeningen naar zijn AI-aanbieder om importregels, pictogrammen en spaarrekeningen voor te stellen.",
-            "off_hint": "Als dit uit staat, worden er geen gegevens van u naar de AI gestuurd en worden openstaande regelsuggesties verwijderd."
+            "description": "Als dit aan staat, worden de tekst, het bedrag en de datum van uw geïmporteerde transacties en de namen van uw categorieën, begunstigden en rekeningen naar de AI-aanbieder van deze server gestuurd om importregels, pictogrammen en spaarrekeningen voor te stellen.",
+            "off_hint": "Als dit uit staat, wordt er niets van uw rekeningen naar de AI gestuurd en worden openstaande regelsuggesties verwijderd."
           }
         }
       }

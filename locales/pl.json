@@ -1102,8 +1102,8 @@
           "ai": {
             "menu_item": "Funkcje AI",
             "label": "Używaj funkcji AI",
-            "description": "Gdy włączone, Econumo wysyła nazwy Twoich zaimportowanych transakcji, kategorii, odbiorców i kont do swojego dostawcy AI, aby proponować reguły importu, ikony i konta oszczędnościowe.",
-            "off_hint": "Gdy wyłączone, żadne Twoje dane nie trafiają do AI, a oczekujące propozycje reguł są usuwane."
+            "description": "Gdy włączone, tekst, kwota i data Twoich zaimportowanych transakcji oraz nazwy Twoich kategorii, odbiorców i kont są wysyłane do dostawcy AI skonfigurowanego na tym serwerze, aby proponować reguły importu, ikony i konta oszczędnościowe.",
+            "off_hint": "Gdy wyłączone, nic z Twoich kont nie trafia do AI, a oczekujące propozycje reguł są usuwane."
           }
         }
       }
