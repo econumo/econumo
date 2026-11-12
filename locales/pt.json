@@ -537,8 +537,7 @@
       }
     },
     "details": {
-      "money_left": "Falta pagar",
-      "overpaid_so_far": "Custo adicional já pago",
+      "overpaid_so_far": "Custo adicional pago",
       "payments": "Pagamentos",
       "payments_empty": "Ainda não existem pagamentos",
       "column": {
@@ -620,7 +619,6 @@
     "review": {
       "progress": "{paid} de {total} pagos",
       "owed_now": "Em dívida agora: {amount}",
-      "owed_now_label": "Em dívida agora",
       "paid_so_far": "Pago até agora",
       "not_set_up": "Indique o montante emprestado e as datas do empréstimo para ver os pagamentos em falta",
       "loan": "Empréstimo",
@@ -629,7 +627,7 @@
       "loan_ends": "Fim do empréstimo",
       "start_date": "Data de início",
       "from_first_payment": "Desde o primeiro pagamento",
-      "overpayment_to_come": "Custo adicional ainda por pagar",
+      "overpayment_to_come": "Custo adicional previsto",
       "danger": {
         "title": "Zona de perigo",
         "paid_off": "Põe o saldo a 0 e para a contagem decrescente.",

@@ -96,7 +96,12 @@ afterEach(() => {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
-  server.use(...coreHandlers(), http.get('*/api/v1/debt/get-debt', () => ok(details)))
+  // no forecast summary by default: the Overview falls back to the debt's own figures
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/debt/get-debt', () => ok(details)),
+    http.get('*/api/v1/debt/get-debt-forecast', () => HttpResponse.json({ success: false, message: 'Debt not found', code: 0, errors: {} }, { status: 400 })),
+  )
   mockMatchMedia()
   vi.mocked(trackEvent).mockClear()
   useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'overview', debtDetailsBudgetId: null, debtModal: null })
@@ -177,24 +182,117 @@ it('a paid-off debt says so instead of counting payments', async () => {
   expect(screen.getByTestId('debt-review-top')).not.toHaveTextContent('Paid off by')
 })
 
-it('the Loan card holds every figure of the debt and nothing to edit', async () => {
+it('the Loan card holds the loan\'s figures and nothing to edit', async () => {
   renderScreen()
   await openScreen()
 
   const loan = screen.getByRole('region', { name: 'Loan' })
   const figure = (label: string) => within(loan).getByText(label).nextElementSibling
+  expect(within(loan).getAllByRole('term').map((dt) => dt.textContent)).toEqual([
+    'Borrowed', 'Payment', 'Next payment', 'Loan ends', 'Overpaid', 'Planned overpayment',
+  ])
   expect(figure('Borrowed')).toHaveTextContent('1,200.00 $ · Oct 1, 2026')
-  expect(figure('Owed now')).toHaveTextContent('1,090.00 $')
   expect(figure('Payment')).toHaveTextContent('100.00 $ · Monthly')
   expect(figure('Next payment')).toHaveTextContent('Dec 5, 2026')
   expect(figure('Loan ends')).toHaveTextContent('Jul 5, 2050')
-  // the start is in Borrowed
-  expect(within(loan).queryByText('Start date')).toBeNull()
-  expect(figure('Left to pay')).toHaveTextContent('1,100.00 $')
-  expect(figure('Overpaid so far')).toHaveTextContent('15.50 $')
-  expect(figure('Overpayment still to come')).toHaveTextContent('10.00 $')
-  expect(figure('Currency')).toHaveTextContent('USD')
+  expect(figure('Overpaid')).toHaveTextContent('15.50 $')
+  expect(figure('Planned overpayment')).toHaveTextContent('10.00 $')
+  // what is owed is the hero's; the currency shows on every amount
+  for (const gone of ['Owed now', 'Left to pay', 'Currency', 'Start date']) {
+    expect(within(loan).queryByText(gone)).toBeNull()
+  }
   expect(within(loan).queryByRole('button')).toBeNull()
+})
+
+it('a debt not set up keeps its Loan card: payment, start and currency', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
+  renderScreen()
+  await openScreen()
+
+  const loan = screen.getByRole('region', { name: 'Loan' })
+  expect(within(loan).getAllByRole('term').map((dt) => dt.textContent)).toEqual(['Payment', 'Start date', 'Currency'])
+  expect(within(loan).getByText('Currency').nextElementSibling).toHaveTextContent('USD')
+})
+
+describe('the Overview follows the budget\'s plans', () => {
+  const summary = { items: [], budgetId: 'b1', budgetName: 'Family', paymentsLeft: 200, payoffDate: '2043-02-05', overpaymentLeft: '4.25' }
+
+  function captureSummary(answer: unknown = summary) {
+    const asked: URLSearchParams[] = []
+    server.use(
+      http.get('*/api/v1/debt/get-debt-forecast', ({ request }) => {
+        asked.push(new URL(request.url).searchParams)
+        return ok(answer)
+      }),
+    )
+    return asked
+  }
+
+  it('payments left, the progress, the payoff and the planned overpayment come from the forecast of the budget the screen came from', async () => {
+    const asked = captureSummary()
+    renderScreen()
+    useUiStore.getState().openDebtDetails('d1', 'overview', 'b1')
+    const top = await screen.findByTestId('debt-review-top', {}, { timeout: 5000 })
+
+    await waitFor(() => expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('200 payments left'))
+    expect(asked).toHaveLength(1)
+    expect(asked[0].get('budgetId')).toBe('b1')
+    expect(top).toHaveTextContent('77 of 277 paid')
+    // what is owed now does not depend on plans
+    expect(top).toHaveTextContent('Owed now 1,090.00 $ · Paid off by Feb 2043')
+    const loan = screen.getByRole('region', { name: 'Loan' })
+    expect(within(loan).getByText('Planned overpayment').nextElementSibling).toHaveTextContent('4.25 $')
+    // loading the figures is no view of the future payments
+    expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FORECAST_VIEW)
+  })
+
+  it('opened without a budget it lets the server pick the active one', async () => {
+    const asked = captureSummary({ ...summary, budgetId: '', budgetName: '' })
+    renderScreen()
+    await openScreen()
+
+    await waitFor(() => expect(screen.getByTestId('debt-review-payments-left')).toHaveTextContent('200 payments left'))
+    expect(asked[0].get('budgetId')).toBeNull()
+  })
+
+  it('Show future payments uses the forecast already loaded, and counts the view', async () => {
+    const asked = captureSummary({ ...summary, items: [{ date: '2026-12-05', payment: '400', interest: '9.08', principal: '390.92', balance: '699.08' }] })
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    await waitFor(() => expect(screen.getByTestId('debt-review-payments-left')).toHaveTextContent('200 payments left'))
+
+    await user.click(screen.getByRole('button', { name: 'Show future payments' }))
+    expect(await screen.findAllByTestId('debt-forecast-payment')).toHaveLength(1)
+    expect(asked).toHaveLength(1)
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_FORECAST_VIEW)
+  })
+
+  it('a forecast that fails leaves the debt\'s own figures', async () => {
+    renderScreen()
+    await openScreen()
+
+    const top = screen.getByTestId('debt-review-top')
+    await waitFor(() => expect(top).toHaveTextContent('77 of 360 paid'))
+    expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('283 payments left')
+    expect(top).toHaveTextContent('Paid off by Jul 2050')
+    expect(within(screen.getByRole('region', { name: 'Loan' })).getByText('Planned overpayment').nextElementSibling).toHaveTextContent('10.00 $')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a paid-off debt or one not set up asks for no forecast', async () => {
+    const asked = captureSummary()
+    server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, isPaidOff: 1 } })))
+    const { unmount } = renderScreen()
+    await openScreen()
+    unmount()
+    useUiStore.setState({ debtDetailsId: null })
+    server.use(http.get('*/api/v1/debt/get-debt', () => ok(notSetUp)))
+    renderScreen()
+    await openScreen()
+
+    expect(asked).toHaveLength(0)
+  })
 })
 
 it('a debt not set up shows its start date in the Loan card, or that it counts from the first payment', async () => {
@@ -674,6 +772,9 @@ describe('future payments', () => {
     ],
     budgetId: 'b1',
     budgetName: 'Family',
+    paymentsLeft: 283,
+    payoffDate: '2050-07-05',
+    overpaymentLeft: '10',
   }
 
   function captureForecast(answer: unknown = forecast) {
@@ -693,7 +794,8 @@ describe('future payments', () => {
     renderScreen()
     useUiStore.getState().openDebtDetails('d1', 'overview', 'b1')
     await screen.findByTestId('debt-review-top', {}, { timeout: 5000 })
-    expect(asked).toHaveLength(0)
+    // the Overview's figures load it on open; the list stays closed
+    await waitFor(() => expect(asked).toHaveLength(1))
     expect(screen.queryByTestId('debt-forecast-payment')).toBeNull()
 
     const show = screen.getByRole('button', { name: 'Show future payments' })
@@ -740,7 +842,7 @@ describe('future payments', () => {
       const d = new Date(Date.UTC(2026, 11 + i, 5)).toISOString().slice(0, 10)
       return { date: d, payment: '100', interest: '1', principal: '99', balance: String(3000 - 99 * (i + 1)) }
     })
-    captureForecast({ items, budgetId: '', budgetName: '' })
+    captureForecast({ ...forecast, items, budgetId: '', budgetName: '' })
     const user = userEvent.setup()
     renderScreen()
     await openScreen()
@@ -761,14 +863,16 @@ describe('future payments', () => {
     expect(screen.queryByRole('button', { name: /more payments/ })).toBeNull()
   })
 
-  it('each opening loads the list afresh and counts once; a refetch in the background is no new view', async () => {
+  it('each opening counts once; the list shares the Overview\'s forecast, refetched when a plan changes', async () => {
     const asked = captureForecast()
     const user = userEvent.setup()
     const { queryClient } = renderScreenWithClient()
     await openScreen()
+    await waitFor(() => expect(asked).toHaveLength(1))
 
     await user.click(screen.getByRole('button', { name: 'Show future payments' }))
     await screen.findAllByTestId('debt-forecast-payment')
+    expect(asked).toHaveLength(1)
     expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.DEBT_FORECAST_VIEW)).toHaveLength(1)
 
     // a plan saved elsewhere invalidates it: refetched, not counted again
@@ -776,10 +880,11 @@ describe('future payments', () => {
     await waitFor(() => expect(asked).toHaveLength(2))
     expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.DEBT_FORECAST_VIEW)).toHaveLength(1)
 
-    // hidden and shown again: never served from a stale cache
+    // hidden and shown again: a new view of the same, current forecast
     await user.click(screen.getByRole('button', { name: 'Hide future payments' }))
     await user.click(screen.getByRole('button', { name: 'Show future payments' }))
-    await waitFor(() => expect(asked).toHaveLength(3))
+    await screen.findAllByTestId('debt-forecast-payment')
+    expect(asked).toHaveLength(2)
     expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.DEBT_FORECAST_VIEW)).toHaveLength(2)
   })
 

@@ -537,8 +537,7 @@
       }
     },
     "details": {
-      "money_left": "Do zapłaty",
-      "overpaid_so_far": "Dotychczasowy koszt długu",
+      "overpaid_so_far": "Zapłacony koszt długu",
       "payments": "Płatności",
       "payments_empty": "Brak płatności",
       "column": {
@@ -620,7 +619,6 @@
     "review": {
       "progress": "Opłacono {paid} z {total}",
       "owed_now": "Do spłaty teraz: {amount}",
-      "owed_now_label": "Do spłaty teraz",
       "paid_so_far": "Zapłacono dotąd",
       "not_set_up": "Dodaj pożyczoną kwotę i daty pożyczki, aby zobaczyć pozostałe płatności",
       "loan": "Pożyczka",
@@ -629,7 +627,7 @@
       "loan_ends": "Koniec pożyczki",
       "start_date": "Data rozpoczęcia",
       "from_first_payment": "Od pierwszej płatności",
-      "overpayment_to_come": "Koszt długu do zapłacenia",
+      "overpayment_to_come": "Planowany koszt długu",
       "danger": {
         "title": "Strefa zagrożenia",
         "paid_off": "Ustawia saldo na 0 i zatrzymuje odliczanie.",

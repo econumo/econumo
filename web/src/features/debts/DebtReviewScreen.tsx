@@ -394,20 +394,20 @@ function PaymentsTable({ booked, projected, splits, amount, lang, today }: {
 /** The Payments heading with, for a set-up debt that is not paid off, the
  *  future-payments toggle beside it and the note of which plan they follow
  *  under it: the projected rows join the top of the table */
-function PaymentsSection({ debt, payments, splits, budgetId, amount, lang }: {
-  debt: DebtDto
+function PaymentsSection({ payments, splits, canForecast, forecast, amount, lang }: {
   payments: DebtDetailsDto['payments']
   splits: boolean
-  budgetId: Id | null
+  canForecast: boolean
+  /** the Overview's forecast, already loading for its figures: opening the
+   *  list fetches nothing more */
+  forecast: Pick<ReturnType<typeof useDebtForecast>, 'data' | 'error' | 'isPending'>
   amount: (value: string) => string
   lang: string
 }) {
   const { t } = useTranslation()
   const headingId = useId()
   const [open, setOpen] = useState(false)
-  // the projection needs the terms, and a paid-off debt has nothing to come
-  const canForecast = splits && debt.isPaidOff === 0
-  const { data, error, isPending } = useDebtForecast(debt.id, budgetId, open && canForecast)
+  const { data, error, isPending } = forecast
   // a view is the user opening the list, not each (background) load of it
   const toggle = () => {
     if (!open) {
@@ -470,6 +470,16 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
   const loanHeadingId = useId()
   const { item, payments } = details
   const setUp = item.isSetUp === 1
+  // the projection needs the terms, and a paid-off debt has nothing to come
+  const canForecast = setUp && item.isPaidOff === 0
+  // The debt's own figures ignore the budgets' plans; the forecast's follow
+  // them (a planned extra pays the loan off sooner). Until it answers, or when
+  // it cannot (an error, offline), the debt's own figures stand in.
+  const forecast = useDebtForecast(item.id, budgetId, canForecast)
+  const summary = canForecast ? forecast.data : undefined
+  const left = summary ? summary.paymentsLeft : item.paymentsLeft
+  const payoffDate = summary ? summary.payoffDate : item.payoffDate
+  const overpaymentLeft = summary ? summary.overpaymentLeft : item.overpaymentLeft
   const amount = (value: string) => money(value, item)
   const currency = currencies?.find((c) => c.id === item.currencyId)
   const schedule = t(`recurring.schedule.${item.schedule}`)
@@ -478,9 +488,9 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
   // instead, up to the caller's today (the list also holds future-dated ones)
   const today = formatDate(new Date())
   const paidSoFar = payments.filter((p) => p.date.slice(0, 10) <= today).reduce((sum, p) => add(sum, p.amount), '0')
-  const total = item.periodsPaid + item.paymentsLeft
+  const total = item.periodsPaid + left
   const owed = t('debts.review.owed_now', { amount: amount(item.currentBalance) })
-  const payoff = item.isPaidOff === 0 && item.payoffDate !== '' ? t('budgets.page.debts.payoff_by', { date: debtMonth(item.payoffDate, lang) }) : null
+  const payoff = item.isPaidOff === 0 && payoffDate !== '' ? t('budgets.page.debts.payoff_by', { date: debtMonth(payoffDate, lang) }) : null
 
   return (
     <>
@@ -488,7 +498,7 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
         {setUp ? (
           <>
             <p data-testid="debt-review-payments-left" className="text-3xl leading-tight">
-              {item.isPaidOff === 1 ? t('debts.list.paid_off') : paymentsLeft(item.paymentsLeft)}
+              {item.isPaidOff === 1 ? t('debts.list.paid_off') : paymentsLeft(left)}
             </p>
             {total > 0 ? (
               <div className="flex flex-col gap-1.5">
@@ -517,10 +527,7 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
         <SectionHeading id={loanHeadingId}>{t('debts.review.loan')}</SectionHeading>
         <dl className="divide-y divide-border rounded-lg bg-econumo-card px-4 py-1.5">
           {setUp ? (
-            <>
-              <Figure label={t('debts.review.borrowed')}>{`${amount(item.amountBorrowed)} · ${debtDay(item.startDate, lang)}`}</Figure>
-              <Figure label={t('debts.review.owed_now_label')}>{amount(item.currentBalance)}</Figure>
-            </>
+            <Figure label={t('debts.review.borrowed')}>{`${amount(item.amountBorrowed)} · ${debtDay(item.startDate, lang)}`}</Figure>
           ) : null}
           <Figure label={t('debts.form.payment.label')}>{`${amount(item.payment)} · ${schedule}`}</Figure>
           {setUp ? (
@@ -533,14 +540,15 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
           {setUp ? null : (
             <Figure label={t('debts.review.start_date')}>{item.startDate ? debtDay(item.startDate, lang) : t('debts.review.from_first_payment')}</Figure>
           )}
+          {/* what is owed now is the top card's; a set-up debt's amounts name its currency */}
           {setUp ? (
             <>
-              <Figure label={t('debts.details.money_left')}>{amount(item.moneyLeft)}</Figure>
               <Figure label={t('debts.details.overpaid_so_far')}>{amount(item.overpaidSoFar)}</Figure>
-              <Figure label={t('debts.review.overpayment_to_come')}>{amount(item.overpaymentLeft)}</Figure>
+              <Figure label={t('debts.review.overpayment_to_come')}>{amount(overpaymentLeft)}</Figure>
             </>
-          ) : null}
-          <Figure label={t('debts.form.currency.label')}>{currency ? fullCurrencyLabel(currency) : '—'}</Figure>
+          ) : (
+            <Figure label={t('debts.form.currency.label')}>{currency ? fullCurrencyLabel(currency) : '—'}</Figure>
+          )}
         </dl>
       </section>
 
@@ -550,7 +558,7 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
         readOnly
       />
 
-      <PaymentsSection debt={item} payments={payments} splits={setUp} budgetId={budgetId} amount={amount} lang={lang} />
+      <PaymentsSection payments={payments} splits={setUp} canForecast={canForecast} forecast={forecast} amount={amount} lang={lang} />
 
     </>
   )

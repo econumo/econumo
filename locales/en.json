@@ -537,8 +537,7 @@
       }
     },
     "details": {
-      "money_left": "Left to pay",
-      "overpaid_so_far": "Overpaid so far",
+      "overpaid_so_far": "Overpaid",
       "payments": "Payments",
       "payments_empty": "No payments yet",
       "column": {
@@ -620,7 +619,6 @@
     "review": {
       "progress": "{paid} of {total} paid",
       "owed_now": "Owed now {amount}",
-      "owed_now_label": "Owed now",
       "paid_so_far": "Paid so far",
       "not_set_up": "Add the amount borrowed and the loan's dates to see payments left",
       "loan": "Loan",
@@ -629,7 +627,7 @@
       "loan_ends": "Loan ends",
       "start_date": "Start date",
       "from_first_payment": "From the first payment",
-      "overpayment_to_come": "Overpayment still to come",
+      "overpayment_to_come": "Planned overpayment",
       "danger": {
         "title": "Danger zone",
         "paid_off": "Sets the balance to 0 and stops the countdown.",

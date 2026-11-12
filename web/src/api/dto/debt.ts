@@ -72,11 +72,16 @@ export interface DebtForecastItemDto {
 }
 
 /** the payments still to come, soonest first; budgetName names the budget whose
- *  planned extras are included, "" when only the regular payments count */
+ *  planned extras are included, "" when only the regular payments count.
+ *  paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with
+ *  those extras (its own when there are none); 0 and "" while not set up */
 export interface DebtForecastDto {
   items: DebtForecastItemDto[]
   budgetId: string
   budgetName: string
+  paymentsLeft: number
+  payoffDate: string
+  overpaymentLeft: string
 }
 
 export interface DebtDetailsDto {

@@ -537,7 +537,6 @@
       }
     },
     "details": {
-      "money_left": "待还金额",
       "overpaid_so_far": "已付利息与费用",
       "payments": "还款记录",
       "payments_empty": "暂无还款",
@@ -620,7 +619,6 @@
     "review": {
       "progress": "已还 {paid}/{total} 期",
       "owed_now": "当前欠款 {amount}",
-      "owed_now_label": "当前欠款",
       "paid_so_far": "已还金额",
       "not_set_up": "填写借款金额和贷款日期，即可查看剩余还款笔数",
       "loan": "贷款",
@@ -629,7 +627,7 @@
       "loan_ends": "贷款结束",
       "start_date": "开始日期",
       "from_first_payment": "从第一笔还款起",
-      "overpayment_to_come": "待付利息与费用",
+      "overpayment_to_come": "预计利息与费用",
       "danger": {
         "title": "危险操作",
         "paid_off": "将余额设为 0 并停止倒计时。",

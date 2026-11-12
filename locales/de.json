@@ -537,8 +537,7 @@
       }
     },
     "details": {
-      "money_left": "Noch zu zahlen",
-      "overpaid_so_far": "Bisherige Mehrkosten",
+      "overpaid_so_far": "Gezahlte Mehrkosten",
       "payments": "Zahlungen",
       "payments_empty": "Noch keine Zahlungen",
       "column": {
@@ -620,7 +619,6 @@
     "review": {
       "progress": "{paid} von {total} bezahlt",
       "owed_now": "Aktuell geschuldet: {amount}",
-      "owed_now_label": "Aktuell geschuldet",
       "paid_so_far": "Bisher bezahlt",
       "not_set_up": "Geben Sie den geliehenen Betrag und die Daten des Kredits an, um die verbleibenden Zahlungen zu sehen",
       "loan": "Kredit",
@@ -629,7 +627,7 @@
       "loan_ends": "Kredit endet",
       "start_date": "Startdatum",
       "from_first_payment": "Ab der ersten Zahlung",
-      "overpayment_to_come": "Noch anfallende Mehrkosten",
+      "overpayment_to_come": "Geplante Mehrkosten",
       "danger": {
         "title": "Gefahrenbereich",
         "paid_off": "Setzt den Saldo auf 0 und beendet den Countdown.",

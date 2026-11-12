@@ -19,10 +19,11 @@ export function useDebt(id: Id | undefined) {
   })
 }
 
-/** The payments still to come, loaded when asked for (`enabled`) and never
- *  served stale: a plan saved in any budget moves them (the budget's plan
- *  writes invalidate every forecast too). `budgetId` is the budget the screen
- *  was opened from, whose planned extras it adds */
+/** The payments still to come and the figures they give (payments left,
+ *  payoff, overpayment), loaded while `enabled` and never served stale: a plan
+ *  saved in any budget moves them (the budget's plan writes invalidate every
+ *  forecast too). `budgetId` is the budget the screen was opened from, whose
+ *  planned extras it adds */
 export function useDebtForecast(id: Id, budgetId: Id | null, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.debtForecast(id, budgetId ?? ''),

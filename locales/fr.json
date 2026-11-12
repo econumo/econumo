@@ -537,8 +537,7 @@
       }
     },
     "details": {
-      "money_left": "Reste à payer",
-      "overpaid_so_far": "Surcoût déjà payé",
+      "overpaid_so_far": "Surcoût payé",
       "payments": "Paiements",
       "payments_empty": "Aucun paiement pour l’instant",
       "column": {
@@ -620,7 +619,6 @@
     "review": {
       "progress": "{paid} sur {total} payés",
       "owed_now": "Dû actuellement : {amount}",
-      "owed_now_label": "Dû actuellement",
       "paid_so_far": "Payé jusqu'ici",
       "not_set_up": "Indiquez le montant emprunté et les dates du prêt pour voir les paiements restants",
       "loan": "Prêt",
@@ -629,7 +627,7 @@
       "loan_ends": "Fin du prêt",
       "start_date": "Date de début",
       "from_first_payment": "Dès le premier paiement",
-      "overpayment_to_come": "Surcoût à venir",
+      "overpayment_to_come": "Surcoût prévu",
       "danger": {
         "title": "Zone de danger",
         "paid_off": "Met le solde à 0 et arrête le compte à rebours.",

@@ -537,8 +537,7 @@
       }
     },
     "details": {
-      "money_left": "Nog te betalen",
-      "overpaid_so_far": "Tot nu toe betaalde meerkosten",
+      "overpaid_so_far": "Betaalde meerkosten",
       "payments": "Betalingen",
       "payments_empty": "Nog geen betalingen",
       "column": {
@@ -620,7 +619,6 @@
     "review": {
       "progress": "{paid} van {total} betaald",
       "owed_now": "Nu verschuldigd: {amount}",
-      "owed_now_label": "Nu verschuldigd",
       "paid_so_far": "Tot nu toe betaald",
       "not_set_up": "Vul het geleende bedrag en de data van de lening in om de resterende betalingen te zien",
       "loan": "Lening",
@@ -629,7 +627,7 @@
       "loan_ends": "Lening loopt af",
       "start_date": "Startdatum",
       "from_first_payment": "Vanaf de eerste betaling",
-      "overpayment_to_come": "Nog te betalen meerkosten",
+      "overpayment_to_come": "Geplande meerkosten",
       "danger": {
         "title": "Gevarenzone",
         "paid_off": "Zet het saldo op 0 en stopt het aftellen.",
