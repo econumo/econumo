@@ -220,14 +220,14 @@ it('debt payments stay in the expense totals and the Balance', async () => {
   }
 })
 
-it('a debt row\'s menu offers its owner Details alone', async () => {
+it('a debt row\'s menu offers its owner Details, Mark as paid off and Delete', async () => {
   useHandlers()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   renderPage()
   await screen.findByTestId('plan-section-debts')
   await user.click(await screen.findByRole('button', { name: 'menu Mortgage' }))
   const items = await screen.findAllByRole('menuitem')
-  expect(items.map((i) => i.textContent)).toEqual(['Details'])
+  expect(items.map((i) => i.textContent)).toEqual(['Details', 'Mark as paid off', 'Delete'])
 })
 
 it('on a tablet a debt cell opens the debt\'s sheet: Planned, Paid, Left and its owner\'s Details', async () => {

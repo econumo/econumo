@@ -5,13 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CoinLoader } from '@/components/CoinLoader'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { EntityIcon } from '@/components/EntityIcon'
 import { OfflineNotice } from '@/components/OfflineNotice'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useOnline } from '@/hooks/useOnline'
-import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
+import { apiErrorMessage } from '@/lib/apiError'
 import { formatDate } from '@/lib/datetime'
 import { pluralPick } from '@/lib/plural'
 import { add } from '@/lib/decimal'
@@ -25,7 +24,8 @@ import { debtDay, debtMonth } from './debtDates'
 import { DebtBalanceTab } from './DebtBalanceTab'
 import { DebtSettingsForm } from './DebtSettingsForm'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
-import { useDeleteDebt, useDebt, useDebtForecast, useFetchDebtForEdit, useMarkDebtPaidOff } from './queries'
+import { useDebt, useDebtForecast, useFetchDebtForEdit } from './queries'
+import { useDebtDangerActions } from './useDebtDangerActions'
 import { useDebtMoney, usePaymentsLeft } from './useDebtMoney'
 
 function SectionHeading({ id, children }: { id?: string; children: ReactNode }) {
@@ -44,8 +44,6 @@ function Figure({ label, children }: { label: string; children: ReactNode }) {
     </div>
   )
 }
-
-type Confirm = 'paid-off' | 'delete' | null
 
 function DangerAction({ description, children }: { description: string; children: ReactNode }) {
   return (
@@ -111,8 +109,6 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
   const { data, error: loadError } = useDebt(debtId)
   const money = useDebtMoney()
   const fetchDebtForEdit = useFetchDebtForEdit()
-  const markPaidOff = useMarkDebtPaidOff()
-  const deleteDebt = useDeleteDebt()
   const [tab, setTab] = useState<DebtDetailsTab>(initialTab)
   // the debt the Settings form was built from, loaded afresh: a cached copy
   // could send back facts another device has corrected since
@@ -122,9 +118,6 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
   const [reloading, setReloading] = useState(false)
   const dirty = useRef(false)
   const [focusMissing, setFocusMissing] = useState(initialTab === 'settings')
-  const [confirm, setConfirm] = useState<Confirm>(null)
-  // the server's own wording of what deleting drops, once it has refused
-  const [removalMessage, setRemovalMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const item = data?.item
@@ -177,24 +170,7 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
     dirty.current = value
   }, [])
 
-  const sendDelete = (confirmDataRemoval: boolean) => {
-    setError(null)
-    deleteDebt.mutate(
-      { id: debtId, ...(confirmDataRemoval ? { confirmDataRemoval: true } : {}) },
-      {
-        onSuccess: onClose,
-        onError: (err) => {
-          const refusal = apiFieldErrors(err, 'confirmDataRemoval')?.[0]
-          if (!confirmDataRemoval && refusal) {
-            setRemovalMessage(refusal)
-            return
-          }
-          setRemovalMessage(null)
-          setError(apiErrorMessage(err))
-        },
-      },
-    )
-  }
+  const danger = useDebtDangerActions({ onPaidOff: showSaved, onDeleted: onClose, onError: setError })
 
   // the tab bar sits in the dialog's header block, outside the scrolling body;
   // the Tabs root wraps the dialog so its context reaches both through the portal
@@ -261,9 +237,15 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
                 <OfflineNotice />
                 <DangerZone
                   canMarkPaidOff={item.isSetUp === 1 && item.isPaidOff === 0}
-                  markingPaidOff={markPaidOff.isPending}
-                  onMarkPaidOff={() => setConfirm('paid-off')}
-                  onDelete={() => setConfirm('delete')}
+                  markingPaidOff={danger.markingPaidOff}
+                  onMarkPaidOff={() => {
+                    setError(null)
+                    danger.askMarkPaidOff(debtId)
+                  }}
+                  onDelete={() => {
+                    setError(null)
+                    danger.askDelete(debtId)
+                  }}
                 />
               </TabsContent>
             </>
@@ -280,45 +262,7 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
           ) : null}
         </div>
 
-        <ConfirmDialog
-          open={confirm === 'paid-off'}
-          onClose={() => setConfirm(null)}
-          onConfirm={() => {
-            setConfirm(null)
-            setError(null)
-            markPaidOff.mutate(debtId, { onSuccess: showSaved, onError: (err) => setError(apiErrorMessage(err)) })
-          }}
-          title={t('debts.details.paid_off_confirm.title')}
-          question={t('debts.details.paid_off_confirm.question')}
-          confirmLabel={t('debts.details.mark_paid_off')}
-          cancelLabel={t('common.button.cancel.label')}
-        />
-        <ConfirmDialog
-          open={confirm === 'delete'}
-          onClose={() => setConfirm(null)}
-          onConfirm={() => {
-            setConfirm(null)
-            sendDelete(false)
-          }}
-          title={t('debts.details.delete_confirm.title')}
-          question={t('debts.details.delete_confirm.question')}
-          confirmLabel={t('common.button.delete.label')}
-          cancelLabel={t('common.button.cancel.label')}
-          destructive
-        />
-        <ConfirmDialog
-          open={removalMessage !== null}
-          onClose={() => setRemovalMessage(null)}
-          onConfirm={() => {
-            setRemovalMessage(null)
-            sendDelete(true)
-          }}
-          title={t('debts.details.removal_confirm.title')}
-          question={removalMessage ?? ''}
-          confirmLabel={t('debts.details.removal_confirm.action')}
-          cancelLabel={t('common.button.cancel.label')}
-          destructive
-        />
+        {danger.dialogs}
       </ResponsiveDialog>
     </Tabs>
   )

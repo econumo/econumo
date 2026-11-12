@@ -27,6 +27,7 @@ import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { useUpdateCategory } from '@/features/classifications/queries'
+import { useDebtDangerActions } from '@/features/debts/useDebtDangerActions'
 import {
   canConfigureBudget,
   canDeleteEnvelope,
@@ -52,7 +53,7 @@ import type { PlanCellFigures, SheetTarget } from './phoneMonth'
 import { folderSides } from './planMath'
 
 /** what a debt row's menu reads: a month-view row or a Plan grid row */
-type DebtRef = Pick<BudgetDebtElementDto, 'id'> & { ownerUserId: Id | null }
+type DebtRef = Pick<BudgetDebtElementDto, 'id' | 'isSetUp' | 'isPaidOff'> & { ownerUserId: Id | null }
 
 export interface BudgetLineMenus {
   /** a row of the Budget view (get-budget) */
@@ -63,7 +64,7 @@ export interface BudgetLineMenus {
   /** parent: the envelope, whose currency a debt made from the category starts in */
   envelopeChildMenu: (child: EnvelopeChild, parent?: { currencyId: Id | null }) => MenuAction[]
   savingsRowMenu: (row: BudgetSavingsElementDto) => MenuAction[]
-  /** a Debts row: Details for the debt's owner, nothing for anyone else */
+  /** a Debts row: Details, Mark as paid off and Delete for the debt's owner, nothing for anyone else */
   debtRowMenu: (row: DebtRef) => MenuAction[]
   labelMenu: (label: LabelSpendDto) => MenuAction[]
   folderActionsFor: (folder: { id: Id; name: string } | null, empty: boolean, side: BudgetFolderSide) => MenuAction[] | undefined
@@ -111,6 +112,7 @@ export function useBudgetLineMenus({
   const moveElement = useMoveElement()
   const addSavingsAccount = useAddSavingsAccount()
   const changeCurrency = useChangeElementCurrency()
+  const debtDanger = useDebtDangerActions()
 
   // the section a folder is being created in; null while the prompt is closed
   const [createFolderSide, setCreateFolderSide] = useState<BudgetFolderSide | null>(null)
@@ -259,7 +261,9 @@ export function useBudgetLineMenus({
       return []
     }
     if (el.type === BudgetElementType.DEBT) {
-      return debtRowMenu(el)
+      // the grid's row carries no debt state: the plan's own debt row does
+      const debt = plan?.structure.debts?.find((d) => d.id === el.id)
+      return debtRowMenu({ ...el, isSetUp: debt?.isSetUp ?? 0, isPaidOff: debt?.isPaidOff ?? 0 })
     }
     // a savings row is an account: it lives in its own section, never in a folder
     if (el.type === BudgetElementType.SAVINGS) {
@@ -290,8 +294,13 @@ export function useBudgetLineMenus({
   const savingsRowMenu = (row: BudgetSavingsElementDto): MenuAction[] => editAction({ kind: 'savings', row })
   const debtRowMenu = (row: DebtRef): MenuAction[] =>
     ownsDebt(row)
-      ? // the review screen is the one place a debt is edited: its terms, filters and name
-        [{ label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id, 'overview', budget?.meta.id) }]
+      ? [
+          // the review screen is the one place a debt is edited: its terms, filters and name
+          { label: t('budgets.page.debts.details'), onSelect: () => openDebtDetails(row.id, 'overview', budget?.meta.id) },
+          // the review screen's Danger zone, with the same confirms
+          ...(row.isSetUp === 1 && row.isPaidOff === 0 ? [{ label: t('debts.details.mark_paid_off'), onSelect: () => debtDanger.askMarkPaidOff(row.id) }] : []),
+          { label: t('common.button.delete.label'), destructive: true, onSelect: () => debtDanger.askDelete(row.id) },
+        ]
       : []
   const labelMenu = (label: LabelSpendDto): MenuAction[] => editAction({ kind: 'label', label })
   const newEnvelopeAction = (folderId: Id | null, side: BudgetFolderSide): MenuAction => ({
@@ -420,6 +429,8 @@ export function useBudgetLineMenus({
       />
 
       {classificationMenu.dialogs}
+
+      {debtDanger.dialogs}
 
       <CategoryDialog
         open={categoryTarget !== null}

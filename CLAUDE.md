@@ -2175,7 +2175,8 @@ data unreadable. Most are also asserted by the test suite.
   `debt.start_date_taken` (the one refusal a date can resolve; `debt.key_conflict` just shows its
   message) and the form creates a debt with no terms, then opens the review screen. The ONLY way
   into a debt is its Details entry (Settings → Debts row, in the Finances group right after
-  Budgets; budget row menu; item sheet; owner only), opening
+  Budgets; budget row menu; item sheet; owner only; the budget's debt row menu, Budget view and
+  Plan grid, also offers the Danger zone's Mark as paid off and Delete), opening
   `DebtReviewScreen`: on desktop a centred dialog 90% of the viewport high and a reading column
   wide (min(90vw, 52rem)) that scrolls inside (`ResponsiveDialog` `size="column"`; the page-sized
   sizes clip to their rounded corners with `overflow-hidden`), full screen on a phone (`fullScreen`). Its header is the
@@ -2235,7 +2236,9 @@ data unreadable. Most are also asserted by the test suite.
   (`delete-debt-reconciliation`, `appDebtReconciliationDelete`); both refresh the debt, the
   lists and every forecast; it ends at Save/Cancel. The Danger zone tab is a
   destructive-tinted card, a row per action with a one-line description, with Mark as paid off
-  (set up and not paid off) and Delete, each behind its confirm.
+  (set up and not paid off) and Delete, each behind its confirm. Those confirms, and the
+  `confirmDataRemoval` second question, are one hook, `useDebtDangerActions`, which the debt row
+  menu uses too (a refusal there is a toast).
   The Settings tab stays mounted (edits survive a look at the Overview) and reloads the debt
   afresh on every visit while it holds no edits (`useFetchDebtForEdit`, the app's loader while it
   loads); a save or Mark as paid off rebuilds the form from the returned debt and returns to the

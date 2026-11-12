@@ -94,6 +94,8 @@ export function useUpdateDebt({ finishingSetup = false }: { finishingSetup?: boo
 export function useDeleteDebt() {
   const invalidate = useInvalidateDebts()
   return useMutation({
+    // useDebtDangerActions shows every failure itself (inline or a toast)
+    meta: { handlesOwnErrors: true },
     mutationFn: (form: DeleteDebtForm) => debtApi.deleteDebt(form),
     onSuccess: () => {
       invalidate()
@@ -106,6 +108,7 @@ export function useMarkDebtPaidOff() {
   const invalidate = useInvalidateDebts()
   const storeSaved = useStoreSavedDebt()
   return useMutation({
+    meta: { handlesOwnErrors: true },
     mutationFn: (id: Id) => debtApi.markDebtPaidOff(id),
     onSuccess: (saved) => {
       storeSaved(saved)

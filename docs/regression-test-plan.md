@@ -2696,12 +2696,14 @@ account in USD, before running these.
       converted to the debt's currency with the rates the app uses for its day
       (the month's average) and shows in the
       payment list in the debt currency.
-- [ ] **Mark as paid off** (review screen's Danger zone tab → asks first): current balance becomes 0,
+- [ ] **Mark as paid off** (review screen's Danger zone tab, or the budget's debt row ⋮ menu →
+      asks first): current balance becomes 0,
       "Paid off" shows in the list and the row, the payment list keeps its
       history. A later matching payment or a new snapshot with a balance
       reopens the debt; marking it paid off again then settles it (a new zero
       snapshot), even when the balance already showed 0.
-- [ ] **Delete** a debt (review screen's Danger zone tab → asks first): its transactions stay
+- [ ] **Delete** a debt (review screen's Danger zone tab, or the budget's debt row ⋮ menu →
+      asks first): its transactions stay
       untouched and return to their category row. When the debt carries plans
       or comments in a budget (it is not a whole-category debt, or the
       category row's plans did not move), a second confirmation names what is
@@ -2717,9 +2719,14 @@ account in USD, before running these.
       payments left and, for the debt's owner, a "Details" button; there is
       no pencil on a debt's sheet). Every
       participant, guests included, sees the row's name and figures; only the
-      owner gets Details (a guest's menu is empty). The budget
+      owner gets a menu (a guest's menu is empty). The budget
       settings dialog (create and edit) says under its fields, without
       opening any picker, that debts are visible to everyone with access.
+- [ ] **Debt row ⋮ menu** (Budget view and Plan grid, the debt's owner only): Details, Mark as
+      paid off (set-up debts that are not paid off only) and Delete (in red), in that order.
+      Mark as paid off and Delete ask the same questions as the Danger zone tab, the second
+      question about plans and comments included; a refusal shows as a toast. After a delete
+      the row leaves the budget; after Mark as paid off it reads "Paid off".
 - [ ] Paid is the month's matching payments from the budget's member
       accounts, in the debt's currency; Left is the balance at the month's
       end (booked for past months, projected from the current month on).
@@ -3522,7 +3529,8 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       future payments reflect the extra payment.
 - [ ] 📱 Offline, debts need the server: the debt form's Add, the debt screen's Settings Save and
       its Danger zone's Mark as paid off and Delete are disabled under the offline notice, and a
-      budget row's Track as debt and Details menu items are greyed out.
+      budget row's Track as debt menu item and the debt row's Details, Mark as paid off and
+      Delete are greyed out.
 - [ ] 📱 Budget figures do not guess offline: Spent, Available and the budget cell's transaction
       list keep the server's numbers for a waiting transaction (an edit or delete of a listed row
       shows there, a new one only once sent), and update when the server confirms it.
