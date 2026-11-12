@@ -297,3 +297,29 @@ it('offline, suggestions never loaded on this device read as unavailable rather 
     act(() => onlineManager.setOnline(true))
   }
 })
+
+it('flags importsError when the suggestion list fails, and retryImports refetches it', async () => {
+  const wrapper = makeWrapper()
+  let calls = 0
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] }, importSources: [] }))
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => {
+    calls += 1
+    return HttpResponse.json({ success: false, message: 'boom', code: 0 }, { status: 500 })
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.importsError).toBe(true))
+  const before = calls
+  result.current.retryImports()
+  await waitFor(() => expect(calls).toBeGreaterThan(before))
+})
+
+it('an older server without the suggestion route is no failure', async () => {
+  const wrapper = makeWrapper()
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] }, importSources: [] }))
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: false, message: 'Not found', code: 0, errors: {} }, { status: 404 })))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  expect(result.current.importsError).toBe(false)
+  expect(result.current.suggestions).toEqual([])
+})

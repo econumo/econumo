@@ -135,7 +135,8 @@ function AllStep({ ruleId, preview, loading, onDone }: { ruleId: string | null; 
 function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; diff: RuleDiff; onDone: () => void }) {
   const { t } = useTranslation()
   const online = useOnline()
-  const { data: rules = [] } = useImportRules()
+  const rulesQuery = useImportRules()
+  const rules = rulesQuery.data ?? []
   const existing = link.appliedRuleId ? rules.find((r) => r.id === link.appliedRuleId) ?? null : null
   const summary = useDiffSummary(diff)
 
@@ -151,19 +152,23 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
   const [busy, setBusy] = useState(false)
 
   const { data: user } = useUserData()
-  // a lapsed-trial user's POST would only answer 402; wait until the access level is known
-  const aiOn = !existing && isAiEnabled() && online && user !== undefined && user.accessLevel !== 'readonly'
+  // a lapsed-trial user's POST would only answer 402; wait until the access level is known. A
+  // link a rule classified updates that rule and keeps its match, so the paid call is never made
+  // for it, nor while the rules (and so `existing`) are still loading.
+  const aiOn =
+    !link.appliedRuleId && rulesQuery.isSuccess && isAiEnabled() && online && user !== undefined && user.accessLevel !== 'readonly'
   const aiMatch = useSuggestMatchText(link.id, aiOn)
   const aiAnswer = aiOn ? aiMatch.data : undefined
   useEffect(() => {
-    if (!aiAnswer || aiAnswer.matchText === '' || touched) {
+    // once the save has started the spec is fixed: a late answer must not rewrite what was saved
+    if (!aiAnswer || aiAnswer.matchText === '' || touched || busy || step !== 'define') {
       return
     }
     const field = aiAnswer.matchField || 'external_payee'
     setMatchField(field)
     setMatchValue(aiAnswer.matchText)
     setAiPick({ field, text: aiAnswer.matchText })
-  }, [aiAnswer, touched])
+  }, [aiAnswer, touched, busy, step])
 
   // The rule spec: the existing rule's match (when updating) or the editable
   // one, with the classification the user just chose layered over it.
@@ -228,6 +233,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
 
   const save = async () => {
     setBusy(true)
+    setTouched(true)
     try {
       // the create/update and the count refresh are independent outcomes: if
       // the rule is saved but the refresh then fails, we must still record

@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios'
 import type { AccountDto } from '@/api/dto/account'
 import { useUnavailableOffline } from '@/lib/offlineQuery'
 import type { ImportFailedEventDto, ImportQueuedEventDto, ImportSourceDto, ImportSuggestionDto } from '@/api/dto/imports'
@@ -30,7 +31,7 @@ export interface Inbox {
   count: number
   /** the changes stored on this device, the import queue, sources AND recurring have each resolved (success or error) at least once (no "All caught up" flash) */
   isLoaded: boolean
-  /** the import queue or the source list request failed; either section may be showing stale/partial data */
+  /** the import queue, the source list or the suggestion list request failed; any of those sections may be showing stale/partial data */
   importsError: boolean
   // offline with the import queue, sources or suggestions never loaded on this device
   importsOffline: boolean
@@ -85,6 +86,9 @@ export function useInbox(): Inbox {
   const failed = queue.data?.failed ?? []
   const readonly = user?.accessLevel === 'readonly'
   const suggestions = readonly ? [] : (suggestionList.data ?? [])
+  // a 404 is an older server without the route: there is nothing to suggest, not a failure
+  const suggestionsError =
+    !readonly && suggestionList.isError && !(isAxiosError(suggestionList.error) && suggestionList.error.response?.status === 404)
   return {
     failedWrites,
     dueRecurring,
@@ -102,11 +106,12 @@ export function useInbox(): Inbox {
       (sources.data !== undefined || sources.isError) &&
       (recurring.data !== undefined || recurring.isError) &&
       foldersKnown,
-    importsError: !importsOffline && (queue.isError || sources.isError),
+    importsError: !importsOffline && (queue.isError || sources.isError || suggestionsError),
     importsOffline,
     retryImports: () => {
       void queue.refetch()
       void sources.refetch()
+      if (!readonly) void suggestionList.refetch()
     },
   }
 }

@@ -500,6 +500,58 @@ describe('AI match text', () => {
     expect(posted.suggest).toBeUndefined()
   })
 
+  it('never calls suggest-match-text for a link a rule classified', async () => {
+    window.econumoConfig = { AI_ENABLED: true }
+    renderPrompt({ importRules: [rule] })
+    aiHandler('BLUE BOTTLE')
+    useUiStore.getState().setRulePrompt({ kind: 'edit', link: link({ appliedRuleId: 'rule1', appliedCategoryId: 'cat-salary' }), diff: { categoryId: 'cat-food' } })
+    expect(await screen.findByRole('button', { name: 'Update rule' })).toBeInTheDocument()
+    await new Promise((r) => setTimeout(r, 150))
+    expect(posted.suggest).toBeUndefined()
+  })
+
+  it('waits for the rule list before calling suggest-match-text', async () => {
+    window.econumoConfig = { AI_ENABLED: true }
+    renderPrompt()
+    let releaseRules: () => void = () => {}
+    const rulesReady = new Promise<void>((r) => { releaseRules = r })
+    server.use(http.get('*/api/v1/import/get-rule-list', async () => {
+      await rulesReady
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }))
+    aiHandler('BLUE BOTTLE')
+    useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+    expect(await screen.findByLabelText('Payee contains')).toBeInTheDocument()
+    await new Promise((r) => setTimeout(r, 150))
+    expect(posted.suggest).toBeUndefined()
+    releaseRules()
+    await waitFor(() => expect(posted.suggest).toHaveLength(1))
+  })
+
+  it('ignores an AI answer that arrives once the save has started', async () => {
+    window.econumoConfig = { AI_ENABLED: true }
+    renderPrompt()
+    aiHandler('BLUE BOTTLE', 'description', 200)
+    server.use(http.post('*/api/v1/import/create-rule', async ({ request }) => {
+      const body = await request.json() as Record<string, unknown>
+      ;(posted.create ??= []).push(body)
+      await new Promise((r) => setTimeout(r, 1000))
+      return HttpResponse.json({ success: true, message: '', data: { ...rule, ...body, id: 'rule-new' } })
+    }))
+    useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+    const user = userEvent.setup()
+    await screen.findByLabelText('Payee contains')
+    await waitFor(() => expect(posted.suggest).toHaveLength(1))
+    await user.click(screen.getByRole('button', { name: 'Create rule' }))
+    expect(await screen.findByText('Apply this rule to 5 matching transactions in this import?')).toBeInTheDocument()
+    const created = posted.create![0] as Record<string, unknown>
+    expect(created.matchField).toBe('external_payee')
+    // the answer landed while the create was in flight; it must not have moved the form
+    const previews = posted.preview as Record<string, unknown>[]
+    expect(previews.every((p) => p.matchField === 'external_payee' && p.matchValue === created.matchValue)).toBe(true)
+    expect(vi.mocked(trackEvent)).not.toHaveBeenCalledWith(METRICS.IMPORT_RULE_AI_MATCH_USED)
+  })
+
   it('does not fire the AI-match metric when the user typed over the AI text', async () => {
     window.econumoConfig = { AI_ENABLED: true }
     renderPrompt()

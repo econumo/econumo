@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import * as importsApi from '@/api/imports'
 import type { Id } from '@/api/types'
@@ -13,6 +13,7 @@ import type {
   UpdateImportAccountDto,
 } from '@/api/dto/imports'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { isAiEnabled } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useApplyTransactionItem } from '@/features/transactions/queries'
 import type { OwnErrorHandling } from '@/lib/appQueryClient'
@@ -28,8 +29,36 @@ export function useImportQueue() {
   return useQuery({ queryKey: queryKeys.importQueue, queryFn: importsApi.getImportQueue, staleTime: TEN_MINUTES })
 }
 
+// The server writes suggestions in the background after an import answers, and an Apple Wallet
+// push reaches the server without this device knowing: a short staleTime plus a refetch on focus
+// is how they show up.
 export function useImportSuggestions() {
-  return useQuery({ queryKey: queryKeys.importSuggestions, queryFn: importsApi.getImportSuggestionList, staleTime: TEN_MINUTES })
+  return useQuery({
+    queryKey: queryKeys.importSuggestions,
+    queryFn: importsApi.getImportSuggestionList,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+  })
+}
+
+// when, after a sync, the suggestion list is refetched for the AI job's answer
+export const SUGGESTION_REFRESH_DELAYS_MS = [15_000, 60_000]
+
+let suggestionRefresh: ReturnType<typeof setTimeout>[] = []
+
+export function cancelSuggestionRefresh(): void {
+  suggestionRefresh.forEach(clearTimeout)
+  suggestionRefresh = []
+}
+
+// Module-level, like finishImport's AI refetches: leaving the page that ran the sync must not
+// stop the suggestions from showing up.
+export function scheduleSuggestionRefresh(queryClient: QueryClient): void {
+  cancelSuggestionRefresh()
+  if (!isAiEnabled()) return
+  suggestionRefresh = SUGGESTION_REFRESH_DELAYS_MS.map((delay) =>
+    setTimeout(() => void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions }), delay),
+  )
 }
 
 export interface SuggestionChanges {
@@ -304,6 +333,7 @@ export function useSyncImportSource() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
+      if (result.run.importedCount > 0) scheduleSuggestionRefresh(queryClient)
       void queryClient.invalidateQueries({ queryKey: ['importRuns'] })
       if (result.run.importedCount + result.run.matchedCount + result.run.amountsUpdatedCount > 0) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })

@@ -10,6 +10,8 @@ import type { TransactionDto } from '@/api/dto/transaction'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { profileAttributes, setAnalyticsQueryClient } from '@/lib/analyticsProfile'
 import {
+  cancelSuggestionRefresh,
+  scheduleSuggestionRefresh,
   useApplyImportRule,
   useCreateImportRule,
   useCreateImportSource,
@@ -181,6 +183,56 @@ it('useSyncImportSource refreshes ledger caches only when the run wrote somethin
   expect(body).toEqual({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' })
   expect(queryClient.getQueryState(queryKeys.transactions)?.isInvalidated).toBe(true)
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SYNC, { trigger: 'manual', imported: 2, matched: 1 })
+})
+
+describe('suggestion refresh after a sync', () => {
+  afterEach(() => {
+    cancelSuggestionRefresh()
+    vi.useRealTimers()
+  })
+
+  it('refetches the suggestion list at 15 s and 60 s when AI is on', () => {
+    vi.useFakeTimers()
+    window.econumoConfig = { AI_ENABLED: true }
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    scheduleSuggestionRefresh(queryClient)
+    vi.advanceTimersByTime(14_999)
+    expect(spy).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(spy).toHaveBeenLastCalledWith({ queryKey: queryKeys.importSuggestions })
+    vi.advanceTimersByTime(45_000)
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('schedules nothing without AI', () => {
+    vi.useFakeTimers()
+    window.econumoConfig = { AI_ENABLED: false }
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    scheduleSuggestionRefresh(queryClient)
+    vi.advanceTimersByTime(120_000)
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('a sync that imported rows schedules the refresh', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    window.econumoConfig = { IMPORT_SIMPLEFIN: true, AI_ENABLED: true }
+    const run = {
+      id: 'r1', sourceId: 's2', provider: 'simplefin', status: 'completed', trigger: 'manual',
+      importedCount: 1, matchedCount: 0, amountsUpdatedCount: 0, queuedCount: 0, skippedCount: 0, failedCount: 0,
+      errors: [], startedAt: '2026-09-07 10:00:00', finishedAt: '2026-09-07 10:00:02',
+    }
+    server.use(http.post('*/api/v1/import/sync-source', () => HttpResponse.json({ success: true, message: '', data: { run, accounts: [] } })))
+    const { queryClient, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useSyncImportSource(), { wrapper })
+    await act(() => result.current.mutateAsync({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' }))
+    queryClient.setQueryData(queryKeys.importSuggestions, [])
+    expect(queryClient.getQueryState(queryKeys.importSuggestions)?.isInvalidated).toBe(false)
+    vi.advanceTimersByTime(15_000)
+    expect(queryClient.getQueryState(queryKeys.importSuggestions)?.isInvalidated).toBe(true)
+  })
 })
 
 it('useSyncImportSource invalidates the source list on a failed sync (a failed run still recorded on the source)', async () => {
