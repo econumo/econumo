@@ -7,7 +7,7 @@ import { setToken } from '@/lib/storage'
 import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { writeConfig } from '@/features/appLock/config'
 import { initAppLock, resetAppLockForTests, unlock } from '@/features/appLock/lockStore'
-import { setSecureContext, signIn, testConfig } from '@/features/appLock/testUtils'
+import { signIn, testConfig } from '@/features/appLock/testUtils'
 
 function renderAt(path: string) {
   const router = createMemoryRouter(
@@ -65,14 +65,12 @@ it('does not remember an ordinary page', () => {
 describe('the app lock', () => {
   beforeEach(() => {
     sessionStorage.clear()
-    setSecureContext(true)
     resetAppLockForTests()
     window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
   })
 
   afterEach(() => {
     resetAppLockForTests()
-    setSecureContext(false)
   })
 
   function renderLocked() {
@@ -88,16 +86,6 @@ describe('the app lock', () => {
   }
 
   it('shows the lock screen instead of the page', () => {
-    signIn('u1')
-    writeConfig(testConfig({ userId: 'u1' }))
-    initAppLock()
-    renderLocked()
-    expect(screen.getByRole('heading', { name: 'Enter PIN' })).toBeInTheDocument()
-    expect(screen.queryByText('SECRET')).not.toBeInTheDocument()
-  })
-
-  it('locks on a cold start over plain http too', () => {
-    setSecureContext(false)
     signIn('u1')
     writeConfig(testConfig({ userId: 'u1' }))
     initAppLock()

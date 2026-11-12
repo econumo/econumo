@@ -94,11 +94,6 @@ it('disabled blocks the keypad and the keyboard', async () => {
   expect(dots()).toBe(0)
 })
 
-it('renders the biometric slot', () => {
-  render(<PinPad mode="verify" length={4} onSubmit={vi.fn()} biometric={<button type="button">Bio</button>} />)
-  expect(screen.getByRole('button', { name: 'Bio' })).toBeInTheDocument()
-})
-
 describe('Enter outside the pad', () => {
   it('still activates a focused button on the lock screen', async () => {
     const user = userEvent.setup()

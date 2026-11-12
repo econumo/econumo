@@ -11,7 +11,6 @@ import { SettingsShell } from '@/features/settings/SettingsShell'
 import { useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { getSessionUserId } from '@/lib/storage'
-import { biometricAvailable, biometricNeedsHttps, prepareBiometricRegistration, type RegisterResult } from './biometric'
 import {
   activeConfig,
   clearConfig,
@@ -39,11 +38,7 @@ export function AppLockPage() {
   // The flow still on screen; a check or hash finishing after the dialog was
   // dismissed must not change the lock.
   const openSeq = useRef<number | null>(null)
-  const [biometrics, setBiometrics] = useState(false)
-  const [register, setRegister] = useState<(() => Promise<RegisterResult>) | null>(null)
-  const [registering, setRegistering] = useState(false)
   const enabled = config !== null
-  const credentialId = config?.biometric?.credentialId ?? null
   const userId = getSessionUserId() ?? user?.id ?? null
 
   const refresh = () => setConfig(activeConfig())
@@ -58,44 +53,6 @@ export function AppLockPage() {
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    void biometricAvailable().then((available) => {
-      if (!cancelled) {
-        setBiometrics(available)
-      }
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  // Prepared ahead: Safari shows the passkey sheet only when create() runs
-  // straight from the tap, with nothing awaited before it.
-  const email = user?.email
-  useEffect(() => {
-    if (!biometrics || !enabled || !userId || !email) {
-      setRegister(null)
-      return
-    }
-    let cancelled = false
-    void prepareBiometricRegistration({ userId, email }, credentialId).then(
-      (start) => {
-        if (!cancelled) {
-          setRegister(() => start)
-        }
-      },
-      () => {
-        if (!cancelled) {
-          setRegister(null)
-        }
-      },
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [biometrics, enabled, userId, email, credentialId])
 
   const openFlow = (kind: SecretFlow) => {
     const seq = ++flowSeq.current
@@ -142,7 +99,7 @@ export function AppLockPage() {
       // they are. A sign-in marker left in this tab would skip the next cold
       // start's lock, so it is spent.
       clearFreshMarker()
-      writeConfig({ v: 1, userId, secret: hash, lockAfterMs: DEFAULT_LOCK_AFTER_MS, biometric: null })
+      writeConfig({ v: 1, userId, secret: hash, lockAfterMs: DEFAULT_LOCK_AFTER_MS })
       trackEvent(METRICS.APP_LOCK_ENABLED, { kind: hash.kind })
     } else if (flow.kind === 'change' && secret) {
       const hash = await hashSecret(secret)
@@ -162,32 +119,6 @@ export function AppLockPage() {
     closeFlow()
     trackEvent(METRICS.APP_LOCK_ATTEMPTS_EXCEEDED)
     void navigate(RouterPage.LOGOUT, { state: { keepPendingWrites: true, resetAppLock: true } })
-  }
-
-  const onBiometricChange = (checked: boolean) => {
-    if (!checked) {
-      if (update({ biometric: null })) {
-        trackEvent(METRICS.APP_LOCK_BIOMETRIC_DISABLED)
-      }
-      return
-    }
-    if (register === null) {
-      toast.error(t('appLock.settings.biometric_failed'))
-      return
-    }
-    setRegistering(true)
-    // Called straight from the tap: nothing may be awaited before create().
-    void register()
-      .then((result) => {
-        if (result.status === 'ok') {
-          if (update({ biometric: { credentialId: result.credentialId } })) {
-            trackEvent(METRICS.APP_LOCK_BIOMETRIC_ENABLED)
-          }
-          return
-        }
-        toast.error(t('appLock.settings.biometric_failed'))
-      })
-      .finally(() => setRegistering(false))
   }
 
   const onLockAfterChange = (value: string) => {
@@ -246,31 +177,6 @@ export function AppLockPage() {
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </button>
 
-            {biometrics ? (
-              <div className={rowClass}>
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <label htmlFor="app-lock-biometric" className="text-sm">
-                    {t('appLock.settings.biometric_label')}
-                  </label>
-                  <span className="text-xs text-muted-foreground">{t('appLock.settings.biometric_hint')}</span>
-                </div>
-                <Switch
-                  id="app-lock-biometric"
-                  checked={credentialId !== null}
-                  disabled={registering || (credentialId === null && register === null)}
-                  onCheckedChange={onBiometricChange}
-                />
-              </div>
-            ) : biometricNeedsHttps() ? (
-              <div aria-disabled="true" className={`${rowClass} opacity-60`}>
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="text-sm">{t('appLock.settings.biometric_label')}</span>
-                  <span className="text-xs text-muted-foreground">{t('appLock.settings.biometric_needs_https')}</span>
-                </div>
-                <Switch aria-label={t('appLock.settings.biometric_label')} checked={false} disabled />
-              </div>
-            ) : null}
-
             <div className={rowClass}>
               <span className="text-sm">
                 {t('appLock.settings.lock_after.label')}
@@ -295,7 +201,6 @@ export function AppLockPage() {
           open={flow.open}
           flow={flow.kind}
           current={config ? { kind: config.secret.kind, length: config.secret.length } : null}
-          credentialId={credentialId}
           onClose={closeFlow}
           onComplete={onComplete}
           onExceeded={onExceeded}

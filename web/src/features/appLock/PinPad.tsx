@@ -21,8 +21,6 @@ export interface PinPadProps {
   error?: string
   /** A quiet line under the dots ("4 to 8 digits", attempts left). */
   hint?: string
-  /** Rendered in the keypad's bottom-left slot (the biometric button). */
-  biometric?: ReactNode
   submitLabel?: string
   /** Physical keyboard input; turn it off while another surface (a dialog) is on top. */
   keyboard?: boolean
@@ -35,7 +33,7 @@ const KEY_CLASS =
   'flex size-[4.25rem] touch-manipulation items-center justify-center rounded-full text-foreground outline-none select-none [-webkit-tap-highlight-color:transparent] transition-[transform,background-color,opacity] duration-100 active:scale-[0.94] focus-visible:ring-3 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:opacity-40'
 
 interface PadKeyProps {
-  /** digit: a filled round key; icon: a bare key-sized target (backspace, biometrics). */
+  /** digit: a filled round key; icon: a bare key-sized target (backspace). */
   variant?: 'digit' | 'icon'
   label?: string
   disabled?: boolean
@@ -83,7 +81,6 @@ export function PinPad({
   disabled = false,
   error,
   hint,
-  biometric,
   submitLabel,
   keyboard = true,
   className,
@@ -249,7 +246,7 @@ export function PinPad({
             {d}
           </PadKey>
         ))}
-        <div className="flex size-[4.25rem] items-center justify-center">{biometric}</div>
+        <div aria-hidden="true" className="size-[4.25rem]" />
         <PadKey disabled={blocked} onPress={() => actions.digit('0')}>
           0
         </PadKey>

@@ -12,7 +12,7 @@ import i18n from '@/app/i18n'
 import { ProfilePage } from './ProfilePage'
 import { ThemeProvider } from '@/app/ThemeProvider'
 import { writeConfig } from '@/features/appLock/config'
-import { setSecureContext, signIn, testConfig } from '@/features/appLock/testUtils'
+import { signIn, testConfig } from '@/features/appLock/testUtils'
 
 function mockViewport(compact = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -379,10 +379,7 @@ it('offline the name reads as plain text in its card: read-only, no grey bar beh
 })
 
 describe('App lock row', () => {
-  afterEach(() => setSecureContext(false))
-
   it('sits between Sessions and API tokens and says whether the lock is on', async () => {
-    setSecureContext(true)
     signIn('u1')
     renderPage()
     const row = await screen.findByRole('link', { name: /App lock/ })
@@ -395,17 +392,10 @@ describe('App lock row', () => {
   })
 
   it('reads On for the signed-in user’s lock', async () => {
-    setSecureContext(true)
     signIn('u1')
     writeConfig(testConfig())
     renderPage()
     expect(await screen.findByRole('link', { name: /App lock/ })).toHaveTextContent('On')
   })
 
-  it('is available over plain http', async () => {
-    signIn('u1')
-    writeConfig(testConfig())
-    renderPage()
-    expect(await screen.findByRole('link', { name: /App lock/ })).toHaveTextContent('On')
-  })
 })

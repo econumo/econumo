@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Fingerprint } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
 import { pluralPick } from '@/lib/plural'
-import { verifyBiometric } from './biometric'
-import { lockoutRemainingMs, MAX_FAILED_ATTEMPTS, readAttempts, resetAttempts, type SecretKind } from './config'
+import { lockoutRemainingMs, MAX_FAILED_ATTEMPTS, readAttempts, type SecretKind } from './config'
 import { formatCountdown } from './format'
 import { checkSecret } from './secret'
-import { PadKey, PinPad } from './PinPad'
+import { PinPad } from './PinPad'
 import { PatternPad } from './PatternPad'
 
 // Shown when fewer attempts than this are left before the sign-out.
@@ -22,8 +20,6 @@ interface SecretDialogProps {
   flow: SecretFlow
   /** the stored secret, for the current-secret step */
   current: { kind: SecretKind; length: number } | null
-  /** offered as an alternative to the current secret */
-  credentialId: string | null
   onClose: () => void
   /** enable/change: the new secret (PIN digits or an encoded pattern), confirmed; disable: nothing */
   onComplete: (secret?: string) => void | Promise<void>
@@ -31,7 +27,7 @@ interface SecretDialogProps {
 }
 
 // Remount it (key) for every new flow: the steps keep no state across opens.
-export function SecretDialog({ open, flow, current, credentialId, onClose, onComplete, onExceeded }: SecretDialogProps) {
+export function SecretDialog({ open, flow, current, onClose, onComplete, onExceeded }: SecretDialogProps) {
   const { t, i18n } = useTranslation()
   const [step, setStep] = useState<Step>(flow === 'enable' ? 'create' : 'verify')
   const [kind, setKind] = useState<SecretKind>(flow === 'change' && current ? current.kind : 'pin')
@@ -40,14 +36,6 @@ export function SecretDialog({ open, flow, current, credentialId, onClose, onCom
   const [remaining, setRemaining] = useState(() => MAX_FAILED_ATTEMPTS - readAttempts().failedAttempts)
   const [lockout, setLockout] = useState(() => (flow === 'enable' ? 0 : lockoutRemainingMs()))
   const firstSecret = useRef('')
-  // A passkey prompt can outlive the dialog; its answer must not land after a cancel.
-  const openRef = useRef(open)
-  useEffect(() => {
-    openRef.current = open
-    return () => {
-      openRef.current = false
-    }
-  }, [open])
 
   const currentKind = current?.kind ?? 'pin'
   const padKind = step === 'verify' ? currentKind : kind
@@ -96,31 +84,6 @@ export function SecretDialog({ open, flow, current, credentialId, onClose, onCom
         onClose()
         return false
     }
-  }
-
-  const onBiometric = () => {
-    if (credentialId === null) {
-      return
-    }
-    setError('')
-    // No await before this call: the click is the user gesture it needs.
-    void verifyBiometric(credentialId).then((result) => {
-      if (!openRef.current) {
-        return
-      }
-      if (result === 'ok') {
-        resetAttempts()
-        setRemaining(MAX_FAILED_ATTEMPTS)
-        setLockout(0)
-        verified()
-      } else if (result === 'failed') {
-        setError(
-          currentKind === 'pattern'
-            ? t('appLock.lock_screen.biometric_failed_pattern')
-            : t('appLock.lock_screen.biometric_failed'),
-        )
-      }
-    })
   }
 
   const onCreate = (value: string): boolean => {
@@ -173,11 +136,6 @@ export function SecretDialog({ open, flow, current, credentialId, onClose, onCom
         ? pluralPick(t('appLock.lock_screen.attempts_left'), remaining, i18n.language)
         : undefined
   const onSubmit = step === 'verify' ? onVerify : step === 'create' ? onCreate : onConfirm
-  const biometric = step === 'verify' && credentialId !== null && (
-    <PadKey variant="icon" label={t('appLock.lock_screen.biometric')} onPress={onBiometric}>
-      <Fingerprint className="size-7" strokeWidth={1.5} aria-hidden="true" />
-    </PadKey>
-  )
 
   return (
     <ResponsiveDialog open={open} onOpenChange={(value) => !value && onClose()} title={title}>
@@ -189,7 +147,6 @@ export function SecretDialog({ open, flow, current, credentialId, onClose, onCom
             disabled={lockedOut}
             error={shownError}
             hint={hint}
-            biometric={biometric}
           />
         ) : (
           <PinPad
@@ -202,7 +159,6 @@ export function SecretDialog({ open, flow, current, credentialId, onClose, onCom
             hint={hint}
             keyboard={open}
             submitLabel={step === 'confirm' ? t('appLock.settings.dialog.save') : undefined}
-            biometric={biometric}
           />
         )}
         {step === 'create' && (

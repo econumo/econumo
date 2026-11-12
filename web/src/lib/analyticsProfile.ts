@@ -28,7 +28,6 @@ type ProfileCount = 'accounts' | 'budgets' | 'categories' | 'payees' | 'tags' | 
 type ProfileAttributes = Partial<Record<ProfileCount, number>> & {
   import_apple_wallet?: 'on' | 'off'
   app_lock?: 'off' | 'pin' | 'pattern'
-  app_lock_biometric?: 'on' | 'off'
 }
 
 function count(out: ProfileAttributes, key: readonly unknown[], name: ProfileCount): void {
@@ -60,7 +59,6 @@ export function profileAttributes(): ProfileAttributes {
   const lock = activeConfig()
   const out: ProfileAttributes = {
     app_lock: lock === null ? 'off' : lock.secret.kind,
-    app_lock_biometric: lock?.biometric ? 'on' : 'off',
   }
   if (!client) {
     return out

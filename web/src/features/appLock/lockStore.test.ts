@@ -2,8 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { setToken } from '@/lib/storage'
 import { readAttempts, recordFailedAttempt, writeConfig } from './config'
 import { initAppLock, lock, PRIVACY_COVER_ID, resetAppLockForTests, unlock, useAppLock, useLockStore } from './lockStore'
-import { resetBiometricForTests, verifyBiometric } from './biometric'
-import { setSecureContext, signIn, testConfig } from './testUtils'
+import { signIn, testConfig } from './testUtils'
 
 let visibility: DocumentVisibilityState = 'visible'
 const reload = vi.fn()
@@ -33,17 +32,14 @@ beforeEach(() => {
   vi.useFakeTimers({ now: 1_000_000 })
   localStorage.clear()
   sessionStorage.clear()
-  setSecureContext(true)
   visibility = 'visible'
   reload.mockReset()
   resetAppLockForTests({ reload })
-  resetBiometricForTests()
 })
 
 afterEach(() => {
   resetAppLockForTests()
   vi.useRealTimers()
-  setSecureContext(false)
 })
 
 function configure(lockAfterMs = 60_000): void {
@@ -180,62 +176,6 @@ describe('background', () => {
     expect(locked()).toBe(true)
   })
 
-  it('ignores the page going away during a passkey prompt', async () => {
-    configure(0)
-    initAppLock()
-    unlock()
-    let finish: (value: unknown) => void = () => {}
-    Object.defineProperty(navigator, 'credentials', {
-      value: { get: () => new Promise((resolve) => (finish = resolve)) },
-      configurable: true,
-    })
-    const pending = verifyBiometric('AQID')
-    setVisibility('hidden')
-    expect(locked()).toBe(false)
-    expect(cover().hidden).toBe(true)
-    finish(null)
-    await pending
-    setVisibility('visible')
-    expect(locked()).toBe(false)
-  })
-
-  it('locks on return when a passkey prompt was left open for a long time away', async () => {
-    configure(0)
-    initAppLock()
-    unlock()
-    let finish: (value: unknown) => void = () => {}
-    Object.defineProperty(navigator, 'credentials', {
-      value: { get: () => new Promise((resolve) => (finish = resolve)) },
-      configurable: true,
-    })
-    const pending = verifyBiometric('AQID')
-    setVisibility('hidden')
-    vi.advanceTimersByTime(59_000)
-    finish(null)
-    await pending
-    vi.advanceTimersByTime(2_000)
-    setVisibility('visible')
-    expect(locked()).toBe(true)
-  })
-
-  it('a passkey prompt answered quickly with a longer timeout set keeps the tab unlocked', async () => {
-    configure(300_000)
-    initAppLock()
-    unlock()
-    let finish: (value: unknown) => void = () => {}
-    Object.defineProperty(navigator, 'credentials', {
-      value: { get: () => new Promise((resolve) => (finish = resolve)) },
-      configurable: true,
-    })
-    const pending = verifyBiometric('AQID')
-    setVisibility('hidden')
-    vi.advanceTimersByTime(120_000)
-    finish(null)
-    await pending
-    setVisibility('visible')
-    expect(locked()).toBe(false)
-    expect(cover().hidden).toBe(true)
-  })
 })
 
 describe('heartbeat', () => {

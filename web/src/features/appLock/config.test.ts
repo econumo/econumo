@@ -11,18 +11,15 @@ import {
   writeConfig,
 } from './config'
 import { checkSecret, hashSecret } from './secret'
-import { setSecureContext, signIn, testConfig } from './testUtils'
+import { signIn, testConfig } from './testUtils'
 
 beforeEach(() => {
   localStorage.clear()
-  setSecureContext(true)
 })
-
-afterAll(() => setSecureContext(false))
 
 describe('config storage', () => {
   it('round-trips a config', () => {
-    const config = testConfig({ biometric: { credentialId: 'abc' } })
+    const config = testConfig()
     writeConfig(config)
     expect(readConfig()).toEqual(config)
   })
@@ -38,10 +35,17 @@ describe('config storage', () => {
       JSON.stringify({ ...testConfig(), secret: { ...testConfig().secret, length: 9 } }),
       JSON.stringify({ ...testConfig(), secret: { ...testConfig().secret, kind: 'face' } }),
       JSON.stringify({ ...testConfig(), secret: { ...testConfig().secret, kind: 'pattern', length: 10 } }),
-      JSON.stringify({ ...testConfig(), biometric: { credentialId: 5 } }),
     ]) {
       localStorage.setItem('econumo.appLock', raw)
       expect(readConfig()).toBeNull()
+    }
+  })
+
+  // Builds that offered biometrics stored a `biometric` field; it is ignored.
+  it('reads a config that still holds a biometric field, dropping it', () => {
+    for (const biometric of [null, { credentialId: 'abc' }, { credentialId: 5 }]) {
+      localStorage.setItem('econumo.appLock', JSON.stringify({ ...testConfig(), biometric }))
+      expect(readConfig()).toEqual(testConfig())
     }
   })
 
@@ -71,12 +75,6 @@ describe('activeConfig', () => {
     expect(activeConfig()?.userId).toBe('u1')
   })
 
-  it('stays on without a secure context (plain http)', () => {
-    writeConfig(testConfig())
-    signIn('u1')
-    setSecureContext(false)
-    expect(activeConfig()?.userId).toBe('u1')
-  })
 })
 
 describe('attempts', () => {

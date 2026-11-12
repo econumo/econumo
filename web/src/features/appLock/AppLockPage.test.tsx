@@ -7,11 +7,10 @@ import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
-import { biometricAvailable, prepareBiometricRegistration, verifyBiometric } from './biometric'
 import { readAttempts, readConfig, recordFailedAttempt, writeConfig } from './config'
 import { resetAppLockForTests, useLockStore } from './lockStore'
 import { checkSecret, hashSecret, PIN_ITERATIONS_JS, verifySecret } from './secret'
-import { drawPattern, setSecureContext, signIn, testConfig } from './testUtils'
+import { drawPattern, signIn, testConfig } from './testUtils'
 import { AppLockPage } from './AppLockPage'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -24,16 +23,6 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('./secret', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./secret')>()
   return { ...actual, hashSecret: vi.fn(actual.hashSecret), checkSecret: vi.fn(actual.checkSecret) }
-})
-
-vi.mock('./biometric', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./biometric')>()
-  return {
-    ...actual,
-    biometricAvailable: vi.fn(),
-    prepareBiometricRegistration: vi.fn(),
-    verifyBiometric: vi.fn(),
-  }
 })
 
 function LogoutProbe() {
@@ -77,20 +66,12 @@ beforeEach(() => {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(),
   }))
-  setSecureContext(true)
   signIn('u1')
   resetAppLockForTests()
   vi.mocked(trackEvent).mockClear()
   vi.mocked(toast.error).mockClear()
-  vi.mocked(biometricAvailable).mockResolvedValue(false)
-  vi.mocked(prepareBiometricRegistration).mockReset()
-  vi.mocked(verifyBiometric).mockReset()
   vi.mocked(hashSecret).mockClear()
   vi.mocked(checkSecret).mockClear()
-})
-
-afterEach(() => {
-  setSecureContext(false)
 })
 
 it('turns the lock on after the PIN is typed twice, starting over on a mismatch', async () => {
@@ -119,7 +100,7 @@ it('turns the lock on after the PIN is typed twice, starting over on a mismatch'
 
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   const config = readConfig()
-  expect(config).toMatchObject({ userId: 'u1', lockAfterMs: 60_000, biometric: null })
+  expect(config).toMatchObject({ userId: 'u1', lockAfterMs: 60_000 })
   expect(await verifySecret('1234', config!.secret)).toBe(true)
   expect(lockSwitch()).toBeChecked()
   // Turning it on does not lock the tab that just set it up.
@@ -214,97 +195,15 @@ it('stores the lock-after choice', async () => {
   expect(screen.getByRole('combobox', { name: 'Lock after' })).toHaveTextContent('5 minutes')
 })
 
-it('has no biometrics row where the device cannot do it', async () => {
+it('offers no biometrics', async () => {
   await configure()
   renderPage()
   await screen.findByText('Change PIN')
-  await Promise.resolve()
-  expect(screen.queryByRole('switch', { name: 'Use biometrics' })).not.toBeInTheDocument()
+  expect(screen.getAllByRole('switch')).toHaveLength(1)
+  expect(screen.queryByText(/biometric/i)).not.toBeInTheDocument()
 })
 
-it('registers a passkey for biometrics and forgets it when turned off', async () => {
-  await configure()
-  vi.mocked(biometricAvailable).mockResolvedValue(true)
-  const start = vi.fn().mockResolvedValue({ status: 'ok', credentialId: 'cred-1' })
-  vi.mocked(prepareBiometricRegistration).mockResolvedValue(start)
-  const user = userEvent.setup()
-  renderPage()
-  const toggle = await screen.findByRole('switch', { name: 'Use biometrics' })
-  expect(screen.getByText(/may also accept its passcode/)).toBeInTheDocument()
-  await waitFor(() =>
-    expect(prepareBiometricRegistration).toHaveBeenCalledWith({ userId: 'u1', email: fixtureUser.email }, null),
-  )
-  await user.click(toggle)
-  await waitFor(() => expect(readConfig()!.biometric).toEqual({ credentialId: 'cred-1' }))
-  expect(start).toHaveBeenCalledTimes(1)
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_BIOMETRIC_ENABLED)
-  await waitFor(() => expect(toggle).toBeChecked())
-
-  await user.click(toggle)
-  expect(readConfig()!.biometric).toBeNull()
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_BIOMETRIC_DISABLED)
-  expect(readConfig()).not.toBeNull()
-})
-
-it('a cancelled passkey prompt leaves biometrics off with a toast', async () => {
-  await configure()
-  vi.mocked(biometricAvailable).mockResolvedValue(true)
-  vi.mocked(prepareBiometricRegistration).mockResolvedValue(vi.fn().mockResolvedValue({ status: 'cancelled' }))
-  const user = userEvent.setup()
-  renderPage()
-  const toggle = await screen.findByRole('switch', { name: 'Use biometrics' })
-  await waitFor(() => expect(toggle).toBeEnabled())
-  await user.click(toggle)
-  await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't turn on biometrics"))
-  expect(toggle).not.toBeChecked()
-  expect(readConfig()!.biometric).toBeNull()
-  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.APP_LOCK_BIOMETRIC_ENABLED)
-})
-
-it('turning the lock off accepts biometrics instead of the PIN', async () => {
-  await configure({ biometric: { credentialId: 'cred-1' } })
-  vi.mocked(verifyBiometric).mockResolvedValue('ok')
-  const user = userEvent.setup()
-  renderPage()
-  await user.click(lockSwitch())
-  const dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
-  await user.click(within(dialog).getByRole('button', { name: 'Unlock with biometrics' }))
-  await waitFor(() => expect(readConfig()).toBeNull())
-  expect(verifyBiometric).toHaveBeenCalledWith('cred-1')
-})
-
-it('keeps the biometrics switch disabled until the passkey request is prepared', async () => {
-  await configure()
-  vi.mocked(biometricAvailable).mockResolvedValue(true)
-  let ready: (start: () => Promise<{ status: 'ok'; credentialId: string }>) => void = () => {}
-  vi.mocked(prepareBiometricRegistration).mockReturnValue(new Promise((resolve) => { ready = resolve }))
-  renderPage()
-  const toggle = await screen.findByRole('switch', { name: 'Use biometrics' })
-  expect(toggle).toBeDisabled()
-  ready(vi.fn().mockResolvedValue({ status: 'ok', credentialId: 'cred-1' }))
-  await waitFor(() => expect(toggle).toBeEnabled())
-})
-
-it('a passkey answer arriving after the dialog closed changes nothing', async () => {
-  await configure({ biometric: { credentialId: 'cred-1' } })
-  localStorage.setItem('econumo.appLock.attempts', JSON.stringify({ failedAttempts: 3, lockedUntil: null }))
-  let answer: (result: 'ok') => void = () => {}
-  vi.mocked(verifyBiometric).mockReturnValue(new Promise((resolve) => { answer = resolve }))
-  const user = userEvent.setup()
-  renderPage()
-  await user.click(lockSwitch())
-  const dialog = await screen.findByRole('dialog', { name: 'Enter your current PIN' })
-  await user.click(within(dialog).getByRole('button', { name: 'Unlock with biometrics' }))
-  await user.keyboard('{Escape}')
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  answer('ok')
-  await new Promise((resolve) => setTimeout(resolve, 0))
-  expect(readConfig()).not.toBeNull()
-  expect(JSON.parse(localStorage.getItem('econumo.appLock.attempts')!).failedAttempts).toBe(3)
-})
-
-it('works over plain http, showing biometrics as needing HTTPS', async () => {
-  setSecureContext(false)
+it('works over plain http', async () => {
   const realCrypto = globalThis.crypto
   vi.stubGlobal('crypto', { getRandomValues: realCrypto.getRandomValues.bind(realCrypto), randomUUID: realCrypto.randomUUID.bind(realCrypto) })
   onTestFinished(() => {
@@ -312,7 +211,6 @@ it('works over plain http, showing biometrics as needing HTTPS', async () => {
   })
   const user = userEvent.setup()
   renderPage()
-  expect(screen.queryByText('Face ID / fingerprint needs HTTPS')).not.toBeInTheDocument()
   await user.click(lockSwitch())
   let dialog = await screen.findByRole('dialog', { name: 'Choose a PIN' })
   await typePin(user, dialog, '2580')
@@ -323,9 +221,6 @@ it('works over plain http, showing biometrics as needing HTTPS', async () => {
   await waitFor(() => expect(readConfig()).not.toBeNull())
   expect(readConfig()!.secret.iterations).toBe(PIN_ITERATIONS_JS)
   expect(lockSwitch()).toBeChecked()
-  const note = await screen.findByText('Face ID / fingerprint needs HTTPS')
-  expect(note.closest('[aria-disabled="true"]')).toHaveTextContent('Use biometrics')
-  expect(screen.getByRole('switch', { name: 'Use biometrics' })).toBeDisabled()
 })
 
 it('turning the lock on spends the sign-in marker, so a reload locks', async () => {

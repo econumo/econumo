@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -19,8 +19,6 @@ export interface PatternPadProps {
   /** Shown above the grid in the error colour and announced; wins over the hint. */
   error?: string
   hint?: string
-  /** Rendered under the grid (the biometric button). */
-  biometric?: ReactNode
   className?: string
 }
 
@@ -46,7 +44,7 @@ function hit(point: Point): number | null {
   return Math.hypot(point.x - c.x, point.y - c.y) <= HIT_RADIUS ? node : null
 }
 
-export function PatternPad({ onSubmit, disabled = false, error, hint, biometric, className }: PatternPadProps) {
+export function PatternPad({ onSubmit, disabled = false, error, hint, className }: PatternPadProps) {
   const { t } = useTranslation()
   const [nodes, setNodesState] = useState<number[]>([])
   const [phase, setPhaseState] = useState<Phase>('idle')
@@ -350,7 +348,6 @@ export function PatternPad({ onSubmit, disabled = false, error, hint, biometric,
           </Button>
         </div>
       )}
-      {biometric && <div className="mt-3 flex size-[4.25rem] items-center justify-center">{biometric}</div>}
     </div>
   )
 }

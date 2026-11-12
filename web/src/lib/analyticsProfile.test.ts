@@ -2,7 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/app/queryKeys'
 import { profileAttributes, setAnalyticsQueryClient } from './analyticsProfile'
 import { writeConfig } from '@/features/appLock/config'
-import { setSecureContext, signIn, testConfig } from '@/features/appLock/testUtils'
+import { signIn, testConfig } from '@/features/appLock/testUtils'
 
 const ME = 'u1'
 const OWNER = { id: ME } as const
@@ -183,18 +183,16 @@ describe('months_since_signup', () => {
 
 it('holds only the device facts with no client', () => {
   setAnalyticsQueryClient(null)
-  expect(profileAttributes()).toEqual({ app_lock: 'off', app_lock_biometric: 'off' })
+  expect(profileAttributes()).toEqual({ app_lock: 'off' })
 })
 
 describe('app_lock', () => {
   beforeEach(() => {
     localStorage.clear()
-    setSecureContext(true)
     signIn('u1')
   })
   afterEach(() => {
     localStorage.clear()
-    setSecureContext(false)
   })
 
   it('is off without a lock for the signed-in user', () => {
@@ -203,20 +201,13 @@ describe('app_lock', () => {
     expect(profileAttributes().app_lock).toBe('off')
   })
 
-  it('reports the secret kind and biometrics separately, read at capture time', () => {
+  it('reports the secret kind, read at capture time', () => {
     writeConfig(testConfig())
-    expect(profileAttributes()).toMatchObject({ app_lock: 'pin', app_lock_biometric: 'off' })
-    writeConfig(testConfig({ biometric: { credentialId: 'abc' } }))
-    expect(profileAttributes()).toMatchObject({ app_lock: 'pin', app_lock_biometric: 'on' })
+    expect(profileAttributes().app_lock).toBe('pin')
     writeConfig(testConfig({ secret: { ...testConfig().secret, kind: 'pattern', length: 5 } }))
-    expect(profileAttributes()).toMatchObject({ app_lock: 'pattern', app_lock_biometric: 'off' })
+    expect(profileAttributes().app_lock).toBe('pattern')
   })
 
-  it('reports the PIN lock over plain http too', () => {
-    writeConfig(testConfig())
-    setSecureContext(false)
-    expect(profileAttributes().app_lock).toBe('pin')
-  })
 })
 
 it('reports apple-wallet on/off from the source list and omits it while unknown', () => {

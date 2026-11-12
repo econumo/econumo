@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { Fingerprint } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { queryKeys } from '@/app/queryKeys'
@@ -13,12 +12,11 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { pluralPick } from '@/lib/plural'
 import logo from '@/assets/econumo.svg'
 import darkLogo from '@/assets/econumo-dark.svg'
-import { verifyBiometric } from './biometric'
 import { lockoutRemainingMs, MAX_FAILED_ATTEMPTS, readAttempts } from './config'
 import { unlock, useAppLock } from './lockStore'
 import { formatCountdown } from './format'
 import { checkSecret } from './secret'
-import { PadKey, PinPad } from './PinPad'
+import { PinPad } from './PinPad'
 import { PatternPad } from './PatternPad'
 
 // Shown when fewer attempts than this are left before the sign-out.
@@ -26,15 +24,6 @@ const WARN_REMAINING = 5
 
 function remainingAttempts(): number {
   return MAX_FAILED_ATTEMPTS - readAttempts().failedAttempts
-}
-
-function autoBiometricAllowed(): boolean {
-  return (
-    document.visibilityState === 'visible' &&
-    document.hasFocus() &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(pointer: coarse)').matches
-  )
 }
 
 export function LockScreen() {
@@ -48,10 +37,7 @@ export function LockScreen() {
   const [lockout, setLockout] = useState(() => lockoutRemainingMs())
   const [remaining, setRemaining] = useState(remainingAttempts)
   const [forgotOpen, setForgotOpen] = useState(false)
-  const autoTried = useRef(false)
-  const autoAttempt = useRef<AbortController | null>(null)
   const leaving = useRef(false)
-  const credentialId = config?.biometric?.credentialId ?? null
 
   useEffect(() => {
     if (config === null) {
@@ -68,7 +54,7 @@ export function LockScreen() {
     return () => clearInterval(timer)
   }, [lockedOut])
 
-  const unlockWith = (method: 'pin' | 'pattern' | 'biometric') => {
+  const unlockWith = (method: 'pin' | 'pattern') => {
     trackEvent(METRICS.APP_LOCK_UNLOCKED, { method })
     unlock()
   }
@@ -81,68 +67,10 @@ export function LockScreen() {
     navigate(RouterPage.LOGOUT, { state: { keepPendingWrites: true, resetAppLock: true } })
   }
 
-  // Once per appearance, and only where the prompt is likely to be allowed
-  // without a tap; a browser that wants a gesture rejects it and the user
-  // taps the button. A screen that appeared in the background waits until the
-  // page comes forward. The timer lets StrictMode's throwaway mount cancel itself.
-  useEffect(() => {
-    if (credentialId === null || autoTried.current) {
-      return
-    }
-    const id: string = credentialId
-    const controller = new AbortController()
-    let timer: ReturnType<typeof setTimeout> | null = null
-    const stopWaiting = () => {
-      document.removeEventListener('visibilitychange', attempt)
-      window.removeEventListener('focus', attempt)
-    }
-    function attempt() {
-      if (timer !== null || autoTried.current || !autoBiometricAllowed()) {
-        return
-      }
-      timer = setTimeout(() => {
-        autoTried.current = true
-        autoAttempt.current = controller
-        stopWaiting()
-        void verifyBiometric(id, controller.signal).then((result) => {
-          if (result === 'ok' && !controller.signal.aborted) {
-            unlockWith('biometric')
-          }
-        })
-      }, 0)
-    }
-    document.addEventListener('visibilitychange', attempt)
-    window.addEventListener('focus', attempt)
-    attempt()
-    return () => {
-      stopWaiting()
-      if (timer !== null) {
-        clearTimeout(timer)
-      }
-      controller.abort()
-    }
-  }, [credentialId])
-
   if (config === null) {
     return null
   }
   const pattern = config.secret.kind === 'pattern'
-
-  const onBiometric = () => {
-    if (credentialId === null) {
-      return
-    }
-    autoAttempt.current?.abort()
-    setError('')
-    // No await before this call: the click is the user gesture it needs.
-    void verifyBiometric(credentialId).then((result) => {
-      if (result === 'ok') {
-        unlockWith('biometric')
-      } else if (result === 'failed') {
-        setError(pattern ? t('appLock.lock_screen.biometric_failed_pattern') : t('appLock.lock_screen.biometric_failed'))
-      }
-    })
-  }
 
   const onSubmit = async (secret: string): Promise<boolean> => {
     setError('')
@@ -170,12 +98,6 @@ export function LockScreen() {
     }
   }
 
-  const biometric = credentialId !== null && (
-    <PadKey variant="icon" label={t('appLock.lock_screen.biometric')} onPress={onBiometric}>
-      <Fingerprint className="size-7" strokeWidth={1.5} aria-hidden="true" />
-    </PadKey>
-  )
-
   const onForgot = () => {
     setForgotOpen(false)
     trackEvent(METRICS.APP_LOCK_FORGOT_SECRET, { kind: config.secret.kind })
@@ -195,7 +117,7 @@ export function LockScreen() {
         )}
         <h1 className="text-xl">{pattern ? t('appLock.lock_screen.title_pattern') : t('appLock.lock_screen.title')}</h1>
         {pattern ? (
-          <PatternPad onSubmit={onSubmit} disabled={lockedOut} error={error} biometric={biometric} />
+          <PatternPad onSubmit={onSubmit} disabled={lockedOut} error={error} />
         ) : (
           <PinPad
             mode="verify"
@@ -204,7 +126,6 @@ export function LockScreen() {
             disabled={lockedOut}
             error={error}
             keyboard={!forgotOpen}
-            biometric={biometric}
           />
         )}
         {(lockedOut || remaining < WARN_REMAINING) && (

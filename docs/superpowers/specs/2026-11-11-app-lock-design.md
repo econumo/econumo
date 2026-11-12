@@ -1,6 +1,6 @@
-# App lock (PIN + biometrics) — design
+# App lock (PIN or pattern) — design
 
-Date: 2026-11-11. Status: approved for implementation. **Revisions 1-3 (end of file) override
+Date: 2026-11-11. Status: approved for implementation. **Revisions 1-5 (end of file) override
 anything above them that they contradict; a later revision wins.**
 
 ## Problem
@@ -291,21 +291,21 @@ format with `pluralPick`.
   config.userId`). A null `sessionUserId` locks and deletes nothing. The
   config (+ attempts) is deleted only in `setToken` (lib/storage.ts, the one
   choke point for every sign-in) when both ids are known and differ.
-- **R5 Biometrics accept the device passcode.** `userVerification:
+- **R5 Biometrics accept the device passcode.** *(Superseded by Revision 5: no biometrics.)* `userVerification:
   'required'` is satisfied by the phone passcode / Windows Hello PIN. Say so
   in the biometrics hint ("Your device may also accept its passcode") and in
   the threat model.
-- **R6 Ceremony in flight.** A module flag set while `create()`/`get()` is
+- **R6 Ceremony in flight.** *(Superseded by Revision 5: no biometrics.)* A module flag set while `create()`/`get()` is
   pending and for 2 s after; while set, hiding the page neither locks nor
   records `hiddenAt` (Android's passkey prompt is a separate activity), and
   the app is not obscured-then-locked mid-setup.
-- **R7 One stable passkey.** `user.id` = SHA-256(userId) bytes (precomputed,
+- **R7 One stable passkey.** *(Superseded by Revision 5: no biometrics.)* `user.id` = SHA-256(userId) bytes (precomputed,
   so re-registering replaces the keychain entry), `user.name` =
   `"<email> (app lock)"`, `displayName` = `"Econumo app lock"`,
   `excludeCredentials` = the stored id if any (an `InvalidStateError` then
   means "already registered": treat the stored id as still valid). The passkey
   syncs through iCloud Keychain / Google Password Manager; the hint says so.
-- **R8 Transports.** `allowCredentials.transports: ['internal']` only.
+- **R8 Transports.** *(Superseded by Revision 5: no biometrics.)* `allowCredentials.transports: ['internal']` only.
 - **R9 Sign-out rules.** `LogoutPage` removes the token first, then the lock
   config. It keeps the config when router state has `keepPendingWrites:
   true` and no `resetAppLock` ("Set a password" re-sign-in). "Forgot PIN" and
@@ -313,11 +313,11 @@ format with `pluralPick`.
   resetAppLock: true }`: the owner's offline queue survives (it is per user),
   the lock config is removed. The forgot-PIN dialog then doesn't warn about
   losing changes.
-- **R10 User gesture.** `create()`/`get()` are called synchronously in the
+- **R10 User gesture.** *(Superseded by Revision 5: no biometrics.)* `create()`/`get()` are called synchronously in the
   click handler: challenge, user id hash and credential id are prepared
   before (on mount / when the row renders); nothing is awaited before the
   call.
-- **R11 Availability.** `biometricAvailable()` is false when not a secure
+- **R11 Availability.** *(Superseded by Revision 5: no biometrics.)* `biometricAvailable()` is false when not a secure
   context, in the native app, when `location.hostname` is an IP address
   (v4 or v6) and when the platform-authenticator probe is false.
 - **R12 Insecure context.** When `!window.isSecureContext` (`crypto.subtle`
@@ -345,7 +345,7 @@ format with `pluralPick`.
   button) pause while locked and unlock remounts and refetches — accepted.
   `LockScreen` reads the user with `queryClient.getQueryData(['user', …])`
   (the existing user query key), never a fetching hook.
-- **R19 Auto biometric attempt.** Only when the lock screen appears with the
+- **R19 Auto biometric attempt.** *(Superseded by Revision 5: no biometrics.)* Only when the lock screen appears with the
   page visible and focused, on a touch device (`(pointer: coarse)`), once per
   appearance (ref guard, StrictMode-safe), with an `AbortController` aborted
   on unmount; any rejection is silent.
@@ -354,7 +354,7 @@ format with `pluralPick`.
   ≥4 digits. The keydown listener ignores events from inputs/textareas and
   only runs while its PinPad is the topmost interactive surface (the lock
   screen, or the open PIN dialog).
-- **R21 Lockout and biometrics.** Biometric unlock is allowed during a
+- **R21 Lockout and biometrics.** *(Biometric part superseded by Revision 5.)* Biometric unlock is allowed during a
   lockout and resets the counter. Settings prompts share the counter (R2).
 - **R22 Privacy cover outside React.** A static `<div id="privacy-cover">`
   appended to `<body>` by `initAppLock()`; the `visibilitychange`/`pagehide`
@@ -366,7 +366,7 @@ format with `pluralPick`.
 
 ## Revision 2 — review fixes (overrides the text above)
 
-- **R1/R6 amended.** Any change to `econumo.appLock` from another tab reloads
+- **R1/R6 amended.** *(Biometric part superseded by Revision 5.)* Any change to `econumo.appLock` from another tab reloads
   a LOCKED tab (PIN length, biometrics, owner); an unlocked tab still just
   reads the new settings. Hiding the page during a ceremony records
   `hiddenAt` but neither covers nor locks it; on return the tab locks when
@@ -377,7 +377,7 @@ format with `pluralPick`.
 - Closing a settings PIN dialog while its check or hash is running changes
   nothing. Enter in the PIN pad only submits in create mode, and never when
   a button or link outside the pad has focus.
-- R7 amended: the passkey `user.id` is SHA-256(`<userId>:<deviceId>`), where
+- *(Superseded by Revision 5: no biometrics.)* R7 amended: the passkey `user.id` is SHA-256(`<userId>:<deviceId>`), where
   `deviceId` is a random id in localStorage `econumo.appLock.device` that
   survives sign-out. One synced keychain entry per device: re-enabling on the
   same device replaces its own entry, and turning biometrics on for a second
@@ -400,7 +400,7 @@ be https-only.
   on the reference desktop (an Intel N150), several seconds on a phone, and
   about 150 ms for 25 000, under 1 s on a phone. The count is stored per config,
   as before. A PIN the 4-8 digit space limits anyway gains little from more.
-- **R11 amended (biometrics).** Still https-only. On plain http the settings page
+- **R11 amended (biometrics).** *(Superseded by Revision 5: no biometrics.)* Still https-only. On plain http the settings page
   shows the "Use biometrics" row disabled with "Face ID / fingerprint needs
   HTTPS" (`biometricNeedsHttps()`); in the native app and where the platform
   authenticator is unavailable on https the row stays hidden.
@@ -437,8 +437,8 @@ Android-style pattern.
   create step; the confirm step must match, else it starts over. The current-
   secret step uses the stored kind. The page's row reads "Change PIN" or
   "Change pattern".
-- **Lock screen.** A pattern lock shows "Draw your pattern", the grid, the
-  biometric button under it, the countdown and attempts left, and "Forgot
+- **Lock screen.** A pattern lock shows "Draw your pattern", the grid, (the
+  biometric button under it: superseded by Revision 5), the countdown and attempts left, and "Forgot
   pattern?" with the same sign-out.
 - **PIN pad redesign.** Title, then the dots, then one line under them for the
   hint, the attempts left or the error. Dots fill in the primary colour with a
@@ -451,6 +451,31 @@ Android-style pattern.
 - **Analytics.** `APP_LOCK_ENABLED` and `APP_LOCK_SECRET_CHANGED` (was
   `APP_LOCK_PIN_CHANGED`) carry `{ kind }`, `APP_LOCK_FORGOT_SECRET` (was
   `APP_LOCK_FORGOT_PIN`) carries `{ kind }`, and `APP_LOCK_UNLOCKED`'s method
-  can be `pattern`. Profile facts: `app_lock` off | pin | pattern and
-  `app_lock_biometric` on | off.
+  can be `pattern`. Profile facts: `app_lock` off | pin | pattern (and
+  `app_lock_biometric` on | off: removed by Revision 5).
 
+## Revision 5 — biometrics removed (overrides the text above)
+
+The owner's decision: ship PIN and pattern only, for simplicity. Both work the
+same over plain http and https, so there is one lock to explain, test and
+support; the WebAuthn passkey path (https only, a ceremony that backgrounds the
+page on Android, a synced keychain entry per device) cost more than it gave.
+Native Face ID / fingerprint in the Capacitor app is a possible follow-up.
+
+- **Gone.** `biometric.ts`; the device id `econumo.appLock.device`; the
+  settings page's "Use biometrics" row and its needs-HTTPS note; the lock
+  screen's biometric key, its automatic attempt and failure message; the
+  biometric alternative in the settings prompts (turning the lock off or
+  changing the secret always asks for the current PIN or pattern);
+  `APP_LOCK_BIOMETRIC_ENABLED`/`_DISABLED`; the `app_lock_biometric` profile
+  fact; `APP_LOCK_UNLOCKED`'s `biometric` method. R5-R8, R10, R11, R19, the
+  biometric half of R21 and the ceremony rules of Revision 2 no longer apply.
+- **Config.** `AppLockConfig` has no `biometric` field and writes none. A
+  config stored by an earlier build with a `biometric` field (any value) still
+  reads; the field is ignored and dropped on the next write.
+- **Lock timing.** Hiding the page always covers it (and locks it with
+  "Immediately"); on return it locks when away for `lockAfterMs` or more, or a
+  negative time; the heartbeat locks after a gap of max(`lockAfterMs`, 30 s).
+  There is no ceremony exception.
+- **Keypad.** The PIN pad's key left of 0 is a blank spacer, so 0 stays
+  centred; the pattern grid has nothing under it.

@@ -19,7 +19,6 @@ export interface AppLockConfig {
   userId: string
   secret: SecretHash
   lockAfterMs: number
-  biometric: { credentialId: string } | null
 }
 
 export interface AppLockAttempts {
@@ -93,16 +92,11 @@ export function readConfig(): AppLockConfig | null {
   if (!(LOCK_AFTER_OPTIONS as readonly unknown[]).includes(value.lockAfterMs)) {
     return null
   }
-  const biometric = value.biometric
-  if (biometric !== null && !(isRecord(biometric) && nonEmptyString(biometric.credentialId))) {
-    return null
-  }
   return {
     v: 1,
     userId: value.userId,
     secret,
     lockAfterMs: value.lockAfterMs as number,
-    biometric: biometric === null ? null : { credentialId: (biometric as { credentialId: string }).credentialId },
   }
 }
 

@@ -125,7 +125,3 @@ it('ignores input while disabled', () => {
   expect(onSubmit).not.toHaveBeenCalled()
 })
 
-it('renders the biometric button under the grid', () => {
-  render(<PatternPad onSubmit={vi.fn()} biometric={<button type="button">Bio</button>} />)
-  expect(screen.getByRole('button', { name: 'Bio' })).toBeInTheDocument()
-})

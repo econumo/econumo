@@ -9,18 +9,12 @@ import { APP_LOCK_CONFIG_KEY } from './keys'
 import { readAttempts, recordFailedAttempt, writeConfig } from './config'
 import { resetAppLockForTests, useLockStore } from './lockStore'
 import { hashSecret } from './secret'
-import { verifyBiometric } from './biometric'
-import { drawPattern, setSecureContext, signIn, testConfig } from './testUtils'
+import { drawPattern, signIn, testConfig } from './testUtils'
 import { LockScreen } from './LockScreen'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
   return { ...actual, trackEvent: vi.fn() }
-})
-
-vi.mock('./biometric', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./biometric')>()
-  return { ...actual, verifyBiometric: vi.fn() }
 })
 
 const reload = vi.fn()
@@ -30,15 +24,6 @@ const realMatchMedia = window.matchMedia
 function LogoutProbe() {
   const { state } = useLocation()
   return <div data-testid="logout">{JSON.stringify(state)}</div>
-}
-
-function pointer(coarse: boolean) {
-  window.matchMedia = ((query: string) => ({
-    matches: coarse && query === '(pointer: coarse)',
-    media: query,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-  })) as unknown as typeof window.matchMedia
 }
 
 async function configure(overrides: Parameters<typeof testConfig>[0] = {}) {
@@ -81,12 +66,10 @@ function seedFailures(count: number) {
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
-  setSecureContext(true)
   resetAppLockForTests()
   vi.mocked(trackEvent).mockClear()
-  vi.mocked(verifyBiometric).mockReset()
+  window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
   reload.mockClear()
-  pointer(false)
   Object.defineProperty(window, 'location', { value: { ...realLocation, reload }, writable: true, configurable: true })
 })
 
@@ -94,7 +77,6 @@ afterEach(() => {
   Object.defineProperty(window, 'location', { value: realLocation, writable: true, configurable: true })
   window.matchMedia = realMatchMedia
   resetAppLockForTests()
-  setSecureContext(false)
 })
 
 it('the right PIN unlocks', async () => {
@@ -193,102 +175,16 @@ it('Forgot PIN asks first, then signs out to reset the lock', async () => {
   expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_FORGOT_SECRET, { kind: 'pin' })
 })
 
-it('has no biometric button without a passkey', async () => {
-  await configure()
+it('offers no biometric unlock, even for a config stored with one', async () => {
+  signIn('u1')
+  localStorage.setItem(
+    APP_LOCK_CONFIG_KEY,
+    JSON.stringify({ ...testConfig({ secret: await hashSecret('1234', 1000) }), biometric: { credentialId: 'AAAA' } }),
+  )
+  useLockStore.setState({ locked: true })
   renderLockScreen()
-  expect(screen.queryByRole('button', { name: 'Unlock with biometrics' })).not.toBeInTheDocument()
-})
-
-it('the biometric button unlocks, even during a lockout', async () => {
-  const user = userEvent.setup()
-  await configure({ biometric: { credentialId: 'AAAA' } })
-  seedFailures(4)
-  recordFailedAttempt()
-  vi.mocked(verifyBiometric).mockResolvedValue('ok')
-  renderLockScreen()
-  await user.click(screen.getByRole('button', { name: 'Unlock with biometrics' }))
-  expect(verifyBiometric).toHaveBeenCalledWith('AAAA')
-  await waitFor(() => expect(useLockStore.getState().locked).toBe(false))
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.APP_LOCK_UNLOCKED, { method: 'biometric' })
-  expect(readAttempts().failedAttempts).toBe(0)
-})
-
-it('a cancelled biometric check stays locked without an error', async () => {
-  const user = userEvent.setup()
-  await configure({ biometric: { credentialId: 'AAAA' } })
-  vi.mocked(verifyBiometric).mockResolvedValue('cancelled')
-  renderLockScreen()
-  await user.click(screen.getByRole('button', { name: 'Unlock with biometrics' }))
-  await waitFor(() => expect(verifyBiometric).toHaveBeenCalled())
-  expect(useLockStore.getState().locked).toBe(true)
-  expect(screen.queryByText(/Couldn't verify/)).not.toBeInTheDocument()
-  expect(trackEvent).not.toHaveBeenCalled()
-})
-
-it('a failed biometric check asks for the PIN', async () => {
-  const user = userEvent.setup()
-  await configure({ biometric: { credentialId: 'AAAA' } })
-  vi.mocked(verifyBiometric).mockResolvedValue('failed')
-  renderLockScreen()
-  await user.click(screen.getByRole('button', { name: 'Unlock with biometrics' }))
-  expect(await screen.findByText("Couldn't verify it's you. Enter your PIN.")).toBeInTheDocument()
-  expect(useLockStore.getState().locked).toBe(true)
-})
-
-describe('the automatic biometric attempt', () => {
-  it('runs once on a touch device', async () => {
-    pointer(true)
-    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
-    await configure({ biometric: { credentialId: 'AAAA' } })
-    vi.mocked(verifyBiometric).mockResolvedValue('ok')
-    renderLockScreen()
-    await waitFor(() => expect(useLockStore.getState().locked).toBe(false))
-    expect(verifyBiometric).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(verifyBiometric).mock.calls[0][1]).toBeInstanceOf(AbortSignal)
-    vi.mocked(document.hasFocus).mockRestore()
-  })
-
-  it('is silent when rejected', async () => {
-    pointer(true)
-    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
-    await configure({ biometric: { credentialId: 'AAAA' } })
-    vi.mocked(verifyBiometric).mockResolvedValue('failed')
-    renderLockScreen()
-    await waitFor(() => expect(verifyBiometric).toHaveBeenCalledTimes(1))
-    expect(screen.queryByText(/Couldn't verify/)).not.toBeInTheDocument()
-    expect(useLockStore.getState().locked).toBe(true)
-    vi.mocked(document.hasFocus).mockRestore()
-  })
-
-  it('runs once the page it appeared on in the background comes forward', async () => {
-    pointer(true)
-    const focus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
-    await configure({ biometric: { credentialId: 'AAAA' } })
-    vi.mocked(verifyBiometric).mockResolvedValue('cancelled')
-    renderLockScreen()
-    await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(verifyBiometric).not.toHaveBeenCalled()
-    focus.mockReturnValue(true)
-    act(() => {
-      window.dispatchEvent(new Event('focus'))
-    })
-    await waitFor(() => expect(verifyBiometric).toHaveBeenCalledTimes(1))
-    act(() => {
-      window.dispatchEvent(new Event('focus'))
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
-    await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(verifyBiometric).toHaveBeenCalledTimes(1)
-    focus.mockRestore()
-  })
-
-  it('does not run with a mouse', async () => {
-    pointer(false)
-    await configure({ biometric: { credentialId: 'AAAA' } })
-    renderLockScreen()
-    await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(verifyBiometric).not.toHaveBeenCalled()
-  })
+  expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /biometric/i })).not.toBeInTheDocument()
 })
 
 it('reloads when the lock configuration is gone', async () => {
@@ -348,15 +244,6 @@ describe('with a pattern', () => {
     expect(screen.getByTestId('lockout')).toHaveTextContent(/Try again in (1:00|0:59)/)
     expect(screen.getByText('4 attempts left')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Dot 1' })).toBeDisabled()
-  })
-
-  it('keeps the biometric button', async () => {
-    const user = userEvent.setup()
-    await configurePattern({ biometric: { credentialId: 'AAAA' } })
-    vi.mocked(verifyBiometric).mockResolvedValue('failed')
-    renderLockScreen()
-    await user.click(screen.getByRole('button', { name: 'Unlock with biometrics' }))
-    expect(await screen.findByText("Couldn't verify it's you. Draw your pattern.")).toBeInTheDocument()
   })
 
   it('Forgot pattern signs out to reset the lock', async () => {

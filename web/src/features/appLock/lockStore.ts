@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { setSignInListener } from '@/lib/storage'
 import { activeConfig, readConfig, resetAttempts, type AppLockConfig } from './config'
-import { ceremonyInFlight } from './biometric'
 import { APP_LOCK_CONFIG_KEY, APP_LOCK_FRESH_KEY } from './keys'
 
 interface AppLockState {
@@ -16,13 +15,10 @@ const MIN_SLEEP_MS = 30_000
 // A password login's reload follows within moments; a longer window would let
 // a client-side sign-in's leftover marker skip a later cold-start lock.
 const FRESH_SIGN_IN_MS = 30_000
-// Android's passkey prompt hides the page; one left open this long counts as away.
-const CEREMONY_AWAY_MS = 60_000
 export const PRIVACY_COVER_ID = 'privacy-cover'
 
 let initialized = false
 let hiddenAt: number | null = null
-let hiddenInCeremony = false
 let lastTick = 0
 let lockSeen = false
 let heartbeat: ReturnType<typeof setInterval> | null = null
@@ -64,7 +60,7 @@ export function lock(): void {
   setLocked()
 }
 
-// Every unlock is a success, PIN, pattern or biometric, so the attempt counter starts over.
+// Every unlock is a success, PIN or pattern, so the attempt counter starts over.
 export function unlock(): void {
   resetAttempts()
   lastTick = Date.now()
@@ -119,11 +115,6 @@ function onHide(): void {
   }
   lockSeen = true
   hiddenAt = Date.now()
-  // A passkey prompt backgrounds the page on Android; that alone is not leaving the app.
-  hiddenInCeremony = ceremonyInFlight()
-  if (hiddenInCeremony) {
-    return
-  }
   setCover(true)
   // Not lock(): a password login hides the page on its way to the reload,
   // which still needs the sign-in marker.
@@ -135,16 +126,13 @@ function onHide(): void {
 
 function onShow(): void {
   const at = hiddenAt
-  const ceremony = hiddenInCeremony
   hiddenAt = null
-  hiddenInCeremony = false
   const now = Date.now()
   if (at !== null) {
     const config = activeConfig()
     const away = now - at
-    const limit = config === null ? 0 : ceremony ? Math.max(config.lockAfterMs, CEREMONY_AWAY_MS) : config.lockAfterMs
     // A clock set back reads as a negative time away: lock rather than trust it.
-    if (config !== null && (away < 0 || away >= limit)) {
+    if (config !== null && (away < 0 || away >= config.lockAfterMs)) {
       lock()
     }
     lastTick = now
@@ -177,7 +165,7 @@ function tick(): void {
   const now = Date.now()
   const gap = now - lastTick
   lastTick = now
-  if (useLockStore.getState().locked || hiddenAt !== null || ceremonyInFlight(now)) {
+  if (useLockStore.getState().locked || hiddenAt !== null) {
     return
   }
   const config = activeConfig()
@@ -224,7 +212,7 @@ function onStorage(event: StorageEvent): void {
       lockSeen = true
     }
     // A locked tab's lock screen was drawn from the old config (PIN or
-    // pattern, its length, biometrics, owner); it boots again from the new one.
+    // pattern, its length, owner); it boots again from the new one.
     if (locked && event.oldValue !== event.newValue) {
       reloadPage()
     }
@@ -289,7 +277,6 @@ export function resetAppLockForTests(options: { reload?: () => void } = {}): voi
   setSignInListener(null)
   initialized = false
   hiddenAt = null
-  hiddenInCeremony = false
   lastTick = 0
   lockSeen = false
   reloadPage = options.reload ?? (() => window.location.reload())
