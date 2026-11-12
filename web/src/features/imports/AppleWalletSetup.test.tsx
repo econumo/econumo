@@ -12,7 +12,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 
 const mockIsIOS = vi.hoisted(() => ({ value: false }))
 const openAppUrl = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/platform', () => ({ isIOS: () => mockIsIOS.value, isNativeApp: () => false, openAppUrl }))
+vi.mock('@/lib/platform', () => ({ isIOS: () => mockIsIOS.value, openAppUrl }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 vi.mock('@/lib/metrics', async (original) => ({ ...await original<typeof import('@/lib/metrics')>(), trackEvent: vi.fn() }))
 

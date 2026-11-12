@@ -13,7 +13,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/econumo/econumo/compat"
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountmcp "github.com/econumo/econumo/internal/account/mcp"
@@ -282,7 +281,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	}
 	oauthSvc := appoauth.NewService(oauthProviders, NewOAuthUsers(userSvc),
 		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
-		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, authLimiter, cfg.AppURL, cfg.AllowRegistration, cfg.AppLinksEnabled())
+		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, authLimiter, cfg.AppURL, cfg.AllowRegistration)
 	if cfg.PasswordLoginDisabled {
 		oauthSvc.DisablePasswordLogin()
 	}
@@ -576,7 +575,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// reports the running binary's version as VERSION; ECONUMO_VERSION only
 	// relabels what the UI DISPLAYS (VERSION_LABEL, handy for demo/staging
 	// environments), so a relabelled instance still reports its real version
-	// to analytics and to the mobile app's compatibility check.
+	// to analytics and the update check.
 	spaFS, _ := web.DistFS()
 	// Failure here must not stop the server: analytics are not load-bearing.
 	instanceID, err := instance.ID(context.Background(), db)
@@ -600,7 +599,6 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		SPAVersion:         version.Version,
 		SPAVersionLabel:    cfg.Version,
 		SPAVersionRef:      version.Ref(),
-		MinAppVersion:      compat.MinAppVersion,
 		InstanceID:         instanceID,
 	}), adminHandler, rateUpdater, nil
 }

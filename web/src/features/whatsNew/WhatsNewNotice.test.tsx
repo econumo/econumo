@@ -6,7 +6,6 @@ import { WhatsNewNotice } from './WhatsNewNotice'
 const mocks = vi.hoisted(() => ({
   user: undefined as Partial<CurrentUserDto> | undefined,
   version: 'v1.6.0',
-  native: false,
   mutate: vi.fn(),
   trackEvent: vi.fn(),
 }))
@@ -17,7 +16,6 @@ vi.mock('@/features/user/queries', async (importOriginal) => ({
   useUpdateLastSeenVersion: () => ({ mutate: mocks.mutate }),
 }))
 vi.mock('@/lib/config', () => ({ getVersion: () => mocks.version }))
-vi.mock('@/lib/platform', () => ({ isNativeApp: () => mocks.native }))
 vi.mock('@/lib/metrics', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/metrics')>()),
   trackEvent: mocks.trackEvent,
@@ -34,7 +32,6 @@ function seen(value: string | null, onboarding = 'completed') {
 
 beforeEach(() => {
   mocks.version = 'v1.6.0'
-  mocks.native = false
   mocks.mutate.mockReset()
   mocks.trackEvent.mockReset()
   seen('v1.5.0')
@@ -90,12 +87,6 @@ it.each([
 
 it('waits until onboarding is completed', () => {
   seen('v1.5.0', 'started')
-  const { container } = render(<WhatsNewNotice />)
-  expect(container).toBeEmptyDOMElement()
-})
-
-it('renders nothing in the native app', () => {
-  mocks.native = true
   const { container } = render(<WhatsNewNotice />)
   expect(container).toBeEmptyDOMElement()
 })

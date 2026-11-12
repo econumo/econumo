@@ -206,19 +206,6 @@ it('a language change does not re-run the effect', async () => {
   expect(logoutCalls).toBe(1)
 })
 
-it('in the app ignores the end-session url and logs out locally', async () => {
-  window.Capacitor = { isNativePlatform: () => true }
-  localStorage.setItem('token', 'eco_ses_x')
-  server.use(
-    http.post('*/api/v1/user/logout-user', () =>
-      HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: 'https://idp/end', provider: 'oidc' } })),
-  )
-  renderPage()
-  await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
-  expect(assign).not.toHaveBeenCalledWith('https://idp/end')
-  delete (window as { Capacitor?: unknown }).Capacitor
-})
-
 describe('the app lock', () => {
   const configure = () => {
     server.use(http.post('*/api/v1/user/logout-user', () => HttpResponse.json({ success: true, message: '', data: {} })))

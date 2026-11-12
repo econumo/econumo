@@ -97,14 +97,14 @@ func TestCallbackGoogle_RedirectsWithHandoff_ThenExchange(t *testing.T) {
 
 func TestCallbackApple_FormPost(t *testing.T) {
 	h := newHarness(t) // the harness configures the fake as "apple" too (form_post, no PKCE)
-	_, env := h.do(t, http.MethodPost, "/api/v1/oauth/start-login", "", map[string]any{"provider": "apple", "client": "app"})
+	_, env := h.do(t, http.MethodPost, "/api/v1/oauth/start-login", "", map[string]any{"provider": "apple", "client": "web"})
 	var res struct{ Url string }
 	_ = json.Unmarshal(env.Data, &res)
 	q := mustQuery(t, res.Url)
 	code := h.fake.IssueCode(q.Get("nonce"), "")
 	form := url.Values{"code": {code}, "state": {q.Get("state")}, "user": {`{"name":{"firstName":"Ada","lastName":"Lovelace"}}`}}
 	resp := h.rawPostForm(t, "/api/v1/oauth/callback-apple", form)
-	if resp.StatusCode != http.StatusFound || !strings.HasPrefix(resp.Header.Get("Location"), "com.econumo.app://oauth#handoff=") {
+	if resp.StatusCode != http.StatusFound || !strings.HasPrefix(resp.Header.Get("Location"), "https://app.example.test/oauth/callback#handoff=") {
 		t.Fatalf("%d %s", resp.StatusCode, resp.Header.Get("Location"))
 	}
 }

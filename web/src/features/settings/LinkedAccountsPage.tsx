@@ -13,10 +13,9 @@ import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { useUserData } from '@/features/user/queries'
-import { oauthFlowCanReturnHere, providerDisplayName, providersQueryKey, takeOAuthFlow, useOAuthInFlight, usePasswordLoginAvailable, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
+import { oauthFlowCanReturnHere, PROVIDERS_QUERY_KEY, providerDisplayName, takeOAuthFlow, usePasswordLoginAvailable, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
 import { ProviderMark } from '@/features/auth/providerIcons'
 import { apiErrorMessage } from '@/lib/apiError'
-import { useServerConfig } from '@/lib/appConfig'
 import { SettingsShell } from './SettingsShell'
 import { useCompleteLink, useIdentities, useUnlinkIdentity } from './security'
 import { parseUtcDateTime } from './securityFormat'
@@ -32,13 +31,11 @@ export function LinkedAccountsPage() {
   const offline = useUnavailableOffline(identities)
   const user = useUserData()
   const start = useStartOAuth()
-  const inFlight = useOAuthInFlight((s) => s.inFlight)
   const unlink = useUnlinkIdentity()
   const complete = useCompleteLink()
   const [confirm, setConfirm] = useState<OAuthProviderId | null>(null)
-  // Keyed on the code, not a one-shot flag: in the app the deep link returns to
-  // this same mounted page, so a second link attempt must not be swallowed by
-  // the first one's latch.
+  // Keyed on the code, not a one-shot flag, so a second link attempt is not
+  // swallowed by the first one's latch.
   const completedCode = useRef('')
   // Held in state because the parameter is cleared from the URL immediately —
   // a reload must not resurrect the message.
@@ -70,7 +67,7 @@ export function LinkedAccountsPage() {
           // The providers query can still be pending here (both fire on mount), so
           // read the cache directly at toast time instead of the possibly-stale
           // `providers.data` this closure captured over.
-          const name = providerDisplayName(provider, queryClient.getQueryData<ProviderDto[]>(providersQueryKey(useServerConfig.getState().configHost)) ?? providers.data, t)
+          const name = providerDisplayName(provider, queryClient.getQueryData<ProviderDto[]>(PROVIDERS_QUERY_KEY) ?? providers.data, t)
           if (provider === 'oidc' && name === t('auth.oauth.provider_name.oidc')) {
             void providers.refetch().then((r) => {
               toast.success(t('user.page.settings.profile.linked_accounts.linked_toast', { provider: providerDisplayName(provider, r.data, t) }))
@@ -158,7 +155,7 @@ export function LinkedAccountsPage() {
             <li key={p.id} className="flex items-center gap-3 rounded-md px-3 py-2.5">
               <ProviderMark id={p.id} />
               <div className="flex-1 text-sm">{p.name}</div>
-              <Button type="button" size="sm" disabled={start.isPending || inFlight || !online} onClick={() => start.mutate({ provider: p.id, intent: 'link' })}>
+              <Button type="button" size="sm" disabled={start.isPending || !online} onClick={() => start.mutate({ provider: p.id, intent: 'link' })}>
                 {t('user.page.settings.profile.linked_accounts.link')}
               </Button>
             </li>

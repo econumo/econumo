@@ -1,4 +1,3 @@
-import { mirrorWrite } from '@/lib/appStorage'
 import { getSessionUserId, getToken } from '@/lib/storage'
 import { APP_LOCK_ATTEMPTS_KEY, APP_LOCK_CONFIG_KEY } from './keys'
 
@@ -103,12 +102,10 @@ export function readConfig(): AppLockConfig | null {
 function store(key: string, value: unknown): void {
   const encoded = JSON.stringify(value)
   localStorage.setItem(key, encoded)
-  mirrorWrite(key, encoded)
 }
 
 function drop(key: string): void {
   localStorage.removeItem(key)
-  mirrorWrite(key, null)
 }
 
 export function writeConfig(config: AppLockConfig): void {

@@ -6,9 +6,6 @@
 // Route layout:
 //
 //	/health           (GET)  -> health check, wrapped in the global chain
-//	/.well-known/...  (GET)  -> the mobile app's Universal / App Link
-//	                            association documents, only when app links are
-//	                            configured (internal/web/applinks)
 //	/api/...          (*)    -> API groups, wrapped in the global chain; the
 //	                            module-supplied RegisterAPI seam attaches the
 //	                            public group (login/register/remind/reset, plus
@@ -34,7 +31,6 @@ import (
 	"net/http"
 
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/web/applinks"
 	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/spa"
 	"github.com/econumo/econumo/web"
@@ -104,8 +100,7 @@ type Deps struct {
 	// SPAVersion is the version string merged into the served econumo-config.js
 	// as VERSION: the running binary's own version, resolved by the composition
 	// root and never overridable, because the SPA compares it as a real version
-	// (analytics $app_version, the update check, the mobile app's compatibility
-	// floors). Empty is tolerated: VERSION is still emitted, as JSON null
+	// (analytics $app_version, the update check). Empty is tolerated: VERSION is still emitted, as JSON null
 	// (never happens in production — server.BuildAPI always resolves a
 	// non-empty value).
 	SPAVersion string
@@ -123,13 +118,6 @@ type Deps struct {
 	// does not restore what an older build cached. Nothing compares it as a
 	// version.
 	SPAVersionRef string
-
-	// MinAppVersion is merged into the served econumo-config.js as
-	// MIN_APP_VERSION — the oldest mobile-app build this backend accepts
-	// (version.MinAppVersion, injected by the composition root like SPAVersion
-	// so this leaf never imports the version package). The web SPA ships
-	// embedded, so it can never be stale and ignores the key.
-	MinAppVersion string
 
 	// MCPURL is merged into the served econumo-config.js as MCP_URL: the
 	// address MCP clients connect to (authserver ResourceURL), or "" when the
@@ -168,18 +156,6 @@ func New(deps Deps) http.Handler {
 	// specific than the SPA "/" catch-all, so ServeMux routes it here. Wrapped in
 	// the global chain (recover + requestid + cors apply here too).
 	root.Handle("GET /health", global(healthCheckHandler(deps.DB)))
-
-	// Mobile-app association documents, on the root mux beside /health (their
-	// paths are fixed by Apple and Google, and being outside /api keeps them
-	// away from the REST parity scanner). Wrapped in the same global chain, so a
-	// platform's fetch is observable in the access log like any other request.
-	// Unmounted when no app is associated, so the spa handler's reserved-path
-	// rule answers an honest 404 there.
-	if deps.Cfg.AppLinksEnabled() {
-		assoc := global(applinks.Handler(deps.Cfg))
-		root.Handle("GET "+applinks.AASAPath, assoc)
-		root.Handle("GET "+applinks.AssetLinksPath, assoc)
-	}
 
 	// API subtree. Modules register their concrete routes via RegisterAPI; the
 	// router wraps the whole subtree in the global chain. Public vs
@@ -222,8 +198,8 @@ func New(deps Deps) http.Handler {
 	// The served econumo-config.js is now generated ENTIRELY here — spa.Handler
 	// writes this map verbatim, with no merge against the dist file — so every
 	// key ships with a default, matching exactly what web/public/econumo-config.js
-	// hard-codes for the two contexts with no Go server in front of them (the
-	// mobile app bundle, `pnpm dev` without a backend; see that file's header).
+	// hard-codes for `pnpm dev` without a backend (no Go server in front of it;
+	// see that file's header).
 	// One rule: the backend value overwrites the default whenever it is present.
 	allowCustomAPI := true
 	if deps.Cfg.AllowCustomAPI != nil {
@@ -287,13 +263,6 @@ func New(deps Deps) http.Handler {
 			"tipTolerancePct": deps.Cfg.ImportTipTolerancePct,
 			"tokenMinLength":  deps.Cfg.ImportTokenMinLength,
 		},
-	}
-	// MIN_APP_VERSION is the one key that stays conditional: the app's
-	// version-check treats a present-but-empty value differently from an
-	// absent one, so an unset floor is omitted entirely rather than emitted
-	// as "" (the dist file has no key for it either).
-	if deps.MinAppVersion != "" {
-		overrides["MIN_APP_VERSION"] = deps.MinAppVersion
 	}
 	// The SPA is always embedded in the binary; deps.SPA is the injection seam
 	// for tests. A nil value falls back to the embedded FS.

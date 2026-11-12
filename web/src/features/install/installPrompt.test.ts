@@ -17,7 +17,6 @@ beforeAll(() => listenForInstallPrompt())
 beforeEach(() => {
   resetInstallStateForTests()
   ua.mockReturnValue('Mozilla/5.0 (X11; Linux x86_64) Chrome/140.0')
-  delete window.Capacitor
 })
 
 it('offers nothing on a browser that cannot install', () => {
@@ -56,12 +55,6 @@ it('offers nothing once running as an installed app', () => {
   } finally {
     Object.defineProperty(navigator, 'standalone', { value: undefined, configurable: true })
   }
-})
-
-it('offers nothing inside the native app', () => {
-  ua.mockReturnValue('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')
-  window.Capacitor = { isNativePlatform: () => true }
-  expect(installMode()).toBeNull()
 })
 
 it('keeps the browser prompt for a later click and uses it once', async () => {

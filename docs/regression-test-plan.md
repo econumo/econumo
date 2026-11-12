@@ -197,27 +197,13 @@ navigation (single-pane vs sidebar).
       linked to another Econumo user) returns to Settings → Profile → Linked
       accounts with the error banner there ("This external account is already
       linked to another Econumo account."), not to the login page; the banner
-      does not survive a reload. 📱 The app does the same via the deep link.
+      does not survive a reload.
 - [ ] RP-initiated logout (custom OIDC slot with an end-session endpoint):
       logging out redirects through the provider and back to `/login`.
-- [ ] Logging out of a Google/Apple session (or any provider in the app) ends
+- [ ] Logging out of a Google/Apple session ends
       the Econumo session and lands on `/login` with no interstitial notice —
       those providers publish no end-session endpoint, so there is no IdP
       redirect and nothing to confirm.
-- [ ] 📱 App: starting provider sign-in opens the in-app browser sheet, not an
-      embedded web view; completing sign-in returns to the app (the verified
-      `https://<backend>/oauth/app-return` link, or the
-      `com.econumo.app://oauth` scheme on a backend without app links) and the
-      sheet closes automatically. An expired or already-used attempt returns to
-      the app's login page with "The sign-in attempt expired or was already
-      used." (not a web page inside the sheet).
-- [ ] 📱 With app links configured, the return from the provider opens the app
-      directly; opening the return URL in a browser with the app not installed
-      shows the "return to the app" page with a single "Open the app" link (and
-      no handoff code visible in the page text).
-- [ ] 📱 App: tapping a provider button twice while the browser sheet is
-      opening starts ONE flow; the buttons stay disabled until the sheet
-      closes or the sign-in returns.
 - [ ] Web: with a custom backend selected (different origin than the page),
       no provider buttons are shown.
 - [ ] Web: with a custom backend selected (different origin than the page),
@@ -246,12 +232,6 @@ navigation (single-pane vs sidebar).
       email address already exists and can't be linked automatically. Contact
       your administrator." An account that linked the provider while passwords
       were on signs in through it normally.
-- [ ] 📱 App pointed at a backend with `ECONUMO_PASSWORD_LOGIN=false`: on a
-      cold start the login screen drops the password form as soon as that
-      server's config arrives (no restart needed). Typing the address of a
-      backend that allows passwords into the custom-server field brings the
-      password form back within a second; switching back hides it again. An
-      unreachable address shows the password form (the server then decides).
       Switching from a backend with no providers to a provider-only one shows
       the new backend's provider buttons (never an empty screen).
 - [ ] Web, `ECONUMO_PASSWORD_LOGIN=false` with a custom backend selected on a
@@ -2741,8 +2721,7 @@ User C sees none of it.
       email naming the provider (console transport prints it to server stdout
       in dev); linking a SECOND
       provider straight afterwards, without leaving the page, works the same
-      way (📱 especially in the app, where the deep link returns to the same
-      screen); unlinking a provider (with confirm dialog) removes it from the
+      way; unlinking a provider (with confirm dialog) removes it from the
       list AND emails the owner a notice naming the unlinked provider.
 - [ ] Linking a provider account that is ALREADY linked to this same Econumo
       account again (unlink then relink is a fresh link, so use a second pass
@@ -3052,8 +3031,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 One top banner at a time: with the subscription banner up (trial
       ending within 3 days, or read-only) the install banner is not shown
       under it; dismissing the subscription banner brings the install banner
-      back in its place. In the native app the server-version notice outranks
-      the install banner the same way.
+      back in its place.
 - [ ] 📱 Install banner, iOS Safari (not yet added to the Home Screen): a
       one-line banner "Econumo works best as an app" with an "Install" button
       and × sits at the top of every page — `/login`, `/register`, the app
@@ -3296,7 +3274,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       hidden after a reload and on the user's other devices. A user
       registered on the current version never sees it; a `dev` build or a
       downgrade shows nothing. Works for a read-only (lapsed) user too (no
-      402). Web and home-screen PWA only; the native app never shows it.
+      402).
 - [ ] Version label: with `ECONUMO_VERSION=demo-42` set at RUNTIME, the
       sidebar header and the settings version row both read `demo-42`, while
       the update notice above still compares the real binary version (so a
