@@ -13,6 +13,7 @@ import {
   useCreateLabel,
   useDeleteCategory,
   useDeleteLabel,
+  useDeletePayee,
   useDeleteTag,
   useLabels,
   useMergeCategory,
@@ -238,6 +239,9 @@ it.each([
 it.each([
   ['category', '*/api/v1/category/delete-category', useDeleteCategory],
   ['tag', '*/api/v1/tag/delete-tag', useDeleteTag],
+  // a debt rule naming the payee or label widens server-side when it goes
+  ['payee', '*/api/v1/payee/delete-payee', useDeletePayee],
+  ['label', '*/api/v1/label/delete-label', useDeleteLabel],
 ] as const)('deleting a %s refreshes the plan, budget, sheet transactions and comments', async (_kind, url, useDelete) => {
   server.use(http.post(url, () => HttpResponse.json({ success: true, message: '', data: {} })))
   const { queryClient, wrapper } = makeWrapper()

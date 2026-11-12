@@ -105,6 +105,7 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetComments })
   }
   return {
+    invalidateBudgetViews,
     replaceItem: (id: Id, patch: Partial<EntityDto>) => {
       queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).map((i) => (i.id === id ? { ...i, ...patch } : i)))
       if (touchesBudget) {
@@ -284,6 +285,8 @@ export function useDeletePayee() {
     mutationFn: (id: Id) => payeeApi.deletePayee(id),
     onSuccess: (_r, id) => {
       ops.remove(id, 'payeeId')
+      // a debt rule naming the payee now covers the whole category, moving payments
+      ops.invalidateBudgetViews()
       trackEvent(METRICS.PAYEE_DELETE)
     },
   })
@@ -497,13 +500,15 @@ function withoutLabel<T extends { labelIds?: Id[] }>(rows: T[] | undefined, id: 
 
 export function useDeleteLabel() {
   const queryClient = useQueryClient()
+  const ops = useEntityCacheOps('labels', true)
   return useMutation({
     mutationFn: (id: Id) => labelApi.deleteLabel(id),
     onSuccess: (_r, id) => {
       queryClient.setQueryData<LabelDto[]>(queryKeys.labels, (prev) => (prev ?? []).filter((l) => l.id !== id))
       patchTransactions(queryClient, (rows) => withoutLabel(rows, id))
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) => withoutLabel(prev, id))
-      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      // a debt rule naming the label widens, moving payments between rows
+      ops.invalidateBudgetViews()
       trackEvent(METRICS.LABEL_DELETE)
     },
   })
