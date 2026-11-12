@@ -714,7 +714,7 @@
     "data_page": {
       "menu_item": "Import & export",
       "header": "Import & export",
-      "sync_all": "Sync bank connections",
+      "sync_all": "Sync SimpleFIN",
       "history": "Import history",
       "sync_all_done": "{imported} imported, {matched} matched, {failed} failed"
     },
@@ -825,15 +825,21 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Connect a bank through SimpleFIN Bridge. Your bridge credentials are encrypted on this device with a passphrase only you know; the server stores them encrypted and only sees them for the duration of a sync.",
-      "forget_device": "Forget this device",
+      "intro": "Set up syncing through SimpleFIN Bridge. Your SimpleFIN credentials are encrypted on this device with a passphrase only you know; the server stores them encrypted.",
+      "disclaimer": "Econumo is not affiliated with SimpleFIN. SimpleFIN Bridge is a third-party service with its own terms; you use it at your own risk.",
+      "insecure": "SimpleFIN needs Econumo opened over https (or on localhost): the browser only encrypts your SimpleFIN credentials on a secure page. Ask your administrator to serve Econumo over https.",
+      "disconnect": "Disconnect",
+      "disconnect_full": "Disconnect SimpleFIN",
+      "disconnect_modal": {
+        "title": "Disconnect SimpleFIN?",
+        "question": "The SimpleFIN connection will be removed from Econumo. Previously imported transactions will remain."
+      },
       "connect": {
-        "intro": "Paste the setup token from your SimpleFIN Bridge account and choose a passphrase. The passphrase is never sent to the server — if you forget it, you will need to reconnect with a new setup token.",
         "reconnect_intro": "Paste a new setup token from SimpleFIN Bridge. The previous connection will be replaced; your account mappings are kept.",
         "token_label": "Setup token",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → New connection → copy the setup token. A token can be used once.",
-        "forgot_passphrase": "I forgot my passphrase — set a new one",
+        "forgot_passphrase": "I forgot my passphrase, set a new one",
         "passphrase_new": "Passphrase",
         "passphrase_existing": "Your passphrase",
         "passphrase_confirm": "Repeat passphrase",
@@ -857,7 +863,7 @@
       },
       "accounts": {
         "header": "Accounts",
-        "empty": "No accounts reported by the bridge yet.",
+        "empty": "SimpleFIN has not reported any accounts yet.",
         "needs_mapping": "Needs mapping",
         "state": {
           "ignored": "Ignored"
@@ -884,6 +890,8 @@
         "button": "Sync now",
         "running": "Syncing…",
         "from": "From",
+        "since": "Syncs transactions since {date}",
+        "change": "Change",
         "last_synced": "Last synced {date}",
         "never": "Never synced",
         "done_toast": "{imported} imported, {matched} matched"
@@ -1004,7 +1012,11 @@
       "waiting": "This transaction is waiting in the Inbox.",
       "deleted": "This transaction was imported and deleted later.",
       "create": "Create transaction",
-      "unavailable": "This transaction was imported, but it isn't available to you."
+      "unavailable": "This transaction was imported, but it isn't available to you.",
+      "account": "Account",
+      "reimport": "Import again",
+      "reimport_hint": "Import it again to add it back, or to match a transaction you entered yourself, such as a transfer.",
+      "reimported": { "created": "Imported again", "matched": "Matched to an existing transaction", "queued": "Imported again; it is waiting in the Inbox", "skipped": "Not added: a skip rule or an ignored account matched it" }
     }
   },
   "user": {
@@ -2374,6 +2386,70 @@
     "notice": "What's new in {version}",
     "dismiss": "Dismiss"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "App lock",
+      "title": "App lock",
+      "on": "On",
+      "off": "Off",
+      "about": "The lock protects Econumo on this device only. If you forget the PIN or pattern, you'll need to log in again. It doesn't encrypt the data stored on the device.",
+      "enabled_label": "App lock",
+      "enabled_hint": "Ask for a PIN or pattern when Econumo opens",
+      "change_secret": "Change PIN or pattern",
+      "pin_changed": "PIN changed",
+      "pattern_changed": "Pattern changed",
+      "lock_after": {
+        "label": "Lock after",
+        "immediately": "Immediately",
+        "one_minute": "1 minute",
+        "five_minutes": "5 minutes",
+        "fifteen_minutes": "15 minutes"
+      },
+      "dialog": {
+        "create_title": "Choose a PIN",
+        "create_title_pattern": "Draw a pattern",
+        "new_title": "Choose a new PIN",
+        "new_title_pattern": "Draw a new pattern",
+        "current_title": "Enter your current PIN",
+        "current_title_pattern": "Draw your current pattern",
+        "confirm_title": "Enter the PIN again",
+        "confirm_title_pattern": "Draw the pattern again",
+        "pin_hint": "4 to 8 digits",
+        "pattern_hint": "Connect at least 4 dots",
+        "mismatch": "The PINs don't match. Try again.",
+        "mismatch_pattern": "The patterns don't match. Try again.",
+        "kind_pin": "PIN",
+        "kind_pattern": "Pattern",
+        "save": "Save"
+      }
+    },
+    "lock_screen": {
+      "title": "Enter PIN",
+      "title_pattern": "Draw your pattern",
+      "wrong_pin": "Wrong PIN",
+      "wrong_pattern": "Wrong pattern",
+      "attempts_left": "{count} attempt left | {count} attempts left",
+      "try_again_in": "Try again in {time}",
+      "forgot_pin": "Forgot PIN?",
+      "forgot_pattern": "Forgot pattern?",
+      "forgot_title": "Log out to reset the PIN?",
+      "forgot_title_pattern": "Log out to reset the pattern?",
+      "forgot_question": "You'll need to log in again.",
+      "forgot_confirm": "Log out"
+    },
+    "pin_pad": {
+      "entered": "Digits entered: {count}",
+      "delete": "Delete digit",
+      "continue": "Continue"
+    },
+    "pattern_pad": {
+      "grid": "Pattern",
+      "dot": "Dot {n}",
+      "too_short": "Connect at least 4 dots",
+      "clear": "Clear",
+      "done": "Done"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "This value should not be blank.",
@@ -2459,15 +2535,16 @@
     "import": {
       "source_not_found": "Apple Wallet is not connected. Connect it in Settings → Apple Wallet first.",
       "provider_unsupported": "This import provider is not supported.",
-      "account_link_exists": "This card is already linked.",
-      "currency_mismatch": "The card's currency does not match the account's currency.",
+      "account_link_exists": "This is already mapped to that account.",
+      "currency_mismatch": "The currency of this imported account does not match the selected account.",
       "link_not_queued": "This event is not waiting for review.",
       "link_not_skipped": "This event is not skipped.",
       "event_not_failed": "This event did not fail.",
-      "setup_token_rejected": "SimpleFIN rejected this setup token. It may have been claimed already — generate a new one in your SimpleFIN bridge.",
-      "provider_unavailable": "The bank bridge could not be reached. Try again in a few minutes.",
+      "link_not_deleted": "This transaction was not deleted.",
+      "setup_token_rejected": "SimpleFIN rejected this setup token. It may have been used already; create a new one in SimpleFIN Bridge.",
+      "provider_unavailable": "SimpleFIN could not be reached. Try again in a few minutes.",
       "sync_range_invalid": "The date range is invalid: the start must not be after the end, and the range must not exceed 400 days.",
-      "access_url_invalid": "The stored bank credential is not a valid access URL. Reconnect SimpleFIN with a new setup token.",
+      "access_url_invalid": "The saved SimpleFIN connection is not valid. Reconnect SimpleFIN with a new setup token.",
       "rule_skip_not_applicable": "A skip rule cannot be applied to existing transactions"
     },
     "label": {

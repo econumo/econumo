@@ -223,11 +223,11 @@ the root package (`rules.go` matcher, `rule_*.go` use cases). The optional
 and its injection in `internal/server` are retained for future AI features;
 bulk rule suggestions have been removed. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
-`repo/`, and `api/` with 28 routes under `/api/v1/import/` (`create-source`,
+`repo/`, and `api/` with 29 routes under `/api/v1/import/` (`create-source`,
 `get-source-list`, `delete-source`, `link-account`, `ignore-account`,
 `unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
 `import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
-`discard-event`, `get-transaction-import-list`, `claim-setup-token`,
+`discard-event`, `reimport-link`, `get-transaction-import-list`, `claim-setup-token`,
 `get-credential-key`, `set-credential-key`, `list-external-accounts`,
 `sync-source`, `get-run-list`, `get-run`, `get-source-history`, `get-rule-list`, `create-rule`,
 `update-rule`, `delete-rule`, `preview-rule`, `apply-rule`).
@@ -611,7 +611,11 @@ Hidden-folder accounts are included and pending share invites skipped; against a
 whose accounts carry no revisions it falls back to `get-transaction-list` (hidden-folder
 account pages then show no transactions). The user's own edits are recorded locally without
 a download when the response revision is exactly +1 of the stored one. The sync button
-(`ApplicationLayout`, via `useLongPress`): a tap is an incremental refresh; holding it
+(`ApplicationLayout`, via `useLongPress`): a tap is an incremental refresh, and also syncs
+every SimpleFIN source when this device holds the unlocked key and no SimpleFIN sync ran
+from this device in the last 10 minutes (`syncPullSourcesIfDue`,
+`web/src/features/imports/sidebarSync.ts`; the SimpleFIN page's own button stamps the same
+time and has no limit; silent unless something came in, failures surface in the Inbox); holding it
 >= 600 ms or Shift+click is a full reload (every account re-downloaded, toast,
 `METRICS.DATA_FULL_RELOAD` with `source: 'sync_button'`). The same full reload
 (`useFullReload`, `web/src/features/transactions/useFullReload.ts`) is the last row of
@@ -698,6 +702,36 @@ when a routed page neither shows it nor is listed with a reason. Data the device
 `OfflineUnavailable` instead (the page or dialog never spins offline). Analytics: the usual create/update/delete/limit
 events fire when the server confirms, `METRICS.WRITE_QUEUED`/`WRITE_RETRIED`/`WRITE_DISCARDED`
 at those points.
+
+**App lock** (`web/src/features/appLock`; spec `docs/superpowers/specs/2026-11-11-app-lock-design.md`,
+"Revision 1" wins, "Revision 4" for patterns, "Revision 5" removed biometrics): a per-device secret, a PIN (4-8 digits) or an Android-style pattern
+(4-9 of the 3x3 dots, `pattern.ts`, encoded `p:0-4-8-5`, a dot crossed straight on joins first; `PatternPad` with
+pointer capture, `touch-action: none` and `data-vaul-no-drag` so a swipe never drags the sheet, and dot buttons
+plus Done for the keyboard), one or the other, both hashed the same way (PBKDF2-HMAC-SHA256 in `secret.ts`: `crypto.subtle` with 150 000
+iterations, else, on plain http, the pure-JS `@noble/hashes` derive with 25 000; the count is stored
+with the hash and either implementation verifies the other's), frontend only, never sent to the server.
+There is no biometric unlock (the owner's decision; a config stored with a `biometric` field still reads, the
+field ignored). Storage:
+localStorage `econumo.appLock` (config: owner `userId`, `secret` {kind, hash, length; a config from before
+patterns holds `pin` and reads as kind pin}, `lockAfterMs` 0/1/5/15 min) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
+sessionStorage marker `econumo.appLock.fresh` that `setToken` sets so the reload after a sign-in does
+not ask for the PIN (it counts for 30 s; any lock but the one taken as the page hides, and turning the
+lock on, spend it), and the sessionStorage `econumo.appLock.seen` (when this tab was last unlocked and
+on screen, written on unlock, hide and heartbeat, dropped by any lock): a reload within `lockAfterMs` of
+it starts unlocked, while a new tab or a fresh launch has none and starts locked. `setToken` is also the only place that deletes another user's lock (both ids
+known and different); `activeConfig()` fails closed (no `sessionUserId` yet still locks) and works the same over plain
+http and https. `initAppLock()`
+(`lockStore.ts`, from `main.tsx` before the first render) starts every page load locked, locks after
+`lockAfterMs` in the background or a slept device (15 s heartbeat), toggles a static `#privacy-cover`
+on hide outside React, and reloads a locked tab when another tab changes the lock in any way or
+changes the session (a storage event never unlocks). The gate is in `RequireAuth`, which renders `LockScreen`
+INSTEAD of its outlet, so nothing financial stays mounted. Every current-PIN prompt (lock screen and
+settings, `AppLockPage` at `/settings/profile/app-lock`) goes through `checkSecret`, which stores the
+failure before deriving; from the 5th failure a lockout, the 10th signs out. Sign-out:
+`LogoutPage` drops the lock unless it was sent `{ keepPendingWrites: true }` alone ("Set a password");
+"Forgot PIN" and the attempt limit send `{ keepPendingWrites: true, resetAppLock: true }`, keeping the
+owner's offline queue but not the lock. Threat model: someone handling an unlocked device through the
+UI; anyone with devtools or the browser profile can read the unencrypted caches or delete the config.
 
 **Product analytics rule:** every new user-facing feature/action MUST fire an
 analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
@@ -884,7 +918,10 @@ artifact (`.github/workflows/go-tests.yml`).
 
 ## Configuration
 
-The Go server reads its environment from `.env` (see `.env.example`). Key vars:
+The Go server reads its environment from `.env`. The root `.env.example` is the short
+quick-start template (the settings most self-hosters need); `docs/full.env.example` documents
+every setting, so a new variable goes there (and into `.env.example` only if most setups need
+it). Key vars:
 
 - `DATABASE_URL` — `sqlite:///abs/path/db.sqlite` or `postgres://…`. Selects the engine.
   Required, and sourced from `.env` only — it is NOT baked into the image.
@@ -1048,8 +1085,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
-- `ECONUMO_IMPORT_SIMPLEFIN` — the SimpleFIN pull provider (strict boolean, default `false`;
-  malformed fails at boot). Apple Wallet import has no switch and is always on (the former
+- `ECONUMO_IMPORT_SIMPLEFIN` — the SimpleFIN pull provider (strict boolean, default `true`;
+  malformed fails at boot; the config field is inverted, `SimpleFINDisabled`, so a zero
+  `config.Config` keeps it on). Connecting needs a secure page (https or localhost): the browser
+  encrypts the access URL with WebCrypto, so on a plain-http page the SimpleFIN page shows only an
+  explanation (`window.isSecureContext`) and Settings → Data offers no sync. Apple Wallet import has no switch and is always on (the former
   `ECONUMO_IMPORT_APPLE_WALLET` is ignored), so `internal/imports/api` is always mounted with
   import rules, the queue and run history. While SimpleFIN is off it loses its own routes
   (`claim-setup-token`, `get-credential-key`, `set-credential-key`, `list-external-accounts`,
@@ -1059,8 +1099,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `IMPORT_SIMPLEFIN` key for SimpleFIN's settings pages and routes; Apple Wallet, Import rules,
   import history and the Inbox's import sections are always shown (there is no
   `IMPORT_APPLE_WALLET` key any more). CSV import/export is not part of it and is always on.
-  The apiparity harness turns SimpleFIN on so the catalogue keeps
-  covering its routes.
+  The apiparity harness relies on the default (on) so the catalogue keeps covering its routes.
 - `ECONUMO_FEEDBACK` — the in-app "Send feedback" form (strict boolean, default `true`, malformed
   fails at boot; the config field is inverted, `FeedbackDisabled`, so a zero `config.Config` keeps
   it on). Served as `FEEDBACK`; `false` hides its entry points (the Settings row and Reports'
@@ -2291,12 +2330,24 @@ data unreadable. Most are also asserted by the test suite.
   through `claim-setup-token` (the server returns the access URL and keeps nothing), encrypts
   it in the browser with a passphrase-wrapped data key (`web/src/lib/importCrypto.ts`; the
   wrapped key lives in `import_credential_keys`, one row per user; the unwrapped key stays
-  non-extractable in the `importKeys` store of the `econumo` IndexedDB), and stores only the ciphertext on the source. Every
+  non-extractable in the `importKeys` store of the `econumo` IndexedDB, removed by `clearPersistedQueryCache` on every sign-in and sign-out like the rest of the user's local data, so each sign-in asks for the passphrase once), and stores only the ciphertext on the source. Every
   `list-external-accounts`/`sync-source` call carries the plaintext access URL in the body —
   "at rest zero-knowledge, in flight trusted" — and it is never persisted, logged, or
   formatted into an error. A sync is one `import_runs` row; per-account failures leave the
   run `partial` (so do rows the bridge returned in an unparsable shape), a bridge failure leaves it `failed`; `last_synced_at` moves only on
   `completed`/`partial`. Sync is manual (a button); sync-on-open is a follow-up.
+- **Transaction import (matching and deleted rows)**: before creating, the matcher adopts an
+  existing transaction on the mapped account of the same kind and amount within
+  `ECONUMO_IMPORT_MATCH_DAYS`. A transfer counts as its leg (expense with the source amount on
+  its source account, income with the recipient amount on its recipient account), so a card
+  payment entered by hand as a transfer adopts both the bank's debit and the card's credit; a
+  link from the same source blocks a transfer only for the same external account, and tip
+  adopts never take a transfer. Deleting an imported transaction leaves its ledger row as a
+  tombstone, so no sync or re-fired push brings it back; `reimport-link` (the history's
+  "Import again" on a deleted row) deletes the tombstone and runs its stored event through the
+  pipeline again. The new row keeps the old one's id, run and import time, so it keeps its place in
+  the run, and the run summary moves it from imported to matched, queued or skipped when that is
+  the outcome (the deleted row is taken to have been created; the ledger does not say).
 - **Transaction import (rules)**: one `import_rules` row per rule, per user, optionally scoped
   to a source; `classify` rules only fill empty fields on newly imported rows (first match per
   field in priority order, labels unioned up to 10), `skip` rules drop the row after currency

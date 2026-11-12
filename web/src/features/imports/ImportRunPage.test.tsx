@@ -1,5 +1,6 @@
 import { onlineManager } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -41,6 +42,7 @@ function renderAt(path: string) {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = { IMPORT_SIMPLEFIN: true }
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({ matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
 })
 
 it('SimpleFIN history lists its runs with status, counts and per-account errors, linking to the run', async () => {
@@ -51,7 +53,7 @@ it('SimpleFIN history lists its runs with status, counts and per-account errors,
   expect(screen.getByRole('link', { name: /Completed with errors/ })).toHaveAttribute('href', '/settings/simplefin/history/r1')
 })
 
-it('run detail shows imported, tombstone and queued rows read-only', async () => {
+it('run detail shows imported, tombstone and queued rows; only the tombstone opens', async () => {
   renderAt('/settings/simplefin/history/r1')
   expect(await screen.findByText('Blue Bottle')).toBeInTheDocument()
   expect(screen.getByText(/ACT-CHK · .* · Imported$/)).toBeInTheDocument()
@@ -59,7 +61,50 @@ it('run detail shows imported, tombstone and queued rows read-only', async () =>
   expect(screen.getByText(/Deleted since$/)).toBeInTheDocument()
   expect(screen.getByText(/Waiting for review$/)).toBeInTheDocument()
   expect(screen.getByText('-12.5 USD')).toBeInTheDocument()
-  expect(screen.queryByRole('button')).toBeNull()
+  expect(screen.getAllByRole('button')).toHaveLength(1)
+  expect(screen.getByRole('button', { name: /Payroll/ })).toBeInTheDocument()
+})
+
+it('a deleted row can be imported again', async () => {
+  let sent: unknown
+  server.use(http.post('*/api/v1/import/reimport-link', async ({ request }) => {
+    sent = await request.json()
+    return HttpResponse.json({ success: true, message: '', data: { status: 'matched', eventId: 'e2' } })
+  }))
+  renderAt('/settings/simplefin/history/r1')
+  await userEvent.click(await screen.findByRole('button', { name: /Payroll/ }))
+  expect(await screen.findByText(/imported and deleted later. Import it again/)).toBeInTheDocument()
+  expect(screen.getByText('Account')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Import again' }))
+  await waitFor(() => expect(sent).toEqual({ linkId: 'l2' }))
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Import again' })).toBeNull())
+})
+
+it('Close waits while Import again is running', async () => {
+  let release: () => void = () => {}
+  server.use(http.post('*/api/v1/import/reimport-link', async () => {
+    await new Promise<void>((r) => { release = r })
+    return HttpResponse.json({ success: true, message: '', data: { status: 'created', eventId: 'e2' } })
+  }))
+  renderAt('/settings/simplefin/history/r1')
+  await userEvent.click(await screen.findByRole('button', { name: /Payroll/ }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Import again' }))
+  // the dialog's own X refuses too (close() returns while pending); the text button shows it
+  await waitFor(() => expect(screen.getAllByRole('button', { name: 'Close' }).find((b) => b.textContent === 'Close')).toBeDisabled())
+  await userEvent.keyboard('{Escape}')
+  expect(screen.getByRole('button', { name: 'Import again' })).toBeInTheDocument()
+  release()
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Import again' })).toBeNull())
+})
+
+it('a refused reimport shows the server message and keeps the dialog open', async () => {
+  server.use(http.post('*/api/v1/import/reimport-link', () =>
+    HttpResponse.json({ success: false, message: 'This transaction was not deleted.', code: 400, errors: {} }, { status: 400 })))
+  renderAt('/settings/simplefin/history/r1')
+  await userEvent.click(await screen.findByRole('button', { name: /Payroll/ }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Import again' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('This transaction was not deleted.')
+  expect(screen.getByRole('button', { name: 'Import again' })).toBeEnabled()
 })
 
 it('an unknown run id shows the server error', async () => {

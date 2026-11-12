@@ -166,19 +166,26 @@ type IngestEvent struct {
 
 // ImportCandidate is an existing transaction the matcher may adopt, with the
 // ledger rows already pointing at it.
+//
+// A transfer is presented as the leg the matched account sees: expense with
+// the source amount on its source account, income with the recipient amount
+// on its recipient account. Transfer marks it so a link from the other leg
+// does not hide it.
 type ImportCandidate struct {
 	TransactionID vo.Id
 	Type          TransactionType
+	Transfer      bool
 	Amount        string
 	SpentAt       time.Time
 	Links         []ImportCandidateLink
 }
 
 type ImportCandidateLink struct {
-	SourceID       vo.Id
-	Provider       string
-	ExternalAmount string
-	ExternalPayee  string
+	SourceID          vo.Id
+	Provider          string
+	ExternalAccountID string
+	ExternalAmount    string
+	ExternalPayee     string
 }
 
 // ExternalAccount is a pull provider's account row before it is linked to an

@@ -46,6 +46,7 @@ type Repository interface {
 	InsertLink(ctx context.Context, l *model.ImportTransactionLink) error
 	GetLink(ctx context.Context, id vo.Id) (*model.ImportTransactionLink, error)
 	UpdateLink(ctx context.Context, l *model.ImportTransactionLink) error
+	DeleteLink(ctx context.Context, id vo.Id) error
 	GetLinkByExternalKey(ctx context.Context, sourceID vo.Id, externalAccountID, externalTransactionID string) (*model.ImportTransactionLink, error)
 	ListLinksByTransaction(ctx context.Context, transactionID vo.Id) ([]model.ImportTransactionLink, error)
 	ListLinksBySource(ctx context.Context, sourceID vo.Id) ([]model.ImportTransactionLink, error)

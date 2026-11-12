@@ -65,8 +65,12 @@ func categoryFits(cat vo.Id, income map[vo.Id]bool, typ model.TransactionType) b
 
 // touches reports whether a classify rule would set anything on a
 // transaction of this kind (a rule whose only target is a category of the
-// other kind sets nothing there).
+// other kind sets nothing there). A transfer carries no category, payee or
+// tag, so no rule touches one: an import adopted a hand-entered transfer.
 func touches(r *model.ImportRule, income map[vo.Id]bool, typ model.TransactionType) bool {
+	if typ.IsTransfer() {
+		return false
+	}
 	return (r.TargetCategoryID != nil && categoryFits(*r.TargetCategoryID, income, typ)) ||
 		r.TargetPayeeID != nil || r.TargetTagID != nil || len(r.LabelIDs) > 0
 }

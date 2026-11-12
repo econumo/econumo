@@ -114,3 +114,14 @@ func TestRuleSet_ClassifyFirstWinsPerFieldAndUnionsLabels(t *testing.T) {
 		t.Errorf("no match must be empty: %+v", empty)
 	}
 }
+
+func TestTouches_NeverATransfer(t *testing.T) {
+	payee := vo.NewId()
+	r := &model.ImportRule{TargetPayeeID: &payee}
+	if !touches(r, nil, model.TransactionTypeExpense) {
+		t.Fatal("a payee rule touches an expense")
+	}
+	if touches(r, nil, model.TransactionTypeTransfer) {
+		t.Fatal("no rule touches a transfer")
+	}
+}

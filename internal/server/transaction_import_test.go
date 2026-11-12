@@ -36,7 +36,7 @@ func newImportServer(t *testing.T, simpleFIN bool) importServer {
 	f.AccessToken(fixture.AccessToken{UserID: userID, Kind: "personal", Scope: "ingest", TokenHash: appuser.HashAccessToken(ingest), ExpiresAt: &exp})
 
 	cfg := baseTestConfig(db.Engine)
-	cfg.ImportSimpleFIN = simpleFIN
+	cfg.SimpleFINDisabled = !simpleFIN
 	ts := httptest.NewServer(server.BuildAPI(cfg, db.Raw, server.Seams{Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar)}))
 	t.Cleanup(ts.Close)
 	return importServer{t: t, url: ts.URL, f: f, user: userID, token: full}

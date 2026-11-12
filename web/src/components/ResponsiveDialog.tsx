@@ -4,30 +4,19 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { useKeyboardInset } from '@/hooks/useKeyboardInset'
+import { useSheetGlide } from '@/hooks/useSheetGlide'
+import { ownsKeyboard } from '@/lib/ownsKeyboard'
+import { SHEET_TOP_GAP, useAnchoredSheet } from '@/hooks/useAnchoredSheet'
 
 const STACKED_CONTENT = '[data-slot="dialog-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"]'
 const STACKED_OVERLAY = '[data-slot="dialog-overlay"], [data-slot="drawer-overlay"], [data-slot="alert-dialog-overlay"]'
 
-// px kept free above a sheet squeezed by the on-screen keyboard
-const SHEET_TOP_GAP = 24
 
 // a full-screen page counts the sheets open over it (a picker's), and holds
 // still while any is: the keyboard those sheets raise is theirs to follow
 // px left between a field brought into view and the form's edge
 const FIELD_REVEAL_GAP = 8
 const FIELD_REVEAL_DELAY_MS = 100
-
-const NO_KEYBOARD_INPUTS = new Set(['button', 'checkbox', 'radio', 'range', 'color', 'file', 'submit', 'reset', 'image', 'hidden'])
-
-function ownsKeyboard(target: EventTarget): boolean {
-  if (target instanceof HTMLTextAreaElement) {
-    return target.inputMode !== 'none'
-  }
-  if (target instanceof HTMLInputElement) {
-    return target.inputMode !== 'none' && !NO_KEYBOARD_INPUTS.has(target.type)
-  }
-  return target instanceof HTMLElement && target.isContentEditable
-}
 
 const CoverPage = createContext<((delta: 1 | -1) => void) | null>(null)
 
@@ -66,6 +55,9 @@ interface ResponsiveDialogProps {
    *  inside, a page-sized view that still reads as a dialog; `column` is as tall
    *  but only as wide as a reading column (52rem, at most 90% of the width) */
   size?: 'default' | 'wide' | 'large' | 'column'
+  /** phone sheet: the top stays where it opened and the keyboard moves only
+   *  the bottom edge (pickers, whose list scrolls between the two) */
+  anchorTop?: boolean
   /** the element that takes focus on open (a mobile sheet focuses itself otherwise) */
   initialFocus?: RefObject<HTMLElement | null>
   /** runs as the dialog hands focus back on close; preventDefault() keeps focus
@@ -73,7 +65,7 @@ interface ResponsiveDialogProps {
   onCloseAutoFocus?: (e: Event) => void
 }
 
-export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerAction, subheader, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus, initialFocus, size = 'default' }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerAction, subheader, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus, initialFocus, size = 'default', anchorTop = false }: ResponsiveDialogProps) {
   // full-screen / bottom-sheet layouts kick in only below sm (640px); at 640px
   // and up dialogs stay centred like on desktop
   const isMobile = useIsPhone()
@@ -164,7 +156,13 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
     coverParent(1)
     return () => coverParent(-1)
   }, [open, coverParent])
-  const sheetStyle = keyboard.height > 0 ? { bottom: keyboard.bottom, maxHeight: keyboard.height - SHEET_TOP_GAP } : undefined
+  // state, not a ref: vaul mounts the sheet after this render, and the anchor
+  // must be measured as it appears, not at the next keyboard change
+  const [sheetBody, setSheetBody] = useState<HTMLDivElement | null>(null)
+  const anchored = useAnchoredSheet(contentRef, sheetBody, anchorTop && isMobile && !fullScreen, open, keyboard)
+  const anchoredStyle = anchored?.style
+  const sheetStyle = anchoredStyle ?? (keyboard.height > 0 ? { bottom: keyboard.bottom, maxHeight: keyboard.height - SHEET_TOP_GAP } : undefined)
+  useSheetGlide(contentRef, open && isMobile && !fullScreen, anchored?.top)
   // a full-screen page shrinks to the visible area instead: left at h-dvh, iOS
   // pans it so the header and the fields above the focused one go off-screen
   // and the rest hides behind the keyboard; fitted, the header and footer stay
@@ -175,7 +173,10 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
     // keys go when the autofocused field takes focus, and in that gap every
     // other field counts as covered. A stacked sheet brings its own overlay
     pointerEvents: 'auto' as const,
-    ...(keyboard.height > 0 ? { top: keyboard.top, height: keyboard.height, maxHeight: keyboard.height } : {}),
+    // held at its size, but placed where iOS has panned the screen: a sheet's
+    // taller keyboard pans further (measured: 21px -> 365px), and a page left at
+    // the old pan would show its lower part behind the sheet for that moment
+    ...(keyboard.height > 0 ? { top: held ? liveKeyboard.top : keyboard.top, height: keyboard.height, maxHeight: keyboard.height } : {}),
   }
   // edge-to-edge viewport: content that reaches the screen bottom must clear
   // the home indicator itself; a pinned footer carries its own inset instead
@@ -235,12 +236,15 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         {/* the ::after carries the page's background below its bottom edge, so a
-            keyboard sliding away under a fitted page never shows the screen behind */}
+            keyboard sliding away under a fitted page never shows the screen behind.
+            transition-none: the dialog's duration-100 would otherwise animate every
+            property, so the page slid 100 ms behind each iOS pan (measured: -347px
+            -> 0 on screen) and blinked behind the sheet */}
         <DialogContent
           ref={contentRef}
           style={pageStyle}
           onFocusCapture={onPageFocus}
-          className="top-0 left-0 flex h-dvh max-h-dvh w-screen sm:max-w-none after:absolute after:inset-x-0 after:top-full after:h-dvh after:bg-background after:content-[''] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
+          className="transition-none top-0 left-0 flex h-dvh max-h-dvh w-screen sm:max-w-none after:absolute after:inset-x-0 after:top-full after:h-dvh after:bg-background after:content-[''] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
           onInteractOutside={onInteractOutside}
           onEscapeKeyDown={onEscapeKeyDown}
           onCloseAutoFocus={onCloseAutoFocus}
@@ -276,10 +280,8 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         <DrawerContent
           ref={contentRef}
           style={sheetStyle}
-          // a fixed element's 100% is the layout viewport, which the iOS
-          // home-screen app sometimes shrinks with the keyboard: the cap then
-          // follows it the moment it changes, while the keyboard measurement
-          // (sheetStyle) is still catching up, e.g. as the keyboard goes away
+          // never taller than the layout viewport (a fixed element's 100%),
+          // should a browser shrink it with the keyboard
           className="data-[vaul-drawer-direction=bottom]:max-h-[min(80vh,calc(100%-24px))]"
           onInteractOutside={onInteractOutside}
           onEscapeKeyDown={onEscapeKeyDown}
@@ -310,7 +312,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
             'px-4',
           )}
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
-          <div className={bodyClass}>{children}</div>
+          <div ref={setSheetBody} className={bodyClass}>{children}</div>
           {footer ? (
             <div className={footerClass}>{footer}</div>
           ) : null}

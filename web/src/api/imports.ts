@@ -142,6 +142,13 @@ export async function retryImportEvent(eventId: Id): Promise<IngestEventDto> {
   return response.data.data
 }
 
+// Runs a deleted transaction's stored event through the import again: the
+// sync never brings a deleted transaction back on its own.
+export async function reimportLink(linkId: Id): Promise<IngestEventDto> {
+  const response = await api.post<Envelope<IngestEventDto>>(apiUrl('/api/v1/import/reimport-link'), { linkId })
+  return response.data.data
+}
+
 export async function discardImportEvent(eventId: Id): Promise<ImportQueueDto> {
   const response = await api.post<Envelope<ImportQueueDto>>(apiUrl('/api/v1/import/discard-event'), { eventId })
   return response.data.data

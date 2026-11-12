@@ -101,3 +101,7 @@ beforeEach(() => {
   resetTransactionStoreForTests()
   resetPendingWritesForTests()
 })
+
+// jsdom leaves isSecureContext undefined; the app runs on https or localhost,
+// where browsers report a secure page (SimpleFIN needs it for WebCrypto)
+Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })

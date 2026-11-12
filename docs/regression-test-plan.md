@@ -770,11 +770,16 @@ navigation (single-pane vs sidebar).
 
 ## 5a. Imports — Apple Wallet
 
-Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
+Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the default).
 
-- [ ] With `ECONUMO_IMPORT_SIMPLEFIN` unset, Apple Wallet and Import rules are
+- [ ] Econumo opened over plain http from another machine (e.g. `http://192.168.1.10:8181`):
+      Settings → SimpleFIN shows only "SimpleFIN needs Econumo opened over https (or on
+      localhost)…", no connect form; Settings → Data shows no "Sync SimpleFIN". Over https or
+      on localhost the form shows as usual. 📱
+- [ ] With `ECONUMO_IMPORT_SIMPLEFIN` unset, Settings lists SimpleFIN (on by default);
+      with `ECONUMO_IMPORT_SIMPLEFIN=false`, Apple Wallet and Import rules are
       available; SimpleFIN stays hidden, `/settings/simplefin` shows the
-      not-found page and "Sync bank connections" never appears. Apple Wallet
+      not-found page and "Sync SimpleFIN" never appears. Apple Wallet
       has no switch: a leftover `ECONUMO_IMPORT_APPLE_WALLET=false` in the
       environment changes nothing, and `econumo-config.js` carries no
       `IMPORT_APPLE_WALLET` key.
@@ -1042,9 +1047,13 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN=true`.
 
 Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fresh setup token.
 
-- [ ] Settings → SimpleFIN on a device with no key: the connect form asks for a
-      setup token and a passphrase (+ repeat); a passphrase under 8 characters or
-      a mismatch is rejected inline before any request. 📱
+- [ ] Settings → SimpleFIN on a device with no key: one card holds the intro, the setup
+      token and passphrase (+ repeat) fields, each a card-style field with its label
+      inside (as in the transaction and account dialogs); a passphrase under 8
+      characters or a mismatch is rejected inline before any request. 📱
+- [ ] The connect card and the foot of the connected page both say Econumo is not
+      affiliated with SimpleFIN and that SimpleFIN Bridge is used at the user's own
+      risk. 📱
 - [ ] Connect: after "Connect" the page lists the bridge's accounts under "Needs mapping",
       the source row reads "Never synced", and the network log shows
       `create-source` carrying `credentialCiphertext` starting `v1:` — the access
@@ -1052,13 +1061,28 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       bodies.
 - [ ] A used/invalid setup token shows the server's error inline; nothing is
       created (Settings → SimpleFIN still shows the connect form after reload).
-- [ ] Second device (or same browser after "Forget this device"): the page shows
+- [ ] Sign out and back in on an unlocked browser (same user): Settings → SimpleFIN asks for
+      the passphrase again; the login form still has the remembered email when "Remember
+      me" was on. 📱
+- [ ] Second device (or the same browser after its site data is cleared): the page shows
       the unlock prompt; a wrong passphrase reads "Wrong passphrase."; the right
       one lists the accounts. 📱
-- [ ] "Forget this device" returns the page to the unlock prompt; "Reconnect"
+- [ ] "Reconnect"
       from the unlock prompt with "I forgot my passphrase" ticked accepts a new
       setup token + new passphrase and replaces the connection (account mappings
       kept).
+- [ ] Connected page layout 📱: the sync card has the source name and last-synced time
+      over a divider, then "Sync now" and, before the first sync, "From" with a calendar
+      date picker (a sheet on a phone); after it, "Syncs transactions since <date>" (3 days
+      before the last sync) with a "Change" link that opens the picker, back to the text
+      after the next sync; "Import history" is a card row with a chevron (shown once a run
+      exists); a bridge account with nothing queued shows its currency, not "0 to
+      review"; only Reconnect and the red "Disconnect SimpleFIN" sit centered at the
+      bottom (there is no "Forget this device"). "Reconnect" there opens the reconnect form with a Cancel
+      that returns to the page.
+- [ ] "Disconnect SimpleFIN" asks "Disconnect SimpleFIN?"; confirming removes the
+      source (the page shows the connect form without a passphrase, the key stays on
+      the device) and keeps the previously imported transactions.
 - [ ] After that passphrase reset, a device still unlocked under the OLD
       passphrase opens Settings → SimpleFIN to the unlock prompt reading "Your
       passphrase was changed on another device…" (not the reconnect form); the
@@ -1067,16 +1091,16 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       toasts "{n} imported, {m} matched, {s} skipped"; the imported transactions
       carry the Imported badge and their provenance sheet names the SimpleFIN
       source.
-- [ ] Mapping a bridge account onto an account in another currency (USD bank →
-      EUR account) is refused with the "The card's currency does not match the
-      account's currency." error.
+- [ ] Mapping a SimpleFIN account onto an account in another currency (USD bank →
+      EUR account) is refused with "The currency of this imported account does not
+      match the selected account."
 - [ ] "Sync now" pulls new transactions for a mapped account; a fully completed
       run toasts "{n} imported, {m} matched" (a partial or failed run shows no
       toast — the run summary card is the only record of it).
 - [ ] Sync with a "From" date after today, or a range longer than 400 days, is
       accepted by the form (there is no client-side check) but rejected by the
       server (`import.sync_range_invalid`) and surfaced as a toast; "From"
-      defaults to 3 days before the last sync (30 days back before the first).
+      (after "Change" once synced) defaults to 3 days before the last sync (30 days back before the first).
 - [ ] Sync twice with the same window: the second run reports 0 imported, 0
       matched (exact duplicates are skipped) and the last-synced timestamp
       advances.
@@ -1108,7 +1132,13 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Run detail names each row's bank account the way the run summary does
       (the bank's own account name, falling back to the bridge id) — never a
       bare `ACT-…` id when the source's accounts are known. 📱
-- [ ] Settings → Data: "Sync bank connections" is absent without a SimpleFIN
+- [ ] Sidebar sync button 📱: with SimpleFIN connected and unlocked on this device, a tap
+      also syncs SimpleFIN and, when anything came in, toasts "N imported, M matched, F
+      failed"; a second tap within 10 minutes (or a tap within 10 minutes of a sync from the
+      SimpleFIN page) only refreshes, no new run in Import history. After 10 minutes a tap
+      syncs again. Locked on this device, on plain http or with SimpleFIN off, a tap never
+      syncs and never asks for the passphrase. The SimpleFIN page's Sync now has no limit.
+- [ ] Settings → Data: "Sync SimpleFIN" is absent without a SimpleFIN
       source; with one and a locked device it navigates to Settings →
       SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
       row is disabled (not clickable, dimmed) while the syncs run. 📱
@@ -1119,8 +1149,24 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       status, counts and errors; a run opens its detail
       (`/settings/simplefin/history/<id>`, back returns to the list); a
       transaction deleted after import shows struck-through with "Deleted
-      since"; queued rows read "Waiting for review". Rows have no actions in
-      this version. 📱
+      since"; queued rows read "Waiting for review". Only a "Deleted since"
+      row opens: a dialog with the payee, amount, Account (the bank's name),
+      date, the deleted explanation and "Import again" (see below); the other
+      rows have no actions. 📱
+- [ ] Import again 📱: delete an imported SimpleFIN transaction, then sync again — it is
+      NOT re-imported. Open its "Deleted since" row in the run detail → "Import again":
+      the dialog closes with "Imported again", the row reads Imported (no strike-through)
+      in the same place in the same run, and the transaction is back on the account. Offline the button is
+      disabled. The same works for an Apple Wallet tap from Apple Wallet → Import history.
+- [ ] Card payment as a transfer 📱: enter a transfer checking → credit card by hand,
+      then sync SimpleFIN with both accounts mapped. The checking debit and the card's
+      payment credit (same amount, within 3 days) are both matched to that one transfer
+      (matched count 2, no new income or expense), in one sync or in two. A transfer in
+      two currencies matches the card side by the recipient amount. Fixing an earlier
+      wrong import: delete the income transaction the card payment created, enter the
+      transfer, open the deleted row → "Import again" toasts "Matched to an existing
+      transaction" and creates nothing; the run summary now counts it as matched (one
+      fewer imported, one more matched) and the row stays where it was.
 - [ ] Apple Wallet → status card → "Import history" (shown once a tap has
       arrived; `/settings/apple-wallet/history`; crumbs Settings › Apple
       Wallet) lists every tap newest first, grouped by day on the device's
@@ -1142,7 +1188,8 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       tap — the row reads Imported, it leaves the Inbox's Skipped list, and no
       unskip happens if the form is cancelled. A Waiting row says it is waiting
       in the Inbox and offers the same button; a Deleted-since row says it was
-      imported and deleted later, with no button.
+      imported and deleted later and offers "Import again" instead (no "Create
+      transaction").
 - [ ] Rate limits: the 6th `claim-setup-token` within 15 minutes and the 11th
       `sync-source` return 429 with the standard envelope.
 - [ ] Ingest-scoped PATs get 401 on every SimpleFIN endpoint; a read-only
@@ -3251,6 +3298,92 @@ User C sees none of it.
       password, a second linked provider, or where the new email already
       belongs to another user leaves the stored email unchanged.
 
+- [ ] **App lock** 📱 (Settings → Profile → App lock, the row after Sessions,
+      reading On/Off): the page explains the lock covers this device only,
+      a forgotten PIN or pattern means logging in again and data on the device
+      is not encrypted. Turning the switch on asks for a PIN (4–8 digits, Continue
+      enabled from 4) and then for it again; typing a different PIN the second
+      time shows "The PINs don't match" and starts over; closing the dialog
+      leaves the lock off. After confirming, the switch reads on, the current
+      tab stays unlocked, and "Change PIN or pattern" and Lock after (default 1 minute)
+      appear; there is no biometrics option. Everything works offline.
+- [ ] App lock: "Change PIN or pattern" asks for the current PIN first (a wrong one says
+      "Wrong PIN" and counts towards the same limit as the lock screen; once
+      fewer than 5 attempts are left, "N attempts left" stays under the pad
+      after a wrong try and through the lockout countdown), then
+      the new one twice; the next lock asks for the new PIN. Turning the lock
+      off asks for the current PIN and the Profile row then reads Off.
+- [ ] App lock 📱 cold start: with the lock on, a new tab and opening the
+      installed PWA show the lock screen (logo, avatar, name, "Enter PIN") with
+      no balance or transaction visible; the right PIN opens the page that was
+      asked for.
+- [ ] App lock reload: with "1 minute", reloading an unlocked tab stays
+      unlocked; reloading after more than a minute away, reloading a locked
+      tab, or any reload with "Immediately" shows the lock screen.
+- [ ] App lock 📱 background timeout: with "1 minute", leaving the app for under
+      a minute returns unlocked and for over a minute returns locked; with
+      "Immediately" any switch away locks; a phone left asleep with the app
+      open past the timeout is locked on wake.
+- [ ] App lock 📱 app switcher: with the lock on, the app-switcher preview shows
+      the Econumo logo on a plain background, not the page (best effort: note
+      the platform if a snapshot still shows data).
+- [ ] App lock wrong PINs: dots shake and "Wrong PIN" shows; from the 5th
+      failure the keypad is disabled with a "Try again in 0:30" countdown
+      (longer after each further failure) that survives a reload; the
+      remaining attempts show once fewer than 5 are left; the 10th failure
+      logs out, and after logging back in as the same user the changes that
+      were waiting to be sent (make one offline first) are still sent. A right
+      PIN before that resets the count.
+- [ ] App lock "Forgot PIN?": confirming logs out; logging back in opens
+      without a PIN and the Profile row reads Off; the offline queue survives
+      as above.
+- [ ] App lock with two users on one browser: user A turns the lock on and logs
+      out; user B logs in and is never asked for a PIN, and B's Profile row
+      reads Off.
+- [ ] App lock fresh login: logging in with a password (or a provider) right
+      after a sign-out or a "Set a password" never asks for the PIN in that tab,
+      also with "Immediately". Turning the lock on right after a login and then
+      reloading shows the lock screen.
+- [ ] App lock in two tabs: with the lock on and tab 2 locked, logging out in
+      tab 1 reloads tab 2 onto the login page; changing the PIN (to another
+      length) or switching to a pattern in tab 1 reloads tab 2, whose lock
+      screen then matches; unlocking one tab never unlocks the other.
+- [ ] App lock on a plain-http instance (not localhost): the PIN lock works end
+      to end: the Profile row is a link, turning the lock on with a PIN works,
+      a reload shows the lock screen and the PIN unlocks it in about a second;
+      the settings page looks the same as over https.
+- [ ] App lock PIN pad 📱 (set-up sheet, settings prompts, lock screen; phone and
+      desktop, light and dark): the title, then the dots, then one quiet line
+      under them ("4 to 8 digits", attempts left, or the error in red) that
+      never makes the keypad jump; a typed digit fills its dot with a short
+      pop; set-up shows empty slots up to 4 that grow to 8; the delete key
+      appears only once something is typed and the key left of 0 stays blank; tapping a key leaves no focus
+      ring on it (Tab still shows one); a wrong PIN turns the dots red and
+      shakes them (no shake with reduced motion), then clears. Set-up's
+      "Continue"/"Save" is a full-width button in sentence case.
+- [ ] App lock pattern set-up 📱: the PIN | Pattern switch at the top of the set-up
+      dialog swaps the keypad for a 3x3 grid ("Draw a pattern", "Connect at least 4
+      dots") and back. A line follows the finger;
+      crossing a dot straight on (corner to corner) picks up the dot in
+      between; fewer than 4 dots shows "Connect at least 4 dots" in red and
+      clears; 4 or more ask to draw it again, a different second pattern says
+      "The patterns don't match" and starts over. Then the row "Change PIN or
+      pattern" shows "Pattern". Swiping on the grid never scrolls the page nor drags the sheet
+      closed; dragging the sheet by its handle still closes it.
+- [ ] App lock pattern unlock 📱: a reload shows "Draw your pattern" with the
+      grid; the
+      right pattern opens the app; a wrong one turns the line red with "Wrong
+      pattern" for a moment, clears, and counts towards the same 5-failure
+      lockout (grid greyed with the countdown) and 10-failure sign-out as a
+      PIN; a too-short pattern is not counted and says "Connect at least 4 dots"
+      even right after a wrong try; a fast flick that lifts on a dot keeps
+      that dot. "Forgot pattern?" logs out like
+      "Forgot PIN?". Change pattern and turning the lock off ask for the
+      current pattern; changing can switch to a PIN and back.
+- [ ] App lock pattern with a keyboard or screen reader: Tab reaches each dot
+      ("Dot 1" ... "Dot 9"); Enter or Space picks it (a single tap does the
+      same), Clear and Done appear, and Done submits once 4 dots are picked.
+
 ## 12a. Connected apps (MCP OAuth)
 
 Needs `ECONUMO_URL` set (for a local run, `ECONUMO_URL=http://localhost:8181`)
@@ -3791,7 +3924,21 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       stay on screen and the rest of the list scrolls; the top of the sheet
       never goes off the screen. Hiding the keyboard (✓) lets the sheet grow
       back down to its full height without first jumping up to the top of
-      the screen.
+      the screen. Opening Category from the amount (number keyboard up),
+      hiding and re-raising the keyboard show no one-frame blink of the sheet
+      in the wrong place. The sheet's top stays where it opened: the keyboard
+      coming and going (✓, tapping the search, the number keyboard switching
+      to the text one) only moves its bottom edge and the list between them
+      scrolls; filtering does not move the top either. A list longer than
+      the screen opens up to just below the status bar, so with the keyboard
+      up about 4 rows stay visible. A short list rises just enough to stay
+      above the keyboard. The Add transaction page behind
+      it stays still. From the second time a picker's keyboard has been up
+      on the device, the sheet is already keyboard-sized when the search is
+      tapped or the picker opens with the keyboard coming (it then fades in
+      instead of sliding up), and the screen does not slide as the keyboard
+      comes or goes. The "Type a name to create it" row stays reachable at
+      the end of the list, with and without the keyboard.
 - [ ] 📱 Rows in every picker sheet on a phone (a budget's Accounts /
       Savings accounts checklist, Category, Currency, Merge into) have the
       same rounded corners as the sheet's search field and OK button, not

@@ -155,14 +155,15 @@ it('a fullScreen page holds still while a sheet is open over it', () => {
     expect(content()?.style.height).toBe('450px')
 
     rerender(page(true))
-    // the sheet's own keyboard (and iOS's pan for it) moves the sheet, not the page
+    // the sheet's own keyboard does not resize the page; iOS's pan for it is
+    // followed, so the same part of the page stays behind the sheet
     act(() => {
       vv.height = 400
       vv.offsetTop = 300
       vv.dispatchEvent(new Event('resize'))
     })
     expect(content()?.style.height).toBe('450px')
-    expect(content()?.style.top).toBe('0px')
+    expect(content()?.style.top).toBe('300px')
 
     // the keyboard hidden inside the sheet: the page is full height again
     // already, so closing the sheet later changes nothing
@@ -244,6 +245,42 @@ it('a fullScreen page stays held after a sheet closes until its keyboard is down
     expect(content()?.style.height).toBe('')
     keyboard(800)
     expect(content()?.style.height).toBe('')
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'visualViewport', original)
+    } else {
+      delete (window as { visualViewport?: unknown }).visualViewport
+    }
+  }
+})
+
+it('a held page keeps its size but follows the pan of a sheet\'s taller keyboard', () => {
+  mockMatchMedia(true)
+  // the amount's number keyboard: iOS panned 21px
+  const vv = Object.assign(new EventTarget(), { height: 442, offsetTop: 21 })
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport')
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 812 })
+  const page = (sheetOpen: boolean) => (
+    <ResponsiveDialog open fullScreen onOpenChange={() => {}} title="Page">
+      <ResponsiveDialog open={sheetOpen} onOpenChange={() => {}} title="Sheet">
+        <p>sheet</p>
+      </ResponsiveDialog>
+    </ResponsiveDialog>
+  )
+  try {
+    const { baseElement, rerender } = render(page(false))
+    const content = () => baseElement.querySelector<HTMLElement>('[data-slot="dialog-content"]')
+    expect(content()?.style.top).toBe('21px')
+    rerender(page(true))
+    // the sheet's search raises the taller text keyboard: iOS pans to 365 (measured)
+    act(() => {
+      vv.height = 416
+      vv.offsetTop = 365
+      vv.dispatchEvent(new Event('resize'))
+    })
+    expect(content()?.style.height).toBe('442px')
+    expect(content()?.style.top).toBe('365px')
   } finally {
     if (original) {
       Object.defineProperty(window, 'visualViewport', original)

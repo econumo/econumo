@@ -165,7 +165,7 @@ export function DateField({
         </span>
         {hint ? <span className="sr-only">{hint}</span> : null}
         <span data-date-chip className="flex min-w-0 items-center gap-1">
-          <TransactionDatePicker variant="field" ariaLabel={label} placeholder={placeholder} value={value} onChange={(day) => onChange(formatDate(day))} />
+          <TransactionDatePicker variant="field" label={label} placeholder={placeholder} value={value} onChange={(day) => onChange(formatDate(day))} />
           {onClear && value ? (
             <Button type="button" variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label={clearLabel} onClick={onClear}>
               <X className="size-4" />

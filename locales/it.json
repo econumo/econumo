@@ -714,7 +714,7 @@
     "data_page": {
       "menu_item": "Importa ed esporta",
       "header": "Importa ed esporta",
-      "sync_all": "Sincronizza connessioni bancarie",
+      "sync_all": "Sincronizza SimpleFIN",
       "history": "Cronologia importazioni",
       "sync_all_done": "{imported} importate, {matched} abbinate, {failed} non riuscite"
     },
@@ -825,15 +825,21 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "Collega una banca tramite SimpleFIN Bridge. Le tue credenziali del bridge sono cifrate su questo dispositivo con una passphrase che solo tu conosci; il server le memorizza cifrate e le vede solo per la durata di una sincronizzazione.",
-      "forget_device": "Dimentica questo dispositivo",
+      "intro": "Configura la sincronizzazione tramite SimpleFIN Bridge. Le tue credenziali SimpleFIN sono cifrate su questo dispositivo con una passphrase che solo tu conosci; il server le memorizza cifrate.",
+      "disclaimer": "Econumo non è affiliato a SimpleFIN. SimpleFIN Bridge è un servizio di terze parti con i propri termini; lo usi a tuo rischio.",
+      "insecure": "SimpleFIN richiede che Econumo sia aperto tramite https (o su localhost): il browser cifra le tue credenziali SimpleFIN solo su una pagina sicura. Chiedi al tuo amministratore di servire Econumo tramite https.",
+      "disconnect": "Disconnetti",
+      "disconnect_full": "Disconnetti SimpleFIN",
+      "disconnect_modal": {
+        "title": "Disconnettere SimpleFIN?",
+        "question": "La connessione SimpleFIN verrà rimossa da Econumo. Le transazioni già importate resteranno."
+      },
       "connect": {
-        "intro": "Incolla il token di configurazione del tuo account SimpleFIN Bridge e scegli una passphrase. La passphrase non viene mai inviata al server — se la dimentichi, dovrai riconnetterti con un nuovo token di configurazione.",
         "reconnect_intro": "Incolla un nuovo token di configurazione da SimpleFIN Bridge. La connessione precedente sarà sostituita; le associazioni dei tuoi conti vengono mantenute.",
         "token_label": "Token di configurazione",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → Nuova connessione → copia il token di configurazione. Un token può essere usato una sola volta.",
-        "forgot_passphrase": "Ho dimenticato la passphrase — impostane una nuova",
+        "forgot_passphrase": "Ho dimenticato la passphrase, impostane una nuova",
         "passphrase_new": "Passphrase",
         "passphrase_existing": "La tua passphrase",
         "passphrase_confirm": "Ripeti la passphrase",
@@ -857,15 +863,15 @@
       },
       "accounts": {
         "header": "Conti",
-        "empty": "Il bridge non ha ancora segnalato conti.",
-        "needs_mapping": "Non associate",
+        "empty": "SimpleFIN non ha ancora segnalato conti.",
+        "needs_mapping": "Non associati",
         "state": {
           "ignored": "Ignorato"
         },
         "taps": "{count} transazione | {count} transazioni",
         "waiting": "{count} da rivedere",
         "map": "Associa a un conto",
-        "mapped_to": "associata a",
+        "mapped_to": "associato a",
         "remap": "Riassocia",
         "ignore": "Ignora",
         "unlink": "Dissocia",
@@ -884,6 +890,8 @@
         "button": "Sincronizza ora",
         "running": "Sincronizzazione…",
         "from": "Da",
+        "since": "Sincronizza le transazioni dal {date}",
+        "change": "Cambia",
         "last_synced": "Ultima sincronizzazione {date}",
         "never": "Mai sincronizzato",
         "done_toast": "{imported} importate, {matched} abbinate"
@@ -1004,7 +1012,11 @@
       "waiting": "Questa transazione è in attesa nella posta in arrivo.",
       "deleted": "Questa transazione è stata importata e poi eliminata.",
       "create": "Crea transazione",
-      "unavailable": "Questa transazione è stata importata, ma non è disponibile per te."
+      "unavailable": "Questa transazione è stata importata, ma non è disponibile per te.",
+      "account": "Conto",
+      "reimport": "Importa di nuovo",
+      "reimport_hint": "Importala di nuovo per aggiungerla, o per abbinarla a una transazione inserita da te, come un trasferimento.",
+      "reimported": { "created": "Importata di nuovo", "matched": "Abbinata a una transazione esistente", "queued": "Importata di nuovo; è in attesa nella posta in arrivo", "skipped": "Non aggiunta: corrisponde a una regola di esclusione o a un conto ignorato" }
     }
   },
   "user": {
@@ -2374,6 +2386,70 @@
     "notice": "Novità della {version}",
     "dismiss": "Ignora"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "Blocco app",
+      "title": "Blocco app",
+      "on": "Attivato",
+      "off": "Disattivato",
+      "about": "Il blocco protegge Econumo solo su questo dispositivo. Se dimentichi il PIN o la sequenza, dovrai accedere di nuovo. Non cifra i dati salvati sul dispositivo.",
+      "enabled_label": "Blocco app",
+      "enabled_hint": "Chiedi un PIN o una sequenza all'apertura di Econumo",
+      "change_secret": "Cambia PIN o sequenza",
+      "pin_changed": "PIN cambiato",
+      "pattern_changed": "Sequenza cambiata",
+      "lock_after": {
+        "label": "Blocca dopo",
+        "immediately": "Subito",
+        "one_minute": "1 minuto",
+        "five_minutes": "5 minuti",
+        "fifteen_minutes": "15 minuti"
+      },
+      "dialog": {
+        "create_title": "Scegli un PIN",
+        "create_title_pattern": "Disegna una sequenza",
+        "new_title": "Scegli un nuovo PIN",
+        "new_title_pattern": "Disegna una nuova sequenza",
+        "current_title": "Inserisci il PIN attuale",
+        "current_title_pattern": "Disegna la sequenza attuale",
+        "confirm_title": "Inserisci di nuovo il PIN",
+        "confirm_title_pattern": "Disegna di nuovo la sequenza",
+        "pin_hint": "Da 4 a 8 cifre",
+        "pattern_hint": "Collega almeno 4 punti",
+        "mismatch": "I PIN non coincidono. Riprova.",
+        "mismatch_pattern": "Le sequenze non coincidono. Riprova.",
+        "kind_pin": "PIN",
+        "kind_pattern": "Sequenza",
+        "save": "Salva"
+      }
+    },
+    "lock_screen": {
+      "title": "Inserisci il PIN",
+      "title_pattern": "Disegna la sequenza",
+      "wrong_pin": "PIN errato",
+      "wrong_pattern": "Sequenza errata",
+      "attempts_left": "Rimane {count} tentativo | Rimangono {count} tentativi",
+      "try_again_in": "Riprova tra {time}",
+      "forgot_pin": "PIN dimenticato?",
+      "forgot_pattern": "Sequenza dimenticata?",
+      "forgot_title": "Uscire per reimpostare il PIN?",
+      "forgot_title_pattern": "Uscire per reimpostare la sequenza?",
+      "forgot_question": "Dovrai accedere di nuovo.",
+      "forgot_confirm": "Esci"
+    },
+    "pin_pad": {
+      "entered": "Cifre inserite: {count}",
+      "delete": "Cancella cifra",
+      "continue": "Continua"
+    },
+    "pattern_pad": {
+      "grid": "Sequenza",
+      "dot": "Punto {n}",
+      "too_short": "Collega almeno 4 punti",
+      "clear": "Cancella",
+      "done": "Fatto"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Questo valore non deve essere vuoto.",
@@ -2459,15 +2535,16 @@
     "import": {
       "source_not_found": "Apple Wallet non è collegato. Collegalo prima in Impostazioni → Apple Wallet.",
       "provider_unsupported": "Questo provider di importazione non è supportato.",
-      "account_link_exists": "Questa carta è già collegata.",
-      "currency_mismatch": "La valuta della carta non corrisponde alla valuta del conto.",
+      "account_link_exists": "È già associato a quel conto.",
+      "currency_mismatch": "La valuta di questo conto importato non corrisponde al conto selezionato.",
       "link_not_queued": "Questo evento non è in attesa di revisione.",
       "link_not_skipped": "Questo evento non è stato saltato.",
       "event_not_failed": "Questo evento non è fallito.",
-      "setup_token_rejected": "SimpleFIN ha rifiutato questo token di configurazione. Potrebbe essere già stato utilizzato: generane uno nuovo nel tuo bridge SimpleFIN.",
-      "provider_unavailable": "Impossibile raggiungere il bridge bancario. Riprova tra qualche minuto.",
+      "link_not_deleted": "Questa transazione non è stata eliminata.",
+      "setup_token_rejected": "SimpleFIN ha rifiutato questo token di configurazione. Potrebbe essere già stato usato; creane uno nuovo in SimpleFIN Bridge.",
+      "provider_unavailable": "Impossibile raggiungere SimpleFIN. Riprova tra qualche minuto.",
       "sync_range_invalid": "L'intervallo di date non è valido: la data di inizio non deve essere successiva a quella di fine e l'intervallo non deve superare i 400 giorni.",
-      "access_url_invalid": "La credenziale bancaria salvata non è un URL di accesso valido. Ricollega SimpleFIN con un nuovo token di configurazione.",
+      "access_url_invalid": "La connessione SimpleFIN salvata non è valida. Riconnetti SimpleFIN con un nuovo token di configurazione.",
       "rule_skip_not_applicable": "Una regola di esclusione non può essere applicata a transazioni esistenti"
     },
     "label": {

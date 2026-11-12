@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Command, CommandInput, CommandList } from '@/components/ui/command'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
@@ -77,8 +77,9 @@ export function PickerSheet({
   const searchRef = useRef<HTMLInputElement>(null)
   const commandRef = useRef<HTMLDivElement>(null)
 
-  // a reopened picker starts from the full list
-  useEffect(() => {
+  // a reopened picker starts from the full list, before its first paint: the
+  // sheet sizes itself to the list it shows as it opens
+  useLayoutEffect(() => {
     if (open) {
       setQuery('')
       setNavigated(false)
@@ -163,6 +164,7 @@ export function PickerSheet({
       initialFocus={searchable ? (isPhone && focusSearch ? searchRef : undefined) : commandRef}
       onCloseAutoFocus={onCloseAutoFocus}
       footer={footer}
+      anchorTop
     >
       {header}
       {/* sticky at the top of the rows, so it stays in view: iOS skips a
@@ -171,7 +173,18 @@ export function PickerSheet({
         <input aria-hidden inputMode="none" className={`${NAV_STOP} sticky top-0 -mb-px block`} onFocus={() => onNavigate(-1)} />
       ) : null}
       {/* with no search, the list is a Tab stop of its own */}
-      <Command ref={commandRef} shouldFilter={false} label={searchLabel} tabIndex={searchable ? -1 : 0} value={active} onValueChange={setActive}>
+      {/* phone: as tall as its rows, so the sheet's body scrolls them together
+          with what follows (the create row); at full height the rows would
+          scroll inside and push that row out of reach */}
+      <Command
+        ref={commandRef}
+        shouldFilter={false}
+        label={searchLabel}
+        tabIndex={searchable ? -1 : 0}
+        value={active}
+        onValueChange={setActive}
+        className={isPhone ? 'h-auto! shrink-0' : undefined}
+      >
         {!isPhone && searchable ? (
           <CommandInput autoFocus={focusSearch} aria-label={searchLabel} placeholder={searchPlaceholder ?? searchLabel} value={query} onValueChange={changeQuery} />
         ) : null}

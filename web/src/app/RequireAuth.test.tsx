@@ -1,9 +1,13 @@
 import { StrictMode } from 'react'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { RequireAuth } from './RequireAuth'
 import { setToken } from '@/lib/storage'
 import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
+import { writeConfig } from '@/features/appLock/config'
+import { initAppLock, resetAppLockForTests, unlock } from '@/features/appLock/lockStore'
+import { signIn, testConfig } from '@/features/appLock/testUtils'
 
 function renderAt(path: string) {
   const router = createMemoryRouter(
@@ -56,4 +60,54 @@ it('does not remember an ordinary page', () => {
   sessionStorage.clear()
   renderAt('/')
   expect(takePostLoginRedirect()).toBe('/')
+})
+
+describe('the app lock', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+    resetAppLockForTests()
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+  })
+
+  afterEach(() => {
+    resetAppLockForTests()
+  })
+
+  function renderLocked() {
+    const router = createMemoryRouter(
+      [{ element: <RequireAuth />, children: [{ path: '/', element: <div>SECRET</div> }] }],
+      { initialEntries: ['/'] },
+    )
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+  }
+
+  it('shows the lock screen instead of the page', () => {
+    signIn('u1')
+    writeConfig(testConfig({ userId: 'u1' }))
+    initAppLock()
+    renderLocked()
+    expect(screen.getByRole('heading', { name: 'Enter PIN' })).toBeInTheDocument()
+    expect(screen.queryByText('SECRET')).not.toBeInTheDocument()
+  })
+
+  it("ignores another user's lock", () => {
+    signIn('u1')
+    writeConfig(testConfig({ userId: 'u2' }))
+    initAppLock()
+    renderLocked()
+    expect(screen.getByText('SECRET')).toBeInTheDocument()
+  })
+
+  it('shows the page again once unlocked', () => {
+    signIn('u1')
+    writeConfig(testConfig({ userId: 'u1' }))
+    initAppLock()
+    renderLocked()
+    act(() => unlock())
+    expect(screen.getByText('SECRET')).toBeInTheDocument()
+  })
 })

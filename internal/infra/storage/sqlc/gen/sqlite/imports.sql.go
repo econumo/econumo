@@ -73,6 +73,15 @@ func (q *Queries) DeleteImportSource(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteImportTransactionLink = `-- name: DeleteImportTransactionLink :exec
+DELETE FROM import_transaction_links WHERE id = ?
+`
+
+func (q *Queries) DeleteImportTransactionLink(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteImportTransactionLink, id)
+	return err
+}
+
 const deleteQueuedImportTransactionLinksByExternalAccount = `-- name: DeleteQueuedImportTransactionLinksByExternalAccount :exec
 DELETE FROM import_transaction_links WHERE source_id = ?1 AND lower(external_account_id) = lower(?2) AND status = 'queued'
 `

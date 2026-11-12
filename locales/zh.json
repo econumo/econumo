@@ -714,7 +714,7 @@
     "data_page": {
       "menu_item": "导入与导出",
       "header": "导入与导出",
-      "sync_all": "同步银行连接",
+      "sync_all": "同步 SimpleFIN",
       "history": "导入历史",
       "sync_all_done": "已导入 {imported}，已匹配 {matched}，失败 {failed}"
     },
@@ -825,15 +825,21 @@
     "simplefin": {
       "menu_item": "SimpleFIN",
       "title": "SimpleFIN",
-      "intro": "通过 SimpleFIN Bridge 连接银行。您的桥接凭据会在此设备上使用只有您知道的密码加密；服务器只存储加密后的凭据，并且仅在同步期间才能看到它们。",
-      "forget_device": "忘记此设备",
+      "intro": "通过 SimpleFIN Bridge 设置同步。您的 SimpleFIN 凭据会在此设备上使用只有您知道的密码加密；服务器只存储加密后的凭据。",
+      "disclaimer": "Econumo 与 SimpleFIN 没有关联。SimpleFIN Bridge 是第三方服务，适用其自身条款；使用风险由您自行承担。",
+      "insecure": "SimpleFIN 需要通过 https（或在 localhost 上）打开 Econumo：浏览器仅在安全页面上加密您的 SimpleFIN 凭据。请让管理员通过 https 提供 Econumo。",
+      "disconnect": "断开连接",
+      "disconnect_full": "断开 SimpleFIN",
+      "disconnect_modal": {
+        "title": "断开 SimpleFIN？",
+        "question": "SimpleFIN 连接将从 Econumo 中移除。之前导入的交易会保留。"
+      },
       "connect": {
-        "intro": "粘贴您 SimpleFIN Bridge 账户中的设置令牌，并选择一个密码。密码永远不会发送到服务器 — 如果您忘记了密码，需要使用新的设置令牌重新连接。",
         "reconnect_intro": "粘贴 SimpleFIN Bridge 提供的新设置令牌。之前的连接将被替换；您的账户映射会保留。",
         "token_label": "设置令牌",
         "token_placeholder": "aHR0cHM6Ly9…",
         "token_help": "SimpleFIN Bridge → 新建连接 → 复制设置令牌。令牌只能使用一次。",
-        "forgot_passphrase": "我忘记了密码 — 设置新密码",
+        "forgot_passphrase": "我忘记了密码，设置新密码",
         "passphrase_new": "密码",
         "passphrase_existing": "您的密码",
         "passphrase_confirm": "重复密码",
@@ -857,7 +863,7 @@
       },
       "accounts": {
         "header": "账户",
-        "empty": "桥接尚未报告任何账户。",
+        "empty": "SimpleFIN 尚未报告任何账户。",
         "needs_mapping": "未映射",
         "state": {
           "ignored": "已忽略"
@@ -883,7 +889,9 @@
       "sync": {
         "button": "立即同步",
         "running": "正在同步…",
-        "from": "起始",
+        "from": "开始日期",
+        "since": "同步 {date} 起的交易",
+        "change": "更改",
         "last_synced": "上次同步 {date}",
         "never": "从未同步",
         "done_toast": "已导入 {imported}，已匹配 {matched}"
@@ -1004,7 +1012,11 @@
       "waiting": "此交易正在收件箱中等待处理。",
       "deleted": "此交易已导入，之后被删除。",
       "create": "创建交易",
-      "unavailable": "此交易已导入，但你无法查看。"
+      "unavailable": "此交易已导入，但你无法查看。",
+      "account": "账户",
+      "reimport": "重新导入",
+      "reimport_hint": "重新导入可将其添加回来，或与您手动输入的交易（例如转账）匹配。",
+      "reimported": { "created": "已重新导入", "matched": "已与现有交易匹配", "queued": "已重新导入，正在收件箱中等待", "skipped": "未添加：匹配了跳过规则或已忽略的账户" }
     }
   },
   "user": {
@@ -2374,6 +2386,70 @@
     "notice": "{version} 新功能",
     "dismiss": "关闭"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "应用锁",
+      "title": "应用锁",
+      "on": "已开启",
+      "off": "已关闭",
+      "about": "应用锁仅在此设备上保护 Econumo。如果忘记 PIN 码或图案，需要重新登录。它不会加密设备上存储的数据。",
+      "enabled_label": "应用锁",
+      "enabled_hint": "打开 Econumo 时要求输入 PIN 码或图案",
+      "change_secret": "更改 PIN 码或图案",
+      "pin_changed": "PIN 码已更改",
+      "pattern_changed": "图案已更改",
+      "lock_after": {
+        "label": "自动锁定",
+        "immediately": "立即",
+        "one_minute": "1 分钟",
+        "five_minutes": "5 分钟",
+        "fifteen_minutes": "15 分钟"
+      },
+      "dialog": {
+        "create_title": "设置 PIN 码",
+        "create_title_pattern": "绘制图案",
+        "new_title": "设置新 PIN 码",
+        "new_title_pattern": "绘制新图案",
+        "current_title": "输入当前 PIN 码",
+        "current_title_pattern": "绘制当前图案",
+        "confirm_title": "再次输入 PIN 码",
+        "confirm_title_pattern": "再次绘制图案",
+        "pin_hint": "4 到 8 位数字",
+        "pattern_hint": "至少连接 4 个点",
+        "mismatch": "两次输入的 PIN 码不一致，请重试。",
+        "mismatch_pattern": "两次绘制的图案不一致，请重试。",
+        "kind_pin": "PIN 码",
+        "kind_pattern": "图案",
+        "save": "保存"
+      }
+    },
+    "lock_screen": {
+      "title": "输入 PIN 码",
+      "title_pattern": "绘制图案",
+      "wrong_pin": "PIN 码错误",
+      "wrong_pattern": "图案错误",
+      "attempts_left": "还剩 {count} 次机会",
+      "try_again_in": "{time} 后重试",
+      "forgot_pin": "忘记 PIN 码？",
+      "forgot_pattern": "忘记图案？",
+      "forgot_title": "退出登录以重置 PIN 码？",
+      "forgot_title_pattern": "退出登录以重置图案？",
+      "forgot_question": "您需要重新登录。",
+      "forgot_confirm": "退出登录"
+    },
+    "pin_pad": {
+      "entered": "已输入 {count} 位数字",
+      "delete": "删除数字",
+      "continue": "继续"
+    },
+    "pattern_pad": {
+      "grid": "图案",
+      "dot": "第 {n} 个点",
+      "too_short": "至少连接 4 个点",
+      "clear": "清除",
+      "done": "完成"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "此值不能为空。",
@@ -2459,15 +2535,16 @@
     "import": {
       "source_not_found": "尚未连接 Apple Wallet。请先在 设置 → Apple Wallet 中连接。",
       "provider_unsupported": "不支持此导入来源。",
-      "account_link_exists": "此卡已关联。",
-      "currency_mismatch": "卡片货币与账户货币不一致。",
+      "account_link_exists": "已映射到该账户。",
+      "currency_mismatch": "此导入账户的币种与所选账户不一致。",
       "link_not_queued": "此事件不在待审核状态。",
       "link_not_skipped": "此事件未被跳过。",
       "event_not_failed": "此事件没有失败。",
-      "setup_token_rejected": "SimpleFIN 拒绝了此设置令牌。它可能已被使用 — 请在你的 SimpleFIN 网桥中生成一个新令牌。",
-      "provider_unavailable": "无法连接到银行网桥。请几分钟后重试。",
+      "link_not_deleted": "此交易未被删除。",
+      "setup_token_rejected": "SimpleFIN 拒绝了此设置令牌。它可能已被使用；请在 SimpleFIN Bridge 中创建一个新令牌。",
+      "provider_unavailable": "无法连接到 SimpleFIN。请几分钟后重试。",
       "sync_range_invalid": "日期范围无效：开始日期不能晚于结束日期，且范围不能超过 400 天。",
-      "access_url_invalid": "保存的银行凭据不是有效的访问 URL。请使用新的设置令牌重新连接 SimpleFIN。",
+      "access_url_invalid": "已保存的 SimpleFIN 连接无效。请使用新的设置令牌重新连接 SimpleFIN。",
       "rule_skip_not_applicable": "跳过规则无法应用于现有交易"
     },
     "label": {

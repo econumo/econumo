@@ -53,7 +53,7 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		if src.Provider != model.ImportProviderAppleWallet {
 			cardCode = uniformCurrency(ledger, ext)
 			if cardCode != "" && cardCode != accountCode {
-				return &errs.ValidationError{Msg: "Card currency does not match the account", MsgCode: errs.CodeImportCurrencyMismatch}
+				return &errs.ValidationError{Msg: "Imported account currency does not match the account", MsgCode: errs.CodeImportCurrencyMismatch}
 			}
 		}
 		links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
@@ -65,7 +65,7 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 			// Remapping moves only future taps (and any still queued); rows already
 			// imported stay on the account they were written to.
 			if existing.Mode == model.ImportAccountLinkModeImport && existing.AccountID != nil && existing.AccountID.Equal(accountID) {
-				return &errs.ValidationError{Msg: "This card is already linked", MsgCode: errs.CodeImportAccountLinkExists}
+				return &errs.ValidationError{Msg: "Already mapped to that account", MsgCode: errs.CodeImportAccountLinkExists}
 			}
 			existing.Mode = model.ImportAccountLinkModeImport // map-instead over an ignored card, or a remap
 			existing.AccountID = &accountID

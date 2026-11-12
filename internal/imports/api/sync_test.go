@@ -114,7 +114,7 @@ func TestSyncSource_ValidationAndProviderErrors(t *testing.T) {
 	// The 400 carries errs.CodeImportProviderUnavailable, so the envelope
 	// message is the server-rendered locales/en.json catalogue text, not the
 	// bare provider sentinel.
-	if status != 400 || env["message"] != "The bank bridge could not be reached. Try again in a few minutes." {
+	if status != 400 || env["message"] != "SimpleFIN could not be reached. Try again in a few minutes." {
 		t.Fatalf("unavailable: %d %v", status, env)
 	}
 	// the run row is on record even though the fetch failed

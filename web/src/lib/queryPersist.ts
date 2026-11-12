@@ -11,6 +11,7 @@ import { clearTransactionDraft } from '@/features/transactions/transactionDraft'
 import { assemble, hasRevisions } from '@/features/transactions/sync'
 import { CACHE_MAX_AGE_MS } from './appQueryClient'
 import { getSessionUserId, hasToken } from './storage'
+import { forgetKey } from './importCrypto'
 import { clearTransactions, deleteBuckets, putSnapshot, storeBuster, storeEpoch, tryLoadStored, type StoredTransactions } from './transactionStore'
 
 // Vue parity: the Quasar app keeps every store in localStorage, so a page
@@ -204,11 +205,26 @@ export function createPersistOptions({ throttleTime = 1000 }: { throttleTime?: n
 
 // The cache holds one user's finances — purge it whenever the session owner
 // can change (logout, and login as a possibly different user).
+// The SimpleFIN device key goes with the rest of the user's data, so a sign-in
+// on this browser (the same user's included) asks for the passphrase again. A
+// slow or broken IndexedDB must not hold up the sign-out.
+const FORGET_KEY_TIMEOUT_MS = 1500
+
 export async function clearPersistedQueryCache(): Promise<void> {
   localStorage.removeItem(QUERY_CACHE_KEY)
   clearTransactionDraft()
   resetRevisions()
-  await clearTransactions()
+  await Promise.all([clearTransactions(), forgetImportKey()])
+}
+
+function forgetImportKey(): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, FORGET_KEY_TIMEOUT_MS)
+    forgetKey().catch(() => undefined).finally(() => {
+      clearTimeout(timer)
+      resolve()
+    })
+  })
 }
 
 // After a restore the data may be minutes old (or edited from another

@@ -8637,6 +8637,57 @@ paths:
       summary: Count the existing imports a rule would touch
       tags:
       - Import
+  /api/v1/import/reimport-link:
+    post:
+      consumes:
+      - application/json
+      description: 'Runs the stored event of a ledger row whose transaction was deleted
+        through the pipeline again: it adopts a matching transaction or creates one.
+        Only deleted rows qualify; a sync never re-imports them on its own.'
+      parameters:
+      - description: Reimport request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ImportLinkActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.IngestEventResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Import a deleted transaction again
+      tags:
+      - Import
   /api/v1/import/retry-event:
     post:
       consumes:
