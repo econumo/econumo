@@ -454,7 +454,8 @@ navigation (single-pane vs sidebar).
       an iPhone or Mac, or with SimpleFIN on (https or localhost), or with an MCP address (https
       `ECONUMO_URL`), the last step is "Connect your accounts"; with none of the three it is left
       out. It shows a card per option: Apple Wallet (iPhone/Mac only) and SimpleFIN each with a
-      line of text and a "Set up …" link; AI assistants with the MCP address and a Copy button
+      line of text and a "Set up …" link (SimpleFIN also has "SimpleFIN Bridge website" opening
+      https://bridge.simplefin.org/ in a new tab); AI assistants with the MCP address and a Copy button
       (no link). The page's top-right "Complete setup" is hidden on this step; the step's own
       "Complete setup" marks Connect done, skips every other open step, completes onboarding and
       opens the budget. Having any import source ticks Connect. A user who answered the former

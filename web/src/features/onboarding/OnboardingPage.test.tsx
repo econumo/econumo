@@ -277,7 +277,7 @@ describe('Connect your accounts', () => {
     await connectHeading()
     expect(screen.getByText(`/mcp`)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Set up SimpleFIN' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'SimpleFIN Bridge website' })).toHaveAttribute('href', 'https://beta-bridge.simplefin.org/')
+    expect(screen.getByRole('link', { name: 'SimpleFIN Bridge website' })).toHaveAttribute('href', 'https://bridge.simplefin.org/')
     // the page's own Complete setup gives way to the step's
     expect(screen.getAllByRole('button', { name: 'Complete setup' })).toHaveLength(1)
     await user.click(screen.getByRole('button', { name: 'Complete setup' }))

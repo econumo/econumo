@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Check, Copy, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
+import { SIMPLEFIN_BRIDGE_URL } from '@/features/imports/simplefinBridge'
 import { Button } from '@/components/ui/button'
 import { useOnline } from '@/hooks/useOnline'
 import { useServerConfig } from '@/lib/appConfig'
@@ -17,8 +18,6 @@ const SETTINGS: Record<Exclude<ConnectOption, 'mcp'>, string> = {
   apple_wallet: RouterPage.SETTINGS_APPLE_WALLET,
   simplefin: RouterPage.SETTINGS_SIMPLEFIN,
 }
-
-const SIMPLEFIN_BRIDGE_URL = 'https://beta-bridge.simplefin.org/'
 
 export function ConnectStep({ onDone, coreStepsDone, onCompleteSetup }: StepBodyProps) {
   const { t } = useTranslation()
