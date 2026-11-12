@@ -456,11 +456,11 @@ type Querier interface {
 	// committed by then, and one that comes later waits for the transfer.
 	LockBudgetElementPair(ctx context.Context, arg LockBudgetElementPairParams) ([]string, error)
 	// Taken by a delete or merge after the debt budgets are locked and before the
-	// debt rules are released: FOR UPDATE conflicts with the FOR KEY SHARE a debt
-	// write takes on the row while adding a rule, so the delete waits for that
-	// write to commit and then releases the new rule too, instead of failing the
-	// debts_rules foreign key.
-	LockCategoryForDelete(ctx context.Context, id string) (string, error)
+	// debt rules are released or moved: FOR UPDATE conflicts with the FOR KEY
+	// SHARE a debt write takes on the row while adding a rule, so the delete or
+	// merge waits for that write to commit and then sees its rule, instead of
+	// failing the debts_rules foreign key.
+	LockCategoryRow(ctx context.Context, id string) (string, error)
 	// NO KEY UPDATE leaves the KEY SHARE of child inserts (budget rows, debts)
 	// unblocked.
 	LockDebtBudget(ctx context.Context, id string) (string, error)
@@ -468,31 +468,31 @@ type Querier interface {
 	// guard reads the rows' data (the debt counterpart of LockSavingsElement).
 	LockElementsByExternal(ctx context.Context, arg LockElementsByExternalParams) ([]string, error)
 	// Taken by a delete or merge after the debt budgets are locked and before the
-	// debt rules are released: FOR UPDATE conflicts with the FOR KEY SHARE a debt
-	// write takes on the row while adding a rule, so the delete waits for that
-	// write to commit and then releases the new rule too, instead of failing the
-	// debts_rules foreign key.
-	LockLabelForDelete(ctx context.Context, id string) (string, error)
+	// debt rules are released or moved: FOR UPDATE conflicts with the FOR KEY
+	// SHARE a debt write takes on the row while adding a rule, so the delete or
+	// merge waits for that write to commit and then sees its rule, instead of
+	// failing the debts_rules foreign key.
+	LockLabelRow(ctx context.Context, id string) (string, error)
 	// Plain FOR UPDATE is required: it is the only mode that conflicts with the KEY SHARE
 	// lock a concurrent grant INSERT takes on this row through its foreign key.
 	LockOAuthClient(ctx context.Context, id string) (string, error)
 	// Taken by a delete or merge after the debt budgets are locked and before the
-	// debt rules are released: FOR UPDATE conflicts with the FOR KEY SHARE a debt
-	// write takes on the row while adding a rule, so the delete waits for that
-	// write to commit and then releases the new rule too, instead of failing the
-	// debts_rules foreign key.
-	LockPayeeForDelete(ctx context.Context, id string) (string, error)
+	// debt rules are released or moved: FOR UPDATE conflicts with the FOR KEY
+	// SHARE a debt write takes on the row while adding a rule, so the delete or
+	// merge waits for that write to commit and then sees its rule, instead of
+	// failing the debts_rules foreign key.
+	LockPayeeRow(ctx context.Context, id string) (string, error)
 	// Locks the savings element a removal is about to drop, before its guard
 	// reads the element's data: a limit or comment writer that share-locked the
 	// row first has committed by the time the guard's EXISTS runs, and one that
 	// comes later waits and then finds the row gone.
 	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
 	// Taken by a delete or merge after the debt budgets are locked and before the
-	// debt rules are released: FOR UPDATE conflicts with the FOR KEY SHARE a debt
-	// write takes on the row while adding a rule, so the delete waits for that
-	// write to commit and then releases the new rule too, instead of failing the
-	// debts_rules foreign key.
-	LockTagForDelete(ctx context.Context, id string) (string, error)
+	// debt rules are released or moved: FOR UPDATE conflicts with the FOR KEY
+	// SHARE a debt write takes on the row while adding a rule, so the delete or
+	// merge waits for that write to commit and then sees its rule, instead of
+	// failing the debts_rules foreign key.
+	LockTagRow(ctx context.Context, id string) (string, error)
 	// The row lock behind every existing-row write and credential mint (see
 	// user.Repository.LockRow). FOR NO KEY UPDATE is the same lock mode the old
 	// no-op UPDATE took (it touched no key column), without writing a tuple

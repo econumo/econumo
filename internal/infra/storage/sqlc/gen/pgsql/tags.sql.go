@@ -96,17 +96,17 @@ func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, er
 	return items, nil
 }
 
-const lockTagForDelete = `-- name: LockTagForDelete :one
+const lockTagRow = `-- name: LockTagRow :one
 SELECT id FROM tags WHERE id = $1 FOR UPDATE
 `
 
 // Taken by a delete or merge after the debt budgets are locked and before the
-// debt rules are released: FOR UPDATE conflicts with the FOR KEY SHARE a debt
-// write takes on the row while adding a rule, so the delete waits for that
-// write to commit and then releases the new rule too, instead of failing the
-// debts_rules foreign key.
-func (q *Queries) LockTagForDelete(ctx context.Context, id string) (string, error) {
-	row := q.db.QueryRowContext(ctx, lockTagForDelete, id)
+// debt rules are released or moved: FOR UPDATE conflicts with the FOR KEY
+// SHARE a debt write takes on the row while adding a rule, so the delete or
+// merge waits for that write to commit and then sees its rule, instead of
+// failing the debts_rules foreign key.
+func (q *Queries) LockTagRow(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, lockTagRow, id)
 	err := row.Scan(&id)
 	return id, err
 }

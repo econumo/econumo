@@ -50,8 +50,8 @@ func (pgsqlQuerier) ReassignTagRecurring(ctx context.Context, db backend.DBTX, p
 	return pgsqlgen.New(db).ReassignTagRecurring(ctx, pgsqlgen.ReassignTagRecurringParams(p))
 }
 
-func (pgsqlQuerier) LockTagForDelete(ctx context.Context, db backend.DBTX, id string) error {
-	_, err := pgsqlgen.New(db).LockTagForDelete(ctx, id)
+func (pgsqlQuerier) LockTagRow(ctx context.Context, db backend.DBTX, id string) error {
+	_, err := pgsqlgen.New(db).LockTagRow(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}

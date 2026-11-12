@@ -50,8 +50,8 @@ func (pgsqlQuerier) ReassignPayeeRecurring(ctx context.Context, db backend.DBTX,
 	return pgsqlgen.New(db).ReassignPayeeRecurring(ctx, pgsqlgen.ReassignPayeeRecurringParams(p))
 }
 
-func (pgsqlQuerier) LockPayeeForDelete(ctx context.Context, db backend.DBTX, id string) error {
-	_, err := pgsqlgen.New(db).LockPayeeForDelete(ctx, id)
+func (pgsqlQuerier) LockPayeeRow(ctx context.Context, db backend.DBTX, id string) error {
+	_, err := pgsqlgen.New(db).LockPayeeRow(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}

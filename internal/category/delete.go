@@ -54,7 +54,7 @@ func (s *Service) releaseDebtRules(ctx context.Context, id vo.Id) error {
 	if err := s.debts.Prepare(ctx, id); err != nil {
 		return err
 	}
-	if err := s.repo.LockForDelete(ctx, id); err != nil {
+	if err := s.repo.LockRow(ctx, id); err != nil {
 		return err
 	}
 	return s.debts.Release(ctx, id)

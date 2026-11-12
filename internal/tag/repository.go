@@ -25,10 +25,10 @@ type Repository interface {
 	// via the ON DELETE SET NULL FK.
 	Delete(ctx context.Context, id vo.Id) error
 
-	// LockForDelete holds the row until the transaction ends, so a debt write
+	// LockRow holds the row until the transaction ends, so a debt write
 	// adding a rule on it commits first (see DebtUsage for the lock order).
 	// A missing row is not an error.
-	LockForDelete(ctx context.Context, id vo.Id) error
+	LockRow(ctx context.Context, id vo.Id) error
 
 	// ReassignTransactions / ReassignRecurring point every row on oldID at newID
 	// (merge), before the old row is deleted.

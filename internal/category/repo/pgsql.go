@@ -67,8 +67,8 @@ func (pgsqlQuerier) ReplaceCategoryIcon(ctx context.Context, db backend.DBTX, p 
 	return pgsqlgen.New(db).ReplaceCategoryIcon(ctx, pgsqlgen.ReplaceCategoryIconParams(p))
 }
 
-func (pgsqlQuerier) LockCategoryForDelete(ctx context.Context, db backend.DBTX, id string) error {
-	_, err := pgsqlgen.New(db).LockCategoryForDelete(ctx, id)
+func (pgsqlQuerier) LockCategoryRow(ctx context.Context, db backend.DBTX, id string) error {
+	_, err := pgsqlgen.New(db).LockCategoryRow(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}

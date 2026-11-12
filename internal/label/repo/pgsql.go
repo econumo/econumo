@@ -50,8 +50,8 @@ func (pgsqlQuerier) ReassignRecurringLabels(ctx context.Context, db backend.DBTX
 	return pgsqlgen.New(db).ReassignRecurringLabels(ctx, pgsqlgen.ReassignRecurringLabelsParams(p))
 }
 
-func (pgsqlQuerier) LockLabelForDelete(ctx context.Context, db backend.DBTX, id string) error {
-	_, err := pgsqlgen.New(db).LockLabelForDelete(ctx, id)
+func (pgsqlQuerier) LockLabelRow(ctx context.Context, db backend.DBTX, id string) error {
+	_, err := pgsqlgen.New(db).LockLabelRow(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}

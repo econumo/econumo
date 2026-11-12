@@ -95,17 +95,17 @@ func (q *Queries) ListCategoriesByOwner(ctx context.Context, userID string) ([]C
 	return items, nil
 }
 
-const lockCategoryForDelete = `-- name: LockCategoryForDelete :one
+const lockCategoryRow = `-- name: LockCategoryRow :one
 SELECT id FROM categories WHERE id = $1 FOR UPDATE
 `
 
 // Taken by a delete or merge after the debt budgets are locked and before the
-// debt rules are released: FOR UPDATE conflicts with the FOR KEY SHARE a debt
-// write takes on the row while adding a rule, so the delete waits for that
-// write to commit and then releases the new rule too, instead of failing the
-// debts_rules foreign key.
-func (q *Queries) LockCategoryForDelete(ctx context.Context, id string) (string, error) {
-	row := q.db.QueryRowContext(ctx, lockCategoryForDelete, id)
+// debt rules are released or moved: FOR UPDATE conflicts with the FOR KEY
+// SHARE a debt write takes on the row while adding a rule, so the delete or
+// merge waits for that write to commit and then sees its rule, instead of
+// failing the debts_rules foreign key.
+func (q *Queries) LockCategoryRow(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, lockCategoryRow, id)
 	err := row.Scan(&id)
 	return id, err
 }

@@ -41,4 +41,4 @@ func (sqliteQuerier) ReassignTagRecurring(ctx context.Context, db backend.DBTX, 
 
 // SQLite has no row-level lock modes; its single writer already serializes
 // the delete against a debt write.
-func (sqliteQuerier) LockTagForDelete(context.Context, backend.DBTX, string) error { return nil }
+func (sqliteQuerier) LockTagRow(context.Context, backend.DBTX, string) error { return nil }

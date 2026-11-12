@@ -41,4 +41,4 @@ func (sqliteQuerier) ReassignPayeeRecurring(ctx context.Context, db backend.DBTX
 
 // SQLite has no row-level lock modes; its single writer already serializes
 // the delete against a debt write.
-func (sqliteQuerier) LockPayeeForDelete(context.Context, backend.DBTX, string) error { return nil }
+func (sqliteQuerier) LockPayeeRow(context.Context, backend.DBTX, string) error { return nil }
