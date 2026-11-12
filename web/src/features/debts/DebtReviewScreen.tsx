@@ -18,12 +18,11 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { useUiStore } from '@/app/uiStore'
 import type { DebtDetailsTab } from '@/app/uiStore'
 import type { DebtDetailsDto, DebtDto } from '@/api/dto/debt'
-import type { Id } from '@/api/types'
 import { useCurrencies } from '@/features/currencies/queries'
 import { debtDay } from './debtDates'
 import { DebtBalanceTab } from './DebtBalanceTab'
 import { DebtSettingsForm } from './DebtSettingsForm'
-import { PaymentsFromEditor } from './PaymentsFromEditor'
+import { RulesEditor } from './RulesEditor'
 import { useDebt, useDebtForecast, useFetchDebtForEdit } from './queries'
 import { useDebtDangerActions } from './useDebtDangerActions'
 import { useDebtMoney, usePaymentsLeft } from './useDebtMoney'
@@ -96,15 +95,17 @@ const tabClass =
   '-mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 text-sm font-normal text-muted-foreground shadow-none after:hidden hover:text-foreground focus-visible:ring-0 focus-visible:outline-none focus-visible:underline data-active:border-foreground data-active:bg-transparent data-active:text-foreground dark:data-active:border-foreground dark:data-active:bg-transparent'
 
 // Balance (reconciling with a statement) needs the loan's facts: a debt not
-// set up has no such tab
-const TABS: { value: DebtDetailsTab; label: string; setUpOnly?: boolean }[] = [
+// set up has no such tab. Settings and the Danger zone change the debt: a
+// reader who cannot plan in its budget (a guest, an archived budget) gets
+// neither
+const TABS: { value: DebtDetailsTab; label: string; setUpOnly?: boolean; editOnly?: boolean }[] = [
   { value: 'overview', label: 'debts.review.tab.overview' },
   { value: 'balance', label: 'debts.review.tab.balance', setUpOnly: true },
-  { value: 'settings', label: 'debts.review.tab.settings' },
-  { value: 'danger', label: 'debts.review.danger.title' },
+  { value: 'settings', label: 'debts.review.tab.settings', editOnly: true },
+  { value: 'danger', label: 'debts.review.danger.title', editOnly: true },
 ]
 
-function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string; budgetId: Id | null; initialTab: DebtDetailsTab; onClose: () => void }) {
+function DebtReview({ debtId, initialTab, onClose }: { debtId: string; initialTab: DebtDetailsTab; onClose: () => void }) {
   const { t, i18n } = useTranslation()
   const { data, error: loadError } = useDebt(debtId)
   const money = useDebtMoney()
@@ -121,6 +122,9 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
   const [error, setError] = useState<string | null>(null)
 
   const item = data?.item
+  const canEdit = item?.canEdit === 1
+  // a read-only debt opened on Settings (Finish setup from a stale screen) shows its Overview
+  const shownTab = item && !canEdit && TABS.some((entry) => entry.value === tab && entry.editOnly) ? 'overview' : tab
 
   // Each visit to Settings reloads the debt, unless the form holds edits: those
   // stay across a look at the Overview
@@ -177,7 +181,7 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
   const tabBar = item ? (
     <div className="w-full">
       <TabsList variant="line" className="h-auto w-full items-end justify-start gap-5 rounded-none bg-transparent p-0">
-        {TABS.filter((tab) => !tab.setUpOnly || item.isSetUp === 1).map(({ value, label }) => (
+        {TABS.filter((tab) => (!tab.setUpOnly || item.isSetUp === 1) && (!tab.editOnly || canEdit)).map(({ value, label }) => (
           <TabsTrigger key={value} value={value} className={tabClass}>
             {t(label)}
           </TabsTrigger>
@@ -187,7 +191,7 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
   ) : undefined
 
   return (
-    <Tabs value={tab} onValueChange={(v) => switchTab(v as DebtDetailsTab)} className="contents">
+    <Tabs value={shownTab} onValueChange={(v) => switchTab(v as DebtDetailsTab)} className="contents">
       <ResponsiveDialog
         open
         onOpenChange={(o) => !o && onClose()}
@@ -203,7 +207,6 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
               <TabsContent value="overview" className="flex flex-col gap-5">
                 <ReviewContent
                   details={data}
-                  budgetId={budgetId}
                   lang={i18n.language}
                   onFinishSetup={() => {
                     setFocusMissing(true)
@@ -213,41 +216,45 @@ function DebtReview({ debtId, budgetId, initialTab, onClose }: { debtId: string;
               </TabsContent>
               {item.isSetUp === 1 ? (
                 <TabsContent value="balance" className="flex flex-col gap-5">
-                  <DebtBalanceTab details={data} amount={(value) => money(value, item)} lang={i18n.language} />
+                  <DebtBalanceTab details={data} amount={(value) => money(value, item)} lang={i18n.language} readOnly={!canEdit} />
                 </TabsContent>
               ) : null}
-              {/* kept mounted: edits survive a look at the Overview */}
-              <TabsContent value="settings" forceMount hidden={tab !== 'settings'} className="flex flex-col gap-6">
-                {editDebt ? (
-                  <DebtSettingsForm
-                    key={formKey}
-                    debt={editDebt}
-                    onDirtyChange={onDirtyChange}
-                    focusMissing={focusMissing && tab === 'settings' && !reloading}
-                    onFocused={() => setFocusMissing(false)}
-                    onSaved={showSaved}
-                  />
-                ) : error ? null : (
-                  <div className="flex justify-center py-12">
-                    <CoinLoader />
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="danger" className="flex flex-col gap-5">
-                <OfflineNotice />
-                <DangerZone
-                  canMarkPaidOff={item.isSetUp === 1 && item.isPaidOff === 0}
-                  markingPaidOff={danger.markingPaidOff}
-                  onMarkPaidOff={() => {
-                    setError(null)
-                    danger.askMarkPaidOff(debtId)
-                  }}
-                  onDelete={() => {
-                    setError(null)
-                    danger.askDelete(debtId)
-                  }}
-                />
-              </TabsContent>
+              {canEdit ? (
+                <>
+                  {/* kept mounted: edits survive a look at the Overview */}
+                  <TabsContent value="settings" forceMount hidden={tab !== 'settings'} className="flex flex-col gap-6">
+                    {editDebt ? (
+                      <DebtSettingsForm
+                        key={formKey}
+                        debt={editDebt}
+                        onDirtyChange={onDirtyChange}
+                        focusMissing={focusMissing && tab === 'settings' && !reloading}
+                        onFocused={() => setFocusMissing(false)}
+                        onSaved={showSaved}
+                      />
+                    ) : error ? null : (
+                      <div className="flex justify-center py-12">
+                        <CoinLoader />
+                      </div>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="danger" className="flex flex-col gap-5">
+                    <OfflineNotice />
+                    <DangerZone
+                      canMarkPaidOff={item.isSetUp === 1 && item.isPaidOff === 0}
+                      markingPaidOff={danger.markingPaidOff}
+                      onMarkPaidOff={() => {
+                        setError(null)
+                        danger.askMarkPaidOff(debtId)
+                      }}
+                      onDelete={() => {
+                        setError(null)
+                        danger.askDelete(debtId)
+                      }}
+                    />
+                  </TabsContent>
+                </>
+              ) : null}
             </>
           ) : null}
           {error ? (
@@ -462,7 +469,7 @@ function PaymentsSection({ payments, splits, canForecast, forecast, amount, lang
   )
 }
 
-function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: DebtDetailsDto; budgetId: Id | null; lang: string; onFinishSetup: () => void }) {
+function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsDto; lang: string; onFinishSetup: () => void }) {
   const { t } = useTranslation()
   const money = useDebtMoney()
   const paymentsLeft = usePaymentsLeft()
@@ -475,7 +482,7 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
   // The debt's own figures ignore the budgets' plans; the forecast's follow
   // them (a planned extra pays the loan off sooner). Until it answers, or when
   // it cannot (an error, offline), the debt's own figures stand in.
-  const forecast = useDebtForecast(item.id, budgetId, canForecast)
+  const forecast = useDebtForecast(item.id, canForecast)
   const summary = canForecast ? forecast.data : undefined
   const left = summary ? summary.paymentsLeft : item.paymentsLeft
   // the last payment the plans lead to; the contract's date until the forecast answers
@@ -522,9 +529,11 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
               <span className="text-3xl leading-tight">{amount(paidSoFar)}</span>
             </div>
             <p className="text-sm text-muted-foreground">{t('debts.review.not_set_up')}</p>
-            <Button type="button" className="h-11" onClick={onFinishSetup}>
-              {t('debts.terms.finish_setup')}
-            </Button>
+            {item.canEdit === 1 ? (
+              <Button type="button" className="h-11" onClick={onFinishSetup}>
+                {t('debts.terms.finish_setup')}
+              </Button>
+            ) : null}
           </>
         )}
       </section>
@@ -566,11 +575,7 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
         </dl>
       </section>
 
-      <PaymentsFromEditor
-        value={{ categoryId: item.categoryId, payeeId: item.payeeId, tagId: item.tagId, labelId: item.labelId }}
-        onChange={() => {}}
-        readOnly
-      />
+      <RulesEditor value={[]} onChange={() => {}} options={undefined} initialRules={item.rules} readOnly />
 
       <PaymentsSection payments={payments} splits={setUp} canForecast={canForecast} forecast={forecast} amount={amount} lang={lang} />
 
@@ -578,18 +583,18 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
   )
 }
 
-/** The owner's review of one debt, opened with `useUiStore().openDebtDetails(id, tab?, budgetId?)`:
- *  a large dialog (full screen on a phone) with Overview, Balance (set-up debts only),
- *  Settings and Danger zone tabs */
+/** The review of one debt, opened with `useUiStore().openDebtDetails(id, tab?)`
+ *  for every reader of its budget: a large dialog (full screen on a phone) with
+ *  Overview, Balance (set-up debts only), and, for those who plan in the
+ *  budget, Settings and Danger zone tabs */
 export function DebtReviewScreen() {
   const debtId = useUiStore((s) => s.debtDetailsId)
   const tab = useUiStore((s) => s.debtDetailsTab)
-  const budgetId = useUiStore((s) => s.debtDetailsBudgetId)
   const close = useUiStore((s) => s.closeDebtDetails)
 
   if (!debtId) {
     return null
   }
 
-  return <DebtReview key={debtId} debtId={debtId} budgetId={budgetId} initialTab={tab} onClose={close} />
+  return <DebtReview key={debtId} debtId={debtId} initialTab={tab} onClose={close} />
 }

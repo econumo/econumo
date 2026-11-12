@@ -484,7 +484,8 @@
       "header": "Długi",
       "info": "Pożyczki i kredyty bez osobnego konta. Wydatki z kategorii długu pomniejszają kwotę do spłaty, a budżety pokazują je w sekcji Długi.",
       "empty": "Nie masz jeszcze długów",
-      "create": "Dodaj dług"
+      "create": "Dodaj dług",
+      "no_budget": "Długi należą do budżetu. Utwórz budżet albo poproś o możliwość planowania w jednym z nich, aby dodać dług."
     },
     "list": {
       "payments_left": "Została {count} płatność | Zostały {count} płatności | Zostało {count} płatności",
@@ -493,6 +494,7 @@
     "form": {
       "header": "Dług",
       "intro": "Śledź pożyczkę bez konta. Szczegóły możesz dopracować później.",
+      "budget": "Budżet",
       "name": {
         "label": "Nazwa"
       },
@@ -569,8 +571,13 @@
         "action": "Usuń dług"
       }
     },
+    "rules": {
+      "heading": "Które płatności się liczą",
+      "add_category": "Dodaj kategorię",
+      "remove": "Usuń tę kategorię",
+      "owned_category": "{category} ({owner})"
+    },
     "payments_from": {
-      "label": "Które płatności się liczą",
       "in": "Płatności z kategorii",
       "from": "odbiorca",
       "tagged": "tag",

@@ -484,7 +484,8 @@
       "header": "Dettes",
       "info": "Suivez prêts et crédits sans compte. Les dépenses de la catégorie de la dette sont déduites de ce que vous devez, et les budgets les affichent dans une section Dettes.",
       "empty": "Aucune dette pour l’instant",
-      "create": "Ajouter une dette"
+      "create": "Ajouter une dette",
+      "no_budget": "Les dettes appartiennent à un budget. Créez un budget, ou demandez à pouvoir planifier dans l'un d'eux, pour ajouter une dette."
     },
     "list": {
       "payments_left": "{count} paiement restant | {count} paiements restants",
@@ -493,6 +494,7 @@
     "form": {
       "header": "Dette",
       "intro": "Suivez un prêt sans compte. Vous pourrez l'ajuster ensuite.",
+      "budget": "Budget",
       "name": {
         "label": "Nom"
       },
@@ -569,8 +571,13 @@
         "action": "Supprimer la dette"
       }
     },
+    "rules": {
+      "heading": "Paiements pris en compte",
+      "add_category": "Ajouter une catégorie",
+      "remove": "Retirer cette catégorie",
+      "owned_category": "{category} de {owner}"
+    },
     "payments_from": {
-      "label": "Paiements pris en compte",
       "in": "Paiements de la catégorie",
       "from": "bénéficiaire",
       "tagged": "tag",

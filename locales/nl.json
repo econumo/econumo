@@ -484,7 +484,8 @@
       "header": "Schulden",
       "info": "Leningen en krediet zonder rekening bijhouden. Uitgaven in de categorie van de schuld tellen mee voor wat u nog moet betalen, en budgetten tonen ze in een sectie Schulden.",
       "empty": "Nog geen schulden",
-      "create": "Schuld toevoegen"
+      "create": "Schuld toevoegen",
+      "no_budget": "Schulden horen bij een budget. Maak een budget aan, of vraag of u in een budget mag plannen, om een schuld toe te voegen."
     },
     "list": {
       "payments_left": "Nog {count} betaling | Nog {count} betalingen",
@@ -493,6 +494,7 @@
     "form": {
       "header": "Schuld",
       "intro": "Volg een lening zonder rekening. U kunt dit later verfijnen.",
+      "budget": "Budget",
       "name": {
         "label": "Naam"
       },
@@ -569,8 +571,13 @@
         "action": "Schuld verwijderen"
       }
     },
+    "rules": {
+      "heading": "Welke betalingen tellen",
+      "add_category": "Categorie toevoegen",
+      "remove": "Deze categorie verwijderen",
+      "owned_category": "{category} van {owner}"
+    },
     "payments_from": {
-      "label": "Welke betalingen tellen",
       "in": "Betalingen in categorie",
       "from": "begunstigde",
       "tagged": "tag",

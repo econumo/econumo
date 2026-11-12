@@ -705,7 +705,7 @@ function currentMonthKey(): string {
 }
 
 describe('a plan change refreshes the debts\' future payments', () => {
-  const forecastKey = queryKeys.debtForecast('debt-1', 'b1')
+  const forecastKey = queryKeys.debtForecast('debt-1')
   const forecast = { items: [], budgetId: '', budgetName: '' }
   const okEmpty = () => HttpResponse.json({ success: true, message: '', data: {} })
 

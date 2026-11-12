@@ -484,7 +484,8 @@
       "header": "Deudas",
       "info": "Préstamos y créditos sin necesidad de una cuenta. Los gastos de la categoría de la deuda se descuentan de lo que debes, y los presupuestos los muestran en una sección Deudas.",
       "empty": "Aún no hay deudas",
-      "create": "Añadir deuda"
+      "create": "Añadir deuda",
+      "no_budget": "Las deudas pertenecen a un presupuesto. Crea un presupuesto, o pide permiso para planificar en uno, para añadir una deuda."
     },
     "list": {
       "payments_left": "Queda {count} pago | Quedan {count} pagos",
@@ -493,6 +494,7 @@
     "form": {
       "header": "Deuda",
       "intro": "Sigue un préstamo sin cuenta. Podrás ajustarlo después.",
+      "budget": "Presupuesto",
       "name": {
         "label": "Nombre"
       },
@@ -569,8 +571,13 @@
         "action": "Eliminar deuda"
       }
     },
+    "rules": {
+      "heading": "Qué pagos cuentan",
+      "add_category": "Añadir una categoría",
+      "remove": "Quitar esta categoría",
+      "owned_category": "{category} de {owner}"
+    },
     "payments_from": {
-      "label": "Qué pagos cuentan",
       "in": "Pagos de la categoría",
       "from": "beneficiario",
       "tagged": "etiqueta",

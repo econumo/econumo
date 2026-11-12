@@ -40,9 +40,10 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
  * one with how far Econumo was off on its date; a form states a new statement
  * balance as of a date between the start date and today (a second one on the
  * same date replaces the first); the history lists the origin (the amount
- * borrowed, kept) and every statement, each deletable.
+ * borrowed, kept) and every statement, each deletable. `readOnly` (a guest)
+ * keeps the figures and the history, without the form or the deletes.
  */
-export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetailsDto; amount: (value: string) => string; lang: string }) {
+export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { details: DebtDetailsDto; amount: (value: string) => string; lang: string; readOnly?: boolean }) {
   const { t } = useTranslation()
   const formId = useId()
   const online = useOnline()
@@ -87,7 +88,7 @@ export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetails
 
   return (
     <div className="flex flex-col gap-5">
-      <OfflineNotice />
+      {readOnly ? null : <OfflineNotice />}
       <dl data-testid="debt-balance-summary" className="divide-y divide-border rounded-lg bg-econumo-card px-4 py-1.5">
         <Row label={t('debts.balance.econumo')}>{amount(item.currentBalance)}</Row>
         {latest ? (
@@ -98,56 +99,58 @@ export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetails
         ) : null}
       </dl>
 
-      <section aria-labelledby={`${formId}-title`} className="flex flex-col gap-3">
-        <h3 id={`${formId}-title`} className="text-sm uppercase tracking-wide text-muted-foreground">
-          {t('debts.balance.form.title')}
-        </h3>
-        <p className="text-sm text-muted-foreground">{t('debts.balance.form.hint')}</p>
-        <form
-          className="flex flex-col gap-3"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault()
-            void submit()
-          }}
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-            <div className="min-w-0 flex-1">
-              <AmountField
-                id={`${formId}-balance`}
-                label={t('debts.balance.form.balance')}
-                value={balance}
-                symbol={currency?.symbol ?? ''}
-                error={errors.balance}
-                echo={amountEcho(balance, currency)}
-                onChange={(value) => {
-                  setErrors((prev) => ({ ...prev, balance: undefined }))
-                  setBalance(value)
+      {readOnly ? null : (
+        <section aria-labelledby={`${formId}-title`} className="flex flex-col gap-3">
+          <h3 id={`${formId}-title`} className="text-sm uppercase tracking-wide text-muted-foreground">
+            {t('debts.balance.form.title')}
+          </h3>
+          <p className="text-sm text-muted-foreground">{t('debts.balance.form.hint')}</p>
+          <form
+            className="flex flex-col gap-3"
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault()
+              void submit()
+            }}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+              <div className="min-w-0 flex-1">
+                <AmountField
+                  id={`${formId}-balance`}
+                  label={t('debts.balance.form.balance')}
+                  value={balance}
+                  symbol={currency?.symbol ?? ''}
+                  error={errors.balance}
+                  echo={amountEcho(balance, currency)}
+                  onChange={(value) => {
+                    setErrors((prev) => ({ ...prev, balance: undefined }))
+                    setBalance(value)
+                  }}
+                />
+              </div>
+              <DateField
+                label={t('debts.balance.form.date')}
+                value={date}
+                error={errors.date}
+                onChange={(day) => {
+                  setErrors((prev) => ({ ...prev, date: undefined }))
+                  setDate(day)
                 }}
               />
             </div>
-            <DateField
-              label={t('debts.balance.form.date')}
-              value={date}
-              error={errors.date}
-              onChange={(day) => {
-                setErrors((prev) => ({ ...prev, date: undefined }))
-                setDate(day)
-              }}
-            />
-          </div>
-          {serverError ? (
-            <p role="alert" className="text-sm text-destructive">
-              {serverError}
-            </p>
-          ) : null}
-          <div className="flex justify-end">
-            <Button type="submit" disabled={reconcile.isPending || !online}>
-              {t('debts.balance.form.save')}
-            </Button>
-          </div>
-        </form>
-      </section>
+            {serverError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {serverError}
+              </p>
+            ) : null}
+            <div className="flex justify-end">
+              <Button type="submit" disabled={reconcile.isPending || !online}>
+                {t('debts.balance.form.save')}
+              </Button>
+            </div>
+          </form>
+        </section>
+      )}
 
       <section aria-labelledby={`${formId}-history`}>
         <h3 id={`${formId}-history`} className="mb-2 text-sm uppercase tracking-wide text-muted-foreground">
@@ -169,9 +172,11 @@ export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetails
                 <th scope="col" className="py-1 text-right font-normal">
                   {t('debts.balance.column.difference')}
                 </th>
-                <th scope="col" className="w-9 py-1">
-                  <span className="sr-only">{t('common.button.delete.label')}</span>
-                </th>
+                {readOnly ? null : (
+                  <th scope="col" className="w-9 py-1">
+                    <span className="sr-only">{t('common.button.delete.label')}</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -185,21 +190,23 @@ export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetails
                   <td className="whitespace-nowrap py-1.5 pl-2 text-right">{amount(s.balance)}</td>
                   <td className="hidden whitespace-nowrap py-1.5 pl-2 text-right sm:table-cell">{s.isOrigin === 1 ? '—' : amount(s.computedBalance)}</td>
                   <td className="whitespace-nowrap py-1.5 pl-2 text-right">{s.isOrigin === 1 || paidOffMark(s) ? '—' : amount(statementDifference(s))}</td>
-                  <td className="py-1.5 text-right">
-                    {s.isOrigin === 1 ? null : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-8"
-                        disabled={!online || deleteReconciliation.isPending}
-                        aria-label={t('debts.balance.delete', { date: debtDay(s.asOf, lang) })}
-                        onClick={() => setDeleting(s)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
-                  </td>
+                  {readOnly ? null : (
+                    <td className="py-1.5 text-right">
+                      {s.isOrigin === 1 ? null : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          disabled={!online || deleteReconciliation.isPending}
+                          aria-label={t('debts.balance.delete', { date: debtDay(s.asOf, lang) })}
+                          onClick={() => setDeleting(s)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

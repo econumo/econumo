@@ -462,7 +462,6 @@ describe('a debt row\'s item sheet', () => {
     await user.click(within(sheet).getByRole('button', { name: 'Details' }))
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
     expect(useUiStore.getState().debtDetailsTab).toBe('overview')
-    expect(useUiStore.getState().debtDetailsBudgetId).toBe('b1')
     await waitFor(() => expect(screen.queryByTestId('element-sheet')).toBeNull())
   })
 

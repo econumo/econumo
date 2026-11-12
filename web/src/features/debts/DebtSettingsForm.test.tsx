@@ -8,7 +8,7 @@ import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { DebtDto } from '@/api/dto/debt'
 import { DebtSettingsForm } from './DebtSettingsForm'
-import { wireDebt, wireDebtNotSetUp } from './testDebt'
+import { wireDebt, wireDebtNotSetUp, wireRuleOptions } from './testDebt'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
@@ -29,6 +29,7 @@ function renderForm(debt: DebtDto, { focusMissing = false }: { focusMissing?: bo
   queryClient.setQueryData(queryKeys.payees, fixturePayees)
   queryClient.setQueryData(queryKeys.tags, fixtureTags)
   queryClient.setQueryData(queryKeys.labels, fixtureLabels)
+  queryClient.setQueryData(queryKeys.debtRuleOptions('b1'), wireRuleOptions)
   const onSaved = vi.fn()
   const onFocused = vi.fn()
   render(
@@ -104,8 +105,10 @@ it('saving untouched terms sends none, nor the start date, so the server keeps t
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', currencyId: '', categoryId: 'cat-food', labelId: null })
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', currencyId: '' })
   expect(bodies[0]).not.toHaveProperty('startDate')
+  // the rules as loaded stay as stored
+  expect(bodies[0]).not.toHaveProperty('rules')
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
@@ -316,6 +319,49 @@ it('payment and repeats read as one line', async () => {
   expect(bodies[0]).toMatchObject({ schedule: 'biweekly' })
 })
 
+it('a terms-only save sends no rules', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm(wireDebt)
+
+  await user.clear(screen.getByLabelText('Payment'))
+  await user.type(screen.getByLabelText('Payment'), '120')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ payment: '120' })
+  expect(bodies[0]).not.toHaveProperty('rules')
+})
+
+it('a rule added sends every rule, the kept one with its id', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm(wireDebt)
+
+  await user.click(screen.getByRole('button', { name: 'Add a category' }))
+  await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Category' })).getByText('Mortgage'))
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0].rules).toEqual([
+    { id: 'r1', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null },
+    { categoryId: 'cat-mortgage', payeeId: null, tagId: null, labelId: null },
+  ])
+})
+
+it('a new rule without a category is refused before sending', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm(wireDebt)
+
+  await user.click(screen.getByRole('button', { name: 'Add a category' }))
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  expect(await screen.findByText('Required field')).toBeInTheDocument()
+  expect(bodies).toHaveLength(0)
+})
+
 it('a rename and a new reporting tag go in one request with no terms and no currency', async () => {
   const bodies = captureUpdate()
   const user = userEvent.setup()
@@ -329,7 +375,7 @@ it('a rename and a new reporting tag go in one request with no terms and no curr
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', currencyId: '', categoryId: 'cat-food', tagId: null, labelId: 'label1' })
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', currencyId: '', rules: [{ id: 'r1', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' }] })
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
@@ -347,11 +393,11 @@ it('an empty name is refused before sending', async () => {
   expect(bodies).toHaveLength(0)
 })
 
-it('a refused payments-from change shows why under the sentence', async () => {
+it('a refused rule change shows why under the rules', async () => {
   server.use(
     http.post('*/api/v1/debt/update-debt', () =>
       HttpResponse.json(
-        { success: false, message: 'Form validation error', code: 400, errors: { categoryId: ['Another debt already counts these payments.'] } },
+        { success: false, message: 'Form validation error', code: 400, errors: { rules: ['Another debt already counts these payments.'] } },
         { status: 400 },
       ),
     ),

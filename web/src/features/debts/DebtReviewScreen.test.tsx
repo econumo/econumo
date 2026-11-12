@@ -10,7 +10,7 @@ import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { DebtDetailsDto } from '@/api/dto/debt'
 import { DebtReviewScreen } from './DebtReviewScreen'
-import { wireDebt, wireDebtNotSetUp } from './testDebt'
+import { wireDebt, wireDebtNotSetUp, wireRule, wireRuleOptions } from './testDebt'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
@@ -101,11 +101,12 @@ beforeEach(() => {
   server.use(
     ...coreHandlers(),
     http.get('*/api/v1/debt/get-debt', () => ok(details)),
+    http.get('*/api/v1/debt/get-debt-rule-options', () => ok(wireRuleOptions)),
     http.get('*/api/v1/debt/get-debt-forecast', () => HttpResponse.json({ success: false, message: 'Debt not found', code: 0, errors: {} }, { status: 400 })),
   )
   mockMatchMedia()
   vi.mocked(trackEvent).mockClear()
-  useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'overview', debtDetailsBudgetId: null, debtModal: null })
+  useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'overview', debtModal: null })
 })
 
 async function openScreen(tab?: 'overview' | 'settings') {
@@ -253,15 +254,15 @@ describe('the Overview follows the budget\'s plans', () => {
     return asked
   }
 
-  it('payments left, the progress, the payoff and the planned extra come from the forecast of the budget the screen came from', async () => {
+  it('payments left, the progress, the payoff and the planned extra come from the forecast of the debt\'s budget', async () => {
     const asked = captureSummary()
     renderScreen()
-    useUiStore.getState().openDebtDetails('d1', 'overview', 'b1')
+    useUiStore.getState().openDebtDetails('d1', 'overview')
     const top = await screen.findByTestId('debt-review-top', {}, { timeout: 5000 })
 
     await waitFor(() => expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('200 payments left'))
     expect(asked).toHaveLength(1)
-    expect(asked[0].get('budgetId')).toBe('b1')
+    expect([...asked[0].keys()]).toEqual(['id'])
     // the principal repaid does not depend on plans
     expect(top).toHaveTextContent('77 of 277 paid (110.00 $ of 1,200.00 $)')
     expect(top).not.toHaveTextContent('Paid off by')
@@ -275,15 +276,6 @@ describe('the Overview follows the budget\'s plans', () => {
     expect(within(loan).queryByText('Planned overpayment')).toBeNull()
     // loading the figures is no view of the future payments
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FORECAST_VIEW)
-  })
-
-  it('opened without a budget it lets the server pick the active one', async () => {
-    const asked = captureSummary({ ...summary, budgetId: '', budgetName: '' })
-    renderScreen()
-    await openScreen()
-
-    await waitFor(() => expect(screen.getByTestId('debt-review-payments-left')).toHaveTextContent('200 payments left'))
-    expect(asked[0].get('budgetId')).toBeNull()
   })
 
   it('Show future payments uses the forecast already loaded, and counts the view', async () => {
@@ -364,6 +356,59 @@ it('a debt not set up without a start date counts from the first payment', async
 
   const loan = screen.getByRole('region', { name: 'Loan' })
   expect(within(loan).getByText('Start date').nextElementSibling).toHaveTextContent('From the first payment')
+})
+
+describe('a guest reads the debt without changing it', () => {
+  const anna = {
+    id: 'r2', categoryId: 'cat-mortgage', categoryName: 'Mortgage', categoryIcon: 'home', ownerUserId: 'u2', ownerName: 'Anna',
+    payeeId: null, payeeName: '', tagId: null, tagName: '', labelId: null, labelName: '',
+  }
+  const guestView: DebtDetailsDto = {
+    ...details,
+    item: { ...details.item, canEdit: 0, rules: [anna] },
+    snapshots: [...details.snapshots, { id: 's1', isOrigin: 0, computedBalance: '1100', asOf: '2026-11-06', balance: '1090', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05' }],
+  }
+
+  beforeEach(() => {
+    server.use(http.get('*/api/v1/debt/get-debt', () => ok(guestView)))
+  })
+
+  it('has no Settings or Danger zone tab, and the rules name the owner of a partner\'s category', async () => {
+    renderScreen()
+    await openScreen()
+
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Overview', 'Balance'])
+    const sentence = screen.getByRole('group', { name: 'Which payments count' })
+    expect(sentence).toHaveTextContent(/Payments in \w*Anna's Mortgage · from any payee · tagged any tag/)
+    expect(within(sentence).queryAllByRole('button')).toHaveLength(0)
+  })
+
+  it('the Balance tab shows the history with no reconcile form and nothing to delete', async () => {
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+
+    await user.click(screen.getByRole('tab', { name: 'Balance' }))
+    expect(await screen.findAllByTestId('debt-reconciliation')).toHaveLength(2)
+    expect(screen.queryByLabelText('Statement balance')).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Delete/ })).toBeNull()
+  })
+
+  it('opened on Settings, it shows the Overview', async () => {
+    renderScreen()
+    useUiStore.getState().openDebtDetails('d1', 'settings')
+    expect(await screen.findByTestId('debt-review-top', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('a debt not set up offers a guest no Finish setup', async () => {
+    server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...notSetUp, item: { ...notSetUp.item, canEdit: 0 } })))
+    renderScreen()
+    await openScreen()
+
+    expect(screen.getByText('Paid so far')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull()
+  })
 })
 
 it('the Overview reads which payments count as a sentence, with no pickers', async () => {
@@ -502,7 +547,7 @@ it('Settings loads the debt afresh: a fact corrected on another device shows', a
 })
 
 it('Settings saves the name, the payments sentence and the terms in one request', async () => {
-  const bodies = captureUpdate((body) => ({ ...details.item, name: body.name as string, labelId: 'label1' }))
+  const bodies = captureUpdate((body) => ({ ...details.item, name: body.name as string, rules: [{ ...wireRule, labelId: 'label1', labelName: 'health' }] }))
   const user = userEvent.setup()
   renderScreen()
   await openScreen()
@@ -517,7 +562,7 @@ it('Settings saves the name, the payments sentence and the terms in one request'
 
   await waitFor(() => expect(bodies).toHaveLength(1))
   // no terms and no currency go along: the server keeps the stored ones
-  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', currencyId: '', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' })
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Van loan', currencyId: '', rules: [{ id: 'r1', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' }] })
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
@@ -841,11 +886,11 @@ describe('future payments', () => {
     return asked
   }
 
-  it('Show future payments loads the forecast of the budget the screen came from into the top of the payments table, with its plan named', async () => {
+  it('Show future payments loads the forecast into the top of the payments table, with its plan named', async () => {
     const asked = captureForecast()
     const user = userEvent.setup()
     renderScreen()
-    useUiStore.getState().openDebtDetails('d1', 'overview', 'b1')
+    useUiStore.getState().openDebtDetails('d1', 'overview')
     await screen.findByTestId('debt-review-top', {}, { timeout: 5000 })
     // the Overview's figures load it on open; the list stays closed
     await waitFor(() => expect(asked).toHaveLength(1))
@@ -858,7 +903,6 @@ describe('future payments', () => {
     const rows = await screen.findAllByTestId('debt-forecast-payment')
     expect(asked).toHaveLength(1)
     expect(asked[0].get('id')).toBe('d1')
-    expect(asked[0].get('budgetId')).toBe('b1')
     // one table, newest first: the latest projected payment on top, down to
     // the next due, a Recorded line, then the booked payments
     expect(screen.getAllByRole('table')).toHaveLength(1)
@@ -929,7 +973,7 @@ describe('future payments', () => {
     expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.DEBT_FORECAST_VIEW)).toHaveLength(1)
 
     // a plan saved elsewhere invalidates it: refetched, not counted again
-    await queryClient.invalidateQueries({ queryKey: queryKeys.debtForecast('d1', '') })
+    await queryClient.invalidateQueries({ queryKey: queryKeys.debtForecast('d1') })
     await waitFor(() => expect(asked).toHaveLength(2))
     expect(vi.mocked(trackEvent).mock.calls.filter(([m]) => m === METRICS.DEBT_FORECAST_VIEW)).toHaveLength(1)
 
@@ -958,8 +1002,8 @@ describe('future payments', () => {
     expect(within(rows[1]).getAllByRole('cell')[0]).toHaveTextContent(/^Dec 5, 2026$/)
   })
 
-  it('opened from Settings it asks with no budget, and says when only the regular payments count', async () => {
-    const asked = captureForecast({ ...forecast, budgetId: '', budgetName: '' })
+  it('says when only the regular payments count', async () => {
+    captureForecast({ ...forecast, budgetId: '', budgetName: '' })
     const user = userEvent.setup()
     renderScreen()
     await openScreen()
@@ -967,7 +1011,6 @@ describe('future payments', () => {
     await user.click(screen.getByRole('button', { name: 'Show future payments' }))
 
     await screen.findAllByTestId('debt-forecast-payment')
-    expect(asked[0].get('budgetId')).toBeNull()
     expect(screen.getByText('Regular payments only')).toBeInTheDocument()
   })
 

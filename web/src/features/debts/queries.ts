@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as debtApi from '@/api/debt'
-import type { CreateDebtDto, DebtDetailsDto, DebtDto, UpdateDebtDto, DeleteDebtForm, DeleteDebtReconciliationForm, ReconcileDebtForm } from '@/api/dto/debt'
+import type { AddDebtRuleDto, CreateDebtDto, DebtDetailsDto, DebtDto, UpdateDebtDto, DeleteDebtForm, DeleteDebtReconciliationForm, ReconcileDebtForm } from '@/api/dto/debt'
 import type { Id } from '@/api/types'
 import { isDebtForecastKey, queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import type { Metric } from '@/lib/metrics'
+import { canEditBudget, useBudgets } from '@/features/budgets/queries'
+import { useUserData } from '@/features/user/queries'
 
 export function useDebts() {
   return useQuery({ queryKey: queryKeys.debts, queryFn: debtApi.getDebtList, staleTime: TEN_MINUTES })
@@ -20,17 +22,37 @@ export function useDebt(id: Id | undefined) {
 }
 
 /** The payments still to come and the figures they give (payments left,
- *  payoff, overpayment), loaded while `enabled` and never served stale: a plan
- *  saved in any budget moves them (the budget's plan writes invalidate every
- *  forecast too). `budgetId` is the budget the screen was opened from, whose
- *  planned extras it adds */
-export function useDebtForecast(id: Id, budgetId: Id | null, enabled: boolean) {
+ *  payoff, overpayment), with the planned extras of the debt's own budget,
+ *  loaded while `enabled` and never served stale: a plan saved in that budget
+ *  moves them (the budget's plan writes invalidate every forecast too) */
+export function useDebtForecast(id: Id, enabled: boolean) {
   return useQuery({
-    queryKey: queryKeys.debtForecast(id, budgetId ?? ''),
-    queryFn: () => debtApi.getDebtForecast(id, budgetId),
+    queryKey: queryKeys.debtForecast(id),
+    queryFn: () => debtApi.getDebtForecast(id),
     enabled,
     staleTime: 0,
   })
+}
+
+/** What a rule of a debt in the budget may name: each participant's active
+ *  expense categories, payees, tags and labels (the only place a partner's
+ *  are listed). Refetched on every form opening: a category made meanwhile
+ *  must be offered */
+export function useDebtRuleOptions(budgetId: Id | null) {
+  return useQuery({
+    queryKey: queryKeys.debtRuleOptions(budgetId ?? ''),
+    queryFn: () => debtApi.getDebtRuleOptions(budgetId as Id),
+    enabled: !!budgetId,
+    staleTime: 0,
+  })
+}
+
+/** the budgets a new debt can go into: the user plans in them (owner, admin
+ *  or user) and they are not archived. undefined while loading */
+export function usePlannableBudgets() {
+  const { data: user } = useUserData()
+  const { data: budgets } = useBudgets()
+  return user && budgets ? budgets.filter((b) => b.isArchived === 0 && canEditBudget(b, user.id)) : undefined
 }
 
 /** Loads the debt afresh for the Settings tab: the form starts from the loan's
@@ -88,6 +110,19 @@ export function useUpdateDebt({ finishingSetup = false }: { finishingSetup?: boo
       storeSaved(saved)
       invalidate()
       trackEvent(finishingSetup && saved.isSetUp === 1 ? METRICS.DEBT_FINISH_SETUP : METRICS.DEBT_UPDATE)
+    },
+  })
+}
+
+/** "Add to a debt": its caller shows a refusal inline */
+export function useAddDebtRule() {
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: (form: AddDebtRuleDto) => debtApi.addDebtRule(form),
+    onSuccess: () => {
+      invalidate()
+      trackEvent(METRICS.DEBT_RULE_ADD)
     },
   })
 }

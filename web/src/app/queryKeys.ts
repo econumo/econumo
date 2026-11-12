@@ -19,7 +19,8 @@ export const queryKeys = {
   recurring: ['recurring'] as const,
   debts: ['debts'] as const,
   debt: (id: string) => ['debts', id] as const,
-  debtForecast: (id: string, budgetId: string) => ['debts', id, 'forecast', budgetId] as const,
+  debtForecast: (id: string) => ['debts', id, 'forecast'] as const,
+  debtRuleOptions: (budgetId: string) => ['debtRuleOptions', budgetId] as const,
   sessions: ['sessions'] as const,
   personalTokens: ['personalTokens'] as const,
   updateInfo: ['updateInfo'] as const,
@@ -38,6 +39,5 @@ export const queryKeys = {
 export const TEN_MINUTES = 10 * 60_000
 export const ONE_DAY = 24 * 3_600_000
 
-/** every debt's future payments, whatever budget they follow: a plan change in
- *  any budget may move them */
+/** every debt's future payments: a plan change in a debt's budget moves them */
 export const isDebtForecastKey = (key: readonly unknown[]): boolean => key[0] === queryKeys.debts[0] && key[2] === 'forecast'

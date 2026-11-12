@@ -1,18 +1,42 @@
 import type { Id } from '../types'
 import type { RecurringSchedule } from './recurring'
 
+/** one rule of a debt: payments in a participant's category, narrowed by a
+ *  payee and by a tag or a label (never both). The names are there for every
+ *  reader, a partner's classifications included ("" when unset) */
+export interface DebtRuleDto {
+  id: Id
+  categoryId: Id
+  categoryName: string
+  categoryIcon: string
+  /** the category's owner, a participant of the debt's budget or a former one */
+  ownerUserId: Id
+  ownerName: string
+  payeeId: Id | null
+  payeeName: string
+  tagId: Id | null
+  tagName: string
+  labelId: Id | null
+  labelName: string
+}
+
 /** amounts are decimal strings in the debt's currency, dates Y-m-d ("" when none).
  *  While isSetUp is 0 the terms and figures (balance .. periodRate, payment and
  *  schedule excepted) are "" and the counts 0. */
 export interface DebtDto {
   id: Id
+  /** the budget the debt belongs to */
+  budgetId: Id
+  budgetName: string
+  /** 1 when the caller may plan in that budget (owner, admin or user) and it is
+   *  not archived; 0 reads only */
+  canEdit: 0 | 1
   name: string
+  /** the first rule's category icon */
   icon: string
   currencyId: Id
-  categoryId: Id
-  payeeId: Id | null
-  tagId: Id | null
-  labelId: Id | null
+  /** 1..10, oldest first */
+  rules: DebtRuleDto[]
   /** the day the loan began (always there once set up); "" when none */
   startDate: string
   /** the loan's amount as of startDate; "" while not set up */
@@ -74,8 +98,8 @@ export interface DebtForecastItemDto {
   balance: string
 }
 
-/** the payments still to come, soonest first; budgetName names the budget whose
- *  planned extras are included, "" when only the regular payments count.
+/** the payments still to come, soonest first; budgetName names the debt's
+ *  budget when its planned extras are included, "" when only the regular payments count.
  *  paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with
  *  those extras (its own when there are none), extraPlanned the planned extras
  *  they carry ("0" with none); 0 and "" while not set up */
@@ -95,13 +119,23 @@ export interface DebtDetailsDto {
   payments: DebtPaymentDto[]
 }
 
-export interface CreateDebtDto {
-  name: string
-  currencyId: Id
+/** a rule as sent; id names a rule the debt already has (one with an
+ *  identical key keeps its id too) */
+export interface DebtRuleFormDto {
+  id?: Id
   categoryId: Id
   payeeId?: Id | null
   tagId?: Id | null
   labelId?: Id | null
+}
+
+export interface CreateDebtDto {
+  budgetId: Id
+  name: string
+  /** left out = the budget's currency */
+  currencyId?: Id
+  /** 1..10 */
+  rules: DebtRuleFormDto[]
   /** Y-m-d, the day the loan began; omitted or null = none (alone it only
    *  bounds which payments count) */
   startDate?: string | null
@@ -118,13 +152,45 @@ export interface CreateDebtDto {
   lastPaymentDate?: string
 }
 
-/** currencyId "" keeps the stored currency. amountBorrowed and lastPaymentDate
- *  come as a pair; they, payment, schedule and (on a set-up debt) startDate left
- *  out keep the stored ones, one that differs corrects the loan's facts */
-export interface UpdateDebtDto extends Omit<CreateDebtDto, 'payment' | 'schedule'> {
+/** currencyId "" keeps the stored currency, rules left out the stored rules
+ *  (a list replaces them). amountBorrowed and lastPaymentDate come as a pair;
+ *  they, payment, schedule and (on a set-up debt) startDate left out keep the
+ *  stored ones, one that differs corrects the loan's facts. A debt stays in its
+ *  budget */
+export interface UpdateDebtDto extends Omit<CreateDebtDto, 'budgetId' | 'currencyId' | 'rules' | 'payment' | 'schedule'> {
   id: Id
+  currencyId: Id | ''
+  rules?: DebtRuleFormDto[]
   payment?: string
   schedule?: RecurringSchedule
+}
+
+/** "Add to a debt": one more rule on an existing debt */
+export interface AddDebtRuleDto {
+  id: Id
+  rule: DebtRuleFormDto
+}
+
+export interface DebtRuleOptionDto {
+  id: Id
+  name: string
+  icon: string
+}
+
+/** a participant of the budget with the classifications a rule may name:
+ *  active expense categories, payees, tags and labels */
+export interface DebtRuleParticipantDto {
+  userId: Id
+  name: string
+  categories: DebtRuleOptionDto[]
+  payees: DebtRuleOptionDto[]
+  tags: DebtRuleOptionDto[]
+  labels: DebtRuleOptionDto[]
+}
+
+/** the caller first, then the other participants by name */
+export interface DebtRuleOptionsDto {
+  participants: DebtRuleParticipantDto[]
 }
 
 /** a statement balance as of balanceDate (Y-m-d; omitted = today), between the

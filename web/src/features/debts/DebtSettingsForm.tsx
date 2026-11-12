@@ -13,19 +13,16 @@ import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
 import { isNotEmpty } from '@/lib/validation'
 import type { DebtDto } from '@/api/dto/debt'
 import { useCurrencies } from '@/features/currencies/queries'
-import { useUpdateDebt } from './queries'
+import { useDebtRuleOptions, useUpdateDebt } from './queries'
 import { AmountField, DatesRow, PaymentField } from './debtFields'
 import type { FieldErrors } from './debtFields'
-import { PaymentsFromEditor } from './PaymentsFromEditor'
+import { RulesEditor } from './RulesEditor'
 import { amountEcho, amountError, buildTermsPayload, factsAsked, useDebtTermsForm } from './useDebtForm'
 
 // the fields a server refusal can name here; anything else lands in the form's alert
 const SERVER_FIELDS = [
   'name',
-  'categoryId',
-  'payeeId',
-  'tagId',
-  'labelId',
+  'rules',
   'currencyId',
   'amountBorrowed',
   'payment',
@@ -45,7 +42,8 @@ export interface DebtSettingsFormProps {
 }
 
 /**
- * The debt's Settings tab: name, which payments count, the loan's facts from
+ * The debt's Settings tab: name, which payments count (the rules, sent only
+ * when edited), the loan's facts from
  * its contract (amount borrowed, start and last payment dates, the payment and
  * its repeats) and the currency (the amounts
  * are read in it, never converted), saved in ONE update. Saving a debt not set
@@ -59,6 +57,7 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
   const { data: currencies } = useCurrencies()
   const settingUp = debt.isSetUp !== 1
   const updateDebt = useUpdateDebt({ finishingSetup: settingUp })
+  const { data: ruleOptions } = useDebtRuleOptions(debt.budgetId)
   const { form, initial, patch, reset, dirty } = useDebtTermsForm(debt)
   const currency = currencies?.find((c) => c.id === form.currencyId)
   const { errors, setErrors, clear: clearError } = useFormErrors<FieldErrors>()
@@ -98,7 +97,7 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
     const next: FieldErrors = {}
     const required = t('common.validation.required_field')
     next.name = isNotEmpty(form.name.trim()) ? undefined : required
-    next.categoryId = form.categoryId ? undefined : required
+    next.rules = form.rules.every((r) => r.categoryId) ? undefined : required
     next.payment = amountError(form.payment, t, true)
     // a debt not set up may be saved without the loan's facts, never with only some
     if (factsAsked(form, debt)) {
@@ -156,15 +155,15 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
           />
         </CardField>
 
-        <PaymentsFromEditor
-          value={{ categoryId: form.categoryId, payeeId: form.payeeId, tagId: form.tagId, labelId: form.labelId }}
-          onChange={(next) => {
-            for (const key of ['categoryId', 'payeeId', 'tagId', 'labelId'] as const) {
-              clearError(key)
-            }
-            patch(next)
+        <RulesEditor
+          value={form.rules}
+          onChange={(rules) => {
+            clearError('rules')
+            patch({ rules })
           }}
-          errors={{ categoryId: errors.categoryId, payeeId: errors.payeeId, tagId: errors.tagId, labelId: errors.labelId }}
+          options={ruleOptions}
+          initialRules={debt.rules}
+          error={errors.rules}
         />
 
         <div ref={borrowedRef}>

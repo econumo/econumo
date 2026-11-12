@@ -1,10 +1,12 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type {
+  AddDebtRuleDto,
   CreateDebtDto,
   DebtDetailsDto,
   DebtDto,
   DebtForecastDto,
+  DebtRuleOptionsDto,
   DeleteDebtForm,
   DeleteDebtReconciliationForm,
   ReconcileDebtForm,
@@ -25,13 +27,14 @@ export async function getDebt(id: Id): Promise<DebtDetailsDto> {
   return response.data.data
 }
 
-/** without a budget the server follows the user's active budget, if it plans the debt */
-export async function getDebtForecast(id: Id, budgetId: Id | null): Promise<DebtForecastDto> {
-  const params = new URLSearchParams({ id })
-  if (budgetId) {
-    params.set('budgetId', budgetId)
-  }
-  const response = await api.get<Envelope<DebtForecastDto>>(apiUrl(`/api/v1/debt/get-debt-forecast?${params}`))
+/** follows the plans of the debt's own budget */
+export async function getDebtForecast(id: Id): Promise<DebtForecastDto> {
+  const response = await api.get<Envelope<DebtForecastDto>>(apiUrl(`/api/v1/debt/get-debt-forecast?id=${encodeURIComponent(id)}`))
+  return response.data.data
+}
+
+export async function getDebtRuleOptions(budgetId: Id): Promise<DebtRuleOptionsDto> {
+  const response = await api.get<Envelope<DebtRuleOptionsDto>>(apiUrl(`/api/v1/debt/get-debt-rule-options?budgetId=${encodeURIComponent(budgetId)}`))
   return response.data.data
 }
 
@@ -42,6 +45,11 @@ export async function createDebt(form: CreateDebtDto): Promise<DebtDto> {
 
 export async function updateDebt(form: UpdateDebtDto): Promise<DebtDto> {
   const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/update-debt'), form)
+  return response.data.data
+}
+
+export async function addDebtRule(form: AddDebtRuleDto): Promise<DebtDto> {
+  const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/add-debt-rule'), form)
   return response.data.data
 }
 

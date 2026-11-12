@@ -3,10 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureCategories, fixtureLabels, fixturePayees, fixtureTags } from '@/test/fixtures'
-import { queryKeys } from '@/app/queryKeys'
+import { coreHandlers } from '@/test/fixtures'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
-import type { PaymentsFrom } from './useDebtForm'
+import type { PaymentsFromChoices } from './PaymentsFromEditor'
+import type { PaymentsFrom } from './rules'
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -16,12 +16,15 @@ function mockMatchMedia() {
 
 const empty: PaymentsFrom = { categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null }
 
-function renderEditor({ initial = empty, categoryLocked = false, errors = {}, readOnly = false }: { initial?: PaymentsFrom; categoryLocked?: boolean; errors?: Record<string, string>; readOnly?: boolean } = {}) {
+const choices: PaymentsFromChoices = {
+  categories: [{ options: [{ id: 'cat-food', name: 'Food', icon: 'restaurant' }] }],
+  payees: [{ id: 'p1', name: 'Grocer' }],
+  tags: [{ id: 'tag1', name: 'vacation', icon: 'tag' }],
+  labels: [{ id: 'label1', name: 'health', icon: 'sell' }, { id: 'label2', name: 'car', icon: 'sell' }],
+}
+
+function renderEditor({ initial = empty, categoryLocked = false, readOnly = false, onRemove }: { initial?: PaymentsFrom; categoryLocked?: boolean; readOnly?: boolean; onRemove?: () => void } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  queryClient.setQueryData(queryKeys.categories, fixtureCategories)
-  queryClient.setQueryData(queryKeys.payees, fixturePayees)
-  queryClient.setQueryData(queryKeys.tags, fixtureTags)
-  queryClient.setQueryData(queryKeys.labels, [...fixtureLabels, { ...fixtureLabels[0], id: 'label2', name: 'car' }])
   const changes: PaymentsFrom[] = []
   function Host() {
     const [value, setValue] = useState(initial)
@@ -32,9 +35,10 @@ function renderEditor({ initial = empty, categoryLocked = false, errors = {}, re
           changes.push(next)
           setValue(next)
         }}
+        choices={choices}
         categoryLocked={categoryLocked}
-        errors={errors}
         readOnly={readOnly}
+        onRemove={onRemove}
       />
     )
   }
@@ -64,10 +68,9 @@ it('reads as a sentence with no explainer under it', () => {
 
 it('a read-only sentence names the picks without pickers', () => {
   renderEditor({ initial: { categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' }, readOnly: true })
-  const sentence = screen.getByRole('group', { name: 'Which payments count' })
   // the icons are ligature text
-  expect(sentence).toHaveTextContent(/Payments in \w*Food · from any payee · tagged \w*health/)
-  expect(within(sentence).queryAllByRole('button')).toHaveLength(0)
+  expect(document.body).toHaveTextContent(/Payments in \w*Food · from any payee · tagged \w*health/)
+  expect(screen.queryAllByRole('button')).toHaveLength(0)
 })
 
 it('one tag slot lists tags and reporting tags in two groups', async () => {
@@ -140,16 +143,13 @@ it('an optional filter can go back to any', async () => {
   expect(changes.at(-1)).toEqual(empty)
 })
 
-it('offers live expense categories only', async () => {
+it('the category is required: its picker has no "any" row', async () => {
   const user = userEvent.setup()
   renderEditor({ initial: { ...empty, categoryId: null } })
 
   await user.click(screen.getByRole('button', { name: 'Category: choose a category' }))
   const sheet = await screen.findByRole('dialog', { name: 'Category' })
   expect(within(sheet).getByText('Food')).toBeInTheDocument()
-  expect(within(sheet).queryByText('Salary')).toBeNull()
-  expect(within(sheet).queryByText('Old')).toBeNull()
-  // the category is required: there is no "any" row
   expect(within(sheet).queryByText(/^any/)).toBeNull()
 })
 
@@ -158,7 +158,10 @@ it('a locked category cannot be changed', () => {
   expect(screen.getByRole('button', { name: 'Category: Food' })).toBeDisabled()
 })
 
-it('shows an error under the sentence', () => {
-  renderEditor({ errors: { categoryId: 'Required field' } })
-  expect(screen.getByText('Required field')).toBeInTheDocument()
+it('a removable sentence has a remove button', async () => {
+  const user = userEvent.setup()
+  const onRemove = vi.fn()
+  renderEditor({ onRemove })
+  await user.click(screen.getByRole('button', { name: 'Remove this category' }))
+  expect(onRemove).toHaveBeenCalledOnce()
 })

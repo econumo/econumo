@@ -52,7 +52,7 @@ export interface OpenDebtParams {
   currencyId?: Id
   /** the debt is created from a budget row, which analytics counts as a conversion */
   fromBudget?: boolean
-  /** that row's budget: the review screen opened after create follows its plans */
+  /** that row's budget: the debt is created there (from Settings the form asks) */
   budgetId?: Id
 }
 
@@ -79,9 +79,8 @@ interface UiState {
   debtDetailsId: Id | null
   /** the review screen's tab it opens on: Finish setup opens straight on Settings */
   debtDetailsTab: DebtDetailsTab
-  /** the budget the screen was opened from: its plans feed the future payments */
-  debtDetailsBudgetId: Id | null
-  openDebtDetails: (id: Id, tab?: DebtDetailsTab, budgetId?: Id) => void
+  /** the third argument is ignored: the forecast follows the debt's own budget */
+  openDebtDetails: (id: Id, tab?: DebtDetailsTab, _budgetId?: Id) => void
   closeDebtDetails: () => void
   switchAccountPrompt: Id | null
   setSwitchAccountPrompt: (id: Id | null) => void
@@ -117,8 +116,7 @@ export const useUiStore = create<UiState>()((set) => ({
   closeDebtModal: () => set({ debtModal: null }),
   debtDetailsId: null,
   debtDetailsTab: 'overview',
-  debtDetailsBudgetId: null,
-  openDebtDetails: (id, tab = 'overview', budgetId) => set({ debtDetailsId: id, debtDetailsTab: tab, debtDetailsBudgetId: budgetId ?? null }),
+  openDebtDetails: (id, tab = 'overview') => set({ debtDetailsId: id, debtDetailsTab: tab }),
   closeDebtDetails: () => set({ debtDetailsId: null }),
   switchAccountPrompt: null,
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),

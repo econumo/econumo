@@ -484,7 +484,8 @@
       "header": "债务",
       "info": "无需账户即可跟踪贷款和信用。该债务分类下的支出会冲减你的欠款，预算中会在“债务”部分显示。",
       "empty": "暂无债务",
-      "create": "添加债务"
+      "create": "添加债务",
+      "no_budget": "债务属于某个预算。请先创建预算，或申请在某个预算中进行规划，然后再添加债务。"
     },
     "list": {
       "payments_left": "还剩 {count} 笔还款",
@@ -493,6 +494,7 @@
     "form": {
       "header": "债务",
       "intro": "无需账户即可跟踪贷款。之后可以再细调。",
+      "budget": "预算",
       "name": {
         "label": "名称"
       },
@@ -569,8 +571,13 @@
         "action": "删除债务"
       }
     },
+    "rules": {
+      "heading": "计入哪些还款",
+      "add_category": "添加分类",
+      "remove": "移除此分类",
+      "owned_category": "{owner}的{category}"
+    },
     "payments_from": {
-      "label": "计入哪些还款",
       "in": "分类",
       "from": "收款人",
       "tagged": "标签",

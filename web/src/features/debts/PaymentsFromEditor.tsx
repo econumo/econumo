@@ -1,38 +1,46 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 import { CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 import { EntityIcon } from '@/components/EntityIcon'
 import { PickerSheet } from '@/components/PickerSheet'
 import { rankByName } from '@/lib/search'
 import { cn } from '@/lib/utils'
 import type { Id } from '@/api/types'
-import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
-import { useUserData } from '@/features/user/queries'
-import { categoryOptions } from '@/features/transactions/useTransactionForm'
-import type { PaymentsFrom } from './useDebtForm'
+import type { PaymentsFrom } from './rules'
 
-export type PaymentsFromErrors = Partial<Record<keyof PaymentsFrom, string | undefined>>
-
-export interface PaymentsFromEditorProps {
-  value: PaymentsFrom
-  onChange: (next: PaymentsFrom) => void
-  /** converting a category row: the category is the row's and stays */
-  categoryLocked?: boolean
-  errors?: PaymentsFromErrors
-  /** the sentence as text: the picks named, nothing to change */
-  readOnly?: boolean
-}
-
-interface Option {
+export interface Option {
   id: Id
   name: string
   icon?: string
 }
 
 /** options under a heading; a group with no heading lists its options bare */
-interface OptionGroup {
+export interface OptionGroup {
   heading?: string
   options: Option[]
+}
+
+/** what each slot of the sentence offers: categories (grouped by owner), and
+    the payees, tags and labels of the chosen category's owner */
+export interface PaymentsFromChoices {
+  categories: OptionGroup[]
+  payees: Option[]
+  tags: Option[]
+  labels: Option[]
+}
+
+export interface PaymentsFromEditorProps {
+  value: PaymentsFrom
+  onChange: (next: PaymentsFrom) => void
+  choices: PaymentsFromChoices
+  /** converting a category row: the category is the row's and stays */
+  categoryLocked?: boolean
+  /** the sentence as text: the picks named, nothing to change */
+  readOnly?: boolean
+  /** shows a button that drops this sentence */
+  onRemove?: () => void
 }
 
 const ANY = '__any__'
@@ -119,7 +127,7 @@ function SlotPicker({
                 return null
               }
               return group.heading ? (
-                <CommandGroup key={group.heading} heading={group.heading} className="p-0">
+                <CommandGroup key={i} heading={group.heading} className="p-0">
                   {ranked.map(item)}
                 </CommandGroup>
               ) : (
@@ -136,35 +144,14 @@ function SlotPicker({
 const TAG = 'tag:'
 const LABEL = 'label:'
 
-/** the caller's live rows, plus the chosen one even when archived */
-function ownLive<T extends { id: Id; ownerUserId: Id; isArchived: 0 | 1 }>(rows: T[], chosen: Id | null, ownerId: Id | undefined): T[] {
-  return rows.filter((r) => r.id === chosen || (r.isArchived === 0 && (!ownerId || r.ownerUserId === ownerId)))
-}
-
 /**
- * Which payments count as the debt's, as a sentence of pickers: "Payments in
- * [category] · from [any payee] · tagged [any tag]". The tag slot holds a tag
- * or a reporting tag, never both. The category is required, the rest narrow
- * it down.
+ * One rule of a debt as a sentence of pickers: "Payments in [category] · from
+ * [any payee] · tagged [any tag]". The tag slot holds a tag or a reporting
+ * tag, never both. The category is required, the rest narrow it down.
  */
-export function PaymentsFromEditor({ value, onChange, categoryLocked = false, errors = {}, readOnly = false }: PaymentsFromEditorProps) {
+export function PaymentsFromEditor({ value, onChange, choices, categoryLocked = false, readOnly = false, onRemove }: PaymentsFromEditorProps) {
   const { t } = useTranslation()
-  const { data: user } = useUserData()
-  const { data: categories = [] } = useCategories()
-  const { data: payees = [] } = usePayees()
-  const { data: tags = [] } = useTags()
-  const { data: labels = [] } = useLabels()
-  const ownerId = user?.id
-
-  const categoryRows = categoryOptions(categories, 'expense', ownerId)
-  if (value.categoryId && !categoryRows.some((c) => c.id === value.categoryId)) {
-    const current = categories.find((c) => c.id === value.categoryId)
-    if (current) {
-      categoryRows.push(current)
-    }
-  }
   const set = (partial: Partial<PaymentsFrom>) => onChange({ ...value, ...partial })
-  const error = errors.categoryId ?? errors.payeeId ?? errors.tagId ?? errors.labelId
   const tagValue = value.tagId ? TAG + value.tagId : value.labelId ? LABEL + value.labelId : null
   const pickTag = (key: string | null) => {
     if (key?.startsWith(TAG)) {
@@ -177,62 +164,57 @@ export function PaymentsFromEditor({ value, onChange, categoryLocked = false, er
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <div role="group" aria-label={t('debts.payments_from.label')} className="flex flex-col gap-1.5 rounded-lg bg-econumo-card px-4 py-2.5">
-        <span className="text-[11px] text-muted-foreground">{t('debts.payments_from.label')}</span>
-        {/* the spaces between the words are for its text; the flex gap spaces them on screen */}
-        <p className="flex flex-wrap items-center gap-x-1 gap-y-1.5 text-sm">
-          <span>{t('debts.payments_from.in')}</span>
-          {' '}
-          <SlotPicker
-            title={t('debts.form.category.label')}
-            groups={[{ options: categoryRows.map((c) => ({ id: c.id, name: c.name, icon: c.icon || 'pending' })) }]}
-            value={value.categoryId}
-            placeholder={t('debts.payments_from.choose_category')}
-            readOnly={readOnly}
-            disabled={categoryLocked}
-            onPick={(categoryId) => set({ categoryId })}
-          />
-          {' '}
-          <span aria-hidden className="text-muted-foreground">·</span>
-          {' '}
-          <span>{t('debts.payments_from.from')}</span>
-          {' '}
-          <SlotPicker
-            title={t('debts.form.payee.label')}
-            groups={[{ options: ownLive(payees, value.payeeId, ownerId).map((p) => ({ id: p.id, name: p.name })) }]}
-            value={value.payeeId}
-            placeholder={t('debts.payments_from.any_payee')}
-            readOnly={readOnly}
-            anyLabel={t('debts.payments_from.any_payee')}
-            onPick={(payeeId) => set({ payeeId })}
-          />
-          {' '}
-          <span aria-hidden className="text-muted-foreground">·</span>
-          {' '}
-          <span>{t('debts.payments_from.tagged')}</span>
-          {' '}
-          <SlotPicker
-            title={t('debts.form.tag.label')}
-            groups={[
-              {
-                heading: t('debts.payments_from.group_tags'),
-                options: ownLive(tags, value.tagId, ownerId).map((tag) => ({ id: TAG + tag.id, name: tag.name, icon: tag.icon || 'sell' })),
-              },
-              {
-                heading: t('debts.payments_from.group_labels'),
-                options: ownLive(labels, value.labelId, ownerId).map((label) => ({ id: LABEL + label.id, name: label.name, icon: label.icon || 'label' })),
-              },
-            ]}
-            value={tagValue}
-            placeholder={t('debts.payments_from.any_tag')}
-            readOnly={readOnly}
-            anyLabel={t('debts.payments_from.any_tag')}
-            onPick={pickTag}
-          />
-        </p>
-      </div>
-      {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
+    <div className="flex items-start gap-2">
+      {/* the spaces between the words are for its text; the flex gap spaces them on screen */}
+      <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5 text-sm">
+        <span>{t('debts.payments_from.in')}</span>
+        {' '}
+        <SlotPicker
+          title={t('debts.form.category.label')}
+          groups={choices.categories}
+          value={value.categoryId}
+          placeholder={t('debts.payments_from.choose_category')}
+          readOnly={readOnly}
+          disabled={categoryLocked}
+          onPick={(categoryId) => set({ categoryId })}
+        />
+        {' '}
+        <span aria-hidden className="text-muted-foreground">·</span>
+        {' '}
+        <span>{t('debts.payments_from.from')}</span>
+        {' '}
+        <SlotPicker
+          title={t('debts.form.payee.label')}
+          groups={[{ options: choices.payees }]}
+          value={value.payeeId}
+          placeholder={t('debts.payments_from.any_payee')}
+          readOnly={readOnly}
+          anyLabel={t('debts.payments_from.any_payee')}
+          onPick={(payeeId) => set({ payeeId })}
+        />
+        {' '}
+        <span aria-hidden className="text-muted-foreground">·</span>
+        {' '}
+        <span>{t('debts.payments_from.tagged')}</span>
+        {' '}
+        <SlotPicker
+          title={t('debts.form.tag.label')}
+          groups={[
+            { heading: t('debts.payments_from.group_tags'), options: choices.tags.map((tag) => ({ ...tag, id: TAG + tag.id, icon: tag.icon || 'sell' })) },
+            { heading: t('debts.payments_from.group_labels'), options: choices.labels.map((label) => ({ ...label, id: LABEL + label.id, icon: label.icon || 'label' })) },
+          ]}
+          value={tagValue}
+          placeholder={t('debts.payments_from.any_tag')}
+          readOnly={readOnly}
+          anyLabel={t('debts.payments_from.any_tag')}
+          onPick={pickTag}
+        />
+      </p>
+      {onRemove && !readOnly ? (
+        <Button type="button" variant="ghost" size="icon" className="-my-1 size-8 shrink-0" aria-label={t('debts.rules.remove')} title={t('debts.rules.remove')} onClick={onRemove}>
+          <X className="size-4" />
+        </Button>
+      ) : null}
     </div>
   )
 }

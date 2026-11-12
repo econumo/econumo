@@ -99,7 +99,6 @@ describe('the debt row menu', () => {
     expect(actions[2].destructive).toBe(true)
     act(() => actions[0].onSelect())
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
-    expect(useUiStore.getState().debtDetailsBudgetId).toBe('b1')
     expect(useUiStore.getState().debtModal).toBeNull()
   })
 

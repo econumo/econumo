@@ -484,7 +484,8 @@
       "header": "Dívidas",
       "info": "Empréstimos e créditos acompanhados sem uma conta. As despesas da categoria da dívida abatem o que deve, e os orçamentos mostram-nas numa secção Dívidas.",
       "empty": "Ainda não existem dívidas",
-      "create": "Adicionar dívida"
+      "create": "Adicionar dívida",
+      "no_budget": "As dívidas pertencem a um orçamento. Crie um orçamento, ou peça para planear num, para adicionar uma dívida."
     },
     "list": {
       "payments_left": "Falta {count} pagamento | Faltam {count} pagamentos",
@@ -493,6 +494,7 @@
     "form": {
       "header": "Dívida",
       "intro": "Acompanhe um empréstimo sem conta. Pode ajustá-lo mais tarde.",
+      "budget": "Orçamento",
       "name": {
         "label": "Nome"
       },
@@ -569,8 +571,13 @@
         "action": "Eliminar dívida"
       }
     },
+    "rules": {
+      "heading": "Que pagamentos contam",
+      "add_category": "Adicionar uma categoria",
+      "remove": "Remover esta categoria",
+      "owned_category": "{category} de {owner}"
+    },
     "payments_from": {
-      "label": "Que pagamentos contam",
       "in": "Pagamentos na categoria",
       "from": "beneficiário",
       "tagged": "etiqueta",
