@@ -232,8 +232,6 @@ navigation (single-pane vs sidebar).
       email address already exists and can't be linked automatically. Contact
       your administrator." An account that linked the provider while passwords
       were on signs in through it normally.
-      Switching from a backend with no providers to a provider-only one shows
-      the new backend's provider buttons (never an empty screen).
 - [ ] Web, `ECONUMO_PASSWORD_LOGIN=false` with a custom backend selected on a
       different origin: the password form is shown again (the provider buttons
       are not), since the serving instance's setting says nothing about that
