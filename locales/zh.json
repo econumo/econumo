@@ -674,7 +674,7 @@
         "reconnect_intro": "粘贴 SimpleFIN Bridge 提供的新设置令牌。之前的连接将被替换；您的账户映射会保留。",
         "token_label": "设置令牌",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → 新建连接 → 复制设置令牌。令牌只能使用一次。",
+        "token_help": "{bridge} → 新建连接 → 复制设置令牌。令牌只能使用一次。",
         "forgot_passphrase": "我忘记了密码，设置新密码",
         "passphrase_new": "密码",
         "passphrase_existing": "您的密码",

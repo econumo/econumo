@@ -1026,6 +1026,8 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] The connect card and the foot of the connected page both say Econumo is not
       affiliated with SimpleFIN and that SimpleFIN Bridge is used at the user's own
       risk. 📱
+- [ ] Under the setup token field, "SimpleFIN Bridge" in the help line is a link that opens
+      https://bridge.simplefin.org/ in a new tab (in every UI language). 📱
 - [ ] Connect: after "Connect" the page lists the bridge's accounts under "Needs mapping",
       the source row reads "Never synced", and the network log shows
       `create-source` carrying `credentialCiphertext` starting `v1:` — the access
