@@ -29,6 +29,9 @@ export interface DebtDto {
   moneyLeft: string
   overpaymentLeft: string
   overpaidSoFar: string
+  /** what the payments dated up to today went above the regular payment, due
+   *  window by due window (a payment on the start date in full) */
+  extraPaid: string
   payoffDate: string
   nextDueDate: string
   /** implied rate per schedule period, 10 decimals */
@@ -74,7 +77,8 @@ export interface DebtForecastItemDto {
 /** the payments still to come, soonest first; budgetName names the budget whose
  *  planned extras are included, "" when only the regular payments count.
  *  paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with
- *  those extras (its own when there are none); 0 and "" while not set up */
+ *  those extras (its own when there are none), extraPlanned the planned extras
+ *  they carry ("0" with none); 0 and "" while not set up */
 export interface DebtForecastDto {
   items: DebtForecastItemDto[]
   budgetId: string
@@ -82,6 +86,7 @@ export interface DebtForecastDto {
   paymentsLeft: number
   payoffDate: string
   overpaymentLeft: string
+  extraPlanned: string
 }
 
 export interface DebtDetailsDto {

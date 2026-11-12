@@ -537,7 +537,6 @@
       }
     },
     "details": {
-      "overpaid_so_far": "Surcoût payé",
       "payments": "Paiements",
       "payments_empty": "Aucun paiement pour l’instant",
       "column": {
@@ -628,7 +627,8 @@
       "loan_ends": "Fin du prêt",
       "start_date": "Date de début",
       "from_first_payment": "Dès le premier paiement",
-      "overpayment_to_come": "Surcoût prévu",
+      "paid_extra": "Supplément payé",
+      "planned_extra": "Supplément prévu",
       "danger": {
         "title": "Zone de danger",
         "paid_off": "Met le solde à 0 et arrête le compte à rebours.",

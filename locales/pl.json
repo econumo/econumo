@@ -537,7 +537,6 @@
       }
     },
     "details": {
-      "overpaid_so_far": "Zapłacony koszt długu",
       "payments": "Płatności",
       "payments_empty": "Brak płatności",
       "column": {
@@ -628,7 +627,8 @@
       "loan_ends": "Koniec pożyczki",
       "start_date": "Data rozpoczęcia",
       "from_first_payment": "Od pierwszej płatności",
-      "overpayment_to_come": "Planowany koszt długu",
+      "paid_extra": "Dodatkowo wpłacone",
+      "planned_extra": "Dodatkowo zaplanowane",
       "danger": {
         "title": "Strefa zagrożenia",
         "paid_off": "Ustawia saldo na 0 i zatrzymuje odliczanie.",

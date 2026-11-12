@@ -23,7 +23,7 @@ const wireDebt = {
   id: 'd1', name: 'Car loan', icon: 'directions_car', currencyId: 'cur-usd', categoryId: 'c1',
   payeeId: null, tagId: null, startDate: '', balance: '100', payment: '105', schedule: 'monthly',
   lastPaymentDate: '2027-06-20', currentBalance: '100', paymentsLeft: 1, moneyLeft: '105',
-  overpaymentLeft: '5', overpaidSoFar: '0', payoffDate: '2027-06-20', nextDueDate: '2027-06-20',
+  overpaymentLeft: '5', overpaidSoFar: '0', extraPaid: '0', payoffDate: '2027-06-20', nextDueDate: '2027-06-20',
   periodRate: '0.0500000000', isPaidOff: 0, isSetUp: 1, periodsPaid: 0,
 }
 const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })

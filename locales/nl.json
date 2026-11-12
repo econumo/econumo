@@ -537,7 +537,6 @@
       }
     },
     "details": {
-      "overpaid_so_far": "Betaalde meerkosten",
       "payments": "Betalingen",
       "payments_empty": "Nog geen betalingen",
       "column": {
@@ -628,7 +627,8 @@
       "loan_ends": "Lening loopt af",
       "start_date": "Startdatum",
       "from_first_payment": "Vanaf de eerste betaling",
-      "overpayment_to_come": "Geplande meerkosten",
+      "paid_extra": "Extra betaald",
+      "planned_extra": "Extra gepland",
       "danger": {
         "title": "Gevarenzone",
         "paid_off": "Zet het saldo op 0 en stopt het aftellen.",

@@ -537,7 +537,6 @@
       }
     },
     "details": {
-      "overpaid_so_far": "Overpaid",
       "payments": "Payments",
       "payments_empty": "No payments yet",
       "column": {
@@ -628,7 +627,8 @@
       "loan_ends": "Loan ends",
       "start_date": "Start date",
       "from_first_payment": "From the first payment",
-      "overpayment_to_come": "Planned overpayment",
+      "paid_extra": "Paid extra",
+      "planned_extra": "Planned extra",
       "danger": {
         "title": "Danger zone",
         "paid_off": "Sets the balance to 0 and stops the countdown.",

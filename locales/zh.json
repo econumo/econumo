@@ -537,7 +537,6 @@
       }
     },
     "details": {
-      "overpaid_so_far": "已付利息与费用",
       "payments": "还款记录",
       "payments_empty": "暂无还款",
       "column": {
@@ -628,7 +627,8 @@
       "loan_ends": "贷款结束",
       "start_date": "开始日期",
       "from_first_payment": "从第一笔还款起",
-      "overpayment_to_come": "预计利息与费用",
+      "paid_extra": "已额外还款",
+      "planned_extra": "计划额外还款",
       "danger": {
         "title": "危险操作",
         "paid_off": "将余额设为 0 并停止倒计时。",

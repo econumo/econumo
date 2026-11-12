@@ -478,7 +478,6 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
   const forecast = useDebtForecast(item.id, budgetId, canForecast)
   const summary = canForecast ? forecast.data : undefined
   const left = summary ? summary.paymentsLeft : item.paymentsLeft
-  const overpaymentLeft = summary ? summary.overpaymentLeft : item.overpaymentLeft
   const amount = (value: string) => money(value, item)
   const currency = currencies?.find((c) => c.id === item.currencyId)
   const schedule = t(`recurring.schedule.${item.schedule}`)
@@ -545,11 +544,13 @@ function ReviewContent({ details, budgetId, lang, onFinishSetup }: { details: De
           {setUp ? null : (
             <Figure label={t('debts.review.start_date')}>{item.startDate ? debtDay(item.startDate, lang) : t('debts.review.from_first_payment')}</Figure>
           )}
-          {/* what is owed now is the top card's; a set-up debt's amounts name its currency */}
+          {/* what is owed now is the top card's, interest the payments table's; a
+              set-up debt's amounts name its currency. Planned extra follows the
+              plans: until the forecast answers there is no number to show. */}
           {setUp ? (
             <>
-              <Figure label={t('debts.details.overpaid_so_far')}>{amount(item.overpaidSoFar)}</Figure>
-              <Figure label={t('debts.review.overpayment_to_come')}>{amount(overpaymentLeft)}</Figure>
+              <Figure label={t('debts.review.paid_extra')}>{amount(item.extraPaid)}</Figure>
+              {summary ? <Figure label={t('debts.review.planned_extra')}>{amount(summary.extraPlanned)}</Figure> : null}
             </>
           ) : (
             <Figure label={t('debts.form.currency.label')}>{currency ? fullCurrencyLabel(currency) : '—'}</Figure>

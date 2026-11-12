@@ -537,7 +537,6 @@
       }
     },
     "details": {
-      "overpaid_so_far": "Custo adicional pago",
       "payments": "Pagamentos",
       "payments_empty": "Ainda não existem pagamentos",
       "column": {
@@ -628,7 +627,8 @@
       "loan_ends": "Fim do empréstimo",
       "start_date": "Data de início",
       "from_first_payment": "Desde o primeiro pagamento",
-      "overpayment_to_come": "Custo adicional previsto",
+      "paid_extra": "Extra pago",
+      "planned_extra": "Extra planeado",
       "danger": {
         "title": "Zona de perigo",
         "paid_off": "Põe o saldo a 0 e para a contagem decrescente.",

@@ -52,6 +52,7 @@ const details: DebtDetailsDto = {
     moneyLeft: '1100',
     overpaymentLeft: '10',
     overpaidSoFar: '15.5',
+    extraPaid: '40',
     payoffDate: '2050-07-05',
     lastPaymentDate: '2050-07-05',
     nextDueDate: '2026-12-05',
@@ -203,20 +204,28 @@ it('the Loan card holds the loan\'s figures and nothing to edit', async () => {
 
   const loan = screen.getByRole('region', { name: 'Loan' })
   const figure = (label: string) => within(loan).getByText(label).nextElementSibling
+  // the forecast fails here: Planned extra waits for it rather than show a plan-free number
   expect(within(loan).getAllByRole('term').map((dt) => dt.textContent)).toEqual([
-    'Borrowed', 'Payment', 'Next payment', 'Loan ends', 'Overpaid', 'Planned overpayment',
+    'Borrowed', 'Payment', 'Next payment', 'Loan ends', 'Paid extra',
   ])
   expect(figure('Borrowed')).toHaveTextContent('1,200.00 $ · Oct 1, 2026')
   expect(figure('Payment')).toHaveTextContent('100.00 $ · Monthly')
   expect(figure('Next payment')).toHaveTextContent('Dec 5, 2026')
   expect(figure('Loan ends')).toHaveTextContent('Jul 5, 2050')
-  expect(figure('Overpaid')).toHaveTextContent('15.50 $')
-  expect(figure('Planned overpayment')).toHaveTextContent('10.00 $')
-  // what is owed is the hero's; the currency shows on every amount
-  for (const gone of ['Owed now', 'Left to pay', 'Currency', 'Start date']) {
+  expect(figure('Paid extra')).toHaveTextContent('40.00 $')
+  // what is owed is the hero's, interest the payments table's; the currency shows on every amount
+  for (const gone of ['Owed now', 'Left to pay', 'Currency', 'Start date', 'Overpaid', 'Planned overpayment', 'Planned extra']) {
     expect(within(loan).queryByText(gone)).toBeNull()
   }
   expect(within(loan).queryByRole('button')).toBeNull()
+})
+
+it('Paid extra shows 0 rather than hiding', async () => {
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, extraPaid: '0' } })))
+  renderScreen()
+  await openScreen()
+
+  expect(within(screen.getByRole('region', { name: 'Loan' })).getByText('Paid extra').nextElementSibling).toHaveTextContent('0.00 $')
 })
 
 it('a debt not set up keeps its Loan card: payment, start and currency', async () => {
@@ -230,7 +239,7 @@ it('a debt not set up keeps its Loan card: payment, start and currency', async (
 })
 
 describe('the Overview follows the budget\'s plans', () => {
-  const summary = { items: [], budgetId: 'b1', budgetName: 'Family', paymentsLeft: 200, payoffDate: '2043-02-05', overpaymentLeft: '4.25' }
+  const summary = { items: [], budgetId: 'b1', budgetName: 'Family', paymentsLeft: 200, payoffDate: '2043-02-05', overpaymentLeft: '4.25', extraPlanned: '3000' }
 
   function captureSummary(answer: unknown = summary) {
     const asked: URLSearchParams[] = []
@@ -243,7 +252,7 @@ describe('the Overview follows the budget\'s plans', () => {
     return asked
   }
 
-  it('payments left, the progress, the payoff and the planned overpayment come from the forecast of the budget the screen came from', async () => {
+  it('payments left, the progress, the payoff and the planned extra come from the forecast of the budget the screen came from', async () => {
     const asked = captureSummary()
     renderScreen()
     useUiStore.getState().openDebtDetails('d1', 'overview', 'b1')
@@ -256,7 +265,11 @@ describe('the Overview follows the budget\'s plans', () => {
     expect(top).toHaveTextContent('77 of 277 paid (110.00 $ of 1,200.00 $)')
     expect(top).not.toHaveTextContent('Paid off by')
     const loan = screen.getByRole('region', { name: 'Loan' })
-    expect(within(loan).getByText('Planned overpayment').nextElementSibling).toHaveTextContent('4.25 $')
+    expect(within(loan).getAllByRole('term').map((dt) => dt.textContent)).toEqual([
+      'Borrowed', 'Payment', 'Next payment', 'Loan ends', 'Paid extra', 'Planned extra',
+    ])
+    expect(within(loan).getByText('Planned extra').nextElementSibling).toHaveTextContent('3,000.00 $')
+    expect(within(loan).queryByText('Planned overpayment')).toBeNull()
     // loading the figures is no view of the future payments
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FORECAST_VIEW)
   })
@@ -290,8 +303,30 @@ describe('the Overview follows the budget\'s plans', () => {
     const top = screen.getByTestId('debt-review-top')
     await waitFor(() => expect(top).toHaveTextContent('77 of 360 paid (110.00 $ of 1,200.00 $)'))
     expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('283 payments left')
-    expect(within(screen.getByRole('region', { name: 'Loan' })).getByText('Planned overpayment').nextElementSibling).toHaveTextContent('10.00 $')
+    expect(within(screen.getByRole('region', { name: 'Loan' })).queryByText('Planned extra')).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('Planned extra waits for the forecast to answer', async () => {
+    let answer: () => void = () => {}
+    const answered = new Promise<void>((resolve) => {
+      answer = resolve
+    })
+    server.use(
+      http.get('*/api/v1/debt/get-debt-forecast', async () => {
+        await answered
+        return ok({ ...summary, extraPlanned: '0' })
+      }),
+    )
+    renderScreen()
+    await openScreen()
+
+    const loan = screen.getByRole('region', { name: 'Loan' })
+    expect(within(loan).getByText('Paid extra')).toBeInTheDocument()
+    expect(within(loan).queryByText('Planned extra')).toBeNull()
+    answer()
+    // with no plans it is 0, shown like Paid extra
+    await waitFor(() => expect(within(loan).getByText('Planned extra').nextElementSibling).toHaveTextContent('0.00 $'))
   })
 
   it('a paid-off debt or one not set up asks for no forecast', async () => {
@@ -789,6 +824,7 @@ describe('future payments', () => {
     paymentsLeft: 283,
     payoffDate: '2050-07-05',
     overpaymentLeft: '10',
+    extraPlanned: '0',
   }
 
   function captureForecast(answer: unknown = forecast) {

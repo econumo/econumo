@@ -537,7 +537,6 @@
       }
     },
     "details": {
-      "overpaid_so_far": "Gezahlte Mehrkosten",
       "payments": "Zahlungen",
       "payments_empty": "Noch keine Zahlungen",
       "column": {
@@ -628,7 +627,8 @@
       "loan_ends": "Kredit endet",
       "start_date": "Startdatum",
       "from_first_payment": "Ab der ersten Zahlung",
-      "overpayment_to_come": "Geplante Mehrkosten",
+      "paid_extra": "Gezahlte Sonderzahlungen",
+      "planned_extra": "Geplante Sonderzahlungen",
       "danger": {
         "title": "Gefahrenbereich",
         "paid_off": "Setzt den Saldo auf 0 und beendet den Countdown.",
