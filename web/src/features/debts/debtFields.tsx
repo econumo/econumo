@@ -118,58 +118,62 @@ export function PaymentField({
 
 export function StartDateField({ value, error, onChange }: { value: string; error?: string; onChange: (value: string) => void }) {
   const { t } = useTranslation()
-  const label = t('debts.form.start_date.label')
   return (
-    <CardField label={label} error={error}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">{t('debts.form.start_date.hint')}</span>
-        <span className="flex shrink-0 items-center gap-1">
-          <TransactionDatePicker ariaLabel={label} placeholder={t('debts.form.start_date.none')} value={value} onChange={(day) => onChange(formatDate(day))} />
-          {value ? (
-            <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={t('debts.form.start_date.clear')} onClick={() => onChange('')}>
-              <X className="size-4" />
-            </Button>
-          ) : null}
-        </span>
-      </div>
-    </CardField>
+    <div className="flex flex-col gap-1">
+      <DateField
+        label={t('debts.form.start_date.label')}
+        value={value}
+        placeholder={t('debts.form.start_date.none')}
+        error={error}
+        onChange={onChange}
+        onClear={() => onChange('')}
+        clearLabel={t('debts.form.start_date.clear')}
+      />
+      <p className="px-1 text-xs text-muted-foreground">{t('debts.form.start_date.hint')}</p>
+    </div>
   )
 }
 
-/** One date in a card of half a row: the label above, the chip under it, the
-    hint for screen readers only (a 360 px phone has no room for it). The chip's
-    wrapper is marked `data-date-chip`, for Finish setup's focus. */
-function DateCard({
+/** One date as a card field, laid out like the amount fields: the label above,
+    the date under it in the same type as a typed value, the hint for screen
+    readers only (a 360 px phone has no room for it). The date's wrapper is
+    marked `data-date-chip`, for Finish setup's focus. */
+export function DateField({
   label,
   hint,
   value,
   placeholder,
+  error,
   onChange,
   onClear,
   clearLabel,
 }: {
   label: string
-  hint: string
+  hint?: string
   value: string
-  placeholder: string
+  placeholder?: string
+  error?: string | null
   onChange: (value: string) => void
   onClear?: () => void
   clearLabel?: string
 }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-lg bg-econumo-card px-3 py-2.5 focus-within:ring-1 focus-within:ring-ring">
-      <span className="truncate text-[11px] text-muted-foreground" title={hint}>
-        {label}
-      </span>
-      <span className="sr-only">{hint}</span>
-      <span data-date-chip className="flex min-w-0 items-center gap-1">
-        <TransactionDatePicker ariaLabel={label} placeholder={placeholder} value={value} onChange={(day) => onChange(formatDate(day))} />
-        {onClear && value ? (
-          <Button type="button" variant="ghost" size="icon" className="size-7 shrink-0" aria-label={clearLabel} onClick={onClear}>
-            <X className="size-4" />
-          </Button>
-        ) : null}
-      </span>
+    <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5 focus-within:ring-1 focus-within:ring-ring">
+        <span className="truncate text-[11px] text-muted-foreground" title={hint}>
+          {label}
+        </span>
+        {hint ? <span className="sr-only">{hint}</span> : null}
+        <span data-date-chip className="flex min-w-0 items-center gap-1">
+          <TransactionDatePicker variant="field" ariaLabel={label} placeholder={placeholder} value={value} onChange={(day) => onChange(formatDate(day))} />
+          {onClear && value ? (
+            <Button type="button" variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label={clearLabel} onClick={onClear}>
+              <X className="size-4" />
+            </Button>
+          ) : null}
+        </span>
+      </div>
+      {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
     </div>
   )
 }
@@ -201,7 +205,7 @@ export function DatesRow({
   return (
     <div className="flex flex-col gap-1">
       <div role="group" aria-label={`${startLabel}, ${lastLabel}`} className="flex items-stretch gap-2">
-        <DateCard
+        <DateField
           label={startLabel}
           hint={t('debts.form.start_date.hint')}
           value={startDate}
@@ -210,7 +214,7 @@ export function DatesRow({
           onClear={clearable ? () => onStartDateChange('') : undefined}
           clearLabel={t('debts.form.start_date.clear')}
         />
-        <DateCard
+        <DateField
           label={lastLabel}
           hint={t('debts.form.last_payment_date.hint')}
           value={lastPaymentDate}

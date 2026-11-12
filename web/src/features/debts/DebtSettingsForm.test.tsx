@@ -70,8 +70,8 @@ it('asks for the loan facts in order: borrowed, the dates, payment, currency', (
   expect(screen.getByRole('button', { name: 'Category: Food' })).toBeInTheDocument()
   const borrowed = screen.getByLabelText('Amount borrowed')
   expect(borrowed).toHaveValue('1200')
-  expect(startChip()).toHaveTextContent('2026-11-05')
-  expect(lastPaymentChip()).toHaveTextContent('2027-11-05')
+  expect(startChip()).toHaveTextContent('Nov 5, 2026')
+  expect(lastPaymentChip()).toHaveTextContent('Nov 5, 2027')
   expect(screen.getByRole('group', { name: 'Payment, Repeats' })).toBeInTheDocument()
   // a statement balance is the Balance tab's
   expect(screen.queryByLabelText(/Owed now/)).toBeNull()

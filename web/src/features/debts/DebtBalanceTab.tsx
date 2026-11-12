@@ -10,9 +10,8 @@ import { formatDate } from '@/lib/datetime'
 import { add } from '@/lib/decimal'
 import type { DebtDetailsDto, DebtSnapshotDto } from '@/api/dto/debt'
 import { useCurrencies } from '@/features/currencies/queries'
-import { TransactionDatePicker } from '@/features/transactions/TransactionDatePicker'
 import { debtDay } from './debtDates'
-import { AmountField } from './debtFields'
+import { AmountField, DateField } from './debtFields'
 import { useDeleteDebtReconciliation, useReconcileDebt } from './queries'
 import { amountEcho, amountError, plainAmount } from './useDebtForm'
 
@@ -127,20 +126,15 @@ export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetails
                 }}
               />
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <div className="flex flex-col gap-1 rounded-lg bg-econumo-card px-3 py-2.5 focus-within:ring-1 focus-within:ring-ring">
-                <span className="text-[11px] text-muted-foreground">{t('debts.balance.form.date')}</span>
-                <TransactionDatePicker
-                  ariaLabel={t('debts.balance.form.date')}
-                  value={date}
-                  onChange={(day) => {
-                    setErrors((prev) => ({ ...prev, date: undefined }))
-                    setDate(formatDate(day))
-                  }}
-                />
-              </div>
-              {errors.date ? <p className="px-1 text-sm text-destructive">{errors.date}</p> : null}
-            </div>
+            <DateField
+              label={t('debts.balance.form.date')}
+              value={date}
+              error={errors.date}
+              onChange={(day) => {
+                setErrors((prev) => ({ ...prev, date: undefined }))
+                setDate(day)
+              }}
+            />
           </div>
           {serverError ? (
             <p role="alert" className="text-sm text-destructive">
@@ -188,9 +182,9 @@ export function DebtBalanceTab({ details, amount, lang }: { details: DebtDetails
                     {s.isOrigin === 1 ? <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.balance.origin')}</span> : null}
                     {paidOffMark(s) ? <span className="ml-1.5 text-xs text-muted-foreground">{t('debts.balance.paid_off')}</span> : null}
                   </td>
-                  <td className="py-1.5 text-right">{amount(s.balance)}</td>
-                  <td className="hidden py-1.5 text-right sm:table-cell">{s.isOrigin === 1 ? '—' : amount(s.computedBalance)}</td>
-                  <td className="py-1.5 text-right">{s.isOrigin === 1 || paidOffMark(s) ? '—' : amount(statementDifference(s))}</td>
+                  <td className="whitespace-nowrap py-1.5 pl-2 text-right">{amount(s.balance)}</td>
+                  <td className="hidden whitespace-nowrap py-1.5 pl-2 text-right sm:table-cell">{s.isOrigin === 1 ? '—' : amount(s.computedBalance)}</td>
+                  <td className="whitespace-nowrap py-1.5 pl-2 text-right">{s.isOrigin === 1 || paidOffMark(s) ? '—' : amount(statementDifference(s))}</td>
                   <td className="py-1.5 text-right">
                     {s.isOrigin === 1 ? null : (
                       <Button

@@ -898,7 +898,7 @@ it('the statement date defaults to today and must not precede the start date', a
   await openScreen()
   const panel = await openBalance(user)
 
-  expect(within(panel).getByRole('button', { name: 'Statement date' })).toHaveTextContent('2026-11-08')
+  expect(within(panel).getByRole('button', { name: 'Statement date' })).toHaveTextContent('Nov 8, 2026')
   await user.click(within(panel).getByRole('button', { name: 'Reconcile' }))
   expect(await within(panel).findByText('Required field')).toBeInTheDocument()
   await user.type(within(panel).getByLabelText('Statement balance'), '1000')
