@@ -942,8 +942,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       Budget.
 - [ ] Inbox count 📱: the badge equals due recurring templates + pending invites +
       sources whose last sync failed/partially failed + failed imports + queued
-      imports; skipped rows are not counted.
-- [ ] Inbox page 📱: sections appear in order Due, To review, Sync problems,
+      imports + suggested rules; skipped rows are not counted.
+- [ ] Inbox page 📱: sections appear in order Due, To review, Suggested rules, Sync problems,
       Failed imports, Skipped (collapsed), Sharing; empty sections are hidden; with
       nothing pending it reads "All caught up". On desktop the heading has no
       breadcrumb above it (the Inbox is not part of Settings).
@@ -982,6 +982,17 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       description, posted date); saving posts `import-queued-event` — the row
       leaves the Inbox and the transaction is created with the glyph; Skip moves
       a row to the Inbox's collapsed Skipped section, Restore brings it back.
+- [ ] Inbox's Suggested rules section 📱 (server with `ECONUMO_AI_DSN`, after new
+      imported transactions): each row shows the match text, "→ <category> · <payee>"
+      (whichever is set) and "<n> transactions · <newest amount> <currency> · <date>".
+      Dismiss removes the row and lowers the badge without a reload, and is disabled
+      offline. Tapping a row opens "Create an import rule" reading "Suggested for <n>
+      transactions" with the payee/description match, category and payee prefilled and
+      editable, and a live count. Cancel leaves the suggestion. Save creates the rule and
+      fills the empty fields of the suggestion's transactions: with no other import
+      matching it closes with "Updated <n> transactions"; otherwise it asks "Also apply
+      to all your imports?". Save is disabled offline and when neither a category nor a
+      payee is set.
 - [ ] A second tap with the same amount on the same card within ±3 days of a
       hand-entered transaction of that amount is adopted (no duplicate); a tap
       already linked from this source is never adopted twice.

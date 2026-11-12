@@ -525,7 +525,8 @@
       "failed": "Failed imports",
       "to_review": "To review",
       "failed_writes": "Not saved",
-      "skipped": "Skipped ({count})"
+      "skipped": "Skipped ({count})",
+      "suggested_rules": "Suggested rules"
     },
     "due": {
       "overdue": "Overdue · {date}",
@@ -849,6 +850,11 @@
       "deleted": "This transaction was imported and deleted later.",
       "create": "Create transaction",
       "unavailable": "This transaction was imported, but it isn't available to you."
+    },
+    "suggestions": {
+      "dismiss": "Dismiss",
+      "prompt_summary": "Suggested for {count} transaction | Suggested for {count} transactions",
+      "transactions": "{count} transaction | {count} transactions"
     }
   },
   "user": {

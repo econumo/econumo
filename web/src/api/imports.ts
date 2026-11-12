@@ -1,7 +1,9 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type {
+  AcceptImportSuggestionDto,
   ApplyImportRuleDto,
+  ImportSuggestionDto,
   ExternalAccountDto,
   ImportCredentialKeyDto,
   ImportProvider,
@@ -186,4 +188,19 @@ export async function previewImportRule(spec: ImportRuleSpecDto, scope: ImportRu
 export async function applyImportRule(ruleId: Id, scope: ImportRuleScopeDto, includeEdited: boolean): Promise<ApplyImportRuleDto> {
   const response = await api.post<Envelope<ApplyImportRuleDto>>(apiUrl('/api/v1/import/apply-rule'), { ruleId, ...scope, includeEdited })
   return response.data.data
+}
+
+export async function getImportSuggestionList(): Promise<ImportSuggestionDto[]> {
+  const response = await api.get<Envelope<{ items: ImportSuggestionDto[] }>>(apiUrl('/api/v1/import/get-suggestion-list'))
+  return response.data.data.items
+}
+
+export async function acceptImportSuggestion(id: Id, ruleId: Id): Promise<AcceptImportSuggestionDto> {
+  const response = await api.post<Envelope<AcceptImportSuggestionDto>>(apiUrl('/api/v1/import/accept-suggestion'), { id, ruleId })
+  return response.data.data
+}
+
+export async function dismissImportSuggestion(id: Id): Promise<ImportSuggestionDto[]> {
+  const response = await api.post<Envelope<{ items: ImportSuggestionDto[] }>>(apiUrl('/api/v1/import/dismiss-suggestion'), { id })
+  return response.data.data.items
 }

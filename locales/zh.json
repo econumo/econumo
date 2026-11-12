@@ -525,7 +525,8 @@
       "failed": "导入失败",
       "to_review": "待审核",
       "failed_writes": "未保存",
-      "skipped": "已跳过（{count}）"
+      "skipped": "已跳过（{count}）",
+      "suggested_rules": "建议的规则"
     },
     "due": {
       "overdue": "已逾期 · {date}",
@@ -849,6 +850,11 @@
       "deleted": "此交易已导入，之后被删除。",
       "create": "创建交易",
       "unavailable": "此交易已导入，但你无法查看。"
+    },
+    "suggestions": {
+      "dismiss": "忽略",
+      "prompt_summary": "建议用于 {count} 笔交易 | 建议用于 {count} 笔交易",
+      "transactions": "{count} 笔交易 | {count} 笔交易"
     }
   },
   "user": {

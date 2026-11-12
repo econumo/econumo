@@ -525,7 +525,8 @@
       "failed": "Importations échouées",
       "to_review": "À vérifier",
       "failed_writes": "Non enregistré",
-      "skipped": "Ignorés ({count})"
+      "skipped": "Ignorés ({count})",
+      "suggested_rules": "Règles suggérées"
     },
     "due": {
       "overdue": "En retard · {date}",
@@ -849,6 +850,11 @@
       "deleted": "Cette transaction a été importée puis supprimée.",
       "create": "Créer la transaction",
       "unavailable": "Cette transaction a été importée, mais elle ne vous est pas accessible."
+    },
+    "suggestions": {
+      "dismiss": "Ignorer",
+      "prompt_summary": "Suggérée pour {count} transaction | Suggérée pour {count} transactions",
+      "transactions": "{count} transaction | {count} transactions"
     }
   },
   "user": {

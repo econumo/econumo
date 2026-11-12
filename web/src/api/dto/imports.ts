@@ -224,6 +224,29 @@ export interface PreviewImportRuleDto {
   alreadyEdited: number
 }
 
+export interface ImportSuggestionTransactionDto {
+  transactionId: Id
+  accountId: Id
+  amount: string
+  currency: string
+  date: string
+  externalPayee: string
+}
+
+export interface ImportSuggestionDto {
+  id: Id
+  matchField: ImportRuleMatchField
+  matchText: string
+  categoryId: Id | ''
+  payeeId: Id | ''
+  /** newest first */
+  transactions: ImportSuggestionTransactionDto[]
+}
+
+export interface AcceptImportSuggestionDto {
+  updated: number
+}
+
 export interface ApplyImportRuleDto {
   updated: number
   skipped: number

@@ -525,7 +525,8 @@
       "failed": "Mislukte imports",
       "to_review": "Te beoordelen",
       "failed_writes": "Niet opgeslagen",
-      "skipped": "Overgeslagen ({count})"
+      "skipped": "Overgeslagen ({count})",
+      "suggested_rules": "Voorgestelde regels"
     },
     "due": {
       "overdue": "Achterstallig · {date}",
@@ -849,6 +850,11 @@
       "deleted": "Deze transactie is geïmporteerd en later verwijderd.",
       "create": "Transactie aanmaken",
       "unavailable": "Deze transactie is geïmporteerd, maar is niet voor u beschikbaar."
+    },
+    "suggestions": {
+      "dismiss": "Negeren",
+      "prompt_summary": "Voorgesteld voor {count} transactie | Voorgesteld voor {count} transacties",
+      "transactions": "{count} transactie | {count} transacties"
     }
   },
   "user": {

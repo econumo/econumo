@@ -1,12 +1,12 @@
 import type { AccountDto } from '@/api/dto/account'
 import { useUnavailableOffline } from '@/lib/offlineQuery'
-import type { ImportFailedEventDto, ImportQueuedEventDto, ImportSourceDto } from '@/api/dto/imports'
+import type { ImportFailedEventDto, ImportQueuedEventDto, ImportSourceDto, ImportSuggestionDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { Id } from '@/api/types'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { usePendingInvites, type PendingInvite } from '@/features/connections/pendingInvites'
 import { canWriteToAccount } from '@/features/connections/shared'
-import { useImportQueue, useImportSources } from '@/features/imports/queries'
+import { useImportQueue, useImportSources, useImportSuggestions } from '@/features/imports/queries'
 import { useRecurring } from '@/features/recurring/queries'
 import { useFailedWrites, useStoredQueueSettled } from '@/features/pendingWrites/hooks'
 import type { PendingOp } from '@/features/pendingWrites/types'
@@ -24,7 +24,9 @@ export interface Inbox {
   failed: ImportFailedEventDto[]
   queued: ImportQueuedEventDto[]
   skipped: ImportQueuedEventDto[]
-  /** failedWrites + dueRecurring + invites + syncProblems + failed + queued; skipped is never counted */
+  /** rules the server proposes for imported transactions */
+  suggestions: ImportSuggestionDto[]
+  /** failedWrites + dueRecurring + invites + syncProblems + failed + queued + suggestions; skipped is never counted */
   count: number
   /** the changes stored on this device, the import queue, sources AND recurring have each resolved (success or error) at least once (no "All caught up" flash) */
   isLoaded: boolean
@@ -64,6 +66,7 @@ export function useInbox(): Inbox {
   const { invites } = usePendingInvites()
   const queue = useImportQueue()
   const sources = useImportSources()
+  const suggestionList = useImportSuggestions()
   const importsOffline = useUnavailableOffline(queue, sources)
   const recurring = useRecurring()
   const { data: accounts } = useAccounts()
@@ -80,6 +83,7 @@ export function useInbox(): Inbox {
   const queued = queue.data?.queued ?? []
   const skipped = queue.data?.skipped ?? []
   const failed = queue.data?.failed ?? []
+  const suggestions = suggestionList.data ?? []
   return {
     failedWrites,
     dueRecurring,
@@ -88,10 +92,12 @@ export function useInbox(): Inbox {
     failed,
     queued,
     skipped,
-    count: failedWrites.length + dueRecurring.length + invites.length + syncProblems.length + failed.length + queued.length,
+    suggestions,
+    count: failedWrites.length + dueRecurring.length + invites.length + syncProblems.length + failed.length + queued.length + suggestions.length,
     isLoaded:
       storedQueueSettled &&
       (queue.data !== undefined || queue.isError) &&
+      (suggestionList.data !== undefined || suggestionList.isError) &&
       (sources.data !== undefined || sources.isError) &&
       (recurring.data !== undefined || recurring.isError) &&
       foldersKnown,

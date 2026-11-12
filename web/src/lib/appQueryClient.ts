@@ -37,13 +37,20 @@ export function invalidateReports(client: QueryClient): void {
   void client.invalidateQueries({ queryKey: queryKeys.reportNetWorth })
 }
 
+// Everything any write may have changed without saying so: the reports, and
+// the import rule suggestions (editing a suggested transaction can clear one).
+export function invalidateAfterWrite(client: QueryClient): void {
+  invalidateReports(client)
+  void client.invalidateQueries({ queryKey: queryKeys.importSuggestions })
+}
+
 export function createAppQueryClient() {
   // The manager assumes online until the first browser event, so an app opened
   // with no network would retry every read forever.
   onlineManager.setOnline(navigator.onLine !== false)
   const client: QueryClient = new QueryClient({
     mutationCache: new MutationCache({
-      onSuccess: () => invalidateReports(client),
+      onSuccess: () => invalidateAfterWrite(client),
       // With networkMode 'always' an offline write fails at once, and a site
       // with no error handling of its own would otherwise fail silently. A
       // `mutate(v, { onError })` or a try around `mutateAsync` is invisible here,

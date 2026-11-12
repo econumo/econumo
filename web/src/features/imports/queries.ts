@@ -28,6 +28,43 @@ export function useImportQueue() {
   return useQuery({ queryKey: queryKeys.importQueue, queryFn: importsApi.getImportQueue, staleTime: TEN_MINUTES })
 }
 
+export function useImportSuggestions() {
+  return useQuery({ queryKey: queryKeys.importSuggestions, queryFn: importsApi.getImportSuggestionList, staleTime: TEN_MINUTES })
+}
+
+export interface SuggestionChanges {
+  changedMatch: boolean
+  changedCategory: boolean
+  changedPayee: boolean
+}
+
+export function useAcceptImportSuggestion() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: ({ id, ruleId }: { id: Id; ruleId: Id; changes: SuggestionChanges }) => importsApi.acceptImportSuggestion(id, ruleId),
+    onSuccess: (_result, { changes }) => {
+      for (const queryKey of [queryKeys.importSuggestions, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetTransactions]) {
+        void queryClient.invalidateQueries({ queryKey })
+      }
+      void queryClient.invalidateQueries({ queryKey: ['transactionImports'] })
+      trackEvent(METRICS.IMPORT_SUGGESTION_ACCEPT, { ...changes })
+    },
+  })
+}
+
+export function useDismissImportSuggestion() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: (id: Id) => importsApi.dismissImportSuggestion(id),
+    onSuccess: (items) => {
+      queryClient.setQueryData(queryKeys.importSuggestions, items)
+      trackEvent(METRICS.IMPORT_SUGGESTION_DISMISS)
+    },
+  })
+}
+
 export function useCreateImportSource({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -53,6 +90,7 @@ export function useDeleteImportSource({ handlesOwnErrors = false }: OwnErrorHand
       const source = queryClient.getQueryData<ImportSourceDto[]>(queryKeys.importSources)?.find((item) => item.id === id)
       queryClient.setQueryData(queryKeys.importSources, items)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       trackEvent(METRICS.IMPORT_SOURCE_DISCONNECT, source ? { provider: source.provider } : {})
     },
   })
@@ -66,6 +104,7 @@ function useApplyImportAccount() {
     queryClient.setQueryData<ImportSourceDto[]>(queryKeys.importSources, (prev) =>
       (prev ?? []).map((s) => (s.id === result.item.id ? result.item : s)))
     void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
     if (result.run) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
@@ -149,6 +188,7 @@ export function useImportQueuedEvent() {
           : prev)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
       void queryClient.invalidateQueries({ queryKey: ['importSourceHistory'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       trackEvent(METRICS.IMPORT_QUEUE_IMPORT)
     },
   })
@@ -193,6 +233,7 @@ export function useRetryImportEvent() {
     mutationFn: importsApi.retryImportEvent,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
@@ -249,6 +290,7 @@ export function useSyncImportSource() {
       queryClient.setQueryData(queryKeys.importExternalAccounts(vars.sourceId), result.accounts)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       void queryClient.invalidateQueries({ queryKey: ['importRuns'] })
       if (result.run.importedCount + result.run.matchedCount + result.run.amountsUpdatedCount > 0) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })

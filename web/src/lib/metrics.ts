@@ -179,6 +179,8 @@ export const METRICS = {
   IMPORT_SYNC: 'appImportSync',
   IMPORT_RULE_CREATE: 'appImportRuleCreate',
   IMPORT_RULE_APPLY: 'appImportRuleApply',
+  IMPORT_SUGGESTION_ACCEPT: 'appImportSuggestionAccept',
+  IMPORT_SUGGESTION_DISMISS: 'appImportSuggestionDismiss',
   DATA_FULL_RELOAD: 'appDataFullReload',
   INSTALL_APP_OPEN: 'appInstallAppOpen',
   INSTALL_APP_ACCEPT: 'appInstallAppAccept',

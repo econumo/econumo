@@ -339,6 +339,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     importQueue: { queued: [], skipped: [], failed: [] } as unknown,
     importRuns: [] as unknown[],
     importRules: [] as unknown[],
+    importSuggestions: [] as unknown[],
     importCredentialKey: null as unknown,
     personalTokens: [] as unknown[],
     ...overrides,
@@ -379,6 +380,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/import/get-queued-event-list', () => envelope(data.importQueue)),
     http.get('*/api/v1/import/get-run-list', () => envelope({ items: data.importRuns })),
     http.get('*/api/v1/import/get-rule-list', () => envelope({ items: data.importRules })),
+    http.get('*/api/v1/import/get-suggestion-list', () => envelope({ items: data.importSuggestions })),
     http.get('*/api/v1/import/get-credential-key', () =>
       envelope(data.importCredentialKey ?? { wrappedDataKey: '', kdf: '', updatedAt: '' })),
     http.get('*/api/v1/user/get-personal-token-list', () => envelope(data.personalTokens)),

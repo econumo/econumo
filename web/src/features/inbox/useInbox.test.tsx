@@ -254,3 +254,16 @@ describe('isLoaded and the stored queue', () => {
     expect(result.current.failedWrites).toHaveLength(0)
   })
 })
+
+it('counts suggestions in the badge', async () => {
+  const wrapper = makeWrapper()
+  const sg = (id: string) => ({ id, matchField: 'external_payee', matchText: 'X', categoryId: 'cat-food', payeeId: '', transactions: [] })
+  server.use(...coreHandlers({
+    importQueue: { queued: [q('l1')], skipped: [], failed: [] },
+    importSuggestions: [sg('sg1'), sg('sg2')],
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  expect(result.current.suggestions.map((s) => s.id)).toEqual(['sg1', 'sg2'])
+  expect(result.current.count).toBe(1 + 2)
+})

@@ -1046,7 +1046,7 @@ it('editing an imported transaction prompts for a rule only when the classificat
   await user.click(chip('health', 'label'))
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(useUiStore.getState().rulePrompt).not.toBeNull())
-  expect(useUiStore.getState().rulePrompt).toEqual({ link: importLink, diff: { labelIds: ['label1'] } })
+  expect(useUiStore.getState().rulePrompt).toEqual({ kind: 'edit', link: importLink, diff: { labelIds: ['label1'] } })
 })
 
 // An account shared with the user takes its owner's rules, which the user
@@ -1120,7 +1120,7 @@ it('re-saving an already corrected import does not prompt again, but a further c
   await user.click(chip('health', 'label'))
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(useUiStore.getState().rulePrompt).not.toBeNull())
-  expect(useUiStore.getState().rulePrompt).toEqual({ link: importLink, diff: { labelIds: ['label1'] } })
+  expect(useUiStore.getState().rulePrompt).toEqual({ kind: 'edit', link: importLink, diff: { labelIds: ['label1'] } })
 })
 
 // Issue #261: a transfer saved with no "to" account was persisted with a NULL

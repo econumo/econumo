@@ -5,11 +5,14 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureCategories } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
-import type { TransactionImportLinkDto } from '@/api/dto/imports'
+import type { ImportSuggestionDto, TransactionImportLinkDto } from '@/api/dto/imports'
+import { toast } from 'sonner'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { RulePromptDialog } from './RulePromptDialog'
 
 vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
+vi.mock('@/lib/metrics', async (original) => ({ ...await original<typeof import('@/lib/metrics')>(), trackEvent: vi.fn() }))
 
 const link = (over: Partial<TransactionImportLinkDto> = {}): TransactionImportLinkDto => ({
   id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
@@ -69,7 +72,7 @@ it('renders nothing without a pending prompt', () => {
 
 it('prefills a suggested match value, previews live, creates the rule, then applies to this import and offers every import', async () => {
   renderPrompt()
-  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   expect(await screen.findByText('You set the category to Food. Create a rule for similar imports?')).toBeInTheDocument()
   const value = screen.getByLabelText('Payee contains') as HTMLInputElement
@@ -98,7 +101,7 @@ it('prefills a suggested match value, previews live, creates the rule, then appl
 
 it('the include-edited override is opt-in and travels on the apply call', async () => {
   renderPrompt()
-  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Create rule' }))
   await user.click(await screen.findByRole('checkbox', { name: 'Also update the 2 transactions you edited' }))
@@ -108,7 +111,7 @@ it('the include-edited override is opt-in and travels on the apply call', async 
 
 it('"Not now" closes without creating anything', async () => {
   renderPrompt()
-  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Not now' }))
   await waitFor(() => expect(useUiStore.getState().rulePrompt).toBeNull())
@@ -117,7 +120,7 @@ it('"Not now" closes without creating anything', async () => {
 
 it('a transaction classified by a rule offers to update that rule instead, keeping its match', async () => {
   renderPrompt({ importRules: [rule] })
-  useUiStore.getState().setRulePrompt({ link: link({ appliedRuleId: 'rule1', appliedCategoryId: 'cat-salary' }), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link({ appliedRuleId: 'rule1', appliedCategoryId: 'cat-salary' }), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   expect(await screen.findByText('This transaction was classified by the rule “Payee contains BLUE BOTTLE”.')).toBeInTheDocument()
   expect(screen.queryByLabelText('Payee contains')).not.toBeInTheDocument()
@@ -131,7 +134,7 @@ it('a preview refresh failure after a successful create still advances to apply,
   renderPrompt()
   server.use(http.post('*/api/v1/import/preview-rule', () =>
     HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 500 })))
-  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Create rule' }))
   // the rule was created despite the refresh failing; the apply step shows a
@@ -143,7 +146,7 @@ it('a preview refresh failure after a successful create still advances to apply,
 
 it('a link with no run applies to every import at once and skips the second step', async () => {
   renderPrompt()
-  useUiStore.getState().setRulePrompt({ link: link({ runId: '' }), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link({ runId: '' }), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Create rule' }))
   expect(await screen.findByText('Apply this rule to 9 matching transactions across your imports?')).toBeInTheDocument()
@@ -155,7 +158,7 @@ it('a link with no run applies to every import at once and skips the second step
 
 it('the include-edited choice does not carry over from the run-scoped apply to the apply on every import', async () => {
   renderPrompt()
-  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Create rule' }))
   await user.click(await screen.findByRole('checkbox', { name: 'Also update the 2 transactions you edited' }))
@@ -175,6 +178,7 @@ it('updating a rule unions the added labels with the ones it already sets', asyn
   const labelled = { ...rule, labelIds: ['label-work', 'label-reimbursable'] }
   renderPrompt({ importRules: [labelled] })
   useUiStore.getState().setRulePrompt({
+    kind: 'edit',
     link: link({ appliedRuleId: 'rule1', appliedCategoryId: 'cat-salary', appliedLabelIds: ['label-work', 'label-reimbursable'] }),
     diff: { labelIds: ['label1'] },
   })
@@ -188,6 +192,7 @@ it('the unioned label set is capped at the server maximum', async () => {
   const existingIds = Array.from({ length: 10 }, (_, i) => `label-${i}`)
   renderPrompt({ importRules: [{ ...rule, labelIds: existingIds }] })
   useUiStore.getState().setRulePrompt({
+    kind: 'edit',
     link: link({ appliedRuleId: 'rule1', appliedCategoryId: 'cat-salary', appliedLabelIds: existingIds }),
     diff: { labelIds: ['label1'] },
   })
@@ -208,7 +213,7 @@ function previewCounts(run: number, all: number) {
 it('skips the run step when the preview matches nothing', async () => {
   renderPrompt()
   previewCounts(0, 3)
-  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Create rule' }))
   expect(await screen.findByText('Also apply to all your imports? 3 transactions match.')).toBeInTheDocument()
@@ -218,7 +223,7 @@ it('skips the run step when the preview matches nothing', async () => {
 it('closes after saving when neither scope has anything to apply', async () => {
   renderPrompt()
   previewCounts(0, 0)
-  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Create rule' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -229,7 +234,7 @@ it('closes after saving when neither scope has anything to apply', async () => {
 it('a link with no run closes after saving when nothing would change', async () => {
   renderPrompt()
   previewCounts(0, 0)
-  useUiStore.getState().setRulePrompt({ link: link({ runId: '' }), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link({ runId: '' }), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Create rule' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -239,10 +244,99 @@ it('a link with no run closes after saving when nothing would change', async () 
 it('closes after applying to the run when no other import would change', async () => {
   renderPrompt()
   previewCounts(5, 0)
-  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Create rule' }))
   await user.click(await screen.findByRole('button', { name: 'Apply' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(posted.apply).toHaveLength(1)
+})
+
+const suggestion: ImportSuggestionDto = {
+  id: 'sg1', matchField: 'external_payee', matchText: 'BLUE BOTTLE', categoryId: 'cat-food', payeeId: 'p1',
+  transactions: [
+    { transactionId: 't1', accountId: 'a1', amount: '4.75', currency: 'USD', date: '2026-09-03 10:00:00', externalPayee: 'BLUE BOTTLE #1' },
+    { transactionId: 't2', accountId: 'a1', amount: '5.25', currency: 'USD', date: '2026-09-01 10:00:00', externalPayee: 'BLUE BOTTLE #2' },
+  ],
+}
+
+function acceptHandler(updated = 2) {
+  server.use(http.post('*/api/v1/import/accept-suggestion', async ({ request }) => {
+    ;(posted.accept ??= []).push(await request.json())
+    return HttpResponse.json({ success: true, message: '', data: { updated } })
+  }))
+}
+
+describe('suggestion mode', () => {
+  beforeEach(() => {
+    vi.mocked(trackEvent).mockClear()
+    vi.mocked(toast.success).mockClear()
+  })
+
+  it('suggestion mode prefills match text, category and payee', async () => {
+    renderPrompt()
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    expect(await screen.findByText('Suggested for 2 transactions')).toBeInTheDocument()
+    expect((screen.getByLabelText('Payee contains') as HTMLInputElement).value).toBe('BLUE BOTTLE')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('Food'))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Grocer'))
+    await waitFor(() => expect(posted.preview?.[0]).toMatchObject({ matchField: 'external_payee', matchType: 'contains', matchValue: 'BLUE BOTTLE', categoryId: 'cat-food', payeeId: 'p1', scope: 'all' }))
+  })
+
+  it('saving creates the rule, accepts the suggestion and closes when nothing else matches', async () => {
+    renderPrompt()
+    previewCounts(0, 0)
+    acceptHandler(2)
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posted.create![0]).toMatchObject({ action: 'classify', matchField: 'external_payee', matchType: 'contains', matchValue: 'BLUE BOTTLE', categoryId: 'cat-food', payeeId: 'p1' })
+    expect(posted.accept).toEqual([{ id: 'sg1', ruleId: 'rule-new' }])
+    expect(posted.apply).toBeUndefined()
+    expect(vi.mocked(toast.success)).toHaveBeenCalledWith('Updated 2 transactions')
+  })
+
+  it('saving asks to apply to others when the all preview matches 2', async () => {
+    renderPrompt()
+    previewCounts(0, 2)
+    acceptHandler(2)
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('Also apply to all your imports? 2 transactions match.')).toBeInTheDocument()
+    expect(posted.accept).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Apply to all imports' }))
+    await waitFor(() => expect(posted.apply![0]).toEqual({ ruleId: 'rule-new', scope: 'all', runId: '', scopeSourceId: '', includeEdited: false }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('the accept metric reports changed fields', async () => {
+    renderPrompt()
+    previewCounts(0, 0)
+    acceptHandler(1)
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    const value = await screen.findByLabelText('Payee contains')
+    await user.clear(value)
+    await user.type(value, 'BLUE')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue('Grocer'))
+    await user.click(screen.getByRole('combobox', { name: 'Payee' }))
+    await user.click(await screen.findByRole('option', { name: '—' }))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Payee' })).toHaveValue(''))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(posted.accept).toHaveLength(1))
+    expect(posted.create![0]).toMatchObject({ matchValue: 'BLUE', categoryId: 'cat-food', payeeId: '' })
+    await waitFor(() => expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_ACCEPT, { changedMatch: true, changedCategory: false, changedPayee: true }))
+  })
+
+  it('cancel leaves the suggestion', async () => {
+    renderPrompt()
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(useUiStore.getState().rulePrompt).toBeNull())
+    expect(posted.create).toBeUndefined()
+    expect(posted.accept).toBeUndefined()
+  })
 })

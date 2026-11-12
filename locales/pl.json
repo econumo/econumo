@@ -525,7 +525,8 @@
       "failed": "Nieudane importy",
       "to_review": "Do przejrzenia",
       "failed_writes": "Niezapisane",
-      "skipped": "Pominięte ({count})"
+      "skipped": "Pominięte ({count})",
+      "suggested_rules": "Sugerowane reguły"
     },
     "due": {
       "overdue": "Zaległe · {date}",
@@ -849,6 +850,11 @@
       "deleted": "Ta transakcja została zaimportowana, a później usunięta.",
       "create": "Utwórz transakcję",
       "unavailable": "Ta transakcja została zaimportowana, ale nie jest dla Ciebie dostępna."
+    },
+    "suggestions": {
+      "dismiss": "Odrzuć",
+      "prompt_summary": "Sugerowana dla {count} transakcji | Sugerowana dla {count} transakcji | Sugerowana dla {count} transakcji",
+      "transactions": "{count} transakcja | {count} transakcje | {count} transakcji"
     }
   },
   "user": {
