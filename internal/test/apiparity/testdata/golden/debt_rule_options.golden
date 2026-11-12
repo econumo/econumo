@@ -1,0 +1,30 @@
+== err:invited GET /api/v1/debt/get-debt-rule-options?budgetId=b0000000-0000-0000-0000-000000000001 [guest] -> 400
+{"success":false,"message":"Budget not found","code":0,"errors":{}}
+
+== partner-accepts POST /api/v1/budget/accept-access [guest] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"b0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Budget","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"periodStartDay":1,"access":[{"user":{"id":"22222222-2222-2222-2222-222222222222","avatar":"diamond:sky","name":"User 2222"},"role":"user","isAccepted":1},{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]}]}}
+
+== owner GET /api/v1/debt/get-debt-rule-options?budgetId=b0000000-0000-0000-0000-000000000001 [owner] -> 200
+{"success":true,"message":"","data":{"participants":[{"userId":"11111111-1111-1111-1111-111111111111","name":"User 1111","categories":[{"id":"c0000000-0000-0000-0000-000000000001","name":"Food","icon":"i"}],"payees":[{"id":"20000000-0000-0000-0000-000000000001","name":"Shop","icon":""}],"tags":[{"id":"10000000-0000-0000-0000-000000000001","name":"Work","icon":"tag"}],"labels":[{"id":"30000000-0000-0000-0000-000000000002","name":"Personal","icon":"label"},{"id":"30000000-0000-0000-0000-000000000001","name":"Work","icon":"label"}]},{"userId":"22222222-2222-2222-2222-222222222222","name":"User 2222","categories":[],"payees":[],"tags":[],"labels":[]}]}}
+
+== partner GET /api/v1/debt/get-debt-rule-options?budgetId=b0000000-0000-0000-0000-000000000001 [guest] -> 200
+{"success":true,"message":"","data":{"participants":[{"userId":"22222222-2222-2222-2222-222222222222","name":"User 2222","categories":[],"payees":[],"tags":[],"labels":[]},{"userId":"11111111-1111-1111-1111-111111111111","name":"User 1111","categories":[{"id":"c0000000-0000-0000-0000-000000000001","name":"Food","icon":"i"}],"payees":[{"id":"20000000-0000-0000-0000-000000000001","name":"Shop","icon":""}],"tags":[{"id":"10000000-0000-0000-0000-000000000001","name":"Work","icon":"tag"}],"labels":[{"id":"30000000-0000-0000-0000-000000000002","name":"Personal","icon":"label"},{"id":"30000000-0000-0000-0000-000000000001","name":"Work","icon":"label"}]}]}}
+
+== make-guest POST /api/v1/budget/grant-access [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"b0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Budget","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"periodStartDay":1,"access":[{"user":{"id":"22222222-2222-2222-2222-222222222222","avatar":"diamond:sky","name":"User 2222"},"role":"guest","isAccepted":1},{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]},{"id":"b0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Second","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"periodStartDay":1,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]}]}}
+
+== owner-without-the-guest GET /api/v1/debt/get-debt-rule-options?budgetId=b0000000-0000-0000-0000-000000000001 [owner] -> 200
+{"success":true,"message":"","data":{"participants":[{"userId":"11111111-1111-1111-1111-111111111111","name":"User 1111","categories":[{"id":"c0000000-0000-0000-0000-000000000001","name":"Food","icon":"i"}],"payees":[{"id":"20000000-0000-0000-0000-000000000001","name":"Shop","icon":""}],"tags":[{"id":"10000000-0000-0000-0000-000000000001","name":"Work","icon":"tag"}],"labels":[{"id":"30000000-0000-0000-0000-000000000002","name":"Personal","icon":"label"},{"id":"30000000-0000-0000-0000-000000000001","name":"Work","icon":"label"}]}]}}
+
+== err:guest GET /api/v1/debt/get-debt-rule-options?budgetId=b0000000-0000-0000-0000-000000000001 [guest] -> 403
+{"success":false,"message":"Access denied","code":0,"errors":[]}
+
+== err:stranger GET /api/v1/debt/get-debt-rule-options?budgetId=b0000000-0000-0000-0000-000000000001 [readonly] -> 400
+{"success":false,"message":"Budget not found","code":0,"errors":{}}
+
+== err:missing-budget-id GET /api/v1/debt/get-debt-rule-options [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"budgetId":["This value should not be blank."]}}
+
+== err:bad-budget-id GET /api/v1/debt/get-debt-rule-options?budgetId=nope [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"budgetId":["This value is not a valid UUID."]}}
+

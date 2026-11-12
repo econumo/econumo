@@ -3,7 +3,8 @@ package apiparity
 import "time"
 
 // budget_debts: the debt rows of get-budget and get-budget-plan, and the debt
-// row's drill-down, in a budget shared with a partner who owns a debt too.
+// row's drill-down, in a budget shared with a partner who adds a debt to it
+// too, on their own category.
 //
 // The figures must not depend on the day the suite runs, so each debt is 100
 // paid back by one monthly payment of 105 on today's day of the next month
@@ -36,7 +37,7 @@ func init() {
 		month := current.Format("2006-01-02")
 		debt := func(categoryID *string) map[string]any {
 			return map[string]any{
-				"name": "Loan", "currencyId": USD, "categoryId": categoryID,
+				"budgetId": Budget, "name": "Loan", "currencyId": USD, "rules": []map[string]any{{"categoryId": categoryID}},
 				"amountBorrowed": "100", "startDate": ClockTime.Format("2006-01-02"), "payment": "105", "schedule": "monthly",
 				"lastPaymentDate": lastPayment,
 			}
@@ -85,7 +86,8 @@ func init() {
 				Body:          map[string]any{"id": "d2000000-0000-0000-0000-0000000000a3", "name": "Study loan", "type": "expense", "icon": "school"},
 				CaptureIDInto: &studyCat},
 			{Label: "owner-creates-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
-				Body: map[string]any{"name": "Study", "currencyId": USD, "categoryId": &studyCat, "payment": "200", "schedule": "monthly"}},
+				Body: map[string]any{"budgetId": Budget, "name": "Study", "currencyId": USD,
+					"rules": []map[string]any{{"categoryId": &studyCat}}, "payment": "200", "schedule": "monthly"}},
 			{Label: "owner-pays-debt-without-terms", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": "d2000000-0000-0000-0000-0000000000b2", "type": "expense", "amount": "30.00",
 					"accountId": OwnerAccount, "categoryId": &studyCat, "date": now, "description": "study"}},

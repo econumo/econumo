@@ -1,6 +1,9 @@
 package apiparity
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // Debts run on a weekly schedule whose last payment is a fixed number of days
 // after the (wall-clock) ClockTime, so the number of payments left, and with
@@ -10,9 +13,18 @@ func init() {
 	month := func(offset int) string {
 		return time.Date(ClockTime.Year(), ClockTime.Month()+time.Month(offset), 1, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
 	}
+	rule := func(categoryID any, extra map[string]any) map[string]any {
+		r := map[string]any{"categoryId": categoryID}
+		for k, v := range extra {
+			r[k] = v
+		}
+		return r
+	}
+	// never nil: an empty list must reach the server as [], not null
+	rules := func(rs ...map[string]any) []map[string]any { return append([]map[string]any{}, rs...) }
 	debtBody := func(extra map[string]any) map[string]any {
 		body := map[string]any{
-			"name": "Car loan", "currencyId": USD, "categoryId": CatFood,
+			"budgetId": Budget, "name": "Car loan", "currencyId": USD, "rules": rules(rule(CatFood, nil)),
 			"amountBorrowed": "100", "startDate": day(0), "payment": "105", "schedule": "weekly", "lastPaymentDate": day(7),
 		}
 		for k, v := range extra {
@@ -45,17 +57,16 @@ func init() {
 			{Label: "get", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 			{Label: "update-terms", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{
-					"id": &debtID, "name": "Car loan 2", "categoryId": CatFood, "payeeId": PayeeShop, "startDate": day(-7),
+					"id": &debtID, "name": "Car loan 2", "rules": rules(rule(CatFood, map[string]any{"payeeId": PayeeShop})), "startDate": day(-7),
 					"amountBorrowed": "200", "payment": "104", "schedule": "weekly", "lastPaymentDate": day(14),
 				}},
 			{Label: "get-after-update", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 			{Label: "update-balance-now", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": &debtID, "name": "Car loan 2", "categoryId": CatFood, "payeeId": PayeeShop,
-					"balance": "150"}},
-			// no amount borrowed, balance, payment, schedule or last payment
-			// date: the terms stay
+				Body: map[string]any{"id": &debtID, "name": "Car loan 2", "balance": "150"}},
+			// no rules, amount borrowed, balance, payment, schedule or last
+			// payment date: the rules and the terms stay
 			{Label: "rename-keeps-terms", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": &debtID, "name": "Car loan 3", "categoryId": CatFood, "payeeId": PayeeShop}},
+				Body: map[string]any{"id": &debtID, "name": "Car loan 3"}},
 			{Label: "mark-paid-off", Method: "POST", Path: "/api/v1/debt/mark-debt-paid-off", Auth: "owner",
 				Body: map[string]any{"id": &debtID}},
 			{Label: "delete", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
@@ -64,15 +75,14 @@ func init() {
 			{Label: "err:get-deleted", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 
 			{Label: "create-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
-				Body: withoutTerms(map[string]any{"name": "Student loan", "labelId": LabelWork}), CaptureIDInto: &draftID},
+				Body: withoutTerms(map[string]any{"name": "Student loan", "rules": rules(rule(CatFood, map[string]any{"labelId": LabelWork}))}), CaptureIDInto: &draftID},
 			{Label: "get-not-set-up", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &draftID},
 			{Label: "update-payment-only", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": &draftID, "name": "Student loan", "categoryId": CatFood, "labelId": LabelWork,
-					"payment": "110", "schedule": "weekly"}},
+				Body: map[string]any{"id": &draftID, "name": "Student loan", "payment": "110", "schedule": "weekly"}},
 			{Label: "err:paid-off-not-set-up", Method: "POST", Path: "/api/v1/debt/mark-debt-paid-off", Auth: "owner",
 				Body: map[string]any{"id": &draftID}},
 			{Label: "finish-setup", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": &draftID, "name": "Student loan", "categoryId": CatFood, "labelId": LabelWork,
+				Body: map[string]any{"id": &draftID, "name": "Student loan",
 					"amountBorrowed": "100", "startDate": day(0), "lastPaymentDate": day(7)}},
 			{Label: "get-after-setup", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &draftID},
 		}
@@ -99,14 +109,14 @@ func init() {
 				Body:          map[string]any{"id": opCategory, "name": "Car loan", "type": "expense", "icon": "car"},
 				CaptureIDInto: &categoryID},
 			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
-				Body: debtBody(map[string]any{"categoryId": &categoryID}), CaptureIDInto: &debtID},
+				Body: debtBody(map[string]any{"rules": rules(rule(&categoryID, nil))}), CaptureIDInto: &debtID},
 			{Label: "pay", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": opPayment, "type": "expense", "amount": "50.00",
 					"accountId": OwnerAccount, "categoryId": &categoryID, "date": now, "description": "loan"}},
 			{Label: "plan", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "elementId": &debtID, "period": month(0), "amount": "105"}},
 			{Label: "change-currency", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": &debtID, "name": "Car loan", "currencyId": &eurID, "categoryId": &categoryID, "startDate": day(0)}},
+				Body: map[string]any{"id": &debtID, "name": "Car loan", "currencyId": &eurID, "startDate": day(0)}},
 			{Label: "get-after-change", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 			{Label: "get-budget-after-change", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
 		}
@@ -119,9 +129,17 @@ func init() {
 			return Call{Label: "err:" + label, Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner", Body: debtBody(extra)}
 		}
 		var debtID, keyedID string
+		eleven := make([]map[string]any, 11)
+		for i := range eleven {
+			eleven[i] = rule(CatFood, map[string]any{"labelId": fmt.Sprintf("30000000-0000-0000-0000-0000000001%02d", i)})
+		}
 		return []Call{
 			create("blank-name", map[string]any{"name": " "}),
-			create("bad-category-id", map[string]any{"categoryId": "nope"}),
+			create("bad-category-id", map[string]any{"rules": rules(rule("nope", nil))}),
+			create("no-budget", map[string]any{"budgetId": ""}),
+			create("unknown-budget", map[string]any{"budgetId": "b0000000-0000-0000-0000-0000000000ee"}),
+			create("no-rules", map[string]any{"rules": rules()}),
+			create("eleven-rules", map[string]any{"rules": eleven}),
 			create("bad-balance", map[string]any{"balance": "-1"}),
 			create("zero-amount-borrowed", map[string]any{"amountBorrowed": "0"}),
 			create("zero-payment", map[string]any{"payment": "0"}),
@@ -132,34 +150,38 @@ func init() {
 			create("start-in-future", map[string]any{"startDate": day(1)}),
 			create("balance-now-after-last-payment", map[string]any{"startDate": day(-14), "lastPaymentDate": day(-7), "balance": "10"}),
 			create("payments-dont-cover", map[string]any{"payment": "50"}),
-			create("category-not-expense", map[string]any{"categoryId": CatSalary}),
-			create("unknown-category", map[string]any{"categoryId": "c0000000-0000-0000-0000-0000000000ee"}),
-			create("unknown-payee", map[string]any{"payeeId": "20000000-0000-0000-0000-0000000000ee"}),
-			create("unknown-label", map[string]any{"labelId": "30000000-0000-0000-0000-0000000000ee"}),
+			create("category-not-expense", map[string]any{"rules": rules(rule(CatSalary, nil))}),
+			create("unknown-category", map[string]any{"rules": rules(rule("c0000000-0000-0000-0000-0000000000ee", nil))}),
+			create("unknown-payee", map[string]any{"rules": rules(rule(CatFood, map[string]any{"payeeId": "20000000-0000-0000-0000-0000000000ee"}))}),
+			create("unknown-label", map[string]any{"rules": rules(rule(CatFood, map[string]any{"labelId": "30000000-0000-0000-0000-0000000000ee"}))}),
 			create("loan-facts-missing-last-date", map[string]any{"lastPaymentDate": ""}),
 			create("loan-facts-missing-amount-borrowed", map[string]any{"amountBorrowed": ""}),
 			create("loan-facts-missing-start-date", map[string]any{"startDate": nil}),
-			create("tag-and-label", map[string]any{"tagId": TagWork, "labelId": LabelWork}),
+			create("tag-and-label-in-a-rule", map[string]any{"rules": rules(rule(CatFood, map[string]any{"tagId": TagWork, "labelId": LabelWork}))}),
+			// two rules of one debt that could match the same payment
+			create("overlapping-rules", map[string]any{"rules": rules(rule(CatFood, nil), rule(CatFood, map[string]any{"payeeId": PayeeShop}))}),
 
 			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
 				Body: debtBody(nil), CaptureIDInto: &debtID},
 			create("start-date-taken", nil),
-			create("key-conflict", map[string]any{"payeeId": PayeeShop}),
+			create("key-conflict", map[string]any{"rules": rules(rule(CatFood, map[string]any{"payeeId": PayeeShop}))}),
 			// a label tells two debts apart only when both name one
-			create("label-key-conflict", map[string]any{"labelId": LabelWork}),
+			create("label-key-conflict", map[string]any{"rules": rules(rule(CatFood, map[string]any{"labelId": LabelWork}))}),
 			{Label: "err:update-payment-dont-cover", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{
-					"id": &debtID, "name": "Car loan", "categoryId": CatFood, "startDate": day(0), "amountBorrowed": "100", "payment": "50",
+					"id": &debtID, "name": "Car loan", "startDate": day(0), "amountBorrowed": "100", "payment": "50",
 					"schedule": "weekly", "lastPaymentDate": day(7),
 				}},
 			{Label: "err:update-unknown", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{
-					"id": unknownDebt, "name": "x", "categoryId": CatFood, "startDate": day(0), "amountBorrowed": "100", "payment": "105",
+					"id": unknownDebt, "name": "x", "startDate": day(0), "amountBorrowed": "100", "payment": "105",
 					"schedule": "weekly", "lastPaymentDate": day(7),
 				}},
 			{Label: "err:update-blank-id", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": "", "name": "x", "categoryId": CatFood, "startDate": day(0), "amountBorrowed": "100", "payment": "105",
+				Body: map[string]any{"id": "", "name": "x", "startDate": day(0), "amountBorrowed": "100", "payment": "105",
 					"schedule": "weekly", "lastPaymentDate": day(7)}},
+			{Label: "err:update-no-rules", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "name": "Car loan", "rules": rules()}},
 			{Label: "err:get-unknown", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=" + unknownDebt},
 			{Label: "err:get-bad-id", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=nope"},
 			{Label: "err:get-missing-id", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt"},
@@ -168,12 +190,12 @@ func init() {
 			{Label: "err:delete-unknown", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
 				Body: map[string]any{"id": unknownDebt}},
 
-			// A debt keyed on a payee keeps its budget data when deleted, so
+			// A debt narrowed by a payee keeps its budget data when deleted, so
 			// deleting it with plans needs a confirmation.
 			{Label: "delete-whole-debt", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
 				Body: map[string]any{"id": &debtID}},
 			{Label: "create-keyed-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
-				Body: debtBody(map[string]any{"payeeId": PayeeShop}), CaptureIDInto: &keyedID},
+				Body: debtBody(map[string]any{"rules": rules(rule(CatFood, map[string]any{"payeeId": PayeeShop}))}), CaptureIDInto: &keyedID},
 			{Label: "set-debt-limit", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "elementId": &keyedID, "period": month(0), "amount": "10"}},
 			{Label: "err:set-debt-limit-out-of-range", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
@@ -189,13 +211,16 @@ func init() {
 		}
 	}})
 
-	// debt_classification_guard: a category, payee, tag or label a debt uses
-	// cannot be deleted, and a merge moves the debt to the target unless that
-	// would leave two debts able to match the same payment.
-	register(Scenario{Name: "debt_classification_guard", Calls: func() []Call {
+	// debt_classification_cleanup: deleting or merging a category, payee,
+	// tag or label a debt's rule names never refuses. A deleted category
+	// takes its rule with it, a deleted payee widens the rule it narrowed, and
+	// when that leaves two debts' rules able to match one payment, the newer
+	// debt loses its rule; a merge that makes two rules identical does the
+	// same.
+	register(Scenario{Name: "debt_classification_cleanup", Calls: func() []Call {
 		op := func(n string) string { return "d1000000-0000-0000-0000-0000000000" + n }
-		var srcCat, dstCat, catA, catB, catC, srcPayee, dstPayee, srcTag, dstTag, srcLabel, dstLabel string
-		var debtA, debtB, debtC, debtD, debtE, debtF, debtG, debtH string
+		var catA, catB, catC, catD, srcCat, dstCat, payeeA, payeeB, payeeC, srcPayee, dstPayee, srcLabel, dstLabel string
+		var debtA, debtB, debtC, debtD, debtE, debtF, debtG, debtH, debtI, debtJ string
 		post := func(label, path string, body map[string]any) Call {
 			return Call{Label: label, Method: "POST", Path: path, Auth: "owner", Body: body}
 		}
@@ -209,8 +234,8 @@ func init() {
 			c.CaptureIDInto = into
 			return c
 		}
-		createDebt := func(label string, into *string, extra map[string]any) Call {
-			c := post(label, "/api/v1/debt/create-debt", debtBody(extra))
+		createDebt := func(label string, into *string, r map[string]any) Call {
+			c := post(label, "/api/v1/debt/create-debt", debtBody(map[string]any{"rules": rules(r)}))
 			c.CaptureIDInto = into
 			return c
 		}
@@ -218,112 +243,181 @@ func init() {
 			return Call{Label: label, Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: id}
 		}
 		return []Call{
-			createCat("create-source-category", op("a1"), "Loan source", &srcCat),
-			createCat("create-target-category", op("a2"), "Loan target", &dstCat),
-			createCat("create-category-a", op("a3"), "Loan a", &catA),
-			createCat("create-category-b", op("a4"), "Loan b", &catB),
-			createCat("create-category-c", op("a5"), "Loan c", &catC),
-			createNamed("create-source-payee", "/api/v1/payee/create-payee", op("b1"), "Bank one", &srcPayee),
-			createNamed("create-target-payee", "/api/v1/payee/create-payee", op("b2"), "Bank two", &dstPayee),
-			createNamed("create-source-tag", "/api/v1/tag/create-tag", op("c1"), "Loan one", &srcTag),
-			createNamed("create-target-tag", "/api/v1/tag/create-tag", op("c2"), "Loan two", &dstTag),
+			createCat("create-category-a", op("a1"), "Loan a", &catA),
+			createCat("create-category-b", op("a2"), "Loan b", &catB),
+			createCat("create-category-c", op("a3"), "Loan c", &catC),
+			createCat("create-category-d", op("a4"), "Loan d", &catD),
+			createCat("create-source-category", op("a5"), "Loan source", &srcCat),
+			createCat("create-target-category", op("a6"), "Loan target", &dstCat),
+			createNamed("create-payee-a", "/api/v1/payee/create-payee", op("b1"), "Bank a", &payeeA),
+			createNamed("create-payee-b", "/api/v1/payee/create-payee", op("b2"), "Bank b", &payeeB),
+			createNamed("create-payee-c", "/api/v1/payee/create-payee", op("b3"), "Bank c", &payeeC),
+			createNamed("create-source-payee", "/api/v1/payee/create-payee", op("b4"), "Bank one", &srcPayee),
+			createNamed("create-target-payee", "/api/v1/payee/create-payee", op("b5"), "Bank two", &dstPayee),
 			createNamed("create-source-label", "/api/v1/label/create-label", op("e1"), "Debt car", &srcLabel),
 			createNamed("create-target-label", "/api/v1/label/create-label", op("e2"), "Debt student", &dstLabel),
 
-			createDebt("create-debt-whole-source", &debtA, map[string]any{"categoryId": &srcCat}),
-			{Label: "err:delete-used-category", Method: "POST", Path: "/api/v1/category/delete-category", Auth: "owner",
-				Body: map[string]any{"id": &srcCat, "mode": "delete"}},
-			createDebt("create-debt-keyed-target", &debtB, map[string]any{"categoryId": &dstCat, "payeeId": &srcPayee}),
-			{Label: "err:merge-category-key-conflict", Method: "POST", Path: "/api/v1/category/merge-category", Auth: "owner",
-				Body: map[string]any{"sourceId": &srcCat, "targetId": &dstCat}},
-			post("delete-debt-keyed-target", "/api/v1/debt/delete-debt", map[string]any{"id": &debtB}),
+			createDebt("create-debt-on-category-a", &debtA, rule(&catA, nil)),
+			post("delete-category-a", "/api/v1/category/delete-category", map[string]any{"id": &catA, "mode": "delete"}),
+			getDebt("get-debt-without-its-rule", &debtA),
+
+			createDebt("create-debt-narrowed-by-payee-a", &debtB, rule(&catB, map[string]any{"payeeId": &payeeA})),
+			post("delete-payee-a", "/api/v1/payee/delete-payee", map[string]any{"id": &payeeA}),
+			getDebt("get-debt-with-the-rule-widened", &debtB),
+
+			createDebt("create-older-debt-on-payee-b", &debtC, rule(&catC, map[string]any{"payeeId": &payeeB})),
+			createDebt("create-newer-debt-on-payee-c", &debtD, rule(&catC, map[string]any{"payeeId": &payeeC})),
+			post("delete-payee-b", "/api/v1/payee/delete-payee", map[string]any{"id": &payeeB}),
+			getDebt("get-older-debt-widened", &debtC),
+			getDebt("get-newer-debt-without-its-rule", &debtD),
+
+			createDebt("create-debt-whole-source", &debtE, rule(&srcCat, nil)),
+			createDebt("create-debt-narrowed-target", &debtF, rule(&dstCat, map[string]any{"payeeId": PayeeShop})),
 			post("merge-category", "/api/v1/category/merge-category", map[string]any{"sourceId": &srcCat, "targetId": &dstCat}),
-			getDebt("get-debt-after-category-merge", &debtA),
+			getDebt("get-debt-after-category-merge", &debtE),
+			getDebt("get-narrowed-debt-after-category-merge", &debtF),
 
-			createDebt("create-debt-payee-source", &debtC, map[string]any{"categoryId": &catA, "payeeId": &srcPayee}),
-			{Label: "err:delete-used-payee", Method: "POST", Path: "/api/v1/payee/delete-payee", Auth: "owner",
-				Body: map[string]any{"id": &srcPayee}},
-			createDebt("create-debt-payee-target", &debtD, map[string]any{"categoryId": &catA, "payeeId": &dstPayee}),
-			{Label: "err:merge-payee-key-conflict", Method: "POST", Path: "/api/v1/payee/merge-payee", Auth: "owner",
-				Body: map[string]any{"sourceId": &srcPayee, "targetId": &dstPayee}},
-			post("delete-debt-payee-target", "/api/v1/debt/delete-debt", map[string]any{"id": &debtD}),
+			createDebt("create-debt-payee-source", &debtG, rule(&catD, map[string]any{"payeeId": &srcPayee})),
+			createDebt("create-debt-payee-target", &debtH, rule(&catD, map[string]any{"payeeId": &dstPayee})),
 			post("merge-payee", "/api/v1/payee/merge-payee", map[string]any{"sourceId": &srcPayee, "targetId": &dstPayee}),
-			getDebt("get-debt-after-payee-merge", &debtC),
+			getDebt("get-older-debt-after-payee-merge", &debtG),
+			getDebt("get-newer-debt-after-payee-merge", &debtH),
 
-			createDebt("create-debt-tag-source", &debtE, map[string]any{"categoryId": &catB, "tagId": &srcTag}),
-			{Label: "err:delete-used-tag", Method: "POST", Path: "/api/v1/tag/delete-tag", Auth: "owner",
-				Body: map[string]any{"id": &srcTag}},
-			createDebt("create-debt-tag-target", &debtF, map[string]any{"categoryId": &catB, "tagId": &dstTag}),
-			{Label: "err:merge-tag-key-conflict", Method: "POST", Path: "/api/v1/tag/merge-tag", Auth: "owner",
-				Body: map[string]any{"sourceId": &srcTag, "targetId": &dstTag}},
-			post("delete-debt-tag-target", "/api/v1/debt/delete-debt", map[string]any{"id": &debtF}),
-			post("merge-tag", "/api/v1/tag/merge-tag", map[string]any{"sourceId": &srcTag, "targetId": &dstTag}),
-			getDebt("get-debt-after-tag-merge", &debtE),
-
-			createDebt("create-debt-label-source", &debtG, map[string]any{"categoryId": &catC, "labelId": &srcLabel}),
-			{Label: "err:delete-used-label", Method: "POST", Path: "/api/v1/label/delete-label", Auth: "owner",
-				Body: map[string]any{"id": &srcLabel}},
-			createDebt("create-debt-label-target", &debtH, map[string]any{"categoryId": &catC, "labelId": &dstLabel}),
-			{Label: "err:merge-label-key-conflict", Method: "POST", Path: "/api/v1/label/merge-label", Auth: "owner",
-				Body: map[string]any{"sourceId": &srcLabel, "targetId": &dstLabel}},
-			post("delete-debt-label-target", "/api/v1/debt/delete-debt", map[string]any{"id": &debtH}),
+			createDebt("create-debt-label-source", &debtI, rule(CatFood, map[string]any{"labelId": &srcLabel})),
+			createDebt("create-debt-label-target", &debtJ, rule(CatFood, map[string]any{"labelId": &dstLabel})),
 			post("merge-label", "/api/v1/label/merge-label", map[string]any{"sourceId": &srcLabel, "targetId": &dstLabel}),
-			getDebt("get-debt-after-label-merge", &debtG),
+			getDebt("get-older-debt-after-label-merge", &debtI),
+			getDebt("get-newer-debt-after-label-merge", &debtJ),
 		}
 	}})
 
-	// debt_guest_access: a debt belongs to its owner alone; a connected guest
-	// gets the same not-found as for an unknown id, on reads and writes.
-	register(Scenario{Name: "debt_guest_access", Calls: func() []Call {
+	// debt_budget_access: a debt belongs to its budget. A pending invite
+	// reads nothing; once accepted, a participant who may plan reads and edits
+	// the debt; turned into a guest, they read it but may not change it.
+	register(Scenario{Name: "debt_budget_access", Calls: func() []Call {
 		var debtID string
+		update := func(label string) Call {
+			return Call{Label: label, Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "guest",
+				Body: map[string]any{"id": &debtID, "name": "Shared loan"}}
+		}
 		return []Call{
 			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
 				Body: debtBody(nil), CaptureIDInto: &debtID},
-			{Label: "err:guest-get", Method: "GET", Auth: "guest", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
-			{Label: "err:guest-update", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "guest",
-				Body: map[string]any{
-					"id": &debtID, "name": "Mine now", "categoryId": CatFood, "startDate": day(0), "amountBorrowed": "100", "payment": "105",
-					"schedule": "weekly", "lastPaymentDate": day(7),
-				}},
+			{Label: "err:invited-get", Method: "GET", Auth: "guest", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+			{Label: "invited-list-empty", Method: "GET", Path: "/api/v1/debt/get-debt-list", Auth: "guest"},
+			{Label: "accept-access", Method: "POST", Path: "/api/v1/budget/accept-access", Auth: "guest",
+				Body: map[string]any{"budgetId": Budget}},
+			{Label: "participant-get", Method: "GET", Auth: "guest", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+			{Label: "participant-list", Method: "GET", Path: "/api/v1/debt/get-debt-list", Auth: "guest"},
+			update("participant-update"),
+			{Label: "make-guest", Method: "POST", Path: "/api/v1/budget/grant-access", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "userId": GuestID, "role": "guest"}},
+			{Label: "guest-get", Method: "GET", Auth: "guest", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+			update("err:guest-update"),
 			{Label: "err:guest-paid-off", Method: "POST", Path: "/api/v1/debt/mark-debt-paid-off", Auth: "guest",
 				Body: map[string]any{"id": &debtID}},
 			{Label: "err:guest-delete", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "guest",
 				Body: map[string]any{"id": &debtID}},
-			{Label: "guest-list-empty", Method: "GET", Path: "/api/v1/debt/get-debt-list", Auth: "guest"},
+			{Label: "err:guest-create", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "guest",
+				Body: debtBody(map[string]any{"name": "Guest loan"})},
+			{Label: "err:stranger-get", Method: "GET", Auth: "readonly", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 			{Label: "owner-list", Method: "GET", Path: "/api/v1/debt/get-debt-list", Auth: "owner"},
 		}
 	}})
 
+	// debt_rules: a debt matches through up to ten rules, each on any
+	// participant's expense category. add-debt-rule adds one; a rule another
+	// rule of the debt covers, or one that could match another debt's
+	// payments, is refused; update-debt replaces the set.
+	register(Scenario{Name: "debt_rules", Calls: func() []Call {
+		var partnerCat, loanCat, otherCat, debtID, otherID string
+		addRule := func(label string, r map[string]any) Call {
+			return Call{Label: label, Method: "POST", Path: "/api/v1/debt/add-debt-rule", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "rule": r}}
+		}
+		return []Call{
+			{Label: "partner-accepts", Method: "POST", Path: "/api/v1/budget/accept-access", Auth: "guest",
+				Body: map[string]any{"budgetId": Budget}},
+			{Label: "partner-creates-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "guest",
+				Body:          map[string]any{"id": "d6000000-0000-0000-0000-0000000000a1", "name": "Car loan", "type": "expense", "icon": "car"},
+				CaptureIDInto: &partnerCat},
+			{Label: "owner-creates-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
+				Body:          map[string]any{"id": "d6000000-0000-0000-0000-0000000000a2", "name": "Loan", "type": "expense", "icon": "bank"},
+				CaptureIDInto: &loanCat},
+			{Label: "owner-creates-other-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
+				Body:          map[string]any{"id": "d6000000-0000-0000-0000-0000000000a3", "name": "Other loan", "type": "expense", "icon": "bank"},
+				CaptureIDInto: &otherCat},
+			{Label: "create-two-rule-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: debtBody(map[string]any{"rules": rules(rule(CatFood, nil), rule(&partnerCat, nil))}), CaptureIDInto: &debtID},
+			addRule("add-debt-rule", rule(&loanCat, nil)),
+			addRule("err:add-covered-rule", rule(CatFood, map[string]any{"payeeId": PayeeShop})),
+			{Label: "create-other-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body:          debtBody(map[string]any{"name": "Other", "rules": rules(rule(&otherCat, map[string]any{"payeeId": PayeeShop}))}),
+				CaptureIDInto: &otherID},
+			addRule("err:add-conflicting-rule", rule(&otherCat, nil)),
+			{Label: "err:add-rule-unknown-debt", Method: "POST", Path: "/api/v1/debt/add-debt-rule", Auth: "owner",
+				Body: map[string]any{"id": "d0000000-0000-0000-0000-0000000000ff", "rule": rule(&loanCat, nil)}},
+			{Label: "err:add-rule-blank", Method: "POST", Path: "/api/v1/debt/add-debt-rule", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "rule": map[string]any{}}},
+			{Label: "update-replaces-rules", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "name": "Car loan", "rules": rules(rule(CatFood, nil), rule(&loanCat, nil))}},
+			{Label: "err:update-empty-rules", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "name": "Car loan", "rules": rules()}},
+			{Label: "get", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+			{Label: "partner-get-other", Method: "GET", Auth: "guest", Path: "/api/v1/debt/get-debt?id=", PathID: &otherID},
+		}
+	}})
+
+	// debt_rule_options lists what a rule can name, per participant. Only a
+	// participant who may plan sees it: a guest is refused, a stranger finds
+	// no budget.
+	register(Scenario{Name: "debt_rule_options", Calls: func() []Call {
+		options := func(label, auth, query string) Call {
+			return Call{Label: label, Method: "GET", Auth: auth, Path: "/api/v1/debt/get-debt-rule-options" + query}
+		}
+		return []Call{
+			options("err:invited", "guest", "?budgetId="+Budget),
+			{Label: "partner-accepts", Method: "POST", Path: "/api/v1/budget/accept-access", Auth: "guest",
+				Body: map[string]any{"budgetId": Budget}},
+			options("owner", "owner", "?budgetId="+Budget),
+			options("partner", "guest", "?budgetId="+Budget),
+			{Label: "make-guest", Method: "POST", Path: "/api/v1/budget/grant-access", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "userId": GuestID, "role": "guest"}},
+			options("owner-without-the-guest", "owner", "?budgetId="+Budget),
+			options("err:guest", "guest", "?budgetId="+Budget),
+			options("err:stranger", "readonly", "?budgetId="+Budget),
+			options("err:missing-budget-id", "owner", ""),
+			options("err:bad-budget-id", "owner", "?budgetId=nope"),
+		}
+	}})
+
 	// debt_forecast lists a debt's payments still to come. The weekly debt has
-	// one due left, so the golden does not depend on the day the suite runs; a
-	// budget whose row of the debt plans nothing, or one the caller cannot
-	// name, leaves the regular payments and names no budget. Planned extras
-	// are pinned by the debt service's tests, whose clock is fixed.
+	// one due left, so the golden does not depend on the day the suite runs;
+	// its budget's row plans nothing, so the regular payments stay and no
+	// budget is named. Planned extras are pinned by the debt service's tests,
+	// whose clock is fixed. A pending invite to the budget reads nothing.
 	register(Scenario{Name: "debt_forecast", Calls: func() []Call {
 		const unknownDebt = "d0000000-0000-0000-0000-0000000000ff"
-		const unknownBudget = "b0000000-0000-0000-0000-0000000000ff"
 		var debtID, draftID, categoryID string
-		forecast := func(label, auth string, query string, id *string) Call {
-			return Call{Label: label, Method: "GET", Auth: auth, Path: "/api/v1/debt/get-debt-forecast?" + query + "id=", PathID: id}
+		forecast := func(label, auth string, id *string) Call {
+			return Call{Label: label, Method: "GET", Auth: auth, Path: "/api/v1/debt/get-debt-forecast?id=", PathID: id}
 		}
 		return []Call{
 			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
 				Body: debtBody(nil), CaptureIDInto: &debtID},
-			forecast("forecast", "owner", "", &debtID),
+			forecast("forecast", "owner", &debtID),
 			{Label: "get-budget", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
-			forecast("forecast-from-budget", "owner", "budgetId="+Budget+"&", &debtID),
-			forecast("forecast-unknown-budget", "owner", "budgetId="+unknownBudget+"&", &debtID),
+			forecast("forecast-after-budget-read", "owner", &debtID),
 			{Label: "create-loan-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
 				Body:          map[string]any{"id": "d4000000-0000-0000-0000-0000000000a1", "name": "Student loan", "type": "expense", "icon": "school"},
 				CaptureIDInto: &categoryID},
 			{Label: "create-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
-				Body: withoutTerms(map[string]any{"name": "Student loan", "categoryId": &categoryID}), CaptureIDInto: &draftID},
-			forecast("forecast-not-set-up", "owner", "", &draftID),
-			forecast("err:guest-forecast", "guest", "", &debtID),
+				Body: withoutTerms(map[string]any{"name": "Student loan", "rules": rules(rule(&categoryID, nil))}), CaptureIDInto: &draftID},
+			forecast("forecast-not-set-up", "owner", &draftID),
+			forecast("err:invited-forecast", "guest", &debtID),
 			{Label: "err:forecast-unknown", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt-forecast?id=" + unknownDebt},
 			{Label: "err:forecast-bad-id", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt-forecast?id=nope"},
 			{Label: "err:forecast-missing-id", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt-forecast"},
-			forecast("err:forecast-bad-budget-id", "owner", "budgetId=nope&", &debtID),
 		}
 	}})
 
@@ -352,24 +446,24 @@ func init() {
 			reconcile("err:bad-balance", map[string]any{"id": &debtID, "balance": "-1"}),
 			reconcile("err:unknown", map[string]any{"id": unknownDebt, "balance": "1"}),
 			{Label: "err:correction-conflicts", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": &debtID, "name": "Car loan", "categoryId": CatFood, "startDate": day(-2),
+				Body: map[string]any{"id": &debtID, "name": "Car loan", "startDate": day(-2),
 					"amountBorrowed": "200", "lastPaymentDate": day(7)}},
 			{Label: "delete-reconciliation", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "owner",
 				Body: map[string]any{"id": &debtID, "reconciliationId": &statementID}},
-			{Label: "err:guest-delete-reconciliation", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "guest",
+			{Label: "err:invited-delete-reconciliation", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "guest",
 				Body: map[string]any{"id": &debtID, "reconciliationId": &statementID}},
 			{Label: "err:readonly-delete-reconciliation", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "readonly",
 				Body: map[string]any{"id": &debtID, "reconciliationId": &statementID}},
 			{Label: "err:delete-reconciliation-again", Method: "POST", Path: "/api/v1/debt/delete-debt-reconciliation", Auth: "owner",
 				Body: map[string]any{"id": &debtID, "reconciliationId": &statementID}},
 			{Label: "get-after-delete", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
-			{Label: "err:guest-reconcile", Method: "POST", Path: "/api/v1/debt/reconcile-debt", Auth: "guest",
+			{Label: "err:invited-reconcile", Method: "POST", Path: "/api/v1/debt/reconcile-debt", Auth: "guest",
 				Body: map[string]any{"id": &debtID, "balance": "1"}},
 			{Label: "create-loan-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
 				Body:          map[string]any{"id": "d5000000-0000-0000-0000-0000000000a1", "name": "Student loan", "type": "expense", "icon": "school"},
 				CaptureIDInto: &categoryID},
 			{Label: "create-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
-				Body: withoutTerms(map[string]any{"name": "Student loan", "categoryId": &categoryID}), CaptureIDInto: &draftID},
+				Body: withoutTerms(map[string]any{"name": "Student loan", "rules": rules(rule(&categoryID, nil))}), CaptureIDInto: &draftID},
 			reconcile("err:not-set-up", map[string]any{"id": &draftID, "balance": "1"}),
 			{Label: "err:readonly-reconcile", Method: "POST", Path: "/api/v1/debt/reconcile-debt", Auth: "readonly",
 				Body: map[string]any{"id": unknownDebt, "balance": "1"}},

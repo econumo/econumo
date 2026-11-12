@@ -15,7 +15,7 @@ var _ = apidoc.JsonResponseError{}
 // GetDebtList handles GET /api/v1/debt/get-debt-list (auth).
 //
 // @Summary     Get the debt list
-// @Description Returns the authenticated user's debts with their projections.
+// @Description Returns the debts of every budget the caller can read, archived ones included, with their projections. canEdit is 1 where the caller may change the debt (plan access to an unarchived budget).
 // @Tags        Debt
 // @Produce     json
 // @Success     200 {object} apidoc.JsonResponseOk{data=model.DebtListResult}
@@ -61,7 +61,7 @@ func (h *Handlers) GetDebt(w http.ResponseWriter, r *http.Request) {
 // GetDebtForecast handles GET /api/v1/debt/get-debt-forecast (auth).
 //
 // @Summary     Get a debt's future payments
-// @Description Projects the payments still to come, soonest first, to the payoff: the regular schedule plus the extras planned for the debt's row in its budget. A budget that holds no row for the debt leaves the regular payments alone; budgetId and budgetName name the budget only when its plans add an extra. paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with those extras (get-debt's own when there are none); extraPlanned sums the planned extras those payments carry ("0" with none). A debt not set up has no items, 0 payments left and empty figures. A debt of a budget the caller cannot read is not found.
+// @Description Projects the payments still to come, soonest first, to the payoff: the regular schedule plus the extras planned for the debt's row in its own budget. budgetId and budgetName name that budget only when its plans add an extra. paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with those extras (get-debt's own when there are none); extraPlanned sums the planned extras those payments carry ("0" with none). A debt not set up has no items, 0 payments left and empty figures. A debt of a budget the caller cannot read is not found.
 // @Tags        Debt
 // @Produce     json
 // @Param       id       query string true  "Debt id"
@@ -93,7 +93,7 @@ func (h *Handlers) GetDebtForecast(w http.ResponseWriter, r *http.Request) {
 // CreateDebt handles POST /api/v1/debt/create-debt (auth).
 //
 // @Summary     Create a debt
-// @Description Creates a debt tracked through an expense category, optionally narrowed by payee, tag and label. amountBorrowed, startDate and lastPaymentDate are the loan's facts and come together (a missing one is common.is_blank): the debt's first snapshot is amountBorrowed as of startDate (debt.start_in_future after today, debt.last_payment_before_start unless lastPaymentDate is later), and what is owed follows from the payments recorded since. An optional balance adds a statement balance as of balanceDate (default today). Without the facts the debt is created not set up (isSetUp 0), collecting its payments without figures; a startDate alone then only bounds which payments count.
+// @Description Creates a debt in a budget the caller may plan in (403 for a guest, budget.archived for an archived budget). rules (1 to 10) say which expenses pay it: each names an expense category of a participant of the budget, optionally narrowed by that participant's payee and by a tag or a label (common.invalid_choice on rules for both); rules that could match the same payment, in this debt or another debt of the budget, are refused with debt.key_conflict on rules. An empty currencyId takes the budget's currency. amountBorrowed, startDate and lastPaymentDate are the loan's facts and come together (a missing one is common.is_blank): the debt's first snapshot is amountBorrowed as of startDate (debt.start_in_future after today, debt.last_payment_before_start unless lastPaymentDate is later), and what is owed follows from the payments recorded since. An optional balance adds a statement balance as of balanceDate (default today). Without the facts the debt is created not set up (isSetUp 0), collecting its payments without figures; a startDate alone then only bounds which payments count.
 // @Tags        Debt
 // @Accept      json
 // @Produce     json
@@ -102,6 +102,7 @@ func (h *Handlers) GetDebtForecast(w http.ResponseWriter, r *http.Request) {
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/debt/create-debt [post]
@@ -112,7 +113,7 @@ func (h *Handlers) CreateDebt(w http.ResponseWriter, r *http.Request) {
 // UpdateDebt handles POST /api/v1/debt/update-debt (auth).
 //
 // @Summary     Update a debt
-// @Description Updates a debt's name, key and terms. A debt not set up is set up by a body carrying amountBorrowed, startDate and lastPaymentDate (its first snapshot as of startDate, plus a statement balance when a balance is sent); without them only its payment, schedule, start date and key change. On a set-up debt startDate, amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored ones; one that differs corrects the loan's facts: the first snapshot is rewritten (a later one takes the corrected payment, schedule and last payment date, keeping its date and balance; debt.conflicts_with_reconciliation when the new start would follow it or the new last payment date not follow it) and every payment is split again. amountBorrowed and lastPaymentDate come as a pair. A balance adds a statement balance as of balanceDate (default today), as reconcile-debt does. A currencyId other than the stored one moves the debt to that currency (refused with currency.not_available when the user may not use it): the amounts sent, or the stored ones when left out, are read in it unconverted, the payments are split again and the budget rows follow; empty keeps the stored currency. tagId and labelId are exclusive (common.invalid_choice on labelId).
+// @Description Updates a debt's name, rules and terms. rules left out keep the stored ones; a list (1 to 10) replaces them, a rule matched by id or by an identical key keeping its id. A debt not set up is set up by a body carrying amountBorrowed, startDate and lastPaymentDate (its first snapshot as of startDate, plus a statement balance when a balance is sent); without them only its payment, schedule, start date and key change. On a set-up debt startDate, amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored ones; one that differs corrects the loan's facts: the first snapshot is rewritten (a later one takes the corrected payment, schedule and last payment date, keeping its date and balance; debt.conflicts_with_reconciliation when the new start would follow it or the new last payment date not follow it) and every payment is split again. amountBorrowed and lastPaymentDate come as a pair. A balance adds a statement balance as of balanceDate (default today), as reconcile-debt does. A currencyId other than the stored one moves the debt to that currency (refused with currency.not_available when the user may not use it): the amounts sent, or the stored ones when left out, are read in it unconverted, the payments are split again and the budget rows follow; empty keeps the stored currency.
 // @Tags        Debt
 // @Accept      json
 // @Produce     json
@@ -121,6 +122,7 @@ func (h *Handlers) CreateDebt(w http.ResponseWriter, r *http.Request) {
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/debt/update-debt [post]
@@ -128,10 +130,62 @@ func (h *Handlers) UpdateDebt(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.UpdateDebt)
 }
 
+// AddDebtRule handles POST /api/v1/debt/add-debt-rule (auth).
+//
+// @Summary     Add a rule to a debt
+// @Description Adds one rule to a debt: an expense category of a participant of the budget, optionally narrowed by that participant's payee and by a tag or a label. A rule another rule of the debt covers, or one that could match another debt's payments, is refused with debt.key_conflict on rules; an eleventh rule with common.out_of_range. A whole-category rule moves its category row's plans and comments onto the debt's row, adding up with what is there.
+// @Tags        Debt
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.AddDebtRuleRequest true "Add debt rule request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DebtResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     403     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/debt/add-debt-rule [post]
+func (h *Handlers) AddDebtRule(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.AddDebtRule)
+}
+
+// GetDebtRuleOptions handles GET /api/v1/debt/get-debt-rule-options (auth).
+//
+// @Summary     Get what a debt rule can name
+// @Description Lists the participants of a budget, the caller first and then the others by name, each with their active expense categories, payees, tags and labels. Needs the right to plan in the budget: a guest gets 403, a caller who cannot read the budget 404.
+// @Tags        Debt
+// @Produce     json
+// @Param       budgetId query string true "Budget id"
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.DebtRuleOptionsResult}
+// @Failure     400 {object} apidoc.JsonResponseError
+// @Failure     401 {object} apidoc.JsonResponseUnauthorized
+// @Failure     403 {object} apidoc.JsonResponseError
+// @Failure     500 {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/debt/get-debt-rule-options [get]
+func (h *Handlers) GetDebtRuleOptions(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	req := model.GetDebtRuleOptionsRequest{BudgetId: r.URL.Query().Get("budgetId")}
+	if err := req.Validate(); err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	res, err := h.svc.GetDebtRuleOptions(r.Context(), userID, req)
+	if err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	httpx.OK(w, res)
+}
+
 // DeleteDebt handles POST /api/v1/debt/delete-debt (auth).
 //
 // @Summary     Delete a debt
-// @Description Deletes a debt. A narrowed debt that holds budget plans or comments needs confirmDataRemoval.
+// @Description Deletes a debt. A debt whose only rule is a whole category hands its budget plans and comments back to that category; any other debt that holds plans or comments needs confirmDataRemoval.
 // @Tags        Debt
 // @Accept      json
 // @Produce     json
@@ -140,6 +194,7 @@ func (h *Handlers) UpdateDebt(w http.ResponseWriter, r *http.Request) {
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/debt/delete-debt [post]
@@ -159,6 +214,7 @@ func (h *Handlers) DeleteDebt(w http.ResponseWriter, r *http.Request) {
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/debt/mark-debt-paid-off [post]
@@ -178,6 +234,7 @@ func (h *Handlers) MarkDebtPaidOff(w http.ResponseWriter, r *http.Request) {
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/debt/reconcile-debt [post]
@@ -197,6 +254,7 @@ func (h *Handlers) ReconcileDebt(w http.ResponseWriter, r *http.Request) {
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/debt/delete-debt-reconciliation [post]
