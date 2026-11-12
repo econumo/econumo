@@ -3,6 +3,7 @@ package debt
 import (
 	"context"
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
@@ -60,144 +61,31 @@ func (st *debtState) projectPeriods(today time.Time, months []time.Time, plans m
 		Today: today, Months: months, Plans: plans, Digits: st.digits, PeriodStartDay: startDay})
 }
 
-// Sync brings the stored payment splits of the owners' debts up to date.
-func (s *Service) Sync(ctx context.Context, ownerIDs []vo.Id) error {
-	_, err := s.loadStates(ctx, ownerIDs)
+// Sync brings the stored payment splits of the budget's debts up to date.
+func (s *Service) Sync(ctx context.Context, scope model.DebtScope) error {
+	_, err := s.syncBudget(ctx, scope)
 	return err
 }
 
-// loadStates syncs every category the owners have debts in and returns the
-// debts' states in creation order.
-func (s *Service) loadStates(ctx context.Context, ownerIDs []vo.Id) ([]*debtState, error) {
-	return s.statesOf(ctx, ownerIDs, s.syncCategory)
-}
-
-// readStates is loadStates without a write or a lock: splits not stored yet
-// are computed in memory, and stale stored ones are ignored.
-func (s *Service) readStates(ctx context.Context, ownerIDs []vo.Id) ([]*debtState, error) {
-	return s.statesOf(ctx, ownerIDs, func(ctx context.Context, categoryID vo.Id) ([]*debtState, error) {
-		debts, err := s.repo.ListByCategory(ctx, categoryID)
-		if err != nil {
-			return nil, err
-		}
-		return s.computeDebts(ctx, categoryID, debts, false)
-	})
-}
-
-func (s *Service) statesOf(ctx context.Context, ownerIDs []vo.Id,
-	byCategory func(context.Context, vo.Id) ([]*debtState, error)) ([]*debtState, error) {
-	debts, err := s.repo.ListByOwners(ctx, ownerIDs)
-	if err != nil {
-		return nil, err
+// syncBudget matches the expenses on the budget's accounts to its debts,
+// drops splits that no longer belong and splits the new payments, then
+// returns the debts' states in creation order. It runs in one transaction
+// under the budget's row lock. Splits of other budgets' debts are never read
+// or touched: a transaction can count for one debt in each budget.
+func (s *Service) syncBudget(ctx context.Context, scope model.DebtScope) ([]*debtState, error) {
+	if scope.BudgetID.IsZero() {
+		return nil, nil
 	}
-	var categories []vo.Id
-	seen := map[vo.Id]bool{}
-	for _, d := range debts {
-		if !seen[d.CategoryID] {
-			seen[d.CategoryID] = true
-			categories = append(categories, d.CategoryID)
-		}
-	}
-	var out []*debtState
-	for _, c := range categories {
-		states, err := byCategory(ctx, c)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, states...)
-	}
-	sort.SliceStable(out, func(i, j int) bool {
-		a, b := out[i].debt, out[j].debt
-		if !a.CreatedAt.Equal(b.CreatedAt) {
-			return a.CreatedAt.Before(b.CreatedAt)
-		}
-		return a.ID.String() < b.ID.String()
-	})
-	return out, nil
-}
-
-// matchViews assigns every debt its matching key and range. Debts sharing a
-// key (payee, tag and label) are partitioned by start date: each matches from
-// its own start up to the next one's.
-func matchViews(debts []*model.Debt) map[vo.Id]model.DebtView {
-	type key struct{ payee, tag, label string }
-	groups := map[key][]*model.Debt{}
-	for _, d := range debts {
-		k := key{}
-		if d.PayeeID != nil {
-			k.payee = d.PayeeID.String()
-		}
-		if d.TagID != nil {
-			k.tag = d.TagID.String()
-		}
-		if d.LabelID != nil {
-			k.label = d.LabelID.String()
-		}
-		groups[k] = append(groups[k], d)
-	}
-	views := make(map[vo.Id]model.DebtView, len(debts))
-	for _, g := range groups {
-		sort.SliceStable(g, func(i, j int) bool {
-			a, b := g[i].StartDate, g[j].StartDate
-			switch {
-			case a == nil && b == nil:
-				return g[i].ID.String() < g[j].ID.String()
-			case a == nil:
-				return true
-			case b == nil:
-				return false
-			}
-			return a.Before(*b)
-		})
-		for i, d := range g {
-			v := model.DebtView{
-				ID: d.ID.String(), OwnerID: d.OwnerID.String(), CurrencyID: d.CurrencyID.String(),
-				CategoryID: d.CategoryID.String(), Name: d.Name, CreatedAt: d.CreatedAt, SetUp: d.IsSetUp(),
-			}
-			if d.PayeeID != nil {
-				p := d.PayeeID.String()
-				v.PayeeID = &p
-			}
-			if d.TagID != nil {
-				t := d.TagID.String()
-				v.TagID = &t
-			}
-			if d.LabelID != nil {
-				l := d.LabelID.String()
-				v.LabelID = &l
-			}
-			if d.StartDate != nil {
-				from := *d.StartDate
-				v.From = &from
-			}
-			if i+1 < len(g) && g[i+1].StartDate != nil {
-				until := *g[i+1].StartDate
-				v.Until = &until
-			}
-			views[d.ID] = v
-		}
-	}
-	return views
-}
-
-// syncCategory matches the category's expenses to its debts, drops splits
-// that no longer belong and splits the new payments, then returns the debts'
-// states. It runs in one transaction under the owner's row lock.
-func (s *Service) syncCategory(ctx context.Context, categoryID vo.Id) ([]*debtState, error) {
 	var states []*debtState
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		first, err := s.repo.ListByCategory(ctx, categoryID)
-		if err != nil || len(first) == 0 {
+		if err := s.repo.LockBudget(ctx, scope.BudgetID); err != nil {
 			return err
 		}
-		if err := s.repo.LockOwner(ctx, first[0].OwnerID); err != nil {
-			return err
-		}
-		debts, err := s.repo.ListByCategory(ctx, categoryID)
+		debts, err := s.repo.ListByBudget(ctx, scope.BudgetID)
 		if err != nil {
 			return err
 		}
-		states, err = s.computeDebts(ctx, categoryID, debts, true)
+		states, err = s.computeDebts(ctx, scope, debts, true)
 		return err
 	})
 	if err != nil {
@@ -206,15 +94,73 @@ func (s *Service) syncCategory(ctx context.Context, categoryID vo.Id) ([]*debtSt
 	return states, nil
 }
 
-// computeDebts matches the category's expenses to its debts and builds their
-// states. With persist it also drops stale splits and stores the new ones.
-func (s *Service) computeDebts(ctx context.Context, categoryID vo.Id, debts []*model.Debt, persist bool) ([]*debtState, error) {
+// syncBudgetID is syncBudget for a budget whose accounts are not at hand.
+func (s *Service) syncBudgetID(ctx context.Context, budgetID vo.Id) error {
+	scope, err := s.scope(ctx, budgetID)
+	if err != nil {
+		return err
+	}
+	_, err = s.syncBudget(ctx, scope)
+	return err
+}
+
+// readStates is syncBudget without a write or a lock: splits not stored yet
+// are computed in memory, and stale stored ones are ignored.
+func (s *Service) readStates(ctx context.Context, scope model.DebtScope) ([]*debtState, error) {
+	if scope.BudgetID.IsZero() {
+		return nil, nil
+	}
+	debts, err := s.repo.ListByBudget(ctx, scope.BudgetID)
+	if err != nil {
+		return nil, err
+	}
+	return s.computeDebts(ctx, scope, debts, false)
+}
+
+func ruleViews(rules []model.DebtRule) []model.DebtRuleView {
+	out := make([]model.DebtRuleView, 0, len(rules))
+	for _, r := range rules {
+		out = append(out, model.DebtRuleView{CategoryID: r.CategoryID.String(), PayeeID: idString(r.PayeeID),
+			TagID: idString(r.TagID), LabelID: idString(r.LabelID)})
+	}
+	return out
+}
+
+// matchViews assigns every debt its rules and range: a debt matches from its
+// start up to the start of the next debt of the budget with an identical
+// rule, on every one of its rules (model.DebtUntil).
+func matchViews(debts []*model.Debt) map[vo.Id]model.DebtView {
+	views := make(map[vo.Id]model.DebtView, len(debts))
+	for _, d := range debts {
+		v := model.DebtView{
+			ID: d.ID.String(), BudgetID: d.BudgetID.String(), CurrencyID: d.CurrencyID.String(), Rules: ruleViews(d.Rules),
+			Name: d.Name, CreatedAt: d.CreatedAt, SetUp: d.IsSetUp(), Until: model.DebtUntil(d, debts),
+		}
+		if d.StartDate != nil {
+			from := *d.StartDate
+			v.From = &from
+		}
+		views[d.ID] = v
+	}
+	return views
+}
+
+// computeDebts matches the expenses on the scope's accounts in the debts'
+// rule categories to the budget's debts and builds their states. With persist
+// it also drops stale splits and stores the new ones.
+func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts []*model.Debt, persist bool) ([]*debtState, error) {
 	if len(debts) == 0 {
 		return nil, nil
 	}
 	ids := make([]vo.Id, 0, len(debts))
+	var categories []vo.Id
 	for _, d := range debts {
 		ids = append(ids, d.ID)
+		for _, c := range ruleCategories(d.Rules) {
+			if !slices.ContainsFunc(categories, c.Equal) {
+				categories = append(categories, c)
+			}
+		}
 	}
 	snaps, err := s.repo.Snapshots(ctx, ids)
 	if err != nil {
@@ -224,7 +170,7 @@ func (s *Service) computeDebts(ctx context.Context, categoryID vo.Id, debts []*m
 	if err != nil {
 		return nil, err
 	}
-	cands, err := s.repo.CandidateTransactions(ctx, categoryID)
+	cands, err := s.repo.CandidateTransactions(ctx, categories, scope.AccountIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +182,6 @@ func (s *Service) computeDebts(ctx context.Context, categoryID vo.Id, debts []*m
 		ordered = append(ordered, views[d.ID])
 		byView[d.ID.String()] = d.ID
 	}
-	cat := categoryID.String()
 	assigned := map[vo.Id][]CandidateTx{}
 	matchedTo := map[vo.Id]vo.Id{}
 	for _, c := range cands {
@@ -244,6 +189,7 @@ func (s *Service) computeDebts(ctx context.Context, categoryID vo.Id, debts []*m
 		for _, l := range c.LabelIDs {
 			labels = append(labels, l.String())
 		}
+		cat := c.CategoryID.String()
 		if v, ok := model.AssignDebt(ordered, &cat, idString(c.PayeeID), idString(c.TagID), labels, c.SpentAt); ok {
 			id := byView[v.ID]
 			assigned[id] = append(assigned[id], c)
@@ -261,10 +207,13 @@ func (s *Service) computeDebts(ctx context.Context, categoryID vo.Id, debts []*m
 			future[c.ID] = true
 		}
 	}
+	// stored splits are keyed by transaction per debt: within one budget a
+	// payment counts on one debt, so a split is stored when it is the one the
+	// payment is assigned to
 	stored := map[vo.Id]vo.DecimalNumber{}
 	stale := map[vo.Id][]vo.Id{}
 	for _, sp := range splits {
-		if matchedTo[sp.TransactionID] == sp.DebtID && !future[sp.TransactionID] {
+		if to, ok := matchedTo[sp.TransactionID]; ok && to == sp.DebtID && !future[sp.TransactionID] {
 			stored[sp.TransactionID] = sp.Interest
 			continue
 		}

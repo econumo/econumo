@@ -9,40 +9,25 @@ import (
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
-type fakeBudgetPlans struct {
-	active  string
-	budgets map[string]model.DebtBudgetPlans
-	asked   []string
-}
-
-func (f *fakeBudgetPlans) ActiveBudget(context.Context, vo.Id) (*vo.Id, error) {
-	if f.active == "" {
-		return nil, nil
-	}
-	id := vo.MustParseId(f.active)
-	return &id, nil
-}
-
-func (f *fakeBudgetPlans) DebtPlans(_ context.Context, _, budgetID, _ vo.Id) (model.DebtBudgetPlans, bool, error) {
-	f.asked = append(f.asked, budgetID.String())
-	p, ok := f.budgets[budgetID.String()]
-	return p, ok, nil
-}
-
-func (e *env) forecast(t *testing.T, id, budgetID string) *model.DebtForecastResult {
+func (e *env) forecast(t *testing.T, id string) *model.DebtForecastResult {
 	t.Helper()
-	got, err := e.svc.GetDebtForecast(context.Background(), e.uid(), model.GetDebtForecastRequest{Id: id, BudgetId: budgetID})
+	got, err := e.svc.GetDebtForecast(context.Background(), e.uid(), model.GetDebtForecastRequest{Id: id})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return got
 }
 
+// plan sets the debt row's plans in the env's budget.
+func (e *env) plan(debtID string, plans map[string]string) {
+	e.fakeBudget(e.budget).plans[debtID] = plans
+}
+
 func TestGetDebtForecast_ScheduleOnlyRunsToPayoff(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
 
-	got := e.forecast(t, res.Id, "")
+	got := e.forecast(t, res.Id)
 	if got.BudgetId != "" || got.BudgetName != "" {
 		t.Fatalf("budget = %q %q, want none", got.BudgetId, got.BudgetName)
 	}
@@ -72,7 +57,7 @@ func TestGetDebtForecast_NotSetUpHasNoItems(t *testing.T) {
 	e := newEnv(t)
 	res := e.createWithoutTerms(t, nil)
 
-	got := e.forecast(t, res.Id, "")
+	got := e.forecast(t, res.Id)
 	if got.Items == nil || len(got.Items) != 0 || got.BudgetId != "" {
 		t.Fatalf("forecast = %+v, want empty items", got)
 	}
@@ -87,20 +72,16 @@ func TestGetDebtForecast_OtherUserNotFound(t *testing.T) {
 	requireNotFound(t, err)
 }
 
-// The budget the screen was opened from adds its planned extras; the note
-// names it.
-func TestGetDebtForecast_FollowsTheGivenBudgetsPlans(t *testing.T) {
+// The debt's own budget adds its planned extras; the note names it. A guest
+// of the budget reads the same forecast.
+func TestGetDebtForecast_UsesTheDebtsBudget(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
-	budget := fixture.NewID()
-	plans := &fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
-		budget: {Name: "Family", PeriodStartDay: 1, Plans: map[string]string{"2026-05-01": "3000"}},
-	}}
-	e.svc.SetBudgetPlans(plans)
+	base := e.forecast(t, res.Id)
+	e.plan(res.Id, map[string]string{"2026-05-01": "3000"})
 
-	base := e.forecast(t, res.Id, "")
-	got := e.forecast(t, res.Id, budget)
-	if got.BudgetId != budget || got.BudgetName != "Family" {
+	got := e.forecast(t, res.Id)
+	if got.BudgetId != e.budget || got.BudgetName != "Family" {
 		t.Fatalf("budget = %q %q", got.BudgetId, got.BudgetName)
 	}
 	if len(got.Items) >= len(base.Items) {
@@ -118,35 +99,21 @@ func TestGetDebtForecast_FollowsTheGivenBudgetsPlans(t *testing.T) {
 	if got.Items[len(got.Items)-1].Balance != "0" {
 		t.Fatalf("last = %+v", got.Items[len(got.Items)-1])
 	}
+	guest := e.partner(t, "guest", roleGuest)
+	byGuest, err := e.svc.GetDebtForecast(context.Background(), uidOf(guest), model.GetDebtForecastRequest{Id: res.Id})
+	if err != nil || len(byGuest.Items) != len(got.Items) {
+		t.Fatalf("guest forecast = %+v, %v", byGuest, err)
+	}
 }
 
-// From Settings there is no budget: the active one is used when it plans the
-// debt; a budget the caller cannot read, or one without extras, leaves the
-// schedule alone and names no budget.
-func TestGetDebtForecast_ActiveBudgetOrScheduleOnly(t *testing.T) {
+// Plans at the regular payment add no extra: the forecast names no budget.
+func TestGetDebtForecast_PlansWithoutExtrasNameNoBudget(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
-	active, foreign, flat := fixture.NewID(), fixture.NewID(), fixture.NewID()
-	plans := &fakeBudgetPlans{active: active, budgets: map[string]model.DebtBudgetPlans{
-		active: {Name: "Home", PeriodStartDay: 1, Plans: map[string]string{"2026-06-01": "2500"}},
-		flat:   {Name: "Flat", PeriodStartDay: 1, Plans: map[string]string{"2026-06-01": "1000"}},
-	}}
-	e.svc.SetBudgetPlans(plans)
-
-	if got := e.forecast(t, res.Id, ""); got.BudgetId != active || got.BudgetName != "Home" {
-		t.Fatalf("no budget given: %q %q, want the active one", got.BudgetId, got.BudgetName)
-	}
-	schedule := len(e.forecast(t, res.Id, flat).Items)
-	if got := e.forecast(t, res.Id, flat); got.BudgetId != "" || got.BudgetName != "" {
-		t.Fatalf("plans at the regular payment: %q %q, want no budget named", got.BudgetId, got.BudgetName)
-	}
-	got := e.forecast(t, res.Id, foreign)
-	if got.BudgetId != "" || len(got.Items) != schedule || len(got.Items) != res.PaymentsLeft {
-		t.Fatalf("inaccessible budget: %q, %d items, want the schedule's %d", got.BudgetId, len(got.Items), res.PaymentsLeft)
-	}
-	// a budget given and refused does not fall back to the active one
-	if got.BudgetName != "" {
-		t.Fatalf("budget name = %q", got.BudgetName)
+	e.plan(res.Id, map[string]string{"2026-06-01": "1000"})
+	got := e.forecast(t, res.Id)
+	if got.BudgetId != "" || got.BudgetName != "" || len(got.Items) != res.PaymentsLeft {
+		t.Fatalf("forecast = %q %q with %d items, want the schedule's %d", got.BudgetId, got.BudgetName, len(got.Items), res.PaymentsLeft)
 	}
 }
 
@@ -156,12 +123,9 @@ func TestGetDebtForecast_ActiveBudgetOrScheduleOnly(t *testing.T) {
 func TestGetDebtForecast_IgnoresPlansOutsideTheLife(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate, r.LastPaymentDate = ptr("2025-01-01"), "2025-12-01" })
-	budget := fixture.NewID()
-	e.svc.SetBudgetPlans(&fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
-		budget: {Name: "Family", PeriodStartDay: 1, Plans: map[string]string{"2026-05-01": "5000"}},
-	}})
+	e.plan(res.Id, map[string]string{"2026-05-01": "5000"})
 
-	got := e.forecast(t, res.Id, budget)
+	got := e.forecast(t, res.Id)
 	if got.BudgetId != "" || len(got.Items) != res.PaymentsLeft {
 		t.Fatalf("forecast = %q with %d items, want the schedule's %d", got.BudgetId, len(got.Items), res.PaymentsLeft)
 	}
@@ -181,7 +145,7 @@ func TestGetDebtForecast_StartsAfterAFutureDatedPayment(t *testing.T) {
 	if details.Item.NextDueDate != "2026-04-01" {
 		t.Fatalf("next due = %s: the figures still count the April due as unpaid today", details.Item.NextDueDate)
 	}
-	got := e.forecast(t, res.Id, "")
+	got := e.forecast(t, res.Id)
 	first := got.Items[0]
 	if first.Date != "2026-05-01" {
 		t.Fatalf("first = %+v, want the May due: April is recorded", first)
@@ -200,13 +164,11 @@ func TestGetDebtForecast_StartsAfterAFutureDatedPayment(t *testing.T) {
 func TestGetDebtForecast_FollowsTheBudgetsPeriods(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
-	budget := fixture.NewID()
-	e.svc.SetBudgetPlans(&fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
-		budget: {Name: "Shifted", PeriodStartDay: 15, Plans: map[string]string{"2026-05-01": "3000"}},
-	}})
+	e.fakeBudget(e.budget).startDay = 15
+	e.plan(res.Id, map[string]string{"2026-05-01": "3000"})
 
-	got := e.forecast(t, res.Id, budget)
-	if got.BudgetName != "Shifted" {
+	got := e.forecast(t, res.Id)
+	if got.BudgetName != "Family" {
 		t.Fatalf("budget = %q", got.BudgetName)
 	}
 	byDate := map[string]string{}
@@ -223,15 +185,14 @@ func TestGetDebtForecast_FollowsTheBudgetsPeriods(t *testing.T) {
 func TestGetDebtForecast_SummaryMatchesTheDebtWithoutPlans(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
-	flat := fixture.NewID()
-	e.svc.SetBudgetPlans(&fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
-		flat: {Name: "Flat", PeriodStartDay: 15, Plans: map[string]string{"2026-06-01": "1000"}},
-	}})
-
-	for _, budget := range []string{"", flat} {
-		got := e.forecast(t, res.Id, budget)
+	for _, flat := range []bool{false, true} {
+		if flat {
+			e.fakeBudget(e.budget).startDay = 15
+			e.plan(res.Id, map[string]string{"2026-06-01": "1000"})
+		}
+		got := e.forecast(t, res.Id)
 		if got.PaymentsLeft != res.PaymentsLeft || got.PayoffDate != res.PayoffDate || got.OverpaymentLeft != res.OverpaymentLeft {
-			t.Fatalf("budget %q: summary = %d %q %q, want the debt's %d %q %q", budget, got.PaymentsLeft, got.PayoffDate, got.OverpaymentLeft,
+			t.Fatalf("flat plans %v: summary = %d %q %q, want the debt's %d %q %q", flat, got.PaymentsLeft, got.PayoffDate, got.OverpaymentLeft,
 				res.PaymentsLeft, res.PayoffDate, res.OverpaymentLeft)
 		}
 	}
@@ -245,12 +206,9 @@ func TestGetDebtForecast_SummaryMatchesTheDebtWithoutPlans(t *testing.T) {
 func TestGetDebtForecast_SummaryFollowsThePlans(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
-	budget := fixture.NewID()
-	e.svc.SetBudgetPlans(&fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
-		budget: {Name: "Family", PeriodStartDay: 1, Plans: map[string]string{"2026-05-01": "4000"}},
-	}})
+	e.plan(res.Id, map[string]string{"2026-05-01": "4000"})
 
-	got := e.forecast(t, res.Id, budget)
+	got := e.forecast(t, res.Id)
 	if got.PaymentsLeft >= res.PaymentsLeft {
 		t.Fatalf("payments left = %d, want fewer than the schedule's %d", got.PaymentsLeft, res.PaymentsLeft)
 	}
@@ -269,7 +227,7 @@ func TestGetDebtForecast_SummaryEmptyWhileNotSetUp(t *testing.T) {
 	e := newEnv(t)
 	res := e.createWithoutTerms(t, nil)
 
-	got := e.forecast(t, res.Id, "")
+	got := e.forecast(t, res.Id)
 	if got.PaymentsLeft != 0 || got.PayoffDate != "" || got.OverpaymentLeft != "" {
 		t.Fatalf("summary = %d %q %q, want none", got.PaymentsLeft, got.PayoffDate, got.OverpaymentLeft)
 	}
@@ -282,19 +240,16 @@ func TestGetDebtForecast_ExtraPlanned(t *testing.T) {
 	res := e.create(t, func(r *model.CreateDebtRequest) {
 		r.AmountBorrowed, r.Payment, r.LastPaymentDate = vo.NewFlexString("16500"), vo.NewFlexString("450"), "2030-03-01"
 	})
-	if got := e.forecast(t, res.Id, ""); got.ExtraPlanned != "0" {
+	if got := e.forecast(t, res.Id); got.ExtraPlanned != "0" {
 		t.Fatalf("extra planned with no plans = %q, want 0", got.ExtraPlanned)
 	}
-	budget := fixture.NewID()
-	e.svc.SetBudgetPlans(&fakeBudgetPlans{budgets: map[string]model.DebtBudgetPlans{
-		budget: {Name: "Family", PeriodStartDay: 1, Plans: map[string]string{"2026-05-01": "5000"}},
-	}})
-	if got := e.forecast(t, res.Id, budget); got.ExtraPlanned != "4550" {
+	e.plan(res.Id, map[string]string{"2026-05-01": "5000"})
+	if got := e.forecast(t, res.Id); got.ExtraPlanned != "4550" {
 		t.Fatalf("extra planned = %q, want 4550", got.ExtraPlanned)
 	}
 
-	bare := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.CategoryId = e.newCategory(e.user, true) })
-	if got := e.forecast(t, bare.Id, ""); got.ExtraPlanned != "" {
+	bare := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = e.newCategory(e.user, true) })
+	if got := e.forecast(t, bare.Id); got.ExtraPlanned != "" {
 		t.Fatalf("not set up extra planned = %q, want empty", got.ExtraPlanned)
 	}
 }

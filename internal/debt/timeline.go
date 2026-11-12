@@ -6,45 +6,29 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
-	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// Timelines projects each debt over the requested budget periods, with the plans as
-// extra payments. Unknown debts and debts not set up are left out of the result. It writes
-// nothing: the caller has already run Sync, and splits not stored yet are
-// computed in memory.
+// Timelines projects each debt of the scope's budget over the requested
+// budget periods, with the plans as extra payments. Debts of other budgets
+// and debts not set up are left out of the result. It writes nothing: the
+// caller has already run Sync, and splits not stored yet are computed in
+// memory.
 func (s *Service) Timelines(ctx context.Context, req model.DebtTimelineRequest) (map[string]model.DebtTimeline, error) {
 	today := req.Today
 	if today.IsZero() {
 		today = s.today(ctx)
 	}
 	out := make(map[string]model.DebtTimeline, len(req.DebtIDs))
-	byCategory := map[vo.Id][]*debtState{}
+	if len(req.DebtIDs) == 0 {
+		return out, nil
+	}
+	states, err := s.readStates(ctx, req.Scope)
+	if err != nil {
+		return nil, err
+	}
 	for _, raw := range req.DebtIDs {
-		id, err := vo.ParseId(raw)
-		if err != nil {
-			return nil, err
-		}
-		d, err := s.repo.GetByID(ctx, id)
-		if err != nil {
-			if isNotFound(err) {
-				continue
-			}
-			return nil, err
-		}
-		states, ok := byCategory[d.CategoryID]
-		if !ok {
-			debts, lerr := s.repo.ListByCategory(ctx, d.CategoryID)
-			if lerr != nil {
-				return nil, lerr
-			}
-			if states, err = s.computeDebts(ctx, d.CategoryID, debts, false); err != nil {
-				return nil, err
-			}
-			byCategory[d.CategoryID] = states
-		}
 		for _, st := range states {
-			if st.debt.ID.Equal(id) && st.debt.IsSetUp() {
+			if st.debt.ID.String() == raw && st.debt.IsSetUp() {
 				out[raw] = timelineOf(st, today, req.Months, req.Plans[raw], req.PeriodStartDay)
 			}
 		}

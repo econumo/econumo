@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -22,37 +23,24 @@ import (
 type (
 	debtRow              = sqlitegen.Debt
 	upsertParams         = sqlitegen.UpsertDebtParams
+	ruleParams           = sqlitegen.InsertDebtRuleParams
 	snapshotParams       = sqlitegen.InsertDebtSnapshotParams
 	updateSnapshotParams = sqlitegen.UpdateDebtSnapshotParams
 	splitParams          = sqlitegen.InsertDebtSplitParams
-	candidateRow         = sqlitegen.CandidateDebtTransactionsRow
-	reassignCatParam     = sqlitegen.ReassignDebtCategoryParams
-	reassignPayParam     = sqlitegen.ReassignDebtPayeeParams
-	reassignTagParam     = sqlitegen.ReassignDebtTagParams
-	reassignLblParam     = sqlitegen.ReassignDebtLabelParams
-	txLabelRow           = sqlitegen.TransactionsLabel
 )
 
 type querier interface {
-	LockOwner(ctx context.Context, db backend.DBTX, ownerID string) error
+	LockBudget(ctx context.Context, db backend.DBTX, budgetID string) error
 	GetDebtByID(ctx context.Context, db backend.DBTX, id string) (debtRow, error)
-	ListDebtsByCategory(ctx context.Context, db backend.DBTX, categoryID string) ([]debtRow, error)
+	ListDebtsByBudget(ctx context.Context, db backend.DBTX, budgetID string) ([]debtRow, error)
 	UpsertDebt(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteDebt(ctx context.Context, db backend.DBTX, id string) error
+	DeleteDebtRules(ctx context.Context, db backend.DBTX, debtID string) error
+	InsertDebtRule(ctx context.Context, db backend.DBTX, p ruleParams) error
 	InsertDebtSnapshot(ctx context.Context, db backend.DBTX, p snapshotParams) error
 	UpdateDebtSnapshot(ctx context.Context, db backend.DBTX, p updateSnapshotParams) error
 	DeleteDebtSnapshot(ctx context.Context, db backend.DBTX, id string) error
 	InsertDebtSplit(ctx context.Context, db backend.DBTX, p splitParams) error
-	CandidateDebtTransactions(ctx context.Context, db backend.DBTX, categoryID *string) ([]candidateRow, error)
-	DebtUsesCategory(ctx context.Context, db backend.DBTX, id string) (bool, error)
-	DebtUsesPayee(ctx context.Context, db backend.DBTX, id *string) (bool, error)
-	DebtUsesTag(ctx context.Context, db backend.DBTX, id *string) (bool, error)
-	DebtUsesLabel(ctx context.Context, db backend.DBTX, id *string) (bool, error)
-	ListDebtCandidateLabels(ctx context.Context, db backend.DBTX, categoryID *string) ([]txLabelRow, error)
-	ReassignDebtCategory(ctx context.Context, db backend.DBTX, p reassignCatParam) error
-	ReassignDebtPayee(ctx context.Context, db backend.DBTX, p reassignPayParam) error
-	ReassignDebtTag(ctx context.Context, db backend.DBTX, p reassignTagParam) error
-	ReassignDebtLabel(ctx context.Context, db backend.DBTX, p reassignLblParam) error
 }
 
 type Repo struct {
@@ -86,8 +74,28 @@ func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
 
-func (r *Repo) LockOwner(ctx context.Context, ownerID vo.Id) error {
-	return r.q.LockOwner(ctx, r.db(ctx), ownerID.String())
+func (r *Repo) LockBudget(ctx context.Context, budgetID vo.Id) error {
+	return r.q.LockBudget(ctx, r.db(ctx), budgetID.String())
+}
+
+// LockRuleCategories: SQLite has no row-level lock modes; its single writer
+// already serializes transactions.
+func (r *Repo) LockRuleCategories(ctx context.Context, categoryIDs []vo.Id) error {
+	if r.driver != "postgresql" || len(categoryIDs) == 0 {
+		return nil
+	}
+	ids := slices.Clone(categoryIDs)
+	slices.SortFunc(ids, func(a, b vo.Id) int { return strings.Compare(a.String(), b.String()) })
+	ids = slices.CompactFunc(ids, func(a, b vo.Id) bool { return a.Equal(b) })
+	query := "SELECT id FROM categories WHERE id IN (" + placeholders(r.driver, len(ids)) + ") ORDER BY id FOR KEY SHARE"
+	rows, err := r.db(ctx).QueryContext(ctx, query, idArgs(ids)...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+	}
+	return rows.Err()
 }
 
 func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Debt, error) {
@@ -98,28 +106,29 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Debt, error) {
 		}
 		return nil, err
 	}
-	return hydrate(row)
-}
-
-func (r *Repo) ListByCategory(ctx context.Context, categoryID vo.Id) ([]*model.Debt, error) {
-	rows, err := r.q.ListDebtsByCategory(ctx, r.db(ctx), categoryID.String())
+	out, err := r.hydrateAll(ctx, []debtRow{row})
 	if err != nil {
 		return nil, err
 	}
-	return hydrateAll(rows)
+	return out[0], nil
 }
 
-// Save: the caller runs this inside TxManager.WithTx.
+func (r *Repo) ListByBudget(ctx context.Context, budgetID vo.Id) ([]*model.Debt, error) {
+	rows, err := r.q.ListDebtsByBudget(ctx, r.db(ctx), budgetID.String())
+	if err != nil {
+		return nil, err
+	}
+	return r.hydrateAll(ctx, rows)
+}
+
+// Save: the caller runs this inside TxManager.WithTx, so the rules are
+// replaced atomically with the row.
 func (r *Repo) Save(ctx context.Context, d *model.Debt) error {
 	p := upsertParams{
 		ID:         d.ID.String(),
-		UserID:     d.OwnerID.String(),
+		BudgetID:   d.BudgetID.String(),
 		Name:       d.Name,
 		CurrencyID: d.CurrencyID.String(),
-		CategoryID: d.CategoryID.String(),
-		PayeeID:    idPtr(d.PayeeID),
-		TagID:      idPtr(d.TagID),
-		LabelID:    idPtr(d.LabelID),
 		Payment:    d.Payment.String(),
 		Schedule:   string(d.Schedule),
 		CreatedDay: dateText(d.CreatedDay),
@@ -138,7 +147,22 @@ func (r *Repo) Save(ctx context.Context, d *model.Debt) error {
 		borrowed := d.AmountBorrowed.String()
 		p.AmountBorrowed = &borrowed
 	}
-	return r.q.UpsertDebt(ctx, r.db(ctx), p)
+	if err := r.q.UpsertDebt(ctx, r.db(ctx), p); err != nil {
+		return err
+	}
+	if err := r.q.DeleteDebtRules(ctx, r.db(ctx), d.ID.String()); err != nil {
+		return err
+	}
+	for _, rule := range d.Rules {
+		err := r.q.InsertDebtRule(ctx, r.db(ctx), ruleParams{
+			ID: rule.ID.String(), DebtID: d.ID.String(), CategoryID: rule.CategoryID.String(),
+			PayeeID: idPtr(rule.PayeeID), TagID: idPtr(rule.TagID), LabelID: idPtr(rule.LabelID), CreatedAt: rule.CreatedAt,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
@@ -181,131 +205,108 @@ func (r *Repo) InsertSplit(ctx context.Context, s model.DebtSplit) error {
 	})
 }
 
-func (r *Repo) CandidateTransactions(ctx context.Context, categoryID vo.Id) ([]debt.CandidateTx, error) {
-	c := categoryID.String()
-	rows, err := r.q.CandidateDebtTransactions(ctx, r.db(ctx), &c)
-	if err != nil {
-		return nil, err
-	}
-	labelRows, err := r.q.ListDebtCandidateLabels(ctx, r.db(ctx), &c)
-	if err != nil {
-		return nil, err
-	}
-	labels := make(map[string][]vo.Id, len(labelRows))
-	for _, l := range labelRows {
-		lid, err := vo.ParseId(l.LabelID)
-		if err != nil {
-			return nil, err
-		}
-		labels[l.TransactionID] = append(labels[l.TransactionID], lid)
-	}
-	out := make([]debt.CandidateTx, 0, len(rows))
-	for _, row := range rows {
-		id, err := vo.ParseId(row.ID)
-		if err != nil {
-			return nil, err
-		}
-		cur, err := vo.ParseId(row.CurrencyID)
-		if err != nil {
-			return nil, err
-		}
-		payee, err := parseIdPtr(row.PayeeID)
-		if err != nil {
-			return nil, err
-		}
-		tag, err := parseIdPtr(row.TagID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, debt.CandidateTx{ID: id, SpentAt: row.SpentAt, Amount: vo.NewDecimal(row.Amount),
-			CurrencyID: cur, PayeeID: payee, TagID: tag, LabelIDs: labels[row.ID]})
-	}
-	return out, nil
-}
-
-func (r *Repo) UsesCategory(ctx context.Context, id vo.Id) (bool, error) {
-	return r.q.DebtUsesCategory(ctx, r.db(ctx), id.String())
-}
-
-func (r *Repo) UsesPayee(ctx context.Context, id vo.Id) (bool, error) {
-	s := id.String()
-	return r.q.DebtUsesPayee(ctx, r.db(ctx), &s)
-}
-
-func (r *Repo) UsesTag(ctx context.Context, id vo.Id) (bool, error) {
-	s := id.String()
-	return r.q.DebtUsesTag(ctx, r.db(ctx), &s)
-}
-
-func (r *Repo) UsesLabel(ctx context.Context, id vo.Id) (bool, error) {
-	s := id.String()
-	return r.q.DebtUsesLabel(ctx, r.db(ctx), &s)
-}
-
-func (r *Repo) ReassignCategory(ctx context.Context, oldID, newID vo.Id) error {
-	return r.q.ReassignDebtCategory(ctx, r.db(ctx), reassignCatParam{CategoryID: newID.String(), CategoryID_2: oldID.String()})
-}
-
-func (r *Repo) ReassignPayee(ctx context.Context, oldID, newID vo.Id) error {
-	n, o := newID.String(), oldID.String()
-	return r.q.ReassignDebtPayee(ctx, r.db(ctx), reassignPayParam{PayeeID: &n, PayeeID_2: &o})
-}
-
-func (r *Repo) ReassignTag(ctx context.Context, oldID, newID vo.Id) error {
-	n, o := newID.String(), oldID.String()
-	return r.q.ReassignDebtTag(ctx, r.db(ctx), reassignTagParam{TagID: &n, TagID_2: &o})
-}
-
-func (r *Repo) ReassignLabel(ctx context.Context, oldID, newID vo.Id) error {
-	n, o := newID.String(), oldID.String()
-	return r.q.ReassignDebtLabel(ctx, r.db(ctx), reassignLblParam{LabelID: &n, LabelID_2: &o})
-}
-
-// ListByClassification returns the debts keyed on a payee, a tag or a label.
-func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) ([]*model.Debt, error) {
-	var column string
-	switch kind {
-	case "payee":
-		column = "payee_id"
-	case "tag":
-		column = "tag_id"
-	case "label":
-		column = "label_id"
-	default:
-		return nil, fmt.Errorf("debtrepo: unknown classification kind %q", kind)
-	}
-	query := "SELECT " + debtCols + " FROM debts WHERE " + column + " = " + placeholders(r.driver, 1) + " ORDER BY created_at, id"
-	rows, err := r.db(ctx).QueryContext(ctx, query, id.String())
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var scanned []debtRow
-	for rows.Next() {
-		var row debtRow
-		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID, &row.LabelID,
-			&row.StartDate, &row.AmountBorrowed, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
-			&row.CreatedDay, &row.CreatedAt, &row.UpdatedAt); err != nil {
-			return nil, err
-		}
-		scanned = append(scanned, row)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return hydrateAll(scanned)
-}
-
-const debtCols = "id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at"
-
 // The id-list reads below are hand-built (variadic IN); only the placeholders
 // differ per engine.
-func (r *Repo) ListByOwners(ctx context.Context, ownerIDs []vo.Id) ([]*model.Debt, error) {
-	if len(ownerIDs) == 0 {
+
+func (r *Repo) CandidateTransactions(ctx context.Context, categoryIDs, accountIDs []vo.Id) ([]debt.CandidateTx, error) {
+	if len(categoryIDs) == 0 || len(accountIDs) == 0 {
 		return nil, nil
 	}
-	query := "SELECT " + debtCols + " FROM debts WHERE user_id IN (" + placeholders(r.driver, len(ownerIDs)) + ") ORDER BY created_at, id"
-	rows, err := r.db(ctx).QueryContext(ctx, query, idArgs(ownerIDs)...)
+	where := " WHERE t.type = 0 AND t.category_id IN (" + placeholders(r.driver, len(categoryIDs)) +
+		") AND t.account_id IN (" + placeholdersFrom(r.driver, len(categoryIDs)+1, len(accountIDs)) + ")"
+	args := append(idArgs(categoryIDs), idArgs(accountIDs)...)
+	labels, err := r.candidateLabels(ctx, where, args)
+	if err != nil {
+		return nil, err
+	}
+	query := "SELECT t.id, t.spent_at, t.amount, a.currency_id, t.category_id, t.payee_id, t.tag_id FROM transactions t JOIN accounts a ON a.id = t.account_id" +
+		where + " ORDER BY t.spent_at, t.id"
+	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []debt.CandidateTx
+	for rows.Next() {
+		var id, amount, currency, category string
+		var payee, tag *string
+		var spentAt time.Time
+		if err := rows.Scan(&id, &spentAt, &amount, &currency, &category, &payee, &tag); err != nil {
+			return nil, err
+		}
+		c := debt.CandidateTx{SpentAt: spentAt, Amount: vo.NewDecimal(amount), LabelIDs: labels[id]}
+		if c.ID, err = vo.ParseId(id); err != nil {
+			return nil, err
+		}
+		if c.CurrencyID, err = vo.ParseId(currency); err != nil {
+			return nil, err
+		}
+		if c.CategoryID, err = vo.ParseId(category); err != nil {
+			return nil, err
+		}
+		if c.PayeeID, err = parseIdPtr(payee); err != nil {
+			return nil, err
+		}
+		if c.TagID, err = parseIdPtr(tag); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// candidateLabels reads the labels of the expenses CandidateTransactions
+// returns, in one query.
+func (r *Repo) candidateLabels(ctx context.Context, where string, args []any) (map[string][]vo.Id, error) {
+	query := "SELECT tl.transaction_id, tl.label_id FROM transactions_labels tl JOIN transactions t ON t.id = tl.transaction_id" +
+		where + " ORDER BY tl.transaction_id, tl.label_id"
+	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string][]vo.Id{}
+	for rows.Next() {
+		var txID, labelID string
+		if err := rows.Scan(&txID, &labelID); err != nil {
+			return nil, err
+		}
+		lid, err := vo.ParseId(labelID)
+		if err != nil {
+			return nil, err
+		}
+		out[txID] = append(out[txID], lid)
+	}
+	return out, rows.Err()
+}
+
+var classificationColumns = map[string]string{
+	"category": "category_id",
+	"payee":    "payee_id",
+	"tag":      "tag_id",
+	"label":    "label_id",
+}
+
+func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) ([]*model.Debt, error) {
+	column, ok := classificationColumns[kind]
+	if !ok {
+		return nil, fmt.Errorf("debtrepo: unknown classification kind %q", kind)
+	}
+	return r.listDebts(ctx, " WHERE id IN (SELECT debt_id FROM debts_rules WHERE "+column+" = "+placeholder(r.driver, 1)+")",
+		id.String())
+}
+
+func (r *Repo) ListByBudgets(ctx context.Context, budgetIDs []vo.Id) ([]*model.Debt, error) {
+	if len(budgetIDs) == 0 {
+		return nil, nil
+	}
+	return r.listDebts(ctx, " WHERE budget_id IN ("+placeholders(r.driver, len(budgetIDs))+")", idArgs(budgetIDs)...)
+}
+
+const debtCols = "id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at"
+
+func (r *Repo) listDebts(ctx context.Context, where string, args ...any) ([]*model.Debt, error) {
+	rows, err := r.db(ctx).QueryContext(ctx, "SELECT "+debtCols+" FROM debts"+where+" ORDER BY created_at, id", args...)
 	if err != nil {
 		return nil, err
 	}
@@ -313,9 +314,8 @@ func (r *Repo) ListByOwners(ctx context.Context, ownerIDs []vo.Id) ([]*model.Deb
 	var scanned []debtRow
 	for rows.Next() {
 		var row debtRow
-		if err := rows.Scan(&row.ID, &row.UserID, &row.Name, &row.CurrencyID, &row.CategoryID, &row.PayeeID, &row.TagID, &row.LabelID,
-			&row.StartDate, &row.AmountBorrowed, &row.AsOf, &row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate,
-			&row.CreatedDay, &row.CreatedAt, &row.UpdatedAt); err != nil {
+		if err := rows.Scan(&row.ID, &row.BudgetID, &row.Name, &row.CurrencyID, &row.StartDate, &row.AmountBorrowed, &row.AsOf,
+			&row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate, &row.CreatedDay, &row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
 		scanned = append(scanned, row)
@@ -323,7 +323,52 @@ func (r *Repo) ListByOwners(ctx context.Context, ownerIDs []vo.Id) ([]*model.Deb
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return hydrateAll(scanned)
+	return r.hydrateAll(ctx, scanned)
+}
+
+// rulesOf reads the rules of the debts, each debt's in created_at, id order.
+func (r *Repo) rulesOf(ctx context.Context, debtIDs []vo.Id) (map[vo.Id][]model.DebtRule, error) {
+	out := map[vo.Id][]model.DebtRule{}
+	if len(debtIDs) == 0 {
+		return out, nil
+	}
+	query := "SELECT id, debt_id, category_id, payee_id, tag_id, label_id, created_at FROM debts_rules WHERE debt_id IN (" +
+		placeholders(r.driver, len(debtIDs)) + ") ORDER BY debt_id, created_at, id"
+	rows, err := r.db(ctx).QueryContext(ctx, query, idArgs(debtIDs)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, debtID, category string
+		var payee, tag, label *string
+		var created time.Time
+		if err := rows.Scan(&id, &debtID, &category, &payee, &tag, &label, &created); err != nil {
+			return nil, err
+		}
+		rule := model.DebtRule{CreatedAt: created}
+		var did vo.Id
+		if rule.ID, err = vo.ParseId(id); err != nil {
+			return nil, err
+		}
+		if did, err = vo.ParseId(debtID); err != nil {
+			return nil, err
+		}
+		if rule.CategoryID, err = vo.ParseId(category); err != nil {
+			return nil, err
+		}
+		if rule.PayeeID, err = parseIdPtr(payee); err != nil {
+			return nil, err
+		}
+		if rule.TagID, err = parseIdPtr(tag); err != nil {
+			return nil, err
+		}
+		if rule.LabelID, err = parseIdPtr(label); err != nil {
+			return nil, err
+		}
+		out[did] = append(out[did], rule)
+	}
+	return out, rows.Err()
 }
 
 func (r *Repo) Snapshots(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtSnapshot, error) {
@@ -399,14 +444,23 @@ func (r *Repo) DeleteSplits(ctx context.Context, debtID vo.Id, transactionIDs []
 	return err
 }
 
-func hydrateAll(rows []debtRow) ([]*model.Debt, error) {
+func (r *Repo) hydrateAll(ctx context.Context, rows []debtRow) ([]*model.Debt, error) {
 	out := make([]*model.Debt, 0, len(rows))
+	ids := make([]vo.Id, 0, len(rows))
 	for _, row := range rows {
 		d, err := hydrate(row)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, d)
+		ids = append(ids, d.ID)
+	}
+	rules, err := r.rulesOf(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range out {
+		d.Rules = rules[d.ID]
 	}
 	return out, nil
 }
@@ -416,27 +470,11 @@ func hydrate(row debtRow) (*model.Debt, error) {
 	if err != nil {
 		return nil, err
 	}
-	owner, err := vo.ParseId(row.UserID)
+	budget, err := vo.ParseId(row.BudgetID)
 	if err != nil {
 		return nil, err
 	}
 	currency, err := vo.ParseId(row.CurrencyID)
-	if err != nil {
-		return nil, err
-	}
-	category, err := vo.ParseId(row.CategoryID)
-	if err != nil {
-		return nil, err
-	}
-	payee, err := parseIdPtr(row.PayeeID)
-	if err != nil {
-		return nil, err
-	}
-	tag, err := parseIdPtr(row.TagID)
-	if err != nil {
-		return nil, err
-	}
-	label, err := parseIdPtr(row.LabelID)
 	if err != nil {
 		return nil, err
 	}
@@ -446,8 +484,7 @@ func hydrate(row debtRow) (*model.Debt, error) {
 		start = &s
 	}
 	d := &model.Debt{
-		ID: id, OwnerID: owner, CurrencyID: currency, CategoryID: category, Name: row.Name,
-		PayeeID: payee, TagID: tag, LabelID: label, StartDate: start,
+		ID: id, BudgetID: budget, CurrencyID: currency, Name: row.Name, StartDate: start,
 		Payment: vo.NewDecimal(row.Payment), Schedule: model.RecurringSchedule(row.Schedule),
 		CreatedDay: day(row.CreatedDay), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}

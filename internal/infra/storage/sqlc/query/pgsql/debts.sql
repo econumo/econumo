@@ -2,28 +2,25 @@
 -- the generated parameter types match the sqlite variants.
 
 -- name: GetDebtByID :one
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE id = $1;
 
--- name: ListDebtsByCategory :many
-SELECT id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+-- name: ListDebtsByBudget :many
+SELECT id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
-WHERE category_id = $1
+WHERE budget_id = $1
 ORDER BY created_at, id;
 
 -- name: UpsertDebt :exec
-INSERT INTO debts (id, user_id, name, currency_id, category_id, payee_id, tag_id, label_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
-VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.arg(currency_id), sqlc.arg(category_id), sqlc.arg(payee_id), sqlc.arg(tag_id), sqlc.narg(label_id),
+-- The budget is written once, at insert: a debt never moves to another budget.
+INSERT INTO debts (id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(budget_id), sqlc.arg(name), sqlc.arg(currency_id),
     sqlc.narg(start_date)::text::date, sqlc.narg(amount_borrowed), sqlc.narg(as_of)::text::date, sqlc.narg(balance), sqlc.arg(payment), sqlc.arg(schedule),
     sqlc.narg(last_payment_date)::text::date, sqlc.arg(created_day)::text::date, sqlc.arg(created_at), sqlc.arg(updated_at))
 ON CONFLICT (id) DO UPDATE SET
     name              = excluded.name,
     currency_id       = excluded.currency_id,
-    category_id       = excluded.category_id,
-    payee_id          = excluded.payee_id,
-    tag_id            = excluded.tag_id,
-    label_id          = excluded.label_id,
     start_date        = excluded.start_date,
     amount_borrowed   = excluded.amount_borrowed,
     as_of             = excluded.as_of,
@@ -35,6 +32,13 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- name: DeleteDebt :exec
 DELETE FROM debts WHERE id = $1;
+
+-- name: DeleteDebtRules :exec
+DELETE FROM debts_rules WHERE debt_id = $1;
+
+-- name: InsertDebtRule :exec
+INSERT INTO debts_rules (id, debt_id, category_id, payee_id, tag_id, label_id, created_at)
+VALUES (sqlc.arg(id), sqlc.arg(debt_id), sqlc.arg(category_id), sqlc.narg(payee_id), sqlc.narg(tag_id), sqlc.narg(label_id), sqlc.arg(created_at));
 
 -- name: InsertDebtSnapshot :exec
 INSERT INTO debts_snapshots (id, debt_id, as_of, balance, payment, schedule, last_payment_date, created_at)
@@ -59,47 +63,10 @@ DELETE FROM debts_snapshots WHERE id = $1;
 INSERT INTO debts_payments (debt_id, transaction_id, interest)
 SELECT CAST(sqlc.arg(debt_id) AS UUID), t.id, CAST(sqlc.arg(interest) AS NUMERIC(19,8))
 FROM transactions t WHERE t.id = sqlc.arg(transaction_id)
-ON CONFLICT (transaction_id) DO UPDATE SET debt_id = excluded.debt_id, interest = excluded.interest;
+ON CONFLICT (debt_id, transaction_id) DO UPDATE SET interest = excluded.interest;
 
--- name: CandidateDebtTransactions :many
--- Expenses only (type 0); the currency is the account's.
-SELECT t.id, t.spent_at, t.amount, a.currency_id, t.payee_id, t.tag_id
-FROM transactions t
-JOIN accounts a ON a.id = t.account_id
-WHERE t.category_id = $1 AND t.type = 0
-ORDER BY t.spent_at, t.id;
+-- name: LockDebtBudget :one
+-- NO KEY UPDATE leaves the KEY SHARE of child inserts (budget rows, debts)
+-- unblocked.
+SELECT id FROM budgets WHERE id = $1 FOR NO KEY UPDATE;
 
--- name: ListDebtCandidateLabels :many
--- The labels of the expenses CandidateDebtTransactions returns, in one read.
-SELECT tl.transaction_id, tl.label_id
-FROM transactions_labels tl
-JOIN transactions t ON t.id = tl.transaction_id
-WHERE t.category_id = $1 AND t.type = 0
-ORDER BY tl.transaction_id, tl.label_id;
-
--- name: DebtUsesCategory :one
-SELECT EXISTS (SELECT 1 FROM debts WHERE category_id = $1);
-
--- name: DebtUsesPayee :one
-SELECT EXISTS (SELECT 1 FROM debts WHERE payee_id = $1);
-
--- name: DebtUsesTag :one
-SELECT EXISTS (SELECT 1 FROM debts WHERE tag_id = $1);
-
--- name: DebtUsesLabel :one
-SELECT EXISTS (SELECT 1 FROM debts WHERE label_id = $1);
-
--- name: ReassignDebtCategory :exec
-UPDATE debts SET category_id = $1 WHERE category_id = $2;
-
--- name: ReassignDebtPayee :exec
-UPDATE debts SET payee_id = $1 WHERE payee_id = $2;
-
--- name: ReassignDebtTag :exec
-UPDATE debts SET tag_id = $1 WHERE tag_id = $2;
-
--- name: ReassignDebtLabel :exec
-UPDATE debts SET label_id = $1 WHERE label_id = $2;
-
--- name: LockDebtOwner :one
-SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE;

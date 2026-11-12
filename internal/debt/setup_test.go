@@ -24,7 +24,7 @@ func (e *env) createWithoutTerms(t *testing.T, mod func(*model.CreateDebtRequest
 
 func (e *env) viewOf(t *testing.T, id string) model.DebtView {
 	t.Helper()
-	views, err := e.svc.Views(context.Background(), []vo.Id{e.uid()})
+	views, err := e.svc.Views(context.Background(), e.scope(e.budget))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,14 +122,14 @@ func TestUpdateDebt_WithoutTermsKeepsNewerTerms(t *testing.T) {
 		func(r *model.UpdateDebtRequest) { r.Payment, r.Schedule = vo.NewFlexString("900.00"), "monthly" },
 	} {
 		stale := e.updateReq(res)
-		stale.Name, stale.PayeeId = "Renamed", &payee
+		stale.Name, stale.Rules = "Renamed", []model.DebtRuleRequest{{CategoryId: e.category, PayeeId: &payee}}
 		stale.AmountBorrowed, stale.LastPaymentDate = vo.FlexString{}, ""
 		mod(&stale)
 		got, err := e.svc.UpdateDebt(context.Background(), e.uid(), stale)
 		if err != nil {
 			t.Fatalf("case %d: %v", i, err)
 		}
-		if got.Name != "Renamed" || got.PayeeId == nil || *got.PayeeId != payee || got.Balance != "8000" ||
+		if got.Name != "Renamed" || got.Rules[0].PayeeId == nil || *got.Rules[0].PayeeId != payee || got.Balance != "8000" ||
 			got.Payment != "900" || got.Schedule != "monthly" || got.LastPaymentDate != "2027-02-01" {
 			t.Fatalf("case %d: result = %+v, want the newer terms kept", i, got)
 		}
@@ -208,7 +208,7 @@ func TestFinishSetup_PlanningStartsAtTheLoanStart(t *testing.T) {
 	}
 
 	e.clock.now = ymd(2026, 11, 5)
-	e.budget.transfers = nil
+	e.elements.transfers = nil
 	req := e.updateReq(res)
 	req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("8000"), ptr("2026-07-01"), "2027-08-01"
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
@@ -219,21 +219,22 @@ func TestFinishSetup_PlanningStartsAtTheLoanStart(t *testing.T) {
 		!v.LastDay.Equal(ymd(2027, 8, 1)) || !v.EndMonth.Equal(ymd(2027, 8, 1)) {
 		t.Fatalf("view after setup = %+v", v)
 	}
-	head := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
+	head := transferCall{budget: e.budget, from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
 		currency: res.CurrencyId, sum: true, first: "2026-07-01", before: "2026-09-15"}
-	if !slices.Contains(e.budget.transfers, head) {
-		t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, head)
+	if !slices.Contains(e.elements.transfers, head) {
+		t.Fatalf("transfers = %+v, want %+v", e.elements.transfers, head)
 	}
 }
 
 func TestViews_NotSetUpStartsAtAnEarlierPayment(t *testing.T) {
 	e := newEnv(t)
 	label := e.newLabel()
-	res := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.LabelId = &label })
+	res := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &label })
 	e.addLabel(t, e.expense(t, e.account, ymd(2026, 1, 20), "1000", ""), label)
 
 	v := e.viewOf(t, res.Id)
-	if !v.FirstDay.Equal(ymd(2026, 1, 20)) || v.LabelID == nil || *v.LabelID != label || !v.CreatedAt.Equal(march10) || v.PaidOff {
+	if !v.FirstDay.Equal(ymd(2026, 1, 20)) || len(v.Rules) != 1 || v.Rules[0].LabelID == nil || *v.Rules[0].LabelID != label ||
+		!v.CreatedAt.Equal(march10) || v.PaidOff || v.BudgetID != e.budget {
 		t.Fatalf("view = %+v", v)
 	}
 }
@@ -251,7 +252,7 @@ func TestMarkPaidOff_RefusedUntilSetUp(t *testing.T) {
 func TestTimelines_NotSetUpDebtIsLeftOut(t *testing.T) {
 	e := newEnv(t)
 	res := e.createWithoutTerms(t, nil)
-	got, err := e.svc.Timelines(context.Background(), model.DebtTimelineRequest{DebtIDs: []string{res.Id}, Months: []time.Time{ymd(2026, 3, 1)}})
+	got, err := e.svc.Timelines(context.Background(), model.DebtTimelineRequest{Scope: e.scope(e.budget), DebtIDs: []string{res.Id}, Months: []time.Time{ymd(2026, 3, 1)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,9 +264,9 @@ func TestTimelines_NotSetUpDebtIsLeftOut(t *testing.T) {
 func TestSync_SharedLabelPaymentGoesToOlderDebt(t *testing.T) {
 	e := newEnv(t)
 	car, student := e.newLabel(), e.newLabel()
-	older := e.create(t, func(r *model.CreateDebtRequest) { r.LabelId = &car })
+	older := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &car })
 	e.clock.now = e.clock.now.Add(time.Minute)
-	newer := e.create(t, func(r *model.CreateDebtRequest) { r.LabelId = &student })
+	newer := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &student })
 	e.clock.now = ymd(2026, 7, 1)
 
 	both := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
@@ -291,7 +292,7 @@ func TestSync_SharedLabelPaymentGoesToOlderDebt(t *testing.T) {
 func TestSync_LabelRemovedFromPaymentUnmatches(t *testing.T) {
 	e := newEnv(t)
 	label := e.newLabel()
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.LabelId = &label })
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &label })
 	e.clock.now = ymd(2026, 7, 1)
 	tx := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
 	e.addLabel(t, tx, label)
@@ -313,29 +314,33 @@ func TestReassignClassification_LabelFollowsTarget(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	src, dst, other := e.newLabel(), e.newLabel(), e.newLabel()
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.LabelId = &src })
-	e.create(t, func(r *model.CreateDebtRequest) { r.LabelId = &other })
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &src })
+	otherDebt := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &other })
 
-	used, err := e.svc.InUse(ctx, "label", vo.MustParseId(src))
-	if err != nil || !used {
-		t.Fatalf("InUse(label) = %v, %v", used, err)
-	}
 	if err := e.svc.ReassignClassification(ctx, "label", vo.MustParseId(src), vo.MustParseId(dst)); err != nil {
 		t.Fatal(err)
 	}
-	if d := e.debtOf(t, res.Id); d.LabelID == nil || d.LabelID.String() != dst {
-		t.Fatalf("label = %v, want %s", d.LabelID, dst)
+	if d := e.debtOf(t, res.Id); d.Rules[0].LabelID == nil || d.Rules[0].LabelID.String() != dst {
+		t.Fatalf("label = %v, want %s", d.Rules[0].LabelID, dst)
 	}
-	// merging into the other debt's label would leave two debts with the same key
-	err = e.svc.ReassignClassification(ctx, "label", vo.MustParseId(dst), vo.MustParseId(other))
-	requireCode(t, err, "debt.key_conflict")
+	// merging into the other debt's label leaves two debts with the same key
+	// and start date: never refused, the newer debt loses the rule
+	if err := e.svc.ReassignClassification(ctx, "label", vo.MustParseId(dst), vo.MustParseId(other)); err != nil {
+		t.Fatal(err)
+	}
+	if d := e.debtOf(t, res.Id); len(d.Rules) != 1 || d.Rules[0].LabelID.String() != other {
+		t.Fatalf("older debt rules = %+v", d.Rules)
+	}
+	if d := e.debtOf(t, otherDebt.Id); len(d.Rules) != 0 {
+		t.Fatalf("newer debt rules = %+v, want none", d.Rules)
+	}
 }
 
-// The creation day is the OWNER's, the same for every viewer: a debt created
-// on Oct 31 at 20:00 by an owner in New York (Nov 1 in UTC) plans from
-// October, also for a viewer in Sydney; one created on Nov 1 at 08:00 by an
-// owner in Sydney (Oct 31 in UTC) only from November, also for a viewer in New
-// York. An owner with no stored timezone has the UTC day.
+// The creation day is the CREATOR's, the same for every viewer: a debt
+// created on Oct 31 at 20:00 by a user in New York (Nov 1 in UTC) plans from
+// October, also for a viewer in Sydney; one created on Nov 1 at 08:00 by a
+// user in Sydney (Oct 31 in UTC) only from November, also for a viewer in New
+// York. A creator with no stored timezone has the UTC day.
 func TestPlanningStart_CreationDayInOwnersTimezone(t *testing.T) {
 	for _, c := range []struct {
 		name, ownerZone, viewerZone string
@@ -352,7 +357,7 @@ func TestPlanningStart_CreationDayInOwnersTimezone(t *testing.T) {
 				t.Fatal(err)
 			}
 			e := newEnv(t)
-			e.owners.zones[e.user] = c.ownerZone
+			e.users.zones[e.user] = c.ownerZone
 			e.clock.now = c.at
 			req := e.createReq()
 			withoutTerms(&req)
@@ -360,10 +365,10 @@ func TestPlanningStart_CreationDayInOwnersTimezone(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
+			want := transferCall{budget: e.budget, from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
 				currency: res.CurrencyId, sum: true, first: c.wantFirst.Format("2006-01-02"), last: ""}
-			if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
-				t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, want)
+			if len(e.elements.transfers) != 1 || e.elements.transfers[0] != want {
+				t.Fatalf("transfers = %+v, want %+v", e.elements.transfers, want)
 			}
 			stored, err := e.repo.GetByID(context.Background(), vo.MustParseId(res.Id))
 			if err != nil {
@@ -377,7 +382,7 @@ func TestPlanningStart_CreationDayInOwnersTimezone(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				views, err := e.svc.Views(reqctx.WithLocation(context.Background(), loc), []vo.Id{e.uid()})
+				views, err := e.svc.Views(reqctx.WithLocation(context.Background(), loc), e.scope(e.budget))
 				if err != nil || len(views) != 1 {
 					t.Fatalf("views = %+v, %v", views, err)
 				}
@@ -389,15 +394,15 @@ func TestPlanningStart_CreationDayInOwnersTimezone(t *testing.T) {
 	}
 }
 
-// The creation day is stored at creation: an owner who moves to another
+// The creation day is stored at creation: a creator who moves to another
 // timezone afterwards does not move the debt's first plannable month.
 func TestPlanningStart_OwnerTimezoneChangeKeepsTheCreationDay(t *testing.T) {
 	e := newEnv(t)
 	// 23:30 UTC on Oct 31 is Nov 1 in Berlin
 	e.clock.now = time.Date(2026, 10, 31, 23, 30, 0, 0, time.UTC)
 	res := e.createWithoutTerms(t, nil)
-	e.owners.zones[e.user] = "Europe/Berlin"
-	views, err := e.svc.Views(context.Background(), []vo.Id{e.uid()})
+	e.users.zones[e.user] = "Europe/Berlin"
+	views, err := e.svc.Views(context.Background(), e.scope(e.budget))
 	if err != nil || len(views) != 1 {
 		t.Fatalf("views = %+v, %v", views, err)
 	}
@@ -437,14 +442,14 @@ func TestUpdateDebt_StartMovesTheHeadBetweenCategoryAndDebt(t *testing.T) {
 				payee = &p
 			}
 			mod := func(r *model.CreateDebtRequest) {
-				r.PayeeId, r.LastPaymentDate = payee, "2027-07-01"
+				r.Rules[0].PayeeId, r.LastPaymentDate = payee, "2027-07-01"
 				if !c.setUp {
 					withoutTerms(r)
 				}
 			}
 			res := e.create(t, mod)
 			e.clock.now = ymd(2026, 7, 1)
-			e.budget.transfers = nil
+			e.elements.transfers = nil
 			req := e.updateReq(res)
 			start := c.start
 			req.StartDate = &start
@@ -454,14 +459,14 @@ func TestUpdateDebt_StartMovesTheHeadBetweenCategoryAndDebt(t *testing.T) {
 			var want []transferCall
 			switch c.want {
 			case back:
-				want = append(want, transferCall{from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory,
+				want = append(want, transferCall{budget: e.budget, from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory,
 					currency: res.CurrencyId, sum: true, before: c.start})
 			case toDebt:
-				want = append(want, transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
+				want = append(want, transferCall{budget: e.budget, from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
 					currency: res.CurrencyId, sum: true, first: c.start, before: "2026-03-10"})
 			}
-			if !slices.Equal(e.budget.transfers, want) {
-				t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, want)
+			if !slices.Equal(e.elements.transfers, want) {
+				t.Fatalf("transfers = %+v, want %+v", e.elements.transfers, want)
 			}
 		})
 	}
@@ -477,37 +482,37 @@ func TestFinishSetup_KeyChangeReturnsTheTailToTheFormerCategory(t *testing.T) {
 	}{
 		{"payee added", func(e *env, r *model.UpdateDebtRequest) string {
 			payee := e.newPayee()
-			r.PayeeId = &payee
+			r.Rules = []model.DebtRuleRequest{{CategoryId: e.category, PayeeId: &payee}}
 			return ""
 		}},
 		{"category changed", func(e *env, r *model.UpdateDebtRequest) string {
 			other := e.newCategory(e.user, true)
-			r.CategoryId = other
+			r.Rules = []model.DebtRuleRequest{rule(other)}
 			return other
 		}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			e := newEnv(t)
 			res := e.createWithoutTerms(t, nil)
-			if len(e.budget.transfers) != 1 {
-				t.Fatalf("transfers at creation = %+v", e.budget.transfers)
+			if len(e.elements.transfers) != 1 {
+				t.Fatalf("transfers at creation = %+v", e.elements.transfers)
 			}
-			first := e.budget.transfers[0].first
-			e.budget.transfers = nil
+			first := e.elements.transfers[0].first
+			e.elements.transfers = nil
 			req := e.updateReq(res)
 			req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("5800"), ptr("2026-03-10"), "2026-09-01"
 			newWhole := c.mod(e, &req)
 			if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 				t.Fatal(err)
 			}
-			want := []transferCall{{from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory,
+			want := []transferCall{{budget: e.budget, from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory,
 				currency: res.CurrencyId, sum: true, after: "2026-09-01"}}
 			if newWhole != "" {
-				want = append(want, transferCall{from: newWhole, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
+				want = append(want, transferCall{budget: e.budget, from: newWhole, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
 					currency: res.CurrencyId, sum: true, first: first, last: "2026-09-01"})
 			}
-			if !slices.Equal(e.budget.transfers, want) {
-				t.Fatalf("transfers = %+v, want %+v", e.budget.transfers, want)
+			if !slices.Equal(e.elements.transfers, want) {
+				t.Fatalf("transfers = %+v, want %+v", e.elements.transfers, want)
 			}
 		})
 	}
@@ -520,8 +525,8 @@ func TestFinishSetup_WholeDebtReturnsTheMonthsAfterItsEnd(t *testing.T) {
 	res := e.createWithoutTerms(t, nil)
 	payee := e.newPayee()
 	other := e.newCategory(e.user, true)
-	keyed := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.CategoryId, r.PayeeId = other, &payee })
-	e.budget.transfers, e.budget.calls = nil, nil
+	keyed := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId, r.Rules[0].PayeeId = other, &payee })
+	e.elements.transfers, e.elements.calls = nil, nil
 
 	var setUp *model.DebtResult
 	for _, r := range []*model.DebtResult{res, keyed} {
@@ -535,23 +540,40 @@ func TestFinishSetup_WholeDebtReturnsTheMonthsAfterItsEnd(t *testing.T) {
 			setUp = got
 		}
 	}
-	want := transferCall{from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory,
+	want := transferCall{budget: e.budget, from: res.Id, fromType: model.ElementDebt, to: e.category, toType: model.ElementCategory,
 		currency: res.CurrencyId, sum: true, after: "2026-09-01"}
-	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
-		t.Fatalf("transfers = %+v, want only %+v", e.budget.transfers, want)
+	if len(e.elements.transfers) != 1 || e.elements.transfers[0] != want {
+		t.Fatalf("transfers = %+v, want only %+v", e.elements.transfers, want)
 	}
-	if len(e.budget.calls) != 2 || e.budget.calls[0] != "lock" || e.budget.calls[1] != "transfer" {
-		t.Fatalf("budget calls = %v, want the rows locked before the transfer", e.budget.calls)
+	if len(e.elements.calls) != 2 || e.elements.calls[0] != "lock" || e.elements.calls[1] != "transfer" {
+		t.Fatalf("budget calls = %v, want the rows locked before the transfer", e.elements.calls)
 	}
 
 	// already set up: a new end moves nothing
-	e.budget.transfers = nil
+	e.elements.transfers = nil
 	req := e.updateReq(setUp)
 	req.LastPaymentDate = "2026-10-01"
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatal(err)
 	}
-	if len(e.budget.transfers) != 0 {
-		t.Fatalf("transfers = %+v, want none for a debt already set up", e.budget.transfers)
+	if len(e.elements.transfers) != 0 {
+		t.Fatalf("transfers = %+v, want none for a debt already set up", e.elements.transfers)
+	}
+}
+
+// The months after the end go back only to the category a debt covered
+// alone: a debt with several rules keeps them (they cannot be split back).
+func TestFinishSetup_TailGoesBackOnlyForASoleWholeRule(t *testing.T) {
+	e := newEnv(t)
+	b := e.newCategory(e.user, true)
+	res := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Rules = []model.DebtRuleRequest{rule(e.category), rule(b)} })
+	e.elements.transfers = nil
+	req := e.updateReq(res)
+	req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("5800"), ptr("2026-03-10"), "2026-09-01"
+	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
+		t.Fatal(err)
+	}
+	if len(e.elements.transfers) != 0 {
+		t.Fatalf("transfers = %+v, want none for a debt with two rules", e.elements.transfers)
 	}
 }

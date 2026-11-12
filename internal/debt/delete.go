@@ -8,34 +8,32 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// DeleteDebt hands a whole-category debt's plans and comments back to the
-// category; budget data that cannot go back (another currency, a month the
-// category already plans) and any other debt's budget data are dropped, after
-// the caller confirms.
+// DeleteDebt hands the plans and comments of a debt whose one rule is
+// whole-category back to that category; budget data that cannot go back
+// (another currency, a month the category already plans) and any other
+// debt's budget data are dropped, after the caller confirms: the plans of a
+// debt with several rules cannot be split back by category.
 func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.DeleteDebtRequest) (*model.DeleteDebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
-	var category vo.Id
+	var budgetID vo.Id
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.repo.LockOwner(ctx, userID); err != nil {
-			return err
-		}
-		d, err := s.ownedDebt(ctx, userID, id)
+		d, _, err := s.lockedDebt(ctx, userID, id)
 		if err != nil {
 			return err
 		}
-		category = d.CategoryID
+		budgetID = d.BudgetID
 		if err := s.lockRows(ctx, d.ID); err != nil {
 			return err
 		}
-		whole, err := s.wholeCategory(ctx, d)
+		budgetDebts, err := s.repo.ListByBudget(ctx, d.BudgetID)
 		if err != nil {
 			return err
 		}
-		if whole {
-			left, err := s.moveToCategory(ctx, d)
+		if category, ok := model.SoleWholeCategory(d, budgetDebts); ok {
+			left, err := s.moveToCategory(ctx, d, category)
 			if err != nil {
 				return err
 			}
@@ -51,7 +49,7 @@ func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 				return removalUnconfirmed()
 			}
 		}
-		// The rows go now, not on each budget's next structure sync: their
+		// The rows go now, not on the budget's next structure sync: their
 		// data is confirmed gone (or moved back) by this point.
 		if err := s.removeRows(ctx, d.ID); err != nil {
 			return err
@@ -61,8 +59,8 @@ func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 	if err != nil {
 		return nil, err
 	}
-	// The debts left in the category may now cover the removed one's range.
-	if _, err := s.syncCategory(ctx, category); err != nil {
+	// The debts left in the budget may now cover the removed one's range.
+	if err := s.syncBudgetID(ctx, budgetID); err != nil {
 		return nil, err
 	}
 	return &model.DeleteDebtResult{}, nil

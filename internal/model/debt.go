@@ -10,12 +10,8 @@ import (
 )
 
 type Debt struct {
-	ID, OwnerID, CurrencyID, CategoryID vo.Id
-	BudgetID                            vo.Id
-	Name                                string
-	PayeeID                             *vo.Id
-	TagID                               *vo.Id
-	LabelID                             *vo.Id
+	ID, BudgetID, CurrencyID vo.Id
+	Name                     string
 	// Rules are ordered by CreatedAt, then ID; a payment counts when it
 	// matches any of them.
 	Rules []DebtRule
@@ -29,8 +25,8 @@ type Debt struct {
 	Current  *DebtTerms
 	Payment  vo.DecimalNumber
 	Schedule RecurringSchedule
-	// CreatedDay is the creation date in the owner's timezone, fixed at
-	// creation so a later timezone change cannot move the planning start.
+	// CreatedDay is the creation date in the creating user's timezone, fixed
+	// at creation so a later timezone change cannot move the planning start.
 	CreatedDay           time.Time
 	CreatedAt, UpdatedAt time.Time
 }
@@ -260,6 +256,36 @@ func coveredByAnother(rules []DebtRule, j int) bool {
 	return false
 }
 
+// DebtScope is what a budget counts debt payments on: its member accounts,
+// soft-deleted ones included.
+type DebtScope struct {
+	BudgetID   vo.Id
+	AccountIDs []vo.Id
+}
+
+// DebtBudget is a budget as the debt service sees it for one user.
+type DebtBudget struct {
+	ID, CurrencyID vo.Id
+	Name           string
+	PeriodStartDay int
+	// CurrencyIDs are the budget's own currency and its element rows'.
+	CurrencyIDs []vo.Id
+	IsArchived  bool
+	// CanPlan: the user is the owner, an admin or a user (not a guest).
+	CanPlan bool
+	// ParticipantIDs are the owner and the accepted non-guests, whose
+	// categories the budget shows.
+	ParticipantIDs []vo.Id
+	AccountIDs     []vo.Id
+}
+
+// DebtClassification is a category, payee, tag or label a debt rule names.
+type DebtClassification struct {
+	OwnerID    vo.Id
+	Name, Icon string
+	IsExpense  bool
+}
+
 type DebtTerms struct {
 	AsOf            time.Time
 	Balance         vo.DecimalNumber
@@ -306,15 +332,13 @@ func (r DebtRuleView) matches(categoryID, payeeID, tagID *string, labelIDs []str
 // DebtView is the matching rules and range shared by the debt service, the
 // budget SQL glue and the projected read.
 type DebtView struct {
-	ID, OwnerID, CurrencyID, CategoryID string
-	BudgetID                            string
-	Rules                               []DebtRuleView
-	Name, Icon                          string
-	PayeeID, TagID, LabelID             *string
-	CreatedAt                           time.Time
-	SetUp                               bool
-	From                                *time.Time // inclusive; nil = unbounded
-	Until                               *time.Time // exclusive (DebtUntil); nil = unbounded
+	ID, BudgetID, CurrencyID string
+	Rules                    []DebtRuleView
+	Name, Icon               string
+	CreatedAt                time.Time
+	SetUp                    bool
+	From                     *time.Time // inclusive; nil = unbounded
+	Until                    *time.Time // exclusive (DebtUntil); nil = unbounded
 	// FirstDay and LastDay are the dates the planning bounds come from; a
 	// budget plans the debt in the periods holding them (PlanningBounds).
 	// StartMonth and EndMonth are their calendar months.
@@ -338,21 +362,22 @@ func (d DebtView) PlanningBounds(startDay int) (first, last time.Time) {
 }
 
 // ElementDataTransfer moves one budget row's plans and comments onto another
-// row in every budget where both are in CurrencyID.
+// row of BudgetID when both are in CurrencyID.
 type ElementDataTransfer struct {
+	BudgetID         vo.Id
 	FromID, ToID     vo.Id
 	FromType, ToType ElementType
 	CurrencyID       vo.Id
 	// SumOnClash adds a moved plan to the target's plan for that month;
 	// otherwise the target's wins and the moved one is dropped.
 	SumOnClash bool
-	// FirstDay and LastDay bound the data moved (zero = open): each budget
+	// FirstDay and LastDay bound the data moved (zero = open): the budget
 	// moves its periods from the one holding FirstDay to the one holding
 	// LastDay; data outside them stays on the source row.
 	FirstDay, LastDay time.Time
 	// AfterDay, when set, moves only the periods after the one holding it,
-	// up to LastDay. A day bound cannot say "the next period" for budgets
-	// whose periods start on different days.
+	// up to LastDay. A day bound cannot say "the next period" for a budget
+	// whose periods start on another day.
 	AfterDay time.Time
 	// BeforeDay, when set, moves only the periods before the one holding it.
 	BeforeDay time.Time

@@ -15,8 +15,6 @@ type Querier interface {
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
-	// Expenses only (type 0); the currency is the account's.
-	CandidateDebtTransactions(ctx context.Context, categoryID *string) ([]CandidateDebtTransactionsRow, error)
 	ClaimOAuthClient(ctx context.Context, arg ClaimOAuthClientParams) (int64, error)
 	// Single use: the DELETE is the read, so two concurrent exchanges of one code
 	// cannot both get a row.
@@ -43,10 +41,6 @@ type Querier interface {
 	CountLabelsByOwner(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
-	DebtUsesCategory(ctx context.Context, categoryID string) (int64, error)
-	DebtUsesLabel(ctx context.Context, labelID *string) (int64, error)
-	DebtUsesPayee(ctx context.Context, payeeID *string) (int64, error)
-	DebtUsesTag(ctx context.Context, tagID *string) (int64, error)
 	DeleteAccessToken(ctx context.Context, id string) error
 	DeleteAccountAccess(ctx context.Context, arg DeleteAccountAccessParams) error
 	DeleteAccountOptionForUser(ctx context.Context, arg DeleteAccountOptionForUserParams) error
@@ -71,6 +65,7 @@ type Querier interface {
 	DeleteDeadOAuthAccessTokens(ctx context.Context, arg DeleteDeadOAuthAccessTokensParams) (int64, error)
 	DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuthGrantsParams) (int64, error)
 	DeleteDebt(ctx context.Context, id string) error
+	DeleteDebtRules(ctx context.Context, debtID string) error
 	DeleteDebtSnapshot(ctx context.Context, id string) error
 	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
@@ -414,6 +409,7 @@ type Querier interface {
 	InsertCorrectionTransaction(ctx context.Context, arg InsertCorrectionTransactionParams) error
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
+	InsertDebtRule(ctx context.Context, arg InsertDebtRuleParams) error
 	InsertDebtSnapshot(ctx context.Context, arg InsertDebtSnapshotParams) error
 	// Through the transaction row: a payment deleted since it was read inserts
 	// nothing instead of failing the foreign key.
@@ -540,9 +536,7 @@ type Querier interface {
 	// list and the code->id map. Custom (per-user) currencies must never reach the
 	// CLI/OXR path. Mirrors CurrencyRepository::getAll() (code projection only).
 	ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow, error)
-	// The labels of the expenses CandidateDebtTransactions returns, in one read.
-	ListDebtCandidateLabels(ctx context.Context, categoryID *string) ([]TransactionsLabel, error)
-	ListDebtsByCategory(ctx context.Context, categoryID string) ([]Debt, error)
+	ListDebtsByBudget(ctx context.Context, budgetID string) ([]Debt, error)
 	ListDeletedAccounts(ctx context.Context) ([]Account, error)
 	ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID string) ([]string, error)
 	// Read-side query for the transaction CSV export (SQLite). Returns the user's
@@ -657,10 +651,6 @@ type Querier interface {
 	// Replace-mode: point every transaction on the old category at the new one
 	// before the old category is deleted (mirrors TransactionRepository::replaceCategory).
 	ReassignCategoryTransactions(ctx context.Context, arg ReassignCategoryTransactionsParams) error
-	ReassignDebtCategory(ctx context.Context, arg ReassignDebtCategoryParams) error
-	ReassignDebtLabel(ctx context.Context, arg ReassignDebtLabelParams) error
-	ReassignDebtPayee(ctx context.Context, arg ReassignDebtPayeeParams) error
-	ReassignDebtTag(ctx context.Context, arg ReassignDebtTagParams) error
 	ReassignPayeeRecurring(ctx context.Context, arg ReassignPayeeRecurringParams) error
 	// Merge: point every transaction on the old payee at the new one before the old
 	// payee is deleted. Deliberately not scoped by user, because a shared account
@@ -772,6 +762,7 @@ type Querier interface {
 	// time.Time would store a time part, splitting one day into distinct keys of
 	// the ON CONFLICT (identifier_uniq_currencies_rates) upsert.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
+	// The budget is written once, at insert: a debt never moves to another budget.
 	UpsertDebt(ctx context.Context, arg UpsertDebtParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error

@@ -66,6 +66,7 @@ func TestSync_ConvertsForeignCurrencyPayment(t *testing.T) {
 	eur := e.f.Currency(fixture.Currency{Code: "EUR", Symbol: "E"})
 	e.rates.multiplier[eur] = 2
 	eurAccount := e.f.Account(fixture.Account{UserID: e.user, CurrencyID: eur})
+	e.fakeBudget(e.budget).accounts = append(e.fakeBudget(e.budget).accounts, eurAccount)
 	e.clock.now = ymd(2026, 7, 1)
 	tx := e.expense(t, eurAccount, ymd(2026, 4, 1), "500", "")
 
@@ -126,7 +127,7 @@ func TestSync_PartitionByStartDate(t *testing.T) {
 func TestSync_TagNarrowsMatching(t *testing.T) {
 	e := newEnv(t)
 	tag := e.newTag()
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.TagId = &tag })
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].TagId = &tag })
 	e.clock.now = ymd(2026, 7, 1)
 	e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
 	e.sync(t)
@@ -228,5 +229,134 @@ func TestSync_FutureDatedSplitIsProvisional(t *testing.T) {
 	e.sync(t)
 	if after := e.splits(t, res.Id)[tx]; after != final || final != got {
 		t.Fatalf("split moved after its date: %s -> %s -> %s", got, final, after)
+	}
+}
+
+// A shared mortgage paid from his category and from hers, on their own
+// accounts: one debt counts both.
+func TestSync_PaymentsFromEveryRule(t *testing.T) {
+	e := newEnv(t)
+	sam := e.partner(t, "Sam", roleUser)
+	hers := e.newCategory(sam, true)
+	herAccount := e.f.Account(fixture.Account{UserID: sam})
+	e.fakeBudget(e.budget).accounts = append(e.fakeBudget(e.budget).accounts, herAccount)
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules = []model.DebtRuleRequest{rule(e.category), rule(hers)} })
+	e.clock.now = ymd(2026, 7, 1)
+	his := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	her := e.f.Transaction(fixture.Transaction{UserID: sam, AccountID: herAccount, CategoryID: hers, Type: 0, Amount: "1000", SpentAt: ymd(2026, 5, 1)})
+	e.sync(t)
+	got := e.splits(t, res.Id)
+	if _, ok := got[his]; !ok || len(got) != 2 {
+		t.Fatalf("splits = %v, want his and her payments", got)
+	}
+	if _, ok := got[her]; !ok {
+		t.Fatalf("splits = %v, want her payment", got)
+	}
+}
+
+// Only the budget's member accounts count: a payment in the rule's category
+// on another account does not exist for the debt.
+func TestSync_OnlyTheBudgetsAccounts(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	outside := e.f.Account(fixture.Account{UserID: e.user})
+	e.clock.now = ymd(2026, 7, 1)
+	in := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	e.expense(t, outside, ymd(2026, 5, 1), "1000", "")
+	e.sync(t)
+	if got := e.splits(t, res.Id); len(got) != 1 || got[in] == "" {
+		t.Fatalf("splits = %v, want the member account's payment alone", got)
+	}
+}
+
+// A soft-deleted member account still counts, like the budget counts it.
+func TestSync_SoftDeletedMemberStillCounts(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	e.clock.now = ymd(2026, 7, 1)
+	tx := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	if _, err := e.db.Raw.ExecContext(context.Background(), e.db.Rebind("UPDATE accounts SET is_deleted = TRUE WHERE id = ?"), e.account); err != nil {
+		t.Fatal(err)
+	}
+	e.sync(t)
+	if got := e.splits(t, res.Id); got[tx] == "" {
+		t.Fatalf("splits = %v, want the deleted member's payment", got)
+	}
+}
+
+// An account that leaves the budget (a partner revoked, remove-account)
+// takes its payments with it: the next sync drops their splits.
+func TestSync_AccountLeavingTheBudgetDropsItsSplits(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	second := e.f.Account(fixture.Account{UserID: e.user})
+	b := e.fakeBudget(e.budget)
+	b.accounts = append(b.accounts, second)
+	e.clock.now = ymd(2026, 7, 1)
+	stays := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	leaves := e.expense(t, second, ymd(2026, 5, 1), "1000", "")
+	e.sync(t)
+	if got := e.splits(t, res.Id); len(got) != 2 {
+		t.Fatalf("splits = %v", got)
+	}
+	b.accounts = []string{e.account}
+	e.sync(t)
+	got := e.splits(t, res.Id)
+	if _, ok := got[leaves]; ok || got[stays] == "" || len(got) != 1 {
+		t.Fatalf("splits = %v, want the leaving account's split gone", got)
+	}
+}
+
+// An account in two budgets with a debt each matching the payment: each debt
+// keeps its own split, and syncing one budget never touches the other's.
+func TestSync_SameTransactionCountsInTwoBudgets(t *testing.T) {
+	e := newEnv(t)
+	home := e.create(t, nil)
+	second := e.newBudget(e.user, "Second", e.account)
+	away := e.create(t, func(r *model.CreateDebtRequest) { r.BudgetId = second })
+	e.clock.now = ymd(2026, 7, 1)
+	tx := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	e.sync(t)
+	if got := e.splits(t, home.Id); got[tx] == "" {
+		t.Fatalf("home splits = %v", got)
+	}
+	if got := e.splits(t, away.Id); len(got) != 0 {
+		t.Fatalf("syncing one budget split the other's debt: %v", got)
+	}
+	if err := e.svc.Sync(context.Background(), e.scope(second)); err != nil {
+		t.Fatal(err)
+	}
+	if got := e.splits(t, away.Id); got[tx] == "" {
+		t.Fatalf("away splits = %v", got)
+	}
+	if got := e.splits(t, home.Id); got[tx] == "" {
+		t.Fatalf("syncing the second budget dropped the first's split: %v", got)
+	}
+}
+
+// A later debt with an identical rule ends the earlier debt on every one of
+// its rules (refinancing moves both categories to the new loan).
+func TestSync_LaterDebtEndsEveryRule(t *testing.T) {
+	e := newEnv(t)
+	b := e.newCategory(e.user, true)
+	oldLoan := e.create(t, func(r *model.CreateDebtRequest) {
+		r.StartDate = ptr("2025-12-01")
+		r.Rules = []model.DebtRuleRequest{rule(e.category), rule(b)}
+	})
+	newLoan := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-02-01") })
+	e.clock.now = ymd(2026, 7, 1)
+	before := e.f.Transaction(fixtureExpense(e, b, ymd(2026, 1, 10), "100"))
+	after := e.f.Transaction(fixtureExpense(e, b, ymd(2026, 3, 10), "100"))
+	inNew := e.expense(t, e.account, ymd(2026, 3, 1), "1000", "")
+	e.sync(t)
+	o, n := e.splits(t, oldLoan.Id), e.splits(t, newLoan.Id)
+	if _, ok := o[before]; !ok || len(o) != 1 {
+		t.Fatalf("old loan splits = %v, want only b's payment before the new loan", o)
+	}
+	if _, ok := o[after]; ok {
+		t.Fatal("b's payment after the new loan's start still counts for the old one")
+	}
+	if _, ok := n[inNew]; !ok || len(n) != 1 {
+		t.Fatalf("new loan splits = %v", n)
 	}
 }

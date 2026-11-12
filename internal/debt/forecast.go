@@ -11,22 +11,21 @@ import (
 )
 
 // GetDebtForecast lists the debt's payments still to come, to the payoff: the
-// regular schedule plus the extras one budget plans for the debt's row. That
-// budget is the one asked for, else the owner's active budget; one the caller
-// cannot read, or that holds no row for the debt, leaves the schedule alone,
-// and so does a budget whose plans add no extra (the result then names none).
-// It is the projection behind the debt's own figures, on that budget's periods,
-// run from the later of today and the last recorded payment's day.
+// regular schedule plus the extras its budget plans for the debt's row; a
+// budget whose plans add no extra leaves the schedule alone (the result then
+// names none). It is the projection behind the debt's own figures, on the
+// budget's periods, run from the later of today and the last recorded
+// payment's day.
 func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.GetDebtForecastRequest) (*model.DebtForecastResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
-	d, err := s.ownedDebt(ctx, userID, id)
+	d, b, err := s.readableDebt(ctx, userID, id)
 	if err != nil {
 		return nil, err
 	}
-	st, err := s.stateOf(ctx, d)
+	st, err := s.stateOf(ctx, b, d)
 	if err != nil {
 		return nil, err
 	}
@@ -34,16 +33,16 @@ func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.G
 	if !d.IsSetUp() {
 		return res, nil
 	}
-	budgetID, bp, err := s.forecastPlans(ctx, userID, req.BudgetId, d.ID)
+	bp, ok, err := s.budgets.DebtPlans(ctx, d.BudgetID, d.ID)
 	if err != nil {
 		return nil, err
 	}
 	today := s.today(ctx)
 	startDay := model.MinPeriodStartDay
 	var plans map[string]float64
-	if bp != nil {
+	if ok {
 		startDay = bp.PeriodStartDay
-		plans = plannedInLife(st, st.project(today, nil, nil), bp)
+		plans = plannedInLife(st, st.project(today, nil, nil), &bp)
 	}
 	// A payment recorded ahead of today is booked, not still to come: the run
 	// starts on the last recorded payment's day, so its due is paid and the
@@ -79,36 +78,9 @@ func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.G
 		}
 	}
 	if extra {
-		res.BudgetId, res.BudgetName = budgetID.String(), bp.Name
+		res.BudgetId, res.BudgetName = d.BudgetID.String(), bp.Name
 	}
 	return res, nil
-}
-
-// forecastPlans resolves the budget whose plans the forecast follows; nil
-// plans when there is none to follow.
-func (s *Service) forecastPlans(ctx context.Context, userID vo.Id, raw string, debtID vo.Id) (vo.Id, *model.DebtBudgetPlans, error) {
-	if s.plans == nil {
-		return vo.Id{}, nil, nil
-	}
-	var budgetID vo.Id
-	if raw != "" {
-		id, err := vo.ParseId(raw)
-		if err != nil {
-			return vo.Id{}, nil, err
-		}
-		budgetID = id
-	} else {
-		active, err := s.plans.ActiveBudget(ctx, userID)
-		if err != nil || active == nil {
-			return vo.Id{}, nil, err
-		}
-		budgetID = *active
-	}
-	bp, ok, err := s.plans.DebtPlans(ctx, userID, budgetID, debtID)
-	if err != nil || !ok {
-		return vo.Id{}, nil, err
-	}
-	return budgetID, &bp, nil
 }
 
 // plannedInLife keeps the plans of the periods the debt can be planned in, the

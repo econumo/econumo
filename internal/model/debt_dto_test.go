@@ -10,7 +10,8 @@ import (
 
 func validDebtRequest() CreateDebtRequest {
 	return CreateDebtRequest{
-		Name: "Car loan", CurrencyId: "dffc2a06-6f29-4704-8575-31709adee926", CategoryId: "0197c8b2-1111-7000-8000-000000000001",
+		BudgetId: "0197c8b2-1111-7000-8000-0000000000b1", Name: "Car loan", CurrencyId: "dffc2a06-6f29-4704-8575-31709adee926",
+		Rules:          []DebtRuleRequest{{CategoryId: "0197c8b2-1111-7000-8000-000000000001"}},
 		AmountBorrowed: vo.NewFlexString("12000"), StartDate: ptrTo("2026-03-01"),
 		Payment: vo.NewFlexString("1000"), Schedule: "monthly", LastPaymentDate: "2027-03-01",
 	}
@@ -40,13 +41,13 @@ func TestCreateDebtRequest_Validate(t *testing.T) {
 	}
 
 	bad := validDebtRequest()
-	bad.Name, bad.CurrencyId, bad.CategoryId = " ", "", "nope"
-	bad.PayeeId, bad.StartDate = ptrTo("x"), ptrTo("2026-13-01")
+	bad.Name, bad.CurrencyId, bad.BudgetId = " ", "nope", ""
+	bad.Rules[0].PayeeId, bad.StartDate = ptrTo("x"), ptrTo("2026-13-01")
 	bad.AmountBorrowed, bad.Balance, bad.Payment = vo.NewFlexString("0"), vo.NewFlexString("-1"), vo.NewFlexString("0")
 	bad.Schedule, bad.LastPaymentDate = "daily", "03/01/2027"
 	got := debtFieldCodes(t, bad.Validate())
 	want := map[string]string{
-		"name": errs.CodeIsBlank, "currencyId": errs.CodeIsBlank, "categoryId": errs.CodeInvalidUUID, "payeeId": errs.CodeInvalidUUID,
+		"name": errs.CodeIsBlank, "currencyId": errs.CodeInvalidUUID, "budgetId": errs.CodeIsBlank, "rules": errs.CodeInvalidUUID,
 		"startDate": errs.CodeInvalidFormat, "amountBorrowed": errs.CodeOutOfRange, "balance": errs.CodeOutOfRange,
 		"payment": errs.CodeOutOfRange, "schedule": errs.CodeInvalidChoice, "lastPaymentDate": errs.CodeInvalidFormat,
 	}
@@ -81,7 +82,7 @@ func TestDebtRequests_ValidateIds(t *testing.T) {
 	if err := (GetDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000001"}).Validate(); err != nil {
 		t.Errorf("get with a valid id: %v", err)
 	}
-	up := UpdateDebtRequest{Id: "", Name: "n", CategoryId: "0197c8b2-1111-7000-8000-000000000001", AmountBorrowed: vo.NewFlexString("1"),
+	up := UpdateDebtRequest{Id: "", Name: "n", AmountBorrowed: vo.NewFlexString("1"),
 		StartDate: ptrTo("2026-01-01"), Payment: vo.NewFlexString("1"), Schedule: "weekly", LastPaymentDate: "2027-01-01"}
 	if got := debtFieldCodes(t, up.Validate()); got["id"] != errs.CodeIsBlank {
 		t.Errorf("update without an id: %v", got)
@@ -160,14 +161,14 @@ func TestCreateDebtRequest_SetupTrio(t *testing.T) {
 		t.Errorf("schedule missing: %v", got)
 	}
 	badLabel := validDebtRequest()
-	badLabel.LabelId = ptrTo("x")
-	if got := debtFieldCodes(t, badLabel.Validate()); got["labelId"] != errs.CodeInvalidUUID {
+	badLabel.Rules[0].LabelId = ptrTo("x")
+	if got := debtFieldCodes(t, badLabel.Validate()); got["rules"] != errs.CodeInvalidUUID {
 		t.Errorf("bad labelId: %v", got)
 	}
 }
 
 func TestUpdateDebtRequest_SetupTrio(t *testing.T) {
-	up := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000002", Name: "n", CategoryId: "0197c8b2-1111-7000-8000-000000000001",
+	up := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000002", Name: "n",
 		Payment: vo.NewFlexString("1"), Schedule: "weekly"}
 	if err := up.Validate(); err != nil {
 		t.Errorf("update without terms is valid: %v", err)
@@ -196,7 +197,7 @@ func TestUpdateDebtRequest_SetupTrio(t *testing.T) {
 // An update may leave out the payment and the schedule (kept as stored), even
 // alongside the loan's facts.
 func TestUpdateDebtRequest_PaymentAndScheduleOptional(t *testing.T) {
-	up := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000002", Name: "n", CategoryId: "0197c8b2-1111-7000-8000-000000000001"}
+	up := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000002", Name: "n"}
 	if err := up.Validate(); err != nil {
 		t.Errorf("update without payment, schedule or terms is valid: %v", err)
 	}
@@ -212,35 +213,105 @@ func TestUpdateDebtRequest_PaymentAndScheduleOptional(t *testing.T) {
 	}
 }
 
-// A debt names a tag or a reporting tag, never both.
+// A rule names a tag or a reporting tag, never both.
 func TestDebtRequests_RefuseATagAndALabelTogether(t *testing.T) {
 	tag, label := "0197c8b2-1111-7000-8000-000000000002", "0197c8b2-1111-7000-8000-000000000003"
 	create := validDebtRequest()
-	create.TagId, create.LabelId = &tag, &label
-	if got := debtFieldCodes(t, create.Validate()); got["labelId"] != errs.CodeInvalidChoice {
-		t.Errorf("create: %v, want labelId %s", got, errs.CodeInvalidChoice)
+	create.Rules[0].TagId, create.Rules[0].LabelId = &tag, &label
+	if got := debtFieldCodes(t, create.Validate()); got["rules"] != errs.CodeInvalidChoice {
+		t.Errorf("create: %v, want rules %s", got, errs.CodeInvalidChoice)
 	}
-	update := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000009", Name: "Car loan", CategoryId: create.CategoryId,
-		TagId: &tag, LabelId: &label}
-	if got := debtFieldCodes(t, update.Validate()); got["labelId"] != errs.CodeInvalidChoice {
-		t.Errorf("update: %v, want labelId %s", got, errs.CodeInvalidChoice)
+	update := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000009", Name: "Car loan", Rules: create.Rules}
+	if got := debtFieldCodes(t, update.Validate()); got["rules"] != errs.CodeInvalidChoice {
+		t.Errorf("update: %v, want rules %s", got, errs.CodeInvalidChoice)
+	}
+	add := AddDebtRuleRequest{Id: update.Id, Rule: create.Rules[0]}
+	if got := debtFieldCodes(t, add.Validate()); got["rules"] != errs.CodeInvalidChoice {
+		t.Errorf("add: %v, want rules %s", got, errs.CodeInvalidChoice)
 	}
 	empty := ""
-	create.LabelId = &empty
+	create.Rules[0].LabelId = &empty
 	if err := create.Validate(); err != nil {
 		t.Errorf("an empty label is none: %v", err)
 	}
 }
 
+// A debt has one to ten rules; update may leave them out (kept) but not send
+// none. Every rule problem is on the flat key "rules".
+func TestDebtRequests_RuleCount(t *testing.T) {
+	rule := DebtRuleRequest{CategoryId: "0197c8b2-1111-7000-8000-000000000001"}
+	ten := make([]DebtRuleRequest, 10)
+	for i := range ten {
+		ten[i] = rule
+	}
+	create := validDebtRequest()
+	create.Rules = nil
+	if got := debtFieldCodes(t, create.Validate()); got["rules"] != errs.CodeIsBlank {
+		t.Errorf("no rules: %v", got)
+	}
+	create.Rules = ten
+	if err := create.Validate(); err != nil {
+		t.Errorf("ten rules: %v", err)
+	}
+	create.Rules = append(ten, rule)
+	if got := debtFieldCodes(t, create.Validate()); got["rules"] != errs.CodeOutOfRange {
+		t.Errorf("eleven rules: %v", got)
+	}
+	create.Rules = []DebtRuleRequest{{CategoryId: ""}}
+	if got := debtFieldCodes(t, create.Validate()); got["rules"] != errs.CodeIsBlank {
+		t.Errorf("a rule without a category: %v", got)
+	}
+	create.Rules = []DebtRuleRequest{{Id: ptrTo("x"), CategoryId: rule.CategoryId}}
+	if got := debtFieldCodes(t, create.Validate()); got["rules"] != errs.CodeInvalidUUID {
+		t.Errorf("a bad rule id: %v", got)
+	}
+
+	update := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000009", Name: "Car loan"}
+	if err := update.Validate(); err != nil {
+		t.Errorf("rules left out are kept: %v", err)
+	}
+	update.Rules = []DebtRuleRequest{}
+	if got := debtFieldCodes(t, update.Validate()); got["rules"] != errs.CodeIsBlank {
+		t.Errorf("update with no rules: %v", got)
+	}
+	update.Rules = append(ten, rule)
+	if got := debtFieldCodes(t, update.Validate()); got["rules"] != errs.CodeOutOfRange {
+		t.Errorf("update with eleven rules: %v", got)
+	}
+}
+
+func TestDebtRequests_AddRuleAndRuleOptions(t *testing.T) {
+	add := AddDebtRuleRequest{Id: "0197c8b2-1111-7000-8000-000000000009", Rule: DebtRuleRequest{CategoryId: "0197c8b2-1111-7000-8000-000000000001"}}
+	if err := add.Validate(); err != nil {
+		t.Fatalf("valid: %v", err)
+	}
+	if got := debtFieldCodes(t, (AddDebtRuleRequest{Rule: DebtRuleRequest{}}).Validate()); got["id"] != errs.CodeIsBlank || got["rules"] != errs.CodeIsBlank {
+		t.Errorf("empty: %v", got)
+	}
+	if err := (GetDebtRuleOptionsRequest{BudgetId: add.Id}).Validate(); err != nil {
+		t.Errorf("options: %v", err)
+	}
+	if got := debtFieldCodes(t, (GetDebtRuleOptionsRequest{BudgetId: "x"}).Validate()); got["budgetId"] != errs.CodeInvalidUUID {
+		t.Errorf("options with a bad budget: %v", got)
+	}
+}
+
 func TestUpdateDebtRequest_ValidatesAChangedCurrency(t *testing.T) {
-	update := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000009", Name: "Car loan",
-		CategoryId: "0197c8b2-1111-7000-8000-000000000001", CurrencyId: "nope"}
+	update := UpdateDebtRequest{Id: "0197c8b2-1111-7000-8000-000000000009", Name: "Car loan", CurrencyId: "nope"}
 	if got := debtFieldCodes(t, update.Validate()); got["currencyId"] != errs.CodeInvalidUUID {
 		t.Errorf("%v, want currencyId %s", got, errs.CodeInvalidUUID)
 	}
 	update.CurrencyId = ""
 	if err := update.Validate(); err != nil {
 		t.Errorf("no currency keeps the stored one: %v", err)
+	}
+}
+
+func TestCreateDebtRequest_CurrencyOptional(t *testing.T) {
+	create := validDebtRequest()
+	create.CurrencyId = ""
+	if err := create.Validate(); err != nil {
+		t.Errorf("no currency takes the budget's: %v", err)
 	}
 }
 

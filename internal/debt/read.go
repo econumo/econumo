@@ -11,18 +11,90 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-type iconCache map[vo.Id]string
+// presenter names a debt's rules for its readers, reading each
+// classification and owner once.
+type presenter struct {
+	s       *Service
+	classes map[string]model.DebtClassification
+	names   map[vo.Id]string
+}
 
-func (s *Service) iconOf(ctx context.Context, cache iconCache, d *model.Debt) (string, error) {
-	if icon, ok := cache[d.CategoryID]; ok {
-		return icon, nil
+func (s *Service) presenter() *presenter {
+	return &presenter{s: s, classes: map[string]model.DebtClassification{}, names: map[vo.Id]string{}}
+}
+
+// classification is the zero value for one that is gone: the rules are
+// released before a classification is deleted, so this is only ever a race.
+func (p *presenter) classification(ctx context.Context, kind string, id vo.Id) (model.DebtClassification, error) {
+	key := kind + ":" + id.String()
+	if c, ok := p.classes[key]; ok {
+		return c, nil
 	}
-	_, icon, _, err := s.class.CategoryOf(ctx, d.OwnerID, d.CategoryID)
-	if err != nil {
+	c, err := p.s.class.Classification(ctx, kind, id)
+	if err != nil && !isNotFound(err) {
+		return c, err
+	}
+	p.classes[key] = c
+	return c, nil
+}
+
+func (p *presenter) userName(ctx context.Context, id vo.Id) (string, error) {
+	if n, ok := p.names[id]; ok {
+		return n, nil
+	}
+	n, err := p.s.users.GetName(ctx, id)
+	if err != nil && !isNotFound(err) {
 		return "", err
 	}
-	cache[d.CategoryID] = icon
-	return icon, nil
+	p.names[id] = n
+	return n, nil
+}
+
+// icon is the first rule's category icon; a debt without rules has the
+// default one.
+func (p *presenter) icon(ctx context.Context, d *model.Debt) (string, error) {
+	if len(d.Rules) == 0 {
+		return model.DefaultIcon, nil
+	}
+	c, err := p.classification(ctx, KindCategory, d.Rules[0].CategoryID)
+	if err != nil || c.Icon == "" {
+		return model.DefaultIcon, err
+	}
+	return c.Icon, nil
+}
+
+func (p *presenter) rules(ctx context.Context, d *model.Debt) ([]model.DebtRuleResult, error) {
+	out := make([]model.DebtRuleResult, 0, len(d.Rules))
+	for _, r := range d.Rules {
+		cat, err := p.classification(ctx, KindCategory, r.CategoryID)
+		if err != nil {
+			return nil, err
+		}
+		item := model.DebtRuleResult{Id: r.ID.String(), CategoryId: r.CategoryID.String(), CategoryName: cat.Name, CategoryIcon: cat.Icon,
+			PayeeId: idString(r.PayeeID), TagId: idString(r.TagID), LabelId: idString(r.LabelID)}
+		if !cat.OwnerID.IsZero() {
+			item.OwnerUserId = cat.OwnerID.String()
+			if item.OwnerName, err = p.userName(ctx, cat.OwnerID); err != nil {
+				return nil, err
+			}
+		}
+		for _, part := range []struct {
+			kind string
+			id   *vo.Id
+			name *string
+		}{{KindPayee, r.PayeeID, &item.PayeeName}, {KindTag, r.TagID, &item.TagName}, {KindLabel, r.LabelID, &item.LabelName}} {
+			if part.id == nil {
+				continue
+			}
+			c, err := p.classification(ctx, part.kind, *part.id)
+			if err != nil {
+				return nil, err
+			}
+			*part.name = c.Name
+		}
+		out = append(out, item)
+	}
+	return out, nil
 }
 
 func idString(id *vo.Id) *string {
@@ -33,18 +105,20 @@ func idString(id *vo.Id) *string {
 	return &v
 }
 
-// result presents a debt; one not set up has only its identity, payment and
-// schedule, with every term and figure empty.
-func (s *Service) result(st *debtState, proj model.Projection, icon string) model.DebtResult {
+// result presents a debt; one not set up has only its identity, rules,
+// payment and schedule, with every term and figure empty.
+func (s *Service) result(st *debtState, proj model.Projection, b model.DebtBudget, icon string, rules []model.DebtRuleResult) model.DebtResult {
 	d, digits := st.debt, st.digits
 	startDate := ""
 	if d.StartDate != nil {
 		startDate = dateString(*d.StartDate)
 	}
 	res := model.DebtResult{
-		Id: d.ID.String(), Name: d.Name, Icon: icon, CurrencyId: d.CurrencyID.String(), CategoryId: d.CategoryID.String(),
-		PayeeId: idString(d.PayeeID), TagId: idString(d.TagID), LabelId: idString(d.LabelID), StartDate: startDate,
-		Payment: d.Payment.String(), Schedule: string(d.Schedule),
+		Id: d.ID.String(), BudgetId: d.BudgetID.String(), BudgetName: b.Name, Name: d.Name, Icon: icon,
+		CurrencyId: d.CurrencyID.String(), Rules: rules, StartDate: startDate, Payment: d.Payment.String(), Schedule: string(d.Schedule),
+	}
+	if canEdit(b) {
+		res.CanEdit = 1
 	}
 	if !d.IsSetUp() {
 		return res
@@ -66,23 +140,27 @@ func (s *Service) result(st *debtState, proj model.Projection, icon string) mode
 	return res
 }
 
-func (s *Service) presentAll(ctx context.Context, states []*debtState) ([]model.DebtResult, error) {
+func (s *Service) presentAll(ctx context.Context, b model.DebtBudget, states []*debtState) ([]model.DebtResult, error) {
 	today := s.today(ctx)
-	icons := iconCache{}
+	p := s.presenter()
 	items := make([]model.DebtResult, 0, len(states))
 	for _, st := range states {
-		icon, err := s.iconOf(ctx, icons, st.debt)
+		icon, err := p.icon(ctx, st.debt)
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, s.result(st, st.project(today, nil, nil), icon))
+		rules, err := p.rules(ctx, st.debt)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, s.result(st, st.project(today, nil, nil), b, icon, rules))
 	}
 	return items, nil
 }
 
-// stateOf syncs the debt's category and returns the debt's state.
-func (s *Service) stateOf(ctx context.Context, d *model.Debt) (*debtState, error) {
-	states, err := s.syncCategory(ctx, d.CategoryID)
+// stateOf syncs the debt's budget and returns the debt's state.
+func (s *Service) stateOf(ctx context.Context, b model.DebtBudget, d *model.Debt) (*debtState, error) {
+	states, err := s.syncBudget(ctx, scopeOf(b))
 	if err != nil {
 		return nil, err
 	}
@@ -94,26 +172,54 @@ func (s *Service) stateOf(ctx context.Context, d *model.Debt) (*debtState, error
 	return nil, errs.NewNotFound("Debt not found")
 }
 
-func (s *Service) resultOf(ctx context.Context, d *model.Debt) (*model.DebtResult, error) {
-	st, err := s.stateOf(ctx, d)
+func (s *Service) resultOf(ctx context.Context, b model.DebtBudget, d *model.Debt) (*model.DebtResult, error) {
+	st, err := s.stateOf(ctx, b, d)
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.presentAll(ctx, []*debtState{st})
+	items, err := s.presentAll(ctx, b, []*debtState{st})
 	if err != nil {
 		return nil, err
 	}
 	return &items[0], nil
 }
 
+// GetDebtList lists the debts of every budget the user can read, archived
+// ones included, budget by budget in the budget list's order.
 func (s *Service) GetDebtList(ctx context.Context, userID vo.Id) (*model.DebtListResult, error) {
-	states, err := s.loadStates(ctx, []vo.Id{userID})
+	if s.budgets == nil {
+		return nil, errNoBudgets
+	}
+	budgets, err := s.budgets.Readable(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.presentAll(ctx, states)
+	ids := make([]vo.Id, 0, len(budgets))
+	for _, b := range budgets {
+		ids = append(ids, b.ID)
+	}
+	debts, err := s.repo.ListByBudgets(ctx, ids)
 	if err != nil {
 		return nil, err
+	}
+	withDebts := map[vo.Id]bool{}
+	for _, d := range debts {
+		withDebts[d.BudgetID] = true
+	}
+	items := []model.DebtResult{}
+	for _, b := range budgets {
+		if !withDebts[b.ID] {
+			continue
+		}
+		states, err := s.syncBudget(ctx, scopeOf(b))
+		if err != nil {
+			return nil, err
+		}
+		presented, err := s.presentAll(ctx, b, states)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, presented...)
 	}
 	return &model.DebtListResult{Items: items}, nil
 }
@@ -123,15 +229,15 @@ func (s *Service) GetDebt(ctx context.Context, userID vo.Id, req model.GetDebtRe
 	if err != nil {
 		return nil, err
 	}
-	d, err := s.ownedDebt(ctx, userID, id)
+	d, b, err := s.readableDebt(ctx, userID, id)
 	if err != nil {
 		return nil, err
 	}
-	st, err := s.stateOf(ctx, d)
+	st, err := s.stateOf(ctx, b, d)
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.presentAll(ctx, []*debtState{st})
+	items, err := s.presentAll(ctx, b, []*debtState{st})
 	if err != nil {
 		return nil, err
 	}
@@ -199,19 +305,20 @@ func (st *debtState) balancesAfter() []float64 {
 	return out
 }
 
-// Views returns the matching key, range and planning bounds of the owners'
-// debts, in creation order. It writes nothing and takes no lock, so the budget
-// can call it inside its own transactions.
-func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView, error) {
-	states, err := s.readStates(ctx, ownerIDs)
+// Views returns the rules, range and planning bounds of the budget's debts,
+// in creation order, matching the payments on the scope's accounts. It writes
+// nothing and takes no lock, so the budget can call it inside its own
+// transactions.
+func (s *Service) Views(ctx context.Context, scope model.DebtScope) ([]model.DebtView, error) {
+	states, err := s.readStates(ctx, scope)
 	if err != nil {
 		return nil, err
 	}
 	today := s.today(ctx)
-	icons := iconCache{}
+	p := s.presenter()
 	views := make([]model.DebtView, 0, len(states))
 	for _, st := range states {
-		icon, err := s.iconOf(ctx, icons, st.debt)
+		icon, err := p.icon(ctx, st.debt)
 		if err != nil {
 			return nil, err
 		}
@@ -234,10 +341,10 @@ func (s *Service) Views(ctx context.Context, ownerIDs []vo.Id) ([]model.DebtView
 // matched payment, its creation day and its first snapshot, to its last
 // payment date, or its payoff once paid off; a budget plans it in the periods
 // holding those days. The creation day is the stored one, taken in the
-// owner's timezone at creation, so every viewer sees the same start and a
+// creator's timezone at creation, so every viewer sees the same start and a
 // later timezone change does not move it. A start that moves (finishing
-// setup, a correction) moves the plans with it for a whole-category debt
-// (moveHead). A debt not set up has no end: LastDay is zero.
+// setup, a correction) moves the plans with it (moveHead). A debt not set up
+// has no end: LastDay is zero.
 func planningBounds(st *debtState, proj model.Projection) (first, last time.Time) {
 	d := st.debt
 	if d.StartDate != nil {

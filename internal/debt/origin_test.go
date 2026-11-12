@@ -127,7 +127,7 @@ func TestUpdateDebt_BalanceNowAloneOverridesFromToday(t *testing.T) {
 	res := e.createOrigin(t, nil)
 	before := e.splits(t, res.Id)[p1]
 
-	req := model.UpdateDebtRequest{Id: res.Id, Name: res.Name, CategoryId: res.CategoryId, StartDate: ptr(res.StartDate),
+	req := model.UpdateDebtRequest{Id: res.Id, Name: res.Name, StartDate: ptr(res.StartDate),
 		Balance: vo.NewFlexString("6500")}
 	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
 	if err != nil {

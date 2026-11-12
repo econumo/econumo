@@ -7,6 +7,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 func TestTimelines_PlansMoveProjection(t *testing.T) {
@@ -15,11 +16,11 @@ func TestTimelines_PlansMoveProjection(t *testing.T) {
 	res := e.create(t, nil)
 	months := []time.Time{ymd(2026, 4, 1), ymd(2026, 5, 1), ymd(2026, 6, 1)}
 
-	plain, err := e.svc.Timelines(ctx, model.DebtTimelineRequest{DebtIDs: []string{res.Id}, Months: months, Today: ymd(2026, 3, 10)})
+	plain, err := e.svc.Timelines(ctx, model.DebtTimelineRequest{Scope: e.scope(e.budget), DebtIDs: []string{res.Id}, Months: months, Today: ymd(2026, 3, 10)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	planned, err := e.svc.Timelines(ctx, model.DebtTimelineRequest{DebtIDs: []string{res.Id}, Months: months, Today: ymd(2026, 3, 10),
+	planned, err := e.svc.Timelines(ctx, model.DebtTimelineRequest{Scope: e.scope(e.budget), DebtIDs: []string{res.Id}, Months: months, Today: ymd(2026, 3, 10),
 		Plans: map[string]map[string]string{res.Id: {"2026-05-01": "3000"}}})
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +61,7 @@ func TestTimelines_ReadOnly(t *testing.T) {
 	tx := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
 	april := []time.Time{ymd(2026, 4, 1)}
 
-	got, err := e.svc.Timelines(context.Background(), model.DebtTimelineRequest{DebtIDs: []string{res.Id}, Months: april, Today: ymd(2026, 4, 15)})
+	got, err := e.svc.Timelines(context.Background(), model.DebtTimelineRequest{Scope: e.scope(e.budget), DebtIDs: []string{res.Id}, Months: april, Today: ymd(2026, 4, 15)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,5 +75,32 @@ func TestTimelines_ReadOnly(t *testing.T) {
 	e.sync(t)
 	if s := e.splits(t, res.Id); s[tx] == "" {
 		t.Errorf("Sync stored no split for the payment: %v", s)
+	}
+}
+
+// The budget's timelines count the payments on its accounts only, and leave
+// out a debt of another budget.
+func TestTimelines_ScopeLimitsPayments(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	other := e.newBudget(e.user, "Other")
+	elsewhere := e.create(t, func(r *model.CreateDebtRequest) { r.BudgetId = other })
+	outside := e.f.Account(fixture.Account{UserID: e.user})
+	e.expense(t, outside, ymd(2026, 4, 1), "1000", "")
+	april := []time.Time{ymd(2026, 4, 1)}
+	req := model.DebtTimelineRequest{Scope: e.scope(e.budget), DebtIDs: []string{res.Id, elsewhere.Id}, Months: april, Today: ymd(2026, 4, 15)}
+	got, err := e.svc.Timelines(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := got[res.Id].Months["2026-04-01"]; m.StillDue != "1000" {
+		t.Errorf("April = %+v, want the due unpaid: the payment is on another account", m)
+	}
+	if _, ok := got[elsewhere.Id]; ok {
+		t.Error("a debt of another budget is in the timelines")
+	}
+	req.Scope.AccountIDs = append(req.Scope.AccountIDs, vo.MustParseId(outside))
+	if got, err = e.svc.Timelines(context.Background(), req); err != nil || got[res.Id].Months["2026-04-01"].StillDue != "0" {
+		t.Fatalf("with the account in scope: %+v, %v", got[res.Id], err)
 	}
 }

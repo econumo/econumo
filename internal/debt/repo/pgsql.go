@@ -13,9 +13,10 @@ type pgsqlQuerier struct{}
 
 var _ querier = pgsqlQuerier{}
 
-// A missing user must keep succeeding silently, as for user.Repository.LockRow.
-func (pgsqlQuerier) LockOwner(ctx context.Context, db backend.DBTX, ownerID string) error {
-	if _, err := pgsqlgen.New(db).LockDebtOwner(ctx, ownerID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+// A missing budget must keep succeeding silently: a write on it fails later,
+// with the error its own read gives.
+func (pgsqlQuerier) LockBudget(ctx context.Context, db backend.DBTX, budgetID string) error {
+	if _, err := pgsqlgen.New(db).LockDebtBudget(ctx, budgetID); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
 	return nil
@@ -31,8 +32,8 @@ func (pgsqlQuerier) GetDebtByID(ctx context.Context, db backend.DBTX, id string)
 	return toDebtRow(d), nil
 }
 
-func (pgsqlQuerier) ListDebtsByCategory(ctx context.Context, db backend.DBTX, categoryID string) ([]debtRow, error) {
-	rows, err := pgsqlgen.New(db).ListDebtsByCategory(ctx, categoryID)
+func (pgsqlQuerier) ListDebtsByBudget(ctx context.Context, db backend.DBTX, budgetID string) ([]debtRow, error) {
+	rows, err := pgsqlgen.New(db).ListDebtsByBudget(ctx, budgetID)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +52,14 @@ func (pgsqlQuerier) DeleteDebt(ctx context.Context, db backend.DBTX, id string) 
 	return pgsqlgen.New(db).DeleteDebt(ctx, id)
 }
 
+func (pgsqlQuerier) DeleteDebtRules(ctx context.Context, db backend.DBTX, debtID string) error {
+	return pgsqlgen.New(db).DeleteDebtRules(ctx, debtID)
+}
+
+func (pgsqlQuerier) InsertDebtRule(ctx context.Context, db backend.DBTX, p ruleParams) error {
+	return pgsqlgen.New(db).InsertDebtRule(ctx, pgsqlgen.InsertDebtRuleParams(p))
+}
+
 func (pgsqlQuerier) InsertDebtSnapshot(ctx context.Context, db backend.DBTX, p snapshotParams) error {
 	return pgsqlgen.New(db).InsertDebtSnapshot(ctx, pgsqlgen.InsertDebtSnapshotParams(p))
 }
@@ -59,66 +68,10 @@ func (pgsqlQuerier) UpdateDebtSnapshot(ctx context.Context, db backend.DBTX, p u
 	return pgsqlgen.New(db).UpdateDebtSnapshot(ctx, pgsqlgen.UpdateDebtSnapshotParams(p))
 }
 
-func (pgsqlQuerier) InsertDebtSplit(ctx context.Context, db backend.DBTX, p splitParams) error {
-	return pgsqlgen.New(db).InsertDebtSplit(ctx, pgsqlgen.InsertDebtSplitParams(p))
-}
-
-func (pgsqlQuerier) CandidateDebtTransactions(ctx context.Context, db backend.DBTX, categoryID *string) ([]candidateRow, error) {
-	rows, err := pgsqlgen.New(db).CandidateDebtTransactions(ctx, categoryID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]candidateRow, len(rows))
-	for i, r := range rows {
-		out[i] = candidateRow(r)
-	}
-	return out, nil
-}
-
-func (pgsqlQuerier) DebtUsesCategory(ctx context.Context, db backend.DBTX, id string) (bool, error) {
-	return pgsqlgen.New(db).DebtUsesCategory(ctx, id)
-}
-
-func (pgsqlQuerier) DebtUsesPayee(ctx context.Context, db backend.DBTX, id *string) (bool, error) {
-	return pgsqlgen.New(db).DebtUsesPayee(ctx, id)
-}
-
-func (pgsqlQuerier) DebtUsesTag(ctx context.Context, db backend.DBTX, id *string) (bool, error) {
-	return pgsqlgen.New(db).DebtUsesTag(ctx, id)
-}
-
-func (pgsqlQuerier) ReassignDebtCategory(ctx context.Context, db backend.DBTX, p reassignCatParam) error {
-	return pgsqlgen.New(db).ReassignDebtCategory(ctx, pgsqlgen.ReassignDebtCategoryParams(p))
-}
-
-func (pgsqlQuerier) ReassignDebtPayee(ctx context.Context, db backend.DBTX, p reassignPayParam) error {
-	return pgsqlgen.New(db).ReassignDebtPayee(ctx, pgsqlgen.ReassignDebtPayeeParams(p))
-}
-
-func (pgsqlQuerier) ReassignDebtTag(ctx context.Context, db backend.DBTX, p reassignTagParam) error {
-	return pgsqlgen.New(db).ReassignDebtTag(ctx, pgsqlgen.ReassignDebtTagParams(p))
-}
-
-func (pgsqlQuerier) DebtUsesLabel(ctx context.Context, db backend.DBTX, id *string) (bool, error) {
-	return pgsqlgen.New(db).DebtUsesLabel(ctx, id)
-}
-
-func (pgsqlQuerier) ListDebtCandidateLabels(ctx context.Context, db backend.DBTX, categoryID *string) ([]txLabelRow, error) {
-	rows, err := pgsqlgen.New(db).ListDebtCandidateLabels(ctx, categoryID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]txLabelRow, len(rows))
-	for i, r := range rows {
-		out[i] = txLabelRow(r)
-	}
-	return out, nil
-}
-
-func (pgsqlQuerier) ReassignDebtLabel(ctx context.Context, db backend.DBTX, p reassignLblParam) error {
-	return pgsqlgen.New(db).ReassignDebtLabel(ctx, pgsqlgen.ReassignDebtLabelParams(p))
-}
-
 func (pgsqlQuerier) DeleteDebtSnapshot(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteDebtSnapshot(ctx, id)
+}
+
+func (pgsqlQuerier) InsertDebtSplit(ctx context.Context, db backend.DBTX, p splitParams) error {
+	return pgsqlgen.New(db).InsertDebtSplit(ctx, pgsqlgen.InsertDebtSplitParams(p))
 }

@@ -107,7 +107,7 @@ func TestReconcile_DateBetweenTheStartAndToday(t *testing.T) {
 			t.Fatalf("%s: %v", date, err)
 		}
 	}
-	draft := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.CategoryId = e.newCategory(e.user, true) })
+	draft := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = e.newCategory(e.user, true) })
 	_, err := e.reconcile(draft.Id, "100", "")
 	requireCode(t, err, errs.CodeDebtNotSetUp)
 	other := e.f.User(fixture.User{Name: "other", Email: "other@example.test"})
@@ -179,27 +179,27 @@ func TestUpdateDebt_StartDateLeftOutIsKept(t *testing.T) {
 func TestWholeCategory_NotWhenAnotherDebtSharesTheFilters(t *testing.T) {
 	e := newEnv(t)
 	first := e.createOrigin(t, nil)
-	if len(e.budget.transfers) != 1 {
-		t.Fatalf("transfers = %+v, want the first debt to take the category", e.budget.transfers)
+	if len(e.elements.transfers) != 1 {
+		t.Fatalf("transfers = %+v, want the first debt to take the category", e.elements.transfers)
 	}
-	e.budget.transfers = nil
+	e.elements.transfers = nil
 	second := e.create(t, nil) // starts 2026-03-10
-	if len(e.budget.transfers) != 0 {
-		t.Fatalf("transfers = %+v, want none for a second debt on the same filters", e.budget.transfers)
+	if len(e.elements.transfers) != 0 {
+		t.Fatalf("transfers = %+v, want none for a second debt on the same filters", e.elements.transfers)
 	}
 	req := e.updateReq(second)
 	req.StartDate = ptr("2026-03-05")
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatal(err)
 	}
-	if len(e.budget.transfers) != 0 {
-		t.Fatalf("transfers = %+v, want none", e.budget.transfers)
+	if len(e.elements.transfers) != 0 {
+		t.Fatalf("transfers = %+v, want none", e.elements.transfers)
 	}
 	if _, err := e.svc.DeleteDebt(context.Background(), e.uid(), model.DeleteDebtRequest{Id: first.Id}); err != nil {
 		t.Fatal(err)
 	}
-	if len(e.budget.transfers) != 0 {
-		t.Fatalf("transfers = %+v, want the first debt's plans not handed back", e.budget.transfers)
+	if len(e.elements.transfers) != 0 {
+		t.Fatalf("transfers = %+v, want the first debt's plans not handed back", e.elements.transfers)
 	}
 }
 
@@ -207,7 +207,7 @@ func TestWholeCategory_NotWhenAnotherDebtSharesTheFilters(t *testing.T) {
 func TestUpdateDebt_DatedStatement(t *testing.T) {
 	e := newEnv(t)
 	res := e.createOrigin(t, func(r *model.CreateDebtRequest) { r.Balance, r.BalanceDate = vo.NewFlexString("9000"), "2025-06-01" })
-	req := model.UpdateDebtRequest{Id: res.Id, Name: res.Name, CategoryId: res.CategoryId, Balance: vo.NewFlexString("7000"), BalanceDate: "2025-12-01"}
+	req := model.UpdateDebtRequest{Id: res.Id, Name: res.Name, Balance: vo.NewFlexString("7000"), BalanceDate: "2025-12-01"}
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatal(err)
 	}

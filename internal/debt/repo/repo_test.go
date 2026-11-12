@@ -23,6 +23,7 @@ type env struct {
 	f              *fixture.Builder
 	user, category string
 	account        string
+	budget         string
 }
 
 func newEnv(t *testing.T) *env {
@@ -37,13 +38,18 @@ func newEnv(t *testing.T) *env {
 		user:     user,
 		category: f.Category(fixture.Category{UserID: user, Name: "Loan"}),
 		account:  f.Account(fixture.Account{UserID: user}),
+		budget:   f.Budget(fixture.Budget{UserID: user}),
 	}
+}
+
+func (e *env) rule(categoryID string, created time.Time) model.DebtRule {
+	return model.DebtRule{ID: vo.NewId(), CategoryID: vo.MustParseId(categoryID), CreatedAt: created}
 }
 
 func (e *env) debt(id string) *model.Debt {
 	d := &model.Debt{
-		ID: vo.MustParseId(id), OwnerID: vo.MustParseId(e.user), CurrencyID: vo.MustParseId(fixture.USD),
-		CategoryID: vo.MustParseId(e.category), Name: "Car loan",
+		ID: vo.MustParseId(id), BudgetID: vo.MustParseId(e.budget), CurrencyID: vo.MustParseId(fixture.USD),
+		Rules: []model.DebtRule{e.rule(e.category, fixedTime)}, Name: "Car loan",
 		CreatedDay: time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC), CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
 	d.AmountBorrowed = vo.NewDecimal("12000.25")
@@ -64,10 +70,14 @@ func TestRepo_SaveGetDebtRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	payee := e.f.Payee(fixture.Payee{UserID: e.user})
 	tag := e.f.Tag(fixture.Tag{UserID: e.user})
+	label := e.f.Label(fixture.Label{UserID: e.user})
 	d := e.debt(fixture.NewID())
-	pid, tid := vo.MustParseId(payee), vo.MustParseId(tag)
+	pid, tid, lid := vo.MustParseId(payee), vo.MustParseId(tag), vo.MustParseId(label)
 	start := time.Date(2025, 12, 15, 0, 0, 0, 0, time.UTC)
-	d.PayeeID, d.TagID, d.StartDate = &pid, &tid, &start
+	d.Rules[0].PayeeID, d.Rules[0].TagID, d.StartDate = &pid, &tid, &start
+	labelled := e.rule(e.category, fixedTime.Add(time.Second))
+	labelled.LabelID = &lid
+	d.Rules = append(d.Rules, labelled)
 	if err := e.repo.Save(ctx, d); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -75,11 +85,18 @@ func TestRepo_SaveGetDebtRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name != d.Name || got.OwnerID != d.OwnerID || got.CurrencyID != d.CurrencyID || got.CategoryID != d.CategoryID {
+	if got.Name != d.Name || got.BudgetID != d.BudgetID || got.CurrencyID != d.CurrencyID {
 		t.Errorf("identity mismatch: %+v", got)
 	}
-	if got.PayeeID == nil || *got.PayeeID != pid || got.TagID == nil || *got.TagID != tid {
-		t.Errorf("payee/tag mismatch: %v %v", got.PayeeID, got.TagID)
+	if len(got.Rules) != 2 {
+		t.Fatalf("rules = %+v", got.Rules)
+	}
+	if r := got.Rules[0]; r.ID != d.Rules[0].ID || r.CategoryID.String() != e.category || r.PayeeID == nil || *r.PayeeID != pid ||
+		r.TagID == nil || *r.TagID != tid || r.LabelID != nil || !r.CreatedAt.Equal(fixedTime) {
+		t.Errorf("first rule = %+v", r)
+	}
+	if r := got.Rules[1]; r.LabelID == nil || *r.LabelID != lid || r.PayeeID != nil || r.TagID != nil {
+		t.Errorf("labelled rule = %+v", r)
 	}
 	if got.StartDate == nil || !got.StartDate.Equal(start) {
 		t.Errorf("start date = %v, want %v", got.StartDate, start)
@@ -101,8 +118,8 @@ func TestRepo_SaveGetDebtRoundTrip(t *testing.T) {
 		t.Errorf("created day = %v, want %v", got.CreatedDay, want)
 	}
 
-	// Updating clears the optional keys and rewrites the terms.
-	d.PayeeID, d.TagID, d.StartDate = nil, nil, nil
+	// Updating clears the start and rewrites the terms.
+	d.StartDate = nil
 	d.Name = "Renamed"
 	d.Current.Balance = vo.NewDecimal("9000")
 	d.CreatedDay = time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC)
@@ -113,7 +130,7 @@ func TestRepo_SaveGetDebtRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Name != "Renamed" || got.PayeeID != nil || got.TagID != nil || got.StartDate != nil || got.Current.Balance.String() != "9000" {
+	if got.Name != "Renamed" || got.StartDate != nil || got.Current.Balance.String() != "9000" {
 		t.Errorf("after update: %+v", got)
 	}
 	// the creation day is written once, at insert
@@ -121,13 +138,13 @@ func TestRepo_SaveGetDebtRoundTrip(t *testing.T) {
 		t.Errorf("created day after update = %v, want %v", got.CreatedDay, want)
 	}
 
-	byOwner, err := e.repo.ListByOwners(ctx, []vo.Id{d.OwnerID})
-	if err != nil || len(byOwner) != 1 || byOwner[0].ID != d.ID {
-		t.Errorf("ListByOwners = %v, %v", byOwner, err)
+	byBudget, err := e.repo.ListByBudget(ctx, d.BudgetID)
+	if err != nil || len(byBudget) != 1 || byBudget[0].ID != d.ID || len(byBudget[0].Rules) != 2 {
+		t.Errorf("ListByBudget = %v, %v", byBudget, err)
 	}
-	byCat, err := e.repo.ListByCategory(ctx, d.CategoryID)
-	if err != nil || len(byCat) != 1 || byCat[0].ID != d.ID {
-		t.Errorf("ListByCategory = %v, %v", byCat, err)
+	byBudgets, err := e.repo.ListByBudgets(ctx, []vo.Id{d.BudgetID, vo.NewId()})
+	if err != nil || len(byBudgets) != 1 || byBudgets[0].ID != d.ID || len(byBudgets[0].Rules) != 2 {
+		t.Errorf("ListByBudgets = %v, %v", byBudgets, err)
 	}
 
 	if err := e.repo.Delete(ctx, d.ID); err != nil {
@@ -259,12 +276,13 @@ func TestRepo_InsertSplitIsIdempotent(t *testing.T) {
 	}
 }
 
-// A payment that moved to another debt's category takes its split with it at
-// once, even before the old debt's category is synced again.
-func TestRepo_InsertSplitMovesToAnotherDebt(t *testing.T) {
+// A transaction can count for one debt in each of two budgets: its splits
+// are keyed by (debt, transaction).
+func TestRepo_SplitsOfOneTransactionForTwoDebts(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	a, b := e.debt(fixture.NewID()), e.debt(fixture.NewID())
+	b.BudgetID = vo.MustParseId(e.f.Budget(fixture.Budget{UserID: e.user}))
 	for _, d := range []*model.Debt{a, b} {
 		if err := e.repo.Save(ctx, d); err != nil {
 			t.Fatal(err)
@@ -277,12 +295,22 @@ func TestRepo_InsertSplitMovesToAnotherDebt(t *testing.T) {
 	if err := e.repo.InsertSplit(ctx, model.DebtSplit{DebtID: b.ID, TransactionID: txID, Interest: vo.NewDecimal("7")}); err != nil {
 		t.Fatalf("InsertSplit b: %v", err)
 	}
-	got, err := e.repo.Splits(ctx, []vo.Id{b.ID})
-	if err != nil || len(got) != 1 || got[0].TransactionID != txID || got[0].Interest.String() != "7" {
-		t.Fatalf("Splits of b = %v, %v", got, err)
+	got, err := e.repo.Splits(ctx, []vo.Id{a.ID, b.ID})
+	if err != nil || len(got) != 2 {
+		t.Fatalf("Splits = %v, %v; want one per debt", got, err)
 	}
-	if got, _ := e.repo.Splits(ctx, []vo.Id{a.ID}); len(got) != 0 {
-		t.Errorf("Splits of a = %v, want none", got)
+	interest := map[vo.Id]string{}
+	for _, sp := range got {
+		interest[sp.DebtID] = sp.Interest.String()
+	}
+	if interest[a.ID] != "12.5" || interest[b.ID] != "7" {
+		t.Errorf("interests = %v", interest)
+	}
+	if err := e.repo.DeleteSplits(ctx, a.ID, []vo.Id{txID}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := e.repo.Splits(ctx, []vo.Id{a.ID, b.ID}); len(got) != 1 || got[0].DebtID != b.ID {
+		t.Errorf("Splits after deleting a's = %v, want b's alone", got)
 	}
 }
 
@@ -316,7 +344,7 @@ func TestRepo_CandidateTransactionsExpensesOnly(t *testing.T) {
 	elsewhere := e.f.Category(fixture.Category{UserID: e.user, Name: "Other"})
 	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: e.account, CategoryID: elsewhere, Type: 0, Amount: "7"})
 
-	got, err := e.repo.CandidateTransactions(ctx, vo.MustParseId(e.category))
+	got, err := e.repo.CandidateTransactions(ctx, []vo.Id{vo.MustParseId(e.category)}, []vo.Id{vo.MustParseId(e.account), vo.MustParseId(eurAcc)})
 	if err != nil {
 		t.Fatalf("CandidateTransactions: %v", err)
 	}
@@ -324,80 +352,174 @@ func TestRepo_CandidateTransactionsExpensesOnly(t *testing.T) {
 		t.Fatalf("candidates = %+v, want the one expense", got)
 	}
 	c := got[0]
-	if c.ID.String() != expense || c.CurrencyID.String() != eur || c.Amount.String() != "40" || c.PayeeID != nil || c.TagID != nil {
+	if c.ID.String() != expense || c.CurrencyID.String() != eur || c.CategoryID.String() != e.category || c.Amount.String() != "40" ||
+		c.PayeeID != nil || c.TagID != nil {
 		t.Errorf("candidate = %+v", c)
 	}
 }
 
-func TestRepo_UsesAndReassign(t *testing.T) {
+func TestRepo_ListByClassification(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	payee := e.f.Payee(fixture.Payee{UserID: e.user, Name: "Bank"})
 	tag := e.f.Tag(fixture.Tag{UserID: e.user, Name: "Car"})
-	d := e.debt(fixture.NewID())
-	pid, tid := vo.MustParseId(payee), vo.MustParseId(tag)
-	d.PayeeID, d.TagID = &pid, &tid
-	if err := e.repo.Save(ctx, d); err != nil {
-		t.Fatal(err)
+	label := e.f.Label(fixture.Label{UserID: e.user, Name: "Home"})
+	other := e.f.Category(fixture.Category{UserID: e.user, Name: "Other"})
+	pid, tid, lid := vo.MustParseId(payee), vo.MustParseId(tag), vo.MustParseId(label)
+
+	withAll := e.debt(fixture.NewID())
+	withAll.Rules[0].PayeeID, withAll.Rules[0].TagID = &pid, &tid
+	labelled := e.rule(other, fixedTime.Add(time.Second))
+	labelled.LabelID = &lid
+	withAll.Rules = append(withAll.Rules, labelled)
+	plain := e.debt(fixture.NewID())
+	plain.CreatedAt = fixedTime.Add(time.Minute)
+	for _, d := range []*model.Debt{withAll, plain} {
+		if err := e.repo.Save(ctx, d); err != nil {
+			t.Fatal(err)
+		}
 	}
-	for kind, id := range map[string]vo.Id{"payee": pid, "tag": tid} {
-		got, err := e.repo.ListByClassification(ctx, kind, id)
-		if err != nil || len(got) != 1 || got[0].ID != d.ID {
-			t.Errorf("ListByClassification(%s) = %v, %v", kind, got, err)
+	for _, c := range []struct {
+		kind string
+		id   string
+		want []vo.Id
+	}{
+		{"category", e.category, []vo.Id{withAll.ID, plain.ID}},
+		{"category", other, []vo.Id{withAll.ID}},
+		{"payee", payee, []vo.Id{withAll.ID}},
+		{"tag", tag, []vo.Id{withAll.ID}},
+		{"label", label, []vo.Id{withAll.ID}},
+		{"payee", fixture.NewID(), nil},
+	} {
+		got, err := e.repo.ListByClassification(ctx, c.kind, vo.MustParseId(c.id))
+		if err != nil {
+			t.Fatalf("ListByClassification(%s): %v", c.kind, err)
+		}
+		var ids []vo.Id
+		for _, d := range got {
+			ids = append(ids, d.ID)
+			if len(d.Rules) == 0 {
+				t.Errorf("%s: debt %s loaded without rules", c.kind, d.ID)
+			}
+		}
+		if !slices.Equal(ids, c.want) {
+			t.Errorf("ListByClassification(%s) = %v, want %v", c.kind, ids, c.want)
 		}
 	}
 	if _, err := e.repo.ListByClassification(ctx, "currency", pid); err == nil {
 		t.Error("an unknown kind must be refused")
 	}
-	newCat := e.f.Category(fixture.Category{UserID: e.user, Name: "Loan 2"})
-	newPayee := e.f.Payee(fixture.Payee{UserID: e.user, Name: "Bank 2"})
-	newTag := e.f.Tag(fixture.Tag{UserID: e.user, Name: "Car 2"})
+}
 
-	var _ debt.Repository = e.repo
-	check := func(what string, got func(vo.Id) (bool, error), id string, want bool) {
-		t.Helper()
-		v, err := got(vo.MustParseId(id))
-		if err != nil || v != want {
-			t.Errorf("%s(%s) = %v, %v; want %v", what, id, v, err, want)
-		}
-	}
-	check("UsesCategory", func(id vo.Id) (bool, error) { return e.repo.UsesCategory(ctx, id) }, e.category, true)
-	check("UsesCategory", func(id vo.Id) (bool, error) { return e.repo.UsesCategory(ctx, id) }, newCat, false)
-	check("UsesPayee", func(id vo.Id) (bool, error) { return e.repo.UsesPayee(ctx, id) }, payee, true)
-	check("UsesPayee", func(id vo.Id) (bool, error) { return e.repo.UsesPayee(ctx, id) }, newPayee, false)
-	check("UsesTag", func(id vo.Id) (bool, error) { return e.repo.UsesTag(ctx, id) }, tag, true)
-	check("UsesTag", func(id vo.Id) (bool, error) { return e.repo.UsesTag(ctx, id) }, newTag, false)
-
-	if err := e.repo.ReassignCategory(ctx, vo.MustParseId(e.category), vo.MustParseId(newCat)); err != nil {
+func TestRepo_SaveReplacesRules(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	other := e.f.Category(fixture.Category{UserID: e.user, Name: "Other"})
+	d := e.debt(fixture.NewID())
+	kept := d.Rules[0]
+	d.Rules = append(d.Rules, e.rule(other, fixedTime.Add(time.Second)))
+	if err := e.repo.Save(ctx, d); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.repo.ReassignPayee(ctx, pid, vo.MustParseId(newPayee)); err != nil {
-		t.Fatal(err)
-	}
-	if err := e.repo.ReassignTag(ctx, tid, vo.MustParseId(newTag)); err != nil {
+	d.Rules = []model.DebtRule{kept}
+	if err := e.repo.Save(ctx, d); err != nil {
 		t.Fatal(err)
 	}
 	got, err := e.repo.GetByID(ctx, d.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.CategoryID.String() != newCat || got.PayeeID == nil || got.PayeeID.String() != newPayee || got.TagID == nil || got.TagID.String() != newTag {
-		t.Errorf("after reassign: category=%s payee=%v tag=%v", got.CategoryID, got.PayeeID, got.TagID)
+	if len(got.Rules) != 1 || got.Rules[0].ID != kept.ID || got.Rules[0].CategoryID != kept.CategoryID {
+		t.Fatalf("rules = %+v, want the kept one with its id", got.Rules)
 	}
-	check("UsesCategory", func(id vo.Id) (bool, error) { return e.repo.UsesCategory(ctx, id) }, e.category, false)
+	d.Rules = nil
+	if err := e.repo.Save(ctx, d); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := e.repo.GetByID(ctx, d.ID); err != nil || len(got.Rules) != 0 {
+		t.Fatalf("a debt without rules: %+v, %v", got, err)
+	}
 }
 
-func TestRepo_LockOwner(t *testing.T) {
+func TestRepo_ListByBudgetLoadsRulesInOrder(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	other := e.f.Category(fixture.Category{UserID: e.user, Name: "Other"})
+	third := e.f.Category(fixture.Category{UserID: e.user, Name: "Third"})
+	older, newer := e.debt(fixture.NewID()), e.debt(fixture.NewID())
+	newer.CreatedAt = fixedTime.Add(time.Hour)
+	// the rules are saved out of order: created_at, then id, orders them
+	late, early := e.rule(other, fixedTime.Add(2*time.Second)), e.rule(third, fixedTime.Add(time.Second))
+	older.Rules = []model.DebtRule{late, older.Rules[0], early}
+	elsewhere := e.debt(fixture.NewID())
+	elsewhere.BudgetID = vo.MustParseId(e.f.Budget(fixture.Budget{UserID: e.user}))
+	for _, d := range []*model.Debt{newer, elsewhere, older} {
+		if err := e.repo.Save(ctx, d); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := e.repo.ListByBudget(ctx, vo.MustParseId(e.budget))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ID != older.ID || got[1].ID != newer.ID {
+		t.Fatalf("ListByBudget = %v, want older then newer", got)
+	}
+	if r := got[0].Rules; len(r) != 3 || r[0].CategoryID.String() != e.category || r[1].ID != early.ID || r[2].ID != late.ID {
+		t.Fatalf("rules = %+v, want by created_at", r)
+	}
+	if len(got[1].Rules) != 1 {
+		t.Fatalf("newer rules = %+v", got[1].Rules)
+	}
+}
+
+func TestRepo_LockBudget(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	err := e.db.TX.WithTx(ctx, func(ctx context.Context) error {
-		if err := e.repo.LockOwner(ctx, vo.MustParseId(e.user)); err != nil {
+		if err := e.repo.LockBudget(ctx, vo.MustParseId(e.budget)); err != nil {
 			return err
 		}
-		return e.repo.LockOwner(ctx, vo.MustParseId(fixture.NewID()))
+		if err := e.repo.LockBudget(ctx, vo.NewId()); err != nil {
+			return err
+		}
+		return e.repo.LockRuleCategories(ctx, []vo.Id{vo.MustParseId(e.category), vo.NewId()})
 	})
 	if err != nil {
-		t.Fatalf("LockOwner: %v", err)
+		t.Fatalf("locks: %v", err)
+	}
+	if err := e.repo.LockRuleCategories(ctx, nil); err != nil {
+		t.Fatalf("no categories: %v", err)
+	}
+}
+
+// Deleting a budget deletes its debts with their rules, snapshots and splits.
+func TestRepo_BudgetDeleteCascades(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	d := e.debt(fixture.NewID())
+	if err := e.repo.Save(ctx, d); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.repo.AddSnapshot(ctx, &model.DebtSnapshot{ID: vo.NewId(), DebtID: d.ID, AsOf: fixedTime, Balance: vo.NewDecimal("1"),
+		Payment: vo.NewDecimal("1"), Schedule: model.RecurringScheduleMonthly, LastPaymentDate: fixedTime, CreatedAt: fixedTime}); err != nil {
+		t.Fatal(err)
+	}
+	txID := vo.MustParseId(e.expense(t, 0, "50"))
+	if err := e.repo.InsertSplit(ctx, model.DebtSplit{DebtID: d.ID, TransactionID: txID, Interest: vo.NewDecimal("1")}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.Raw.ExecContext(ctx, e.db.Rebind("DELETE FROM budgets WHERE id = ?"), e.budget); err != nil {
+		t.Fatalf("delete budget: %v", err)
+	}
+	if _, err := e.repo.GetByID(ctx, d.ID); !isNotFound(err) {
+		t.Errorf("the debt survived its budget: %v", err)
+	}
+	for _, table := range []string{"debts_rules", "debts_snapshots", "debts_payments"} {
+		var n int
+		if err := e.db.Raw.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+table).Scan(&n); err != nil || n != 0 {
+			t.Errorf("%s: %d rows, %v; want none", table, n, err)
+		}
 	}
 }
 
@@ -446,13 +568,9 @@ func TestRepo_SaveDebtWithoutTerms(t *testing.T) {
 	if got.Payment.String() != "300" || got.Schedule != model.RecurringScheduleWeekly {
 		t.Errorf("payment/schedule = %s / %s", got.Payment, got.Schedule)
 	}
-	byCat, err := e.repo.ListByCategory(ctx, d.CategoryID)
-	if err != nil || len(byCat) != 1 || byCat[0].Current != nil {
-		t.Errorf("ListByCategory = %v, %v", byCat, err)
-	}
-	byOwner, err := e.repo.ListByOwners(ctx, []vo.Id{d.OwnerID})
-	if err != nil || len(byOwner) != 1 || byOwner[0].Current != nil {
-		t.Errorf("ListByOwners = %v, %v", byOwner, err)
+	byBudget, err := e.repo.ListByBudget(ctx, d.BudgetID)
+	if err != nil || len(byBudget) != 1 || byBudget[0].Current != nil {
+		t.Errorf("ListByBudget = %v, %v", byBudget, err)
 	}
 
 	d.SetTerms(model.DebtTerms{
@@ -474,53 +592,6 @@ func TestRepo_SaveDebtWithoutTerms(t *testing.T) {
 	}
 }
 
-func TestRepo_LabelRoundTripAndReassign(t *testing.T) {
-	e := newEnv(t)
-	ctx := context.Background()
-	label := e.f.Label(fixture.Label{UserID: e.user, Name: "Car"})
-	other := e.f.Label(fixture.Label{UserID: e.user, Name: "House"})
-	lid := vo.MustParseId(label)
-	d := e.debt(fixture.NewID())
-	d.LabelID = &lid
-	if err := e.repo.Save(ctx, d); err != nil {
-		t.Fatalf("Save: %v", err)
-	}
-	got, err := e.repo.GetByID(ctx, d.ID)
-	if err != nil || got.LabelID == nil || *got.LabelID != lid {
-		t.Fatalf("GetByID label = %v, %v", got, err)
-	}
-	byOwner, err := e.repo.ListByOwners(ctx, []vo.Id{d.OwnerID})
-	if err != nil || len(byOwner) != 1 || byOwner[0].LabelID == nil || *byOwner[0].LabelID != lid {
-		t.Errorf("ListByOwners label = %v, %v", byOwner, err)
-	}
-	byLabel, err := e.repo.ListByClassification(ctx, "label", lid)
-	if err != nil || len(byLabel) != 1 || byLabel[0].ID != d.ID {
-		t.Errorf("ListByClassification(label) = %v, %v", byLabel, err)
-	}
-	for id, want := range map[string]bool{label: true, other: false} {
-		if v, err := e.repo.UsesLabel(ctx, vo.MustParseId(id)); err != nil || v != want {
-			t.Errorf("UsesLabel(%s) = %v, %v; want %v", id, v, err, want)
-		}
-	}
-	if err := e.repo.ReassignLabel(ctx, lid, vo.MustParseId(other)); err != nil {
-		t.Fatal(err)
-	}
-	got, err = e.repo.GetByID(ctx, d.ID)
-	if err != nil || got.LabelID == nil || got.LabelID.String() != other {
-		t.Fatalf("after reassign: %v, %v", got, err)
-	}
-	if v, _ := e.repo.UsesLabel(ctx, lid); v {
-		t.Error("the old label is still in use")
-	}
-	d.LabelID = nil
-	if err := e.repo.Save(ctx, d); err != nil {
-		t.Fatal(err)
-	}
-	if got, err = e.repo.GetByID(ctx, d.ID); err != nil || got.LabelID != nil {
-		t.Errorf("after clearing: %v, %v", got, err)
-	}
-}
-
 func TestRepo_CandidateTransactionsCarryLabels(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -535,7 +606,7 @@ func TestRepo_CandidateTransactionsCarryLabels(t *testing.T) {
 	e.link(t, withOne, b)
 	e.link(t, foreign, a)
 
-	got, err := e.repo.CandidateTransactions(ctx, vo.MustParseId(e.category))
+	got, err := e.repo.CandidateTransactions(ctx, []vo.Id{vo.MustParseId(e.category)}, []vo.Id{vo.MustParseId(e.account)})
 	if err != nil || len(got) != 3 {
 		t.Fatalf("CandidateTransactions = %v, %v", got, err)
 	}
@@ -552,5 +623,43 @@ func TestRepo_CandidateTransactionsCarryLabels(t *testing.T) {
 	slices.Sort(wantTwo)
 	if !slices.Equal(labels[withTwo], wantTwo) || !slices.Equal(labels[withOne], []string{b}) || len(labels[bare]) != 0 {
 		t.Errorf("labels = %v", labels)
+	}
+}
+
+// Only the given accounts and categories count: an expense in a rule's
+// category on an account outside the budget is not a candidate.
+func TestRepo_CandidateTransactionsOnTheGivenAccounts(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	other := e.f.Category(fixture.Category{UserID: e.user, Name: "Other"})
+	ignored := e.f.Category(fixture.Category{UserID: e.user, Name: "Ignored"})
+	outside := e.f.Account(fixture.Account{UserID: e.user})
+	label := e.f.Label(fixture.Label{UserID: e.user, Name: "L"})
+	inFirst := e.expense(t, 0, "10")
+	inOther := e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: e.account, CategoryID: other, Type: 0, Amount: "20"})
+	e.link(t, inOther, label)
+	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: outside, CategoryID: e.category, Type: 0, Amount: "30"})
+	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: e.account, CategoryID: ignored, Type: 0, Amount: "40"})
+	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: e.account, CategoryID: other, Type: 1, Amount: "50"})
+	e.link(t, e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: outside, CategoryID: other, Type: 0, Amount: "60"}), label)
+
+	got, err := e.repo.CandidateTransactions(ctx, []vo.Id{vo.MustParseId(e.category), vo.MustParseId(other)}, []vo.Id{vo.MustParseId(e.account)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]debt.CandidateTx{}
+	for _, c := range got {
+		byID[c.ID.String()] = c
+	}
+	if len(got) != 2 || byID[inFirst].CategoryID.String() != e.category || byID[inOther].CategoryID.String() != other {
+		t.Fatalf("candidates = %+v, want the two expenses on the listed account", got)
+	}
+	if l := byID[inOther].LabelIDs; len(l) != 1 || l[0].String() != label {
+		t.Errorf("labels = %v", l)
+	}
+	for _, empty := range [][2][]vo.Id{{nil, {vo.MustParseId(e.account)}}, {{vo.MustParseId(e.category)}, nil}} {
+		if got, err := e.repo.CandidateTransactions(ctx, empty[0], empty[1]); err != nil || len(got) != 0 {
+			t.Errorf("no categories or no accounts: %v, %v", got, err)
+		}
 	}
 }

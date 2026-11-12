@@ -2,20 +2,36 @@ package debt
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// CreateDebt creates a set-up debt when the request carries the loan's facts
+// CreateDebt creates a debt in a budget the user plans in, matching payments
+// through its rules. It is set up when the request carries the loan's facts
 // (amount borrowed, start date, last payment date): its first snapshot, the
 // origin, is as of the start date, and a balance now adds one as of today.
 // Without them the debt collects its payments without terms until setup is
-// finished.
+// finished. Each whole-category rule takes its category row's plans.
 func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.CreateDebtRequest) (*model.DebtResult, error) {
-	in, err := parseInput(debtBody{name: req.Name, currencyID: req.CurrencyId, categoryID: req.CategoryId,
-		payeeID: req.PayeeId, tagID: req.TagId, labelID: req.LabelId, start: req.StartDate, borrowed: req.AmountBorrowed,
+	budgetID, err := vo.ParseId(req.BudgetId)
+	if err != nil {
+		return nil, err
+	}
+	rules, err := parseRules(req.Rules)
+	if err != nil {
+		return nil, err
+	}
+	if len(rules) == 0 {
+		return nil, fieldError("rules", "This value should not be blank.", errs.CodeIsBlank)
+	}
+	if len(rules) > maxRules {
+		return nil, tooManyRules()
+	}
+	in, err := parseInput(debtBody{name: req.Name, currencyID: req.CurrencyId, start: req.StartDate, borrowed: req.AmountBorrowed,
 		balance: req.Balance, balanceDate: req.BalanceDate, payment: req.Payment, schedule: req.Schedule, lastPayment: req.LastPaymentDate})
 	if err != nil {
 		return nil, err
@@ -26,47 +42,54 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 	if (in.hasOwed && !in.hasOrigin) || (in.hasOrigin && in.start == nil) {
 		return nil, missingFacts(!in.hasOrigin, in.start == nil, !in.hasOrigin)
 	}
-	if err := s.currencies.EnsureUsable(ctx, userID.String(), in.currency.String()); err != nil {
-		return nil, err
-	}
-	digits, err := s.rates.FractionDigits(ctx, in.currency)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.checkClassifications(ctx, userID, in); err != nil {
-		return nil, err
-	}
-
-	loc, err := s.ownerLocation(ctx, userID)
+	loc, err := s.userLocation(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	now := s.clock.Now()
-	d := &model.Debt{ID: s.repo.NextIdentity(), OwnerID: userID, CurrencyID: in.currency, CategoryID: in.category,
-		Name: in.name, PayeeID: in.payee, TagID: in.tag, LabelID: in.label, StartDate: in.start,
-		CreatedDay: debtDate(now.In(loc)), CreatedAt: now, UpdatedAt: now}
-	var snaps []model.DebtTerms
-	if in.hasOrigin {
-		if snaps, err = in.setupTerms(model.DebtTerms{Payment: in.payment, Schedule: in.schedule}, s.today(ctx), digits); err != nil {
-			return nil, err
-		}
-		d.AmountBorrowed = snaps[0].Balance
-		d.SetTerms(snaps[len(snaps)-1])
-	} else {
-		d.Payment, d.Schedule = in.payment.Round(digits), in.schedule
-		if err := validatePayment(d.Payment); err != nil {
-			return nil, err
-		}
-	}
+	var d *model.Debt
+	var budget model.DebtBudget
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.repo.LockOwner(ctx, userID); err != nil {
+		if err := s.repo.LockBudget(ctx, budgetID); err != nil {
 			return err
 		}
-		others, err := s.repo.ListByCategory(ctx, d.CategoryID)
+		b, err := s.planBudget(ctx, userID, budgetID)
 		if err != nil {
 			return err
 		}
-		if err := checkKeys(d, others); err != nil {
+		budget = b
+		currency, err := s.debtCurrency(ctx, userID, b, in.currency)
+		if err != nil {
+			return err
+		}
+		digits, err := s.rates.FractionDigits(ctx, currency)
+		if err != nil {
+			return err
+		}
+		d = &model.Debt{ID: s.repo.NextIdentity(), BudgetID: b.ID, CurrencyID: currency, Name: in.name, StartDate: in.start,
+			CreatedDay: debtDate(now.In(loc)), CreatedAt: now, UpdatedAt: now}
+		for _, r := range rules {
+			d.Rules = append(d.Rules, s.mint(r, now))
+		}
+		sortRules(d.Rules)
+		var snaps []model.DebtTerms
+		if in.hasOrigin {
+			if snaps, err = in.setupTerms(model.DebtTerms{Payment: in.payment, Schedule: in.schedule}, s.today(ctx), digits); err != nil {
+				return err
+			}
+			d.AmountBorrowed = snaps[0].Balance
+			d.SetTerms(snaps[len(snaps)-1])
+		} else {
+			d.Payment, d.Schedule = in.payment.Round(digits), in.schedule
+			if err := validatePayment(d.Payment); err != nil {
+				return err
+			}
+		}
+		budgetDebts, err := s.repo.ListByBudget(ctx, b.ID)
+		if err != nil {
+			return err
+		}
+		if err := s.writeRules(ctx, b, d, d.Rules, budgetDebts); err != nil {
 			return err
 		}
 		if err := s.repo.Save(ctx, d); err != nil {
@@ -77,15 +100,32 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 				return err
 			}
 		}
-		if isWholeCategory(d, others) {
-			return s.moveToDebt(ctx, d)
+		for _, r := range d.Rules {
+			if model.IsWholeCategoryRule(d, r, budgetDebts) {
+				if err := s.moveToDebt(ctx, d, r.CategoryID); err != nil {
+					return err
+				}
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return s.resultOf(ctx, d)
+	return s.resultOf(ctx, budget, d)
+}
+
+// debtCurrency is the currency a new or changed debt is in: none asked for
+// takes the budget's. A currency the budget already uses (its own or a row's)
+// is usable there whoever asks; any other must be usable by the user.
+func (s *Service) debtCurrency(ctx context.Context, userID vo.Id, b model.DebtBudget, asked vo.Id) (vo.Id, error) {
+	if asked.IsZero() {
+		return b.CurrencyID, nil
+	}
+	if asked.Equal(b.CurrencyID) || slices.ContainsFunc(b.CurrencyIDs, asked.Equal) {
+		return asked, nil
+	}
+	return asked, s.currencies.EnsureUsable(ctx, userID.String(), asked.String())
 }
 
 // setupTerms are the snapshots that set a debt up: the origin from the body's

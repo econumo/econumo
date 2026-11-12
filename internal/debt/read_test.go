@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/econumo/econumo/internal/debt"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -68,11 +69,17 @@ func TestViews_RangesAndPlanningBounds(t *testing.T) {
 	newer := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate, r.LastPaymentDate = ptr("2026-06-15"), "2027-06-01" })
 	payee := e.newPayee()
 	cat2 := e.newCategory(e.user, true)
-	narrow := e.create(t, func(r *model.CreateDebtRequest) { r.CategoryId = cat2; r.PayeeId = &payee })
+	narrow := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = cat2; r.Rules[0].PayeeId = &payee })
+	empty := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = e.newCategory(e.user, true) })
+	// a classification delete can leave a debt with no rules: it keeps the
+	// default icon and matches nothing
+	if err := e.svc.ReleaseClassification(ctx, debt.KindCategory, vo.MustParseId(empty.Rules[0].CategoryId)); err != nil {
+		t.Fatal(err)
+	}
 
 	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: e.account, CategoryID: cat2, PayeeID: payee, Type: 0, Amount: "1000", SpentAt: ymd(2026, 4, 20)})
 
-	views, err := e.svc.Views(ctx, []vo.Id{e.uid()})
+	views, err := e.svc.Views(ctx, e.scope(e.budget))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,12 +87,15 @@ func TestViews_RangesAndPlanningBounds(t *testing.T) {
 	for _, v := range views {
 		byID[v.ID] = v
 	}
-	if len(views) != 3 {
-		t.Fatalf("views = %d, want 3", len(views))
+	if len(views) != 4 {
+		t.Fatalf("views = %d, want 4", len(views))
+	}
+	if v := byID[empty.Id]; len(v.Rules) != 0 || v.Icon != model.DefaultIcon {
+		t.Errorf("rule-less view = %+v", v)
 	}
 	o, n, nr := byID[oldDebt.Id], byID[newer.Id], byID[narrow.Id]
 	if o.From == nil || !o.From.Equal(ymd(2026, 3, 10)) || o.Until == nil || !o.Until.Equal(ymd(2026, 6, 15)) || o.Icon != "i" ||
-		o.OwnerID != e.user || o.CurrencyID != fixture.USD {
+		o.BudgetID != e.budget || o.CurrencyID != fixture.USD {
 		t.Errorf("old = %+v", o)
 	}
 	if n.From == nil || !n.From.Equal(ymd(2026, 6, 15)) || n.Until != nil {
@@ -98,10 +108,10 @@ func TestViews_RangesAndPlanningBounds(t *testing.T) {
 		t.Errorf("newer start = %v, want the start date's month", n.StartMonth)
 	}
 	// a first payment after the start does not move the start
-	if nr.PayeeID == nil || *nr.PayeeID != payee || !nr.StartMonth.Equal(ymd(2026, 3, 1)) {
+	if len(nr.Rules) != 1 || nr.Rules[0].PayeeID == nil || *nr.Rules[0].PayeeID != payee || !nr.StartMonth.Equal(ymd(2026, 3, 1)) {
 		t.Errorf("narrow = %+v (start is the start date's month)", nr)
 	}
-	if o.PayeeID != nil || o.TagID != nil || o.LabelID != nil {
+	if len(o.Rules) != 1 || o.Rules[0].PayeeID != nil || o.Rules[0].TagID != nil || o.Rules[0].LabelID != nil {
 		t.Errorf("old should be the whole-category debt: %+v", o)
 	}
 }
@@ -113,7 +123,7 @@ func TestViews_PaidOffEndsAtPayoffMonth(t *testing.T) {
 	if _, err := e.svc.MarkDebtPaidOff(context.Background(), e.uid(), model.MarkDebtPaidOffRequest{Id: res.Id}); err != nil {
 		t.Fatal(err)
 	}
-	views, err := e.svc.Views(context.Background(), []vo.Id{e.uid()})
+	views, err := e.svc.Views(context.Background(), e.scope(e.budget))
 	if err != nil || len(views) != 1 {
 		t.Fatalf("views = %+v, %v", views, err)
 	}
@@ -131,7 +141,7 @@ func TestViews_WritesNothing(t *testing.T) {
 	e.clock.now = ymd(2026, 4, 20)
 	tx := e.expense(t, e.account, ymd(2026, 2, 20), "105", "")
 
-	views, err := e.svc.Views(context.Background(), []vo.Id{e.uid()})
+	views, err := e.svc.Views(context.Background(), e.scope(e.budget))
 	if err != nil || len(views) != 1 {
 		t.Fatalf("views = %+v, %v", views, err)
 	}
@@ -153,7 +163,7 @@ func TestViews_StartAtAnEarlierFirstPayment(t *testing.T) {
 	e := newEnv(t)
 	res := e.createWithoutTerms(t, nil)
 	e.expense(t, e.account, ymd(2026, 1, 20), "1000", "")
-	views, err := e.svc.Views(context.Background(), []vo.Id{e.uid()})
+	views, err := e.svc.Views(context.Background(), e.scope(e.budget))
 	if err != nil || len(views) != 1 {
 		t.Fatalf("views = %v, %v", views, err)
 	}
@@ -261,8 +271,86 @@ func TestGetDebt_ExtraPaid(t *testing.T) {
 		t.Fatalf("list = %+v, %v", list, err)
 	}
 
-	bare := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.CategoryId = e.newCategory(e.user, true) })
+	bare := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = e.newCategory(e.user, true) })
 	if bare.ExtraPaid != "" {
 		t.Fatalf("not set up extra paid = %q, want empty", bare.ExtraPaid)
 	}
+}
+
+// Settings lists the debts of every budget the user reads, budget by budget,
+// archived ones included (read-only); a pending invite shows nothing.
+func TestGetDebtList_EveryReadableBudget(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	home := e.create(t, nil)
+	sam := e.f.User(fixture.User{Name: "Sam", Email: "sam@example.test"})
+	samsAccount := e.f.Account(fixture.Account{UserID: sam})
+	shared := e.newBudget(sam, "Shared", samsAccount)
+	e.fakeBudget(shared).roles[e.user] = roleUser
+	samsCategory := e.newCategory(sam, true)
+	sharedReq := e.createReq()
+	sharedReq.BudgetId, sharedReq.Rules = shared, []model.DebtRuleRequest{rule(samsCategory)}
+	away, err := e.svc.CreateDebt(ctx, vo.MustParseId(sam), sharedReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.fakeBudget(shared).archived = true
+	pending := e.newBudget(sam, "Pending", samsAccount)
+	e.fakeBudget(pending).roles[e.user] = rolePending
+	pendingReq := sharedReq
+	pendingReq.BudgetId = pending
+	if _, err := e.svc.CreateDebt(ctx, vo.MustParseId(sam), pendingReq); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := e.svc.GetDebtList(ctx, e.uid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Items) != 2 {
+		t.Fatalf("items = %+v, want the two readable budgets' debts", list.Items)
+	}
+	if it := list.Items[0]; it.Id != home.Id || it.BudgetId != e.budget || it.BudgetName != "Family" || it.CanEdit != 1 {
+		t.Errorf("home = %+v", it)
+	}
+	if it := list.Items[1]; it.Id != away.Id || it.BudgetId != shared || it.BudgetName != "Shared" || it.CanEdit != 0 {
+		t.Errorf("archived = %+v", it)
+	}
+}
+
+func TestGetDebt_GuestReadsWithCanEditZero(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	guest := e.partner(t, "guest", roleGuest)
+	got, err := e.svc.GetDebt(context.Background(), uidOf(guest), model.GetDebtRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Item.CanEdit != 0 || got.Item.Id != res.Id || len(got.Item.Rules) != 1 || got.Item.Rules[0].OwnerName != "Alex" {
+		t.Fatalf("item = %+v", got.Item)
+	}
+	if res.CanEdit != 1 {
+		t.Fatalf("the owner's canEdit = %d", res.CanEdit)
+	}
+	_, err = e.svc.MarkDebtPaidOff(context.Background(), uidOf(guest), model.MarkDebtPaidOffRequest{Id: res.Id})
+	requireForbidden(t, err)
+	_, err = e.svc.ReconcileDebt(context.Background(), uidOf(guest), model.ReconcileDebtRequest{Id: res.Id, Balance: vo.NewFlexString("100")})
+	requireForbidden(t, err)
+}
+
+func TestGetDebtRuleOptions_NeedsPlanAccess(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	want := &model.DebtRuleOptionsResult{Participants: []model.DebtRuleParticipant{{UserId: e.user, Name: "Alex"}}}
+	e.fakeBudget(e.budget).options = want
+	got, err := e.svc.GetDebtRuleOptions(ctx, e.uid(), model.GetDebtRuleOptionsRequest{BudgetId: e.budget})
+	if err != nil || got != want {
+		t.Fatalf("options = %+v, %v", got, err)
+	}
+	guest := e.partner(t, "guest", roleGuest)
+	_, err = e.svc.GetDebtRuleOptions(ctx, uidOf(guest), model.GetDebtRuleOptionsRequest{BudgetId: e.budget})
+	requireForbidden(t, err)
+	stranger := e.f.User(fixture.User{Name: "stranger", Email: "stranger@example.test"})
+	_, err = e.svc.GetDebtRuleOptions(ctx, uidOf(stranger), model.GetDebtRuleOptionsRequest{BudgetId: e.budget})
+	requireNotFound(t, err)
 }

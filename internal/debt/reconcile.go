@@ -60,27 +60,24 @@ func (s *Service) DeleteDebtReconciliation(ctx context.Context, userID vo.Id, re
 	})
 }
 
-// withSetUpDebt runs write on the caller's set-up debt under the owner lock,
-// after its pending payments are split under the terms they were made under,
-// then saves the debt and presents it.
+// withSetUpDebt runs write on a set-up debt the user may edit, under its
+// budget's lock, after its pending payments are split under the terms they
+// were made under, then saves the debt and presents it.
 func (s *Service) withSetUpDebt(ctx context.Context, userID, id vo.Id,
 	write func(ctx context.Context, cur *model.Debt, snaps []*model.DebtSnapshot, today time.Time, digits int) error) (*model.DebtResult, error) {
-	d, err := s.ownedDebt(ctx, userID, id)
+	d, b, err := s.editableDebt(ctx, userID, id)
 	if err != nil {
 		return nil, err
 	}
 	if !d.IsSetUp() {
 		return nil, notSetUp()
 	}
-	if _, err := s.syncCategory(ctx, d.CategoryID); err != nil {
+	if _, err := s.syncBudget(ctx, scopeOf(b)); err != nil {
 		return nil, err
 	}
 	today, now := s.today(ctx), s.clock.Now()
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.repo.LockOwner(ctx, userID); err != nil {
-			return err
-		}
-		cur, err := s.ownedDebt(ctx, userID, id)
+		cur, _, err := s.lockedDebt(ctx, userID, id)
 		if err != nil {
 			return err
 		}
@@ -108,7 +105,7 @@ func (s *Service) withSetUpDebt(ctx context.Context, userID, id vo.Id,
 	if err != nil {
 		return nil, err
 	}
-	return s.resultOf(ctx, d)
+	return s.resultOf(ctx, b, d)
 }
 
 // validateStatement checks a statement balance as of t.AsOf, which must lie

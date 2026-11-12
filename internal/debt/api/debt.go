@@ -61,11 +61,10 @@ func (h *Handlers) GetDebt(w http.ResponseWriter, r *http.Request) {
 // GetDebtForecast handles GET /api/v1/debt/get-debt-forecast (auth).
 //
 // @Summary     Get a debt's future payments
-// @Description Projects the payments still to come, soonest first, to the payoff: the regular schedule plus the extras planned for the debt's row in budgetId, else in the user's active budget. A budget the caller cannot read, or one that holds no row for the debt, leaves the regular payments alone; budgetId and budgetName name the budget only when its plans add an extra. paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with those extras (get-debt's own when there are none); extraPlanned sums the planned extras those payments carry ("0" with none). A debt not set up has no items, 0 payments left and empty figures. A debt of another user is not found.
+// @Description Projects the payments still to come, soonest first, to the payoff: the regular schedule plus the extras planned for the debt's row in its budget. A budget that holds no row for the debt leaves the regular payments alone; budgetId and budgetName name the budget only when its plans add an extra. paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with those extras (get-debt's own when there are none); extraPlanned sums the planned extras those payments carry ("0" with none). A debt not set up has no items, 0 payments left and empty figures. A debt of another user is not found.
 // @Tags        Debt
 // @Produce     json
 // @Param       id       query string true  "Debt id"
-// @Param       budgetId query string false "Budget whose plans add the extras"
 // @Success     200 {object} apidoc.JsonResponseOk{data=model.DebtForecastResult}
 // @Failure     400 {object} apidoc.JsonResponseError
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
@@ -78,7 +77,7 @@ func (h *Handlers) GetDebtForecast(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	req := model.GetDebtForecastRequest{Id: q.Get("id"), BudgetId: q.Get("budgetId")}
+	req := model.GetDebtForecastRequest{Id: q.Get("id")}
 	if err := req.Validate(); err != nil {
 		httpx.WriteError(r.Context(), w, err)
 		return

@@ -22,159 +22,157 @@ type Service struct {
 	class      Classifications
 	rates      Rates
 	currencies Currencies
-	owners     Owners
-	budget     BudgetElements
-	plans      BudgetPlans
+	users      Users
+	budgets    Budgets
+	elements   BudgetElements
 }
 
-func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Classifications, rates Rates, currencies Currencies, owners Owners) *Service {
-	return &Service{repo: repo, tx: tx, clock: clock, class: class, rates: rates, currencies: currencies, owners: owners}
+func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Classifications, rates Rates, currencies Currencies, users Users) *Service {
+	return &Service{repo: repo, tx: tx, clock: clock, class: class, rates: rates, currencies: currencies, users: users}
 }
 
-// SetBudgetElements installs the budget peer; the budget service is built
+// SetBudgets installs the budget access peer; the budget service is built
 // after this one, so it cannot be a constructor argument.
-func (s *Service) SetBudgetElements(b BudgetElements) { s.budget = b }
+func (s *Service) SetBudgets(b Budgets) { s.budgets = b }
 
-// SetBudgetPlans installs the source of the forecast's planned extras.
-func (s *Service) SetBudgetPlans(p BudgetPlans) { s.plans = p }
+// SetBudgetElements installs the budget rows peer.
+func (s *Service) SetBudgetElements(b BudgetElements) { s.elements = b }
 
-// moveToDebt hands the category row's plans and comments to a whole-category
-// debt's row, only for the months the debt can be planned in: the rest stays
-// on the category, whose Available keeps counting it. A month both rows plan
-// adds up, so nothing is lost.
-func (s *Service) moveToDebt(ctx context.Context, d *model.Debt) error {
-	if s.budget == nil {
+// moveToDebt hands the category row's plans and comments in the debt's budget
+// to the debt's row, only for the months the debt can be planned in: the rest
+// stays on the category, whose Available keeps counting it. A month both rows
+// plan adds up, so nothing is lost.
+func (s *Service) moveToDebt(ctx context.Context, d *model.Debt, category vo.Id) error {
+	if s.elements == nil {
 		return nil
 	}
-	st, err := s.stateNow(ctx, d)
+	first, last, err := s.planningDays(ctx, d)
 	if err != nil {
 		return err
 	}
-	first, last := planningBounds(st, st.project(s.today(ctx), nil, nil))
-	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
-		FromID: d.CategoryID, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
+	_, err = s.elements.TransferData(ctx, model.ElementDataTransfer{
+		BudgetID: d.BudgetID, FromID: category, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
 		CurrencyID: d.CurrencyID, SumOnClash: true, FirstDay: first, LastDay: last,
 	})
 	return err
 }
 
 // moveTailToCategory hands the plans and comments after a debt's end back to
-// category, the whole category the debt covered before setup: it took them
-// with no end, and its row hides every month past the end. currency is the
-// one the debt's rows are in.
+// category, the whole category the debt covered alone before setup: it took
+// them with no end, and its row hides every month past the end. currency is
+// the one the debt's rows are in.
 func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt, category, currency vo.Id) error {
-	if s.budget == nil {
+	if s.elements == nil {
 		return nil
 	}
-	st, err := s.stateNow(ctx, d)
-	if err != nil {
+	_, last, err := s.planningDays(ctx, d)
+	if err != nil || last.IsZero() {
 		return err
-	}
-	_, last := planningBounds(st, st.project(s.today(ctx), nil, nil))
-	if last.IsZero() {
-		return nil
 	}
 	if err := s.lockRows(ctx, d.ID); err != nil {
 		return err
 	}
-	_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
-		FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
+	_, err = s.elements.TransferData(ctx, model.ElementDataTransfer{
+		BudgetID: d.BudgetID, FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
 		CurrencyID: currency, SumOnClash: true, AfterDay: last,
 	})
 	return err
 }
 
-// firstPlanningDay is the first day of the debt's planning bounds as stored.
-func (s *Service) firstPlanningDay(ctx context.Context, d *model.Debt) (time.Time, error) {
+// planningDays are the first and last day of the debt's planning bounds as
+// stored.
+func (s *Service) planningDays(ctx context.Context, d *model.Debt) (first, last time.Time, err error) {
 	st, err := s.stateNow(ctx, d)
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, time.Time{}, err
 	}
-	first, _ := planningBounds(st, st.project(s.today(ctx), nil, nil))
-	return first, nil
+	first, last = planningBounds(st, st.project(s.today(ctx), nil, nil))
+	return first, last, nil
 }
 
-// moveHead follows a whole-category debt whose first planning day moved.
-// Later: the plans and comments before the new first day go back to category,
-// the whole category the debt covered (it took them from its old first day on,
-// and its row hides every month before its start). Earlier, the debt still
-// covering that whole category: the category's plans and comments in the
-// months it now starts in come to the debt, as a conversion does. currency is
-// the one the debt's rows are in.
-func (s *Service) moveHead(ctx context.Context, d *model.Debt, category vo.Id, wasFirst time.Time, currency vo.Id) error {
-	if s.budget == nil {
+// moveHead follows a debt whose first planning day moved. Later: the plans
+// and comments before the new first day go back to sole, the whole category
+// the debt covered alone (it took them from its old first day on, and its row
+// hides every month before its start); a debt with several rules keeps them,
+// they cannot be split back by category. Earlier: each category in kept, the
+// whole-category rules the debt had before and still has, gives the debt its
+// plans and comments in the months it now starts in, as a conversion does.
+// currency is the one the debt's rows are in.
+func (s *Service) moveHead(ctx context.Context, d *model.Debt, sole *vo.Id, kept []vo.Id, wasFirst time.Time, currency vo.Id) error {
+	if s.elements == nil {
 		return nil
 	}
-	first, err := s.firstPlanningDay(ctx, d)
+	first, _, err := s.planningDays(ctx, d)
 	if err != nil {
 		return err
 	}
 	switch {
-	case first.After(wasFirst):
+	case first.After(wasFirst) && sole != nil:
 		if err := s.lockRows(ctx, d.ID); err != nil {
 			return err
 		}
-		_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
-			FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
+		_, err = s.elements.TransferData(ctx, model.ElementDataTransfer{
+			BudgetID: d.BudgetID, FromID: d.ID, FromType: model.ElementDebt, ToID: *sole, ToType: model.ElementCategory,
 			CurrencyID: currency, SumOnClash: true, BeforeDay: first,
 		})
-	case first.Before(wasFirst) && d.CategoryID.Equal(category):
-		whole, werr := s.wholeCategory(ctx, d)
-		if werr != nil || !whole {
-			return werr
+	case first.Before(wasFirst):
+		for _, category := range kept {
+			if _, err = s.elements.TransferData(ctx, model.ElementDataTransfer{
+				BudgetID: d.BudgetID, FromID: category, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
+				CurrencyID: currency, SumOnClash: true, FirstDay: first, BeforeDay: wasFirst,
+			}); err != nil {
+				return err
+			}
 		}
-		_, err = s.budget.TransferData(ctx, model.ElementDataTransfer{
-			FromID: category, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
-			CurrencyID: currency, SumOnClash: true, FirstDay: first, BeforeDay: wasFirst,
-		})
 	}
 	return err
 }
 
-// moveToCategory hands a deleted whole-category debt's row back to its
-// category; a month the category already plans keeps the category's plan.
-func (s *Service) moveToCategory(ctx context.Context, d *model.Debt) (leftBehind bool, err error) {
-	if s.budget == nil {
+// moveToCategory hands a deleted debt's row back to category, the whole
+// category it covered alone; a month the category already plans keeps the
+// category's plan.
+func (s *Service) moveToCategory(ctx context.Context, d *model.Debt, category vo.Id) (leftBehind bool, err error) {
+	if s.elements == nil {
 		return false, nil
 	}
-	return s.budget.TransferData(ctx, model.ElementDataTransfer{
-		FromID: d.ID, FromType: model.ElementDebt, ToID: d.CategoryID, ToType: model.ElementCategory, CurrencyID: d.CurrencyID,
+	return s.elements.TransferData(ctx, model.ElementDataTransfer{
+		BudgetID: d.BudgetID, FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory, CurrencyID: d.CurrencyID,
 	})
 }
 
 func (s *Service) removeRows(ctx context.Context, id vo.Id) error {
-	if s.budget == nil {
+	if s.elements == nil {
 		return nil
 	}
-	return s.budget.RemoveRows(ctx, id, model.ElementDebt)
+	return s.elements.RemoveRows(ctx, id, model.ElementDebt)
 }
 
 func (s *Service) setRowsCurrency(ctx context.Context, id, currencyID vo.Id) error {
-	if s.budget == nil {
+	if s.elements == nil {
 		return nil
 	}
-	return s.budget.SetRowsCurrency(ctx, id, model.ElementDebt, currencyID)
+	return s.elements.SetRowsCurrency(ctx, id, model.ElementDebt, currencyID)
 }
 
 func (s *Service) lockRows(ctx context.Context, id vo.Id) error {
-	if s.budget == nil {
+	if s.elements == nil {
 		return nil
 	}
-	return s.budget.LockRows(ctx, id, model.ElementDebt)
+	return s.elements.LockRows(ctx, id, model.ElementDebt)
 }
 
 func (s *Service) hasData(ctx context.Context, id vo.Id) (bool, error) {
-	if s.budget == nil {
+	if s.elements == nil {
 		return false, nil
 	}
-	return s.budget.HasData(ctx, id, model.ElementDebt)
+	return s.elements.HasData(ctx, id, model.ElementDebt)
 }
 
-// ownerLocation is the owner's stored timezone, UTC when none (or an unknown
-// one) is stored: the creation day is taken in it, so a debt's planning start
-// does not depend on who views it.
-func (s *Service) ownerLocation(ctx context.Context, ownerID vo.Id) (*time.Location, error) {
-	tz, err := s.owners.GetTimezone(ctx, ownerID)
+// userLocation is the user's stored timezone, UTC when none (or an unknown
+// one) is stored: the creation day is taken in the creator's, so a debt's
+// planning start does not depend on who views it.
+func (s *Service) userLocation(ctx context.Context, userID vo.Id) (*time.Location, error) {
+	tz, err := s.users.GetTimezone(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -195,60 +193,6 @@ func (s *Service) today(ctx context.Context) time.Time {
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 }
 
-// ownedDebt masks a debt of another user as not found.
-func (s *Service) ownedDebt(ctx context.Context, userID, id vo.Id) (*model.Debt, error) {
-	d, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if !d.OwnerID.Equal(userID) {
-		return nil, errs.NewNotFound("Debt not found")
-	}
-	return d, nil
-}
-
-// isWholeCategory: the debt takes every expense of its category, from its
-// start date on, and is the only debt there with no payee, tag or label. A
-// set-up debt always has a start date (the loan's), so the start does not
-// make a debt partial; months before it stay the category's through the
-// planning bounds. Two such debts told apart only by their start dates share
-// the category's months, so neither takes the category's plans or hands its
-// own back: a move could give one debt's months to the other or to the
-// category.
-func isWholeCategory(d *model.Debt, others []*model.Debt) bool {
-	if d.PayeeID != nil || d.TagID != nil || d.LabelID != nil {
-		return false
-	}
-	for _, o := range others {
-		if !o.ID.Equal(d.ID) && o.CategoryID.Equal(d.CategoryID) && o.PayeeID == nil && o.TagID == nil && o.LabelID == nil {
-			return false
-		}
-	}
-	return true
-}
-
-// wholeCategory is isWholeCategory against the debts stored in d's category.
-func (s *Service) wholeCategory(ctx context.Context, d *model.Debt) (bool, error) {
-	others, err := s.repo.ListByCategory(ctx, d.CategoryID)
-	if err != nil {
-		return false, err
-	}
-	return isWholeCategory(d, others), nil
-}
-
-func sameIdPtr(a, b *vo.Id) bool {
-	if a == nil || b == nil {
-		return a == nil && b == nil
-	}
-	return a.Equal(*b)
-}
-
-// idsOverlap: two optional key parts can match one transaction when either is
-// unset or both are equal.
-func idsOverlap(a, b *vo.Id) bool {
-	return a == nil || b == nil || a.Equal(*b)
-}
-
 func sameDay(a, b *time.Time) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
@@ -258,32 +202,6 @@ func sameDay(a, b *time.Time) bool {
 
 func fieldError(key, message, code string) error {
 	return errs.NewValidation("Validation failed", errs.FieldError{Key: key, Message: message, Code: code})
-}
-
-// checkKeys refuses a debt whose key can match a transaction another debt of
-// the owner in the same category also matches. Identical keys are allowed
-// only with distinct start dates, which partition the transactions. Two
-// debts naming different labels may overlap otherwise: a payment carrying
-// both labels goes to the older debt.
-func checkKeys(d *model.Debt, others []*model.Debt) error {
-	for _, o := range others {
-		if o.ID.Equal(d.ID) || !o.CategoryID.Equal(d.CategoryID) {
-			continue
-		}
-		if o.LabelID != nil && d.LabelID != nil && !o.LabelID.Equal(*d.LabelID) {
-			continue
-		}
-		if sameIdPtr(o.PayeeID, d.PayeeID) && sameIdPtr(o.TagID, d.TagID) && sameIdPtr(o.LabelID, d.LabelID) {
-			if sameDay(o.StartDate, d.StartDate) {
-				return fieldError("startDate", "Another debt with the same category, payee, tag and reporting tag already starts on this date.", errs.CodeDebtStartDateTaken)
-			}
-			continue
-		}
-		if idsOverlap(o.PayeeID, d.PayeeID) && idsOverlap(o.TagID, d.TagID) {
-			return fieldError("categoryId", "Another debt could match the same payments.", errs.CodeDebtKeyConflict)
-		}
-	}
-	return nil
 }
 
 // termsFloats: origin marks the loan's first snapshot.
@@ -356,47 +274,6 @@ func snapshotTerms(sn *model.DebtSnapshot) model.DebtTerms {
 	return model.DebtTerms{AsOf: sn.AsOf, Balance: sn.Balance, Payment: sn.Payment, Schedule: sn.Schedule, LastPaymentDate: sn.LastPaymentDate}
 }
 
-// checkClassifications verifies the category is an expense category of the
-// owner and the optional payee, tag and label are the owner's.
-func (s *Service) checkClassifications(ctx context.Context, ownerID vo.Id, in debtInput) error {
-	categoryID, payeeID, tagID := in.category, in.payee, in.tag
-	_, _, isExpense, err := s.class.CategoryOf(ctx, ownerID, categoryID)
-	if err != nil {
-		return err
-	}
-	if !isExpense {
-		return fieldError("categoryId", "A debt needs an expense category.", errs.CodeDebtCategoryNotExpense)
-	}
-	if payeeID != nil {
-		ok, err := s.class.PayeeOwned(ctx, ownerID, *payeeID)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return errs.NewNotFound("Payee not found")
-		}
-	}
-	if tagID != nil {
-		ok, err := s.class.TagOwned(ctx, ownerID, *tagID)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return errs.NewNotFound("Tag not found")
-		}
-	}
-	if in.label != nil {
-		ok, err := s.class.LabelOwned(ctx, ownerID, *in.label)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return errs.NewNotFound("Label not found")
-		}
-	}
-	return nil
-}
-
 func toFloat(d vo.DecimalNumber) float64 {
 	f, err := strconv.ParseFloat(d.String(), 64)
 	if err != nil {
@@ -442,12 +319,10 @@ func isNotFound(err error) bool {
 // are rounded to the debt currency once its digits are known. hasOrigin: the
 // body carries the loan's facts (amount borrowed and last payment date, with
 // a start date); hasOwed: a statement balance, as of owedOn (zero = today).
-// Without hasPayment or hasSchedule an
-// update keeps the stored one.
+// Without hasPayment or hasSchedule an update keeps the stored one.
 type debtInput struct {
 	name                    string
-	currency, category      vo.Id
-	payee, tag, label       *vo.Id
+	currency                vo.Id
 	start                   *time.Time
 	borrowed, owed, payment vo.DecimalNumber
 	schedule                model.RecurringSchedule
@@ -458,11 +333,11 @@ type debtInput struct {
 
 // debtBody is the part of the create and update requests parseInput reads.
 type debtBody struct {
-	name, currencyID, categoryID   string
-	payeeID, tagID, labelID, start *string
-	borrowed, balance, payment     vo.FlexString
-	schedule, lastPayment          string
-	balanceDate                    string
+	name, currencyID           string
+	start                      *string
+	borrowed, balance, payment vo.FlexString
+	schedule, lastPayment      string
+	balanceDate                string
 }
 
 func parseOptionalID(v *string) (*vo.Id, error) {
@@ -484,18 +359,6 @@ func parseInput(b debtBody) (debtInput, error) {
 		if in.currency, err = vo.ParseId(b.currencyID); err != nil {
 			return in, err
 		}
-	}
-	if in.category, err = vo.ParseId(b.categoryID); err != nil {
-		return in, err
-	}
-	if in.payee, err = parseOptionalID(b.payeeID); err != nil {
-		return in, err
-	}
-	if in.tag, err = parseOptionalID(b.tagID); err != nil {
-		return in, err
-	}
-	if in.label, err = parseOptionalID(b.labelID); err != nil {
-		return in, err
 	}
 	if b.start != nil && strings.TrimSpace(*b.start) != "" {
 		start, err := time.Parse(datetime.DateLayout, *b.start)

@@ -80,9 +80,9 @@ func TestUpdateDebt_KeyChecksRunOnEdit(t *testing.T) {
 	requireCode(t, err, errs.CodeDebtStartDateTaken)
 
 	req = e.updateReq(narrow)
-	req.PayeeId = &payee
+	req.Rules = []model.DebtRuleRequest{{CategoryId: e.category, PayeeId: &payee}}
 	_, err = e.svc.UpdateDebt(context.Background(), e.uid(), req)
-	requireCode(t, err, errs.CodeDebtKeyConflict)
+	requireField(t, err, "rules", errs.CodeDebtKeyConflict)
 }
 
 type currentTerms struct {
@@ -171,7 +171,7 @@ func TestUpdateDebt_RematchKeepsStoredSplits(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	p1, p2 := e.newPayee(), e.newPayee()
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.PayeeId = &p1 })
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].PayeeId = &p1 })
 	e.clock.now = ymd(2026, 7, 1)
 	a := e.expense(t, e.account, ymd(2026, 4, 1), "1000", p1)
 	b := e.expense(t, e.account, ymd(2026, 5, 1), "1000", p2)
@@ -185,7 +185,7 @@ func TestUpdateDebt_RematchKeepsStoredSplits(t *testing.T) {
 	// Widening to the whole category brings b in as a late entry; a keeps
 	// its interest even though the balance was corrected.
 	req := e.updateReq(res)
-	req.PayeeId = nil
+	req.Rules = []model.DebtRuleRequest{rule(e.category)}
 	req.Balance = vo.NewFlexString("5000")
 	if _, err := e.svc.UpdateDebt(ctx, e.uid(), req); err != nil {
 		t.Fatal(err)
@@ -196,7 +196,7 @@ func TestUpdateDebt_RematchKeepsStoredSplits(t *testing.T) {
 	}
 
 	// Narrowing again drops b's split and keeps a's.
-	req.PayeeId = &p1
+	req.Rules = []model.DebtRuleRequest{{CategoryId: e.category, PayeeId: &p1}}
 	if _, err := e.svc.UpdateDebt(ctx, e.uid(), req); err != nil {
 		t.Fatal(err)
 	}
@@ -250,32 +250,32 @@ func TestUpdateDebt_BecomingWholeCategoryTakesItsPlans(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	payee := e.newPayee()
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.PayeeId = &payee })
-	e.budget.transfers = nil
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].PayeeId = &payee })
+	e.elements.transfers = nil
 
 	req := e.updateReq(res)
-	req.PayeeId = nil
+	req.Rules = []model.DebtRuleRequest{{Id: &res.Rules[0].Id, CategoryId: e.category}}
 	whole, err := e.svc.UpdateDebt(ctx, e.uid(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := transferCall{from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt, currency: fixture.USD,
+	want := transferCall{budget: e.budget, from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt, currency: fixture.USD,
 		sum: true, first: "2026-03-10", last: "2027-03-01"}
-	if len(e.budget.transfers) != 1 || e.budget.transfers[0] != want {
-		t.Fatalf("transfers = %+v, want [%+v]", e.budget.transfers, want)
+	if len(e.elements.transfers) != 1 || e.elements.transfers[0] != want {
+		t.Fatalf("transfers = %+v, want [%+v]", e.elements.transfers, want)
 	}
 
-	e.budget.transfers = nil
+	e.elements.transfers = nil
 	if _, err := e.svc.UpdateDebt(ctx, e.uid(), e.updateReq(whole)); err != nil {
 		t.Fatal(err)
 	}
 	narrowed := e.updateReq(whole)
-	narrowed.PayeeId = &payee
+	narrowed.Rules = []model.DebtRuleRequest{{CategoryId: e.category, PayeeId: &payee}}
 	if _, err := e.svc.UpdateDebt(ctx, e.uid(), narrowed); err != nil {
 		t.Fatal(err)
 	}
-	if len(e.budget.transfers) != 0 {
-		t.Fatalf("an edit that keeps or narrows the key moved data: %+v", e.budget.transfers)
+	if len(e.elements.transfers) != 0 {
+		t.Fatalf("an edit that keeps or narrows the key moved data: %+v", e.elements.transfers)
 	}
 }
 
@@ -313,8 +313,8 @@ func TestUpdateDebt_CurrencyChangeResplitsPayments(t *testing.T) {
 	if n := len(e.snapshots(t, res.Id)); n != 1 {
 		t.Errorf("a currency change wrote a snapshot: %d", n)
 	}
-	if len(e.budget.currencies) != 1 || e.budget.currencies[0] != eur {
-		t.Errorf("budget rows moved to %v, want [%s]", e.budget.currencies, eur)
+	if len(e.elements.currencies) != 1 || e.elements.currencies[0] != eur {
+		t.Errorf("budget rows moved to %v, want [%s]", e.elements.currencies, eur)
 	}
 	details, err := e.svc.GetDebt(ctx, e.uid(), model.GetDebtRequest{Id: res.Id})
 	if err != nil {
@@ -353,8 +353,8 @@ func TestUpdateDebt_UnchangedCurrencyTouchesNothing(t *testing.T) {
 			t.Errorf("currency %q: result currency %s", cur, got.CurrencyId)
 		}
 	}
-	if len(e.budget.currencies) != 0 {
-		t.Errorf("budget rows moved: %v", e.budget.currencies)
+	if len(e.elements.currencies) != 0 {
+		t.Errorf("budget rows moved: %v", e.elements.currencies)
 	}
 	if got := e.splits(t, res.Id)[tx]; got != before {
 		t.Errorf("split %q -> %q", before, got)
@@ -389,8 +389,8 @@ func TestUpdateDebt_CurrencyChangeOfADebtNotSetUp(t *testing.T) {
 	if got.CurrencyId != jpy || got.Payment != "1501" || got.IsSetUp != 0 {
 		t.Fatalf("result = %+v", got)
 	}
-	if len(e.budget.currencies) != 1 || e.budget.currencies[0] != jpy {
-		t.Errorf("budget rows moved to %v", e.budget.currencies)
+	if len(e.elements.currencies) != 1 || e.elements.currencies[0] != jpy {
+		t.Errorf("budget rows moved to %v", e.elements.currencies)
 	}
 }
 
@@ -432,15 +432,6 @@ func TestUpdateDebt_CurrencyChangeRoundingIsNoChangeOfTerms(t *testing.T) {
 	}
 }
 
-func (b *fakeBudget) indexOf(call string) int {
-	for i, c := range b.calls {
-		if c == call {
-			return i
-		}
-	}
-	return -1
-}
-
 // Finishing setup of a whole-category debt in the same save as a currency
 // change hands the months after its end back in the currency the rows are
 // still in, before they switch.
@@ -448,7 +439,7 @@ func TestUpdateDebt_CurrencyChangeAtSetupMovesTheTailInTheOldCurrency(t *testing
 	e := newEnv(t)
 	eur := e.eur()
 	res := e.createWithoutTerms(t, nil)
-	e.budget.calls, e.budget.transfers = nil, nil
+	e.elements.calls, e.elements.transfers = nil, nil
 
 	req := e.updateReq(res)
 	req.CurrencyId = eur
@@ -457,15 +448,15 @@ func TestUpdateDebt_CurrencyChangeAtSetupMovesTheTailInTheOldCurrency(t *testing
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatal(err)
 	}
-	if len(e.budget.transfers) != 1 {
-		t.Fatalf("transfers = %+v", e.budget.transfers)
+	if len(e.elements.transfers) != 1 {
+		t.Fatalf("transfers = %+v", e.elements.transfers)
 	}
-	tr := e.budget.transfers[0]
+	tr := e.elements.transfers[0]
 	if tr.fromType != model.ElementDebt || tr.to != e.category || tr.currency != fixture.USD || tr.after == "" {
 		t.Errorf("tail transfer = %+v, want debt -> category in USD", tr)
 	}
-	if ti, ci := e.budget.indexOf("transfer"), e.budget.indexOf("currency"); ti < 0 || ci < 0 || ti > ci {
-		t.Errorf("calls = %v, want the transfer before the rows' currency", e.budget.calls)
+	if ti, ci := e.elements.indexOf("transfer"), e.elements.indexOf("currency"); ti < 0 || ci < 0 || ti > ci {
+		t.Errorf("calls = %v, want the transfer before the rows' currency", e.elements.calls)
 	}
 }
 
@@ -474,7 +465,7 @@ func TestUpdateDebt_CurrencyChangeWithALaterStartMovesTheHeadInTheOldCurrency(t 
 	eur := e.eur()
 	res := e.create(t, func(r *model.CreateDebtRequest) { r.LastPaymentDate = "2027-07-01" })
 	e.clock.now = ymd(2026, 7, 1)
-	e.budget.calls, e.budget.transfers = nil, nil
+	e.elements.calls, e.elements.transfers = nil, nil
 
 	req := e.updateReq(res)
 	req.CurrencyId = eur
@@ -482,14 +473,153 @@ func TestUpdateDebt_CurrencyChangeWithALaterStartMovesTheHeadInTheOldCurrency(t 
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatal(err)
 	}
-	if len(e.budget.transfers) != 1 {
-		t.Fatalf("transfers = %+v", e.budget.transfers)
+	if len(e.elements.transfers) != 1 {
+		t.Fatalf("transfers = %+v", e.elements.transfers)
 	}
-	tr := e.budget.transfers[0]
+	tr := e.elements.transfers[0]
 	if tr.fromType != model.ElementDebt || tr.to != e.category || tr.currency != fixture.USD || tr.before == "" {
 		t.Errorf("head transfer = %+v, want debt -> category in USD", tr)
 	}
-	if ti, ci := e.budget.indexOf("transfer"), e.budget.indexOf("currency"); ti < 0 || ci < 0 || ti > ci {
-		t.Errorf("calls = %v, want the transfer before the rows' currency", e.budget.calls)
+	if ti, ci := e.elements.indexOf("transfer"), e.elements.indexOf("currency"); ti < 0 || ci < 0 || ti > ci {
+		t.Errorf("calls = %v, want the transfer before the rows' currency", e.elements.calls)
 	}
+}
+
+// A rule list replaces the rules: a rule sent with its id, or with the key of
+// a stored rule, keeps its id; a rule left out goes.
+func TestUpdateDebt_RulesReplaceSetKeepsIds(t *testing.T) {
+	e := newEnv(t)
+	b, c := e.newCategory(e.user, true), e.newCategory(e.user, true)
+	payee := e.newPayee()
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules = []model.DebtRuleRequest{rule(e.category), rule(b)} })
+	byID, byKey := res.Rules[0].Id, res.Rules[1].Id
+
+	req := e.updateReq(res)
+	req.Rules = []model.DebtRuleRequest{rule(b), {Id: &byID, CategoryId: e.category, PayeeId: &payee}, rule(c)}
+	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Rules) != 3 {
+		t.Fatalf("rules = %+v", got.Rules)
+	}
+	if r := got.Rules[0]; r.Id != byID || r.CategoryId != e.category || r.PayeeId == nil || *r.PayeeId != payee {
+		t.Errorf("rule matched by id = %+v", r)
+	}
+	if r := got.Rules[1]; r.Id != byKey || r.CategoryId != b {
+		t.Errorf("rule matched by key = %+v", r)
+	}
+	if r := got.Rules[2]; r.Id == byID || r.Id == byKey || r.CategoryId != c {
+		t.Errorf("new rule = %+v", r)
+	}
+	req.Rules = []model.DebtRuleRequest{rule(c)}
+	got, err = e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil || len(got.Rules) != 1 || got.Rules[0].CategoryId != c {
+		t.Fatalf("rules after dropping two = %+v, %v", got, err)
+	}
+}
+
+func TestUpdateDebt_RulesLeftOutAreKept(t *testing.T) {
+	e := newEnv(t)
+	b := e.newCategory(e.user, true)
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules = []model.DebtRuleRequest{rule(e.category), rule(b)} })
+	req := e.updateReq(res)
+	req.Name = "Renamed"
+	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Name != "Renamed" || len(got.Rules) != 2 || got.Rules[0].Id != res.Rules[0].Id || got.Rules[1].Id != res.Rules[1].Id {
+		t.Fatalf("result = %+v", got)
+	}
+}
+
+func TestUpdateDebt_EmptyRulesRefused(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	req := e.updateReq(res)
+	req.Rules = []model.DebtRuleRequest{}
+	_, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	requireField(t, err, "rules", errs.CodeIsBlank)
+	if d := e.debtOf(t, res.Id); len(d.Rules) != 1 {
+		t.Fatalf("rules = %+v", d.Rules)
+	}
+}
+
+// A participant who left keeps their rule on the shared debt: an edit by
+// someone else sends it back and is not refused for it.
+func TestUpdateDebt_KeptRuleOfAFormerParticipantNotRevalidated(t *testing.T) {
+	e := newEnv(t)
+	sam := e.partner(t, "Sam", roleUser)
+	hers := e.newCategory(sam, true)
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules = []model.DebtRuleRequest{rule(e.category), rule(hers)} })
+	delete(e.fakeBudget(e.budget).roles, sam)
+
+	req := e.updateReq(res)
+	req.Name = "Mortgage"
+	req.Rules = []model.DebtRuleRequest{rule(e.category), {Id: &res.Rules[1].Id, CategoryId: hers}}
+	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatalf("an edit keeping a former participant's rule: %v", err)
+	}
+	if len(got.Rules) != 2 || got.Rules[1].OwnerName != "Sam" {
+		t.Fatalf("rules = %+v", got.Rules)
+	}
+	// a new rule on that participant's category is refused
+	other := e.newCategory(sam, true)
+	req.Rules = append(req.Rules, rule(other))
+	_, err = e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	requireNotFound(t, err)
+}
+
+// A rule edited into a whole-category rule takes that category's plans; the
+// debt's other rules move nothing.
+func TestUpdateDebt_RuleEditedIntoWholeMovesThatCategory(t *testing.T) {
+	e := newEnv(t)
+	b := e.newCategory(e.user, true)
+	payee := e.newPayee()
+	res := e.create(t, func(r *model.CreateDebtRequest) {
+		r.Rules = []model.DebtRuleRequest{rule(e.category), {CategoryId: b, PayeeId: &payee}}
+	})
+	e.elements.transfers = nil
+	req := e.updateReq(res)
+	req.Rules = []model.DebtRuleRequest{rule(e.category), {Id: &res.Rules[1].Id, CategoryId: b}}
+	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
+		t.Fatal(err)
+	}
+	want := transferCall{budget: e.budget, from: b, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
+		currency: fixture.USD, sum: true, first: "2026-03-10", last: "2027-03-01"}
+	if len(e.elements.transfers) != 1 || e.elements.transfers[0] != want {
+		t.Fatalf("transfers = %+v, want [%+v]", e.elements.transfers, want)
+	}
+}
+
+// The debt row's plans cannot be split back by category: removing a rule
+// leaves them on the debt.
+func TestUpdateDebt_RemovedRuleLeavesThePlans(t *testing.T) {
+	e := newEnv(t)
+	b := e.newCategory(e.user, true)
+	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules = []model.DebtRuleRequest{rule(e.category), rule(b)} })
+	e.elements.transfers = nil
+	req := e.updateReq(res)
+	req.Rules = []model.DebtRuleRequest{rule(e.category)}
+	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
+		t.Fatal(err)
+	}
+	if len(e.elements.transfers) != 0 {
+		t.Fatalf("transfers = %+v, want none", e.elements.transfers)
+	}
+}
+
+func TestUpdateDebt_GuestAndArchived(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, nil)
+	guest := e.partner(t, "guest", roleGuest)
+	_, err := e.svc.UpdateDebt(context.Background(), vo.MustParseId(guest), e.updateReq(res))
+	requireForbidden(t, err)
+	e.fakeBudget(e.budget).archived = true
+	_, err = e.svc.UpdateDebt(context.Background(), e.uid(), e.updateReq(res))
+	requireArchived(t, err)
+	_, err = e.svc.MarkDebtPaidOff(context.Background(), e.uid(), model.MarkDebtPaidOffRequest{Id: res.Id})
+	requireArchived(t, err)
 }

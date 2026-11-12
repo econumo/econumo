@@ -12,11 +12,9 @@ import (
 
 // Classifications is backed by the category, payee, tag and label repos.
 type Classifications interface {
-	// CategoryOf returns errs.NotFound when the owner does not have the category.
-	CategoryOf(ctx context.Context, ownerID, id vo.Id) (name, icon string, isExpense bool, err error)
-	PayeeOwned(ctx context.Context, ownerID, id vo.Id) (bool, error)
-	TagOwned(ctx context.Context, ownerID, id vo.Id) (bool, error)
-	LabelOwned(ctx context.Context, ownerID, id vo.Id) (bool, error)
+	// Classification returns errs.NotFound when there is no such id; kind is
+	// KindCategory, KindPayee, KindTag or KindLabel.
+	Classification(ctx context.Context, kind string, id vo.Id) (model.DebtClassification, error)
 }
 
 type Rates interface {
@@ -31,36 +29,45 @@ type Currencies interface {
 	EnsureUsable(ctx context.Context, userID, currencyID string) error
 }
 
-// Owners is backed by the user repo.
-type Owners interface {
+// Users is backed by the user repo.
+type Users interface {
 	// GetTimezone is the user's stored IANA timezone, "" when none is stored.
 	GetTimezone(ctx context.Context, id vo.Id) (string, error)
+	GetName(ctx context.Context, id vo.Id) (string, error)
+}
+
+// Budgets is backed by the budget service. It is installed late; every use
+// case needs it.
+type Budgets interface {
+	// Access returns errs.NotFound unless userID has accepted access to the
+	// budget.
+	Access(ctx context.Context, userID, budgetID vo.Id) (model.DebtBudget, error)
+	// Readable lists the budgets userID has accepted access to, in the order
+	// of the budget list.
+	Readable(ctx context.Context, userID vo.Id) ([]model.DebtBudget, error)
+	// Scope reads the budget's member accounts, with no access check.
+	Scope(ctx context.Context, budgetID vo.Id) (model.DebtScope, error)
+	RuleOptions(ctx context.Context, viewerID, budgetID vo.Id) (*model.DebtRuleOptionsResult, error)
+	// DebtPlans returns the budget's plans of the debt's row; ok is false
+	// when the budget holds no row for the debt.
+	DebtPlans(ctx context.Context, budgetID, debtID vo.Id) (plans model.DebtBudgetPlans, ok bool, err error)
 }
 
 // BudgetElements is backed by the budget service. It is installed late and
-// the service tolerates its absence.
+// the service tolerates its absence. A debt's rows live in its own budget
+// only.
 type BudgetElements interface {
-	// TransferData reports leftBehind when some budget held source data that
-	// was not moved (another currency, or a month the target already plans).
+	// TransferData reports leftBehind when source data was not moved
+	// (another currency, or a month the target already plans).
 	TransferData(ctx context.Context, t model.ElementDataTransfer) (leftBehind bool, err error)
 	HasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error)
-	// LockRows write-locks the rows of the external id in every budget, so a
-	// guard that then reads their data cannot miss a concurrent plan.
+	// LockRows write-locks the rows of the external id, so a guard that then
+	// reads their data cannot miss a concurrent plan.
 	LockRows(ctx context.Context, externalID vo.Id, typ model.ElementType) error
-	// RemoveRows deletes the rows of the external id in every budget, with
-	// their plans and comments.
+	// RemoveRows deletes the rows of the external id, with their plans and
+	// comments.
 	RemoveRows(ctx context.Context, externalID vo.Id, typ model.ElementType) error
-	// SetRowsCurrency moves the rows of the external id in every budget to
-	// currencyID, keeping their plans' numbers.
+	// SetRowsCurrency moves the rows of the external id to currencyID,
+	// keeping their plans' numbers.
 	SetRowsCurrency(ctx context.Context, externalID vo.Id, typ model.ElementType, currencyID vo.Id) error
-}
-
-// BudgetPlans is backed by the budget service and the user's active-budget
-// option. It is installed late and the service tolerates its absence.
-type BudgetPlans interface {
-	// ActiveBudget is the budget the user last selected, nil when none.
-	ActiveBudget(ctx context.Context, userID vo.Id) (*vo.Id, error)
-	// DebtPlans returns budgetID's plans of the debt's row; ok is false when
-	// the user cannot read the budget or it holds no row for the debt.
-	DebtPlans(ctx context.Context, userID, budgetID, debtID vo.Id) (plans model.DebtBudgetPlans, ok bool, err error)
 }

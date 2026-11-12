@@ -179,13 +179,9 @@ type Currency struct {
 
 type Debt struct {
 	ID              string
-	UserID          string
+	BudgetID        string
 	Name            string
 	CurrencyID      string
-	CategoryID      string
-	PayeeID         *string
-	TagID           *string
-	LabelID         *string
 	StartDate       *time.Time
 	AmountBorrowed  *string
 	AsOf            *time.Time
@@ -202,6 +198,16 @@ type DebtsPayment struct {
 	DebtID        string
 	TransactionID string
 	Interest      string
+}
+
+type DebtsRule struct {
+	ID         string
+	DebtID     string
+	CategoryID string
+	PayeeID    *string
+	TagID      *string
+	LabelID    *string
+	CreatedAt  time.Time
 }
 
 type DebtsSnapshot struct {
