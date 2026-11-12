@@ -53,7 +53,7 @@ The page:
     switch stays off with a toast. Turning it off just forgets the credential
     id locally (the passkey itself stays in the OS keychain; the hint says so:
     "You can delete the passkey in your device's password settings").
-  - **Lock after**: Immediately (default, see Revision 5) / 1 minute / 5 minutes / 15 minutes
+  - **Lock after**: Immediately / 1 minute (default) / 5 minutes / 15 minutes
     in the background.
 - A short explanatory paragraph: the lock protects this device only; forgetting
   the PIN means signing in again; it doesn't encrypt data on the device.
@@ -454,7 +454,3 @@ Android-style pattern.
   can be `pattern`. Profile facts: `app_lock` off | pin | pattern and
   `app_lock_biometric` on | off.
 
-
-## Revision 5
-
-- The default "Lock after" is Immediately (0), the owner's choice: the app locks as soon as it goes to the background.
