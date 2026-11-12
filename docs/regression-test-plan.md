@@ -1021,6 +1021,10 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       the suggestion is accepted (no endless error). 📱
 - [ ] In the rule prompt after an edit, if counting all imports fails after Apply, the dialog
       closes (the rule is saved) instead of showing "Loading" forever. 📱
+- [ ] Suggested rule Save on a flaky connection (drop the network right after tapping Save, then
+      Save again): Import rules shows ONE rule, and the suggestion leaves the Inbox without an
+      error. Dismiss retried the same way leaves no error either. 📱
+- [ ] Suggested rules list stays in the same order between visits (oldest first). 📱
 - [ ] Suggestions come only from live imports: the first SimpleFIN sync's rows older than a
       week, and the queue replayed by mapping a card to an account, suggest nothing. A
       transfer, or a row the owner's rules already fully classify, suggests nothing. 📱

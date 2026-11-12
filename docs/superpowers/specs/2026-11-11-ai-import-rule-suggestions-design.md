@@ -92,6 +92,8 @@ A ledger row (`import_transaction_links`) qualifies when all of these hold:
   payee in themselves and no rules run);
 - its posted date is no more than 7 days before its `imported_at`, so a SimpleFIN backfill of
   history (or a first sync) suggests nothing older than a week. The 7 days allow for posting lag.
+  The posted date is a wall clock, so `imported_at` is read as a wall clock in the owner's stored
+  timezone (UTC when unknown or invalid) before the two are compared.
 
 The mapping's `created_at` is not used: it never moves on a remap, so a replayed backlog would
 count as ongoing.
@@ -102,7 +104,7 @@ count as ongoing.
   Apple Wallet push, and one per SimpleFIN run (each account of the run, batched). No other path
   starts one. It uses the
   onboarding job pattern (`internal/onboarding/service.go` `runJob`): goroutine, fresh context,
-  timeout (*builder's call*: 60 s), panics recovered, an injectable runner so tests run it
+  timeout (*builder's call*: 60 s per owner, started once the owner's lock is held), panics recovered, an injectable runner so tests run it
   inline, a WARN with `user_id` + `err_type` only on failure, never the prompt or reply.
   Jobs are not drained on shutdown, so a restart can lose one. That's accepted.
 - The job runs per **account owner**: a run whose rows land in accounts of different owners
@@ -160,7 +162,8 @@ one deleted meanwhile (the list read's cleanup) sends its rows to the AI, or, af
 a new suggestion. One owner's jobs run one at a time in the process, so two imports landing
 together cannot each open a suggestion for the same merchant. Within one reply, rows sharing a match text
 but given different categories or payees take the classification of the most rows (ties: the
-newest row).
+newest row), but only the rows it fills a field of; the others are grouped again under their
+own classification, so no suggestion lists a row it would leave unchanged.
 
 ### Storage
 
@@ -227,9 +230,16 @@ the user's acceptance of them; the question covers only the others.
 
 Cancel leaves the suggestion open.
 
+A Save is safe to repeat. The rule id is minted in the browser and kept with the suggestion
+before create-rule is sent; `create-rule` answers an id the caller already stored with that rule,
+so a create whose answer was lost is not made twice. An accept refused for a suggestion that is no
+longer listed (the first accept landed and its answer was lost) counts as done. Accept removes
+only the rows it walked: a row a job joined in the meantime keeps the suggestion open.
+
 ### Dismiss
 
-`POST /api/v1/import/dismiss-suggestion {id}` takes it out of the Inbox. **Dismissal is not
+`POST /api/v1/import/dismiss-suggestion {id}` takes it out of the Inbox (a dismiss refused for a
+suggestion no longer listed counts as done). **Dismissal is not
 remembered (decided by the owner):** a later tap from the same merchant goes to the AI as usual
 and may bring a fresh suggestion. *Builder's call:* a dismissed suggestion is deleted with its
 link rows (or kept as `dismissed` if that is simpler; nothing reads it).

@@ -223,9 +223,10 @@ the root package (`rules.go` matcher, `rule_*.go` use cases). The optional
 injected in `internal/server`) drives **rule suggestions** (`suggest.go`, `suggest_job.go`,
 `suggestion.go`; spec `docs/superpowers/specs/2026-11-11-ai-import-rule-suggestions-design.md`):
 with AI on, after a LIVE import (an Apple Wallet push or a SimpleFIN sync, posted at most 7 days
-before import; never the `link-account`/retry/queued-import replays) leaves a non-transfer row
+before import, the import time read as a wall clock in the owner's stored timezone, UTC when
+unknown; never the `link-account`/retry/queued-import replays) leaves a non-transfer row
 without a category or payee after the account OWNER's rules ran (owner not `readonly`), a
-background job (50 rows/request, 60 s timeout, scope `import-ai-suggest` 30 jobs per rate-limit
+background job (50 rows/request, 60 s timeout per owner started once that owner's lock is held, scope `import-ai-suggest` 30 jobs per rate-limit
 window, IP-exempt) asks for a match text, category and payee drawn from the owner's own
 non-archived names; the suggestion lands in the OWNER's Inbox only (a partner's tap included).
 Match text holds at least 3 letters or digits and must occur in the payee (the description when the payee
@@ -233,21 +234,28 @@ is empty); there is one open suggestion per (owner, merchant, income/expense): t
 stores its type (`import_suggestions.transaction_type`), and a row (before the AI call) or a
 group's rows (after it) join an open one only when the types are equal, the text contains the
 suggestion's text and the suggestion fills a field that row lacks (a group's other rows open a
-suggestion of their own); an open suggestion's archived or deleted category or payee counts as
+suggestion of their own). A new suggestion lists only the rows its classification (the most rows'
+pair, ties the newest) fills; the others form suggestions under their own pair; an open suggestion's archived or deleted category or payee counts as
 unset there, and one left with neither takes no rows. One owner's jobs run
 one at a time in-process (`ownerLocks`), so imports landing together do not open two suggestions
 for one merchant. A join first touches the suggestion row (`TouchOpenImportSuggestion`, a row
-lock): one the list read deleted meanwhile sends its rows to the AI (before the call) or into a
-new suggestion (after it), never a foreign-key failure. `get-suggestion-list` is computed at read
-time (archived categories and payees dropped, rows already filled or no longer of the stored type
-left out, each item's `type` the stored one); a suggestion left with nothing is deleted there,
-best effort. Accept skips rows no longer of the stored type and moves a row's `applied_*`
-snapshot only for the fields it wrote, so a field
-the user set by hand still reads as edited for apply-rule. Dismissal is
-not remembered (the next tap may suggest again); accept deletes the suggestion. Accept opens the
-rule prompt (`RulePromptDialog`), whose category picker offers only categories of the suggestion's
-`type`; the rule a Save created is kept per suggestion in the ui store until the accept lands, so a
-retry (even after Cancel and a reopen) updates that rule rather than creating a second one.
+lock): one deleted meanwhile sends its rows to the AI (before the call) or into a new suggestion
+(after it), never a foreign-key failure. Removal goes through `ReleaseSuggestionLinks`, which
+takes the same row lock first, drops only the links its caller read and deletes the suggestion
+only when none is left, so a row a job joined meanwhile is never cascaded away (tested in both
+orders on both engines). `get-suggestion-list` (oldest first) is computed at read time (archived
+categories and payees dropped, rows already filled or no longer of the stored type left out, each
+item's `type` the stored one); a suggestion left with nothing is released there, best effort.
+Accept skips rows no longer of the stored type, moves a row's `applied_*` snapshot only for the
+fields it wrote, so a field the user set by hand still reads as edited for apply-rule, and
+releases only the links it walked. Dismissal is not remembered (the next tap may suggest again).
+Accept opens the rule prompt (`RulePromptDialog`), whose category picker offers only categories
+of the suggestion's `type`; the rule a Save makes is kept per suggestion in the ui store until the
+accept lands, its id minted and stored before create-rule is sent, so a retry (even after Cancel
+and a reopen, or after a create whose answer was lost: `create-rule` answers an id of the
+caller's own already stored with that rule) updates that rule rather than creating a second one.
+An accept or dismiss refused for a suggestion no longer listed (its first attempt landed, the
+answer lost) counts as done.
 preview/apply skip rows the rule would not change, and the prompt asks to apply to all imports only
 when at least one OTHER transaction would change. The Inbox hides suggestions (section and badge)
 from a `readonly` user, who could neither accept nor dismiss them. `suggest-match-text` (owner of
