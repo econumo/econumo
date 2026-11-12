@@ -137,7 +137,7 @@ it('converting from a category locks the category and prefills the name', async 
   const bodies = captureCreate()
   const user = userEvent.setup()
   renderDialog()
-  await openCreate({ categoryId: 'cat-food', currencyId: 'cur-eur', fromBudget: true, budgetId: 'b1' })
+  await openCreate({ categoryId: 'cat-food', currencyId: 'cur-eur', budgetId: 'b1' })
 
   expect(screen.getByLabelText('Name')).toHaveValue('Food')
   expect(screen.getByRole('button', { name: 'Category: Food' })).toBeDisabled()
@@ -156,7 +156,7 @@ it('from a budget row the budget is the row\'s: no budget picker, the first cate
   const bodies = captureCreate()
   const user = userEvent.setup()
   renderDialog()
-  await openCreate({ categoryId: 'cat-food', currencyId: 'cur-usd', fromBudget: true, budgetId: 'b2' })
+  await openCreate({ categoryId: 'cat-food', currencyId: 'cur-usd', budgetId: 'b2' })
 
   expect(screen.queryByRole('button', { name: /^Budget:/ })).toBeNull()
   expect(screen.getByRole('button', { name: 'Category: Food' })).toBeDisabled()

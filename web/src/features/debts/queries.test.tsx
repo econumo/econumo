@@ -77,7 +77,7 @@ it('useDebts fetches the list and useDebt the details', async () => {
   expect(one.result.current.data!.payments).toEqual([])
 })
 
-it('useCreateDebt fires DEBT_CREATE and invalidates debts, budget and budgetPlan', async () => {
+it('useCreateDebt fires DEBT_CONVERT and invalidates debts, budget and budgetPlan', async () => {
   let body: unknown
   server.use(http.post('*/api/v1/debt/create-debt', async ({ request }) => {
     body = await request.json()
@@ -89,19 +89,7 @@ it('useCreateDebt fires DEBT_CREATE and invalidates debts, budget and budgetPlan
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(body).toEqual(form)
   expect(result.current.data!.id).toBe('d1')
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_CREATE)
-  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_CONVERT)
-  expectInvalidated(invalidated)
-})
-
-it('useCreateDebt({fromBudget}) fires DEBT_CONVERT instead', async () => {
-  server.use(http.post('*/api/v1/debt/create-debt', () => ok(wireDebt)))
-  const { wrapper, invalidated } = makeWrapper()
-  const { result } = renderHook(() => useCreateDebt({ fromBudget: true }), { wrapper })
-  result.current.mutate(form)
-  await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_CONVERT)
-  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_CREATE)
   expectInvalidated(invalidated)
 })
 

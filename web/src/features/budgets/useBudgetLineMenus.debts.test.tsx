@@ -58,7 +58,7 @@ describe('Track as debt', () => {
     expect(track).toBeDefined()
     act(() => track!.onSelect())
     // Food holds no currency of its own: the budget's
-    expect(useUiStore.getState().debtModal).toEqual({ categoryId: 'cat-food', currencyId: 'cur-usd', fromBudget: true, budgetId: 'b1' })
+    expect(useUiStore.getState().debtModal).toEqual({ categoryId: 'cat-food', currencyId: 'cur-usd', budgetId: 'b1' })
   })
 
   it('a category in an envelope takes the envelope\'s currency', () => {
@@ -66,7 +66,7 @@ describe('Track as debt', () => {
     const envelope = element('env-1')
     const track = result.current.envelopeChildMenu(envelope.children[0], envelope).find((a) => a.label === 'Track as debt')
     act(() => track!.onSelect())
-    expect(useUiStore.getState().debtModal).toEqual({ categoryId: 'cat-rent', currencyId: 'cur-eur', fromBudget: true, budgetId: 'b1' })
+    expect(useUiStore.getState().debtModal).toEqual({ categoryId: 'cat-rent', currencyId: 'cur-eur', budgetId: 'b1' })
   })
 
   it('is offered only on a live expense category', () => {

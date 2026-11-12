@@ -50,8 +50,6 @@ export interface OpenDebtParams {
   /** prefills a new debt (the budget row's "Track as debt") */
   categoryId?: Id
   currencyId?: Id
-  /** the debt is created from a budget row, which analytics counts as a conversion */
-  fromBudget?: boolean
   /** that row's budget: the debt is created there */
   budgetId: Id
 }

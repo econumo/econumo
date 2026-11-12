@@ -52,7 +52,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
   const { data: categories = [] } = useCategories()
   const { data: currencies } = useCurrencies()
   const { data: budgets } = useBudgets()
-  const createDebt = useCreateDebt({ fromBudget: params.fromBudget })
+  const createDebt = useCreateDebt()
   const openDebtDetails = useUiStore((s) => s.openDebtDetails)
 
   const { form, patch } = useDebtCreateForm(params, categories)

@@ -78,13 +78,14 @@ function useStoreSavedDebt() {
   }
 }
 
-export function useCreateDebt({ fromBudget = false }: { fromBudget?: boolean } = {}) {
+/** debts are created from a budget row ("Track as debt"), a conversion */
+export function useCreateDebt() {
   const invalidate = useInvalidateDebts()
   return useMutation({
     mutationFn: (form: CreateDebtDto) => debtApi.createDebt(form),
     onSuccess: () => {
       invalidate()
-      trackEvent(fromBudget ? METRICS.DEBT_CONVERT : METRICS.DEBT_CREATE)
+      trackEvent(METRICS.DEBT_CONVERT)
     },
   })
 }
