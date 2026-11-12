@@ -497,7 +497,5 @@ Native Face ID / fingerprint in the Capacitor app is a possible follow-up.
   segmented switch at the top of every "choose" step (set-up and change,
   after the current secret is confirmed). The settings row is "Change PIN or
   pattern" and shows the current kind on the right.
-- Follow-up: the switch is also shown on the change flow's current-secret
-  step, where it only picks the new secret's kind (the pad stays the current
-  kind until it is confirmed). No switch when turning the lock off. A separate
-  "Unlock with" settings row was tried and removed at the owner's request.
+- Final: the change flow asks for the current secret first (no switch on
+  that step); the next step shows the PIN | Pattern tabs for the new one.

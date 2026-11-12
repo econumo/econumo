@@ -105,12 +105,8 @@ export function SecretDialog({ open, flow, current, onClose, onComplete, onExcee
     if (next === kind) {
       return
     }
-    setKind(next)
-    // On the current-secret step it only picks the new secret's kind.
-    if (step === 'verify') {
-      return
-    }
     firstSecret.current = ''
+    setKind(next)
     goTo('create')
   }
 
@@ -145,7 +141,7 @@ export function SecretDialog({ open, flow, current, onClose, onComplete, onExcee
   return (
     <ResponsiveDialog open={open} onOpenChange={(value) => !value && onClose()} title={title}>
       <div className="flex flex-col items-center pt-1 pb-3">
-        {(step === 'create' || (flow === 'change' && step === 'verify')) && (
+        {step === 'create' && (
           <div
             className="mb-4 flex w-full max-w-64 rounded-md border p-0.5"
             role="radiogroup"

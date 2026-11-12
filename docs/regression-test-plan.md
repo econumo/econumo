@@ -2805,10 +2805,7 @@ User C sees none of it.
       between; fewer than 4 dots shows "Connect at least 4 dots" in red and
       clears; 4 or more ask to draw it again, a different second pattern says
       "The patterns don't match" and starts over. Then the row "Change PIN or
-      pattern" shows "Pattern". In the change dialog the PIN | Pattern switch
-      is there from the first step: picking Pattern while "Enter your current
-      PIN" is shown keeps the keypad for the current PIN, then goes to "Draw a
-      new pattern". Turning the lock off shows no switch. Swiping on the grid never scrolls the page nor drags the sheet
+      pattern" shows "Pattern". Swiping on the grid never scrolls the page nor drags the sheet
       closed; dragging the sheet by its handle still closes it.
 - [ ] App lock pattern unlock 📱: a reload shows "Draw your pattern" with the
       grid; the
