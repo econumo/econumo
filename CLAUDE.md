@@ -2186,16 +2186,29 @@ data unreadable. Most are also asserted by the test suite.
   the dialog's `subheader`: title and tabs are one opaque, bordered block outside the scrolling
   body (the Tabs root wraps the dialog, its context reaching both through the portal), each tab's
   2px underline as wide as its label and overlapping the block's border. Overview is read-only: payments left in large text with an X-of-Y progress bar whose
-  visible track is the whole loan (`periodsPaid` of `periodsPaid + paymentsLeft`, hidden at 0), a
-  "Loan" card (borrowed: the amount and the start date, owed now, payment, repeats, next payment,
-  loan ends, left to pay, overpaid so far, overpayment still to come, currency; a debt not set up
-  shows payment, its start date or "From the first payment", and currency), the payments-from sentence read-only
+  visible track is the whole loan (`periodsPaid` of `periodsPaid + paymentsLeft`, hidden at 0),
+  captioned "6 of 46 paid (2,000.00 $ of 16,500.00 $)": the principal repaid
+  (`amountBorrowed - currentBalance`, never below 0) of the amount borrowed, in the debt currency
+  (a paid-off debt keeps "N of N paid" and "Owed now X" under it; no payoff date shows), a
+  "Loan" card (borrowed: the amount and the start date, payment, repeats, next payment,
+  loan ends, Overpaid (`overpaidSoFar`), Planned overpayment; no owed now, left to pay or currency
+  row; a debt not set up shows payment, its start date or "From the first payment", and currency).
+  The debt service's own figures (`get-debt`, Settings → Debts) stay plan-free, but the
+  Overview of a set-up debt that is not paid off follows the budgets' plans: it loads
+  `get-debt-forecast` on open (the screen's budget, else none so the server picks the active
+  one; no metric) and takes payments left (count and progress total) and the Planned
+  overpayment from its additive summary (`paymentsLeft`, `payoffDate` (unused by the SPA),
+  `overpaymentLeft`: the same plan-aware projection run from today, equal to `get-debt`'s with no
+  plans; 0/"" while not set up), falling back to the debt's own while it loads, on an error or
+  offline (no `OfflineUnavailable`). The principal repaid does not depend on plans.
+  The payments-from sentence read-only
   (`PaymentsFromEditor readOnly`), payments (with a Balance column on a set-up debt: `get-debt`'s
   additive `balance` per payment, what was owed after it, from the snapshots and stored splits,
   `""` while not set up; Principal is left out on a phone); the history of the loan's entries is
   the Balance tab's.
-  Beside the Payments heading of a set-up debt that is not paid off, "Show future payments" loads
-  `get-debt-forecast?id=&budgetId=` (fires `appDebtForecastView`): the projection's own run
+  Beside the Payments heading of a set-up debt that is not paid off, "Show future payments" shows
+  `get-debt-forecast?id=&budgetId=`, the query the Overview already loaded (no second request;
+  fires `appDebtForecastView`): the projection's own run
   (`model.Projection.Payments`, a planned extra riding on its period's first payment, an extra of
   a period with no due as a payment of its own at the period's end) with the plans the given
   budget, else the owner's active budget, holds for the debt's row (plans outside the debt's

@@ -2503,7 +2503,8 @@ account in USD, before running these.
       tag leaves the category's upcoming money and shows on the older matching
       debt only.
 - [ ] 📱 **Owed now follows the recorded payments**: with no statement,
-      Owed now is the amount borrowed less the principal of the payments
+      Owed now (the Balance tab's balance today; the Overview's caption shows
+      the amount borrowed less it as repaid) is the amount borrowed less the principal of the payments
       recorded since the start date: a payment dated before the start date
       does not count, one ON the start date comes fully off (no interest, no
       payment counted in the progress), a missed month adds no interest, an
@@ -2543,7 +2544,8 @@ account in USD, before running these.
       next one; Reconcile writes it, the form empties, Owed now and
       the history follow. Story: a loan started five years ago with monthly
       dues and no payments entered: reconcile today with the statement
-      balance; Overview shows that balance as Owed now and "60 of N paid".
+      balance; the Balance tab shows that balance as today's and the
+      Overview "60 of N paid" with the amount borrowed less it as repaid.
       A statement dated in the past re-splits only the payments after its
       date (the earlier ones keep their interest); a second statement on the
       same date replaces the first. The history lists the start (marked
@@ -2615,15 +2617,19 @@ account in USD, before running these.
       desktop and on a phone. Overview is
       read-only. Top: "N payments left" in large text (or "Paid off"), a
       progress bar whose grey track is the whole loan and whose filled part
-      is what is paid, with "77 of 360 paid" (hidden when both counts are 0),
-      and "Owed now X · Paid off by Mon YYYY" (no payoff part once paid off).
+      is what is paid, captioned "77 of 360 paid (110.00 $ of 1,200.00 $)":
+      the principal repaid (amount borrowed less what is owed, never below 0)
+      of the amount borrowed (hidden when both counts are 0); no "Owed now"
+      or "Paid off by" line. Once paid off: "Paid off", "N of N paid" with no
+      amounts, and "Owed now 0.00 $".
       The "Loan" card (no Edit button) lists Borrowed (the amount · the start
-      date), owed now, payment · repeats, next payment, loan ends, left to
-      pay, overpaid so far and overpayment still to come, currency;
+      date), payment · repeats, next payment, loan ends, Overpaid and Planned
+      overpayment (no Owed now, Left to pay or Currency row);
       below it "Which payments count" as a plain sentence (no pickers), the
       payments (Date / Payment / Interest / Principal / Balance, newest
       first; Balance is what was owed after that payment, the newest one
-      matching "Owed now" when it is not dated after today; on a phone the
+      matching the Balance tab's balance today when it is not dated after
+      today; on a phone the
       Principal column is left out); there is no "History of terms" section
       (the Balance tab holds the history). The figures
       follow the entered payments with no typing: add a matching expense and
@@ -2631,6 +2637,15 @@ account in USD, before running these.
       the progress moves by one when the payment lands in a new due window
       (several payments in one window count once; payments from before setup
       count).
+- [ ] 📱 **Overview follows the plans**: in a budget, plan the debt row above
+      its regular payment in a coming month, then open the debt's Details from
+      that budget: "N payments left", the "X of Y paid" total and Planned
+      overpayment drop (an earlier payoff, less interest) while the repaid
+      amount in brackets stays; Settings → Debts still shows the plan-free
+      figures. Clear the plan:
+      the Overview returns to them. Opening the screen fires no "future payments"
+      analytics event. Offline, or while the server cannot answer, the Overview
+      shows the plan-free figures with no error.
 - [ ] 📱 **Future payments**: on a set-up debt that is not paid off, "Show
       future payments" sits beside the PAYMENTS heading. It adds the
       projected payments to the TOP of the same payments table (one table,

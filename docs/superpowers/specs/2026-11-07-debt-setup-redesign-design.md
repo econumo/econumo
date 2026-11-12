@@ -222,3 +222,21 @@ create form stays short and sets none of them.
 - Debts sharing their filters, told apart only by start date, no longer move plans
   to or from the category.
 - Settings → Debts moves to the Finances group, after Budgets.
+
+## Revision 2026-11-11: Overview follows the plans
+
+- The Loan card drops Owed now, Left to pay and Currency; "Overpaid so far" reads
+  **Overpaid** and "Overpayment still to come" reads **Planned overpayment**. A
+  debt not set up keeps its short card.
+- The top card drops "Owed now X · Paid off by Mon YYYY"; its progress caption
+  reads "6 of 46 paid (2,000.00 $ of 16,500.00 $)", the principal repaid (amount
+  borrowed less what is owed, never below 0) of the amount borrowed. The bar still
+  counts payments. A paid-off debt keeps "N of N paid" and "Owed now 0".
+- `get-debt` stays plan-free, so a plan above the regular payment never moved the
+  Overview. `get-debt-forecast` now also answers `paymentsLeft`, `payoffDate` and
+  `overpaymentLeft` from its plan-aware projection, run from today (with no plans,
+  exactly `get-debt`'s figures). The Overview of a set-up debt that is not paid off
+  loads it on open (no analytics event; "Show future payments" reuses it and keeps
+  the event) and uses it for payments left, the progress total and Planned
+  overpayment (its `payoffDate` is answered but not shown), falling back to the debt's own figures until it answers, on
+  an error or offline.
