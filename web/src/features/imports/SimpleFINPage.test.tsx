@@ -77,6 +77,14 @@ it('first connect: creates a key, claims the token, and stores only ciphertext',
   expect(screen.getByRole('button', { name: 'From' })).toBeInTheDocument()
 }, 20_000)
 
+it('the setup token help links to SimpleFIN Bridge in a new tab', async () => {
+  renderPage({ importSources: [] })
+  const link = await screen.findByRole('link', { name: 'SimpleFIN Bridge' })
+  expect(link).toHaveAttribute('href', 'https://bridge.simplefin.org/')
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link.parentElement).toHaveTextContent('SimpleFIN Bridge → New connection → copy the setup token. A token can be used once.')
+})
+
 it('locked device: wrong passphrase is rejected, right one unlocks and lists bridge accounts', async () => {
   const wrapped = await createKey('pw')
   const ciphertext = await encryptCredential(ACCESS_URL)

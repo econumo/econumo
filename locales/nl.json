@@ -674,7 +674,7 @@
         "reconnect_intro": "Plak een nieuw installatietoken van SimpleFIN Bridge. De vorige verbinding wordt vervangen; uw rekeningkoppelingen blijven behouden.",
         "token_label": "Installatietoken",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → Nieuwe verbinding → kopieer het installatietoken. Een token kan één keer worden gebruikt.",
+        "token_help": "{bridge} → Nieuwe verbinding → kopieer het installatietoken. Een token kan één keer worden gebruikt.",
         "forgot_passphrase": "Ik ben mijn wachtwoordzin vergeten, nieuwe instellen",
         "passphrase_new": "Wachtwoordzin",
         "passphrase_existing": "Uw wachtwoordzin",
