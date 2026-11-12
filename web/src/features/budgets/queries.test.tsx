@@ -149,6 +149,8 @@ it('delete removes from the cache and invalidates budget + user', async () => {
   expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.budgets)!.map((b) => b.id)).toEqual(['b2'])
   expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.budget })
   expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.user })
+  // the budget's debts go with it
+  expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
 })
 
 it('useSetLimit sends the explicit period and patches that period cache', async () => {
@@ -439,12 +441,15 @@ it('useCloneBudget sends the full form and omits startDate when null', async () 
       return HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })
     }),
   )
-  const { wrapper } = makeWrapper()
+  const { queryClient, wrapper } = makeWrapper()
+  const spy = vi.spyOn(queryClient, 'invalidateQueries')
   const { result } = renderHook(() => useCloneBudget(), { wrapper })
 
   result.current.mutate({ id: 'b1', newId: 'b-new', name: 'Copy', startDate: null, withLimits: true })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(bodies[0]).toEqual({ id: 'b1', newId: 'b-new', name: 'Copy', withLimits: true })
+  // the copy has the debts of the budget it was cloned from
+  expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
 
   result.current.mutate({ id: 'b1', newId: 'b-new2', name: 'Cont', startDate: '2026-08-01', withLimits: false })
   await waitFor(() => expect(bodies.length).toBe(2))

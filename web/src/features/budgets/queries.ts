@@ -639,6 +639,7 @@ export function useRevokeBudgetAccess() {
     mutationFn: (form: { budgetId: Id; userId: Id }) => budgetApi.revokeAccess(form),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_REVOKE_ACCESS)
     },
   })
@@ -660,6 +661,7 @@ export function useAcceptBudgetAccess() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.tags })
       void queryClient.invalidateQueries({ queryKey: queryKeys.currencies })
       void queryClient.invalidateQueries({ queryKey: queryKeys.currencyRates })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_ACCEPT_ACCESS)
     },
   })
@@ -673,6 +675,7 @@ export function useDeclineBudgetAccess() {
       // drop it synchronously so the invite disappears before the refetch lands
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => (prev ?? []).filter((b) => b.id !== budgetId))
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_DECLINE_ACCESS)
     },
   })
@@ -686,6 +689,8 @@ export function useDeleteBudget() {
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => (prev ?? []).filter((b) => b.id !== id))
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+      // the budget's debts go with it
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_DELETE)
     },
   })
@@ -699,6 +704,8 @@ function useReplaceBudgetMeta() {
       (prev ?? []).map((b) => (b.id === meta.id ? meta : b)),
     )
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    // an archived budget's debts are read-only
+    void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
   }
 }
 
@@ -732,6 +739,8 @@ export function useCloneBudget() {
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => [...(prev ?? []), meta])
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      // the copy has the debts of the budget it was cloned from
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_CLONE)
     },
   })
