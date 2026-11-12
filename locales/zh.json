@@ -2205,9 +2205,7 @@
       "about": "应用锁仅在此设备上保护 Econumo。如果忘记 PIN 码或图案，需要重新登录。它不会加密设备上存储的数据。",
       "enabled_label": "应用锁",
       "enabled_hint": "打开 Econumo 时要求输入 PIN 码或图案",
-      "unlock_with": "解锁方式",
-      "change_pin": "更改 PIN 码",
-      "change_pattern": "更改图案",
+      "change_secret": "更改 PIN 码或图案",
       "pin_changed": "PIN 码已更改",
       "pattern_changed": "图案已更改",
       "lock_after": {

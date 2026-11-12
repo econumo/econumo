@@ -2205,9 +2205,7 @@
       "about": "El bloqueo protege Econumo solo en este dispositivo. Si olvidas el PIN o el patrón, tendrás que volver a iniciar sesión. No cifra los datos guardados en el dispositivo.",
       "enabled_label": "Bloqueo de la app",
       "enabled_hint": "Pedir un PIN o un patrón al abrir Econumo",
-      "unlock_with": "Desbloquear con",
-      "change_pin": "Cambiar PIN",
-      "change_pattern": "Cambiar patrón",
+      "change_secret": "Cambiar PIN o patrón",
       "pin_changed": "PIN cambiado",
       "pattern_changed": "Patrón cambiado",
       "lock_after": {
