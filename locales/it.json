@@ -2553,7 +2553,7 @@
     },
     "debt": {
       "payments_dont_cover": "I pagamenti non coprono il saldo. Aumenta il pagamento o imposta una data dell'ultimo pagamento successiva.",
-      "key_conflict": "Un altro debito potrebbe corrispondere agli stessi pagamenti. Usa beneficiari o tag diversi, assegna a ogni debito un tag per i report diverso oppure usa date di inizio diverse.",
+      "key_conflict": "Queste regole di pagamento potrebbero corrispondere agli stessi pagamenti. Assegna loro beneficiari, tag o tag per i report diversi, oppure date di inizio diverse.",
       "start_date_taken": "Un altro debito con la stessa categoria, lo stesso beneficiario, lo stesso tag e lo stesso tag per i report inizia già in questa data.",
       "category_not_expense": "Un debito richiede una categoria di spesa.",
       "removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti di questo debito nei tuoi budget; conferma per continuare.",

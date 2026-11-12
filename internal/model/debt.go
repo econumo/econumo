@@ -95,7 +95,7 @@ func compareCreated(at time.Time, aID vo.Id, bt time.Time, bID vo.Id) int {
 
 func debtKeyConflict() error {
 	return errs.NewValidation("Validation failed", errs.FieldError{Key: "rules",
-		Message: "Another debt could match the same payments.", Code: errs.CodeDebtKeyConflict})
+		Message: "These payment rules could match the same payments.", Code: errs.CodeDebtKeyConflict})
 }
 
 // rulesConflict checks a rule of d against a rule of another debt of the

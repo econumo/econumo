@@ -2553,7 +2553,7 @@
     },
     "debt": {
       "payments_dont_cover": "Os pagamentos não cobrem o saldo. Aumente o pagamento ou defina uma data de último pagamento posterior.",
-      "key_conflict": "Outra dívida poderia corresponder aos mesmos pagamentos. Use beneficiários ou etiquetas diferentes, atribua a cada dívida uma etiqueta de relatório diferente ou use datas de início diferentes.",
+      "key_conflict": "Estas regras de pagamento poderiam corresponder aos mesmos pagamentos. Atribua-lhes beneficiários, etiquetas ou etiquetas de relatório diferentes, ou datas de início diferentes.",
       "start_date_taken": "Já existe outra dívida com a mesma categoria, beneficiário, etiqueta e etiqueta de relatório que começa nesta data.",
       "category_not_expense": "Uma dívida precisa de uma categoria de despesa.",
       "removal_unconfirmed": "Isto elimina os montantes planeados e os comentários desta dívida nos seus orçamentos; confirme para continuar.",

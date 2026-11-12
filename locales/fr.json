@@ -2553,7 +2553,7 @@
     },
     "debt": {
       "payments_dont_cover": "Les paiements ne couvrent pas le solde. Augmentez le paiement ou repoussez la date du dernier paiement.",
-      "key_conflict": "Une autre dette pourrait correspondre aux mêmes paiements. Choisissez des bénéficiaires ou des tags différents, donnez à chaque dette un tag de rapport différent, ou utilisez des dates de début différentes.",
+      "key_conflict": "Ces règles de paiement pourraient correspondre aux mêmes paiements. Donnez-leur des bénéficiaires, des tags ou des tags de rapport différents, ou des dates de début différentes.",
       "start_date_taken": "Une autre dette avec la même catégorie, le même bénéficiaire, le même tag et le même tag de rapport commence déjà à cette date.",
       "category_not_expense": "Une dette nécessite une catégorie de dépenses.",
       "removal_unconfirmed": "Cela supprime les montants prévus et les commentaires de cette dette dans vos budgets ; confirmez pour continuer.",

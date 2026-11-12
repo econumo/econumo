@@ -2553,7 +2553,7 @@
     },
     "debt": {
       "payments_dont_cover": "Płatności nie pokrywają salda. Zwiększ płatność lub ustaw późniejszą datę ostatniej płatności.",
-      "key_conflict": "Inny dług mógłby pasować do tych samych płatności. Użyj różnych odbiorców lub tagów, nadaj każdemu długowi inny tag raportowy albo użyj różnych dat rozpoczęcia.",
+      "key_conflict": "Te reguły płatności mogłyby pasować do tych samych płatności. Nadaj im różnych odbiorców, tagi lub tagi raportowe albo różne daty rozpoczęcia.",
       "start_date_taken": "Inny dług z tą samą kategorią, odbiorcą, tagiem i tagiem raportowym zaczyna się już w tym dniu.",
       "category_not_expense": "Dług wymaga kategorii wydatków.",
       "removal_unconfirmed": "Spowoduje to usunięcie zaplanowanych kwot i komentarzy tego długu w Twoich budżetach; potwierdź, aby kontynuować.",

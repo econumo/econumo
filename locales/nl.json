@@ -2553,7 +2553,7 @@
     },
     "debt": {
       "payments_dont_cover": "De betalingen dekken het saldo niet. Verhoog de betaling of kies een latere datum voor de laatste betaling.",
-      "key_conflict": "Een andere schuld zou met dezelfde betalingen kunnen overeenkomen. Gebruik verschillende begunstigden of tags, geef elke schuld een andere rapportagetag of gebruik andere startdata.",
+      "key_conflict": "Deze betalingsregels kunnen met dezelfde betalingen overeenkomen. Geef ze verschillende begunstigden, tags of rapportagetags, of andere startdata.",
       "start_date_taken": "Een andere schuld met dezelfde categorie, begunstigde, tag en rapportagetag begint al op deze datum.",
       "category_not_expense": "Een schuld heeft een uitgavencategorie nodig.",
       "removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen van deze schuld in uw budgetten verwijderd; bevestig om door te gaan.",

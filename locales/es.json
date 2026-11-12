@@ -2553,7 +2553,7 @@
     },
     "debt": {
       "payments_dont_cover": "Los pagos no cubren el saldo. Aumenta el pago o fija una fecha de último pago posterior.",
-      "key_conflict": "Otra deuda podría coincidir con los mismos pagos. Usa beneficiarios o etiquetas distintos, da a cada deuda una etiqueta de informes diferente o usa fechas de inicio diferentes.",
+      "key_conflict": "Estas reglas de pago podrían coincidir con los mismos pagos. Dales beneficiarios, etiquetas o etiquetas de informes distintos, o fechas de inicio diferentes.",
       "start_date_taken": "Otra deuda con la misma categoría, beneficiario, etiqueta y etiqueta de informes ya empieza en esta fecha.",
       "category_not_expense": "Una deuda necesita una categoría de gastos.",
       "removal_unconfirmed": "Esto elimina los importes planificados y los comentarios de esta deuda en tus presupuestos; confirma para continuar.",

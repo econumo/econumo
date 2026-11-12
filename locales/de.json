@@ -2553,7 +2553,7 @@
     },
     "debt": {
       "payments_dont_cover": "Die Zahlungen decken die Restschuld nicht. Erhöhen Sie die Rate oder legen Sie ein späteres Datum der letzten Zahlung fest.",
-      "key_conflict": "Eine andere Schuld könnte dieselben Zahlungen erfassen. Wählen Sie unterschiedliche Zahlungsempfänger oder Tags, geben Sie jeder Schuld einen anderen Auswertungs-Tag oder verwenden Sie unterschiedliche Startdaten.",
+      "key_conflict": "Diese Zahlungsregeln könnten dieselben Zahlungen erfassen. Geben Sie ihnen unterschiedliche Zahlungsempfänger, Tags oder Auswertungs-Tags oder unterschiedliche Startdaten.",
       "start_date_taken": "Eine andere Schuld mit derselben Kategorie, demselben Zahlungsempfänger, demselben Tag und demselben Auswertungs-Tag beginnt bereits an diesem Datum.",
       "category_not_expense": "Eine Schuld benötigt eine Ausgabenkategorie.",
       "removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare dieser Schuld in Ihren Budgets gelöscht; bestätigen Sie, um fortzufahren.",
