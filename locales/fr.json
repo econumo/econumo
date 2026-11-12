@@ -2198,13 +2198,13 @@
   },
   "appLock": {
     "settings": {
-      "menu_item": "Verrouillage de l'app",
-      "title": "Verrouillage de l'app",
+      "menu_item": "Verrouillage de l’app",
+      "title": "Verrouillage de l’app",
       "on": "Activé",
       "off": "Désactivé",
-      "about": "Le verrouillage protège Econumo sur cet appareil uniquement. Si vous oubliez le code PIN ou le schéma, vous devrez vous reconnecter. Il ne chiffre pas les données stockées sur l'appareil.",
-      "enabled_label": "Verrouillage de l'app",
-      "enabled_hint": "Demander un code PIN ou un schéma à l'ouverture d'Econumo",
+      "about": "Le verrouillage protège Econumo sur cet appareil uniquement. Si vous oubliez le code PIN ou le schéma, vous devrez vous reconnecter. Il ne chiffre pas les données stockées sur l’appareil.",
+      "enabled_label": "Verrouillage de l’app",
+      "enabled_hint": "Demander un code PIN ou un schéma à l’ouverture d’Econumo",
       "change_secret": "Modifier le code PIN ou le schéma",
       "pin_changed": "Code PIN modifié",
       "pattern_changed": "Schéma modifié",

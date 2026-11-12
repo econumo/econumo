@@ -2209,11 +2209,11 @@
       "pin_changed": "PIN zmieniony",
       "pattern_changed": "Wzór zmieniony",
       "lock_after": {
-        "label": "Blokuj po",
+        "label": "Czas do blokady",
         "immediately": "Natychmiast",
-        "one_minute": "1 minucie",
-        "five_minutes": "5 minutach",
-        "fifteen_minutes": "15 minutach"
+        "one_minute": "1 minuta",
+        "five_minutes": "5 minut",
+        "fifteen_minutes": "15 minut"
       },
       "dialog": {
         "create_title": "Ustaw PIN",

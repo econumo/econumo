@@ -2200,8 +2200,8 @@
     "settings": {
       "menu_item": "Blocco app",
       "title": "Blocco app",
-      "on": "Attivo",
-      "off": "Disattivo",
+      "on": "Attivato",
+      "off": "Disattivato",
       "about": "Il blocco protegge Econumo solo su questo dispositivo. Se dimentichi il PIN o la sequenza, dovrai accedere di nuovo. Non cifra i dati salvati sul dispositivo.",
       "enabled_label": "Blocco app",
       "enabled_hint": "Chiedi un PIN o una sequenza all'apertura di Econumo",

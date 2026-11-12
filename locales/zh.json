@@ -2200,8 +2200,8 @@
     "settings": {
       "menu_item": "应用锁",
       "title": "应用锁",
-      "on": "开",
-      "off": "关",
+      "on": "已开启",
+      "off": "已关闭",
       "about": "应用锁仅在此设备上保护 Econumo。如果忘记 PIN 码或图案，需要重新登录。它不会加密设备上存储的数据。",
       "enabled_label": "应用锁",
       "enabled_hint": "打开 Econumo 时要求输入 PIN 码或图案",
@@ -2209,7 +2209,7 @@
       "pin_changed": "PIN 码已更改",
       "pattern_changed": "图案已更改",
       "lock_after": {
-        "label": "锁定时间",
+        "label": "自动锁定",
         "immediately": "立即",
         "one_minute": "1 分钟",
         "five_minutes": "5 分钟",
