@@ -23,11 +23,14 @@ import { useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
 import { pluralPick } from '@/lib/plural'
 import { suggestMatchValue } from '@/lib/importMatch'
+import { isAiEnabled } from '@/lib/config'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import {
   useAcceptImportSuggestion,
   useApplyImportRule,
   useCreateImportRule,
   useImportRules,
+  useSuggestMatchText,
   usePreviewImportRule,
   useUpdateImportRule,
 } from './queries'
@@ -142,6 +145,19 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
   const [step, setStep] = useState<Step>('define')
   const [includeEdited, setIncludeEdited] = useState(false)
   const [ruleId, setRuleId] = useState<string | null>(null)
+  const [touched, setTouched] = useState(false)
+  const [aiText, setAiText] = useState('')
+
+  const aiMatch = useSuggestMatchText(link.id, !existing && isAiEnabled() && online)
+  const aiAnswer = aiMatch.data
+  useEffect(() => {
+    if (!aiAnswer || aiAnswer.matchText === '' || touched) {
+      return
+    }
+    setMatchField(aiAnswer.matchField || 'external_payee')
+    setMatchValue(aiAnswer.matchText)
+    setAiText(aiAnswer.matchText)
+  }, [aiAnswer, touched])
 
   // The rule spec: the existing rule's match (when updating) or the editable
   // one, with the classification the user just chose layered over it.
@@ -214,6 +230,9 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
       // exists to avoid.
       const saved = existing ? await update.mutateAsync({ id: existing.id, spec }) : await create.mutateAsync({ spec })
       setRuleId(saved.id)
+      if (!existing && aiText !== '' && matchValue === aiText) {
+        trackEvent(METRICS.IMPORT_RULE_AI_MATCH_USED)
+      }
       // the debounced live-count preview may not have settled yet (e.g. the
       // user clicked Create right away) — refresh it so the apply step's
       // count is never stale; a refresh failure just leaves the count at 0,
@@ -271,6 +290,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
           <RuleCondition id="rule-prompt-value" matchField={matchField} matchType={matchType} matchValue={matchValue}
             valueLabel={`${fieldLabel} ${typeLabel}`}
             onChange={(p) => {
+              setTouched(true)
               if (p.matchField) {
                 setMatchField(p.matchField)
               }

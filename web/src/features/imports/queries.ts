@@ -38,6 +38,18 @@ export interface SuggestionChanges {
   changedPayee: boolean
 }
 
+// The AI's match text for an edited import; an empty answer (no AI, a failure,
+// a 429) just leaves the heuristic in place, so errors are never surfaced.
+export function useSuggestMatchText(linkId: Id, enabled: boolean) {
+  return useQuery({
+    queryKey: ['importMatchText', linkId],
+    queryFn: () => importsApi.suggestImportMatchText(linkId),
+    enabled,
+    staleTime: Infinity,
+    retry: false,
+  })
+}
+
 export function useAcceptImportSuggestion() {
   const queryClient = useQueryClient()
   return useMutation({

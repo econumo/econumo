@@ -340,3 +340,57 @@ describe('suggestion mode', () => {
     expect(posted.accept).toBeUndefined()
   })
 })
+
+describe('AI match text', () => {
+  const aiHandler = (matchText: string, matchField = 'description', delay = 0) => server.use(
+    http.post('*/api/v1/import/suggest-match-text', async () => {
+      ;(posted.suggest ??= []).push(1)
+      if (delay) {
+        await new Promise((r) => setTimeout(r, delay))
+      }
+      return HttpResponse.json({ success: true, message: '', data: { matchField, matchText } })
+    }),
+  )
+
+  it('uses the AI match text when it arrives', async () => {
+    window.econumoConfig = { AI_ENABLED: true }
+    renderPrompt()
+    aiHandler('BLUE BOTTLE')
+    useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+    await waitFor(() => expect((screen.getByLabelText('Description contains') as HTMLInputElement).value).toBe('BLUE BOTTLE'))
+  })
+
+  it('keeps what the user typed when the AI answer arrives later', async () => {
+    window.econumoConfig = { AI_ENABLED: true }
+    renderPrompt()
+    aiHandler('BLUE BOTTLE', 'description', 300)
+    useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+    const user = userEvent.setup()
+    const value = await screen.findByLabelText('Payee contains')
+    await user.clear(value)
+    await user.type(value, 'MINE')
+    await waitFor(() => expect(posted.suggest).toHaveLength(1))
+    await new Promise((r) => setTimeout(r, 450))
+    expect((screen.getByLabelText('Payee contains') as HTMLInputElement).value).toBe('MINE')
+  })
+
+  it('never calls suggest-match-text when AI is off', async () => {
+    renderPrompt()
+    aiHandler('BLUE BOTTLE')
+    useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+    expect(await screen.findByLabelText('Payee contains')).toBeInTheDocument()
+    await new Promise((r) => setTimeout(r, 100))
+    expect(posted.suggest).toBeUndefined()
+  })
+
+  it('fires the AI-match metric when saved unchanged', async () => {
+    window.econumoConfig = { AI_ENABLED: true }
+    renderPrompt()
+    aiHandler('BLUE BOTTLE')
+    useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+    const user = userEvent.setup()
+    await waitFor(() => expect((screen.getByLabelText('Description contains') as HTMLInputElement).value).toBe('BLUE BOTTLE'))
+    await user.click(screen.getByRole('button', { name: 'Create rule' }))
+    await waitFor(() => expect(vi.mocked(trackEvent)).toHaveBeenCalledWith(METRICS.IMPORT_RULE_AI_MATCH_USED))
+  })
+})

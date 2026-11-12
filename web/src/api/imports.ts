@@ -1,6 +1,7 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type {
+  ImportRuleMatchField,
   AcceptImportSuggestionDto,
   ApplyImportRuleDto,
   ImportSuggestionDto,
@@ -203,4 +204,14 @@ export async function acceptImportSuggestion(id: Id, ruleId: Id): Promise<Accept
 export async function dismissImportSuggestion(id: Id): Promise<ImportSuggestionDto[]> {
   const response = await api.post<Envelope<{ items: ImportSuggestionDto[] }>>(apiUrl('/api/v1/import/dismiss-suggestion'), { id })
   return response.data.data.items
+}
+
+export interface SuggestedMatchTextDto {
+  matchField: ImportRuleMatchField | ''
+  matchText: string
+}
+
+export async function suggestImportMatchText(linkId: Id): Promise<SuggestedMatchTextDto> {
+  const response = await api.post<Envelope<SuggestedMatchTextDto>>(apiUrl('/api/v1/import/suggest-match-text'), { linkId })
+  return response.data.data
 }
