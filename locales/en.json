@@ -2553,7 +2553,7 @@
     },
     "debt": {
       "payments_dont_cover": "The payments do not cover the balance. Raise the payment or set a later last payment date.",
-      "key_conflict": "These payment rules could match the same payments. Give them different payees, tags or reporting tags, or different start dates.",
+      "key_conflict": "These payment rules could match the same payments. Give them different payees, tags or reporting tags, or, for different debts, different start dates.",
       "start_date_taken": "Another debt with the same category, payee, tag and reporting tag already starts on this date.",
       "category_not_expense": "A debt needs an expense category.",
       "removal_unconfirmed": "This deletes the planned amounts and comments of this debt in your budgets; confirm to continue.",
