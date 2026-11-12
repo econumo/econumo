@@ -189,7 +189,8 @@ func ruleCategories(rules []model.DebtRule) []vo.Id {
 // writeRules validates the fresh rules of d in its budget. Their categories
 // are key-share-locked first, so the owner check reads rows a concurrent
 // delete can no longer remove: that delete waits for this write and then
-// releases the rule. A category deleted before the lock is not found.
+// fails with the retryable ErrRulesChangedConcurrently. A category deleted
+// before the lock is not found.
 func (s *Service) writeRules(ctx context.Context, b model.DebtBudget, d *model.Debt, fresh []model.DebtRule, budgetDebts []*model.Debt) error {
 	if err := s.repo.LockRuleCategories(ctx, ruleCategories(fresh)); err != nil {
 		return err

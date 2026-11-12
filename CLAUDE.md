@@ -2137,8 +2137,9 @@ data unreadable. Most are also asserted by the test suite.
   `common.is_blank`), and the budget never changes; `add-debt-rule` (`{id, rule}`, "Add to a
   debt") adds one (an eleventh is `common.out_of_range`). Both are rechecked by the checks above,
   and new rule categories are key-share-locked first (`LockRuleCategories`, PostgreSQL only,
-  inside the budget lock), so a concurrent category delete waits and then releases the new rule
-  instead of failing its foreign key. So is the currency: an update whose `currencyId` differs
+  inside the budget lock), so a concurrent category delete waits for the rule write and then
+  fails with the retryable `debt.ErrRulesChangedConcurrently` (it holds no lock on that rule's
+  budget; a retry releases the rule) instead of failing its foreign key. So is the currency: an update whose `currencyId` differs
   from the stored one (empty keeps it; the usability check applies to the new one only) moves the
   debt to it. The amounts
   in that request are in the new currency, and with terms left out the stored numbers are kept and

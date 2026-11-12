@@ -64,7 +64,8 @@ type Repository interface {
 	CandidateTransactions(ctx context.Context, categoryIDs, accountIDs []vo.Id) ([]CandidateTx, error)
 	// LockRuleCategories key-share-locks the categories in id order
 	// (PostgreSQL; SQLite only reads them): a concurrent category delete
-	// waits for the rule write and then releases it. A category already
-	// deleted returns errs.NotFound "Category not found".
+	// waits for the rule write and then fails with the retryable
+	// ErrRulesChangedConcurrently instead of the rule's foreign key. A
+	// category already deleted returns errs.NotFound "Category not found".
 	LockRuleCategories(ctx context.Context, categoryIDs []vo.Id) error
 }

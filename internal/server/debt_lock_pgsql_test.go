@@ -424,9 +424,12 @@ func TestDeleteDebt_ConcurrentSetLimitOnTheDebtRow(t *testing.T) {
 }
 
 // Ruling 2: add-debt-rule holds a key-share lock on the new rule's category.
-// A category delete arriving then waits for it, and releases the rule once it
-// commits, instead of failing the rule's foreign key.
-func TestAddDebtRule_ConcurrentCategoryDeleteReleasesTheRule(t *testing.T) {
+// A category delete arriving then read the rules before that rule existed, so
+// it holds no lock on the debt's budget; it waits for the category row and,
+// once the rule commits, fails with the retryable ErrRulesChangedConcurrently
+// rather than lock that budget after the row (a deadlock risk) or fail the
+// rule's foreign key. Nothing is half-done, and a retry releases the rule.
+func TestAddDebtRule_ConcurrentCategoryDeleteFailsRetryably(t *testing.T) {
 	r := newDebtLockRig(t)
 	ctx := context.Background()
 	debtID := r.createDebt(t, model.DebtRuleRequest{CategoryId: r.loan})
@@ -447,17 +450,27 @@ func TestAddDebtRule_ConcurrentCategoryDeleteReleasesTheRule(t *testing.T) {
 	if err := <-added; err != nil {
 		t.Fatalf("add-debt-rule: %v", err)
 	}
-	if err := <-deleted; err != nil {
-		t.Fatalf("delete-category: %v", err)
+	if err := <-deleted; !errors.Is(err, appdebt.ErrRulesChangedConcurrently) {
+		t.Fatalf("delete-category = %v, want ErrRulesChangedConcurrently", err)
 	}
-	var rules, onCar, categories int
-	if err := r.monitor.QueryRow(`SELECT COUNT(*), COUNT(*) FILTER (WHERE category_id = $2) FROM debts_rules WHERE debt_id = $1`, debtID, r.car).Scan(&rules, &onCar); err != nil {
-		t.Fatal(err)
+	rules := func() (all, onCar, categories int) {
+		t.Helper()
+		if err := r.monitor.QueryRow(`SELECT COUNT(*), COUNT(*) FILTER (WHERE category_id = $2) FROM debts_rules WHERE debt_id = $1`, debtID, r.car).Scan(&all, &onCar); err != nil {
+			t.Fatal(err)
+		}
+		if err := r.monitor.QueryRow(`SELECT COUNT(*) FROM categories WHERE id = $1`, r.car).Scan(&categories); err != nil {
+			t.Fatal(err)
+		}
+		return all, onCar, categories
 	}
-	if rules != 1 || onCar != 0 {
-		t.Errorf("debt rules = %d (%d on the deleted category), want the first rule only", rules, onCar)
+	if all, onCar, categories := rules(); all != 2 || onCar != 1 || categories != 1 {
+		t.Errorf("after the refused delete: %d rules (%d on the category), %d category rows; want both rules and the category kept", all, onCar, categories)
 	}
-	if err := r.monitor.QueryRow(`SELECT COUNT(*) FROM categories WHERE id = $1`, r.car).Scan(&categories); err != nil || categories != 0 {
-		t.Errorf("category rows = %d, %v; want it deleted", categories, err)
+
+	if _, err := r.two.categories.DeleteCategory(ctx, r.owner, model.DeleteCategoryRequest{Id: r.car}); err != nil {
+		t.Fatalf("delete-category retry: %v", err)
+	}
+	if all, onCar, categories := rules(); all != 1 || onCar != 0 || categories != 0 {
+		t.Errorf("after the retry: %d rules (%d on the category), %d category rows; want the first rule only and the category deleted", all, onCar, categories)
 	}
 }
