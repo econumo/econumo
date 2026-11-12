@@ -143,7 +143,7 @@ export function SecretDialog({ open, flow, current, onClose, onComplete, onExcee
       <div className="flex flex-col items-center pt-1 pb-3">
         {step === 'create' && (
           <div
-            className="mb-4 flex w-full max-w-64 rounded-md border p-0.5"
+            className="mb-4 flex w-full max-w-80 rounded-md border p-0.5"
             role="radiogroup"
             aria-label={t('appLock.settings.change_secret')}
           >
