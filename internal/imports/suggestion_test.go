@@ -2,6 +2,8 @@ package imports_test
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/econumo/econumo/internal/model"
@@ -241,5 +243,95 @@ func TestDismissForgets(t *testing.T) {
 	got := openSuggestions(t, h, userA)
 	if len(got) != 1 || got[0].ID == s.ID {
 		t.Fatalf("suggestions = %+v", got)
+	}
+}
+
+func matchTextLink(t *testing.T, h *harness, payee string) model.ImportTransactionLink {
+	t.Helper()
+	h.mapCard(t, "Apple Card")
+	if res := ingest(t, h, pushWithPayee(payee, "evt-m1")); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("ingest: %s", res.Status)
+	}
+	links, err := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if err != nil || len(links) != 1 {
+		t.Fatalf("links = %v, %v", links, err)
+	}
+	return links[0]
+}
+
+func suggestMatchText(h *harness, user string, l model.ImportTransactionLink) (*model.SuggestImportMatchTextResult, error) {
+	return h.svc.SuggestMatchText(context.Background(), vo.MustParseId(user), model.SuggestImportMatchTextRequest{LinkId: l.ID.String()})
+}
+
+func TestSuggestMatchTextValid(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "SQ *BLUE BOTTLE COFFEE #0423")
+	c.calls, c.reply = nil, `{"matchText":"BLUE BOTTLE COFFEE"}`
+	res, err := suggestMatchText(h, userA, l)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.MatchField != model.ImportRuleMatchFieldExternalPayee || res.MatchText != "BLUE BOTTLE COFFEE" {
+		t.Fatalf("result = %+v", res)
+	}
+	if len(c.calls) != 1 || c.calls[0].userID != userA || !strings.Contains(c.calls[0].user, "SQ *BLUE BOTTLE COFFEE #0423") {
+		t.Fatalf("calls = %+v", c.calls)
+	}
+}
+
+func TestSuggestMatchTextRejectsInvented(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "SQ *BLUE BOTTLE COFFEE #0423")
+	c.reply = `{"matchText":"STARBUCKS"}`
+	res, err := suggestMatchText(h, userA, l)
+	if err != nil || res.MatchField != "" || res.MatchText != "" {
+		t.Fatalf("result = %+v, %v", res, err)
+	}
+}
+
+func TestSuggestMatchTextNoAI(t *testing.T) {
+	h := setup(t)
+	h.withLimiter()
+	l := matchTextLink(t, h, "Blue Bottle")
+	before := *h.lim
+	res, err := suggestMatchText(h, userA, l)
+	if err != nil || res.MatchField != "" || res.MatchText != "" {
+		t.Fatalf("result = %+v, %v", res, err)
+	}
+	if *h.lim != before {
+		t.Fatalf("limiter touched: %+v", h.lim)
+	}
+}
+
+func TestSuggestMatchTextCountsLimiter(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "Blue Bottle")
+	h.withLimiter()
+	h.wireSuggest(c, fakeFacts{userA: {language: "en"}})
+	c.reply = `{"matchText":"Blue Bottle"}`
+	if _, err := suggestMatchText(h, userA, l); err != nil {
+		t.Fatal(err)
+	}
+	if h.lim.allow != 1 || h.lim.fail != 1 {
+		t.Fatalf("limiter = %+v", h.lim)
+	}
+}
+
+func TestSuggestMatchTextForeignLink(t *testing.T) {
+	h, _, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "Blue Bottle")
+	_, err := suggestMatchText(h, userB, l)
+	wantNotFound(t, err)
+	_, err = h.svc.SuggestMatchText(context.Background(), vo.MustParseId(userA), model.SuggestImportMatchTextRequest{LinkId: "0d000000-0000-0000-0000-0000000000ff"})
+	wantNotFound(t, err)
+}
+
+func TestSuggestMatchTextCompleterError(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "Blue Bottle")
+	c.err = errors.New("provider down")
+	res, err := suggestMatchText(h, userA, l)
+	if err != nil || res.MatchField != "" || res.MatchText != "" {
+		t.Fatalf("result = %+v, %v", res, err)
 	}
 }

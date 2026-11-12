@@ -7326,6 +7326,93 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/import/suggest-match-text": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Asks the AI provider for the shortest part of the payee that identifies the merchant and returns it only when the transaction really contains it; empty fields when no AI is configured or it had nothing usable. Counts against the preview-rule limit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Suggest rule match text for an imported transaction",
+                "parameters": [
+                    {
+                        "description": "Suggest match text request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SuggestImportMatchTextRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SuggestImportMatchTextResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/import/sync-source": {
             "post": {
                 "security": [
@@ -18262,6 +18349,26 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.SavingsElementResult"
                     }
+                }
+            }
+        },
+        "model.SuggestImportMatchTextRequest": {
+            "type": "object",
+            "properties": {
+                "linkId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SuggestImportMatchTextResult": {
+            "type": "object",
+            "properties": {
+                "matchField": {
+                    "description": "\"\" when no text could be picked",
+                    "type": "string"
+                },
+                "matchText": {
+                    "type": "string"
                 }
             }
         },

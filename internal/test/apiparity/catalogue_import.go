@@ -338,4 +338,15 @@ func init() {
 				Body: map[string]any{"id": ImportSuggestionEmployer}},
 		}
 	}})
+
+	register(Scenario{Name: "import_suggest_match_text", Calls: func() []Call {
+		return []Call{
+			{Label: "suggest-match-text-no-ai", Method: "POST", Path: "/api/v1/import/suggest-match-text", Auth: "owner",
+				Body: map[string]any{"linkId": ImportLinkTxn2}},
+			{Label: "err:suggest-match-text-blank", Method: "POST", Path: "/api/v1/import/suggest-match-text", Auth: "owner",
+				Body: map[string]any{"linkId": ""}},
+			{Label: "err:suggest-match-text-foreign", Method: "POST", Path: "/api/v1/import/suggest-match-text", Auth: "guest",
+				Body: map[string]any{"linkId": ImportLinkTxn2}},
+		}
+	}})
 }

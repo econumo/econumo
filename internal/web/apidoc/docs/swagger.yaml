@@ -3096,6 +3096,19 @@ definitions:
           $ref: '#/definitions/model.SavingsElementResult'
         type: array
     type: object
+  model.SuggestImportMatchTextRequest:
+    properties:
+      linkId:
+        type: string
+    type: object
+  model.SuggestImportMatchTextResult:
+    properties:
+      matchField:
+        description: '"" when no text could be picked'
+        type: string
+      matchText:
+        type: string
+    type: object
   model.SyncImportSourceRequest:
     properties:
       accessUrl:
@@ -8166,6 +8179,62 @@ paths:
       security:
       - Bearer: []
       summary: Skip a queued event
+      tags:
+      - Import
+  /api/v1/import/suggest-match-text:
+    post:
+      consumes:
+      - application/json
+      description: Asks the AI provider for the shortest part of the payee that identifies
+        the merchant and returns it only when the transaction really contains it;
+        empty fields when no AI is configured or it had nothing usable. Counts against
+        the preview-rule limit.
+      parameters:
+      - description: Suggest match text request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SuggestImportMatchTextRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SuggestImportMatchTextResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Suggest rule match text for an imported transaction
       tags:
       - Import
   /api/v1/import/sync-source:

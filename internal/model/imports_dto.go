@@ -681,6 +681,24 @@ func (r DismissImportSuggestionRequest) Validate() error {
 	return nil
 }
 
+type SuggestImportMatchTextRequest struct {
+	LinkId string `json:"linkId"`
+}
+
+func (r SuggestImportMatchTextRequest) Validate() error {
+	var fields []errs.FieldError
+	requireIDField("linkId", r.LinkId, &fields)
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+type SuggestImportMatchTextResult struct {
+	MatchField string `json:"matchField"` // "" when no text could be picked
+	MatchText  string `json:"matchText"`
+}
+
 func requireIDField(key, raw string, fields *[]errs.FieldError) {
 	if strings.TrimSpace(raw) == "" {
 		*fields = append(*fields, blankField(key))

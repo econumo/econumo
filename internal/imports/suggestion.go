@@ -2,8 +2,12 @@ package imports
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
@@ -262,4 +266,68 @@ func (s *Service) DismissSuggestion(ctx context.Context, userID vo.Id, req model
 		return nil, err
 	}
 	return s.GetSuggestionList(ctx, userID)
+}
+
+const suggestMatchTextTimeout = 10 * time.Second
+
+const suggestMatchTextSystem = `You help write a bank-import rule. Given one imported transaction as JSON, reply with JSON only: {"matchText":"..."}.
+matchText is the shortest substring of the payee (or of the description when the payee is empty) that identifies the merchant, copied exactly from the text, with no store numbers, dates or reference codes.
+Reply in the user's language context where relevant; the timezone is only for reading dates.`
+
+// SuggestMatchText answers empty, never an error, when the AI is off or
+// fails: the dialog then simply falls back to the raw payee. A text the row
+// does not contain is dropped by matchTextIn, so a model cannot invent a
+// rule that would never match.
+func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.SuggestImportMatchTextRequest) (*model.SuggestImportMatchTextResult, error) {
+	linkID, err := vo.ParseId(strings.TrimSpace(req.LinkId))
+	if err != nil {
+		return nil, errs.NewNotFound("Import link not found")
+	}
+	l, live, err := s.suggestionTarget(ctx, userID, linkID)
+	if err != nil {
+		return nil, err
+	}
+	if live == nil {
+		return nil, errs.NewNotFound("Import link not found")
+	}
+	empty := &model.SuggestImportMatchTextResult{}
+	if s.completer == nil || s.facts == nil {
+		return empty, nil
+	}
+	if err := s.countAttempt(ctx, RateScopePreviewRule, userID); err != nil {
+		return nil, err
+	}
+	language, timezone, _, err := s.facts.OwnerFacts(ctx, userID)
+	if err != nil {
+		slog.Warn("import match text failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+		return empty, nil
+	}
+	if language == "" {
+		language = "en"
+	}
+	payload, err := json.Marshal(map[string]string{
+		"language": language, "timezone": timezone,
+		"payee": l.ExternalPayee, "description": l.ExternalDescription,
+	})
+	if err != nil {
+		return empty, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, suggestMatchTextTimeout)
+	defer cancel()
+	reply, err := s.completer.Complete(ctx, userID.String(), suggestMatchTextSystem, string(payload))
+	var parsed struct {
+		MatchText string `json:"matchText"`
+	}
+	if err == nil {
+		err = json.Unmarshal([]byte(strings.TrimSpace(reply)), &parsed)
+	}
+	if err != nil {
+		slog.Warn("import match text failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+		return empty, nil
+	}
+	field, text, ok := matchTextIn(*l, parsed.MatchText)
+	if !ok {
+		return empty, nil
+	}
+	return &model.SuggestImportMatchTextResult{MatchField: field, MatchText: text}, nil
 }

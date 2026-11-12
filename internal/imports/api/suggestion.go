@@ -58,3 +58,24 @@ func (h *Handlers) AcceptSuggestion(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) DismissSuggestion(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.DismissSuggestion)
 }
+
+// SuggestMatchText handles POST /api/v1/import/suggest-match-text (auth).
+//
+// @Summary     Suggest rule match text for an imported transaction
+// @Description Asks the AI provider for the shortest part of the payee that identifies the merchant and returns it only when the transaction really contains it; empty fields when no AI is configured or it had nothing usable. Counts against the preview-rule limit.
+// @Tags        Import
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.SuggestImportMatchTextRequest true "Suggest match text request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.SuggestImportMatchTextResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     404     {object} apidoc.JsonResponseError
+// @Failure     429     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/import/suggest-match-text [post]
+func (h *Handlers) SuggestMatchText(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.SuggestMatchText)
+}
