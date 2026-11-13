@@ -23,7 +23,8 @@ import "time"
 // Last, the owner adds a debt with no terms (payment and schedule only) on a
 // third category and pays 30 into it today: get-budget and get-budget-plan
 // then show it not set up, with its Paid, no balance, nothing scheduled and
-// plannable from the current month with no end.
+// plannable from the current month with no end. That debt has an icon of its
+// own, which its rows show instead of its category's.
 func init() {
 	register(Scenario{Name: "budget_debts", Calls: func() []Call {
 		now := ClockTime.Format("2006-01-02 15:04:05")
@@ -86,7 +87,7 @@ func init() {
 				Body:          map[string]any{"id": "d2000000-0000-0000-0000-0000000000a3", "name": "Study loan", "type": "expense", "icon": "school"},
 				CaptureIDInto: &studyCat},
 			{Label: "owner-creates-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
-				Body: map[string]any{"budgetId": Budget, "name": "Study", "currencyId": USD,
+				Body: map[string]any{"budgetId": Budget, "name": "Study", "icon": "account_balance", "currencyId": USD,
 					"rules": []map[string]any{{"categoryId": &studyCat}}, "payment": "200", "schedule": "monthly"}},
 			{Label: "owner-pays-debt-without-terms", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": "d2000000-0000-0000-0000-0000000000b2", "type": "expense", "amount": "30.00",

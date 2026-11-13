@@ -2,24 +2,25 @@
 -- the driver would otherwise store a time part, like currencies_rates.published_at.
 
 -- name: GetDebtByID :one
-SELECT id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE id = ?;
 
 -- name: ListDebtsByBudget :many
-SELECT id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE budget_id = ?
 ORDER BY created_at, id;
 
 -- name: UpsertDebt :exec
 -- The budget is written once, at insert: a debt never moves to another budget.
-INSERT INTO debts (id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
-VALUES (sqlc.arg(id), sqlc.arg(budget_id), sqlc.arg(name), sqlc.arg(currency_id),
+INSERT INTO debts (id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(budget_id), sqlc.arg(name), sqlc.arg(icon), sqlc.arg(currency_id),
     CAST(sqlc.narg(start_date) AS TEXT), sqlc.narg(amount_borrowed), CAST(sqlc.narg(as_of) AS TEXT), sqlc.narg(balance), sqlc.arg(payment), sqlc.arg(schedule),
     CAST(sqlc.narg(last_payment_date) AS TEXT), CAST(sqlc.arg(created_day) AS TEXT), sqlc.arg(created_at), sqlc.arg(updated_at))
 ON CONFLICT (id) DO UPDATE SET
     name              = excluded.name,
+    icon              = excluded.icon,
     currency_id       = excluded.currency_id,
     start_date        = excluded.start_date,
     amount_borrowed   = excluded.amount_borrowed,

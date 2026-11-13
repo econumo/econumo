@@ -97,6 +97,9 @@
 == err:update-no-rules POST /api/v1/debt/update-debt [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"rules":["This value should not be blank."]}}
 
+== err:update-icon-too-long POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"icon":["This value is too long."]}}
+
 == err:get-unknown GET /api/v1/debt/get-debt?id=d0000000-0000-0000-0000-0000000000ff [owner] -> 400
 {"success":false,"message":"Debt not found","code":0,"errors":{}}
 

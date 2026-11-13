@@ -3,6 +3,7 @@ package debt
 import (
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -70,8 +71,8 @@ func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.Create
 		if err != nil {
 			return err
 		}
-		d = &model.Debt{ID: s.repo.NextIdentity(), BudgetID: b.ID, CurrencyID: currency, Name: in.name, StartDate: in.start,
-			CreatedDay: debtDate(now.In(loc)), CreatedAt: now, UpdatedAt: now}
+		d = &model.Debt{ID: s.repo.NextIdentity(), BudgetID: b.ID, CurrencyID: currency, Name: in.name, Icon: strings.TrimSpace(req.Icon),
+			StartDate: in.start, CreatedDay: debtDate(now.In(loc)), CreatedAt: now, UpdatedAt: now}
 		for _, r := range rules {
 			d.Rules = append(d.Rules, s.mint(r, now))
 		}

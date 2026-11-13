@@ -17,12 +17,14 @@ DROP TABLE debts;
 -- are held either way). amount_borrowed is the loan's amount as of start_date,
 -- the balance of the first snapshot (the origin). created_day is the creation
 -- date in the creating user's timezone, fixed at creation: it can start the
--- debt's plannable months, which must not move later.
+-- debt's plannable months, which must not move later. icon '' means the debt
+-- has none of its own and shows its first rule's category icon.
 CREATE TABLE debts
 (
     id                  UUID          NOT NULL
     , budget_id         UUID          NOT NULL
     , name              TEXT          NOT NULL
+    , icon              TEXT          NOT NULL DEFAULT ''
     , currency_id       UUID          NOT NULL
     , start_date        DATE
     , amount_borrowed   NUMERIC(19,8)

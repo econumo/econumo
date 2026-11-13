@@ -15,6 +15,8 @@ import (
 
 const debtNameMaxLength = 64
 
+const debtIconMaxLength = 64
+
 const debtRulesMax = 10
 
 // DebtRuleRequest is one rule of a debt: a category, narrowed by a payee and
@@ -33,10 +35,12 @@ type DebtRuleRequest struct {
 // a StartDate alone only bounding which payments count); Balance is an
 // optional statement balance as of BalanceDate (default today), for when the
 // recorded payments do not tell the whole story. An empty CurrencyId takes
-// the budget's currency.
+// the budget's currency. An empty Icon leaves the debt without one of its own
+// (it shows its first rule's category icon).
 type CreateDebtRequest struct {
 	BudgetId        string            `json:"budgetId"`
 	Name            string            `json:"name"`
+	Icon            string            `json:"icon"`
 	CurrencyId      string            `json:"currencyId"`
 	Rules           []DebtRuleRequest `json:"rules"`
 	StartDate       *string           `json:"startDate"`
@@ -52,6 +56,7 @@ func (r CreateDebtRequest) Validate() error {
 	fields := debtFields(debtTermFields{r.Name, r.StartDate,
 		r.AmountBorrowed, r.Balance, r.BalanceDate, r.Payment, r.Schedule, r.LastPaymentDate}, false)
 	fields = append(fields, debtIDField("budgetId", r.BudgetId, true)...)
+	fields = append(fields, debtIconField(r.Icon)...)
 	fields = append(fields, debtRulesFields(r.Rules)...)
 	fields = append(fields, debtIDField("currencyId", r.CurrencyId, false)...)
 	return debtValidation(fields)
@@ -66,10 +71,12 @@ func (r CreateDebtRequest) Validate() error {
 // LastPaymentDate come as a pair; they, Payment, Schedule and (on a set-up
 // debt) StartDate left out keep the stored ones; on a debt not set up a
 // StartDate left out means none. A Balance alone gives a set-up debt a
-// statement balance as of BalanceDate (default today).
+// statement balance as of BalanceDate (default today). An empty Icon keeps
+// the stored one.
 type UpdateDebtRequest struct {
 	Id              string            `json:"id"`
 	Name            string            `json:"name"`
+	Icon            string            `json:"icon"`
 	CurrencyId      string            `json:"currencyId"`
 	Rules           []DebtRuleRequest `json:"rules"`
 	StartDate       *string           `json:"startDate"`
@@ -85,6 +92,7 @@ func (r UpdateDebtRequest) Validate() error {
 	fields := debtFields(debtTermFields{r.Name, r.StartDate,
 		r.AmountBorrowed, r.Balance, r.BalanceDate, r.Payment, r.Schedule, r.LastPaymentDate}, true)
 	fields = append(fields, debtIDField("id", r.Id, true)...)
+	fields = append(fields, debtIconField(r.Icon)...)
 	if r.Rules != nil {
 		fields = append(fields, debtRulesFields(r.Rules)...)
 	}
@@ -436,6 +444,13 @@ func filled(v string) bool { return strings.TrimSpace(v) != "" }
 
 // debtFields: with keepable (an update) the payment and the schedule may be
 // left out, and so may the loan's facts around a balance now.
+func debtIconField(icon string) []errs.FieldError {
+	if utf8.RuneCountInString(strings.TrimSpace(icon)) > debtIconMaxLength {
+		return []errs.FieldError{{Key: "icon", Message: "This value is too long.", Code: errs.CodeTooLong}}
+	}
+	return nil
+}
+
 func debtFields(f debtTermFields, keepable bool) []errs.FieldError {
 	var fields []errs.FieldError
 	switch n := strings.TrimSpace(f.name); {

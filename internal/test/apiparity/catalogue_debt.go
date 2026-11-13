@@ -2,6 +2,7 @@ package apiparity
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -44,8 +45,8 @@ func init() {
 
 	// debt_crud walks one debt through its life: create, list, get, correct
 	// the loan's facts (the origin rewritten, the start a week earlier), state
-	// a statement balance today (a new snapshot), rename without terms (the
-	// start date left out is kept), mark paid off (replacing today's
+	// a statement balance today (a new snapshot), rename without terms and
+	// give it its own icon (the start date left out is kept), mark paid off (replacing today's
 	// statement), delete. A second debt is
 	// created without terms, matching by a label, and then set up.
 	register(Scenario{Name: "debt_crud", Calls: func() []Call {
@@ -64,9 +65,10 @@ func init() {
 			{Label: "update-balance-now", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{"id": &debtID, "name": "Car loan 2", "balance": "150"}},
 			// no rules, amount borrowed, balance, payment, schedule or last
-			// payment date: the rules and the terms stay
+			// payment date: the rules and the terms stay; the debt takes an
+			// icon of its own instead of its category's
 			{Label: "rename-keeps-terms", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
-				Body: map[string]any{"id": &debtID, "name": "Car loan 3"}},
+				Body: map[string]any{"id": &debtID, "name": "Car loan 3", "icon": "directions_car"}},
 			{Label: "mark-paid-off", Method: "POST", Path: "/api/v1/debt/mark-debt-paid-off", Auth: "owner",
 				Body: map[string]any{"id": &debtID}},
 			{Label: "delete", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
@@ -182,6 +184,8 @@ func init() {
 					"schedule": "weekly", "lastPaymentDate": day(7)}},
 			{Label: "err:update-no-rules", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{"id": &debtID, "name": "Car loan", "rules": rules()}},
+			{Label: "err:update-icon-too-long", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "name": "Car loan", "icon": strings.Repeat("i", 65)}},
 			{Label: "err:get-unknown", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=" + unknownDebt},
 			{Label: "err:get-bad-id", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=nope"},
 			{Label: "err:get-missing-id", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt"},

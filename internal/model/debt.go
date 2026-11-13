@@ -12,6 +12,8 @@ import (
 type Debt struct {
 	ID, BudgetID, CurrencyID vo.Id
 	Name                     string
+	// Icon is the debt's own icon; "" shows its first rule's category icon.
+	Icon string
 	// Rules are ordered by CreatedAt, then ID; a payment counts when it
 	// matches any of them.
 	Rules []DebtRule

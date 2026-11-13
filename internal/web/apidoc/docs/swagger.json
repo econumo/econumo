@@ -15738,6 +15738,9 @@
                 "currencyId": {
                     "type": "string"
                 },
+                "icon": {
+                    "type": "string"
+                },
                 "lastPaymentDate": {
                     "type": "string"
                 },
@@ -20200,6 +20203,9 @@
                     "type": "string"
                 },
                 "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
                     "type": "string"
                 },
                 "id": {

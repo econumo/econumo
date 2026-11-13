@@ -169,6 +169,7 @@ func (r *Repo) Save(ctx context.Context, d *model.Debt) error {
 		ID:         d.ID.String(),
 		BudgetID:   d.BudgetID.String(),
 		Name:       d.Name,
+		Icon:       d.Icon,
 		CurrencyID: d.CurrencyID.String(),
 		Payment:    d.Payment.String(),
 		Schedule:   string(d.Schedule),
@@ -344,7 +345,7 @@ func (r *Repo) ListByBudgets(ctx context.Context, budgetIDs []vo.Id) ([]*model.D
 	return r.listDebts(ctx, " WHERE budget_id IN ("+placeholders(r.driver, len(budgetIDs))+")", idArgs(budgetIDs)...)
 }
 
-const debtCols = "id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at"
+const debtCols = "id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at"
 
 func (r *Repo) listDebts(ctx context.Context, where string, args ...any) ([]*model.Debt, error) {
 	rows, err := r.db(ctx).QueryContext(ctx, "SELECT "+debtCols+" FROM debts"+where+" ORDER BY created_at, id", args...)
@@ -355,7 +356,7 @@ func (r *Repo) listDebts(ctx context.Context, where string, args ...any) ([]*mod
 	var scanned []debtRow
 	for rows.Next() {
 		var row debtRow
-		if err := rows.Scan(&row.ID, &row.BudgetID, &row.Name, &row.CurrencyID, &row.StartDate, &row.AmountBorrowed, &row.AsOf,
+		if err := rows.Scan(&row.ID, &row.BudgetID, &row.Name, &row.Icon, &row.CurrencyID, &row.StartDate, &row.AmountBorrowed, &row.AsOf,
 			&row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate, &row.CreatedDay, &row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -525,7 +526,7 @@ func hydrate(row debtRow) (*model.Debt, error) {
 		start = &s
 	}
 	d := &model.Debt{
-		ID: id, BudgetID: budget, CurrencyID: currency, Name: row.Name, StartDate: start,
+		ID: id, BudgetID: budget, CurrencyID: currency, Name: row.Name, Icon: row.Icon, StartDate: start,
 		Payment: vo.NewDecimal(row.Payment), Schedule: model.RecurringSchedule(row.Schedule),
 		CreatedDay: day(row.CreatedDay), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}

@@ -874,6 +874,8 @@ definitions:
         type: string
       currencyId:
         type: string
+      icon:
+        type: string
       lastPaymentDate:
         type: string
       name:
@@ -3822,6 +3824,8 @@ definitions:
       balanceDate:
         type: string
       currencyId:
+        type: string
+      icon:
         type: string
       id:
         type: string

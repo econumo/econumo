@@ -181,6 +181,7 @@ type Debt struct {
 	ID              string
 	BudgetID        string
 	Name            string
+	Icon            string
 	CurrencyID      string
 	StartDate       *time.Time
 	AmountBorrowed  *string

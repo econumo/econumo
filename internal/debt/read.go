@@ -50,9 +50,12 @@ func (p *presenter) userName(ctx context.Context, id vo.Id) (string, error) {
 	return n, nil
 }
 
-// icon is the first rule's category icon; a debt without rules has the
-// default one.
+// icon is every reader's icon of the debt: its own when set, else the first
+// rule's category icon, else the default one.
 func (p *presenter) icon(ctx context.Context, d *model.Debt) (string, error) {
+	if d.Icon != "" {
+		return d.Icon, nil
+	}
 	if len(d.Rules) == 0 {
 		return model.DefaultIcon, nil
 	}

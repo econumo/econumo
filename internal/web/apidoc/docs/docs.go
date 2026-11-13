@@ -15745,6 +15745,9 @@ const docTemplate = `{
                 "currencyId": {
                     "type": "string"
                 },
+                "icon": {
+                    "type": "string"
+                },
                 "lastPaymentDate": {
                     "type": "string"
                 },
@@ -20207,6 +20210,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
                     "type": "string"
                 },
                 "id": {

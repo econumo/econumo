@@ -39,7 +39,7 @@ func (q *Queries) DeleteDebtSnapshot(ctx context.Context, id string) error {
 
 const getDebtByID = `-- name: GetDebtByID :one
 
-SELECT id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE id = $1
 `
@@ -53,6 +53,7 @@ func (q *Queries) GetDebtByID(ctx context.Context, id string) (Debt, error) {
 		&i.ID,
 		&i.BudgetID,
 		&i.Name,
+		&i.Icon,
 		&i.CurrencyID,
 		&i.StartDate,
 		&i.AmountBorrowed,
@@ -148,7 +149,7 @@ func (q *Queries) InsertDebtSplit(ctx context.Context, arg InsertDebtSplitParams
 }
 
 const listDebtsByBudget = `-- name: ListDebtsByBudget :many
-SELECT id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE budget_id = $1
 ORDER BY created_at, id
@@ -167,6 +168,7 @@ func (q *Queries) ListDebtsByBudget(ctx context.Context, budgetID string) ([]Deb
 			&i.ID,
 			&i.BudgetID,
 			&i.Name,
+			&i.Icon,
 			&i.CurrencyID,
 			&i.StartDate,
 			&i.AmountBorrowed,
@@ -236,12 +238,13 @@ func (q *Queries) UpdateDebtSnapshot(ctx context.Context, arg UpdateDebtSnapshot
 }
 
 const upsertDebt = `-- name: UpsertDebt :exec
-INSERT INTO debts (id, budget_id, name, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
-VALUES ($1, $2, $3, $4,
-    $5::text::date, $6, $7::text::date, $8, $9, $10,
-    $11::text::date, $12::text::date, $13, $14)
+INSERT INTO debts (id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5,
+    $6::text::date, $7, $8::text::date, $9, $10, $11,
+    $12::text::date, $13::text::date, $14, $15)
 ON CONFLICT (id) DO UPDATE SET
     name              = excluded.name,
+    icon              = excluded.icon,
     currency_id       = excluded.currency_id,
     start_date        = excluded.start_date,
     amount_borrowed   = excluded.amount_borrowed,
@@ -257,6 +260,7 @@ type UpsertDebtParams struct {
 	ID              string
 	BudgetID        string
 	Name            string
+	Icon            string
 	CurrencyID      string
 	StartDate       *string
 	AmountBorrowed  *string
@@ -276,6 +280,7 @@ func (q *Queries) UpsertDebt(ctx context.Context, arg UpsertDebtParams) error {
 		arg.ID,
 		arg.BudgetID,
 		arg.Name,
+		arg.Icon,
 		arg.CurrencyID,
 		arg.StartDate,
 		arg.AmountBorrowed,

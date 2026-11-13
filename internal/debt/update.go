@@ -3,6 +3,7 @@ package debt
 import (
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -10,7 +11,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// UpdateDebt saves a debt's name, currency, rules, start date and terms. A
+// UpdateDebt saves a debt's name, icon, currency, rules, start date and terms. A
 // debt not set up is set up by a body carrying the loan's facts (amount
 // borrowed, start date, last payment date; the origin as of the start date,
 // plus a snapshot as of today with a balance now); without them only its
@@ -94,6 +95,9 @@ func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.Update
 			}
 		}
 		cur.Name, cur.StartDate = in.name, in.start
+		if icon := strings.TrimSpace(req.Icon); icon != "" {
+			cur.Icon = icon
+		}
 		var fresh []model.DebtRule
 		if rules != nil {
 			cur.Rules, fresh = s.mergeRules(cur.Rules, rules, now)
