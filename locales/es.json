@@ -1256,7 +1256,7 @@
       "accounts": "Cuentas",
       "plan": "Presupuesto y plan",
       "home_screen": "Instalar la app",
-      "apple_wallet": "Apple Wallet",
+      "connect": "Conectar",
       "menu": "Menú",
       "finish": "Finalizar",
       "state_done": "hecho",
@@ -1276,11 +1276,28 @@
       "install": "Instalar",
       "done": "Hecho"
     },
-    "wallet_step": {
-      "heading": "Pagos con tarjeta, registrados por ti",
-      "text": "Conecta Apple Wallet y cada pago con tu tarjeta aparece en Econumo por sí solo.",
-      "setup": "Configurar",
-      "later": "Puedes configurar la integración con Apple Wallet en cualquier momento desde Ajustes."
+    "connect_step": {
+      "heading": "Conecta tus cuentas",
+      "text": "Deja que tus transacciones lleguen solas en lugar de escribirlas.",
+      "apple_wallet": {
+        "title": "Apple Wallet",
+        "text": "Una automatización de Atajos en tu iPhone envía cada pago con Apple Pay a Econumo.",
+        "link": "Configurar Apple Wallet"
+      },
+      "simplefin": {
+        "title": "SimpleFIN",
+        "text": "SimpleFIN Bridge es un servicio de pago de terceros que se conecta con tu banco (sobre todo en EE. UU. y Canadá). Econumo importa tus transacciones desde él cada vez que sincronizas.",
+        "link": "Configurar SimpleFIN",
+        "site": "Sitio web de SimpleFIN Bridge"
+      },
+      "mcp": {
+        "title": "Asistentes de IA (MCP)",
+        "text": "Añade esta dirección a Claude, ChatGPT u otra app compatible con MCP para gestionar tus finanzas."
+      },
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "later": "Puedes configurarlos más tarde en Ajustes.",
+      "finish": "Completar configuración"
     },
     "retry": "Reintentar",
     "save_continue": "Guardar y continuar",

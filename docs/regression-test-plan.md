@@ -242,7 +242,7 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 A fresh user lands on Getting started at `/` (on a phone too, instead
       of the nav list). Desktop shows a horizontal stepper (Import "optional",
       Categories, Accounts, Budget & plan, plus Install app where the browser
-      can install and Apple Wallet on an iPhone or Mac): done steps are filled
+      can install and Connect when it has something to offer): done steps are filled
       with ✓, skipped ones dashed, the selected one outlined. A phone shows
       "Getting started · N of M" over a segmented bar.
 - [ ] The stepper shows no focus outline after page load or a click; Tab
@@ -429,12 +429,19 @@ navigation (single-pane vs sidebar).
 - [ ] Steps per device: Install app appears only where the browser can
       install or show home-screen instructions (a standalone PWA shows
       none); the Install button or "Done" marks it done and Skip skips it. On
-      an iPhone or Mac, Apple Wallet appears with a line saying it can be set
-      up any time later in Settings (no Shortcut tile); Set up opens the Apple
-      Wallet settings, Skip skips it. When Categories and Accounts are both done, Set up first
-      skips every other open step and completes onboarding, then opens the Apple Wallet settings
-      (not `/budget`); if completing fails, the error shows, nothing navigates, and Finish then
-      opens the Apple Wallet settings. Install instructions render as a grouped rounded card
+      an iPhone or Mac, or with SimpleFIN on (https or localhost), or with an MCP address (https
+      `ECONUMO_URL`), the last step is "Connect your accounts"; with none of the three it is left
+      out. It shows a card per option: Apple Wallet (iPhone/Mac only) and SimpleFIN each with a
+      line of text and a "Set up …" link (SimpleFIN also has "SimpleFIN Bridge website" opening
+      https://bridge.simplefin.org/ in a new tab); AI assistants with the MCP address and a Copy button
+      (no link). The page's top-right "Complete setup" is hidden on this step; the step's own
+      "Complete setup" marks Connect done, skips every other open step, completes onboarding and
+      opens the budget. Having any import source ticks Connect. A user who answered the former
+      Apple Wallet step sees Connect with that answer. When Categories and Accounts are both done,
+      a "Set up …" link first skips every other open step and completes onboarding, then opens
+      that settings page (not `/budget`); otherwise it only opens the page. If completing fails,
+      the error shows, nothing navigates, and Finish then
+      opens that settings page. Install instructions render as a grouped rounded card
       with dividers and icon tiles.
 - [ ] An existing user who owns accounts (upgraded instance) is not sent to
       onboarding.
