@@ -558,6 +558,25 @@ describe('suggestion mode', () => {
     expect(posted.accept!.at(-1)).toEqual({ id: 'sg1', ruleId: 'rule-new' })
   })
 
+  it('a stored rule edited on the rules page keeps its tag, labels, priority and source when the dialog saves again', async () => {
+    renderPrompt()
+    storedRules.set(suggestionRuleId('sg1'), {
+      ...rule, id: 'rule-new', matchValue: 'BLUE', categoryId: 'cat-food', payeeId: '',
+      tagId: 'tag-1', labelIds: ['lab-1'], priority: 7, sourceId: 's1', isCaseSensitive: true,
+    })
+    previewCounts(0, 0)
+    acceptHandler(1)
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posted.update).toHaveLength(1)
+    expect(posted.update![0]).toMatchObject({
+      id: 'rule-new', matchValue: suggestion.matchText, categoryId: suggestion.categoryId, payeeId: suggestion.payeeId,
+      tagId: 'tag-1', labelIds: ['lab-1'], priority: 7, sourceId: 's1', isCaseSensitive: true, action: 'classify',
+    })
+  })
+
   it('a rule deleted since is created again under the same id', async () => {
     renderPrompt()
     const user = await reloadAfterCommittedCreate()

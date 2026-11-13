@@ -11,11 +11,16 @@ export function suggestionRuleId(suggestionId: Id): Id {
   return uuidv5(suggestionId, SUGGESTION_RULE_NAMESPACE)
 }
 
-export function sameRuleSpec(rule: ImportRuleDto, spec: ImportRuleSpecDto): boolean {
-  const labels = (ids: Id[]) => [...ids].sort().join(',')
-  return rule.sourceId === spec.sourceId && rule.action === spec.action && rule.matchField === spec.matchField &&
-    rule.matchType === spec.matchType && rule.matchValue === spec.matchValue.trim() &&
-    rule.isCaseSensitive === spec.isCaseSensitive && rule.categoryId === spec.categoryId &&
-    rule.payeeId === spec.payeeId && rule.tagId === spec.tagId && labels(rule.labelIds) === labels(spec.labelIds) &&
-    rule.priority === spec.priority
+// What the suggestion's dialog edits. A rule stored under the suggestion's id may have been edited
+// on the rules page since; its other fields (tag, labels, priority, source, case, action) are kept.
+export function suggestionSpec(rule: ImportRuleDto, spec: ImportRuleSpecDto): ImportRuleSpecDto | null {
+  if (rule.matchField === spec.matchField && rule.matchType === spec.matchType && rule.matchValue === spec.matchValue.trim() &&
+    rule.categoryId === spec.categoryId && rule.payeeId === spec.payeeId) {
+    return null
+  }
+  return {
+    sourceId: rule.sourceId, action: rule.action, isCaseSensitive: rule.isCaseSensitive, tagId: rule.tagId,
+    labelIds: rule.labelIds, priority: rule.priority,
+    matchField: spec.matchField, matchType: spec.matchType, matchValue: spec.matchValue, categoryId: spec.categoryId, payeeId: spec.payeeId,
+  }
 }
