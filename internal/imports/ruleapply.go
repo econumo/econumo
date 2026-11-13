@@ -47,16 +47,24 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 		if err != nil {
 			return nil, err
 		}
+		// matched is what the rule matches (the editors' live count); changes
+		// only the rows applying it would change, which is what apply asks about.
 		if r.Action != model.ImportRuleActionSkip {
 			owned, err := s.ownsAccount(ctx, userID, live.AccountID)
 			if err != nil {
 				return nil, err
 			}
-			if !owned || !touches(r, income, live.Type) || !changes(r, live, income) {
+			if !owned || !touches(r, income, live.Type) {
 				continue
 			}
+			out.Matched++
+			if !changes(r, live, income) {
+				continue
+			}
+		} else {
+			out.Matched++
 		}
-		out.Matched++
+		out.Changes++
 		applied, err := s.appliedOf(ctx, l)
 		if err != nil {
 			return nil, err

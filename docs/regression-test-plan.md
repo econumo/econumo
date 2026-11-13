@@ -1237,6 +1237,11 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       Wallet tap imported straight away) gets one step: "Apply this rule to N
       matching transactions across your imports?". Rules created from the
       prompt or the Import rules page apply to imports from every provider.
+- [ ] The live "Matches N transactions" line (prompt, suggestion editor, Import
+      rules editor) counts every transaction the rule matches, also the ones it
+      already classified (re-opening a rule already applied still shows its
+      matches, not 0). While the count cannot be loaded (server error) the line
+      stays empty instead of "Loading your data".
 - [ ] The apply question appears only when the rule would change at least one
       other transaction: after "Create rule", if nothing else in that import
       would change, the run step is skipped (straight to "Also apply to all

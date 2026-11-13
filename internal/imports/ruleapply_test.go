@@ -41,7 +41,7 @@ func TestPreviewRule_CountsMatchesAndEdited(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Matched != 2 || res.AlreadyEdited != 1 {
+	if res.Matched != 2 || res.Changes != 2 || res.AlreadyEdited != 1 {
 		t.Fatalf("got %+v", res)
 	}
 	none, _ := h.svc.PreviewRule(context.Background(), vo.MustParseId(userA), model.PreviewImportRuleRequest{
@@ -204,7 +204,8 @@ func seedClassifiedAndEmpty(t *testing.T, h *harness) (spec model.ImportRuleSpec
 	return spec
 }
 
-func TestPreviewRuleSkipsRowsAlreadyClassified(t *testing.T) {
+// The live count keeps the already classified row; only changes leaves it out.
+func TestPreviewRuleCountsChangesApart(t *testing.T) {
 	h := setup(t)
 	spec := seedClassifiedAndEmpty(t, h)
 	res, err := h.svc.PreviewRule(context.Background(), vo.MustParseId(userA), model.PreviewImportRuleRequest{
@@ -213,7 +214,7 @@ func TestPreviewRuleSkipsRowsAlreadyClassified(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Matched != 1 || res.AlreadyEdited != 0 {
+	if res.Matched != 2 || res.Changes != 1 || res.AlreadyEdited != 0 {
 		t.Fatalf("got %+v", res)
 	}
 }

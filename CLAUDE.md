@@ -230,8 +230,12 @@ caller's own already stored with that rule, also when an overlapping create with
 first and its insert hits the key) updates that rule rather than creating a second one.
 An accept or dismiss refused for a suggestion no longer listed (its first attempt landed, the
 answer lost) counts as done.
-preview/apply skip rows the rule would not change, and the prompt asks to apply to all imports only
-when at least one OTHER transaction would change. The Inbox hides suggestions (section and badge)
+apply skips rows the rule would not change; `preview-rule` answers both `matched` (every match: the
+editors' live counts) and the additive `changes` (the rows apply would change, `alreadyEdited` among
+them), and the prompt's apply questions read `changes`, asking to apply to all imports only when at
+least one OTHER transaction would change. A failed live count shows no count. An accept writes all
+its rows, snapshots and the release in one transaction, so its pinned `Idempotency-Key` is kept only
+when everything committed. The Inbox hides suggestions (section and badge)
 from a `readonly` user, who could neither accept nor dismiss them. `suggest-match-text` (owner of
 the link's account, 10 s, counted under `preview-rule`'s limit, not persisted in the query cache)
 gives the rule editor an AI match text; it answers an empty text, never an error, when AI is off or
@@ -2049,7 +2053,7 @@ data unreadable. Most are also asserted by the test suite.
   rows unless `includeEdited`. A rule's category reaches only transactions of its own kind
   (income category → income, expense → expense; `categoryFits`): on the other kind the
   category is held back, the rule's payee/tag/labels still apply, and a lower rule may fill
-  the category; preview and apply skip rows the rule would not change. Rules belong to the account owner, not the importer: a card
+  the category; apply skips rows the rule would not change (preview counts them apart, as `changes`). Rules belong to the account owner, not the importer: a card
   mapped onto an account shared with its user is classified and skipped by the account
   OWNER's rules (the transaction takes the owner's categories, payees, tags and labels), the
   importer's own rules never apply there, and the owner's "all" apply reaches those rows.

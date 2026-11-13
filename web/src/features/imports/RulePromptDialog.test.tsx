@@ -288,6 +288,48 @@ it('closes after applying to the run when no other import would change', async (
   expect(posted.apply).toHaveLength(1)
 })
 
+type Counts = { matched: number; changes: number; alreadyEdited: number }
+function previewFull(run: Counts, all: Counts) {
+  server.use(http.post('*/api/v1/import/preview-rule', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>
+    ;(posted.preview ??= []).push(body)
+    return HttpResponse.json({ success: true, message: '', data: body.scope === 'all' ? all : run })
+  }))
+}
+
+it('the live count reads every match, the apply question only the rows that would change', async () => {
+  renderPrompt()
+  previewFull({ matched: 5, changes: 3, alreadyEdited: 0 }, { matched: 9, changes: 4, alreadyEdited: 0 })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  expect(await screen.findByText('Matches 5 transactions in this import')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Create rule' }))
+  expect(await screen.findByText('Apply this rule to 3 matching transactions in this import?')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Apply' }))
+  expect(await screen.findByText('Also apply to all your imports? 4 transactions match.')).toBeInTheDocument()
+})
+
+it('a rule already applied still shows its matches, and closes after saving with nothing to apply', async () => {
+  renderPrompt()
+  previewFull({ matched: 5, changes: 0, alreadyEdited: 0 }, { matched: 9, changes: 0, alreadyEdited: 0 })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  expect(await screen.findByText('Matches 5 transactions in this import')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Create rule' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(posted.apply).toBeUndefined()
+})
+
+it('a failed live count shows no count instead of loading forever', async () => {
+  renderPrompt()
+  server.use(http.post('*/api/v1/import/preview-rule', () => HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 500 })))
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+  await screen.findByText('You set the category to Food. Create a rule for similar imports?')
+  await new Promise((r) => setTimeout(r, 500))
+  expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
+  expect(screen.queryByText(/Matches \d+ transactions/)).not.toBeInTheDocument()
+})
+
 const suggestion: ImportSuggestionDto = {
   id: 'sg1', matchField: 'external_payee', matchText: 'BLUE BOTTLE', type: 'expense', categoryId: 'cat-food', payeeId: 'p1',
   transactions: [
@@ -359,6 +401,26 @@ describe('suggestion mode', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(posted.apply).toBeUndefined()
     expect(vi.mocked(toast.success)).toHaveBeenCalledWith('Updated 2 transactions')
+  })
+
+  it('offers every import only when the rule would change a row the user did not edit', async () => {
+    renderPrompt()
+    previewFull({ matched: 0, changes: 0, alreadyEdited: 0 }, { matched: 4, changes: 1, alreadyEdited: 1 })
+    acceptHandler(2)
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posted.apply).toBeUndefined()
+  })
+
+  it('a failed live count shows no count instead of loading forever', async () => {
+    renderPrompt()
+    server.use(http.post('*/api/v1/import/preview-rule', () => HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 500 })))
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    await screen.findByRole('button', { name: 'Save' })
+    await new Promise((r) => setTimeout(r, 500))
+    expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
   })
 
   it('the accept metric reports changed fields', async () => {

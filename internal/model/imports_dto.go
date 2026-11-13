@@ -582,7 +582,10 @@ func (r PreviewImportRuleRequest) Validate() error {
 }
 
 type PreviewImportRuleResult struct {
-	Matched       int `json:"matched"`
+	Matched int `json:"matched"`
+	// Changes is how many of the matched rows applying the rule would change;
+	// AlreadyEdited counts among them.
+	Changes       int `json:"changes"`
 	AlreadyEdited int `json:"alreadyEdited"`
 }
 

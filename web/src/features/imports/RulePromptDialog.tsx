@@ -50,6 +50,9 @@ const ALL_SCOPE: ImportRuleScopeDto = { scope: 'all', runId: '', scopeSourceId: 
 
 type Step = 'define' | 'apply' | 'all'
 
+// what applying the rule would change; an older server sends only matched
+const changesOf = (p: PreviewImportRuleDto) => p.changes ?? p.matched
+
 export function RulePromptDialog() {
   const params = useUiStore((s) => s.rulePrompt)
   const setRulePrompt = useUiStore((s) => s.setRulePrompt)
@@ -126,7 +129,7 @@ function AllStep({ ruleId, preview, loading, onDone }: { ruleId: string | null; 
       <p className="text-sm">
         {loading || preview === undefined
           ? t('common.app.modal.loading.data_loading')
-          : t('imports.rules.prompt.all_question', { count: preview.matched })}
+          : t('imports.rules.prompt.all_question', { count: changesOf(preview) })}
       </p>
       <IncludeEditedControl count={preview?.alreadyEdited ?? 0} checked={includeEdited} onChange={setIncludeEdited} />
       <div className={dialogActionsClass}>
@@ -218,6 +221,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
   const fieldLabel = matchField === 'description' ? t('imports.rules.field.description') : t('imports.rules.field.external_payee')
   const typeLabel = t(`imports.rules.type.${matchType}`)
   const matched = preview.data?.matched ?? 0
+  const changes = preview.data ? changesOf(preview.data) : 0
   const alreadyEdited = preview.data?.alreadyEdited ?? 0
 
   // The import-wide step: shown only when the rule would change something
@@ -230,7 +234,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
       return
     }
     const all = await allPreview.mutateAsync({ spec, scope: ALL_SCOPE }).catch(() => undefined)
-    if (all === undefined || all.matched === 0) {
+    if (all === undefined || changesOf(all) === 0) {
       onDone()
       return
     }
@@ -257,7 +261,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
       // count is never stale; a refresh failure just leaves the count at 0,
       // it must not undo the save that already succeeded
       const refreshed = await preview.mutateAsync({ spec, scope: runScope }).catch(() => undefined)
-      if (refreshed?.matched === 0) {
+      if (refreshed !== undefined && changesOf(refreshed) === 0) {
         // the run step (or, with no run, the only step) has nothing to apply
         await goToAll()
         return
@@ -287,7 +291,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
     if (step === 'apply') {
       return (
         <>
-          <p className="text-sm">{t(link.runId ? 'imports.rules.prompt.apply_question' : 'imports.rules.prompt.apply_all_question', { count: matched })}</p>
+          <p className="text-sm">{t(link.runId ? 'imports.rules.prompt.apply_question' : 'imports.rules.prompt.apply_all_question', { count: changes })}</p>
           <IncludeEditedControl count={alreadyEdited} checked={includeEdited} onChange={setIncludeEdited} />
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.skip_apply')}</Button>
@@ -323,10 +327,12 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
               }
             }} />
         )}
-        <p className="px-1 text-xs text-muted-foreground" aria-live="polite">
-          {preview.data === undefined || preview.isPending
-            ? t('common.app.modal.loading.data_loading')
-            : t('imports.rules.prompt.match_count', { count: matched })}
+        <p className="min-h-4 px-1 text-xs text-muted-foreground" aria-live="polite">
+          {preview.isError
+            ? ''
+            : preview.data === undefined || preview.isPending
+              ? t('common.app.modal.loading.data_loading')
+              : t('imports.rules.prompt.match_count', { count: matched })}
         </p>
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.not_now')}</Button>
@@ -454,7 +460,7 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
       // the accept filled the suggestion's own rows, so this counts the others; a row the user
       // edited by hand (one of the suggestion's own included) is left for them, never offered
       const all = await allPreview.mutateAsync({ spec, scope: ALL_SCOPE }).catch(() => undefined)
-      if (all !== undefined && all.matched - all.alreadyEdited > 0) {
+      if (all !== undefined && changesOf(all) - all.alreadyEdited > 0) {
         setStep('all')
         return
       }
@@ -508,7 +514,7 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
             options={own(payees).filter((p) => !p.isArchived || p.id === payeeId).map((p) => ({ value: p.id, label: p.name }))} />
         </SelectCard>
         <p className="min-h-4 px-1 text-xs text-muted-foreground" aria-live="polite">
-          {!complete
+          {!complete || preview.isError
             ? ''
             : preview.data === undefined || preview.isPending
               ? t('common.app.modal.loading.data_loading')

@@ -17943,6 +17943,10 @@ const docTemplate = `{
                 "alreadyEdited": {
                     "type": "integer"
                 },
+                "changes": {
+                    "description": "Changes is how many of the matched rows applying the rule would change;\nAlreadyEdited counts among them.",
+                    "type": "integer"
+                },
                 "matched": {
                     "type": "integer"
                 }

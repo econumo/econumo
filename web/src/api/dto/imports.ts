@@ -220,7 +220,10 @@ export interface ImportRuleScopeDto {
 }
 
 export interface PreviewImportRuleDto {
+  // every row the rule matches (the live counts)
   matched: number
+  // the matched rows applying the rule would change (alreadyEdited counts among them); absent on older servers
+  changes?: number
   alreadyEdited: number
 }
 
