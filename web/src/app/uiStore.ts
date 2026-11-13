@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { persist } from 'zustand/middleware'
 import type { AccountDto } from '@/api/dto/account'
-import type { ImportRuleSpecDto, ImportSuggestionDto, TransactionImportLinkDto } from '@/api/dto/imports'
+import type { ImportSuggestionDto, TransactionImportLinkDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionPrefill, TransactionType } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
@@ -49,12 +49,6 @@ export type RulePromptParams =
   | { kind: 'edit'; link: TransactionImportLinkDto; diff: RuleDiff }
   | { kind: 'suggestion'; suggestion: ImportSuggestionDto }
 
-export interface SuggestionRuleEntry {
-  ruleId: Id
-  spec: ImportRuleSpecDto
-  created: boolean
-}
-
 interface UiState {
   transactionModal: OpenTransactionParams | null
   openTransactionModal: (params: OpenTransactionParams) => void
@@ -69,13 +63,6 @@ interface UiState {
   setSwitchAccountPrompt: (id: Id | null) => void
   rulePrompt: RulePromptParams | null
   setRulePrompt: (params: RulePromptParams | null) => void
-  /**
-   * the rule a suggestion's Save made, kept until its accept lands, so a retry never creates a
-   * second one. The id is minted before create-rule is sent; `created` is false until it answers,
-   * and a retry then sends the same create again (the server answers a stored id with its rule).
-   */
-  suggestionRules: Record<Id, SuggestionRuleEntry>
-  setSuggestionRule: (suggestionId: Id, entry: SuggestionRuleEntry | null) => void
   searchOpen: boolean
   openSearch: () => void
   closeSearch: () => void
@@ -105,17 +92,6 @@ export const useUiStore = create<UiState>()((set) => ({
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),
   rulePrompt: null,
   setRulePrompt: (params) => set({ rulePrompt: params }),
-  suggestionRules: {},
-  setSuggestionRule: (suggestionId, entry) =>
-    set((state) => {
-      const next = { ...state.suggestionRules }
-      if (entry) {
-        next[suggestionId] = entry
-      } else {
-        delete next[suggestionId]
-      }
-      return { suggestionRules: next }
-    }),
   searchOpen: false,
   openSearch: () => {
     trackEvent(METRICS.GLOBAL_SEARCH_OPEN)

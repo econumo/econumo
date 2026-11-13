@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { queryKeys } from '@/app/queryKeys'
@@ -10,6 +10,7 @@ import type { ImportSuggestionDto, TransactionImportLinkDto } from '@/api/dto/im
 import { toast } from 'sonner'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { RulePromptDialog } from './RulePromptDialog'
+import { suggestionRuleId } from './suggestionRule'
 
 vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
@@ -36,11 +37,14 @@ function renderPrompt(data: Record<string, unknown> = {}) {
 }
 
 const posted: Record<string, unknown[]> = {}
+// what create-rule stored, by id: like the server, a stored id is answered with the rule it stored
+const storedRules = new Map<string, Record<string, unknown>>()
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({ matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
-  useUiStore.setState({ rulePrompt: null, suggestionRules: {} })
+  useUiStore.setState({ rulePrompt: null })
+  storedRules.clear()
   for (const k of Object.keys(posted)) delete posted[k]
   server.use(
     http.post('*/api/v1/import/preview-rule', async ({ request }) => {
@@ -52,11 +56,16 @@ beforeEach(() => {
     http.post('*/api/v1/import/create-rule', async ({ request }) => {
       const body = await request.json() as Record<string, unknown>
       ;(posted.create ??= []).push(body)
-      return HttpResponse.json({ success: true, message: '', data: { ...rule, ...body, id: 'rule-new' } })
+      const id = body.id as string
+      if (!storedRules.has(id)) storedRules.set(id, { ...rule, ...body, id: 'rule-new' })
+      return HttpResponse.json({ success: true, message: '', data: storedRules.get(id) })
     }),
     http.post('*/api/v1/import/update-rule', async ({ request }) => {
       const body = await request.json() as Record<string, unknown>
       ;(posted.update ??= []).push(body)
+      for (const [key, stored] of storedRules) {
+        if (stored.id === body.id) storedRules.set(key, { ...stored, ...body })
+      }
       return HttpResponse.json({ success: true, message: '', data: { ...rule, ...body } })
     }),
     http.post('*/api/v1/import/apply-rule', async ({ request }) => {
@@ -471,10 +480,11 @@ describe('suggestion mode', () => {
     useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
     await user.click(await screen.findByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(posted.create).toHaveLength(1)
+    const ids = (posted.create as Record<string, unknown>[]).map((c) => c.id)
+    expect(ids).toEqual([suggestionRuleId('sg1'), suggestionRuleId('sg1')])
+    expect(storedRules.size).toBe(1)
     expect(posted.update).toBeUndefined()
     expect(posted.accept).toEqual([{ id: 'sg1', ruleId: 'rule-new' }, { id: 'sg1', ruleId: 'rule-new' }])
-    expect(useUiStore.getState().suggestionRules).toEqual({})
   })
 
   it('a retry after an edit updates the created rule to the new spec', async () => {
@@ -496,75 +506,67 @@ describe('suggestion mode', () => {
     await user.type(value, 'BLUE B')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(posted.create).toHaveLength(1)
+    expect(storedRules.size).toBe(1)
     expect(posted.update).toHaveLength(1)
     expect(posted.update![0]).toMatchObject({ id: 'rule-new', matchValue: 'BLUE B' })
     expect(posted.accept![1]).toEqual({ id: 'sg1', ruleId: 'rule-new' })
   })
 
-  // the stored rule was deleted elsewhere after a failed accept: the next Save forgets it and creates another
-  const deletedRuleSetup = () => {
-    let rules = [{ ...rule, id: 'rule-a' }]
-    let created = 0
-    server.use(
-      http.get('*/api/v1/import/get-rule-list', () => HttpResponse.json({ success: true, message: '', data: { items: rules } })),
-      http.post('*/api/v1/import/create-rule', async ({ request }) => {
-        const body = await request.json() as Record<string, unknown>
-        ;(posted.create ??= []).push(body)
-        created += 1
-        return HttpResponse.json({ success: true, message: '', data: { ...rule, ...body, id: created === 1 ? 'rule-a' : 'rule-b' } })
-      }),
-      http.post('*/api/v1/import/update-rule', async ({ request }) => {
-        ;(posted.update ??= []).push(await request.json())
-        return HttpResponse.json({ success: false, message: 'Import rule not found', code: 0, errors: {} }, { status: 400 })
-      }),
-      http.post('*/api/v1/import/accept-suggestion', async ({ request }) => {
-        const body = await request.json() as Record<string, unknown>
-        ;(posted.accept ??= []).push(body)
-        if (body.ruleId !== 'rule-b') {
-          return HttpResponse.json({ success: false, message: body.ruleId === 'rule-a' && rules.length === 0 ? 'Import rule not found' : 'boom', code: 0, errors: {} }, { status: 400 })
-        }
-        return HttpResponse.json({ success: true, message: '', data: { updated: 2 } })
-      }),
-    )
-    return { deleteRule: () => { rules = [] } }
+  // a failed accept, then a reload: nothing of the first Save is left on the device
+  const reloadAfterCommittedCreate = async () => {
+    previewCounts(0, 0)
+    let fail = true
+    server.use(http.post('*/api/v1/import/accept-suggestion', async ({ request }) => {
+      ;(posted.accept ??= []).push(await request.json())
+      if (fail) return HttpResponse.error()
+      return HttpResponse.json({ success: true, message: '', data: { updated: 2 } })
+    }))
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(posted.accept).toHaveLength(1))
+    cleanup()
+    useUiStore.setState({ rulePrompt: null })
+    fail = false
+    renderPrompt()
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    return user
   }
 
-  it('a stored rule deleted since is forgotten when the accept refuses it, and a fresh rule is created', async () => {
+  it('a Save after a reload replays the rule the first Save created instead of making another', async () => {
     renderPrompt()
-    previewCounts(0, 0)
-    const { deleteRule } = deletedRuleSetup()
-    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
-    const user = userEvent.setup()
+    const user = await reloadAfterCommittedCreate()
     await user.click(await screen.findByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(posted.accept).toHaveLength(1))
-    expect(useUiStore.getState().suggestionRules.sg1?.ruleId).toBe('rule-a')
-    deleteRule()
-    await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(posted.create).toHaveLength(2)
-    expect(posted.accept!.map((a) => (a as { ruleId: string }).ruleId)).toEqual(['rule-a', 'rule-a', 'rule-b'])
-    expect(useUiStore.getState().suggestionRules).toEqual({})
+    expect((posted.create as Record<string, unknown>[]).map((c) => c.id)).toEqual([suggestionRuleId('sg1'), suggestionRuleId('sg1')])
+    expect(storedRules.size).toBe(1)
+    expect(posted.update).toBeUndefined()
+    expect(posted.accept!.at(-1)).toEqual({ id: 'sg1', ruleId: 'rule-new' })
   })
 
-  it('a stored rule deleted since is forgotten when the update refuses it, and a fresh rule is created', async () => {
+  it('a Save after a reload with a changed spec updates the stored rule', async () => {
     renderPrompt()
-    previewCounts(0, 0)
-    const { deleteRule } = deletedRuleSetup()
-    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
-    const user = userEvent.setup()
-    await user.click(await screen.findByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(posted.accept).toHaveLength(1))
-    deleteRule()
-    const value = screen.getByLabelText('Payee contains')
+    const user = await reloadAfterCommittedCreate()
+    const value = await screen.findByLabelText('Payee contains')
     await user.clear(value)
     await user.type(value, 'BLUE B')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(storedRules.size).toBe(1)
     expect(posted.update).toHaveLength(1)
-    expect(posted.create).toHaveLength(2)
-    expect(posted.create![1]).toMatchObject({ matchValue: 'BLUE B' })
-    expect(posted.accept!.at(-1)).toEqual({ id: 'sg1', ruleId: 'rule-b' })
+    expect(posted.update![0]).toMatchObject({ id: 'rule-new', matchValue: 'BLUE B' })
+    expect(posted.accept!.at(-1)).toEqual({ id: 'sg1', ruleId: 'rule-new' })
+  })
+
+  it('a rule deleted since is created again under the same id', async () => {
+    renderPrompt()
+    const user = await reloadAfterCommittedCreate()
+    storedRules.clear()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(storedRules.size).toBe(1)
+    expect([...storedRules.keys()]).toEqual([suggestionRuleId('sg1')])
+    expect(posted.update).toBeUndefined()
   })
 
   it('a create whose answer was lost is sent again under the same id, and no second rule is made', async () => {
@@ -625,9 +627,8 @@ describe('suggestion mode', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(posted.accept).toHaveLength(2)
-    expect(posted.create).toHaveLength(1)
+    expect(storedRules.size).toBe(1)
     expect(vi.mocked(toast.error)).not.toHaveBeenCalled()
-    expect(useUiStore.getState().suggestionRules).toEqual({})
   })
 
   it('cancel leaves the suggestion', async () => {

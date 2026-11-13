@@ -224,11 +224,16 @@ fields it wrote, so a field the user set by hand still reads as edited for apply
 releases only the links it walked; dismiss likewise releases only the links it read, so a row a
 job joined meanwhile keeps the suggestion open. Dismissal is not remembered (the next tap may suggest again).
 Accept opens the rule prompt (`RulePromptDialog`), whose category picker offers only categories
-of the suggestion's `type`; the rule a Save makes is kept per suggestion in the ui store until the
-accept lands, its id minted and stored before create-rule is sent, so a retry (even after Cancel
-and a reopen, or after a create whose answer was lost: `create-rule` answers an id of the
-caller's own already stored with that rule, also when an overlapping create with that id commits
-first and its insert hits the key) updates that rule rather than creating a second one.
+of the suggestion's `type`; the rule a Save makes has a deterministic id, UUIDv5 of the
+suggestion id under a fixed namespace (`suggestionRuleId`, `web/src/features/imports/suggestionRule.ts`),
+so a retry (after Cancel and a reopen, a reload, or a create whose answer was lost: `create-rule`
+answers an id of the caller's own already stored with that rule, also when an overlapping create
+with that id commits first and its insert hits the key) replays that rule and, when its stored
+spec differs from the current one, updates it, rather than creating a second one; a rule deleted
+meanwhile is created again under the same id. Nothing about it is kept on the device. A
+successful dismiss drops that id from the cached list and invalidates it (never replacing the
+cache with the answer's list, which out-of-order answers would make resurrect a row); a dismiss
+that committed answers 200 even when its follow-up list read fails (an empty list, WARN).
 An accept or dismiss refused for a suggestion no longer listed (its first attempt landed, the
 answer lost) counts as done.
 apply skips rows the rule would not change; `preview-rule` answers both `matched` (every match: the
