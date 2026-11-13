@@ -2,6 +2,7 @@ package imports
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -309,11 +310,13 @@ func TestBuildSuggestPromptOmitsOtherData(t *testing.T) {
 	v, _, _, _, _ := sVocab()
 	row := sRow(sLink("BLUE BOTTLE", "memo", time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)))
 	row.Link.TransactionID = &row.Link.ID
-	sys, user := buildSuggestPrompt([]suggestRow{row}, v, "en", "UTC")
+	sys, user := buildSuggestPrompt([]suggestRow{row}, false, v, "en", "UTC")
 	require.NotEmpty(t, sys)
 	var p map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal([]byte(user), &p))
-	require.Len(t, p, 5)
+	require.Len(t, p, 4)
+	_, hasPayees := p["payees"]
+	require.False(t, hasPayees)
 	var rows []map[string]any
 	require.NoError(t, json.Unmarshal(p["rows"], &rows))
 	require.Len(t, rows, 1)
@@ -417,4 +420,131 @@ func TestLiveImportUsesOwnersZone(t *testing.T) {
 	l.ExternalPostedAt = time.Date(2026, 8, 13, 20, 0, 0, 0, time.UTC)
 	require.False(t, liveImport(l, "Asia/Tokyo"))
 	require.True(t, liveImport(l, "Bad/Zone"))
+}
+
+func names(list []model.ImportNamed) []string {
+	out := []string{}
+	for _, n := range list {
+		out = append(out, n.Name)
+	}
+	return out
+}
+
+func namedList(ns ...string) []model.ImportNamed {
+	out := make([]model.ImportNamed, 0, len(ns))
+	for _, n := range ns {
+		out = append(out, model.ImportNamed{ID: vo.NewId().String(), Name: n})
+	}
+	return out
+}
+
+func TestBuildSuggestPromptSendsOnlyTheRowTypesCategories(t *testing.T) {
+	v, coffee, dining, salary, bb := sVocab()
+	day := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	exp := sRow(sLink("BLUE BOTTLE", "", day))
+	inc := sRow(sLink("ACME PAYROLL", "", day))
+	inc.Type = model.TransactionTypeIncome
+	rows := []suggestRow{exp, inc}
+
+	_, user := buildSuggestPrompt(rows, false, v, "en", "UTC")
+	for _, want := range []string{coffee.Name, dining.Name, "BLUE BOTTLE", `"key":"0"`} {
+		require.True(t, strings.Contains(user, want))
+	}
+	for _, not := range []string{salary.Name, bb.Name, "ACME", `"key":"1"`} {
+		require.False(t, strings.Contains(user, not))
+	}
+
+	_, user = buildSuggestPrompt(rows, true, v, "en", "UTC")
+	for _, want := range []string{salary.Name, "ACME PAYROLL", `"key":"1"`} {
+		require.True(t, strings.Contains(user, want))
+	}
+	for _, not := range []string{coffee.Name, bb.Name, "BLUE BOTTLE", `"key":"0"`} {
+		require.False(t, strings.Contains(user, not))
+	}
+}
+
+func TestParseSuggestReplyReadsMerchantNotPayee(t *testing.T) {
+	m, err := parseSuggestReply(`{"rows":{"0":{"matchText":"AMZN","merchant":"Amazon","payeeId":"x"}}}`)
+	require.NoError(t, err)
+	require.Equal(t, "Amazon", m["0"].Merchant)
+	require.Equal(t, "", m["0"].PayeeID)
+}
+
+func TestPayeeCandidates(t *testing.T) {
+	payees := namedList("Amazon Fresh", "Amazon", "Apple", "Blue Bottle Coffee", "Starbucks", "Trader Joes", "Whole Foods Market")
+	for _, tc := range []struct {
+		name, merchant, matchText string
+		want                      []string
+	}{
+		{"equality before containment", "Amazon", "AMZN MKTP", []string{"Amazon", "Amazon Fresh"}},
+		{"containment", "Blue Bottle", "BLUE BOTTLE", []string{"Blue Bottle Coffee"}},
+		{"punctuation and case", "TRADER JOE'S", "TRADER JOE'S #12", []string{"Trader Joes"}},
+		{"shared word", "Foods Co", "FOODS CO", []string{"Whole Foods Market"}},
+		{"small typo", "Starbuks", "STARBUKS", []string{"Starbucks"}},
+		{"match text alone", "Coffee Place", "STARBUCKS", []string{"Starbucks", "Blue Bottle Coffee"}},
+		{"nothing alike", "Zara", "ZARA", []string{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, names(payeeCandidates(tc.merchant, tc.matchText, payees)))
+		})
+	}
+}
+
+func TestPayeeCandidatesCapsAtFive(t *testing.T) {
+	payees := namedList("Coffee 1", "Coffee 2", "Coffee 3", "Coffee 4", "Coffee 5", "Coffee 6", "Coffee 7", "Coffee")
+	got := payeeCandidates("Coffee", "COFFEE", payees)
+	require.Len(t, got, 5)
+	require.Equal(t, "Coffee", got[0].Name)
+}
+
+func TestPayeeCandidatesIgnoreShortContainment(t *testing.T) {
+	require.Equal(t, []string{}, names(payeeCandidates("Co", "CO", namedList("Costco"))))
+}
+
+func TestVocabularyKeepsEveryPayee(t *testing.T) {
+	var all []string
+	for i := 0; i < 600; i++ {
+		all = append(all, "Filler "+strconv.Itoa(1000+i))
+	}
+	payees := namedList(append(all, "Zoo Market")...)
+	v := newSuggestVocabulary(nil, payees)
+	got := payeeCandidates("Zoo Market", "ZOO MARKET", v.Payees)
+	require.Equal(t, []string{"Zoo Market"}, names(got))
+	_, ok := v.hasPayee(got[0].ID)
+	require.True(t, ok)
+}
+
+func TestBuildPayeePromptSendsOnlyTheRowsCandidates(t *testing.T) {
+	day := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	rows := []suggestRow{sRow(sLink("PHILZ", "", day)), sRow(sLink("SQ *BLUE BOTTLE", "memo", day))}
+	bb := namedList("Blue Bottle Coffee")
+	replies := map[string]suggestReplyRow{"0": {MatchText: "PHILZ"}, "1": {MatchText: "BLUE BOTTLE", Merchant: "Blue Bottle"}}
+	sys, user := buildPayeePrompt(rows, replies, map[string][]model.ImportNamed{"1": bb}, "en", "UTC")
+	require.NotEmpty(t, sys)
+	for _, want := range []string{"Blue Bottle Coffee", bb[0].ID, "SQ *BLUE BOTTLE", `"merchant":"Blue Bottle"`, `"key":"1"`} {
+		require.True(t, strings.Contains(user, want))
+	}
+	for _, not := range []string{"PHILZ", `"key":"0"`, "categories"} {
+		require.False(t, strings.Contains(user, not))
+	}
+}
+
+func TestParsePayeeReply(t *testing.T) {
+	_, err := parsePayeeReply("nope")
+	require.Error(t, err)
+	_, err = parsePayeeReply(`{"x":1}`)
+	require.Error(t, err)
+	m, err := parsePayeeReply(`{"rows":{"1":{"payeeId":"abc"},"2":{}}}`)
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"1": "abc"}, m)
+}
+
+func TestApplyPayeeReplyKeepsOnlyTheRowsCandidates(t *testing.T) {
+	a, b := namedList("Alpha"), namedList("Beta")
+	replies := map[string]suggestReplyRow{"0": {MatchText: "x"}, "1": {MatchText: "y"}}
+	applyPayeeReply(replies, map[string]string{"0": b[0].ID, "1": b[0].ID, "2": a[0].ID}, map[string][]model.ImportNamed{"0": a, "1": b})
+	require.Equal(t, "", replies["0"].PayeeID)
+	require.Equal(t, b[0].ID, replies["1"].PayeeID)
+	_, added := replies["2"]
+	require.False(t, added)
 }

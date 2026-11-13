@@ -3,6 +3,7 @@ package imports_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -18,11 +19,13 @@ import (
 type completerCall struct{ userID, system, user string }
 
 type fakeCompleter struct {
-	calls  []completerCall
-	reply  string
-	err    error
-	panic  bool
-	onCall func()
+	calls []completerCall
+	reply string
+	// replies, when set, answers the n-th call with replies[n] (reply past its end)
+	replies []string
+	err     error
+	panic   bool
+	onCall  func()
 }
 
 func (c *fakeCompleter) Complete(_ context.Context, userID, system, user string) (string, error) {
@@ -32,6 +35,9 @@ func (c *fakeCompleter) Complete(_ context.Context, userID, system, user string)
 	}
 	if c.panic {
 		panic("boom")
+	}
+	if n := len(c.calls) - 1; n < len(c.replies) {
+		return c.replies[n], c.err
 	}
 	return c.reply, c.err
 }
@@ -203,13 +209,14 @@ func TestSuggestSkipsRowsRulesClassified(t *testing.T) {
 	}
 
 	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "philz", CategoryID: cat})
-	c.reply = `{"rows":{"0":{"matchText":"Philz","categoryId":"` + other + `","payeeId":"` + py + `"}}}`
+	philz := h.payee(t, userA, "Philz Coffee")
+	c.reply = `{"rows":{"0":{"matchText":"Philz","merchant":"Philz","categoryId":"` + other + `","payeeId":"` + philz + `"}}}`
 	ingest(t, h, pushWithPayee("Philz", "evt-2"))
-	if len(c.calls) != 1 {
+	if len(c.calls) != 2 {
 		t.Fatalf("calls = %d", len(c.calls))
 	}
 	got := openSuggestions(t, h, userA)
-	if len(got) != 1 || got[0].CategoryID != nil || got[0].PayeeID == nil || got[0].PayeeID.String() != py {
+	if len(got) != 1 || got[0].CategoryID != nil || got[0].PayeeID == nil || got[0].PayeeID.String() != philz {
 		t.Fatalf("only the payee may be suggested: %+v", got)
 	}
 }
@@ -471,9 +478,9 @@ func TestSuggestOpenSuggestionOfOtherTypeDoesNotCover(t *testing.T) {
 	if err := h.repo.InsertSuggestion(context.Background(), income); err != nil {
 		t.Fatal(err)
 	}
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","payeeId":"` + py + `"}}}`
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}}}`
 	ingest(t, h, tap)
-	if len(c.calls) != 1 {
+	if len(c.calls) != 2 {
 		t.Fatalf("an income suggestion must not cover an expense row: calls = %d", len(c.calls))
 	}
 	got := openSuggestions(t, h, userA)
@@ -538,11 +545,11 @@ func TestSuggestCoveringSuggestionDeletedSendsRowsToAI(t *testing.T) {
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
 	old := seedPayeeSuggestion(t, h, py)
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","payeeId":"` + py + `"}}}`
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}}}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
-	if len(c.calls) != 1 {
+	if len(c.calls) != 2 {
 		t.Fatalf("the row must go to the AI once its suggestion is gone: calls = %d", len(c.calls))
 	}
 	got := openSuggestions(t, h, userA)
@@ -558,11 +565,11 @@ func TestSuggestJoinTargetDeletedOpensFreshSuggestion(t *testing.T) {
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
 	old := seedPayeeSuggestion(t, h, py)
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","payeeId":"` + py + `"}}}`
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}}}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
-	if len(c.calls) != 1 {
+	if len(c.calls) != 2 {
 		t.Fatalf("calls = %d", len(c.calls))
 	}
 	got := openSuggestions(t, h, userA)
@@ -583,7 +590,11 @@ type gatedCompleter struct {
 func (c *gatedCompleter) Complete(context.Context, string, string, string) (string, error) {
 	c.mu.Lock()
 	c.calls++
+	first := c.calls == 1
 	c.mu.Unlock()
+	if !first {
+		return c.reply, nil
+	}
 	for i := 0; i < 2; i++ {
 		select {
 		case <-c.started:
@@ -598,7 +609,7 @@ func TestSuggestJobsForOneOwnerRunOneAtATime(t *testing.T) {
 	h, _, facts := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
-	c := &gatedCompleter{reply: `{"rows":{"0":{"matchText":"Blue Bottle","payeeId":"` + py + `"}}}`, started: make(chan struct{}, 2)}
+	c := &gatedCompleter{reply: `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}}}`, started: make(chan struct{}, 2)}
 	h.svc.SetSuggester(c, facts)
 	var queued []func()
 	h.svc.SetJobRunner(func(run func()) { queued = append(queued, run) })
@@ -621,8 +632,8 @@ func TestSuggestJobsForOneOwnerRunOneAtATime(t *testing.T) {
 	if len(got) != 1 || len(got[0].LinkIDs) != 2 {
 		t.Fatalf("suggestions = %+v", got)
 	}
-	if c.calls != 1 {
-		t.Fatalf("calls = %d, want 1: the second job reuses the first one's suggestion", c.calls)
+	if c.calls != 2 {
+		t.Fatalf("calls = %d, want 2 (both steps once): the second job reuses the first one's suggestion", c.calls)
 	}
 }
 
@@ -727,3 +738,199 @@ func TestSuggestTimeoutStartsOnceTheOwnerLockIsHeld(t *testing.T) {
 type completerFunc func(ctx context.Context) (string, error)
 
 func (f completerFunc) Complete(ctx context.Context, _, _, _ string) (string, error) { return f(ctx) }
+
+func (h *harness) incomeCategory(t *testing.T, owner, name string) string {
+	t.Helper()
+	id := h.f.Category(fixture.Category{UserID: owner, Name: name, Type: 1})
+	o := vo.MustParseId(owner)
+	h.entities.categories[o] = append(h.entities.categories[o], model.ImportNamed{ID: id, Name: name, OwnerID: owner, Income: true})
+	return id
+}
+
+// countingLimiter allows everything and counts each call per scope.
+type countingLimiter struct {
+	mu             sync.Mutex
+	allow, reserve map[string]int
+}
+
+func (l *countingLimiter) Allow(_ context.Context, scope, _ string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.allow[scope]++
+	return nil
+}
+
+func (l *countingLimiter) Reserve(scope, _ string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.reserve[scope]++
+	return nil
+}
+
+func withCountingLimiter(t *testing.T, h *harness, c imports.Completer, facts imports.OwnerFacts) *countingLimiter {
+	t.Helper()
+	l := &countingLimiter{allow: map[string]int{}, reserve: map[string]int{}}
+	h.svc = imports.NewService(h.repo, h.accounts, h.conv, h.txns, h.txns, h.entities, l, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+	registerParsers(h.svc)
+	h.wireSuggest(c, facts)
+	return l
+}
+
+func TestSuggestMixedBatchAsksOncePerTypeWithThatTypesCategories(t *testing.T) {
+	h, p := bankHarness(t)
+	c := &fakeCompleter{reply: `{"rows":{}}`}
+	l := withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en"}})
+	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
+	h.category(t, userA, "Groceries")
+	h.incomeCategory(t, userA, "Salary")
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
+	p.txs = []model.ExternalTransaction{
+		extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "Corner Shop"),
+		extTx("ACT-1", "b", "900.00", now.AddDate(0, 0, -2).Unix(), "Acme Payroll"),
+	}
+	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.calls) != 2 {
+		t.Fatalf("calls = %d, want one per type", len(c.calls))
+	}
+	exp, inc := c.calls[0].user, c.calls[1].user
+	if !strings.Contains(exp, "Groceries") || strings.Contains(exp, "Salary") || !strings.Contains(exp, "Corner Shop") || strings.Contains(exp, "Acme Payroll") {
+		t.Fatalf("expense prompt = %s", exp)
+	}
+	if !strings.Contains(inc, "Salary") || strings.Contains(inc, "Groceries") || !strings.Contains(inc, "Acme Payroll") || strings.Contains(inc, "Corner Shop") {
+		t.Fatalf("income prompt = %s", inc)
+	}
+	if l.allow[imports.RateScopeSuggest] != 1 || l.reserve[imports.RateScopeSuggest] != 1 {
+		t.Fatalf("limiter allow = %d, reserve = %d, want one job", l.allow[imports.RateScopeSuggest], l.reserve[imports.RateScopeSuggest])
+	}
+}
+
+func TestSuggestTwoStepPayee(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	l := withCountingLimiter(t, h, c, facts)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Cafes")
+	bb := h.payee(t, userA, "Blue Bottle Coffee")
+	h.payee(t, userA, "Starbucks")
+	c.replies = []string{
+		`{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}}}`,
+		`{"rows":{"0":{"payeeId":"` + bb + `"}}}`,
+	}
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 2 {
+		t.Fatalf("calls = %d", len(c.calls))
+	}
+	first, second := c.calls[0], c.calls[1]
+	if strings.Contains(first.user, "Blue Bottle Coffee") || strings.Contains(first.user, "Starbucks") || strings.Contains(first.user, `"payees"`) || !strings.Contains(first.user, "Cafes") {
+		t.Fatalf("step 1 prompt = %s", first.user)
+	}
+	if !strings.Contains(second.user, bb) || !strings.Contains(second.user, "Blue Bottle Coffee") || strings.Contains(second.user, "Starbucks") || strings.Contains(second.user, "Cafes") {
+		t.Fatalf("step 2 prompt = %s", second.user)
+	}
+	if first.system == second.system {
+		t.Fatal("the two steps share a system prompt")
+	}
+	got := openSuggestions(t, h, userA)
+	if len(got) != 1 || got[0].PayeeID == nil || got[0].PayeeID.String() != bb || got[0].CategoryID == nil || got[0].CategoryID.String() != cat {
+		t.Fatalf("suggestions = %+v", got)
+	}
+	if l.allow[imports.RateScopeSuggest] != 1 || l.reserve[imports.RateScopeSuggest] != 1 {
+		t.Fatalf("limiter allow = %d, reserve = %d, want one job", l.allow[imports.RateScopeSuggest], l.reserve[imports.RateScopeSuggest])
+	}
+}
+
+func TestSuggestNoStepTwoWithoutCandidates(t *testing.T) {
+	for _, reply := range []string{
+		`{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"%s"}}}`,
+		`{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"%s"}}}`,
+	} {
+		t.Run(reply, func(t *testing.T) {
+			h, c, _ := suggestSetup(t)
+			h.mapCard(t, "Apple Card")
+			cat := h.category(t, userA, "Cafes")
+			h.payee(t, userA, "Starbucks")
+			c.reply = strings.Replace(reply, "%s", cat, 1)
+			ingest(t, h, tap)
+			if len(c.calls) != 1 {
+				t.Fatalf("calls = %d, want no step 2", len(c.calls))
+			}
+			if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].PayeeID != nil {
+				t.Fatalf("suggestions = %+v", got)
+			}
+		})
+	}
+}
+
+func TestSuggestStepTwoRejectsPayeeOutsideTheRowsCandidates(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Cafes")
+	h.payee(t, userA, "Blue Bottle Coffee")
+	sb := h.payee(t, userA, "Starbucks")
+	c.replies = []string{
+		`{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}}}`,
+		`{"rows":{"0":{"payeeId":"` + sb + `"}}}`,
+	}
+	ingest(t, h, tap)
+	if len(c.calls) != 2 {
+		t.Fatalf("calls = %d", len(c.calls))
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].PayeeID != nil || got[0].CategoryID == nil {
+		t.Fatalf("suggestions = %+v", got)
+	}
+}
+
+// A failed payee step keeps what step 1 found.
+func TestSuggestStepTwoFailureKeepsCategory(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Cafes")
+	h.payee(t, userA, "Blue Bottle Coffee")
+	c.replies = []string{`{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}}}`, `not json`}
+	ingest(t, h, tap)
+	if len(c.calls) != 2 {
+		t.Fatalf("calls = %d", len(c.calls))
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].PayeeID != nil || got[0].CategoryID == nil || got[0].CategoryID.String() != cat {
+		t.Fatalf("suggestions = %+v", got)
+	}
+}
+
+// Reads: the job's first look, the check before the first call, then the one
+// before step 2, which finds the owner opted out.
+func TestSuggestOptOutBetweenStepsSkipsStepTwo(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.wireSuggest(c, &optOutAfter{n: 2})
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Cafes")
+	h.payee(t, userA, "Blue Bottle Coffee")
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	ingest(t, h, tap)
+	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 0 {
+		t.Fatalf("calls = %d, suggestions = %+v", len(c.calls), openSuggestions(t, h, userA))
+	}
+}
+
+func TestSuggestFindsPayeeBeyondFiveHundred(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	uA := vo.MustParseId(userA)
+	for i := 0; i < 600; i++ {
+		h.entities.add(h.entities.payees, uA, vo.NewId().String(), fmt.Sprintf("Aardvark %03d", i))
+	}
+	zoo := h.payee(t, userA, "Zoo Market")
+	c.replies = []string{
+		`{"rows":{"0":{"matchText":"Zoo","merchant":"Zoo Market"}}}`,
+		`{"rows":{"0":{"payeeId":"` + zoo + `"}}}`,
+	}
+	ingest(t, h, pushWithPayee("ZOO MARKET 12", "evt-zoo"))
+	if len(c.calls) != 2 || !strings.Contains(c.calls[1].user, zoo) {
+		t.Fatalf("calls = %+v", c.calls)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].PayeeID == nil || got[0].PayeeID.String() != zoo {
+		t.Fatalf("suggestions = %+v", got)
+	}
+}

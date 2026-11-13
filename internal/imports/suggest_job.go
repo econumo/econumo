@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -212,13 +214,8 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		slog.Info("import suggest skipped", "user_id", owner.String(), "reason", "rate_limited")
 		return nil
 	}
-	system, user := buildSuggestPrompt(rest, vocab, language, timezone)
-	reply, err := s.completer.Complete(ctx, owner.String(), system, user)
-	if err != nil {
-		return err
-	}
-	parsed, err := parseSuggestReply(reply)
-	if err != nil {
+	parsed, err := s.askSuggestions(ctx, owner, rest, vocab, language, timezone)
+	if err != nil || parsed == nil {
 		return err
 	}
 	valid := validateReply(rest, parsed, vocab)
@@ -288,6 +285,82 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	return nil
 }
 
+// askSuggestions runs step 1 once per transaction type in rows (that type's
+// categories only), then, for the rows whose merchant name resembles some of
+// the owner's payees, step 2 to pick among those. Every call after the first
+// re-checks the opt-out; nil, nil means the owner opted out meanwhile.
+func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []suggestRow, vocab suggestVocabulary, language, timezone string) (map[string]suggestReplyRow, error) {
+	calls := 0
+	ask := func(system, user string) (string, bool, error) {
+		if calls > 0 {
+			if off, err := s.optedOut(ctx, owner); err != nil || off {
+				return "", false, err
+			}
+		}
+		calls++
+		reply, err := s.completer.Complete(ctx, owner.String(), system, user)
+		return reply, true, err
+	}
+	replies := map[string]suggestReplyRow{}
+	for _, income := range []bool{false, true} {
+		if !slices.ContainsFunc(rows, func(r suggestRow) bool { return r.Type.IsIncome() == income }) {
+			continue
+		}
+		system, user := buildSuggestPrompt(rows, income, vocab, language, timezone)
+		reply, ok, err := ask(system, user)
+		if err != nil || !ok {
+			return nil, err
+		}
+		parsed, err := parseSuggestReply(reply)
+		if err != nil {
+			return nil, err
+		}
+		for k, r := range parsed {
+			// only keys of the rows this request carried
+			if i, err := strconv.Atoi(k); err == nil && i >= 0 && i < len(rows) && rows[i].Type.IsIncome() == income {
+				replies[k] = r
+			}
+		}
+	}
+	candidates := map[string][]model.ImportNamed{}
+	for k, r := range replies {
+		row := rows[mustAtoi(k)]
+		if !row.Missing.Payee || strings.TrimSpace(r.Merchant) == "" {
+			continue
+		}
+		if _, _, ok := matchTextIn(row.Link, r.MatchText); !ok {
+			continue
+		}
+		if list := payeeCandidates(r.Merchant, r.MatchText, vocab.Payees); len(list) > 0 {
+			candidates[k] = list
+		}
+	}
+	if len(candidates) == 0 {
+		return replies, nil
+	}
+	system, user := buildPayeePrompt(rows, replies, candidates, language, timezone)
+	reply, ok, err := ask(system, user)
+	if !ok {
+		return nil, err
+	}
+	picks, perr := parsePayeeReply(reply)
+	if err == nil {
+		err = perr
+	}
+	if err != nil {
+		// step 1's categories still stand without payees
+		slog.Warn("import suggest payees failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", err))
+		return replies, nil
+	}
+	applyPayeeReply(replies, picks, candidates)
+	return replies, nil
+}
+
+func mustAtoi(s string) int {
+	i, _ := strconv.Atoi(s)
+	return i
+}
+
 // undoIfOptedOut covers an opt-out (and its suggestion cleanup) that committed
 // while the write was in flight, unseen by the write's own read: what this job
 // stored is removed again, best effort.
@@ -325,7 +398,7 @@ func (s *Service) optedOut(ctx context.Context, owner vo.Id) (bool, error) {
 }
 
 // suggestVocabulary is the owner's non-archived categories and payees, payees
-// by name so the prompt's cap keeps a stable, predictable set.
+// by name so candidates of equal score come in a stable order.
 func (s *Service) suggestVocabulary(ctx context.Context, owner vo.Id) (suggestVocabulary, error) {
 	categories, err := s.entities.CategoriesByOwner(ctx, owner)
 	if err != nil {

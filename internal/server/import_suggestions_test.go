@@ -184,3 +184,80 @@ func TestImportSuggestionsStopWhenUserOptsOutOfAI(t *testing.T) {
 		t.Fatalf("stored suggestions = %d, %v", open, err)
 	}
 }
+
+// Step 1 sends no payees; step 2 sends only the candidates resembling the
+// merchant step 1 named, and the suggestion carries the payee it picked.
+func TestImportSuggestionsTwoStepPayee(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	user := f.User(fixture.User{Name: "Me"})
+	exp := time.Now().UTC().Add(24 * time.Hour)
+	full := "eco_pat_import-suggestions-twostep-full-0000000000"
+	ingest := "eco_pat_import-suggestions-twostep-ingest-00000000"
+	f.AccessToken(fixture.AccessToken{UserID: user, Kind: "personal", TokenHash: appuser.HashAccessToken(full), ExpiresAt: &exp})
+	f.AccessToken(fixture.AccessToken{UserID: user, Kind: "personal", Scope: "ingest", TokenHash: appuser.HashAccessToken(ingest), ExpiresAt: &exp})
+	account := f.Account(fixture.Account{UserID: user, CurrencyID: "dffc2a06-6f29-4704-8575-31709adee926", Name: "Card"})
+	src := f.ImportSource(fixture.ImportSource{UserID: user, Name: "iPhone"})
+	f.ImportAccountLink(fixture.ImportAccountLink{SourceID: src, ExternalAccountID: "Apple Card", AccountID: account})
+	cat := f.Category(fixture.Category{UserID: user, Name: "Cafes"})
+	f.Category(fixture.Category{UserID: user, Name: "Wages", Type: 1})
+	bb := f.Payee(fixture.Payee{UserID: user, Name: "Blue Bottle Coffee"})
+	f.Payee(fixture.Payee{UserID: user, Name: "Starbucks"})
+	step := 0
+	ai := &recordingCompleter{reply: func() (string, error) {
+		step++
+		if step == 1 {
+			return `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}}}`, nil
+		}
+		return `{"rows":{"0":{"payeeId":"` + bb + `"}}}`, nil
+	}}
+	ts := httptest.NewServer(server.BuildAPI(baseTestConfig(db.Engine), db.Raw, server.Seams{
+		Avatars:          appuser.FixedAvatarPicker(appuser.DefaultAvatar),
+		ImportsCompleter: ai,
+		ImportsJobRunner: func(job func()) { job() },
+	}))
+	t.Cleanup(ts.Close)
+	do := func(token, method, path string, body any) map[string]any {
+		t.Helper()
+		var r io.Reader
+		if body != nil {
+			raw, _ := json.Marshal(body)
+			r = strings.NewReader(string(raw))
+		}
+		req, _ := http.NewRequest(method, ts.URL+path, r)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		var env map[string]any
+		if err := json.Unmarshal(b, &env); err != nil || resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s: %d %s", path, resp.StatusCode, b)
+		}
+		data, _ := env["data"].(map[string]any)
+		return data
+	}
+	do(ingest, http.MethodPost, "/api/v1/import/ingest-apple-wallet-event", map[string]any{
+		"account": "Apple Card", "payee": "Blue Bottle", "amount": "4.75", "currency": "USD",
+		"occurredAt": time.Now().UTC().Add(-time.Hour).Format(time.RFC3339), "eventId": "evt-1",
+	})
+	if len(ai.prompts) != 2 {
+		t.Fatalf("AI calls = %d, want 2", len(ai.prompts))
+	}
+	if p := ai.prompts[0]; strings.Contains(p, "Blue Bottle Coffee") || strings.Contains(p, "Starbucks") || strings.Contains(p, "Wages") || !strings.Contains(p, "Cafes") {
+		t.Fatalf("step 1 prompt = %s", p)
+	}
+	if p := ai.prompts[1]; !strings.Contains(p, bb) || strings.Contains(p, "Starbucks") || strings.Contains(p, "Cafes") {
+		t.Fatalf("step 2 prompt = %s", p)
+	}
+	items, _ := do(full, http.MethodGet, "/api/v1/import/get-suggestion-list", nil)["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("items = %v", items)
+	}
+	if item := items[0].(map[string]any); item["payeeId"] != bb || item["categoryId"] != cat {
+		t.Fatalf("item = %v", item)
+	}
+}
