@@ -1103,7 +1103,7 @@
             "menu_item": "Fonctionnalités d'IA",
             "label": "Utiliser les fonctionnalités d'IA",
             "description": "Econumo peut utiliser l'IA pour suggérer des règles d'import, des icônes et des comptes d'épargne.",
-            "off_hint": "Les suggestions de l'IA sont désactivées et les suggestions de règles en attente sont supprimées."
+            "off_hint": "Si vous la désactivez, les suggestions d'IA s'arrêtent et les suggestions de règles en attente sont supprimées."
           }
         }
       }

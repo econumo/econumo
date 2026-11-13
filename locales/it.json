@@ -1103,7 +1103,7 @@
             "menu_item": "Funzioni IA",
             "label": "Usa le funzioni IA",
             "description": "Econumo può usare l'IA per suggerire regole di importazione, icone e conti di risparmio.",
-            "off_hint": "I suggerimenti dell'IA sono disattivati e i suggerimenti di regole in sospeso vengono rimossi."
+            "off_hint": "Se lo disattivi, i suggerimenti dell'IA si interrompono e i suggerimenti di regole in sospeso vengono rimossi."
           }
         }
       }

@@ -1103,7 +1103,7 @@
             "menu_item": "AI features",
             "label": "Use AI features",
             "description": "Econumo can use AI to suggest import rules, icons and savings accounts.",
-            "off_hint": "AI suggestions are turned off and open rule suggestions are removed."
+            "off_hint": "Turning it off stops AI suggestions and removes open rule suggestions."
           }
         }
       }

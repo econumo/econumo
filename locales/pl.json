@@ -1103,7 +1103,7 @@
             "menu_item": "Funkcje AI",
             "label": "Używaj funkcji AI",
             "description": "Econumo może używać AI, aby proponować reguły importu, ikony i konta oszczędnościowe.",
-            "off_hint": "Propozycje AI są wyłączone, a oczekujące propozycje reguł są usuwane."
+            "off_hint": "Wyłączenie zatrzymuje sugestie AI i usuwa oczekujące propozycje reguł."
           }
         }
       }

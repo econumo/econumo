@@ -1103,7 +1103,7 @@
             "menu_item": "AI 功能",
             "label": "使用 AI 功能",
             "description": "Econumo 可以使用 AI 推荐导入规则、图标和储蓄账户。",
-            "off_hint": "AI 建议已关闭，未处理的规则建议也会被删除。"
+            "off_hint": "关闭后，将停止 AI 建议，并删除未处理的规则建议。"
           }
         }
       }

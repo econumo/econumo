@@ -1103,7 +1103,7 @@
             "menu_item": "AI-functies",
             "label": "AI-functies gebruiken",
             "description": "Econumo kan AI gebruiken om importregels, pictogrammen en spaarrekeningen voor te stellen.",
-            "off_hint": "AI-suggesties staan uit en openstaande regelsuggesties worden verwijderd."
+            "off_hint": "Als u dit uitzet, stoppen de AI-suggesties en worden openstaande regelsuggesties verwijderd."
           }
         }
       }
