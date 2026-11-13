@@ -67,7 +67,9 @@ func (s *Service) ImportTransactionList(ctx context.Context, userID vo.Id, req m
 	}); err != nil {
 		return nil, err
 	}
-	if s.icons != nil && (len(created.categories) > 0 || len(created.accounts) > 0) {
+	// every request, even one that created nothing, so a file sent in several
+	// requests keeps its review waiting until the last one
+	if s.icons != nil {
 		s.icons.ReviewImportedIcons(ctx, userID, created.categories, created.accounts)
 	}
 	return result, nil

@@ -170,6 +170,39 @@ func TestCSVImport_ChunksAreReviewedOnce(t *testing.T) {
 	}
 }
 
+// Chunks that create nothing keep the review waiting: a slow import whose
+// middle requests only add rows to existing accounts is still reviewed once,
+// after its last request, over the first and the last chunk's new items.
+func TestCSVImport_EmptyChunksKeepOneReview(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	seedIconWorld(e)
+	e.importChunk("Date,Account,Amount,Category,Payee,Note\n2026-11-01,Visa,-12.50,Lebensmittel,,\n")
+	e.importChunk("Date,Account,Amount,Category,Payee,Note\n2026-11-02,Girokonto,3000,Gehalt,,\n")
+	e.importChunk("Date,Account,Amount,Category,Payee,Note\n2026-11-03,Visa,-4,Lebensmittel,,\n")
+	e.importChunk("Date,Account,Amount,Category,Payee,Note\n2026-11-04,Cash,-5,Kino,,\n")
+	e.timersMu.Lock()
+	live := 0
+	for _, tm := range e.timers {
+		if !tm.stopped {
+			live++
+		}
+	}
+	scheduled := len(e.timers)
+	e.timersMu.Unlock()
+	if live != 1 || scheduled != 4 {
+		t.Fatalf("timers: %d live of %d, want every chunk to reset one", live, scheduled)
+	}
+	e.flushIcons()
+	if len(e.ai.prompts) != 2 {
+		t.Fatalf("prompts = %d, want one review", len(e.ai.prompts))
+	}
+	parts := e.iconPrompts()
+	cats, accts := parts["categories"].Categories, parts["accounts"].Accounts
+	if len(cats) != 2 || len(accts) != 2 {
+		t.Fatalf("prompts = %+v", parts)
+	}
+}
+
 func TestCSVImport_OptedOutUserGetsNoIconReview(t *testing.T) {
 	e := newOnbEnv(t, stepNow)
 	e.f.Option(e.user, model.OptionAI, ptr("0"))

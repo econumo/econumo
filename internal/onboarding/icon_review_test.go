@@ -279,3 +279,32 @@ func TestPrompts_SendOnlyTheAllowlist(t *testing.T) {
 		t.Fatalf("savings prompt keys = %s", got)
 	}
 }
+
+// A chunk that creates nothing still shows the import is going on: it keeps
+// a pending review waiting, and starts none of its own.
+func TestIconReview_EmptyChunksKeepTheReviewWaiting(t *testing.T) {
+	svc, ai, lim, timers := newIconSvc(false)
+	ctx := context.Background()
+	user := vo.MustParseId(me)
+	svc.ReviewImportedIcons(ctx, user, nil, nil)
+	timers.fire()
+	if len(ai.calls) != 0 || len(lim.scopes) != 0 || len(timers.delays) != 0 {
+		t.Fatalf("an empty chunk with nothing pending scheduled a review: %d calls, %d timers", len(ai.calls), len(timers.delays))
+	}
+	svc.ReviewImportedIcons(ctx, user, ids(cat1), nil)
+	for range 2 {
+		svc.ReviewImportedIcons(ctx, user, nil, nil)
+	}
+	svc.ReviewImportedIcons(ctx, user, ids(cat2), ids(acct1))
+	timers.fire()
+	if len(ai.calls) != 2 || len(lim.scopes) != 1 || len(timers.delays) != 4 {
+		t.Fatalf("calls = %d, reservations = %v, timers = %d", len(ai.calls), lim.scopes, len(timers.delays))
+	}
+	for _, c := range ai.calls {
+		if strings.Contains(c.system, `{"categories":`) {
+			if got := askedIDs(t, c.user, "categories"); strings.Join(got, ",") != cat1+","+cat2 {
+				t.Fatalf("categories asked = %v", got)
+			}
+		}
+	}
+}

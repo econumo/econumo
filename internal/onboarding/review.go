@@ -94,21 +94,31 @@ type pendingIcons struct {
 }
 
 // ReviewImportedIcons notes the categories and accounts a CSV import request
-// created. A large file arrives in several requests, so the review starts once
-// no further request from the user has come for iconReviewQuiet: two
+// created; it is called for every successful request, empty lists included. A
+// large file arrives in several requests, so the review starts once no further
+// request from the user has come for iconReviewQuiet (one that created nothing
+// keeps a pending review waiting and starts none): two
 // independent background requests (categories, accounts) over everything the
 // chunks created, counted once against the icon cap. Only the caller's own
 // items still on a default icon are asked about. The state is in memory: a
 // restart in the quiet period drops that review.
 func (s *Service) ReviewImportedIcons(ctx context.Context, userID vo.Id, categoryIDs, accountIDs []vo.Id) {
-	if s.completer == nil || (len(categoryIDs) == 0 && len(accountIDs) == 0) {
+	if s.completer == nil {
 		return
 	}
-	facts := s.promptContext(ctx, userID)
+	created := len(categoryIDs) > 0 || len(accountIDs) > 0
+	var facts promptFacts
+	if created {
+		facts = s.promptContext(ctx, userID)
+	}
 	key := userID.String()
 	s.iconsMu.Lock()
 	defer s.iconsMu.Unlock()
 	p := s.pendingIcons[key]
+	if p == nil && !created {
+		// nothing pending: a chunk that created nothing starts no review
+		return
+	}
 	if p == nil {
 		p = &pendingIcons{seen: map[string]bool{}}
 		s.pendingIcons[key] = p
@@ -125,7 +135,9 @@ func (s *Service) ReviewImportedIcons(ctx context.Context, userID vo.Id, categor
 			p.accounts = append(p.accounts, id)
 		}
 	}
-	p.facts = facts
+	if created {
+		p.facts = facts
+	}
 	p.gen++
 	if p.stop != nil {
 		p.stop()

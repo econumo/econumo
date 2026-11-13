@@ -14,7 +14,9 @@ import (
 )
 
 // ImportIconReviewer picks icons, in the background, for the categories and
-// accounts a CSV import created. It returns at once and never fails the
+// accounts a CSV import created. It is told about every successful import
+// request, empty lists included (an import may span several requests). It
+// returns at once and never fails the
 // import: AI being off, the user's opt-out and the per-user cap are its
 // concern.
 type ImportIconReviewer interface {
