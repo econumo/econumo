@@ -60,12 +60,46 @@ func (s *Service) ImportTransactionList(ctx context.Context, userID vo.Id, req m
 		return result, nil
 	}
 
+	var created *importCreated
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		return s.runImport(ctx, userID, req, overrideAccountID, overrideDateStr, dualMode, header, records, result)
+		created = &importCreated{}
+		return s.runImport(withImportCreated(ctx, created), userID, req, overrideAccountID, overrideDateStr, dualMode, header, records, result)
 	}); err != nil {
 		return nil, err
 	}
+	if s.icons != nil && (len(created.categories) > 0 || len(created.accounts) > 0) {
+		s.icons.ReviewImportedIcons(ctx, userID, created.categories, created.accounts)
+	}
 	return result, nil
+}
+
+// importCreated collects what an import created, for the icon review that
+// follows its commit. A row that fails after creating its account or category
+// still leaves it created, so it is reviewed too.
+type importCreated struct {
+	categories, accounts []vo.Id
+}
+
+type importCreatedKey struct{}
+
+func withImportCreated(ctx context.Context, c *importCreated) context.Context {
+	return context.WithValue(ctx, importCreatedKey{}, c)
+}
+
+func noteCreated(ctx context.Context, id string, account bool) {
+	c, ok := ctx.Value(importCreatedKey{}).(*importCreated)
+	if !ok {
+		return
+	}
+	parsed, err := vo.ParseId(id)
+	if err != nil {
+		return
+	}
+	if account {
+		c.accounts = append(c.accounts, parsed)
+	} else {
+		c.categories = append(c.categories, parsed)
+	}
 }
 
 // runImport performs the in-transaction work: resolve overrides, build the
@@ -329,7 +363,11 @@ func (s *Service) importRow(
 		}
 	} else if name := fieldValue(row, req.Mapping.Category); name != "" {
 		c, err := s.findOrCreateNamed(ctx, name, categoryByKind[income], func(ctx context.Context) (model.ImportNamed, error) {
-			return imp.CreateCategory(ctx, accountOwnerID, name, income)
+			c, err := imp.CreateCategory(ctx, accountOwnerID, name, income)
+			if err == nil {
+				noteCreated(ctx, c.ID, false)
+			}
+			return c, err
 		})
 		if err != nil {
 			return err
@@ -450,6 +488,7 @@ func (s *Service) findOrCreateAccount(ctx context.Context, userID vo.Id, name st
 	if err != nil {
 		return model.ImportAccount{}, err
 	}
+	noteCreated(ctx, created.ID, true)
 	cache.put(created.Name, created)
 	return created, nil
 }

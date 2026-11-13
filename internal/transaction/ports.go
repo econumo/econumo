@@ -13,6 +13,14 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
+// ImportIconReviewer picks icons, in the background, for the categories and
+// accounts a CSV import created. It returns at once and never fails the
+// import: AI being off, the user's opt-out and the per-user cap are its
+// concern.
+type ImportIconReviewer interface {
+	ReviewImportedIcons(ctx context.Context, userID vo.Id, categoryIDs, accountIDs []vo.Id)
+}
+
 // UserLookup resolves the author (id, name, avatar).
 type UserLookup interface {
 	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)

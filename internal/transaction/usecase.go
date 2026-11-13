@@ -39,6 +39,7 @@ type Service struct {
 	tx       port.TxRunner
 	ops      port.OperationGuard
 	clock    port.Clock
+	icons    ImportIconReviewer
 }
 
 // NewService wires the transaction service.
@@ -58,6 +59,10 @@ func NewService(
 ) *Service {
 	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, users: users, export: export, importer: importer, labels: labels, zeroer: zeroer, tx: tx, ops: ops, clock: clock}
 }
+
+// SetImportIconReviewer starts the AI icon review after each CSV import; nil
+// (the default) starts none.
+func (s *Service) SetImportIconReviewer(r ImportIconReviewer) { s.icons = r }
 
 // party is one side of a transaction: the account and the request field that
 // names it, so a rejection points at the field the caller sent.

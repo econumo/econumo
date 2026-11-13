@@ -17,8 +17,9 @@ const StepImport = "import"
 // account outside a hidden folder, when there is one) and marks the import step
 // done. The categories and accounts steps stay open: they become reviews of
 // what the import created. After the commit, when an AI provider is configured,
-// background requests pick icons for the user's categories and accounts and
-// flag the savings accounts in the budget this call created.
+// a background request flags the savings accounts in the budget this call
+// created. The icons of what the import created were already asked for by the
+// import itself (ReviewImportedIcons), so this call asks for none.
 func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.OnboardingFinishImportRequest) (*model.OnboardingFinishImportResult, error) {
 	out := &model.OnboardingFinishImportResult{}
 	var review bool
@@ -60,8 +61,11 @@ func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.Onbo
 	if err != nil {
 		return nil, err
 	}
-	if review {
-		s.startReview(ctx, userID, savingsBudget)
+	if review && savingsBudget != nil {
+		budgetID := *savingsBudget
+		s.startJob(ctx, userID, reviewSavings, func(jobCtx context.Context, facts promptFacts) error {
+			return s.reviewSavings(jobCtx, userID, budgetID, facts)
+		})
 	}
 	return out, nil
 }
@@ -79,26 +83,39 @@ func withPart(spec jobSpec, part string) jobSpec {
 	return spec
 }
 
-// startReview starts the import review's requests: category icons, account
-// icons and, when this call created the budget, savings. Together they count
-// once against the per-user cap.
-func (s *Service) startReview(ctx context.Context, userID vo.Id, savingsBudget *vo.Id) {
+// ReviewImportedIcons asks, in the background, for icons for the categories
+// and accounts a CSV import created: two independent requests (a slow or
+// failing one never holds back the other) that together count once against
+// the per-user cap. Only the caller's own items still on a default icon are
+// asked about.
+func (s *Service) ReviewImportedIcons(ctx context.Context, userID vo.Id, categoryIDs, accountIDs []vo.Id) {
+	if len(categoryIDs) == 0 && len(accountIDs) == 0 {
+		return
+	}
 	if !s.reserveJob(ctx, userID, jobReview) {
 		return
 	}
 	facts := s.promptContext(ctx, userID)
-	s.runJob(userID, reviewCategories, facts, func(jobCtx context.Context, facts promptFacts) error {
-		return s.reviewCategoryIcons(jobCtx, userID, facts)
-	})
-	s.runJob(userID, reviewAccounts, facts, func(jobCtx context.Context, facts promptFacts) error {
-		return s.reviewAccountIcons(jobCtx, userID, facts)
-	})
-	if savingsBudget != nil {
-		budgetID := *savingsBudget
-		s.runJob(userID, reviewSavings, facts, func(jobCtx context.Context, facts promptFacts) error {
-			return s.reviewSavings(jobCtx, userID, budgetID, facts)
+	if len(categoryIDs) > 0 {
+		only := idSet(categoryIDs)
+		s.runJob(userID, reviewCategories, facts, func(jobCtx context.Context, facts promptFacts) error {
+			return s.reviewCategoryIcons(jobCtx, userID, facts, only)
 		})
 	}
+	if len(accountIDs) > 0 {
+		only := idSet(accountIDs)
+		s.runJob(userID, reviewAccounts, facts, func(jobCtx context.Context, facts promptFacts) error {
+			return s.reviewAccountIcons(jobCtx, userID, facts, only)
+		})
+	}
+}
+
+func idSet(ids []vo.Id) map[string]bool {
+	out := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		out[strings.ToLower(id.String())] = true
+	}
+	return out
 }
 
 var iconRules = `Names may be in any language; use the user's timezone and language to read local bank and product names. ` +
@@ -132,11 +149,11 @@ var (
 	repaintableAccount  = map[string]bool{model.ImportAccountIcon: true}
 )
 
-// reviewCategoryIcons asks for an icon per active own category still on a
-// default icon and applies each one in the catalogue, only while the category
+// reviewCategoryIcons asks for an icon per active own category in only still
+// on a default icon and applies each one in the catalogue, only while the category
 // still has the icon it had when the job read it (a change the user made since
 // wins). An unusable reply changes nothing.
-func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts promptFacts) error {
+func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts promptFacts, only map[string]bool) error {
 	categories, err := s.steps.Categories.OwnCategories(ctx, userID)
 	if err != nil {
 		return err
@@ -144,7 +161,7 @@ func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts p
 	prompt := categoryIconFacts{Timezone: facts.Timezone, Language: facts.Language, Categories: []reviewCategory{}}
 	from := map[string]string{}
 	for _, c := range categories {
-		if c.IsArchived == 0 && repaintableCategory[c.Icon] {
+		if only[strings.ToLower(c.Id)] && c.IsArchived == 0 && repaintableCategory[c.Icon] {
 			prompt.Categories = append(prompt.Categories, reviewCategory{ID: c.Id, Name: c.Name, Type: c.Type})
 			from[strings.ToLower(c.Id)] = c.Icon
 		}
@@ -162,9 +179,9 @@ func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts p
 	})
 }
 
-// reviewAccountIcons does the same for live own accounts still on the
+// reviewAccountIcons does the same for live own accounts in only still on the
 // import's icon.
-func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts promptFacts) error {
+func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts promptFacts, only map[string]bool) error {
 	accounts, err := s.steps.Accounts.OwnLiveAccounts(ctx, userID)
 	if err != nil {
 		return err
@@ -172,7 +189,7 @@ func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts pr
 	prompt := promptFacts{Timezone: facts.Timezone, Language: facts.Language, Accounts: []promptAccount{}}
 	from := map[string]string{}
 	for _, a := range accounts {
-		if repaintableAccount[a.Icon] {
+		if only[strings.ToLower(a.ID)] && repaintableAccount[a.Icon] {
 			prompt.Accounts = append(prompt.Accounts, promptAccount{ID: a.ID, Name: a.Name, Currency: a.CurrencyCode})
 			from[strings.ToLower(a.ID)] = a.Icon
 		}

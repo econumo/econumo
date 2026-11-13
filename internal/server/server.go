@@ -477,6 +477,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup,
 		labelOwnership, NewTransactionAccountZeroer(accountSvc), txm, opGuard, clk,
 	)
+	transactionSvc.SetImportIconReviewer(onboardingSvc)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
 	importsRepo := importsrepo.NewRepo(cfg.DatabaseDriver, txm)
