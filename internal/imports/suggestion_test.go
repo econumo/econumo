@@ -683,6 +683,9 @@ func TestSuggestMatchTextSendsOnlyTheAllowlist(t *testing.T) {
 	if strings.Join(keys, ",") != "language,payee,timezone" {
 		t.Fatalf("payload keys = %v", keys)
 	}
+	if payload["payee"] != "SQ *BLUE BOTTLE COFFEE #0423" || payload["language"] != "en" || payload["timezone"] != "America/Los_Angeles" {
+		t.Fatalf("payload = %v", payload)
+	}
 	for _, leak := range []string{"memo", "4417", "Anna", "4.75", "2026-08-20"} {
 		if strings.Contains(c.calls[0].user, leak) {
 			t.Fatalf("payload carries %q: %s", leak, c.calls[0].user)
@@ -750,5 +753,18 @@ func TestSuggestMatchTextReadsAFencedReply(t *testing.T) {
 	res, err := suggestMatchText(h, userA, l)
 	if err != nil || res.MatchText != "BLUE BOTTLE COFFEE" {
 		t.Fatalf("result = %+v, %v", res, err)
+	}
+}
+
+func TestSuggestMatchTextPayeeThatIsTheMemoAsksNothing(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "Blue Bottle")
+	setLinkText(t, h, l, "Transfer to Anna rent 4417", "Transfer to Anna rent 4417")
+	h.withLimiter()
+	before := *h.lim
+	c.calls, c.reply = nil, `{"matchText":"Anna"}`
+	res, err := suggestMatchText(h, userA, l)
+	if err != nil || res.MatchText != "" || len(c.calls) != 0 || *h.lim != before {
+		t.Fatalf("result = %+v, %v, calls = %d", res, err, len(c.calls))
 	}
 }

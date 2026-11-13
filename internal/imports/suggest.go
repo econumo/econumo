@@ -161,7 +161,7 @@ func buildSuggestPrompt(rows []suggestRow, income bool, v suggestVocabulary, lan
 			continue
 		}
 		payload.Rows = append(payload.Rows, promptRow{
-			Key: strconv.Itoa(i), Payee: r.Link.ExternalPayee, Currency: r.Currency, Type: r.Type.Alias(), Account: r.Account,
+			Key: strconv.Itoa(i), Payee: aiPayee(r.Link), Currency: r.Currency, Type: r.Type.Alias(), Account: r.Account,
 		})
 	}
 	b, _ := json.Marshal(payload)
@@ -214,7 +214,7 @@ func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, can
 		if len(list) == 0 {
 			continue
 		}
-		pr := promptRow{Key: k, Payee: r.Link.ExternalPayee, Merchant: replies[k].Merchant}
+		pr := promptRow{Key: k, Payee: aiPayee(r.Link), Merchant: replies[k].Merchant}
 		for _, c := range list {
 			pr.Candidates = append(pr.Candidates, named{ID: c.ID, Name: c.Name})
 		}
@@ -386,11 +386,28 @@ func editRatio(a, b string) float64 {
 	return 1 - float64(prev[la])/float64(lb)
 }
 
+// aiPayee is the row text the AI may see: the bank's payee, unless it is a
+// copy of the description (SimpleFIN fills an empty payee with the memo, cut
+// to 255 characters), which never goes to the AI. "" means the row has none.
+func aiPayee(link model.ImportTransactionLink) string {
+	payee, description := strings.TrimSpace(link.ExternalPayee), strings.TrimSpace(link.ExternalDescription)
+	if payee == "" {
+		return ""
+	}
+	if description != "" {
+		np, nd := strings.ToLower(NormalizeText(payee)), strings.ToLower(NormalizeText(description))
+		if np == nd || (len([]rune(payee)) >= 255 && strings.HasPrefix(nd, np)) {
+			return ""
+		}
+	}
+	return link.ExternalPayee
+}
+
 // matchTextIn checks an AI match text against the row's payee text, the only
 // row text the AI is ever shown.
 func matchTextIn(link model.ImportTransactionLink, raw string) (field, normalized string, ok bool) {
-	field, text := model.ImportRuleMatchFieldExternalPayee, link.ExternalPayee
-	if strings.TrimSpace(text) == "" {
+	field, text := model.ImportRuleMatchFieldExternalPayee, aiPayee(link)
+	if text == "" {
 		return "", "", false
 	}
 	normalized = NormalizeText(raw)

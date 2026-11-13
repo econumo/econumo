@@ -24,7 +24,8 @@ const (
 	suggestScanTimeout = 5 * time.Minute
 	// A row posted longer than this before it was imported is a backfill, not
 	// a live import: the user has had the chance to classify it already.
-	suggestMaxAge = 7 * 24 * time.Hour
+	suggestMaxAge  = 7 * 24 * time.Hour
+	suggestMaxSkew = 24 * time.Hour
 	// The posted time is a wall clock in the owner's zone, which is not known
 	// until the job runs: the first cut allows any zone's offset, and the
 	// owner's own zone decides (liveImport).
@@ -112,14 +113,17 @@ func (s *Service) suggest(links []model.ImportTransactionLink) error {
 	return nil
 }
 
-// liveImport: a row posted at most suggestMaxAge before it was imported, both
-// read as wall clocks in the owner's zone (UTC when unknown or invalid).
+// liveImport: a row posted at most suggestMaxAge before it was imported, and
+// at most suggestMaxSkew after it (clock or zone skew; a row dated further in
+// the future is not a live import), both read as wall clocks in the owner's
+// zone (UTC when unknown or invalid).
 func liveImport(l model.ImportTransactionLink, timezone string) bool {
 	loc, err := time.LoadLocation(timezone)
 	if timezone == "" || err != nil {
 		loc = time.UTC
 	}
-	return wallClock(l.ImportedAt.In(loc)).Sub(l.ExternalPostedAt) <= suggestMaxAge
+	age := wallClock(l.ImportedAt.In(loc)).Sub(l.ExternalPostedAt)
+	return age >= -suggestMaxSkew && age <= suggestMaxAge
 }
 
 // suggestForOwnerSafe keeps one owner's error or panic from reaching the
@@ -478,7 +482,7 @@ func (s *Service) suggestRows(ctx context.Context, owner vo.Id, candidates []sug
 	rows := make([]suggestRow, 0, len(candidates))
 	for _, c := range candidates {
 		// the AI only ever sees the payee text: a row without one is not sent
-		if strings.TrimSpace(c.link.ExternalPayee) == "" {
+		if aiPayee(c.link) == "" {
 			continue
 		}
 		code, ok := codes[c.tx.AccountID]

@@ -387,7 +387,7 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 	}
 	empty := &model.SuggestImportMatchTextResult{}
 	// only the payee text ever goes to the AI; a row without one gets no help
-	if s.completer == nil || s.facts == nil || strings.TrimSpace(l.ExternalPayee) == "" {
+	if s.completer == nil || s.facts == nil || aiPayee(*l) == "" {
 		return empty, nil
 	}
 	facts, err := s.facts.OwnerFacts(ctx, userID)
@@ -406,7 +406,7 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 		language = "en"
 	}
 	payload, err := json.Marshal(map[string]string{
-		"language": language, "timezone": timezone, "payee": l.ExternalPayee,
+		"language": language, "timezone": timezone, "payee": aiPayee(*l),
 	})
 	if err != nil {
 		return empty, nil

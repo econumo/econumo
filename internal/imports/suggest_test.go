@@ -360,6 +360,14 @@ func TestBuildSuggestPromptSendsOnlyTheAllowlist(t *testing.T) {
 	require.NotEmpty(t, sys)
 	require.Equal(t, keySet("language", "timezone", "categories", "categories[].id", "categories[].name",
 		"rows", "rows[].key", "rows[].payee", "rows[].currency", "rows[].type", "rows[].account"), jsonKeyPaths(t, user))
+	var p struct {
+		Language, Timezone string
+		Rows               []map[string]string
+	}
+	require.NoError(t, json.Unmarshal([]byte(user), &p))
+	require.Equal(t, "en", p.Language)
+	require.Equal(t, "UTC", p.Timezone)
+	require.Equal(t, []map[string]string{{"key": "0", "payee": "BLUE BOTTLE", "currency": "USD", "type": "expense", "account": "Card"}}, p.Rows)
 	for _, leak := range append(guardLeaks, row.Link.ID.String()) {
 		require.False(t, strings.Contains(user, leak))
 	}
@@ -372,6 +380,19 @@ func TestBuildPayeePromptSendsOnlyTheAllowlist(t *testing.T) {
 	_, user := buildPayeePrompt([]suggestRow{row}, replies, map[string][]model.ImportNamed{"0": bb}, "en", "UTC")
 	require.Equal(t, keySet("language", "timezone", "rows", "rows[].key", "rows[].payee", "rows[].merchant",
 		"rows[].candidates", "rows[].candidates[].id", "rows[].candidates[].name"), jsonKeyPaths(t, user))
+	var p struct {
+		Rows []struct {
+			Key, Payee, Merchant string
+			Candidates           []model.ImportNamed
+		}
+	}
+	require.NoError(t, json.Unmarshal([]byte(user), &p))
+	require.Equal(t, 1, len(p.Rows))
+	require.Equal(t, "0", p.Rows[0].Key)
+	require.Equal(t, "BLUE BOTTLE", p.Rows[0].Payee)
+	require.Equal(t, "Blue Bottle", p.Rows[0].Merchant)
+	require.Equal(t, bb[0].ID, p.Rows[0].Candidates[0].ID)
+	require.Equal(t, "Blue Bottle Coffee", p.Rows[0].Candidates[0].Name)
 	for _, leak := range append(guardLeaks, row.Link.ID.String()) {
 		require.False(t, strings.Contains(user, leak))
 	}
@@ -608,4 +629,30 @@ func TestParseRepliesReadFencedJSON(t *testing.T) {
 	require.Equal(t, map[string]string{"1": "abc"}, p)
 	_, err = parseSuggestReply("```json\n```")
 	require.Error(t, err)
+}
+
+// A row posted in the future is not a live import, beyond a day of clock or
+// zone skew.
+func TestLiveImportRejectsFutureRows(t *testing.T) {
+	imported := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+	l := model.ImportTransactionLink{ImportedAt: imported, ExternalPostedAt: imported.Add(20 * time.Hour)}
+	require.True(t, liveImport(l, "UTC"))
+	l.ExternalPostedAt = imported.Add(25 * time.Hour)
+	require.False(t, liveImport(l, "UTC"))
+	l.ExternalPostedAt = imported.Add(30 * 24 * time.Hour)
+	require.False(t, liveImport(l, "UTC"))
+}
+
+// SimpleFIN copies the description into the payee when the bridge sends
+// none: such a payee is the memo, which never goes to the AI.
+func TestAIPayeeIgnoresACopiedDescription(t *testing.T) {
+	require.Equal(t, "", aiPayee(sLink("Transfer to Anna rent 4417", "Transfer to Anna rent 4417", time.Time{})))
+	require.Equal(t, "", aiPayee(sLink("transfer to anna  RENT 4417", " Transfer to Anna rent 4417", time.Time{})))
+	long := strings.Repeat("x", 300)
+	require.Equal(t, "", aiPayee(sLink(string([]rune(long)[:255]), long, time.Time{})))
+	require.Equal(t, "", aiPayee(sLink("   ", "memo", time.Time{})))
+	require.Equal(t, "BLUE BOTTLE", aiPayee(sLink("BLUE BOTTLE", "BLUE BOTTLE #42 coffee", time.Time{})))
+	require.Equal(t, "BLUE BOTTLE", aiPayee(sLink("BLUE BOTTLE", "", time.Time{})))
+	_, _, ok := matchTextIn(sLink("Transfer to Anna rent", "Transfer to Anna rent", time.Time{}), "Anna")
+	require.False(t, ok)
 }

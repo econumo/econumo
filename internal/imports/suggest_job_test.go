@@ -2,6 +2,7 @@ package imports_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -1100,5 +1101,26 @@ func TestSuggestScanHasItsOwnDeadline(t *testing.T) {
 	}
 	if !c.calls[0].deadline.Before(scan) {
 		t.Fatal("the owner's job runs under the scan's deadline")
+	}
+}
+
+// A SimpleFIN row with no payee carries its memo in the payee field: it is not
+// sent to the AI.
+func TestSuggestSkipsASimpleFINRowWhosePayeeIsTheMemo(t *testing.T) {
+	h, p := bankHarness(t)
+	c := &fakeCompleter{reply: `{"rows":{}}`}
+	l := withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en"}})
+	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
+	h.category(t, userA, "Groceries")
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
+	memo := extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "")
+	memo.Description = "Transfer to Anna rent 4417"
+	memo.Raw, _ = json.Marshal(map[string]any{"id": "a", "posted": memo.Posted, "amount": "-5.00", "description": memo.Description})
+	p.txs = []model.ExternalTransaction{memo}
+	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.calls) != 0 || l.reserve[imports.RateScopeSuggest] != 0 {
+		t.Fatalf("calls = %+v, reservations = %v", c.calls, l.reserve)
 	}
 }
