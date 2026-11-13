@@ -17,7 +17,6 @@ const maxPayeeCandidates = 5
 type suggestRow struct {
 	Link     model.ImportTransactionLink
 	Type     model.TransactionType
-	Amount   string
 	Currency string
 	Account  string
 	Missing  missingFields
@@ -117,35 +116,34 @@ const suggestSystemPrompt = `You help classify imported bank and card transactio
 For each row decide which part of the row's text identifies the merchant, the merchant's common name, and, only when you are highly confident, which category it belongs to.
 Rules:
 - Include "categoryId" only when highly confident, and only an id from the given list, which holds only categories of the rows' type. Never invent ids.
-- "matchText" is the shortest substring of "payee" (or of "description" when "payee" is empty) that identifies the merchant, copied exactly as written.
+- "matchText" is the shortest substring of "payee" that identifies the merchant, copied exactly as written.
 - "merchant" is the merchant's common name, for example "Amazon" for "AMZN MKTP US*2K4". Leave it out when you cannot tell.
 - Names may be in any language; use the timezone and language to read local merchant names.
 - Leave out fields and whole rows you are not confident about.
 Reply with JSON only: {"rows":{"<key>":{"matchText":"...","merchant":"...","categoryId":"..."}}}`
 
 const payeeSystemPrompt = `You match imported bank and card transactions to payees a user already has in a personal finance app.
-Each row lists the transaction's text, the merchant's name, and a few candidate payees.
+Each row lists the transaction's payee text, the merchant's name, and a few candidate payees.
 Rules:
 - Pick a payee only when it is clearly the same merchant, and only an id from that row's candidates. Never invent ids.
 - Leave out rows where no candidate is clearly the same merchant.
 Reply with JSON only: {"rows":{"<key>":{"payeeId":"..."}}}`
 
 // buildSuggestPrompt is step 1 for the rows of one type (keys are the rows'
-// indexes in rows): the categories of that type, no payees.
+// indexes in rows): the categories of that type, no payees. A row carries only
+// the bank's payee text, its type, account name and currency: never an
+// amount, a date or the description.
 func buildSuggestPrompt(rows []suggestRow, income bool, v suggestVocabulary, language, timezone string) (system, user string) {
 	type named struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	}
 	type promptRow struct {
-		Key         string `json:"key"`
-		Payee       string `json:"payee"`
-		Description string `json:"description"`
-		Amount      string `json:"amount"`
-		Currency    string `json:"currency"`
-		Type        string `json:"type"`
-		Date        string `json:"date"`
-		Account     string `json:"account"`
+		Key      string `json:"key"`
+		Payee    string `json:"payee"`
+		Currency string `json:"currency"`
+		Type     string `json:"type"`
+		Account  string `json:"account"`
 	}
 	payload := struct {
 		Language   string      `json:"language"`
@@ -163,9 +161,7 @@ func buildSuggestPrompt(rows []suggestRow, income bool, v suggestVocabulary, lan
 			continue
 		}
 		payload.Rows = append(payload.Rows, promptRow{
-			Key: strconv.Itoa(i), Payee: r.Link.ExternalPayee, Description: r.Link.ExternalDescription,
-			Amount: r.Amount, Currency: r.Currency, Type: r.Type.Alias(),
-			Date: r.Link.ExternalPostedAt.Format("2006-01-02"), Account: r.Account,
+			Key: strconv.Itoa(i), Payee: r.Link.ExternalPayee, Currency: r.Currency, Type: r.Type.Alias(), Account: r.Account,
 		})
 	}
 	b, _ := json.Marshal(payload)
@@ -192,11 +188,10 @@ func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, can
 		Name string `json:"name"`
 	}
 	type promptRow struct {
-		Key         string  `json:"key"`
-		Payee       string  `json:"payee"`
-		Description string  `json:"description"`
-		Merchant    string  `json:"merchant"`
-		Candidates  []named `json:"candidates"`
+		Key        string  `json:"key"`
+		Payee      string  `json:"payee"`
+		Merchant   string  `json:"merchant"`
+		Candidates []named `json:"candidates"`
 	}
 	payload := struct {
 		Language string      `json:"language"`
@@ -209,7 +204,7 @@ func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, can
 		if len(list) == 0 {
 			continue
 		}
-		pr := promptRow{Key: k, Payee: r.Link.ExternalPayee, Description: r.Link.ExternalDescription, Merchant: replies[k].Merchant}
+		pr := promptRow{Key: k, Payee: r.Link.ExternalPayee, Merchant: replies[k].Merchant}
 		for _, c := range list {
 			pr.Candidates = append(pr.Candidates, named{ID: c.ID, Name: c.Name})
 		}
@@ -381,10 +376,12 @@ func editRatio(a, b string) float64 {
 	return 1 - float64(prev[la])/float64(lb)
 }
 
+// matchTextIn checks an AI match text against the row's payee text, the only
+// row text the AI is ever shown.
 func matchTextIn(link model.ImportTransactionLink, raw string) (field, normalized string, ok bool) {
 	field, text := model.ImportRuleMatchFieldExternalPayee, link.ExternalPayee
-	if strings.TrimSpace(link.ExternalPayee) == "" {
-		field, text = model.ImportRuleMatchFieldDescription, link.ExternalDescription
+	if strings.TrimSpace(text) == "" {
+		return "", "", false
 	}
 	normalized = NormalizeText(raw)
 	// A text with under three letters or digits ("SQ *") would let openFor's

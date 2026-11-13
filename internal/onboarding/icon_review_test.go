@@ -212,3 +212,70 @@ func TestIconReview_OptedOutAtTheEndAsksNothing(t *testing.T) {
 		t.Fatalf("calls = %d, reservations = %v", len(ai.calls), lim.scopes)
 	}
 }
+
+// jsonKeyPaths lists every key path in a JSON document ("accounts[].name").
+func jsonKeyPaths(t *testing.T, raw string) string {
+	t.Helper()
+	var doc any
+	if err := json.Unmarshal([]byte(raw), &doc); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	var walk func(prefix string, v any)
+	walk = func(prefix string, v any) {
+		switch x := v.(type) {
+		case map[string]any:
+			for k, child := range x {
+				path := k
+				if prefix != "" {
+					path = prefix + "." + k
+				}
+				seen[path] = true
+				walk(path, child)
+			}
+		case []any:
+			for _, child := range x {
+				walk(prefix+"[]", child)
+			}
+		}
+	}
+	walk("", doc)
+	out := make([]string, 0, len(seen))
+	for k := range seen {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return strings.Join(out, ",")
+}
+
+// Every onboarding prompt carries only names, types, currency codes, the
+// language and the timezone, plus the ids its answer refers to.
+func TestPrompts_SendOnlyTheAllowlist(t *testing.T) {
+	svc, ai, _, timers := newIconSvc(false)
+	ctx := reqctx.WithLanguage(context.Background(), "de")
+	svc.ReviewImportedIcons(ctx, vo.MustParseId(me), ids(cat1), ids(acct1))
+	timers.fire()
+	c := replying(`{"savings":[]}`)
+	csvc, _ := newSvc(c, nil)
+	schedule(ctx, csvc, cash, deposit)
+
+	want := map[string]string{
+		"categories": "categories,categories[].id,categories[].name,categories[].type,language,timezone",
+		"accounts":   "accounts,accounts[].currency,accounts[].id,accounts[].name,language,timezone",
+	}
+	if len(ai.calls) != 2 {
+		t.Fatalf("calls = %d", len(ai.calls))
+	}
+	for _, call := range ai.calls {
+		key := "accounts"
+		if strings.Contains(call.system, `{"categories":`) {
+			key = "categories"
+		}
+		if got := jsonKeyPaths(t, call.user); got != want[key] {
+			t.Fatalf("%s prompt keys = %s", key, got)
+		}
+	}
+	if got := jsonKeyPaths(t, c.user); got != want["accounts"] {
+		t.Fatalf("savings prompt keys = %s", got)
+	}
+}

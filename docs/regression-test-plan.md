@@ -427,8 +427,10 @@ navigation (single-pane vs sidebar).
       an icon the user changed meanwhile is kept. Without AI the icons stay
       as imported.
 - [ ] With AI, a CSV import from Settings → Data AFTER onboarding (onboarding
-      completed) that creates a new account and new categories: about 10-90 s
-      later they get matching icons without a reload; categories and accounts
+      completed) that creates a new account and new categories: about 30-110 s
+      later they get matching icons without a reload (a file large enough to be
+      sent in several requests still sends ONE categories and ONE accounts
+      request, about 15 s after its last request); categories and accounts
       that existed before the import keep their icons, and so does an icon the
       user changed meanwhile. An import that creates nothing new sends no AI
       request. With the Profile's "Use AI features" switch off (or without AI on
@@ -1028,8 +1030,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
 - [ ] Dismiss, then the next tap at that merchant suggests again (dismissal is not
       remembered). 📱
 - [ ] The AI match text in "Create an import rule" (server with AI): opening the editor from an
-      imported transaction fills the match with a short merchant text found in the payee
-      (description when the payee is empty), at least 3 characters, still editable; with no
+      imported transaction fills the match with a short merchant text found in the payee,
+      at least 3 characters (a row with no payee text keeps the default and sends no AI request), still editable; with no
       AI, offline, a readonly account or a transaction a rule classified (the prompt updates
       that rule) it stays the plain default, and an answer arriving after "Create rule" was
       pressed changes nothing. 📱

@@ -10,8 +10,9 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { emptyDraft, loadDraft, saveDraft } from './draft'
 import { onboardingProgress, storedStepState } from './onboardingProgress'
 
-// when, after a CSV import or finish-import, the lists are refetched to show the AI's icons and savings (a job may take up to 90 s)
-export const AI_REFRESH_DELAYS_MS = [10_000, 30_000, 90_000]
+// when, after a CSV import or finish-import, the lists are refetched to show the AI's icons and
+// savings: the icon review starts 15 s after an import's last chunk and may take up to 90 s
+export const AI_REFRESH_DELAYS_MS = [10_000, 30_000, 60_000, 110_000]
 
 export const notUser = (q: Query) => q.queryKey[0] !== queryKeys.user[0]
 
@@ -27,7 +28,7 @@ export function cancelAiRefresh(): void {
 }
 
 // Module-level, not tied to a component: the import may come from the Settings data page, and
-// finishing onboarding within 90 s must not stop the icons from showing up. Without AI (or with
+// finishing onboarding meanwhile must not stop the icons from showing up. Without AI (or with
 // the user's AI option off) there is nothing to wait for; a logout or another user signing in (a
 // different cached user) ends it.
 export function scheduleAiRefresh(queryClient: QueryClient): void {

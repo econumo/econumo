@@ -17,7 +17,7 @@ func sLink(payee, desc string, posted time.Time) model.ImportTransactionLink {
 }
 
 func sRow(link model.ImportTransactionLink) suggestRow {
-	r := suggestRow{Link: link, Type: model.TransactionTypeExpense, Amount: "5.00", Currency: "USD", Account: "Card"}
+	r := suggestRow{Link: link, Type: model.TransactionTypeExpense, Currency: "USD", Account: "Card"}
 	r.Missing.Category, r.Missing.Payee = true, true
 	return r
 }
@@ -38,9 +38,9 @@ func TestMatchTextIn(t *testing.T) {
 	require.Equal(t, "blue bottle coffee", n)
 	_, _, ok = matchTextIn(sLink("STARBUCKS", "", time.Time{}), "Peets")
 	require.False(t, ok)
-	f, _, ok = matchTextIn(sLink("  ", "Coffee at Peets", time.Time{}), "peets")
-	require.True(t, ok)
-	require.Equal(t, model.ImportRuleMatchFieldDescription, f)
+	// the description never reaches the AI, so its text is never a match text
+	_, _, ok = matchTextIn(sLink("  ", "Coffee at Peets", time.Time{}), "peets")
+	require.False(t, ok)
 	_, _, ok = matchTextIn(l, "   ")
 	require.False(t, ok)
 }
@@ -306,26 +306,75 @@ func TestOpenForChecksCategoryType(t *testing.T) {
 	require.Equal(t, o.ID, id)
 }
 
-func TestBuildSuggestPromptOmitsOtherData(t *testing.T) {
+// guardRow is an imported row whose amount, date, description and owner name
+// must never reach the AI.
+func guardRow() suggestRow {
+	l := sLink("BLUE BOTTLE", "memo 4417 lunch with Anna", time.Date(2026, 3, 2, 9, 30, 0, 0, time.UTC))
+	l.ExternalAmount = "123.45"
+	l.TransactionID = &l.ID
+	return sRow(l)
+}
+
+var guardLeaks = []string{"123.45", "2026-03-02", "03-02", "memo", "4417", "Anna", "Dmitry"}
+
+// jsonKeyPaths lists every key path in a JSON document ("rows[].payee").
+func jsonKeyPaths(t *testing.T, raw string) map[string]bool {
+	t.Helper()
+	var doc any
+	require.NoError(t, json.Unmarshal([]byte(raw), &doc))
+	out := map[string]bool{}
+	var walk func(prefix string, v any)
+	walk = func(prefix string, v any) {
+		switch x := v.(type) {
+		case map[string]any:
+			for k, child := range x {
+				path := k
+				if prefix != "" {
+					path = prefix + "." + k
+				}
+				out[path] = true
+				walk(path, child)
+			}
+		case []any:
+			for _, child := range x {
+				walk(prefix+"[]", child)
+			}
+		}
+	}
+	walk("", doc)
+	return out
+}
+
+func keySet(keys ...string) map[string]bool {
+	out := map[string]bool{}
+	for _, k := range keys {
+		out[k] = true
+	}
+	return out
+}
+
+func TestBuildSuggestPromptSendsOnlyTheAllowlist(t *testing.T) {
 	v, _, _, _, _ := sVocab()
-	row := sRow(sLink("BLUE BOTTLE", "memo", time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)))
-	row.Link.TransactionID = &row.Link.ID
+	row := guardRow()
 	sys, user := buildSuggestPrompt([]suggestRow{row}, false, v, "en", "UTC")
 	require.NotEmpty(t, sys)
-	var p map[string]json.RawMessage
-	require.NoError(t, json.Unmarshal([]byte(user), &p))
-	require.Len(t, p, 4)
-	_, hasPayees := p["payees"]
-	require.False(t, hasPayees)
-	var rows []map[string]any
-	require.NoError(t, json.Unmarshal(p["rows"], &rows))
-	require.Len(t, rows, 1)
-	keys := map[string]bool{}
-	for k := range rows[0] {
-		keys[k] = true
+	require.Equal(t, keySet("language", "timezone", "categories", "categories[].id", "categories[].name",
+		"rows", "rows[].key", "rows[].payee", "rows[].currency", "rows[].type", "rows[].account"), jsonKeyPaths(t, user))
+	for _, leak := range append(guardLeaks, row.Link.ID.String()) {
+		require.False(t, strings.Contains(user, leak))
 	}
-	require.Equal(t, map[string]bool{"key": true, "payee": true, "description": true, "amount": true, "currency": true, "type": true, "date": true, "account": true}, keys)
-	require.False(t, strings.Contains(user, row.Link.ID.String()))
+}
+
+func TestBuildPayeePromptSendsOnlyTheAllowlist(t *testing.T) {
+	row := guardRow()
+	bb := namedList("Blue Bottle Coffee")
+	replies := map[string]suggestReplyRow{"0": {MatchText: "BLUE BOTTLE", Merchant: "Blue Bottle"}}
+	_, user := buildPayeePrompt([]suggestRow{row}, replies, map[string][]model.ImportNamed{"0": bb}, "en", "UTC")
+	require.Equal(t, keySet("language", "timezone", "rows", "rows[].key", "rows[].payee", "rows[].merchant",
+		"rows[].candidates", "rows[].candidates[].id", "rows[].candidates[].name"), jsonKeyPaths(t, user))
+	for _, leak := range append(guardLeaks, row.Link.ID.String()) {
+		require.False(t, strings.Contains(user, leak))
+	}
 }
 
 type requireT struct{}

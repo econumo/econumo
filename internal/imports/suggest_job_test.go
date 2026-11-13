@@ -1016,3 +1016,59 @@ func TestSuggestCategoryArchivedDuringTheCallIsDropped(t *testing.T) {
 		}
 	}
 }
+
+// The AI sees the bank's payee text, never the amount or the date; a row
+// with no payee text is not sent at all.
+func TestSuggestSendsNoAmountDateOrPayeelessRow(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	h.category(t, userA, "Coffee")
+	if res := ingest(t, h, pushWithPayee("", "evt-blank")); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 0 {
+		t.Fatalf("a row with no payee text was sent: %+v", c.calls)
+	}
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d", len(c.calls))
+	}
+	for _, leak := range []string{"4.75", "2026-08-20", "amount", "date", "description", `"A"`} {
+		if strings.Contains(c.calls[0].user, leak) {
+			t.Fatalf("prompt carries %q: %s", leak, c.calls[0].user)
+		}
+	}
+	if !strings.Contains(c.calls[0].user, "Blue Bottle") {
+		t.Fatalf("prompt = %s", c.calls[0].user)
+	}
+}
+
+// A row an open suggestion already covers joins it without an AI call; an
+// opt-out seen inside that join's transaction joins nothing, and one that
+// lands right after it is undone like the job's other writes.
+func TestSuggestPreAIJoinRespectsOptOut(t *testing.T) {
+	for name, n := range map[string]int{"inside the join": 1, "after the join": 2} {
+		t.Run(name, func(t *testing.T) {
+			h, c, _ := suggestSetup(t)
+			cat := h.category(t, userA, "Coffee")
+			s, _ := seedSuggestion(t, h, c, cat, "")
+			h.wireSuggest(c, &optOutAfter{n: n})
+			calls := len(c.calls)
+			if res := ingest(t, h, pushWithPayee("Blue Bottle", "evt-join")); res.Status != model.ImportIngestStatusCreated {
+				t.Fatalf("status = %s", res.Status)
+			}
+			if len(c.calls) != calls {
+				t.Fatalf("calls = %d, want none", len(c.calls)-calls)
+			}
+			got, err := h.repo.GetSuggestion(context.Background(), s.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got.LinkIDs) != 1 {
+				t.Fatalf("links = %v, want the seeded one only", got.LinkIDs)
+			}
+		})
+	}
+}

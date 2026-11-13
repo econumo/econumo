@@ -2,7 +2,9 @@ package imports_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 	"testing"
 
@@ -647,5 +649,60 @@ func TestDismissKeepsRowsJoinedMeanwhile(t *testing.T) {
 	got, err := h.repo.GetSuggestion(context.Background(), s.ID)
 	if err != nil || len(got.LinkIDs) != 1 || got.LinkIDs[0] != late.ID {
 		t.Fatalf("the suggestion stays open for the row joined meanwhile: %+v, %v", got, err)
+	}
+}
+
+func setLinkText(t *testing.T, h *harness, l model.ImportTransactionLink, payee, description string) {
+	t.Helper()
+	if _, err := h.db.Raw.Exec(h.db.Rebind(`UPDATE import_transaction_links SET external_payee = ?, external_description = ? WHERE id = ?`), payee, description, l.ID.String()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Only the payee text, the language and the timezone are sent.
+func TestSuggestMatchTextSendsOnlyTheAllowlist(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "SQ *BLUE BOTTLE COFFEE #0423")
+	setLinkText(t, h, l, "SQ *BLUE BOTTLE COFFEE #0423", "memo 4417 lunch with Anna")
+	c.calls, c.reply = nil, `{"matchText":"BLUE BOTTLE COFFEE"}`
+	if _, err := suggestMatchText(h, userA, l); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d", len(c.calls))
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(c.calls[0].user), &payload); err != nil {
+		t.Fatal(err)
+	}
+	keys := make([]string, 0, len(payload))
+	for k := range payload {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	if strings.Join(keys, ",") != "language,payee,timezone" {
+		t.Fatalf("payload keys = %v", keys)
+	}
+	for _, leak := range []string{"memo", "4417", "Anna", "4.75", "2026-08-20"} {
+		if strings.Contains(c.calls[0].user, leak) {
+			t.Fatalf("payload carries %q: %s", leak, c.calls[0].user)
+		}
+	}
+}
+
+// A row with no payee text asks nothing: its description never goes out.
+func TestSuggestMatchTextNoPayeeAsksNothing(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "Blue Bottle")
+	setLinkText(t, h, l, "  ", "Coffee at Peets")
+	h.withLimiter()
+	before := *h.lim
+	c.calls, c.reply = nil, `{"matchText":"Peets"}`
+	res, err := suggestMatchText(h, userA, l)
+	if err != nil || res.MatchField != "" || res.MatchText != "" {
+		t.Fatalf("result = %+v, %v", res, err)
+	}
+	if len(c.calls) != 0 || *h.lim != before {
+		t.Fatalf("calls = %+v, limiter = %+v", c.calls, h.lim)
 	}
 }

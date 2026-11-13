@@ -359,7 +359,7 @@ func (s *Service) DismissSuggestion(ctx context.Context, userID vo.Id, req model
 const suggestMatchTextTimeout = 10 * time.Second
 
 const suggestMatchTextSystem = `You help write a bank-import rule. Given one imported transaction as JSON, reply with JSON only: {"matchText":"..."}.
-matchText is the shortest substring of the payee (or of the description when the payee is empty) that identifies the merchant, copied exactly from the text, with no store numbers, dates or reference codes.
+matchText is the shortest substring of the payee that identifies the merchant, copied exactly from the text, with no store numbers, dates or reference codes.
 Copy the merchant part character for character as it appears in the text; never translate, expand or correct it. The language and timezone only help you recognise local merchant names and date formats.`
 
 // SuggestMatchText answers empty, never an error, when the AI is off or
@@ -379,7 +379,8 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 		return nil, errs.NewNotFound("Import link not found")
 	}
 	empty := &model.SuggestImportMatchTextResult{}
-	if s.completer == nil || s.facts == nil {
+	// only the payee text ever goes to the AI; a row without one gets no help
+	if s.completer == nil || s.facts == nil || strings.TrimSpace(l.ExternalPayee) == "" {
 		return empty, nil
 	}
 	facts, err := s.facts.OwnerFacts(ctx, userID)
@@ -398,8 +399,7 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 		language = "en"
 	}
 	payload, err := json.Marshal(map[string]string{
-		"language": language, "timezone": timezone,
-		"payee": l.ExternalPayee, "description": l.ExternalDescription,
+		"language": language, "timezone": timezone, "payee": l.ExternalPayee,
 	})
 	if err != nil {
 		return empty, nil

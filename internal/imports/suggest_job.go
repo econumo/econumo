@@ -178,22 +178,49 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		}
 		rest = append(rest, r)
 	}
+	// Every write of this run is undone when the owner turns out to have opted
+	// out once it committed, the joins made before the AI call included.
+	var inserted []vo.Id
+	joined := map[vo.Id][]vo.Id{}
+	preJoined := map[vo.Id][]vo.Id{}
+	defer func() {
+		all := make(map[vo.Id][]vo.Id, len(preJoined)+len(joined))
+		for id, links := range preJoined {
+			all[id] = append(all[id], links...)
+		}
+		for id, links := range joined {
+			all[id] = append(all[id], links...)
+		}
+		s.undoIfOptedOut(ctx, owner, inserted, all)
+	}()
 	if len(covered) > 0 {
 		var gone []vo.Id
+		off := false
 		err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 			var err error
+			gone, off = nil, false
+			if off, err = s.optedOut(ctx, owner); err != nil || off {
+				return err
+			}
 			gone, err = s.addSuggestionLinks(ctx, covered)
 			return err
 		})
-		if err != nil {
+		if err != nil || off {
 			return err
 		}
 		// A suggestion the list read deleted meanwhile covers nothing: its rows
 		// go to the AI like any other.
+		goneSet := map[vo.Id]bool{}
 		goneLinks := map[vo.Id]bool{}
 		for _, id := range gone {
+			goneSet[id] = true
 			for _, l := range covered[id] {
 				goneLinks[l] = true
+			}
+		}
+		for id, links := range covered {
+			if !goneSet[id] {
+				preJoined[id] = links
 			}
 		}
 		for _, r := range rows {
@@ -221,8 +248,6 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	if err != nil || parsed == nil {
 		return err
 	}
-	var inserted []vo.Id
-	joined := map[vo.Id][]vo.Id{}
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		inserted, joined = nil, map[vo.Id][]vo.Id{}
 		// The call took seconds: a user who opted out meanwhile gets nothing
@@ -287,10 +312,10 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		return nil
 	})
 	if err != nil {
-		return err
+		// rolled back: nothing of it to undo
+		inserted, joined = nil, nil
 	}
-	s.undoIfOptedOut(ctx, owner, inserted, joined)
-	return nil
+	return err
 }
 
 // askSuggestions runs step 1 once per transaction type in rows (that type's
@@ -448,6 +473,10 @@ func (s *Service) suggestRows(ctx context.Context, owner vo.Id, candidates []sug
 	codes := map[vo.Id]string{}
 	rows := make([]suggestRow, 0, len(candidates))
 	for _, c := range candidates {
+		// the AI only ever sees the payee text: a row without one is not sent
+		if strings.TrimSpace(c.link.ExternalPayee) == "" {
+			continue
+		}
 		code, ok := codes[c.tx.AccountID]
 		if !ok {
 			code, err = s.accounts.AccountCurrencyCode(ctx, c.tx.AccountID)
@@ -456,7 +485,7 @@ func (s *Service) suggestRows(ctx context.Context, owner vo.Id, candidates []sug
 			}
 			codes[c.tx.AccountID] = code
 		}
-		r := suggestRow{Link: c.link, Type: c.tx.Type, Amount: c.tx.Amount, Currency: code, Account: names[c.tx.AccountID.String()]}
+		r := suggestRow{Link: c.link, Type: c.tx.Type, Currency: code, Account: names[c.tx.AccountID.String()]}
 		r.Missing.Category, r.Missing.Payee = c.tx.CategoryID == nil, c.tx.PayeeID == nil
 		rows = append(rows, r)
 	}

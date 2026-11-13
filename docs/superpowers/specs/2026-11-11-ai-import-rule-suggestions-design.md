@@ -121,14 +121,14 @@ count as ongoing.
 **What it sends.** Two steps, one job against the cap.
 
 *Step 1*, one request per transaction type present in the batch (expense rows and income rows
-never share a request), per row: an opaque row key, the external payee, the external
-description, the amount, the currency, income or expense, the posted date, the account name.
+never share a request), per row: an opaque row key, the external payee text, income or
+expense, the account name, the currency code. Never the amount, the date or the description; a
+row with no payee text is not sent at all (it gets no suggestion).
 For the owner: their non-archived categories of that type only (id, name), language and
 timezone. No payees. It asks, per row it is confident about,
 `{"rows":{"<key>":{"matchText":"...","merchant":"...","categoryId":"..."}}}`: the system prompt
 says to include `categoryId` only when highly confident and only from the listed ids, to pick as
-`matchText` the shortest substring of the payee (or the description when the payee is empty)
-that identifies the merchant, copied exactly, and as `merchant` the merchant's common name
+`matchText` the shortest substring of the payee that identifies the merchant, copied exactly, and as `merchant` the merchant's common name
 ("Amazon" for "AMZN MKTP US*2K4"), omitted when unclear.
 
 *Candidates* (server, no AI): for each row with a merchant name, a valid match text and no
@@ -139,14 +139,19 @@ at least 3 letters, ranked in that order, at most 5 per row. There is no cap on 
 itself, so a payee late in the alphabet is as reachable as any other.
 
 *Step 2*, only when at least one row has candidates: one request with only those rows (key,
-payee text, description, merchant name) and each row's candidates (id, name), asking
+payee text, merchant name) and each row's candidates (id, name), asking
 `{"rows":{"<key>":{"payeeId":"..."}}}` only when a candidate is clearly the same merchant.
 A pick that is not one of that row's candidates is dropped; rows without candidates get no
 payee (payees are never created). A failed or unusable step 2 keeps step 1's categories. The
 owner's opt-out is read again right before step 2 (and before the second type's step 1), as
 before the first call; an opt-out found there ends the job with nothing stored.
 
-Never email addresses, other users' data, or balances.
+**Data allowlist (every AI prompt, 2026-11-12).** Allowed: category names and types, payee,
+tag and label names, account names, currency codes, language, timezone, the transaction's type
+and the bank's payee/merchant text, plus the opaque row keys and entity ids the answer refers
+to. Never: amounts, balances, opening balances, plans, dates, the description/memo line, user
+names, email addresses, other users' data. A guard test per prompt builder asserts its exact
+key set.
 
 *Builder's call:* confidence is expressed by leaving fields out rather than by a numeric score.
 A score from an LLM is not calibrated, while the prompt plus validation does the same filtering
@@ -157,7 +162,7 @@ more simply.
   (`categoryFits`); `payeeId` is one of that row's step-2 candidates (so one of the owner's
   non-archived payees);
 - `matchText`, after `NormalizeText`, occurs case-insensitively in the normalized payee (field
-  `external_payee`), or in the description when the payee is empty (field `description`).
+  `external_payee`); the description is never shown to the AI, so it is never a match field.
   Otherwise the row is dropped, because a rule needs a working match text;
 - a row with neither a valid category nor a valid payee is dropped;
 - reuse (attaching to an open suggestion without asking) also checks that the suggestion is of
@@ -266,7 +271,7 @@ link rows (or kept as `dismissed` if that is simpler; nothing reads it).
 With AI configured, when the rule prompt opens after an edit of an imported transaction,
 `POST /api/v1/import/suggest-match-text {linkId}` (owner of the link's account only, rate-limited
 like `preview-rule`, *builder's call*) asks the AI for the merchant substring of that row's
-payee or description, validated as above, with a 10 s timeout. It answers `{matchField,
+payee text (with the language and timezone only; a row without payee text asks nothing), validated as above, with a 10 s timeout. It answers `{matchField,
 matchText}` or an empty `matchText` on any failure. The dialog shows the heuristic value at
 once and replaces it with the AI's when it arrives, unless the user has already typed in the
 field, or until Save has started. The SPA calls it only when the served `AI_ENABLED` is true,
