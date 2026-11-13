@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import type { OAuthProviderId } from '@/api/dto/oauth'
 import { ProviderMark } from './providerIcons'
-import { oauthFlowCanReturnHere, useOAuthInFlight, useProviders, useStartOAuth } from './oauthQueries'
+import { oauthFlowCanReturnHere, useProviders, useStartOAuth } from './oauthQueries'
 
 // Apple's button must be black-on-white or white-on-black with the mark;
 // Google's must be light with the multi-colour mark. Both get the auth pages'
@@ -26,7 +26,6 @@ export function ProviderButtons({ intent, divider = intent === 'login' }: { inte
   const { t } = useTranslation()
   const providers = useProviders()
   const start = useStartOAuth()
-  const inFlight = useOAuthInFlight((s) => s.inFlight)
   if (!oauthFlowCanReturnHere()) {
     return null
   }
@@ -48,7 +47,7 @@ export function ProviderButtons({ intent, divider = intent === 'login' }: { inte
           type="button"
           variant={p.id === 'oidc' ? 'secondary' : 'outline'}
           className={buttonClass[p.id]}
-          disabled={start.isPending || inFlight}
+          disabled={start.isPending}
           onClick={() => start.mutate({ provider: p.id, intent })}
         >
           <ProviderMark id={p.id} />

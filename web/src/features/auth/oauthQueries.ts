@@ -1,30 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { create } from 'zustand'
 import * as oauthApi from '@/api/oauth'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
-import { nativePlugin, isNativeApp } from '@/lib/platform'
 import { backendHost, isPasswordLoginAllowed } from '@/lib/config'
-import { useServerConfig } from '@/lib/appConfig'
-import type { BrowserPlugin } from '@/lib/externalLinks'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { setToken } from '@/lib/storage'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
-// Keyed by the server the app last requested config for (always null on the
-// web): each server has its own providers, so switching servers in the app must
-// not reuse another server's cached list.
-export function providersQueryKey(host: string | null) {
-  return ['oauth', 'providers', host] as const
-}
+export const PROVIDERS_QUERY_KEY = ['oauth', 'providers'] as const
 
 const FLOW_KEY = 'oauthFlow'
 
-// The flow secret must outlive a full-page navigation to the provider and back.
-// On the web sessionStorage scopes it to the tab that started the flow; the app
-// leaves the WebView for the system browser sheet, which ends the session, so
-// there it goes to localStorage.
+// The flow secret must outlive a full-page navigation to the provider and back;
+// sessionStorage scopes it to the tab that started the flow.
 function flowStore(): Storage {
-  return isNativeApp() ? localStorage : sessionStorage
+  return sessionStorage
 }
 
 export function rememberOAuthFlow(flow: string): void {
@@ -36,7 +25,6 @@ export function rememberOAuthFlow(flow: string): void {
 }
 
 export function takeOAuthFlow(): string {
-  useOAuthInFlight.getState().set(false)
   try {
     const store = flowStore()
     const flow = store.getItem(FLOW_KEY) ?? ''
@@ -47,23 +35,14 @@ export function takeOAuthFlow(): string {
   }
 }
 
-export function oauthClient(): oauthApi.OAuthClient {
-  return isNativeApp() ? 'app' : 'web'
-}
-
-// On the web the flow returns to the BACKEND's origin (ECONUMO_URL), where a
-// tab pointed at a different backend has no flow secret and cannot finish the
-// exchange, so it must not offer to start one — for either the login buttons or
-// Settings' "Link" buttons; the linked list itself stays visible and unlink
-// keeps working, since neither needs a return trip. The app always leaves the
-// WebView for the system browser sheet, which returns via a deep link
-// regardless of origin, so it can always offer the flow. Origins (not raw
-// strings) so a trailing slash on a same-origin host doesn't look off-origin,
-// and a malformed stored host fails closed instead of throwing.
+// The flow returns to the BACKEND's origin (ECONUMO_URL), where a tab pointed
+// at a different backend has no flow secret and cannot finish the exchange, so
+// it must not offer to start one — for either the login buttons or Settings'
+// "Link" buttons; the linked list itself stays visible and unlink keeps
+// working, since neither needs a return trip. Origins (not raw strings) so a
+// trailing slash on a same-origin host doesn't look off-origin, and a malformed
+// stored host fails closed instead of throwing.
 export function oauthFlowCanReturnHere(): boolean {
-  if (isNativeApp()) {
-    return true
-  }
   try {
     return new URL(backendHost()).origin === window.location.origin
   } catch {
@@ -78,49 +57,19 @@ export function passwordLoginAvailable(): boolean {
   return isPasswordLoginAllowed() || !oauthFlowCanReturnHere()
 }
 
-// Re-evaluates when the app merges a server config that arrived late.
 export function usePasswordLoginAvailable(): boolean {
-  useServerConfig((s) => s.revision)
   return passwordLoginAvailable()
 }
 
-// The app leaves the WebView for the browser sheet and the start mutation
-// resolves as soon as the sheet is asked to open, so `isPending` alone lets a
-// second tap mint a second flow whose secret overwrites the first's. Ended by
-// whichever comes first: the sheet's own lifecycle (browserFinished), or the
-// deep-link return — handleAppUrl (web/src/lib/deepLinks.ts) clears this
-// explicitly for EVERY recognised app-return link, success or failure;
-// a successful handoff/link additionally takes the flow secret via
-// takeOAuthFlow, which also clears it (belt and suspenders with the deep-link
-// path, since a web caller has no deep link at all).
-export const useOAuthInFlight = create<{ inFlight: boolean; set: (v: boolean) => void }>((set) => ({
-  inFlight: false,
-  set: (inFlight) => set({ inFlight }),
-}))
-
-let browserFinishedInstalled = false
-
-// A top-level navigation on the web (Google and Apple require it); the system
-// browser sheet in the app (embedded web views are blocked by Google).
+// A top-level navigation (Google and Apple require it).
 export function openAuthorizationUrl(url: string): void {
-  const browser = nativePlugin<BrowserPlugin>('Browser')
-  if (browser) {
-    if (!browserFinishedInstalled && browser.addListener) {
-      browserFinishedInstalled = true
-      browser.addListener('browserFinished', () => useOAuthInFlight.getState().set(false))
-    }
-    useOAuthInFlight.getState().set(true)
-    void browser.open({ url })
-    return
-  }
   window.location.assign(url)
 }
 
 export function useProviders() {
-  const host = useServerConfig((s) => s.configHost)
   return useQuery({
-    queryKey: providersQueryKey(host),
-    queryFn: () => oauthApi.getProviderList(host ?? undefined),
+    queryKey: PROVIDERS_QUERY_KEY,
+    queryFn: () => oauthApi.getProviderList(),
     staleTime: Infinity,
   })
 }
@@ -142,8 +91,8 @@ export function useStartOAuth() {
   return useMutation({
     mutationFn: async ({ provider, intent }: { provider: OAuthProviderId; intent: 'login' | 'link' }) => {
       const { url, flow } = intent === 'link'
-        ? await oauthApi.startLink(provider, oauthClient())
-        : await oauthApi.startLogin(provider, oauthClient())
+        ? await oauthApi.startLink(provider)
+        : await oauthApi.startLogin(provider)
       rememberOAuthFlow(flow)
       openAuthorizationUrl(url)
     },
@@ -156,11 +105,10 @@ export function useExchangeHandoff() {
     meta: { handlesOwnErrors: true },
     mutationFn: ({ code, flow }: { code: string; flow: string }) => oauthApi.exchangeHandoff(code, flow),
     onSuccess: async (data) => {
-      // The new session may belong to a different user, and the app can reach
-      // this without a page reload (the browser sheet returns to the same SPA
-      // instance). Dropping only the persisted snapshot would leave the
-      // previous user's profile and accounts live in memory, still inside
-      // their staleTime — so cancel what is in flight and empty the cache too.
+      // The new session may belong to a different user. Dropping only the
+      // persisted snapshot would leave the previous user's profile and
+      // accounts live in memory, still inside their staleTime — so cancel what
+      // is in flight and empty the cache too.
       await queryClient.cancelQueries()
       await clearPersistedQueryCache()
       queryClient.clear()

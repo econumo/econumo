@@ -121,6 +121,10 @@ func (pgsqlQuerier) DeleteImportEvent(ctx context.Context, db backend.DBTX, id s
 	return pgsqlgen.New(db).DeleteImportEvent(ctx, id)
 }
 
+func (pgsqlQuerier) DeleteImportTransactionLink(ctx context.Context, db backend.DBTX, id string) error {
+	return pgsqlgen.New(db).DeleteImportTransactionLink(ctx, id)
+}
+
 func (pgsqlQuerier) ListImportEventsBySourceStatus(ctx context.Context, db backend.DBTX, p eventsBySourceStatusPs) ([]eventRow, error) {
 	rows, err := pgsqlgen.New(db).ListImportEventsBySourceStatus(ctx, pgsqlgen.ListImportEventsBySourceStatusParams(p))
 	if err != nil {

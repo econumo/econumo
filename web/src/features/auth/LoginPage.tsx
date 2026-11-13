@@ -10,8 +10,6 @@ import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
-import { isNativeApp } from '@/lib/platform'
-import { useServerConfigFor } from '@/lib/appConfig'
 import { isForbidden, retryAfterSeconds } from '@/lib/apiError'
 import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { getToken } from '@/lib/storage'
@@ -55,10 +53,8 @@ export function LoginPage() {
   })
   const selfHostedChecked = watch('selfHosted')
   // Watched so a custom server address typed below re-evaluates whether the
-  // password form is available (see passwordLoginAvailable); in the app the
-  // typed server's own config is fetched and decides.
+  // password form is available (see passwordLoginAvailable).
   watch('host')
-  useServerConfigFor(config.backendHost())
   const passwordForm = passwordLoginAvailable()
 
   // The disclosure state persists immediately (not on submit), and collapsing
@@ -67,10 +63,8 @@ export function LoginPage() {
     const next = !selfHostedChecked
     config.selfHosted(next)
     if (next) {
-      // Seed the page's own origin on the web; in the native app the WebView
-      // origin (capacitor://localhost) is meaningless as a server address, so
-      // the field stays empty for the user's own URL.
-      if (!getValues('host') && !isNativeApp()) {
+      // Seed the page's own origin.
+      if (!getValues('host')) {
         setValue('host', window.location.origin)
       }
     } else {

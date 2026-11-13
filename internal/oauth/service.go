@@ -28,7 +28,6 @@ type Service struct {
 	limiter           AttemptLimiter
 	appURL            string
 	allowRegistration bool
-	appLinks          bool
 	notifier          Notifier
 	// Zero value = password sign-in enabled, matching ECONUMO_PASSWORD_LOGIN's default.
 	passwordLoginDisabled bool
@@ -37,14 +36,14 @@ type Service struct {
 }
 
 func NewService(providers []Provider, users Users, identities Identities, states States, handoffs Handoffs,
-	tx port.TxRunner, clock port.Clock, limiter AttemptLimiter, appURL string, allowRegistration, appLinks bool) *Service {
+	tx port.TxRunner, clock port.Clock, limiter AttemptLimiter, appURL string, allowRegistration bool) *Service {
 	byID := map[string]Provider{}
 	for _, p := range providers {
 		byID[p.Client.Issuer().ID] = p
 	}
 	return &Service{providers: providers, byID: byID, users: users, identities: identities, states: states,
 		handoffs: handoffs, tx: tx, clock: clock, limiter: limiter, appURL: strings.TrimSuffix(appURL, "/"),
-		allowRegistration: allowRegistration, appLinks: appLinks}
+		allowRegistration: allowRegistration}
 }
 
 // DisablePasswordLogin mirrors ECONUMO_PASSWORD_LOGIN=false: a stored password
@@ -124,24 +123,7 @@ func (s *Service) EndSessionURL(ctx context.Context, provider, idToken string) (
 
 // redirect targets (spec §6.3)
 
-// appReturnURL is where an app flow lands. With verified app links configured
-// the redirect is an https URL on ECONUMO_URL that only the associated app
-// (Apple: Team ID + bundle; Android: package + signing certificate) may claim,
-// so a look-alike app cannot receive the handoff. Without them the reverse-
-// domain private scheme is the only option, and any app that registers it on
-// the device receives the redirect (documented residual risk for self-hosted
-// backends used from the store app).
-func (s *Service) appReturnURL(fragment, query string) string {
-	if s.appLinks {
-		return s.appURL + "/oauth/app-return" + query + fragment
-	}
-	return "com.econumo.app://oauth" + query + fragment
-}
-
-func (s *Service) successURL(client, handoff string) string {
-	if client == model.OAuthClientApp {
-		return s.appReturnURL("#handoff="+url.QueryEscape(handoff), "")
-	}
+func (s *Service) successURL(handoff string) string {
 	return s.appURL + "/oauth/callback#handoff=" + url.QueryEscape(handoff)
 }
 
@@ -149,10 +131,7 @@ func (s *Service) successURL(client, handoff string) string {
 // for the identity write the callback deferred (spec §6.5). Like the sign-in
 // handoff it rides in the fragment on the web, so it never reaches a server log
 // or a Referer header.
-func (s *Service) linkPendingURL(client, code string) string {
-	if client == model.OAuthClientApp {
-		return s.appReturnURL("#linkHandoff="+url.QueryEscape(code), "")
-	}
+func (s *Service) linkPendingURL(code string) string {
 	return s.appURL + "/settings/profile/linked-accounts#linkHandoff=" + url.QueryEscape(code)
 }
 
@@ -161,18 +140,12 @@ func (s *Service) linkPendingURL(client, code string) string {
 // signed-in user would see nothing).
 func (s *Service) errorURLFor(st *model.OAuthState, code string) string {
 	if st.Intent != model.OAuthIntentLink {
-		return s.errorURL(st.Client, code)
-	}
-	if st.Client == model.OAuthClientApp {
-		return s.appReturnURL("", "?linkError="+url.QueryEscape(code))
+		return s.errorURL(code)
 	}
 	return s.appURL + "/settings/profile/linked-accounts?oauthError=" + url.QueryEscape(code)
 }
 
-func (s *Service) errorURL(client, code string) string {
-	if client == model.OAuthClientApp {
-		return s.appReturnURL("", "?error="+url.QueryEscape(code))
-	}
+func (s *Service) errorURL(code string) string {
 	return s.appURL + "/login?oauthError=" + url.QueryEscape(code)
 }
 

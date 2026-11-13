@@ -1,5 +1,3 @@
-import { isNativeApp } from './platform'
-
 const SCRIPT = '/sw.js'
 // also named in sw/sw.js, which reads it for offline starts
 const CONFIG_CACHE = 'econumo-config'
@@ -8,8 +6,8 @@ const CONFIG_URL = '/econumo-config.js'
 const REFRESH_TIMEOUT_MS = 60_000
 
 function supported(): boolean {
-  // dev serves no sw.js, and the native app ships its files inside the bundle
-  return import.meta.env.PROD && !isNativeApp() && 'serviceWorker' in navigator
+  // dev serves no sw.js
+  return import.meta.env.PROD && 'serviceWorker' in navigator
 }
 
 // Reaching this code is what proves the app runs with this config, so only here

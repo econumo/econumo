@@ -22,6 +22,7 @@ import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { syncPullSourcesIfDue } from '@/features/imports/sidebarSync'
 import { ApplicationLayout } from './ApplicationLayout'
 
 vi.mock('@/lib/metrics', async (importOriginal) => ({
@@ -30,6 +31,7 @@ vi.mock('@/lib/metrics', async (importOriginal) => ({
 }))
 
 const mockUpdate = vi.hoisted(() => ({ value: null as AvailableUpdate | null }))
+vi.mock('@/features/imports/sidebarSync', () => ({ syncPullSourcesIfDue: vi.fn(async () => null) }))
 vi.mock('@/hooks/useAvailableUpdate', () => ({
   useAvailableUpdate: () => mockUpdate.value,
 }))
@@ -561,6 +563,14 @@ describe('the sync button', () => {
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
     expect(seen).toEqual([])
     expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DATA_FULL_RELOAD)
+  })
+
+  it('a tap also pulls SimpleFIN when it is due, and toasts what it brought', async () => {
+    vi.mocked(syncPullSourcesIfDue).mockResolvedValueOnce({ imported: 3, matched: 1, failed: 0 })
+    await bootWarm()
+    fireEvent.click(screen.getByRole('button', { name: 'sync' }))
+    expect(syncPullSourcesIfDue).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText(/3 imported/)).toBeInTheDocument()
   })
 
   it('a long press says so, counts the action and downloads every account again', async () => {

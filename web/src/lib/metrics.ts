@@ -4,8 +4,7 @@ import { analyticsAllowed } from './analyticsPreference'
 import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
 import { storedThemePreference } from './theme'
-import { backendHost, getInstanceId, getVersion, locale } from './config'
-import { isNativeApp } from './platform'
+import { getInstanceId, getVersion, locale } from './config'
 import { hasToken } from './storage'
 
 // Collector event names derive from these via analyticsEventName(), so a
@@ -39,6 +38,7 @@ export const METRICS = {
   ONBOARDING_IMPORT_FINISHED: 'appOnboardingImportFinished',
   ONBOARDING_STEP_DONE: 'appOnboardingStepDone',
   ONBOARDING_STEP_SKIP: 'appOnboardingStepSkip',
+  ONBOARDING_CONNECT_OPEN: 'appOnboardingConnectOpen',
   USER_UPDATE_DEFAULT_BUDGET: 'appUserUpdateDefaultBudget',
   USER_UPDATE_LANGUAGE: 'appUserUpdateLanguage',
   USER_REMIND_PASSWORD: 'appUserRemindPassword',
@@ -167,6 +167,7 @@ export const METRICS = {
   IMPORT_ACCOUNT_UNMAP: 'appImportAccountUnmap',
   IMPORT_QUEUE_IMPORT: 'appImportQueueImport',
   IMPORT_QUEUE_SKIP: 'appImportQueueSkip',
+  IMPORT_REIMPORT: 'appImportReimport',
   IMPORT_SHORTCUT_DOWNLOAD: 'appImportShortcutDownload',
   IMPORT_SHORTCUT_CONFIGURE: 'appImportShortcutConfigure',
   IMPORT_SHORTCUT_TEST: 'appImportShortcutTest',
@@ -207,6 +208,13 @@ export const METRICS = {
   FEEDBACK_SEND: 'appFeedbackSend',
   WHATS_NEW_OPEN: 'appWhatsNewOpen',
   WHATS_NEW_DISMISS: 'appWhatsNewDismiss',
+  APP_LOCK_UNLOCKED: 'appAppLockUnlocked',
+  APP_LOCK_FORGOT_SECRET: 'appAppLockForgotSecret',
+  APP_LOCK_ATTEMPTS_EXCEEDED: 'appAppLockAttemptsExceeded',
+  APP_LOCK_ENABLED: 'appAppLockEnabled',
+  APP_LOCK_DISABLED: 'appAppLockDisabled',
+  APP_LOCK_SECRET_CHANGED: 'appAppLockSecretChanged',
+  APP_LOCK_TIMEOUT_CHANGED: 'appAppLockTimeoutChanged',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 
@@ -238,18 +246,8 @@ export function setAnalyticsAccessState(state: string | null): void {
   currentAccessState = state
 }
 
-// In a Capacitor WebView window.location.hostname is always 'localhost', so
-// the app must derive the effective host from the configured backend instead
-// (mirrors the web path exactly when not running natively).
 function currentHostname(): string {
-  if (!isNativeApp()) {
-    return window.location.hostname
-  }
-  try {
-    return new URL(backendHost()).hostname
-  } catch {
-    return window.location.hostname
-  }
+  return window.location.hostname
 }
 
 export function isCloudHost(hostname: string = currentHostname()): boolean {
@@ -269,13 +267,6 @@ export function analyticsHost(hostname: string = currentHostname()): string {
 
 export function deploymentKind(hostname: string = currentHostname()): 'cloud' | 'self-hosted' {
   return isCloudHost(hostname) ? 'cloud' : 'self-hosted'
-}
-
-export function analyticsPlatform(): 'web' | 'ios' | 'android' {
-  if (!isNativeApp()) {
-    return 'web'
-  }
-  return /android/i.test(navigator.userAgent) ? 'android' : 'ios'
 }
 
 // The billing portal reports into this same collector project, as the same
@@ -320,10 +311,6 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   if (!hasToken()) {
     return
   }
-  // Resolved on every call rather than once at module load: in the mobile app
-  // this module evaluates before the async fetchServerConfig() merges the
-  // real INSTANCE_ID, so a fixed-at-import read would leave the group unset
-  // for the whole session. The cost is two cheap string reads per event.
   const instanceId = getInstanceId()
   if (instanceId) {
     setAnalyticsGroup(instanceId, analyticsHost())
@@ -339,7 +326,7 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   // real hostname never appears. The SDK detects $os, $browser and $device.
   setAnalyticsContext({
     $app_version: getVersion(),
-    $platform: analyticsPlatform(),
+    $platform: 'web',
     $host: analyticsHost(),
     $app_locale: locale(),
     deployment: deploymentKind(),

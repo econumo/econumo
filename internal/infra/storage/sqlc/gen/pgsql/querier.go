@@ -73,6 +73,7 @@ type Querier interface {
 	DeleteImportSource(ctx context.Context, id string) error
 	DeleteImportSuggestion(ctx context.Context, id string) error
 	DeleteImportSuggestionLink(ctx context.Context, arg DeleteImportSuggestionLinkParams) error
+	DeleteImportTransactionLink(ctx context.Context, id string) error
 	DeleteLabel(ctx context.Context, id string) error
 	DeleteOAuthClient(ctx context.Context, id string) (int64, error)
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)

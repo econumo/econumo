@@ -154,14 +154,6 @@
       "notice": "Econumo {version} ist verfügbar",
       "dismiss": "Ausblenden"
     },
-    "serverUpdate": {
-      "notice": "Ihr Econumo-Server ({version}) ist älter als diese App. Aktualisieren Sie den Server, um die neuesten Funktionen zu erhalten."
-    },
-    "appUpdate": {
-      "title": "Aktualisierung erforderlich",
-      "blockedApp": "Diese App ist zu alt für Ihren Econumo-Server: erforderlich ist App-Version {version} oder neuer. Bitte aktualisieren Sie die App, um fortzufahren.",
-      "blockedServer": "Diese App benötigt Econumo-Server {min} oder neuer, Ihr Server ist {version}. Bitte aktualisieren Sie den Server, um fortzufahren."
-    },
     "offline_unavailable": {
       "title": "Offline nicht verfügbar",
       "text": "Diese Daten sind ohne Internetverbindung nicht verfügbar."
@@ -675,7 +667,7 @@
         "reconnect_intro": "Fügen Sie ein neues Setup-Token von SimpleFIN Bridge ein. Die vorherige Verbindung wird ersetzt; Ihre Kontozuordnungen bleiben erhalten.",
         "token_label": "Setup-Token",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → Neue Verbindung → Setup-Token kopieren. Ein Token kann nur einmal verwendet werden.",
+        "token_help": "{bridge} → Neue Verbindung → Setup-Token kopieren. Ein Token kann nur einmal verwendet werden.",
         "forgot_passphrase": "Ich habe meine Passphrase vergessen, neue festlegen",
         "passphrase_new": "Passphrase",
         "passphrase_existing": "Ihre Passphrase",
@@ -849,7 +841,11 @@
       "waiting": "Diese Transaktion wartet im Posteingang.",
       "deleted": "Diese Transaktion wurde importiert und später gelöscht.",
       "create": "Transaktion erstellen",
-      "unavailable": "Diese Transaktion wurde importiert, ist für Sie aber nicht verfügbar."
+      "unavailable": "Diese Transaktion wurde importiert, ist für Sie aber nicht verfügbar.",
+      "account": "Konto",
+      "reimport": "Erneut importieren",
+      "reimport_hint": "Importieren Sie sie erneut, um sie wieder hinzuzufügen oder einer selbst erfassten Transaktion zuzuordnen, etwa einer Umbuchung.",
+      "reimported": { "created": "Erneut importiert", "matched": "Einer vorhandenen Transaktion zugeordnet", "queued": "Erneut importiert; sie wartet im Posteingang", "skipped": "Nicht hinzugefügt: Eine Überspringen-Regel oder ein ignoriertes Konto trifft zu" }
     },
     "suggestions": {
       "dismiss": "Verwerfen",
@@ -1191,10 +1187,6 @@
       "callback": {
         "signing_in": "Sie werden angemeldet…"
       },
-      "app_return": {
-        "title": "Anmeldung abgeschlossen – kehren Sie zur Econumo-App zurück.",
-        "open_app": "App öffnen"
-      },
       "provider_name": {
         "google": "Google",
         "apple": "Apple",
@@ -1276,7 +1268,7 @@
       "accounts": "Konten",
       "plan": "Budget & Plan",
       "home_screen": "App installieren",
-      "apple_wallet": "Apple Wallet",
+      "connect": "Verbinden",
       "menu": "Menü",
       "finish": "Abschließen",
       "state_done": "erledigt",
@@ -1296,11 +1288,28 @@
       "install": "Installieren",
       "done": "Fertig"
     },
-    "wallet_step": {
-      "heading": "Kartenzahlungen, automatisch erfasst",
-      "text": "Verbinden Sie Apple Wallet, und jede Kartenzahlung erscheint von selbst in Econumo.",
-      "setup": "Einrichten",
-      "later": "Sie können die Apple-Wallet-Integration jederzeit später in den Einstellungen einrichten."
+    "connect_step": {
+      "heading": "Verbinden Sie Ihre Konten",
+      "text": "Lassen Sie Ihre Transaktionen von selbst eintreffen, statt sie einzutippen.",
+      "apple_wallet": {
+        "title": "Apple Wallet",
+        "text": "Eine Kurzbefehle-Automation auf Ihrem iPhone sendet jede Apple-Pay-Zahlung an Econumo.",
+        "link": "Apple Wallet einrichten"
+      },
+      "simplefin": {
+        "title": "SimpleFIN",
+        "text": "SimpleFIN Bridge ist ein kostenpflichtiger Drittanbieterdienst, der sich mit Ihrer Bank verbindet (vor allem in den USA und Kanada). Econumo ruft bei jeder Synchronisierung Ihre Transaktionen darüber ab.",
+        "link": "SimpleFIN einrichten",
+        "site": "Website von SimpleFIN Bridge"
+      },
+      "mcp": {
+        "title": "KI-Assistenten (MCP)",
+        "text": "Fügen Sie diese Adresse in Claude, ChatGPT oder einer anderen App mit MCP-Unterstützung hinzu, um Ihre Finanzen zu verwalten."
+      },
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "later": "Sie können dies jederzeit später in den Einstellungen einrichten.",
+      "finish": "Einrichtung abschließen"
     },
     "retry": "Erneut versuchen",
     "save_continue": "Speichern und weiter",
@@ -2216,6 +2225,70 @@
     "notice": "Neu in {version}",
     "dismiss": "Ausblenden"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "App-Sperre",
+      "title": "App-Sperre",
+      "on": "An",
+      "off": "Aus",
+      "about": "Die Sperre schützt Econumo nur auf diesem Gerät. Wenn Sie die PIN oder das Muster vergessen, müssen Sie sich erneut anmelden. Die auf dem Gerät gespeicherten Daten werden nicht verschlüsselt.",
+      "enabled_label": "App-Sperre",
+      "enabled_hint": "Beim Öffnen von Econumo nach einer PIN oder einem Muster fragen",
+      "change_secret": "PIN oder Muster ändern",
+      "pin_changed": "PIN geändert",
+      "pattern_changed": "Muster geändert",
+      "lock_after": {
+        "label": "Sperren nach",
+        "immediately": "Sofort",
+        "one_minute": "1 Minute",
+        "five_minutes": "5 Minuten",
+        "fifteen_minutes": "15 Minuten"
+      },
+      "dialog": {
+        "create_title": "PIN festlegen",
+        "create_title_pattern": "Muster zeichnen",
+        "new_title": "Neue PIN festlegen",
+        "new_title_pattern": "Neues Muster zeichnen",
+        "current_title": "Aktuelle PIN eingeben",
+        "current_title_pattern": "Aktuelles Muster zeichnen",
+        "confirm_title": "PIN erneut eingeben",
+        "confirm_title_pattern": "Muster erneut zeichnen",
+        "pin_hint": "4 bis 8 Ziffern",
+        "pattern_hint": "Verbinden Sie mindestens 4 Punkte",
+        "mismatch": "Die PINs stimmen nicht überein. Versuchen Sie es erneut.",
+        "mismatch_pattern": "Die Muster stimmen nicht überein. Versuchen Sie es erneut.",
+        "kind_pin": "PIN",
+        "kind_pattern": "Muster",
+        "save": "Speichern"
+      }
+    },
+    "lock_screen": {
+      "title": "PIN eingeben",
+      "title_pattern": "Muster zeichnen",
+      "wrong_pin": "Falsche PIN",
+      "wrong_pattern": "Falsches Muster",
+      "attempts_left": "Noch {count} Versuch | Noch {count} Versuche",
+      "try_again_in": "Erneut versuchen in {time}",
+      "forgot_pin": "PIN vergessen?",
+      "forgot_pattern": "Muster vergessen?",
+      "forgot_title": "Abmelden, um die PIN zurückzusetzen?",
+      "forgot_title_pattern": "Abmelden, um das Muster zurückzusetzen?",
+      "forgot_question": "Sie müssen sich danach erneut anmelden.",
+      "forgot_confirm": "Abmelden"
+    },
+    "pin_pad": {
+      "entered": "Eingegebene Ziffern: {count}",
+      "delete": "Ziffer löschen",
+      "continue": "Weiter"
+    },
+    "pattern_pad": {
+      "grid": "Muster",
+      "dot": "Punkt {n}",
+      "too_short": "Verbinden Sie mindestens 4 Punkte",
+      "clear": "Löschen",
+      "done": "Fertig"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Dieser Wert darf nicht leer sein.",
@@ -2302,6 +2375,7 @@
       "link_not_queued": "Dieses Ereignis wartet nicht auf Prüfung.",
       "link_not_skipped": "Dieses Ereignis ist nicht übersprungen.",
       "event_not_failed": "Dieses Ereignis ist nicht fehlgeschlagen.",
+      "link_not_deleted": "Diese Transaktion wurde nicht gelöscht.",
       "setup_token_rejected": "SimpleFIN hat dieses Setup-Token abgelehnt. Möglicherweise wurde es bereits verwendet; erstellen Sie ein neues in SimpleFIN Bridge.",
       "provider_unavailable": "SimpleFIN ist nicht erreichbar. Versuchen Sie es in einigen Minuten erneut.",
       "sync_range_invalid": "Der Zeitraum ist ungültig: Der Beginn darf nicht nach dem Ende liegen, und der Zeitraum darf 400 Tage nicht überschreiten.",

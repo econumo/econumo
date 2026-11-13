@@ -48,10 +48,6 @@ describe('flags', () => {
       window.econumoConfig = { ALLOW_CUSTOM_API: true, MCP_URL: 'https://serving.example.test/mcp' }
       selfHosted(true)
     })
-    afterEach(() => {
-      delete (window as { Capacitor?: unknown }).Capacitor
-    })
-
     it('is empty on the web when the page is pointed at another origin', () => {
       backendHost('https://other.example.test')
       expect(mcpUrl()).toBe('')
@@ -65,12 +61,6 @@ describe('flags', () => {
     it('is empty on the web when the stored host is malformed', () => {
       backendHost('not a url')
       expect(mcpUrl()).toBe('')
-    })
-
-    it('keeps the merged per-server value in the native app', () => {
-      window.Capacitor = { isNativePlatform: () => true }
-      backendHost('https://other.example.test')
-      expect(mcpUrl()).toBe('https://serving.example.test/mcp')
     })
   })
 })
@@ -93,7 +83,7 @@ describe('locale and version', () => {
     window.econumoConfig = { VERSION: 'v9.9.9', VERSION_LABEL: 'demo-42' }
     expect(getVersionLabel()).toBe('demo-42')
     // The label never leaks back into the real version: analytics, the update
-    // check and the app's compatibility floors all read getVersion().
+    // check all read getVersion().
     expect(getVersion()).toBe('v9.9.9')
   })
 
@@ -132,32 +122,5 @@ describe('getInstanceId', () => {
   it('returns the configured instance id', () => {
     window.econumoConfig = { INSTANCE_ID: 'a3f19c02b7d4' }
     expect(getInstanceId()).toBe('a3f19c02b7d4')
-  })
-})
-
-describe('app mode', () => {
-  afterEach(() => {
-    delete (window as { Capacitor?: unknown }).Capacitor
-    localStorage.clear()
-  })
-
-  it('always allows the custom API in the native app', () => {
-    window.econumoConfig = { ALLOW_CUSTOM_API: false }
-    window.Capacitor = { isNativePlatform: () => true }
-    expect(isCustomApiAllowed()).toBe(true)
-  })
-
-  it('defaults backendHost to Econumo Cloud in the native app', () => {
-    window.econumoConfig = {}
-    window.Capacitor = { isNativePlatform: () => true }
-    expect(backendHost()).toBe('https://app.econumo.com')
-  })
-
-  it('keeps a stored self-hosted backendHost in the native app', () => {
-    window.econumoConfig = {}
-    window.Capacitor = { isNativePlatform: () => true }
-    selfHosted(true)
-    backendHost('https://my.server.example')
-    expect(backendHost()).toBe('https://my.server.example')
   })
 })

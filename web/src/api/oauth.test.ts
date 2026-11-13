@@ -20,7 +20,7 @@ it('start-login posts provider and client and returns the url with the flow secr
     body = await request.json()
     return HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/authorize?x=1', flow: 'f1' } })
   }))
-  expect(await startLogin('google', 'web')).toEqual({ url: 'https://idp/authorize?x=1', flow: 'f1' })
+  expect(await startLogin('google')).toEqual({ url: 'https://idp/authorize?x=1', flow: 'f1' })
   expect(body).toEqual({ provider: 'google', client: 'web' })
 })
 

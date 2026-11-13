@@ -20,6 +20,7 @@ func TestUpdateOnboardingRequestValidate(t *testing.T) {
 		{"completed", str("completed"), errs.CodeInvalidChoice},
 		{"mixed", str("plan,!import"), ""},
 		{"all", str("import,categories,!accounts,plan,!apple_wallet"), ""},
+		{"connect", str("import,categories,accounts,plan,!connect"), ""},
 		{"duplicate", str("plan,plan"), errs.CodeInvalidChoice},
 		{"duplicate skipped", str("plan,!plan"), errs.CodeInvalidChoice},
 		{"unknown", str("foo"), errs.CodeInvalidChoice},

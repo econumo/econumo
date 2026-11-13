@@ -14,7 +14,7 @@ func (s *Service) ApplyEventForTest(ctx context.Context, src *model.ImportSource
 	if err != nil {
 		return "", false, err
 	}
-	status, amountUpdated, _, err := s.applyEvent(ctx, src, eventID, ev, runID, correctAmount, rules)
+	status, amountUpdated, _, err := s.applyEvent(ctx, src, eventID, ev, runID, correctAmount, rules, nil)
 	return status, amountUpdated, err
 }
 
@@ -23,3 +23,5 @@ func (s *Service) ApplyEventForTest(ctx context.Context, src *model.ImportSource
 func (s *Service) LockSuggestOwnerForTest(owner vo.Id) func() { return s.suggestLocks.lock(owner) }
 
 const SuggestTimeoutForTest = suggestTimeout
+
+var CandidateLeg = candidateLeg

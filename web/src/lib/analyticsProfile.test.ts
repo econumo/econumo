@@ -1,6 +1,8 @@
 import { QueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/app/queryKeys'
 import { profileAttributes, setAnalyticsQueryClient } from './analyticsProfile'
+import { writeConfig } from '@/features/appLock/config'
+import { signIn, testConfig } from '@/features/appLock/testUtils'
 
 const ME = 'u1'
 const OWNER = { id: ME } as const
@@ -179,9 +181,33 @@ describe('months_since_signup', () => {
   })
 })
 
-it('is empty with no client', () => {
+it('holds only the device facts with no client', () => {
   setAnalyticsQueryClient(null)
-  expect(profileAttributes()).toEqual({})
+  expect(profileAttributes()).toEqual({ app_lock: 'off' })
+})
+
+describe('app_lock', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    signIn('u1')
+  })
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('is off without a lock for the signed-in user', () => {
+    expect(profileAttributes().app_lock).toBe('off')
+    writeConfig(testConfig({ userId: 'someone-else' }))
+    expect(profileAttributes().app_lock).toBe('off')
+  })
+
+  it('reports the secret kind, read at capture time', () => {
+    writeConfig(testConfig())
+    expect(profileAttributes().app_lock).toBe('pin')
+    writeConfig(testConfig({ secret: { ...testConfig().secret, kind: 'pattern', length: 5 } }))
+    expect(profileAttributes().app_lock).toBe('pattern')
+  })
+
 })
 
 it('reports apple-wallet on/off from the source list and omits it while unknown', () => {

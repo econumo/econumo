@@ -118,6 +118,10 @@ ORDER BY created_at, id
 DELETE FROM import_events WHERE id = $1
 ;
 
+-- name: DeleteImportTransactionLink :exec
+DELETE FROM import_transaction_links WHERE id = $1
+;
+
 -- name: ListImportEventsBySourceStatus :many
 SELECT id, source_id, run_id, payload, payload_hash, status, parse_error, received_at
 FROM import_events

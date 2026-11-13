@@ -12,6 +12,8 @@ import i18n from '@/app/i18n'
 import { ProfilePage } from './ProfilePage'
 import { ThemeProvider } from '@/app/ThemeProvider'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { writeConfig } from '@/features/appLock/config'
+import { signIn, testConfig } from '@/features/appLock/testUtils'
 
 vi.mock('@/lib/metrics', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/metrics')>()),
@@ -430,4 +432,26 @@ it('offline the name reads as plain text in its card: read-only, no grey bar beh
   expect(nameInput.className).not.toMatch(/(^|\s)(dark:)?disabled:bg-input/)
   expect(nameInput.className).toContain('disabled:bg-transparent')
   expect(nameInput.className).toContain('dark:disabled:bg-transparent')
+})
+
+describe('App lock row', () => {
+  it('sits between Sessions and API tokens and says whether the lock is on', async () => {
+    signIn('u1')
+    renderPage()
+    const row = await screen.findByRole('link', { name: /App lock/ })
+    expect(row).toHaveAttribute('href', '/settings/profile/app-lock')
+    expect(row).toHaveTextContent('Off')
+    const links = screen.getAllByRole('link').map((l) => l.getAttribute('href'))
+    const at = links.indexOf('/settings/profile/app-lock')
+    expect(links[at - 1]).toBe('/settings/profile/sessions')
+    expect(links[at + 1]).toBe('/settings/profile/tokens')
+  })
+
+  it('reads On for the signed-in user’s lock', async () => {
+    signIn('u1')
+    writeConfig(testConfig())
+    renderPage()
+    expect(await screen.findByRole('link', { name: /App lock/ })).toHaveTextContent('On')
+  })
+
 })

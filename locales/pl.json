@@ -154,14 +154,6 @@
       "notice": "Econumo {version} jest już dostępne",
       "dismiss": "Ukryj"
     },
-    "serverUpdate": {
-      "notice": "Twój serwer Econumo ({version}) jest starszy niż ta aplikacja. Zaktualizuj serwer, aby korzystać z najnowszych funkcji."
-    },
-    "appUpdate": {
-      "title": "Wymagana aktualizacja",
-      "blockedApp": "Ta aplikacja jest zbyt stara dla Twojego serwera Econumo: wymagana jest wersja aplikacji {version} lub nowsza. Zaktualizuj aplikację, aby kontynuować.",
-      "blockedServer": "Ta aplikacja wymaga serwera Econumo {min} lub nowszego, a Twój serwer to {version}. Zaktualizuj serwer, aby kontynuować."
-    },
     "offline_unavailable": {
       "title": "Niedostępne offline",
       "text": "Te dane są niedostępne bez połączenia z internetem."
@@ -675,7 +667,7 @@
         "reconnect_intro": "Wklej nowy token konfiguracyjny z SimpleFIN Bridge. Poprzednie połączenie zostanie zastąpione; przypisania kont zostają zachowane.",
         "token_label": "Token konfiguracyjny",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → Nowe połączenie → skopiuj token konfiguracyjny. Token można wykorzystać tylko raz.",
+        "token_help": "{bridge} → Nowe połączenie → skopiuj token konfiguracyjny. Token można wykorzystać tylko raz.",
         "forgot_passphrase": "Nie pamiętam hasła, ustaw nowe",
         "passphrase_new": "Hasło",
         "passphrase_existing": "Twoje hasło",
@@ -849,7 +841,11 @@
       "waiting": "Ta transakcja czeka w skrzynce odbiorczej.",
       "deleted": "Ta transakcja została zaimportowana, a później usunięta.",
       "create": "Utwórz transakcję",
-      "unavailable": "Ta transakcja została zaimportowana, ale nie jest dla Ciebie dostępna."
+      "unavailable": "Ta transakcja została zaimportowana, ale nie jest dla Ciebie dostępna.",
+      "account": "Konto",
+      "reimport": "Importuj ponownie",
+      "reimport_hint": "Zaimportuj ją ponownie, aby ją przywrócić lub dopasować do transakcji wprowadzonej przez Ciebie, np. przelewu.",
+      "reimported": { "created": "Zaimportowano ponownie", "matched": "Dopasowano do istniejącej transakcji", "queued": "Zaimportowano ponownie; czeka w skrzynce odbiorczej", "skipped": "Nie dodano: pasuje reguła pomijania lub ignorowane konto" }
     },
     "suggestions": {
       "dismiss": "Odrzuć",
@@ -1191,10 +1187,6 @@
       "callback": {
         "signing_in": "Logowanie…"
       },
-      "app_return": {
-        "title": "Logowanie zakończone — wróć do aplikacji Econumo.",
-        "open_app": "Otwórz aplikację"
-      },
       "provider_name": {
         "google": "Google",
         "apple": "Apple",
@@ -1276,7 +1268,7 @@
       "accounts": "Konta",
       "plan": "Budżet i plan",
       "home_screen": "Zainstaluj aplikację",
-      "apple_wallet": "Apple Wallet",
+      "connect": "Połącz",
       "menu": "Menu",
       "finish": "Zakończ",
       "state_done": "gotowe",
@@ -1296,11 +1288,28 @@
       "install": "Zainstaluj",
       "done": "Gotowe"
     },
-    "wallet_step": {
-      "heading": "Płatności kartą zapisują się same",
-      "text": "Połącz Apple Wallet, a każda płatność kartą pojawi się w Econumo automatycznie.",
-      "setup": "Skonfiguruj",
-      "later": "Integrację z Apple Wallet możesz skonfigurować w dowolnym momencie później w Ustawieniach."
+    "connect_step": {
+      "heading": "Połącz swoje konta",
+      "text": "Niech transakcje pojawiają się same, bez ręcznego wpisywania.",
+      "apple_wallet": {
+        "title": "Apple Wallet",
+        "text": "Automatyzacja w aplikacji Skróty na iPhonie wysyła każdą płatność Apple Pay do Econumo.",
+        "link": "Skonfiguruj Apple Wallet"
+      },
+      "simplefin": {
+        "title": "SimpleFIN",
+        "text": "SimpleFIN Bridge to płatna usługa zewnętrzna, która łączy się z Twoim bankiem (głównie w USA i Kanadzie). Econumo pobiera z niej transakcje przy każdej synchronizacji.",
+        "link": "Skonfiguruj SimpleFIN",
+        "site": "Strona SimpleFIN Bridge"
+      },
+      "mcp": {
+        "title": "Asystenci AI (MCP)",
+        "text": "Dodaj ten adres do Claude, ChatGPT lub innej aplikacji obsługującej MCP, aby zarządzać swoimi finansami."
+      },
+      "copy": "Kopiuj",
+      "copied": "Skopiowano",
+      "later": "Możesz je skonfigurować później w Ustawieniach.",
+      "finish": "Zakończ konfigurację"
     },
     "retry": "Spróbuj ponownie",
     "save_continue": "Zapisz i przejdź dalej",
@@ -2216,6 +2225,70 @@
     "notice": "Co nowego w {version}",
     "dismiss": "Zamknij"
   },
+  "appLock": {
+    "settings": {
+      "menu_item": "Blokada aplikacji",
+      "title": "Blokada aplikacji",
+      "on": "Włączona",
+      "off": "Wyłączona",
+      "about": "Blokada chroni Econumo tylko na tym urządzeniu. Jeśli zapomnisz PIN-u lub wzoru, trzeba będzie zalogować się ponownie. Nie szyfruje danych zapisanych na urządzeniu.",
+      "enabled_label": "Blokada aplikacji",
+      "enabled_hint": "Pytaj o PIN lub wzór przy otwieraniu Econumo",
+      "change_secret": "Zmień PIN lub wzór",
+      "pin_changed": "PIN zmieniony",
+      "pattern_changed": "Wzór zmieniony",
+      "lock_after": {
+        "label": "Czas do blokady",
+        "immediately": "Natychmiast",
+        "one_minute": "1 minuta",
+        "five_minutes": "5 minut",
+        "fifteen_minutes": "15 minut"
+      },
+      "dialog": {
+        "create_title": "Ustaw PIN",
+        "create_title_pattern": "Narysuj wzór",
+        "new_title": "Ustaw nowy PIN",
+        "new_title_pattern": "Narysuj nowy wzór",
+        "current_title": "Wpisz obecny PIN",
+        "current_title_pattern": "Narysuj obecny wzór",
+        "confirm_title": "Wpisz PIN ponownie",
+        "confirm_title_pattern": "Narysuj wzór ponownie",
+        "pin_hint": "Od 4 do 8 cyfr",
+        "pattern_hint": "Połącz co najmniej 4 punkty",
+        "mismatch": "PIN-y nie są zgodne. Spróbuj ponownie.",
+        "mismatch_pattern": "Wzory nie są zgodne. Spróbuj ponownie.",
+        "kind_pin": "PIN",
+        "kind_pattern": "Wzór",
+        "save": "Zapisz"
+      }
+    },
+    "lock_screen": {
+      "title": "Wpisz PIN",
+      "title_pattern": "Narysuj wzór",
+      "wrong_pin": "Nieprawidłowy PIN",
+      "wrong_pattern": "Nieprawidłowy wzór",
+      "attempts_left": "Pozostała {count} próba | Pozostały {count} próby | Pozostało {count} prób",
+      "try_again_in": "Spróbuj ponownie za {time}",
+      "forgot_pin": "Nie pamiętasz PIN-u?",
+      "forgot_pattern": "Nie pamiętasz wzoru?",
+      "forgot_title": "Wylogować się, aby zresetować PIN?",
+      "forgot_title_pattern": "Wylogować się, aby zresetować wzór?",
+      "forgot_question": "Trzeba będzie zalogować się ponownie.",
+      "forgot_confirm": "Wyloguj się"
+    },
+    "pin_pad": {
+      "entered": "Wpisane cyfry: {count}",
+      "delete": "Usuń cyfrę",
+      "continue": "Dalej"
+    },
+    "pattern_pad": {
+      "grid": "Wzór",
+      "dot": "Punkt {n}",
+      "too_short": "Połącz co najmniej 4 punkty",
+      "clear": "Wyczyść",
+      "done": "Gotowe"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "Ta wartość nie powinna być pusta.",
@@ -2302,6 +2375,7 @@
       "link_not_queued": "To zdarzenie nie czeka na sprawdzenie.",
       "link_not_skipped": "To zdarzenie nie jest pominięte.",
       "event_not_failed": "To zdarzenie nie zakończyło się błędem.",
+      "link_not_deleted": "Ta transakcja nie została usunięta.",
       "setup_token_rejected": "SimpleFIN odrzucił ten token konfiguracyjny. Mógł już zostać użyty; utwórz nowy w SimpleFIN Bridge.",
       "provider_unavailable": "Nie udało się połączyć z SimpleFIN. Spróbuj ponownie za kilka minut.",
       "sync_range_invalid": "Zakres dat jest nieprawidłowy: data początkowa nie może być późniejsza niż końcowa, a zakres nie może przekraczać 400 dni.",

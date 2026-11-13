@@ -206,9 +206,8 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	}
 	allowCustom := false
 	h := router.New(router.Deps{
-		SPA:           os.DirFS(dir),
-		MinAppVersion: "v9.9.9",
-		MCPURL:        "https://econumo.example.test/mcp",
+		SPA:    os.DirFS(dir),
+		MCPURL: "https://econumo.example.test/mcp",
 		Cfg: config.Config{
 			AllowCustomAPI: &allowCustom,
 			BillingURL:     "https://pay.example.test/cloud/",
@@ -223,8 +222,8 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	// The document is now generated ENTIRELY by the router (no merge against
 	// the dist file), so every key is present: the ones explicitly set above,
 	// plus every other key at its default (LILTAG_CONFIG_URL, LILTAG_CACHE_TTL,
-	// INSTANCE_ID, VERSION, VERSION_LABEL, VERSION_REF, IMPORT_MATCHER) and MIN_APP_VERSION because it was set.
-	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","FEEDBACK":true,"IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"IMPORT_SIMPLEFIN":true,"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MCP_URL":"https://econumo.example.test/mcp","MIN_APP_VERSION":"v9.9.9","PASSWORD_LOGIN":true,"VERSION":null,"VERSION_LABEL":null,"VERSION_REF":""};`
+	// INSTANCE_ID, VERSION, VERSION_LABEL, VERSION_REF, IMPORT_MATCHER).
+	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","FEEDBACK":true,"IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"IMPORT_SIMPLEFIN":true,"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MCP_URL":"https://econumo.example.test/mcp","PASSWORD_LOGIN":true,"VERSION":null,"VERSION_LABEL":null,"VERSION_REF":""};`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
 	}
@@ -274,9 +273,9 @@ func TestRuntimeConfigOverrides_EmptyMCPURLIsMerged(t *testing.T) {
 
 // With everything left at zero value, every key the router owns is still
 // present in the served document — carrying its default, matching what
-// web/public/econumo-config.js hard-codes — except MIN_APP_VERSION (still
-// conditional) and ANALYTICS (no longer a config key at all, see
-// ECONUMO_ANALYTICS in CLAUDE.md).
+// web/public/econumo-config.js hard-codes — except ANALYTICS (no longer a
+// config key at all, see ECONUMO_ANALYTICS in CLAUDE.md) and MIN_APP_VERSION
+// (the removed mobile app's version floor).
 func TestRuntimeConfigOverrides_UnsetKeysGetDefaults(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
@@ -403,55 +402,9 @@ func TestRuntimeConfigOverrides_LiltagAndVersion(t *testing.T) {
 	}
 }
 
-// The two platform association documents live on the ROOT mux (outside /api,
-// like /health), because Apple and Google fetch them from fixed paths.
-func TestAppLinks_ServedWhenConfigured(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html><title>spa</title>"), 0o644); err != nil {
-		t.Fatalf("write index.html: %v", err)
-	}
-	cfg := config.Config{
-		AppLinksIOSAppIDs: []string{"ABCDE12345.com.econumo.app"},
-		AppLinksAndroid:   []config.AndroidAppLink{{Package: "com.econumo.app", Fingerprints: []string{"AA:BB"}}},
-	}
-	srv := httptest.NewServer(router.New(router.Deps{Cfg: cfg, SPA: os.DirFS(dir)}))
-	t.Cleanup(srv.Close)
-
-	for _, path := range []string{"/.well-known/apple-app-site-association", "/.well-known/assetlinks.json"} {
-		resp := get(t, srv, http.MethodGet, path)
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "application/json" {
-			t.Fatalf("%s: status=%d ct=%q", path, resp.StatusCode, resp.Header.Get("Content-Type"))
-		}
-		if !strings.Contains(string(body), "com.econumo.app") {
-			t.Fatalf("%s: body = %s", path, body)
-		}
-		// They run through the global chain, so a platform's fetch carries a
-		// request id and lands in the access log like any other request.
-		if resp.Header.Get("X-Request-Id") == "" {
-			t.Fatalf("%s: no X-Request-Id — not wrapped in the global middleware chain", path)
-		}
-	}
-}
-
-// With no app associated the paths must 404 rather than fall through to the SPA
-// shell: an OS fetching an association document has to see "no app here".
-func TestAppLinks_NotServedWhenUnconfigured(t *testing.T) {
-	srv := newServer(t, nil)
-	for _, path := range []string{"/.well-known/apple-app-site-association", "/.well-known/assetlinks.json"} {
-		resp := get(t, srv, http.MethodGet, path)
-		resp.Body.Close()
-		if resp.StatusCode != http.StatusNotFound {
-			t.Fatalf("%s: status=%d want 404", path, resp.StatusCode)
-		}
-	}
-}
-
 // VERSION_LABEL is display-only and independent of VERSION: ECONUMO_VERSION
 // relabels the UI for a demo/staging box, while VERSION keeps reporting the
-// real binary so analytics, the update check and the mobile app's
-// compatibility floors never compare against a made-up label.
+// real binary so analytics and the update check never compare against a made-up label.
 func TestRuntimeConfigOverrides_VersionLabelIsIndependentOfVersion(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {

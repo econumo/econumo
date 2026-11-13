@@ -4,6 +4,7 @@ package apiparity
 // engines store the same keys; the comparison is over the API RESPONSES.
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -100,6 +101,8 @@ const (
 	ImportEventQueued = "0e000000-0000-0000-0000-000000000001" // processed event behind ImportLinkQueued
 	ImportLinkQueued  = "0d000000-0000-0000-0000-000000000002" // "wallet" tap-2, queued (card unmapped)
 	ImportEventFailed = "0e000000-0000-0000-0000-000000000002" // unparsable payload awaiting retry/discard
+	ImportEventGone   = "0e000000-0000-0000-0000-000000000003" // bank row behind ImportLinkGone
+	ImportLinkGone    = "0d000000-0000-0000-0000-000000000005" // bank seed-0, its transaction deleted (tombstone)
 	ImportLinkEuro    = "0d000000-0000-0000-0000-000000000003" // "eurocard" tap-9, queued, EUR
 )
 
@@ -239,7 +242,10 @@ func Seed(t testing.TB, db *dbtest.DB) {
 		Status: model.ImportRunStatusCompleted, ImportedCount: 2, StartedAt: seededRunAt, FinishedAt: &seededRunAt})
 	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: ImportSourceBank, RunID: ImportRunSeeded, ExternalAccountID: "ACT-CHK", ExternalTransactionID: "seed-1",
 		TransactionID: Txn2, Status: model.ImportLinkStatusLinked, ExternalPayee: "Seeded Shop", ExternalAmount: "12.50000000", ExternalCurrency: "USD", ExternalPostedAt: ClockTime})
-	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: ImportSourceBank, RunID: ImportRunSeeded, ExternalAccountID: "ACT-CHK", ExternalTransactionID: "seed-0",
+	f.ImportEvent(fixture.ImportEvent{ID: ImportEventGone, SourceID: ImportSourceBank,
+		Payload:    fmt.Sprintf(`{"externalAccountId":"ACT-CHK","transaction":{"id":"seed-0","posted":%d,"amount":"-3.00","payee":"Deleted Later","description":"Deleted Later"}}`, ClockTime.Unix()),
+		ReceivedAt: seededRunAt})
+	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkGone, EventID: ImportEventGone, SourceID: ImportSourceBank, RunID: ImportRunSeeded, ExternalAccountID: "ACT-CHK", ExternalTransactionID: "seed-0",
 		Status: model.ImportLinkStatusLinked, ExternalPayee: "Deleted Later", ExternalAmount: "3.00000000", ExternalCurrency: "USD", ExternalPostedAt: ClockTime})
 
 	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkTxn2, SourceID: ImportSourcePhone,

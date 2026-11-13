@@ -1,4 +1,4 @@
-import { mirrorWrite } from './appStorage'
+import { APP_LOCK_ATTEMPTS_KEY, APP_LOCK_CONFIG_KEY, APP_LOCK_FRESH_KEY } from '@/features/appLock/keys'
 
 const TOKEN_KEY = 'token'
 // The user the stored token was issued to. The transaction store's owner is
@@ -14,22 +14,52 @@ export function hasToken(): boolean {
   return getToken() !== null
 }
 
+let signInListener: (() => void) | null = null
+
+// The app lock registers here rather than being imported: it reads this module.
+export function setSignInListener(listener: (() => void) | null): void {
+  signInListener = listener
+}
+
+function lockOwner(): string | null {
+  try {
+    const owner: unknown = JSON.parse(localStorage.getItem(APP_LOCK_CONFIG_KEY) ?? 'null')?.userId
+    return typeof owner === 'string' ? owner : null
+  } catch {
+    return null
+  }
+}
+
+// Every sign-in passes here, so this is the one place that knows both who the
+// lock belongs to and who just signed in. Signing in proves more than the PIN
+// does: the attempt counter starts over and the tab is not locked.
+function startAppLockSession(userId: string | undefined): void {
+  const owner = lockOwner()
+  if (userId && owner !== null && owner !== userId) {
+    localStorage.removeItem(APP_LOCK_CONFIG_KEY)
+  }
+  localStorage.removeItem(APP_LOCK_ATTEMPTS_KEY)
+  try {
+    sessionStorage.setItem(APP_LOCK_FRESH_KEY, String(Date.now()))
+  } catch {
+    // Without the marker the reload after a password login asks for the PIN once.
+  }
+  signInListener?.()
+}
+
 export function setToken(token: string, userId?: string): void {
+  startAppLockSession(userId)
   localStorage.setItem(TOKEN_KEY, token)
-  mirrorWrite(TOKEN_KEY, token)
   if (userId) {
     localStorage.setItem(SESSION_USER_KEY, userId)
   } else {
     localStorage.removeItem(SESSION_USER_KEY)
   }
-  mirrorWrite(SESSION_USER_KEY, userId || null)
 }
 
 export function removeToken(): void {
   localStorage.removeItem(TOKEN_KEY)
-  mirrorWrite(TOKEN_KEY, null)
   localStorage.removeItem(SESSION_USER_KEY)
-  mirrorWrite(SESSION_USER_KEY, null)
 }
 
 export function getSessionUserId(): string | null {
@@ -43,7 +73,6 @@ export function rememberSessionUser(userId: string): void {
     return
   }
   localStorage.setItem(SESSION_USER_KEY, userId)
-  mirrorWrite(SESSION_USER_KEY, userId)
 }
 
 export function getItem(key: string): unknown {
@@ -61,10 +90,8 @@ export function getItem(key: string): unknown {
 export function setItem(key: string, value: unknown): void {
   const encoded = JSON.stringify(value)
   localStorage.setItem(key, encoded)
-  mirrorWrite(key, encoded)
 }
 
 export function removeItem(key: string): void {
   localStorage.removeItem(key)
-  mirrorWrite(key, null)
 }

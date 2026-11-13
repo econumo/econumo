@@ -79,6 +79,7 @@ type Querier interface {
 	DeleteImportSource(ctx context.Context, id string) error
 	DeleteImportSuggestion(ctx context.Context, id string) error
 	DeleteImportSuggestionLink(ctx context.Context, arg DeleteImportSuggestionLinkParams) error
+	DeleteImportTransactionLink(ctx context.Context, id string) error
 	// transactions_labels rows for this label are removed by ON DELETE CASCADE;
 	// unlike tags there is no SET NULL, because the link is a join table.
 	DeleteLabel(ctx context.Context, id string) error

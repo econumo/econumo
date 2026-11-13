@@ -267,14 +267,15 @@ type UpdateAIResult struct {
 
 // UpdateOnboardingRequest is the update-onboarding request body. Value is
 // "started" (nothing answered) or a comma-separated list of steps (import,
-// categories, accounts, plan, apple_wallet), each at most once with an optional
+// categories, accounts, plan, connect, and apple_wallet, which clients before the
+// connect step wrote), each at most once with an optional
 // "!" prefix meaning skipped. "completed" is refused: completion goes through
 // complete-onboarding.
 type UpdateOnboardingRequest struct {
 	Value *string `json:"value"`
 }
 
-var onboardingSteps = map[string]bool{"plan": true, "import": true, "apple_wallet": true, "categories": true, "accounts": true}
+var onboardingSteps = map[string]bool{"plan": true, "import": true, "apple_wallet": true, "connect": true, "categories": true, "accounts": true}
 
 func (r UpdateOnboardingRequest) Validate() error {
 	if r.Value == nil || *r.Value == "" {

@@ -14,7 +14,6 @@ function stubWorker(answer: boolean) {
 
 beforeEach(() => {
   vi.stubEnv('PROD', true)
-  delete window.Capacitor
 })
 
 afterEach(() => {
@@ -36,13 +35,6 @@ it('stops waiting for a worker that never answers', async () => {
   const done = refreshServiceWorkerCache()
   await vi.advanceTimersByTimeAsync(60_000)
   await expect(done).resolves.toBeUndefined()
-})
-
-it('does nothing in the native app', async () => {
-  const { postMessage } = stubWorker(true)
-  window.Capacitor = { isNativePlatform: () => true }
-  await refreshServiceWorkerCache()
-  expect(postMessage).not.toHaveBeenCalled()
 })
 
 describe('rememberRunningConfig', () => {
@@ -75,13 +67,6 @@ describe('rememberRunningConfig', () => {
 
   it('stores nothing when the page got no config', async () => {
     Reflect.deleteProperty(window, 'econumoConfig')
-    await rememberRunningConfig()
-    expect(put).not.toHaveBeenCalled()
-  })
-
-  it('stores nothing in the native app', async () => {
-    window.econumoConfig = { VERSION: 'dev' }
-    window.Capacitor = { isNativePlatform: () => true }
     await rememberRunningConfig()
     expect(put).not.toHaveBeenCalled()
   })

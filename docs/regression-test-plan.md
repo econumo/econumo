@@ -197,27 +197,13 @@ navigation (single-pane vs sidebar).
       linked to another Econumo user) returns to Settings → Profile → Linked
       accounts with the error banner there ("This external account is already
       linked to another Econumo account."), not to the login page; the banner
-      does not survive a reload. 📱 The app does the same via the deep link.
+      does not survive a reload.
 - [ ] RP-initiated logout (custom OIDC slot with an end-session endpoint):
       logging out redirects through the provider and back to `/login`.
-- [ ] Logging out of a Google/Apple session (or any provider in the app) ends
+- [ ] Logging out of a Google/Apple session ends
       the Econumo session and lands on `/login` with no interstitial notice —
       those providers publish no end-session endpoint, so there is no IdP
       redirect and nothing to confirm.
-- [ ] 📱 App: starting provider sign-in opens the in-app browser sheet, not an
-      embedded web view; completing sign-in returns to the app (the verified
-      `https://<backend>/oauth/app-return` link, or the
-      `com.econumo.app://oauth` scheme on a backend without app links) and the
-      sheet closes automatically. An expired or already-used attempt returns to
-      the app's login page with "The sign-in attempt expired or was already
-      used." (not a web page inside the sheet).
-- [ ] 📱 With app links configured, the return from the provider opens the app
-      directly; opening the return URL in a browser with the app not installed
-      shows the "return to the app" page with a single "Open the app" link (and
-      no handoff code visible in the page text).
-- [ ] 📱 App: tapping a provider button twice while the browser sheet is
-      opening starts ONE flow; the buttons stay disabled until the sheet
-      closes or the sign-in returns.
 - [ ] Web: with a custom backend selected (different origin than the page),
       no provider buttons are shown.
 - [ ] Web: with a custom backend selected (different origin than the page),
@@ -246,14 +232,6 @@ navigation (single-pane vs sidebar).
       email address already exists and can't be linked automatically. Contact
       your administrator." An account that linked the provider while passwords
       were on signs in through it normally.
-- [ ] 📱 App pointed at a backend with `ECONUMO_PASSWORD_LOGIN=false`: on a
-      cold start the login screen drops the password form as soon as that
-      server's config arrives (no restart needed). Typing the address of a
-      backend that allows passwords into the custom-server field brings the
-      password form back within a second; switching back hides it again. An
-      unreachable address shows the password form (the server then decides).
-      Switching from a backend with no providers to a provider-only one shows
-      the new backend's provider buttons (never an empty screen).
 - [ ] Web, `ECONUMO_PASSWORD_LOGIN=false` with a custom backend selected on a
       different origin: the password form is shown again (the provider buttons
       are not), since the serving instance's setting says nothing about that
@@ -264,7 +242,7 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 A fresh user lands on Getting started at `/` (on a phone too, instead
       of the nav list). Desktop shows a horizontal stepper (Import "optional",
       Categories, Accounts, Budget & plan, plus Install app where the browser
-      can install and Apple Wallet on an iPhone or Mac): done steps are filled
+      can install and Connect when it has something to offer): done steps are filled
       with ✓, skipped ones dashed, the selected one outlined. A phone shows
       "Getting started · N of M" over a segmented bar.
 - [ ] The stepper shows no focus outline after page load or a click; Tab
@@ -451,12 +429,19 @@ navigation (single-pane vs sidebar).
 - [ ] Steps per device: Install app appears only where the browser can
       install or show home-screen instructions (a standalone PWA shows
       none); the Install button or "Done" marks it done and Skip skips it. On
-      an iPhone or Mac, Apple Wallet appears with a line saying it can be set
-      up any time later in Settings (no Shortcut tile); Set up opens the Apple
-      Wallet settings, Skip skips it. When Categories and Accounts are both done, Set up first
-      skips every other open step and completes onboarding, then opens the Apple Wallet settings
-      (not `/budget`); if completing fails, the error shows, nothing navigates, and Finish then
-      opens the Apple Wallet settings. Install instructions render as a grouped rounded card
+      an iPhone or Mac, or with SimpleFIN on (https or localhost), or with an MCP address (https
+      `ECONUMO_URL`), the last step is "Connect your accounts"; with none of the three it is left
+      out. It shows a card per option: Apple Wallet (iPhone/Mac only) and SimpleFIN each with a
+      line of text and a "Set up …" link (SimpleFIN also has "SimpleFIN Bridge website" opening
+      https://bridge.simplefin.org/ in a new tab); AI assistants with the MCP address and a Copy button
+      (no link). The page's top-right "Complete setup" is hidden on this step; the step's own
+      "Complete setup" marks Connect done, skips every other open step, completes onboarding and
+      opens the budget. Having any import source ticks Connect. A user who answered the former
+      Apple Wallet step sees Connect with that answer. When Categories and Accounts are both done,
+      a "Set up …" link first skips every other open step and completes onboarding, then opens
+      that settings page (not `/budget`); otherwise it only opens the page. If completing fails,
+      the error shows, nothing navigates, and Finish then
+      opens that settings page. Install instructions render as a grouped rounded card
       with dividers and icon tiles.
 - [ ] An existing user who owns accounts (upgraded instance) is not sent to
       onboarding.
@@ -1079,6 +1064,8 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] The connect card and the foot of the connected page both say Econumo is not
       affiliated with SimpleFIN and that SimpleFIN Bridge is used at the user's own
       risk. 📱
+- [ ] Under the setup token field, "SimpleFIN Bridge" in the help line is a link that opens
+      https://bridge.simplefin.org/ in a new tab (in every UI language). 📱
 - [ ] Connect: after "Connect" the page lists the bridge's accounts under "Needs mapping",
       the source row reads "Never synced", and the network log shows
       `create-source` carrying `credentialCiphertext` starting `v1:` — the access
@@ -1157,6 +1144,12 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Run detail names each row's bank account the way the run summary does
       (the bank's own account name, falling back to the bridge id) — never a
       bare `ACT-…` id when the source's accounts are known. 📱
+- [ ] Sidebar sync button 📱: with SimpleFIN connected and unlocked on this device, a tap
+      also syncs SimpleFIN and, when anything came in, toasts "N imported, M matched, F
+      failed"; a second tap within 10 minutes (or a tap within 10 minutes of a sync from the
+      SimpleFIN page) only refreshes, no new run in Import history. After 10 minutes a tap
+      syncs again. Locked on this device, on plain http or with SimpleFIN off, a tap never
+      syncs and never asks for the passphrase. The SimpleFIN page's Sync now has no limit.
 - [ ] Settings → Data: "Sync SimpleFIN" is absent without a SimpleFIN
       source; with one and a locked device it navigates to Settings →
       SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
@@ -1168,8 +1161,24 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       status, counts and errors; a run opens its detail
       (`/settings/simplefin/history/<id>`, back returns to the list); a
       transaction deleted after import shows struck-through with "Deleted
-      since"; queued rows read "Waiting for review". Rows have no actions in
-      this version. 📱
+      since"; queued rows read "Waiting for review". Only a "Deleted since"
+      row opens: a dialog with the payee, amount, Account (the bank's name),
+      date, the deleted explanation and "Import again" (see below); the other
+      rows have no actions. 📱
+- [ ] Import again 📱: delete an imported SimpleFIN transaction, then sync again — it is
+      NOT re-imported. Open its "Deleted since" row in the run detail → "Import again":
+      the dialog closes with "Imported again", the row reads Imported (no strike-through)
+      in the same place in the same run, and the transaction is back on the account. Offline the button is
+      disabled. The same works for an Apple Wallet tap from Apple Wallet → Import history.
+- [ ] Card payment as a transfer 📱: enter a transfer checking → credit card by hand,
+      then sync SimpleFIN with both accounts mapped. The checking debit and the card's
+      payment credit (same amount, within 3 days) are both matched to that one transfer
+      (matched count 2, no new income or expense), in one sync or in two. A transfer in
+      two currencies matches the card side by the recipient amount. Fixing an earlier
+      wrong import: delete the income transaction the card payment created, enter the
+      transfer, open the deleted row → "Import again" toasts "Matched to an existing
+      transaction" and creates nothing; the run summary now counts it as matched (one
+      fewer imported, one more matched) and the row stays where it was.
 - [ ] Apple Wallet → status card → "Import history" (shown once a tap has
       arrived; `/settings/apple-wallet/history`; crumbs Settings › Apple
       Wallet) lists every tap newest first, grouped by day on the device's
@@ -1191,7 +1200,8 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       tap — the row reads Imported, it leaves the Inbox's Skipped list, and no
       unskip happens if the form is cancelled. A Waiting row says it is waiting
       in the Inbox and offers the same button; a Deleted-since row says it was
-      imported and deleted later, with no button.
+      imported and deleted later and offers "Import again" instead (no "Create
+      transaction").
 - [ ] Rate limits: the 6th `claim-setup-token` within 15 minutes and the 11th
       `sync-source` return 429 with the standard envelope.
 - [ ] Ingest-scoped PATs get 401 on every SimpleFIN endpoint; a read-only
@@ -2795,8 +2805,7 @@ User C sees none of it.
       email naming the provider (console transport prints it to server stdout
       in dev); linking a SECOND
       provider straight afterwards, without leaving the page, works the same
-      way (📱 especially in the app, where the deep link returns to the same
-      screen); unlinking a provider (with confirm dialog) removes it from the
+      way; unlinking a provider (with confirm dialog) removes it from the
       list AND emails the owner a notice naming the unlinked provider.
 - [ ] Linking a provider account that is ALREADY linked to this same Econumo
       account again (unlink then relink is a fresh link, so use a second pass
@@ -2837,6 +2846,92 @@ User C sees none of it.
       stored email to match; the same drift on an account that has a
       password, a second linked provider, or where the new email already
       belongs to another user leaves the stored email unchanged.
+
+- [ ] **App lock** 📱 (Settings → Profile → App lock, the row after Sessions,
+      reading On/Off): the page explains the lock covers this device only,
+      a forgotten PIN or pattern means logging in again and data on the device
+      is not encrypted. Turning the switch on asks for a PIN (4–8 digits, Continue
+      enabled from 4) and then for it again; typing a different PIN the second
+      time shows "The PINs don't match" and starts over; closing the dialog
+      leaves the lock off. After confirming, the switch reads on, the current
+      tab stays unlocked, and "Change PIN or pattern" and Lock after (default 1 minute)
+      appear; there is no biometrics option. Everything works offline.
+- [ ] App lock: "Change PIN or pattern" asks for the current PIN first (a wrong one says
+      "Wrong PIN" and counts towards the same limit as the lock screen; once
+      fewer than 5 attempts are left, "N attempts left" stays under the pad
+      after a wrong try and through the lockout countdown), then
+      the new one twice; the next lock asks for the new PIN. Turning the lock
+      off asks for the current PIN and the Profile row then reads Off.
+- [ ] App lock 📱 cold start: with the lock on, a new tab and opening the
+      installed PWA show the lock screen (logo, avatar, name, "Enter PIN") with
+      no balance or transaction visible; the right PIN opens the page that was
+      asked for.
+- [ ] App lock reload: with "1 minute", reloading an unlocked tab stays
+      unlocked; reloading after more than a minute away, reloading a locked
+      tab, or any reload with "Immediately" shows the lock screen.
+- [ ] App lock 📱 background timeout: with "1 minute", leaving the app for under
+      a minute returns unlocked and for over a minute returns locked; with
+      "Immediately" any switch away locks; a phone left asleep with the app
+      open past the timeout is locked on wake.
+- [ ] App lock 📱 app switcher: with the lock on, the app-switcher preview shows
+      the Econumo logo on a plain background, not the page (best effort: note
+      the platform if a snapshot still shows data).
+- [ ] App lock wrong PINs: dots shake and "Wrong PIN" shows; from the 5th
+      failure the keypad is disabled with a "Try again in 0:30" countdown
+      (longer after each further failure) that survives a reload; the
+      remaining attempts show once fewer than 5 are left; the 10th failure
+      logs out, and after logging back in as the same user the changes that
+      were waiting to be sent (make one offline first) are still sent. A right
+      PIN before that resets the count.
+- [ ] App lock "Forgot PIN?": confirming logs out; logging back in opens
+      without a PIN and the Profile row reads Off; the offline queue survives
+      as above.
+- [ ] App lock with two users on one browser: user A turns the lock on and logs
+      out; user B logs in and is never asked for a PIN, and B's Profile row
+      reads Off.
+- [ ] App lock fresh login: logging in with a password (or a provider) right
+      after a sign-out or a "Set a password" never asks for the PIN in that tab,
+      also with "Immediately". Turning the lock on right after a login and then
+      reloading shows the lock screen.
+- [ ] App lock in two tabs: with the lock on and tab 2 locked, logging out in
+      tab 1 reloads tab 2 onto the login page; changing the PIN (to another
+      length) or switching to a pattern in tab 1 reloads tab 2, whose lock
+      screen then matches; unlocking one tab never unlocks the other.
+- [ ] App lock on a plain-http instance (not localhost): the PIN lock works end
+      to end: the Profile row is a link, turning the lock on with a PIN works,
+      a reload shows the lock screen and the PIN unlocks it in about a second;
+      the settings page looks the same as over https.
+- [ ] App lock PIN pad 📱 (set-up sheet, settings prompts, lock screen; phone and
+      desktop, light and dark): the title, then the dots, then one quiet line
+      under them ("4 to 8 digits", attempts left, or the error in red) that
+      never makes the keypad jump; a typed digit fills its dot with a short
+      pop; set-up shows empty slots up to 4 that grow to 8; the delete key
+      appears only once something is typed and the key left of 0 stays blank; tapping a key leaves no focus
+      ring on it (Tab still shows one); a wrong PIN turns the dots red and
+      shakes them (no shake with reduced motion), then clears. Set-up's
+      "Continue"/"Save" is a full-width button in sentence case.
+- [ ] App lock pattern set-up 📱: the PIN | Pattern switch at the top of the set-up
+      dialog swaps the keypad for a 3x3 grid ("Draw a pattern", "Connect at least 4
+      dots") and back. A line follows the finger;
+      crossing a dot straight on (corner to corner) picks up the dot in
+      between; fewer than 4 dots shows "Connect at least 4 dots" in red and
+      clears; 4 or more ask to draw it again, a different second pattern says
+      "The patterns don't match" and starts over. Then the row "Change PIN or
+      pattern" shows "Pattern". Swiping on the grid never scrolls the page nor drags the sheet
+      closed; dragging the sheet by its handle still closes it.
+- [ ] App lock pattern unlock 📱: a reload shows "Draw your pattern" with the
+      grid; the
+      right pattern opens the app; a wrong one turns the line red with "Wrong
+      pattern" for a moment, clears, and counts towards the same 5-failure
+      lockout (grid greyed with the countdown) and 10-failure sign-out as a
+      PIN; a too-short pattern is not counted and says "Connect at least 4 dots"
+      even right after a wrong try; a fast flick that lifts on a dot keeps
+      that dot. "Forgot pattern?" logs out like
+      "Forgot PIN?". Change pattern and turning the lock off ask for the
+      current pattern; changing can switch to a PIN and back.
+- [ ] App lock pattern with a keyboard or screen reader: Tab reaches each dot
+      ("Dot 1" ... "Dot 9"); Enter or Space picks it (a single tap does the
+      same), Clear and Done appear, and Done submits once 4 dots are picked.
 
 ## 12a. Connected apps (MCP OAuth)
 
@@ -3020,8 +3115,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
 - [ ] 📱 One top banner at a time: with the subscription banner up (trial
       ending within 3 days, or read-only) the install banner is not shown
       under it; dismissing the subscription banner brings the install banner
-      back in its place. In the native app the server-version notice outranks
-      the install banner the same way.
+      back in its place.
 - [ ] 📱 Install banner, iOS Safari (not yet added to the Home Screen): a
       one-line banner "Econumo works best as an app" with an "Install" button
       and × sits at the top of every page — `/login`, `/register`, the app
@@ -3264,7 +3358,7 @@ and an MCP client — Claude Code (`claude mcp add --transport http econumo
       hidden after a reload and on the user's other devices. A user
       registered on the current version never sees it; a `dev` build or a
       downgrade shows nothing. Works for a read-only (lapsed) user too (no
-      402). Web and home-screen PWA only; the native app never shows it.
+      402).
 - [ ] Version label: with `ECONUMO_VERSION=demo-42` set at RUNTIME, the
       sidebar header and the settings version row both read `demo-42`, while
       the update notice above still compares the real binary version (so a

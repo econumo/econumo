@@ -1,4 +1,6 @@
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { ImportRunLinkDto } from '@/api/dto/imports'
 import { OfflineUnavailable } from '@/components/OfflineUnavailable'
 import { useUnavailableOffline } from '@/lib/offlineQuery'
 import { useParams } from 'react-router'
@@ -7,6 +9,7 @@ import { SettingsShell } from '@/features/settings/SettingsShell'
 import { apiErrorMessage } from '@/lib/apiError'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
+import { ImportedTapDialog } from './ImportedTapDialog'
 import { ImportRunSummary } from './ImportRunSummary'
 import { useImportRun, useImportSources } from './queries'
 import { rowStatus } from './runRows'
@@ -18,6 +21,7 @@ export function ImportRunPage() {
   const offline = useUnavailableOffline(detail)
   const { data: sources = [] } = useImportSources()
   const source = sources.find((s) => s.id === detail.data?.item.sourceId)
+  const [deleted, setDeleted] = useState<ImportRunLinkDto | null>(null)
   // A bridge account id ("ACT-…") means nothing to the user; the source's
   // cards carry the bank's own name for it.
   const accountName = (externalAccountId: string) =>
@@ -45,7 +49,7 @@ export function ImportRunPage() {
             ) : detail.data.links.map((link) => {
               const status = rowStatus(link)
               return (
-                <div key={link.id} className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm">
+                <RunRow key={link.id} onOpen={status === 'deleted' ? () => setDeleted(link) : undefined}>
                   <div className="min-w-0">
                     <div className={status === 'deleted' ? 'truncate line-through text-muted-foreground' : 'truncate'}>{link.externalPayee || link.externalTransactionId}</div>
                     <div className="text-xs text-muted-foreground">
@@ -53,12 +57,32 @@ export function ImportRunPage() {
                     </div>
                   </div>
                   <div className="shrink-0 tabular-nums">{moneyFormat(link.externalAmount, null, { showCurrency: false, useNativePrecision: false })} {link.externalCurrency}</div>
-                </div>
+                </RunRow>
               )
             })}
           </>
         ) : null}
       </div>
+      <ImportedTapDialog
+        row={deleted}
+        cardName={deleted ? accountName(deleted.externalAccountId) : ''}
+        cardLabel={t('imports.history.account')}
+        onClose={() => setDeleted(null)}
+      />
     </SettingsShell>
+  )
+}
+
+// A deleted row opens a dialog that can import it again; the others have
+// nothing to open.
+function RunRow({ onOpen, children }: { onOpen?: () => void; children: ReactNode }) {
+  const className = 'flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm'
+  if (!onOpen) {
+    return <div className={className}>{children}</div>
+  }
+  return (
+    <button type="button" onClick={onOpen} className={`${className} w-full text-left hover:bg-econumo-hover`}>
+      {children}
+    </button>
   )
 }

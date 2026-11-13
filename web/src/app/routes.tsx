@@ -8,7 +8,6 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RegistrationPage } from '@/features/auth/RegistrationPage'
 import { LogoutPage } from '@/features/auth/LogoutPage'
 import { OAuthCallbackPage } from '@/features/auth/OAuthCallbackPage'
-import { AppReturnPage } from '@/features/auth/AppReturnPage'
 import { HomePage } from '@/features/home/HomePage'
 import { AccountPage } from '@/features/accounts/AccountPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
@@ -17,6 +16,7 @@ import { ChangePasswordPage } from '@/features/settings/ChangePasswordPage'
 import { ChangeEmailPage } from '@/features/settings/ChangeEmailPage'
 import { SessionsPage } from '@/features/settings/SessionsPage'
 import { PersonalTokensPage } from '@/features/settings/PersonalTokensPage'
+import { AppLockPage } from '@/features/appLock/AppLockPage'
 import { LinkedAccountsPage } from '@/features/settings/LinkedAccountsPage'
 import { AccountsSettingsPage } from '@/features/accounts/AccountsSettingsPage'
 import { CategoriesPage } from '@/features/classifications/CategoriesPage'
@@ -55,7 +55,6 @@ export function createRouter() {
         },
         { path: '/logout', element: <LogoutPage /> },
         { path: '/oauth/callback', element: <OAuthCallbackPage /> },
-        { path: '/oauth/app-return', element: <AppReturnPage /> },
         {
           element: <RequireAuth />,
           children: [
@@ -75,6 +74,7 @@ export function createRouter() {
                 { path: '/settings/profile/change-email', element: <ChangeEmailPage /> },
                 { path: '/settings/profile/sessions', element: <SessionsPage /> },
                 { path: '/settings/profile/tokens', element: <PersonalTokensPage /> },
+                { path: '/settings/profile/app-lock', element: <AppLockPage /> },
                 { path: '/settings/profile/connected-apps', element: <ConnectedAppsPage /> },
                 { path: '/settings/profile/linked-accounts', element: <LinkedAccountsPage /> },
                 { path: '/settings/accounts', element: <AccountsSettingsPage /> },

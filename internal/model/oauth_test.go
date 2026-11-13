@@ -41,7 +41,8 @@ func TestStartOAuthRequestValidate(t *testing.T) {
 		want string // field key of the first error, "" when valid
 	}{
 		{StartOAuthRequest{Provider: "google", Client: "web"}, ""},
-		{StartOAuthRequest{Provider: "oidc", Client: "app"}, ""},
+		{StartOAuthRequest{Provider: "oidc", Client: "web"}, ""},
+		{StartOAuthRequest{Provider: "oidc", Client: "app"}, "client"},
 		{StartOAuthRequest{Provider: "github", Client: "web"}, "provider"},
 		{StartOAuthRequest{Provider: "", Client: "web"}, "provider"},
 		{StartOAuthRequest{Provider: "google", Client: "desktop"}, "client"},

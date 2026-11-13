@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { isIOS, isNativeApp } from '@/lib/platform'
+import { isIOS } from '@/lib/platform'
 
 // Chromium's install prompt; not in the DOM typings.
 interface BeforeInstallPromptEvent extends Event {
@@ -58,7 +58,7 @@ export function isStandalone(): boolean {
 }
 
 export function installMode(): InstallMode | null {
-  if (installed || isNativeApp() || isStandalone()) {
+  if (installed || isStandalone()) {
     return null
   }
   if (deferredPrompt) {

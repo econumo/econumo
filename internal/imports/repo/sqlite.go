@@ -91,6 +91,10 @@ func (sqliteQuerier) DeleteImportEvent(ctx context.Context, db backend.DBTX, id 
 	return sqlitegen.New(db).DeleteImportEvent(ctx, id)
 }
 
+func (sqliteQuerier) DeleteImportTransactionLink(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).DeleteImportTransactionLink(ctx, id)
+}
+
 func (sqliteQuerier) ListImportEventsBySourceStatus(ctx context.Context, db backend.DBTX, p eventsBySourceStatusPs) ([]eventRow, error) {
 	return sqlitegen.New(db).ListImportEventsBySourceStatus(ctx, p)
 }
