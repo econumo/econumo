@@ -21,6 +21,9 @@ import (
 // resolution failure) returns a non-nil error.
 func (s *Service) ImportTransactionList(ctx context.Context, userID vo.Id, req model.ImportRequest) (*model.ImportResult, error) {
 	result := &model.ImportResult{Errors: map[string][]int{}}
+	if s.icons != nil {
+		defer s.icons.ImportStarted(userID)()
+	}
 
 	if len(req.File) == 0 {
 		addImportError(result, "No file provided", 0)

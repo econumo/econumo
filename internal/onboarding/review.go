@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -141,12 +142,53 @@ func (s *Service) ReviewImportedIcons(ctx context.Context, userID vo.Id, categor
 	if created {
 		p.facts = facts
 	}
+	if s.iconInflight[key] == 0 {
+		s.rearmIconReview(userID, p)
+	}
+}
+
+// rearmIconReview restarts the quiet period of a pending review; the caller
+// holds iconsMu.
+func (s *Service) rearmIconReview(userID vo.Id, p *pendingIcons) {
 	p.gen++
 	if p.stop != nil {
 		p.stop()
 	}
 	gen := p.gen
 	p.stop = s.schedule(iconReviewQuiet, func() { s.startIconReview(userID, gen) })
+}
+
+// ImportStarted holds a pending review while a CSV import request is in
+// flight (a slow chunk must not let the quiet period of the previous one run
+// out mid-import). The returned release must be called when the request ends,
+// success or failure; it restarts the quiet period when ids are pending.
+func (s *Service) ImportStarted(userID vo.Id) (release func()) {
+	if s.completer == nil {
+		return func() {}
+	}
+	key := userID.String()
+	s.iconsMu.Lock()
+	s.iconInflight[key]++
+	if p := s.pendingIcons[key]; p != nil {
+		p.gen++
+		if p.stop != nil {
+			p.stop()
+		}
+	}
+	s.iconsMu.Unlock()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			s.iconsMu.Lock()
+			defer s.iconsMu.Unlock()
+			if s.iconInflight[key]--; s.iconInflight[key] <= 0 {
+				delete(s.iconInflight, key)
+				if p := s.pendingIcons[key]; p != nil {
+					s.rearmIconReview(userID, p)
+				}
+			}
+		})
+	}
 }
 
 // startIconReview runs the review a quiet period ended, unless a later chunk

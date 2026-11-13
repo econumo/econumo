@@ -365,3 +365,37 @@ func TestIconReview_TransientFailureRetriesOnce(t *testing.T) {
 		}
 	})
 }
+
+// A request that runs longer than the quiet period holds the earlier chunk's
+// pending review; a failed request releases it too.
+func TestIconReview_HeldWhileALaterRequestIsInFlight(t *testing.T) {
+	svc, ai, _, timers := newIconSvc(false)
+	ctx := context.Background()
+	user := vo.MustParseId(me)
+	svc.ReviewImportedIcons(ctx, user, ids(cat1), ids(acct1))
+	release := svc.ImportStarted(user)
+	timers.fire() // the old quiet period runs out during the slow request
+	if len(ai.calls) != 0 {
+		t.Fatalf("review fired mid-import: %d calls", len(ai.calls))
+	}
+	svc.ReviewImportedIcons(ctx, user, ids(cat2), nil)
+	timers.fire()
+	if len(ai.calls) != 0 {
+		t.Fatalf("review fired while a request was still in flight: %d calls", len(ai.calls))
+	}
+	release()
+	timers.fire()
+	if len(ai.calls) != 2 {
+		t.Fatalf("calls = %d, want one categories and one accounts request", len(ai.calls))
+	}
+
+	// a failing request releases without a commit and the pending ids still run
+	svc.ReviewImportedIcons(ctx, user, ids(cat1), nil)
+	release = svc.ImportStarted(user)
+	release()
+	release()
+	timers.fire()
+	if len(ai.calls) != 3 {
+		t.Fatalf("calls = %d after a failed request", len(ai.calls))
+	}
+}

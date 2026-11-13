@@ -62,10 +62,11 @@ type Service struct {
 
 	iconsMu      sync.Mutex
 	pendingIcons map[string]*pendingIcons
+	iconInflight map[string]int
 }
 
 func NewService(budgets BudgetWriter, accounts AccountReader, users UserFacts) *Service {
-	return &Service{budgets: budgets, accounts: accounts, users: users, run: GoRunner, schedule: AfterFunc, pendingIcons: map[string]*pendingIcons{}}
+	return &Service{budgets: budgets, accounts: accounts, users: users, run: GoRunner, schedule: AfterFunc, pendingIcons: map[string]*pendingIcons{}, iconInflight: map[string]int{}}
 }
 
 // SetAdvisor enables the background savings classification. A nil completer

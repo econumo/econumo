@@ -20,6 +20,9 @@ import (
 // import: AI being off, the user's opt-out and the per-user cap are its
 // concern.
 type ImportIconReviewer interface {
+	// ImportStarted holds a pending review while a request is in flight; its
+	// release runs when the request ends, however it ends.
+	ImportStarted(userID vo.Id) (release func())
 	ReviewImportedIcons(ctx context.Context, userID vo.Id, categoryIDs, accountIDs []vo.Id)
 }
 
