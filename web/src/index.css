@@ -471,7 +471,7 @@
    untappable the whole time. Same curve, so it is still the same sheet moving;
    the overlay matches it. Specificity beats vaul's own rules, which are injected
    into <head> at runtime and would otherwise win the tie. */
-[data-vaul-drawer][data-state='closed'] {
+[data-vaul-drawer][data-vaul-drawer-direction='bottom'][data-state='closed'] {
   animation-duration: 0.22s;
 }
 [data-vaul-overlay][data-vaul-snap-points='false'][data-state='closed'] {
