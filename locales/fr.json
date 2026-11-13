@@ -1102,8 +1102,8 @@
           "ai": {
             "menu_item": "Fonctionnalités d'IA",
             "label": "Utiliser les fonctionnalités d'IA",
-            "description": "Lorsque cette option est activée, le texte, le montant et la date de vos transactions importées ainsi que les noms de vos catégories, bénéficiaires et comptes sont envoyés au fournisseur d'IA configuré sur ce serveur pour suggérer des règles d'import, des icônes et des comptes d'épargne.",
-            "off_hint": "Lorsqu'elle est désactivée, rien de vos comptes n'est envoyé à l'IA et les suggestions de règles en attente sont supprimées."
+            "description": "Econumo peut utiliser l'IA pour suggérer des règles d'import, des icônes et des comptes d'épargne.",
+            "off_hint": "Les suggestions de l'IA sont désactivées et les suggestions de règles en attente sont supprimées."
           }
         }
       }

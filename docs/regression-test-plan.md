@@ -2721,8 +2721,8 @@ User C sees none of it.
 - [ ] AI features 📱 (Settings → Profile → Preferences, after Usage
       statistics): the row shows only when the server has an AI provider
       (`ECONUMO_AI_DSN`); without one it is absent. Tapping it opens a dialog
-      (bottom sheet on a phone) explaining what is sent, with a "Use AI
-      features" switch, on for a user who never touched it. The switch is
+      (bottom sheet on a phone) reading "Econumo can use AI to suggest import
+      rules, icons and savings accounts." with a "Use AI features" switch, on for a user who never touched it. The switch is
       disabled offline. Switching it off persists across a reload; a read-only
       user can still flip it. While off: open rule suggestions vanish from the
       Inbox at once and do not come back after switching on again; a new Apple
