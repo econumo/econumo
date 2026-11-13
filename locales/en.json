@@ -1098,8 +1098,8 @@
           "ai": {
             "menu_item": "AI features",
             "label": "Use AI features",
-            "description": "Econumo can use AI to suggest import rules, icons and savings accounts.",
-            "off_hint": "Turning it off stops AI suggestions and removes open rule suggestions."
+            "description": "AI helps you keep your finances organized and makes Econumo easier to use.",
+            "promise": "Your financial and personal data stays private and is never sent to AI."
           }
         }
       }

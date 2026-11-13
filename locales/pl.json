@@ -1098,8 +1098,8 @@
           "ai": {
             "menu_item": "Funkcje AI",
             "label": "Używaj funkcji AI",
-            "description": "Econumo może używać AI, aby proponować reguły importu, ikony i konta oszczędnościowe.",
-            "off_hint": "Wyłączenie zatrzymuje sugestie AI i usuwa oczekujące propozycje reguł."
+            "description": "AI pomaga utrzymać porządek w finansach i sprawia, że Econumo jest wygodniejsze w użyciu.",
+            "promise": "Twoje dane finansowe i osobowe pozostają prywatne i nie są przekazywane AI."
           }
         }
       }

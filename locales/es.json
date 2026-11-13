@@ -1098,8 +1098,8 @@
           "ai": {
             "menu_item": "Funciones de IA",
             "label": "Usar funciones de IA",
-            "description": "Econumo puede usar IA para sugerir reglas de importación, iconos y cuentas de ahorro.",
-            "off_hint": "Si lo desactivas, se detienen las sugerencias de IA y se eliminan las sugerencias de reglas pendientes."
+            "description": "La IA te ayuda a mantener tus finanzas en orden y hace que Econumo sea más fácil de usar.",
+            "promise": "Tus datos financieros y personales siguen siendo privados y no se envían a la IA."
           }
         }
       }

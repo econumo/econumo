@@ -310,8 +310,16 @@ it('turns AI features off, tracks it and refreshes the suggestions', async () =>
   const user = userEvent.setup()
   const queryClient = renderPage()
   queryClient.setQueryData(queryKeys.importSuggestions, [])
+  // like the analytics row: a plain row, the promise and the switch live in a dialog
+  expect(screen.queryByRole('switch', { name: /use ai features/i })).not.toBeInTheDocument()
   await user.click(await screen.findByRole('button', { name: 'AI features' }))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.USER_AI_SETTINGS_OPEN)
   const dialog = await screen.findByRole('dialog')
+  const texts = Array.from(dialog.querySelectorAll('p'), (p) => p.textContent)
+  expect(texts).toEqual([
+    'Your financial and personal data stays private and is never sent to AI.',
+    'AI helps you keep your finances organized and makes Econumo easier to use.',
+  ])
   const toggle = within(dialog).getByRole('switch', { name: /use ai features/i })
   expect(toggle).toBeChecked()
 

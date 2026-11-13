@@ -1098,8 +1098,8 @@
           "ai": {
             "menu_item": "Fonctionnalités d'IA",
             "label": "Utiliser les fonctionnalités d'IA",
-            "description": "Econumo peut utiliser l'IA pour suggérer des règles d'import, des icônes et des comptes d'épargne.",
-            "off_hint": "Si vous la désactivez, les suggestions d'IA s'arrêtent et les suggestions de règles en attente sont supprimées."
+            "description": "L'IA vous aide à garder vos finances en ordre et rend Econumo plus simple à utiliser.",
+            "promise": "Vos données financières et personnelles restent privées et ne sont pas transmises à l'IA."
           }
         }
       }

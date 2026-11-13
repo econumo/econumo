@@ -816,7 +816,11 @@ mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
 resolves after the first pageview), and is toggled via
 `POST /api/v1/user/update-analytics`. A per-user `ai` option (absent = on, `"0"` off) is
 the AI opt-out, toggled via `POST /api/v1/user/update-ai` (`{enabled}`, answers the user)
-from a Profile row shown only when the served `AI_ENABLED` is true; see `ECONUMO_AI_DSN`.
+from a Profile row shown only when the served `AI_ENABLED` is true; see `ECONUMO_AI_DSN`. The
+row and its dialog (`AiDialog`) mirror the analytics ones exactly: the privacy promise first
+("Your financial and personal data stays private and is never sent to AI."), then a deliberately
+generic muted description that never lists what the AI does, then the card with the switch;
+opening it fires `USER_AI_SETTINGS_OPEN`.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 

@@ -212,7 +212,10 @@ export function ProfilePage() {
         <button
           type="button"
           className="mt-2 flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
-          onClick={() => setAiOpen(true)}
+          onClick={() => {
+            trackEvent(METRICS.USER_AI_SETTINGS_OPEN)
+            setAiOpen(true)
+          }}
         >
           {t('user.page.settings.profile.ai.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />

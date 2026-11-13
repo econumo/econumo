@@ -1098,8 +1098,8 @@
           "ai": {
             "menu_item": "AI 功能",
             "label": "使用 AI 功能",
-            "description": "Econumo 可以使用 AI 推荐导入规则、图标和储蓄账户。",
-            "off_hint": "关闭后，将停止 AI 建议，并删除未处理的规则建议。"
+            "description": "AI 帮助您让财务井井有条，让 Econumo 更易于使用。",
+            "promise": "您的财务和个人数据始终保密，不会发送给 AI。"
           }
         }
       }

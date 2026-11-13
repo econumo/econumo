@@ -1098,8 +1098,8 @@
           "ai": {
             "menu_item": "KI-Funktionen",
             "label": "KI-Funktionen verwenden",
-            "description": "Econumo kann KI nutzen, um Importregeln, Symbole und Sparkonten vorzuschlagen.",
-            "off_hint": "Wenn Sie dies ausschalten, werden KI-Vorschläge beendet und offene Regelvorschläge entfernt."
+            "description": "KI hilft Ihnen, Ordnung in Ihren Finanzen zu halten, und macht Econumo einfacher zu bedienen.",
+            "promise": "Ihre finanziellen und persönlichen Daten bleiben privat und werden nicht an die KI übermittelt."
           }
         }
       }
