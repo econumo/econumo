@@ -168,11 +168,21 @@ func buildSuggestPrompt(rows []suggestRow, income bool, v suggestVocabulary, lan
 	return suggestSystemPrompt, string(b)
 }
 
+// replyJSON is the reply from its first "{" to its last "}": providers often
+// wrap the JSON in a code fence or a sentence.
+func replyJSON(reply string) []byte {
+	start, end := strings.Index(reply, "{"), strings.LastIndex(reply, "}")
+	if start < 0 || end <= start {
+		return []byte(reply)
+	}
+	return []byte(reply[start : end+1])
+}
+
 func parseSuggestReply(reply string) (map[string]suggestReplyRow, error) {
 	var out struct {
 		Rows map[string]suggestReplyRow `json:"rows"`
 	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(reply)), &out); err != nil {
+	if err := json.Unmarshal(replyJSON(reply), &out); err != nil {
 		return nil, err
 	}
 	if out.Rows == nil {
@@ -220,7 +230,7 @@ func parsePayeeReply(reply string) (map[string]string, error) {
 			PayeeID string `json:"payeeId"`
 		} `json:"rows"`
 	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(reply)), &out); err != nil {
+	if err := json.Unmarshal(replyJSON(reply), &out); err != nil {
 		return nil, err
 	}
 	if out.Rows == nil {

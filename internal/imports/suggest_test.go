@@ -597,3 +597,15 @@ func TestApplyPayeeReplyKeepsOnlyTheRowsCandidates(t *testing.T) {
 	_, added := replies["2"]
 	require.False(t, added)
 }
+
+// Providers often wrap the JSON in a code fence or a sentence.
+func TestParseRepliesReadFencedJSON(t *testing.T) {
+	m, err := parseSuggestReply("```json\n{\"rows\":{\"0\":{\"matchText\":\"x\"}}}\n```")
+	require.NoError(t, err)
+	require.Equal(t, "x", m["0"].MatchText)
+	p, err := parsePayeeReply("Here you go:\n```json\n{\"rows\":{\"1\":{\"payeeId\":\"abc\"}}}\n```")
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"1": "abc"}, p)
+	_, err = parseSuggestReply("```json\n```")
+	require.Error(t, err)
+}

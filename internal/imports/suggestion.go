@@ -418,7 +418,7 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 		MatchText string `json:"matchText"`
 	}
 	if err == nil {
-		err = json.Unmarshal([]byte(strings.TrimSpace(reply)), &parsed)
+		err = json.Unmarshal(replyJSON(reply), &parsed)
 	}
 	if err != nil {
 		slog.Warn("import match text failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))

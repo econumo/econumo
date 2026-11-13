@@ -742,3 +742,13 @@ func TestDismissCommittedAnswersEvenWhenTheListFails(t *testing.T) {
 		t.Fatal("suggestion still stored")
 	}
 }
+
+func TestSuggestMatchTextReadsAFencedReply(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "SQ *BLUE BOTTLE COFFEE #0423")
+	c.calls, c.reply = nil, "```json\n{\"matchText\":\"BLUE BOTTLE COFFEE\"}\n```"
+	res, err := suggestMatchText(h, userA, l)
+	if err != nil || res.MatchText != "BLUE BOTTLE COFFEE" {
+		t.Fatalf("result = %+v, %v", res, err)
+	}
+}
