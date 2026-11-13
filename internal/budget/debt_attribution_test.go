@@ -66,7 +66,8 @@ type attrHarness struct {
 var attrToday = time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
 
 // attrStart is the start date of the harness's loans; each also states its
-// balance now (as of the harness's today), so its figures follow from that.
+// balance now (as of the harness's today), so its figures follow from that at
+// the loan's rate (the origin's).
 var attrStart = "2026-01-01"
 
 func newAttrHarness(t *testing.T) *attrHarness {

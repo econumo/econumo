@@ -217,10 +217,11 @@ func termsFloats(t model.DebtTerms, digits int, origin bool) model.MathSnapshot 
 		Schedule: t.Schedule, Last: t.LastPaymentDate, Digits: digits, Origin: origin}
 }
 
-// validateTerms checks terms about to become a snapshot as of terms.AsOf
-// after the origin (a balance now), in a currency with the given fraction
-// digits. A balance of 0 needs no payments left.
-func validateTerms(t model.DebtTerms, digits int) error {
+// validateTerms checks terms about to become a statement as of terms.AsOf
+// after origin, in a currency with the given fraction digits. A balance of 0
+// needs no payments left; any other must be repayable by the regular payment
+// at the loan's rate (the origin's), which a statement keeps.
+func validateTerms(t, origin model.DebtTerms, digits int) error {
 	if err := validatePayment(t.Payment); err != nil {
 		return err
 	}
@@ -230,7 +231,10 @@ func validateTerms(t model.DebtTerms, digits int) error {
 	if !t.LastPaymentDate.After(t.AsOf) {
 		return fieldError("lastPaymentDate", "The last payment date must be after today.", errs.CodeDebtLastPaymentInPast)
 	}
-	return validateCover(t, digits, false)
+	if err := model.StatementRepayable(termsFloats(origin, digits, true), termsFloats(t, digits, false)); err != nil {
+		return paymentsDontCover()
+	}
+	return nil
 }
 
 // validateOrigin checks the loan's facts: the origin as of the start date,
@@ -248,16 +252,20 @@ func validateOrigin(o model.DebtTerms, today time.Time, digits int) error {
 	return validateCover(o, digits, true)
 }
 
-// validateCover: the payments due after the as-of day must repay the balance,
-// within the projection's horizon (an origin's first period prorated).
+// validateCover: the payments due after the origin's day must repay the
+// amount borrowed, within the projection's horizon (its first period prorated).
 func validateCover(t model.DebtTerms, digits int, origin bool) error {
 	if model.DebtTermTooLong(t.AsOf, t.LastPaymentDate) {
 		return fieldError("lastPaymentDate", "This value is out of range.", errs.CodeOutOfRange)
 	}
 	if _, err := model.SnapshotRate(termsFloats(t, digits, origin)); err != nil {
-		return fieldError("payment", "The payments do not cover the balance.", errs.CodeDebtPaymentsDontCover)
+		return paymentsDontCover()
 	}
 	return nil
+}
+
+func paymentsDontCover() error {
+	return fieldError("payment", "The payments do not cover the balance.", errs.CodeDebtPaymentsDontCover)
 }
 
 func validatePayment(p vo.DecimalNumber) error {

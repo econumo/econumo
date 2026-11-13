@@ -309,7 +309,7 @@ func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInpu
 				if err := laterConflict(t, origin); err != nil {
 					return err
 				}
-				if err := validateTerms(t, digits); err != nil {
+				if err := validateTerms(t, origin, digits); err != nil {
 					return err
 				}
 			}

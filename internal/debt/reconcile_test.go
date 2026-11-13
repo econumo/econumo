@@ -2,6 +2,8 @@ package debt_test
 
 import (
 	"context"
+	"math"
+	"strconv"
 	"testing"
 
 	"github.com/econumo/econumo/internal/model"
@@ -61,9 +63,8 @@ func TestReconcile_PastStatementResplitsTheLaterPayments(t *testing.T) {
 	if after[p1] != before[p1] {
 		t.Fatalf("split before the statement %s -> %s, want kept", before[p1], after[p1])
 	}
-	r, _ := model.SnapshotRate(model.MathSnapshot{AsOf: ymd(2025, 5, 15), Balance: 9000, Payment: 600,
-		Schedule: model.RecurringScheduleMonthly, Last: ymd(2027, 3, 1), Digits: 2})
-	if after[p2] != money(9000*r) {
+	// at the loan's rate, which a statement keeps
+	if r := originRate(t); after[p2] != money(9000*r) {
 		t.Fatalf("split after the statement = %s, want %s", after[p2], money(9000*r))
 	}
 	d := e.details(t, res.Id)
@@ -236,4 +237,59 @@ func TestMarkPaidOff_ReplacesTodaysStatement(t *testing.T) {
 	if len(snaps) != 2 || !snaps[1].Balance.IsZero() || got.IsPaidOff != 1 {
 		t.Fatalf("snapshots = %+v, result %+v", snaps, got)
 	}
+}
+
+// carLoan is the reported loan shifted a year back to the env's today
+// (2026-03-10): 16500 borrowed on 2025-05-15, 450 a month to 2029-03-10.
+func (e *env) carLoan(t *testing.T) (*model.DebtResult, float64) {
+	t.Helper()
+	res := e.create(t, func(r *model.CreateDebtRequest) {
+		r.AmountBorrowed, r.StartDate, r.Payment, r.LastPaymentDate = vo.NewFlexString("16500"), ptr("2025-05-15"), vo.NewFlexString("450"), "2029-03-10"
+	})
+	r, err := model.SnapshotRate(model.MathSnapshot{AsOf: ymd(2025, 5, 15), Balance: 16500, Payment: 450,
+		Schedule: model.RecurringScheduleMonthly, Last: ymd(2029, 3, 10), Digits: 2, Origin: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return res, r
+}
+
+// A statement far below Econumo's balance keeps the loan's rate and moves the
+// payoff: fewer payments left, an earlier payoff, interest at the loan's rate.
+func TestReconcile_LowerStatementMovesThePayoff(t *testing.T) {
+	e := newEnv(t)
+	res, loanRate := e.carLoan(t)
+	got, err := e.reconcile(res.Id, "10000", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rate, _ := strconv.ParseFloat(got.PeriodRate, 64)
+	if math.Abs(rate-loanRate) > 1e-9 {
+		t.Fatalf("periodRate = %s, want the loan's %v", got.PeriodRate, loanRate)
+	}
+	if got.PaymentsLeft >= 30 || got.PayoffDate >= "2029-03-10" || got.LastPaymentDate != "2029-03-10" {
+		t.Fatalf("payments left %d, payoff %s, last payment %s; want well below 36 and before 2029-03-10, the contract kept",
+			got.PaymentsLeft, got.PayoffDate, got.LastPaymentDate)
+	}
+	f := e.forecast(t, res.Id)
+	if len(f.Items) != got.PaymentsLeft || f.Items[0].Interest != money(10000*loanRate) {
+		t.Fatalf("forecast = %d items, first %+v; want %d, interest %s", len(f.Items), f.Items[0], got.PaymentsLeft, money(10000*loanRate))
+	}
+	t.Logf("payments left %d, payoff %s, next interest %s", got.PaymentsLeft, got.PayoffDate, f.Items[0].Interest)
+}
+
+// A statement above what the contract's dues could repay is accepted at the
+// loan's rate; one the payment can never repay is refused.
+func TestReconcile_StatementMustBeRepayableAtTheLoansRate(t *testing.T) {
+	e := newEnv(t)
+	res, loanRate := e.carLoan(t)
+	got, err := e.reconcile(res.Id, "20000", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PayoffDate <= "2029-03-10" {
+		t.Fatalf("payoff %s, want after the contract's last payment", got.PayoffDate)
+	}
+	_, err = e.reconcile(res.Id, money(450/loanRate+1), "")
+	requireField(t, err, "payment", errs.CodeDebtPaymentsDontCover)
 }

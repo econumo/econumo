@@ -13,8 +13,9 @@ import (
 
 // ReconcileDebt states a set-up debt's balance from a statement, as of its
 // date (today when none): a snapshot under the latest terms that overrides
-// what the recorded payments give from that date on. A statement on a date
-// that already has one replaces it.
+// what the recorded payments give from that date on, at the loan's rate, so
+// it moves the payoff rather than the rate. A statement on a date that
+// already has one replaces it.
 func (s *Service) ReconcileDebt(ctx context.Context, userID vo.Id, req model.ReconcileDebtRequest) (*model.DebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -111,11 +112,11 @@ func (s *Service) withSetUpDebt(ctx context.Context, userID, id vo.Id,
 // validateStatement checks a statement balance as of t.AsOf, which must lie
 // after the loan's start (a balance on the start day is the amount borrowed,
 // corrected in the loan's facts) and no later than today.
-func validateStatement(t model.DebtTerms, start, today time.Time, digits int) error {
-	if !t.AsOf.After(start) || t.AsOf.After(today) {
+func validateStatement(t, origin model.DebtTerms, today time.Time, digits int) error {
+	if !t.AsOf.After(origin.AsOf) || t.AsOf.After(today) {
 		return fieldError("balanceDate", "This value is out of range.", errs.CodeOutOfRange)
 	}
-	return validateTerms(t, digits)
+	return validateTerms(t, origin, digits)
 }
 
 // writeStatement validates a statement balance on a set-up debt and stores it.
@@ -127,7 +128,7 @@ func (s *Service) writeStatement(ctx context.Context, cur *model.Debt, t model.D
 	if len(snaps) == 0 {
 		return errs.NewNotFound("Debt not found")
 	}
-	if err := validateStatement(t, snaps[0].AsOf, today, digits); err != nil {
+	if err := validateStatement(t, snapshotTerms(snaps[0]), today, digits); err != nil {
 		return err
 	}
 	return s.storeStatement(ctx, cur, t)

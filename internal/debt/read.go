@@ -135,8 +135,7 @@ func (s *Service) result(st *debtState, proj model.Projection, b model.DebtBudge
 	res.MoneyLeft, res.OverpaymentLeft = amountString(proj.MoneyLeft, digits), amountString(proj.OverpaymentLeft, digits)
 	res.OverpaidSoFar, res.PayoffDate = amountString(proj.OverpaidSoFar, digits), dateString(payoff)
 	res.NextDueDate, res.ExtraPaid = dateString(proj.NextDueDate), amountString(proj.ExtraPaid, digits)
-	snaps := st.mathSnaps()
-	res.PeriodRate = strconv.FormatFloat(model.PeriodRate(snaps[len(snaps)-1]), 'f', 10, 64)
+	res.PeriodRate = strconv.FormatFloat(model.PeriodRate(st.mathSnaps()), 'f', 10, 64)
 	return res
 }
 

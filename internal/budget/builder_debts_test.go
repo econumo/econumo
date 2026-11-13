@@ -101,12 +101,24 @@ func TestGetBudget_DebtRowFigures(t *testing.T) {
 	debtID := h.createRefDebt(t, nil)
 	h.setLimit(t, debtID, "2026-06-01", "2000")
 
-	r, err := model.ImpliedRate(300000, 2000, 240, 2)
+	// The statement of 300000 today keeps the loan's rate, the origin's (its
+	// first period prorated), so a full period's interest from today leaves a
+	// small 241st payment: one more than the contract.
+	r, err := model.SnapshotRate(model.MathSnapshot{AsOf: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), Balance: 300000, Payment: 2000,
+		Schedule: model.RecurringScheduleMonthly, Last: time.Date(2046, 5, 20, 0, 0, 0, 0, time.UTC), Digits: 2, Origin: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	juneClosing := 300000*(1+r) - 2000
 	julyClosing := juneClosing*(1+r) - 2000
+	paid, n := 0.0, 0
+	for b := 300000.0; b >= 0.015; n++ {
+		pay := math.Min(2000, b*(1+r))
+		b, paid = b*(1+r)-pay, paid+pay
+	}
+	if n != 241 {
+		t.Fatalf("reference run = %d payments, want 241", n)
+	}
 
 	june := debtRow(h.budgetAt(t, h.owner, "2026-06-01"), debtID)
 	if june == nil {
@@ -119,13 +131,13 @@ func TestGetBudget_DebtRowFigures(t *testing.T) {
 		t.Errorf("June planned/paid = %+v, want 2000 / 2000 / available 0", june)
 	}
 	nearAmount(t, "June closing", june.ClosingBalance, juneClosing, 0.02)
-	if june.PaymentsLeft != 239 || june.ScheduledTotal != "2000" || june.Upcoming != "2000" || june.IsPlannable != 1 || june.IsPaidOff != 0 {
-		t.Errorf("June schedule = %+v, want 239 left, 2000 scheduled and still due", june)
+	if june.PaymentsLeft != 240 || june.ScheduledTotal != "2000" || june.Upcoming != "2000" || june.IsPlannable != 1 || june.IsPaidOff != 0 {
+		t.Errorf("June schedule = %+v, want 240 left, 2000 scheduled and still due", june)
 	}
-	if june.PayoffDate != "2046-05-20" || june.BasePayoffDate != "2046-05-20" {
-		t.Errorf("payoff = %s / base %s, want 2046-05-20", june.PayoffDate, june.BasePayoffDate)
+	if june.PayoffDate != "2046-06-20" || june.BasePayoffDate != "2046-06-20" {
+		t.Errorf("payoff = %s / base %s, want 2046-06-20", june.PayoffDate, june.BasePayoffDate)
 	}
-	nearAmount(t, "overpayment left", june.OverpaymentLeft, 180000, 1)
+	nearAmount(t, "overpayment left", june.OverpaymentLeft, paid-300000, 1)
 
 	july := debtRow(h.budgetAt(t, h.owner, "2026-07-01"), debtID)
 	if july == nil {
@@ -135,8 +147,8 @@ func TestGetBudget_DebtRowFigures(t *testing.T) {
 		t.Errorf("July planned/paid = %+v, want nothing (June's plan was paid)", july)
 	}
 	nearAmount(t, "July closing", july.ClosingBalance, julyClosing, 0.02)
-	if july.PaymentsLeft != 238 || july.Upcoming != "2000" {
-		t.Errorf("July = %d left, %s still due; want 238, 2000", july.PaymentsLeft, july.Upcoming)
+	if july.PaymentsLeft != 239 || july.Upcoming != "2000" {
+		t.Errorf("July = %d left, %s still due; want 239, 2000", july.PaymentsLeft, july.Upcoming)
 	}
 
 	if may := debtRow(h.budgetAt(t, h.owner, "2026-05-01"), debtID); may != nil {
@@ -237,9 +249,11 @@ func TestGetBudget_PartnerDebtRowVisible(t *testing.T) {
 	h.f.BudgetAccess(h.budgetID, partner, int(model.BudgetRoleUser), true)
 	h.f.BudgetAccess(h.budgetID, guest, int(model.BudgetRoleGuest), true)
 	car := h.f.Category(fixture.Category{UserID: partner, Name: "Car loan"})
+	// twelve dues of 500 repay the 6000 borrowed: interest-free
+	start := "2026-06-01"
 	res, err := h.debts.CreateDebt(h.ctx, vo.MustParseId(partner), model.CreateDebtRequest{
 		BudgetId: h.budgetID, Name: "Car", CurrencyId: fixture.USD, Rules: rules(car),
-		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("6000"), Balance: vo.NewFlexString("6000"), Payment: vo.NewFlexString("500"),
+		StartDate: &start, AmountBorrowed: vo.NewFlexString("6000"), Balance: vo.NewFlexString("6000"), Payment: vo.NewFlexString("500"),
 		Schedule: "monthly", LastPaymentDate: "2027-05-20",
 	})
 	if err != nil {

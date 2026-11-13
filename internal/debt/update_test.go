@@ -52,8 +52,10 @@ func TestUpdateDebt_ValidatesChangedTermsOnly(t *testing.T) {
 	res := e.create(t, nil)
 	e.clock.now = e.clock.now.AddDate(0, 0, 1)
 
+	// a balance whose interest at the loan's rate (about 3% a month) exceeds
+	// the payment of 1000 is never repaid
 	req := e.updateReq(res)
-	req.Balance = vo.NewFlexString("30000")
+	req.Balance = vo.NewFlexString("50000")
 	_, err := e.svc.UpdateDebt(ctx, e.uid(), req)
 	requireCode(t, err, errs.CodeDebtPaymentsDontCover)
 

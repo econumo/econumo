@@ -719,7 +719,7 @@ func TestProjectDebt_PaymentsAreTheRunItself(t *testing.T) {
 	if len(p.Payments) != p.PaymentsLeft || p.PaymentsLeft == 0 {
 		t.Fatalf("payments = %d, PaymentsLeft = %d", len(p.Payments), p.PaymentsLeft)
 	}
-	rate := PeriodRate(snap)
+	rate := PeriodRate([]MathSnapshot{snap})
 	balance, total := 1000.0, 0.0
 	for i, pay := range p.Payments {
 		near(t, "interest", pay.Interest, balance*rate, 1e-9)
@@ -969,4 +969,100 @@ func TestProjectDebt_ExtraPaidUsesThePaymentInForce(t *testing.T) {
 	snaps := []MathSnapshot{origin, rec}
 	pays := []MathPayment{pay("jun", ymd(2026, time.June, 10), 600), pay("aug", ymd(2026, time.August, 10), 600)}
 	near(t, "extra paid", extraPaidOf(snaps, pays, ymd(2026, time.November, 11)), 150+100, 1e-9)
+}
+
+// carLoan is the reported loan: 16500 borrowed on 2026-05-15, 450 a month to
+// 2030-03-10.
+func carLoan() MathSnapshot {
+	return MathSnapshot{AsOf: ymd(2026, time.May, 15), Balance: 16500, Payment: 450, Schedule: RecurringScheduleMonthly,
+		Last: ymd(2030, time.March, 10), Digits: 2, Origin: true}
+}
+
+// statementOf is a statement on the car loan, under its terms.
+func statementOf(origin MathSnapshot, asOf time.Time, balance float64) MathSnapshot {
+	s := origin
+	s.AsOf, s.Balance, s.Origin = asOf, balance, false
+	return s
+}
+
+// A statement keeps the loan's rate (the origin's): one lower than Econumo's
+// balance shortens the loan and moves the payoff earlier instead of raising
+// the rate; the interest after it is the statement balance at the loan's rate.
+func TestProjectDebt_LowerStatementKeepsTheLoansRate(t *testing.T) {
+	origin := carLoan()
+	loanRate, err := SnapshotRate(origin)
+	if err != nil || loanRate <= 0 {
+		t.Fatalf("loan rate = %v, %v", loanRate, err)
+	}
+	today := ymd(2026, time.November, 12)
+	snaps := []MathSnapshot{origin, statementOf(origin, today, 10000)}
+	if got := PeriodRate(snaps); math.Abs(got-loanRate) > 1e-12 {
+		t.Fatalf("rate in force = %v, want the loan's %v", got, loanRate)
+	}
+	before := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{origin}, Today: today})
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: snaps, Today: today})
+	if p.PaymentsLeft >= before.PaymentsLeft || p.PaymentsLeft > 30 || !p.PayoffDate.Before(origin.Last) {
+		t.Fatalf("payments left %d (was %d), payoff %v; want fewer and before %v", p.PaymentsLeft, before.PaymentsLeft, p.PayoffDate, origin.Last)
+	}
+	near(t, "first projected interest", p.Payments[0].Interest, 10000*loanRate, 1e-6)
+
+	pay := MathPayment{ID: "dec", Date: ymd(2026, time.December, 10), Amount: 450}
+	near(t, "split after the statement", SplitPayments(snaps, []MathPayment{pay})["dec"], 10000*loanRate, 1e-6)
+	months := []time.Time{ymd(2026, time.November, 1)}
+	m := ProjectDebt(ProjectionInput{Digits: 2, Snaps: snaps, Today: today, Months: months}).Months["2026-11-01"]
+	if m.PaymentsLeft != p.PaymentsLeft {
+		t.Fatalf("month payments left = %d, want %d", m.PaymentsLeft, p.PaymentsLeft)
+	}
+}
+
+// A higher statement lengthens the loan past the contract's last payment.
+func TestProjectDebt_HigherStatementLengthensTheLoan(t *testing.T) {
+	origin := carLoan()
+	today := ymd(2026, time.November, 12)
+	before := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{origin}, Today: today})
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{origin, statementOf(origin, today, 17000)}, Today: today})
+	if p.PaymentsLeft <= before.PaymentsLeft || !p.PayoffDate.After(origin.Last) {
+		t.Fatalf("payments left %d (was %d), payoff %v; want more and after %v", p.PaymentsLeft, before.PaymentsLeft, p.PayoffDate, origin.Last)
+	}
+}
+
+// A statement the regular payment can never repay at the loan's rate is
+// refused; any lower balance is repayable.
+func TestStatementRepayable(t *testing.T) {
+	origin := carLoan()
+	loanRate, _ := SnapshotRate(origin)
+	today := ymd(2026, time.November, 12)
+	for _, b := range []float64{0, 1, 10000, 16000, 30000} {
+		if err := StatementRepayable(origin, statementOf(origin, today, b)); err != nil {
+			t.Fatalf("balance %v: %v", b, err)
+		}
+	}
+	never := 450/loanRate + 1
+	if err := StatementRepayable(origin, statementOf(origin, today, never)); !errors.Is(err, ErrPaymentsDontCover) {
+		t.Fatalf("balance %v: err = %v, want ErrPaymentsDontCover", never, err)
+	}
+}
+
+// Correcting the origin's payment changes the loan's rate, which the
+// statement after it follows.
+func TestPeriodRate_StatementFollowsACorrectedOrigin(t *testing.T) {
+	origin := carLoan()
+	today := ymd(2026, time.November, 12)
+	corrected := origin
+	corrected.Payment = 480
+	r1 := PeriodRate([]MathSnapshot{origin, statementOf(origin, today, 10000)})
+	r2 := PeriodRate([]MathSnapshot{corrected, statementOf(corrected, today, 10000)})
+	want, _ := SnapshotRate(corrected)
+	if r2 <= r1 || math.Abs(r2-want) > 1e-12 {
+		t.Fatalf("rate after the correction = %v (was %v), want the corrected origin's %v", r2, r1, want)
+	}
+}
+
+// Without an origin, a snapshot's own implied rate stays in force.
+func TestPeriodRate_NoOriginKeepsTheImpliedRate(t *testing.T) {
+	s := refLoan()
+	want, _ := SnapshotRate(s)
+	if got := PeriodRate([]MathSnapshot{s}); math.Abs(got-want) > 1e-12 {
+		t.Fatalf("rate = %v, want %v", got, want)
+	}
 }

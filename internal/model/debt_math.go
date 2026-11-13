@@ -21,6 +21,10 @@ type MathSnapshot struct {
 	// borrowed BEFORE the start day's payments (which accrue nothing), and
 	// its first period accrues interest prorated by days.
 	Origin bool
+	// rate, when rateSet, is the rate in force from this snapshot: a
+	// statement after the origin keeps the loan's rate (withLoanRate).
+	rate    float64
+	rateSet bool
 }
 
 type MathPayment struct {
@@ -259,7 +263,12 @@ func SnapshotRate(s MathSnapshot) (float64, error) {
 	return impliedRate(s.Balance, s.Payment, n, s.Digits, first)
 }
 
+// snapshotRate is the rate in force from s: the loan's when withLoanRate set
+// it, else s's own implied rate.
 func snapshotRate(s MathSnapshot) float64 {
+	if s.rateSet {
+		return s.rate
+	}
 	r, err := SnapshotRate(s)
 	if err != nil {
 		return 0
@@ -267,8 +276,59 @@ func snapshotRate(s MathSnapshot) float64 {
 	return r
 }
 
-// PeriodRate is the implied rate per schedule period of a snapshot.
-func PeriodRate(s MathSnapshot) float64 { return snapshotRate(s) }
+// PeriodRate is the rate per schedule period in force after the latest
+// snapshot.
+func PeriodRate(snaps []MathSnapshot) float64 {
+	snaps = sortedSnaps(snaps)
+	if len(snaps) == 0 {
+		return 0
+	}
+	return snapshotRate(snaps[len(snaps)-1])
+}
+
+// withLoanRate gives every snapshot the origin's implied rate,
+// the loan's: a statement corrects what is owed, not the contract, so a
+// balance below Econumo's shortens the loan rather than raising its rate.
+// Without an origin each snapshot keeps its own implied rate.
+func withLoanRate(snaps []MathSnapshot) {
+	for _, o := range snaps {
+		if !o.Origin {
+			continue
+		}
+		r := snapshotRate(o)
+		for i := range snaps {
+			snaps[i].rate, snaps[i].rateSet = r, true
+		}
+		return
+	}
+}
+
+// StatementRepayable reports ErrPaymentsDontCover when s's regular payment can
+// never repay its balance at the loan's rate (origin's): it does not exceed a
+// period's interest, or the balance outlasts the projection's horizon. Each
+// period accrues in full (a statement balance is the principal still owed).
+func StatementRepayable(origin, s MathSnapshot) error {
+	r, err := SnapshotRate(origin)
+	if err != nil {
+		return err
+	}
+	eps := settledBelow(s.Digits)
+	balance := s.Balance
+	for range DueDatesBetween(s.Schedule, s.Last, s.AsOf, debtDay(s.AsOf).AddDate(0, maxProjectMonths, 0)) {
+		if balance < eps {
+			return nil
+		}
+		interest := balance * r
+		if s.Payment <= interest {
+			return ErrPaymentsDontCover
+		}
+		balance += interest - s.Payment
+	}
+	if balance < eps {
+		return nil
+	}
+	return ErrPaymentsDontCover
+}
 
 func sortedSnaps(snaps []MathSnapshot) []MathSnapshot {
 	out := append([]MathSnapshot(nil), snaps...)
@@ -276,6 +336,7 @@ func sortedSnaps(snaps []MathSnapshot) []MathSnapshot {
 		out[i].AsOf = debtDay(out[i].AsOf)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].AsOf.Before(out[j].AsOf) })
+	withLoanRate(out)
 	return out
 }
 
