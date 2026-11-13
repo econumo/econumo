@@ -2561,8 +2561,8 @@ running these.
       without changes: no snapshot is written (the Balance tab's history
       does not grow) and the payment keeps counting.
 - [ ] 📱 **Settings tab** holds one form with the loan contract's facts:
-      Name, the Icon picker under it (the same swipeable grid as the category
-      dialog, the debt's current icon selected), the "Which payments count" lines (add, edit and remove lines as on
+      Name with the debt's icon at the start of the field (tapping it opens
+      the icon list, the current icon selected; picking one closes it), the "Which payments count" lines (add, edit and remove lines as on
       the create form, the partner's categories offered too), Amount borrowed, one row of two
       same-height date cards (Start date first, then Last payment date; no
       clear X on a set-up debt; it fits a 360 px phone, the hints are read

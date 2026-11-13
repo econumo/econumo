@@ -2,12 +2,12 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { EntityIcon } from '@/components/EntityIcon'
 import { IconPicker } from '@/components/IconPicker'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
-import { dialogActionsClass } from '@/components/ResponsiveDialog'
+import { dialogActionsClass, ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { OfflineNotice } from '@/components/OfflineNotice'
 import { useFormErrors } from '@/hooks/useFormErrors'
 import { useOnline } from '@/hooks/useOnline'
@@ -65,6 +65,7 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
   const { errors, setErrors, clear: clearError } = useFormErrors<FieldErrors>()
   const [serverError, setServerError] = useState<string | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  const [pickingIcon, setPickingIcon] = useState(false)
   const borrowedRef = useRef<HTMLDivElement>(null)
   const datesRef = useRef<HTMLDivElement>(null)
 
@@ -145,21 +146,37 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
       >
         <OfflineNotice />
         <CardField label={t('debts.form.name.label')} htmlFor={`${formId}-name`} error={errors.name}>
-          <Input
-            id={`${formId}-name`}
-            className={cardFieldControlClass}
-            autoComplete="off"
-            value={form.name}
-            onChange={(e) => {
-              clearError('name')
-              patch({ name: e.target.value })
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              aria-label={t('debts.form.icon.label')}
+              onClick={() => setPickingIcon(true)}
+            >
+              <EntityIcon name={form.icon} className="text-lg" />
+            </button>
+            <Input
+              id={`${formId}-name`}
+              className={cardFieldControlClass}
+              autoComplete="off"
+              value={form.name}
+              onChange={(e) => {
+                clearError('name')
+                patch({ name: e.target.value })
+              }}
+            />
+          </div>
         </CardField>
-        <div className="flex flex-col gap-2">
-          <Label>{t('debts.form.icon.label')}</Label>
-          <IconPicker value={form.icon} onChange={(icon) => patch({ icon })} aria-label={t('debts.form.icon.label')} />
-        </div>
+        <ResponsiveDialog open={pickingIcon} onOpenChange={setPickingIcon} title={t('debts.form.icon.label')}>
+          <IconPicker
+            value={form.icon}
+            onChange={(icon) => {
+              patch({ icon })
+              setPickingIcon(false)
+            }}
+            aria-label={t('debts.form.icon.label')}
+          />
+        </ResponsiveDialog>
 
         <RulesEditor
           value={form.rules}

@@ -2348,8 +2348,9 @@ data unreadable. Most are also asserted by the test suite.
   row's, while Left and payments left wait for the next read; the metric fires on
   the click that opens the list. "Track as debt" passes the row's budget through
   `OpenDebtParams.budgetId`, the budget the debt is created in. A debt not set up has no items. Settings is ONE
-  form, `DebtSettingsForm`, asking for the loan contract's facts (name, the icon (`IconPicker`
-  under it, as in the category dialog; sent only once changed), the rule list, `RulesEditor`
+  form, `DebtSettingsForm`, asking for the loan contract's facts (name, the icon (a button at
+  the start of the name field opens the `IconPicker` in a dialog, as onboarding's rows do; picking
+  closes it; sent only once changed), the rule list, `RulesEditor`
   fed by the debt's budget's rule options, a line with no category being "Required field", Amount
   borrowed, one `DatesRow` of two cards, Start date first and Last payment date second, hints
   screen-reader only, the clear X only on a debt not set up, the payment row, currency; Cancel

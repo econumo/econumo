@@ -620,7 +620,8 @@ it('an icon picked in Settings is saved and shown in the header', async () => {
   expect(screen.getByRole('heading', { name: 'Car loan' })).toHaveTextContent('directions_car')
   await openSettings(user)
 
-  const picker = screen.getByRole('listbox', { name: 'Icon' })
+  await user.click(screen.getByRole('button', { name: 'Icon' }))
+  const picker = await screen.findByRole('listbox', { name: 'Icon' })
   expect(within(picker).getByRole('option', { name: 'directions_car' })).toHaveAttribute('aria-selected', 'true')
   await user.click(within(picker).getByRole('option', { name: 'home' }))
   await user.click(screen.getByRole('button', { name: 'Save' }))

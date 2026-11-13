@@ -118,15 +118,20 @@ it('saving untouched terms sends none, nor the start date, so the server keeps t
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
 })
 
-it('the icon sits with the name and goes only once changed', async () => {
+it('the icon opens from the start of the name field and goes only once changed', async () => {
   const bodies = captureUpdate()
   const user = userEvent.setup()
   renderForm(wireDebt)
 
-  const picker = screen.getByRole('listbox', { name: 'Icon' })
-  expect(screen.getByLabelText('Name').compareDocumentPosition(picker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(picker.compareDocumentPosition(screen.getByRole('button', { name: 'Category: Food' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // no icon list on the form itself: the icon button before the name opens it
+  expect(screen.queryByRole('listbox', { name: 'Icon' })).toBeNull()
+  const iconButton = screen.getByRole('button', { name: 'Icon' })
+  expect(iconButton.compareDocumentPosition(screen.getByLabelText('Name')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  await user.click(iconButton)
+  const picker = await screen.findByRole('listbox', { name: 'Icon' })
   await user.click(within(picker).getByRole('option', { name: 'savings' }))
+  // picking closes the list
+  await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Icon' })).toBeNull())
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
   await waitFor(() => expect(bodies).toHaveLength(1))
