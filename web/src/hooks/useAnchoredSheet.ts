@@ -8,9 +8,6 @@ import { ownsKeyboard } from '@/lib/ownsKeyboard'
 export const SHEET_TOP_GAP = 24
 // px between the status bar and a sheet that fills the screen
 const STATUS_BAR_GAP = 8
-// px of list the keyboard must leave (about two rows) before the sheet's top
-// moves up
-const MIN_LIST = 100
 // ms a focused field may wait for a keyboard before the sheet stops leaving
 // room for one (a hardware keyboard raises none)
 const KEYBOARD_WAIT_MS = 800
@@ -67,8 +64,6 @@ export interface SheetAnchor {
   top: number
   /** px the sheet's content takes */
   natural: number
-  /** px of it that is not the scrolling list: handle, title, search */
-  chrome: number
   /** px the top never goes above: clear of the status bar */
   minTop: number
   /** px of the layout viewport it was measured on: a new size measures afresh */
@@ -89,21 +84,24 @@ function safeAreaTop(): number {
   return safeTop.px
 }
 
-/** where the sheet's top sits on screen for the visible area left by the keyboard */
+/**
+ * Where the sheet's top sits on screen for the visible area left by the
+ * keyboard: high enough to show all its content above the keyboard, up to the
+ * status bar. Keeping the top where it opened instead left a list that fits
+ * the screen, but not the space above the keyboard, with two rows in view.
+ */
 export function anchoredTop(anchor: SheetAnchor, visibleHeight: number): number {
-  const room = Math.min(anchor.chrome + MIN_LIST, anchor.natural)
-  return Math.max(anchor.minTop, Math.min(anchor.top, visibleHeight - room))
+  return Math.max(anchor.minTop, Math.min(anchor.top, visibleHeight - anchor.natural))
 }
 
 /**
- * A sheet whose top stays where it opened: the keyboard coming and going only
- * moves its bottom edge, and the list in between gets shorter or taller. The
- * top is set once from the content: as tall as the content, and a list
- * longer than the screen fills it up to the status bar, so the keyboard
- * leaves it room for several rows. It moves up when the content grows (data
- * arriving), never down when it shrinks (a filter), and moves up only as far
- * as needed when the keyboard would leave less than about two rows of list.
- * A closing sheet keeps its place while it slides out.
+ * A sheet as tall as its content, up to the status bar. A list longer than
+ * the screen keeps its top there whatever the keyboard does, and only its
+ * bottom edge moves; a shorter one rises above the keyboard as far as its
+ * content needs and comes back down when the keyboard goes. The content's
+ * height only ever grows (data arriving), never shrinks with a filter, so
+ * typing does not move the top. A closing sheet keeps its place while it
+ * slides out.
  */
 /** the height the sheet lays itself out in: what the keyboard leaves, or will leave */
 export function sheetVisibleHeight(layout: number, keyboardVisible: number, remembered: number | undefined, expectsField: boolean, noKeyboard: boolean): number {
@@ -186,7 +184,7 @@ export function useAnchoredSheet(
     // the content grew (rows arriving, the query reset), or the screen changed
     if (!measured.current || anchor === null || anchor.layout !== layout || top < anchor.top - 1) {
       measured.current = true
-      setAnchor({ top, natural, chrome, minTop, layout })
+      setAnchor({ top, natural, minTop, layout })
     }
   })
 
