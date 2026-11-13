@@ -16,7 +16,10 @@ import (
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
-type completerCall struct{ userID, system, user string }
+type completerCall struct {
+	userID, system, user string
+	deadline             time.Time
+}
 
 type fakeCompleter struct {
 	calls []completerCall
@@ -28,8 +31,9 @@ type fakeCompleter struct {
 	onCall  func()
 }
 
-func (c *fakeCompleter) Complete(_ context.Context, userID, system, user string) (string, error) {
-	c.calls = append(c.calls, completerCall{userID: userID, system: system, user: user})
+func (c *fakeCompleter) Complete(ctx context.Context, userID, system, user string) (string, error) {
+	deadline, _ := ctx.Deadline()
+	c.calls = append(c.calls, completerCall{userID: userID, system: system, user: user, deadline: deadline})
 	if c.onCall != nil {
 		c.onCall()
 	}
@@ -1070,5 +1074,31 @@ func TestSuggestPreAIJoinRespectsOptOut(t *testing.T) {
 				t.Fatalf("links = %v, want the seeded one only", got.LinkIDs)
 			}
 		})
+	}
+}
+
+// The scan that groups a run's rows by owner has a generous deadline of its
+// own, so a large sync cannot use up an owner's AI time before that owner's
+// job starts; each owner's job keeps its own 60 s.
+func TestSuggestScanHasItsOwnDeadline(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	h.category(t, userA, "Coffee")
+	h.txns.readDeadlines = nil
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(h.txns.readDeadlines) == 0 || len(c.calls) != 1 {
+		t.Fatalf("reads = %d, calls = %d", len(h.txns.readDeadlines), len(c.calls))
+	}
+	scan := h.txns.readDeadlines[0]
+	if left := time.Until(scan); left < 4*time.Minute {
+		t.Fatalf("scan deadline in %s, want minutes", left)
+	}
+	if left := time.Until(c.calls[0].deadline); left <= 0 || left > imports.SuggestTimeoutForTest {
+		t.Fatalf("owner job deadline in %s, want its own %s", left, imports.SuggestTimeoutForTest)
+	}
+	if !c.calls[0].deadline.Before(scan) {
+		t.Fatal("the owner's job runs under the scan's deadline")
 	}
 }

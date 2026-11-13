@@ -102,7 +102,9 @@ func (f *fakeConverter) Convert(_ context.Context, _ vo.Id, from, to, amount str
 // on a pool capped at one — going through db.Raw here would deadlock against
 // the outer WithTx.
 type fakeTxns struct {
-	db         *dbtest.DB
+	// readDeadlines records the deadline of every GetByID context
+	readDeadlines []time.Time
+	db            *dbtest.DB
 	builder    *fixture.Builder
 	created    []model.CreateTransactionRequest
 	updated    []model.UpdateTransactionRequest
@@ -180,6 +182,8 @@ func (f *fakeTxns) replaceLabels(ctx context.Context, transactionID string, labe
 }
 
 func (f *fakeTxns) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error) {
+	deadline, _ := ctx.Deadline()
+	f.readDeadlines = append(f.readDeadlines, deadline)
 	q := f.db.TX.Querier(ctx)
 	var (
 		userID, accountID, amount, description string

@@ -18,6 +18,10 @@ import (
 
 const (
 	suggestTimeout = 60 * time.Second
+	// The scan that sorts a run's rows by owner reads each row; a large sync
+	// needs far longer than one owner's AI budget, which starts only when that
+	// owner's job does.
+	suggestScanTimeout = 5 * time.Minute
 	// A row posted longer than this before it was imported is a backfill, not
 	// a live import: the user has had the chance to classify it already.
 	suggestMaxAge = 7 * 24 * time.Hour
@@ -72,7 +76,7 @@ type suggestCandidate struct {
 // its own timeout, started once its lock is held, so waiting for another job
 // of the same owner does not eat into it.
 func (s *Service) suggest(links []model.ImportTransactionLink) error {
-	ctx, cancel := context.WithTimeout(context.Background(), suggestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), suggestScanTimeout)
 	defer cancel()
 	byOwner := map[vo.Id][]suggestCandidate{}
 	var owners []vo.Id

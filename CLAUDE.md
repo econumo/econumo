@@ -191,7 +191,7 @@ with AI on, after a LIVE import (an Apple Wallet push or a SimpleFIN sync, poste
 before import, the import time read as a wall clock in the owner's stored timezone, UTC when
 unknown; never the `link-account`/retry/queued-import replays) leaves a non-transfer row
 without a category or payee after the account OWNER's rules ran (owner not `readonly`), a
-background job (50 rows/request, 60 s timeout per owner started once that owner's lock is held, scope `import-ai-suggest` 30 jobs per rate-limit
+background job (50 rows/request, a 5 min deadline for the scan that sorts the rows by owner, then 60 s per owner started once that owner's lock is held, scope `import-ai-suggest` 30 jobs per rate-limit
 window, IP-exempt, one job however many calls) asks in two steps. Step 1, one request per
 transaction type, sends the rows (opaque key, bank payee text, income/expense, account name,
 currency code; never the amount, the date or the description, and a row with no payee text is
