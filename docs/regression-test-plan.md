@@ -426,6 +426,13 @@ navigation (single-pane vs sidebar).
       budget the import created flags the accounts the AI judges savings, and
       an icon the user changed meanwhile is kept. Without AI the icons stay
       as imported.
+- [ ] With AI, a CSV import from Settings → Data AFTER onboarding (onboarding
+      completed) that creates a new account and new categories: about 10-90 s
+      later they get matching icons without a reload; categories and accounts
+      that existed before the import keep their icons, and so does an icon the
+      user changed meanwhile. An import that creates nothing new sends no AI
+      request. With the Profile's "Use AI features" switch off (or without AI on
+      the server) the icons stay as imported and no refetches run.
 - [ ] Steps per device: Install app appears only where the browser can
       install or show home-screen instructions (a standalone PWA shows
       none); the Install button or "Done" marks it done and Skip skips it. On
@@ -2744,7 +2751,8 @@ User C sees none of it.
       Wallet tap or SimpleFIN sync brings no suggestion (also for a partner's
       tap on an account this user owns); the import rule dialog makes no
       `suggest-match-text` request; onboarding's finish-import and
-      save-accounts start no AI job (icons stay default, no savings flagged).
+      save-accounts start no AI job, and neither does a CSV import (icons stay
+      default, no savings flagged).
       Switching it back on brings suggestions for new imports only.
 - [ ] Create a personal token with scope "full" — it works everywhere; an
       "ingest" token (created via "Configure on this iPhone" or the API) is
