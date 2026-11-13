@@ -105,12 +105,12 @@ type fakeTxns struct {
 	// readDeadlines records the deadline of every GetByID context
 	readDeadlines []time.Time
 	db            *dbtest.DB
-	builder    *fixture.Builder
-	created    []model.CreateTransactionRequest
-	updated    []model.UpdateTransactionRequest
-	replaced   []model.UpdateTransactionRequest
-	candidates []*model.Transaction
-	fail       error
+	builder       *fixture.Builder
+	created       []model.CreateTransactionRequest
+	updated       []model.UpdateTransactionRequest
+	replaced      []model.UpdateTransactionRequest
+	candidates    []*model.Transaction
+	fail          error
 	// failOn, when non-empty, makes CreateTransaction fail for a request
 	// whose Description matches it — used to test that one bad account in a
 	// sync does not roll back the others.
