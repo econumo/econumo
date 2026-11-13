@@ -478,6 +478,25 @@ it('useUpdateBudgetDetail fires the end-date metric only when endDate is sent', 
   await waitFor(() => expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_SET_END_DATE))
 })
 
+it('useUpdateBudgetDetail refreshes the debts when the budget\'s accounts change, and only then', async () => {
+  server.use(
+    http.post('*/api/v1/budget/update-budget', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: fixtureBudgets[0] } }),
+    ),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  const spy = vi.spyOn(queryClient, 'invalidateQueries')
+  const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+
+  result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(spy).not.toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+
+  // a debt counts only the payments on its budget's accounts
+  result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', accountIds: ['a1'] })
+  await waitFor(() => expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts }))
+})
+
 describe('budget savings toggle metric', () => {
   const savingsToggles = () => trackEventMock.mock.calls.filter(([name]) => name === METRICS.BUDGET_SAVINGS_TOGGLE).length
 

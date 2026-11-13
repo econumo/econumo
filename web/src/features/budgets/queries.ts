@@ -531,11 +531,14 @@ export function useMoveElement() {
 
 // an account created from the budget's Savings line joins the budget as a savings member
 export function useAddSavingsAccount() {
+  const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
   return useMutation({
     mutationFn: ({ budgetId, accountId }: { budgetId: Id; accountId: Id }) => budgetApi.addAccount(budgetId, accountId, true),
     onSuccess: () => {
       invalidate()
+      // a debt counts only the payments on its budget's accounts
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_SAVINGS_TOGGLE)
     },
   })
@@ -583,6 +586,8 @@ export function useUpdateBudgetDetail({ handlesOwnErrors = false }: OwnErrorHand
         (prev ?? []).map((b) => (b.id === meta.id ? meta : b)),
       )
       invalidate()
+      // a debt counts only the payments on its budget's accounts
+      if (variables.accountIds !== undefined) void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       trackEvent(METRICS.BUDGET_UPDATE)
       if (variables.endDate !== undefined) trackEvent(METRICS.BUDGET_SET_END_DATE)
       // the dialog sends the day only when it differs from the stored one; the
