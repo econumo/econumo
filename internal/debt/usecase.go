@@ -193,6 +193,26 @@ func (s *Service) userLocation(ctx context.Context, userID vo.Id) (*time.Locatio
 	return loc, nil
 }
 
+// inOneTx runs a debt write whole in one transaction: the sync before it, the
+// write, and the sync that presents it, each nested WithTx a savepoint. The
+// request's commit hook (the Idempotency-Key) then fires once, at the write's
+// commit: a sync committing on its own would record the key before the write,
+// so a retry could be told it landed while it had not, or never land at all.
+// A write refused after its sync rolls the sync back with it.
+func inOneTx[T any](ctx context.Context, s *Service, fn func(ctx context.Context) (T, error)) (T, error) {
+	var out T
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		out, err = fn(ctx)
+		return err
+	})
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return out, nil
+}
+
 // today is the caller's calendar day as a UTC midnight, the form every debt
 // date is stored and compared in.
 func (s *Service) today(ctx context.Context) time.Time {

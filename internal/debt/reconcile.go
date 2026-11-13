@@ -17,6 +17,10 @@ import (
 // it moves the payoff rather than the rate. A statement on a date that
 // already has one replaces it.
 func (s *Service) ReconcileDebt(ctx context.Context, userID vo.Id, req model.ReconcileDebtRequest) (*model.DebtResult, error) {
+	return inOneTx(ctx, s, func(ctx context.Context) (*model.DebtResult, error) { return s.reconcileDebt(ctx, userID, req) })
+}
+
+func (s *Service) reconcileDebt(ctx context.Context, userID vo.Id, req model.ReconcileDebtRequest) (*model.DebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -36,6 +40,12 @@ func (s *Service) ReconcileDebt(ctx context.Context, userID vo.Id, req model.Rec
 // its date are split again from what comes before it. The origin is no
 // statement and cannot be deleted.
 func (s *Service) DeleteDebtReconciliation(ctx context.Context, userID vo.Id, req model.DeleteDebtReconciliationRequest) (*model.DebtResult, error) {
+	return inOneTx(ctx, s, func(ctx context.Context) (*model.DebtResult, error) {
+		return s.deleteDebtReconciliation(ctx, userID, req)
+	})
+}
+
+func (s *Service) deleteDebtReconciliation(ctx context.Context, userID vo.Id, req model.DeleteDebtReconciliationRequest) (*model.DebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err

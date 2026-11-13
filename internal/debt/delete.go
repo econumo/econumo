@@ -14,6 +14,10 @@ import (
 // debt's budget data are dropped, after the caller confirms: the plans of a
 // debt with several rules cannot be split back by category.
 func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.DeleteDebtRequest) (*model.DeleteDebtResult, error) {
+	return inOneTx(ctx, s, func(ctx context.Context) (*model.DeleteDebtResult, error) { return s.deleteDebt(ctx, userID, req) })
+}
+
+func (s *Service) deleteDebt(ctx context.Context, userID vo.Id, req model.DeleteDebtRequest) (*model.DeleteDebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err

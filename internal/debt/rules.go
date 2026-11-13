@@ -211,6 +211,10 @@ func tooManyRules() error {
 // takes its category row's plans and comments onto the debt's row, adding up
 // with what is there.
 func (s *Service) AddDebtRule(ctx context.Context, userID vo.Id, req model.AddDebtRuleRequest) (*model.DebtResult, error) {
+	return inOneTx(ctx, s, func(ctx context.Context) (*model.DebtResult, error) { return s.addDebtRule(ctx, userID, req) })
+}
+
+func (s *Service) addDebtRule(ctx context.Context, userID vo.Id, req model.AddDebtRuleRequest) (*model.DebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err

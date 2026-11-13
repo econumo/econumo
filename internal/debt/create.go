@@ -18,6 +18,10 @@ import (
 // Without them the debt collects its payments without terms until setup is
 // finished. Each whole-category rule takes its category row's plans.
 func (s *Service) CreateDebt(ctx context.Context, userID vo.Id, req model.CreateDebtRequest) (*model.DebtResult, error) {
+	return inOneTx(ctx, s, func(ctx context.Context) (*model.DebtResult, error) { return s.createDebt(ctx, userID, req) })
+}
+
+func (s *Service) createDebt(ctx context.Context, userID vo.Id, req model.CreateDebtRequest) (*model.DebtResult, error) {
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
 		return nil, err

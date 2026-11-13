@@ -23,6 +23,10 @@ import (
 // and every payment is split again. A balance now appends a snapshot as of
 // today. Rules left out are kept; a rule list replaces them.
 func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.UpdateDebtRequest) (*model.DebtResult, error) {
+	return inOneTx(ctx, s, func(ctx context.Context) (*model.DebtResult, error) { return s.updateDebt(ctx, userID, req) })
+}
+
+func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.UpdateDebtRequest) (*model.DebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -211,6 +215,10 @@ func intersect(a, b []vo.Id) []vo.Id {
 // MarkDebtPaidOff writes a zero-balance snapshot as of today, keeping the
 // payment, schedule and last payment date (the rate is irrelevant at zero).
 func (s *Service) MarkDebtPaidOff(ctx context.Context, userID vo.Id, req model.MarkDebtPaidOffRequest) (*model.DebtResult, error) {
+	return inOneTx(ctx, s, func(ctx context.Context) (*model.DebtResult, error) { return s.markDebtPaidOff(ctx, userID, req) })
+}
+
+func (s *Service) markDebtPaidOff(ctx context.Context, userID vo.Id, req model.MarkDebtPaidOffRequest) (*model.DebtResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err

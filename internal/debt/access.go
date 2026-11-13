@@ -81,8 +81,9 @@ func (s *Service) editableDebt(ctx context.Context, userID, id vo.Id) (*model.De
 }
 
 // lockedDebt checks the user can read the debt, takes its budget's lock, then
-// reads the debt afresh and checks the user may still edit it. It runs first
-// in a write's transaction; a caller without access never holds the lock.
+// reads the debt afresh and checks the user may still edit it. It runs before
+// a write's changes, in the transaction of the sync before them (whose lock
+// comes after an access check too); a caller without access never holds it.
 func (s *Service) lockedDebt(ctx context.Context, userID, id vo.Id) (*model.Debt, model.DebtBudget, error) {
 	d, b, err := s.readableDebt(ctx, userID, id)
 	if err != nil {

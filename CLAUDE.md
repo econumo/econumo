@@ -2182,7 +2182,10 @@ data unreadable. Most are also asserted by the test suite.
   the sync writes splits and runs from the budget's read paths (`Service.Sync`: `GetBudget`,
   `GetBudgetPlan`, build results), outside any budget transaction, and from the debt
   service's own reads and writes (`get-debt`, `get-debt-list` for each budget holding debts,
-  update, delete, a classification merge) for the debt's budget; `Views` and `Timelines`
+  update, delete, a classification merge) for the debt's budget. Every debt write route runs
+  its sync, its write and the read that presents it in ONE transaction (`inOneTx`, the syncs
+  nested as savepoints), so the `Idempotency-Key` is recorded at the write's commit, never at
+  a sync's, and a write refused after its sync rolls the sync back too; `Views` and `Timelines`
   are read-only (no budget lock, no writes: stale splits ignored, missing ones split in memory),
   which is what `syncElements`, `set-limit` and the transaction lists call, so the budget lock
   can never invert inside a budget write. **Converting**: "Track as debt" on any participant's
