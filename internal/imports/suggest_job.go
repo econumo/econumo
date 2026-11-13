@@ -22,6 +22,7 @@ const (
 	// needs far longer than one owner's AI budget, which starts only when that
 	// owner's job does.
 	suggestScanTimeout = 5 * time.Minute
+	suggestUndoTimeout = 10 * time.Second
 	// A row posted longer than this before it was imported is a backfill, not
 	// a live import: the user has had the chance to classify it already.
 	suggestMaxAge  = 7 * 24 * time.Hour
@@ -431,6 +432,10 @@ func (s *Service) undoIfOptedOut(ctx context.Context, owner vo.Id, inserted []vo
 	if len(inserted) == 0 && len(joined) == 0 {
 		return
 	}
+	// The owner's 60 s may be all but spent by the AI call: the undo gets a
+	// short deadline of its own.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), suggestUndoTimeout)
+	defer cancel()
 	if off, err := s.optedOut(ctx, owner); err != nil || !off {
 		return
 	}

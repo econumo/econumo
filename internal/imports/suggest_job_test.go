@@ -1148,3 +1148,40 @@ func TestSuggestSkipsRowsNothingCanFill(t *testing.T) {
 		t.Fatalf("with a payee to pick: calls = %d, reservations = %v", len(c.calls), l.reserve)
 	}
 }
+
+// optOutAfterDeadlines is optOutAfter that records each read's deadline.
+type optOutAfterDeadlines struct {
+	n, reads  int
+	deadlines []time.Time
+}
+
+func (f *optOutAfterDeadlines) OwnerFacts(ctx context.Context, _ vo.Id) (imports.OwnerInfo, error) {
+	f.reads++
+	d, _ := ctx.Deadline()
+	f.deadlines = append(f.deadlines, d)
+	return imports.OwnerInfo{Language: "en", AIOff: f.reads > f.n}, nil
+}
+
+// The undo after the write runs under a short context of its own, not the
+// owner's 60 s, which the AI call may have nearly used up.
+func TestSuggestUndoRunsUnderItsOwnContext(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	facts := &optOutAfterDeadlines{n: 3}
+	h.wireSuggest(c, facts)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(openSuggestions(t, h, userA)) != 0 || facts.reads != 4 {
+		t.Fatalf("reads = %d, suggestions = %+v", facts.reads, openSuggestions(t, h, userA))
+	}
+	owner, undo := facts.deadlines[0], facts.deadlines[3]
+	if left := time.Until(undo); left <= 0 || left > 11*time.Second {
+		t.Fatalf("undo deadline in %s, want a fresh 10 s", left)
+	}
+	if !undo.Before(owner) {
+		t.Fatalf("undo runs under the owner's deadline (%s vs %s)", undo, owner)
+	}
+}
