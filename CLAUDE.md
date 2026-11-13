@@ -2135,7 +2135,10 @@ data unreadable. Most are also asserted by the test suite.
   still due in it, so a planned extra already paid is not projected twice) is applied with that
   month's first projected payment, fully to the debt; no plan or a plan
   below the scheduled amount still projects the scheduled payments; an overdue unpaid due counts
-  in today's month. Paid off = balance rounded to the currency is 0 or below (display state: it
+  in today's month. A period's scheduled payments (for the planned extra and the rows'
+  `scheduledTotal`) are only the dues after the start date: in the period holding the start a
+  due on or before it is not counted (a 200 loan from November 12, weekly 100 to November 26,
+  schedules 200 in November), and a period before the start schedules nothing. Paid off = balance rounded to the currency is 0 or below (display state: it
   does not end matching, and a later payment or snapshot reopens the debt).
   **Budget rows**: element type `ElementDebt = 6` / alias `"debt"` is persisted and frozen
   (the wire parser, like savings, rejects it); the row's external id is the debt id, it lives in its

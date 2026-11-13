@@ -1066,3 +1066,37 @@ func TestPeriodRate_NoOriginKeepsTheImpliedRate(t *testing.T) {
 		t.Fatalf("rate = %v, want %v", got, want)
 	}
 }
+
+// A loan starting mid-period schedules only the dues after its start: a due
+// on the start day pays no due, and those before it are not the loan's.
+func TestProjectDebt_PeriodHoldingTheOriginSchedulesOnlyLaterDues(t *testing.T) {
+	// 200 from November 12, weekly 100 to November 26: dues November 19 and 26
+	weekly := MathSnapshot{AsOf: ymd(2026, time.November, 12), Balance: 200, Payment: 100, Schedule: RecurringScheduleWeekly,
+		Last: ymd(2026, time.November, 26), Digits: 2, Origin: true}
+	nov := ymd(2026, time.November, 1)
+	in := ProjectionInput{Digits: 2, Snaps: []MathSnapshot{weekly}, Today: weekly.AsOf, Months: []time.Time{nov}}
+	near(t, "November scheduled", ProjectDebt(in).Months["2026-11-01"].ScheduledTotal, 200, 1e-9)
+	in.Plans = map[string]float64{"2026-11-01": 300}
+	var extra float64
+	for _, p := range ProjectDebt(in).Payments {
+		extra += p.Extra
+	}
+	near(t, "November extra", extra, 100, 1e-9)
+
+	// 1200 from November 20, monthly 100 on the 10th: the first due is December 10
+	monthly := MathSnapshot{AsOf: ymd(2026, time.November, 20), Balance: 1200, Payment: 100, Schedule: RecurringScheduleMonthly,
+		Last: ymd(2027, time.November, 10), Digits: 2, Origin: true}
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{monthly}, Today: monthly.AsOf,
+		Months: []time.Time{ymd(2026, time.October, 1), nov, ymd(2026, time.December, 1)}})
+	for key, want := range map[string]float64{"2026-10-01": 0, "2026-11-01": 0, "2026-12-01": 100} {
+		near(t, key+" scheduled", p.Months[key].ScheduledTotal, want, 1e-9)
+	}
+	// a plan in the start's period is all extra: nothing is scheduled there
+	p = ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{monthly}, Today: monthly.AsOf,
+		Months: []time.Time{nov}, Plans: map[string]float64{"2026-11-01": 50}})
+	extra = 0
+	for _, pay := range p.Payments {
+		extra += pay.Extra
+	}
+	near(t, "November extra of the monthly loan", extra, 50, 1e-9)
+}

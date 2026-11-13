@@ -9,13 +9,15 @@ import "time"
 // The figures must not depend on the day the suite runs, so each debt is 100
 // paid back by one monthly payment of 105 on today's day of the next month
 // (clamped to its last day): a single due after today, whatever the date.
-// The current month then has 105 scheduled, nothing still due and a balance
-// of 100 with one payment left; the next month has the 105 due and closes at
-// 0 (a one-payment loan accrues 5 whatever the length of its prorated first
+// The current month then schedules nothing (today's day of the series is the
+// start day, which pays no due), has nothing still due and a balance of 100
+// with one payment left; the next month has the 105 due and closes at 0 (a
+// one-payment loan accrues 5 whatever the length of its prorated first
 // period). The owner's 50 payment today, the loan's start day, counts on the
-// debt row, not on the category's, and comes fully off the 100: the owner's
-// debt closes the current month at 50 and owes 52.5 next month (its plan of
-// 105 projects no extra). The plan window runs from the previous month, before the debts
+// debt row, not on the category's, and comes fully off the 100; with nothing
+// scheduled this month, 55 of the owner's plan of 105 is extra, which pays
+// off the 50 left: that debt closes the current month at 0 with nothing
+// scheduled after. The plan window runs from the previous month, before the debts
 // start, to the month after the last payment, so its first and last cells are
 // not plannable. Months stay out of the recorded paths (see
 // budget_upcoming_recurring).

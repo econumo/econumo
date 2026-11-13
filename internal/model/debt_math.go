@@ -780,7 +780,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 			continue
 		}
 		ws, we := PeriodWindow(m, sd)
-		covered := latest.Payment * float64(len(DueDatesBetween(latest.Schedule, latest.Last, ws.AddDate(0, 0, -1), we.AddDate(0, 0, -1))))
+		covered := latest.Payment * float64(len(periodDues(latest, snaps[0], ws, we)))
 		// This period's plan is also met by what was paid and is still due in
 		// it; a due paid early last period keeps counting as scheduled here.
 		if m.Equal(currentMonth) {
@@ -816,7 +816,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 		ws, we := PeriodWindow(m, sd)
 		monthEnd := we.AddDate(0, 0, -1)
 		pm := ProjectionMonth{}
-		dues := DueDatesBetween(latest.Schedule, latest.Last, ws.AddDate(0, 0, -1), monthEnd)
+		dues := periodDues(latest, snaps[0], ws, we)
 		pm.ScheduledTotal = latest.Payment * float64(len(dues))
 		// From the current period on, a due the projection pays counts its
 		// projected payment (the last one can be smaller) and a due after the
@@ -948,6 +948,18 @@ func paymentsLeftAt(snaps []MathSnapshot, balance float64, t time.Time, eps floa
 		balance += interest - math.Min(terms.Payment, balance+interest)
 	}
 	return n
+}
+
+// periodDues are the dues (latest terms) of the period [ws, we). A loan's
+// dues come after its origin: one on the start day pays no due and one before
+// it is not the loan's, so a period holding the origin schedules only the
+// dues after it, and a period before it none.
+func periodDues(latest, first MathSnapshot, ws, we time.Time) []time.Time {
+	from := ws.AddDate(0, 0, -1)
+	if start := debtDay(first.AsOf); first.Origin && from.Before(start) {
+		from = start
+	}
+	return DueDatesBetween(latest.Schedule, latest.Last, from, we.AddDate(0, 0, -1))
 }
 
 // paidBetween sums the payments dated in [from, to].
