@@ -128,6 +128,9 @@ type Seams struct {
 	// to observe the job inline without a network.
 	OnboardingCompleter apponboarding.Completer
 	OnboardingRunner    apponboarding.Runner
+	// OnboardingScheduler replaces the timer that waits for a CSV import's
+	// last chunk before its icon review; tests fire it themselves.
+	OnboardingScheduler apponboarding.Scheduler
 	// ImportsCompleter and ImportsJobRunner do the same for the import rule
 	// suggestion job.
 	ImportsCompleter appimports.Completer
@@ -220,6 +223,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		appimports.RateScopeSuggest: 30,
 		// Each onboarding classification is a paid AI round trip; Day 0 needs a handful.
 		apponboarding.RateScopeClassify: 20,
+		// One icon review per CSV import, apart from the savings job's allowance.
+		apponboarding.RateScopeIcons: 20,
 		// No per-key cap: the caller of start-login/start-link is anonymous
 		// until the provider answers. The per-IP per-minute cap applies.
 		appoauth.RateScopeOAuthStart: 0,
@@ -234,6 +239,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		appimports.RateScopePreviewRule: true,
 		appimports.RateScopeSuggest:     true,
 		apponboarding.RateScopeClassify: true,
+		apponboarding.RateScopeIcons:    true,
 	}
 	// Ceilings per email address across all client IPs, above the per-address-and-IP
 	// limits. Reset and confirm-email take a 6-digit code, so their guess budget stays
@@ -441,6 +447,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	}
 	if seams.OnboardingRunner != nil {
 		onboardingSvc.SetRunner(seams.OnboardingRunner)
+	}
+	if seams.OnboardingScheduler != nil {
+		onboardingSvc.SetScheduler(seams.OnboardingScheduler)
 	}
 	onboardingHandlers := handleronboarding.NewHandlers(onboardingSvc)
 

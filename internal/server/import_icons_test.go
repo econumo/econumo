@@ -16,8 +16,16 @@ import (
 
 const iconsMapping = `{"account":"Account","date":"Date","amount":"Amount","category":"Category","description":"Note","payee":"Payee","tag":null}`
 
-// importCSV posts a CSV to the transaction import and fails unless it imported.
+// importCSV posts a CSV to the transaction import, fails unless it imported,
+// and lets the icon review's quiet period end.
 func (e *onbEnv) importCSV(csv string) {
+	e.t.Helper()
+	e.importChunk(csv)
+	e.flushIcons()
+}
+
+// importChunk posts one request of an import, leaving the quiet period running.
+func (e *onbEnv) importChunk(csv string) {
 	e.t.Helper()
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
@@ -139,6 +147,26 @@ func TestCSVImport_ReviewsTheIconsOfWhatItCreated(t *testing.T) {
 	e.importCSV("Date,Account,Amount,Category,Payee,Note\n2026-11-04,Visa,-3,Lebensmittel,,\n")
 	if len(e.ai.prompts) != 2 {
 		t.Fatalf("prompts = %d after an import that created nothing", len(e.ai.prompts))
+	}
+}
+
+// A file sent in chunks is reviewed once, over everything the chunks created.
+func TestCSVImport_ChunksAreReviewedOnce(t *testing.T) {
+	e := newOnbEnv(t, stepNow)
+	seedIconWorld(e)
+	e.importChunk("Date,Account,Amount,Category,Payee,Note\n2026-11-01,Visa,-12.50,Lebensmittel,,\n")
+	e.importChunk("Date,Account,Amount,Category,Payee,Note\n2026-11-02,Girokonto,200,Bonus,,\n")
+	e.importChunk("Date,Account,Amount,Category,Payee,Note\n2026-11-03,Cash,-5,Kino,,\n")
+	if len(e.ai.prompts) != 0 {
+		t.Fatalf("prompts = %d before the import went quiet", len(e.ai.prompts))
+	}
+	e.flushIcons()
+	if len(e.ai.prompts) != 2 {
+		t.Fatalf("prompts = %d, want one categories and one accounts request", len(e.ai.prompts))
+	}
+	parts := e.iconPrompts()
+	if len(parts["categories"].Categories) != 3 || len(parts["accounts"].Accounts) != 2 {
+		t.Fatalf("prompts = %+v", parts)
 	}
 }
 

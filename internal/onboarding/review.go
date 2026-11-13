@@ -70,11 +70,11 @@ func (s *Service) FinishImport(ctx context.Context, userID vo.Id, req model.Onbo
 	return out, nil
 }
 
-// The import review is three independent requests, so a slow or failing one
-// (the icon replies take real providers 20-60 s) never holds back the others.
+// The import review is independent requests, so a slow or failing one (the
+// icon replies take real providers 20-60 s) never holds back the others.
 var (
-	reviewCategories = withPart(jobReview, "categories")
-	reviewAccounts   = withPart(jobReview, "accounts")
+	reviewCategories = withPart(jobIcons, "categories")
+	reviewAccounts   = withPart(jobIcons, "accounts")
 	reviewSavings    = withPart(jobReview, "savings")
 )
 
@@ -83,28 +83,82 @@ func withPart(spec jobSpec, part string) jobSpec {
 	return spec
 }
 
-// ReviewImportedIcons asks, in the background, for icons for the categories
-// and accounts a CSV import created: two independent requests (a slow or
-// failing one never holds back the other) that together count once against
-// the per-user cap. Only the caller's own items still on a default icon are
-// asked about.
+// pendingIcons collects what a user's CSV import chunks created until the
+// import goes quiet; gen tells the timer of the latest chunk from older ones.
+type pendingIcons struct {
+	categories, accounts []vo.Id
+	seen                 map[string]bool
+	facts                promptFacts
+	gen                  int
+	stop                 func() bool
+}
+
+// ReviewImportedIcons notes the categories and accounts a CSV import request
+// created. A large file arrives in several requests, so the review starts once
+// no further request from the user has come for iconReviewQuiet: two
+// independent background requests (categories, accounts) over everything the
+// chunks created, counted once against the icon cap. Only the caller's own
+// items still on a default icon are asked about. The state is in memory: a
+// restart in the quiet period drops that review.
 func (s *Service) ReviewImportedIcons(ctx context.Context, userID vo.Id, categoryIDs, accountIDs []vo.Id) {
-	if len(categoryIDs) == 0 && len(accountIDs) == 0 {
-		return
-	}
-	if !s.reserveJob(ctx, userID, jobReview) {
+	if s.completer == nil || (len(categoryIDs) == 0 && len(accountIDs) == 0) {
 		return
 	}
 	facts := s.promptContext(ctx, userID)
-	if len(categoryIDs) > 0 {
-		only := idSet(categoryIDs)
-		s.runJob(userID, reviewCategories, facts, func(jobCtx context.Context, facts promptFacts) error {
+	key := userID.String()
+	s.iconsMu.Lock()
+	defer s.iconsMu.Unlock()
+	p := s.pendingIcons[key]
+	if p == nil {
+		p = &pendingIcons{seen: map[string]bool{}}
+		s.pendingIcons[key] = p
+	}
+	for _, id := range categoryIDs {
+		if k := "c" + strings.ToLower(id.String()); !p.seen[k] {
+			p.seen[k] = true
+			p.categories = append(p.categories, id)
+		}
+	}
+	for _, id := range accountIDs {
+		if k := "a" + strings.ToLower(id.String()); !p.seen[k] {
+			p.seen[k] = true
+			p.accounts = append(p.accounts, id)
+		}
+	}
+	p.facts = facts
+	p.gen++
+	if p.stop != nil {
+		p.stop()
+	}
+	gen := p.gen
+	p.stop = s.schedule(iconReviewQuiet, func() { s.startIconReview(userID, gen) })
+}
+
+// startIconReview runs the review a quiet period ended, unless a later chunk
+// has rescheduled it.
+func (s *Service) startIconReview(userID vo.Id, gen int) {
+	key := userID.String()
+	s.iconsMu.Lock()
+	p := s.pendingIcons[key]
+	if p == nil || p.gen != gen {
+		s.iconsMu.Unlock()
+		return
+	}
+	delete(s.pendingIcons, key)
+	s.iconsMu.Unlock()
+
+	if !s.reserveJob(context.Background(), userID, jobIcons) {
+		return
+	}
+	if len(p.categories) > 0 {
+		only := idSet(p.categories)
+		s.runJob(userID, reviewCategories, p.facts, func(jobCtx context.Context, facts promptFacts) error {
 			return s.reviewCategoryIcons(jobCtx, userID, facts, only)
 		})
 	}
-	if len(accountIDs) > 0 {
-		only := idSet(accountIDs)
-		s.runJob(userID, reviewAccounts, facts, func(jobCtx context.Context, facts promptFacts) error {
+	if len(p.accounts) > 0 {
+		only := idSet(p.accounts)
+		s.runJob(userID, reviewAccounts, p.facts, func(jobCtx context.Context, facts promptFacts) error {
 			return s.reviewAccountIcons(jobCtx, userID, facts, only)
 		})
 	}

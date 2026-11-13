@@ -61,6 +61,41 @@ type onbEnv struct {
 	eur   string
 	// beforeJob runs when a background job starts, after it was scheduled.
 	beforeJob func()
+	// timers hold the icon review's quiet period until flushIcons.
+	timersMu sync.Mutex
+	timers   []*envTimer
+}
+
+type envTimer struct {
+	f       func()
+	stopped bool
+}
+
+func (e *onbEnv) schedule(_ time.Duration, f func()) func() bool {
+	e.timersMu.Lock()
+	defer e.timersMu.Unlock()
+	t := &envTimer{f: f}
+	e.timers = append(e.timers, t)
+	return func() bool {
+		e.timersMu.Lock()
+		defer e.timersMu.Unlock()
+		was := !t.stopped
+		t.stopped = true
+		return was
+	}
+}
+
+// flushIcons ends the quiet period of every pending CSV icon review.
+func (e *onbEnv) flushIcons() {
+	e.timersMu.Lock()
+	run := e.timers
+	e.timers = nil
+	e.timersMu.Unlock()
+	for _, t := range run {
+		if !t.stopped {
+			t.f()
+		}
+	}
 }
 
 func newOnbEnv(t *testing.T, now time.Time) *onbEnv {
@@ -85,6 +120,7 @@ func newOnbEnv(t *testing.T, now time.Time) *onbEnv {
 			}
 			job()
 		},
+		OnboardingScheduler: e.schedule,
 	}))
 	t.Cleanup(ts.Close)
 	e.url = ts.URL
