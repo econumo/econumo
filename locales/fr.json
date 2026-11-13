@@ -154,14 +154,6 @@
       "notice": "Econumo {version} est disponible",
       "dismiss": "Masquer"
     },
-    "serverUpdate": {
-      "notice": "Votre serveur Econumo ({version}) est plus ancien que cette application. Mettez à jour le serveur pour profiter des dernières fonctionnalités."
-    },
-    "appUpdate": {
-      "title": "Mise à jour requise",
-      "blockedApp": "Cette application est trop ancienne pour votre serveur Econumo : la version {version} ou ultérieure est requise. Veuillez mettre à jour l'application pour continuer.",
-      "blockedServer": "Cette application nécessite un serveur Econumo {min} ou ultérieur, mais votre serveur est en {version}. Veuillez mettre à jour le serveur pour continuer."
-    },
     "offline_unavailable": {
       "title": "Indisponible hors ligne",
       "text": "Ces données ne sont pas disponibles sans connexion Internet."
@@ -845,7 +837,7 @@
         "reconnect_intro": "Collez un nouveau jeton de configuration de SimpleFIN Bridge. La connexion précédente sera remplacée ; vos associations de comptes sont conservées.",
         "token_label": "Jeton de configuration",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → Nouvelle connexion → copiez le jeton de configuration. Un jeton ne peut être utilisé qu’une fois.",
+        "token_help": "{bridge} → Nouvelle connexion → copiez le jeton de configuration. Un jeton ne peut être utilisé qu’une fois.",
         "forgot_passphrase": "J’ai oublié ma phrase secrète, en définir une nouvelle",
         "passphrase_new": "Phrase secrète",
         "passphrase_existing": "Votre phrase secrète",
@@ -1354,10 +1346,6 @@
       "callback": {
         "signing_in": "Connexion en cours…"
       },
-      "app_return": {
-        "title": "Connexion terminée — revenez à l’application Econumo.",
-        "open_app": "Ouvrir l’application"
-      },
       "provider_name": {
         "google": "Google",
         "apple": "Apple",
@@ -1439,7 +1427,7 @@
       "accounts": "Comptes",
       "plan": "Budget et plan",
       "home_screen": "Installer l'app",
-      "apple_wallet": "Apple Wallet",
+      "connect": "Connecter",
       "menu": "Menu",
       "finish": "Terminer",
       "state_done": "terminé",
@@ -1459,11 +1447,28 @@
       "install": "Installer",
       "done": "Terminé"
     },
-    "wallet_step": {
-      "heading": "Paiements par carte, saisis pour vous",
-      "text": "Connectez Apple Wallet et chaque paiement par carte apparaît tout seul dans Econumo.",
-      "setup": "Configurer",
-      "later": "Vous pourrez configurer l'intégration Apple Wallet à tout moment dans les Paramètres."
+    "connect_step": {
+      "heading": "Connectez vos comptes",
+      "text": "Laissez vos transactions arriver d’elles-mêmes au lieu de les saisir.",
+      "apple_wallet": {
+        "title": "Apple Wallet",
+        "text": "Une automatisation Raccourcis sur votre iPhone envoie chaque paiement Apple Pay à Econumo.",
+        "link": "Configurer Apple Wallet"
+      },
+      "simplefin": {
+        "title": "SimpleFIN",
+        "text": "SimpleFIN Bridge est un service tiers payant qui se connecte à votre banque (surtout aux États-Unis et au Canada). Econumo y récupère vos transactions à chaque synchronisation.",
+        "link": "Configurer SimpleFIN",
+        "site": "Site de SimpleFIN Bridge"
+      },
+      "mcp": {
+        "title": "Assistants IA (MCP)",
+        "text": "Ajoutez cette adresse à Claude, ChatGPT ou une autre application compatible avec MCP pour gérer vos finances."
+      },
+      "copy": "Copier",
+      "copied": "Copié",
+      "later": "Vous pourrez les configurer plus tard dans les Paramètres.",
+      "finish": "Terminer la configuration"
     },
     "retry": "Réessayer",
     "save_continue": "Enregistrer et continuer",

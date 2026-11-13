@@ -1,14 +1,11 @@
 import { NavLink, Outlet } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { isRegistrationAllowed } from '@/lib/config'
-import { useServerConfig } from '@/lib/appConfig'
 import { RouterPage } from '@/app/router-pages'
 import { AuthFrame } from './AuthFrame'
 
 export function LoginLayout() {
   const { t } = useTranslation()
-  // ALLOW_REGISTRATION may arrive after first paint in the app.
-  useServerConfig((s) => s.revision)
   const registerEnabled = isRegistrationAllowed()
   // segmented control: the inactive tab sits on the gray track, so it reads as
   // "the other option" instead of blending into the form below

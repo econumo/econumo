@@ -113,7 +113,7 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 	// sign-in flow — so the slot is empty and the rate limiter nil.
 	oauthSvc := appoauth.NewService(nil, server.NewOAuthUsers(userSvc),
 		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
-		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, nil, cfg.AppURL, cfg.AllowRegistration, cfg.AppLinksEnabled())
+		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, nil, cfg.AppURL, cfg.AllowRegistration)
 	userSvc.SetOAuthReclaimer(server.NewOAuthReclaimer(oauthSvc))
 	userSvc.SetAppVersion(version.Version)
 

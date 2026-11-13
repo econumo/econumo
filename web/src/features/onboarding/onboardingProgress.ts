@@ -4,7 +4,7 @@ import { updateOnboarding } from '@/api/user'
 import { queryKeys } from '@/app/queryKeys'
 import { isOnboardingCompleted, userOption } from '@/features/user/queries'
 
-export type OnboardingStepKey = 'import' | 'categories' | 'accounts' | 'plan' | 'home_screen' | 'apple_wallet'
+export type OnboardingStepKey = 'import' | 'categories' | 'accounts' | 'plan' | 'home_screen' | 'connect'
 // the steps whose state lives in the onboarding option; add to home screen is per device
 export type StoredStepKey = Exclude<OnboardingStepKey, 'home_screen'>
 
@@ -15,6 +15,11 @@ export function storedStepState(option: string | null, key: StoredStepKey): Onbo
   const keys = (option ?? '').split(',')
   if (keys.includes(key)) return 'done'
   if (keys.includes(`!${key}`)) return 'skipped'
+  // Connect replaced the Apple Wallet step; an answer given to that step still counts.
+  if (key === 'connect') {
+    if (keys.includes('apple_wallet')) return 'done'
+    if (keys.includes('!apple_wallet')) return 'skipped'
+  }
   return 'open'
 }
 

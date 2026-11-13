@@ -14,7 +14,7 @@ func init() {
 			{Label: "start-login", Method: "POST", Path: "/api/v1/oauth/start-login", Body: map[string]any{"provider": "oidc", "client": "web"}},
 			{Label: "err:start-login-unconfigured", Method: "POST", Path: "/api/v1/oauth/start-login", Body: map[string]any{"provider": "apple", "client": "web"}},
 			{Label: "err:start-login-bad-client", Method: "POST", Path: "/api/v1/oauth/start-login", Body: map[string]any{"provider": "oidc", "client": "desktop"}},
-			{Label: "start-link", Method: "POST", Path: "/api/v1/oauth/start-link", Auth: "owner", Body: map[string]any{"provider": "oidc", "client": "app"}},
+			{Label: "start-link", Method: "POST", Path: "/api/v1/oauth/start-link", Auth: "owner", Body: map[string]any{"provider": "oidc", "client": "web"}},
 			{Label: "start-link-readonly-allowed", Method: "POST", Path: "/api/v1/oauth/start-link", Auth: "readonly", Body: map[string]any{"provider": "oidc", "client": "web"}},
 			{Label: "err:callback-oidc-bad-state", Method: "GET", Path: "/api/v1/oauth/callback-oidc?code=x&state=bogus"},
 			{Label: "err:callback-google-bad-state", Method: "GET", Path: "/api/v1/oauth/callback-google?code=x&state=bogus"},

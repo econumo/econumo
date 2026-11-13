@@ -15,7 +15,6 @@ const NO_NOTICE: Record<string, string> = {
   RegistrationPage: 'signed out',
   LogoutPage: 'signed out',
   OAuthCallbackPage: 'signed out, a provider redirect',
-  AppReturnPage: 'signed out, a provider redirect',
   NotFoundPage: 'no content',
 }
 

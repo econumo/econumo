@@ -21,7 +21,7 @@ func (r StartOAuthRequest) Validate() error {
 	if !IsOAuthProvider(r.Provider) {
 		fields = append(fields, errs.FieldError{Key: "provider", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
-	if r.Client != OAuthClientWeb && r.Client != OAuthClientApp {
+	if r.Client != OAuthClientWeb {
 		fields = append(fields, errs.FieldError{Key: "client", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 	if len(fields) > 0 {

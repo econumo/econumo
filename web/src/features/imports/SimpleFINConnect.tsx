@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useOnline } from '@/hooks/useOnline'
 import { apiErrorMessage } from '@/lib/apiError'
 import { WrongPassphraseError, createKey, encryptCredential, unlockKey } from '@/lib/importCrypto'
+import { SIMPLEFIN_BRIDGE_URL } from './simplefinBridge'
 import type { ImportKeyState } from './useImportKey'
 import { useClaimSetupToken, useCreateImportSource, useSetImportCredentialKey } from './queries'
 
@@ -95,7 +96,7 @@ export function SimpleFINConnect({ keyState, onConnected, onCancel, reconnect = 
             placeholder={t('imports.simplefin.connect.token_placeholder')}
           />
         </CardField>
-        <p className="px-1 text-xs text-muted-foreground">{t('imports.simplefin.connect.token_help')}</p>
+        <TokenHelp text={t('imports.simplefin.connect.token_help', { bridge: '\u0000' })} />
       </div>
       {keyState.status === 'locked' && !resetKey ? (
         <label className="flex items-center gap-2">
@@ -136,5 +137,17 @@ export function SimpleFINConnect({ keyState, onConnected, onCancel, reconnect = 
         {onCancel ? <Button type="button" variant="secondary" className="h-11" disabled={busy} onClick={onCancel}>{t('common.button.cancel.label')}</Button> : null}
       </div>
     </form>
+  )
+}
+
+// The catalogue holds {bridge} where the link goes, so every language places it itself.
+function TokenHelp({ text }: { text: string }) {
+  const [before, after = ''] = text.split('\u0000')
+  return (
+    <p className="px-1 text-xs text-muted-foreground">
+      {before}
+      <a href={SIMPLEFIN_BRIDGE_URL} target="_blank" rel="noopener" className="text-econumo-link underline-offset-2 hover:underline">SimpleFIN Bridge</a>
+      {after}
+    </p>
   )
 }

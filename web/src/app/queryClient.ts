@@ -12,7 +12,3 @@ setAnalyticsQueryClient(queryClient)
 
 installTransactionTracking(queryClient)
 
-// The analytics group ($group_id/$group_name) is resolved lazily inside
-// trackEvent() (web/src/lib/metrics.ts), not here: in the mobile app this
-// module evaluates before fetchServerConfig() merges the real INSTANCE_ID,
-// so a fixed module-scope call would never see it.

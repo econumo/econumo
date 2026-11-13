@@ -29,6 +29,7 @@ function renderPage() {
       { path: '/budget', element: <div>BUDGET ROUTE</div> },
       { path: '/settings/categories', element: <div>CATEGORIES SETTINGS</div> },
       { path: '/settings/apple-wallet', element: <div>WALLET SETTINGS</div> },
+      { path: '/settings/simplefin', element: <div>SIMPLEFIN SETTINGS</div> },
     ],
     { initialEntries: ['/onboarding'] },
   )
@@ -232,36 +233,69 @@ it('Complete setup skips every open step, then completes onboarding', async () =
   await waitFor(() => expect(state.stored.split(',').sort()).toEqual(['!accounts', '!categories', '!plan', 'import']))
 })
 
-describe('Apple Wallet Set up', () => {
+describe('Connect your accounts', () => {
   const MAC_CHROME = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
   beforeEach(() => {
     vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(MAC_CHROME)
   })
-  afterEach(() => vi.restoreAllMocks())
-  const walletHeading = () => heading('Card payments, logged for you')
+  afterEach(() => {
+    vi.restoreAllMocks()
+    window.econumoConfig = {}
+  })
+  const connectHeading = () => heading('Connect your accounts')
 
-  it('with Categories and Accounts done, skips the open steps, completes onboarding and opens the Wallet settings', async () => {
+  it('with Categories and Accounts done, the Apple Wallet link skips the open steps, completes onboarding and opens its settings', async () => {
     const state = serve('import,categories,accounts')
     const user = userEvent.setup()
     renderPage()
     await heading('Plan this month')
-    await user.click(screen.getByRole('button', { name: /Apple Wallet/ }))
-    await walletHeading()
-    await user.click(screen.getByRole('button', { name: 'Set up' }))
+    await user.click(screen.getByRole('button', { name: /Connect/ }))
+    await connectHeading()
+    await user.click(screen.getByRole('button', { name: 'Set up Apple Wallet' }))
     expect(await screen.findByText('WALLET SETTINGS')).toBeInTheDocument()
     expect(screen.queryByText('BUDGET ROUTE')).not.toBeInTheDocument()
     expect(posts.at(-1)).toEqual({ path: 'complete-onboarding' })
-    expect(state.stored.split(',').sort()).toEqual(['!apple_wallet', '!plan', 'accounts', 'categories', 'import'])
+    expect(state.stored.split(',').sort()).toEqual(['!plan', 'accounts', 'categories', 'connect', 'import'])
   })
 
-  it('with Categories not done, only opens the Wallet settings and leaves onboarding open', async () => {
+  it('with Categories not done, the link only opens the settings and leaves onboarding open', async () => {
     serve('import,!categories,accounts,plan')
     const user = userEvent.setup()
     renderPage()
-    await walletHeading()
-    await user.click(screen.getByRole('button', { name: 'Set up' }))
+    await connectHeading()
+    await user.click(screen.getByRole('button', { name: 'Set up Apple Wallet' }))
     expect(await screen.findByText('WALLET SETTINGS')).toBeInTheDocument()
     expect(posts).toEqual([])
+  })
+
+  it('shows SimpleFIN on a secure page and the MCP address, and Complete setup finishes on the budget', async () => {
+    window.econumoConfig = { IMPORT_SIMPLEFIN: true, MCP_URL: `/mcp` }
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+    const state = serve('import,categories,accounts,plan')
+    const user = userEvent.setup()
+    renderPage()
+    await connectHeading()
+    expect(screen.getByText(`/mcp`)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Set up SimpleFIN' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'SimpleFIN Bridge website' })).toHaveAttribute('href', 'https://bridge.simplefin.org/')
+    // the page's own Complete setup gives way to the step's
+    expect(screen.getAllByRole('button', { name: 'Complete setup' })).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Complete setup' }))
+    expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
+    expect(state.stored.split(',').sort()).toEqual(['accounts', 'categories', 'connect', 'import', 'plan'])
+    Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true })
+  })
+
+  it('Complete setup on a reopened skipped Connect marks it done and skips the rest', async () => {
+    const state = serve('import,categories,accounts,!apple_wallet')
+    const user = userEvent.setup()
+    renderPage()
+    await heading('Plan this month')
+    await user.click(screen.getByRole('button', { name: /Connect/ }))
+    await connectHeading()
+    await user.click(screen.getByRole('button', { name: 'Complete setup' }))
+    expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
+    expect(state.stored.split(',').sort()).toEqual(['!apple_wallet', '!plan', 'accounts', 'categories', 'connect', 'import'])
   })
 
   it('a failed completion shows the error and stays; Finish then lands on the Wallet settings', async () => {
@@ -269,8 +303,8 @@ describe('Apple Wallet Set up', () => {
     state.failComplete = true
     const user = userEvent.setup()
     renderPage()
-    await walletHeading()
-    await user.click(screen.getByRole('button', { name: 'Set up' }))
+    await connectHeading()
+    await user.click(screen.getByRole('button', { name: 'Set up Apple Wallet' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Try again')
     expect(screen.queryByText('WALLET SETTINGS')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Finish' }))

@@ -154,14 +154,6 @@
       "notice": "Econumo {version} is beschikbaar",
       "dismiss": "Sluiten"
     },
-    "serverUpdate": {
-      "notice": "Uw Econumo-server ({version}) is ouder dan deze app. Werk de server bij voor de nieuwste functies."
-    },
-    "appUpdate": {
-      "title": "Update vereist",
-      "blockedApp": "Deze app is te oud voor uw Econumo-server: versie {version} of nieuwer is vereist. Werk de app bij om door te gaan.",
-      "blockedServer": "Deze app vereist Econumo-server {min} of nieuwer, maar uw server is {version}. Werk de server bij om door te gaan."
-    },
     "offline_unavailable": {
       "title": "Offline niet beschikbaar",
       "text": "Deze gegevens zijn niet beschikbaar zonder internetverbinding."
@@ -845,7 +837,7 @@
         "reconnect_intro": "Plak een nieuw installatietoken van SimpleFIN Bridge. De vorige verbinding wordt vervangen; uw rekeningkoppelingen blijven behouden.",
         "token_label": "Installatietoken",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → Nieuwe verbinding → kopieer het installatietoken. Een token kan één keer worden gebruikt.",
+        "token_help": "{bridge} → Nieuwe verbinding → kopieer het installatietoken. Een token kan één keer worden gebruikt.",
         "forgot_passphrase": "Ik ben mijn wachtwoordzin vergeten, nieuwe instellen",
         "passphrase_new": "Wachtwoordzin",
         "passphrase_existing": "Uw wachtwoordzin",
@@ -1354,10 +1346,6 @@
       "callback": {
         "signing_in": "Aanmelden…"
       },
-      "app_return": {
-        "title": "Aanmelden voltooid — ga terug naar de Econumo-app.",
-        "open_app": "App openen"
-      },
       "provider_name": {
         "google": "Google",
         "apple": "Apple",
@@ -1439,7 +1427,7 @@
       "accounts": "Rekeningen",
       "plan": "Budget & plan",
       "home_screen": "App installeren",
-      "apple_wallet": "Apple Wallet",
+      "connect": "Koppelen",
       "menu": "Menu",
       "finish": "Afronden",
       "state_done": "klaar",
@@ -1459,11 +1447,28 @@
       "install": "Installeren",
       "done": "Klaar"
     },
-    "wallet_step": {
-      "heading": "Kaartbetalingen, vanzelf vastgelegd",
-      "text": "Koppel Apple Wallet en elke betaling met uw kaart verschijnt vanzelf in Econumo.",
-      "setup": "Instellen",
-      "later": "U kunt de Apple Wallet-koppeling op elk moment later instellen in Instellingen."
+    "connect_step": {
+      "heading": "Koppel uw rekeningen",
+      "text": "Laat uw transacties vanzelf binnenkomen in plaats van ze in te typen.",
+      "apple_wallet": {
+        "title": "Apple Wallet",
+        "text": "Een Opdrachten-automatisering op uw iPhone stuurt elke Apple Pay-betaling naar Econumo.",
+        "link": "Apple Wallet instellen"
+      },
+      "simplefin": {
+        "title": "SimpleFIN",
+        "text": "SimpleFIN Bridge is een betaalde dienst van derden die verbinding maakt met uw bank (vooral in de VS en Canada). Econumo haalt uw transacties daar op bij elke synchronisatie.",
+        "link": "SimpleFIN instellen",
+        "site": "Website van SimpleFIN Bridge"
+      },
+      "mcp": {
+        "title": "AI-assistenten (MCP)",
+        "text": "Voeg dit adres toe aan Claude, ChatGPT of een andere app met MCP-ondersteuning om uw financiën te beheren."
+      },
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd",
+      "later": "U kunt dit later altijd instellen via Instellingen.",
+      "finish": "Instellen voltooien"
     },
     "retry": "Opnieuw proberen",
     "save_continue": "Opslaan en doorgaan",

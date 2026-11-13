@@ -154,14 +154,6 @@
       "notice": "Econumo {version} 已发布",
       "dismiss": "忽略"
     },
-    "serverUpdate": {
-      "notice": "您的 Econumo 服务器（{version}）比此应用旧。请更新服务器以获取最新功能。"
-    },
-    "appUpdate": {
-      "title": "需要更新",
-      "blockedApp": "此应用对您的 Econumo 服务器来说过旧：需要 {version} 或更新版本的应用。请更新应用后继续。",
-      "blockedServer": "此应用需要 {min} 或更新版本的 Econumo 服务器，而您的服务器为 {version}。请更新服务器后继续。"
-    },
     "offline_unavailable": {
       "title": "离线时不可用",
       "text": "没有网络连接时无法查看这些数据。"
@@ -845,7 +837,7 @@
         "reconnect_intro": "粘贴 SimpleFIN Bridge 提供的新设置令牌。之前的连接将被替换；您的账户映射会保留。",
         "token_label": "设置令牌",
         "token_placeholder": "aHR0cHM6Ly9…",
-        "token_help": "SimpleFIN Bridge → 新建连接 → 复制设置令牌。令牌只能使用一次。",
+        "token_help": "{bridge} → 新建连接 → 复制设置令牌。令牌只能使用一次。",
         "forgot_passphrase": "我忘记了密码，设置新密码",
         "passphrase_new": "密码",
         "passphrase_existing": "您的密码",
@@ -1354,10 +1346,6 @@
       "callback": {
         "signing_in": "正在登录…"
       },
-      "app_return": {
-        "title": "登录完成，请返回 Econumo 应用。",
-        "open_app": "打开应用"
-      },
       "provider_name": {
         "google": "Google",
         "apple": "Apple",
@@ -1439,7 +1427,7 @@
       "accounts": "账户",
       "plan": "预算与计划",
       "home_screen": "安装应用",
-      "apple_wallet": "Apple Wallet",
+      "connect": "连接",
       "menu": "菜单",
       "finish": "完成",
       "state_done": "已完成",
@@ -1459,11 +1447,28 @@
       "install": "安装",
       "done": "完成"
     },
-    "wallet_step": {
-      "heading": "刷卡支付，自动记录",
-      "text": "连接 Apple Wallet，每一笔刷卡都会自动出现在 Econumo 中。",
-      "setup": "设置",
-      "later": "你可以随时在设置中配置 Apple Wallet 集成。"
+    "connect_step": {
+      "heading": "连接你的账户",
+      "text": "交易自动导入，无需手动录入。",
+      "apple_wallet": {
+        "title": "Apple Wallet",
+        "text": "iPhone 上的快捷指令自动化会把每笔 Apple Pay 付款发送到 Econumo。",
+        "link": "设置 Apple Wallet"
+      },
+      "simplefin": {
+        "title": "SimpleFIN",
+        "text": "SimpleFIN Bridge 是一项付费的第三方服务，可连接你的银行（主要在美国和加拿大）。每次同步时 Econumo 都会从中拉取交易。",
+        "link": "设置 SimpleFIN",
+        "site": "SimpleFIN Bridge 官网"
+      },
+      "mcp": {
+        "title": "AI 助手（MCP）",
+        "text": "将此地址添加到 Claude、ChatGPT 或其他支持 MCP 的应用，即可管理你的财务。"
+      },
+      "copy": "复制",
+      "copied": "已复制",
+      "later": "你可以稍后随时在“设置”中完成。",
+      "finish": "完成设置"
     },
     "retry": "重试",
     "save_continue": "保存并继续",

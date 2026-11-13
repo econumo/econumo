@@ -256,12 +256,12 @@ export interface BudgetAccountFilterDto {
 export interface BudgetDto {
   meta: BudgetMetaDto
   /** accounts is optional on the wire: servers older than the budget-membership
-   *  release — still accepted by the app's compat floor — omit it. */
+   *  release (a custom backend) omit it. */
   filters: { periodStart: string; periodEnd: string; accounts?: BudgetAccountFilterDto[] }
   balances: BudgetBalanceDto[]
   currencyRates: BudgetRateDto[]
-  /** labels is optional on the wire: servers older than the labels release —
-   *  still accepted by the app's compat floor — omit it. */
+  /** labels is optional on the wire: servers older than the labels release
+   *  (a custom backend) omit it. */
   structure: {
     folders: BudgetFolderDto[]
     elements: BudgetElementDto[]

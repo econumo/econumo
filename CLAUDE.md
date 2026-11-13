@@ -56,41 +56,6 @@ make web-lint      # cd web && pnpm lint      (oxlint)
 make web-bundle    # cd web && pnpm build     (production SPA build -> web/dist)
 ```
 
-### Mobile app (Capacitor) — in `mobile/`
-
-The iOS/Android apps are a Capacitor shell around the `web/` SPA — `web/` stays
-the single frontend. App-specific behavior branches on `isNativeApp()`
-(`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
-Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
-the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `FEEDBACK` into `window.econumoConfig` (a fixed
-allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
-store) — an app pointed at a self-hosted backend must report that backend's
-instance in product analytics, not none. The merge is per server: typing a
-server address on the auth screens fetches that server's config
-(`useServerConfigFor`, debounced), the previous server's keys fall back to the
-bundled defaults the moment a different server is requested, and a response for
-a server no longer selected is dropped. Screens that read merged keys subscribe
-to `useServerConfig`'s `revision` so a config arriving after first paint
-re-renders them. The oauth provider list is cached per server the same way
-(`providersQueryKey(configHost)`), so a switch never shows another server's
-providers. App and server version-check each
-other in BOTH directions, one hard floor per side; both floors live in the
-single shared `compat/versions.json`
-(Go embeds it, the SPA imports it — same pattern as `locales/`):
-`minServerVersion` is the oldest server the app accepts, `minAppVersion`
-(served as `MIN_APP_VERSION`) the oldest app the server accepts — crossing
-either hard-blocks the app (`AppUpdateBlock`); compatible-but-outdated pairs
-get soft nudges (the existing release `UpdateNotice` covers an outdated app,
-`ServerVersionNotice` an outdated server). Full rules in `mobile/README.md`.
-
-```bash
-make mobile-install   # cd mobile && pnpm install
-make mobile-sync      # build web/ + cap sync into ios/ and android/
-make mobile-ios       # sync + open in Xcode
-make mobile-android   # sync + open in Android Studio
-```
-
 ### Publishing
 
 ```bash
@@ -424,11 +389,9 @@ at a time, in that order). Runtime config
 (`window.econumoConfig`) is served at `/econumo-config.js`: for a running
 instance the Go server generates the whole document (see the "Web UI config"
 bullet below); `public/econumo-config.js` is only the static fallback used
-when there is no Go server in front of the SPA (the mobile app's bundled
-WebView, `pnpm dev` without a backend). Versions are two separate keys:
+when there is no Go server in front of the SPA (`pnpm dev` without a backend). Versions are two separate keys:
 `VERSION` is the real running version (`getVersion()` — every comparison:
-analytics `$app_version`, the update check, the mobile
-compatibility floors), `VERSION_REF` the source revision of the build
+analytics `$app_version`, the update check), `VERSION_REF` the source revision of the build
 (`getVersionRef()`, `""` when unknown; `internal/version.Ref()`: the
 ldflags-stamped `version.Commit`, else the toolchain's `vcs.revision`), which only
 keys the persisted caches — the query-cache and IndexedDB busters are
@@ -441,7 +404,7 @@ from a dirty tree shares its key with the previous build; bump `FORMAT_VERSION` 
 set by the runtime `ECONUMO_VERSION` and falling back to `VERSION`. Vite also
 inlines a build-time `ECONUMO_VERSION` as the bundle's own version (the Docker
 build arg of the same name sets it per image build, default `dev`) — that one
-IS a real version, used by the mobile app where no server config is present;
+IS a real version, used where no server config is present;
 `ECONUMO_COMMIT` (the build arg and env var of the same name, set by both publish
 workflows and the Makefile from the checked-out sha) is inlined the same way as the
 bundle's own `VERSION_REF`.
@@ -478,10 +441,15 @@ prefilled once from `get-plan-suggestions` when it arrives, never over a stored 
 typed before it arrived, and a prefilled value saves like a typed one; `save-plan` writes
 only changed rows),
 then the device-dependent `home_screen` (client-only install step, never sent to the server)
-and `apple_wallet`. A done step is read-only (the stepper will not open it; a link to it from
+and `connect` ("Connect your accounts", `ConnectStep`: a card per option `connectOptions()` offers,
+Apple Wallet on an iPhone or Mac and SimpleFIN on a secure page with its import on, each a line of
+text and a link to its settings page, plus the MCP address with Copy when `MCP_URL` is set; left
+out when it offers nothing; ticked once any import source exists; its own "Complete setup" marks it
+done and completes onboarding, so the page's header button is hidden there; a stored `apple_wallet`
+answer, from the step it replaced, reads as its answer). A done step is read-only (the stepper will not open it; a link to it from
 another step opens its settings page instead); skipped steps can be reopened, and "Complete
-setup" skips every open step (so does Apple Wallet's Set up once categories and accounts are
-done, landing on the Apple Wallet settings instead of the budget). New category rows are created unless removed (trash button);
+setup" skips every open step (so do Connect's settings links once categories and accounts are
+done, landing on that settings page instead of the budget). New category rows are created unless removed (trash button);
 there is no savings toggle and no name-based savings guess (new rows start with the card icon and the default Cash row with the cash icon, the name never changes it; the user picks any icon freely and the icon never decides savings), and the client sends no savings at all. The client is thin: each of those three steps is ONE server write in the `internal/onboarding` feature (`internal/onboarding/steps.go`), and `useDay0` only keeps the submitted form plus one operation id per step in the draft (minted on the first "Save and continue", the main button of Categories, Accounts and Plan whatever changed, replayed by every retry until the server answers, cleared after success), puts the answered `user` into the user query cache (so the stepper's ticks come from the server, and `useOnboardingSteps` writes no option for a step already marked) and keeps the answered `budgetId` for the plan step. A failed call refetches every query (the step may have committed with its answer lost), and a 400 on `id` (claimed by another write) drops the step's id so the next "Save and continue" mints a fresh one. The plan step only plans a budget the user may edit (owner, admin or user role). `POST /api/v1/onboarding/save-categories` (`{id, categories:[{key,name,type,icon}] 0..60, order?}`: creates the rows through category create, a row named like an active category of its type or an earlier row maps to that one, applies `order` (existing ids and row keys, each type in its own slots), and creates the budget only when the user owns a live account and has none), `save-accounts` (`{id, accounts:[{key,name,balance,currencyId,icon}] 0..50, currencyIds, mainCurrencyId}`; the client sends only the new rows, and `currencyIds` carries the picked extras plus every listed account's currency: creates the accounts through account create (the first one of a user without folders creates "General"), sets the profile currency, hides every global then shows main + listed + the accounts' currencies (refusals skipped), then creates the budget over all live own accounts when there is none (and the user has one), else adds the new accounts to the default budget (the `budget` option when readable, else the first owned/accepted one; a read-only budget takes none)) and `save-plan` (`{id, budgetId?, amounts:[{categoryId,amount}] 0..200}`, non-negative decimals, `"0"` a real plan: set-limit for each in the budget's current period, `budget.CurrentPeriod`). No rows is valid on the first two: a user who already has categories or accounts still finishes the step. So the budget appears at whichever of categories/accounts comes second with accounts present, named `onboarding.budget_name` in the request language, in the profile currency; the plan step never creates one (a user without a budget sees "needs an account" with a button to the Accounts step). Each runs in ONE transaction that first takes the user row lock (`user.LockForOnboarding`), then claims `id` with the operation guard; the nested feature use cases join it as savepoints, so a failure on any row rolls back every row, the claim and the revision bumps. A step already done (in the option, or onboarding completed/absent; also the replay of the `id` that marked it) writes nothing and answers the current state, row keys matched back by name (accounts newest first, so an older account of the same name is never taken); an `id` already claimed while the step is open (the operation id table is shared by every create endpoint) is a 400 on `id` (`common.invalid_choice`). `mainCurrencyId` must be usable by the caller (a global or their own live custom, else `mainCurrencyId` invalid_choice), and the visible set always keeps the currencies of every live account the user owns. Each marks its step done (`user.MarkOnboardingStep`, replacing a `!step`) and answers `{user, categories|accounts: {key: id}, budgetId}` (`save-plan`: `{user, budgetId}`). When the server has an AI provider (`ECONUMO_AI_DSN`), `save-accounts` then starts a background job, after the commit and only for the accounts it created, into the budget it created or added them to (goroutine, fresh context, 15 s timeout, panics recovered; the runner is injectable so tests run it inline) that sends the caller's own non-deleted accounts among those ids (id, name, the account's own currency code) plus the caller's timezone (header, else stored) and UI language, never the profile currency, asks for `{"savings":[ids]}`, and flags the chosen accounts that are still live members through the budget feature's `MarkSavingsMembers` (add-account's access rules, never adds a member, skips deleted ones). Jobs are not drained on shutdown and a replay starts none, so a restart can leave the accounts unclassified. A failure, a timeout or an unusable reply changes nothing and logs a WARN with `user_id` + `err_type` only. The job is capped at 20 per user per rate-limit window (over the cap the write still succeeds, unclassified). Without AI nothing is ever marked savings. The SPA invalidates its queries after the write and does not poll, so savings show up on the next budget fetch after the job lands. A reused budget and the user's pre-existing accounts keep their flags. The former per-entity orchestration routes `onboarding/create-budget` and `onboarding/add-budget-accounts` are gone. **Import path**: `POST /api/v1/onboarding/finish-import` (`{id}` -> `{user, budgetId}`, same lock/claim/replay rules) creates the budget when the user has none (over their live own accounts outside hidden folders, every category seeded as budget create does, `onboarding.budget_name`, profile currency) and marks ONLY `import` (`import` is a server step too: `update-onboarding` never reopens it); categories and accounts stay open as review steps. After the commit, with AI configured, the import review (`internal/onboarding/review.go`) sends up to four independent requests, each through the injectable runner (so concurrent in production, inline in tests) with its own 90 s timeout (the icon replies take real providers 20-60 s; the savings-only job keeps 15 s), its own panic recovery and its own WARN (`user_id` + `err_type` + `part`: `categories`/`accounts`/`savings`/`debts`), so one that fails, times out or answers garbage never affects the others; together they count ONCE against the per-user cap. (a) category icons: the user's active categories still on a default icon (`model.DefaultIcon` or the CSV import's `model.ImportCategoryIcon`; names + types), reply `{categories:{id:icon}}`; (b) account icons: live accounts still on the import's `model.ImportAccountIcon` (names + own currencies), reply `{accounts:{id:icon}}`; (c) savings, only when this call created the budget: every live own account through the save-accounts job's savings prompt (`classify`, reply `{savings:[ids]}`), flagged through `MarkSavingsMembers` in that budget. Each carries the timezone and language and never the profile currency. Icons are kept only from `internal/onboarding/icons.go` (a copy of `web/src/lib/icons.ts`, kept in sync by a test) and applied through the owning feature's `ReplaceIcon` (one conditional `UPDATE ... WHERE icon = <read when the request started>`, so a user edit wins and a failed compare writes nothing; an icon the user picked is never repainted). **Icon suggestions while typing** (the manual steps never repaint an icon after the save): `GET /api/v1/onboarding/suggest-icon?kind=category|account&name=[&type=expense|income][&currency=<code>]` (`internal/onboarding/suggest_icon.go`; name trimmed 1-64 characters, else a 400) asks the AI provider, with the caller's language and timezone, for the one catalogue icon that fits and answers `{icon}`. Every way to no suggestion answers `""` with a 200, never an error: no provider (asks nothing), over the per-user limit (60 per rate-limit window, scope `onboarding-icon`, hardcoded like `onboarding-ai`, exempt from the per-IP cap), a failure, an 8 s timeout, a malformed reply or an icon outside the catalogue. Answers (a well-formed `""` included, failures not) sit in an in-memory LRU of 2048 keyed per user, language, kind, type, currency and lowercased name, consulted before the limiter. The AI call runs without the request's cancellation (`context.WithoutCancel`, still 8 s), so a request the form drops mid-call (the name changed) still caches the answer it paid for; a `context.Canceled` logs no WARN. The operation log line carries `kind` and `outcome` (`no_ai`/`cached`/`rate_limited`/`failed`/`none`/`suggested`), never the name; a failure also WARNs `onboarding icon suggestion failed` with `user_id`, `kind`, `err_type`. The SPA's `useIconSuggestion` (`web/src/features/iconSuggestion`) asks only with `AI_ENABLED` and online, 600 ms after the typing pauses, for 2-64 characters, cancels a stale request and keeps each non-empty answer for the page's lifetime (per session user; an empty one may be a passing refusal, so it is asked again and the server's cache answers when it was final). It applies while the user has not picked an icon (picking one sets `iconPicked` for good): onboarding category and account rows whose name the user typed or edited (an untouched default or Cash row, `labelKey` still set, keeps its curated icon; CSV-imported items are existing rows and keep the import review), and the New category / New account dialogs in create mode only (editing never changes an icon). An icon a suggestion put there gives way to the item's starting icon as soon as the name changes, until the new name has a suggestion of its own (`useApplyIconSuggestion`; an icon set any other way is never touched). A category created INLINE from a picker ("Create <name>" in the transaction and import-rule dialogs: `useCreateCategory` with no `icon`) is saved at once on the default icon; then, in the background (`suggestIconForCreatedCategory`, `inline.ts`), it asks suggest-icon and hands the answer to `POST /api/v1/onboarding/apply-suggested-icon` (`{categoryId, icon, expectedIcon}` -> `{applied}`: a catalogue icon, else a 400 on `icon`; the caller's own category, else not found; written through the category feature's conditional `ReplaceIcon`, `UPDATE ... WHERE icon = expectedIcon`, so a change made meanwhile on any device wins and the name is never sent or touched), then refreshes the category list (and, when applied, the budget views), showing nothing on failure. The first suggestion an item takes fires `appIconSuggestionApplied` `{kind, source: onboarding|dialog|inline}` (inline only when the server applied it). `save-accounts` keeps only its savings job; after `save-plan` (only when it sent amounts) the SPA refetches categories/accounts/budgets/plan/debts at the same 10, 30 and 90 s (`scheduleAiRefresh`). **Debt detection** (`internal/onboarding/debts.go`): (d) a fourth import-review part (`debts`, in the budget `finish-import` created, else the default budget when the user may plan it) and a `save-plan` post-commit job (in the plan's budget) ask which of the user's active own EXPENSE categories that no debt of that budget covers yet (`DebtSteps.CoveredCategories(budgetID)`; another budget's debts cover nothing here) repay a loan (a mortgage, a car, student or personal loan, credit-line instalments; never rent, utilities, subscriptions, insurance or card spending), reply `{"debts":[{"categoryId","name"}]}` (the name in the user's language, a blank or over-64-character one falling back to the category's; ids not asked about dropped; a malformed reply creates nothing). Only categories with a payment are asked about: in the import review the median of the months with spending above zero among the six complete periods before the current one (`budget.CategoryHistory`, which lists every category of the budget, one without transactions too, so its element currency is known; fewer than two such months: not asked; rounded to the currency), after `save-plan` the category's amount in that call (> 0). `save-plan` first, synchronously and with or without AI, hands the plan of every planned category a debt of the plan's budget already covers to that debt's row (`DebtSteps.TakeCategoryPlans(budgetID, categoryID)` -> `debt.Service.TakeCategoryPlans`: the budget's debt not set up with a whole-category rule on it takes the category's plans and comments through the same `TransferData`/`SumOnClash` move create-debt makes), so a plan typed after the import created the debt never sits on a second row; it reserves a cap slot and starts the job only when an uncovered active own expense category is planned above zero (WARN `onboarding debt detection failed`). Categories the import review judged not to be loans are asked about again after `save-plan` (left as is: the plan may make the answer clearer). A category whose currency's fraction digits cannot be read is skipped, not the job. A category with history carries `monthly`, its six totals oldest first in the element currency (no currency code), plus the timezone and language. Each one named gets a debt through the debt feature's own create (`onboarding.DebtSteps`, glued in `internal/server/glue_onboarding.go` (`OnboardingDebts`) over `CreateDebtRequest.Validate` + `debt.Service.CreateDebt`, wired with `SetDebts` since the debt service is built later): in that budget, NOT set up, monthly, that payment, in the category's element currency (the budget's when it has no row), one whole-category rule, so it takes the category's plans and shows in the budget's Debts block with Finish setup. A refusal (a debt of the budget already covers the category, `debt.key_conflict`/`debt.start_date_taken`, when one appeared after the covered read; not an expense category; an unusable currency; the caller may not plan the budget; any validation, access or not-found error) skips the category silently (DEBUG `onboarding debt skipped`), so a rerun never duplicates a debt and the plan pass after an import adds only the categories the history could not cover. `save-categories` also takes `archive`/`restore` (own category ids; another id, or one id in both, is a 400 on that list) applied through category archive/unarchive in the step's transaction. `save-accounts` also takes `hide`/`unhide` (own live account ids, same 400s): hide moves the account into the user's hidden folder named `onboarding.archive_folder` in the request language (created hidden when missing; a visible folder of that name is the user's and is never hidden, the archive then gets a numbered name) and removes it from the default budget through remove-account, never confirming a savings removal (`budget.account_not_removable`, history in a past period, and `budget.savings_removal_unconfirmed`, a savings member with plans or comments, are tolerated: the account stays a member); unhide moves it into the first visible folder (a `General` folder, shown again or created, when there is none) and adds it back. New accounts also go to the first visible folder, and a budget a step creates leaves hidden-folder accounts out. `save-accounts` also takes `currencies` (`[{accountId, currencyId}]`, own live accounts and a currency usable like `mainCurrencyId`, one entry per account, else a 400 on `currencies`), and `balances` (`[{accountId, balance}]`, same ownership rule, a plain decimal, else a 400 on `balances`), both applied in the step's transaction through account update-account with the account's own name and icon (an untouched balance is resent as shown, so it writes no correction; a changed one books update-account's "Balance adjustment" dated now in the caller's timezone); those currencies join the visible set. The CSV import creates every account in the instance base currency, so the review screen gives existing rows the same currency chip and balance input (parsed in the UI language) as new ones, with the name read-only and an Archive / Restore toggle (the hide/unhide above); balance, currency and action cells have fixed widths so the columns line up. The Currencies block is one wrapping row of chips: the main currency first (filled, a star, "· Main"), then the other selected currencies, then "+ Add currency", with a hint under them. Tapping the main chip opens the full searchable currency list (the same PickerSheet as Add; both, like the account rows' currency picker, offer every live global and the user's own live customs, currencies the user hid included, `usableCurrencies`, since save-accounts shows the chosen ones again): the pick becomes main and joins the chips, the old main stays selected. Tapping another chip opens a menu with "Make main" and, unless a listed account uses that currency (those always stay visible), "Remove". "Add currency" only adds; it never changes the main currency; the plan step shows each row's currency code (its element's, else the budget's). In the account list the first row of the combined list (the first shown existing account, else the first new row) leads, its pick moves every row the user has not changed by hand (existing ones go out in `currencies`) and the main currency. When `save-accounts` lands in an existing default budget that the caller owns alone (no participant, invited or accepted), that is not archived and has no limit in any period, it also switches that budget to `mainCurrencyId` through budget update-budget: the budget finish-import or save-categories created took the profile currency of that moment. There is no marker for an onboarding-created budget; an owned budget of a user still in the accounts step was created after onboarding began, and "unshared, nothing planned" is what makes the switch harmless. `GET /api/v1/onboarding/get-plan-suggestions?budgetId=` (a named budget needs update access, else 403; without it the default budget, or `{budgetId:"", items:[]}` when the user has none they can update; read-only) answers `{budgetId, items:[{categoryId, amount}]}`: for each own active category, income and expense, the average over the three complete periods before the budget's current one (`budget.CategoryHistory`: the plan sheet's per-category actuals, but over every account the CALLER owns, hidden-folder (archived) and soft-deleted ones included, rather than the budget's members, so archiving the account that holds the history keeps the suggestions while membership rules are unchanged (an archived account still leaves the budget); another user's account shared into the budget never counts; tagged expenses counted for their category, converted into the element currency with each period's average rates), sum divided by three and rounded to the element currency's fraction digits, only when at least two of those periods have a transaction and the average is positive. Categories and accounts the user already has are
 reviewed with their names read-only (category rows wholly; an account's balance and currency
 stay editable, see `balances`/`currencies` above): every own category (archived ones too, muted,
@@ -496,8 +464,8 @@ step is done or skipped (also when answered on another device). The install bann
 stay hidden until it is complete. There are no budget-page "get ready" cards and no Inbox "Next
 steps" section any more. Per-user progress lives in the `onboarding` user option itself: registration seeds
 `started` (nothing answered), each answer replaces it with the comma-separated step states
-(keys `import`/`categories`/`accounts`/`plan`/`apple_wallet`, each at most once, a `!` prefix =
-skipped (`!plan`)), written by the step routes for a done `import` (finish-import)/`categories`/`accounts`/`plan` and otherwise (skips, import, install, Apple Wallet) by `POST /api/v1/user/update-onboarding` (which never reopens an `import`/`categories`/`accounts`/`plan` the server marked done: a stale stepper write keeps it done, so a later save under a fresh id cannot create the rows twice) (`web/src/features/onboarding/onboardingProgress.ts`,
+(keys `import`/`categories`/`accounts`/`plan`/`connect`, plus `apple_wallet` still accepted from older clients, each at most once, a `!` prefix =
+skipped (`!plan`)), written by the step routes for a done `import` (finish-import)/`categories`/`accounts`/`plan` and otherwise (skips, import, install, Connect) by `POST /api/v1/user/update-onboarding` (which never reopens an `import`/`categories`/`accounts`/`plan` the server marked done: a stale stepper write keeps it done, so a later save under a fresh id cannot create the rows twice) (`web/src/features/onboarding/onboardingProgress.ts`,
 optimistic, cancel-in-flight, last write reconciles). `completed` is terminal: only
 `complete-onboarding` writes it, `update-onboarding` refuses the value (`common.invalid_choice`)
 and is a no-op returning the current user once onboarding is complete (or the option is absent,
@@ -515,7 +483,7 @@ Every report query key is invalidated after any successful mutation
 (`web/src/lib/appQueryClient.ts`), so a report never shows stale figures.
 
 **Service worker** (`web/sw/sw.js`, registered by `web/src/lib/serviceWorker.ts`, production
-web builds only, never in the native app): it makes the installed PWA start offline. A Vite
+builds only): it makes the installed PWA start offline. A Vite
 plugin in `web/vite.config.ts` writes `dist/sw.js` after the build, prepending the precache
 list (the bundle, the manifest and the icons it and `index.html` name)
 and a build hash, a digest of the worker and those files rather than the release version (every
@@ -717,7 +685,7 @@ with the hash and either implementation verifies the other's), frontend only, ne
 There is no biometric unlock (the owner's decision; a config stored with a `biometric` field still reads, the
 field ignored). Storage:
 localStorage `econumo.appLock` (config: owner `userId`, `secret` {kind, hash, length; a config from before
-patterns holds `pin` and reads as kind pin}, `lockAfterMs` 0/1/5/15 min) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
+patterns holds `pin` and reads as kind pin}, `lockAfterMs` 0/1/5/15 min) and `econumo.appLock.attempts`, re-read on every check, plus the
 sessionStorage marker `econumo.appLock.fresh` that `setToken` sets so the reload after a sign-in does
 not ask for the PIN (it counts for 30 s; any lock but the one taken as the page hides, and turning the
 lock on, spend it), and the sessionStorage `econumo.appLock.seen` (when this tab was last unlocked and
@@ -1032,20 +1000,6 @@ it). Key vars:
   always treated as trusted (every Apple ID address is verified) but Google's `email_verified`
   claim is honoured, not trusted blindly — Google always sends it and documents `false` for
   unverified addresses. See `docs/oidc-setup.md`.
-- `ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` — the mobile apps allowed to claim
-  `<ECONUMO_URL>/oauth/app-return` as a verified Universal Link / App Link, which is how the
-  OAuth app flow returns without the globally claimable private scheme. iOS: comma-separated
-  `<Team ID>.<bundle id>` (`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`). Android: comma-separated
-  `<package>=<SHA-256 signing fingerprint>` (32 colon-separated hex bytes, upper-cased on load;
-  repeating a package adds a second certificate, as Play App Signing requires). Either one set
-  enables app links and makes the server publish `/.well-known/apple-app-site-association` and
-  `/.well-known/assetlinks.json` (`internal/web/applinks`, mounted on the root mux next to
-  `/health`; the platform with no entries 404s). A malformed entry fails boot, as does an
-  `ECONUMO_URL` that is not `https://` — neither OS verifies a plain-http link. They only make
-  sense on the domain the store app is actually associated with (`app.econumo.com`): a
-  self-hosted backend used from the store app must leave them unset and keeps the private
-  `com.econumo.app://oauth` scheme, whose residual risk is that any app on the device may
-  register it.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
@@ -1222,7 +1176,7 @@ it). Key vars:
   revision) has no env override either. `VERSION` itself has NO env
   override: it always carries the binary's `internal/version.Version`, because
   the SPA compares it as a real version (analytics `$app_version`, the update
-  check, the mobile app's compatibility floors), and a display label must never
+  check), and a display label must never
   reach those. `ANALYTICS` no longer exists as a config key — analytics is a
   per-user preference now, not instance-wide (see `ECONUMO_ANALYTICS` above).
   `INSTANCE_ID` is the one key with no matching env var: it carries the
@@ -1235,19 +1189,17 @@ it). Key vars:
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
-  backend on another origin; the app uses the merged per-server value as is.
+  backend on another origin.
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,
   always present, `true` iff `ECONUMO_AI_DSN` is set) advertises the retained
   AI provider configuration; bulk rule suggestions are removed.
-  `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
-  when empty, since the app's version-check treats a present-but-empty value
-  differently from an absent one. The composition root resolves the FS
+  The composition root resolves the FS
   (`web.DistFS`), both versions, and instance id once in `server.BuildAPI`.
   `web/public/econumo-config.js` itself is a fallback baseline, not a source
-  of defaults for a served instance — it only matters for the mobile app's
-  bundled WebView and `pnpm dev` without a backend running (see that file's
+  of defaults for a served instance — it only matters for `pnpm dev` without a
+  backend running (see that file's
   header comment); mounting a replacement file over it in a container has no
   effect (there is no disk-serving mode to read it from — use the `ECONUMO_*`
   variables above instead).
@@ -1725,8 +1677,7 @@ In the distroless image these run via the binary directly, e.g.
   `ECONUMO_ALLOW_REGISTRATION` is on) a
   new passwordless account (`users.algorithm = 'none'`), then a one-time, 60-second
   handoff code the client exchanges for a normal session — never a token in a redirect URL
-  or server log. The `start-*` call also returns a **flow secret** (stored in `sessionStorage`
-  on the web, `localStorage` in the app) that the client must present alongside the handoff:
+  or server log. The `start-*` call also returns a **flow secret** (stored in `sessionStorage`) that the client must present alongside the handoff:
   the flow is bound to the client that began it, so a forged callback cannot log a victim
   into an attacker's account. **Auto-link happens only into a PASSWORDLESS account**
   (one a provider created, whose owner therefore already proved the address); a verified
@@ -2495,25 +2446,16 @@ data unreadable. Most are also asserted by the test suite.
   address never appears twice. Resolving the list is best-effort — a lookup failure sends
   the notice to the primary address alone rather than failing it — and the unlink notice
   copies the addresses that REMAIN, the removed row being gone by the time it sends.
-- **OAuth app return**: an app-client flow lands on `<ECONUMO_URL>/oauth/app-return` when
-  app links are configured (`ECONUMO_APP_LINKS_IOS`/`_ANDROID`) and on the private
-  `com.econumo.app://oauth` scheme otherwise. Either way the one-shot code rides in the
-  fragment (`#handoff=` / `#linkHandoff=`) and failures in the query (`?error=` /
-  `?linkError=`), so a handoff never reaches a server log or a `Referer` header on the https
-  variant. The https form matters because only the associated app can receive it (RFC 8252
-  §7): a counterfeit app that registers the private scheme can otherwise start its own flow,
-  hold the flow secret, and catch the victim's handoff.
 - **OAuth email drift**: when a provider's claimed email differs from the signed-in user's
   stored email, the stored email is left alone UNLESS the user is passwordless, has exactly
   one linked identity, and no other user already holds the new address — in that narrow case
   (the IdP is the account's sole authority) the primary email is replaced immediately after,
   in its own transaction. The rule stops applying the moment the user sets a password or
   links a second identity.
-- **RP-initiated logout is web-only**: `logout-user` returns `logoutUrl` when the ending
+- **RP-initiated logout**: `logout-user` returns `logoutUrl` when the ending
   session's provider published an `end_session_endpoint` (the custom OIDC slot only — Google
   and Apple publish none); the web client navigates there, landing back at
-  `<ECONUMO_URL>/login`, while the app always logs out locally and shows the "your {provider}
-  session may still be active" notice instead.
+  `<ECONUMO_URL>/login`.
 
 ## Deployment
 
