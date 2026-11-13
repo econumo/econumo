@@ -1,4 +1,3 @@
-import { mirrorWrite } from './appStorage'
 import { APP_LOCK_ATTEMPTS_KEY, APP_LOCK_CONFIG_KEY, APP_LOCK_FRESH_KEY } from '@/features/appLock/keys'
 
 const TOKEN_KEY = 'token'
@@ -38,10 +37,8 @@ function startAppLockSession(userId: string | undefined): void {
   const owner = lockOwner()
   if (userId && owner !== null && owner !== userId) {
     localStorage.removeItem(APP_LOCK_CONFIG_KEY)
-    mirrorWrite(APP_LOCK_CONFIG_KEY, null)
   }
   localStorage.removeItem(APP_LOCK_ATTEMPTS_KEY)
-  mirrorWrite(APP_LOCK_ATTEMPTS_KEY, null)
   try {
     sessionStorage.setItem(APP_LOCK_FRESH_KEY, String(Date.now()))
   } catch {
@@ -53,20 +50,16 @@ function startAppLockSession(userId: string | undefined): void {
 export function setToken(token: string, userId?: string): void {
   startAppLockSession(userId)
   localStorage.setItem(TOKEN_KEY, token)
-  mirrorWrite(TOKEN_KEY, token)
   if (userId) {
     localStorage.setItem(SESSION_USER_KEY, userId)
   } else {
     localStorage.removeItem(SESSION_USER_KEY)
   }
-  mirrorWrite(SESSION_USER_KEY, userId || null)
 }
 
 export function removeToken(): void {
   localStorage.removeItem(TOKEN_KEY)
-  mirrorWrite(TOKEN_KEY, null)
   localStorage.removeItem(SESSION_USER_KEY)
-  mirrorWrite(SESSION_USER_KEY, null)
 }
 
 export function getSessionUserId(): string | null {
@@ -80,7 +73,6 @@ export function rememberSessionUser(userId: string): void {
     return
   }
   localStorage.setItem(SESSION_USER_KEY, userId)
-  mirrorWrite(SESSION_USER_KEY, userId)
 }
 
 export function getItem(key: string): unknown {
@@ -98,10 +90,8 @@ export function getItem(key: string): unknown {
 export function setItem(key: string, value: unknown): void {
   const encoded = JSON.stringify(value)
   localStorage.setItem(key, encoded)
-  mirrorWrite(key, encoded)
 }
 
 export function removeItem(key: string): void {
   localStorage.removeItem(key)
-  mirrorWrite(key, null)
 }

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { isFreshAccount, oauthClient, openAuthorizationUrl, rememberOAuthFlow, takeOAuthFlow, useExchangeHandoff, useOAuthInFlight, useStartOAuth } from './oauthQueries'
+import { isFreshAccount, openAuthorizationUrl, takeOAuthFlow, useExchangeHandoff, useStartOAuth } from './oauthQueries'
 
 function wrapper({ children }: { children: ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -14,28 +14,13 @@ beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   window.econumoConfig = {}
-  delete (window as { Capacitor?: unknown }).Capacitor
 })
 
-afterEach(() => {
-  useOAuthInFlight.setState({ inFlight: false })
-})
-
-it('oauthClient reports web outside the app and app inside it', () => {
-  expect(oauthClient()).toBe('web')
-  window.Capacitor = { isNativePlatform: () => true }
-  expect(oauthClient()).toBe('app')
-})
-
-it('openAuthorizationUrl assigns location on the web and opens the Browser plugin in the app', () => {
+it('openAuthorizationUrl assigns location', () => {
   const assign = vi.fn()
   Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
   openAuthorizationUrl('https://idp/a')
   expect(assign).toHaveBeenCalledWith('https://idp/a')
-  const open = vi.fn().mockResolvedValue(undefined)
-  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: { open } } }
-  openAuthorizationUrl('https://idp/b')
-  expect(open).toHaveBeenCalledWith({ url: 'https://idp/b' })
 })
 
 it('useStartOAuth posts to start-login for login and start-link for link, then navigates', async () => {
@@ -55,33 +40,6 @@ it('useStartOAuth posts to start-login for login and start-link for link, then n
   expect(assign).toHaveBeenNthCalledWith(2, 'https://idp/2')
   expect(takeOAuthFlow()).toBe('f2')
   expect(takeOAuthFlow()).toBe('') // single use
-})
-
-it('stores the flow secret in localStorage inside the app, where the browser sheet ends the session', async () => {
-  window.Capacitor = { isNativePlatform: () => true }
-  server.use(http.post('*/api/v1/oauth/start-login', () =>
-    HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/1', flow: 'appflow' } })))
-  const { result } = renderHook(() => useStartOAuth(), { wrapper })
-  await result.current.mutateAsync({ provider: 'google', intent: 'login' })
-  expect(localStorage.getItem('oauthFlow')).toBe('appflow')
-  expect(sessionStorage.getItem('oauthFlow')).toBeNull()
-})
-
-it('in the app, a flow stays in flight until the browser sheet finishes or the flow secret is taken', async () => {
-  const listeners: Record<string, () => void> = {}
-  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: {
-    open: vi.fn().mockResolvedValue(undefined),
-    close: vi.fn().mockResolvedValue(undefined),
-    addListener: vi.fn((ev: string, cb: () => void) => { listeners[ev] = cb }),
-  } } }
-  openAuthorizationUrl('https://idp/x')
-  expect(useOAuthInFlight.getState().inFlight).toBe(true)
-  listeners.browserFinished()
-  expect(useOAuthInFlight.getState().inFlight).toBe(false)
-  openAuthorizationUrl('https://idp/y')
-  rememberOAuthFlow('f')
-  takeOAuthFlow()
-  expect(useOAuthInFlight.getState().inFlight).toBe(false)
 })
 
 it('useExchangeHandoff stores the token and clears the persisted cache', async () => {

@@ -1,5 +1,4 @@
 import { backendHost, getBillingUrl } from './config'
-import { isNativeApp } from './platform'
 
 // The running (or upcoming) sale, as data: billing owns the promo name and
 // the percentage, Econumo writes every word around them.
@@ -74,7 +73,6 @@ export async function getSaleBanner(input: SaleBannerInput): Promise<SaleBanner 
 // is pointed at a custom backend on another origin, that instance's sales have
 // nothing to do with the selected backend's users (same rule as mcpUrl()).
 function servesSelectedBackend(): boolean {
-  if (isNativeApp()) return true
   try {
     return new URL(backendHost()).origin === window.location.origin
   } catch {

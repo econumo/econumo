@@ -12,7 +12,6 @@ const (
 	OAuthProviderOIDC   = "oidc"
 
 	OAuthClientWeb = "web"
-	OAuthClientApp = "app"
 
 	OAuthIntentLogin = "login"
 	OAuthIntentLink  = "link"

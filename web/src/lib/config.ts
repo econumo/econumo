@@ -1,7 +1,4 @@
 import { getItem, removeItem, setItem } from './storage'
-import { isNativeApp } from './platform'
-
-const CLOUD_HOST = 'https://app.econumo.com'
 
 export interface LocaleOption {
   value: string
@@ -50,9 +47,7 @@ export function backendHost(value?: string): string {
     return `${url.protocol}//${url.host}`
   }
   if (value === undefined) {
-    // Inside the WebView the origin is capacitor://localhost — meaningless as
-    // an API host, so the app defaults to Econumo Cloud instead.
-    const defaultHost = isNativeApp() ? CLOUD_HOST : window.location.origin
+    const defaultHost = window.location.origin
     if (!selfHosted()) {
       return defaultHost
     }
@@ -124,9 +119,8 @@ export function getWebsiteUrl(): string {
 }
 
 // The REAL version of whatever is running: the server's binary version for a
-// server-served SPA, this build's own version in the mobile app. Everything
-// that COMPARES a version (analytics, the update check, the app's
-// compatibility floors) must read this, never the
+// server-served SPA, this build's own version otherwise. Everything that
+// COMPARES a version (analytics, the update check) must read this, never the
 // display label, which ECONUMO_VERSION can set to arbitrary text.
 export function getVersion(): string {
   return window.econumoConfig?.VERSION || String(import.meta.env.ECONUMO_VERSION ?? 'dev')
@@ -162,13 +156,12 @@ export function getBillingUrl(): string {
 // clients connect to, '' when the OAuth server is disabled (no https
 // ECONUMO_URL), in which case the Connected apps UI is hidden. On the web the
 // value describes the instance SERVING the page, so a tab pointed at another
-// backend (custom API host) must not show it next to that backend's grants; the
-// app merges the selected server's own value, so it is used as is. Origins (not
-// raw strings) and a malformed stored host fails closed, as for
+// backend (custom API host) must not show it next to that backend's grants.
+// Origins (not raw strings) and a malformed stored host fails closed, as for
 // oauthFlowCanReturnHere.
 export function mcpUrl(): string {
   const url = window.econumoConfig?.MCP_URL || ''
-  if (!url || isNativeApp()) {
+  if (!url) {
     return url
   }
   try {
@@ -194,9 +187,6 @@ export function isFeedbackEnabled(): boolean {
 }
 
 export function isCustomApiAllowed(): boolean {
-  if (isNativeApp()) {
-    return true
-  }
   const allowCustomApi = window.econumoConfig?.ALLOW_CUSTOM_API
   if (typeof allowCustomApi === 'boolean') {
     return allowCustomApi

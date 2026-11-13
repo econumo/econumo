@@ -105,7 +105,7 @@ func TestCompleteLink_InsertCannotLandInsideAnOpenReclaim(t *testing.T) {
 		userrepo.NewEmailChangeRequestRepo(db2.Engine, db2.TX), nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false)
 	osvc2 := appoauth.NewService(nil, nil, oauthrepo.NewIdentityRepo(db2.Engine, db2.TX), oauthrepo.NewStateRepo(db2.Engine, db2.TX),
-		oauthrepo.NewHandoffRepo(db2.Engine, db2.TX), db2.TX, clock.New(), nil, "https://app.example.test", true, false)
+		oauthrepo.NewHandoffRepo(db2.Engine, db2.TX), db2.TX, clock.New(), nil, "https://app.example.test", true)
 	reclaimer := &hookedReclaimer{inner: osvc2}
 	usvc.SetOAuthReclaimer(reclaimer)
 
@@ -123,7 +123,7 @@ func TestCompleteLink_InsertCannotLandInsideAnOpenReclaim(t *testing.T) {
 	hands := &hookedHandoffs{Handoffs: oauthrepo.NewHandoffRepo(db.Engine, db.TX)}
 	clk := &fixedClock{t: time.Now().UTC().Truncate(time.Second)}
 	svc1 := appoauth.NewService(nil, newFakeUsers(t, db), ids, oauthrepo.NewStateRepo(db.Engine, db.TX), hands,
-		db.TX, clk, nil, "https://app.example.test", true, false)
+		db.TX, clk, nil, "https://app.example.test", true)
 
 	owner, err := userrepo.NewRepo(db.Engine, db.TX).GetByID(ctx, uid)
 	if err != nil {

@@ -56,41 +56,6 @@ make web-lint      # cd web && pnpm lint      (oxlint)
 make web-bundle    # cd web && pnpm build     (production SPA build -> web/dist)
 ```
 
-### Mobile app (Capacitor) — in `mobile/`
-
-The iOS/Android apps are a Capacitor shell around the `web/` SPA — `web/` stays
-the single frontend. App-specific behavior branches on `isNativeApp()`
-(`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
-Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
-the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION`, `PASSWORD_LOGIN`, `INSTANCE_ID`, `MCP_URL` and `FEEDBACK` into `window.econumoConfig` (a fixed
-allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
-store) — an app pointed at a self-hosted backend must report that backend's
-instance in product analytics, not none. The merge is per server: typing a
-server address on the auth screens fetches that server's config
-(`useServerConfigFor`, debounced), the previous server's keys fall back to the
-bundled defaults the moment a different server is requested, and a response for
-a server no longer selected is dropped. Screens that read merged keys subscribe
-to `useServerConfig`'s `revision` so a config arriving after first paint
-re-renders them. The oauth provider list is cached per server the same way
-(`providersQueryKey(configHost)`), so a switch never shows another server's
-providers. App and server version-check each
-other in BOTH directions, one hard floor per side; both floors live in the
-single shared `compat/versions.json`
-(Go embeds it, the SPA imports it — same pattern as `locales/`):
-`minServerVersion` is the oldest server the app accepts, `minAppVersion`
-(served as `MIN_APP_VERSION`) the oldest app the server accepts — crossing
-either hard-blocks the app (`AppUpdateBlock`); compatible-but-outdated pairs
-get soft nudges (the existing release `UpdateNotice` covers an outdated app,
-`ServerVersionNotice` an outdated server). Full rules in `mobile/README.md`.
-
-```bash
-make mobile-install   # cd mobile && pnpm install
-make mobile-sync      # build web/ + cap sync into ios/ and android/
-make mobile-ios       # sync + open in Xcode
-make mobile-android   # sync + open in Android Studio
-```
-
 ### Publishing
 
 ```bash
@@ -410,11 +375,9 @@ at a time, in that order). Runtime config
 (`window.econumoConfig`) is served at `/econumo-config.js`: for a running
 instance the Go server generates the whole document (see the "Web UI config"
 bullet below); `public/econumo-config.js` is only the static fallback used
-when there is no Go server in front of the SPA (the mobile app's bundled
-WebView, `pnpm dev` without a backend). Versions are two separate keys:
+when there is no Go server in front of the SPA (`pnpm dev` without a backend). Versions are two separate keys:
 `VERSION` is the real running version (`getVersion()` — every comparison:
-analytics `$app_version`, the update check, the mobile
-compatibility floors), `VERSION_REF` the source revision of the build
+analytics `$app_version`, the update check), `VERSION_REF` the source revision of the build
 (`getVersionRef()`, `""` when unknown; `internal/version.Ref()`: the
 ldflags-stamped `version.Commit`, else the toolchain's `vcs.revision`), which only
 keys the persisted caches — the query-cache and IndexedDB busters are
@@ -427,7 +390,7 @@ from a dirty tree shares its key with the previous build; bump `FORMAT_VERSION` 
 set by the runtime `ECONUMO_VERSION` and falling back to `VERSION`. Vite also
 inlines a build-time `ECONUMO_VERSION` as the bundle's own version (the Docker
 build arg of the same name sets it per image build, default `dev`) — that one
-IS a real version, used by the mobile app where no server config is present;
+IS a real version, used where no server config is present;
 `ECONUMO_COMMIT` (the build arg and env var of the same name, set by both publish
 workflows and the Makefile from the checked-out sha) is inlined the same way as the
 bundle's own `VERSION_REF`.
@@ -506,7 +469,7 @@ Every report query key is invalidated after any successful mutation
 (`web/src/lib/appQueryClient.ts`), so a report never shows stale figures.
 
 **Service worker** (`web/sw/sw.js`, registered by `web/src/lib/serviceWorker.ts`, production
-web builds only, never in the native app): it makes the installed PWA start offline. A Vite
+builds only): it makes the installed PWA start offline. A Vite
 plugin in `web/vite.config.ts` writes `dist/sw.js` after the build, prepending the precache
 list (the bundle, the manifest and the icons it and `index.html` name)
 and a build hash, a digest of the worker and those files rather than the release version (every
@@ -708,7 +671,7 @@ with the hash and either implementation verifies the other's), frontend only, ne
 There is no biometric unlock (the owner's decision; a config stored with a `biometric` field still reads, the
 field ignored). Storage:
 localStorage `econumo.appLock` (config: owner `userId`, `secret` {kind, hash, length; a config from before
-patterns holds `pin` and reads as kind pin}, `lockAfterMs` 0/1/5/15 min) and `econumo.appLock.attempts` (both in `MIRRORED_KEYS`), re-read on every check, plus the
+patterns holds `pin` and reads as kind pin}, `lockAfterMs` 0/1/5/15 min) and `econumo.appLock.attempts`, re-read on every check, plus the
 sessionStorage marker `econumo.appLock.fresh` that `setToken` sets so the reload after a sign-in does
 not ask for the PIN (it counts for 30 s; any lock but the one taken as the page hides, and turning the
 lock on, spend it), and the sessionStorage `econumo.appLock.seen` (when this tab was last unlocked and
@@ -1023,20 +986,6 @@ it). Key vars:
   always treated as trusted (every Apple ID address is verified) but Google's `email_verified`
   claim is honoured, not trusted blindly — Google always sends it and documents `false` for
   unverified addresses. See `docs/oidc-setup.md`.
-- `ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` — the mobile apps allowed to claim
-  `<ECONUMO_URL>/oauth/app-return` as a verified Universal Link / App Link, which is how the
-  OAuth app flow returns without the globally claimable private scheme. iOS: comma-separated
-  `<Team ID>.<bundle id>` (`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`). Android: comma-separated
-  `<package>=<SHA-256 signing fingerprint>` (32 colon-separated hex bytes, upper-cased on load;
-  repeating a package adds a second certificate, as Play App Signing requires). Either one set
-  enables app links and makes the server publish `/.well-known/apple-app-site-association` and
-  `/.well-known/assetlinks.json` (`internal/web/applinks`, mounted on the root mux next to
-  `/health`; the platform with no entries 404s). A malformed entry fails boot, as does an
-  `ECONUMO_URL` that is not `https://` — neither OS verifies a plain-http link. They only make
-  sense on the domain the store app is actually associated with (`app.econumo.com`): a
-  self-hosted backend used from the store app must leave them unset and keeps the private
-  `com.econumo.app://oauth` scheme, whose residual risk is that any app on the device may
-  register it.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
@@ -1210,7 +1159,7 @@ it). Key vars:
   revision) has no env override either. `VERSION` itself has NO env
   override: it always carries the binary's `internal/version.Version`, because
   the SPA compares it as a real version (analytics `$app_version`, the update
-  check, the mobile app's compatibility floors), and a display label must never
+  check), and a display label must never
   reach those. `ANALYTICS` no longer exists as a config key — analytics is a
   per-user preference now, not instance-wide (see `ECONUMO_ANALYTICS` above).
   `INSTANCE_ID` is the one key with no matching env var: it carries the
@@ -1223,19 +1172,17 @@ it). Key vars:
   URL (`<ECONUMO_URL>/mcp`), `""` while that server is disabled; the SPA shows Connected
   apps (Profile row, copyable address) only when it is non-empty. On the web it describes the
   instance serving the page, so `mcpUrl()` returns `""` when the SPA is pointed at a custom
-  backend on another origin; the app uses the merged per-server value as is.
+  backend on another origin.
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
   `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,
   always present, `true` iff `ECONUMO_AI_DSN` is set) advertises the retained
   AI provider configuration; bulk rule suggestions are removed.
-  `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
-  when empty, since the app's version-check treats a present-but-empty value
-  differently from an absent one. The composition root resolves the FS
+  The composition root resolves the FS
   (`web.DistFS`), both versions, and instance id once in `server.BuildAPI`.
   `web/public/econumo-config.js` itself is a fallback baseline, not a source
-  of defaults for a served instance — it only matters for the mobile app's
-  bundled WebView and `pnpm dev` without a backend running (see that file's
+  of defaults for a served instance — it only matters for `pnpm dev` without a
+  backend running (see that file's
   header comment); mounting a replacement file over it in a container has no
   effect (there is no disk-serving mode to read it from — use the `ECONUMO_*`
   variables above instead).
@@ -1713,8 +1660,7 @@ In the distroless image these run via the binary directly, e.g.
   `ECONUMO_ALLOW_REGISTRATION` is on) a
   new passwordless account (`users.algorithm = 'none'`), then a one-time, 60-second
   handoff code the client exchanges for a normal session — never a token in a redirect URL
-  or server log. The `start-*` call also returns a **flow secret** (stored in `sessionStorage`
-  on the web, `localStorage` in the app) that the client must present alongside the handoff:
+  or server log. The `start-*` call also returns a **flow secret** (stored in `sessionStorage`) that the client must present alongside the handoff:
   the flow is bound to the client that began it, so a forged callback cannot log a victim
   into an attacker's account. **Auto-link happens only into a PASSWORDLESS account**
   (one a provider created, whose owner therefore already proved the address); a verified
@@ -2051,25 +1997,16 @@ data unreadable. Most are also asserted by the test suite.
   address never appears twice. Resolving the list is best-effort — a lookup failure sends
   the notice to the primary address alone rather than failing it — and the unlink notice
   copies the addresses that REMAIN, the removed row being gone by the time it sends.
-- **OAuth app return**: an app-client flow lands on `<ECONUMO_URL>/oauth/app-return` when
-  app links are configured (`ECONUMO_APP_LINKS_IOS`/`_ANDROID`) and on the private
-  `com.econumo.app://oauth` scheme otherwise. Either way the one-shot code rides in the
-  fragment (`#handoff=` / `#linkHandoff=`) and failures in the query (`?error=` /
-  `?linkError=`), so a handoff never reaches a server log or a `Referer` header on the https
-  variant. The https form matters because only the associated app can receive it (RFC 8252
-  §7): a counterfeit app that registers the private scheme can otherwise start its own flow,
-  hold the flow secret, and catch the victim's handoff.
 - **OAuth email drift**: when a provider's claimed email differs from the signed-in user's
   stored email, the stored email is left alone UNLESS the user is passwordless, has exactly
   one linked identity, and no other user already holds the new address — in that narrow case
   (the IdP is the account's sole authority) the primary email is replaced immediately after,
   in its own transaction. The rule stops applying the moment the user sets a password or
   links a second identity.
-- **RP-initiated logout is web-only**: `logout-user` returns `logoutUrl` when the ending
+- **RP-initiated logout**: `logout-user` returns `logoutUrl` when the ending
   session's provider published an `end_session_endpoint` (the custom OIDC slot only — Google
   and Apple publish none); the web client navigates there, landing back at
-  `<ECONUMO_URL>/login`, while the app always logs out locally and shows the "your {provider}
-  session may still be active" notice instead.
+  `<ECONUMO_URL>/login`.
 
 ## Deployment
 

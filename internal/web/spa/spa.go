@@ -34,8 +34,8 @@ func Handler(fsys fs.FS, overrides map[string]any) http.Handler {
 	// (encoding/json sorts map keys — the output is deterministic). Nil/empty
 	// overrides fall back to serving the dist file verbatim below: that is
 	// the seam several tests use, and the reason the dist file's defaults
-	// still matter for the mobile app bundle and `pnpm dev` without a backend
-	// (neither has a Go process in front of it to generate this document).
+	// still matter for `pnpm dev` without a backend (no Go process in front of
+	// it to generate this document).
 	var runtimeConfig []byte
 	if len(overrides) > 0 {
 		marshaled, err := json.Marshal(overrides)
@@ -127,11 +127,9 @@ func setCacheControl(w http.ResponseWriter, cleaned string) {
 
 // isReservedPath reports whether the path belongs to a server-side route group
 // (API, internal, or the RFC 8615 /.well-known/ namespace) that must never be
-// served the SPA shell. The well-known documents (the mobile app's link
-// association files, ACME challenges, …) are fetched by operating systems and
-// robots that parse them as JSON or text: handing them index.html with a 200
-// turns "not configured" into a parse error. The extensionless
-// apple-app-site-association needs this rule in particular — the
+// served the SPA shell. The well-known documents (ACME challenges, OAuth
+// metadata, …) are fetched by robots that parse them as JSON or text: handing
+// them index.html with a 200 turns "not configured" into a parse error, and the
 // missing-asset rule only catches paths that carry a file extension.
 func isReservedPath(p string) bool {
 	return p == "/api" || strings.HasPrefix(p, "/api/") ||

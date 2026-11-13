@@ -13,7 +13,6 @@ import { capture, capturePageView } from './analytics'
 import * as analyticsModule from './analytics'
 import { rememberAnalyticsPreference } from './analyticsPreference'
 import { authMethods, forgetAuthMethods, rememberHasPassword, rememberLinkedProviders } from './analyticsAuthMethods'
-import { backendHost, selfHosted } from './config'
 import { setToken } from './storage'
 import { QueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/app/queryKeys'
@@ -213,36 +212,6 @@ describe('analytics group', () => {
     window.econumoConfig = { ...window.econumoConfig, INSTANCE_ID: 'a3f19c02b7d4' }
     trackEvent(METRICS.USER_LOGIN)
     expect(groupSpy).toHaveBeenCalledWith('a3f19c02b7d4', 'selfhosted_a3f19c02b7d4')
-  })
-})
-
-describe('native app host resolution', () => {
-  afterEach(() => {
-    delete (window as { Capacitor?: unknown }).Capacitor
-  })
-
-  // window.location.hostname is always 'localhost' inside a Capacitor
-  // WebView, so the effective host must come from the configured backend.
-  it('treats the Econumo Cloud backend as cloud in the native app', () => {
-    window.Capacitor = { isNativePlatform: () => true }
-    selfHosted(true)
-    backendHost('https://app.econumo.com')
-    expect(isCloudHost()).toBe(true)
-    expect(deploymentKind()).toBe('cloud')
-  })
-
-  it('treats a configured self-hosted backend as self-hosted in the native app', () => {
-    window.Capacitor = { isNativePlatform: () => true }
-    window.econumoConfig = { ...window.econumoConfig, INSTANCE_ID: 'a3f19c02b7d4' }
-    selfHosted(true)
-    backendHost('https://my.server.example')
-    expect(isCloudHost()).toBe(false)
-    expect(deploymentKind()).toBe('self-hosted')
-    expect(analyticsHost()).toBe('selfhosted_a3f19c02b7d4')
-  })
-
-  it('falls back to window.location.hostname on the web (unchanged behavior)', () => {
-    expect(isCloudHost()).toBe(false)
   })
 })
 

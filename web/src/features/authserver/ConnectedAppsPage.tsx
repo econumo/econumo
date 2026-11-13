@@ -11,7 +11,6 @@ import { RouterPage } from '@/app/router-pages'
 import { useOnline } from '@/hooks/useOnline'
 import type { ConnectedAppDto } from '@/api/dto/authserver'
 import { mcpUrl } from '@/lib/config'
-import { useServerConfig } from '@/lib/appConfig'
 import { copyText } from '@/lib/clipboard'
 import { formatDate } from '@/lib/datetime'
 import { parseUtcDateTime, relativeTime } from '@/features/settings/securityFormat'
@@ -28,7 +27,6 @@ export function ConnectedAppsPage() {
   const [confirmRevoke, setConfirmRevoke] = useState<ConnectedAppDto | null>(null)
   const [copied, setCopied] = useState(false)
 
-  useServerConfig((s) => s.revision)
   const address = mcpUrl()
 
   const copy = () => {

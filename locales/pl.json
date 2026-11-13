@@ -154,14 +154,6 @@
       "notice": "Econumo {version} jest już dostępne",
       "dismiss": "Ukryj"
     },
-    "serverUpdate": {
-      "notice": "Twój serwer Econumo ({version}) jest starszy niż ta aplikacja. Zaktualizuj serwer, aby korzystać z najnowszych funkcji."
-    },
-    "appUpdate": {
-      "title": "Wymagana aktualizacja",
-      "blockedApp": "Ta aplikacja jest zbyt stara dla Twojego serwera Econumo: wymagana jest wersja aplikacji {version} lub nowsza. Zaktualizuj aplikację, aby kontynuować.",
-      "blockedServer": "Ta aplikacja wymaga serwera Econumo {min} lub nowszego, a Twój serwer to {version}. Zaktualizuj serwer, aby kontynuować."
-    },
     "offline_unavailable": {
       "title": "Niedostępne offline",
       "text": "Te dane są niedostępne bez połączenia z internetem."
@@ -1182,10 +1174,6 @@
       },
       "callback": {
         "signing_in": "Logowanie…"
-      },
-      "app_return": {
-        "title": "Logowanie zakończone — wróć do aplikacji Econumo.",
-        "open_app": "Otwórz aplikację"
       },
       "provider_name": {
         "google": "Google",

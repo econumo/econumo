@@ -4,7 +4,6 @@ import { logout } from '@/api/user'
 import { clearPendingWrites } from '@/features/pendingWrites/store'
 import { resetAnalyticsIdentity } from '@/lib/analytics'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { isNativeApp } from '@/lib/platform'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { hasToken, removeToken } from '@/lib/storage'
 import { clearConfig } from '@/features/appLock/config'
@@ -48,11 +47,9 @@ export function LogoutPage() {
         resetAnalyticsIdentity()
         signOutLocally()
         await clearLocalData()
-        // The IdP redirect is web-only: an IdP logout page in the app's browser
-        // sheet leaves the user with no clean way back. A provider that
-        // publishes no end-session endpoint (Google, Apple) yields no url, so
-        // the local logout above is the whole exit.
-        if (logoutUrl && !isNativeApp()) {
+        // A provider that publishes no end-session endpoint (Google, Apple)
+        // yields no url, so the local logout above is the whole exit.
+        if (logoutUrl) {
           window.location.assign(logoutUrl)
           return
         }
