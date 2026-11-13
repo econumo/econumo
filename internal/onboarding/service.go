@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -138,13 +139,21 @@ func (s *Service) startJob(ctx context.Context, userID vo.Id, logs jobSpec, job 
 // not opted out of it and is under the cap, which this call counts against.
 // An unreadable preference starts nothing.
 func (s *Service) reserveJob(ctx context.Context, userID vo.Id, logs jobSpec) bool {
+	ok, _ := s.reserve(ctx, userID, logs)
+	return ok
+}
+
+// reserve is reserveJob telling apart why nothing may start: a non-nil error
+// is a failure to find out (an unreadable preference, a limiter fault), not
+// an opt-out or a full cap.
+func (s *Service) reserve(ctx context.Context, userID vo.Id, logs jobSpec) (bool, error) {
 	if s.completer == nil {
-		return false
+		return false, nil
 	}
 	if s.users != nil {
 		off, err := s.users.AIOptedOut(ctx, userID)
 		if err != nil || off {
-			return false
+			return false, err
 		}
 	}
 	if s.limiter != nil {
@@ -153,14 +162,20 @@ func (s *Service) reserveJob(ctx context.Context, userID vo.Id, logs jobSpec) bo
 			scope = RateScopeClassify
 		}
 		if err := s.limiter.Allow(ctx, scope, userID.String()); err != nil {
+			if _, full := errs.AsTooManyRequests(err); !full {
+				return false, err
+			}
 			slog.InfoContext(ctx, logs.skipped, "user_id", userID.String(), "reason", "rate_limited")
-			return false
+			return false, nil
 		}
 		if err := s.limiter.Reserve(scope, userID.String()); err != nil {
-			return false
+			if _, full := errs.AsTooManyRequests(err); !full {
+				return false, err
+			}
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 // mayAsk re-reads the preference right before a provider call: the user may

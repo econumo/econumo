@@ -3,6 +3,7 @@ package onboarding_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sort"
 	"strings"
 	"sync"
@@ -116,8 +117,12 @@ const (
 )
 
 func newIconSvc(aiOff bool) (*onboarding.Service, *recordingAI, *countingLimiter, *fakeTimers) {
+	return newIconSvcWith(fakeTimezones{aiOff: aiOff})
+}
+
+func newIconSvcWith(users onboarding.UserFacts) (*onboarding.Service, *recordingAI, *countingLimiter, *fakeTimers) {
 	ai, lim, timers := &recordingAI{}, &countingLimiter{}, &fakeTimers{}
-	svc := onboarding.NewService(&fakeBudgets{}, fakeAccounts{}, fakeTimezones{aiOff: aiOff})
+	svc := onboarding.NewService(&fakeBudgets{}, fakeAccounts{}, users)
 	svc.SetAdvisor(ai, lim)
 	svc.SetRunner(func(job func()) { job() })
 	svc.SetScheduler(timers.schedule)
@@ -307,4 +312,56 @@ func TestIconReview_EmptyChunksKeepTheReviewWaiting(t *testing.T) {
 			}
 		}
 	}
+}
+
+// flakyOptOut fails the opt-out read the first fails times.
+type flakyOptOut struct {
+	mu    sync.Mutex
+	fails int
+}
+
+func (*flakyOptOut) StoredTimezone(context.Context, vo.Id) (string, error) { return "UTC", nil }
+func (f *flakyOptOut) AIOptedOut(context.Context, vo.Id) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.fails > 0 {
+		f.fails--
+		return false, errors.New("db down")
+	}
+	return false, nil
+}
+
+// A failed preference read keeps the pending review and tries once more; a
+// second failure drops it. A real opt-out drops it at once.
+func TestIconReview_TransientFailureRetriesOnce(t *testing.T) {
+	user := vo.MustParseId(me)
+	t.Run("recovers", func(t *testing.T) {
+		svc, ai, lim, timers := newIconSvcWith(&flakyOptOut{fails: 1})
+		svc.ReviewImportedIcons(context.Background(), user, ids(cat1), ids(acct1))
+		timers.fire()
+		if len(ai.calls) != 0 || len(timers.pending) != 1 {
+			t.Fatalf("calls = %d, rescheduled = %d", len(ai.calls), len(timers.pending))
+		}
+		timers.fire()
+		if len(ai.calls) != 2 || len(lim.scopes) != 1 {
+			t.Fatalf("calls = %d, reservations = %v", len(ai.calls), lim.scopes)
+		}
+	})
+	t.Run("gives up", func(t *testing.T) {
+		svc, ai, _, timers := newIconSvcWith(&flakyOptOut{fails: 5})
+		svc.ReviewImportedIcons(context.Background(), user, ids(cat1), nil)
+		timers.fire()
+		timers.fire()
+		if len(ai.calls) != 0 || len(timers.pending) != 0 {
+			t.Fatalf("calls = %d, still scheduled = %d", len(ai.calls), len(timers.pending))
+		}
+	})
+	t.Run("opted out", func(t *testing.T) {
+		svc, _, _, timers := newIconSvc(true)
+		svc.ReviewImportedIcons(context.Background(), user, ids(cat1), nil)
+		timers.fire()
+		if len(timers.pending) != 0 {
+			t.Fatalf("an opt-out rescheduled the review")
+		}
+	})
 }

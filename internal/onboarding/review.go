@@ -3,6 +3,8 @@ package onboarding
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/econumo/econumo/internal/model"
@@ -91,6 +93,7 @@ type pendingIcons struct {
 	facts                promptFacts
 	gen                  int
 	stop                 func() bool
+	retried              bool
 }
 
 // ReviewImportedIcons notes the categories and accounts a CSV import request
@@ -159,7 +162,12 @@ func (s *Service) startIconReview(userID vo.Id, gen int) {
 	delete(s.pendingIcons, key)
 	s.iconsMu.Unlock()
 
-	if !s.reserveJob(context.Background(), userID, jobIcons) {
+	ok, err := s.reserve(context.Background(), userID, jobIcons)
+	if err != nil {
+		s.retryIconReview(userID, p, err)
+		return
+	}
+	if !ok {
 		return
 	}
 	if len(p.categories) > 0 {
@@ -174,6 +182,41 @@ func (s *Service) startIconReview(userID vo.Id, gen int) {
 			return s.reviewAccountIcons(jobCtx, userID, facts, only)
 		})
 	}
+}
+
+// retryIconReview puts a review back after it could not find out whether it
+// may run (an opt-out read or the limiter failed), once: a second failure
+// drops it. A chunk that arrived meanwhile has its own pending review, which
+// takes these ids too.
+func (s *Service) retryIconReview(userID vo.Id, p *pendingIcons, err error) {
+	if p.retried {
+		slog.Warn(jobIcons.skipped, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+		return
+	}
+	slog.Warn("import icon review postponed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+	key := userID.String()
+	s.iconsMu.Lock()
+	defer s.iconsMu.Unlock()
+	if cur := s.pendingIcons[key]; cur != nil {
+		for _, id := range p.categories {
+			if k := "c" + strings.ToLower(id.String()); !cur.seen[k] {
+				cur.seen[k] = true
+				cur.categories = append(cur.categories, id)
+			}
+		}
+		for _, id := range p.accounts {
+			if k := "a" + strings.ToLower(id.String()); !cur.seen[k] {
+				cur.seen[k] = true
+				cur.accounts = append(cur.accounts, id)
+			}
+		}
+		return
+	}
+	p.retried = true
+	p.gen++
+	gen := p.gen
+	s.pendingIcons[key] = p
+	p.stop = s.schedule(iconReviewQuiet, func() { s.startIconReview(userID, gen) })
 }
 
 func idSet(ids []vo.Id) map[string]bool {
