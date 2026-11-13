@@ -8,8 +8,10 @@ import (
 
 	"github.com/econumo/econumo/internal/imports"
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
+	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -266,6 +268,51 @@ func TestAcceptSkipsRowsRuleDoesNotMatch(t *testing.T) {
 	// accepting again is not an open suggestion any more
 	_, err = h.svc.AcceptSuggestion(context.Background(), vo.MustParseId(userA), model.AcceptImportSuggestionRequest{Id: s.ID.String(), RuleId: rule})
 	wantNotFound(t, err)
+}
+
+func TestAcceptIsOneTransaction(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	s, links := seedSuggestion(t, h, c, cat, "", "Blue Bottle", "SQ *BLUE BOTTLE #12")
+	rule := h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: cat})
+	req := model.AcceptImportSuggestionRequest{Id: s.ID.String(), RuleId: rule}
+	uA := vo.MustParseId(userA)
+
+	// what the Idempotency-Key middleware gives the handler
+	recorded := 0
+	guarded := func() context.Context {
+		ctx := reqctx.WithIdempotencyResource(context.Background())
+		return backend.WithCommitHook(ctx, func(context.Context) error { recorded++; return nil })
+	}
+	h.txns.failUpdateAt = 2
+	ctx := guarded()
+	if _, err := h.svc.AcceptSuggestion(ctx, uA, req); err == nil {
+		t.Fatal("the second row's failure must fail the accept")
+	}
+	if backend.CommitHookDone(ctx) || recorded != 0 {
+		t.Fatal("a failed accept must not record its key")
+	}
+	for _, l := range links {
+		if tx, _ := h.txns.GetByID(context.Background(), *l.TransactionID); tx.CategoryID != nil {
+			t.Fatalf("the first row's update must roll back: %+v", tx)
+		}
+		if link, _ := h.repo.GetLink(context.Background(), l.ID); link.AppliedRuleID != nil {
+			t.Fatalf("the snapshot must roll back: %+v", link)
+		}
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 1 {
+		t.Fatalf("the suggestion must stay open: %+v", got)
+	}
+
+	h.txns.failUpdateAt = 0
+	ctx = guarded()
+	res, err := h.svc.AcceptSuggestion(ctx, uA, req)
+	if err != nil || res.Updated != 2 {
+		t.Fatalf("retry = %+v, %v", res, err)
+	}
+	if !backend.CommitHookDone(ctx) || !reqctx.IdempotencyPinned(ctx) {
+		t.Fatal("a committed accept records and pins its key")
+	}
 }
 
 func TestAcceptRejectsForeignRule(t *testing.T) {

@@ -275,29 +275,34 @@ func (s *Service) AcceptSuggestion(ctx context.Context, userID vo.Id, req model.
 		return nil, err
 	}
 	filterRuleTargets(rule, own)
-	out := &model.AcceptImportSuggestionResult{}
-	for _, linkID := range sg.LinkIDs {
-		l, live, err := s.suggestionTarget(ctx, userID, linkID)
-		if err != nil {
-			return nil, err
-		}
-		if live == nil || live.Type != sg.Type || (rule.SourceID != nil && *rule.SourceID != l.SourceID) || !matchRule(*rule, linkEvent(l)) {
-			continue
-		}
-		next := model.ImportClassification{CategoryID: live.CategoryID, PayeeID: live.PayeeID, TagID: live.TagID, LabelIDs: live.LabelIDs}
-		fillCategory := live.CategoryID == nil && rule.TargetCategoryID != nil && categoryFits(*rule.TargetCategoryID, own.incomeCategories, live.Type)
-		fillPayee := live.PayeeID == nil && rule.TargetPayeeID != nil
-		if !fillCategory && !fillPayee {
-			continue
-		}
-		if fillCategory {
-			next.CategoryID = rule.TargetCategoryID
-		}
-		if fillPayee {
-			next.PayeeID = rule.TargetPayeeID
-		}
-		next.RuleID = &rule.ID
-		err = s.tx.WithTx(ctx, func(ctx context.Context) error {
+	// One transaction for every row, the snapshots and the release: the first
+	// row's update pins the Idempotency-Key, so a failure on a later row must
+	// roll the earlier ones back too, or the retry would be a replay that can
+	// never finish the rest.
+	var out *model.AcceptImportSuggestionResult
+	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
+		out = &model.AcceptImportSuggestionResult{}
+		for _, linkID := range sg.LinkIDs {
+			l, live, err := s.suggestionTarget(ctx, userID, linkID)
+			if err != nil {
+				return err
+			}
+			if live == nil || live.Type != sg.Type || (rule.SourceID != nil && *rule.SourceID != l.SourceID) || !matchRule(*rule, linkEvent(l)) {
+				continue
+			}
+			next := model.ImportClassification{CategoryID: live.CategoryID, PayeeID: live.PayeeID, TagID: live.TagID, LabelIDs: live.LabelIDs}
+			fillCategory := live.CategoryID == nil && rule.TargetCategoryID != nil && categoryFits(*rule.TargetCategoryID, own.incomeCategories, live.Type)
+			fillPayee := live.PayeeID == nil && rule.TargetPayeeID != nil
+			if !fillCategory && !fillPayee {
+				continue
+			}
+			if fillCategory {
+				next.CategoryID = rule.TargetCategoryID
+			}
+			if fillPayee {
+				next.PayeeID = rule.TargetPayeeID
+			}
+			next.RuleID = &rule.ID
 			if _, err := s.txns.UpdateTransaction(ctx, userID, updateRequest(live, next)); err != nil {
 				return err
 			}
@@ -311,22 +316,16 @@ func (s *Service) AcceptSuggestion(ctx context.Context, userID vo.Id, req model.
 				l.AppliedPayeeID = next.PayeeID
 			}
 			l.AppliedRuleID = next.RuleID
-			return s.repo.UpdateLink(ctx, l)
-		})
-		if err != nil {
-			return nil, err
+			if err := s.repo.UpdateLink(ctx, l); err != nil {
+				return err
+			}
+			out.Updated++
 		}
-		out.Updated++
-	}
-	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		// Only the links this accept walked: rows a job joined meanwhile keep
 		// the suggestion open for them.
 		if _, err := s.repo.ReleaseSuggestionLinks(ctx, sg.ID, sg.LinkIDs); err != nil {
 			return err
 		}
-		// The key is already recorded by the first row's write; a failure before
-		// this point releases it so the accept can be sent again. Pinned with the
-		// release, it stays once this accept has committed and a retry is a replay.
 		reqctx.PinIdempotency(ctx)
 		return nil
 	})

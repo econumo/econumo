@@ -76,23 +76,26 @@ func (s *Service) suggest(links []model.ImportTransactionLink) error {
 	defer cancel()
 	byOwner := map[vo.Id][]suggestCandidate{}
 	var owners []vo.Id
+	// A row that cannot be read is left out; the others still get their
+	// suggestions.
+	skip := func(l model.ImportTransactionLink, err error) {
+		if _, ok := errs.AsNotFound(err); !ok {
+			slog.Warn("import suggest row skipped", "link_id", l.ID.String(), "err_type", fmt.Sprintf("%T", err))
+		}
+	}
 	for _, l := range links {
 		t, err := s.lister.GetByID(ctx, *l.TransactionID)
 		if err != nil {
-			if _, ok := errs.AsNotFound(err); ok {
-				continue
-			}
-			return err
+			skip(l, err)
+			continue
 		}
 		if t.Type == model.TransactionTypeTransfer || (t.CategoryID != nil && t.PayeeID != nil) {
 			continue
 		}
 		owner, err := s.accounts.AccountOwner(ctx, t.AccountID)
 		if err != nil {
-			if _, ok := errs.AsNotFound(err); ok {
-				continue
-			}
-			return err
+			skip(l, err)
+			continue
 		}
 		if _, seen := byOwner[owner]; !seen {
 			owners = append(owners, owner)
@@ -218,25 +221,30 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 	if err != nil || parsed == nil {
 		return err
 	}
-	valid := validateReply(rest, parsed, vocab)
-	if len(valid) == 0 {
-		return nil
-	}
-	groups, groupMissing := groupRowsMissing(valid)
 	var inserted []vo.Id
 	joined := map[vo.Id][]vo.Id{}
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		inserted, joined = nil, map[vo.Id][]vo.Id{}
 		// The call took seconds: a user who opted out meanwhile gets nothing
-		// stored, and one who settled suggestions gets them re-read.
+		// stored, and one who settled suggestions gets them re-read, as do
+		// categories and payees archived meanwhile.
 		if off, err := s.optedOut(ctx, owner); err != nil || off {
 			return err
 		}
+		vocab, err := s.suggestVocabulary(ctx, owner)
+		if err != nil {
+			return err
+		}
+		valid := validateReply(rest, parsed, vocab)
+		if len(valid) == 0 {
+			return nil
+		}
+		groups, groupMissing := groupRowsMissing(valid)
 		open, err := s.repo.ListOpenSuggestionsByUser(ctx, owner)
 		if err != nil {
 			return err
 		}
-		rest, parts := mergeIntoOpen(groups, groupMissing, vocab.liveOpen(open), vocab.income)
+		unjoined, parts := mergeIntoOpen(groups, groupMissing, vocab.liveOpen(open), vocab.income)
 		joins := make(map[vo.Id][]vo.Id, len(parts))
 		for id, ps := range parts {
 			for _, p := range ps {
@@ -251,7 +259,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		// suggestions under their own group's classification.
 		for _, id := range gone {
 			for _, p := range parts[id] {
-				rest[p.group] = append(rest[p.group], p.links...)
+				unjoined[p.group] = append(unjoined[p.group], p.links...)
 			}
 		}
 		goneSet := map[vo.Id]bool{}
@@ -264,7 +272,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 			}
 		}
 		now := s.clk.Now().UTC()
-		for i, links := range rest {
+		for i, links := range unjoined {
 			if len(links) == 0 {
 				continue
 			}
@@ -308,12 +316,17 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 		}
 		system, user := buildSuggestPrompt(rows, income, vocab, language, timezone)
 		reply, ok, err := ask(system, user)
-		if err != nil || !ok {
+		if !ok {
 			return nil, err
 		}
-		parsed, err := parseSuggestReply(reply)
+		var parsed map[string]suggestReplyRow
+		if err == nil {
+			parsed, err = parseSuggestReply(reply)
+		}
 		if err != nil {
-			return nil, err
+			// the other type's answers still stand
+			slog.Warn("import suggest failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", err))
+			continue
 		}
 		for k, r := range parsed {
 			// only keys of the rows this request carried

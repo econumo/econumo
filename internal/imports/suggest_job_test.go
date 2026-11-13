@@ -935,3 +935,84 @@ func TestSuggestFindsPayeeBeyondFiveHundred(t *testing.T) {
 		t.Fatalf("suggestions = %+v", got)
 	}
 }
+
+// One type's failed request does not cost the other type its answers.
+func TestSuggestOneTypesFailureKeepsTheOther(t *testing.T) {
+	h, p := bankHarness(t)
+	c := &fakeCompleter{reply: `{"rows":{}}`}
+	h.wireSuggest(c, fakeFacts{userA: {language: "en"}})
+	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
+	h.category(t, userA, "Groceries")
+	salary := h.incomeCategory(t, userA, "Salary")
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
+	p.txs = []model.ExternalTransaction{
+		extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "Corner Shop"),
+		extTx("ACT-1", "b", "900.00", now.AddDate(0, 0, -2).Unix(), "Acme Payroll"),
+	}
+	c.replies = []string{`not json`, `{"rows":{"1":{"matchText":"Acme Payroll","categoryId":"` + salary + `"}}}`}
+	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.calls) != 2 {
+		t.Fatalf("calls = %d", len(c.calls))
+	}
+	got := openSuggestions(t, h, userA)
+	if len(got) != 1 || got[0].CategoryID == nil || got[0].CategoryID.String() != salary || len(got[0].LinkIDs) != 1 {
+		t.Fatalf("suggestions = %+v", got)
+	}
+}
+
+// A row the job cannot read is skipped; the batch's other rows still go out.
+func TestSuggestUnreadableRowSkipsOnlyThatRow(t *testing.T) {
+	h, p := bankHarness(t)
+	c := &fakeCompleter{reply: `{"rows":{}}`}
+	h.wireSuggest(c, fakeFacts{userA: {language: "en"}})
+	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
+	h.category(t, userA, "Groceries")
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
+	p.txs = []model.ExternalTransaction{
+		extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "Corner Shop"),
+		extTx("ACT-1", "b", "-7.00", now.AddDate(0, 0, -2).Unix(), "Broken Row"),
+	}
+	h.txns.getFailOn = "Broken Row"
+	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.calls) != 1 || !strings.Contains(c.calls[0].user, "Corner Shop") || strings.Contains(c.calls[0].user, "Broken Row") {
+		t.Fatalf("calls = %+v", c.calls)
+	}
+}
+
+// A category archived while the AI answered is not stored, and an open
+// suggestion whose only field it was takes no new rows.
+func TestSuggestCategoryArchivedDuringTheCallIsDropped(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	coffee := h.category(t, userA, "Coffee")
+	coffeeID := vo.MustParseId(coffee)
+	old := &model.ImportSuggestion{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), MatchField: model.ImportRuleMatchFieldExternalPayee, MatchText: "PHILZ",
+		CategoryID: &coffeeID, Status: model.ImportSuggestionStatusOpen, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := h.repo.InsertSuggestion(context.Background(), old); err != nil {
+		t.Fatal(err)
+	}
+	uA := vo.MustParseId(userA)
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + coffee + `"}}}`
+	c.onCall = func() {
+		for i := range h.entities.categories[uA] {
+			if h.entities.categories[uA][i].ID == coffee {
+				h.entities.categories[uA][i].Archived = true
+			}
+		}
+	}
+	ingest(t, h, tap)
+	if len(c.calls) != 1 {
+		t.Fatalf("calls = %d", len(c.calls))
+	}
+	for _, s := range openSuggestions(t, h, userA) {
+		if s.ID != old.ID || len(s.LinkIDs) != 0 {
+			t.Fatalf("nothing may be stored with the archived category: %+v", s)
+		}
+	}
+}

@@ -15,6 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -112,6 +113,11 @@ type fakeTxns struct {
 	// whose Description matches it — used to test that one bad account in a
 	// sync does not roll back the others.
 	failOn string
+	// failUpdateAt, when positive, makes the n-th UpdateTransaction call fail.
+	failUpdateAt int
+	// getFailOn, when non-empty, makes GetByID fail (not a not-found) for a
+	// transaction whose description matches it.
+	getFailOn string
 }
 
 func aliasToType(alias string) int {
@@ -189,6 +195,9 @@ func (f *fakeTxns) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, e
 		}
 		return nil, err
 	}
+	if f.getFailOn != "" && description == f.getFailOn {
+		return nil, errors.New("read failed")
+	}
 	t := &model.Transaction{
 		ID: id, UserID: vo.MustParseId(userID), Type: model.TransactionType(typ),
 		AccountID: vo.MustParseId(accountID), Amount: amount, Description: description, SpentAt: spentAt,
@@ -239,6 +248,11 @@ func (f *fakeTxns) UpdateTransactionReplacingLabels(ctx context.Context, _ vo.Id
 // classification columns and leaves the label rows alone.
 func (f *fakeTxns) UpdateTransaction(ctx context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	f.updated = append(f.updated, req)
+	if f.failUpdateAt > 0 && len(f.updated) == f.failUpdateAt {
+		return nil, errors.New("update failed")
+	}
+	// the real update-transaction pins the request's Idempotency-Key
+	reqctx.PinIdempotency(ctx)
 	q := f.db.TX.Querier(ctx)
 	if _, err := q.ExecContext(ctx, f.db.Rebind(
 		`UPDATE transactions SET category_id = ?, payee_id = ?, tag_id = ? WHERE id = ?`),
