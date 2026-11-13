@@ -843,11 +843,12 @@ func TestSuggestTwoStepPayee(t *testing.T) {
 }
 
 func TestSuggestNoStepTwoWithoutCandidates(t *testing.T) {
-	for _, reply := range []string{
-		`{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"%s"}}}`,
-		`{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"%s"}}}`,
+	for _, tc := range []struct{ name, reply string }{
+		{"merchant_like_no_payee", `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"%s"}}}`},
+		{"no_merchant", `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"%s"}}}`},
 	} {
-		t.Run(reply, func(t *testing.T) {
+		reply := tc.reply
+		t.Run(tc.name, func(t *testing.T) {
 			h, c, _ := suggestSetup(t)
 			h.mapCard(t, "Apple Card")
 			cat := h.category(t, userA, "Cafes")
