@@ -607,6 +607,33 @@ it('Settings saves the name, the payments sentence and the terms in one request'
   await waitFor(() => expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true'))
 })
 
+it('an icon picked in Settings is saved and shown in the header', async () => {
+  let current = details.item
+  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: current })))
+  const bodies = captureUpdate((body) => {
+    current = { ...current, icon: body.icon as string }
+    return current
+  })
+  const user = userEvent.setup()
+  renderScreen()
+  await openScreen()
+  expect(screen.getByRole('heading', { name: 'Car loan' })).toHaveTextContent('directions_car')
+  await openSettings(user)
+
+  const picker = screen.getByRole('listbox', { name: 'Icon' })
+  expect(within(picker).getByRole('option', { name: 'directions_car' })).toHaveAttribute('aria-selected', 'true')
+  await user.click(within(picker).getByRole('option', { name: 'home' }))
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ id: 'd1', icon: 'home', currencyId: '' })
+  for (const key of TERM_KEYS) {
+    expect(bodies[0]).not.toHaveProperty(key)
+  }
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
+  await waitFor(() => expect(screen.getByRole('heading', { name: 'Car loan' })).toHaveTextContent('home'))
+})
+
 it('a save after an earlier one starts from the debt as saved, so the earlier terms are not sent again', async () => {
   let current = details.item
   server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: current })))

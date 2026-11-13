@@ -5,7 +5,7 @@ import { wireDebt, wireDebtNotSetUp } from './testDebt'
 it('a set-up debt starts from the loan facts', () => {
   const { result } = renderHook(() => useDebtTermsForm({ ...wireDebt, currentBalance: '900' }))
   expect(result.current.form).toEqual({
-    name: 'Car loan', rules: [{ id: 'r1', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null }], currencyId: 'cur-usd',
+    name: 'Car loan', icon: 'directions_car', rules: [{ id: 'r1', categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null }], currencyId: 'cur-usd',
     amountBorrowed: '1200', startDate: '2026-11-05', lastPaymentDate: '2027-11-05', payment: '100', schedule: 'monthly',
   })
 })
@@ -107,4 +107,10 @@ it.each([
 
 it.each(['', 'abc', '5+5', '2,00,0', '1.2.3', '2.'])('reads %s as no amount', (typed) => {
   expect(plainAmount(typed)).toBeNull()
+})
+
+it('the icon goes only once changed', () => {
+  const initial = initialTermsState(wireDebt)
+  expect(buildTermsPayload(initial, initial, wireDebt)).not.toHaveProperty('icon')
+  expect(buildTermsPayload({ ...initial, icon: 'home' }, initial, wireDebt)).toMatchObject({ icon: 'home' })
 })

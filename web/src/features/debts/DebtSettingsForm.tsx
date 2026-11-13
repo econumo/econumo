@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { IconPicker } from '@/components/IconPicker'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
@@ -42,7 +44,7 @@ export interface DebtSettingsFormProps {
 }
 
 /**
- * The debt's Settings tab: name, which payments count (the rules, sent only
+ * The debt's Settings tab: name and icon, which payments count (the rules, sent only
  * when edited), the loan's facts from
  * its contract (amount borrowed, start and last payment dates, the payment and
  * its repeats) and the currency (the amounts
@@ -154,6 +156,10 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
             }}
           />
         </CardField>
+        <div className="flex flex-col gap-2">
+          <Label>{t('debts.form.icon.label')}</Label>
+          <IconPicker value={form.icon} onChange={(icon) => patch({ icon })} aria-label={t('debts.form.icon.label')} />
+        </div>
 
         <RulesEditor
           value={form.rules}

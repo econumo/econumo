@@ -56,9 +56,11 @@ export function useDebtCreateForm(params: OpenDebtParams, categories: CategoryDt
   return { form, patch }
 }
 
-/** everything the debt's Settings tab edits: its name, which payments count, its terms */
+/** everything the debt's Settings tab edits: its name and icon, which payments count, its terms */
 export interface DebtTermsState {
   name: string
+  /** the icon shown now; sent only once changed */
+  icon: string
   rules: RuleDraft[]
   /** the amounts are read in this currency, the debt's own until changed */
   currencyId: Id
@@ -75,6 +77,7 @@ export interface DebtTermsState {
 export function initialTermsState(debt: DebtDto): DebtTermsState {
   return {
     name: debt.name,
+    icon: debt.icon,
     rules: debt.rules.map(ruleDraft),
     currencyId: debt.currencyId,
     amountBorrowed: debt.isSetUp === 1 ? normalizeNumber(debt.amountBorrowed) : '',
@@ -158,7 +161,8 @@ export function factsAsked(form: DebtTermsState, debt: DebtDto): boolean {
   return debt.isSetUp === 1 || isNotEmpty(form.amountBorrowed) || form.lastPaymentDate !== ''
 }
 
-/** The one update the Settings tab saves. A currency left as loaded goes as
+/** The one update the Settings tab saves. The icon goes only once changed. A
+    currency left as loaded goes as
     none, so the server keeps the stored one (another device may have changed it
     since); the rules only when edited, all of them then (left out, the
     server keeps the stored ones); the loan's facts likewise go only when one
@@ -171,6 +175,7 @@ export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState,
   const base = {
     id: debt.id,
     name: form.name.trim(),
+    ...(form.icon !== initial.icon ? { icon: form.icon } : {}),
     currencyId: form.currencyId === initial.currencyId ? '' : form.currencyId,
     ...(rulesChanged(debt.rules, form.rules) ? { rules: form.rules.map(ruleForm) } : {}),
     ...(!setUp || form.startDate !== initial.startDate ? { startDate: form.startDate || null } : {}),

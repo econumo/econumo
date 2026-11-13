@@ -481,6 +481,9 @@
       "name": {
         "label": "Nom"
       },
+      "icon": {
+        "label": "Icône"
+      },
       "currency": {
         "label": "Devise"
       },

@@ -109,11 +109,31 @@ it('saving untouched terms sends none, nor the start date, so the server keeps t
   expect(bodies[0]).not.toHaveProperty('startDate')
   // the rules as loaded stay as stored
   expect(bodies[0]).not.toHaveProperty('rules')
+  // the icon as loaded stays as stored
+  expect(bodies[0]).not.toHaveProperty('icon')
   for (const key of TERM_KEYS) {
     expect(bodies[0]).not.toHaveProperty(key)
   }
   expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
   expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
+})
+
+it('the icon sits with the name and goes only once changed', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  renderForm(wireDebt)
+
+  const picker = screen.getByRole('listbox', { name: 'Icon' })
+  expect(screen.getByLabelText('Name').compareDocumentPosition(picker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(picker.compareDocumentPosition(screen.getByRole('button', { name: 'Category: Food' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  await user.click(within(picker).getByRole('option', { name: 'savings' }))
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ id: 'd1', name: 'Car loan', icon: 'savings' })
+  for (const key of TERM_KEYS) {
+    expect(bodies[0]).not.toHaveProperty(key)
+  }
 })
 
 it('a corrected amount borrowed sends every loan fact, typed plain', async () => {

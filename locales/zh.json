@@ -481,6 +481,9 @@
       "name": {
         "label": "名称"
       },
+      "icon": {
+        "label": "图标"
+      },
       "currency": {
         "label": "币种"
       },

@@ -481,6 +481,9 @@
       "name": {
         "label": "Naam"
       },
+      "icon": {
+        "label": "Pictogram"
+      },
       "currency": {
         "label": "Valuta"
       },

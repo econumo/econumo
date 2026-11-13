@@ -32,7 +32,7 @@ export interface DebtDto {
    *  not archived; 0 reads only */
   canEdit: 0 | 1
   name: string
-  /** the first rule's category icon */
+  /** the debt's own icon, else its first rule's category icon */
   icon: string
   currencyId: Id
   /** 0..10 (0 only after a classification delete), oldest first */
@@ -132,6 +132,9 @@ export interface DebtRuleFormDto {
 export interface CreateDebtDto {
   budgetId: Id
   name: string
+  /** the debt's own icon; omitted or "" = none (it shows its first rule's
+   *  category icon). On update, omitted or "" keeps the stored one */
+  icon?: string
   /** left out = the budget's currency */
   currencyId?: Id
   /** 1..10 */
