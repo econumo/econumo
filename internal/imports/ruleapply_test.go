@@ -235,3 +235,37 @@ func TestApplyRuleLeavesUnchangedRowsUncounted(t *testing.T) {
 		t.Fatalf("the already classified row was rewritten: %+v", h.txns.replaced)
 	}
 }
+
+// A hand-edited row that already carries the rule's targets needs no
+// rewrite, but include-edited still makes the rule its applied baseline, so
+// the snapshot no longer reads as an edit.
+func TestApplyRule_IncludeEditedRestampsAnEditedRowThatAlreadyMatches(t *testing.T) {
+	h := setup(t)
+	editedID, _ := seedTwoImports(t, h)
+	uid := vo.MustParseId(userA)
+	e, _ := h.repo.GetLink(context.Background(), editedID)
+	var groceries string
+	if err := h.db.Raw.QueryRowContext(context.Background(), h.db.Rebind(`SELECT category_id FROM transactions WHERE id = ?`), e.TransactionID.String()).Scan(&groceries); err != nil {
+		t.Fatal(err)
+	}
+	h.entities.add(h.entities.categories, uid, groceries, "Groceries")
+	rule, err := h.svc.CreateRule(context.Background(), uid, classifyReq(h, groceries))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := h.svc.ApplyRule(context.Background(), uid, model.ApplyImportRuleRequest{RuleId: rule.Id, Scope: model.ImportRuleScopeAll, IncludeEdited: true})
+	if err != nil || res.Updated != 1 {
+		t.Fatalf("apply: %v %+v", err, res)
+	}
+	if len(h.txns.replaced) != 1 || h.txns.replaced[0].Id == e.TransactionID.String() {
+		t.Fatalf("the edited row was rewritten: %+v", h.txns.replaced)
+	}
+	e, _ = h.repo.GetLink(context.Background(), editedID)
+	if e.AppliedCategoryID == nil || e.AppliedCategoryID.String() != groceries || e.AppliedRuleID == nil || e.AppliedRuleID.String() != rule.Id {
+		t.Fatalf("edited row's snapshot: %+v", e)
+	}
+	preview, err := h.svc.PreviewRule(context.Background(), uid, model.PreviewImportRuleRequest{ImportRuleSpec: classifyReq(h, groceries).ImportRuleSpec, Scope: model.ImportRuleScopeAll})
+	if err != nil || preview.AlreadyEdited != 0 {
+		t.Fatalf("preview: %v %+v", err, preview)
+	}
+}

@@ -113,7 +113,15 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 		if err != nil {
 			return nil, err
 		}
-		if !owned || !touches(rule, own.incomeCategories, live.Type) || !changes(rule, live, own.incomeCategories) {
+		if !owned || !touches(rule, own.incomeCategories, live.Type) {
+			continue
+		}
+		if !changes(rule, live, own.incomeCategories) {
+			if req.IncludeEdited {
+				if err := s.restampEdited(ctx, l, live, rule, own.incomeCategories); err != nil {
+					return nil, err
+				}
+			}
 			continue
 		}
 		if !req.IncludeEdited {
@@ -146,6 +154,28 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 	reqctx.AddLogAttr(ctx, "updated", out.Updated)
 	reqctx.AddLogAttr(ctx, "skipped", out.Skipped)
 	return out, nil
+}
+
+// restampEdited makes the rule the applied baseline of a hand-edited row that
+// already carries its targets: nothing on the transaction changes, but the
+// snapshot no longer reads as an edit. Not counted as updated.
+func (s *Service) restampEdited(ctx context.Context, l *model.ImportTransactionLink, live *model.Transaction, rule *model.ImportRule, income map[vo.Id]bool) error {
+	applied, err := s.appliedOf(ctx, l)
+	if err != nil {
+		return err
+	}
+	if !edited(applied, live) {
+		return nil
+	}
+	next := applyTargets(rule, live, income)
+	next.RuleID = &rule.ID
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		setApplied(l, next)
+		if err := s.repo.UpdateLink(ctx, l); err != nil {
+			return err
+		}
+		return s.repo.ReplaceLinkAppliedLabels(ctx, l.ID, next.LabelIDs)
+	})
 }
 
 // scopedLinks narrows to rows that are linked to a live transaction: a
