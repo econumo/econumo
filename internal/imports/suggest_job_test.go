@@ -1,10 +1,12 @@
 package imports_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"testing"
@@ -392,6 +394,38 @@ func TestSuggestRespectsCap(t *testing.T) {
 	}
 	if len(c.calls) != 0 || len(openSuggestions(t, h, userA)) != 0 {
 		t.Fatalf("over the cap: calls = %+v", c.calls)
+	}
+}
+
+type brokenLimiter struct{}
+
+func (brokenLimiter) Allow(_ context.Context, scope, _ string) error {
+	if scope == imports.RateScopeSuggest {
+		return errors.New("limiter down")
+	}
+	return nil
+}
+func (brokenLimiter) Reserve(string, string) error { return nil }
+
+// A limiter that fails is not a rate limit: it is a WARN with the error type.
+func TestSuggestLimiterFailureWarns(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	h.svc = imports.NewService(h.repo, h.accounts, h.conv, h.txns, h.txns, h.entities, brokenLimiter{}, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+	registerParsers(h.svc)
+	h.wireSuggest(c, facts)
+	h.mapCard(t, "Apple Card")
+	cat := h.category(t, userA, "Coffee")
+	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(old)
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	out := buf.String()
+	if len(c.calls) != 0 || !strings.Contains(out, "level=WARN") || !strings.Contains(out, "import suggest failed") || !strings.Contains(out, "err_type=") || strings.Contains(out, "rate_limited") {
+		t.Fatalf("calls = %d, log = %s", len(c.calls), out)
 	}
 }
 

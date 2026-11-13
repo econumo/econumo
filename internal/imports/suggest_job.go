@@ -250,8 +250,11 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		return err
 	}
 	if err := s.countAttempt(ctx, RateScopeSuggest, owner); err != nil {
-		slog.Info("import suggest skipped", "user_id", owner.String(), "reason", "rate_limited")
-		return nil
+		if _, limited := errs.AsTooManyRequests(err); limited {
+			slog.Info("import suggest skipped", "user_id", owner.String(), "reason", "rate_limited")
+			return nil
+		}
+		return err
 	}
 	parsed, err := s.askSuggestions(ctx, owner, rest, vocab, language, timezone)
 	if err != nil || parsed == nil {
