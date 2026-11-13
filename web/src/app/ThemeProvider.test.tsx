@@ -9,7 +9,6 @@ import { ThemeProvider } from './ThemeProvider'
 import { RootLayout } from './layouts/RootLayout'
 import { LoginLayout } from './layouts/LoginLayout'
 
-vi.mock('@/components/AppUpdateBlock', () => ({ AppUpdateBlock: () => null }))
 
 let systemDark = false
 let listeners: Set<(query: MediaQueryListEvent) => void>

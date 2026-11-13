@@ -9,8 +9,6 @@ import { FailDialog } from '@/components/FailDialog'
 import { apiErrorMessage } from '@/lib/apiError'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
-import { isNativeApp } from '@/lib/platform'
-import { useServerConfigFor } from '@/lib/appConfig'
 import { takePostLoginRedirect } from '@/features/authserver/postLoginRedirect'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl, isValidName, isValidPassword } from '@/lib/validation'
@@ -49,10 +47,8 @@ export function RegistrationPage() {
   })
   const selfHostedChecked = watch('selfHosted')
   // Watched so a custom server address typed below re-evaluates whether the
-  // password form is available (see passwordLoginAvailable); in the app the
-  // typed server's own config is fetched and decides.
+  // password form is available (see passwordLoginAvailable).
   watch('host')
-  const configRevision = useServerConfigFor(config.backendHost())
   const passwordForm = passwordLoginAvailable()
 
   // The disclosure state persists immediately (not on submit), and collapsing
@@ -61,10 +57,8 @@ export function RegistrationPage() {
     const next = !selfHostedChecked
     config.selfHosted(next)
     if (next) {
-      // Seed the page's own origin on the web; in the native app the WebView
-      // origin (capacitor://localhost) is meaningless as a server address, so
-      // the field stays empty for the user's own URL.
-      if (!getValues('host') && !isNativeApp()) {
+      // Seed the page's own origin.
+      if (!getValues('host')) {
         setValue('host', window.location.origin)
       }
     } else {
@@ -89,7 +83,7 @@ export function RegistrationPage() {
     if (!config.isRegistrationAllowed()) {
       navigate(RouterPage.LOGIN, { replace: true })
     }
-  }, [navigate, configRevision])
+  }, [navigate])
 
   const onSubmit = handleSubmit(async ({ name, email, password }) => {
     try {

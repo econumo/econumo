@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { LanguageDialog } from '@/components/LanguageDialog'
 import { getLocaleOptions, mcpUrl } from '@/lib/config'
-import { useServerConfig } from '@/lib/appConfig'
 import i18n from '@/app/i18n'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyField } from '@/features/currencies/CurrencyField'
@@ -56,7 +55,6 @@ export function ProfilePage() {
   const savedTimer = useRef<number | null>(null)
   const hasPassword = user?.hasPassword !== false
   const passwordLogin = usePasswordLoginAvailable()
-  useServerConfig((s) => s.revision)
   const connectedAppsAvailable = mcpUrl() !== ''
 
   useEffect(() => {

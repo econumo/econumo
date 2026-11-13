@@ -14,8 +14,6 @@ interface Envelope<T> {
   data: T
 }
 
-export type OAuthClient = 'web' | 'app'
-
 export async function getProviderList(host: string = backendHost()): Promise<ProviderDto[]> {
   const response = await api.get<Envelope<ProviderDto[]>>(`${host}/api/v1/oauth/get-provider-list`)
   return response.data.data
@@ -28,13 +26,13 @@ export interface StartOAuthResult {
   flow: string
 }
 
-export async function startLogin(provider: OAuthProviderId, client: OAuthClient): Promise<StartOAuthResult> {
-  const response = await api.post<Envelope<StartOAuthResult>>(apiUrl('/api/v1/oauth/start-login'), { provider, client })
+export async function startLogin(provider: OAuthProviderId): Promise<StartOAuthResult> {
+  const response = await api.post<Envelope<StartOAuthResult>>(apiUrl('/api/v1/oauth/start-login'), { provider, client: 'web' })
   return response.data.data
 }
 
-export async function startLink(provider: OAuthProviderId, client: OAuthClient): Promise<StartOAuthResult> {
-  const response = await api.post<Envelope<StartOAuthResult>>(apiUrl('/api/v1/oauth/start-link'), { provider, client })
+export async function startLink(provider: OAuthProviderId): Promise<StartOAuthResult> {
+  const response = await api.post<Envelope<StartOAuthResult>>(apiUrl('/api/v1/oauth/start-link'), { provider, client: 'web' })
   return response.data.data
 }
 

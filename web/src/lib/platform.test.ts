@@ -1,27 +1,5 @@
-import { afterEach, expect, it } from 'vitest'
-import { isIOS, isIPhone, isMac, isNativeApp, nativePlugin } from './platform'
-
-afterEach(() => {
-  delete (window as { Capacitor?: unknown }).Capacitor
-})
-
-it('is not native without the Capacitor global', () => {
-  expect(isNativeApp()).toBe(false)
-  expect(nativePlugin('Preferences')).toBeNull()
-})
-
-it('is native when Capacitor reports a native platform', () => {
-  window.Capacitor = { isNativePlatform: () => true, Plugins: { Preferences: { get: () => {} } } }
-  expect(isNativeApp()).toBe(true)
-  expect(nativePlugin('Preferences')).not.toBeNull()
-  expect(nativePlugin('Missing')).toBeNull()
-})
-
-it('is not native for the Capacitor web runtime', () => {
-  window.Capacitor = { isNativePlatform: () => false, Plugins: {} }
-  expect(isNativeApp()).toBe(false)
-  expect(nativePlugin('Preferences')).toBeNull()
-})
+import { expect, it } from 'vitest'
+import { isIOS, isIPhone, isMac } from './platform'
 
 function stubNavigator(overrides: { userAgent?: string; platform?: string; maxTouchPoints?: number }) {
   Object.defineProperty(window.navigator, 'userAgent', { value: overrides.userAgent ?? 'Mozilla/5.0 (X11; Linux x86_64)', configurable: true })

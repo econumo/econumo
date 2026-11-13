@@ -1,7 +1,6 @@
 import { UserOptions } from '@/api/dto/user'
 import { isOnboardingCompleted, useUserData } from '@/features/user/queries'
 import { getVersion } from '@/lib/config'
-import { isNativeApp } from '@/lib/platform'
 import { isNewerVersion, SEMVER } from '@/lib/version'
 
 const RELEASE_NOTES_URL = 'https://econumo.com/releases/'
@@ -21,12 +20,10 @@ export interface WhatsNew {
 // within a seen line, or when they already have. A user with no stored version
 // predates the option, so they did upgrade: new accounts get the running
 // version seeded server-side and never see this.
-// Web only: the app compares its bundled version, not the server's that the
-// seed uses, and may talk to a server without update-last-seen-version.
 export function useWhatsNew(): WhatsNew | null {
   const { data: user } = useUserData()
   const version = getVersion()
-  if (!user || isNativeApp() || !SEMVER.test(version)) {
+  if (!user || !SEMVER.test(version)) {
     return null
   }
   // Not during onboarding: the first session is busy enough. The card waits
