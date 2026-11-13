@@ -650,6 +650,25 @@ describe('suggestion mode', () => {
     expect(vi.mocked(toast.error)).not.toHaveBeenCalled()
   })
 
+  it('a first accept refused because the suggestion was settled elsewhere is an error, and the dialog stays', async () => {
+    renderPrompt()
+    previewCounts(0, 0)
+    server.use(
+      http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+      http.post('*/api/v1/import/accept-suggestion', async ({ request }) => {
+        ;(posted.accept ??= []).push(await request.json())
+        return HttpResponse.json({ success: false, message: 'Import suggestion not found', code: 0, errors: {} }, { status: 400 })
+      }),
+    )
+    vi.mocked(toast.error).mockClear()
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith('Import suggestion not found'))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(posted.accept).toHaveLength(1)
+  })
+
   it('cancel leaves the suggestion', async () => {
     renderPrompt()
     useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })

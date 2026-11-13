@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
@@ -83,13 +84,19 @@ async function listWithout(err: unknown, id: Id): Promise<ImportSuggestionDto[] 
 
 export function useAcceptImportSuggestion() {
   const queryClient = useQueryClient()
+  // suggestions this hook already sent an accept for: only a retry may find its suggestion gone
+  // because its own first attempt landed; a first accept refused that way was settled elsewhere
+  // (a dismiss, the list's cleanup) and is an error
+  const sent = useRef(new Set<Id>())
   return useMutation({
     meta: { handlesOwnErrors: true },
     mutationFn: async ({ id, ruleId }: { id: Id; ruleId: Id; changes: SuggestionChanges }): Promise<{ updated: number; alreadyGone?: true }> => {
+      const retry = sent.current.has(id)
+      sent.current.add(id)
       try {
         return await importsApi.acceptImportSuggestion(id, ruleId)
       } catch (err) {
-        if ((await listWithout(err, id)) === null) throw err
+        if (!retry || (await listWithout(err, id)) === null) throw err
         return { updated: 0, alreadyGone: true }
       }
     },
