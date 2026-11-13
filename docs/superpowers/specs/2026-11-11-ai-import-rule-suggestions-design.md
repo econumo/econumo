@@ -123,7 +123,10 @@ count as ongoing.
 *Step 1*, one request per transaction type present in the batch (expense rows and income rows
 never share a request), per row: an opaque row key, the external payee text, income or
 expense, the account name, the currency code. Never the amount, the date or the description; a
-row with no payee text is not sent at all (it gets no suggestion).
+row with no payee text is not sent at all (it gets no suggestion); a payee equal to the
+description counts as none (SimpleFIN copies the memo into an empty payee). Rows no suggestion
+could fill (a missing payee with no active payees, a missing category with none of the row's
+type) are dropped before the cap, and a row dated more than a day after its import is not live.
 For the owner: their non-archived categories of that type only (id, name), language and
 timezone. No payees. It asks, per row it is confident about,
 `{"rows":{"<key>":{"matchText":"...","merchant":"...","categoryId":"..."}}}`: the system prompt

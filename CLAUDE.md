@@ -192,10 +192,14 @@ before import, the import time read as a wall clock in the owner's stored timezo
 unknown; never the `link-account`/retry/queued-import replays) leaves a non-transfer row
 without a category or payee after the account OWNER's rules ran (owner not `readonly`), a
 background job (50 rows/request, a 5 min deadline for the scan that sorts the rows by owner, then 60 s per owner started once that owner's lock is held, scope `import-ai-suggest` 30 jobs per rate-limit
-window, IP-exempt, one job however many calls) asks in two steps. Step 1, one request per
+window, IP-exempt, one job however many calls; only rows posted at most 7 days before the import
+and at most a day after it, and only rows a suggestion could fill: a missing payee needs an
+active payee, a missing category an active category of the row's type, else no call and no cap
+slot; the post-commit opt-out undo runs under a fresh 10 s context) asks in two steps. Step 1, one request per
 transaction type, sends the rows (opaque key, bank payee text, income/expense, account name,
 currency code; never the amount, the date or the description, and a row with no payee text is
-not sent at all) with only that type's non-archived categories and no payees,
+not sent at all, a payee equal to the description counting as none since SimpleFIN copies the
+memo into an empty payee) with only that type's non-archived categories and no payees,
 and asks per row for a match text, the merchant's common name and, when confident, a category.
 The server then picks, without AI, up to 5 of the owner's non-archived payees per row whose
 names resemble the merchant name or the match text (`payeeCandidates`: equal, one containing
@@ -1165,7 +1169,8 @@ it). Key vars:
   the language, the timezone, a transaction's type and the bank's payee/merchant text, plus the
   opaque keys and entity ids the answer refers to. NEVER amounts, balances, opening balances,
   plans, dates, a transaction's description/memo, user names or emails; a row with no payee text
-  is not sent. Each prompt builder has a guard test asserting its exact key set.
+  is not sent (a payee equal to the description is the memo and counts as none). Each prompt
+  builder has a guard test asserting its exact key set and values.
   A user who turned the per-user `ai` option off (`update-ai`) sends nothing: no onboarding
   job starts for them (an unreadable preference starts none either), and each onboarding request
   re-reads the option right before its provider call, so a job queued before the opt-out sends
