@@ -87,10 +87,11 @@ export function useInbox(): Inbox {
   const queued = queue.data?.queued ?? []
   const skipped = queue.data?.skipped ?? []
   const failed = queue.data?.failed ?? []
-  const suggestions = noSuggestions ? [] : (suggestionList.data ?? [])
-  // a 404 is an older server without the route: there is nothing to suggest, not a failure
-  const suggestionsError =
-    !noSuggestions && suggestionList.isError && !(isAxiosError(suggestionList.error) && suggestionList.error.response?.status === 404)
+  // a 404 is an older server without the route: there is nothing to suggest (a list cached or
+  // restored from before shows nothing either), not a failure
+  const suggestionsGone = suggestionList.isError && isAxiosError(suggestionList.error) && suggestionList.error.response?.status === 404
+  const suggestions = noSuggestions || suggestionsGone ? [] : (suggestionList.data ?? [])
+  const suggestionsError = !noSuggestions && suggestionList.isError && !suggestionsGone
   return {
     failedWrites,
     dueRecurring,

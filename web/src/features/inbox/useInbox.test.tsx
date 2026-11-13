@@ -338,6 +338,21 @@ it('an older server without the suggestion route is no failure', async () => {
   expect(result.current.suggestions).toEqual([])
 })
 
+// a cached (or restored) list from before the downgrade must not linger: the server has no suggestions
+it('a 404 from the suggestion route hides suggestions cached before it', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const sg = { id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }
+  queryClient.setQueryData(queryKeys.importSuggestions, [sg], { updatedAt: 0 })
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] }, importSources: [] }))
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: false, message: 'Not found', code: 0, errors: {} }, { status: 404 })))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(queryClient.getQueryState(queryKeys.importSuggestions)?.status).toBe('error'))
+  expect(result.current.suggestions).toEqual([])
+  expect(result.current.importsError).toBe(false)
+  expect(result.current.count).toBe(0)
+})
+
 it('offline, a readonly user\'s never-loaded suggestion list does not raise the offline notice', async () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   queryClient.setQueryData(queryKeys.importQueue, { queued: [], skipped: [], failed: [] })
