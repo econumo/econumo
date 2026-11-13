@@ -202,6 +202,26 @@ it('useAcceptImportSuggestion invalidates the plan with the other ledger views',
   }
 })
 
+it('an accept retried from a new hook instance after a lost answer counts as done', async () => {
+  const calls: number[] = []
+  server.use(
+    http.post('*/api/v1/import/accept-suggestion', () => {
+      calls.push(1)
+      return calls.length === 1
+        ? HttpResponse.error()
+        : HttpResponse.json({ success: false, message: 'Import suggestion not found', code: 0, errors: {} }, { status: 400 })
+    }),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+  )
+  const vars = { id: 'sg-remount', ruleId: 'r1', changes: { changedMatch: false, changedCategory: false, changedPayee: false } }
+  const { wrapper } = makeWrapper()
+  const first = renderHook(() => useAcceptImportSuggestion(), { wrapper })
+  await expect(act(() => first.result.current.mutateAsync(vars))).rejects.toBeDefined()
+  first.unmount()
+  const second = renderHook(() => useAcceptImportSuggestion(), { wrapper })
+  await expect(act(() => second.result.current.mutateAsync(vars))).resolves.toEqual({ updated: 0, alreadyGone: true })
+})
+
 it('a dismiss refused because the suggestion is already gone counts as done', async () => {
   server.use(
     http.post('*/api/v1/import/dismiss-suggestion', () => HttpResponse.json({ success: false, message: 'Import suggestion not found', code: 0, errors: {} }, { status: 400 })),
