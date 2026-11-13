@@ -108,8 +108,8 @@ count as ongoing.
   inline, a WARN with `user_id` + `err_type` only on failure, never the prompt or reply.
   Jobs are not drained on shutdown, so a restart can lose one. That's accepted.
 - The job runs per **account owner**: a run whose rows land in accounts of different owners
-  makes one request per owner, under that owner's id, with their categories, payees, language
-  and timezone.
+  makes each owner's requests (see "What it sends") under that owner's id, with their categories,
+  candidate payees, language and timezone.
 - It counts against a per-user cap in the shared auth limiter (*builder's call*: a new scope,
   30 jobs per rate-limit window, a constant, no new env var). Over the cap, no suggestions.
 - **Reuse before asking.** Before calling the AI, a row whose text an open suggestion of the
@@ -118,19 +118,35 @@ count as ongoing.
 - At most 50 rows per request (*builder's call*). A larger batch keeps the first 50 by posted
   date, newest first, and drops the rest. Ongoing-only keeps batches small.
 
-**What it sends**, per row: an opaque row key, the external payee, the external description,
-the amount, the currency, income or expense, the posted date, the account name. For the owner:
-their non-archived categories (id, name, type), their non-archived payees (id, name;
-*builder's call*: at most 500, sorted by name, since there is no usage data to rank them by;
-the order keeps the capped set stable from one request to the next), language and timezone. Never email
-addresses, other users' data, or balances.
+**What it sends.** Two steps, one job against the cap.
 
-**What it asks for**, per row it is confident about:
-`{"rows":{"<key>":{"matchText":"...","categoryId":"...","payeeId":"..."}}}`, leaving out a field
-(or a whole row) it is not confident about. The system prompt says to include a field only when
-it is highly confident, to pick only from the listed ids, to choose a category of the row's type,
-and to pick as `matchText` the shortest substring of the payee (or the description when the
-payee is empty) that identifies the merchant, copied exactly.
+*Step 1*, one request per transaction type present in the batch (expense rows and income rows
+never share a request), per row: an opaque row key, the external payee, the external
+description, the amount, the currency, income or expense, the posted date, the account name.
+For the owner: their non-archived categories of that type only (id, name), language and
+timezone. No payees. It asks, per row it is confident about,
+`{"rows":{"<key>":{"matchText":"...","merchant":"...","categoryId":"..."}}}`: the system prompt
+says to include `categoryId` only when highly confident and only from the listed ids, to pick as
+`matchText` the shortest substring of the payee (or the description when the payee is empty)
+that identifies the merchant, copied exactly, and as `merchant` the merchant's common name
+("Amazon" for "AMZN MKTP US*2K4"), omitted when unclear.
+
+*Candidates* (server, no AI): for each row with a merchant name, a valid match text and no
+payee yet, the owner's non-archived payees whose names resemble the merchant name or the match
+text, compared lowercased with punctuation stripped: equal, one containing the other (the
+shorter at least 3 letters or digits), a Levenshtein ratio of at least 0.8, or a shared word of
+at least 3 letters, ranked in that order, at most 5 per row. There is no cap on the payee list
+itself, so a payee late in the alphabet is as reachable as any other.
+
+*Step 2*, only when at least one row has candidates: one request with only those rows (key,
+payee text, description, merchant name) and each row's candidates (id, name), asking
+`{"rows":{"<key>":{"payeeId":"..."}}}` only when a candidate is clearly the same merchant.
+A pick that is not one of that row's candidates is dropped; rows without candidates get no
+payee (payees are never created). A failed or unusable step 2 keeps step 1's categories. The
+owner's opt-out is read again right before step 2 (and before the second type's step 1), as
+before the first call; an opt-out found there ends the job with nothing stored.
+
+Never email addresses, other users' data, or balances.
 
 *Builder's call:* confidence is expressed by leaving fields out rather than by a numeric score.
 A score from an LLM is not calibrated, while the prompt plus validation does the same filtering
@@ -138,7 +154,8 @@ more simply.
 
 **Validation.** The server keeps only what passes:
 - `categoryId` is one of the owner's non-archived categories and fits the row's type
-  (`categoryFits`); `payeeId` is one of the owner's non-archived payees;
+  (`categoryFits`); `payeeId` is one of that row's step-2 candidates (so one of the owner's
+  non-archived payees);
 - `matchText`, after `NormalizeText`, occurs case-insensitively in the normalized payee (field
   `external_payee`), or in the description when the payee is empty (field `description`).
   Otherwise the row is dropped, because a rule needs a working match text;

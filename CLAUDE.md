@@ -227,8 +227,15 @@ before import, the import time read as a wall clock in the owner's stored timezo
 unknown; never the `link-account`/retry/queued-import replays) leaves a non-transfer row
 without a category or payee after the account OWNER's rules ran (owner not `readonly`), a
 background job (50 rows/request, 60 s timeout per owner started once that owner's lock is held, scope `import-ai-suggest` 30 jobs per rate-limit
-window, IP-exempt) asks for a match text, category and payee drawn from the owner's own
-non-archived names; the suggestion lands in the OWNER's Inbox only (a partner's tap included).
+window, IP-exempt, one job however many calls) asks in two steps. Step 1, one request per
+transaction type, sends the rows with only that type's non-archived categories and no payees,
+and asks per row for a match text, the merchant's common name and, when confident, a category.
+The server then picks, without AI, up to 5 of the owner's non-archived payees per row whose
+names resemble the merchant name or the match text (`payeeCandidates`: equal, one containing
+the other, Levenshtein ratio >= 0.8, or a shared word of 3+ letters; lowercased, punctuation
+stripped), and step 2, only when some row has candidates, sends those rows with their own
+candidates and keeps a payee only when it is one of that row's (a failed step 2 keeps step 1's
+categories); the opt-out is re-read before every call after the first. The suggestion lands in the OWNER's Inbox only (a partner's tap included).
 Match text holds at least 3 letters or digits and must occur in the payee (the description when the payee
 is empty); there is one open suggestion per (owner, merchant, income/expense): the suggestion
 stores its type (`import_suggestions.transaction_type`), and a row (before the AI call) or a
@@ -1144,8 +1151,9 @@ it). Key vars:
   names and types for category icons, the names and currencies of accounts still on the import
   icon for account icons, and every live account's name and currency for savings); import rule suggestions
   send the new transactions' details (payee, description, amount, currency, income/expense, date, account
-  name) with the account owner's category and payee names (payees capped at 500), language and timezone,
-  and `suggest-match-text` sends one transaction's details (see the imports paragraph).
+  name) with the account owner's category names of the rows' type, language and timezone, then, for
+  rows whose merchant resembles some of the owner's payees, those rows' payee/description, the merchant
+  name and up to 5 candidate payee names each (never the whole payee list), and `suggest-match-text` sends one transaction's details (see the imports paragraph).
   A user who turned the per-user `ai` option off (`update-ai`) sends nothing: no onboarding
   job starts for them (an unreadable preference starts none either), and each onboarding request
   re-reads the option right before its provider call, so a job queued before the opt-out sends
