@@ -10,7 +10,6 @@ import type { ImportSuggestionDto, TransactionImportLinkDto } from '@/api/dto/im
 import { toast } from 'sonner'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { RulePromptDialog } from './RulePromptDialog'
-import { suggestionRuleId } from './suggestionRule'
 
 vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
@@ -481,7 +480,7 @@ describe('suggestion mode', () => {
     await user.click(await screen.findByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const ids = (posted.create as Record<string, unknown>[]).map((c) => c.id)
-    expect(ids).toEqual([suggestionRuleId('sg1'), suggestionRuleId('sg1')])
+    expect(ids).toEqual(['sg1', 'sg1'])
     expect(storedRules.size).toBe(1)
     expect(posted.update).toBeUndefined()
     expect(posted.accept).toEqual([{ id: 'sg1', ruleId: 'rule-new' }, { id: 'sg1', ruleId: 'rule-new' }])
@@ -538,7 +537,7 @@ describe('suggestion mode', () => {
     const user = await reloadAfterCommittedCreate()
     await user.click(await screen.findByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect((posted.create as Record<string, unknown>[]).map((c) => c.id)).toEqual([suggestionRuleId('sg1'), suggestionRuleId('sg1')])
+    expect((posted.create as Record<string, unknown>[]).map((c) => c.id)).toEqual(['sg1', 'sg1'])
     expect(storedRules.size).toBe(1)
     expect(posted.update).toBeUndefined()
     expect(posted.accept!.at(-1)).toEqual({ id: 'sg1', ruleId: 'rule-new' })
@@ -560,7 +559,7 @@ describe('suggestion mode', () => {
 
   it('a stored rule edited on the rules page keeps its tag, labels, priority and source when the dialog saves again', async () => {
     renderPrompt()
-    storedRules.set(suggestionRuleId('sg1'), {
+    storedRules.set('sg1', {
       ...rule, id: 'rule-new', matchValue: 'BLUE', categoryId: 'cat-food', payeeId: '',
       tagId: 'tag-1', labelIds: ['lab-1'], priority: 7, sourceId: 's1', isCaseSensitive: true,
     })
@@ -584,7 +583,7 @@ describe('suggestion mode', () => {
     await user.click(await screen.findByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(storedRules.size).toBe(1)
-    expect([...storedRules.keys()]).toEqual([suggestionRuleId('sg1')])
+    expect([...storedRules.keys()]).toEqual(['sg1'])
     expect(posted.update).toBeUndefined()
   })
 

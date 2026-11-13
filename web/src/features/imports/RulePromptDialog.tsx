@@ -36,7 +36,7 @@ import {
 } from './queries'
 import { RuleCondition } from './RuleCondition'
 import { describeMatch } from './ruleSummary'
-import { suggestionRuleId, suggestionSpec } from './suggestionRule'
+import { suggestionSpec } from './suggestionRule'
 
 const PREVIEW_DEBOUNCE_MS = 300
 // mirrors model.MaxImportRuleLabels — the server rejects a longer set
@@ -393,12 +393,12 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
   const fieldLabel = matchField === 'description' ? t('imports.rules.field.description') : t('imports.rules.field.external_payee')
   const typeLabel = t(`imports.rules.type.${matchType}`)
 
-  // The rule's id comes from the suggestion: a Save after a failed accept, a reload or a Cancel
+  // The rule takes the suggestion's own id: a Save after a failed accept, a reload or a Cancel
   // replays the rule already stored (create-rule answers it as stored) and brings what this dialog
   // edits up to date, keeping what the rules page may have changed on it since, so one suggestion
   // never leaves two rules behind. A rule deleted meanwhile is simply created again under that id.
   const saveAndAccept = async () => {
-    let rule = await create.mutateAsync({ spec, id: suggestionRuleId(suggestion.id) })
+    let rule = await create.mutateAsync({ spec, id: suggestion.id })
     const changed = suggestionSpec(rule, spec)
     if (changed) {
       rule = await update.mutateAsync({ id: rule.id, spec: changed })
