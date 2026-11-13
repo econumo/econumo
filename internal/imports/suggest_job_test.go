@@ -141,6 +141,7 @@ func TestSuggestSkipsBackfill(t *testing.T) {
 	h, p := bankHarness(t)
 	c := &fakeCompleter{reply: `{"rows":{}}`}
 	h.wireSuggest(c, fakeFacts{userA: {language: "en"}})
+	h.category(t, userA, "Shops")
 	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
 	p.txs = []model.ExternalTransaction{
 		extTx("ACT-1", "old", "-5.00", now.AddDate(0, 0, -30).Unix(), "Old Shop"),
@@ -1122,5 +1123,28 @@ func TestSuggestSkipsASimpleFINRowWhosePayeeIsTheMemo(t *testing.T) {
 	}
 	if len(c.calls) != 0 || l.reserve[imports.RateScopeSuggest] != 0 {
 		t.Fatalf("calls = %+v, reservations = %v", c.calls, l.reserve)
+	}
+}
+
+// A row nothing could be suggested for (no payees to pick from, no category
+// of its type) costs no AI call and no cap slot.
+func TestSuggestSkipsRowsNothingCanFill(t *testing.T) {
+	h, _, _ := suggestSetup(t)
+	c := &fakeCompleter{reply: `{"rows":{}}`}
+	l := withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en"}})
+	h.mapCard(t, "Apple Card")
+	h.incomeCategory(t, userA, "Salary")
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 0 || l.reserve[imports.RateScopeSuggest] != 0 {
+		t.Fatalf("an expense with no expense category and no payees: calls = %d, reservations = %v", len(c.calls), l.reserve)
+	}
+	h.payee(t, userA, "Blue Bottle")
+	if res := ingest(t, h, pushWithPayee("Philz", "evt-2")); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(c.calls) != 1 || l.reserve[imports.RateScopeSuggest] != 1 {
+		t.Fatalf("with a payee to pick: calls = %d, reservations = %v", len(c.calls), l.reserve)
 	}
 }

@@ -237,7 +237,7 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 			}
 		}
 	}
-	if len(rest) == 0 {
+	if rest = fillable(rest, vocab); len(rest) == 0 {
 		return nil
 	}
 	sort.SliceStable(rest, func(i, j int) bool { return rest[i].Link.ExternalPostedAt.After(rest[j].Link.ExternalPostedAt) })
@@ -324,6 +324,23 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		inserted, joined = nil, nil
 	}
 	return err
+}
+
+// fillable keeps the rows a suggestion could fill: a missing payee needs some
+// active payee to pick, a missing category an active category of the row's
+// type. The others would cost an AI call and a cap slot for nothing.
+func fillable(rows []suggestRow, vocab suggestVocabulary) []suggestRow {
+	hasType := map[bool]bool{}
+	for _, c := range vocab.Categories {
+		hasType[c.Income] = true
+	}
+	out := rows[:0:0]
+	for _, r := range rows {
+		if (r.Missing.Payee && len(vocab.Payees) > 0) || (r.Missing.Category && hasType[r.Type.IsIncome()]) {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // askSuggestions runs step 1 once per transaction type in rows (that type's
