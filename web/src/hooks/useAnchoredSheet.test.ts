@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { anchoredTop, sheetVisibleHeight } from './useAnchoredSheet'
 
 describe('anchoredTop', () => {
-  // a long list on an 812px screen fills it up to the status bar (54px + 8);
-  // handle, title and search take 146px (measured)
-  const long = { top: 62, natural: 1800, chrome: 146, minTop: 62, layout: 812 }
+  // a long list on an 812px screen fills it up to the status bar (54px + 8)
+  const long = { top: 62, natural: 1800, minTop: 62, layout: 812 }
 
   it('keeps the top where it opened whatever the keyboard does', () => {
     expect(anchoredTop(long, 812)).toBe(62)
@@ -18,15 +17,24 @@ describe('anchoredTop', () => {
   })
 
   it('lifts a short list just above the keyboard', () => {
-    const short = { top: 600, natural: 212, chrome: 146, minTop: 62, layout: 812 }
+    const short = { top: 600, natural: 212, minTop: 62, layout: 812 }
     expect(anchoredTop(short, 812)).toBe(600)
     expect(anchoredTop(short, 416)).toBe(204)
   })
 
-  it('keeps a mid-size list\'s top until the keyboard leaves under two rows', () => {
-    const mid = { top: 300, natural: 512, chrome: 146, minTop: 62, layout: 812 }
-    expect(anchoredTop(mid, 442)).toBe(196)
-    expect(anchoredTop(mid, 812)).toBe(300)
+  it('lifts a list that fits above the keyboard just far enough to show all of it', () => {
+    const few = { top: 474, natural: 400, minTop: 62, layout: 874 }
+    expect(anchoredTop(few, 874)).toBe(474)
+    expect(anchoredTop(few, 505)).toBe(105)
+  })
+
+  // nine income categories on an iPhone (874px, 505px above the keyboard): the
+  // sheet used to keep its top and leave 100px of list, two rows of the nine
+  it('lifts a list that fits the screen, but not above the keyboard, up to the status bar', () => {
+    const income = { top: 271, natural: 603, minTop: 62, layout: 874 }
+    expect(anchoredTop(income, 505)).toBe(62)
+    // and back down to its content's height when the keyboard goes
+    expect(anchoredTop(income, 874)).toBe(271)
   })
 })
 
