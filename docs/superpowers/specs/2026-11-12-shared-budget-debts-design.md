@@ -9,6 +9,10 @@ designs and the code on the branch describe it.
 items no longer apply): a debt is created from a budget category row ("Track as debt") and reached
 from its budget row, so the create form never asks for a budget.
 
+**Revision 2026-11-12 (icon):** a debt may have an icon of its own (`debts.icon`, `""` = none),
+picked in the review screen's Settings tab with the name; `icon` on create/update-debt (left out
+or `""` on update keeps it). Every reader shows it, else the first rule's category icon as before.
+
 ## Why
 
 A couple shares a mortgage. Sometimes he pays it, sometimes she does; each records the payment from

@@ -1955,7 +1955,10 @@ data unreadable. Most are also asserted by the test suite.
   budget (the owner or an accepted non-guest, whose categories the budget shows; any other
   category is not found, an income one `debt.category_not_expense`), optionally narrowed by that
   same participant's payee and by a tag OR a label (both: `common.invalid_choice` on `labelId`).
-  The debt's icon is its first rule's category icon (`model.DefaultIcon` with no rules). A rule's
+  The debt's icon is its own (`debts.icon`, set by `icon` on create/update-debt, at most 64
+  characters; `""` or left out on update keeps the stored one, so it never goes back) when set,
+  else its first rule's category icon (`model.DefaultIcon` with no rules), the same everywhere
+  (`DebtResult`, the budget's debt rows, "Add to a debt"; one helper, `presenter.icon`). A rule's
   classification keys are NO ACTION foreign keys: the deletes release the rules first (below).
   `get-debt-list` lists the debts of every budget the caller can read, archived ones included,
   budget by budget in the budget list's order. `DebtResult` carries `budgetId`, `budgetName`,
@@ -2345,7 +2348,8 @@ data unreadable. Most are also asserted by the test suite.
   row's, while Left and payments left wait for the next read; the metric fires on
   the click that opens the list. "Track as debt" passes the row's budget through
   `OpenDebtParams.budgetId`, the budget the debt is created in. A debt not set up has no items. Settings is ONE
-  form, `DebtSettingsForm`, asking for the loan contract's facts (name, the rule list, `RulesEditor`
+  form, `DebtSettingsForm`, asking for the loan contract's facts (name, the icon (`IconPicker`
+  under it, as in the category dialog; sent only once changed), the rule list, `RulesEditor`
   fed by the debt's budget's rule options, a line with no category being "Required field", Amount
   borrowed, one `DatesRow` of two cards, Start date first and Last payment date second, hints
   screen-reader only, the clear X only on a debt not set up, the payment row, currency; Cancel

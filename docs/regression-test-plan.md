@@ -2561,7 +2561,8 @@ running these.
       without changes: no snapshot is written (the Balance tab's history
       does not grow) and the payment keeps counting.
 - [ ] 📱 **Settings tab** holds one form with the loan contract's facts:
-      Name, the "Which payments count" lines (add, edit and remove lines as on
+      Name, the Icon picker under it (the same swipeable grid as the category
+      dialog, the debt's current icon selected), the "Which payments count" lines (add, edit and remove lines as on
       the create form, the partner's categories offered too), Amount borrowed, one row of two
       same-height date cards (Start date first, then Last payment date; no
       clear X on a set-up debt; it fits a 360 px phone, the hints are read
@@ -2578,6 +2579,11 @@ running these.
       its field. A partner who may plan edits the shared debt the same way. The tab ends at
       Cancel and Save; while the debt loads it shows the loader, not the
       buttons alone.
+- [ ] 📱 **Debt icon**: a new debt shows its category's icon. In Settings pick
+      another icon and Save: the header, the budget's Debts row (Budget and
+      Plan, for every participant, a guest included), the item sheet and "Add
+      to a debt" show the new one; changing the category afterwards keeps it.
+      Saving with the icon untouched keeps whatever icon another device set.
 - [ ] 📱 **Balance tab** (set-up debts only; a debt not set up has no such
       tab): Econumo's balance today, and once there is a statement "Last
       statement X on date" with the difference (statement less Econumo's
