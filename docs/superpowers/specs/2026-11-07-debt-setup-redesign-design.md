@@ -253,3 +253,17 @@ create form stays short and sets none of them.
   no plans). Planned extra shows only once the forecast has answered (hidden while
   it loads, on an error or offline with nothing cached), never a plan-free number;
   Paid extra shows 0 too. Interest stays in the payments table.
+
+## Revision 2026-11-12: a statement keeps the loan's rate
+
+- A statement no longer implies its own rate from its balance and the contract's
+  last payment date (which made a much lower statement only raise the rate and
+  leave payments left and the payoff date unchanged). The loan's rate is the
+  origin's implied rate; every statement, a paid-off 0 included, splits payments
+  after it and projects at that rate ("when we edit the balance, we recalculate
+  the number of payments"). A lower statement shortens the loan and moves the
+  payoff earlier, a higher one lengthens it past the last payment date, which
+  stays stored as the contract's. Correcting the origin changes the rate every
+  statement uses. A statement the regular payment can never repay at the loan's
+  rate is refused (`debt.payments_dont_cover`); `periodRate` reports the loan's
+  rate.

@@ -2023,7 +2023,17 @@ data unreadable. Most are also asserted by the test suite.
   under the latest terms; a statement on a date that already has one REPLACES it
   (`UpdateSnapshot`, exactly one row). A statement balance is the PRINCIPAL still owed: interest
   since the last payment is charged at the next due, for a full period (only the origin's first
-  period is prorated). The splits of payments dated after that date are dropped in the same
+  period is prorated). A statement keeps the LOAN'S rate, the origin's implied one: every
+  snapshot after the origin splits, projects and counts payments left at it (`withLoanRate`,
+  applied by `sortedSnaps`, so every consumer and `periodRate` follow; a debt with no origin
+  keeps each snapshot's own implied rate), never at a rate implied from its own balance and the
+  contract's last payment date, which it keeps stored but which only anchors the dues. So a
+  statement below Econumo's balance shortens the loan and moves the payoff earlier, one above it
+  lengthens the loan past the last payment date, and a correction of the origin moves every
+  statement's rate with it. A statement whose balance the regular payment can never repay at
+  that rate (the payment at most one period's interest, or still owing past the projection's
+  horizon) is refused with `debt.payments_dont_cover` (`model.StatementRepayable`); a lower
+  balance always passes. The splits of payments dated after that date are dropped in the same
   transaction, so the next sync splits them from the statement; those before keep theirs.
   `delete-debt-reconciliation` (`{id, reconciliationId}`) removes one (never the origin: not
   found) and drops the splits after its date the same way. Every due in (start, latest
@@ -2102,7 +2112,7 @@ data unreadable. Most are also asserted by the test suite.
   back to the category (setup tail, later start) in the OLD currency, and only then moves the
   debt's budget rows to the new one (`BudgetElements.SetRowsCurrency`; `syncElements` also keeps
   every debt row in its debt's currency), their plans keeping their numbers. **Splitting is bank-style** (`internal/model/debt_math.go`):
-  the implied periodic rate `r` is solved from the snapshot (annuity over the schedule, `r = 0`
+  the implied periodic rate `r` is solved from the origin (annuity over the schedule, `r = 0`
   when payment x n = balance within half the currency's smallest unit, payments that cannot cover the balance are refused, and so is a last
   payment date more than 100 years out, past the projection's horizon); interest
   accrues per schedule period (a window from halfway after the previous due date to halfway
