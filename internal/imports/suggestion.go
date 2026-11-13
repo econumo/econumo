@@ -353,7 +353,14 @@ func (s *Service) DismissSuggestion(ctx context.Context, userID vo.Id, req model
 	if err != nil {
 		return nil, err
 	}
-	return s.GetSuggestionList(ctx, userID)
+	// The dismiss has committed: a failing list read must not answer an error
+	// the client would take for a refusal.
+	list, err := s.GetSuggestionList(ctx, userID)
+	if err != nil {
+		slog.Warn("import suggestion list after dismiss failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+		return &model.GetImportSuggestionListResult{Items: []model.ImportSuggestionResult{}}, nil
+	}
+	return list, nil
 }
 
 const suggestMatchTextTimeout = 10 * time.Second

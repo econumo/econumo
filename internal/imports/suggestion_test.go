@@ -706,3 +706,39 @@ func TestSuggestMatchTextNoPayeeAsksNothing(t *testing.T) {
 		t.Fatalf("calls = %+v, limiter = %+v", c.calls, h.lim)
 	}
 }
+
+// listFailsAfterRelease lets a dismiss commit, then fails the list read.
+type listFailsAfterRelease struct {
+	*importsrepo.Repo
+	released *bool
+}
+
+func (r listFailsAfterRelease) ReleaseSuggestionLinks(ctx context.Context, id vo.Id, links []vo.Id) (bool, error) {
+	*r.released = true
+	return r.Repo.ReleaseSuggestionLinks(ctx, id, links)
+}
+
+func (r listFailsAfterRelease) ListOpenSuggestionsByUser(ctx context.Context, userID vo.Id) ([]model.ImportSuggestion, error) {
+	if *r.released {
+		return nil, errors.New("db down")
+	}
+	return r.Repo.ListOpenSuggestionsByUser(ctx, userID)
+}
+
+// The dismiss committed, so a failing follow-up read answers an empty list,
+// never an error the client would take for a refusal.
+func TestDismissCommittedAnswersEvenWhenTheListFails(t *testing.T) {
+	h, c, facts := suggestSetup(t)
+	cat := h.category(t, userA, "Coffee")
+	s, _ := seedSuggestion(t, h, c, cat, "")
+	released := false
+	h.svc = imports.NewService(listFailsAfterRelease{h.repo, &released}, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+	h.wireSuggest(c, facts)
+	res, err := h.svc.DismissSuggestion(context.Background(), vo.MustParseId(userA), model.DismissImportSuggestionRequest{Id: s.ID.String()})
+	if err != nil || res == nil || res.Items == nil || len(res.Items) != 0 {
+		t.Fatalf("dismiss = %+v, %v", res, err)
+	}
+	if _, err := h.repo.GetSuggestion(context.Background(), s.ID); err == nil {
+		t.Fatal("suggestion still stored")
+	}
+}

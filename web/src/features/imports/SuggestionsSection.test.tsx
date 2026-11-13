@@ -58,10 +58,14 @@ it('renders one row per suggestion with names and count', async () => {
 it('dismiss removes the row and fires the metric', async () => {
   const dismissed: unknown[] = []
   renderSection([suggestion(), suggestion({ id: 'sg2', matchText: 'WHOLE FOODS' })])
-  server.use(http.post('*/api/v1/import/dismiss-suggestion', async ({ request }) => {
-    dismissed.push(await request.json())
-    return HttpResponse.json({ success: true, message: '', data: { items: [suggestion({ id: 'sg2', matchText: 'WHOLE FOODS' })] } })
-  }))
+  const rest = [suggestion({ id: 'sg2', matchText: 'WHOLE FOODS' })]
+  server.use(
+    http.post('*/api/v1/import/dismiss-suggestion', async ({ request }) => {
+      dismissed.push(await request.json())
+      return HttpResponse.json({ success: true, message: '', data: { items: rest } })
+    }),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: dismissed.length ? rest : [suggestion(), ...rest] } })),
+  )
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Dismiss BLUE BOTTLE' }))
   await waitFor(() => expect(screen.queryByText('BLUE BOTTLE')).not.toBeInTheDocument())

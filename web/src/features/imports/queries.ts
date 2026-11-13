@@ -109,15 +109,16 @@ export function useDismissImportSuggestion() {
     meta: { handlesOwnErrors: true },
     mutationFn: async (id: Id) => {
       try {
-        return await importsApi.dismissImportSuggestion(id)
+        await importsApi.dismissImportSuggestion(id)
       } catch (err) {
-        const items = await listWithout(err, id)
-        if (items === null) throw err
-        return items
+        if ((await listWithout(err, id)) === null) throw err
       }
     },
-    onSuccess: (items) => {
-      queryClient.setQueryData(queryKeys.importSuggestions, items)
+    // Never replace the cache with the answer's list: two dismisses answered out of order would
+    // bring the first one's row back. Drop this id and refetch.
+    onSuccess: (_result, id) => {
+      queryClient.setQueryData<ImportSuggestionDto[]>(queryKeys.importSuggestions, (prev) => prev?.filter((s) => s.id !== id))
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       trackEvent(METRICS.IMPORT_SUGGESTION_DISMISS)
     },
   })

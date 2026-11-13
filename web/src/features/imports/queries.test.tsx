@@ -215,6 +215,20 @@ it('a dismiss refused because the suggestion is already gone counts as done', as
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_DISMISS)
 })
 
+// Dismisses answered out of order must not bring a dismissed row back: only
+// that id leaves the cache, and the list is refetched.
+it('a dismiss removes only its own row from the cached list and invalidates it', async () => {
+  server.use(
+    http.post('*/api/v1/import/dismiss-suggestion', () => HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'sg1' }, { id: 'sg2' }, { id: 'sg3' }] } })),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.importSuggestions, [{ id: 'sg1' }, { id: 'sg2' }])
+  const { result } = renderHook(() => useDismissImportSuggestion(), { wrapper })
+  await act(() => result.current.mutateAsync('sg1'))
+  expect(queryClient.getQueryData(queryKeys.importSuggestions)).toEqual([{ id: 'sg2' }])
+  expect(queryClient.getQueryState(queryKeys.importSuggestions)?.isInvalidated).toBe(true)
+})
+
 it('a dismiss refused for a suggestion still listed stays an error', async () => {
   server.use(
     http.post('*/api/v1/import/dismiss-suggestion', () => HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 400 })),
