@@ -71,6 +71,9 @@ type Repository interface {
 	InsertSuggestion(ctx context.Context, s *model.ImportSuggestion) error
 	AddSuggestionLinks(ctx context.Context, suggestionID vo.Id, linkIDs []vo.Id, now time.Time) (bool, error)
 	GetSuggestion(ctx context.Context, id vo.Id) (*model.ImportSuggestion, error)
+	// LockSuggestion takes the suggestion's row lock in the caller's
+	// transaction and reads it again with its links (NotFound once deleted).
+	LockSuggestion(ctx context.Context, id vo.Id) (*model.ImportSuggestion, error)
 	ListOpenSuggestionsByUser(ctx context.Context, userID vo.Id) ([]model.ImportSuggestion, error)
 	DeleteSuggestion(ctx context.Context, id vo.Id) error
 	ReleaseSuggestionLinks(ctx context.Context, id vo.Id, linkIDs []vo.Id) (bool, error)

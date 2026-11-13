@@ -282,7 +282,28 @@ func (s *Service) AcceptSuggestion(ctx context.Context, userID vo.Id, req model.
 	var out *model.AcceptImportSuggestionResult
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		out = &model.AcceptImportSuggestionResult{}
-		for _, linkID := range sg.LinkIDs {
+		// Under the row lock, read the suggestion again: a dismiss or a cleanup
+		// that committed since the read above wins, and links it released are
+		// not filled. Links a job joined since are left for the suggestion too
+		// (the user accepted the rows they saw), so only links in both reads count.
+		locked, err := s.repo.LockSuggestion(ctx, sg.ID)
+		if isNotFoundErr(err) || (err == nil && (locked.UserID != userID || locked.Status != model.ImportSuggestionStatusOpen)) {
+			return errs.NewNotFound(suggestionNotFoundMessage)
+		}
+		if err != nil {
+			return err
+		}
+		still := make(map[vo.Id]bool, len(locked.LinkIDs))
+		for _, id := range locked.LinkIDs {
+			still[id] = true
+		}
+		var walked []vo.Id
+		for _, id := range sg.LinkIDs {
+			if still[id] {
+				walked = append(walked, id)
+			}
+		}
+		for _, linkID := range walked {
 			l, live, err := s.suggestionTarget(ctx, userID, linkID)
 			if err != nil {
 				return err
@@ -323,7 +344,7 @@ func (s *Service) AcceptSuggestion(ctx context.Context, userID vo.Id, req model.
 		}
 		// Only the links this accept walked: rows a job joined meanwhile keep
 		// the suggestion open for them.
-		if _, err := s.repo.ReleaseSuggestionLinks(ctx, sg.ID, sg.LinkIDs); err != nil {
+		if _, err := s.repo.ReleaseSuggestionLinks(ctx, sg.ID, walked); err != nil {
 			return err
 		}
 		reqctx.PinIdempotency(ctx)

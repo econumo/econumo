@@ -768,3 +768,69 @@ func TestSuggestMatchTextPayeeThatIsTheMemoAsksNothing(t *testing.T) {
 		t.Fatalf("result = %+v, %v, calls = %d", res, err, len(c.calls))
 	}
 }
+
+// settleBeforeAccept runs a concurrent settle (a dismiss, a cleanup) right
+// after accept read the suggestion and before its transaction starts.
+type settleBeforeAccept struct {
+	*importsrepo.Repo
+	settle func()
+}
+
+func (r settleBeforeAccept) GetRule(ctx context.Context, id vo.Id) (*model.ImportRule, error) {
+	if r.settle != nil {
+		r.settle()
+	}
+	return r.Repo.GetRule(ctx, id)
+}
+
+func TestAcceptSeesASettleThatLandedAfterItsRead(t *testing.T) {
+	t.Run("dismissed", func(t *testing.T) {
+		h, c, facts := suggestSetup(t)
+		cat := h.category(t, userA, "Coffee")
+		s, links := seedSuggestion(t, h, c, cat, "", "Blue Bottle", "SQ *BLUE BOTTLE #12")
+		rule := h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: cat})
+		h.svc = imports.NewService(settleBeforeAccept{h.repo, func() {
+			releaseInTx(t, h, s.ID, s.LinkIDs)
+		}}, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+		h.wireSuggest(c, facts)
+		_, err := h.svc.AcceptSuggestion(context.Background(), vo.MustParseId(userA), model.AcceptImportSuggestionRequest{Id: s.ID.String(), RuleId: rule})
+		wantNotFound(t, err)
+		for _, l := range links {
+			if tx, _ := h.txns.GetByID(context.Background(), *l.TransactionID); tx.CategoryID != nil {
+				t.Fatalf("a dismissed suggestion filled a row: %+v", tx)
+			}
+		}
+	})
+	t.Run("partly released", func(t *testing.T) {
+		h, c, facts := suggestSetup(t)
+		cat := h.category(t, userA, "Coffee")
+		s, links := seedSuggestion(t, h, c, cat, "", "Blue Bottle", "SQ *BLUE BOTTLE #12")
+		rule := h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: cat})
+		h.svc = imports.NewService(settleBeforeAccept{h.repo, func() {
+			releaseInTx(t, h, s.ID, s.LinkIDs[:1])
+		}}, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+		h.wireSuggest(c, facts)
+		res, err := h.svc.AcceptSuggestion(context.Background(), vo.MustParseId(userA), model.AcceptImportSuggestionRequest{Id: s.ID.String(), RuleId: rule})
+		if err != nil || res.Updated != 1 {
+			t.Fatalf("accept = %+v, %v", res, err)
+		}
+		released := map[vo.Id]bool{s.LinkIDs[0]: true}
+		for _, l := range links {
+			tx, _ := h.txns.GetByID(context.Background(), *l.TransactionID)
+			if (tx.CategoryID != nil) == released[l.ID] {
+				t.Fatalf("link %s released=%v filled=%v", l.ID, released[l.ID], tx.CategoryID != nil)
+			}
+		}
+	})
+}
+
+func releaseInTx(t *testing.T, h *harness, id vo.Id, links []vo.Id) {
+	t.Helper()
+	err := h.db.TX.WithTx(context.Background(), func(ctx context.Context) error {
+		_, err := h.repo.ReleaseSuggestionLinks(ctx, id, links)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

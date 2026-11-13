@@ -74,6 +74,17 @@ func (r *Repo) GetSuggestion(ctx context.Context, id vo.Id) (*model.ImportSugges
 	return s, nil
 }
 
+func (r *Repo) LockSuggestion(ctx context.Context, id vo.Id) (*model.ImportSuggestion, error) {
+	n, err := r.q.LockImportSuggestion(ctx, r.db(ctx), id.String())
+	if err != nil {
+		return nil, err
+	}
+	if n == 0 {
+		return nil, errs.NewNotFound("Import suggestion not found")
+	}
+	return r.GetSuggestion(ctx, id)
+}
+
 func (r *Repo) ListOpenSuggestionsByUser(ctx context.Context, userID vo.Id) ([]model.ImportSuggestion, error) {
 	rows, err := r.q.ListOpenImportSuggestionsByUser(ctx, r.db(ctx), userID.String())
 	if err != nil {

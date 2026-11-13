@@ -239,7 +239,8 @@ answer lost) counts as done.
 apply skips rows the rule would not change; `preview-rule` answers both `matched` (every match: the
 editors' live counts) and the additive `changes` (the rows apply would change, `alreadyEdited` among
 them), and the prompt's apply questions read `changes`, asking to apply to all imports only when at
-least one OTHER transaction would change. A failed live count shows no count. An accept writes all
+least one OTHER transaction would change. A failed live count shows no count. An accept takes the suggestion row lock first and re-reads it (gone: the not-found refusal; it
+fills only links in both reads, so a concurrent dismiss or cleanup wins), then writes all
 its rows, snapshots and the release in one transaction, so its pinned `Idempotency-Key` is kept only
 when everything committed. The Inbox hides suggestions (section and badge)
 from a `readonly` user, who could neither accept nor dismiss them. `suggest-match-text` (owner of
