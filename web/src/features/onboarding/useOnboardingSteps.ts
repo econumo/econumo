@@ -4,7 +4,6 @@ import { useImportSources } from '@/features/imports/queries'
 import { isStandalone, useInstallMode } from '@/features/install/installPrompt'
 import { useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { useServerConfig } from '@/lib/appConfig'
 import { isSimpleFINImportEnabled, mcpUrl } from '@/lib/config'
 import { isIPhone, isMac } from '@/lib/platform'
 import { onboardingProgress, storedStepState, writeStepState, type OnboardingStepKey, type OnboardingStepState } from './onboardingProgress'
@@ -44,8 +43,6 @@ export function useOnboardingSteps(): OnboardingSteps {
   const sources = useImportSources()
   const installMode = useInstallMode()
   const homeScreen = useHomeScreenState()
-  // connectOptions reads the server config, which the app merges after boot
-  const configRevision = useServerConfig((s) => s.revision)
 
   const option = onboardingProgress(user)
   const hasSource = (sources.data ?? []).length > 0
@@ -69,8 +66,7 @@ export function useOnboardingSteps(): OnboardingSteps {
       if (key === 'connect' && hasSource) return { key, state: 'done' }
       return { key, state: storedStepState(option, key) }
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- configRevision re-runs connectOptions
-  }, [option, homeScreen, hasSource, installMode, configRevision])
+  }, [option, homeScreen, hasSource, installMode])
 
   const current = steps.find((s) => s.state === 'open')?.key ?? null
 

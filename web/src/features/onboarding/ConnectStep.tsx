@@ -6,7 +6,6 @@ import { RouterPage } from '@/app/router-pages'
 import { SIMPLEFIN_BRIDGE_URL } from '@/features/imports/simplefinBridge'
 import { Button } from '@/components/ui/button'
 import { useOnline } from '@/hooks/useOnline'
-import { useServerConfig } from '@/lib/appConfig'
 import { copyText } from '@/lib/clipboard'
 import { mcpUrl } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -22,7 +21,6 @@ const SETTINGS: Record<Exclude<ConnectOption, 'mcp'>, string> = {
 export function ConnectStep({ onDone, coreStepsDone, onCompleteSetup }: StepBodyProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  useServerConfig((s) => s.revision)
   const online = useOnline()
   const [pending, setPending] = useState(false)
   const [copied, setCopied] = useState(false)
