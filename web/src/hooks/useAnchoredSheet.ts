@@ -21,6 +21,21 @@ const KEYBOARD_SETTLE_MS = 600
 // than the gap under the search, so the field is never below the keyboard's
 // edge while iOS decides whether to pan
 const FOCUSED_OPEN_SLIDE = '10px'
+
+/**
+ * Where the sheet sits when it is closed: vaul's `--initial-transform`, which
+ * its slide keyframes read at both ends. The default, 100% of the sheet's OWN
+ * height, only carries a sheet off the screen when it rests on the bottom
+ * edge. An anchored sheet does not: it rests on the keyboard, so its bottom
+ * edge is well above the screen's, and translating it down by its own height
+ * ended the slide with the sheet still covering the lower part of the screen,
+ * where it sat until the animation's end unmounted it and it vanished.
+ * `elementTop` is the sheet's own `top`, the pan included.
+ */
+export function closedTransform(layout: number, elementTop: number): string {
+  // ceil, not round: a half pixel short still leaves a sliver on screen
+  return String(Math.max(0, Math.ceil(layout - elementTop))) + 'px'
+}
 const KEYBOARD_STORE = 'econumo.keyboardVisible'
 
 // The visible height the on-screen keyboard left the last time a sheet's field
@@ -316,7 +331,11 @@ export function useAnchoredSheet(
       marginTop: 0,
       height,
       maxHeight: 'none',
-      ...(shortSlide ? { '--initial-transform': FOCUSED_OPEN_SLIDE } : {}),
+      // the entrance keeps the value it always had; only the exit is corrected,
+      // so a sheet that slid in one way does not start sliding in another. The
+      // property is always set, never dropped between renders, so the flip
+      // happens with the state change rather than a render later
+      '--initial-transform': shortSlide ? FOCUSED_OPEN_SLIDE : open ? '100%' : closedTransform(layout, pan + top),
     } as CSSProperties,
   }
 }

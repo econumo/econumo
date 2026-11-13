@@ -3322,11 +3322,12 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
       between. Switching keyboard language, opening the emoji keyboard or the
       suggestion bar appearing keeps it attached; closing the keyboard returns
       the sheet to its normal size (no blank area, no squeezed body).
-- [ ] 📱 Dismissing a bottom sheet on an iPhone (pick a category in Add
-      transaction, or swipe / tap outside any sheet) is prompt: the sheet
-      slides away in about a fifth of a second with no near-stationary tail at
-      the end, the dim over the page lifts with it, and the form behind is
-      tappable as soon as it is clear.
+- [ ] 📱 Dismissing a bottom sheet that stood on the keyboard (pick a category
+      in Add transaction) on an iPhone: the sheet slides all the way off the
+      bottom of the screen and is gone in about a fifth of a second. It must
+      not stop part-way down, hang there covering the lower third of the
+      screen and then vanish on the spot. The dim lifts with it and the form
+      behind is tappable as soon as it is clear.
 - [ ] 📱 Full-screen form with the keyboard up (Add transaction: the amount
       is focused on open) on an iPhone: the page shrinks to the area above the
       keyboard. The header, date and account switcher stay visible at the top
