@@ -36,7 +36,7 @@ import {
 } from './queries'
 import { RuleCondition } from './RuleCondition'
 import { describeMatch } from './ruleSummary'
-import { suggestionSpec } from './suggestionRule'
+import { ruleSpec, suggestionSpec } from './suggestionRule'
 
 const PREVIEW_DEBOUNCE_MS = 300
 // mirrors model.MaxImportRuleLabels — the server rejects a longer set
@@ -404,7 +404,7 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
       rule = await update.mutateAsync({ id: rule.id, spec: changed })
     }
     setRuleId(rule.id)
-    return accept.mutateAsync({
+    const accepted = await accept.mutateAsync({
       id: suggestion.id,
       ruleId: rule.id,
       changes: {
@@ -413,15 +413,17 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
         changedPayee: payeeId !== suggestion.payeeId,
       },
     })
+    return { accepted, stored: ruleSpec(rule) }
   }
 
   const save = async () => {
     setBusy(true)
     try {
-      const accepted = await saveAndAccept()
+      const { accepted, stored } = await saveAndAccept()
+      // the stored rule may carry more than the dialog edits, so the preview uses the rule itself
       // the accept filled the suggestion's own rows, so this counts the others; a row the user
       // edited by hand (one of the suggestion's own included) is left for them, never offered
-      const all = await allPreview.mutateAsync({ spec, scope: ALL_SCOPE }).catch(() => undefined)
+      const all = await allPreview.mutateAsync({ spec: stored, scope: ALL_SCOPE }).catch(() => undefined)
       if (all !== undefined && changesOf(all) - all.alreadyEdited > 0) {
         setStep('all')
         return

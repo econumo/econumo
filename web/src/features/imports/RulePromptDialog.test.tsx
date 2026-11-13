@@ -576,6 +576,22 @@ describe('suggestion mode', () => {
     })
   })
 
+  it('the apply-to-all preview describes the stored rule, labels and tag included', async () => {
+    renderPrompt()
+    storedRules.set('sg1', {
+      ...rule, id: 'rule-new', matchValue: 'BLUE BOTTLE', categoryId: 'cat-food', payeeId: 'p1', matchField: 'external_payee',
+      tagId: 'tag-1', labelIds: ['lab-1'], priority: 7,
+    })
+    previewCounts(0, 3)
+    acceptHandler(1)
+    useUiStore.getState().setRulePrompt({ kind: 'suggestion', suggestion })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Save' }))
+    await screen.findByRole('button', { name: /apply/i })
+    const all = (posted.preview as Record<string, unknown>[]).filter((b) => b.scope === 'all')
+    expect(all.at(-1)).toMatchObject({ labelIds: ['lab-1'], tagId: 'tag-1', priority: 7 })
+  })
+
   it('a rule deleted since is created again under the same id', async () => {
     renderPrompt()
     const user = await reloadAfterCommittedCreate()
