@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -11,13 +11,16 @@ import { useUiStore } from '@/app/uiStore'
 import type { OpenDebtParams } from '@/app/uiStore'
 import type { DebtDto } from '@/api/dto/debt'
 import { useQuery } from '@tanstack/react-query'
-import { budgetQueryOptions, useBudgets } from '@/features/budgets/queries'
+import { budgetPlanQueryOptions, budgetQueryOptions, useBudgets } from '@/features/budgets/queries'
+import { budgetCurrentPeriod } from '@/features/budgets/period'
+import { addMonths } from '@/features/budgets/planMath'
 import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { useCategories } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useCreateDebt } from './queries'
 import { PaymentField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
+import { suggestedPayment } from './suggestedPayment'
 import { amountEcho, amountError, buildCreatePayload, useDebtCreateForm } from './useDebtForm'
 
 // the fields a server refusal can name; anything else lands in the form's alert
@@ -54,6 +57,38 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
   // a row with no currency of its own is in the budget's
   const currencyId = row?.currencyId ?? budget?.currencyId ?? null
   const currency = currencies?.find((c) => c.id === currencyId)
+
+  // the payment starts at this period's plan or spending, else the recent
+  // average: one plan window, the current period and the three before it
+  const meta = budget ?? openBudget?.meta
+  const current = meta ? budgetCurrentPeriod(meta) : null
+  const { data: plan } = useQuery({
+    ...budgetPlanQueryOptions(params.budgetId, current ? addMonths(current, -3) : '', 4),
+    enabled: current !== null,
+  })
+  const typed = useRef(false)
+  const prefilled = useRef(false)
+  const fractionDigits = currency?.fractionDigits
+  useEffect(() => {
+    if (prefilled.current || typed.current || !plan || !current || fractionDigits === undefined) {
+      return
+    }
+    const cells = plan.structure.elements.find((e) => e.id === params.elementId)?.cells
+    const at = plan.months.indexOf(current)
+    if (!cells || at < 0) {
+      return
+    }
+    prefilled.current = true
+    const value = suggestedPayment({
+      planned: cells[at]?.planned,
+      actual: cells[at]?.actual,
+      previous: cells.slice(Math.max(0, at - 3), at).map((c) => c.actual),
+      fractionDigits,
+    })
+    if (value) {
+      patch({ payment: value })
+    }
+  })
 
   const validate = (): boolean => {
     const next: FieldErrors = { payment: amountError(form.payment, t, true) }
@@ -134,6 +169,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
           echo={amountEcho(form.payment, currency)}
           onChange={(payment) => {
             clearError('payment')
+            typed.current = true
             patch({ payment })
           }}
           onScheduleChange={(schedule) => {

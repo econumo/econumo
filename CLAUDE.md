@@ -2277,7 +2277,7 @@ data unreadable. Most are also asserted by the test suite.
   force in its month and the red hint. **Create** (`DebtDialog`, opened with `OpenDebtParams`
   `{elementId, budgetId}`) is a short form: payment (`PaymentField`: the amount card and, beside
   it at the same height on every breakpoint, an "every month" schedule card) and schedule; the
-  header shows the element's icon and name; no name, icon, category pickers or rules. Amounts
+  header shows the element's icon and name; no name, icon, category pickers or rules; the payment is prefilled once (`suggestedPayment`, from one plan window: the current period's plan or spending, whichever is larger, else the average spending of the three periods before; never over typing). Amounts
   (payment, amount borrowed, a statement balance) are plain `inputMode="decimal"` inputs, no
   calculator: `plainAmount` reads "2000", "2 000", "2,000.50", "1,200" and "1,5" (a lone comma is
   the decimal mark unless exactly three digits follow it, as the app displays amounts) and anything

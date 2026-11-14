@@ -2490,7 +2490,10 @@ a second budget member account in USD, before running these.
       element's icon and name, and there is only the Payment card (amount and
       "every month ▾"); no name, icon, category picker, "Which payments count"
       lines or Budget row, and no currency line (the payment shows the element's
-      symbol). Saving creates the debt and opens its review screen. The entry is
+      symbol). The Payment is prefilled, still editable: this period's plan or
+      its spending so far, whichever is larger, else the average spending of the
+      three periods before (left empty when all are 0); typing before the
+      figures arrive keeps what was typed. Saving creates the debt and opens its review screen. The entry is
       not offered on an archived element, on income, a tag, a savings row or
       Uncategorized, nor on a category inside an envelope (the envelope itself
       has it), nor to a guest, nor in an archived budget; once the element has an

@@ -4,7 +4,9 @@ import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureCategories, fixtureWireBudget } from '@/test/fixtures'
+import { coreHandlers, fixtureCategories, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { currentPeriod } from '@/features/budgets/period'
+import { addMonths } from '@/features/budgets/planMath'
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenDebtParams } from '@/app/uiStore'
@@ -238,4 +240,63 @@ it('cannot add a debt offline, and says why', async () => {
   } finally {
     act(() => onlineManager.setOnline(true))
   }
+})
+
+function planWith(cells: { actual: string; planned: string }[]) {
+  const current = currentPeriod(1)
+  return {
+    ...fixtureWirePlan,
+    months: [-3, -2, -1, 0].map((d) => addMonths(current, d)),
+    structure: {
+      ...fixtureWirePlan.structure,
+      elements: fixtureWirePlan.structure.elements.map((e) => (e.id === 'cat-food' ? { ...e, cells } : e)),
+    },
+  }
+}
+
+describe('the prefilled payment', () => {
+  it('is this period\'s plan when it is above the spending', async () => {
+    server.use(planHandler(planWith([
+      { actual: '10', planned: '' }, { actual: '10', planned: '' }, { actual: '10', planned: '' },
+      { actual: '40', planned: '2647.82' },
+    ])))
+    renderDialog()
+    await openCreate()
+    await waitFor(() => expect(screen.getByLabelText('Payment')).toHaveValue('2647.82'))
+  })
+
+  it('is the average of the three periods before when this one has nothing', async () => {
+    server.use(planHandler(planWith([
+      { actual: '300', planned: '' }, { actual: '330', planned: '' }, { actual: '0', planned: '' },
+      { actual: '0', planned: '' },
+    ])))
+    renderDialog()
+    await openCreate()
+    await waitFor(() => expect(screen.getByLabelText('Payment')).toHaveValue('210.00'))
+  })
+
+  it('never overwrites what was typed before the data arrived', async () => {
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const plan = planWith([
+      { actual: '0', planned: '' }, { actual: '0', planned: '' }, { actual: '0', planned: '' },
+      { actual: '0', planned: '500' },
+    ])
+    server.use(
+      http.get('*/api/v1/budget/get-budget-plan', async () => {
+        await gate
+        return ok({ item: plan })
+      }),
+    )
+    renderDialog()
+    await openCreate()
+    await userEvent.type(screen.getByLabelText('Payment'), '75')
+    release()
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 100))
+    })
+    expect(screen.getByLabelText('Payment')).toHaveValue('75')
+  })
 })
