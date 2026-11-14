@@ -72,9 +72,10 @@ envelope replacing the envelope (plans and history tied to a converted element, 
 - A transaction is a payment of debt D when it is an expense (transfers never), on a member account
   of D's budget (soft-deleted members included), in one of D's element's categories (an envelope's
   children as they are now), dated on or after D's start date (or any date while not set up) and
-  on or before its end date once paid off. Categories cannot be in two elements of a budget, and an
-  element has one active debt with non-overlapping history, so there are no conflicts, keys or
-  tiebreaks any more.
+  on or before its end date once paid off. An element has one active debt with non-overlapping
+  history. One overlap remains: a category with a debt of its own (paid off) may later join an
+  envelope that carries a debt; a payment that falls inside a range of the category's own debt
+  belongs to that debt, otherwise to the envelope's (*my call, 2026-11-14*).
 - Everything about splitting, snapshots, statements, setup, corrections, the projection, rate
   changes and the review screen stays, with "the debt row's plan" replaced by **the element's
   plan**: the planned extra of a period is the element's plan above the scheduled payment
