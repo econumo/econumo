@@ -503,7 +503,7 @@
         "clear": "Quitar la fecha de inicio"
       },
       "amount_borrowed": {
-        "label": "Importe prestado"
+        "label": "Importe del préstamo"
       },
       "payment": {
         "label": "Pago"
@@ -595,7 +595,7 @@
         "hint": "Introduce el capital pendiente según el extracto de tu prestamista. Desde su fecha Econumo cuenta a partir de él, y los pagos vencidos hasta entonces cuentan como pagados; los intereses desde el último pago se cobran en el siguiente pago, por un periodo completo.",
         "balance": "Saldo del extracto",
         "date": "Fecha del extracto",
-        "date_range": "Elige una fecha posterior a la fecha de inicio y como muy tarde hoy. Para cambiar lo prestado, corrige el importe prestado en Ajustes.",
+        "date_range": "Elige una fecha posterior a la fecha de inicio y como muy tarde hoy. Para cambiar el importe del préstamo, corrígelo en Ajustes.",
         "save": "Conciliar"
       },
       "history": "Extractos",
@@ -605,7 +605,7 @@
         "econumo": "Econumo",
         "difference": "Diferencia"
       },
-      "origin": "Importe prestado",
+      "origin": "Importe del préstamo",
       "paid_off": "Marcada como pagada",
       "delete": "Eliminar el extracto del {date}",
       "delete_confirm": {
@@ -622,9 +622,9 @@
       "progress_repaid": "{paid} de {total} pagados ({repaid} de {borrowed})",
       "owed_now": "Debes ahora {amount}",
       "paid_so_far": "Pagado hasta ahora",
-      "not_set_up": "Añade el importe prestado y las fechas del préstamo para ver los pagos que quedan",
+      "not_set_up": "Añade el importe del préstamo y las fechas del préstamo para ver los pagos que quedan",
       "loan": "Préstamo",
-      "borrowed": "Prestado",
+      "borrowed": "Préstamo",
       "next_payment": "Próximo pago",
       "last_payment": "Último pago",
       "last_payment_contract": "según contrato: {date}",

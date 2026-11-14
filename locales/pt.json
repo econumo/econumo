@@ -503,7 +503,7 @@
         "clear": "Limpar a data de início"
       },
       "amount_borrowed": {
-        "label": "Montante emprestado"
+        "label": "Montante do empréstimo"
       },
       "payment": {
         "label": "Pagamento"
@@ -595,7 +595,7 @@
         "hint": "Introduza o capital ainda em dívida indicado no extrato do seu credor. A partir da sua data o Econumo conta a partir dele, e as prestações vencidas até lá contam como pagas; os juros desde o último pagamento são cobrados no pagamento seguinte, por um período completo.",
         "balance": "Saldo do extrato",
         "date": "Data do extrato",
-        "date_range": "Escolha uma data posterior à data de início e, no máximo, hoje. Para alterar o montante emprestado, corrija-o nas definições.",
+        "date_range": "Escolha uma data posterior à data de início e, no máximo, hoje. Para alterar o montante do empréstimo, corrija-o nas definições.",
         "save": "Reconciliar"
       },
       "history": "Extratos",
@@ -605,7 +605,7 @@
         "econumo": "Econumo",
         "difference": "Diferença"
       },
-      "origin": "Montante emprestado",
+      "origin": "Montante do empréstimo",
       "paid_off": "Marcada como liquidada",
       "delete": "Eliminar o extrato de {date}",
       "delete_confirm": {
@@ -622,9 +622,9 @@
       "progress_repaid": "{paid} de {total} pagos ({repaid} de {borrowed})",
       "owed_now": "Em dívida agora: {amount}",
       "paid_so_far": "Pago até agora",
-      "not_set_up": "Indique o montante emprestado e as datas do empréstimo para ver os pagamentos em falta",
+      "not_set_up": "Indique o montante do empréstimo e as datas do empréstimo para ver os pagamentos em falta",
       "loan": "Empréstimo",
-      "borrowed": "Emprestado",
+      "borrowed": "Empréstimo",
       "next_payment": "Próximo pagamento",
       "last_payment": "Último pagamento",
       "last_payment_contract": "segundo o contrato: {date}",
