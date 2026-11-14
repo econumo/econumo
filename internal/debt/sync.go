@@ -268,7 +268,7 @@ func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts
 		if err := s.fillPayments(ctx, st, assigned[d.ID], stored, persist); err != nil {
 			return nil, err
 		}
-		if st.otherPays, err = s.otherPays(ctx, d, onElement(debts, d.ElementID, d), assigned, today, digits); err != nil {
+		if st.otherPays, err = s.otherPays(ctx, d, planSharers(debts, d, st.element), assigned, today, digits); err != nil {
 			return nil, err
 		}
 		states = append(states, st)
@@ -276,12 +276,33 @@ func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts
 	return states, nil
 }
 
-// otherPays converts into d's currency the payments of the element's other
-// debts dated from a month and a day before today on: only the current
-// period's (a forecast may start on a later recorded payment's day, still
-// within it or the next) are ever read.
+// planSharers are the debts whose payments consume d's element plan: the
+// element's other debts and, on an envelope, the debts of its current child
+// categories (a category that joined the envelope this period keeps its own
+// debt's payments, which still count in the envelope's Spent).
+func planSharers(debts []*model.Debt, d *model.Debt, el model.DebtElementInfo) []*model.Debt {
+	out := onElement(debts, d.ElementID, d)
+	if d.ElementType != model.DebtElementEnvelope {
+		return out
+	}
+	for _, o := range debts {
+		if o.ElementType != model.DebtElementCategory || o.ElementID.Equal(d.ElementID) {
+			continue
+		}
+		if slices.ContainsFunc(el.CategoryIDs, func(c vo.Id) bool { return c.Equal(o.ElementID) }) {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+// otherPays converts into d's currency the payments of the debts sharing its
+// plan dated within the last 62 days: only the current period's (at most 31
+// days long, and a forecast may start on a later recorded payment's day, still
+// within it or the next) are ever read. A fixed day count, not a month
+// subtraction, which normalizes (March 31 less a month is March 2).
 func (s *Service) otherPays(ctx context.Context, d *model.Debt, others []*model.Debt, assigned map[vo.Id][]CandidateTx, today time.Time, digits int) ([]model.MathPayment, error) {
-	since := today.AddDate(0, -1, -1)
+	since := today.AddDate(0, 0, -62)
 	var out []model.MathPayment
 	for _, o := range others {
 		for _, c := range assigned[o.ID] {

@@ -342,3 +342,49 @@ func TestGetDebtForecast_RefinancingCountsTheOldDebtsPayments(t *testing.T) {
 		t.Fatalf("forecast = extra %s budget %q, want no extra: the plan covered both debts' payments", got.ExtraPlanned, got.BudgetId)
 	}
 }
+
+// A category that joined an envelope this period keeps its own paid-off
+// debt's payments, which count in the envelope's Spent: the envelope debt's
+// forecast does not project them again as extra.
+func TestGetDebtForecast_EnvelopePlanCountsAChildCategorysDebtPayments(t *testing.T) {
+	e := newEnv(t)
+	e.expense(t, e.account, ymd(2026, 3, 1), "1000", "")
+	old := e.create(t, func(r *createSpec) {
+		r.StartDate, r.AmountBorrowed, r.Payment, r.LastPaymentDate = ptr("2025-06-01"), vo.NewFlexString("12000"), vo.NewFlexString("1000"), "2027-06-01"
+	})
+	if _, err := e.svc.MarkDebtPaidOff(context.Background(), e.uid(), model.MarkDebtPaidOffRequest{Id: old.Id, Date: "2026-03-05"}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+	envelope := e.newEnvelope("Housing", e.category)
+	newer := e.create(t, func(r *createSpec) {
+		r.ElementId = envelope
+		r.StartDate, r.AmountBorrowed, r.Payment, r.LastPaymentDate = ptr("2026-03-06"), vo.NewFlexString("12000"), vo.NewFlexString("1000"), "2027-02-25"
+	})
+	e.planOf(t, newer.Id, map[string]string{"2026-03-01": "3000"})
+
+	if got := e.forecast(t, newer.Id); got.ExtraPlanned != "1000" {
+		t.Fatalf("extra planned = %s, want 1000: the child's 1000 paid and the 1000 still due use 2000 of the 3000 plan", got.ExtraPlanned)
+	}
+}
+
+// On the 31st the lookback must still reach the 1st: subtracting a month and
+// a day from March 31 lands on March 2.
+func TestGetDebtForecast_LookbackCoversTheWholePeriodOnTheThirtyFirst(t *testing.T) {
+	e := newEnv(t)
+	e.clock.now = time.Date(2026, 3, 31, 12, 0, 0, 0, time.UTC)
+	e.expense(t, e.account, ymd(2026, 3, 1), "600", "")
+	old := e.create(t, func(r *createSpec) {
+		r.StartDate, r.AmountBorrowed, r.Payment, r.LastPaymentDate = ptr("2025-06-01"), vo.NewFlexString("12000"), vo.NewFlexString("600"), "2027-06-01"
+	})
+	if _, err := e.svc.MarkDebtPaidOff(context.Background(), e.uid(), model.MarkDebtPaidOffRequest{Id: old.Id, Date: "2026-03-05"}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+	newer := e.create(t, func(r *createSpec) {
+		r.StartDate, r.AmountBorrowed, r.Payment, r.LastPaymentDate = ptr("2026-03-06"), vo.NewFlexString("6000"), vo.NewFlexString("600"), "2027-03-31"
+	})
+	e.planOf(t, newer.Id, map[string]string{"2026-03-01": "1200"})
+
+	if got := e.forecast(t, newer.Id); got.ExtraPlanned != "0" {
+		t.Fatalf("extra planned = %s, want 0: the March 1 payment still counts", got.ExtraPlanned)
+	}
+}
