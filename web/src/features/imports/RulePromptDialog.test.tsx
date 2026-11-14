@@ -335,7 +335,7 @@ it('skips both apply steps when every row that would change is one the user edit
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: 'Create rule' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  expect(posted.preview!.some((p) => p.scope === 'all')).toBe(true)
+  expect(posted.preview!.some((p) => (p as { scope?: string }).scope === 'all')).toBe(true)
   expect(posted.apply).toBeUndefined()
 })
 
