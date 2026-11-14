@@ -1,0 +1,103 @@
+name: AI evals
+
+# Measures the real AI prompts (import rule suggestions, the rule editor's
+# match text, onboarding savings and icons) against a real model: `make
+# ai-eval`, the Go tests behind the `aieval` build tag. An area fails when, in
+# either language, more than 10% of its cases fail. The per-area table goes to
+# the job summary.
+#
+# The provider comes from the repository secret ECONUMO_AI_EVAL_DSN, in the
+# ECONUMO_AI_DSN format, e.g.
+#   anthropic://<api-key>@api.anthropic.com?model=claude-haiku-5-5&json=1
+# Without it (forks, or before it is added) the job skips with a notice.
+
+on:
+    workflow_dispatch:
+    pull_request:
+        paths:
+            - "internal/imports/prompts.go"
+            - "internal/onboarding/prompts.go"
+            - "icons/icons.json"
+            - "internal/infra/ai/**"
+            - "internal/imports/aieval_test.go"
+            - "internal/onboarding/aieval_test.go"
+            - "internal/test/aieval/**"
+            - ".github/workflows/ai-evals.yml"
+    workflow_call:
+        inputs:
+            ref:
+                description: "Git ref to evaluate (default: the caller's)"
+                type: string
+                required: false
+                default: ""
+            report_only:
+                description: "Report the results without failing the job"
+                type: boolean
+                required: false
+                default: false
+        secrets:
+            ECONUMO_AI_EVAL_DSN:
+                required: false
+
+permissions:
+    contents: read
+
+jobs:
+    ai-evals:
+        name: AI evals
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        env:
+            CGO_ENABLED: "0"
+            GOTOOLCHAIN: local
+        steps:
+            - name: Check for the provider secret
+              id: dsn
+              env:
+                  DSN: ${{ secrets.ECONUMO_AI_EVAL_DSN }}
+              run: |
+                  if [ -z "$DSN" ]; then
+                    echo "::notice::ECONUMO_AI_EVAL_DSN is not set; skipping the AI evals."
+                    echo "AI evals skipped: the ECONUMO_AI_EVAL_DSN secret is not set." >> "$GITHUB_STEP_SUMMARY"
+                    echo "present=false" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "present=true" >> "$GITHUB_OUTPUT"
+                  fi
+            - uses: actions/checkout@v7
+              if: steps.dsn.outputs.present == 'true'
+              with:
+                  ref: ${{ inputs.ref }}
+            - uses: actions/setup-go@v7
+              if: steps.dsn.outputs.present == 'true'
+              with:
+                  go-version-file: go.mod
+                  cache-dependency-path: go.sum
+            - name: Run the AI evals
+              if: steps.dsn.outputs.present == 'true'
+              continue-on-error: ${{ inputs.report_only == true }}
+              env:
+                  ECONUMO_AI_DSN: ${{ secrets.ECONUMO_AI_EVAL_DSN }}
+                  AIEVAL_TABLE: ${{ runner.temp }}/ai-eval-table.md
+                  AIEVAL_FAILURES: ${{ runner.temp }}/ai-eval-failures.md
+              run: make ai-eval
+            - name: Job summary
+              if: always() && steps.dsn.outputs.present == 'true'
+              env:
+                  AIEVAL_TABLE: ${{ runner.temp }}/ai-eval-table.md
+                  AIEVAL_FAILURES: ${{ runner.temp }}/ai-eval-failures.md
+              run: |
+                  {
+                    echo "### AI evals"
+                    echo
+                    echo "| Area | Passed | Rate | Threshold | Status |"
+                    echo "|---|---|---|---|---|"
+                    cat "$AIEVAL_TABLE" 2>/dev/null || true
+                    if [ -s "$AIEVAL_FAILURES" ]; then
+                      echo
+                      echo "<details><summary>Failed cases</summary>"
+                      echo
+                      cat "$AIEVAL_FAILURES"
+                      echo
+                      echo "</details>"
+                    fi
+                  } >> "$GITHUB_STEP_SUMMARY"

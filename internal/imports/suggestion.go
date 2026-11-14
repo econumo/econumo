@@ -419,19 +419,29 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 	if err := s.countAttempt(ctx, RateScopePreviewRule, userID); err != nil {
 		return nil, err
 	}
-	language, timezone := facts.Language, facts.Timezone
+	field, text, ok := s.askMatchText(ctx, userID.String(), *l, facts.Language, facts.Timezone)
+	if !ok {
+		return empty, nil
+	}
+	return &model.SuggestImportMatchTextResult{MatchField: field, MatchText: text}, nil
+}
+
+// askMatchText is SuggestMatchText's AI call: the payee text, language and
+// timezone go out, a match text the payee contains comes back. Any failure is
+// logged and reads as no text.
+func (s *Service) askMatchText(ctx context.Context, userID string, l model.ImportTransactionLink, language, timezone string) (field, text string, ok bool) {
 	if language == "" {
 		language = "en"
 	}
 	payload, err := json.Marshal(map[string]string{
-		"language": language, "timezone": timezone, "payee": aiPayee(*l),
+		"language": language, "timezone": timezone, "payee": aiPayee(l),
 	})
 	if err != nil {
-		return empty, nil
+		return "", "", false
 	}
 	ctx, cancel := context.WithTimeout(ctx, suggestMatchTextTimeout)
 	defer cancel()
-	reply, err := s.completer.Complete(ctx, userID.String(), suggestMatchTextSystem, string(payload), matchTextSchema)
+	reply, err := s.completer.Complete(ctx, userID, suggestMatchTextSystem, string(payload), matchTextSchema)
 	var parsed struct {
 		MatchText string `json:"matchText"`
 	}
@@ -441,12 +451,8 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 		}
 	}
 	if err != nil {
-		slog.Warn("import match text failed", append([]any{"user_id", userID.String()}, ai.LogAttrs(err)...)...)
-		return empty, nil
+		slog.Warn("import match text failed", append([]any{"user_id", userID}, ai.LogAttrs(err)...)...)
+		return "", "", false
 	}
-	field, text, ok := matchTextIn(*l, parsed.MatchText)
-	if !ok {
-		return empty, nil
-	}
-	return &model.SuggestImportMatchTextResult{MatchField: field, MatchText: text}, nil
+	return matchTextIn(l, parsed.MatchText)
 }

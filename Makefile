@@ -1,4 +1,4 @@
-.PHONY: help web-install web-run web-test web-bundle web-lint go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql test-upgrade pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries ship-dist ship-publish
+.PHONY: help web-install web-run web-test web-bundle web-lint go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql test-upgrade pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check ai-eval release-binaries ship-dist ship-publish
 
 # Default target
 .DEFAULT_GOAL := help
@@ -229,6 +229,19 @@ test-repo-pgsql:
 test-upgrade:
 	CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
 		go test -tags upgrade -v -timeout 30m -count=1 ./internal/test/upgradetest/
+
+# AI eval suite: sends the real AI prompts to the provider in ECONUMO_AI_DSN
+# (e.g. anthropic://<key>@api.anthropic.com?model=claude-haiku-5-5&json=1) and
+# fails an area (per language) that passes under 90% of its cases. Skips
+# without the variable. Never part of go-test/test: it costs money and depends
+# on a model. AIEVAL_TABLE / AIEVAL_FAILURES name the Markdown files the
+# results go to (temporary files by default).
+ai-eval:
+	@t="$${AIEVAL_TABLE:-$$(mktemp)}"; f="$${AIEVAL_FAILURES:-$$(mktemp)}"; : > "$$t"; : > "$$f"; \
+	AIEVAL_TABLE="$$t" AIEVAL_FAILURES="$$f" CGO_ENABLED=0 \
+		go test -tags aieval -count=1 -timeout 15m -run AIEval -v ./internal/imports/ ./internal/onboarding/; s=$$?; \
+	printf '\n| Area | Passed | Rate | Threshold | Status |\n|---|---|---|---|---|\n'; cat "$$t"; \
+	if [ -s "$$f" ]; then printf '\nFailed cases:\n'; cat "$$f"; fi; exit $$s
 
 # --- Suite & stack (full tests, docker, publishing) ------------------------
 

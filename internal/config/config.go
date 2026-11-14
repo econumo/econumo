@@ -723,6 +723,16 @@ func parseAIDSN(dsn string) (dialect, endpoint, apiKey, model string, err error)
 	return dialect, scheme + "://" + u.Host + path, apiKey, model, nil
 }
 
+// ParseAIDSN is Load's reading of ECONUMO_AI_DSN for a tool that needs no
+// other setting (the AI eval suite).
+func ParseAIDSN(dsn string) (dialect, endpoint, apiKey, model string, jsonSchema bool, err error) {
+	if dialect, endpoint, apiKey, model, err = parseAIDSN(dsn); err != nil {
+		return "", "", "", "", false, err
+	}
+	jsonSchema, err = parseAIDSNJSON(dsn)
+	return dialect, endpoint, apiKey, model, jsonSchema, err
+}
+
 // parseAIDSNJSON reads the DSN's json flag, which turns on reply schemas
 // (response_format / output_config). Off unless asked for: many local servers
 // and older models reject them, and a typo must not pass silently.

@@ -1099,3 +1099,16 @@ func TestLoad_PasswordLogin(t *testing.T) {
 		t.Error("password login should be disabled")
 	}
 }
+
+func TestParseAIDSN_Exported(t *testing.T) {
+	dialect, endpoint, apiKey, model, jsonSchema, err := ParseAIDSN("anthropic://k@api.anthropic.com?model=m&json=1")
+	if err != nil || dialect != "anthropic" || endpoint != "https://api.anthropic.com/v1" || apiKey != "k" || model != "m" || !jsonSchema {
+		t.Fatalf("got (%q, %q, %q, %q, %v, %v)", dialect, endpoint, apiKey, model, jsonSchema, err)
+	}
+	if _, _, _, _, _, err := ParseAIDSN("anthropic://k@api.anthropic.com"); err == nil {
+		t.Fatal("a DSN without a model must fail")
+	}
+	if _, _, _, _, _, err := ParseAIDSN("anthropic://k@api.anthropic.com?model=m&json=maybe"); err == nil {
+		t.Fatal("a bad json flag must fail")
+	}
+}
