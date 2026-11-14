@@ -56,7 +56,7 @@ func (s *Service) classify(ctx context.Context, userID, budgetID vo.Id, accountI
 	if !s.mayAsk(ctx, userID) {
 		return nil
 	}
-	reply, err := s.completer.Complete(ctx, userID.String(), classifySystem, string(body), nil)
+	reply, err := s.completer.Complete(ctx, userID.String(), classifySystem, string(body), savingsSchema)
 	if err != nil {
 		return err
 	}

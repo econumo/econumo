@@ -340,3 +340,20 @@ func TestComplete_OtherErrorsToASchemaKeepSchemas(t *testing.T) {
 		t.Fatalf("err=%v calls=%d noSchema=%v", err, calls, c.noSchema.Load())
 	}
 }
+
+func TestSchemaCheck(t *testing.T) {
+	if err := testSchema.Check(); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{
+		`{"type":"object","properties":{"a":{"type":"string"}},"required":["a"]}`,
+		`{"type":"object","properties":{"a":{"type":"string"},"b":{"type":"string"}},"required":["a"],"additionalProperties":false}`,
+		`{"type":"object","properties":{"a":{"type":"array","items":{"type":"object","properties":{},"required":[]}}},"required":["a"],"additionalProperties":false}`,
+		`{"type":"object","properties":{"a":{"type":"string","maxLength":3}},"required":["a"],"additionalProperties":false}`,
+		`not json`,
+	} {
+		if err := (Schema{Name: "x", JSON: json.RawMessage(bad)}).Check(); err == nil {
+			t.Fatalf("%s: expected an error", bad)
+		}
+	}
+}

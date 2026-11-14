@@ -22,6 +22,7 @@ import (
 
 type completerCall struct {
 	userID, system, user string
+	schema               string
 	deadline             time.Time
 }
 
@@ -37,7 +38,11 @@ type fakeCompleter struct {
 
 func (c *fakeCompleter) Complete(ctx context.Context, userID, system, user string, schema *ai.Schema) (string, error) {
 	deadline, _ := ctx.Deadline()
-	c.calls = append(c.calls, completerCall{userID: userID, system: system, user: user, deadline: deadline})
+	call := completerCall{userID: userID, system: system, user: user, deadline: deadline}
+	if schema != nil {
+		call.schema = schema.Name
+	}
+	c.calls = append(c.calls, call)
 	if c.onCall != nil {
 		c.onCall()
 	}
@@ -81,7 +86,7 @@ func (h *harness) wireSuggest(c imports.Completer, facts imports.OwnerFacts) {
 func suggestSetup(t *testing.T) (*harness, *fakeCompleter, fakeFacts) {
 	t.Helper()
 	h := setup(t)
-	c := &fakeCompleter{reply: `{"rows":{}}`}
+	c := &fakeCompleter{reply: `{"rows":[]}`}
 	facts := fakeFacts{userA: {language: "en", timezone: "America/Los_Angeles"}, userB: {language: "de", timezone: "Europe/Berlin"}}
 	h.wireSuggest(c, facts)
 	return h, c, facts
@@ -119,7 +124,7 @@ func TestSuggestCreatesSuggestionForLivePush(t *testing.T) {
 	h, c, _ := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
 	res := ingest(t, h, tap)
 	if res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
@@ -142,7 +147,7 @@ func TestSuggestCreatesSuggestionForLivePush(t *testing.T) {
 
 func TestSuggestSkipsBackfill(t *testing.T) {
 	h, p := bankHarness(t)
-	c := &fakeCompleter{reply: `{"rows":{}}`}
+	c := &fakeCompleter{reply: `{"rows":[]}`}
 	h.wireSuggest(c, fakeFacts{userA: {language: "en"}})
 	h.category(t, userA, "Shops")
 	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
@@ -219,7 +224,7 @@ func TestSuggestSkipsRowsRulesClassified(t *testing.T) {
 
 	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "philz", CategoryID: cat})
 	philz := h.payee(t, userA, "Philz Coffee")
-	c.reply = `{"rows":{"0":{"matchText":"Philz","merchant":"Philz","categoryId":"` + other + `","payeeId":"` + philz + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Philz","merchant":"Philz","categoryId":"` + other + `","payeeId":"` + philz + `"}]}`
 	ingest(t, h, pushWithPayee("Philz", "evt-2"))
 	if len(c.calls) != 2 {
 		t.Fatalf("calls = %d", len(c.calls))
@@ -238,7 +243,7 @@ func TestSuggestSharedAccountGoesToOwner(t *testing.T) {
 	}
 	h.category(t, userA, "Coffee")
 	kaffee := h.category(t, userB, "Kaffee")
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + kaffee + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + kaffee + `"}]}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
@@ -340,7 +345,7 @@ func TestSuggestOptOutBeforeTheCallSendsNothing(t *testing.T) {
 	h.wireSuggest(c, &optOutAfter{n: 1})
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
@@ -356,7 +361,7 @@ func TestSuggestOptOutDuringTheCallStoresNothing(t *testing.T) {
 	h.wireSuggest(c, facts)
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
 	c.onCall = func() { facts.n = facts.reads }
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
@@ -373,7 +378,7 @@ func TestSuggestOptOutDuringTheWriteIsUndone(t *testing.T) {
 	h.wireSuggest(c, &optOutAfter{n: 3})
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
@@ -389,7 +394,7 @@ func TestSuggestRespectsCap(t *testing.T) {
 	h.wireSuggest(c, facts)
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
@@ -416,7 +421,7 @@ func TestSuggestLimiterFailureWarns(t *testing.T) {
 	h.wireSuggest(c, facts)
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
 	var buf bytes.Buffer
 	old := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
@@ -487,7 +492,7 @@ func TestSuggestPanicForOneOwnerStillServesOthers(t *testing.T) {
 	h.accounts.shared = true
 	kaffee := h.category(t, userB, "Kaffee")
 	h.category(t, userA, "Coffee")
-	c := &panicFor{owner: userA, fakeCompleter: fakeCompleter{reply: `{"rows":{"0":{"matchText":"Shop B","categoryId":"` + kaffee + `"}}}`}}
+	c := &panicFor{owner: userA, fakeCompleter: fakeCompleter{reply: `{"rows":[{"key":"0","matchText":"Shop B","categoryId":"` + kaffee + `"}]}`}}
 	h.wireSuggest(c, fakeFacts{userA: {language: "en"}, userB: {language: "de"}})
 	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
 	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-2", AccountID: acctB})
@@ -519,7 +524,7 @@ func TestSuggestOpenSuggestionOfOtherTypeDoesNotCover(t *testing.T) {
 	if err := h.repo.InsertSuggestion(context.Background(), income); err != nil {
 		t.Fatal(err)
 	}
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}]}`
 	ingest(t, h, tap)
 	if len(c.calls) != 2 {
 		t.Fatalf("an income suggestion must not cover an expense row: calls = %d", len(c.calls))
@@ -586,7 +591,7 @@ func TestSuggestCoveringSuggestionDeletedSendsRowsToAI(t *testing.T) {
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
 	old := seedPayeeSuggestion(t, h, py)
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}]}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
@@ -606,7 +611,7 @@ func TestSuggestJoinTargetDeletedOpensFreshSuggestion(t *testing.T) {
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
 	old := seedPayeeSuggestion(t, h, py)
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}]}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
@@ -650,7 +655,7 @@ func TestSuggestJobsForOneOwnerRunOneAtATime(t *testing.T) {
 	h, _, facts := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
-	c := &gatedCompleter{reply: `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}}}`, started: make(chan struct{}, 2)}
+	c := &gatedCompleter{reply: `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}]}`, started: make(chan struct{}, 2)}
 	h.svc.SetSuggester(c, facts)
 	var queued []func()
 	h.svc.SetJobRunner(func(run func()) { queued = append(queued, run) })
@@ -706,7 +711,7 @@ func TestSuggestIgnoresOpenSuggestionWithArchivedCategory(t *testing.T) {
 					h.entities.categories[uA][i].Archived = true
 				}
 			}
-			c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cafe + `"}}}`
+			c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cafe + `"}]}`
 			ingest(t, h, tap)
 			if len(c.calls) != 1 {
 				t.Fatalf("calls = %d", len(c.calls))
@@ -744,7 +749,7 @@ func TestSuggestAgeUsesOwnersWallClock(t *testing.T) {
 			facts[userA] = ownerFact{language: "en", timezone: tc.zone}
 			h.mapCard(t, "Apple Card")
 			cat := h.category(t, userA, "Coffee")
-			c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+			c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
 			ingest(t, h, strings.Replace(tap, `"occurredAt":"2026-08-20T10:42:03-07:00"`, `"occurredAt":"`+tc.occurredAt+`"`, 1))
 			if got := len(c.calls) == 1; got != tc.want {
 				t.Fatalf("asked the AI = %v, want %v", got, tc.want)
@@ -760,7 +765,7 @@ func TestSuggestTimeoutStartsOnceTheOwnerLockIsHeld(t *testing.T) {
 	var deadline time.Time
 	c := completerFunc(func(ctx context.Context) (string, error) {
 		deadline, _ = ctx.Deadline()
-		return `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`, nil
+		return `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`, nil
 	})
 	h.svc.SetSuggester(c, facts)
 	done := make(chan struct{})
@@ -821,7 +826,7 @@ func withCountingLimiter(t *testing.T, h *harness, c imports.Completer, facts im
 
 func TestSuggestMixedBatchAsksOncePerTypeWithThatTypesCategories(t *testing.T) {
 	h, p := bankHarness(t)
-	c := &fakeCompleter{reply: `{"rows":{}}`}
+	c := &fakeCompleter{reply: `{"rows":[]}`}
 	l := withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en"}})
 	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
 	h.category(t, userA, "Groceries")
@@ -857,8 +862,8 @@ func TestSuggestTwoStepPayee(t *testing.T) {
 	bb := h.payee(t, userA, "Blue Bottle Coffee")
 	h.payee(t, userA, "Starbucks")
 	c.replies = []string{
-		`{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}}}`,
-		`{"rows":{"0":{"payeeId":"` + bb + `"}}}`,
+		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`,
+		`{"rows":[{"key":"0","payeeId":"` + bb + `"}]}`,
 	}
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
@@ -876,6 +881,9 @@ func TestSuggestTwoStepPayee(t *testing.T) {
 	if first.system == second.system {
 		t.Fatal("the two steps share a system prompt")
 	}
+	if first.schema != "import_suggestions" || second.schema != "import_payees" {
+		t.Fatalf("schemas = %q, %q", first.schema, second.schema)
+	}
 	got := openSuggestions(t, h, userA)
 	if len(got) != 1 || got[0].PayeeID == nil || got[0].PayeeID.String() != bb || got[0].CategoryID == nil || got[0].CategoryID.String() != cat {
 		t.Fatalf("suggestions = %+v", got)
@@ -887,8 +895,8 @@ func TestSuggestTwoStepPayee(t *testing.T) {
 
 func TestSuggestNoStepTwoWithoutCandidates(t *testing.T) {
 	for _, tc := range []struct{ name, reply string }{
-		{"merchant_like_no_payee", `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"%s"}}}`},
-		{"no_merchant", `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"%s"}}}`},
+		{"merchant_like_no_payee", `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"%s"}]}`},
+		{"no_merchant", `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"%s"}]}`},
 	} {
 		reply := tc.reply
 		t.Run(tc.name, func(t *testing.T) {
@@ -915,8 +923,8 @@ func TestSuggestStepTwoRejectsPayeeOutsideTheRowsCandidates(t *testing.T) {
 	h.payee(t, userA, "Blue Bottle Coffee")
 	sb := h.payee(t, userA, "Starbucks")
 	c.replies = []string{
-		`{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}}}`,
-		`{"rows":{"0":{"payeeId":"` + sb + `"}}}`,
+		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`,
+		`{"rows":[{"key":"0","payeeId":"` + sb + `"}]}`,
 	}
 	ingest(t, h, tap)
 	if len(c.calls) != 2 {
@@ -933,7 +941,7 @@ func TestSuggestStepTwoFailureKeepsCategory(t *testing.T) {
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Cafes")
 	h.payee(t, userA, "Blue Bottle Coffee")
-	c.replies = []string{`{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}}}`, `not json`}
+	c.replies = []string{`{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`, `not json`}
 	ingest(t, h, tap)
 	if len(c.calls) != 2 {
 		t.Fatalf("calls = %d", len(c.calls))
@@ -951,7 +959,7 @@ func TestSuggestOptOutBetweenStepsSkipsStepTwo(t *testing.T) {
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Cafes")
 	h.payee(t, userA, "Blue Bottle Coffee")
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`
 	ingest(t, h, tap)
 	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 0 {
 		t.Fatalf("calls = %d, suggestions = %+v", len(c.calls), openSuggestions(t, h, userA))
@@ -967,8 +975,8 @@ func TestSuggestFindsPayeeBeyondFiveHundred(t *testing.T) {
 	}
 	zoo := h.payee(t, userA, "Zoo Market")
 	c.replies = []string{
-		`{"rows":{"0":{"matchText":"Zoo","merchant":"Zoo Market"}}}`,
-		`{"rows":{"0":{"payeeId":"` + zoo + `"}}}`,
+		`{"rows":[{"key":"0","matchText":"Zoo","merchant":"Zoo Market"}]}`,
+		`{"rows":[{"key":"0","payeeId":"` + zoo + `"}]}`,
 	}
 	ingest(t, h, pushWithPayee("ZOO MARKET 12", "evt-zoo"))
 	if len(c.calls) != 2 || !strings.Contains(c.calls[1].user, zoo) {
@@ -982,7 +990,7 @@ func TestSuggestFindsPayeeBeyondFiveHundred(t *testing.T) {
 // One type's failed request does not cost the other type its answers.
 func TestSuggestOneTypesFailureKeepsTheOther(t *testing.T) {
 	h, p := bankHarness(t)
-	c := &fakeCompleter{reply: `{"rows":{}}`}
+	c := &fakeCompleter{reply: `{"rows":[]}`}
 	h.wireSuggest(c, fakeFacts{userA: {language: "en"}})
 	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
 	h.category(t, userA, "Groceries")
@@ -992,7 +1000,7 @@ func TestSuggestOneTypesFailureKeepsTheOther(t *testing.T) {
 		extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "Corner Shop"),
 		extTx("ACT-1", "b", "900.00", now.AddDate(0, 0, -2).Unix(), "Acme Payroll"),
 	}
-	c.replies = []string{`not json`, `{"rows":{"1":{"matchText":"Acme Payroll","categoryId":"` + salary + `"}}}`}
+	c.replies = []string{`not json`, `{"rows":[{"key":"1","matchText":"Acme Payroll","categoryId":"` + salary + `"}]}`}
 	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
 		t.Fatal(err)
 	}
@@ -1008,7 +1016,7 @@ func TestSuggestOneTypesFailureKeepsTheOther(t *testing.T) {
 // A row the job cannot read is skipped; the batch's other rows still go out.
 func TestSuggestUnreadableRowSkipsOnlyThatRow(t *testing.T) {
 	h, p := bankHarness(t)
-	c := &fakeCompleter{reply: `{"rows":{}}`}
+	c := &fakeCompleter{reply: `{"rows":[]}`}
 	h.wireSuggest(c, fakeFacts{userA: {language: "en"}})
 	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
 	h.category(t, userA, "Groceries")
@@ -1041,7 +1049,7 @@ func TestSuggestCategoryArchivedDuringTheCallIsDropped(t *testing.T) {
 		t.Fatal(err)
 	}
 	uA := vo.MustParseId(userA)
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + coffee + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + coffee + `"}]}`
 	c.onCall = func() {
 		for i := range h.entities.categories[uA] {
 			if h.entities.categories[uA][i].ID == coffee {
@@ -1146,7 +1154,7 @@ func TestSuggestScanHasItsOwnDeadline(t *testing.T) {
 // sent to the AI.
 func TestSuggestSkipsASimpleFINRowWhosePayeeIsTheMemo(t *testing.T) {
 	h, p := bankHarness(t)
-	c := &fakeCompleter{reply: `{"rows":{}}`}
+	c := &fakeCompleter{reply: `{"rows":[]}`}
 	l := withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en"}})
 	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
 	h.category(t, userA, "Groceries")
@@ -1167,7 +1175,7 @@ func TestSuggestSkipsASimpleFINRowWhosePayeeIsTheMemo(t *testing.T) {
 // of its type) costs no AI call and no cap slot.
 func TestSuggestSkipsRowsNothingCanFill(t *testing.T) {
 	h, _, _ := suggestSetup(t)
-	c := &fakeCompleter{reply: `{"rows":{}}`}
+	c := &fakeCompleter{reply: `{"rows":[]}`}
 	l := withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en"}})
 	h.mapCard(t, "Apple Card")
 	h.incomeCategory(t, userA, "Salary")
@@ -1207,7 +1215,7 @@ func TestSuggestUndoRunsUnderItsOwnContext(t *testing.T) {
 	h.wireSuggest(c, facts)
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Coffee")
-	c.reply = `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}

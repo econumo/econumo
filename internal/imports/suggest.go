@@ -44,8 +44,9 @@ type validSuggestion struct {
 }
 
 // suggestReplyRow is step 1's answer for a row; PayeeID is filled from step
-// 2, never read from step 1's reply.
+// 2, never read from step 1's reply. A null field reads as empty.
 type suggestReplyRow struct {
+	Key        string `json:"key"`
 	MatchText  string `json:"matchText"`
 	Merchant   string `json:"merchant"`
 	CategoryID string `json:"categoryId"`
@@ -161,9 +162,11 @@ func replyJSON(reply string) []byte {
 	return []byte(reply[start : end+1])
 }
 
+// parseSuggestReply keys the rows by their key; a repeated key keeps its
+// first row.
 func parseSuggestReply(reply string) (map[string]suggestReplyRow, error) {
 	var out struct {
-		Rows map[string]suggestReplyRow `json:"rows"`
+		Rows []suggestReplyRow `json:"rows"`
 	}
 	if err := json.Unmarshal(replyJSON(reply), &out); err != nil {
 		return nil, err
@@ -171,7 +174,16 @@ func parseSuggestReply(reply string) (map[string]suggestReplyRow, error) {
 	if out.Rows == nil {
 		return nil, errors.New("reply has no rows")
 	}
-	return out.Rows, nil
+	rows := make(map[string]suggestReplyRow, len(out.Rows))
+	for _, r := range out.Rows {
+		k := strings.TrimSpace(r.Key)
+		if _, seen := rows[k]; seen || k == "" {
+			continue
+		}
+		r.Key, r.PayeeID = k, ""
+		rows[k] = r
+	}
+	return rows, nil
 }
 
 // buildPayeePrompt is step 2: only the rows with candidates, each with its own.
@@ -209,7 +221,8 @@ func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, can
 
 func parsePayeeReply(reply string) (map[string]string, error) {
 	var out struct {
-		Rows map[string]struct {
+		Rows []struct {
+			Key     string `json:"key"`
 			PayeeID string `json:"payeeId"`
 		} `json:"rows"`
 	}
@@ -220,8 +233,9 @@ func parsePayeeReply(reply string) (map[string]string, error) {
 		return nil, errors.New("reply has no rows")
 	}
 	picks := map[string]string{}
-	for k, r := range out.Rows {
-		if r.PayeeID != "" {
+	for _, r := range out.Rows {
+		k := strings.TrimSpace(r.Key)
+		if _, seen := picks[k]; !seen && k != "" && r.PayeeID != "" {
 			picks[k] = r.PayeeID
 		}
 	}

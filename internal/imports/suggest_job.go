@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -353,14 +354,14 @@ func fillable(rows []suggestRow, vocab suggestVocabulary) []suggestRow {
 // re-checks the opt-out; nil, nil means the owner opted out meanwhile.
 func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []suggestRow, vocab suggestVocabulary, language, timezone string) (map[string]suggestReplyRow, error) {
 	calls := 0
-	ask := func(system, user string) (string, bool, error) {
+	ask := func(system, user string, schema *ai.Schema) (string, bool, error) {
 		if calls > 0 {
 			if off, err := s.optedOut(ctx, owner); err != nil || off {
 				return "", false, err
 			}
 		}
 		calls++
-		reply, err := s.completer.Complete(ctx, owner.String(), system, user, nil)
+		reply, err := s.completer.Complete(ctx, owner.String(), system, user, schema)
 		return reply, true, err
 	}
 	replies := map[string]suggestReplyRow{}
@@ -369,7 +370,7 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 			continue
 		}
 		system, user := buildSuggestPrompt(rows, income, vocab, language, timezone)
-		reply, ok, err := ask(system, user)
+		reply, ok, err := ask(system, user, suggestSchema)
 		if !ok {
 			return nil, err
 		}
@@ -406,7 +407,7 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 		return replies, nil
 	}
 	system, user := buildPayeePrompt(rows, replies, candidates, language, timezone)
-	reply, ok, err := ask(system, user)
+	reply, ok, err := ask(system, user, payeeSchema)
 	if !ok {
 		return nil, err
 	}

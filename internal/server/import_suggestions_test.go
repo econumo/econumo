@@ -31,7 +31,7 @@ func TestImportSuggestionsEndToEnd(t *testing.T) {
 	cat := f.Category(fixture.Category{UserID: user, Name: "Coffee"})
 
 	ai := &recordingCompleter{reply: func() (string, error) {
-		return `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`, nil
+		return `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`, nil
 	}}
 	ts := httptest.NewServer(server.BuildAPI(baseTestConfig(db.Engine), db.Raw, server.Seams{
 		Avatars:          appuser.FixedAvatarPicker(appuser.DefaultAvatar),
@@ -125,7 +125,7 @@ func TestImportSuggestionsStopWhenUserOptsOutOfAI(t *testing.T) {
 	f.ImportAccountLink(fixture.ImportAccountLink{SourceID: src, ExternalAccountID: "Apple Card", AccountID: account})
 	cat := f.Category(fixture.Category{UserID: user, Name: "Coffee"})
 	ai := &recordingCompleter{reply: func() (string, error) {
-		return `{"rows":{"0":{"matchText":"Blue Bottle","categoryId":"` + cat + `"}}}`, nil
+		return `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`, nil
 	}}
 	ts := httptest.NewServer(server.BuildAPI(baseTestConfig(db.Engine), db.Raw, server.Seams{
 		Avatars:          appuser.FixedAvatarPicker(appuser.DefaultAvatar),
@@ -207,9 +207,9 @@ func TestImportSuggestionsTwoStepPayee(t *testing.T) {
 	ai := &recordingCompleter{reply: func() (string, error) {
 		step++
 		if step == 1 {
-			return `{"rows":{"0":{"matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}}}`, nil
+			return `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`, nil
 		}
-		return `{"rows":{"0":{"payeeId":"` + bb + `"}}}`, nil
+		return `{"rows":[{"key":"0","payeeId":"` + bb + `"}]}`, nil
 	}}
 	ts := httptest.NewServer(server.BuildAPI(baseTestConfig(db.Engine), db.Raw, server.Seams{
 		Avatars:          appuser.FixedAvatarPicker(appuser.DefaultAvatar),

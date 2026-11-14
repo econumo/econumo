@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"reflect"
@@ -83,7 +84,7 @@ func TestParseSuggestReplyRejectsGarbage(t *testing.T) {
 	require.Error(t, err)
 	_, err = parseSuggestReply(`{"other":1}`)
 	require.Error(t, err)
-	m, err := parseSuggestReply(`{"rows":{"0":{"matchText":"x"}}}`)
+	m, err := parseSuggestReply(`{"rows":[{"key":"0","matchText":"x"}]}`)
 	require.NoError(t, err)
 	require.Equal(t, "x", m["0"].MatchText)
 }
@@ -534,7 +535,7 @@ func TestBuildSuggestPromptSendsOnlyTheRowTypesCategories(t *testing.T) {
 }
 
 func TestParseSuggestReplyReadsMerchantNotPayee(t *testing.T) {
-	m, err := parseSuggestReply(`{"rows":{"0":{"matchText":"AMZN","merchant":"Amazon","payeeId":"x"}}}`)
+	m, err := parseSuggestReply(`{"rows":[{"key":"0","matchText":"AMZN","merchant":"Amazon","payeeId":"x"}]}`)
 	require.NoError(t, err)
 	require.Equal(t, "Amazon", m["0"].Merchant)
 	require.Equal(t, "", m["0"].PayeeID)
@@ -604,7 +605,7 @@ func TestParsePayeeReply(t *testing.T) {
 	require.Error(t, err)
 	_, err = parsePayeeReply(`{"x":1}`)
 	require.Error(t, err)
-	m, err := parsePayeeReply(`{"rows":{"1":{"payeeId":"abc"},"2":{}}}`)
+	m, err := parsePayeeReply(`{"rows":[{"key":"1","payeeId":"abc"},{"key":"2"}]}`)
 	require.NoError(t, err)
 	require.Equal(t, map[string]string{"1": "abc"}, m)
 }
@@ -621,10 +622,10 @@ func TestApplyPayeeReplyKeepsOnlyTheRowsCandidates(t *testing.T) {
 
 // Providers often wrap the JSON in a code fence or a sentence.
 func TestParseRepliesReadFencedJSON(t *testing.T) {
-	m, err := parseSuggestReply("```json\n{\"rows\":{\"0\":{\"matchText\":\"x\"}}}\n```")
+	m, err := parseSuggestReply("```json\n{\"rows\":[{\"key\":\"0\",\"matchText\":\"x\"}]}\n```")
 	require.NoError(t, err)
 	require.Equal(t, "x", m["0"].MatchText)
-	p, err := parsePayeeReply("Here you go:\n```json\n{\"rows\":{\"1\":{\"payeeId\":\"abc\"}}}\n```")
+	p, err := parsePayeeReply("Here you go:\n```json\n{\"rows\":[{\"key\":\"1\",\"payeeId\":\"abc\"}]}\n```")
 	require.NoError(t, err)
 	require.Equal(t, map[string]string{"1": "abc"}, p)
 	_, err = parseSuggestReply("```json\n```")
@@ -655,4 +656,28 @@ func TestAIPayeeIgnoresACopiedDescription(t *testing.T) {
 	require.Equal(t, "BLUE BOTTLE", aiPayee(sLink("BLUE BOTTLE", "", time.Time{})))
 	_, _, ok := matchTextIn(sLink("Transfer to Anna rent", "Transfer to Anna rent", time.Time{}), "Anna")
 	require.False(t, ok)
+}
+
+func TestReplySchemasFitStructuredOutputs(t *testing.T) {
+	for _, s := range []*ai.Schema{suggestSchema, payeeSchema, matchTextSchema} {
+		require.NoError(t, s.Check())
+	}
+}
+
+func TestParseSuggestReplyNullsMissingAndRepeatedRows(t *testing.T) {
+	m, err := parseSuggestReply(`{"rows":[{"key":"0","matchText":"AMZN","merchant":null,"categoryId":null},{"key":"0","matchText":"other"},{"key":" 2 ","matchText":"Z","merchant":"Zed","categoryId":"c"},{"matchText":"no key"}]}`)
+	require.NoError(t, err)
+	require.Equal(t, map[string]suggestReplyRow{
+		"0": {Key: "0", MatchText: "AMZN"},
+		"2": {Key: "2", MatchText: "Z", Merchant: "Zed", CategoryID: "c"},
+	}, m)
+	m, err = parseSuggestReply(`{"rows":[]}`)
+	require.NoError(t, err)
+	require.Empty(t, m)
+}
+
+func TestParsePayeeReplyNullsAndRepeatedRows(t *testing.T) {
+	m, err := parsePayeeReply(`{"rows":[{"key":"0","payeeId":null},{"key":"1","payeeId":"a"},{"key":"1","payeeId":"b"}]}`)
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"1": "a"}, m)
 }

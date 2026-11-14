@@ -24,7 +24,7 @@ import (
 func seedSuggestion(t *testing.T, h *harness, c *fakeCompleter, cat, payee string, payees ...string) (model.ImportSuggestion, []model.ImportTransactionLink) {
 	t.Helper()
 	h.mapCard(t, "Apple Card")
-	reply := `{"rows":{"0":{"matchText":"Blue Bottle"`
+	reply := `{"rows":[{"key":"0","matchText":"Blue Bottle"`
 	if cat != "" {
 		reply += `,"categoryId":"` + cat + `"`
 	}
@@ -32,7 +32,7 @@ func seedSuggestion(t *testing.T, h *harness, c *fakeCompleter, cat, payee strin
 		// one reply serves both steps: step 1 reads the merchant, step 2 the payee
 		reply += `,"merchant":"Blue Bottle","payeeId":"` + payee + `"`
 	}
-	c.reply = reply + `}}}`
+	c.reply = reply + `}]}`
 	if len(payees) == 0 {
 		payees = []string{"Blue Bottle"}
 	}
@@ -392,8 +392,18 @@ func TestSuggestMatchTextValid(t *testing.T) {
 	if res.MatchField != model.ImportRuleMatchFieldExternalPayee || res.MatchText != "BLUE BOTTLE COFFEE" {
 		t.Fatalf("result = %+v", res)
 	}
-	if len(c.calls) != 1 || c.calls[0].userID != userA || !strings.Contains(c.calls[0].user, "SQ *BLUE BOTTLE COFFEE #0423") {
+	if len(c.calls) != 1 || c.calls[0].userID != userA || !strings.Contains(c.calls[0].user, "SQ *BLUE BOTTLE COFFEE #0423") || c.calls[0].schema != "import_match_text" {
 		t.Fatalf("calls = %+v", c.calls)
+	}
+}
+
+func TestSuggestMatchTextNullAnswersEmpty(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	l := matchTextLink(t, h, "SQ *BLUE BOTTLE COFFEE #0423")
+	c.calls, c.reply = nil, `{"matchText":null}`
+	res, err := suggestMatchText(h, userA, l)
+	if err != nil || res.MatchText != "" || res.MatchField != "" {
+		t.Fatalf("result = %+v, err = %v", res, err)
 	}
 }
 

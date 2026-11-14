@@ -43,6 +43,53 @@ type Schema struct {
 	JSON json.RawMessage
 }
 
+// Check reports where the schema leaves the structured-output subset, so a
+// test can guard each one: a provider refuses such a schema with a 400 and the
+// call loses its schema for the process lifetime.
+func (s Schema) Check() error {
+	var root any
+	if err := json.Unmarshal(s.JSON, &root); err != nil {
+		return fmt.Errorf("%s: %w", s.Name, err)
+	}
+	return checkNode(s.Name, root)
+}
+
+func checkNode(path string, node any) error {
+	m, ok := node.(map[string]any)
+	if !ok {
+		return fmt.Errorf("%s: not an object", path)
+	}
+	for _, k := range []string{"minLength", "maxLength", "minimum", "maximum", "minItems", "maxItems", "pattern", "format"} {
+		if _, has := m[k]; has {
+			return fmt.Errorf("%s: %s is not supported", path, k)
+		}
+	}
+	if props, has := m["properties"].(map[string]any); has || m["type"] == "object" {
+		if m["additionalProperties"] != false {
+			return fmt.Errorf("%s: additionalProperties must be false", path)
+		}
+		required, _ := m["required"].([]any)
+		if len(required) != len(props) {
+			return fmt.Errorf("%s: every property must be required", path)
+		}
+		for _, r := range required {
+			name, _ := r.(string)
+			if _, ok := props[name]; !ok {
+				return fmt.Errorf("%s: required %q is not a property", path, name)
+			}
+		}
+		for name, p := range props {
+			if err := checkNode(path+"."+name, p); err != nil {
+				return err
+			}
+		}
+	}
+	if items, has := m["items"]; has {
+		return checkNode(path+"[]", items)
+	}
+	return nil
+}
+
 type Client struct {
 	cfg  Config
 	http *http.Client

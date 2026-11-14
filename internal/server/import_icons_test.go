@@ -6,6 +6,7 @@ import (
 	"errors"
 	"mime/multipart"
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -109,14 +110,19 @@ func TestCSVImport_ReviewsTheIconsOfWhatItCreated(t *testing.T) {
 	}
 	e.ai.bySystem = func(string) (string, error) {
 		food, bonus, visa := e.idByName("categories", "Lebensmittel"), e.idByName("categories", "Bonus"), e.idByName("accounts", "Visa")
-		return `{"categories":{"` + strings.ToUpper(food) + `":"shopping_cart","` + bonus + `":"not_an_icon","` + w.salary + `":"payments"},` +
-			`"accounts":{"` + visa + `":"credit_card","` + w.giro + `":"savings"}}`, nil
+		return `{"categories":[{"id":"` + strings.ToUpper(food) + `","icon":"shopping_cart"},{"id":"` + bonus + `","icon":"not_an_icon"},{"id":"` + w.salary + `","icon":"payments"}],` +
+			`"accounts":[{"id":"` + visa + `","icon":"credit_card"},{"id":"` + w.giro + `","icon":"savings"}]}`, nil
 	}
 	e.importCSV(iconsCSV)
 	food, bonus, visa := e.idByName("categories", "Lebensmittel"), e.idByName("categories", "Bonus"), e.idByName("accounts", "Visa")
 
 	if len(e.ai.prompts) != 2 {
 		t.Fatalf("prompts = %d, want category and account icons", len(e.ai.prompts))
+	}
+	schemas := append([]string(nil), e.ai.schemas...)
+	sort.Strings(schemas)
+	if strings.Join(schemas, ",") != "account_icons,category_icons" {
+		t.Fatalf("schemas = %v", e.ai.schemas)
 	}
 	parts := e.iconPrompts()
 	cats, accts := parts["categories"], parts["accounts"]
@@ -246,7 +252,7 @@ func TestCSVImport_UserPickedIconWinsOverTheAI(t *testing.T) {
 			}
 		}
 		bonus := e.idByName("categories", "Bonus")
-		return `{"categories":{"` + food + `":"shopping_cart","` + bonus + `":"payments"},"accounts":{"` + visa + `":"credit_card"}}`, nil
+		return `{"categories":[{"id":"` + food + `","icon":"shopping_cart"},{"id":"` + bonus + `","icon":"payments"}],"accounts":[{"id":"` + visa + `","icon":"credit_card"}]}`, nil
 	}
 	e.importCSV(iconsCSV)
 	food, bonus, visa := e.idByName("categories", "Lebensmittel"), e.idByName("categories", "Bonus"), e.idByName("accounts", "Visa")
@@ -280,7 +286,7 @@ func TestCSVImport_EachIconPartAppliesWhenTheOtherFails(t *testing.T) {
 						return "not json at all", nil
 					}
 					food, visa := e.idByName("categories", "Lebensmittel"), e.idByName("accounts", "Visa")
-					return `{"categories":{"` + food + `":"shopping_cart"},"accounts":{"` + visa + `":"credit_card"}}`, nil
+					return `{"categories":[{"id":"` + food + `","icon":"shopping_cart"}],"accounts":[{"id":"` + visa + `","icon":"credit_card"}]}`, nil
 				}
 				e.importCSV(iconsCSV)
 				if got := e.icon("categories", e.idByName("categories", "Lebensmittel")) == "shopping_cart"; got != (broken != "categories") {

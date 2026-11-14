@@ -27,6 +27,7 @@ type recordingCompleter struct {
 	mu        sync.Mutex
 	prompts   []string
 	systems   []string
+	schemas   []string
 	deadlines []time.Time
 	// reply, when set, answers instead of the empty savings list; bySystem,
 	// when set, answers by the request's system prompt instead.
@@ -34,12 +35,17 @@ type recordingCompleter struct {
 	bySystem func(system string) (string, error)
 }
 
-func (c *recordingCompleter) Complete(ctx context.Context, _, system, user string, _ *ai.Schema) (string, error) {
+func (c *recordingCompleter) Complete(ctx context.Context, _, system, user string, schema *ai.Schema) (string, error) {
 	c.mu.Lock()
 	deadline, _ := ctx.Deadline()
 	c.deadlines = append(c.deadlines, deadline)
 	c.prompts = append(c.prompts, user)
 	c.systems = append(c.systems, system)
+	if schema != nil {
+		c.schemas = append(c.schemas, schema.Name)
+	} else {
+		c.schemas = append(c.schemas, "")
+	}
 	reply, bySystem := c.reply, c.bySystem
 	c.mu.Unlock()
 	if bySystem != nil {
@@ -375,6 +381,9 @@ func TestSaveAccounts_AccountsFirstCreatesTheBudget(t *testing.T) {
 	// Only the new accounts reach the classifier, never the earlier one.
 	if len(e.ai.prompts) != 1 || strings.Contains(e.ai.prompts[0], earlier) || !strings.Contains(e.ai.prompts[0], ids["s"]) {
 		t.Fatalf("prompts = %v", e.ai.prompts)
+	}
+	if e.ai.schemas[0] != "savings_accounts" {
+		t.Fatalf("schema = %q", e.ai.schemas[0])
 	}
 
 	status, again := e.post("/api/v1/onboarding/save-accounts", body)

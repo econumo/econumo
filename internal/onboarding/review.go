@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -309,7 +310,7 @@ func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts p
 	if len(prompt.Categories) == 0 {
 		return nil
 	}
-	icons, err := s.askIcons(ctx, userID, categoryIconsSystem, prompt, "categories")
+	icons, err := s.askIcons(ctx, userID, categoryIconsSystem, categoryIconsSchema, prompt, "categories")
 	if err != nil {
 		return err
 	}
@@ -337,7 +338,7 @@ func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts pr
 	if len(prompt.Accounts) == 0 {
 		return nil
 	}
-	icons, err := s.askIcons(ctx, userID, accountIconsSystem, prompt, "accounts")
+	icons, err := s.askIcons(ctx, userID, accountIconsSystem, accountIconsSchema, prompt, "accounts")
 	if err != nil {
 		return err
 	}
@@ -361,9 +362,10 @@ func (s *Service) reviewSavings(ctx context.Context, userID, budgetID vo.Id, fac
 	return s.classify(ctx, userID, budgetID, ids, facts)
 }
 
-// askIcons sends one icon request and reads the {key:{id:icon}} map out of the
-// reply (tolerating a code fence or prose around it), ids lower-cased.
-func (s *Service) askIcons(ctx context.Context, userID vo.Id, system string, prompt any, key string) (map[string]string, error) {
+// askIcons sends one icon request and reads the {key:[{id, icon}]} list out of
+// the reply (tolerating a code fence or prose around it) into a map, ids
+// lower-cased; a repeated id keeps its first icon.
+func (s *Service) askIcons(ctx context.Context, userID vo.Id, system string, schema *ai.Schema, prompt any, key string) (map[string]string, error) {
 	body, err := json.Marshal(prompt)
 	if err != nil {
 		return nil, err
@@ -371,10 +373,14 @@ func (s *Service) askIcons(ctx context.Context, userID vo.Id, system string, pro
 	if !s.mayAsk(ctx, userID) {
 		return nil, nil
 	}
-	raw, err := s.completer.Complete(ctx, userID.String(), system, string(body), nil)
+	raw, err := s.completer.Complete(ctx, userID.String(), system, string(body), schema)
 	if err != nil {
 		return nil, err
 	}
+	return parseIcons(raw, key)
+}
+
+func parseIcons(raw, key string) (map[string]string, error) {
 	start, end := strings.Index(raw, "{"), strings.LastIndex(raw, "}")
 	if start < 0 || end <= start {
 		return nil, MalformedReplyError{}
@@ -383,13 +389,19 @@ func (s *Service) askIcons(ctx context.Context, userID vo.Id, system string, pro
 	if err := json.Unmarshal([]byte(raw[start:end+1]), &parsed); err != nil {
 		return nil, MalformedReplyError{}
 	}
-	var icons map[string]string
+	var icons []struct {
+		ID   string `json:"id"`
+		Icon string `json:"icon"`
+	}
 	if err := json.Unmarshal(parsed[key], &icons); err != nil && parsed[key] != nil {
 		return nil, MalformedReplyError{}
 	}
 	out := make(map[string]string, len(icons))
-	for id, icon := range icons {
-		out[strings.ToLower(strings.TrimSpace(id))] = strings.TrimSpace(icon)
+	for _, it := range icons {
+		id := strings.ToLower(strings.TrimSpace(it.ID))
+		if _, seen := out[id]; !seen && id != "" {
+			out[id] = strings.TrimSpace(it.Icon)
+		}
 	}
 	return out, nil
 }
