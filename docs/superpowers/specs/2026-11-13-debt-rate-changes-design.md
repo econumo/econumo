@@ -25,9 +25,14 @@ At the end of a term (May 2031 for this mortgage) the bank also sets a new payme
 3. **A separate list (approach B)**, not a new kind of snapshot: a rate change carries no balance,
    so a payment entered later for an earlier day never contradicts it. Statements keep correcting
    the balance only.
-4. **The first row is the rate implied by the loan's terms**, shown, never stored: it follows a
-   correction of the terms, and cannot be deleted. A change dated on the start date overrides it
-   for the whole loan (the first row then reads as replaced).
+4. **The first row is the rate implied by the loan's terms.** While the debt has no change dated on
+   its start date it is derived, not stored: it follows a correction of the terms. **Adding a change
+   dated after the start, when there is no start-date row yet, also stores one**: dated the start
+   date, with the implied yearly rate at that moment and the origin's payment, in the same
+   transaction. From then on it is an ordinary row: adding a change on the start date replaces it,
+   it can be deleted (*my call*: the start then falls back to the derived row), and a later
+   correction of the terms no longer moves it. *My call:* the stored implied rate keeps full
+   precision (shown with two decimals), so storing it changes no split.
 
 ## Approaches considered
 
@@ -114,9 +119,9 @@ At the end of a term (May 2031 for this mortgage) the bank also sets a new payme
 ## SPA
 
 - **Balance tab**, a "Rate changes" card under the statements history (set-up debts only):
-  - a table Date | Rate | Payment, oldest first; the first row "From the start · 3.44% · 2,647.82",
-    captioned "from your loan's terms" (or "replaced" when a change is dated on the start date);
-    each later row has a delete button behind a confirm;
+  - a table Date | Rate | Payment, oldest first; with no stored start-date row the first row is the
+    derived "From the start · 3.44% · 2,647.82", captioned "from your loan's terms", with no delete;
+    every stored row (the start-date one included) has a delete button behind a confirm;
   - a form "Record a rate change": Date (default today), Rate in % (prefilled with the rate in force
     now, plain decimal input like the amounts), Payment (prefilled with the payment in force now);
     Add. A refusal shows under its field.
