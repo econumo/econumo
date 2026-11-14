@@ -229,6 +229,12 @@ type DebtResult struct {
 	ImpliedAnnualRate string `json:"impliedAnnualRate"`
 	IsPaidOff         int    `json:"isPaidOff"`
 	IsSetUp           int    `json:"isSetUp"`
+	// MonthlyToFinish is, for a debt with no fixed payments, what a month
+	// repays it by its return-by date: the balance over the calendar months
+	// from the current one through the return-by month. "" for any other
+	// schedule, while not set up, paid off, with nothing owed or once that
+	// month is past.
+	MonthlyToFinish string `json:"monthlyToFinish"`
 }
 
 type DebtListResult struct {
@@ -303,6 +309,8 @@ type DebtTimeline struct {
 	BasePayoffDate      string
 	OverpaymentLeft     string
 	BaseOverpaymentLeft string
+	// MonthlyToFinish is ElementDebtResult's, over the budget's periods.
+	MonthlyToFinish string
 }
 
 func debtValidation(fields []errs.FieldError) error {
@@ -379,14 +387,17 @@ func debtFields(f debtTermFields, keepable bool) []errs.FieldError {
 	if setup && !hasStart && !keepable {
 		fields = append(fields, blankField("startDate"))
 	}
+	// a debt with no fixed payments may have a payment of 0; an update that
+	// keeps the stored schedule leaves that check to the service
+	zeroPayment := f.schedule == string(DebtScheduleNone) || (keepable && !filled(f.schedule))
 	if !keepable || filled(f.payment.String()) {
-		fields = append(fields, debtAmountField("payment", f.payment.String(), false)...)
+		fields = append(fields, debtAmountField("payment", f.payment.String(), zeroPayment)...)
 	}
 	if !filled(f.schedule) {
 		if !keepable {
 			fields = append(fields, blankField("schedule"))
 		}
-	} else if _, ok := ParseRecurringSchedule(f.schedule); !ok {
+	} else if _, ok := ParseDebtSchedule(f.schedule); !ok {
 		fields = append(fields, errs.FieldError{Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 	if !hasLast {

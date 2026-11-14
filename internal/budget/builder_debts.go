@@ -78,7 +78,13 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 		}
 		ids = append(ids, v.ID)
 		byRow[debtRowKey(v)] = append(byRow[debtRowKey(v)], v)
-		if _, end := v.PlanningBounds(f.startDay); end.After(last) {
+		_, end := v.PlanningBounds(f.startDay)
+		// an open end (no fixed payments, not repaid by its plans) reads the
+		// plans of the whole window
+		if end.IsZero() && len(months) > 0 {
+			end = months[len(months)-1]
+		}
+		if end.After(last) {
 			last = end
 		}
 	}
@@ -140,6 +146,7 @@ func elementDebt(v model.DebtView, timelines map[string]model.DebtTimeline, star
 	out.ScheduledTotal, out.Upcoming = decimalString(tm.ScheduledTotal), decimalString(tm.StillDue)
 	out.PayoffDate, out.BasePayoffDate = tl.PayoffDate, tl.BasePayoffDate
 	out.OverpaymentLeft, out.BaseOverpaymentLeft = decimalString(tl.OverpaymentLeft), decimalString(tl.BaseOverpaymentLeft)
+	out.MonthlyToFinish = tl.MonthlyToFinish
 	return out
 }
 

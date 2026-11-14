@@ -822,3 +822,53 @@ func TestGetBudgetPlan_LatePayoffKeepsTheDebtPlannable(t *testing.T) {
 		t.Errorf("payoff with the August plan = %s (base %s), want it earlier than %s", row.Debt.PayoffDate, row.Debt.BasePayoffDate, base)
 	}
 }
+
+// A loan with no fixed payments on the element: nothing is scheduled, the
+// plans are its only repayments, it stays plannable past its return-by date
+// while they have not repaid it, and the row carries what a period finishes
+// it on time (3000 over June 2026 through May 2027).
+func TestGetBudgetPlan_NoFixedPaymentsDebt(t *testing.T) {
+	h := newDebtHarness(t)
+	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
+		BudgetId: h.budgetID, ElementId: h.loan, Payment: vo.NewFlexString("0"), Schedule: "none",
+	})
+	if err != nil {
+		t.Fatalf("CreateDebt: %v", err)
+	}
+	start := "2026-01-01"
+	if _, err := h.debts.UpdateDebt(h.ctx, h.owner, model.UpdateDebtRequest{
+		Id: res.Id, StartDate: &start, AmountBorrowed: vo.NewFlexString("3000"), LastPaymentDate: "2027-05-31",
+	}); err != nil {
+		t.Fatalf("UpdateDebt: %v", err)
+	}
+
+	row := findPlanRow(h.plan(t, "2026-06-01", "4"), h.loan)
+	if row == nil || row.Debt == nil || row.Debt.MonthlyToFinish != "250" || row.Debt.PayoffDate != "" || row.Debt.PaymentsLeft != 0 {
+		t.Fatalf("row debt = %+v, want 250 a month and no payoff", row)
+	}
+	for i, c := range row.Cells {
+		if c.Debt == nil || c.Debt.ScheduledTotal != "0" || c.Debt.Upcoming != "0" || c.Debt.ClosingBalance != "3000" {
+			t.Errorf("cell %d debt = %+v, want nothing scheduled and 3000 owed", i, c.Debt)
+		}
+	}
+
+	// a plan past the return-by date still repays it
+	h.setLimit(t, h.loan, "2027-08-01", "3000")
+	row = findPlanRow(h.plan(t, "2026-06-01", "4"), h.loan)
+	if row.Debt.PayoffDate != "2027-08-31" {
+		t.Fatalf("late plan: payoff %q, want 2027-08-31", row.Debt.PayoffDate)
+	}
+
+	for _, m := range []string{"2026-07-01", "2026-08-01", "2026-09-01"} {
+		h.setLimit(t, h.loan, m, "1000")
+	}
+	row = findPlanRow(h.plan(t, "2026-06-01", "4"), h.loan)
+	if row.Debt.PayoffDate != "2026-09-30" || row.Debt.BasePayoffDate != "" {
+		t.Fatalf("with plans: payoff %q, base %q", row.Debt.PayoffDate, row.Debt.BasePayoffDate)
+	}
+	for i, want := range []string{"3000", "2000", "1000", "0"} {
+		if got := row.Cells[i].Debt.ClosingBalance; got != want {
+			t.Errorf("cell %d closing = %s, want %s", i, got, want)
+		}
+	}
+}

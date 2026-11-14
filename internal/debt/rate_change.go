@@ -40,16 +40,16 @@ func (s *Service) addDebtRateChange(ctx context.Context, userID vo.Id, req model
 		return nil, err
 	}
 	payment := vo.NewDecimal(req.Payment.String())
-	if err := validatePayment(payment); err != nil {
-		return nil, err
-	}
 	return s.withSetUpDebt(ctx, userID, id, func(ctx context.Context, cur *model.Debt, snaps []*model.DebtSnapshot, _ time.Time, digits int) error {
 		origin := snapshotTerms(snaps[0])
+		if origin.Schedule == model.DebtScheduleNone {
+			return noFixedPayments()
+		}
 		if date.Before(origin.AsOf) {
 			return fieldError("date", "This value is out of range.", errs.CodeOutOfRange)
 		}
 		payment := payment.Round(digits)
-		if err := validatePayment(payment); err != nil {
+		if err := validatePayment(payment, ""); err != nil {
 			return err
 		}
 		changes, err := s.repo.RateChanges(ctx, []vo.Id{cur.ID})

@@ -119,6 +119,11 @@ func mathTerms(changes []*model.DebtRateChange, digits int, origin model.DebtTer
 
 // mathRates are the rate changes per period of schedule.
 func mathRates(changes []*model.DebtRateChange, schedule model.RecurringSchedule) []model.MathRate {
+	// a debt with no fixed payments has no rate: changes left from an earlier
+	// schedule wait, unread, in case it comes back
+	if schedule == model.DebtScheduleNone {
+		return nil
+	}
 	out := make([]model.MathRate, 0, len(changes))
 	for _, c := range changes {
 		out = append(out, model.MathRate{From: c.EffectiveDate, PeriodRate: model.AnnualToPeriodRate(toFloat(c.AnnualRate), schedule),
@@ -131,11 +136,13 @@ func mathRates(changes []*model.DebtRateChange, schedule model.RecurringSchedule
 // after origin, in a currency with the given fraction digits. A balance of 0
 // needs no payments left; any other must be repayable by the payment in
 // force at the rate in force (the loan's, the origin's, until a rate change).
+// With no fixed payments nothing has to repay it, by the return-by date or
+// after it.
 func validateTerms(t, origin model.DebtTerms, digits int, changes []*model.DebtRateChange) error {
-	if err := validatePayment(t.Payment); err != nil {
+	if err := validatePayment(t.Payment, t.Schedule); err != nil {
 		return err
 	}
-	if !t.Balance.IsGreaterThan(vo.NewDecimal("0")) {
+	if !t.Balance.IsGreaterThan(vo.NewDecimal("0")) || t.Schedule == model.DebtScheduleNone {
 		return nil
 	}
 	if !t.LastPaymentDate.After(t.AsOf) {
@@ -151,7 +158,7 @@ func validateTerms(t, origin model.DebtTerms, digits int, changes []*model.DebtR
 // validateOrigin checks the loan's facts: the origin as of the start date,
 // which today may not precede, ending on the last payment date.
 func validateOrigin(o model.DebtTerms, today time.Time, digits int) error {
-	if err := validatePayment(o.Payment); err != nil {
+	if err := validatePayment(o.Payment, o.Schedule); err != nil {
 		return err
 	}
 	if o.AsOf.After(today) {
@@ -164,10 +171,14 @@ func validateOrigin(o model.DebtTerms, today time.Time, digits int) error {
 }
 
 // validateCover: the payments due after the origin's day must repay the
-// amount borrowed, within the projection's horizon (its first period prorated).
+// amount borrowed, within the projection's horizon (its first period
+// prorated). With no fixed payments there are no dues to check.
 func validateCover(t model.DebtTerms, digits int, origin bool) error {
 	if model.DebtTermTooLong(t.AsOf, t.LastPaymentDate) {
 		return fieldError("lastPaymentDate", "This value is out of range.", errs.CodeOutOfRange)
+	}
+	if t.Schedule == model.DebtScheduleNone {
+		return nil
 	}
 	if _, err := model.SnapshotRate(model.WithRates([]model.MathSnapshot{termsFloats(t, digits, origin)}, nil)[0]); err != nil {
 		return paymentsDontCover()
@@ -175,12 +186,18 @@ func validateCover(t model.DebtTerms, digits int, origin bool) error {
 	return nil
 }
 
+func noFixedPayments() error {
+	return &errs.ValidationError{Msg: "This debt has no fixed payments, so it has no rate to change.", MsgCode: errs.CodeDebtNoFixedPayments}
+}
+
 func paymentsDontCover() error {
 	return fieldError("payment", "The payments do not cover the balance.", errs.CodeDebtPaymentsDontCover)
 }
 
-func validatePayment(p vo.DecimalNumber) error {
-	if !p.IsGreaterThan(vo.NewDecimal("0")) {
+// validatePayment: a positive payment, or one of 0 with no fixed payments.
+func validatePayment(p vo.DecimalNumber, schedule model.RecurringSchedule) error {
+	zero := vo.NewDecimal("0")
+	if !p.IsGreaterThan(zero) && (schedule != model.DebtScheduleNone || !p.Equals(zero)) {
 		return fieldError("payment", "This value is out of range.", errs.CodeOutOfRange)
 	}
 	return nil
@@ -286,7 +303,7 @@ func parseInput(b debtBody) (debtInput, error) {
 	}
 	in.hasPayment = strings.TrimSpace(b.payment.String()) != ""
 	if in.hasSchedule = strings.TrimSpace(b.schedule) != ""; in.hasSchedule {
-		sched, ok := model.ParseRecurringSchedule(b.schedule)
+		sched, ok := model.ParseDebtSchedule(b.schedule)
 		if !ok {
 			return in, errs.NewValidation("Validation failed", errs.FieldError{
 				Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})

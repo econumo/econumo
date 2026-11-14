@@ -1332,6 +1332,14 @@ definitions:
         type: string
       moneyLeft:
         type: string
+      monthlyToFinish:
+        description: |-
+          MonthlyToFinish is, for a debt with no fixed payments, what a month
+          repays it by its return-by date: the balance over the calendar months
+          from the current one through the return-by month. "" for any other
+          schedule, while not set up, paid off, with nothing owed or once that
+          month is past.
+        type: string
       name:
         type: string
       nextDueDate:
@@ -1548,6 +1556,8 @@ definitions:
         type: integer
       isSetUp:
         type: integer
+      monthlyToFinish:
+        type: string
       overpaymentLeft:
         type: string
       paymentsLeft:

@@ -158,6 +158,9 @@ func anchoredMonth(year int, month time.Month, anchor int) time.Time {
 // DueDatesBetween returns the due dates d with from < d <= to. The series is
 // anchored on last (walked back from it, extended past it with NextOccurrence).
 func DueDatesBetween(s RecurringSchedule, last time.Time, from, to time.Time) []time.Time {
+	if s == DebtScheduleNone {
+		return nil
+	}
 	last, from, to = debtDay(last), debtDay(from), debtDay(to)
 	anchor := last.Day()
 	var out []time.Time
@@ -274,6 +277,9 @@ func originFirst(s MathSnapshot) (time.Time, float64) {
 // solves its prorated first period. ErrPaymentsDontCover when the dues after
 // the as-of day cannot repay the balance.
 func SnapshotRate(s MathSnapshot) (float64, error) {
+	if s.Schedule == DebtScheduleNone {
+		return 0, nil
+	}
 	n := len(DueDatesBetween(s.Schedule, s.Last, s.AsOf, s.Last))
 	first := 1.0
 	if s.Origin {
@@ -383,6 +389,9 @@ func snapshotOn(snaps []MathSnapshot, day time.Time) MathSnapshot {
 // rateOn is the rate in force on day: the latest change on or before it, else
 // the snapshot's (the loan's) rate.
 func (s MathSnapshot) rateOn(day time.Time) float64 {
+	if s.Schedule == DebtScheduleNone {
+		return 0
+	}
 	r := snapshotRate(s)
 	for _, c := range s.rates {
 		if c.From.After(day) {
@@ -487,6 +496,9 @@ func withLoanRate(snaps []MathSnapshot) {
 // or the balance outlasts the projection's horizon. Each period accrues in
 // full (a statement balance is the principal still owed).
 func StatementRepayable(origin, s MathSnapshot) error {
+	if s.Schedule == DebtScheduleNone {
+		return nil
+	}
 	r, err := SnapshotRate(origin)
 	if err != nil {
 		return err
@@ -796,7 +808,7 @@ func runProjection(s MathSnapshot, balance, eps float64, today, firstDue time.Ti
 		_, next := PeriodWindow(month, startDay)
 		extra := extras[monthKey(month)]
 		stepped := false
-		for balance >= eps && due.Before(next) {
+		for s.Schedule != DebtScheduleNone && balance >= eps && due.Before(next) {
 			interest := dueInterest(s, balance, due, first)
 			pay := math.Min(s.paymentOn(due), balance+interest)
 			balance = balance + interest - pay
@@ -946,9 +958,13 @@ func ProjectDebt(in ProjectionInput) Projection {
 		}
 	}
 	out.PeriodsPaid = len(paidDues)
-	out.ExtraPaid = extraPaid(snaps, pays, in.Interest, today)
-
-	firstDue := firstUnpaidDue(latest, snaps[0], pays, today)
+	// with no fixed payments nothing is due, so nothing is paid above it and
+	// only the plans repay the debt
+	var firstDue time.Time
+	if latest.Schedule != DebtScheduleNone {
+		out.ExtraPaid = extraPaid(snaps, pays, in.Interest, today)
+		firstDue = firstUnpaidDue(latest, snaps[0], pays, today)
+	}
 	sd := in.PeriodStartDay
 	base := runProjection(latest, current, eps, today, firstDue, nil, sd)
 	currentMonth := PeriodOf(today, sd)
@@ -1194,4 +1210,20 @@ func paidWindow(s, first MathSnapshot, pays []MathPayment, due, today time.Time)
 		}
 	}
 	return false
+}
+
+// MonthlyToFinish is what a period repays a debt with no fixed payments by
+// its return-by date: balance over the periods (starting on startDay) from
+// today's through the one holding returnBy, today's included, rounded to
+// digits; ok is false once that period is past or nothing is owed.
+func MonthlyToFinish(balance float64, today, returnBy time.Time, startDay, digits int) (float64, bool) {
+	if roundDigits(balance, digits) <= 0 {
+		return 0, false
+	}
+	current, end := PeriodOf(debtDay(today), startDay), PeriodOf(debtDay(returnBy), startDay)
+	if end.Before(current) {
+		return 0, false
+	}
+	n := (end.Year()-current.Year())*12 + int(end.Month()-current.Month()) + 1
+	return roundDigits(balance/float64(n), digits), true
 }

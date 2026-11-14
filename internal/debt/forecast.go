@@ -44,7 +44,7 @@ func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.G
 	if startDay == 0 {
 		startDay = model.MinPeriodStartDay
 	}
-	plans := plannedInLife(st, st.project(today, nil, nil), elementPlans, startDay)
+	plans := plannedInLife(st, boundsProjection(st, today, elementPlans, startDay), elementPlans, startDay)
 	// A payment recorded ahead of today is booked, not still to come: the run
 	// starts on the last recorded payment's day, so its due is paid and the
 	// first row follows the balance the booked list ends on.

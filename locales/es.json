@@ -2561,7 +2561,8 @@
       "start_in_future": "La fecha de inicio debe ser hoy o anterior.",
       "not_set_up": "Primero termina de configurar esta deuda.",
       "conflicts_with_reconciliation": "Esto entra en conflicto con un saldo que introdujiste de un extracto. Cambia o elimina primero esa conciliación.",
-      "conflicts_with_rate_change": "Esta fecha de inicio es posterior a un cambio de tipo de interés. Elimina primero ese cambio."
+      "conflicts_with_rate_change": "Esta fecha de inicio es posterior a un cambio de tipo de interés. Elimina primero ese cambio.",
+      "no_fixed_payments": "Esta deuda no tiene pagos fijos, así que no tiene un tipo de interés que cambiar."
     },
     "authserver": {
       "disabled": "La conexión de aplicaciones no está disponible en este servidor.",

@@ -77,7 +77,27 @@ func (s *Service) result(st *debtState, proj model.Projection, today time.Time, 
 		implied, _ := model.SnapshotRate(snaps[0])
 		res.ImpliedAnnualRate = rateString(model.PeriodToAnnualRate(implied, schedule))
 	}
+	res.MonthlyToFinish = monthlyToFinish(d, proj, today, model.MinPeriodStartDay, digits)
 	return res
+}
+
+// hasNoFixedPayments: a set-up debt with no fixed payments, which only its
+// element's plans are projected to repay.
+func hasNoFixedPayments(d *model.Debt) bool {
+	return d.IsSetUp() && d.Current.Schedule == model.DebtScheduleNone
+}
+
+// monthlyToFinish is model.MonthlyToFinish for a debt with no fixed payments
+// still owed, over periods starting on startDay; "" otherwise.
+func monthlyToFinish(d *model.Debt, proj model.Projection, today time.Time, startDay, digits int) string {
+	if !hasNoFixedPayments(d) || d.IsPaidOff() || proj.PaidOff {
+		return ""
+	}
+	m, ok := model.MonthlyToFinish(proj.CurrentBalance, today, d.Current.LastPaymentDate, startDay, digits)
+	if !ok {
+		return ""
+	}
+	return amountString(m, digits)
 }
 
 func (s *Service) presentAll(ctx context.Context, b model.DebtBudget, states []*debtState) ([]model.DebtResult, error) {
@@ -261,7 +281,16 @@ func (s *Service) Views(ctx context.Context, scope model.DebtScope) ([]model.Deb
 		if err != nil {
 			return nil, err
 		}
-		proj := st.project(today, nil, nil)
+		var plans map[string]float64
+		if hasNoFixedPayments(st.debt) {
+			if s.elements == nil {
+				return nil, errNoElements
+			}
+			if plans, err = s.elements.Plans(ctx, st.debt.BudgetID, st.debt.ElementID); err != nil {
+				return nil, err
+			}
+		}
+		proj := boundsProjection(st, today, plans, model.MinPeriodStartDay)
 		v := st.view
 		v.Name, v.Icon = name, icon
 		v.PaidOff = proj.PaidOff
@@ -275,6 +304,16 @@ func (s *Service) Views(ctx context.Context, scope model.DebtScope) ([]model.Deb
 	return views, nil
 }
 
+// boundsProjection is the projection planningBounds reads: without plans, so
+// the bound does not depend on what it bounds, except for a debt with no fixed
+// payments, which only the element's plans repay.
+func boundsProjection(st *debtState, today time.Time, plans map[string]float64, startDay int) model.Projection {
+	if !hasNoFixedPayments(st.debt) {
+		return st.project(today, nil, nil)
+	}
+	return st.projectPeriods(today, nil, plans, startDay)
+}
+
 // planningBounds: a debt can be planned from its start date (always there
 // once set up: the day the loan began), else from the earliest of its first
 // matched payment, its creation day and its first snapshot, to the later of
@@ -282,7 +321,8 @@ func (s *Service) Views(ctx context.Context, scope model.DebtScope) ([]model.Deb
 // holding those days. The creation day is the stored one, taken in the
 // creator's timezone at creation, so every viewer sees the same start and a
 // later timezone change does not move it. A debt not set up has no end:
-// LastDay is zero.
+// LastDay is zero, and neither has one with no fixed payments whose plans do
+// not repay it (it stays plannable until they do).
 func planningBounds(st *debtState, proj model.Projection) (first, last time.Time) {
 	d := st.debt
 	if d.StartDate != nil {
@@ -304,9 +344,13 @@ func planningBounds(st *debtState, proj model.Projection) (first, last time.Time
 	case proj.PaidOff:
 		return first, proj.PaidOffAt
 	}
+	if hasNoFixedPayments(d) && !d.IsPaidOff() && proj.PayoffDate.IsZero() {
+		return first, time.Time{}
+	}
 	// A rate raised under the same payment repays later than the contract
-	// says: dues go on while a balance is left. proj carries no plans, so the
-	// bound does not depend on what it bounds.
+	// says: dues go on while a balance is left. proj carries no plans (but for
+	// a debt with no fixed payments), so the bound does not depend on what it
+	// bounds.
 	last = debtDate(d.Current.LastPaymentDate)
 	if !d.IsPaidOff() && proj.PayoffDate.After(last) {
 		last = debtDate(proj.PayoffDate)

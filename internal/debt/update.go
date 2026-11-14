@@ -94,12 +94,14 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 		default:
 			if in.hasPayment {
 				cur.Payment = in.payment.Round(digits)
-				if err := validatePayment(cur.Payment); err != nil {
-					return err
-				}
 			}
 			if in.hasSchedule {
 				cur.Schedule = in.schedule
+			}
+			if in.hasPayment || in.hasSchedule {
+				if err := validatePayment(cur.Payment, cur.Schedule); err != nil {
+					return err
+				}
 			}
 		}
 		cur.UpdatedAt = now
@@ -336,13 +338,14 @@ func (s *Service) followStartRate(ctx context.Context, debtID vo.Id, changes []*
 
 // laterConflict refuses a correction that leaves a statement balance before
 // the new start, or on or after the new last payment date while something is
-// still owed.
+// still owed (a debt with no fixed payments may still be owed past its
+// return-by date).
 func laterConflict(t, origin model.DebtTerms) error {
 	msg := "This conflicts with a balance you entered from a statement. Change or delete that reconciliation first."
 	if t.AsOf.Before(origin.AsOf) {
 		return fieldError("startDate", msg, errs.CodeDebtConflictsWithReconciliation)
 	}
-	if t.Balance.IsGreaterThan(vo.NewDecimal("0")) && !t.LastPaymentDate.After(t.AsOf) {
+	if t.Schedule != model.DebtScheduleNone && t.Balance.IsGreaterThan(vo.NewDecimal("0")) && !t.LastPaymentDate.After(t.AsOf) {
 		return fieldError("lastPaymentDate", msg, errs.CodeDebtConflictsWithReconciliation)
 	}
 	return nil

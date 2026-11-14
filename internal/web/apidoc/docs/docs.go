@@ -16507,6 +16507,10 @@ const docTemplate = `{
                 "moneyLeft": {
                     "type": "string"
                 },
+                "monthlyToFinish": {
+                    "description": "MonthlyToFinish is, for a debt with no fixed payments, what a month\nrepays it by its return-by date: the balance over the calendar months\nfrom the current one through the return-by month. \"\" for any other\nschedule, while not set up, paid off, with nothing owed or once that\nmonth is past.",
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -16842,6 +16846,9 @@ const docTemplate = `{
                 },
                 "isSetUp": {
                     "type": "integer"
+                },
+                "monthlyToFinish": {
+                    "type": "string"
                 },
                 "overpaymentLeft": {
                     "type": "string"

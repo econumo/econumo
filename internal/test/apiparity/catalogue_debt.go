@@ -473,6 +473,27 @@ func init() {
 		)
 	}})
 
+	// debt_no_fixed_payments: a loan from family with no payment schedule. A
+	// payment of 0 is refused for a monthly schedule and accepted with none;
+	// set up with 300 borrowed and a return-by date on the first of the month
+	// after next (three calendar months, the current one included, so 100 a
+	// month finishes it), it has no rate, so a rate change is refused.
+	register(Scenario{Name: "debt_no_fixed_payments", Calls: func() []Call {
+		var debtID string
+		return []Call{
+			{Label: "err:create-zero-payment-monthly", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: debtBody(map[string]any{"payment": "0", "schedule": "monthly"})},
+			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: debtBody(map[string]any{"payment": "0", "schedule": "none"}), CaptureIDInto: &debtID},
+			{Label: "setup", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "amountBorrowed": "300", "startDate": day(-14), "lastPaymentDate": month(2)}},
+			getDebt("get", "owner", &debtID),
+			{Label: "get-budget", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
+			{Label: "err:add-rate-change", Method: "POST", Path: "/api/v1/debt/add-debt-rate-change", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "date": day(-7), "annualRate": "5", "payment": "100"}},
+		}
+	}})
+
 	// debt_readonly: a lapsed-trial user may read but not write.
 	register(Scenario{Name: "debt_readonly", Calls: func() []Call {
 		return []Call{

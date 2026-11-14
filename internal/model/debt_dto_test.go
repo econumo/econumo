@@ -225,3 +225,23 @@ func TestAddDebtRateChangeRequest_Validate(t *testing.T) {
 		t.Errorf("delete without id: %v", got)
 	}
 }
+
+// "none" is a debt schedule only: with it the payment may be 0, and the
+// recurring transactions' schedule never takes it.
+func TestCreateDebtRequest_NoFixedPayments(t *testing.T) {
+	req := validDebtRequest()
+	req.Payment, req.Schedule = vo.NewFlexString("0"), "none"
+	if err := req.Validate(); err != nil {
+		t.Fatalf("none with a 0 payment: %v", err)
+	}
+	req.Schedule = "monthly"
+	if got := debtFieldCodes(t, req.Validate()); got["payment"] != errs.CodeOutOfRange {
+		t.Fatalf("monthly with a 0 payment: %v", got)
+	}
+	if _, ok := ParseRecurringSchedule("none"); ok {
+		t.Fatal("recurring transactions must not accept none")
+	}
+	if s, ok := ParseDebtSchedule("none"); !ok || s != DebtScheduleNone {
+		t.Fatalf("ParseDebtSchedule(none) = %q, %v", s, ok)
+	}
+}

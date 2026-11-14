@@ -87,7 +87,7 @@ func (s *Service) createDebt(ctx context.Context, userID vo.Id, req model.Create
 		d = &model.Debt{ID: s.repo.NextIdentity(), BudgetID: b.ID, CurrencyID: el.CurrencyID, ElementID: el.ID, ElementType: el.Type,
 			Status: model.DebtActive, StartDate: in.start, Payment: in.payment.Round(digits), Schedule: in.schedule,
 			CreatedDay: debtDate(now.In(loc)), CreatedAt: now, UpdatedAt: now}
-		if err := validatePayment(d.Payment); err != nil {
+		if err := validatePayment(d.Payment, d.Schedule); err != nil {
 			return err
 		}
 		return s.repo.Save(ctx, d)

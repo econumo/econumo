@@ -133,7 +133,10 @@ type ParentElementResult struct {
 // with and without those extras, and so are OverpaymentLeft and
 // BaseOverpaymentLeft. A debt not set up (IsSetUp 0) has no projection:
 // ClosingBalance and the payoff figures are "", PaymentsLeft 0,
-// ScheduledTotal and Upcoming "0".
+// ScheduledTotal and Upcoming "0". MonthlyToFinish is, for a debt with no
+// fixed payments, today's balance over the budget periods from the current
+// one through the one holding the return-by date (current included), "" as on
+// DebtResult.
 type ElementDebtResult struct {
 	Id                  string `json:"id"`
 	IsSetUp             int    `json:"isSetUp"`
@@ -146,6 +149,7 @@ type ElementDebtResult struct {
 	IsPaidOff           int    `json:"isPaidOff"`
 	OverpaymentLeft     string `json:"overpaymentLeft"`
 	BaseOverpaymentLeft string `json:"baseOverpaymentLeft"`
+	MonthlyToFinish     string `json:"monthlyToFinish"`
 }
 
 // LabelSpendResult is one reporting label in the budget's labels block. It has

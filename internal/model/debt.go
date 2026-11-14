@@ -17,6 +17,19 @@ const (
 
 func (t DebtElementType) Valid() bool { return t == DebtElementCategory || t == DebtElementEnvelope }
 
+// DebtScheduleNone is a debt with no fixed payments (a loan from family or a
+// friend): no dues and no interest, only a return-by date (the last payment
+// date). A debt schedule only: recurring transactions never take it.
+const DebtScheduleNone RecurringSchedule = "none"
+
+// ParseDebtSchedule accepts the recurring schedules and DebtScheduleNone.
+func ParseDebtSchedule(s string) (RecurringSchedule, bool) {
+	if RecurringSchedule(s) == DebtScheduleNone {
+		return DebtScheduleNone, true
+	}
+	return ParseRecurringSchedule(s)
+}
+
 // DebtStatus: a paid-off debt has an end (EndedAt) and is read-only.
 type DebtStatus string
 

@@ -2561,7 +2561,8 @@
       "start_in_future": "The start date must be today or earlier.",
       "not_set_up": "Finish setting up this debt first.",
       "conflicts_with_reconciliation": "This conflicts with a balance you entered from a statement. Change or delete that reconciliation first.",
-      "conflicts_with_rate_change": "This start date comes after a rate change. Delete that rate change first."
+      "conflicts_with_rate_change": "This start date comes after a rate change. Delete that rate change first.",
+      "no_fixed_payments": "This debt has no fixed payments, so it has no rate to change."
     },
     "authserver": {
       "disabled": "Connecting apps is not available on this server.",

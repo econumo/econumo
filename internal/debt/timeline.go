@@ -51,6 +51,7 @@ func timelineOf(st *debtState, today time.Time, months []time.Time, plans map[st
 		BasePayoffDate:      dateString(proj.BasePayoffDate),
 		OverpaymentLeft:     amountString(proj.OverpaymentLeft, digits),
 		BaseOverpaymentLeft: amountString(proj.BaseOverpaymentLeft, digits),
+		MonthlyToFinish:     monthlyToFinish(st.debt, proj, today, startDay, digits),
 	}
 	for key, m := range proj.Months {
 		tl.Months[key] = model.DebtTimelineMonth{ClosingBalance: amountString(m.ClosingBalance, digits), PaymentsLeft: m.PaymentsLeft,
