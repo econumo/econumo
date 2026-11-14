@@ -658,3 +658,101 @@ func TestDebtElementIDs_ListsPaidOffDebtsToo(t *testing.T) {
 		t.Fatalf("element ids = %v, want the loan and food categories once each", ids)
 	}
 }
+
+// update-envelope's currency moves the envelope's active debt with its row,
+// redoing its splits; a paid-off debt of the envelope keeps its currency.
+func TestUpdateEnvelope_CurrencyMovesTheActiveDebt(t *testing.T) {
+	h := newDebtHarness(t)
+	housing := h.envelope(t, "Housing", h.rent)
+	paid := h.setUpDebt(t, housing, "2026-01-01", "5000", "1000", "2026-06-01")
+	if _, err := h.debts.MarkDebtPaidOff(h.ctx, h.owner, model.MarkDebtPaidOffRequest{Id: paid, Date: "2026-02-15"}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+	from := "2026-03-01"
+	active := h.looseDebt(t, housing, &from)
+	h.spend(h.usd, h.rent, "", "500", time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC))
+	h.budgetAt(t, "2026-04-01")
+	if n := h.count(t, "SELECT COUNT(*) FROM debts_payments WHERE debt_id = ?", active); n != 1 {
+		t.Fatalf("splits before = %d, want 1", n)
+	}
+
+	if _, err := h.svc.UpdateEnvelope(h.ctx, h.owner, model.UpdateEnvelopeRequest{
+		BudgetId: h.budgetID, Id: housing, Name: "Housing", Icon: "home", CurrencyId: h.eurCur, Categories: []string{h.rent},
+	}); err != nil {
+		t.Fatalf("UpdateEnvelope: %v", err)
+	}
+	if got := h.debtCurrency(t, active); got != h.eurCur {
+		t.Errorf("active debt currency = %s, want EUR", got)
+	}
+	if got := h.debtCurrency(t, paid); got != fixture.USD {
+		t.Errorf("paid-off debt currency = %s, want it kept in USD", got)
+	}
+	if n := h.count(t, "SELECT COUNT(*) FROM debts_payments WHERE debt_id = ?", active); n != 0 {
+		t.Errorf("splits after the currency change = %d, want them dropped", n)
+	}
+	h.budgetAt(t, "2026-04-01")
+	if n := h.count(t, "SELECT COUNT(*) FROM debts_payments WHERE debt_id = ?", active); n != 1 {
+		t.Errorf("splits after the next sync = %d, want the payment split again", n)
+	}
+}
+
+func (h *debtHarness) paymentsOf(t *testing.T, debtID string) map[string]bool {
+	t.Helper()
+	rows, err := h.tdb.Raw.QueryContext(h.ctx, h.tdb.Rebind("SELECT transaction_id FROM debts_payments WHERE debt_id = ?"), debtID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		out[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// A category with a paid-off debt of its own moves into an envelope whose
+// debt, older, covers the same days: the category's payments up to its own
+// debt's end stay with that debt, the later ones go to the envelope's.
+func TestSync_CategorysOwnDebtWinsOverTheEnvelopes(t *testing.T) {
+	cases := []struct {
+		name          string
+		envelopeStart *string
+	}{
+		{"envelope debt with a start date", func() *string { s := "2025-12-01"; return &s }()},
+		{"envelope debt without one", nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newDebtHarness(t)
+			housing := h.envelope(t, "Housing", h.rent)
+			envDebt := h.looseDebt(t, housing, tc.envelopeStart)
+			own := h.setUpDebt(t, h.food, "2026-01-01", "5000", "1000", "2026-06-01")
+			if _, err := h.debts.MarkDebtPaidOff(h.ctx, h.owner, model.MarkDebtPaidOffRequest{Id: own, Date: "2026-03-01"}); err != nil {
+				t.Fatalf("MarkDebtPaidOff: %v", err)
+			}
+			if _, err := h.svc.MoveElement(h.ctx, h.owner, model.MoveElementRequest{BudgetId: h.budgetID, Id: h.food, EnvelopeId: &housing}); err != nil {
+				t.Fatalf("MoveElement: %v", err)
+			}
+			inside := h.spend(h.usd, h.food, "", "1000", time.Date(2026, 2, 1, 10, 0, 0, 0, time.UTC))
+			endDay := h.spend(h.usd, h.food, "", "1000", time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC))
+			after := h.spend(h.usd, h.food, "", "700", time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC))
+			rent := h.spend(h.usd, h.rent, "", "300", time.Date(2026, 2, 1, 10, 0, 0, 0, time.UTC))
+			h.budgetAt(t, "2026-04-01")
+
+			ownPays, envPays := h.paymentsOf(t, own), h.paymentsOf(t, envDebt)
+			if len(ownPays) != 2 || !ownPays[inside] || !ownPays[endDay] {
+				t.Errorf("own debt payments = %v, want the two up to its end", ownPays)
+			}
+			if len(envPays) != 2 || !envPays[after] || !envPays[rent] {
+				t.Errorf("envelope debt payments = %v, want the later food payment and rent", envPays)
+			}
+		})
+	}
+}

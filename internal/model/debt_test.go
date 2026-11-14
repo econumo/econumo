@@ -63,6 +63,37 @@ func TestAssignDebt(t *testing.T) {
 	}
 }
 
+// A payment inside a range of the category's own debt is that debt's, even
+// when the envelope's debt covering it is older and listed first.
+func TestAssignDebt_TheCategorysOwnDebtWins(t *testing.T) {
+	str := func(s string) *string { return &s }
+	day := func(m time.Month, d int) time.Time { return time.Date(2026, m, d, 0, 0, 0, 0, time.UTC) }
+	from, until := day(time.March, 1), day(time.May, 31)
+	envelope := DebtView{ID: "envelope", ElementType: DebtElementEnvelope, CategoryIDs: []string{"c", "d"}}
+	own := DebtView{ID: "own", ElementType: DebtElementCategory, ElementID: "c", CategoryIDs: []string{"c"}, From: &from, Until: &until}
+	views := []DebtView{envelope, own}
+	tests := []struct {
+		name string
+		cat  string
+		at   time.Time
+		want string
+	}{
+		{"before the own debt", "c", day(time.February, 28), "envelope"},
+		{"its first day", "c", from, "own"},
+		{"its last day", "c", until, "own"},
+		{"after its end", "c", day(time.June, 1), "envelope"},
+		{"another child of the envelope", "d", day(time.April, 1), "envelope"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := AssignDebt(views, str(tc.cat), nil, tc.at)
+			if !ok || got.ID != tc.want {
+				t.Fatalf("AssignDebt = %q, %v; want %q", got.ID, ok, tc.want)
+			}
+		})
+	}
+}
+
 func TestDebtView_PlanningBounds(t *testing.T) {
 	v := DebtView{FirstDay: ymd(2026, time.June, 12), LastDay: ymd(2027, time.June, 10),
 		StartMonth: ymd(2026, time.June, 1), EndMonth: ymd(2027, time.June, 1)}

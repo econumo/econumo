@@ -189,13 +189,24 @@ func DebtMatches(d DebtView, categoryID, tagID *string, at time.Time) bool {
 }
 
 // AssignDebt picks the debt a transaction pays. Ranges of one element's
-// debts never overlap and a category is in one element of a budget, so at
-// most one view matches.
+// debts never overlap, but a category's own debt can overlap the debt of the
+// envelope it now sits in (it moved in once its debt was paid off, or the
+// envelope's debt has no start date): a payment inside a range of the
+// category's own debt belongs to it, whatever the debts' age, any other to
+// the envelope's.
 func AssignDebt(views []DebtView, categoryID, tagID *string, at time.Time) (DebtView, bool) {
+	var found DebtView
+	var ok bool
 	for _, v := range views {
-		if DebtMatches(v, categoryID, tagID, at) {
+		if !DebtMatches(v, categoryID, tagID, at) {
+			continue
+		}
+		if v.ElementType == DebtElementCategory {
 			return v, true
 		}
+		if !ok {
+			found, ok = v, true
+		}
 	}
-	return DebtView{}, false
+	return found, ok
 }

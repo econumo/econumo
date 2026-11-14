@@ -144,6 +144,13 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 	// so it is read from the existing element row (default expense if missing).
 	envType := model.ElementEnvelope
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// The envelope's active debt follows its row's currency. The budget's
+		// row lock goes before any element row's.
+		if s.debts != nil {
+			if derr := s.debts.LockBudget(txCtx, budgetID); derr != nil {
+				return derr
+			}
+		}
 		// only a category joining the envelope can bring an active debt in
 		current, cerr := s.envelopes.EnvelopeCategoryIDs(txCtx, envelopeID)
 		if cerr != nil {
@@ -171,6 +178,11 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 			elementKeyOfEnvelope = el.SortKey
 			folderID = el.FolderID
 			envType = el.Type
+			if s.debts != nil {
+				if derr := s.debts.SetElementCurrency(txCtx, budgetID, envelopeID, curID); derr != nil {
+					return derr
+				}
+			}
 		}
 		if verr := s.validateEnvelopeCategories(txCtx, b, envType.IsIncomeSide(), req.Categories); verr != nil {
 			return verr

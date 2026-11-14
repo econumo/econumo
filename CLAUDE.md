@@ -1969,9 +1969,12 @@ data unreadable. Most are also asserted by the test suite.
   in the element's category (an envelope's current child categories), untagged (an expense counted
   on a tag row, or one on a savings member, is not a payment), dated on or after the debt's start
   date (any date while there is none; then after the end of the element's previous debt) and, once
-  paid off, on or before its end. There are no payee, tag or label filters and no rules; a
-  category sits in one element of a budget and an element's debts never overlap, so no conflict,
-  key or tiebreak exists. `debts_payments` (keyed `(debt_id, transaction_id)`; debt and interest,
+  paid off, on or before its end. There are no payee, tag or label filters and no rules, and an
+  element's debts never overlap. A category's own debt can overlap the debt of the envelope it now
+  sits in (it moved in once its own debt was paid off, or the envelope's debt has no start date):
+  a payment inside a range of the category's own debt belongs to that debt, whatever the debts'
+  age, any other to the envelope's (`model.AssignDebt`), so a payment counts on one debt of the
+  budget. `debts_payments` (keyed `(debt_id, transaction_id)`; debt and interest,
   the debt part being the amount less the interest, never stored) is materialized by the debt sync
   on read, budget by budget, in date order, under the budget's row lock and one DB transaction per
   budget; it reads and writes only that budget's debts' splits: stale splits of payments that
@@ -2073,7 +2076,7 @@ data unreadable. Most are also asserted by the test suite.
   followed by a double payment counts the second payment as extra and the dues a statement settles
   add only what was recorded in them; a start-day payment counts what it took off the amount
   borrowed (less its interest). The debt's currency follows its element: `change-element-currency`
-  on the row moves the element's ACTIVE debt to the new currency (`debt.Service.SetElementCurrency`,
+  on the row (and `update-envelope`'s currency on an envelope) moves the element's ACTIVE debt to the new currency (`debt.Service.SetElementCurrency`,
   called from the budget's currency write under the budget lock and in its transaction): stored
   numbers are kept and read in it, unconverted, the debt's stored splits are dropped so the next
   sync splits every payment again from its amount converted into it, and no snapshot is written; a
