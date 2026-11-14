@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/econumo/econumo/icons"
 	"github.com/econumo/econumo/internal/infra/ai"
 )
 
@@ -14,9 +15,9 @@ import (
 // finish-import review). Reply: savingsSchema.
 const classifySystem = `You help set up a personal budget. A savings account holds money the user is putting aside (a savings or deposit account, an emergency fund, a piggy bank, an investment or brokerage account kept for the future); everyday accounts are for spending (cards, checking, cash, wallets). Account names may be in any language; use the user's timezone and language to read local bank and product names. Decide for each account whether it is a savings account. Reply with JSON only, exactly {"savings":["<id>", ...]} listing the ids of the savings accounts; use an empty list when none is.`
 
-// iconRules: shared by both icon prompts; the icon list is the catalogue in icons.go.
+// iconRules: shared by both icon prompts; the icon list is the shared catalogue icons/icons.json.
 var iconRules = `Names may be in any language; use the user's timezone and language to read local bank and product names. ` +
-	`Use only icons from this list: ` + strings.Join(Icons, ", ") + `. `
+	`Use only icons from this list: ` + strings.Join(icons.Names, ", ") + `. `
 
 // categoryIconsSystem: reviewCategoryIcons, after a CSV import. Reply:
 // categoryIconsSchema.
@@ -42,8 +43,16 @@ var (
 
 // iconsSchema is {key:[{id, icon}]}, icon limited to the catalogue.
 func iconsSchema(name, key string) *ai.Schema {
-	enum, _ := json.Marshal(Icons)
+	enum, _ := json.Marshal(icons.Names)
 	return &ai.Schema{Name: name, JSON: json.RawMessage(`{"type":"object","properties":{"` + key + `":{"type":"array","items":{"type":"object","properties":{` +
 		`"id":{"type":"string"},"icon":{"type":"string","enum":` + string(enum) + `}},` +
 		`"required":["id","icon"],"additionalProperties":false}}},"required":["` + key + `"],"additionalProperties":false}`)}
 }
+
+var iconSet = func() map[string]bool {
+	m := make(map[string]bool, len(icons.Names))
+	for _, i := range icons.Names {
+		m[i] = true
+	}
+	return m
+}()

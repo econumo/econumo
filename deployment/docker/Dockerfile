@@ -17,9 +17,11 @@ RUN npm install -g pnpm@11
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
-# web/src/app/i18n.ts imports ../../../locales/*.json, so it must land one
-# level above WORKDIR, mirroring the repo-root layout.
+# web/src/app/i18n.ts imports ../../../locales/*.json (and web/src/lib/icons.ts
+# ../../../icons/icons.json), so they must land one level above WORKDIR,
+# mirroring the repo-root layout.
 COPY locales/ /build/locales/
+COPY icons/ /build/icons/
 # Vite inlines ECONUMO_VERSION (envPrefix in vite.config.ts) as the UI version label.
 # Pass --build-arg ECONUMO_VERSION=v1.2.3 to set it; defaults to "dev".
 # ECONUMO_COMMIT is the source revision (the build has no .git to read it from).
@@ -36,8 +38,10 @@ RUN go mod download
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 # internal/infra/i18n imports github.com/econumo/econumo/locales, which lives
-# at the module root alongside cmd/ and internal/.
+# at the module root alongside cmd/ and internal/; internal/onboarding imports
+# the icons package the same way.
 COPY locales/ ./locales/
+COPY icons/ ./icons/
 # The built SPA is embedded into the binary (web/embed.go, go:embed): the
 # image and the downloadable release binary share one code path, and the
 # runtime stage no longer carries a separate /app/web.
