@@ -12,7 +12,7 @@ import (
 )
 
 // MarkDebtPaidOff ends a set-up debt as of a date (default today), after its
-// start and no later than today: a statement of 0 as of that date (replacing
+// start, on or after its latest statement and no later than today: a statement of 0 as of that date (replacing
 // one entered that day), and the debt becomes paid off, its payments after
 // the date no longer counting. A debt that still owes may be marked: the
 // zero says the loan was closed (paid off or refinanced).
@@ -25,18 +25,18 @@ func (s *Service) markDebtPaidOff(ctx context.Context, userID vo.Id, req model.M
 	if err != nil {
 		return nil, err
 	}
-	var date time.Time
-	if strings.TrimSpace(req.Date) != "" {
-		if date, err = time.Parse(datetime.DateLayout, req.Date); err != nil {
-			return nil, fieldError("date", "This value is not valid.", errs.CodeInvalidFormat)
-		}
-	}
 	d, b, err := s.editableDebt(ctx, userID, id)
 	if err != nil {
 		return nil, err
 	}
 	if err := paidOffWritable(d); err != nil {
 		return nil, err
+	}
+	var date time.Time
+	if strings.TrimSpace(req.Date) != "" {
+		if date, err = time.Parse(datetime.DateLayout, req.Date); err != nil {
+			return nil, fieldError("date", "This value is not valid.", errs.CodeInvalidFormat)
+		}
 	}
 	if _, err := s.syncBudget(ctx, scopeOf(b)); err != nil {
 		return nil, err
@@ -54,6 +54,15 @@ func (s *Service) markDebtPaidOff(ctx context.Context, userID vo.Id, req model.M
 			return err
 		}
 		if !date.After(*cur.StartDate) || date.After(today) {
+			return fieldError("date", "This value is out of range.", errs.CodeOutOfRange)
+		}
+		// the closing 0 must be the latest snapshot: a later statement would
+		// stay the debt's current terms
+		snaps, err := s.repo.Snapshots(ctx, []vo.Id{cur.ID})
+		if err != nil {
+			return err
+		}
+		if n := len(snaps); n > 1 && date.Before(snaps[n-1].AsOf) {
 			return fieldError("date", "This value is out of range.", errs.CodeOutOfRange)
 		}
 		zero := *cur.Current

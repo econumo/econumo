@@ -176,3 +176,34 @@ func TestSync_NewDebtWithoutStartFollowsThePreviousEnd(t *testing.T) {
 		t.Fatal("the payment on the end day belongs to the paid-off debt")
 	}
 }
+
+// A paid-off date before the latest statement is refused: that statement
+// would stay the debt's current terms. On the statement's day the 0 replaces
+// it.
+func TestMarkDebtPaidOff_NotBeforeTheLatestStatement(t *testing.T) {
+	e := newEnv(t)
+	res := e.loanFromJanuary(t)
+	if _, err := e.svc.ReconcileDebt(context.Background(), e.uid(), model.ReconcileDebtRequest{Id: res.Id,
+		Balance: vo.NewFlexString("6000"), BalanceDate: "2026-03-10"}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := e.svc.MarkDebtPaidOff(context.Background(), e.uid(), model.MarkDebtPaidOffRequest{Id: res.Id, Date: "2026-03-01"})
+	requireField(t, err, "date", errs.CodeOutOfRange)
+
+	got := e.markPaidOff(t, res.Id, "2026-03-10")
+	if got.Status != "paid_off" || got.IsPaidOff != 1 || got.CurrentBalance != "0" || got.EndedAt != "2026-03-10" {
+		t.Fatalf("result = %+v, want paid off with nothing owed", got)
+	}
+	if snaps := e.snapshots(t, res.Id); len(snaps) != 2 || !snaps[1].Balance.IsZero() {
+		t.Fatalf("snapshots = %+v, want the origin and the 0 replacing the statement", snaps)
+	}
+}
+
+// A guest is refused before the date is read.
+func TestMarkDebtPaidOff_GuestBeforeTheDate(t *testing.T) {
+	e := newEnv(t)
+	res := e.loanFromJanuary(t)
+	guest := e.partner(t, "guest", roleGuest)
+	_, err := e.svc.MarkDebtPaidOff(context.Background(), uidOf(guest), model.MarkDebtPaidOffRequest{Id: res.Id, Date: "soon"})
+	requireForbidden(t, err)
+}
