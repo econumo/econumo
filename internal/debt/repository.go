@@ -55,6 +55,12 @@ type Repository interface {
 	// on a shared date the origin, written first, sorts first by created_at
 	// (then by its UUIDv7 id, minted earlier).
 	Snapshots(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtSnapshot, error)
+	// RateChanges are ordered by debt, effective_date.
+	RateChanges(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtRateChange, error)
+	// SaveRateChange replaces the debt's change on the same effective date.
+	SaveRateChange(ctx context.Context, c *model.DebtRateChange) error
+	// DeleteRateChange reports whether the debt had such a change.
+	DeleteRateChange(ctx context.Context, debtID, id vo.Id) (bool, error)
 	Splits(ctx context.Context, debtIDs []vo.Id) ([]model.DebtSplit, error)
 	// InsertSplit upserts on (debt, transaction).
 	InsertSplit(ctx context.Context, s model.DebtSplit) error

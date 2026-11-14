@@ -307,6 +307,14 @@ type DebtSnapshot struct {
 	CreatedAt       time.Time
 }
 
+type DebtRateChange struct {
+	ID, DebtID    vo.Id
+	EffectiveDate time.Time
+	AnnualRate    vo.DecimalNumber
+	Payment       vo.DecimalNumber
+	CreatedAt     time.Time
+}
+
 type DebtSplit struct {
 	DebtID, TransactionID vo.Id
 	Interest              vo.DecimalNumber

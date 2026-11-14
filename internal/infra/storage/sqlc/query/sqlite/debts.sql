@@ -65,3 +65,12 @@ INSERT INTO debts_payments (debt_id, transaction_id, interest)
 SELECT CAST(sqlc.arg(debt_id) AS TEXT), t.id, CAST(sqlc.arg(interest) AS TEXT)
 FROM transactions t WHERE t.id = sqlc.arg(transaction_id)
 ON CONFLICT (debt_id, transaction_id) DO UPDATE SET interest = excluded.interest;
+
+-- name: UpsertDebtRateChange :exec
+INSERT INTO debts_rate_changes (id, debt_id, effective_date, annual_rate, payment, created_at)
+VALUES (sqlc.arg(id), sqlc.arg(debt_id), CAST(sqlc.arg(effective_date) AS TEXT), sqlc.arg(annual_rate), sqlc.arg(payment), sqlc.arg(created_at))
+ON CONFLICT (debt_id, effective_date) DO UPDATE
+SET id = excluded.id, annual_rate = excluded.annual_rate, payment = excluded.payment, created_at = excluded.created_at;
+
+-- name: DeleteDebtRateChange :execrows
+DELETE FROM debts_rate_changes WHERE id = sqlc.arg(id) AND debt_id = sqlc.arg(debt_id);

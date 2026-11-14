@@ -54,3 +54,11 @@ func (sqliteQuerier) DeleteDebtSnapshot(ctx context.Context, db backend.DBTX, id
 func (sqliteQuerier) InsertDebtSplit(ctx context.Context, db backend.DBTX, p splitParams) error {
 	return sqlitegen.New(db).InsertDebtSplit(ctx, p)
 }
+
+func (sqliteQuerier) UpsertDebtRateChange(ctx context.Context, db backend.DBTX, p rateChangeParams) error {
+	return sqlitegen.New(db).UpsertDebtRateChange(ctx, p)
+}
+
+func (sqliteQuerier) DeleteDebtRateChange(ctx context.Context, db backend.DBTX, p deleteRateChangeParams) (int64, error) {
+	return sqlitegen.New(db).DeleteDebtRateChange(ctx, p)
+}

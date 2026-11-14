@@ -75,3 +75,11 @@ func (pgsqlQuerier) DeleteDebtSnapshot(ctx context.Context, db backend.DBTX, id 
 func (pgsqlQuerier) InsertDebtSplit(ctx context.Context, db backend.DBTX, p splitParams) error {
 	return pgsqlgen.New(db).InsertDebtSplit(ctx, pgsqlgen.InsertDebtSplitParams(p))
 }
+
+func (pgsqlQuerier) UpsertDebtRateChange(ctx context.Context, db backend.DBTX, p rateChangeParams) error {
+	return pgsqlgen.New(db).UpsertDebtRateChange(ctx, pgsqlgen.UpsertDebtRateChangeParams(p))
+}
+
+func (pgsqlQuerier) DeleteDebtRateChange(ctx context.Context, db backend.DBTX, p deleteRateChangeParams) (int64, error) {
+	return pgsqlgen.New(db).DeleteDebtRateChange(ctx, pgsqlgen.DeleteDebtRateChangeParams(p))
+}

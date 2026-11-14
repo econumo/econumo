@@ -19,6 +19,23 @@ func (q *Queries) DeleteDebt(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteDebtRateChange = `-- name: DeleteDebtRateChange :execrows
+DELETE FROM debts_rate_changes WHERE id = $1 AND debt_id = $2
+`
+
+type DeleteDebtRateChangeParams struct {
+	ID     string
+	DebtID string
+}
+
+func (q *Queries) DeleteDebtRateChange(ctx context.Context, arg DeleteDebtRateChangeParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteDebtRateChange, arg.ID, arg.DebtID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteDebtRules = `-- name: DeleteDebtRules :exec
 DELETE FROM debts_rules WHERE debt_id = $1
 `
@@ -292,6 +309,34 @@ func (q *Queries) UpsertDebt(ctx context.Context, arg UpsertDebtParams) error {
 		arg.CreatedDay,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+	)
+	return err
+}
+
+const upsertDebtRateChange = `-- name: UpsertDebtRateChange :exec
+INSERT INTO debts_rate_changes (id, debt_id, effective_date, annual_rate, payment, created_at)
+VALUES ($1, $2, $3::text::date, $4, $5, $6)
+ON CONFLICT (debt_id, effective_date) DO UPDATE
+SET id = excluded.id, annual_rate = excluded.annual_rate, payment = excluded.payment, created_at = excluded.created_at
+`
+
+type UpsertDebtRateChangeParams struct {
+	ID            string
+	DebtID        string
+	EffectiveDate string
+	AnnualRate    string
+	Payment       string
+	CreatedAt     time.Time
+}
+
+func (q *Queries) UpsertDebtRateChange(ctx context.Context, arg UpsertDebtRateChangeParams) error {
+	_, err := q.db.ExecContext(ctx, upsertDebtRateChange,
+		arg.ID,
+		arg.DebtID,
+		arg.EffectiveDate,
+		arg.AnnualRate,
+		arg.Payment,
+		arg.CreatedAt,
 	)
 	return err
 }

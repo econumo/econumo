@@ -201,6 +201,15 @@ type DebtsPayment struct {
 	Interest      string
 }
 
+type DebtsRateChange struct {
+	ID            string
+	DebtID        string
+	EffectiveDate time.Time
+	AnnualRate    string
+	Payment       string
+	CreatedAt     time.Time
+}
+
 type DebtsRule struct {
 	ID         string
 	DebtID     string

@@ -701,3 +701,69 @@ func TestRepo_CandidateTransactionsOnTheGivenAccounts(t *testing.T) {
 		}
 	}
 }
+
+func TestRateChanges_SaveListReplaceDelete(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	d := e.debt(fixture.NewID())
+	if err := e.repo.Save(ctx, d); err != nil {
+		t.Fatal(err)
+	}
+	other := e.debt(fixture.NewID())
+	if err := e.repo.Save(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	change := func(debtID vo.Id, date, rate, payment string) *model.DebtRateChange {
+		at, err := time.Parse("2006-01-02", date)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return &model.DebtRateChange{ID: e.repo.NextIdentity(), DebtID: debtID, EffectiveDate: at,
+			AnnualRate: vo.NewDecimal(rate), Payment: vo.NewDecimal(payment), CreatedAt: fixedTime}
+	}
+	for _, c := range []*model.DebtRateChange{
+		change(d.ID, "2026-12-01", "4.1", "3100"),
+		change(d.ID, "2026-09-01", "3.69", "3000.5"),
+	} {
+		if err := e.repo.SaveRateChange(ctx, c); err != nil {
+			t.Fatalf("SaveRateChange: %v", err)
+		}
+	}
+	got, err := e.repo.RateChanges(ctx, []vo.Id{d.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].EffectiveDate.Format("2006-01-02") != "2026-09-01" || got[0].AnnualRate.String() != "3.69" ||
+		got[0].Payment.String() != "3000.5" || got[1].AnnualRate.String() != "4.1" {
+		t.Fatalf("rate changes = %+v", got)
+	}
+
+	replaced := change(d.ID, "2026-09-01", "3.25", "2900")
+	if err := e.repo.SaveRateChange(ctx, replaced); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = e.repo.RateChanges(ctx, []vo.Id{d.ID})
+	if len(got) != 2 || got[0].AnnualRate.String() != "3.25" || got[0].Payment.String() != "2900" {
+		t.Fatalf("after replace = %+v", got)
+	}
+
+	ok, err := e.repo.DeleteRateChange(ctx, other.ID, got[0].ID)
+	if err != nil || ok {
+		t.Fatalf("delete under another debt = %v, %v", ok, err)
+	}
+	ok, err = e.repo.DeleteRateChange(ctx, d.ID, got[0].ID)
+	if err != nil || !ok {
+		t.Fatalf("delete own = %v, %v", ok, err)
+	}
+	got, _ = e.repo.RateChanges(ctx, []vo.Id{d.ID})
+	if len(got) != 1 {
+		t.Fatalf("after delete = %+v", got)
+	}
+
+	if err := e.repo.Delete(ctx, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ = e.repo.RateChanges(ctx, []vo.Id{d.ID}); len(got) != 0 {
+		t.Fatalf("rows survived the debt: %+v", got)
+	}
+}

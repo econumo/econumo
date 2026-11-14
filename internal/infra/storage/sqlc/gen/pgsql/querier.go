@@ -59,6 +59,7 @@ type Querier interface {
 	DeleteDeadOAuthAccessTokens(ctx context.Context, arg DeleteDeadOAuthAccessTokensParams) (int64, error)
 	DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuthGrantsParams) (int64, error)
 	DeleteDebt(ctx context.Context, id string) error
+	DeleteDebtRateChange(ctx context.Context, arg DeleteDebtRateChangeParams) (int64, error)
 	DeleteDebtRules(ctx context.Context, debtID string) error
 	DeleteDebtSnapshot(ctx context.Context, id string) error
 	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
@@ -612,6 +613,7 @@ type Querier interface {
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	// The budget is written once, at insert: a debt never moves to another budget.
 	UpsertDebt(ctx context.Context, arg UpsertDebtParams) error
+	UpsertDebtRateChange(ctx context.Context, arg UpsertDebtRateChangeParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error

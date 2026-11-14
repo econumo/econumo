@@ -22,12 +22,14 @@ import (
 )
 
 type (
-	debtRow              = sqlitegen.Debt
-	upsertParams         = sqlitegen.UpsertDebtParams
-	ruleParams           = sqlitegen.InsertDebtRuleParams
-	snapshotParams       = sqlitegen.InsertDebtSnapshotParams
-	updateSnapshotParams = sqlitegen.UpdateDebtSnapshotParams
-	splitParams          = sqlitegen.InsertDebtSplitParams
+	debtRow                = sqlitegen.Debt
+	upsertParams           = sqlitegen.UpsertDebtParams
+	ruleParams             = sqlitegen.InsertDebtRuleParams
+	snapshotParams         = sqlitegen.InsertDebtSnapshotParams
+	updateSnapshotParams   = sqlitegen.UpdateDebtSnapshotParams
+	splitParams            = sqlitegen.InsertDebtSplitParams
+	rateChangeParams       = sqlitegen.UpsertDebtRateChangeParams
+	deleteRateChangeParams = sqlitegen.DeleteDebtRateChangeParams
 )
 
 type querier interface {
@@ -42,6 +44,8 @@ type querier interface {
 	UpdateDebtSnapshot(ctx context.Context, db backend.DBTX, p updateSnapshotParams) error
 	DeleteDebtSnapshot(ctx context.Context, db backend.DBTX, id string) error
 	InsertDebtSplit(ctx context.Context, db backend.DBTX, p splitParams) error
+	UpsertDebtRateChange(ctx context.Context, db backend.DBTX, p rateChangeParams) error
+	DeleteDebtRateChange(ctx context.Context, db backend.DBTX, p deleteRateChangeParams) (int64, error)
 }
 
 type Repo struct {
@@ -443,6 +447,54 @@ func (r *Repo) Snapshots(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtSna
 			Payment: vo.NewDecimal(payment), Schedule: model.RecurringSchedule(schedule), LastPaymentDate: day(last), CreatedAt: createdAt})
 	}
 	return out, rows.Err()
+}
+
+func (r *Repo) RateChanges(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtRateChange, error) {
+	if len(debtIDs) == 0 {
+		return nil, nil
+	}
+	query := "SELECT id, debt_id, effective_date, annual_rate, payment, created_at FROM debts_rate_changes WHERE debt_id IN (" +
+		placeholders(r.driver, len(debtIDs)) + ") ORDER BY debt_id, effective_date"
+	rows, err := r.db(ctx).QueryContext(ctx, query, idArgs(debtIDs)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*model.DebtRateChange
+	for rows.Next() {
+		var id, debtID, rate, payment string
+		var effective, createdAt time.Time
+		if err := rows.Scan(&id, &debtID, &effective, &rate, &payment, &createdAt); err != nil {
+			return nil, err
+		}
+		cid, err := vo.ParseId(id)
+		if err != nil {
+			return nil, err
+		}
+		did, err := vo.ParseId(debtID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, &model.DebtRateChange{ID: cid, DebtID: did, EffectiveDate: day(effective),
+			AnnualRate: vo.NewDecimal(rate), Payment: vo.NewDecimal(payment), CreatedAt: createdAt})
+	}
+	return out, rows.Err()
+}
+
+func (r *Repo) SaveRateChange(ctx context.Context, c *model.DebtRateChange) error {
+	return r.q.UpsertDebtRateChange(ctx, r.db(ctx), rateChangeParams{
+		ID:            c.ID.String(),
+		DebtID:        c.DebtID.String(),
+		EffectiveDate: dateText(c.EffectiveDate),
+		AnnualRate:    c.AnnualRate.String(),
+		Payment:       c.Payment.String(),
+		CreatedAt:     c.CreatedAt,
+	})
+}
+
+func (r *Repo) DeleteRateChange(ctx context.Context, debtID, id vo.Id) (bool, error) {
+	n, err := r.q.DeleteDebtRateChange(ctx, r.db(ctx), deleteRateChangeParams{ID: id.String(), DebtID: debtID.String()})
+	return n > 0, err
 }
 
 func (r *Repo) Splits(ctx context.Context, debtIDs []vo.Id) ([]model.DebtSplit, error) {
