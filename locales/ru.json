@@ -1796,23 +1796,26 @@
         "balance_hint": "Баланс на конец месяца."
       },
       "debts": {
-        "title": "Долги",
-        "paid": "Выплачено",
-        "left": "Осталось",
-        "left_hint": "Осталось выплатить на конец месяца.",
         "payoff_by": "Ожидаемое погашение: {date}",
         "payments_left": "Остался {count} платёж | Осталось {count} платежа | Осталось {count} платежей",
         "extra_effect": "Погашение на {months} месяц раньше, переплата меньше на {amount} | Погашение на {months} месяца раньше, переплата меньше на {amount} | Погашение на {months} месяцев раньше, переплата меньше на {amount}",
         "extra_effect_earlier": "Погашение на {months} месяц раньше | Погашение на {months} месяца раньше | Погашение на {months} месяцев раньше",
         "track": "Отслеживать как долг",
-        "details": "Подробнее"
+        "details": "Подробнее",
+        "debt_details": "Подробнее о долге",
+        "delete": "Удалить долг",
+        "past": "Прошлые долги ({count})",
+        "past_title": "Прошлые долги",
+        "borrowed": "Взято в долг: {amount}",
+        "section": "Долг",
+        "left_at_end": "Осталось выплатить на конец месяца: {amount}",
+        "not_set_up": "Ещё не настроен"
       },
       "phone": {
         "row_aria": "{name}, бюджет {budget}, потрачено {spent}",
         "child_aria": "{name}, потрачено {spent}",
         "income_row_aria": "{name}, запланировано {planned}, получено {received}",
         "savings_row_aria": "{name}, запланировано {planned}, отложено {saved}",
-        "debt_row_aria": "{name}, запланировано {planned}, выплачено {paid}",
         "available": "доступно {amount}",
         "actual": "Факт",
         "balance": "Баланс на конец месяца"

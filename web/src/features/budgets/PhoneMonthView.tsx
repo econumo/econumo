@@ -6,13 +6,13 @@ import { EntityIcon } from '@/components/EntityIcon'
 import { moneyFormat } from '@/lib/money'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { cmp, isZero } from '@/lib/decimal'
-import type { BudgetCommentDto, BudgetDebtElementDto, BudgetDto, BudgetElementDto, BudgetSavingsElementDto, LabelSpendDto } from '@/api/dto/budget'
+import type { BudgetCommentDto, BudgetDto, BudgetElementDto, BudgetSavingsElementDto, LabelSpendDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { BudgetElementType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import type { BudgetBuckets, FolderBucket } from './budgetMath'
-import { budgetTotals, carryOver, debtTotals, displayAvailable, elementDisplayName, makeBudgetExchange, overBudget, rowProgress, tagGroupStats, totalsWithDebts, totalsWithSavings } from './budgetMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, overBudget, rowProgress, tagGroupStats, totalsWithSavings } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import type { IncomeGroup, PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
@@ -20,11 +20,12 @@ import { sheetPlanHint } from './phoneMonth'
 import { planHintClass } from './planHint'
 import { currentPeriod, periodStartDayOf } from './period'
 import { commentCellKey } from './queries'
+import { ElementDebtLine } from './debtRow'
+import { showsDebtLine } from './debtSummary'
 import { segmentTagGroups } from './tagGroups'
 
 const INCOME_FOLD_ID = '__phone_income__'
 const SAVINGS_FOLD_ID = '__phone_savings__'
-const DEBTS_FOLD_ID = '__phone_debts__'
 const EMPTY = '—'
 // name | Budget | Spent: the heading row, folder headers and rows share one grid; the
 // Budget column grows to the left for a carry-over lead-in while its right edge stays put
@@ -48,6 +49,8 @@ export interface PhoneMonthViewProps {
   onOpenSheet: (target: SheetTarget) => void
   /** rows whose only action is their transaction list (children, reporting tags) */
   onShowTransactions: (target: BudgetTransactionsTarget) => void
+  /** the caller plans in the unarchived budget, online: a debt not set up offers Finish setup */
+  canPlanDebts?: boolean
 }
 
 interface RowProps {
@@ -78,6 +81,8 @@ interface RowProps {
   grouped?: { owner?: string }
   /** a sum line (a same-name tag group): grey name and figures */
   muted?: boolean
+  /** a line under the name and figures (the debt the row carries) */
+  subline?: ReactNode
 }
 
 // with a bar under it, the row's first line gives up its bottom padding and minimum
@@ -107,6 +112,7 @@ function PhoneRow({
   folderLike = false,
   grouped,
   muted = false,
+  subline,
 }: RowProps) {
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
   const pad = folderLike ? 'min-h-9 py-1' : cellPad(progress !== null)
@@ -173,6 +179,7 @@ function PhoneRow({
           ) : null}
         </span>
       </button>
+      {subline ? <div className={`col-span-full -mt-1 pr-2 pb-1 ${grouped ? 'pl-16' : 'pl-9'}`}>{subline}</div> : null}
       {progress !== null ? (
         // the bar spans the row, not the name column: a carry-over widens the Budget
         // column per row, which would leave every bar a different length
@@ -286,7 +293,18 @@ function TotalLine({ testId, label, value, negative = false }: { testId: string;
   )
 }
 
-export function PhoneMonthView({ budget, buckets, currencies, selectedDate, dataPeriod, planMonth, commentsByCell, onOpenSheet, onShowTransactions }: PhoneMonthViewProps) {
+export function PhoneMonthView({
+  budget,
+  buckets,
+  currencies,
+  selectedDate,
+  dataPeriod,
+  planMonth,
+  commentsByCell,
+  onOpenSheet,
+  onShowTransactions,
+  canPlanDebts = false,
+}: PhoneMonthViewProps) {
   const { t } = useTranslation()
   const unfolded = useBudgetPeriodStore((s) => s.unfoldedElements)
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
@@ -303,7 +321,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, data
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const planFigure = (target: SheetTarget, planned: string, currencyId: Id | null) => {
     const hint = sheetPlanHint(target, { month: selectedDate, startDay: periodStartDayOf(budget.meta) })
-    const elementId = target.kind === 'expense' ? target.element.id : target.kind === 'savings' || target.kind === 'debt' ? target.row.id : target.kind === 'plan' ? target.cell.element.id : null
+    const elementId = target.kind === 'expense' ? target.element.id : target.kind === 'savings' ? target.row.id : target.kind === 'plan' ? target.cell.element.id : null
     return {
       first: planned === '' ? EMPTY : fmt(planned, currencyId),
       firstClass: planHintClass(hint),
@@ -385,6 +403,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, data
           toggle={expandable ? { open, onToggle: () => toggleElement(element.id) } : undefined}
           folderLike={isUncategorized}
           grouped={grouped}
+          subline={showsDebtLine(element.debt, canPlanDebts) ? <ElementDebtLine debt={element.debt} canPlan={canPlanDebts} /> : undefined}
         />
         {expandable && open ? element.children.map((child) => childLine(child, child.spent, element, !!grouped)) : null}
       </div>
@@ -549,27 +568,6 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, data
     )
   }
 
-  const debtRow = (row: BudgetDebtElementDto) => {
-    const planned = row.budgeted === '' ? EMPTY : fmt(row.budgeted, row.currencyId)
-    const paid = future ? EMPTY : fmt(row.spent, row.currencyId)
-    return (
-      <PhoneRow
-        key={row.id}
-        testId={`phone-debts-row-${row.id}`}
-        icon={row.icon}
-        name={row.name}
-        tag={tagOf(row.currencyId)}
-        {...planFigure({ kind: 'debt', row }, row.budgeted, row.currencyId)}
-        second={paid}
-        {...planBar(row.budgeted, row.spent)}
-        commented={commented(row.id)}
-        muted={row.isPaidOff === 1}
-        ariaLabel={t('budgets.page.phone.debt_row_aria', { name: row.name, planned, paid })}
-        onOpen={() => onOpenSheet({ kind: 'debt', row })}
-      />
-    )
-  }
-
   const labelRow = (label: LabelSpendDto) => {
     const spent = future ? EMPTY : fmt(label.spent)
     return (
@@ -587,19 +585,15 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, data
   }
 
   const exchangeFn = makeBudgetExchange(budget, currencies)
-  // debt payments are expenses: the totals count them, the Debts card regroups them
-  const expenseTotals = totalsWithDebts(budgetTotals(buckets), budget, exchangeFn)
+  const expenseTotals = budgetTotals(buckets)
   const savingsRows = [...(budget.structure.savings ?? [])].sort((a, b) => a.isArchived - b.isArchived || a.position - b.position)
   const savingsSum = savingsRows.length > 0 ? totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, exchangeFn) : null
-  const debtRows = [...(budget.structure.debts ?? [])].sort((a, b) => a.position - b.position)
-  const debtSum = debtRows.length > 0 ? debtTotals(budget, exchangeFn) : null
-  const debtsOpen = !!unfolded[DEBTS_FOLD_ID]
   const labels = budget.structure.labels ?? []
   const labelsOpen = !!unfolded[REPORTING_TAGS_FOLD_ID]
   const incomeOpen = !!unfolded[INCOME_FOLD_ID]
   const savingsOpen = !!unfolded[SAVINGS_FOLD_ID]
   const hasFolders = buckets.withFolder.length > 0
-  const showFlows = planMonth !== null || savingsSum !== null || debtSum !== null
+  const showFlows = planMonth !== null || savingsSum !== null
 
   return (
     <div className="flex flex-col gap-3" data-testid="phone-month-view">
@@ -637,19 +631,6 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, data
                   second={future ? EMPTY : fmt(savingsSum.spent)}
                 />
                 {savingsOpen ? savingsRows.map(savingsRow) : null}
-              </Card>
-            ) : null}
-            {debtSum ? (
-              <Card testId="phone-debts-card">
-                <SectionSummary
-                  testId="phone-debts-summary"
-                  open={debtsOpen}
-                  onToggle={() => toggleElement(DEBTS_FOLD_ID)}
-                  label={t('budgets.page.debts.title')}
-                  first={fmt(debtSum.budgeted)}
-                  second={future ? EMPTY : fmt(debtSum.spent)}
-                />
-                {debtsOpen ? debtRows.map(debtRow) : null}
               </Card>
             ) : null}
           </div>

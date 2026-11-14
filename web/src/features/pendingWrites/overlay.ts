@@ -133,7 +133,7 @@ export function applyLimitToBudget(
 ): BudgetDto {
   const budgeted = form.amount ?? ''
   const isBudgeted = form.amount === null ? (0 as const) : (1 as const)
-  const { savings, debts } = budget.structure
+  const { savings } = budget.structure
   // from the current month on a savings row's closing balance still expects
   // its unmet plan, so the edit moves it by the change in that gap
   const projected = form.period >= currentPeriod(periodStartDayOf(budget.meta))
@@ -161,16 +161,6 @@ export function applyLimitToBudget(
             ),
           }
         : {}),
-      // a debt row's available carries over: it moves by the change in plan
-      ...(debts
-        ? {
-            debts: debts.map((row) =>
-              row.id === form.elementId
-                ? { ...row, budgeted, isBudgeted, available: add(row.available, sub(budgeted || '0', row.budgeted || '0')) }
-                : row,
-            ),
-          }
-        : {}),
     },
   }
 }
@@ -185,8 +175,8 @@ export function overlayBudget(budget: BudgetDto, ops: PendingOp[], budgetId: Id,
   return out
 }
 
-// A plan row's id is an element's, a savings row's savings account's or a debt
-// row's debt's; the sets never collide, so one patch covers every array.
+// A plan row's id is an element's or a savings row's savings account's; the sets
+// never collide, so one patch covers both arrays.
 export function patchPlanCells(
   plan: BudgetPlanDto | null | undefined,
   elementId: Id,
@@ -197,14 +187,13 @@ export function patchPlanCells(
   }
   const patchRow = <C extends PlanCellDto, T extends { id: Id; cells: C[] }>(row: T): T =>
     row.id === elementId ? { ...row, cells: row.cells.map((c, i) => patch(c, i)) } : row
-  const { savings, debts } = plan.structure
+  const { savings } = plan.structure
   return {
     ...plan,
     structure: {
       ...plan.structure,
       elements: plan.structure.elements.map(patchRow),
       ...(savings ? { savings: savings.map(patchRow) } : {}),
-      ...(debts ? { debts: debts.map(patchRow) } : {}),
     },
   }
 }

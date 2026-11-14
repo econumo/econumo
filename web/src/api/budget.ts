@@ -106,7 +106,6 @@ export async function getBudget(id: Id, date: string): Promise<BudgetDto> {
       ...item.structure,
       elements: item.structure.elements.map(withEmptyPlan),
       ...(item.structure.savings ? { savings: item.structure.savings.map(withEmptyPlan) } : {}),
-      ...(item.structure.debts ? { debts: item.structure.debts.map(withEmptyPlan) } : {}),
     },
   }
 }
@@ -203,9 +202,6 @@ export interface BudgetTransactionsParams {
   /** every transaction on this account (the server accepts only the budget's
    *  savings accounts for now); exclusive with every other selector */
   accountId?: Id
-  /** a debt row's payments from the everyday accounts; exclusive with every
-   *  other selector */
-  debtId?: Id
 }
 
 export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionListDto> {
@@ -218,7 +214,6 @@ export async function getBudgetTransactions(params: BudgetTransactionsParams): P
   if (params.transfers) query.set('transfers', '1')
   if (params.income) query.set('income', '1')
   if (params.accountId) query.set('accountId', params.accountId)
-  if (params.debtId) query.set('debtId', params.debtId)
   const response = await api.get<Envelope<Partial<BudgetTransactionListDto>>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )

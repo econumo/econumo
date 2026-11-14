@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { ElementDebtDto } from '@/api/dto/budget'
+import { fixtureElementDebt } from '@/test/fixtures'
 import { planCellView, shownActual } from './planCell'
 
 const cat = BudgetElementType.CATEGORY
@@ -105,8 +107,7 @@ describe('planCellView for a savings account', () => {
   })
 })
 
-describe('planCellView for a debt', () => {
-  const debt = BudgetElementType.DEBT
+describe('planCellView on a row carrying a debt', () => {
   // the debt hint reads today's month from the clock
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -115,41 +116,28 @@ describe('planCellView for a debt', () => {
   afterEach(() => {
     vi.useRealTimers()
   })
-  const cell = (over: Partial<{ actual: string; planned: string; closingBalance: string; paymentsLeft: number; scheduledTotal: string; isPlannable: 0 | 1 }> = {}) => ({
-    actual: '1000', planned: '1500', closingBalance: '23000', paymentsLeft: 23, scheduledTotal: '1000', upcoming: '0', isPlannable: 1 as const, ...over,
+  const cell = (planned: string, debt: Partial<ElementDebtDto> | null = {}) => ({
+    actual: '1000', planned, upcoming: '900', ...(debt ? { debt: fixtureElementDebt({ paymentsLeft: 23, ...debt }) } : {}),
   })
 
-  it('shows the month-end balance and the payments left beside the plan', () => {
-    expect(planCellView({ type: debt, cell: cell(), month: sel, selected: sel, startDay: 1 })).toEqual({
-      actual: '23000', dash: false, plan: '1500', over: false, balance: true, hint: null, paymentsLeft: 23,
-    })
-    // ahead of today it is the projection
-    expect(planCellView({ type: debt, cell: cell({ actual: '0' }), month: '2026-12-01', selected: sel, startDay: 1 })).toMatchObject({ actual: '23000', balance: true })
-  })
-
-  it('a paid-off month leaves no payments', () => {
-    expect(planCellView({ type: debt, cell: cell({ closingBalance: '0', paymentsLeft: 0 }), month: sel, selected: sel, startDay: 1 })).toMatchObject({ actual: '0', paymentsLeft: 0 })
-  })
-
-  it('a plan below the scheduled dues is red from the current month on, never before', () => {
-    expect(planCellView({ type: debt, cell: cell({ planned: '800' }), month: sel, selected: sel, startDay: 1 }).hint).toEqual({ kind: 'short' })
-    expect(planCellView({ type: debt, cell: cell({ planned: '800' }), month: '2026-09-01', selected: sel, startDay: 1 }).hint).toBeNull()
-    expect(planCellView({ type: debt, cell: cell({ planned: '' }), month: sel, selected: sel, startDay: 1 }).hint).toBeNull()
-  })
-
-  it('a debt not set up shows what was paid, like any row, and no payments left', () => {
-    expect(planCellView({ type: debt, notSetUp: true, cell: cell({ closingBalance: '', paymentsLeft: 0, scheduledTotal: '0' }), month: sel, selected: sel, startDay: 1 })).toMatchObject({
-      actual: '1000', plan: '1500', balance: false, paymentsLeft: null,
-    })
-    // ahead of today nothing is paid yet
-    expect(planCellView({ type: debt, notSetUp: true, cell: cell({ closingBalance: '', paymentsLeft: 0, actual: '0' }), month: '2026-12-01', selected: sel, startDay: 1 })).toMatchObject({
-      actual: null, balance: false,
+  it('keeps the element\'s own figures and adds the payments left', () => {
+    expect(planCellView({ type: cat, cell: cell('1500'), month: sel, selected: sel, startDay: 1 })).toEqual({
+      actual: '1000', dash: false, plan: '1500', over: false, balance: false, hint: null, paymentsLeft: 23,
     })
   })
 
-  it('outside the debt\'s life with nothing owed the cell is blank', () => {
-    expect(planCellView({ type: debt, cell: cell({ actual: '0', planned: '', closingBalance: '0', paymentsLeft: 0, isPlannable: 0 }), month: sel, selected: sel, startDay: 1 })).toEqual({
-      actual: null, dash: false, plan: null, over: false, balance: false, hint: null, paymentsLeft: null,
-    })
+  it('a paid-off debt reads as such; a debt not set up has no count', () => {
+    expect(planCellView({ type: cat, cell: cell('1500', { isPaidOff: 1, paymentsLeft: 0 }), month: sel, selected: sel, startDay: 1 }).paidOff).toBe(true)
+    expect(planCellView({ type: cat, cell: cell('1500', { isSetUp: 0, paymentsLeft: 0, scheduledTotal: '0' }), month: sel, selected: sel, startDay: 1 }).paymentsLeft).toBeNull()
+  })
+
+  it('the hint is the debt\'s: a plan below the month\'s scheduled amount, from the current month on', () => {
+    expect(planCellView({ type: cat, cell: cell('800'), month: sel, selected: sel, startDay: 1 }).hint).toEqual({ kind: 'short' })
+    expect(planCellView({ type: cat, cell: cell('800'), month: '2026-09-01', selected: sel, startDay: 1 }).hint).toBeNull()
+    expect(planCellView({ type: cat, cell: cell(''), month: sel, selected: sel, startDay: 1 }).hint).toBeNull()
+    // 1,200 covers the 1,000 scheduled: what is still due on the category does not count
+    expect(planCellView({ type: cat, cell: cell('1200'), month: sel, selected: sel, startDay: 1 }).hint).toBeNull()
+    // without the debt the same cell is short of spent + due
+    expect(planCellView({ type: cat, cell: cell('1200', null), month: sel, selected: sel, startDay: 1 }).hint).toEqual({ kind: 'short' })
   })
 })

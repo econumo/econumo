@@ -1796,23 +1796,26 @@
         "balance_hint": "Saldo am Monatsende."
       },
       "debts": {
-        "title": "Schulden",
-        "paid": "Gezahlt",
-        "left": "Offen",
-        "left_hint": "Am Monatsende noch zu zahlen.",
         "payoff_by": "Voraussichtlich abbezahlt im {date}",
         "payments_left": "Noch {count} Zahlung | Noch {count} Zahlungen",
         "extra_effect": "{months} Monat früher abbezahlt, {amount} weniger Zinsen | {months} Monate früher abbezahlt, {amount} weniger Zinsen",
         "extra_effect_earlier": "{months} Monat früher abbezahlt | {months} Monate früher abbezahlt",
         "track": "Als Schuld verfolgen",
-        "details": "Details"
+        "details": "Details",
+        "debt_details": "Schulddetails",
+        "delete": "Schuld löschen",
+        "past": "Frühere Schulden ({count})",
+        "past_title": "Frühere Schulden",
+        "borrowed": "Geliehen: {amount}",
+        "section": "Schuld",
+        "left_at_end": "Am Monatsende noch zu zahlen: {amount}",
+        "not_set_up": "Noch nicht eingerichtet"
       },
       "phone": {
         "row_aria": "{name}, Budget {budget}, ausgegeben {spent}",
         "child_aria": "{name}, ausgegeben {spent}",
         "income_row_aria": "{name}, geplant {planned}, empfangen {received}",
         "savings_row_aria": "{name}, geplant {planned}, gespart {saved}",
-        "debt_row_aria": "{name}, geplant {planned}, gezahlt {paid}",
         "available": "{amount} verfügbar",
         "actual": "Ist",
         "balance": "Saldo am Monatsende"

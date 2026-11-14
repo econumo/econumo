@@ -13,10 +13,8 @@ export interface PlanCellViewInput {
   month: string
   /** the caller's current month: later months have no actuals worth showing, earlier ones no plan hint */
   selected: string
-  /** the budget's period start day (a debt's plan hint) */
+  /** the budget's period start day (the hint of a row carrying a debt) */
   startDay: number
-  /** a debt without its terms: it has no balance, so its cells show what was paid */
-  notSetUp?: boolean
 }
 
 export interface PlanCellView {
@@ -31,8 +29,11 @@ export interface PlanCellView {
   balance: boolean
   /** display only: an expense plan short of spent + the month's upcoming payments */
   hint: PlanHint
-  /** debt rows only: payments left after the month, null where the debt does not run */
+  /** a row carrying a debt in this month: its payments left after the month, null
+   *  while it has no count (not set up, or nothing left) */
   paymentsLeft?: number | null
+  /** the debt in force this month is paid off */
+  paidOff?: true
 }
 
 /** A zero actual is only worth a mark next to a plan, as "— · 55"; on its own the
@@ -49,26 +50,19 @@ function shownPlan(planned: string): string | null {
   return planned === '' ? null : planned
 }
 
-export function planCellView({ type, id, cell, month, selected, startDay, notSetUp = false }: PlanCellViewInput): PlanCellView {
+export function planCellView({ type, id, cell, month, selected, startDay }: PlanCellViewInput): PlanCellView {
   if (!cell) {
     return { actual: null, dash: false, plan: null, over: false, balance: false, hint: null }
   }
-  // a debt shows what is still owed at the month's end (projected ahead), as savings
-  // shows its balance; outside its life, with nothing owed, only a payment made then
-  // shows. Its one hint: a plan below the month's scheduled dues.
-  if (type === BudgetElementType.DEBT) {
-    const runs = cell.isPlannable !== 0 || !isZero(cell.closingBalance ?? '0')
-    const plan = shownPlan(cell.planned)
-    const debtHint = month < selected ? null : planHint({ planned: cell.planned, spent: cell.actual, scheduled: cell.scheduledTotal, month, startDay, kind: 'debt' })
-    if (!runs || notSetUp || cell.closingBalance === undefined) {
-      const paid = month <= selected ? cell.actual : null
-      return { ...shownActual(paid, plan !== null), plan, over: false, balance: false, hint: debtHint, paymentsLeft: null }
-    }
-    return { actual: cell.closingBalance, dash: false, plan, over: false, balance: true, hint: debtHint, paymentsLeft: cell.paymentsLeft ?? null }
-  }
   const past = month <= selected
-  // the hint compares the plan with what the month needs (saved, for savings), never a balance
-  const hint = month < selected || id === UNCATEGORIZED_ID ? null : planHint({ planned: cell.planned, spent: cell.actual, upcoming: cell.upcoming, kind: planHintKind(type) })
+  // the hint compares the plan with what the month needs (saved, for savings), never a
+  // balance; on a row carrying a debt it is the debt's: a plan below the scheduled dues
+  const hint =
+    month < selected || id === UNCATEGORIZED_ID
+      ? null
+      : cell.debt
+        ? planHint({ planned: cell.planned, spent: cell.actual, scheduled: cell.debt.scheduledTotal, month, startDay, kind: 'debt' })
+        : planHint({ planned: cell.planned, spent: cell.actual, upcoming: cell.upcoming, kind: planHintKind(type) })
   // where a savings account stands says more than what went in that month; ahead of
   // today it is the projection (unmet plans still to come), flat without a plan
   if (type === BudgetElementType.SAVINGS && cell.closingBalance !== undefined) {
@@ -76,11 +70,20 @@ export function planCellView({ type, id, cell, month, selected, startDay, notSet
   }
   const actual = past ? cell.actual : null
   const plan = shownPlan(cell.planned)
-  return {
+  const view: PlanCellView = {
     ...shownActual(actual, plan !== null),
     plan,
     over: past && type !== BudgetElementType.SAVINGS && isOverspent(type, cell),
     balance: false,
     hint,
+  }
+  if (!cell.debt) {
+    return view
+  }
+  const { isSetUp, isPaidOff, paymentsLeft } = cell.debt
+  return {
+    ...view,
+    paymentsLeft: isSetUp === 1 && isPaidOff === 0 && paymentsLeft > 0 ? paymentsLeft : null,
+    ...(isSetUp === 1 && isPaidOff === 1 ? { paidOff: true as const } : {}),
   }
 }

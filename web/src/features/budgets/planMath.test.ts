@@ -1,3 +1,4 @@
+import { fixtureElementDebt } from '@/test/fixtures'
 import { describe, expect, it } from 'vitest'
 import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto, PlanSavingsElementDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
@@ -1250,84 +1251,23 @@ describe('planSelectionSum', () => {
 })
 
 describe('debts in the totals', () => {
-  const months = ['2026-06-01', '2026-07-01', '2026-08-01']
-  const now = new Date(2026, 6, 15) // July: June past, July current, August future
-  const eurRate = (period: string) => ({
-    period,
-    rates: [
-      { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: period, periodEnd: period },
-      { currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '2', periodStart: period, periodEnd: period },
-    ],
-  })
-  const debtCells: [string, string][] = [
-    ['400', '500'], // past: actual
-    ['300', '500'], // current: max(actual, plan)
-    ['0', '500'], // future: the plan
-  ]
-  const food = (extra: [string, string][] | null) =>
-    mkEl({
-      id: 'food',
-      type: BudgetElementType.CATEGORY,
-      name: 'Food',
-      currencyId: 'cur-eur',
-      cells: [0, 1, 2].map((i) => ({
-        actual: extra ? add('100', extra[i][0]) : '100',
-        planned: extra ? add('150', extra[i][1]) : '150',
-      })),
-    })
-  const base = (elements: PlanElementDto[], debts: BudgetPlanDto['structure']['debts']) =>
-    mkPlan({
-      months,
-      openingBalances: [{ currencyId: 'cur-usd', amount: '1000' }],
-      currencyRates: months.map(eurRate),
-      structure: { folders: [], elements, debts },
-    })
-  const debt = (cells: { actual: string; planned: string; isPlannable: 0 | 1 }[]) => ({
-    id: 'debt-1', type: BudgetElementType.DEBT, name: 'Loan', icon: 'home', currencyId: 'cur-eur', position: 0,
-    payoffDate: '', basePayoffDate: '', overpaymentLeft: '0', baseOverpaymentLeft: '0', isPaidOff: 0 as const, isSetUp: 1 as const,
-    cells: cells.map((c) => ({ ...c, closingBalance: '0', paymentsLeft: 0, scheduledTotal: '0', upcoming: '0' })),
-  })
-
-  it('a debt row counts exactly as its payments and plans did inside a category row', () => {
-    // pre-feature: the payments and the plan sat on the Food row; now they moved to the debt row
-    const before = base([food(debtCells)], [])
-    const after = base([food(null)], [debt(debtCells.map(([actual, planned]) => ({ actual, planned, isPlannable: 1 })))])
-    const exBefore = makePlanExchange(before, [usd, eur])
-    const exAfter = makePlanExchange(after, [usd, eur])
-    const tBefore = planTotals(before, exBefore, now)
-    const tAfter = planTotals(after, exAfter, now)
-    expect(tAfter).toEqual(tBefore)
-    expect(balanceRow(after, tAfter, exAfter, now)).toEqual(balanceRow(before, tBefore, exBefore, now))
-    // June 400 EUR -> 200, July max(300, 500) -> 250, August 500 -> 250 on top of Food's own
-    expect(tAfter.map((t) => t.effectiveExpense)).toEqual(['250', '325', '325'])
-    expect(tAfter[1].expensePlanned).toBe('325')
-    expect(tAfter[2].effectiveExpense).toBe('325')
-  })
-
-  it('a plan outside the debt\'s life counts nowhere', () => {
-    const plan = base([], [debt([
-      { actual: '0', planned: '', isPlannable: 0 },
-      { actual: '0', planned: '500', isPlannable: 0 },
-      { actual: '0', planned: '500', isPlannable: 1 },
-    ])])
-    const totals = planTotals(plan, makePlanExchange(plan, [usd, eur]), now)
-    expect(totals.map((t) => t.expensePlanned)).toEqual(['0', '0', '250'])
-    expect(totals.map((t) => t.effectiveExpense)).toEqual(['0', '0', '250'])
-  })
-
-  it('planGroupSums reads a debt row\'s month-end balance as its figure', () => {
-    const row = mkEl({
-      id: 'd', type: BudgetElementType.DEBT, name: 'Loan',
-      cells: [
-        { actual: '100', planned: '120', closingBalance: '900' },
-        { actual: '0', planned: '', closingBalance: '780' },
-      ],
-    })
-    const plan = mkPlan()
-    const ex = makePlanExchange(plan, [usd, eur])
-    expect(planGroupSums([row], plan.months, (m) => plan.months.indexOf(m), ex, 'balance')).toEqual([
-      { actual: '900', planned: '120' },
-      { actual: '780', planned: '0' },
-    ])
+  it('a debt on a row changes nothing in the totals: the money is the element\'s own', () => {
+    const cells = [
+      { actual: '100', planned: '150' },
+      { actual: '120', planned: '150' },
+      { actual: '0', planned: '150' },
+    ]
+    const food = (debt: boolean) =>
+      mkEl({
+        id: 'food',
+        type: BudgetElementType.CATEGORY,
+        name: 'Food',
+        cells: cells.map((c) => (debt ? { ...c, debt: fixtureElementDebt() } : c)),
+        ...(debt ? { debt: fixtureElementDebt() } : {}),
+      })
+    const without = mkPlan({ structure: { folders: [], elements: [food(false)] } })
+    const withDebt = mkPlan({ structure: { folders: [], elements: [food(true)] } })
+    const ex = makePlanExchange(without, [usd, eur])
+    expect(planTotals(withDebt, ex)).toEqual(planTotals(without, ex))
   })
 })

@@ -1796,23 +1796,26 @@
         "balance_hint": "Saldo no fim do mês."
       },
       "debts": {
-        "title": "Dívidas",
-        "paid": "Pago",
-        "left": "Em falta",
-        "left_hint": "Falta pagar no fim do mês.",
         "payoff_by": "Liquidação prevista: {date}",
         "payments_left": "Falta {count} pagamento | Faltam {count} pagamentos",
         "extra_effect": "Liquidada {months} mês mais cedo, menos {amount} de juros | Liquidada {months} meses mais cedo, menos {amount} de juros",
         "extra_effect_earlier": "Liquidada {months} mês mais cedo | Liquidada {months} meses mais cedo",
         "track": "Acompanhar como dívida",
-        "details": "Detalhes"
+        "details": "Detalhes",
+        "debt_details": "Detalhes da dívida",
+        "delete": "Eliminar dívida",
+        "past": "Dívidas anteriores ({count})",
+        "past_title": "Dívidas anteriores",
+        "borrowed": "Emprestado: {amount}",
+        "section": "Dívida",
+        "left_at_end": "Falta pagar no fim do mês: {amount}",
+        "not_set_up": "Ainda não configurada"
       },
       "phone": {
         "row_aria": "{name}, orçamento {budget}, gasto {spent}",
         "child_aria": "{name}, gasto {spent}",
         "income_row_aria": "{name}, planeado {planned}, recebido {received}",
         "savings_row_aria": "{name}, planeado {planned}, poupado {saved}",
-        "debt_row_aria": "{name}, planeado {planned}, pago {paid}",
         "available": "{amount} disponível",
         "actual": "Real",
         "balance": "Saldo no fim do mês"

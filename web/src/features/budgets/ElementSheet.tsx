@@ -10,11 +10,12 @@ import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/bud
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
+import type { DebtDetailsTab } from '@/app/uiStore'
 import { DebtExtraNote } from './debtRow'
-import { pluralPick } from '@/lib/plural'
+import { useDebtSummary } from './debtSummary'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
-import { sheetCell, sheetIcon, sheetPlanHint, sheetSetsPlan } from './phoneMonth'
+import { sheetCell, sheetDebt, sheetIcon, sheetPlanHint, sheetSetsPlan } from './phoneMonth'
 import { planHintClass } from './planHint'
 import { formatPlanMonth } from './planMath'
 import { currentPeriod } from './period'
@@ -39,12 +40,14 @@ export interface ElementSheetProps {
   onOpenComments: () => void
   /** absent: no transaction list for this target */
   onShowTransactions?: () => void
-  /** a debt's own details (terms history, payments with their split), for every reader */
-  onDetails?: () => void
   /** absent: nothing to edit (Uncategorized) */
   onEdit?: () => void
-  /** false keeps the edit button visible but inactive; on a debt, whether its setup can be finished */
+  /** false keeps the edit button visible but inactive */
   canEdit?: boolean
+  /** the review of the debt the row carries, for every reader; absent: no Debt section */
+  onDebtDetails?: (debtId: Id, tab: DebtDetailsTab) => void
+  /** the caller plans in the unarchived budget, online: a debt not set up offers Finish setup */
+  canPlanDebt?: boolean
 }
 
 interface Figure {
@@ -70,11 +73,13 @@ export function ElementSheet({
   onSetAmount,
   onOpenComments,
   onShowTransactions,
-  onDetails,
   onEdit,
   canEdit = false,
+  onDebtDetails,
+  canPlanDebt = false,
 }: ElementSheetProps) {
   const { t, i18n } = useTranslation()
+  const debtSummary = useDebtSummary()
   if (!target) {
     return null
   }
@@ -94,6 +99,7 @@ export function ElementSheet({
   const fmt = (amount: string) => `${fmtIn(amount, currency)}${foreign && currency ? ` ${currency.code}` : ''}`
   const actual = (amount: string) => (future ? EMPTY : fmt(amount))
   const hint = sheetPlanHint(target, { month, startDay })
+  const debt = sheetDebt(target)
   const planFigure = (key: string, figureLabel: string, planned: string): Figure => ({
     key,
     label: figureLabel,
@@ -128,18 +134,6 @@ export function ElementSheet({
       }
     }
     actualInBase = el.budgetSpent
-  } else if (target.kind === 'debt') {
-    const row = target.row
-    figures.push(planFigure('planned', label.planned, row.budgeted))
-    figures.push({ key: 'paid', label: t('budgets.page.debts.paid'), value: actual(row.spent) })
-    // a debt not set up knows no balance; its owner finishes the setup from Details
-    if (row.isSetUp === 0) {
-      figures.push({ key: 'left', label: t('budgets.page.debts.left'), value: EMPTY })
-    } else {
-      figures.push({ key: 'left', label: t('budgets.page.debts.left'), value: fmt(row.closingBalance) })
-      stateSentence = row.isPaidOff === 1 ? t('debts.list.paid_off') : pluralPick(t('budgets.page.debts.payments_left'), row.paymentsLeft, i18n.language)
-    }
-    actualInBase = row.budgetSpent
   } else if (target.kind === 'label') {
     figures.push({ key: 'spent', label: label.spent, value: actual(target.label.spent) })
     actualInBase = target.label.spent
@@ -195,7 +189,33 @@ export function ElementSheet({
             {stateSentence}
           </p>
         ) : null}
-        {target.kind === 'debt' ? <DebtExtraNote row={target.row} currency={currency} /> : null}
+        {debt && onDebtDetails ? (
+          <div className="flex items-start gap-2 border-t pt-3" data-testid="sheet-debt">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="text-[13px] text-muted-foreground">{t('budgets.page.debts.section')}</span>
+              {debt.isSetUp === 1 ? (
+                <>
+                  <span className="text-sm">{debtSummary(debt)}</span>
+                  {debt.isPaidOff === 0 ? (
+                    <span className="text-xs text-muted-foreground">{t('budgets.page.debts.left_at_end', { amount: fmt(debt.closingBalance) })}</span>
+                  ) : null}
+                  <DebtExtraNote row={debt} currency={currency} />
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">{t('budgets.page.debts.not_set_up')}</span>
+              )}
+            </div>
+            {debt.isSetUp === 0 && canPlanDebt ? (
+              <Button type="button" variant="secondary" size="sm" className="shrink-0" onClick={() => onDebtDetails(debt.id, 'settings')}>
+                {t('debts.terms.finish_setup')}
+              </Button>
+            ) : (
+              <Button type="button" variant="secondary" size="sm" className="shrink-0" onClick={() => onDebtDetails(debt.id, 'overview')}>
+                {t('budgets.page.debts.details')}
+              </Button>
+            )}
+          </div>
+        ) : null}
         {foreign && baseCurrency ? (
           <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
             {!future ? (
@@ -236,17 +256,12 @@ export function ElementSheet({
             ) : null}
           </div>
         ) : null}
-        {canSetAmount || onShowTransactions || onDetails ? (
+        {canSetAmount || onShowTransactions ? (
           <div className="flex gap-3 [&>button]:h-11 [&>button]:flex-1">
             {/* the primary action on the right, as in every other dialog's action row */}
             {onShowTransactions ? (
               <Button type="button" variant="secondary" onClick={onShowTransactions}>
                 {t('budgets.page.sheet.transactions')}
-              </Button>
-            ) : null}
-            {onDetails ? (
-              <Button type="button" variant="secondary" onClick={onDetails}>
-                {target.kind === 'debt' && target.row.isSetUp === 0 && canEdit ? t('debts.terms.finish_setup') : t('budgets.page.debts.details')}
               </Button>
             ) : null}
             {canSetAmount ? (

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureBudgets, fixtureDebtRow, fixtureOwner, fixtureWireBudget, fixtureWirePlan } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureElementDebt, fixtureOwner, fixtureWireBudget, fixtureWirePlan } from '@/test/fixtures'
 import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -203,33 +203,24 @@ it('useSetLimit refreshes the budget\'s later months: a changed budget moves wha
   expect(queryClient.getQueryState(otherBudget)?.isInvalidated).toBe(false)
 })
 
-describe('useSetLimit on a debt row', () => {
-  const withDebt = () => ({ ...fixtureWireBudget, structure: { ...fixtureWireBudget.structure, debts: [fixtureDebtRow()] } })
+describe('useSetLimit on an element carrying a debt', () => {
   beforeEach(() => {
     server.use(http.post('*/api/v1/budget/set-limit', () => HttpResponse.json({ success: true, message: '', data: {} })))
   })
 
-  it('patches the plan and moves the carried Available by the change', async () => {
+  it('patches the element\'s plan; the debt\'s figures wait for the server', async () => {
     const { queryClient, wrapper } = makeWrapper()
     const key = [...queryKeys.budget, 'b1', '2026-09-01']
-    // planned 1500, available 600
-    queryClient.setQueryData(key, withDebt())
+    const withDebt = {
+      ...fixtureWireBudget,
+      structure: { ...fixtureWireBudget.structure, elements: fixtureWireBudget.structure.elements.map((el) => (el.id === 'cat-food' ? { ...el, debt: fixtureElementDebt() } : el)) },
+    }
+    queryClient.setQueryData(key, withDebt)
     const { result } = renderHook(() => useSetLimit(), { wrapper })
-    result.current.mutate({ budgetId: 'b1', elementId: 'debt-1', period: '2026-09-01', amount: '2000' })
+    result.current.mutate({ budgetId: 'b1', elementId: 'cat-food', period: '2026-09-01', amount: '2000' })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    const row = queryClient.getQueryData<BudgetDto>(key)?.structure.debts?.[0]
-    expect(row).toMatchObject({ budgeted: '2000', isBudgeted: 1, available: '1100' })
-  })
-
-  it('clearing the plan leaves no plan and takes it out of Available', async () => {
-    const { queryClient, wrapper } = makeWrapper()
-    const key = [...queryKeys.budget, 'b1', '2026-09-01']
-    queryClient.setQueryData(key, withDebt())
-    const { result } = renderHook(() => useSetLimit(), { wrapper })
-    result.current.mutate({ budgetId: 'b1', elementId: 'debt-1', period: '2026-09-01', amount: null })
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    const row = queryClient.getQueryData<BudgetDto>(key)?.structure.debts?.[0]
-    expect(row).toMatchObject({ budgeted: '', isBudgeted: 0, available: '-900' })
+    const row = queryClient.getQueryData<BudgetDto>(key)?.structure.elements.find((el) => el.id === 'cat-food')
+    expect(row).toMatchObject({ budgeted: '2000', isBudgeted: 1, debt: fixtureElementDebt() })
   })
 })
 

@@ -84,11 +84,6 @@ function budgetCell(elementId: Id): Cell<BudgetDto, BudgetCell> {
       if (element) {
         return { budgeted: element.budgeted, isBudgeted: element.isBudgeted } as BudgetCell
       }
-      // a debt row's edit moves its available only: its closing balance is the server's
-      const debt = budget.structure.debts?.find((r) => r.id === elementId)
-      if (debt) {
-        return { budgeted: debt.budgeted, isBudgeted: debt.isBudgeted, available: debt.available } as BudgetCell
-      }
       const row = budget.structure.savings?.find((r) => r.id === elementId)
       if (!row) {
         return undefined
@@ -108,9 +103,6 @@ function budgetCell(elementId: Id): Cell<BudgetDto, BudgetCell> {
         ...(budget.structure.savings
           ? { savings: budget.structure.savings.map((row) => (row.id === elementId ? { ...row, ...value } : row)) }
           : {}),
-        ...(budget.structure.debts
-          ? { debts: budget.structure.debts.map((row) => (row.id === elementId ? { ...row, ...value } : row)) }
-          : {}),
       },
     }),
     same: (a, b) => a.budgeted === b.budgeted,
@@ -121,9 +113,7 @@ function planCell(elementId: Id, monthIndex: number): Cell<BudgetPlanDto, string
   return {
     read: (plan) => {
       const row =
-        plan.structure.elements.find((el) => el.id === elementId) ??
-        plan.structure.savings?.find((r) => r.id === elementId) ??
-        plan.structure.debts?.find((r) => r.id === elementId)
+        plan.structure.elements.find((el) => el.id === elementId) ?? plan.structure.savings?.find((r) => r.id === elementId)
       return row?.cells[monthIndex]?.planned
     },
     write: (plan, planned) => patchPlanCells(plan, elementId, (c, i) => (i === monthIndex ? { ...c, planned } : c)) ?? plan,

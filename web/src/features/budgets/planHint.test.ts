@@ -69,13 +69,9 @@ describe('planHintKind', () => {
   it('maps savings', () => {
     expect(planHintKind(BudgetElementType.SAVINGS)).toBe('savings')
   })
-
-  it('maps debts', () => {
-    expect(planHintKind(BudgetElementType.DEBT)).toBe('debt')
-  })
 })
 
-describe('planHint on a debt row', () => {
+describe('planHint on a debt-carrying row', () => {
   const thisMonth = currentPeriod(1)
 
   it('a plan below the scheduled amount is red, from the current month on', () => {
@@ -98,7 +94,7 @@ describe('planHint on a debt row', () => {
   })
 })
 
-describe('planHint on a debt row in a shifted budget', () => {
+describe('planHint on a debt-carrying row in a shifted budget', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     // 10 August is in the July period of a day-16 budget

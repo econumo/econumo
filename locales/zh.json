@@ -1796,23 +1796,26 @@
         "balance_hint": "月末余额。"
       },
       "debts": {
-        "title": "债务",
-        "paid": "已还",
-        "left": "剩余",
-        "left_hint": "月末待还金额。",
         "payoff_by": "预计{date}还清",
         "payments_left": "还剩 {count} 笔还款",
         "extra_effect": "提前 {months} 个月还清，少付 {amount} 利息与费用",
         "extra_effect_earlier": "提前 {months} 个月还清",
         "track": "作为债务跟踪",
-        "details": "详情"
+        "details": "详情",
+        "debt_details": "债务详情",
+        "delete": "删除债务",
+        "past": "过往债务（{count}）",
+        "past_title": "过往债务",
+        "borrowed": "借款 {amount}",
+        "section": "债务",
+        "left_at_end": "月末待还：{amount}",
+        "not_set_up": "尚未设置"
       },
       "phone": {
         "row_aria": "{name}，预算 {budget}，已支出 {spent}",
         "child_aria": "{name}，已支出 {spent}",
         "income_row_aria": "{name}，计划 {planned}，已收款 {received}",
         "savings_row_aria": "{name}，计划 {planned}，已储蓄 {saved}",
-        "debt_row_aria": "{name}，计划 {planned}，已还 {paid}",
         "available": "可用 {amount}",
         "actual": "实际",
         "balance": "月末余额"

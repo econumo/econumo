@@ -1796,23 +1796,26 @@
         "balance_hint": "Saldo aan het einde van de maand."
       },
       "debts": {
-        "title": "Schulden",
-        "paid": "Betaald",
-        "left": "Resterend",
-        "left_hint": "Nog te betalen aan het einde van de maand.",
         "payoff_by": "Naar verwachting afbetaald in {date}",
         "payments_left": "Nog {count} betaling | Nog {count} betalingen",
         "extra_effect": "{months} maand eerder afbetaald, {amount} minder rente | {months} maanden eerder afbetaald, {amount} minder rente",
         "extra_effect_earlier": "{months} maand eerder afbetaald | {months} maanden eerder afbetaald",
         "track": "Volgen als schuld",
-        "details": "Details"
+        "details": "Details",
+        "debt_details": "Schulddetails",
+        "delete": "Schuld verwijderen",
+        "past": "Eerdere schulden ({count})",
+        "past_title": "Eerdere schulden",
+        "borrowed": "Geleend: {amount}",
+        "section": "Schuld",
+        "left_at_end": "Nog te betalen aan het einde van de maand: {amount}",
+        "not_set_up": "Nog niet ingesteld"
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, uitgegeven {spent}",
         "child_aria": "{name}, uitgegeven {spent}",
         "income_row_aria": "{name}, gepland {planned}, ontvangen {received}",
         "savings_row_aria": "{name}, gepland {planned}, gespaard {saved}",
-        "debt_row_aria": "{name}, gepland {planned}, betaald {paid}",
         "available": "{amount} beschikbaar",
         "actual": "Werkelijk",
         "balance": "Saldo aan het einde van de maand"

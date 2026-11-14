@@ -42,8 +42,6 @@ export function budgetTransactionsParams(budgetId: Id, target: BudgetTransaction
     ...(target.type === 'transfers' ? { transfers: true } : {}),
     // a savings row's id is its account id; composes with nothing
     ...(target.type === BudgetElementType.SAVINGS ? { accountId: target.id } : {}),
-    // a debt row's id is the debt id; the server lists its payments
-    ...(target.type === BudgetElementType.DEBT ? { debtId: target.id } : {}),
     ...(target.type === BudgetElementType.INCOME_CATEGORY
       ? { income: true, ...(isUncategorized ? { uncategorized: true } : { categoryId: target.id }) }
       : {}),

@@ -1796,23 +1796,26 @@
         "balance_hint": "Saldo a fine mese."
       },
       "debts": {
-        "title": "Debiti",
-        "paid": "Pagato",
-        "left": "Residuo",
-        "left_hint": "Ancora da pagare a fine mese.",
         "payoff_by": "Estinzione prevista: {date}",
         "payments_left": "Manca {count} pagamento | Mancano {count} pagamenti",
         "extra_effect": "Estinto {months} mese prima, {amount} di interessi in meno | Estinto {months} mesi prima, {amount} di interessi in meno",
         "extra_effect_earlier": "Estinto {months} mese prima | Estinto {months} mesi prima",
         "track": "Segui come debito",
-        "details": "Dettagli"
+        "details": "Dettagli",
+        "debt_details": "Dettagli del debito",
+        "delete": "Elimina debito",
+        "past": "Debiti passati ({count})",
+        "past_title": "Debiti passati",
+        "borrowed": "Preso in prestito: {amount}",
+        "section": "Debito",
+        "left_at_end": "Ancora da pagare a fine mese: {amount}",
+        "not_set_up": "Non ancora configurato"
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, speso {spent}",
         "child_aria": "{name}, speso {spent}",
         "income_row_aria": "{name}, previsto {planned}, ricevuto {received}",
         "savings_row_aria": "{name}, previsto {planned}, risparmiato {saved}",
-        "debt_row_aria": "{name}, previsto {planned}, pagato {paid}",
         "available": "{amount} disponibile",
         "actual": "Effettivo",
         "balance": "Saldo a fine mese"

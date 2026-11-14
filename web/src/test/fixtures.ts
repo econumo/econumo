@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type { ConnectionDto } from '@/api/dto/connection'
-import type { BudgetDebtElementDto } from '@/api/dto/budget'
+import type { ElementDebtDto } from '@/api/dto/budget'
 
 export const fixtureUser = {
   id: 'u1',
@@ -145,20 +145,25 @@ export const fixtureWireBudget = {
   },
 }
 
-/** a get-budget debt row: 1,000 a month, planned
- *  1,500, 900 paid so far, 24 payments left. Its payoff figures equal the base
- *  ones (as if the plans changed nothing): override payoffDate/overpaymentLeft
- *  to give the extra an effect. */
-export function fixtureDebtRow(overrides: Partial<BudgetDebtElementDto> = {}): BudgetDebtElementDto {
+/** the debt in force on an element in a period (get-budget elements, plan rows and
+ *  cells): 1,000 a month scheduled, 23,000 left at the month's end, 24 payments
+ *  left. Its payoff figures equal the base ones (as if the plans changed nothing):
+ *  override payoffDate/overpaymentLeft to give the extra an effect. */
+export function fixtureElementDebt(overrides: Partial<ElementDebtDto> = {}): ElementDebtDto {
   return {
-    id: 'debt-1', type: 6, name: 'Mortgage', icon: 'home', currencyId: 'cur-usd', isArchived: 0, position: 0,
-    budgeted: '1500', isBudgeted: 1, spent: '900', budgetSpent: '900', available: '600',
-    closingBalance: '23000', paymentsLeft: 24, scheduledTotal: '1000', upcoming: '100',
-    payoffDate: '2028-10-05', basePayoffDate: '2028-10-05', overpaymentLeft: '2000', baseOverpaymentLeft: '2000',
-    isPaidOff: 0, isPlannable: 1, isSetUp: 1,
+    id: 'debt-1', isSetUp: 1, paymentsLeft: 24, payoffDate: '2028-10-05', basePayoffDate: '2028-10-05',
+    closingBalance: '23000', scheduledTotal: '1000', upcoming: '100', isPaidOff: 0,
+    overpaymentLeft: '2000', baseOverpaymentLeft: '2000',
     ...overrides,
   }
 }
+
+/** a debt not set up: payment and schedule only, no projection */
+export const fixtureElementDebtNotSetUp = (overrides: Partial<ElementDebtDto> = {}): ElementDebtDto =>
+  fixtureElementDebt({
+    isSetUp: 0, paymentsLeft: 0, payoffDate: '', basePayoffDate: '', closingBalance: '', scheduledTotal: '0', upcoming: '0',
+    overpaymentLeft: '', baseOverpaymentLeft: '', ...overrides,
+  })
 
 // Shared fixture for the budget plan-view sheet: 4 months, one of every element
 // shape (folder-bound expense envelope + child, standalone expense category, tag,

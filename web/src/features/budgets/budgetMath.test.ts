@@ -1,5 +1,5 @@
-import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, makeBudgetExchange, displayAvailable, totalsWithDebts, totalsWithSavings } from './budgetMath'
-import { fixtureDebtRow, fixtureWireBudget } from '@/test/fixtures'
+import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, makeBudgetExchange, displayAvailable, totalsWithSavings } from './budgetMath'
+import { fixtureWireBudget } from '@/test/fixtures'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
@@ -242,29 +242,3 @@ it('totals what earlier months left, in the budget currency, without Uncategoriz
   expect(Number(totalsWithSavings(totals, mutated, ex).carry)).toBeCloseTo(300, 6)
 })
 
-describe('totalsWithDebts', () => {
-  it('expense totals include debt rows: planned, paid, what is left and what earlier months left', () => {
-    const mutated: BudgetDto = JSON.parse(JSON.stringify(budget))
-    // a EUR debt: 900 EUR planned at 0.9 = 1,000 USD; paid 450 EUR, 500 USD on the books
-    mutated.structure.debts = [
-      fixtureDebtRow({ currencyId: 'cur-eur', budgeted: '900', spent: '450', budgetSpent: '500', available: '540' }),
-    ]
-    const ex = makeBudgetExchange(mutated, [usd, eur])
-    const totals = budgetTotals(bucketElements(mutated, ex))
-    const withDebts = totalsWithDebts(totals, mutated, ex)
-    expect(Number(withDebts.budgeted) - Number(totals.budgeted)).toBeCloseTo(1000, 6)
-    expect(Number(withDebts.spent) - Number(totals.spent)).toBeCloseTo(500, 6)
-    // a debt row's available already holds this month's plan: 540 EUR = 600 USD
-    expect(Number(withDebts.available) - Number(totals.available)).toBeCloseTo(600, 6)
-    // what earlier months left: 540 - 900 + 450 = 90 EUR = 100 USD
-    expect(Number(withDebts.carry) - Number(totals.carry)).toBeCloseTo(100, 6)
-  })
-
-  it('an empty plan adds nothing, and no debts leave the totals alone', () => {
-    const totals = { budgeted: '10', spent: '5', available: '5', carry: '0' }
-    expect(totalsWithDebts(totals, budget, exch)).toEqual(totals)
-    const mutated: BudgetDto = JSON.parse(JSON.stringify(budget))
-    mutated.structure.debts = [fixtureDebtRow({ budgeted: '', isBudgeted: 0, spent: '0', budgetSpent: '0', available: '0' })]
-    expect(totalsWithDebts(totals, mutated, exch)).toEqual(totals)
-  })
-})

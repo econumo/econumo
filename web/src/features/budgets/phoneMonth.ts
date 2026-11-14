@@ -1,6 +1,6 @@
 import { isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { BudgetElementType } from '@/api/dto/budget'
-import type { BudgetDebtElementDto, BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, LabelSpendDto, PlanElementDto } from '@/api/dto/budget'
+import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, ElementDebtDto, LabelSpendDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { add, cmp, isZero, sub } from '@/lib/decimal'
@@ -22,6 +22,8 @@ export interface PlanCellFigures {
   actual: string
   closingBalance?: string
   upcoming?: string
+  /** the debt in force on the row in this month */
+  debt?: ElementDebtDto
 }
 
 /** One group of income rows, in the Plan grid's order: each folder, then the
@@ -71,6 +73,7 @@ export function planCellFigures(element: PlanElementDto, index: number): PlanCel
     actual: cell?.actual ?? '0',
     ...(cell?.closingBalance !== undefined ? { closingBalance: cell.closingBalance } : {}),
     ...(cell?.upcoming !== undefined ? { upcoming: cell.upcoming } : {}),
+    ...(cell?.debt ? { debt: cell.debt } : {}),
   }
 }
 
@@ -134,7 +137,6 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
 export type SheetTarget =
   | { kind: 'expense'; element: BudgetElementDto }
   | { kind: 'savings'; row: BudgetSavingsElementDto }
-  | { kind: 'debt'; row: BudgetDebtElementDto }
   | { kind: 'plan'; cell: PlanCellFigures }
   | { kind: 'label'; label: LabelSpendDto }
 
@@ -150,7 +152,6 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
     case 'expense':
       return { id: target.element.id, name: target.element.name, currencyId: target.element.currencyId ?? baseCurrencyId, amount: target.element.budgeted }
     case 'savings':
-    case 'debt':
       return { id: target.row.id, name: target.row.name, currencyId: target.row.currencyId, amount: target.row.budgeted }
     case 'plan':
       return { id: target.cell.element.id, name: target.cell.element.name, currencyId: target.cell.element.currencyId, amount: target.cell.planned }
@@ -160,10 +161,28 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
   }
 }
 
+/** the debt in force on the target's row in its month: an expense element's, or a Plan cell's */
+export function sheetDebt(target: SheetTarget): ElementDebtDto | undefined {
+  switch (target.kind) {
+    case 'expense':
+      return target.element.debt
+    case 'plan':
+      return target.cell.debt
+    default:
+      return undefined
+  }
+}
+
 /** the hint on the target's plan figure; Uncategorized and reporting tags hold no plan.
  *  `period`: the period key ('YYYY-MM-01') the figure is for and the budget's period
- *  start day, which a debt row's hint needs. */
+ *  start day, which the hint of a row carrying a debt needs: there it replaces the
+ *  expense hint with the debt's (a plan below the scheduled amount). */
 export function sheetPlanHint(target: SheetTarget, period?: { month: string; startDay: number }): PlanHint {
+  const debt = sheetDebt(target)
+  if (debt) {
+    const planned = target.kind === 'expense' ? target.element.budgeted : target.kind === 'plan' ? target.cell.planned : ''
+    return planHint({ planned, spent: '0', scheduled: debt.scheduledTotal, month: period?.month, startDay: period?.startDay, kind: 'debt' })
+  }
   switch (target.kind) {
     case 'expense': {
       const el = target.element
@@ -172,8 +191,6 @@ export function sheetPlanHint(target: SheetTarget, period?: { month: string; sta
     }
     case 'savings':
       return planHint({ planned: target.row.budgeted, spent: target.row.spent, upcoming: target.row.upcoming, kind: 'savings' })
-    case 'debt':
-      return planHint({ planned: target.row.budgeted, spent: target.row.spent, scheduled: target.row.scheduledTotal, month: period?.month, startDay: period?.startDay, kind: 'debt' })
     case 'plan': {
       const { element, planned, actual, upcoming } = target.cell
       if (element.id === UNCATEGORIZED_ID) return null
@@ -190,7 +207,6 @@ export function sheetUpcoming(target: SheetTarget): string | undefined {
     case 'expense':
       return target.element.upcoming
     case 'savings':
-    case 'debt':
       return target.row.upcoming
     case 'plan':
       return target.cell.upcoming
@@ -205,7 +221,6 @@ export function sheetSpent(target: SheetTarget): string {
     case 'expense':
       return target.element.spent
     case 'savings':
-    case 'debt':
       return target.row.spent
     case 'plan':
       return target.cell.actual
@@ -219,7 +234,6 @@ export function sheetSetsPlan(target: SheetTarget): boolean {
     case 'expense':
       return false
     case 'savings':
-    case 'debt':
       return true
     case 'plan':
       return isPlannedType(target.cell.element.type)
@@ -245,7 +259,6 @@ export function sheetIcon(target: SheetTarget): string {
     case 'expense':
       return target.element.icon
     case 'savings':
-    case 'debt':
       return target.row.icon
     case 'plan':
       return target.cell.element.icon
@@ -254,8 +267,8 @@ export function sheetIcon(target: SheetTarget): string {
   }
 }
 
-/** a reporting tag is not a budget element, nor a debt: each edits through its own dialog */
-export function sheetElement(target: Exclude<SheetTarget, { kind: 'label' } | { kind: 'debt' }>): SheetElement {
+/** a reporting tag is not a budget element: it edits through its own dialog */
+export function sheetElement(target: Exclude<SheetTarget, { kind: 'label' }>): SheetElement {
   switch (target.kind) {
     case 'expense':
       return target.element

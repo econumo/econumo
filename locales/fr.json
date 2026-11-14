@@ -1796,23 +1796,26 @@
         "balance_hint": "Solde en fin de mois."
       },
       "debts": {
-        "title": "Dettes",
-        "paid": "Payé",
-        "left": "Restant",
-        "left_hint": "Reste à payer en fin de mois.",
         "payoff_by": "Remboursement prévu : {date}",
         "payments_left": "{count} paiement restant | {count} paiements restants",
         "extra_effect": "Remboursée {months} mois plus tôt, {amount} d'intérêts en moins | Remboursée {months} mois plus tôt, {amount} d'intérêts en moins",
         "extra_effect_earlier": "Remboursée {months} mois plus tôt | Remboursée {months} mois plus tôt",
         "track": "Suivre comme dette",
-        "details": "Détails"
+        "details": "Détails",
+        "debt_details": "Détails de la dette",
+        "delete": "Supprimer la dette",
+        "past": "Dettes passées ({count})",
+        "past_title": "Dettes passées",
+        "borrowed": "Emprunté : {amount}",
+        "section": "Dette",
+        "left_at_end": "Reste à payer en fin de mois : {amount}",
+        "not_set_up": "Pas encore configurée"
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, dépensé {spent}",
         "child_aria": "{name}, dépensé {spent}",
         "income_row_aria": "{name}, prévu {planned}, reçu {received}",
         "savings_row_aria": "{name}, prévu {planned}, épargné {saved}",
-        "debt_row_aria": "{name}, prévu {planned}, payé {paid}",
         "available": "{amount} disponible",
         "actual": "Réel",
         "balance": "Solde en fin de mois"

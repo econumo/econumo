@@ -1796,23 +1796,26 @@
         "balance_hint": "Saldo na koniec miesiąca."
       },
       "debts": {
-        "title": "Długi",
-        "paid": "Zapłacono",
-        "left": "Pozostało",
-        "left_hint": "Do zapłaty na koniec miesiąca.",
         "payoff_by": "Planowana spłata: {date}",
         "payments_left": "Została {count} płatność | Zostały {count} płatności | Zostało {count} płatności",
         "extra_effect": "Spłata {months} miesiąc wcześniej, {amount} mniej odsetek | Spłata {months} miesiące wcześniej, {amount} mniej odsetek | Spłata {months} miesięcy wcześniej, {amount} mniej odsetek",
         "extra_effect_earlier": "Spłata {months} miesiąc wcześniej | Spłata {months} miesiące wcześniej | Spłata {months} miesięcy wcześniej",
         "track": "Śledź jako dług",
-        "details": "Szczegóły"
+        "details": "Szczegóły",
+        "debt_details": "Szczegóły długu",
+        "delete": "Usuń dług",
+        "past": "Poprzednie długi ({count})",
+        "past_title": "Poprzednie długi",
+        "borrowed": "Pożyczono: {amount}",
+        "section": "Dług",
+        "left_at_end": "Do zapłaty na koniec miesiąca: {amount}",
+        "not_set_up": "Jeszcze nie skonfigurowano"
       },
       "phone": {
         "row_aria": "{name}, budżet {budget}, wydano {spent}",
         "child_aria": "{name}, wydano {spent}",
         "income_row_aria": "{name}, zaplanowano {planned}, odebrano {received}",
         "savings_row_aria": "{name}, zaplanowano {planned}, zaoszczędzono {saved}",
-        "debt_row_aria": "{name}, zaplanowano {planned}, zapłacono {paid}",
         "available": "{amount} dostępne",
         "actual": "Faktycznie",
         "balance": "Saldo na koniec miesiąca"

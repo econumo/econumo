@@ -65,14 +65,9 @@ export function sourceAmount(el: PlanElementDto, monthIndex: number): string {
 /** A row is editable per-cell only for a non-uncategorized parent row, with a fetched
  *  cell and update rights for that month — children never carry limits. An archived
  *  category, tag or envelope keeps an editable plan, so its history can be corrected
- *  (the totals still leave it out); a deleted savings account's cannot, nor a debt's
- *  month outside its life. */
+ *  (the totals still leave it out); a deleted savings account's cannot. */
 export function isEditableCell(el: PlanElementDto, month: string, monthIndex: number, meta: BudgetMetaDto, userId: Id | undefined): boolean {
   if (el.isArchived === 1 && el.type === BudgetElementType.SAVINGS) {
-    return false
-  }
-  // a debt is planned only inside its life
-  if (el.type === BudgetElementType.DEBT && el.cells[monthIndex]?.isPlannable === 0) {
     return false
   }
   return el.id !== UNCATEGORIZED_ID && monthIndex >= 0 && canUpdateLimits(meta, userId, month)
@@ -91,14 +86,6 @@ export function commentsReadOnly(meta: BudgetMetaDto, month: string): boolean {
     return true
   }
   return !!meta.endedAt && month > `${meta.endedAt.slice(0, 7)}-01`
-}
-
-/** commentsReadOnly for one Plan cell: a debt also takes no comment outside its life */
-export function cellCommentsReadOnly(meta: BudgetMetaDto, el: PlanElementDto, month: string, monthIndex: number): boolean {
-  if (el.type === BudgetElementType.DEBT && el.cells[monthIndex]?.isPlannable === 0) {
-    return true
-  }
-  return commentsReadOnly(meta, month)
 }
 
 /** the cell whose in-cell editor is open. `month` pins it: the editor stays on the
@@ -335,8 +322,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
   const { t, i18n } = useTranslation()
   const level = useRowLevel()
   const el = row.element
-  const isDebt = el.type === BudgetElementType.DEBT
-  const balanceHint = t(isDebt ? 'budgets.page.debts.left_hint' : 'budgets.page.savings.balance_hint')
+  const balanceHint = t('budgets.page.savings.balance_hint')
   // inside a same-name group the names match: the owner tells the tags apart
   const ownerHint = grouped && el.ownerUserId ? ctx.meta.access.find((a) => a.user.id === el.ownerUserId)?.user.name : undefined
   const unfolded = useBudgetPeriodStore((s) => !!s.planUnfoldedElements[el.id])
@@ -401,12 +387,12 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
             <span className="w-3.5 shrink-0" />
           )}
           {isUncategorized ? null : <EntityIcon name={el.icon} className="text-lg text-muted-foreground" />}
-          {row.debt ? (
+          {el.debt ? (
             <div className="flex min-w-0 flex-col leading-tight">
               <span className="min-w-0 truncate text-[15px]" title={displayName}>
                 {displayName}
               </span>
-              <DebtPayoff debt={row.debt} />
+              <DebtPayoff debt={el.debt} />
             </div>
           ) : (
             <span className={`min-w-0 truncate ${isUncategorized ? '' : 'text-[15px]'}`} title={displayName}>
@@ -429,7 +415,6 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
             month: m,
             selected: ctx.selected,
             startDay: periodStartDayOf(ctx.meta),
-            notSetUp: row.debt?.isSetUp === 0,
           })
           const actual = view.actual
           const planFigure = view.plan
@@ -499,8 +484,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
                     onCommit={ctx.finishEdit}
                     onCancel={ctx.cancelEdit}
                     upcoming={
-                      // a debt's dues are collected whatever is planned: no list of them to fill from
-                      cell && !isDebt && wantsUpcomingPanel(m, cell.actual, cell.upcoming, el.type === BudgetElementType.SAVINGS, periodStartDayOf(ctx.meta))
+                      cell && wantsUpcomingPanel(m, cell.actual, cell.upcoming, el.type === BudgetElementType.SAVINGS, periodStartDayOf(ctx.meta))
                         ? {
                             budget: { meta: ctx.meta },
                             target: { id: el.id, type: el.type, name: displayName, icon: el.icon, currencyId: el.currencyId },
@@ -581,18 +565,18 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
-              {/* a debt's payments left sit under its figures */}
-              {view.paymentsLeft != null ? (
+              {/* the payments left on the debt in force that month sit under the figures */}
+              {view.paymentsLeft != null || view.paidOff ? (
                 <span className="flex min-w-0 flex-1 flex-col">
                   {figuresNode}
                   <span data-testid="cell-payments-left" className="truncate text-left text-[11px] text-muted-foreground">
-                    {view.paymentsLeft > 0 ? pluralPick(t('budgets.page.debts.payments_left'), view.paymentsLeft, i18n.language) : t('debts.list.paid_off')}
+                    {view.paymentsLeft != null ? pluralPick(t('budgets.page.debts.payments_left'), view.paymentsLeft, i18n.language) : t('debts.list.paid_off')}
                   </span>
                 </span>
               ) : (
                 figuresNode
               )}
-              {!editing && (commentCount > 0 || (!ctx.editMode && !cellCommentsReadOnly(ctx.meta, el, m, idx))) && !isUncategorized ? (
+              {!editing && (commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
                 <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
               ) : null}
               {showFillHandle ? (

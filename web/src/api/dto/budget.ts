@@ -25,7 +25,7 @@ export interface BudgetMetaDto {
   periodStartDay?: number
 }
 
-export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4, SAVINGS: 5, DEBT: 6 } as const
+export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4, SAVINGS: 5 } as const
 export type BudgetElementType = (typeof BudgetElementType)[keyof typeof BudgetElementType]
 
 export const isIncomeType = (t: BudgetElementType): boolean =>
@@ -53,6 +53,27 @@ export interface BudgetChildElementDto {
   budgetUpcoming?: string
 }
 
+/** the debt in force on an element in a period (amounts in the debt's currency,
+ *  the element's): scheduledTotal and upcoming are the period's scheduled dues and
+ *  those still to pay, closingBalance what is owed at its end, paymentsLeft how
+ *  many remain after it; payoffDate/basePayoffDate (Y-m-d, '' when none) and
+ *  overpaymentLeft/baseOverpaymentLeft with and without the element's planned
+ *  extras. While isSetUp is 0 there is no projection: closingBalance and the
+ *  payoff figures are '', paymentsLeft 0, scheduledTotal and upcoming '0'. */
+export interface ElementDebtDto {
+  id: Id
+  isSetUp: 0 | 1
+  paymentsLeft: number
+  payoffDate: string
+  basePayoffDate: string
+  closingBalance: string
+  scheduledTotal: string
+  upcoming: string
+  isPaidOff: 0 | 1
+  overpaymentLeft: string
+  baseOverpaymentLeft: string
+}
+
 export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUserId'> {
   /** null = inherit the budget base currency */
   currencyId: Id | null
@@ -65,6 +86,11 @@ export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUser
   available: string
   ownerUserId: Id | null
   children: BudgetChildElementDto[]
+  /** a top-level expense category or envelope: the debt in force in the period
+   *  (its active debt, or a paid-off one whose start..end covers it). The
+   *  element's own figures stay its own; `upcoming` above is its recurring
+   *  payments, `debt.upcoming` the scheduled dues. */
+  debt?: ElementDebtDto
 }
 
 export type BudgetFolderSide = 'income' | 'expense'
@@ -208,43 +234,6 @@ export interface BudgetSavingsElementDto {
   upcoming?: string
 }
 
-/** a debt's monthly row; id is the debt id. Amounts are in currencyId (the
- *  debt's currency) except budgetSpent, which is in the budget currency. Dates
- *  are Y-m-d, '' when none. */
-export interface BudgetDebtElementDto {
-  id: Id
-  type: BudgetElementType
-  name: string
-  icon: string
-  currencyId: Id
-  isArchived: 0 | 1
-  position: number
-  /** '' = no plan (getBudget maps isBudgeted 0 to it) */
-  budgeted: string
-  isBudgeted?: 0 | 1
-  /** Paid */
-  spent: string
-  budgetSpent: string
-  available: string
-  /** the debt left at the end of the month */
-  closingBalance: string
-  paymentsLeft: number
-  /** the month's scheduled dues */
-  scheduledTotal: string
-  /** scheduled dues still to pay */
-  upcoming: string
-  payoffDate: string
-  basePayoffDate: string
-  overpaymentLeft: string
-  baseOverpaymentLeft: string
-  isPaidOff: 0 | 1
-  /** 0 outside the debt's life or after its projected payoff: no plan to edit */
-  isPlannable: 0 | 1
-  /** 0 while the debt has no terms: closingBalance and the payoff figures are
-   *  '', paymentsLeft 0, scheduledTotal and upcoming '0' */
-  isSetUp: 0 | 1
-}
-
 /** one of the requester's own member accounts */
 export interface BudgetAccountFilterDto {
   id: Id
@@ -268,8 +257,6 @@ export interface BudgetDto {
     labels?: LabelSpendDto[]
     /** optional: cached data from a server older than the savings release lacks it */
     savings?: BudgetSavingsElementDto[]
-    /** optional: cached data from a server older than the debts release lacks it */
-    debts?: BudgetDebtElementDto[]
   }
 }
 
@@ -283,10 +270,8 @@ export interface PlanCellDto {
   /** the month's recurring payments not yet posted, filed like actual; absent
    *  from older servers */
   upcoming?: string
-  /** debt rows only (PlanDebtCellDto) */
-  paymentsLeft?: number
-  scheduledTotal?: string
-  isPlannable?: 0 | 1
+  /** the debt in force on the row in this month, with its figures for the month */
+  debt?: ElementDebtDto
 }
 
 /** per-month cell on a plan-view child row: children never carry their own limit. */
@@ -312,6 +297,9 @@ export interface PlanElementDto {
   ownerUserId: Id | null
   cells: PlanCellDto[]
   children: PlanChildDto[]
+  /** the element's ACTIVE debt, figures for the caller's current period; a
+   *  paid-off debt shows only in the cells of the months it was in force */
+  debt?: ElementDebtDto
 }
 
 export interface PlanMonthRatesDto {
@@ -349,37 +337,6 @@ export interface PlanSavingsElementDto {
   cells: PlanCellDto[]
 }
 
-/** per-month cell on a plan-view debt row, index-aligned with months */
-export interface PlanDebtCellDto {
-  actual: string
-  /** '' = no plan, or the month is out of the debt's life */
-  planned: string
-  closingBalance: string
-  paymentsLeft: number
-  scheduledTotal: string
-  upcoming: string
-  isPlannable: 0 | 1
-}
-
-/** a debt's plan-view row; id is the debt id */
-export interface PlanDebtElementDto {
-  id: Id
-  type: BudgetElementType
-  name: string
-  icon: string
-  currencyId: Id
-  position: number
-  payoffDate: string
-  basePayoffDate: string
-  overpaymentLeft: string
-  baseOverpaymentLeft: string
-  isPaidOff: 0 | 1
-  /** 0 while the debt has no terms: the cells' closingBalance and the payoff
-   *  figures are '', paymentsLeft 0, scheduledTotal and upcoming '0' */
-  isSetUp: 0 | 1
-  cells: PlanDebtCellDto[]
-}
-
 export interface PlanOpeningBalanceDto {
   currencyId: Id
   amount: string
@@ -409,8 +366,6 @@ export interface BudgetPlanDto {
     elements: PlanElementDto[]
     /** optional: cached data from a server older than the savings release lacks it */
     savings?: PlanSavingsElementDto[]
-    /** optional for the same reason as structure.debts above */
-    debts?: PlanDebtElementDto[]
   }
   /** optional for the same reason as structure.savings */
   savingsOpeningBalances?: PlanOpeningBalanceDto[]

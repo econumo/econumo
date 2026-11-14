@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import type { HttpHandler } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureDebtRow, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureElementDebt, fixtureElementDebtNotSetUp, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { queryKeys } from '@/app/queryKeys'
 import { BudgetPage } from './BudgetPage'
@@ -444,10 +444,9 @@ it('someone else’s reporting tag shows Edit inactive', async () => {
   expect(within(await screen.findByRole('dialog', { name: /^kid-A · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
 })
 
-describe('a debt row\'s item sheet', () => {
-  const notSetUp = { isSetUp: 0 as const, closingBalance: '', paymentsLeft: 0, payoffDate: '', basePayoffDate: '', overpaymentLeft: '', baseOverpaymentLeft: '' }
+describe('the item sheet of an element carrying a debt', () => {
   // the caller (u1) in a budget owned by u9, with a role
-  const debtBudget = (role?: 'user' | 'guest', row = {}) => ({
+  const debtBudget = (role?: 'user' | 'guest', debt = fixtureElementDebt()) => ({
     ...fixtureWireBudget,
     meta: role
       ? {
@@ -456,47 +455,45 @@ describe('a debt row\'s item sheet', () => {
           access: [{ user: { id: 'u9', name: 'Anna', avatar: 'face:fuchsia' }, role: 'owner', isAccepted: 1 }, { user: fixtureUser, role, isAccepted: 1 }],
         }
       : fixtureWireBudget.meta,
-    structure: { ...fixtureWireBudget.structure, debts: [fixtureDebtRow(row)] },
+    structure: { ...fixtureWireBudget.structure, elements: fixtureWireBudget.structure.elements.map((el) => (el.id === 'cat-food' ? { ...el, debt } : el)) },
   })
   const openSheet = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(await screen.findByTestId('phone-debts-summary'))
-    await user.click(await screen.findByRole('button', { name: /^Mortgage, planned/ }))
-    return screen.findByTestId('element-sheet')
+    await user.click(await screen.findByRole('button', { name: /^Food, budget/ }))
+    return within(await screen.findByTestId('element-sheet')).getByTestId('sheet-debt')
   }
 
-  it('offers its details', async () => {
+  it('offers the debt\'s details', async () => {
     handlers({ budget: debtBudget() })
     useUiStore.setState({ debtDetailsId: null })
     const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
     renderPage()
-    const sheet = await openSheet(user)
-    expect(within(sheet).getByTestId('sheet-figure-left')).toHaveTextContent('23,000.00')
-    await user.click(within(sheet).getByRole('button', { name: 'Details' }))
+    const debt = await openSheet(user)
+    expect(debt).toHaveTextContent('23,000.00')
+    await user.click(within(debt).getByRole('button', { name: 'Details' }))
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
     expect(useUiStore.getState().debtDetailsTab).toBe('overview')
     await waitFor(() => expect(screen.queryByTestId('element-sheet')).toBeNull())
   })
 
   it('offers a participant who plans in the budget Finish setup on a debt not set up, opening its Settings', async () => {
-    handlers({ budget: debtBudget('user', notSetUp) })
+    handlers({ budget: debtBudget('user', fixtureElementDebtNotSetUp()) })
     useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'overview' })
     const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
     renderPage()
-    const sheet = await openSheet(user)
-    await user.click(within(sheet).getByRole('button', { name: 'Finish setup' }))
+    const debt = await openSheet(user)
+    await user.click(within(debt).getByRole('button', { name: 'Finish setup' }))
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
     expect(useUiStore.getState().debtDetailsTab).toBe('settings')
   })
 
-  it('offers a guest Details (the read-only review) and nothing to change', async () => {
-    handlers({ budget: debtBudget('guest', notSetUp) })
+  it('offers a guest Details (the read-only review), not Finish setup', async () => {
+    handlers({ budget: debtBudget('guest', fixtureElementDebtNotSetUp()) })
     useUiStore.setState({ debtDetailsId: null, debtDetailsTab: 'settings' })
     const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
     renderPage()
-    const sheet = await openSheet(user)
-    expect(within(sheet).queryByRole('button', { name: 'Finish setup' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
-    await user.click(within(sheet).getByRole('button', { name: 'Details' }))
+    const debt = await openSheet(user)
+    expect(within(debt).queryByRole('button', { name: 'Finish setup' })).toBeNull()
+    await user.click(within(debt).getByRole('button', { name: 'Details' }))
     expect(useUiStore.getState().debtDetailsId).toBe('debt-1')
     expect(useUiStore.getState().debtDetailsTab).toBe('overview')
   })

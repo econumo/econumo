@@ -3304,10 +3304,10 @@ it('row ⋮ menus: an envelope offers Edit and Delete, a category and a tag Edit
   expect(items()).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Delete'])
   await user.keyboard('{Escape}')
 
-  // pe1/Living is an expense envelope (type 0) — the same items
+  // pe1/Living is an expense envelope (type 0) — the same items, and it can carry a debt
   await user.click(await screen.findByRole('button', { name: 'menu Living' }))
   await screen.findByRole('menuitem', { name: 'Edit' })
-  expect(items()).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Delete'])
+  expect(items()).toEqual(['Edit', 'Change currency', 'Move to folder…', 'Track as debt', 'Delete'])
   await user.keyboard('{Escape}')
 
   // cat-food/Food is a category (type 1): the envelope's Delete is not offered, its

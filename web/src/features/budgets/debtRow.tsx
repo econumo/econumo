@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import type { BudgetDebtElementDto } from '@/api/dto/budget'
+import type { ElementDebtDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { useUiStore } from '@/app/uiStore'
 import { debtMonth } from '@/features/debts/debtDates'
@@ -8,7 +8,7 @@ import { moneyFormat } from '@/lib/money'
 import { pluralPick } from '@/lib/plural'
 import { debtExtraEffect } from './budgetMath'
 import type { PayoffFigures } from './budgetMath'
-import { Dash } from './monthLines'
+import { useDebtSummary } from './debtSummary'
 
 /** "Paid off 14 months earlier, $21,000.00 less overpayment", or nothing */
 export function DebtExtraNote({ row, currency, className = 'text-xs text-muted-foreground' }: { row: PayoffFigures; currency: CurrencyDto | undefined; className?: string }) {
@@ -33,7 +33,7 @@ export function DebtExtraNote({ row, currency, className = 'text-xs text-muted-f
 
 /** A Plan row's payoff under its name: the projected "Paid off by Mar 2028", or
  *  "Paid off" once it is. What the planned extras buy shows only in the plan editor. */
-export function DebtPayoff({ debt }: { debt: PayoffFigures & Pick<BudgetDebtElementDto, 'isPaidOff'> }) {
+export function DebtPayoff({ debt }: { debt: Pick<ElementDebtDto, 'payoffDate' | 'isPaidOff'> }) {
   const { t, i18n } = useTranslation()
   const payoff =
     debt.isPaidOff === 1
@@ -51,35 +51,32 @@ export function DebtPayoff({ debt }: { debt: PayoffFigures & Pick<BudgetDebtElem
   )
 }
 
-/** a debt row's Left: what is owed at the month's end, and how many payments remain.
- *  A debt not set up owes nothing it knows of: whoever plans in the budget is
- *  offered Finish setup (the debt's review screen), anyone else a dash. */
-export function DebtLeft({
-  row,
-  amount,
-  canPlan,
-}: {
-  row: Pick<BudgetDebtElementDto, 'id' | 'paymentsLeft' | 'isPaidOff' | 'isSetUp'>
-  amount: string
-  canPlan: boolean
-}) {
-  const { t, i18n } = useTranslation()
+/** The quiet line under a row carrying a debt: what is left and when it is paid
+ *  off, opening the debt's review. A debt not set up offers whoever plans in the
+ *  budget Finish setup (the review on Settings) and shows nothing to anyone else. */
+export function ElementDebtLine({ debt, canPlan, className = '' }: { debt: ElementDebtDto; canPlan: boolean; className?: string }) {
+  const { t } = useTranslation()
   const openDebtDetails = useUiStore((s) => s.openDebtDetails)
-  if (row.isSetUp === 0) {
-    return canPlan ? (
-      <button type="button" className="text-econumo-link hover:underline" onClick={() => openDebtDetails(row.id, 'settings')}>
-        {t('debts.terms.finish_setup')}
-      </button>
-    ) : (
-      <Dash />
-    )
+  const summary = useDebtSummary()(debt)
+  if (summary === null && !canPlan) {
+    return null
   }
   return (
-    <span className="flex flex-col items-end leading-tight" title={t('budgets.page.debts.left_hint')}>
-      <span>{amount}</span>
-      <span className="text-[11px] text-muted-foreground" data-testid="debt-payments-left">
-        {row.isPaidOff === 1 ? t('debts.list.paid_off') : pluralPick(t('budgets.page.debts.payments_left'), row.paymentsLeft, i18n.language)}
-      </span>
-    </span>
+    <div className={`text-[11px] leading-tight text-muted-foreground ${className}`} data-testid="element-debt-line">
+      {summary === null ? (
+        <button type="button" className="text-econumo-link hover:underline" onClick={() => openDebtDetails(debt.id, 'settings')}>
+          {t('debts.terms.finish_setup')}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="max-w-full truncate text-left underline-offset-2 hover:text-foreground hover:underline"
+          title={t('budgets.page.debts.details')}
+          onClick={() => openDebtDetails(debt.id, 'overview')}
+        >
+          {summary}
+        </button>
+      )}
+    </div>
   )
 }

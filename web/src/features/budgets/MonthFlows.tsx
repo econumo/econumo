@@ -9,16 +9,14 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { PendingLimitMark } from '@/features/pendingWrites/NotSavedIcon'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
-import { add, cmp, isZero } from '@/lib/decimal'
+import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
-import type { BudgetDebtElementDto, BudgetDto, BudgetSavingsElementDto, PlanChildDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetSavingsElementDto, PlanChildDto } from '@/api/dto/budget'
 import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
-import { debtTotals, elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
-import { DebtLeft } from './debtRow'
-import { canEditBudget } from './queries'
+import { elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { ActionsSpacer, CurrencyTag, Dash, FolderLine, MonthSectionHeader, RowMenu, TotalLine } from './monthLines'
@@ -32,9 +30,8 @@ import type { DropIndicator, ElementContainer, ElementMoveItem } from './element
 import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
 import { isEnvelopeType } from './elementEdit'
 import { periodOf, periodStartDayOf } from './period'
-import { useOnline } from '@/hooks/useOnline'
 
-export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' } | { kind: 'debt' }>
+export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' }>
 
 const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
   showCurrency: false,
@@ -139,11 +136,8 @@ interface MonthFlowsProps {
   /** the ⋮ menu of a category inside an unfolded income envelope */
   incomeChildMenu?: (child: PlanChildDto) => MenuAction[] | undefined
   savingsMenu?: (row: BudgetSavingsElementDto) => MenuAction[] | undefined
-  debtMenu?: (row: BudgetDebtElementDto) => MenuAction[] | undefined
   incomeSectionMenu?: MenuAction[]
   savingsSectionMenu?: MenuAction[]
-  /** the caller: a debt not set up offers whoever plans in the budget Finish setup */
-  userId?: Id
   /** drag and drop on hover, for anyone who may configure the budget */
   drag?: {
     /** onFailed: the move did not happen (a hidden row shows again) */
@@ -155,9 +149,8 @@ interface MonthFlowsProps {
   }
 }
 
-/** Income, Savings and Debts for one month, above the expenses table, in the table's
- *  columns: Planned · Received · To receive, Planned · Saved · Balance, and Planned ·
- *  Paid · Left. */
+/** Income and Savings for one month, above the expenses table, in the table's
+ *  columns: Planned · Received · To receive and Planned · Saved · Balance. */
 export function MonthFlows({
   budget,
   dataPeriod,
@@ -171,17 +164,12 @@ export function MonthFlows({
   incomeChildMenu,
   incomeFolderMenu,
   savingsMenu,
-  debtMenu,
   incomeSectionMenu,
   savingsSectionMenu,
-  userId,
   drag,
 }: MonthFlowsProps) {
   const { t } = useTranslation()
   const base = budget.meta.currencyId
-  const online = useOnline()
-  // Finish setup opens Settings, which needs the server
-  const canPlanDebts = online && budget.meta.isArchived !== 1 && canEditBudget(budget.meta, userId)
   const currencyOf = (id: Id | null) => currencies.find((c) => c.id === (id ?? base))
   const fmt = (amount: string, currencyId: Id | null = base) => {
     const c = currencyOf(currencyId)
@@ -208,7 +196,6 @@ export function MonthFlows({
   const toggleBudgetFold = useBudgetPeriodStore((s) => s.toggleBudgetFold)
   const incomeFolded = !!budgetFolds.income
   const savingsFolded = !!budgetFolds.savings
-  const debtsFolded = !!budgetFolds.debts
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   // a dropped order holds until the refetched figures replace it, so nothing snaps back
   const [incomePreview, setIncomePreview] = useState<{ containers: ElementContainer[]; folderIds: string[] } | null>(null)
@@ -421,22 +408,6 @@ export function MonthFlows({
     />
   )
 
-  const debtRow = (row: BudgetDebtElementDto) => (
-    <FlowRow
-      key={row.id}
-      testId={`month-debts-row-${row.id}`}
-      icon={row.icon}
-      name={row.name}
-      tag={tagOf(row.currencyId)}
-      muted={row.isPaidOff === 1}
-      planned={planned({ kind: 'debt', row }, row.budgeted, row.currencyId)}
-      actual={actualCell({ id: row.id, type: BudgetElementType.DEBT, name: row.name, icon: row.icon, currencyId: row.currencyId }, row.spent, row.currencyId)}
-      third={<DebtLeft row={row} amount={fmt(row.closingBalance, row.currencyId)} canPlan={canPlanDebts} />}
-      actionsColumn={actionsColumn}
-      menu={debtMenu?.(row)}
-    />
-  )
-
   const incomeGroups: IncomeGroup[] = (planMonth?.income.groups ?? []).map((g) =>
     pendingMemberId && g.rows.some((r) => r.element.id === pendingMemberId) ? { ...g, rows: g.rows.filter((r) => r.element.id !== pendingMemberId) } : g,
   )
@@ -592,11 +563,6 @@ export function MonthFlows({
     drag.onMoveSavings(activeId, afterIdFromDrop(reordered, activeId))
   }
   const savingsSum = totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, exchangeFn)
-  const debtRows = [...(budget.structure.debts ?? [])].sort((a, b) => a.position - b.position)
-  const debtSum = debtTotals(budget, exchangeFn)
-  // a debt not set up has no balance to add
-  const debtLeft = debtRows.reduce((sum, row) => (row.isSetUp === 0 ? sum : add(sum, exchangeFn(row.currencyId, base, row.closingBalance))), '0')
-
   return (
     <>
       {/* the budget currency is named once, above every figure on the page */}
@@ -682,20 +648,6 @@ export function MonthFlows({
             savingsRows.map(savingsRow)
           )}
           </RowLevelContext.Provider>
-        </section>
-      ) : null}
-      {debtRows.length > 0 ? (
-        <section className="border-t pt-1 pb-1" data-testid="month-debts">
-          <MonthSectionHeader
-            foldKey="debts"
-            testId="month-debts-header"
-            label={t('budgets.page.debts.title')}
-            headings={[t('budgets.page.savings.planned'), t('budgets.page.debts.paid'), t('budgets.page.debts.left')]}
-            sums={[fmt(debtSum.budgeted), future ? <Dash key="dash-debts-paid" /> : fmt(debtSum.spent), fmt(debtLeft)]}
-            actionsColumn={actionsColumn}
-          />
-          {/* debts have no folders: their rows sit at a folder line's step */}
-          <RowLevelContext.Provider value="top">{debtsFolded ? null : debtRows.map(debtRow)}</RowLevelContext.Provider>
         </section>
       ) : null}
     </>

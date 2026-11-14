@@ -80,7 +80,7 @@ function invalidateChange(queryClient: QueryClient, change: OpChange): void {
   if (change.kind === 'limit') {
     void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, change.budgetId] })
     void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, change.budgetId] })
-    // a debt row's plan is an extra payment in its forecast
+    // the plan of an element carrying a debt is an extra payment in its forecast
     void queryClient.invalidateQueries({ predicate: (q) => isDebtForecastKey(q.queryKey) })
   } else {
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })

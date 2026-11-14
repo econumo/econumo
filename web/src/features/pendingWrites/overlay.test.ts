@@ -4,7 +4,7 @@ import type { AccountDto } from '@/api/dto/account'
 import type { BudgetDto, BudgetPlanDto, BudgetTransactionDto } from '@/api/dto/budget'
 import type { CreateTransactionDto, TransactionDto } from '@/api/dto/transaction'
 import type { UserDto } from '@/api/dto/user'
-import { fixtureDebtRow } from '@/test/fixtures'
+import { fixtureElementDebt } from '@/test/fixtures'
 import { compareTransactions } from '../transactions/order'
 import {
   applyLimitToBudget,
@@ -260,21 +260,11 @@ describe('budget overlays', () => {
     expect(plan.structure.elements[0].cells[1].planned).toBe('2')
   })
 
-  it('patches a waiting plan on a debt row: its planned figure, and Available by the change', () => {
-    const budget = { ...budgetOf(), structure: { ...budgetOf().structure, debts: [fixtureDebtRow()] } } as BudgetDto
-    const out = overlayBudget(budget, [op({ kind: 'limit', budgetId: 'b1', elementId: 'debt-1', period: '2026-11-01', amount: '2000' })], 'b1', '2026-11-01')
-    // planned 1500, available 600; the closing balance and payments left wait for the server
-    expect(out.structure.debts?.[0]).toMatchObject({ budgeted: '2000', isBudgeted: 1, available: '1100', closingBalance: '23000', paymentsLeft: 24 })
-    expect(out.structure.elements.map((e) => e.budgeted)).toEqual(['5', '7'])
-  })
-
-  it('patches a waiting plan on a debt row of the Plan grid', () => {
-    const plan = {
-      months: ['2026-10-01', '2026-11-01'],
-      structure: { elements: [], debts: [{ id: 'debt-1', cells: [{ planned: '1', isPlannable: 1 }, { planned: '', isPlannable: 1 }] }] },
-    } as unknown as BudgetPlanDto
-    const out = overlayPlan(plan, [op({ kind: 'limit', budgetId: 'b1', elementId: 'debt-1', period: '2026-11-01', amount: '300' })], 'b1')
-    expect(out.structure.debts?.[0].cells).toEqual([{ planned: '1', isPlannable: 1 }, { planned: '300', isPlannable: 1 }])
+  it('patches a waiting plan on an element carrying a debt: its planned figure; the debt waits for the server', () => {
+    const base = budgetOf()
+    const budget = { ...base, structure: { ...base.structure, elements: base.structure.elements.map((el, i) => (i === 0 ? { ...el, debt: fixtureElementDebt() } : el)) } } as BudgetDto
+    const out = overlayBudget(budget, [op({ kind: 'limit', budgetId: 'b1', elementId: budget.structure.elements[0].id, period: '2026-11-01', amount: '2000' })], 'b1', '2026-11-01')
+    expect(out.structure.elements[0]).toMatchObject({ budgeted: '2000', isBudgeted: 1, debt: fixtureElementDebt() })
   })
 })
 

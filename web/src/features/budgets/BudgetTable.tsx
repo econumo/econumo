@@ -27,6 +27,9 @@ import { segmentTagGroups } from './tagGroups'
 import { sheetPlanHint } from './phoneMonth'
 import type { PlanHint } from './planHint'
 import { planHintClass } from './planHint'
+import { periodOf, periodStartDayOf } from './period'
+import { ElementDebtLine } from './debtRow'
+import { showsDebtLine } from './debtSummary'
 
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
@@ -87,6 +90,8 @@ interface BudgetTableProps extends ElementRowExtras {
   labelMenu?: (label: LabelSpendDto) => MenuAction[] | undefined
   /** the Expenses line's ⋮ menu */
   sectionMenu?: MenuAction[]
+  /** the caller plans in the unarchived budget, online: a debt not set up offers Finish setup */
+  canPlanDebts?: boolean
 }
 
 const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
@@ -159,6 +164,7 @@ function ElementRow({
   hideChildren = false,
   future = false,
   ownerHint,
+  canPlanDebts = false,
 }: {
   element: BudgetElementDto
   bucket: FolderBucket
@@ -173,6 +179,7 @@ function ElementRow({
   future?: boolean
   /** a tag in a same-name group: whose tag it is, since the names match */
   ownerHint?: string
+  canPlanDebts?: boolean
 }) {
   const { t } = useTranslation()
   const level = useRowLevel()
@@ -199,7 +206,9 @@ function ElementRow({
   // Uncategorized sits among the folders and reads like one: a folder line's step,
   // height and type, with no icon
   const size = isUncategorized ? '' : 'text-[15px]'
-  const hint = sheetPlanHint({ kind: 'expense', element })
+  const startDay = periodStartDayOf(budget.meta)
+  // filters.periodStart is the period's first day; the hint wants its key
+  const hint = sheetPlanHint({ kind: 'expense', element }, { month: periodOf(budget.filters.periodStart.slice(0, 10), startDay), startDay })
   const hintClass = planHintClass(hint)
   // no plan set reads as a dash; a plan of 0 shows its 0
   const plannedText = element.budgeted === '' ? <PlanDash /> : moneyFormat(element.budgeted, currency, opts)
@@ -347,6 +356,12 @@ function ElementRow({
         {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
         {extras.envelopeHeadDrop && isEnvelopeType(element.type) && !unfolded ? extras.envelopeHeadDrop(element) : null}
       </div>
+      {/* under the name, past the chevron and icon, so it reads as part of the row */}
+      {showsDebtLine(element.debt, canPlanDebts) ? (
+        <div className={ROW_INDENT[level]}>
+          <ElementDebtLine debt={element.debt} canPlan={canPlanDebts} className="-mt-1.5 pr-2.5 pb-1.5 pl-14" />
+        </div>
+      ) : null}
       {expandable && unfolded ? (extras.wrapChildren ? extras.wrapChildren(element, childList) : childList) : null}
     </div>
   )
@@ -630,6 +645,7 @@ export function BudgetTable({
   folderMenu,
   labelMenu,
   sectionMenu,
+  canPlanDebts = false,
   ...extras
 }: BudgetTableProps) {
   const { t } = useTranslation()
@@ -668,6 +684,7 @@ export function BudgetTable({
       hideChildren={collapsedElementId === element.id}
       future={future}
       ownerHint={ownerHint}
+      canPlanDebts={canPlanDebts}
     />
   )
   const rowsOf = (bucket: FolderBucket, rowExtras: ElementRowExtras) =>

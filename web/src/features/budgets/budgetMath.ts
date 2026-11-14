@@ -1,4 +1,4 @@
-import type { BudgetDebtElementDto, BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetElementDto, BudgetFolderDto, ElementDebtDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { compareNames } from '@/lib/collate'
@@ -158,35 +158,7 @@ export function totalsWithSavings(totals: BucketStats, budget: BudgetDto, exchan
   )
 }
 
-/** The debt rows' share of the expense totals, in the budget currency. Their payments
- *  are expenses taken off the category rows, so adding them back keeps every total
- *  where it was. A debt row's `available` already holds this month's plan, unlike an
- *  element's. */
-export function debtTotals(budget: BudgetDto, exchangeFn: ExchangeFn): BucketStats {
-  const base = budget.meta.currencyId
-  return (budget.structure.debts ?? []).reduce(
-    (acc, row) => ({
-      budgeted: add(acc.budgeted, exchangeFn(row.currencyId, base, row.budgeted)),
-      spent: add(acc.spent, row.budgetSpent),
-      available: add(acc.available, exchangeFn(row.currencyId, base, row.available)),
-      carry: add(acc.carry, exchangeFn(row.currencyId, base, sub(add(row.available, row.spent), row.budgeted))),
-    }),
-    { budgeted: '0', spent: '0', available: '0', carry: '0' },
-  )
-}
-
-/** The expense totals (Total row, the Expenses totals line) with the debt rows added in. */
-export function totalsWithDebts(totals: BucketStats, budget: BudgetDto, exchangeFn: ExchangeFn): BucketStats {
-  const debts = debtTotals(budget, exchangeFn)
-  return {
-    budgeted: add(totals.budgeted, debts.budgeted),
-    spent: add(totals.spent, debts.spent),
-    available: add(totals.available, debts.available),
-    carry: add(totals.carry, debts.carry),
-  }
-}
-
-export type PayoffFigures = Pick<BudgetDebtElementDto, 'payoffDate' | 'basePayoffDate' | 'overpaymentLeft' | 'baseOverpaymentLeft'>
+export type PayoffFigures = Pick<ElementDebtDto, 'payoffDate' | 'basePayoffDate' | 'overpaymentLeft' | 'baseOverpaymentLeft'>
 
 /** What the planned extra payments buy: how many months earlier the debt is paid off
  *  and how much less overpayment it costs; null when the plans change nothing. */

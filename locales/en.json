@@ -1796,23 +1796,26 @@
         "balance_hint": "Balance at the end of the month."
       },
       "debts": {
-        "title": "Debts",
-        "paid": "Paid",
-        "left": "Left",
-        "left_hint": "Left to pay at the end of the month.",
         "payoff_by": "Paid off by {date}",
         "payments_left": "{count} payment left | {count} payments left",
         "extra_effect": "Paid off {months} month earlier, {amount} less overpayment | Paid off {months} months earlier, {amount} less overpayment",
         "extra_effect_earlier": "Paid off {months} month earlier | Paid off {months} months earlier",
         "track": "Track as debt",
-        "details": "Details"
+        "details": "Details",
+        "debt_details": "Debt details",
+        "delete": "Delete debt",
+        "past": "Past debts ({count})",
+        "past_title": "Past debts",
+        "borrowed": "Borrowed {amount}",
+        "section": "Debt",
+        "left_at_end": "Left to pay at month end: {amount}",
+        "not_set_up": "Not set up yet"
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, spent {spent}",
         "child_aria": "{name}, spent {spent}",
         "income_row_aria": "{name}, planned {planned}, received {received}",
         "savings_row_aria": "{name}, planned {planned}, saved {saved}",
-        "debt_row_aria": "{name}, planned {planned}, paid {paid}",
         "available": "{amount} available",
         "actual": "Actual",
         "balance": "Balance at month end"
