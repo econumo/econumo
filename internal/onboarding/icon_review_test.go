@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/onboarding"
 	"github.com/econumo/econumo/internal/shared/reqctx"
@@ -62,7 +63,7 @@ type recordingAI struct {
 	calls []recordedCall
 }
 
-func (r *recordingAI) Complete(_ context.Context, _, system, user string) (string, error) {
+func (r *recordingAI) Complete(_ context.Context, _, system, user string, _ *ai.Schema) (string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.calls = append(r.calls, recordedCall{system, user})

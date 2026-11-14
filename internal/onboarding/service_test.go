@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/onboarding"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -65,7 +66,7 @@ type fakeCompleter struct {
 	reply func(ctx context.Context) (string, error)
 }
 
-func (f *fakeCompleter) Complete(ctx context.Context, _, _, user string) (string, error) {
+func (f *fakeCompleter) Complete(ctx context.Context, _, _, user string, _ *ai.Schema) (string, error) {
 	f.calls++
 	f.user = user
 	return f.reply(ctx)

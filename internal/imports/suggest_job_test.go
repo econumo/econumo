@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/imports"
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -34,7 +35,7 @@ type fakeCompleter struct {
 	onCall  func()
 }
 
-func (c *fakeCompleter) Complete(ctx context.Context, userID, system, user string) (string, error) {
+func (c *fakeCompleter) Complete(ctx context.Context, userID, system, user string, schema *ai.Schema) (string, error) {
 	deadline, _ := ctx.Deadline()
 	c.calls = append(c.calls, completerCall{userID: userID, system: system, user: user, deadline: deadline})
 	if c.onCall != nil {
@@ -473,12 +474,12 @@ type panicFor struct {
 	owner string
 }
 
-func (c *panicFor) Complete(ctx context.Context, userID, system, user string) (string, error) {
+func (c *panicFor) Complete(ctx context.Context, userID, system, user string, schema *ai.Schema) (string, error) {
 	if userID == c.owner {
 		c.calls = append(c.calls, completerCall{userID: userID})
 		panic("boom")
 	}
-	return c.fakeCompleter.Complete(ctx, userID, system, user)
+	return c.fakeCompleter.Complete(ctx, userID, system, user, schema)
 }
 
 func TestSuggestPanicForOneOwnerStillServesOthers(t *testing.T) {
@@ -627,7 +628,7 @@ type gatedCompleter struct {
 	started chan struct{}
 }
 
-func (c *gatedCompleter) Complete(context.Context, string, string, string) (string, error) {
+func (c *gatedCompleter) Complete(context.Context, string, string, string, *ai.Schema) (string, error) {
 	c.mu.Lock()
 	c.calls++
 	first := c.calls == 1
@@ -777,7 +778,9 @@ func TestSuggestTimeoutStartsOnceTheOwnerLockIsHeld(t *testing.T) {
 
 type completerFunc func(ctx context.Context) (string, error)
 
-func (f completerFunc) Complete(ctx context.Context, _, _, _ string) (string, error) { return f(ctx) }
+func (f completerFunc) Complete(ctx context.Context, _, _, _ string, _ *ai.Schema) (string, error) {
+	return f(ctx)
+}
 
 func (h *harness) incomeCategory(t *testing.T, owner, name string) string {
 	t.Helper()

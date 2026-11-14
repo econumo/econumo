@@ -430,7 +430,7 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 	}
 	ctx, cancel := context.WithTimeout(ctx, suggestMatchTextTimeout)
 	defer cancel()
-	reply, err := s.completer.Complete(ctx, userID.String(), suggestMatchTextSystem, string(payload))
+	reply, err := s.completer.Complete(ctx, userID.String(), suggestMatchTextSystem, string(payload), nil)
 	var parsed struct {
 		MatchText string `json:"matchText"`
 	}

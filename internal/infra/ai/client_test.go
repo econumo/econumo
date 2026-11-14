@@ -23,7 +23,7 @@ func TestComplete_PostsChatCompletionAndReturnsContent(t *testing.T) {
 	defer srv.Close()
 
 	c := New(Config{Endpoint: srv.URL + "/v1", APIKey: "sk-test", Model: "gpt-5-mini"})
-	out, err := c.Complete(context.Background(), "user-1", "SYS", "USER")
+	out, err := c.Complete(context.Background(), "user-1", "SYS", "USER", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestComplete_PostsChatCompletionAndReturnsContent(t *testing.T) {
 		t.Fatalf("messages = %v", msgs)
 	}
 	if _, has := gotBody["response_format"]; has {
-		t.Fatal("response_format must not be sent (local servers reject it)")
+		t.Fatal("response_format must not be sent without a schema")
 	}
 	if _, has := gotBody["temperature"]; has {
 		t.Fatal("temperature must be omitted (gpt-5/o-series reject any non-default value with a 400)")
@@ -56,7 +56,7 @@ func TestComplete_KeylessSendsNoAuthorization(t *testing.T) {
 		_, _ = io.WriteString(w, `{"choices":[{"message":{"content":"ok"}}]}`)
 	}))
 	defer srv.Close()
-	if _, err := New(Config{Endpoint: srv.URL, Model: "llama3"}).Complete(context.Background(), "user-1", "s", "u"); err != nil {
+	if _, err := New(Config{Endpoint: srv.URL, Model: "llama3"}).Complete(context.Background(), "user-1", "s", "u", nil); err != nil {
 		t.Fatal(err)
 	}
 	if hasAuth || gotAuth != "" {
@@ -106,7 +106,7 @@ func TestComplete_AnthropicPostsMessagesAndReturnsTextBlocks(t *testing.T) {
 				} else if msg, _ := msgs[0].(map[string]any); msg["role"] != "user" || msg["content"] != "USER" {
 					t.Errorf("user message = %v", msg)
 				}
-				for _, field := range []string{"temperature", "response_format", "tools", "stream"} {
+				for _, field := range []string{"temperature", "response_format", "output_config", "tools", "stream"} {
 					if _, has := body[field]; has {
 						t.Errorf("unexpected %s", field)
 					}
@@ -115,7 +115,7 @@ func TestComplete_AnthropicPostsMessagesAndReturnsTextBlocks(t *testing.T) {
 			}))
 			defer srv.Close()
 			c := New(Config{Dialect: "anthropic", Endpoint: srv.URL + tc.prefix, APIKey: tc.key, Model: "claude-sonnet-4-6"})
-			out, err := c.Complete(context.Background(), "user-1", tc.system, "USER")
+			out, err := c.Complete(context.Background(), "user-1", tc.system, "USER", nil)
 			if err != nil || out != `{"rules":[]}` {
 				t.Fatalf("content = %q, err = %v", out, err)
 			}
@@ -140,7 +140,7 @@ func TestComplete_AnthropicRejectsInvalidOrIncompleteReplies(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = io.WriteString(w, body)
 		}))
-		out, err := New(Config{Dialect: "anthropic", Endpoint: srv.URL, APIKey: "sk-SECRET", Model: "m"}).Complete(context.Background(), "u", "s", "u")
+		out, err := New(Config{Dialect: "anthropic", Endpoint: srv.URL, APIKey: "sk-SECRET", Model: "m"}).Complete(context.Background(), "u", "s", "u", nil)
 		srv.Close()
 		if err == nil || out != "" {
 			t.Fatalf("body %q: content=%q err=%v", body, out, err)
@@ -161,7 +161,7 @@ func TestComplete_AnthropicDoesNotForwardKeyOnRedirect(t *testing.T) {
 		http.Redirect(w, r, target.URL, http.StatusTemporaryRedirect)
 	}))
 	defer srv.Close()
-	_, err := New(Config{Dialect: "anthropic", Endpoint: srv.URL, APIKey: "sk-test", Model: "m"}).Complete(context.Background(), "u", "s", "u")
+	_, err := New(Config{Dialect: "anthropic", Endpoint: srv.URL, APIKey: "sk-test", Model: "m"}).Complete(context.Background(), "u", "s", "u", nil)
 	if forwarded || err == nil || !strings.Contains(err.Error(), "307") {
 		t.Fatalf("forwarded=%v err=%v", forwarded, err)
 	}
@@ -174,7 +174,7 @@ func TestComplete_ErrorsNeverCarryTheBodyOrKey(t *testing.T) {
 	}))
 	defer srv.Close()
 	for _, dialect := range []string{"", "anthropic"} {
-		_, err := New(Config{Dialect: dialect, Endpoint: srv.URL, APIKey: "sk-test", Model: "m"}).Complete(context.Background(), "user-1", "s", "u")
+		_, err := New(Config{Dialect: dialect, Endpoint: srv.URL, APIKey: "sk-test", Model: "m"}).Complete(context.Background(), "user-1", "s", "u", nil)
 		if err == nil {
 			t.Fatal("expected an error on 401")
 		}
@@ -192,7 +192,7 @@ func TestComplete_MalformedAndEmptyReplies(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = io.WriteString(w, body)
 		}))
-		_, err := New(Config{Endpoint: srv.URL, Model: "m"}).Complete(context.Background(), "user-1", "s", "u")
+		_, err := New(Config{Endpoint: srv.URL, Model: "m"}).Complete(context.Background(), "user-1", "s", "u", nil)
 		srv.Close()
 		if err == nil {
 			t.Fatalf("body %q: expected an error", body)
@@ -208,7 +208,7 @@ func TestComplete_SignSuppliesThePerUserBearer(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := New(Config{Endpoint: srv.URL, APIKey: "ignored", Model: "m", Sign: func(uid string) (string, error) { return "tok-for-" + uid, nil }})
-	if _, err := c.Complete(context.Background(), "user-7", "s", "u"); err != nil {
+	if _, err := c.Complete(context.Background(), "user-7", "s", "u", nil); err != nil {
 		t.Fatal(err)
 	}
 	if auth != "Bearer tok-for-user-7" {
@@ -221,7 +221,122 @@ func TestComplete_SignFailureSendsNothing(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
 	defer srv.Close()
 	c := New(Config{Endpoint: srv.URL, Model: "m", Sign: func(string) (string, error) { return "", errors.New("boom") }})
-	if _, err := c.Complete(context.Background(), "u", "s", "u"); err == nil || called {
+	if _, err := c.Complete(context.Background(), "u", "s", "u", nil); err == nil || called {
 		t.Fatalf("err=%v called=%v", err, called)
+	}
+}
+
+var testSchema = &Schema{Name: "rows", JSON: json.RawMessage(`{"type":"object","properties":{"rows":{"type":"array","items":{"type":"string"}}},"required":["rows"],"additionalProperties":false}`)}
+
+func TestComplete_SendsTheSchemaInEachDialect(t *testing.T) {
+	for _, dialect := range []string{"", "econumo", "anthropic"} {
+		t.Run("dialect="+dialect, func(t *testing.T) {
+			var body map[string]any
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_ = json.NewDecoder(r.Body).Decode(&body)
+				if dialect == "anthropic" {
+					_, _ = io.WriteString(w, `{"content":[{"type":"text","text":"{}"}],"stop_reason":"end_turn"}`)
+				} else {
+					_, _ = io.WriteString(w, `{"choices":[{"message":{"content":"{}"}}]}`)
+				}
+			}))
+			defer srv.Close()
+			if _, err := New(Config{Dialect: dialect, Endpoint: srv.URL, Model: "m"}).Complete(context.Background(), "u", "s", "u", testSchema); err != nil {
+				t.Fatal(err)
+			}
+			var want, got any
+			_ = json.Unmarshal(testSchema.JSON, &want)
+			if dialect == "anthropic" {
+				if _, has := body["response_format"]; has {
+					t.Fatal("anthropic must not get response_format")
+				}
+				format, _ := body["output_config"].(map[string]any)["format"].(map[string]any)
+				if format["type"] != "json_schema" {
+					t.Fatalf("output_config = %v", body["output_config"])
+				}
+				got = format["schema"]
+			} else {
+				if _, has := body["output_config"]; has {
+					t.Fatal("chat completions must not get output_config")
+				}
+				rf, _ := body["response_format"].(map[string]any)
+				js, _ := rf["json_schema"].(map[string]any)
+				if rf["type"] != "json_schema" || js["name"] != "rows" || js["strict"] != true {
+					t.Fatalf("response_format = %v", rf)
+				}
+				got = js["schema"]
+			}
+			gb, _ := json.Marshal(got)
+			wb, _ := json.Marshal(want)
+			if string(gb) != string(wb) {
+				t.Fatalf("schema = %s, want %s", gb, wb)
+			}
+		})
+	}
+}
+
+func TestComplete_A400ToASchemaRetriesWithoutAndRemembers(t *testing.T) {
+	for _, dialect := range []string{"", "anthropic"} {
+		t.Run("dialect="+dialect, func(t *testing.T) {
+			var withSchema, without int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var body map[string]any
+				_ = json.NewDecoder(r.Body).Decode(&body)
+				_, rf := body["response_format"]
+				_, oc := body["output_config"]
+				if rf || oc {
+					withSchema++
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				without++
+				if dialect == "anthropic" {
+					_, _ = io.WriteString(w, `{"content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn"}`)
+				} else {
+					_, _ = io.WriteString(w, `{"choices":[{"message":{"content":"ok"}}]}`)
+				}
+			}))
+			defer srv.Close()
+			c := New(Config{Dialect: dialect, Endpoint: srv.URL, Model: "m"})
+			for i := 0; i < 2; i++ {
+				out, err := c.Complete(context.Background(), "u", "s", "u", testSchema)
+				if err != nil || out != "ok" {
+					t.Fatalf("call %d: out=%q err=%v", i, out, err)
+				}
+			}
+			if withSchema != 1 || without != 2 {
+				t.Fatalf("with schema %d, without %d; want 1 and 2", withSchema, without)
+			}
+		})
+	}
+}
+
+func TestComplete_A400WithoutASchemaIsNotRetried(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer srv.Close()
+	c := New(Config{Endpoint: srv.URL, Model: "m"})
+	if _, err := c.Complete(context.Background(), "u", "s", "u", nil); err == nil || calls != 1 {
+		t.Fatalf("err=%v calls=%d", err, calls)
+	}
+	// a 400 that is not about a schema must not turn schemas off
+	if c.noSchema.Load() {
+		t.Fatal("noSchema set by a schema-less 400")
+	}
+}
+
+func TestComplete_OtherErrorsToASchemaKeepSchemas(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+	c := New(Config{Endpoint: srv.URL, Model: "m"})
+	if _, err := c.Complete(context.Background(), "u", "s", "u", testSchema); err == nil || calls != 1 || c.noSchema.Load() {
+		t.Fatalf("err=%v calls=%d noSchema=%v", err, calls, c.noSchema.Load())
 	}
 }

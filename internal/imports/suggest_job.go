@@ -360,7 +360,7 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 			}
 		}
 		calls++
-		reply, err := s.completer.Complete(ctx, owner.String(), system, user)
+		reply, err := s.completer.Complete(ctx, owner.String(), system, user, nil)
 		return reply, true, err
 	}
 	replies := map[string]suggestReplyRow{}

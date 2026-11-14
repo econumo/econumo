@@ -1,6 +1,7 @@
 // Package ai supplies OpenAI-compatible chat completions and Anthropic
-// Messages for AI features. JSON can be requested in the prompt rather than
-// through vendor-specific response formats or tools.
+// Messages for AI features. A call may carry a JSON schema the reply must
+// follow; endpoints that reject schemas get the prompt alone, which still
+// asks for the JSON.
 package ai
 
 import (
@@ -10,8 +11,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -32,9 +35,20 @@ type Config struct {
 	Sign func(userID string) (string, error)
 }
 
+// Schema is the JSON schema a reply must follow. It must fit the providers'
+// structured-output subset: every object closed (additionalProperties false)
+// with all its properties required, optional values nullable.
+type Schema struct {
+	Name string
+	JSON json.RawMessage
+}
+
 type Client struct {
 	cfg  Config
 	http *http.Client
+	// noSchema is set once the endpoint answered 400 to a request carrying a
+	// schema (local servers, older models): later calls send none.
+	noSchema atomic.Bool
 }
 
 func New(cfg Config) *Client {
@@ -58,9 +72,21 @@ type message struct {
 // field at all would break the exact DSN .env.example documents, invisibly.
 // Omitted, every server applies its own default.
 type request struct {
-	Model       string    `json:"model"`
-	Messages    []message `json:"messages"`
-	Temperature float64   `json:"temperature,omitempty"`
+	Model          string          `json:"model"`
+	Messages       []message       `json:"messages"`
+	Temperature    float64         `json:"temperature,omitempty"`
+	ResponseFormat *responseFormat `json:"response_format,omitempty"`
+}
+
+type responseFormat struct {
+	Type       string     `json:"type"`
+	JSONSchema jsonSchema `json:"json_schema"`
+}
+
+type jsonSchema struct {
+	Name   string          `json:"name"`
+	Strict bool            `json:"strict"`
+	Schema json.RawMessage `json:"schema"`
 }
 
 type response struct {
@@ -70,10 +96,20 @@ type response struct {
 }
 
 type anthropicRequest struct {
-	Model     string    `json:"model"`
-	MaxTokens int       `json:"max_tokens"`
-	System    string    `json:"system,omitempty"`
-	Messages  []message `json:"messages"`
+	Model        string        `json:"model"`
+	MaxTokens    int           `json:"max_tokens"`
+	System       string        `json:"system,omitempty"`
+	Messages     []message     `json:"messages"`
+	OutputConfig *outputConfig `json:"output_config,omitempty"`
+}
+
+type outputConfig struct {
+	Format outputFormat `json:"format"`
+}
+
+type outputFormat struct {
+	Type   string          `json:"type"`
+	Schema json.RawMessage `json:"schema"`
 }
 
 type anthropicResponse struct {
@@ -85,52 +121,28 @@ type anthropicResponse struct {
 }
 
 // Complete sends one system+user exchange on behalf of userID and returns the
-// assistant text; userID only matters when Config.Sign is set.
+// assistant text; userID only matters when Config.Sign is set. A non-nil
+// schema asks the provider to force the reply into it; when the endpoint
+// answers that with a 400 the call is retried once without it, and the
+// client sends no schema from then on.
 // Errors carry the HTTP status only: the response body may echo the prompt
 // (the user's payee strings) or the key, and errors end up in logs.
-func (c *Client) Complete(ctx context.Context, userID, system, user string) (string, error) {
-	path := "/chat/completions"
-	var payload any = request{Model: c.cfg.Model, Messages: []message{{Role: "system", Content: system}, {Role: "user", Content: user}}}
-	if c.cfg.Dialect == "anthropic" {
-		path = "/messages"
-		payload = anthropicRequest{Model: c.cfg.Model, MaxTokens: anthropicMaxTokens, System: system, Messages: []message{{Role: "user", Content: user}}}
+func (c *Client) Complete(ctx context.Context, userID, system, user string, schema *Schema) (string, error) {
+	if schema != nil && c.noSchema.Load() {
+		schema = nil
 	}
-	body, err := json.Marshal(payload)
+	raw, status, err := c.send(ctx, userID, system, user, schema)
+	if err == nil && status == http.StatusBadRequest && schema != nil {
+		if c.noSchema.CompareAndSwap(false, true) {
+			slog.Info("ai endpoint rejects reply schemas, sending prompts alone", "dialect", c.cfg.Dialect, "schema", schema.Name)
+		}
+		raw, status, err = c.send(ctx, userID, system, user, nil)
+	}
 	if err != nil {
 		return "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(c.cfg.Endpoint, "/")+path, bytes.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if c.cfg.Dialect == "anthropic" {
-		req.Header.Set("anthropic-version", "2023-06-01")
-		if c.cfg.APIKey != "" {
-			req.Header.Set("x-api-key", c.cfg.APIKey)
-		}
-	} else {
-		bearer := c.cfg.APIKey
-		if c.cfg.Sign != nil {
-			if bearer, err = c.cfg.Sign(userID); err != nil {
-				return "", fmt.Errorf("ai: signing the request: %w", err)
-			}
-		}
-		if bearer != "" {
-			req.Header.Set("Authorization", "Bearer "+bearer)
-		}
-	}
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("ai: request failed: %w", err)
-	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
-	if err != nil {
-		return "", fmt.Errorf("ai: reading response: %w", err)
-	}
-	if resp.StatusCode/100 != 2 {
-		return "", fmt.Errorf("ai: completion endpoint returned HTTP %d", resp.StatusCode)
+	if status/100 != 2 {
+		return "", fmt.Errorf("ai: completion endpoint returned HTTP %d", status)
 	}
 	if c.cfg.Dialect == "anthropic" {
 		return parseAnthropicResponse(raw)
@@ -143,6 +155,60 @@ func (c *Client) Complete(ctx context.Context, userID, system, user string) (str
 		return "", errors.New("ai: completion returned no choices")
 	}
 	return out.Choices[0].Message.Content, nil
+}
+
+func (c *Client) send(ctx context.Context, userID, system, user string, schema *Schema) ([]byte, int, error) {
+	path := "/chat/completions"
+	var payload any
+	if c.cfg.Dialect == "anthropic" {
+		path = "/messages"
+		r := anthropicRequest{Model: c.cfg.Model, MaxTokens: anthropicMaxTokens, System: system, Messages: []message{{Role: "user", Content: user}}}
+		if schema != nil {
+			r.OutputConfig = &outputConfig{Format: outputFormat{Type: "json_schema", Schema: schema.JSON}}
+		}
+		payload = r
+	} else {
+		r := request{Model: c.cfg.Model, Messages: []message{{Role: "system", Content: system}, {Role: "user", Content: user}}}
+		if schema != nil {
+			r.ResponseFormat = &responseFormat{Type: "json_schema", JSONSchema: jsonSchema{Name: schema.Name, Strict: true, Schema: schema.JSON}}
+		}
+		payload = r
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, 0, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(c.cfg.Endpoint, "/")+path, bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if c.cfg.Dialect == "anthropic" {
+		req.Header.Set("anthropic-version", "2023-06-01")
+		if c.cfg.APIKey != "" {
+			req.Header.Set("x-api-key", c.cfg.APIKey)
+		}
+	} else {
+		bearer := c.cfg.APIKey
+		if c.cfg.Sign != nil {
+			if bearer, err = c.cfg.Sign(userID); err != nil {
+				return nil, 0, fmt.Errorf("ai: signing the request: %w", err)
+			}
+		}
+		if bearer != "" {
+			req.Header.Set("Authorization", "Bearer "+bearer)
+		}
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("ai: request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	if err != nil {
+		return nil, 0, fmt.Errorf("ai: reading response: %w", err)
+	}
+	return raw, resp.StatusCode, nil
 }
 
 func parseAnthropicResponse(raw []byte) (string, error) {

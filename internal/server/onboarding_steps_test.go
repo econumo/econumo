@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -33,7 +34,7 @@ type recordingCompleter struct {
 	bySystem func(system string) (string, error)
 }
 
-func (c *recordingCompleter) Complete(ctx context.Context, _, system, user string) (string, error) {
+func (c *recordingCompleter) Complete(ctx context.Context, _, system, user string, _ *ai.Schema) (string, error) {
 	c.mu.Lock()
 	deadline, _ := ctx.Deadline()
 	c.deadlines = append(c.deadlines, deadline)

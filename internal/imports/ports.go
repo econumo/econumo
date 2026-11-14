@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -69,7 +70,7 @@ type ClassificationLister interface {
 // Completer is one chat completion. nil = AI disabled. userID names the
 // requesting user so a metering endpoint can attribute the call.
 type Completer interface {
-	Complete(ctx context.Context, userID, system, user string) (string, error)
+	Complete(ctx context.Context, userID, system, user string, schema *ai.Schema) (string, error)
 }
 
 // OwnerFacts is what the suggestion job needs about an account owner.

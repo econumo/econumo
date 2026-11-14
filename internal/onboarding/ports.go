@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -34,7 +35,7 @@ type UserFacts interface {
 // Completer is one chat completion with the configured AI provider. userID
 // names the requesting user (the econumo gateway scheme signs a token for it).
 type Completer interface {
-	Complete(ctx context.Context, userID, system, user string) (string, error)
+	Complete(ctx context.Context, userID, system, user string, schema *ai.Schema) (string, error)
 }
 
 // AttemptLimiter caps the AI classification per user; every job counts.

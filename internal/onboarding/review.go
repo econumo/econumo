@@ -371,7 +371,7 @@ func (s *Service) askIcons(ctx context.Context, userID vo.Id, system string, pro
 	if !s.mayAsk(ctx, userID) {
 		return nil, nil
 	}
-	raw, err := s.completer.Complete(ctx, userID.String(), system, string(body))
+	raw, err := s.completer.Complete(ctx, userID.String(), system, string(body), nil)
 	if err != nil {
 		return nil, err
 	}
