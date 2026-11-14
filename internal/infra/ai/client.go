@@ -1,7 +1,7 @@
 // Package ai supplies OpenAI-compatible chat completions and Anthropic
-// Messages for AI features. A call may carry a JSON schema the reply must
-// follow; endpoints that reject schemas get the prompt alone, which still
-// asks for the JSON.
+// Messages for AI features. With Config.JSONSchema a call may carry a JSON
+// schema the reply must follow; endpoints that reject schemas get the prompt
+// alone, which still asks for the JSON.
 package ai
 
 import (
@@ -29,6 +29,9 @@ type Config struct {
 	Endpoint string // base URL including the API prefix, e.g. https://api.openai.com/v1
 	APIKey   string // empty for keyless local servers
 	Model    string
+	// JSONSchema sends each call's reply schema (the DSN's json=1). Off,
+	// schemas are never sent and the prompt alone asks for the JSON.
+	JSONSchema bool
 	// Sign, when set, supplies the bearer per call from the requesting
 	// user's id, replacing APIKey. The econumo:// dialect signs a
 	// econumo-ai:v1 token here so the AI gateway can attribute usage.
@@ -168,14 +171,15 @@ type anthropicResponse struct {
 }
 
 // Complete sends one system+user exchange on behalf of userID and returns the
-// assistant text; userID only matters when Config.Sign is set. A non-nil
-// schema asks the provider to force the reply into it; when the endpoint
+// assistant text; userID only matters when Config.Sign is set. With
+// Config.JSONSchema, a non-nil schema asks the provider to force the reply
+// into it; when the endpoint
 // answers that with a 400 the call is retried once without it, and the
 // client sends no schema from then on.
 // Errors carry the HTTP status only: the response body may echo the prompt
 // (the user's payee strings) or the key, and errors end up in logs.
 func (c *Client) Complete(ctx context.Context, userID, system, user string, schema *Schema) (string, error) {
-	if schema != nil && c.noSchema.Load() {
+	if schema != nil && (!c.cfg.JSONSchema || c.noSchema.Load()) {
 		schema = nil
 	}
 	raw, status, err := c.send(ctx, userID, system, user, schema)

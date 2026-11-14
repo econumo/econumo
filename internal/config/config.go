@@ -128,6 +128,7 @@ type Config struct {
 	AIEndpoint string // https://host/v1 (plain http for loopback hosts or ?insecure=true)
 	AIAPIKey   string
 	AIModel    string
+	AIJSON     bool // ?json=1: send each call's reply schema (off by default)
 
 	// HTTP
 	Port               string   // PORT: HTTP listen port ("8181" or ":8181"); required, no default
@@ -217,6 +218,9 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.AIDialect, c.AIEndpoint, c.AIAPIKey, c.AIModel = aiDialect, aiEndpoint, aiKey, aiModel
+	if c.AIJSON, err = parseAIDSNJSON(c.AIDSN); err != nil {
+		return Config{}, err
+	}
 	c.AIEnabled = c.AIEndpoint != ""
 
 	// Strict parse (unlike the lenient getBool): a typo while trying to
@@ -717,6 +721,28 @@ func parseAIDSN(dsn string) (dialect, endpoint, apiKey, model string, err error)
 		path = "/v1"
 	}
 	return dialect, scheme + "://" + u.Host + path, apiKey, model, nil
+}
+
+// parseAIDSNJSON reads the DSN's json flag, which turns on reply schemas
+// (response_format / output_config). Off unless asked for: many local servers
+// and older models reject them, and a typo must not pass silently.
+func parseAIDSNJSON(dsn string) (bool, error) {
+	dsn = strings.TrimSpace(dsn)
+	if dsn == "" {
+		return false, nil
+	}
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return false, nil // parseAIDSN has already refused it
+	}
+	switch v := strings.ToLower(strings.TrimSpace(u.Query().Get("json"))); v {
+	case "", "0", "false":
+		return false, nil
+	case "1", "true":
+		return true, nil
+	default:
+		return false, fmt.Errorf("ECONUMO_AI_DSN json=%q is invalid (want true or false)", v)
+	}
 }
 
 func getEnv(key, def string) string {

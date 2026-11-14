@@ -401,7 +401,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// port; nil (no ECONUMO_AI_DSN) leaves those features without AI.
 	var aiClient *ai.Client
 	if cfg.AIEnabled {
-		aiCfg := ai.Config{Dialect: cfg.AIDialect, Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel}
+		aiCfg := ai.Config{Dialect: cfg.AIDialect, Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, JSONSchema: cfg.AIJSON}
 		if cfg.AIDialect == config.AIDialectEconumo {
 			// An econumo AI gateway: each call carries a short-lived
 			// token naming the user, signed with the admin token both sides share.

@@ -1175,13 +1175,15 @@ it). Key vars:
   builder has a guard test asserting its exact key set and values. The prompts are constants in
   one file per feature (`internal/imports/prompts.go`, `internal/onboarding/prompts.go`), each
   next to the JSON schema of its reply (array-shaped, every object closed with all properties
-  required, optional values nullable; `ai.Schema.Check` guards them). Every call sends its
-  schema (`ai.Client.Complete`'s last argument): chat completions as `response_format`
-  `json_schema` (strict; also the econumo gateway), Anthropic as `output_config.format`. An
-  endpoint that answers a call carrying a schema with HTTP 400 (local servers, older models) is
-  asked again once without it, and that client sends no schema for the rest of the process (one
-  INFO line); the prompt still describes the JSON, and the fence-tolerant parsers and the
-  server-side checks still decide what is kept.
+  required, optional values nullable; `ai.Schema.Check` guards them). Every call passes its
+  schema (`ai.Client.Complete`'s last argument), but it reaches the provider only when the DSN
+  sets `json=1` (or `json=true`; `0`/`false`/absent = off, the default, anything else fails at
+  boot; every scheme): chat completions then get `response_format` `json_schema` (strict; also
+  the econumo gateway), Anthropic `output_config.format`. With it on, an endpoint that answers
+  a call carrying a schema with HTTP 400 (local servers, older models) is asked again once
+  without it, and that client sends no schema for the rest of the process (one INFO line).
+  Either way the prompt describes the JSON, and the fence-tolerant parsers and the server-side
+  checks decide what is kept.
   A user who turned the per-user `ai` option off (`update-ai`) sends nothing: no onboarding
   job starts for them (an unreadable preference starts none either), and each onboarding request
   re-reads the option right before its provider call, so a job queued before the opt-out sends

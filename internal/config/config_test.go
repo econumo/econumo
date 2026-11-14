@@ -866,6 +866,44 @@ func TestParseAIDSN_ParseErrorsKeepSecretsOut(t *testing.T) {
 	}
 }
 
+func TestParseAIDSNJSON(t *testing.T) {
+	for dsn, want := range map[string]bool{
+		"":                                 false,
+		"openai://localhost:11434?model=m": false,
+		"openai://localhost:11434?model=m&json=0":           false,
+		"openai://localhost:11434?model=m&json=false":       false,
+		"openai://localhost:11434?model=m&json=1":           true,
+		"anthropic://k@api.anthropic.com?model=m&json=true": true,
+		"econumo://gw.example?model=m&json=TRUE":            true,
+	} {
+		got, err := parseAIDSNJSON(dsn)
+		if err != nil || got != want {
+			t.Fatalf("%q: got %v, %v; want %v", dsn, got, err, want)
+		}
+	}
+	for _, dsn := range []string{"openai://localhost?model=m&json=yes", "openai://localhost?model=m&json=2", "openai://localhost?model=m&json=on"} {
+		if _, err := parseAIDSNJSON(dsn); err == nil {
+			t.Fatalf("%q must fail", dsn)
+		}
+	}
+}
+
+func TestLoad_AIDSNJSONFlag(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_AI_DSN", "openai://localhost:11434?model=m&json=1")
+	if c, err := Load(); err != nil || !c.AIJSON {
+		t.Fatalf("json=1: AIJSON = %v, err = %v", c.AIJSON, err)
+	}
+	t.Setenv("ECONUMO_AI_DSN", "openai://localhost:11434?model=m")
+	if c, err := Load(); err != nil || c.AIJSON {
+		t.Fatalf("no json: AIJSON = %v, err = %v", c.AIJSON, err)
+	}
+	t.Setenv("ECONUMO_AI_DSN", "openai://localhost:11434?model=m&json=maybe")
+	if _, err := Load(); err == nil {
+		t.Fatal("json=maybe must fail at boot")
+	}
+}
+
 func TestLoad_AIDSN(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 	t.Setenv("ECONUMO_AI_DSN", "openai://sk-abc@api.openai.com?model=gpt-5-mini")

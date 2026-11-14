@@ -241,7 +241,7 @@ func TestComplete_SendsTheSchemaInEachDialect(t *testing.T) {
 				}
 			}))
 			defer srv.Close()
-			if _, err := New(Config{Dialect: dialect, Endpoint: srv.URL, Model: "m"}).Complete(context.Background(), "u", "s", "u", testSchema); err != nil {
+			if _, err := New(Config{Dialect: dialect, Endpoint: srv.URL, Model: "m", JSONSchema: true}).Complete(context.Background(), "u", "s", "u", testSchema); err != nil {
 				t.Fatal(err)
 			}
 			var want, got any
@@ -297,7 +297,7 @@ func TestComplete_A400ToASchemaRetriesWithoutAndRemembers(t *testing.T) {
 				}
 			}))
 			defer srv.Close()
-			c := New(Config{Dialect: dialect, Endpoint: srv.URL, Model: "m"})
+			c := New(Config{Dialect: dialect, Endpoint: srv.URL, Model: "m", JSONSchema: true})
 			for i := 0; i < 2; i++ {
 				out, err := c.Complete(context.Background(), "u", "s", "u", testSchema)
 				if err != nil || out != "ok" {
@@ -335,7 +335,7 @@ func TestComplete_OtherErrorsToASchemaKeepSchemas(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
-	c := New(Config{Endpoint: srv.URL, Model: "m"})
+	c := New(Config{Endpoint: srv.URL, Model: "m", JSONSchema: true})
 	if _, err := c.Complete(context.Background(), "u", "s", "u", testSchema); err == nil || calls != 1 || c.noSchema.Load() {
 		t.Fatalf("err=%v calls=%d noSchema=%v", err, calls, c.noSchema.Load())
 	}
@@ -354,6 +354,30 @@ func TestSchemaCheck(t *testing.T) {
 	} {
 		if err := (Schema{Name: "x", JSON: json.RawMessage(bad)}).Check(); err == nil {
 			t.Fatalf("%s: expected an error", bad)
+		}
+	}
+}
+
+func TestComplete_WithoutTheJSONFlagNoSchemaIsSent(t *testing.T) {
+	for _, dialect := range []string{"", "econumo", "anthropic"} {
+		var body map[string]any
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			if dialect == "anthropic" {
+				_, _ = io.WriteString(w, `{"content":[{"type":"text","text":"{}"}],"stop_reason":"end_turn"}`)
+			} else {
+				_, _ = io.WriteString(w, `{"choices":[{"message":{"content":"{}"}}]}`)
+			}
+		}))
+		_, err := New(Config{Dialect: dialect, Endpoint: srv.URL, Model: "m"}).Complete(context.Background(), "u", "s", "u", testSchema)
+		srv.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, field := range []string{"response_format", "output_config"} {
+			if _, has := body[field]; has {
+				t.Fatalf("dialect %q: %s sent without json=1", dialect, field)
+			}
 		}
 	}
 }
