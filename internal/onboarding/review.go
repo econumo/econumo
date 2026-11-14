@@ -128,17 +128,24 @@ func (s *Service) ReviewImportedIcons(ctx context.Context, userID vo.Id, categor
 		p = &pendingIcons{seen: map[string]bool{}}
 		s.pendingIcons[key] = p
 	}
+	added := false
 	for _, id := range categoryIDs {
 		if k := "c" + strings.ToLower(id.String()); !p.seen[k] {
 			p.seen[k] = true
 			p.categories = append(p.categories, id)
+			added = true
 		}
 	}
 	for _, id := range accountIDs {
 		if k := "a" + strings.ToLower(id.String()); !p.seen[k] {
 			p.seen[k] = true
 			p.accounts = append(p.accounts, id)
+			added = true
 		}
+	}
+	// New ids make it a new review, with its own retry.
+	if added {
+		p.retried = false
 	}
 	if created {
 		p.facts = facts

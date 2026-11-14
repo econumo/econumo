@@ -367,6 +367,20 @@ func TestIconReview_TransientFailureRetriesOnce(t *testing.T) {
 			t.Fatalf("calls = %d, still scheduled = %d", len(ai.calls), len(timers.pending))
 		}
 	})
+	t.Run("a new chunk gets its own retry", func(t *testing.T) {
+		svc, ai, _, timers := newIconSvcWith(&flakyOptOut{fails: 2})
+		svc.ReviewImportedIcons(context.Background(), user, ids(cat1), nil)
+		timers.fire() // first failure: retried once
+		svc.ReviewImportedIcons(context.Background(), user, ids(cat2), nil)
+		timers.fire() // second failure: still a retry, the ids are new
+		if len(timers.pending) != 1 {
+			t.Fatalf("a re-armed review was dropped on its first failure")
+		}
+		timers.fire()
+		if len(ai.calls) != 1 {
+			t.Fatalf("calls = %d", len(ai.calls))
+		}
+	})
 	t.Run("opted out", func(t *testing.T) {
 		svc, _, _, timers := newIconSvc(true)
 		svc.ReviewImportedIcons(context.Background(), user, ids(cat1), nil)
