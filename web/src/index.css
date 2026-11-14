@@ -463,3 +463,17 @@
     animation: none;
   }
 }
+
+/* Phone sheets leave in 220ms, not vaul's 500. Its curve is an entrance one —
+   cubic-bezier(0.32, 0.72, 0, 1) spends its tail arriving — so a 500ms exit put
+   the sheet 95% off screen in the first 160ms and then crawled the last 80px for
+   another 340ms (measured on an iPhone), with the page behind still dimmed and
+   untappable the whole time. Same curve, so it is still the same sheet moving;
+   the overlay matches it. Specificity beats vaul's own rules, which are injected
+   into <head> at runtime and would otherwise win the tie. */
+[data-vaul-drawer][data-vaul-drawer-direction='bottom'][data-state='closed'] {
+  animation-duration: 0.22s;
+}
+[data-vaul-overlay][data-vaul-snap-points='false'][data-state='closed'] {
+  animation-duration: 0.22s;
+}
