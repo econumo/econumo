@@ -31,12 +31,8 @@ func (sqliteQuerier) DeleteDebt(ctx context.Context, db backend.DBTX, id string)
 	return sqlitegen.New(db).DeleteDebt(ctx, id)
 }
 
-func (sqliteQuerier) DeleteDebtRules(ctx context.Context, db backend.DBTX, debtID string) error {
-	return sqlitegen.New(db).DeleteDebtRules(ctx, debtID)
-}
-
-func (sqliteQuerier) InsertDebtRule(ctx context.Context, db backend.DBTX, p ruleParams) error {
-	return sqlitegen.New(db).InsertDebtRule(ctx, p)
+func (sqliteQuerier) MoveDebtsToElement(ctx context.Context, db backend.DBTX, p moveParams) error {
+	return sqlitegen.New(db).MoveDebtsToElement(ctx, p)
 }
 
 func (sqliteQuerier) InsertDebtSnapshot(ctx context.Context, db backend.DBTX, p snapshotParams) error {

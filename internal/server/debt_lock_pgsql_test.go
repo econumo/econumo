@@ -25,11 +25,9 @@ import (
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/pgsql"
-	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -41,9 +39,6 @@ type debtLockClock struct{}
 
 func (debtLockClock) Now() time.Time { return time.Date(2026, 8, 17, 10, 0, 0, 0, time.UTC) }
 
-// The race period: the clock's month, inside every debt's planning life.
-const debtLockPeriod = "2026-08-01"
-
 func fireHook(h *func()) {
 	if *h != nil {
 		fire := *h
@@ -52,38 +47,16 @@ func fireHook(h *func()) {
 	}
 }
 
-// debtLockBudgetRepo pauses a budget use case inside its open transaction.
-type debtLockBudgetRepo struct {
-	appbudget.Repository
-	afterSaveLimit, afterLockElements func()
-}
-
-func (r *debtLockBudgetRepo) SaveLimit(ctx context.Context, l *model.BudgetElementLimit) error {
-	err := r.Repository.SaveLimit(ctx, l)
-	if err == nil {
-		fireHook(&r.afterSaveLimit)
-	}
-	return err
-}
-
-func (r *debtLockBudgetRepo) LockElementsByExternal(ctx context.Context, externalID vo.Id, typ model.ElementType) error {
-	err := r.Repository.LockElementsByExternal(ctx, externalID, typ)
-	if err == nil {
-		fireHook(&r.afterLockElements)
-	}
-	return err
-}
-
 // debtLockDebtRepo pauses a debt write inside its open transaction.
 type debtLockDebtRepo struct {
 	appdebt.Repository
-	afterLockRuleCategories func()
+	afterLockCategories func()
 }
 
-func (r *debtLockDebtRepo) LockRuleCategories(ctx context.Context, ids []vo.Id) error {
-	err := r.Repository.LockRuleCategories(ctx, ids)
+func (r *debtLockDebtRepo) LockCategories(ctx context.Context, ids []vo.Id) error {
+	err := r.Repository.LockCategories(ctx, ids)
 	if err == nil {
-		fireHook(&r.afterLockRuleCategories)
+		fireHook(&r.afterLockCategories)
 	}
 	return err
 }
@@ -91,7 +64,6 @@ func (r *debtLockDebtRepo) LockRuleCategories(ctx context.Context, ids []vo.Id) 
 // debtLockPair is the budget, debt and category services on one connection,
 // wired with the production glue.
 type debtLockPair struct {
-	budgetRepo *debtLockBudgetRepo
 	debtRepo   *debtLockDebtRepo
 	budget     *appbudget.Service
 	debts      *appdebt.Service
@@ -112,12 +84,9 @@ func newDebtLockPair(t *testing.T, tdb *dbtest.DB) *debtLockPair {
 	convertor := domcurrency.NewConvertor(rateProvider)
 	accessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(eng, txm))
 
-	p := &debtLockPair{
-		budgetRepo: &debtLockBudgetRepo{Repository: budgetrepo.NewRepo(eng, txm)},
-		debtRepo:   &debtLockDebtRepo{Repository: debtrepo.NewRepo(eng, txm)},
-	}
+	p := &debtLockPair{debtRepo: &debtLockDebtRepo{Repository: debtrepo.NewRepo(eng, txm)}}
 	p.budget = appbudget.NewService(
-		p.budgetRepo, budgetrepo.NewReadRepo(eng, txm), convertor, rateProvider,
+		budgetrepo.NewRepo(eng, txm), budgetrepo.NewReadRepo(eng, txm), convertor, rateProvider,
 		server.NewBudgetUserLookup(userRepo, clk),
 		server.NewBudgetAccountLookup(accountrepo.NewRepo(eng, txm)),
 		server.NewBudgetCurrencyLookup(currencyLookup),
@@ -125,13 +94,12 @@ func newDebtLockPair(t *testing.T, tdb *dbtest.DB) *debtLockPair {
 		accessResolver, operationrepo.NewGuard(eng, txm), txm, clk,
 	)
 	p.debts = appdebt.NewService(p.debtRepo, txm, clk,
-		server.NewDebtClassifications(categoryRepo, payeeRepo, tagRepo, labelrepo.NewRepo(eng, txm)),
-		server.NewDebtRates(rateProvider, convertor), currencyLookup, server.NewDebtUsers(userRepo))
+		server.NewDebtCategories(categoryRepo), server.NewDebtRates(rateProvider, convertor), server.NewDebtUsers(userRepo))
 	p.debts.SetBudgets(server.NewDebtBudgets(p.budget))
-	p.debts.SetBudgetElements(server.NewDebtBudgetElements(p.budget))
+	p.debts.SetElements(server.NewDebtElements(p.budget))
 	p.budget.SetDebts(p.debts)
 	p.categories = appcategory.NewService(categoryRepo, txm, operationrepo.NewGuard(eng, txm), clk, categoryrepo.NewReadRepo(eng, txm), accessResolver, nil)
-	p.categories.SetDebtUsage(server.NewDebtUsage(p.debts, appdebt.KindCategory))
+	p.categories.SetDebtUsage(server.NewDebtUsage(p.debts))
 	if err := tdb.Raw.QueryRowContext(context.Background(), "SELECT pg_backend_pid()").Scan(&p.pid); err != nil {
 		t.Fatalf("backend pid: %v", err)
 	}
@@ -147,7 +115,7 @@ type debtLockRig struct {
 	one, two *debtLockPair
 	owner    vo.Id
 	budgetID string
-	loan     string // the debt's first rule
+	loan     string // an expense category
 	car      string // another expense category
 }
 
@@ -244,199 +212,20 @@ func pause(t *testing.T, install func(hook func()), fn func() error) (done <-cha
 	return out, unblock
 }
 
-func (r *debtLockRig) setLimit(svc *appbudget.Service, element string, amount *string) error {
-	var a *vo.FlexString
-	if amount != nil {
-		v := vo.NewFlexString(*amount)
-		a = &v
-	}
-	_, err := svc.SetLimit(context.Background(), r.owner, model.SetLimitRequest{BudgetId: r.budgetID, ElementId: element, Period: debtLockPeriod, Amount: a})
-	return err
-}
-
-func strp(s string) *string { return &s }
-
-func (r *debtLockRig) createDebt(t *testing.T, rule model.DebtRuleRequest) string {
-	t.Helper()
-	res, err := r.one.debts.CreateDebt(context.Background(), r.owner, model.CreateDebtRequest{
-		BudgetId: r.budgetID, Name: "Loan", CurrencyId: fixture.USD, Rules: []model.DebtRuleRequest{rule},
-		Payment: vo.NewFlexString("100"), Schedule: "monthly",
-	})
-	if err != nil {
-		t.Fatalf("CreateDebt: %v", err)
-	}
-	// No plan, comment or read before the race: create-debt itself must have
-	// made the row a concurrent delete can lock.
-	if _, rows := r.plan(t, res.Id); rows != 1 {
-		t.Fatalf("debt rows after create = %d, want 1", rows)
-	}
-	return res.Id
-}
-
-// plan is the external id's plan in the race period, "" for none; rows is
-// how many element rows the budget holds for it.
-func (r *debtLockRig) plan(t *testing.T, externalID string) (plan string, rows int) {
-	t.Helper()
-	if err := r.monitor.QueryRow(`SELECT COUNT(*) FROM budgets_elements WHERE budget_id = $1 AND external_id = $2`, r.budgetID, externalID).Scan(&rows); err != nil {
-		t.Fatal(err)
-	}
-	err := r.monitor.QueryRow(`SELECT COALESCE((SELECT l.amount::text FROM budgets_elements_limits l
-		JOIN budgets_elements e ON e.id = l.element_id
-		WHERE e.budget_id = $1 AND e.external_id = $2 AND l.period = $3), '')`, r.budgetID, externalID, debtLockPeriod).Scan(&plan)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if plan != "" {
-		plan = vo.NewDecimal(plan).String()
-	}
-	return plan, rows
-}
-
-// Review Focus 5: a plan saved on the category row and still open when
-// add-debt-rule takes the category: the rule write waits for it, then moves
-// the new plan onto the debt row, adding it to what was there.
-func TestAddDebtRule_ConcurrentSetLimitIsMovedOrWaits(t *testing.T) {
+// create-debt holds a key-share lock on its category. A category delete
+// arriving then read the category's debts before that debt existed, so it
+// holds no lock on the debt's budget; it waits for the category row and, once
+// the debt commits, fails with the retryable ErrDebtsChangedConcurrently
+// rather than lock that budget after the row (a deadlock risk) or leave the
+// debt on a deleted category. A retry deletes the debt with the category.
+func TestCreateDebt_ConcurrentCategoryDeleteFailsRetryably(t *testing.T) {
 	r := newDebtLockRig(t)
 	ctx := context.Background()
-	debtID := r.createDebt(t, model.DebtRuleRequest{CategoryId: r.loan})
-	if err := r.setLimit(r.one.budget, debtID, strp("10")); err != nil {
-		t.Fatal(err)
-	}
-	if err := r.setLimit(r.one.budget, r.car, strp("20")); err != nil {
-		t.Fatal(err)
-	}
 
-	wrote, unblock := pause(t, func(h func()) { r.two.budgetRepo.afterSaveLimit = h },
-		func() error { return r.setLimit(r.two.budget, r.car, strp("75")) })
-	added := make(chan error, 1)
-	go func() {
-		_, err := r.one.debts.AddDebtRule(ctx, r.owner, model.AddDebtRuleRequest{Id: debtID, Rule: model.DebtRuleRequest{CategoryId: r.car}})
-		added <- err
-	}()
-	r.waitLockWait(t, r.one.pid, "add-debt-rule", added)
-
-	unblock()
-	if err := <-wrote; err != nil {
-		t.Fatalf("set-limit: %v", err)
-	}
-	if err := <-added; err != nil {
-		t.Fatalf("add-debt-rule: %v", err)
-	}
-	if got, _ := r.plan(t, debtID); got != "85" {
-		t.Errorf("debt row plan = %q, want 85 (its 10 + the new 75)", got)
-	}
-	if got, _ := r.plan(t, r.car); got != "" {
-		t.Errorf("category row plan = %q, want it moved", got)
-	}
-}
-
-// set-limit on the debt row is open while delete-debt runs: the delete waits
-// for it and then sees the plan, so it asks for confirmation, drops it with
-// the row once confirmed, or hands it back to a whole category. When the
-// delete holds the row first, set-limit waits and finds the row gone.
-func TestDeleteDebt_ConcurrentSetLimitOnTheDebtRow(t *testing.T) {
-	for _, c := range []struct {
-		name       string
-		whole      bool
-		confirm    bool
-		wantRefuse bool
-	}{
-		{name: "partial debt, unconfirmed", wantRefuse: true},
-		{name: "partial debt, confirmed", confirm: true},
-		{name: "whole-category debt", whole: true},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			r := newDebtLockRig(t)
-			ctx := context.Background()
-			rule := model.DebtRuleRequest{CategoryId: r.loan}
-			if !c.whole {
-				bank := fixture.New(t, r.db).Payee(fixture.Payee{UserID: r.owner.String(), Name: "Bank"})
-				rule.PayeeId = &bank
-			}
-			debtID := r.createDebt(t, rule)
-
-			wrote, unblock := pause(t, func(h func()) { r.two.budgetRepo.afterSaveLimit = h },
-				func() error { return r.setLimit(r.two.budget, debtID, strp("75")) })
-			deleted := make(chan error, 1)
-			go func() {
-				_, err := r.one.debts.DeleteDebt(ctx, r.owner, model.DeleteDebtRequest{Id: debtID, ConfirmDataRemoval: c.confirm})
-				deleted <- err
-			}()
-			r.waitLockWait(t, r.one.pid, "delete-debt", deleted)
-
-			unblock()
-			if err := <-wrote; err != nil {
-				t.Fatalf("set-limit: %v", err)
-			}
-			err := <-deleted
-			plan, rows := r.plan(t, debtID)
-			switch {
-			case c.wantRefuse:
-				var ve *errs.ValidationError
-				if !errors.As(err, &ve) || len(ve.Fields) != 1 || ve.Fields[0].Key != "confirmDataRemoval" {
-					t.Fatalf("delete-debt = %v, want the confirmDataRemoval refusal", err)
-				}
-				if plan != "75" || rows != 1 {
-					t.Errorf("debt row = %d rows, plan %q; want the row and its 75 kept", rows, plan)
-				}
-			default:
-				if err != nil {
-					t.Fatalf("delete-debt: %v", err)
-				}
-				if rows != 0 {
-					t.Errorf("%d debt rows left after the delete", rows)
-				}
-			}
-			if c.whole {
-				if got, _ := r.plan(t, r.loan); got != "75" {
-					t.Errorf("category plan = %q, want the 75 handed back", got)
-				}
-			}
-		})
-	}
-
-	t.Run("delete first", func(t *testing.T) {
-		r := newDebtLockRig(t)
-		ctx := context.Background()
-		bank := fixture.New(t, r.db).Payee(fixture.Payee{UserID: r.owner.String(), Name: "Bank"})
-		debtID := r.createDebt(t, model.DebtRuleRequest{CategoryId: r.loan, PayeeId: &bank})
-
-		deleted, unblock := pause(t, func(h func()) { r.one.budgetRepo.afterLockElements = h },
-			func() error {
-				_, err := r.one.debts.DeleteDebt(ctx, r.owner, model.DeleteDebtRequest{Id: debtID})
-				return err
-			})
-		wrote := make(chan error, 1)
-		go func() { wrote <- r.setLimit(r.two.budget, debtID, strp("75")) }()
-		r.waitLockWait(t, r.two.pid, "set-limit", wrote)
-
-		unblock()
-		if err := <-deleted; err != nil {
-			t.Fatalf("delete-debt: %v", err)
-		}
-		if _, nf := errs.AsNotFound(<-wrote); !nf {
-			t.Fatal("set-limit after the delete committed, want not found")
-		}
-		if _, rows := r.plan(t, debtID); rows != 0 {
-			t.Errorf("%d debt rows left after the delete", rows)
-		}
-	})
-}
-
-// Ruling 2: add-debt-rule holds a key-share lock on the new rule's category.
-// A category delete arriving then read the rules before that rule existed, so
-// it holds no lock on the debt's budget; it waits for the category row and,
-// once the rule commits, fails with the retryable ErrRulesChangedConcurrently
-// rather than lock that budget after the row (a deadlock risk) or fail the
-// rule's foreign key. Nothing is half-done, and a retry releases the rule.
-func TestAddDebtRule_ConcurrentCategoryDeleteFailsRetryably(t *testing.T) {
-	r := newDebtLockRig(t)
-	ctx := context.Background()
-	debtID := r.createDebt(t, model.DebtRuleRequest{CategoryId: r.loan})
-
-	added, unblock := pause(t, func(h func()) { r.one.debtRepo.afterLockRuleCategories = h },
+	created, unblock := pause(t, func(h func()) { r.one.debtRepo.afterLockCategories = h },
 		func() error {
-			_, err := r.one.debts.AddDebtRule(ctx, r.owner, model.AddDebtRuleRequest{Id: debtID, Rule: model.DebtRuleRequest{CategoryId: r.car}})
+			_, err := r.one.debts.CreateDebt(ctx, r.owner, model.CreateDebtRequest{BudgetId: r.budgetID, ElementId: r.car,
+				Payment: vo.NewFlexString("100"), Schedule: "monthly"})
 			return err
 		})
 	deleted := make(chan error, 1)
@@ -447,30 +236,30 @@ func TestAddDebtRule_ConcurrentCategoryDeleteFailsRetryably(t *testing.T) {
 	r.waitLockWait(t, r.two.pid, "delete-category", deleted)
 
 	unblock()
-	if err := <-added; err != nil {
-		t.Fatalf("add-debt-rule: %v", err)
+	if err := <-created; err != nil {
+		t.Fatalf("create-debt: %v", err)
 	}
-	if err := <-deleted; !errors.Is(err, appdebt.ErrRulesChangedConcurrently) {
-		t.Fatalf("delete-category = %v, want ErrRulesChangedConcurrently", err)
+	if err := <-deleted; !errors.Is(err, appdebt.ErrDebtsChangedConcurrently) {
+		t.Fatalf("delete-category = %v, want ErrDebtsChangedConcurrently", err)
 	}
-	rules := func() (all, onCar, categories int) {
+	state := func() (debts, categories int) {
 		t.Helper()
-		if err := r.monitor.QueryRow(`SELECT COUNT(*), COUNT(*) FILTER (WHERE category_id = $2) FROM debts_rules WHERE debt_id = $1`, debtID, r.car).Scan(&all, &onCar); err != nil {
+		if err := r.monitor.QueryRow(`SELECT COUNT(*) FROM debts WHERE element_external_id = $1`, r.car).Scan(&debts); err != nil {
 			t.Fatal(err)
 		}
 		if err := r.monitor.QueryRow(`SELECT COUNT(*) FROM categories WHERE id = $1`, r.car).Scan(&categories); err != nil {
 			t.Fatal(err)
 		}
-		return all, onCar, categories
+		return debts, categories
 	}
-	if all, onCar, categories := rules(); all != 2 || onCar != 1 || categories != 1 {
-		t.Errorf("after the refused delete: %d rules (%d on the category), %d category rows; want both rules and the category kept", all, onCar, categories)
+	if debts, categories := state(); debts != 1 || categories != 1 {
+		t.Errorf("after the refused delete: %d debts, %d category rows; want both kept", debts, categories)
 	}
 
 	if _, err := r.two.categories.DeleteCategory(ctx, r.owner, model.DeleteCategoryRequest{Id: r.car}); err != nil {
 		t.Fatalf("delete-category retry: %v", err)
 	}
-	if all, onCar, categories := rules(); all != 1 || onCar != 0 || categories != 0 {
-		t.Errorf("after the retry: %d rules (%d on the category), %d category rows; want the first rule only and the category deleted", all, onCar, categories)
+	if debts, categories := state(); debts != 0 || categories != 0 {
+		t.Errorf("after the retry: %d debts, %d category rows; want both gone", debts, categories)
 	}
 }

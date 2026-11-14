@@ -2,7 +2,6 @@ package debt
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -11,9 +10,9 @@ import (
 )
 
 // GetDebtForecast lists the debt's payments still to come, to the payoff: the
-// regular schedule plus the extras its budget plans for the debt's row; a
-// budget whose plans add no extra leaves the schedule alone (the result then
-// names none). It is the projection behind the debt's own figures, on the
+// regular schedule plus the extras its element's plans add (a period's plan
+// above its scheduled payments); plans that add no extra leave the schedule
+// alone (the result then names no budget). It is the projection behind the debt's own figures, on the
 // budget's periods, run from the later of today and the last recorded
 // payment's day.
 func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.GetDebtForecastRequest) (*model.DebtForecastResult, error) {
@@ -33,17 +32,19 @@ func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.G
 	if !d.IsSetUp() {
 		return res, nil
 	}
-	bp, ok, err := s.budgets.DebtPlans(ctx, d.BudgetID, d.ID)
+	if s.elements == nil {
+		return nil, errNoElements
+	}
+	elementPlans, err := s.elements.Plans(ctx, d.BudgetID, d.ElementID)
 	if err != nil {
 		return nil, err
 	}
 	today := s.today(ctx)
-	startDay := model.MinPeriodStartDay
-	var plans map[string]float64
-	if ok {
-		startDay = bp.PeriodStartDay
-		plans = plannedInLife(st, st.project(today, nil, nil), &bp)
+	startDay := b.PeriodStartDay
+	if startDay == 0 {
+		startDay = model.MinPeriodStartDay
 	}
+	plans := plannedInLife(st, st.project(today, nil, nil), elementPlans, startDay)
 	// A payment recorded ahead of today is booked, not still to come: the run
 	// starts on the last recorded payment's day, so its due is paid and the
 	// first row follows the balance the booked list ends on.
@@ -78,26 +79,24 @@ func (s *Service) GetDebtForecast(ctx context.Context, userID vo.Id, req model.G
 		}
 	}
 	if extra {
-		res.BudgetId, res.BudgetName = d.BudgetID.String(), bp.Name
+		res.BudgetId, res.BudgetName = d.BudgetID.String(), b.Name
 	}
 	return res, nil
 }
 
-// plannedInLife keeps the plans of the periods the debt can be planned in, the
-// ones a budget counts.
-func plannedInLife(st *debtState, proj model.Projection, bp *model.DebtBudgetPlans) map[string]float64 {
+// plannedInLife keeps the plans of the periods the debt can be planned in:
+// outside its life they are the element's ordinary plans.
+func plannedInLife(st *debtState, proj model.Projection, plans map[string]float64, startDay int) map[string]float64 {
 	v := st.view
 	v.FirstDay, v.LastDay = planningBounds(st, proj)
-	first, last := v.PlanningBounds(bp.PeriodStartDay)
-	out := make(map[string]float64, len(bp.Plans))
-	for key, amount := range bp.Plans {
+	first, last := v.PlanningBounds(startDay)
+	out := make(map[string]float64, len(plans))
+	for key, amount := range plans {
 		m, err := time.Parse(datetime.DateLayout, key)
 		if err != nil || m.Before(first) || (!last.IsZero() && m.After(last)) {
 			continue
 		}
-		if f, err := strconv.ParseFloat(amount, 64); err == nil {
-			out[key] = f
-		}
+		out[key] = amount
 	}
 	return out
 }

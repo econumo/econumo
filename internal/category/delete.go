@@ -13,8 +13,8 @@ import (
 // AccessDenied. See CLAUDE.md.
 //
 // Transactions referencing it have category_id set to NULL via the ON DELETE
-// SET NULL FK. To keep them, use merge-category instead. Debt rules naming it
-// are removed (a debt left with none matches nothing).
+// SET NULL FK. To keep them, use merge-category instead. The debts attached
+// to it go with it.
 //
 // Returns an empty result ({}).
 func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req model.DeleteCategoryRequest) (*model.DeleteCategoryResult, error) {
@@ -32,7 +32,7 @@ func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req model.De
 			return &errs.ValidationError{Msg: "Category not found", MsgCode: errs.CodeCategoryNotFound}
 		}
 
-		if err := s.releaseDebtRules(ctx, id); err != nil {
+		if err := s.releaseDebts(ctx, id); err != nil {
 			return err
 		}
 		return s.repo.Delete(ctx, id)
@@ -43,11 +43,10 @@ func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req model.De
 	return &model.DeleteCategoryResult{}, nil
 }
 
-// releaseDebtRules runs before the delete's first write, in the lock order
+// releaseDebts runs before the delete's first write, in the lock order
 // DebtUsage describes: the debts' budget rows, then the category row (waiting
-// out a debt write adding a rule on it), then the rules are released while
-// the row still exists, since debts_rules refers to it.
-func (s *Service) releaseDebtRules(ctx context.Context, id vo.Id) error {
+// out a debt create on it), then the debts go.
+func (s *Service) releaseDebts(ctx context.Context, id vo.Id) error {
 	if s.debts == nil {
 		return nil
 	}

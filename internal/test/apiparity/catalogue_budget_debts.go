@@ -25,8 +25,8 @@ import "time"
 // Last, the owner adds a debt with no terms (payment and schedule only) on a
 // third category and pays 30 into it today: get-budget and get-budget-plan
 // then show it not set up, with its Paid, no balance, nothing scheduled and
-// plannable from the current month with no end. That debt has an icon of its
-// own, which its rows show instead of its category's.
+// plannable from the current month with no end. A debt shows its category's
+// name and icon.
 func init() {
 	register(Scenario{Name: "budget_debts", Calls: func() []Call {
 		now := ClockTime.Format("2006-01-02 15:04:05")
@@ -39,11 +39,10 @@ func init() {
 		lastPayment := time.Date(current.Year(), current.Month()+1, day, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
 		month := current.Format("2006-01-02")
 		debt := func(categoryID *string) map[string]any {
-			return map[string]any{
-				"budgetId": Budget, "name": "Loan", "currencyId": USD, "rules": []map[string]any{{"categoryId": categoryID}},
-				"amountBorrowed": "100", "startDate": ClockTime.Format("2006-01-02"), "payment": "105", "schedule": "monthly",
-				"lastPaymentDate": lastPayment,
-			}
+			return map[string]any{"budgetId": Budget, "elementId": categoryID, "payment": "105", "schedule": "monthly"}
+		}
+		setup := func(debtID *string) map[string]any {
+			return map[string]any{"id": debtID, "amountBorrowed": "100", "startDate": ClockTime.Format("2006-01-02"), "lastPaymentDate": lastPayment}
 		}
 		var loanCat, bikeCat, studyCat, ownerDebt, partnerDebt string
 		txList := "/api/v1/budget/get-transaction-list?budgetId=" + Budget + "&periodStart="
@@ -55,6 +54,7 @@ func init() {
 				CaptureIDInto: &loanCat},
 			{Label: "owner-creates-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
 				Body: debt(&loanCat), CaptureIDInto: &ownerDebt},
+			{Label: "owner-sets-up-debt", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner", Body: setup(&ownerDebt)},
 			{Label: "owner-pays", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": "d2000000-0000-0000-0000-0000000000b1", "type": "expense", "amount": "50.00",
 					"accountId": OwnerAccount, "categoryId": &loanCat, "date": now, "description": "loan"}},
@@ -65,6 +65,7 @@ func init() {
 				CaptureIDInto: &bikeCat},
 			{Label: "partner-creates-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "guest",
 				Body: debt(&bikeCat), CaptureIDInto: &partnerDebt},
+			{Label: "partner-sets-up-debt", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "guest", Body: setup(&partnerDebt)},
 
 			{Label: "owner-get-budget", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
 			{Label: "partner-get-budget", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "guest"},
@@ -89,8 +90,7 @@ func init() {
 				Body:          map[string]any{"id": "d2000000-0000-0000-0000-0000000000a3", "name": "Study loan", "type": "expense", "icon": "school"},
 				CaptureIDInto: &studyCat},
 			{Label: "owner-creates-debt-without-terms", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
-				Body: map[string]any{"budgetId": Budget, "name": "Study", "icon": "account_balance", "currencyId": USD,
-					"rules": []map[string]any{{"categoryId": &studyCat}}, "payment": "200", "schedule": "monthly"}},
+				Body: map[string]any{"budgetId": Budget, "elementId": &studyCat, "payment": "200", "schedule": "monthly"}},
 			{Label: "owner-pays-debt-without-terms", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": "d2000000-0000-0000-0000-0000000000b2", "type": "expense", "amount": "30.00",
 					"accountId": OwnerAccount, "categoryId": &studyCat, "date": now, "description": "study"}},

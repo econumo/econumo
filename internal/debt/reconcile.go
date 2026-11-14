@@ -71,7 +71,7 @@ func (s *Service) deleteDebtReconciliation(ctx context.Context, userID vo.Id, re
 	})
 }
 
-// withSetUpDebt runs write on a set-up debt the user may edit, under its
+// withSetUpDebt runs write on an active set-up debt the user may edit, under its
 // budget's lock, after its pending payments are split under the terms they
 // were made under, then saves the debt and presents it.
 func (s *Service) withSetUpDebt(ctx context.Context, userID, id vo.Id,
@@ -79,6 +79,9 @@ func (s *Service) withSetUpDebt(ctx context.Context, userID, id vo.Id,
 	d, b, err := s.editableDebt(ctx, userID, id)
 	if err != nil {
 		return nil, err
+	}
+	if d.IsPaidOff() {
+		return nil, paidOff()
 	}
 	if !d.IsSetUp() {
 		return nil, notSetUp()
@@ -91,6 +94,9 @@ func (s *Service) withSetUpDebt(ctx context.Context, userID, id vo.Id,
 		cur, _, err := s.lockedDebt(ctx, userID, id)
 		if err != nil {
 			return err
+		}
+		if cur.IsPaidOff() {
+			return paidOff()
 		}
 		if !cur.IsSetUp() {
 			return notSetUp()

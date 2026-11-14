@@ -4,3 +4,6 @@
 == err:create-debt POST /api/v1/debt/create-debt [readonly] -> 402
 {"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}
 
+== err:reopen-debt POST /api/v1/debt/reopen-debt [readonly] -> 402
+{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}
+

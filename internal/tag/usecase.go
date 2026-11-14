@@ -22,13 +22,7 @@ type Service struct {
 	access     AccountAccess
 	budget     BudgetElementMerger
 	labelNames LabelNames
-	debts      DebtUsage
 }
-
-// SetDebtUsage installs the debt peer; the debt service is built after this
-// one, so it cannot be a constructor argument. Nil leaves debts out of the
-// checks.
-func (s *Service) SetDebtUsage(d DebtUsage) { s.debts = d }
 
 // SetLabelNames installs the shared-namespace peer. The tag and label services
 // depend on each other, so neither constructor can take the other; this breaks

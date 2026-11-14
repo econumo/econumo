@@ -10,58 +10,33 @@ import (
 )
 
 type debtBudgetElements interface {
-	TransferElementData(ctx context.Context, t model.ElementDataTransfer) (bool, error)
-	ElementHasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error)
-	LockElements(ctx context.Context, externalID vo.Id, typ model.ElementType) error
-	RemoveElements(ctx context.Context, externalID vo.Id, typ model.ElementType) error
-	SetElementsCurrency(ctx context.Context, externalID vo.Id, typ model.ElementType, currencyID vo.Id) error
-	EnsureElements(ctx context.Context, budgetID vo.Id) error
+	DebtElement(ctx context.Context, budgetID, elementID vo.Id) (model.DebtElementInfo, error)
+	DebtElementPlans(ctx context.Context, budgetID, elementID vo.Id) (map[string]float64, error)
 }
 
-// DebtBudgetElements adapts the budget service's method names to
-// debt.BudgetElements.
-type DebtBudgetElements struct{ budget debtBudgetElements }
+// DebtElements adapts the budget service's method names to debt.Elements.
+type DebtElements struct{ budget debtBudgetElements }
 
 var (
-	_ debt.BudgetElements  = (*DebtBudgetElements)(nil)
+	_ debt.Elements        = (*DebtElements)(nil)
 	_ debt.Budgets         = (*DebtBudgets)(nil)
 	_ appbudget.DebtSource = (*debt.Service)(nil)
 )
 
-func NewDebtBudgetElements(budget debtBudgetElements) *DebtBudgetElements {
-	return &DebtBudgetElements{budget: budget}
+func NewDebtElements(budget debtBudgetElements) *DebtElements { return &DebtElements{budget: budget} }
+
+func (a *DebtElements) Element(ctx context.Context, budgetID, elementID vo.Id) (model.DebtElementInfo, error) {
+	return a.budget.DebtElement(ctx, budgetID, elementID)
 }
 
-func (a *DebtBudgetElements) TransferData(ctx context.Context, t model.ElementDataTransfer) (bool, error) {
-	return a.budget.TransferElementData(ctx, t)
-}
-
-func (a *DebtBudgetElements) LockRows(ctx context.Context, externalID vo.Id, typ model.ElementType) error {
-	return a.budget.LockElements(ctx, externalID, typ)
-}
-
-func (a *DebtBudgetElements) RemoveRows(ctx context.Context, externalID vo.Id, typ model.ElementType) error {
-	return a.budget.RemoveElements(ctx, externalID, typ)
-}
-
-func (a *DebtBudgetElements) HasData(ctx context.Context, externalID vo.Id, typ model.ElementType) (bool, error) {
-	return a.budget.ElementHasData(ctx, externalID, typ)
-}
-
-func (a *DebtBudgetElements) EnsureRows(ctx context.Context, budgetID vo.Id) error {
-	return a.budget.EnsureElements(ctx, budgetID)
-}
-
-func (a *DebtBudgetElements) SetRowsCurrency(ctx context.Context, externalID vo.Id, typ model.ElementType, currencyID vo.Id) error {
-	return a.budget.SetElementsCurrency(ctx, externalID, typ, currencyID)
+func (a *DebtElements) Plans(ctx context.Context, budgetID, elementID vo.Id) (map[string]float64, error) {
+	return a.budget.DebtElementPlans(ctx, budgetID, elementID)
 }
 
 type debtBudgetAccess interface {
 	DebtBudget(ctx context.Context, userID, budgetID vo.Id) (model.DebtBudget, error)
 	DebtBudgets(ctx context.Context, userID vo.Id) ([]model.DebtBudget, error)
 	DebtScope(ctx context.Context, budgetID vo.Id) (model.DebtScope, error)
-	DebtRuleOptions(ctx context.Context, viewerID, budgetID vo.Id) (*model.DebtRuleOptionsResult, error)
-	DebtRowPlans(ctx context.Context, budgetID, debtID vo.Id) (model.DebtBudgetPlans, bool, error)
 }
 
 // DebtBudgets adapts the budget service's method names to debt.Budgets.
@@ -79,12 +54,4 @@ func (a *DebtBudgets) Readable(ctx context.Context, userID vo.Id) ([]model.DebtB
 
 func (a *DebtBudgets) Scope(ctx context.Context, budgetID vo.Id) (model.DebtScope, error) {
 	return a.budget.DebtScope(ctx, budgetID)
-}
-
-func (a *DebtBudgets) RuleOptions(ctx context.Context, viewerID, budgetID vo.Id) (*model.DebtRuleOptionsResult, error) {
-	return a.budget.DebtRuleOptions(ctx, viewerID, budgetID)
-}
-
-func (a *DebtBudgets) DebtPlans(ctx context.Context, budgetID, debtID vo.Id) (model.DebtBudgetPlans, bool, error) {
-	return a.budget.DebtRowPlans(ctx, budgetID, debtID)
 }

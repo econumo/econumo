@@ -81,7 +81,7 @@ func categoryExistsIn(t *testing.T, db *dbtest.DB, ctx context.Context, id strin
 	return n > 0
 }
 
-func TestDeleteCategory_ReleasesDebtRules(t *testing.T) {
+func TestDeleteCategory_ReleasesItsDebts(t *testing.T) {
 	db := dbtest.New(t)
 	debts := &fakeDebtUsage{}
 	svc, f, owner := newGuardCategorySvc(t, db, debts)
@@ -91,8 +91,8 @@ func TestDeleteCategory_ReleasesDebtRules(t *testing.T) {
 	if _, err := svc.DeleteCategory(context.Background(), vo.MustParseId(owner), model.DeleteCategoryRequest{Id: id}); err != nil {
 		t.Fatal(err)
 	}
-	// the budgets are locked before anything else, the rules released while
-	// the category row still exists (debts_rules has a NO ACTION foreign key)
+	// the budgets are locked before anything else, the debts released while
+	// the category row still exists
 	if want := []string{"prepare " + id, "release " + id}; !slices.Equal(debts.calls, want) {
 		t.Fatalf("debt calls = %v, want %v", debts.calls, want)
 	}
@@ -131,7 +131,7 @@ func TestDeleteCategory_DebtErrorRollsBack(t *testing.T) {
 		t.Fatalf("err = %v, want boom", err)
 	}
 	if !categoryExistsIn(t, db, context.Background(), id) {
-		t.Error("category was deleted although releasing its rules failed")
+		t.Error("category was deleted although releasing its debts failed")
 	}
 }
 

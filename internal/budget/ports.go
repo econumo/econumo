@@ -109,7 +109,7 @@ type RecurringSource interface {
 }
 
 // DebtSource reads the debts shown as budget rows. Satisfied by the debt
-// feature at wiring time. A scope is one budget and every account it counts,
+// feature at wiring time. A scope is one budget and its everyday accounts,
 // so a debt only ever matches payments on its own budget's members.
 type DebtSource interface {
 	Views(ctx context.Context, scope model.DebtScope) ([]model.DebtView, error)

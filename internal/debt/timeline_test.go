@@ -84,7 +84,8 @@ func TestTimelines_ScopeLimitsPayments(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
 	other := e.newBudget(e.user, "Other")
-	elsewhere := e.create(t, func(r *model.CreateDebtRequest) { r.BudgetId = other })
+	e.elements.set(other, e.elements.items[e.budget][e.category])
+	elsewhere := e.create(t, func(r *createSpec) { r.BudgetId = other })
 	outside := e.f.Account(fixture.Account{UserID: e.user})
 	e.expense(t, outside, ymd(2026, 4, 1), "1000", "")
 	april := []time.Time{ymd(2026, 4, 1)}

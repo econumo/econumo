@@ -36,15 +36,6 @@ func (q *Queries) DeleteDebtRateChange(ctx context.Context, arg DeleteDebtRateCh
 	return result.RowsAffected()
 }
 
-const deleteDebtRules = `-- name: DeleteDebtRules :exec
-DELETE FROM debts_rules WHERE debt_id = $1
-`
-
-func (q *Queries) DeleteDebtRules(ctx context.Context, debtID string) error {
-	_, err := q.db.ExecContext(ctx, deleteDebtRules, debtID)
-	return err
-}
-
 const deleteDebtSnapshot = `-- name: DeleteDebtSnapshot :exec
 DELETE FROM debts_snapshots WHERE id = $1
 `
@@ -56,7 +47,7 @@ func (q *Queries) DeleteDebtSnapshot(ctx context.Context, id string) error {
 
 const getDebtByID = `-- name: GetDebtByID :one
 
-SELECT id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, budget_id, element_external_id, element_type, status, ended_at, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE id = $1
 `
@@ -69,8 +60,10 @@ func (q *Queries) GetDebtByID(ctx context.Context, id string) (Debt, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.BudgetID,
-		&i.Name,
-		&i.Icon,
+		&i.ElementExternalID,
+		&i.ElementType,
+		&i.Status,
+		&i.EndedAt,
 		&i.CurrencyID,
 		&i.StartDate,
 		&i.AmountBorrowed,
@@ -84,34 +77,6 @@ func (q *Queries) GetDebtByID(ctx context.Context, id string) (Debt, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const insertDebtRule = `-- name: InsertDebtRule :exec
-INSERT INTO debts_rules (id, debt_id, category_id, payee_id, tag_id, label_id, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-`
-
-type InsertDebtRuleParams struct {
-	ID         string
-	DebtID     string
-	CategoryID string
-	PayeeID    *string
-	TagID      *string
-	LabelID    *string
-	CreatedAt  time.Time
-}
-
-func (q *Queries) InsertDebtRule(ctx context.Context, arg InsertDebtRuleParams) error {
-	_, err := q.db.ExecContext(ctx, insertDebtRule,
-		arg.ID,
-		arg.DebtID,
-		arg.CategoryID,
-		arg.PayeeID,
-		arg.TagID,
-		arg.LabelID,
-		arg.CreatedAt,
-	)
-	return err
 }
 
 const insertDebtSnapshot = `-- name: InsertDebtSnapshot :exec
@@ -166,7 +131,7 @@ func (q *Queries) InsertDebtSplit(ctx context.Context, arg InsertDebtSplitParams
 }
 
 const listDebtsByBudget = `-- name: ListDebtsByBudget :many
-SELECT id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, budget_id, element_external_id, element_type, status, ended_at, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE budget_id = $1
 ORDER BY created_at, id
@@ -184,8 +149,10 @@ func (q *Queries) ListDebtsByBudget(ctx context.Context, budgetID string) ([]Deb
 		if err := rows.Scan(
 			&i.ID,
 			&i.BudgetID,
-			&i.Name,
-			&i.Icon,
+			&i.ElementExternalID,
+			&i.ElementType,
+			&i.Status,
+			&i.EndedAt,
 			&i.CurrencyID,
 			&i.StartDate,
 			&i.AmountBorrowed,
@@ -223,6 +190,28 @@ func (q *Queries) LockDebtBudget(ctx context.Context, id string) (string, error)
 	return id, err
 }
 
+const moveDebtsToElement = `-- name: MoveDebtsToElement :exec
+UPDATE debts SET element_external_id = $1, element_type = $2
+WHERE budget_id = $3 AND element_external_id = $4
+`
+
+type MoveDebtsToElementParams struct {
+	ToID        string
+	ElementType string
+	BudgetID    string
+	FromID      string
+}
+
+func (q *Queries) MoveDebtsToElement(ctx context.Context, arg MoveDebtsToElementParams) error {
+	_, err := q.db.ExecContext(ctx, moveDebtsToElement,
+		arg.ToID,
+		arg.ElementType,
+		arg.BudgetID,
+		arg.FromID,
+	)
+	return err
+}
+
 const updateDebtSnapshot = `-- name: UpdateDebtSnapshot :exec
 UPDATE debts_snapshots
 SET as_of = $1::text::date, balance = $2, payment = $3, schedule = $4,
@@ -255,13 +244,14 @@ func (q *Queries) UpdateDebtSnapshot(ctx context.Context, arg UpdateDebtSnapshot
 }
 
 const upsertDebt = `-- name: UpsertDebt :exec
-INSERT INTO debts (id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
+INSERT INTO debts (id, budget_id, element_external_id, element_type, status, ended_at, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5,
-    $6::text::date, $7, $8::text::date, $9, $10, $11,
-    $12::text::date, $13::text::date, $14, $15)
+    $6::text::date, $7,
+    $8::text::date, $9, $10::text::date, $11, $12, $13,
+    $14::text::date, $15::text::date, $16, $17)
 ON CONFLICT (id) DO UPDATE SET
-    name              = excluded.name,
-    icon              = excluded.icon,
+    status            = excluded.status,
+    ended_at          = excluded.ended_at,
     currency_id       = excluded.currency_id,
     start_date        = excluded.start_date,
     amount_borrowed   = excluded.amount_borrowed,
@@ -274,30 +264,35 @@ ON CONFLICT (id) DO UPDATE SET
 `
 
 type UpsertDebtParams struct {
-	ID              string
-	BudgetID        string
-	Name            string
-	Icon            string
-	CurrencyID      string
-	StartDate       *string
-	AmountBorrowed  *string
-	AsOf            *string
-	Balance         *string
-	Payment         string
-	Schedule        string
-	LastPaymentDate *string
-	CreatedDay      string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                string
+	BudgetID          string
+	ElementExternalID string
+	ElementType       string
+	Status            string
+	EndedAt           *string
+	CurrencyID        string
+	StartDate         *string
+	AmountBorrowed    *string
+	AsOf              *string
+	Balance           *string
+	Payment           string
+	Schedule          string
+	LastPaymentDate   *string
+	CreatedDay        string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // The budget is written once, at insert: a debt never moves to another budget.
+// The element moves only with a category merge (MoveDebtsToElement).
 func (q *Queries) UpsertDebt(ctx context.Context, arg UpsertDebtParams) error {
 	_, err := q.db.ExecContext(ctx, upsertDebt,
 		arg.ID,
 		arg.BudgetID,
-		arg.Name,
-		arg.Icon,
+		arg.ElementExternalID,
+		arg.ElementType,
+		arg.Status,
+		arg.EndedAt,
 		arg.CurrencyID,
 		arg.StartDate,
 		arg.AmountBorrowed,

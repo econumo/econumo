@@ -158,14 +158,10 @@ func (a *budgetAggregate) participantIDs() []vo.Id {
 	return ids
 }
 
-// debtScope is what the budget's debts match payments on: every member
-// account, soft-deleted ones included, as the budget counts them.
+// debtScope is what the budget's debts match payments on: the everyday member
+// accounts, soft-deleted ones included, as an element's Spent counts them.
 func (a *budgetAggregate) debtScope() model.DebtScope {
-	ids := make([]vo.Id, 0, len(a.accounts))
-	for _, m := range a.accounts {
-		ids = append(ids, m.AccountID)
-	}
-	return model.DebtScope{BudgetID: a.budget.ID, AccountIDs: ids}
+	return model.DebtScope{BudgetID: a.budget.ID, AccountIDs: everydayIDs(a.accounts)}
 }
 
 // debtViews returns the budget's debts, none while no source is wired.

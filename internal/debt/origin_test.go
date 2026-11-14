@@ -13,19 +13,19 @@ import (
 
 // originReq is a loan of 12000 taken on 2025-03-01, 24 monthly payments of
 // 600 to 2027-03-01; today is 2026-03-10.
-func (e *env) originReq() model.CreateDebtRequest {
+func (e *env) originReq() createSpec {
 	req := e.createReq()
 	req.AmountBorrowed, req.StartDate, req.Payment = vo.NewFlexString("12000"), ptr("2025-03-01"), vo.NewFlexString("600")
 	return req
 }
 
-func (e *env) createOrigin(t *testing.T, mod func(*model.CreateDebtRequest)) *model.DebtResult {
+func (e *env) createOrigin(t *testing.T, mod func(*createSpec)) *model.DebtResult {
 	t.Helper()
 	req := e.originReq()
 	if mod != nil {
 		mod(&req)
 	}
-	res, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	res, err := e.tryCreate(req)
 	if err != nil {
 		t.Fatalf("CreateDebt: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestSetUpDebt_OwedIsBorrowedLessRecordedPrincipal(t *testing.T) {
 
 func TestCreateDebt_BalanceNowAppendsASnapshot(t *testing.T) {
 	e := newEnv(t)
-	res := e.createOrigin(t, func(r *model.CreateDebtRequest) { r.Balance = vo.NewFlexString("6000") })
+	res := e.createOrigin(t, func(r *createSpec) { r.Balance = vo.NewFlexString("6000") })
 	if res.AmountBorrowed != "12000" || res.Balance != "6000" || res.CurrentBalance != "6000" {
 		t.Fatalf("result = %+v", res)
 	}
@@ -127,7 +127,7 @@ func TestUpdateDebt_BalanceNowAloneOverridesFromToday(t *testing.T) {
 	res := e.createOrigin(t, nil)
 	before := e.splits(t, res.Id)[p1]
 
-	req := model.UpdateDebtRequest{Id: res.Id, Name: res.Name, StartDate: ptr(res.StartDate),
+	req := model.UpdateDebtRequest{Id: res.Id, StartDate: ptr(res.StartDate),
 		Balance: vo.NewFlexString("6500")}
 	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
 	if err != nil {
@@ -185,7 +185,7 @@ func TestUpdateDebt_OriginCorrectionResplits(t *testing.T) {
 // date reaches it too (it is the contract's), its balance kept.
 func TestUpdateDebt_OriginCorrectionReachesALaterBalance(t *testing.T) {
 	e := newEnv(t)
-	res := e.createOrigin(t, func(r *model.CreateDebtRequest) { r.Balance = vo.NewFlexString("6000") })
+	res := e.createOrigin(t, func(r *createSpec) { r.Balance = vo.NewFlexString("6000") })
 	req := e.updateReq(res)
 	req.Payment, req.LastPaymentDate = vo.NewFlexString("700"), "2027-06-01"
 	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
@@ -212,20 +212,20 @@ func TestUpdateDebt_OriginCorrectionReachesALaterBalance(t *testing.T) {
 func TestSetUpDebt_TermValidation(t *testing.T) {
 	e := newEnv(t)
 	for name, tc := range map[string]struct {
-		mod       func(*model.CreateDebtRequest)
+		mod       func(*createSpec)
 		key, code string
 	}{
-		"last before start": {func(r *model.CreateDebtRequest) { r.LastPaymentDate = "2025-03-01" }, "lastPaymentDate", errs.CodeDebtLastPaymentBeforeStart},
-		"start in future":   {func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-03-11") }, "startDate", errs.CodeDebtStartInFuture},
-		"not covered":       {func(r *model.CreateDebtRequest) { r.Payment = vo.NewFlexString("400") }, "payment", errs.CodeDebtPaymentsDontCover},
-		"balance now after the last payment": {func(r *model.CreateDebtRequest) {
+		"last before start": {func(r *createSpec) { r.LastPaymentDate = "2025-03-01" }, "lastPaymentDate", errs.CodeDebtLastPaymentBeforeStart},
+		"start in future":   {func(r *createSpec) { r.StartDate = ptr("2026-03-11") }, "startDate", errs.CodeDebtStartInFuture},
+		"not covered":       {func(r *createSpec) { r.Payment = vo.NewFlexString("400") }, "payment", errs.CodeDebtPaymentsDontCover},
+		"balance now after the last payment": {func(r *createSpec) {
 			r.LastPaymentDate, r.Balance = "2026-03-01", vo.NewFlexString("100")
 			r.Payment = vo.NewFlexString("1000")
 		}, "lastPaymentDate", errs.CodeDebtLastPaymentInPast},
 	} {
 		req := e.originReq()
 		tc.mod(&req)
-		_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+		_, err := e.tryCreate(req)
 		if err == nil {
 			t.Fatalf("%s: created", name)
 		}
@@ -233,7 +233,7 @@ func TestSetUpDebt_TermValidation(t *testing.T) {
 	}
 	// a loan whose last payment is behind it, still owing what was not
 	// recorded, is accepted without a balance now
-	if _, err := e.svc.CreateDebt(context.Background(), e.uid(), func() model.CreateDebtRequest {
+	if _, err := e.tryCreate(func() createSpec {
 		r := e.originReq()
 		r.StartDate, r.LastPaymentDate, r.Payment = ptr("2024-01-01"), "2026-01-01", vo.NewFlexString("1000")
 		return r
@@ -257,7 +257,7 @@ func TestUpdateDebt_NotSetUpNeedsTheLoanFactsForABalance(t *testing.T) {
 // the loan's start becomes the planning start.
 func TestFinishSetup_FromTheLoanFacts(t *testing.T) {
 	e := newEnv(t)
-	res := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Payment = vo.NewFlexString("600") })
+	res := e.createWithoutTerms(t, func(r *createSpec) { r.Payment = vo.NewFlexString("600") })
 	req := e.updateReq(res)
 	req.Payment, req.Schedule = vo.FlexString{}, ""
 	req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("12000"), ptr("2025-03-01"), "2027-03-01"
@@ -315,7 +315,7 @@ func TestUpdateDebt_FactsWithoutTheStartDate(t *testing.T) {
 		t.Fatalf("result = %+v", got)
 	}
 
-	bare := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Name = "Second"; r.StartDate = ptr("2024-01-01") })
+	bare := e.createWithoutTerms(t, func(r *createSpec) { r.ElementId = e.newCategory(e.user, true); r.StartDate = ptr("2024-01-01") })
 	req = e.updateReq(bare)
 	req.StartDate, req.AmountBorrowed, req.LastPaymentDate = nil, vo.NewFlexString("12000"), "2027-03-01"
 	if err := req.Validate(); err != nil {

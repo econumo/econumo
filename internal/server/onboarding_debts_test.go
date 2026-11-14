@@ -25,18 +25,15 @@ func (e *onbEnv) answer(debts string) {
 }
 
 type debtRow struct {
-	name, budget, category, currency, payment, schedule string
-	rules                                               int
-	ruleFilters                                         int
-	setUp                                               bool
+	budget, category, elementType, currency, payment, schedule string
+	setUp                                                      bool
 }
 
 func (e *onbEnv) debts() []debtRow {
 	e.t.Helper()
-	rows, err := e.db.Raw.Query(e.db.Rebind(`SELECT d.name, d.budget_id, r.category_id, d.currency_id, d.payment, d.schedule, d.amount_borrowed IS NOT NULL,
-		(SELECT COUNT(*) FROM debts_rules WHERE debt_id = d.id),
-		(SELECT COUNT(*) FROM debts_rules WHERE debt_id = d.id AND (payee_id IS NOT NULL OR tag_id IS NOT NULL OR label_id IS NOT NULL))
-		FROM debts d JOIN debts_rules r ON r.debt_id = d.id JOIN budgets b ON b.id = d.budget_id WHERE b.user_id = ? ORDER BY d.name`), e.user)
+	rows, err := e.db.Raw.Query(e.db.Rebind(`SELECT d.budget_id, d.element_external_id, d.element_type, d.currency_id, d.payment, d.schedule,
+		d.amount_borrowed IS NOT NULL
+		FROM debts d JOIN budgets b ON b.id = d.budget_id WHERE b.user_id = ? ORDER BY d.payment`), e.user)
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -44,7 +41,7 @@ func (e *onbEnv) debts() []debtRow {
 	var out []debtRow
 	for rows.Next() {
 		var d debtRow
-		if err := rows.Scan(&d.name, &d.budget, &d.category, &d.currency, &d.payment, &d.schedule, &d.setUp, &d.rules, &d.ruleFilters); err != nil {
+		if err := rows.Scan(&d.budget, &d.category, &d.elementType, &d.currency, &d.payment, &d.schedule, &d.setUp); err != nil {
 			e.t.Fatal(err)
 		}
 		d.payment = vo.NewDecimal(d.payment).String()
@@ -141,19 +138,15 @@ func TestFinishImport_CreatesADebtFromALoanCategory(t *testing.T) {
 		t.Fatalf("debts = %+v", got)
 	}
 	d := got[0]
-	if d.name != "Hypothekendarlehen" || d.category != w.mortgage || d.payment != "1000" || d.schedule != string(model.RecurringScheduleMonthly) || d.setUp {
+	if d.category != w.mortgage || d.elementType != "category" || d.payment != "1000" || d.schedule != string(model.RecurringScheduleMonthly) || d.setUp {
 		t.Fatalf("debt = %+v", d)
 	}
-	// created in the import's budget with one whole-category rule
-	if d.budget != budget || d.rules != 1 || d.ruleFilters != 0 {
-		t.Fatalf("debt budget %s (want %s), rules %d, rule filters %d", d.budget, budget, d.rules, d.ruleFilters)
+	// attached to the category in the import's budget, in its row's currency
+	if d.budget != budget {
+		t.Fatalf("debt budget %s, want %s", d.budget, budget)
 	}
 	if want := e.str(`SELECT currency_id FROM budgets WHERE id = ?`, budget); d.currency != want {
 		t.Fatalf("debt currency %s, budget %s", d.currency, want)
-	}
-	// the debt shows in the budget
-	if n := e.count(`SELECT COUNT(*) FROM budgets_elements WHERE budget_id = ? AND type = ?`, budget, int(model.ElementDebt)); n != 1 {
-		t.Fatalf("debt rows in the budget = %d", n)
 	}
 }
 
@@ -235,14 +228,13 @@ func TestSavePlan_CreatesADebtFromAPlannedLoanCategory(t *testing.T) {
 		t.Fatalf("prompts = %v", prompts)
 	}
 	got := e.debts()
-	if len(got) != 1 || got[0].name != "Ratenkredit" || got[0].category != loan || got[0].payment != "450.5" ||
+	if len(got) != 1 || got[0].category != loan || got[0].payment != "450.5" ||
 		got[0].schedule != string(model.RecurringScheduleMonthly) || got[0].currency != e.eur || got[0].setUp {
 		t.Fatalf("debts = %+v", got)
 	}
-	// the whole-category debt took the category's plan with it
-	debtID := e.str(`SELECT id FROM debts WHERE budget_id = ?`, budget)
-	if n := e.count(`SELECT COUNT(*) FROM budgets_elements_limits l JOIN budgets_elements el ON el.id = l.element_id WHERE el.budget_id = ? AND el.external_id = ?`, budget, debtID); n != 1 {
-		t.Fatalf("plans on the debt row = %d", n)
+	// the plan stays on the category the debt is attached to
+	if n := e.count(`SELECT COUNT(*) FROM budgets_elements_limits l JOIN budgets_elements el ON el.id = l.element_id WHERE el.budget_id = ? AND el.external_id = ?`, budget, loan); n != 1 {
+		t.Fatalf("plans on the category row = %d", n)
 	}
 }
 
@@ -262,8 +254,8 @@ func TestSavePlan_NoPositivePlanStartsNoJob(t *testing.T) {
 }
 
 // After an import the plan step covers what the history could not: a planned
-// category the import already turned into a debt is skipped, so detection
-// running again never duplicates one.
+// category the import already attached a debt to is refused a second one, so
+// detection running again never duplicates a debt, and its plan stays on it.
 func TestSavePlan_AfterAnImportSkipsCategoriesAlreadyCovered(t *testing.T) {
 	e := newOnbEnv(t, stepNow)
 	w := seedDebtHistory(e)
@@ -287,38 +279,10 @@ func TestSavePlan_AfterAnImportSkipsCategoriesAlreadyCovered(t *testing.T) {
 	if len(got) != 2 || got[0].category != w.carLoan || got[0].payment != "300" || got[1].category != w.mortgage || got[1].payment != "1000" {
 		t.Fatalf("debts = %+v", got)
 	}
-	// the covered category was never asked about again, and its plan went to
-	// the import's debt rather than to a second row
-	if strings.Contains(e.ai.promptsFor(debtsMarker)[1], w.mortgage) {
-		t.Fatal("a covered category was asked about")
-	}
-	mortgageDebt := e.str(`SELECT debt_id FROM debts_rules WHERE category_id = ?`, w.mortgage)
 	limitsOn := func(externalID string) int {
 		return e.count(`SELECT COUNT(*) FROM budgets_elements_limits l JOIN budgets_elements el ON el.id = l.element_id WHERE el.budget_id = ? AND el.external_id = ?`, budget, externalID)
 	}
-	if limitsOn(mortgageDebt) != 1 || limitsOn(w.mortgage) != 0 {
-		t.Fatalf("limits: debt %d, category %d", limitsOn(mortgageDebt), limitsOn(w.mortgage))
-	}
-	status, view := e.get("/api/v1/budget/get-budget?id=" + budget + "&date=2026-03-01")
-	if status != 200 {
-		t.Fatalf("get-budget %d: %v", status, view)
-	}
-	structure := view["item"].(map[string]any)["structure"].(map[string]any)
-	planned := map[string]string{}
-	var walk func(list any)
-	walk = func(list any) {
-		items, _ := list.([]any)
-		for _, it := range items {
-			row := it.(map[string]any)
-			if row["isBudgeted"] == float64(1) {
-				planned[row["id"].(string)] = row["budgeted"].(string)
-			}
-			walk(row["children"])
-		}
-	}
-	walk(structure["elements"])
-	walk(structure["debts"])
-	if len(planned) != 2 || planned[mortgageDebt] != "1000" || planned[w.mortgage] != "" {
-		t.Fatalf("planned rows = %v", planned)
+	if limitsOn(w.mortgage) != 1 || limitsOn(w.carLoan) != 1 {
+		t.Fatalf("limits: mortgage %d, car loan %d", limitsOn(w.mortgage), limitsOn(w.carLoan))
 	}
 }

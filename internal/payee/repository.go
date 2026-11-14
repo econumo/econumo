@@ -25,11 +25,6 @@ type Repository interface {
 	// NULL via the ON DELETE SET NULL FK.
 	Delete(ctx context.Context, id vo.Id) error
 
-	// LockRow holds the row until the transaction ends, so a debt write
-	// adding a rule on it commits first (see DebtUsage for the lock order).
-	// A missing row is not an error.
-	LockRow(ctx context.Context, id vo.Id) error
-
 	// ReassignTransactions / ReassignRecurring point every row on oldID at newID
 	// (merge), before the old payee is deleted.
 	ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error

@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -24,7 +23,7 @@ import (
 type (
 	debtRow                = sqlitegen.Debt
 	upsertParams           = sqlitegen.UpsertDebtParams
-	ruleParams             = sqlitegen.InsertDebtRuleParams
+	moveParams             = sqlitegen.MoveDebtsToElementParams
 	snapshotParams         = sqlitegen.InsertDebtSnapshotParams
 	updateSnapshotParams   = sqlitegen.UpdateDebtSnapshotParams
 	splitParams            = sqlitegen.InsertDebtSplitParams
@@ -38,8 +37,7 @@ type querier interface {
 	ListDebtsByBudget(ctx context.Context, db backend.DBTX, budgetID string) ([]debtRow, error)
 	UpsertDebt(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteDebt(ctx context.Context, db backend.DBTX, id string) error
-	DeleteDebtRules(ctx context.Context, db backend.DBTX, debtID string) error
-	InsertDebtRule(ctx context.Context, db backend.DBTX, p ruleParams) error
+	MoveDebtsToElement(ctx context.Context, db backend.DBTX, p moveParams) error
 	InsertDebtSnapshot(ctx context.Context, db backend.DBTX, p snapshotParams) error
 	UpdateDebtSnapshot(ctx context.Context, db backend.DBTX, p updateSnapshotParams) error
 	DeleteDebtSnapshot(ctx context.Context, db backend.DBTX, id string) error
@@ -110,11 +108,10 @@ func (r *Repo) HoldsBudgetLock(ctx context.Context, budgetID vo.Id) bool {
 	return held.ids[budgetID.String()]
 }
 
-// LockRuleCategories reads the categories, key-share-locking them on
-// PostgreSQL (SQLite has no row-level lock modes; its single writer already
-// serializes transactions). A category already deleted is not found: the
-// rule write would otherwise fail its foreign key.
-func (r *Repo) LockRuleCategories(ctx context.Context, categoryIDs []vo.Id) error {
+// LockCategories reads the categories, key-share-locking them on PostgreSQL
+// (SQLite has no row-level lock modes; its single writer already serializes
+// transactions). A category already deleted is not found.
+func (r *Repo) LockCategories(ctx context.Context, categoryIDs []vo.Id) error {
 	if len(categoryIDs) == 0 {
 		return nil
 	}
@@ -166,20 +163,22 @@ func (r *Repo) ListByBudget(ctx context.Context, budgetID vo.Id) ([]*model.Debt,
 	return r.hydrateAll(ctx, rows)
 }
 
-// Save: the caller runs this inside TxManager.WithTx, so the rules are
-// replaced atomically with the row.
 func (r *Repo) Save(ctx context.Context, d *model.Debt) error {
 	p := upsertParams{
-		ID:         d.ID.String(),
-		BudgetID:   d.BudgetID.String(),
-		Name:       d.Name,
-		Icon:       d.Icon,
-		CurrencyID: d.CurrencyID.String(),
-		Payment:    d.Payment.String(),
-		Schedule:   string(d.Schedule),
-		CreatedDay: dateText(d.CreatedDay),
-		CreatedAt:  d.CreatedAt,
-		UpdatedAt:  d.UpdatedAt,
+		ID:                d.ID.String(),
+		BudgetID:          d.BudgetID.String(),
+		ElementExternalID: d.ElementID.String(),
+		ElementType:       string(d.ElementType),
+		Status:            string(d.Status),
+		CurrencyID:        d.CurrencyID.String(),
+		Payment:           d.Payment.String(),
+		Schedule:          string(d.Schedule),
+		CreatedDay:        dateText(d.CreatedDay),
+		CreatedAt:         d.CreatedAt,
+		UpdatedAt:         d.UpdatedAt,
+	}
+	if p.Status == "" {
+		p.Status = string(model.DebtActive)
 	}
 	if c := d.Current; c != nil {
 		asOf, balance, last := dateText(c.AsOf), c.Balance.String(), dateText(c.LastPaymentDate)
@@ -189,26 +188,19 @@ func (r *Repo) Save(ctx context.Context, d *model.Debt) error {
 		s := dateText(*d.StartDate)
 		p.StartDate = &s
 	}
+	if d.EndedAt != nil {
+		e := dateText(*d.EndedAt)
+		p.EndedAt = &e
+	}
 	if d.IsSetUp() {
 		borrowed := d.AmountBorrowed.String()
 		p.AmountBorrowed = &borrowed
 	}
-	if err := r.q.UpsertDebt(ctx, r.db(ctx), p); err != nil {
-		return err
-	}
-	if err := r.q.DeleteDebtRules(ctx, r.db(ctx), d.ID.String()); err != nil {
-		return err
-	}
-	for _, rule := range d.Rules {
-		err := r.q.InsertDebtRule(ctx, r.db(ctx), ruleParams{
-			ID: rule.ID.String(), DebtID: d.ID.String(), CategoryID: rule.CategoryID.String(),
-			PayeeID: idPtr(rule.PayeeID), TagID: idPtr(rule.TagID), LabelID: idPtr(rule.LabelID), CreatedAt: rule.CreatedAt,
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return r.q.UpsertDebt(ctx, r.db(ctx), p)
+}
+
+func (r *Repo) MoveToElement(ctx context.Context, budgetID, fromID, toID vo.Id, typ model.DebtElementType) error {
+	return r.q.MoveDebtsToElement(ctx, r.db(ctx), moveParams{BudgetID: budgetID.String(), FromID: fromID.String(), ToID: toID.String(), ElementType: string(typ)})
 }
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
@@ -254,20 +246,16 @@ func (r *Repo) InsertSplit(ctx context.Context, s model.DebtSplit) error {
 // The id-list reads below are hand-built (variadic IN); only the placeholders
 // differ per engine.
 
+// CandidateTransactions reads the untagged expenses: a tagged one counts on
+// its tag's budget row, never on a category's or an envelope's.
 func (r *Repo) CandidateTransactions(ctx context.Context, categoryIDs, accountIDs []vo.Id) ([]debt.CandidateTx, error) {
 	if len(categoryIDs) == 0 || len(accountIDs) == 0 {
 		return nil, nil
 	}
-	where := " WHERE t.type = 0 AND t.category_id IN (" + placeholders(r.driver, len(categoryIDs)) +
-		") AND t.account_id IN (" + placeholdersFrom(r.driver, len(categoryIDs)+1, len(accountIDs)) + ")"
-	args := append(idArgs(categoryIDs), idArgs(accountIDs)...)
-	labels, err := r.candidateLabels(ctx, where, args)
-	if err != nil {
-		return nil, err
-	}
-	query := "SELECT t.id, t.spent_at, t.amount, a.currency_id, t.category_id, t.payee_id, t.tag_id FROM transactions t JOIN accounts a ON a.id = t.account_id" +
-		where + " ORDER BY t.spent_at, t.id"
-	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
+	query := "SELECT t.id, t.spent_at, t.amount, a.currency_id, t.category_id FROM transactions t JOIN accounts a ON a.id = t.account_id" +
+		" WHERE t.type = 0 AND t.tag_id IS NULL AND t.category_id IN (" + placeholders(r.driver, len(categoryIDs)) +
+		") AND t.account_id IN (" + placeholdersFrom(r.driver, len(categoryIDs)+1, len(accountIDs)) + ") ORDER BY t.spent_at, t.id"
+	rows, err := r.db(ctx).QueryContext(ctx, query, append(idArgs(categoryIDs), idArgs(accountIDs)...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -275,12 +263,11 @@ func (r *Repo) CandidateTransactions(ctx context.Context, categoryIDs, accountID
 	var out []debt.CandidateTx
 	for rows.Next() {
 		var id, amount, currency, category string
-		var payee, tag *string
 		var spentAt time.Time
-		if err := rows.Scan(&id, &spentAt, &amount, &currency, &category, &payee, &tag); err != nil {
+		if err := rows.Scan(&id, &spentAt, &amount, &currency, &category); err != nil {
 			return nil, err
 		}
-		c := debt.CandidateTx{SpentAt: spentAt, Amount: vo.NewDecimal(amount), LabelIDs: labels[id]}
+		c := debt.CandidateTx{SpentAt: spentAt, Amount: vo.NewDecimal(amount)}
 		if c.ID, err = vo.ParseId(id); err != nil {
 			return nil, err
 		}
@@ -290,56 +277,14 @@ func (r *Repo) CandidateTransactions(ctx context.Context, categoryIDs, accountID
 		if c.CategoryID, err = vo.ParseId(category); err != nil {
 			return nil, err
 		}
-		if c.PayeeID, err = parseIdPtr(payee); err != nil {
-			return nil, err
-		}
-		if c.TagID, err = parseIdPtr(tag); err != nil {
-			return nil, err
-		}
 		out = append(out, c)
 	}
 	return out, rows.Err()
 }
 
-// candidateLabels reads the labels of the expenses CandidateTransactions
-// returns, in one query.
-func (r *Repo) candidateLabels(ctx context.Context, where string, args []any) (map[string][]vo.Id, error) {
-	query := "SELECT tl.transaction_id, tl.label_id FROM transactions_labels tl JOIN transactions t ON t.id = tl.transaction_id" +
-		where + " ORDER BY tl.transaction_id, tl.label_id"
-	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := map[string][]vo.Id{}
-	for rows.Next() {
-		var txID, labelID string
-		if err := rows.Scan(&txID, &labelID); err != nil {
-			return nil, err
-		}
-		lid, err := vo.ParseId(labelID)
-		if err != nil {
-			return nil, err
-		}
-		out[txID] = append(out[txID], lid)
-	}
-	return out, rows.Err()
-}
-
-var classificationColumns = map[string]string{
-	"category": "category_id",
-	"payee":    "payee_id",
-	"tag":      "tag_id",
-	"label":    "label_id",
-}
-
-func (r *Repo) ListByClassification(ctx context.Context, kind string, id vo.Id) ([]*model.Debt, error) {
-	column, ok := classificationColumns[kind]
-	if !ok {
-		return nil, fmt.Errorf("debtrepo: unknown classification kind %q", kind)
-	}
-	return r.listDebts(ctx, " WHERE id IN (SELECT debt_id FROM debts_rules WHERE "+column+" = "+placeholder(r.driver, 1)+")",
-		id.String())
+// ListByElement lists the debts attached to the element in every budget.
+func (r *Repo) ListByElement(ctx context.Context, elementID vo.Id) ([]*model.Debt, error) {
+	return r.listDebts(ctx, " WHERE element_external_id = "+placeholder(r.driver, 1), elementID.String())
 }
 
 func (r *Repo) ListByBudgets(ctx context.Context, budgetIDs []vo.Id) ([]*model.Debt, error) {
@@ -349,7 +294,7 @@ func (r *Repo) ListByBudgets(ctx context.Context, budgetIDs []vo.Id) ([]*model.D
 	return r.listDebts(ctx, " WHERE budget_id IN ("+placeholders(r.driver, len(budgetIDs))+")", idArgs(budgetIDs)...)
 }
 
-const debtCols = "id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at"
+const debtCols = "id, budget_id, element_external_id, element_type, status, ended_at, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at"
 
 func (r *Repo) listDebts(ctx context.Context, where string, args ...any) ([]*model.Debt, error) {
 	rows, err := r.db(ctx).QueryContext(ctx, "SELECT "+debtCols+" FROM debts"+where+" ORDER BY created_at, id", args...)
@@ -360,7 +305,7 @@ func (r *Repo) listDebts(ctx context.Context, where string, args ...any) ([]*mod
 	var scanned []debtRow
 	for rows.Next() {
 		var row debtRow
-		if err := rows.Scan(&row.ID, &row.BudgetID, &row.Name, &row.Icon, &row.CurrencyID, &row.StartDate, &row.AmountBorrowed, &row.AsOf,
+		if err := rows.Scan(&row.ID, &row.BudgetID, &row.ElementExternalID, &row.ElementType, &row.Status, &row.EndedAt, &row.CurrencyID, &row.StartDate, &row.AmountBorrowed, &row.AsOf,
 			&row.Balance, &row.Payment, &row.Schedule, &row.LastPaymentDate, &row.CreatedDay, &row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -370,51 +315,6 @@ func (r *Repo) listDebts(ctx context.Context, where string, args ...any) ([]*mod
 		return nil, err
 	}
 	return r.hydrateAll(ctx, scanned)
-}
-
-// rulesOf reads the rules of the debts, each debt's in created_at, id order.
-func (r *Repo) rulesOf(ctx context.Context, debtIDs []vo.Id) (map[vo.Id][]model.DebtRule, error) {
-	out := map[vo.Id][]model.DebtRule{}
-	if len(debtIDs) == 0 {
-		return out, nil
-	}
-	query := "SELECT id, debt_id, category_id, payee_id, tag_id, label_id, created_at FROM debts_rules WHERE debt_id IN (" +
-		placeholders(r.driver, len(debtIDs)) + ") ORDER BY debt_id, created_at, id"
-	rows, err := r.db(ctx).QueryContext(ctx, query, idArgs(debtIDs)...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id, debtID, category string
-		var payee, tag, label *string
-		var created time.Time
-		if err := rows.Scan(&id, &debtID, &category, &payee, &tag, &label, &created); err != nil {
-			return nil, err
-		}
-		rule := model.DebtRule{CreatedAt: created}
-		var did vo.Id
-		if rule.ID, err = vo.ParseId(id); err != nil {
-			return nil, err
-		}
-		if did, err = vo.ParseId(debtID); err != nil {
-			return nil, err
-		}
-		if rule.CategoryID, err = vo.ParseId(category); err != nil {
-			return nil, err
-		}
-		if rule.PayeeID, err = parseIdPtr(payee); err != nil {
-			return nil, err
-		}
-		if rule.TagID, err = parseIdPtr(tag); err != nil {
-			return nil, err
-		}
-		if rule.LabelID, err = parseIdPtr(label); err != nil {
-			return nil, err
-		}
-		out[did] = append(out[did], rule)
-	}
-	return out, rows.Err()
 }
 
 func (r *Repo) Snapshots(ctx context.Context, debtIDs []vo.Id) ([]*model.DebtSnapshot, error) {
@@ -538,23 +438,14 @@ func (r *Repo) DeleteSplits(ctx context.Context, debtID vo.Id, transactionIDs []
 	return err
 }
 
-func (r *Repo) hydrateAll(ctx context.Context, rows []debtRow) ([]*model.Debt, error) {
+func (r *Repo) hydrateAll(_ context.Context, rows []debtRow) ([]*model.Debt, error) {
 	out := make([]*model.Debt, 0, len(rows))
-	ids := make([]vo.Id, 0, len(rows))
 	for _, row := range rows {
 		d, err := hydrate(row)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, d)
-		ids = append(ids, d.ID)
-	}
-	rules, err := r.rulesOf(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-	for _, d := range out {
-		d.Rules = rules[d.ID]
 	}
 	return out, nil
 }
@@ -572,13 +463,13 @@ func hydrate(row debtRow) (*model.Debt, error) {
 	if err != nil {
 		return nil, err
 	}
-	var start *time.Time
-	if row.StartDate != nil {
-		s := day(*row.StartDate)
-		start = &s
+	element, err := vo.ParseId(row.ElementExternalID)
+	if err != nil {
+		return nil, err
 	}
 	d := &model.Debt{
-		ID: id, BudgetID: budget, CurrencyID: currency, Name: row.Name, Icon: row.Icon, StartDate: start,
+		ID: id, BudgetID: budget, CurrencyID: currency, ElementID: element, ElementType: model.DebtElementType(row.ElementType),
+		Status: model.DebtStatus(row.Status), StartDate: dayPtr(row.StartDate), EndedAt: dayPtr(row.EndedAt),
 		Payment: vo.NewDecimal(row.Payment), Schedule: model.RecurringSchedule(row.Schedule),
 		CreatedDay: day(row.CreatedDay), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
@@ -597,29 +488,18 @@ func hydrate(row debtRow) (*model.Debt, error) {
 	return d, nil
 }
 
+func dayPtr(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	d := day(*t)
+	return &d
+}
+
 func dateText(t time.Time) string { return t.Format(datetime.DateLayout) }
 
 func day(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
-}
-
-func idPtr(id *vo.Id) *string {
-	if id == nil {
-		return nil
-	}
-	s := id.String()
-	return &s
-}
-
-func parseIdPtr(s *string) (*vo.Id, error) {
-	if s == nil {
-		return nil, nil
-	}
-	id, err := vo.ParseId(*s)
-	if err != nil {
-		return nil, err
-	}
-	return &id, nil
 }
 
 func idArgs(ids []vo.Id) []any {

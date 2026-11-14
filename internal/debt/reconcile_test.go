@@ -29,7 +29,7 @@ func (e *env) details(t *testing.T, id string) *model.DebtDetailsResult {
 // sets what is owed, and the dues up to it count as paid.
 func TestReconcile_StatementSettlesTheDuesBeforeIt(t *testing.T) {
 	e := newEnv(t)
-	res := e.create(t, func(r *model.CreateDebtRequest) {
+	res := e.create(t, func(r *createSpec) {
 		r.AmountBorrowed, r.StartDate, r.Payment, r.LastPaymentDate = vo.NewFlexString("300000"), ptr("2021-03-01"), vo.NewFlexString("2000"), "2051-03-01"
 	})
 	got, err := e.reconcile(res.Id, "270000", "")
@@ -108,7 +108,7 @@ func TestReconcile_DateBetweenTheStartAndToday(t *testing.T) {
 			t.Fatalf("%s: %v", date, err)
 		}
 	}
-	draft := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = e.newCategory(e.user, true) })
+	draft := e.createWithoutTerms(t, func(r *createSpec) { r.ElementId = e.newCategory(e.user, true) })
 	_, err := e.reconcile(draft.Id, "100", "")
 	requireCode(t, err, errs.CodeDebtNotSetUp)
 	other := e.f.User(fixture.User{Name: "other", Email: "other@example.test"})
@@ -165,50 +165,21 @@ func TestUpdateDebt_StartDateLeftOutIsKept(t *testing.T) {
 	e := newEnv(t)
 	res := e.createOrigin(t, nil)
 	req := e.updateReq(res)
-	req.StartDate, req.Name = nil, "Renamed"
+	req.StartDate, req.Payment = nil, vo.NewFlexString("700")
 	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.StartDate != "2025-03-01" || got.Name != "Renamed" {
+	if got.StartDate != "2025-03-01" || got.Payment != "700" {
 		t.Fatalf("result = %+v", got)
-	}
-}
-
-// Debts on one category told apart only by their start dates are no whole
-// category: neither takes the category's plans, nor hands its own back.
-func TestWholeCategory_NotWhenAnotherDebtSharesTheFilters(t *testing.T) {
-	e := newEnv(t)
-	first := e.createOrigin(t, nil)
-	if len(e.elements.transfers) != 1 {
-		t.Fatalf("transfers = %+v, want the first debt to take the category", e.elements.transfers)
-	}
-	e.elements.transfers = nil
-	second := e.create(t, nil) // starts 2026-03-10
-	if len(e.elements.transfers) != 0 {
-		t.Fatalf("transfers = %+v, want none for a second debt on the same filters", e.elements.transfers)
-	}
-	req := e.updateReq(second)
-	req.StartDate = ptr("2026-03-05")
-	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
-		t.Fatal(err)
-	}
-	if len(e.elements.transfers) != 0 {
-		t.Fatalf("transfers = %+v, want none", e.elements.transfers)
-	}
-	if _, err := e.svc.DeleteDebt(context.Background(), e.uid(), model.DeleteDebtRequest{Id: first.Id}); err != nil {
-		t.Fatal(err)
-	}
-	if len(e.elements.transfers) != 0 {
-		t.Fatalf("transfers = %+v, want the first debt's plans not handed back", e.elements.transfers)
 	}
 }
 
 // update-debt and create-debt take a dated statement too, by the same rules.
 func TestUpdateDebt_DatedStatement(t *testing.T) {
 	e := newEnv(t)
-	res := e.createOrigin(t, func(r *model.CreateDebtRequest) { r.Balance, r.BalanceDate = vo.NewFlexString("9000"), "2025-06-01" })
-	req := model.UpdateDebtRequest{Id: res.Id, Name: res.Name, Balance: vo.NewFlexString("7000"), BalanceDate: "2025-12-01"}
+	res := e.createOrigin(t, func(r *createSpec) { r.Balance, r.BalanceDate = vo.NewFlexString("9000"), "2025-06-01" })
+	req := model.UpdateDebtRequest{Id: res.Id, Balance: vo.NewFlexString("7000"), BalanceDate: "2025-12-01"}
 	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +214,7 @@ func TestMarkPaidOff_ReplacesTodaysStatement(t *testing.T) {
 // (2026-03-10): 16500 borrowed on 2025-05-15, 450 a month to 2029-03-10.
 func (e *env) carLoan(t *testing.T) (*model.DebtResult, float64) {
 	t.Helper()
-	res := e.create(t, func(r *model.CreateDebtRequest) {
+	res := e.create(t, func(r *createSpec) {
 		r.AmountBorrowed, r.StartDate, r.Payment, r.LastPaymentDate = vo.NewFlexString("16500"), ptr("2025-05-15"), vo.NewFlexString("450"), "2029-03-10"
 	})
 	r, err := model.SnapshotRate(model.MathSnapshot{AsOf: ymd(2025, 5, 15), Balance: 16500, Payment: 450,

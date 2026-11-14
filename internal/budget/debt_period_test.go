@@ -7,7 +7,6 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 // newShiftedDebtHarness is the attribution harness on a budget whose periods
@@ -23,8 +22,8 @@ func newShiftedDebtHarness(t *testing.T) (*attrHarness, string) {
 	}
 	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 12, 10, 0, 0, 0, time.UTC))
 	start := "2026-06-01"
-	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
-		BudgetId: h.budgetID, Name: "Car loan", CurrencyId: fixture.USD, Rules: rules(h.loan),
+	res, err := createDebtAs(h, h.owner, debtSpec{
+		BudgetId: h.budgetID, ElementId: h.loan,
 		StartDate: &start, AmountBorrowed: vo.NewFlexString("13000"), Balance: vo.NewFlexString("12000"), Payment: vo.NewFlexString("1000"),
 		Schedule: "monthly", LastPaymentDate: "2027-06-10",
 	})

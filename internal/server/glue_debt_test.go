@@ -21,33 +21,6 @@ func (s stubDebtCategories) GetByID(context.Context, vo.Id) (*model.Category, er
 	return s.cat, nil
 }
 
-type stubDebtPayees struct{ p *model.Payee }
-
-func (s stubDebtPayees) GetByID(context.Context, vo.Id) (*model.Payee, error) {
-	if s.p == nil {
-		return nil, errs.NewNotFound("Payee not found")
-	}
-	return s.p, nil
-}
-
-type stubDebtTags struct{ t *model.Tag }
-
-func (s stubDebtTags) GetByID(context.Context, vo.Id) (*model.Tag, error) {
-	if s.t == nil {
-		return nil, errs.NewNotFound("Tag not found")
-	}
-	return s.t, nil
-}
-
-type stubDebtLabels struct{ l *model.Label }
-
-func (s stubDebtLabels) GetByID(context.Context, vo.Id) (*model.Label, error) {
-	if s.l == nil {
-		return nil, errs.NewNotFound("Label not found")
-	}
-	return s.l, nil
-}
-
 type recordingConvertor struct {
 	start, end time.Time
 	calls      int
@@ -62,41 +35,21 @@ type stubDigits struct{}
 
 func (stubDigits) FractionDigits(context.Context, vo.Id) (int, error) { return 3, nil }
 
-func TestDebtClassifications(t *testing.T) {
+func TestDebtCategories(t *testing.T) {
 	ctx := context.Background()
 	owner := vo.NewId()
 	cat := &model.Category{ID: vo.NewId(), UserID: owner, Name: "Loans", Icon: "bank", Type: model.TypeExpense}
-	c := NewDebtClassifications(
-		stubDebtCategories{cat: cat},
-		stubDebtPayees{p: &model.Payee{ID: vo.NewId(), UserID: owner, Name: "Bank"}},
-		stubDebtTags{t: &model.Tag{ID: vo.NewId(), UserID: owner, Name: "Home", Icon: "home"}},
-		stubDebtLabels{l: &model.Label{ID: vo.NewId(), UserID: owner, Name: "Car", Icon: "car"}},
-	)
-
-	for kind, want := range map[string]model.DebtClassification{
-		"category": {OwnerID: owner, Name: "Loans", Icon: "bank", IsExpense: true},
-		"payee":    {OwnerID: owner, Name: "Bank"},
-		"tag":      {OwnerID: owner, Name: "Home", Icon: "home"},
-		"label":    {OwnerID: owner, Name: "Car", Icon: "car"},
-	} {
-		got, err := c.Classification(ctx, kind, vo.NewId())
-		if err != nil || got != want {
-			t.Errorf("%s = %+v, %v; want %+v", kind, got, err, want)
-		}
+	c := NewDebtCategories(stubDebtCategories{cat: cat})
+	want := model.DebtClassification{OwnerID: owner, Name: "Loans", Icon: "bank", IsExpense: true}
+	if got, err := c.Category(ctx, cat.ID); err != nil || got != want {
+		t.Errorf("category = %+v, %v; want %+v", got, err, want)
 	}
 	cat.Type = model.TypeIncome
-	if got, _ := c.Classification(ctx, "category", cat.ID); got.IsExpense {
+	if got, _ := c.Category(ctx, cat.ID); got.IsExpense {
 		t.Error("an income category is not an expense")
 	}
-	if _, err := c.Classification(ctx, "account", vo.NewId()); err == nil {
-		t.Error("an unknown kind went through")
-	}
-
-	missing := NewDebtClassifications(stubDebtCategories{}, stubDebtPayees{}, stubDebtTags{}, stubDebtLabels{})
-	for _, kind := range []string{"category", "payee", "tag", "label"} {
-		if _, err := missing.Classification(ctx, kind, vo.NewId()); !isNotFoundErr(err) {
-			t.Errorf("missing %s: err = %v, want not found", kind, err)
-		}
+	if _, err := NewDebtCategories(stubDebtCategories{}).Category(ctx, vo.NewId()); !isNotFoundErr(err) {
+		t.Errorf("missing category: err = %v, want not found", err)
 	}
 }
 
@@ -130,24 +83,24 @@ func TestDebtRates_ConvertOnDay(t *testing.T) {
 
 type recordingDebtUsage struct{ calls []string }
 
-func (r *recordingDebtUsage) LockForClassification(_ context.Context, kind string, ids ...vo.Id) error {
-	r.calls = append(r.calls, fmt.Sprintf("lock %s %d", kind, len(ids)))
+func (r *recordingDebtUsage) LockForCategories(_ context.Context, ids ...vo.Id) error {
+	r.calls = append(r.calls, fmt.Sprintf("lock %d", len(ids)))
 	return nil
 }
 
-func (r *recordingDebtUsage) ReleaseClassification(_ context.Context, kind string, _ vo.Id) error {
-	r.calls = append(r.calls, "release "+kind)
+func (r *recordingDebtUsage) ReleaseCategory(context.Context, vo.Id) error {
+	r.calls = append(r.calls, "release")
 	return nil
 }
 
-func (r *recordingDebtUsage) ReassignClassification(_ context.Context, kind string, _, _ vo.Id) error {
-	r.calls = append(r.calls, "reassign "+kind)
+func (r *recordingDebtUsage) ReassignCategory(context.Context, vo.Id, vo.Id) error {
+	r.calls = append(r.calls, "reassign")
 	return nil
 }
 
-func TestDebtUsage_PassesItsKind(t *testing.T) {
+func TestDebtUsage_PassesThrough(t *testing.T) {
 	rec := &recordingDebtUsage{}
-	u := NewDebtUsage(rec, "tag")
+	u := NewDebtUsage(rec)
 	ctx := context.Background()
 	if err := u.Prepare(ctx, vo.NewId(), vo.NewId()); err != nil {
 		t.Fatal(err)
@@ -158,35 +111,20 @@ func TestDebtUsage_PassesItsKind(t *testing.T) {
 	if err := u.Reassign(ctx, vo.NewId(), vo.NewId()); err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"lock tag 2", "release tag", "reassign tag"}; !slices.Equal(rec.calls, want) {
+	if want := []string{"lock 2", "release", "reassign"}; !slices.Equal(rec.calls, want) {
 		t.Fatalf("calls = %v, want %v", rec.calls, want)
 	}
 }
 
-type stubDebtUserRepo struct{ user *model.User }
+type stubDebtUserRepo struct{}
 
-func (s stubDebtUserRepo) GetByID(context.Context, vo.Id) (*model.User, error) {
-	if s.user == nil {
-		return nil, errs.NewNotFound("User not found")
-	}
-	return s.user, nil
-}
-
-func (s stubDebtUserRepo) GetTimezone(context.Context, vo.Id) (string, error) {
+func (stubDebtUserRepo) GetTimezone(context.Context, vo.Id) (string, error) {
 	return "Europe/Berlin", nil
 }
 
 func TestDebtUsers(t *testing.T) {
-	ctx := context.Background()
-	u := model.NewUser(vo.NewId(), "u@example.test", "Una", "face:sky", "", "", time.Now())
-	users := NewDebtUsers(stubDebtUserRepo{user: u})
-	if name, err := users.GetName(ctx, u.ID); err != nil || name != "Una" {
-		t.Errorf("GetName = %q, %v", name, err)
-	}
-	if tz, err := users.GetTimezone(ctx, u.ID); err != nil || tz != "Europe/Berlin" {
+	users := NewDebtUsers(stubDebtUserRepo{})
+	if tz, err := users.GetTimezone(context.Background(), vo.NewId()); err != nil || tz != "Europe/Berlin" {
 		t.Errorf("GetTimezone = %q, %v", tz, err)
-	}
-	if _, err := NewDebtUsers(stubDebtUserRepo{}).GetName(ctx, vo.NewId()); !isNotFoundErr(err) {
-		t.Errorf("missing user: err = %v, want not found", err)
 	}
 }

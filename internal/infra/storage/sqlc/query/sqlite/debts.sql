@@ -2,25 +2,27 @@
 -- the driver would otherwise store a time part, like currencies_rates.published_at.
 
 -- name: GetDebtByID :one
-SELECT id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, budget_id, element_external_id, element_type, status, ended_at, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE id = ?;
 
 -- name: ListDebtsByBudget :many
-SELECT id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
+SELECT id, budget_id, element_external_id, element_type, status, ended_at, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at
 FROM debts
 WHERE budget_id = ?
 ORDER BY created_at, id;
 
 -- name: UpsertDebt :exec
 -- The budget is written once, at insert: a debt never moves to another budget.
-INSERT INTO debts (id, budget_id, name, icon, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
-VALUES (sqlc.arg(id), sqlc.arg(budget_id), sqlc.arg(name), sqlc.arg(icon), sqlc.arg(currency_id),
+-- The element moves only with a category merge (MoveDebtsToElement).
+INSERT INTO debts (id, budget_id, element_external_id, element_type, status, ended_at, currency_id, start_date, amount_borrowed, as_of, balance, payment, schedule, last_payment_date, created_day, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(budget_id), sqlc.arg(element_external_id), sqlc.arg(element_type), sqlc.arg(status),
+    CAST(sqlc.narg(ended_at) AS TEXT), sqlc.arg(currency_id),
     CAST(sqlc.narg(start_date) AS TEXT), sqlc.narg(amount_borrowed), CAST(sqlc.narg(as_of) AS TEXT), sqlc.narg(balance), sqlc.arg(payment), sqlc.arg(schedule),
     CAST(sqlc.narg(last_payment_date) AS TEXT), CAST(sqlc.arg(created_day) AS TEXT), sqlc.arg(created_at), sqlc.arg(updated_at))
 ON CONFLICT (id) DO UPDATE SET
-    name              = excluded.name,
-    icon              = excluded.icon,
+    status            = excluded.status,
+    ended_at          = excluded.ended_at,
     currency_id       = excluded.currency_id,
     start_date        = excluded.start_date,
     amount_borrowed   = excluded.amount_borrowed,
@@ -34,12 +36,9 @@ ON CONFLICT (id) DO UPDATE SET
 -- name: DeleteDebt :exec
 DELETE FROM debts WHERE id = ?;
 
--- name: DeleteDebtRules :exec
-DELETE FROM debts_rules WHERE debt_id = ?;
-
--- name: InsertDebtRule :exec
-INSERT INTO debts_rules (id, debt_id, category_id, payee_id, tag_id, label_id, created_at)
-VALUES (sqlc.arg(id), sqlc.arg(debt_id), sqlc.arg(category_id), sqlc.narg(payee_id), sqlc.narg(tag_id), sqlc.narg(label_id), sqlc.arg(created_at));
+-- name: MoveDebtsToElement :exec
+UPDATE debts SET element_external_id = sqlc.arg(to_id), element_type = sqlc.arg(element_type)
+WHERE budget_id = sqlc.arg(budget_id) AND element_external_id = sqlc.arg(from_id);
 
 -- name: InsertDebtSnapshot :exec
 INSERT INTO debts_snapshots (id, debt_id, as_of, balance, payment, schedule, last_payment_date, created_at)

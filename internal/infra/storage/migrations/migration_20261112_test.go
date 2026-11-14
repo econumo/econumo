@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+
+	"github.com/econumo/econumo/internal/infra/storage/migrate"
+	"github.com/econumo/econumo/internal/infra/storage/migrations"
 )
 
 const (
@@ -28,11 +31,25 @@ const (
 func TestMigration20261112_DropsDebtsAndDebtRows(t *testing.T) {
 	db := runUpTo(t, "budget_debts", "20261112000000")
 	checkBudgetDebtsReset(t, db, func(q string) string { return q }, func() {
-		runAll(t, db)
+		runBefore(t, db, "20261114000000")
 		if _, err := db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
 			t.Fatal(err)
 		}
 	})
+}
+
+// runBefore applies the outstanding migrations strictly before version.
+func runBefore(t *testing.T, db *sql.DB, version string) {
+	t.Helper()
+	var before []migrate.Migration
+	for _, f := range migrations.SQLite() {
+		if f.Version < version {
+			before = append(before, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
+		}
+	}
+	if err := migrate.Run(context.Background(), db, before, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		t.Fatalf("migrations before %s: %v", version, err)
+	}
 }
 
 // checkBudgetDebtsReset is shared with the PostgreSQL twin (enginecompare tag).

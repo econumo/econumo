@@ -333,7 +333,7 @@ type spendingKey struct{ month, category, tag, debt, currency string }
 // debtOf is the debt the occurrence would pay, by the rule the debt sync
 // assigns stored payments with: the oldest matching debt.
 func (p *projectedRead) debtOf(o *projectedTx) (model.DebtView, bool) {
-	return model.AssignDebt(p.debts, o.categoryID, o.payeeID, o.tagID, o.labelIDs, o.dueAt)
+	return model.AssignDebt(p.debts, o.categoryID, o.tagID, o.dueAt)
 }
 
 func (p *projectedRead) paysDebt(o *projectedTx) bool {

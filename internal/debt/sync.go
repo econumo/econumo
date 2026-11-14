@@ -21,12 +21,13 @@ type payment struct {
 }
 
 type debtState struct {
-	debt   *model.Debt
-	view   model.DebtView
-	snaps  []*model.DebtSnapshot
-	rates  []*model.DebtRateChange // by effective date
-	pays   []payment               // by date, then id
-	digits int
+	debt    *model.Debt
+	element model.DebtElementInfo
+	view    model.DebtView
+	snaps   []*model.DebtSnapshot
+	rates   []*model.DebtRateChange // by effective date
+	pays    []payment               // by date, then id
+	digits  int
 }
 
 func (st *debtState) mathSnaps() []model.MathSnapshot {
@@ -121,46 +122,56 @@ func (s *Service) readStates(ctx context.Context, scope model.DebtScope) ([]*deb
 	return s.computeDebts(ctx, scope, debts, false)
 }
 
-func ruleViews(rules []model.DebtRule) []model.DebtRuleView {
-	out := make([]model.DebtRuleView, 0, len(rules))
-	for _, r := range rules {
-		out = append(out, model.DebtRuleView{CategoryID: r.CategoryID.String(), PayeeID: idString(r.PayeeID),
-			TagID: idString(r.TagID), LabelID: idString(r.LabelID)})
-	}
-	return out
-}
-
-// matchViews assigns every debt its rules and range: a debt matches from its
-// start up to the start of the next debt of the budget with an identical
-// rule, on every one of its rules (model.DebtUntil).
-func matchViews(debts []*model.Debt) map[vo.Id]model.DebtView {
+// matchViews gives every debt its element's categories and its range: from
+// its start date (without one, from the day after the end of the element's
+// previous debt) to its end once paid off.
+func matchViews(debts []*model.Debt, elements map[vo.Id]model.DebtElementInfo) map[vo.Id]model.DebtView {
 	views := make(map[vo.Id]model.DebtView, len(debts))
 	for _, d := range debts {
+		el := elements[d.ElementID]
 		v := model.DebtView{
-			ID: d.ID.String(), BudgetID: d.BudgetID.String(), CurrencyID: d.CurrencyID.String(), Rules: ruleViews(d.Rules),
-			Name: d.Name, CreatedAt: d.CreatedAt, SetUp: d.IsSetUp(), Until: model.DebtUntil(d, debts),
+			ID: d.ID.String(), BudgetID: d.BudgetID.String(), CurrencyID: d.CurrencyID.String(),
+			ElementID: d.ElementID.String(), ElementType: d.ElementType, Name: el.Name, Icon: el.Icon,
+			CreatedAt: d.CreatedAt, SetUp: d.IsSetUp(),
 		}
-		if d.StartDate != nil {
+		for _, c := range el.CategoryIDs {
+			v.CategoryIDs = append(v.CategoryIDs, c.String())
+		}
+		switch {
+		case d.StartDate != nil:
 			from := *d.StartDate
 			v.From = &from
+		default:
+			if prev := previousEnd(onElement(debts, d.ElementID, d), d); prev != nil {
+				from := prev.AddDate(0, 0, 1)
+				v.From = &from
+			}
+		}
+		if d.EndedAt != nil {
+			until := *d.EndedAt
+			v.Until = &until
 		}
 		views[d.ID] = v
 	}
 	return views
 }
 
-// computeDebts matches the expenses on the scope's accounts in the debts'
-// rule categories to the budget's debts and builds their states. With persist
-// it also drops stale splits and stores the new ones.
+// computeDebts matches the untagged expenses on the scope's accounts in the
+// debts' element categories to the budget's debts and builds their states.
+// With persist it also drops stale splits and stores the new ones.
 func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts []*model.Debt, persist bool) ([]*debtState, error) {
 	if len(debts) == 0 {
 		return nil, nil
+	}
+	elements, err := s.elementsOf(ctx, debts)
+	if err != nil {
+		return nil, err
 	}
 	ids := make([]vo.Id, 0, len(debts))
 	var categories []vo.Id
 	for _, d := range debts {
 		ids = append(ids, d.ID)
-		for _, c := range ruleCategories(d.Rules) {
+		for _, c := range elements[d.ElementID].CategoryIDs {
 			if !slices.ContainsFunc(categories, c.Equal) {
 				categories = append(categories, c)
 			}
@@ -183,7 +194,7 @@ func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts
 		return nil, err
 	}
 
-	views := matchViews(debts)
+	views := matchViews(debts, elements)
 	ordered := make([]model.DebtView, 0, len(debts))
 	byView := make(map[string]vo.Id, len(debts))
 	for _, d := range debts {
@@ -193,12 +204,8 @@ func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts
 	assigned := map[vo.Id][]CandidateTx{}
 	matchedTo := map[vo.Id]vo.Id{}
 	for _, c := range cands {
-		labels := make([]string, 0, len(c.LabelIDs))
-		for _, l := range c.LabelIDs {
-			labels = append(labels, l.String())
-		}
 		cat := c.CategoryID.String()
-		if v, ok := model.AssignDebt(ordered, &cat, idString(c.PayeeID), idString(c.TagID), labels, c.SpentAt); ok {
+		if v, ok := model.AssignDebt(ordered, &cat, nil, c.SpentAt); ok {
 			id := byView[v.ID]
 			assigned[id] = append(assigned[id], c)
 			matchedTo[c.ID] = id
@@ -254,7 +261,7 @@ func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts
 			}
 			digitsByCurrency[d.CurrencyID] = digits
 		}
-		st := &debtState{debt: d, view: views[d.ID], snaps: snapsByDebt[d.ID], rates: ratesByDebt[d.ID], digits: digits}
+		st := &debtState{debt: d, element: elements[d.ElementID], view: views[d.ID], snaps: snapsByDebt[d.ID], rates: ratesByDebt[d.ID], digits: digits}
 		if err := s.fillPayments(ctx, st, assigned[d.ID], stored, persist); err != nil {
 			return nil, err
 		}

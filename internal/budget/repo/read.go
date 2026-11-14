@@ -1159,13 +1159,9 @@ func scanBudgetTxDebtRows(rows interface {
 
 // BudgetTransactionsByDebt implements ReadModel.
 func (r *ReadRepo) BudgetTransactionsByDebt(ctx context.Context, debt model.DebtView, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
-	categories := make([]any, 0, len(debt.Rules))
-	seen := map[string]bool{}
-	for _, rule := range debt.Rules {
-		if !seen[rule.CategoryID] {
-			seen[rule.CategoryID] = true
-			categories = append(categories, rule.CategoryID)
-		}
+	categories := make([]any, 0, len(debt.CategoryIDs))
+	for _, c := range debt.CategoryIDs {
+		categories = append(categories, c)
 	}
 	if len(accountIDs) == 0 || len(categories) == 0 {
 		return nil, nil

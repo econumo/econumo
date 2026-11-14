@@ -6,150 +6,51 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-const debtNameMaxLength = 64
-
-const debtIconMaxLength = 64
-
-const debtRulesMax = 10
-
-// DebtRuleRequest is one rule of a debt: a category, narrowed by a payee and
-// by a tag or a label (never both). Id names a rule the debt already has; it
-// is optional, a rule with an identical key keeps its id too.
-type DebtRuleRequest struct {
-	Id         *string `json:"id"`
-	CategoryId string  `json:"categoryId"`
-	PayeeId    *string `json:"payeeId"`
-	TagId      *string `json:"tagId"`
-	LabelId    *string `json:"labelId"`
-}
-
-// CreateDebtRequest: AmountBorrowed, StartDate and LastPaymentDate are the
-// loan's facts and come together (a debt without them is created not set up,
-// a StartDate alone only bounding which payments count); Balance is an
-// optional statement balance as of BalanceDate (default today), for when the
-// recorded payments do not tell the whole story. An empty CurrencyId takes
-// the budget's currency. An empty Icon leaves the debt without one of its own
-// (it shows its first rule's category icon).
+// CreateDebtRequest attaches a debt to an element of the budget (ElementId: a
+// top-level expense category or an envelope), created not set up: its terms
+// come with update-debt. A StartDate bounds which payments count.
 type CreateDebtRequest struct {
-	BudgetId        string            `json:"budgetId"`
-	Name            string            `json:"name"`
-	Icon            string            `json:"icon"`
-	CurrencyId      string            `json:"currencyId"`
-	Rules           []DebtRuleRequest `json:"rules"`
-	StartDate       *string           `json:"startDate"`
-	AmountBorrowed  vo.FlexString     `json:"amountBorrowed"`
-	Balance         vo.FlexString     `json:"balance"`
-	BalanceDate     string            `json:"balanceDate"`
-	Payment         vo.FlexString     `json:"payment"`
-	Schedule        string            `json:"schedule"`
-	LastPaymentDate string            `json:"lastPaymentDate"`
+	BudgetId  string        `json:"budgetId"`
+	ElementId string        `json:"elementId"`
+	Payment   vo.FlexString `json:"payment"`
+	Schedule  string        `json:"schedule"`
+	StartDate *string       `json:"startDate"`
 }
 
 func (r CreateDebtRequest) Validate() error {
-	fields := debtFields(debtTermFields{r.Name, r.StartDate,
-		r.AmountBorrowed, r.Balance, r.BalanceDate, r.Payment, r.Schedule, r.LastPaymentDate}, false)
-	fields = append(fields, debtIDField("budgetId", r.BudgetId, true)...)
-	fields = append(fields, debtIconField(r.Icon)...)
-	fields = append(fields, debtRulesFields(r.Rules)...)
-	fields = append(fields, debtIDField("currencyId", r.CurrencyId, false)...)
+	fields := debtIDField("budgetId", r.BudgetId, true)
+	fields = append(fields, debtIDField("elementId", r.ElementId, true)...)
+	fields = append(fields, debtFields(debtTermFields{startDate: r.StartDate, payment: r.Payment, schedule: r.Schedule}, false)...)
 	return debtValidation(fields)
 }
 
-// UpdateDebtRequest carries the same fields as create, but no budget: a debt
-// stays in its budget. Rules left out (null) keep the stored ones; a list
-// replaces them, a rule matched by id or by an identical key keeping its id.
-// An empty CurrencyId keeps the stored currency; another one moves the debt
-// to it, the amounts in the request (or, when left out, the stored ones,
-// unconverted) then being in that currency. AmountBorrowed and
-// LastPaymentDate come as a pair; they, Payment, Schedule and (on a set-up
-// debt) StartDate left out keep the stored ones; on a debt not set up a
-// StartDate left out means none. A Balance alone gives a set-up debt a
-// statement balance as of BalanceDate (default today). An empty Icon keeps
-// the stored one.
+// UpdateDebtRequest changes a debt's terms; its element, budget and currency
+// stay. AmountBorrowed and LastPaymentDate come as a pair; they, Payment,
+// Schedule and (on a set-up debt) StartDate left out keep the stored ones;
+// on a debt not set up a StartDate left out means none. A Balance alone gives
+// a set-up debt a statement balance as of BalanceDate (default today).
 type UpdateDebtRequest struct {
-	Id              string            `json:"id"`
-	Name            string            `json:"name"`
-	Icon            string            `json:"icon"`
-	CurrencyId      string            `json:"currencyId"`
-	Rules           []DebtRuleRequest `json:"rules"`
-	StartDate       *string           `json:"startDate"`
-	AmountBorrowed  vo.FlexString     `json:"amountBorrowed"`
-	Balance         vo.FlexString     `json:"balance"`
-	BalanceDate     string            `json:"balanceDate"`
-	Payment         vo.FlexString     `json:"payment"`
-	Schedule        string            `json:"schedule"`
-	LastPaymentDate string            `json:"lastPaymentDate"`
+	Id              string        `json:"id"`
+	StartDate       *string       `json:"startDate"`
+	AmountBorrowed  vo.FlexString `json:"amountBorrowed"`
+	Balance         vo.FlexString `json:"balance"`
+	BalanceDate     string        `json:"balanceDate"`
+	Payment         vo.FlexString `json:"payment"`
+	Schedule        string        `json:"schedule"`
+	LastPaymentDate string        `json:"lastPaymentDate"`
 }
 
 func (r UpdateDebtRequest) Validate() error {
-	fields := debtFields(debtTermFields{r.Name, r.StartDate,
+	fields := debtFields(debtTermFields{r.StartDate,
 		r.AmountBorrowed, r.Balance, r.BalanceDate, r.Payment, r.Schedule, r.LastPaymentDate}, true)
 	fields = append(fields, debtIDField("id", r.Id, true)...)
-	fields = append(fields, debtIconField(r.Icon)...)
-	if r.Rules != nil {
-		fields = append(fields, debtRulesFields(r.Rules)...)
-	}
-	fields = append(fields, debtIDField("currencyId", r.CurrencyId, false)...)
 	return debtValidation(fields)
-}
-
-// AddDebtRuleRequest adds one rule to a debt ("Add to a debt").
-type AddDebtRuleRequest struct {
-	Id   string          `json:"id"`
-	Rule DebtRuleRequest `json:"rule"`
-}
-
-func (r AddDebtRuleRequest) Validate() error {
-	return debtValidation(append(debtIDField("id", r.Id, true), debtRuleFields(r.Rule)...))
-}
-
-type GetDebtRuleOptionsRequest struct {
-	BudgetId string `json:"budgetId"`
-}
-
-func (r GetDebtRuleOptionsRequest) Validate() error {
-	return debtValidation(debtIDField("budgetId", r.BudgetId, true))
-}
-
-// debtRulesFields: a debt has 1..10 rules. Every problem with a rule is
-// reported on the flat key "rules", where the form shows it.
-func debtRulesFields(rules []DebtRuleRequest) []errs.FieldError {
-	switch {
-	case len(rules) == 0:
-		return []errs.FieldError{blankField("rules")}
-	case len(rules) > debtRulesMax:
-		return []errs.FieldError{{Key: "rules", Message: "This value is out of range.", Code: errs.CodeOutOfRange}}
-	}
-	for _, rule := range rules {
-		if fields := debtRuleFields(rule); len(fields) > 0 {
-			return fields
-		}
-	}
-	return nil
-}
-
-func debtRuleFields(rule DebtRuleRequest) []errs.FieldError {
-	var fields []errs.FieldError
-	fields = append(fields, debtOptionalIDField("rules", rule.Id)...)
-	fields = append(fields, debtIDField("rules", rule.CategoryId, true)...)
-	fields = append(fields, debtOptionalIDField("rules", rule.PayeeId)...)
-	fields = append(fields, debtOptionalIDField("rules", rule.TagId)...)
-	fields = append(fields, debtOptionalIDField("rules", rule.LabelId)...)
-	// a rule narrows its payments by a tag or by a reporting tag, not both
-	if rule.TagId != nil && filled(*rule.TagId) && rule.LabelId != nil && filled(*rule.LabelId) {
-		fields = append(fields, errs.FieldError{Key: "rules", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
-	}
-	if len(fields) > 1 {
-		fields = fields[:1]
-	}
-	return fields
 }
 
 // ReconcileDebtRequest states a set-up debt's balance from a statement as of
@@ -210,8 +111,7 @@ func (r DeleteDebtRateChangeRequest) Validate() error {
 }
 
 type DeleteDebtRequest struct {
-	Id                 string `json:"id"`
-	ConfirmDataRemoval bool   `json:"confirmDataRemoval"`
+	Id string `json:"id"`
 }
 
 func (r DeleteDebtRequest) Validate() error {
@@ -220,11 +120,22 @@ func (r DeleteDebtRequest) Validate() error {
 
 type DeleteDebtResult struct{}
 
+// MarkDebtPaidOffRequest ends a debt as of Date (Y-m-d; empty = today).
 type MarkDebtPaidOffRequest struct {
-	Id string `json:"id"`
+	Id   string `json:"id"`
+	Date string `json:"date"`
 }
 
 func (r MarkDebtPaidOffRequest) Validate() error {
+	return debtValidation(append(debtIDField("id", r.Id, true), debtDateField("date", r.Date)...))
+}
+
+// ReopenDebtRequest takes a paid-off debt back to active.
+type ReopenDebtRequest struct {
+	Id string `json:"id"`
+}
+
+func (r ReopenDebtRequest) Validate() error {
 	return debtValidation(debtIDField("id", r.Id, true))
 }
 
@@ -272,65 +183,46 @@ type DebtForecastResult struct {
 	ExtraPlanned    string             `json:"extraPlanned"`
 }
 
-// DebtBudgetPlans is one budget's plans of a debt's row: period key
-// "YYYY-MM-01" -> amount, with the budget's name and period start day.
-type DebtBudgetPlans struct {
-	Name           string
-	PeriodStartDay int
-	Plans          map[string]string
-}
-
-// DebtRuleResult is one rule of a debt, named for every reader: the
-// category's owner is ownerUserId / ownerName.
-type DebtRuleResult struct {
-	Id           string  `json:"id"`
-	CategoryId   string  `json:"categoryId"`
-	CategoryName string  `json:"categoryName"`
-	CategoryIcon string  `json:"categoryIcon"`
-	OwnerUserId  string  `json:"ownerUserId"`
-	OwnerName    string  `json:"ownerName"`
-	PayeeId      *string `json:"payeeId"`
-	PayeeName    string  `json:"payeeName"`
-	TagId        *string `json:"tagId"`
-	TagName      string  `json:"tagName"`
-	LabelId      *string `json:"labelId"`
-	LabelName    string  `json:"labelName"`
-}
-
-// DebtResult is one debt in the API. amountBorrowed is the loan's amount as of
-// startDate; the terms (balance .. lastPaymentDate) are the latest snapshot's,
-// the payment the origin's; amounts are decimal strings in the debt's
-// currency, dates "2006-01-02" ("" when none), isPaidOff and canEdit ints 0/1
-// and periodRate the rate in force today per schedule period with 10
-// decimals. extraPaid is what the payments dated up to today went above the
-// regular payment, window by window (a payment on the start date in full). While isSetUp is 0 the terms and figures are ""
-// and the counts 0. canEdit: the caller can plan in the debt's budget and it
-// is not archived.
+// DebtResult is one debt in the API. name, icon and currencyId are its
+// element's (elementId, elementType category|envelope). status is active or
+// paid_off, endedAt the last day payments count ("" while active).
+// amountBorrowed is the loan's amount as of startDate; the terms (balance ..
+// lastPaymentDate) are the latest snapshot's, the payment the origin's;
+// amounts are decimal strings in the debt's currency, dates "2006-01-02" (""
+// when none), isPaidOff and canEdit ints 0/1 and periodRate the rate in force
+// today per schedule period with 10 decimals. extraPaid is what the payments
+// dated up to today went above the regular payment, window by window (a
+// payment on the start date in full). While isSetUp is 0 the terms and
+// figures are "" and the counts 0. canEdit: the caller can plan in the debt's
+// budget, it is not archived and the debt is active.
 type DebtResult struct {
-	Id              string           `json:"id"`
-	BudgetId        string           `json:"budgetId"`
-	BudgetName      string           `json:"budgetName"`
-	CanEdit         int              `json:"canEdit"`
-	Name            string           `json:"name"`
-	Icon            string           `json:"icon"`
-	CurrencyId      string           `json:"currencyId"`
-	Rules           []DebtRuleResult `json:"rules"`
-	StartDate       string           `json:"startDate"`
-	AmountBorrowed  string           `json:"amountBorrowed"`
-	Balance         string           `json:"balance"`
-	Payment         string           `json:"payment"`
-	Schedule        string           `json:"schedule"`
-	LastPaymentDate string           `json:"lastPaymentDate"`
-	CurrentBalance  string           `json:"currentBalance"`
-	PaymentsLeft    int              `json:"paymentsLeft"`
-	PeriodsPaid     int              `json:"periodsPaid"`
-	MoneyLeft       string           `json:"moneyLeft"`
-	OverpaymentLeft string           `json:"overpaymentLeft"`
-	OverpaidSoFar   string           `json:"overpaidSoFar"`
-	ExtraPaid       string           `json:"extraPaid"`
-	PayoffDate      string           `json:"payoffDate"`
-	NextDueDate     string           `json:"nextDueDate"`
-	PeriodRate      string           `json:"periodRate"`
+	Id              string `json:"id"`
+	BudgetId        string `json:"budgetId"`
+	BudgetName      string `json:"budgetName"`
+	ElementId       string `json:"elementId"`
+	ElementType     string `json:"elementType"`
+	Status          string `json:"status"`
+	EndedAt         string `json:"endedAt"`
+	CanEdit         int    `json:"canEdit"`
+	Name            string `json:"name"`
+	Icon            string `json:"icon"`
+	CurrencyId      string `json:"currencyId"`
+	StartDate       string `json:"startDate"`
+	AmountBorrowed  string `json:"amountBorrowed"`
+	Balance         string `json:"balance"`
+	Payment         string `json:"payment"`
+	Schedule        string `json:"schedule"`
+	LastPaymentDate string `json:"lastPaymentDate"`
+	CurrentBalance  string `json:"currentBalance"`
+	PaymentsLeft    int    `json:"paymentsLeft"`
+	PeriodsPaid     int    `json:"periodsPaid"`
+	MoneyLeft       string `json:"moneyLeft"`
+	OverpaymentLeft string `json:"overpaymentLeft"`
+	OverpaidSoFar   string `json:"overpaidSoFar"`
+	ExtraPaid       string `json:"extraPaid"`
+	PayoffDate      string `json:"payoffDate"`
+	NextDueDate     string `json:"nextDueDate"`
+	PeriodRate      string `json:"periodRate"`
 	// AnnualRate is the yearly percent in force today, ImpliedAnnualRate the
 	// one the loan's terms imply; at most 8 decimals, "" while not set up.
 	AnnualRate        string `json:"annualRate"`
@@ -341,29 +233,6 @@ type DebtResult struct {
 
 type DebtListResult struct {
 	Items []DebtResult `json:"items"`
-}
-
-type DebtRuleOption struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-	Icon string `json:"icon"`
-}
-
-// DebtRuleParticipant is one participant of a budget with what a rule can
-// name of theirs: active expense categories, payees, tags and labels.
-type DebtRuleParticipant struct {
-	UserId     string           `json:"userId"`
-	Name       string           `json:"name"`
-	Categories []DebtRuleOption `json:"categories"`
-	Payees     []DebtRuleOption `json:"payees"`
-	Tags       []DebtRuleOption `json:"tags"`
-	Labels     []DebtRuleOption `json:"labels"`
-}
-
-// DebtRuleOptionsResult lists the caller first, then the other participants
-// by name.
-type DebtRuleOptionsResult struct {
-	Participants []DebtRuleParticipant `json:"participants"`
 }
 
 // DebtSnapshotResult is one entry of a debt's history: the origin (isOrigin
@@ -460,15 +329,7 @@ func debtIDField(key, v string, required bool) []errs.FieldError {
 	return nil
 }
 
-func debtOptionalIDField(key string, v *string) []errs.FieldError {
-	if v == nil {
-		return nil
-	}
-	return debtIDField(key, *v, false)
-}
-
 type debtTermFields struct {
-	name                      string
 	startDate                 *string
 	amountBorrowed, balance   vo.FlexString
 	balanceDate               string
@@ -490,21 +351,8 @@ func filled(v string) bool { return strings.TrimSpace(v) != "" }
 
 // debtFields: with keepable (an update) the payment and the schedule may be
 // left out, and so may the loan's facts around a balance now.
-func debtIconField(icon string) []errs.FieldError {
-	if utf8.RuneCountInString(strings.TrimSpace(icon)) > debtIconMaxLength {
-		return []errs.FieldError{{Key: "icon", Message: "This value is too long.", Code: errs.CodeTooLong}}
-	}
-	return nil
-}
-
 func debtFields(f debtTermFields, keepable bool) []errs.FieldError {
 	var fields []errs.FieldError
-	switch n := strings.TrimSpace(f.name); {
-	case n == "":
-		fields = append(fields, blankField("name"))
-	case utf8.RuneCountInString(n) > debtNameMaxLength:
-		fields = append(fields, errs.FieldError{Key: "name", Message: "This value is too long.", Code: errs.CodeTooLong})
-	}
 	hasStart := f.startDate != nil && filled(*f.startDate)
 	if hasStart {
 		if _, err := time.Parse(datetime.DateLayout, *f.startDate); err != nil {

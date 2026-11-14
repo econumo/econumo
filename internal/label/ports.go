@@ -25,27 +25,3 @@ type AccountAccess interface {
 type TagNames interface {
 	NamesByOwner(ctx context.Context, ownerID vo.Id) ([]string, error)
 }
-
-// DebtUsage is backed by the debt feature. Deleting or merging a label is
-// never refused because of a debt: the debt rules naming it are released
-// (delete) or moved to the target (merge), whatever access the caller has to
-// those debts.
-//
-// Lock order: a debt write locks its budget row before it touches a label row,
-// so a delete or merge calls Prepare first. Then the delete locks its label
-// row, a merge both rows in id order (Repository.LockRow): a debt write adding
-// a rule on one of them commits first, and Release or Reassign sees its rule.
-// One window is left: a rule committed between Prepare's read and those row
-// locks names a budget Prepare did not lock. Release or Reassign then fails
-// with debt.ErrRulesChangedConcurrently (a 5xx, safe to retry) rather than lock
-// that budget after the row, which could deadlock with a debt write waiting for
-// the row.
-type DebtUsage interface {
-	// Prepare locks the budgets of the debts whose rules name any of ids;
-	// first in the transaction.
-	Prepare(ctx context.Context, ids ...vo.Id) error
-	// Release takes id out of every debt rule; called before the row is
-	// deleted.
-	Release(ctx context.Context, id vo.Id) error
-	Reassign(ctx context.Context, oldID, newID vo.Id) error
-}

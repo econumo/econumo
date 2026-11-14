@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
@@ -21,10 +20,9 @@ import (
 const (
 	debtHistoryMonths = 6
 	debtMinPaidMonths = 2
-	debtNameMax       = 64
 )
 
-const debtsSystem = `You help set up a personal budget. Find the expense categories that are repayments of a loan: a mortgage, a car loan, a student loan, a personal loan, the instalments of a credit line. Rent, utilities, subscriptions, insurance and credit-card spending are not loan repayments. Names may be in any language; use the user's timezone and language to read local bank and product names. A category may carry "monthly", what was spent in it in each of the last months, oldest first: a loan is usually repaid in steady amounts. Reply with JSON only, exactly {"debts":[{"categoryId":"<id>","name":"<name>"}]}, listing only the loan repayments, each with a short name for the loan in the user's language (for example "Mortgage"); use an empty list when none is.`
+const debtsSystem = `You help set up a personal budget. Find the expense categories that are repayments of a loan: a mortgage, a car loan, a student loan, a personal loan, the instalments of a credit line. Rent, utilities, subscriptions, insurance and credit-card spending are not loan repayments. Names may be in any language; use the user's timezone and language to read local bank and product names. A category may carry "monthly", what was spent in it in each of the last months, oldest first: a loan is usually repaid in steady amounts. Reply with JSON only, exactly {"debts":[{"categoryId":"<id>"}]}, listing only the loan repayments; use an empty list when none is.`
 
 type debtCategory struct {
 	ID      string   `json:"id"`
@@ -39,29 +37,19 @@ type debtFacts struct {
 }
 
 type debtCandidate struct {
-	id       vo.Id
-	name     string
-	currency vo.Id
-	payment  vo.DecimalNumber
+	id      vo.Id
+	payment vo.DecimalNumber
 }
 
 // startPlanDebts follows save-plan's commit over the planned categories
-// (lower-cased id -> amount). A planned category a debt of the plan's budget
-// already covers hands its plan to the debt's row at once (the user planned
-// the loan, and the category's row hides behind the debt's), with or without
-// AI. The active own expense categories planned above zero that no debt of
-// the budget covers then go to the debt detection; with none, no job starts
-// and no cap slot is used.
+// (lower-cased id -> amount): the active own expense categories planned above
+// zero go to the debt detection; with none, no job starts and no cap slot is
+// used.
 func (s *Service) startPlanDebts(ctx context.Context, userID vo.Id, budget string, planned map[string]vo.DecimalNumber) {
 	if s.debts == nil || budget == "" || !anyPositive(planned) {
 		return
 	}
 	budgetID := vo.MustParseId(budget)
-	covered, err := s.coveredCategories(ctx, budgetID)
-	if err != nil {
-		slog.WarnContext(ctx, jobDebts.failed, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
-		return
-	}
 	own, err := s.steps.Categories.OwnCategories(ctx, userID)
 	if err != nil {
 		slog.WarnContext(ctx, jobDebts.failed, "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
@@ -73,13 +61,7 @@ func (s *Service) startPlanDebts(ctx context.Context, userID vo.Id, budget strin
 		if c.IsArchived == 1 || c.Type != model.TypeExpense.Alias() || !positive(planned[key]) {
 			continue
 		}
-		if !covered[key] {
-			detect[key] = planned[key]
-			continue
-		}
-		if _, err := s.debts.TakeCategoryPlans(ctx, budgetID, vo.MustParseId(c.Id)); err != nil {
-			slog.WarnContext(ctx, "onboarding debt plan handover failed", "user_id", userID.String(), "category_id", c.Id, "err_type", fmt.Sprintf("%T", err))
-		}
+		detect[key] = planned[key]
 	}
 	if len(detect) == 0 || !s.reserveJob(ctx, userID, jobDebts) {
 		return
@@ -89,35 +71,17 @@ func (s *Service) startPlanDebts(ctx context.Context, userID vo.Id, budget strin
 	})
 }
 
-// coveredCategories are the lower-cased ids of the categories the budget's
-// debts count in; another budget's debts cover nothing here.
-func (s *Service) coveredCategories(ctx context.Context, budgetID vo.Id) (map[string]bool, error) {
-	ids, err := s.debts.CoveredCategories(ctx, budgetID)
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		out[strings.ToLower(id.String())] = true
-	}
-	return out, nil
-}
-
 // detectDebts asks the AI which of the user's active own expense categories
-// repay a loan and creates a debt, not set up and paid monthly, for each one
-// it names. A category a debt of the budget already covers is never asked
-// about. The payment is the category's plan when planned is set (a category
-// without a plan above zero is not asked about), else the median of its paid
-// months in the history (fewer than two: not asked about), in the category's
-// element currency. A category whose currency cannot be read, or that the
-// debt feature refuses, is skipped. An unusable reply creates nothing.
+// repay a loan and attaches a debt, not set up and paid monthly, to each one
+// it names. The payment is the category's plan when planned is set (a
+// category without a plan above zero is not asked about), else the median of
+// its paid months in the history (fewer than two: not asked about), rounded to
+// the category's element currency. A category whose currency cannot be read,
+// or that the debt feature refuses (it already carries an active debt, it sits
+// in an envelope), is skipped. An unusable reply creates nothing.
 func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts promptFacts, planned map[string]vo.DecimalNumber) error {
 	if loc, err := time.LoadLocation(facts.Timezone); err == nil && facts.Timezone != "" {
 		ctx = reqctx.WithLocation(ctx, loc)
-	}
-	covered, err := s.coveredCategories(ctx, budgetID)
-	if err != nil {
-		return err
 	}
 	own, err := s.steps.Categories.OwnCategories(ctx, userID)
 	if err != nil {
@@ -163,7 +127,7 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 	candidates := map[string]debtCandidate{}
 	for _, c := range own {
 		key := strings.ToLower(c.Id)
-		if c.IsArchived == 1 || c.Type != model.TypeExpense.Alias() || covered[key] {
+		if c.IsArchived == 1 || c.Type != model.TypeExpense.Alias() {
 			continue
 		}
 		h := byID[key]
@@ -195,7 +159,7 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 			}
 		}
 		prompt.Categories = append(prompt.Categories, item)
-		candidates[key] = debtCandidate{id: vo.MustParseId(c.Id), name: c.Name, currency: vo.MustParseId(currency), payment: payment}
+		candidates[key] = debtCandidate{id: vo.MustParseId(c.Id), payment: payment}
 	}
 	if len(candidates) == 0 {
 		return nil
@@ -222,11 +186,7 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 			continue
 		}
 		seen[key] = true
-		name := strings.TrimSpace(f.Name)
-		if name == "" || utf8.RuneCountInString(name) > debtNameMax {
-			name = c.name
-		}
-		ok, err := s.debts.CreateDebt(ctx, userID, budgetID, name, c.id, c.currency, c.payment, model.RecurringScheduleMonthly)
+		ok, err := s.debts.CreateDebt(ctx, userID, budgetID, c.id, c.payment, model.RecurringScheduleMonthly)
 		switch {
 		case err != nil:
 			if firstErr == nil {
@@ -246,7 +206,6 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 
 type foundDebt struct {
 	CategoryID string `json:"categoryId"`
-	Name       string `json:"name"`
 }
 
 // parseDebts reads {"debts":[...]} out of the reply, tolerating a code fence

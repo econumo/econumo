@@ -15,14 +15,14 @@ func TestCreateDebt_ValidatesAndSnapshots(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
 
-	if res.Name != "Car loan" || res.Icon != "i" || res.CurrencyId != fixture.USD || len(res.Rules) != 1 || res.Rules[0].CategoryId != e.category {
+	if res.ElementId != e.category || res.ElementType != "category" || res.Status != "active" || res.EndedAt != "" || res.CurrencyId != fixture.USD {
 		t.Errorf("identity = %+v", res)
 	}
 	if res.AmountBorrowed != "10000" || res.Balance != "10000" || res.Payment != "1000" || res.Schedule != "monthly" ||
 		res.LastPaymentDate != "2027-03-01" || res.StartDate != "2026-03-10" {
 		t.Errorf("terms = %+v", res)
 	}
-	if res.CurrentBalance != "10000" || res.PaymentsLeft != 12 || res.IsPaidOff != 0 || res.Rules[0].PayeeId != nil || res.Rules[0].TagId != nil {
+	if res.CurrentBalance != "10000" || res.PaymentsLeft != 12 || res.IsPaidOff != 0 {
 		t.Errorf("figures = %+v", res)
 	}
 	if res.PeriodRate == "" || res.PeriodRate == "0.0000000000" || res.NextDueDate != "2026-04-01" || res.PayoffDate != "2027-03-01" {
@@ -42,7 +42,7 @@ func TestCreateDebt_RefusesLastPaymentBeforeStart(t *testing.T) {
 	e := newEnv(t)
 	req := e.createReq()
 	req.LastPaymentDate = "2026-03-10"
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	_, err := e.tryCreate(req)
 	requireCode(t, err, errs.CodeDebtLastPaymentBeforeStart)
 }
 
@@ -52,10 +52,7 @@ func TestCreateDebt_WithoutTerms(t *testing.T) {
 	e := newEnv(t)
 	req := e.createReq()
 	withoutTerms(&req)
-	if err := req.Validate(); err != nil {
-		t.Fatalf("the request without terms is valid: %v", err)
-	}
-	res, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	res, err := e.tryCreate(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,25 +74,18 @@ func TestCreateDebt_WithoutTerms(t *testing.T) {
 	if snaps := e.snapshots(t, res.Id); len(snaps) != 0 {
 		t.Fatalf("snapshots = %d, want none", len(snaps))
 	}
-	// a whole-category debt without terms takes the category's plans from
-	// its creation day on, with no end
-	want := transferCall{budget: e.budget, from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
-		currency: fixture.USD, sum: true, first: "2026-03-10", last: ""}
-	if len(e.elements.transfers) != 1 || e.elements.transfers[0] != want {
-		t.Fatalf("transfers = %+v, want %+v", e.elements.transfers, want)
-	}
 }
 
 func TestCreateDebt_LoanFactsRequiredTogether(t *testing.T) {
 	e := newEnv(t)
-	for key, mod := range map[string]func(*model.CreateDebtRequest){
-		"lastPaymentDate": func(r *model.CreateDebtRequest) { r.LastPaymentDate = "" },
-		"amountBorrowed":  func(r *model.CreateDebtRequest) { r.AmountBorrowed = vo.FlexString{} },
-		"startDate":       func(r *model.CreateDebtRequest) { r.StartDate = nil },
+	for key, mod := range map[string]func(*createSpec){
+		"lastPaymentDate": func(r *createSpec) { r.LastPaymentDate = "" },
+		"amountBorrowed":  func(r *createSpec) { r.AmountBorrowed = vo.FlexString{} },
+		"startDate":       func(r *createSpec) { r.StartDate = nil },
 	} {
 		req := e.createReq()
 		mod(&req)
-		_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+		_, err := e.tryCreate(req)
 		requireField(t, err, key, errs.CodeIsBlank)
 	}
 }
@@ -105,126 +95,15 @@ func TestCreateDebt_WithoutTermsNeedsAPositivePayment(t *testing.T) {
 	req := e.createReq()
 	withoutTerms(&req)
 	req.Payment = vo.NewFlexString("0.001")
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	_, err := e.tryCreate(req)
 	requireField(t, err, "payment", errs.CodeOutOfRange)
-}
-
-func TestCreateDebt_LabelMustBeTheCategoryOwners(t *testing.T) {
-	e := newEnv(t)
-	partner := e.partner(t, "sam", roleUser)
-	foreign := e.newLabelOf(partner)
-	req := e.createReq()
-	req.Rules[0].LabelId = &foreign
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
-	requireNotFound(t, err)
-
-	own := e.newLabel()
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &own })
-	if r := res.Rules[0]; r.LabelId == nil || *r.LabelId != own || r.LabelName == "" {
-		t.Fatalf("rule = %+v, want label %s", r, own)
-	}
-	// a labelled debt is not whole-category: the category keeps its plans
-	if len(e.elements.transfers) != 0 {
-		t.Fatalf("transfers = %+v, want none", e.elements.transfers)
-	}
-}
-
-func TestCheckKeys_LabelsTellDebtsApart(t *testing.T) {
-	e := newEnv(t)
-	ctx := context.Background()
-	car, student := e.newLabel(), e.newLabel()
-	e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &car })
-	e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &student })
-
-	req := e.createReq()
-	_, err := e.svc.CreateDebt(ctx, e.uid(), req)
-	requireCode(t, err, errs.CodeDebtKeyConflict)
-
-	req = e.createReq()
-	req.Rules[0].LabelId = &car
-	_, err = e.svc.CreateDebt(ctx, e.uid(), req)
-	requireCode(t, err, errs.CodeDebtStartDateTaken)
-
-	req.StartDate = ptr("2026-03-01")
-	if _, err := e.svc.CreateDebt(ctx, e.uid(), req); err != nil {
-		t.Fatalf("same label with a distinct start date: %v", err)
-	}
-}
-
-func TestCreateDebt_ReportsSetUpAndLabel(t *testing.T) {
-	e := newEnv(t)
-	res := e.create(t, nil)
-	if res.IsSetUp != 1 || res.Rules[0].LabelId != nil || res.PeriodsPaid != 0 {
-		t.Errorf("isSetUp/labelId/periodsPaid = %d %v %d", res.IsSetUp, res.Rules[0].LabelId, res.PeriodsPaid)
-	}
-}
-
-func TestCreateDebt_RefusesIncomeCategory(t *testing.T) {
-	e := newEnv(t)
-	req := e.createReq()
-	req.Rules[0].CategoryId = e.newCategory(e.user, false)
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
-	requireField(t, err, "rules", errs.CodeDebtCategoryNotExpense)
-}
-
-func TestCreateDebt_CategoryOfANonParticipantNotFound(t *testing.T) {
-	e := newEnv(t)
-	other := e.f.User(fixture.User{Name: "other", Email: "other@example.test"})
-	guest := e.partner(t, "guest", roleGuest)
-	invited := e.partner(t, "invited", rolePending)
-	for _, owner := range []string{other, guest, invited} {
-		req := e.createReq()
-		req.Rules[0].CategoryId = e.newCategory(owner, true)
-		_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
-		requireNotFound(t, err)
-	}
-}
-
-func TestCreateDebt_RefusesUnusableCurrency(t *testing.T) {
-	e := newEnv(t)
-	eur := e.eur()
-	e.currency.unusable[eur] = true
-	req := e.createReq()
-	req.CurrencyId = eur
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
-	requireCode(t, err, errs.CodeCurrencyNotAvailable)
-	if got, err := e.repo.ListByBudget(context.Background(), vo.MustParseId(e.budget)); err != nil || len(got) != 0 {
-		t.Errorf("debts after a refused create = %v, %v", got, err)
-	}
-}
-
-// A currency the budget already uses is usable for its debts whoever asks:
-// it may be the owner's custom currency, which a partner could not choose.
-func TestCreateDebt_BudgetCurrencySkipsEnsureUsable(t *testing.T) {
-	e := newEnv(t)
-	eur := e.eur()
-	e.currency.unusable[fixture.USD], e.currency.unusable[eur] = true, true
-	e.fakeBudget(e.budget).currencies = []string{eur}
-	for _, cur := range []string{fixture.USD, eur} {
-		res := e.create(t, func(r *model.CreateDebtRequest) {
-			r.CurrencyId, r.Rules[0].CategoryId = cur, e.newCategory(e.user, true)
-		})
-		if res.CurrencyId != cur {
-			t.Fatalf("currency = %s, want %s", res.CurrencyId, cur)
-		}
-	}
-}
-
-func TestCreateDebt_CurrencyDefaultsToTheBudgets(t *testing.T) {
-	e := newEnv(t)
-	eur := e.eur()
-	e.fakeBudget(e.budget).currency = eur
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.CurrencyId = "" })
-	if res.CurrencyId != eur {
-		t.Fatalf("currency = %s, want the budget's %s", res.CurrencyId, eur)
-	}
 }
 
 func TestCreateDebt_RefusesPaymentsDontCover(t *testing.T) {
 	e := newEnv(t)
 	req := e.createReq()
 	req.AmountBorrowed = vo.NewFlexString("20000")
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	_, err := e.tryCreate(req)
 	requireCode(t, err, errs.CodeDebtPaymentsDontCover)
 }
 
@@ -236,91 +115,20 @@ func TestCreateDebt_RefusesPaymentsDontCoverInAPreciseCurrency(t *testing.T) {
 	req := e.createReq()
 	// nine monthly dues after Mar 10, 2026: Apr 1 to Dec 1
 	req.AmountBorrowed, req.Payment, req.LastPaymentDate = vo.NewFlexString("0.01"), vo.NewFlexString("0.001"), "2026-12-01"
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	_, err := e.tryCreate(req)
 	requireCode(t, err, errs.CodeDebtPaymentsDontCover)
 
 	req.LastPaymentDate = "2027-01-01"
-	if _, err := e.svc.CreateDebt(context.Background(), e.uid(), req); err != nil {
+	if _, err := e.tryCreate(req); err != nil {
 		t.Fatalf("ten payments of 0.001 cover 0.01: %v", err)
 	}
-}
-
-func TestCreateDebt_KeyConflict(t *testing.T) {
-	e := newEnv(t)
-	ctx := context.Background()
-	payee := e.newPayee()
-	e.create(t, nil)
-	req := e.createReq()
-	req.Rules[0].PayeeId = &payee
-	_, err := e.svc.CreateDebt(ctx, e.uid(), req)
-	requireField(t, err, "rules", errs.CodeDebtKeyConflict)
-
-	// A payee-only debt blocks a category-only one, and a tag-only debt
-	// overlaps a payee-only one.
-	cat2 := e.newCategory(e.user, true)
-	payee2, tag2 := e.newPayee(), e.newTag()
-	e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = cat2; r.Rules[0].PayeeId = &payee2 })
-	plain := e.createReq()
-	plain.Rules[0].CategoryId = cat2
-	_, err = e.svc.CreateDebt(ctx, e.uid(), plain)
-	requireCode(t, err, errs.CodeDebtKeyConflict)
-	tagReq := e.createReq()
-	tagReq.Rules[0].CategoryId, tagReq.Rules[0].TagId = cat2, &tag2
-	_, err = e.svc.CreateDebt(ctx, e.uid(), tagReq)
-	requireCode(t, err, errs.CodeDebtKeyConflict)
-
-	// Disjoint payees coexist.
-	other := e.newPayee()
-	e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = cat2; r.Rules[0].PayeeId = &other })
-}
-
-func TestCreateDebt_SameKeyNeedsDistinctStartDates(t *testing.T) {
-	e := newEnv(t)
-	e.create(t, nil)
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), e.createReq())
-	requireCode(t, err, errs.CodeDebtStartDateTaken)
-
-	e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-01-01") })
-	dup := e.createReq()
-	dup.StartDate = ptr("2026-01-01")
-	_, err = e.svc.CreateDebt(context.Background(), e.uid(), dup)
-	requireCode(t, err, errs.CodeDebtStartDateTaken)
-
-	e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-02-01") })
-}
-
-func TestCreateDebt_WholeCategoryTransfersPlans(t *testing.T) {
-	e := newEnv(t)
-	res := e.create(t, nil)
-	// only the debt's life moves: from its first snapshot to its last payment
-	want := transferCall{budget: e.budget, from: e.category, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt, currency: fixture.USD,
-		sum: true, first: "2026-03-10", last: "2027-03-01"}
-	if len(e.elements.transfers) != 1 || e.elements.transfers[0] != want {
-		t.Fatalf("transfers = %+v, want [%+v]", e.elements.transfers, want)
-	}
-
-	payee := e.newPayee()
-	e.elements.transfers = nil
-	e.create(t, func(r *model.CreateDebtRequest) {
-		r.Rules[0].CategoryId = e.newCategory(e.user, true)
-		r.Rules[0].PayeeId = &payee
-	})
-	if len(e.elements.transfers) != 0 {
-		t.Fatalf("a payee-narrowed debt must not move the category's plans: %+v", e.elements.transfers)
-	}
-}
-
-func TestCreateDebt_WorksWithoutBudgetPeer(t *testing.T) {
-	e := newEnv(t)
-	e.svc.SetBudgetElements(nil)
-	e.create(t, nil)
 }
 
 // A blank start date passes the request's validation of a debt without terms,
 // so the service must read it as none rather than fail to parse it.
 func TestCreateDebt_BlankStartDateIsNone(t *testing.T) {
 	e := newEnv(t)
-	res := e.create(t, func(r *model.CreateDebtRequest) { withoutTerms(r); r.StartDate = ptr(" ") })
+	res := e.create(t, func(r *createSpec) { withoutTerms(r); r.StartDate = ptr(" ") })
 	if res.StartDate != "" {
 		t.Fatalf("start date = %q, want none", res.StartDate)
 	}
@@ -332,66 +140,19 @@ func TestCreateDebt_TermBeyondTheProjectionIsRefused(t *testing.T) {
 	e := newEnv(t)
 	req := e.createReq()
 	req.LastPaymentDate = "2126-04-01"
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	_, err := e.tryCreate(req)
 	requireCode(t, err, errs.CodeOutOfRange)
 	req.LastPaymentDate = "2126-03-01"
 	req.AmountBorrowed = vo.NewFlexString("1200000")
-	if _, err := e.svc.CreateDebt(context.Background(), e.uid(), req); err != nil {
+	if _, err := e.tryCreate(req); err != nil {
 		t.Fatalf("a 100-year term is allowed: %v", err)
-	}
-}
-
-// A shared mortgage: he pays from his category, she from hers. One debt
-// counts both, its rules naming each category with its owner.
-func TestCreateDebt_RulesAcrossParticipants(t *testing.T) {
-	e := newEnv(t)
-	sam := e.partner(t, "Sam", roleUser)
-	hers := e.newCategory(sam, true)
-	res := e.create(t, func(r *model.CreateDebtRequest) {
-		r.Rules = []model.DebtRuleRequest{rule(e.category), rule(hers)}
-	})
-	if res.BudgetId != e.budget || res.BudgetName != "Family" || res.CanEdit != 1 {
-		t.Fatalf("budget = %q %q, canEdit %d", res.BudgetId, res.BudgetName, res.CanEdit)
-	}
-	if len(res.Rules) != 2 || res.Rules[0].CategoryId != e.category || res.Rules[1].CategoryId != hers {
-		t.Fatalf("rules = %+v, want in the order given", res.Rules)
-	}
-	if r := res.Rules[0]; r.OwnerUserId != e.user || r.OwnerName != "Alex" || r.CategoryName == "" || r.CategoryIcon != "i" || r.Id == "" {
-		t.Errorf("his rule = %+v", r)
-	}
-	if r := res.Rules[1]; r.OwnerUserId != sam || r.OwnerName != "Sam" {
-		t.Errorf("her rule = %+v", r)
-	}
-	// a participant who plans creates one too
-	req := e.createReq()
-	req.Rules = []model.DebtRuleRequest{rule(e.newCategory(e.user, true))}
-	if _, err := e.svc.CreateDebt(context.Background(), vo.MustParseId(sam), req); err != nil {
-		t.Fatalf("a participant creates a debt: %v", err)
-	}
-}
-
-func TestCreateDebt_PayeeMustBeTheCategoryOwners(t *testing.T) {
-	e := newEnv(t)
-	sam := e.partner(t, "Sam", roleUser)
-	hers := e.newCategory(sam, true)
-	mine, herPayee := e.newPayee(), e.newPayeeOf(sam)
-	req := e.createReq()
-	req.Rules = []model.DebtRuleRequest{{CategoryId: hers, PayeeId: &mine}}
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
-	requireNotFound(t, err)
-
-	res := e.create(t, func(r *model.CreateDebtRequest) {
-		r.Rules = []model.DebtRuleRequest{{CategoryId: hers, PayeeId: &herPayee}}
-	})
-	if r := res.Rules[0]; r.PayeeId == nil || *r.PayeeId != herPayee || r.PayeeName == "" {
-		t.Fatalf("rule = %+v", r)
 	}
 }
 
 func TestCreateDebt_GuestForbidden(t *testing.T) {
 	e := newEnv(t)
 	guest := e.partner(t, "guest", roleGuest)
-	_, err := e.svc.CreateDebt(context.Background(), vo.MustParseId(guest), e.createReq())
+	_, err := e.svc.CreateDebt(context.Background(), vo.MustParseId(guest), e.createDebtReq())
 	if _, ok := errs.AsAccessDenied(err); !ok {
 		t.Fatalf("err = %v, want access denied", err)
 	}
@@ -402,7 +163,7 @@ func TestCreateDebt_NoAccessNotFound(t *testing.T) {
 	other := e.f.User(fixture.User{Name: "other", Email: "other@example.test"})
 	invited := e.partner(t, "invited", rolePending)
 	for _, u := range []string{other, invited} {
-		_, err := e.svc.CreateDebt(context.Background(), vo.MustParseId(u), e.createReq())
+		_, err := e.svc.CreateDebt(context.Background(), vo.MustParseId(u), e.createDebtReq())
 		requireNotFound(t, err)
 	}
 }
@@ -410,7 +171,7 @@ func TestCreateDebt_NoAccessNotFound(t *testing.T) {
 func TestCreateDebt_ArchivedBudget(t *testing.T) {
 	e := newEnv(t)
 	e.fakeBudget(e.budget).archived = true
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), e.createReq())
+	_, err := e.svc.CreateDebt(context.Background(), e.uid(), e.createDebtReq())
 	requireArchived(t, err)
 }
 
@@ -420,9 +181,7 @@ func TestCreateDebt_CreatedDayInTheCreatorsTimezone(t *testing.T) {
 	sam := e.partner(t, "Sam", roleUser)
 	e.users.zones[sam] = "Pacific/Kiritimati"
 	e.clock.now = time.Date(2026, 3, 10, 20, 0, 0, 0, time.UTC)
-	req := e.createReq()
-	withoutTerms(&req)
-	res, err := e.svc.CreateDebt(context.Background(), vo.MustParseId(sam), req)
+	res, err := e.svc.CreateDebt(context.Background(), vo.MustParseId(sam), e.createDebtReq())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -431,56 +190,66 @@ func TestCreateDebt_CreatedDayInTheCreatorsTimezone(t *testing.T) {
 	}
 }
 
-// Each whole-category rule takes its category row's plans in the debt's
-// budget; a narrowed rule takes none.
-func TestCreateDebt_MovesPlansOfEachWholeCategoryRule(t *testing.T) {
+// A debt attaches to a top-level expense category or an envelope, and takes
+// its name, icon and currency from it.
+func TestCreateDebt_OnACategoryAndAnEnvelope(t *testing.T) {
 	e := newEnv(t)
-	sam := e.partner(t, "Sam", roleUser)
-	hers, third := e.newCategory(sam, true), e.newCategory(e.user, true)
-	payee := e.newPayee()
-	res := e.create(t, func(r *model.CreateDebtRequest) {
-		r.Rules = []model.DebtRuleRequest{rule(e.category), rule(hers), {CategoryId: third, PayeeId: &payee}}
-	})
-	if len(e.elements.transfers) != 2 {
-		t.Fatalf("transfers = %+v, want one per whole rule", e.elements.transfers)
+	eur := e.eur()
+	el := e.elements.items[e.budget][e.category]
+	el.CurrencyID = vo.MustParseId(eur)
+	e.elements.items[e.budget][e.category] = el
+
+	onCategory := e.create(t, withoutTerms)
+	if onCategory.ElementId != e.category || onCategory.ElementType != "category" || onCategory.Name != el.Name ||
+		onCategory.Icon != "i" || onCategory.CurrencyId != eur {
+		t.Fatalf("category debt = %+v", onCategory)
 	}
-	for i, cat := range []string{e.category, hers} {
-		want := transferCall{budget: e.budget, from: cat, fromType: model.ElementCategory, to: res.Id, toType: model.ElementDebt,
-			currency: fixture.USD, sum: true, first: "2026-03-10", last: "2027-03-01"}
-		if e.elements.transfers[i] != want {
-			t.Errorf("transfer %d = %+v, want %+v", i, e.elements.transfers[i], want)
+
+	child := e.newCategory(e.user, true)
+	env := e.newEnvelope("Housing", child)
+	onEnvelope := e.create(t, func(r *createSpec) { withoutTerms(r); r.ElementId = env })
+	if onEnvelope.ElementId != env || onEnvelope.ElementType != "envelope" || onEnvelope.Name != "Housing" ||
+		onEnvelope.Icon != "env" || onEnvelope.CurrencyId != fixture.USD {
+		t.Fatalf("envelope debt = %+v", onEnvelope)
+	}
+}
+
+func TestCreateDebt_Refusals(t *testing.T) {
+	e := newEnv(t)
+	child := e.newCategory(e.user, true)
+	e.newEnvelope("Housing", child)
+	for name, element := range map[string]string{
+		"a category inside an envelope": child,
+		"an income category":            e.newCategory(e.user, false),
+		"a tag":                         e.newTag(),
+	} {
+		req := e.createDebtReq()
+		req.ElementId = element
+		_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+		if err == nil {
+			t.Fatalf("%s: created", name)
 		}
-	}
-}
-
-func TestCreateDebt_TwoRulesOfTheDebtMayNotOverlap(t *testing.T) {
-	e := newEnv(t)
-	payee := e.newPayee()
-	l1, l2 := e.newLabel(), e.newLabel()
-	req := e.createReq()
-	req.Rules = []model.DebtRuleRequest{rule(e.category), {CategoryId: e.category, PayeeId: &payee}}
-	_, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
-	requireField(t, err, "rules", errs.CodeDebtKeyConflict)
-	// two labels of one category tell the rules apart
-	e.create(t, func(r *model.CreateDebtRequest) {
-		r.Rules = []model.DebtRuleRequest{{CategoryId: e.category, LabelId: &l1}, {CategoryId: e.category, LabelId: &l2}}
-	})
-}
-
-// The debt's budget row is made in the create's own transaction, before any
-// plan moves onto it, partial rule or whole.
-func TestCreateDebt_EnsuresTheBudgetRows(t *testing.T) {
-	e := newEnv(t)
-	payee := e.newPayee()
-	e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].PayeeId = &payee })
-	if e.elements.indexOf("ensure") < 0 {
-		t.Fatalf("calls = %v, want the rows ensured for a partial debt", e.elements.calls)
+		requireField(t, err, "elementId", errs.CodeDebtElementNotEligible)
 	}
 
-	e.elements.calls = nil
-	other := e.newCategory(e.user, true)
-	e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = other })
-	if ensure, transfer := e.elements.indexOf("ensure"), e.elements.indexOf("transfer"); ensure < 0 || transfer < ensure {
-		t.Fatalf("calls = %v, want the rows ensured before the category's plans move", e.elements.calls)
+	first := e.create(t, func(r *createSpec) { r.StartDate = ptr("2026-01-01") })
+	_, err := e.svc.CreateDebt(context.Background(), e.uid(), e.createDebtReq())
+	requireField(t, err, "elementId", errs.CodeDebtElementHasDebt)
+
+	e.markPaidOff(t, first.Id, "2026-02-01")
+	for _, start := range []string{"2026-01-15", "2026-02-01"} {
+		req := e.createDebtReq()
+		req.StartDate = ptr(start)
+		_, err = e.svc.CreateDebt(context.Background(), e.uid(), req)
+		requireField(t, err, "startDate", errs.CodeDebtStartBeforePreviousEnd)
 	}
+	req := e.createDebtReq()
+	req.StartDate = ptr("2026-02-02")
+	if _, err := e.svc.CreateDebt(context.Background(), e.uid(), req); err != nil {
+		t.Fatalf("a start after the previous end: %v", err)
+	}
+
+	guest := e.partner(t, "guest", roleGuest)
+	_, err = e.svc.CreateDebt(context.Background(), vo.MustParseId(guest), e.createDebtReq())
+	requireForbidden(t, err)
 }

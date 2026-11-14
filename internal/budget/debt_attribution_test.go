@@ -15,7 +15,6 @@ import (
 	appdebt "github.com/econumo/econumo/internal/debt"
 	debtrepo "github.com/econumo/econumo/internal/debt/repo"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
-	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
@@ -112,11 +111,10 @@ func newAttrHarness(t *testing.T) *attrHarness {
 		txm, clk,
 	)
 	debts := appdebt.NewService(debtrepo.NewRepo(engine, txm), txm, clk,
-		server.NewDebtClassifications(categoryRepo, payeeRepo, tagRepo, labelrepo.NewRepo(engine, txm)),
-		server.NewDebtRates(rateProvider, convertor), currencyLookup, server.NewDebtUsers(userRepo))
+		server.NewDebtCategories(categoryRepo), server.NewDebtRates(rateProvider, convertor), server.NewDebtUsers(userRepo))
 	svc.SetDebts(debts)
 	debts.SetBudgets(server.NewDebtBudgets(svc))
-	debts.SetBudgetElements(server.NewDebtBudgetElements(svc))
+	debts.SetElements(server.NewDebtElements(svc))
 	rec := &attrRecurring{}
 	svc.SetRecurring(rec)
 
@@ -134,10 +132,35 @@ func (h *attrHarness) spend(account, category, tag, amount string, at time.Time)
 	})
 }
 
+// debtSpec is a create-debt request plus the loan's facts, which a second,
+// update-debt call sets up.
+type debtSpec struct {
+	BudgetId, ElementId     string
+	StartDate               *string
+	AmountBorrowed, Balance vo.FlexString
+	Payment                 vo.FlexString
+	Schedule                string
+	LastPaymentDate         string
+}
+
+func createDebtAs(h *attrHarness, owner vo.Id, spec debtSpec) (*model.DebtResult, error) {
+	hasFacts := spec.AmountBorrowed.String() != "" || spec.LastPaymentDate != ""
+	create := model.CreateDebtRequest{BudgetId: spec.BudgetId, ElementId: spec.ElementId, Payment: spec.Payment, Schedule: spec.Schedule}
+	if !hasFacts {
+		create.StartDate = spec.StartDate
+	}
+	res, err := h.debts.CreateDebt(h.ctx, owner, create)
+	if err != nil || !hasFacts {
+		return res, err
+	}
+	return h.debts.UpdateDebt(h.ctx, owner, model.UpdateDebtRequest{Id: res.Id, StartDate: spec.StartDate,
+		AmountBorrowed: spec.AmountBorrowed, Balance: spec.Balance, LastPaymentDate: spec.LastPaymentDate})
+}
+
 func (h *attrHarness) createDebt(t *testing.T) string {
 	t.Helper()
-	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
-		BudgetId: h.budgetID, Name: "Mortgage", CurrencyId: fixture.USD, Rules: rules(h.loan),
+	res, err := createDebtAs(h, h.owner, debtSpec{
+		BudgetId: h.budgetID, ElementId: h.loan,
 		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("10000"), Balance: vo.NewFlexString("10000"), Payment: vo.NewFlexString("1000"),
 		Schedule: "monthly", LastPaymentDate: "2027-06-01",
 	})
@@ -145,15 +168,6 @@ func (h *attrHarness) createDebt(t *testing.T) string {
 		t.Fatalf("CreateDebt: %v", err)
 	}
 	return res.Id
-}
-
-// rules is one whole-category rule on each category.
-func rules(categoryIDs ...string) []model.DebtRuleRequest {
-	out := make([]model.DebtRuleRequest, 0, len(categoryIDs))
-	for _, c := range categoryIDs {
-		out = append(out, model.DebtRuleRequest{CategoryId: c})
-	}
-	return out
 }
 
 type debtPaidOnWire struct{ Paid, BudgetPaid, Available string }
@@ -229,62 +243,6 @@ func TestGetBudget_DebtPaymentLeavesCategoryRow(t *testing.T) {
 	}
 }
 
-func TestGetBudget_DebtPaymentLeavesTagRow(t *testing.T) {
-	h := newAttrHarness(t)
-	h.spend(h.usd, h.loan, h.tag, "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
-	h.spend(h.usd, h.food, h.tag, "40", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
-
-	before, _ := h.getBudget(t)
-	if got := spentOf(t, before, h.tag, model.ElementTag); got != "1040" {
-		t.Fatalf("tag spent without a debt = %s, want 1040", got)
-	}
-
-	debtID := h.createDebt(t)
-	res, paid := h.getBudget(t)
-	tagRow := findElement(res, h.tag, model.ElementTag)
-	if tagRow == nil || tagRow.Spent != "40" {
-		t.Fatalf("tag row = %+v, want spent 40", tagRow)
-	}
-	for _, ch := range tagRow.Children {
-		if ch.Id == h.loan {
-			t.Errorf("tag row still has the loan child: %+v", ch)
-		}
-	}
-	if got := spentOf(t, res, h.loan, model.ElementCategory); got != "0" {
-		t.Errorf("loan spent = %s, want 0", got)
-	}
-	if p := paid[debtID]; p.Paid != "1000" {
-		t.Errorf("debt paid = %+v, want 1000", p)
-	}
-}
-
-func TestGetBudget_DebtPaymentLeavesEnvelopeSpent(t *testing.T) {
-	h := newAttrHarness(t)
-	env := h.f.BudgetEnvelope(fixture.BudgetEnvelope{BudgetID: h.budgetID, Name: "Home", Icon: "home"})
-	h.f.BudgetElement(fixture.BudgetElement{BudgetID: h.budgetID, ExternalID: env, Type: int(model.ElementEnvelope)})
-	h.f.EnvelopeCategory(env, h.loan)
-	h.f.EnvelopeCategory(env, h.food)
-	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
-	h.spend(h.usd, h.food, "", "70", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
-
-	before, _ := h.getBudget(t)
-	if got := spentOf(t, before, env, model.ElementEnvelope); got != "1070" {
-		t.Fatalf("envelope spent without a debt = %s, want 1070", got)
-	}
-
-	h.createDebt(t)
-	res, _ := h.getBudget(t)
-	envRow := findElement(res, env, model.ElementEnvelope)
-	if envRow == nil || envRow.Spent != "70" {
-		t.Fatalf("envelope row = %+v, want spent 70", envRow)
-	}
-	for _, ch := range envRow.Children {
-		if ch.Id == h.loan && ch.Spent != "0" {
-			t.Errorf("loan child spent = %s, want 0", ch.Spent)
-		}
-	}
-}
-
 func TestGetBudget_DebtPaidConverted(t *testing.T) {
 	h := newAttrHarness(t)
 	h.spend(h.eur, h.loan, "", "100", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
@@ -311,7 +269,8 @@ func TestGetBudgetPlan_DebtActualPerMonth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetBudgetPlan: %v", err)
 	}
-	want := []string{"0", "1000", "1000"}
+	// the tagged June payment counts on its tag row, not on the debt
+	want := []string{"0", "1000", "0"}
 	var got []string
 	for _, d := range res.Item.Structure.Debts {
 		if d.Id == debtID {
@@ -324,12 +283,15 @@ func TestGetBudgetPlan_DebtActualPerMonth(t *testing.T) {
 		t.Errorf("debt actual = %v, want %v", got, want)
 	}
 	for _, el := range res.Item.Structure.Elements {
-		if el.Id == h.loan || el.Id == h.tag {
+		if el.Id == h.loan {
 			for i, c := range el.Cells {
 				if c.Actual != "0" {
 					t.Errorf("%s cell %d actual = %s, want 0", el.Name, i, c.Actual)
 				}
 			}
+		}
+		if el.Id == h.tag && el.Cells[2].Actual != "1000" {
+			t.Errorf("tag June actual = %s, want 1000", el.Cells[2].Actual)
 		}
 		if el.Id == h.food && el.Cells[2].Actual != "25" {
 			t.Errorf("food June actual = %s, want 25", el.Cells[2].Actual)
@@ -408,72 +370,4 @@ func deref(p *string) string {
 		return ""
 	}
 	return *p
-}
-
-func TestDrilldown_LabelledDebtExcludesOnlyItsPayments(t *testing.T) {
-	h := newAttrHarness(t)
-	car := h.f.Label(fixture.Label{UserID: h.owner.String(), Name: "Car"})
-	student := h.f.Label(fixture.Label{UserID: h.owner.String(), Name: "Student"})
-	carPaid := h.spend(h.usd, h.loan, "", "300", time.Date(2026, 6, 2, 10, 0, 0, 0, time.UTC))
-	h.labelTx(t, carPaid, car)
-	shared := h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
-	h.labelTx(t, shared, car, student)
-	plain := h.spend(h.usd, h.loan, "", "40", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
-	loan := vo.MustParseId(h.loan)
-	carL, studentL := vo.MustParseId(car), vo.MustParseId(student)
-	next := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
-	sharedTemplate, carTemplate, plainTemplate := vo.NewId(), vo.NewId(), vo.NewId()
-	template := func(id vo.Id, labels ...vo.Id) *model.RecurringTransaction {
-		return &model.RecurringTransaction{ID: id, UserID: h.owner, Type: model.TransactionTypeExpense, AccountID: vo.MustParseId(h.usd),
-			Amount: "100", CategoryID: &loan, LabelIDs: labels, Schedule: model.RecurringScheduleMonthly, NextPaymentAt: next, ScheduledDay: 20}
-	}
-	h.recurring.templates = []*model.RecurringTransaction{
-		template(sharedTemplate, carL, studentL), template(carTemplate, carL), template(plainTemplate),
-	}
-
-	carDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.Rules[0].LabelId = "Car", &car })
-	studentDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.Rules[0].LabelId = "Student", &student })
-	h.backdateDebt(t, studentDebt, attrToday.AddDate(0, -1, 0))
-
-	loanID := h.loan
-	category := h.txList(t, model.BudgetTransactionListRequest{CategoryId: &loanID})
-	if got := itemIDs(category); !sameIDs(got, []string{plain}) {
-		t.Errorf("category list = %v, want only the unlabelled payment", got)
-	}
-	if got := upcomingIDs(category); !sameIDs(got, []string{plainTemplate.String()}) {
-		t.Errorf("category upcoming = %v, want only the unlabelled template", got)
-	}
-	studentList := h.txList(t, model.BudgetTransactionListRequest{DebtId: &studentDebt})
-	if got := itemIDs(studentList); !sameIDs(got, []string{shared}) {
-		t.Errorf("older debt list = %v, want the shared payment", got)
-	}
-	if got := upcomingIDs(studentList); !sameIDs(got, []string{sharedTemplate.String()}) {
-		t.Errorf("older debt upcoming = %v, want the shared template", got)
-	}
-	carList := h.txList(t, model.BudgetTransactionListRequest{DebtId: &carDebt})
-	if got := itemIDs(carList); !sameIDs(got, []string{carPaid}) {
-		t.Errorf("newer debt list = %v, want only its own payment", got)
-	}
-	if got := upcomingIDs(carList); !sameIDs(got, []string{carTemplate.String()}) {
-		t.Errorf("newer debt upcoming = %v, want only its own template", got)
-	}
-}
-
-func TestUpcoming_TemplateWithDebtLabelDropped(t *testing.T) {
-	h := newAttrHarness(t)
-	car := h.f.Label(fixture.Label{UserID: h.owner.String(), Name: "Car"})
-	next := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
-	loan, carL := vo.MustParseId(h.loan), vo.MustParseId(car)
-	h.recurring.templates = []*model.RecurringTransaction{
-		{ID: vo.NewId(), UserID: h.owner, Type: model.TransactionTypeExpense, AccountID: vo.MustParseId(h.usd),
-			Amount: "1000", CategoryID: &loan, LabelIDs: []vo.Id{carL}, Schedule: model.RecurringScheduleMonthly, NextPaymentAt: next, ScheduledDay: 20},
-		{ID: vo.NewId(), UserID: h.owner, Type: model.TransactionTypeExpense, AccountID: vo.MustParseId(h.usd),
-			Amount: "30", CategoryID: &loan, Schedule: model.RecurringScheduleMonthly, NextPaymentAt: next, ScheduledDay: 20},
-	}
-
-	h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Rules[0].LabelId = &car })
-	res, _ := h.getBudget(t)
-	if el := findElement(res, h.loan, model.ElementCategory); el == nil || el.Upcoming != "30" {
-		t.Errorf("loan upcoming = %+v, want 30 (the labelled template went to the debt)", el)
-	}
 }

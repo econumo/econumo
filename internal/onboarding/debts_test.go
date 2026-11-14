@@ -9,8 +9,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-const otherBudget = "019a0000-0000-7000-8000-0000000000b1"
-
 type fakeDebtBudgets struct{ onboarding.BudgetSteps }
 
 func (fakeDebtBudgets) CategoryHistory(context.Context, vo.Id, vo.Id, int) ([]model.BudgetCategoryHistory, error) {
@@ -23,34 +21,28 @@ func (fakeDebtCurrencies) FractionDigits(context.Context, string) (int, error) {
 
 // newDebtSvc answers the debt detection with a debt for the loan category.
 func newDebtSvc(debts *fakeDebts) *onboarding.Service {
-	svc, _ := newSvc(replying(`{"debts":[{"categoryId":"`+cash+`","name":"Loan"}]}`), nil)
+	svc, _ := newSvc(replying(`{"debts":[{"categoryId":"`+cash+`"}]}`), nil)
 	svc.SetSteps(onboarding.Steps{Categories: fakeCategorySteps{}, Budgets: fakeDebtBudgets{}, Currencies: fakeDebtCurrencies{}})
 	svc.SetDebts(debts)
 	return svc
 }
 
-func TestDetectDebts_CreatesInTheGivenBudget(t *testing.T) {
+// Each debt the detection finds is attached to its category in the budget
+// the step works in.
+func TestDetectDebts_AttachToTheCategory(t *testing.T) {
 	debts := &fakeDebts{}
 	newDebtSvc(debts).StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")})
-	if len(debts.created) != 1 || debts.created[0].String() != budgetID {
-		t.Fatalf("created in %v", debts.created)
+	if len(debts.created) != 1 || debts.created[0].String() != budgetID || debts.categories[0].String() != cash {
+		t.Fatalf("created in %v on %v", debts.created, debts.categories)
 	}
 }
 
-func TestStartPlanDebts_TakesPlansInThePlannedBudget(t *testing.T) {
-	debts := &fakeDebts{covered: ids(cash)}
+// A category the debt feature refuses (it already carries an active debt)
+// is skipped without failing the job.
+func TestDetectDebts_SkipsARefusedCategory(t *testing.T) {
+	debts := &fakeDebts{refused: ids(cash)}
 	newDebtSvc(debts).StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")})
-	if len(debts.takenIn) != 1 || debts.takenIn[0].String() != budgetID || len(debts.created) != 0 {
-		t.Fatalf("taken in %v, created %v", debts.takenIn, debts.created)
-	}
-}
-
-// A debt of another budget covering the category does not keep it from being
-// asked about here.
-func TestDetectDebts_CoveredIsPerBudget(t *testing.T) {
-	debts := &fakeDebts{covered: ids(cash), coveredIn: otherBudget}
-	newDebtSvc(debts).StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")})
-	if len(debts.created) != 1 || len(debts.taken) != 0 {
-		t.Fatalf("created %v, taken %v", debts.created, debts.taken)
+	if debts.calls != 1 || len(debts.created) != 0 {
+		t.Fatalf("calls %d, created %v", debts.calls, debts.created)
 	}
 }

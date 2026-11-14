@@ -98,7 +98,7 @@ func TestAddRateChange_ResplitsFromTheWindowHoldingTheDate(t *testing.T) {
 func TestAddRateChange_Refusals(t *testing.T) {
 	e := newEnv(t)
 	res := e.createOrigin(t, nil)
-	draft := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = e.newCategory(e.user, true) })
+	draft := e.createWithoutTerms(t, func(r *createSpec) { r.ElementId = e.newCategory(e.user, true) })
 	_, err := e.addRate(draft.Id, "2025-09-01", "5", "600")
 	requireCode(t, err, errs.CodeDebtNotSetUp)
 
@@ -157,7 +157,7 @@ func TestDeleteRateChange_StartRowFallsBackToImplied(t *testing.T) {
 func TestDeleteRateChange_OtherDebtsRowIsNotFound(t *testing.T) {
 	e := newEnv(t)
 	a := e.createOrigin(t, nil)
-	b := e.createOrigin(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = e.newCategory(e.user, true) })
+	b := e.createOrigin(t, func(r *createSpec) { r.ElementId = e.newCategory(e.user, true) })
 	e.mustAddRate(t, a.Id, "2025-09-01", "5", "600")
 	rows := e.details(t, a.Id).RateChanges
 	_, err := e.deleteRate(b.Id, rows[1].Id)
@@ -274,7 +274,7 @@ func TestRead_AnnualRates(t *testing.T) {
 	if got.AnnualRate != "5" {
 		t.Fatalf("annual = %q, want today's 5", got.AnnualRate)
 	}
-	draft := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = e.newCategory(e.user, true) })
+	draft := e.createWithoutTerms(t, func(r *createSpec) { r.ElementId = e.newCategory(e.user, true) })
 	if draft.AnnualRate != "" || draft.ImpliedAnnualRate != "" {
 		t.Fatalf("not set up: annual = %q implied %q", draft.AnnualRate, draft.ImpliedAnnualRate)
 	}

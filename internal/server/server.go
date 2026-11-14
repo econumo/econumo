@@ -522,18 +522,14 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	debtSvc := appdebt.NewService(
 		debtrepo.NewRepo(cfg.DatabaseDriver, txm), txm, clk,
-		NewDebtClassifications(categoryRepo, payeeRepo, tagRepo, labelRepo),
+		NewDebtCategories(categoryRepo),
 		NewDebtRates(rateProvider, convertor),
-		currencyLookup,
 		NewDebtUsers(userRepo),
 	)
-	categorySvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindCategory))
-	payeeSvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindPayee))
-	tagSvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindTag))
-	labelSvc.SetDebtUsage(NewDebtUsage(debtSvc, appdebt.KindLabel))
+	categorySvc.SetDebtUsage(NewDebtUsage(debtSvc))
 	budgetSvc.SetDebts(debtSvc)
 	debtSvc.SetBudgets(NewDebtBudgets(budgetSvc))
-	debtSvc.SetBudgetElements(NewDebtBudgetElements(budgetSvc))
+	debtSvc.SetElements(NewDebtElements(budgetSvc))
 	onboardingSvc.SetDebts(NewOnboardingDebts(debtSvc))
 	debtHandlers := handlerdebt.NewHandlers(debtSvc)
 

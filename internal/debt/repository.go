@@ -1,5 +1,6 @@
-// Package debt holds the budget-debt use cases (loans and credit lines a
-// budget pays down through one or more categories).
+// Package debt holds the budget-debt use cases: loans and credit lines a
+// budget pays down through one of its elements, a top-level expense category
+// or an envelope.
 package debt
 
 import (
@@ -10,16 +11,14 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// CandidateTx is an expense that may pay a debt, in its account's currency.
+// CandidateTx is an untagged expense that may pay a debt, in its account's
+// currency.
 type CandidateTx struct {
 	ID         vo.Id
 	SpentAt    time.Time
 	Amount     vo.DecimalNumber
 	CurrencyID vo.Id
 	CategoryID vo.Id
-	PayeeID    *vo.Id
-	TagID      *vo.Id
-	LabelIDs   []vo.Id
 }
 
 type Repository interface {
@@ -31,16 +30,16 @@ type Repository interface {
 	// HoldsBudgetLock reports whether this transaction took LockBudget on the
 	// budget (also on SQLite, where the lock itself is a no-op).
 	HoldsBudgetLock(ctx context.Context, budgetID vo.Id) bool
-	// GetByID and the lists load the debts' rules, ordered by created_at, id.
 	GetByID(ctx context.Context, id vo.Id) (*model.Debt, error)
-	// ListByBudget is ordered by created_at, id; ListByBudgets too.
+	// ListByBudget is ordered by created_at, id; ListByBudgets and
+	// ListByElement too.
 	ListByBudget(ctx context.Context, budgetID vo.Id) ([]*model.Debt, error)
 	ListByBudgets(ctx context.Context, budgetIDs []vo.Id) ([]*model.Debt, error)
-	// ListByClassification returns the debts with a rule naming id; kind is
-	// "category", "payee", "tag" or "label".
-	ListByClassification(ctx context.Context, kind string, id vo.Id) ([]*model.Debt, error)
-	// Save upserts the debt and replaces its rules with d.Rules.
+	// ListByElement lists the debts attached to the element in every budget.
+	ListByElement(ctx context.Context, elementID vo.Id) ([]*model.Debt, error)
 	Save(ctx context.Context, d *model.Debt) error
+	// MoveToElement re-attaches the budget's debts of one element to another.
+	MoveToElement(ctx context.Context, budgetID, fromID, toID vo.Id, typ model.DebtElementType) error
 	Delete(ctx context.Context, id vo.Id) error
 	// AddSnapshot is always paired with a Save of the same terms in one transaction.
 	AddSnapshot(ctx context.Context, s *model.DebtSnapshot) error
@@ -65,13 +64,12 @@ type Repository interface {
 	// InsertSplit upserts on (debt, transaction).
 	InsertSplit(ctx context.Context, s model.DebtSplit) error
 	DeleteSplits(ctx context.Context, debtID vo.Id, transactionIDs []vo.Id) error
-	// CandidateTransactions returns the expenses (type 0) in the categories
-	// on the accounts.
+	// CandidateTransactions returns the untagged expenses (type 0) in the
+	// categories on the accounts.
 	CandidateTransactions(ctx context.Context, categoryIDs, accountIDs []vo.Id) ([]CandidateTx, error)
-	// LockRuleCategories key-share-locks the categories in id order
-	// (PostgreSQL; SQLite only reads them): a concurrent category delete
-	// waits for the rule write and then fails with the retryable
-	// ErrRulesChangedConcurrently instead of the rule's foreign key. A
-	// category already deleted returns errs.NotFound "Category not found".
-	LockRuleCategories(ctx context.Context, categoryIDs []vo.Id) error
+	// LockCategories key-share-locks the categories in id order (PostgreSQL;
+	// SQLite only reads them): a concurrent category delete waits for the
+	// debt write and then finds its debt. A category already deleted returns
+	// errs.NotFound "Category not found".
+	LockCategories(ctx context.Context, categoryIDs []vo.Id) error
 }

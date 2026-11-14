@@ -178,21 +178,23 @@ type Currency struct {
 }
 
 type Debt struct {
-	ID              string
-	BudgetID        string
-	Name            string
-	Icon            string
-	CurrencyID      string
-	StartDate       *time.Time
-	AmountBorrowed  *string
-	AsOf            *time.Time
-	Balance         *string
-	Payment         string
-	Schedule        string
-	LastPaymentDate *time.Time
-	CreatedDay      time.Time
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                string
+	BudgetID          string
+	ElementExternalID string
+	ElementType       string
+	Status            string
+	EndedAt           *time.Time
+	CurrencyID        string
+	StartDate         *time.Time
+	AmountBorrowed    *string
+	AsOf              *time.Time
+	Balance           *string
+	Payment           string
+	Schedule          string
+	LastPaymentDate   *time.Time
+	CreatedDay        time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type DebtsPayment struct {
@@ -208,16 +210,6 @@ type DebtsRateChange struct {
 	AnnualRate    string
 	Payment       string
 	CreatedAt     time.Time
-}
-
-type DebtsRule struct {
-	ID         string
-	DebtID     string
-	CategoryID string
-	PayeeID    *string
-	TagID      *string
-	LabelID    *string
-	CreatedAt  time.Time
 }
 
 type DebtsSnapshot struct {

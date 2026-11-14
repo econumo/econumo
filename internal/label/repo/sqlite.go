@@ -38,7 +38,3 @@ func (sqliteQuerier) ReassignTransactionLabels(ctx context.Context, db backend.D
 func (sqliteQuerier) ReassignRecurringLabels(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return sqlitegen.New(db).ReassignRecurringLabels(ctx, p)
 }
-
-// SQLite has no row-level lock modes; its single writer already serializes
-// the delete against a debt write.
-func (sqliteQuerier) LockLabelRow(context.Context, backend.DBTX, string) error { return nil }

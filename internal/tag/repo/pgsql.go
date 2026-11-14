@@ -2,8 +2,6 @@ package repo
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
@@ -48,12 +46,4 @@ func (pgsqlQuerier) ReassignTagTransactions(ctx context.Context, db backend.DBTX
 
 func (pgsqlQuerier) ReassignTagRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
 	return pgsqlgen.New(db).ReassignTagRecurring(ctx, pgsqlgen.ReassignTagRecurringParams(p))
-}
-
-func (pgsqlQuerier) LockTagRow(ctx context.Context, db backend.DBTX, id string) error {
-	_, err := pgsqlgen.New(db).LockTagRow(ctx, id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	return err
 }

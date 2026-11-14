@@ -52,12 +52,8 @@ func (pgsqlQuerier) DeleteDebt(ctx context.Context, db backend.DBTX, id string) 
 	return pgsqlgen.New(db).DeleteDebt(ctx, id)
 }
 
-func (pgsqlQuerier) DeleteDebtRules(ctx context.Context, db backend.DBTX, debtID string) error {
-	return pgsqlgen.New(db).DeleteDebtRules(ctx, debtID)
-}
-
-func (pgsqlQuerier) InsertDebtRule(ctx context.Context, db backend.DBTX, p ruleParams) error {
-	return pgsqlgen.New(db).InsertDebtRule(ctx, pgsqlgen.InsertDebtRuleParams(p))
+func (pgsqlQuerier) MoveDebtsToElement(ctx context.Context, db backend.DBTX, p moveParams) error {
+	return pgsqlgen.New(db).MoveDebtsToElement(ctx, pgsqlgen.MoveDebtsToElementParams(p))
 }
 
 func (pgsqlQuerier) InsertDebtSnapshot(ctx context.Context, db backend.DBTX, p snapshotParams) error {

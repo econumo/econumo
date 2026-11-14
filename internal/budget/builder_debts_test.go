@@ -15,18 +15,18 @@ import (
 
 // The reference loan: 300000 at 2000 a month, taken on 2026-06-01, 240 dues
 // on the 20th from 2026-06-20 (five days after the harness's today).
-func (h *attrHarness) createRefDebt(t *testing.T, extra func(*model.CreateDebtRequest)) string {
+func (h *attrHarness) createRefDebt(t *testing.T, extra func(*debtSpec)) string {
 	t.Helper()
 	start := "2026-06-01"
-	req := model.CreateDebtRequest{
-		BudgetId: h.budgetID, Name: "Mortgage", CurrencyId: fixture.USD, Rules: rules(h.loan),
+	req := debtSpec{
+		BudgetId: h.budgetID, ElementId: h.loan,
 		StartDate: &start, AmountBorrowed: vo.NewFlexString("300000"), Balance: vo.NewFlexString("300000"), Payment: vo.NewFlexString("2000"),
 		Schedule: "monthly", LastPaymentDate: "2046-05-20",
 	}
 	if extra != nil {
 		extra(&req)
 	}
-	res, err := h.debts.CreateDebt(h.ctx, h.owner, req)
+	res, err := createDebtAs(h, h.owner, req)
 	if err != nil {
 		t.Fatalf("CreateDebt: %v", err)
 	}
@@ -251,8 +251,8 @@ func TestGetBudget_PartnerDebtRowVisible(t *testing.T) {
 	car := h.f.Category(fixture.Category{UserID: partner, Name: "Car loan"})
 	// twelve dues of 500 repay the 6000 borrowed: interest-free
 	start := "2026-06-01"
-	res, err := h.debts.CreateDebt(h.ctx, vo.MustParseId(partner), model.CreateDebtRequest{
-		BudgetId: h.budgetID, Name: "Car", CurrencyId: fixture.USD, Rules: rules(car),
+	res, err := createDebtAs(h, vo.MustParseId(partner), debtSpec{
+		BudgetId: h.budgetID, ElementId: car,
 		StartDate: &start, AmountBorrowed: vo.NewFlexString("6000"), Balance: vo.NewFlexString("6000"), Payment: vo.NewFlexString("500"),
 		Schedule: "monthly", LastPaymentDate: "2027-05-20",
 	})
@@ -267,7 +267,7 @@ func TestGetBudget_PartnerDebtRowVisible(t *testing.T) {
 			t.Errorf("%s sees no partner debt row", name)
 			continue
 		}
-		if row.Name != "Car" || row.ClosingBalance != "5500" || row.PaymentsLeft != 11 {
+		if row.Name != "Car loan" || row.ClosingBalance != "5500" || row.PaymentsLeft != 11 {
 			t.Errorf("%s sees %+v", name, row)
 		}
 	}
@@ -314,14 +314,14 @@ func TestGetBudgetPlan_PlannedExtraMovesPayoff(t *testing.T) {
 func TestGetBudgetPlan_OutOfBoundsCellsNotPlannable(t *testing.T) {
 	h := newAttrHarness(t)
 	debtID := h.createRefDebt(t, nil) // taken on 2026-06-01
-	// create-debt made the row; a plan out of the debt's range is stored
-	// behind its back
+	// the plan made the row; a plan out of the debt's range is stored behind
+	// its back
+	h.setLimit(t, debtID, "2026-06-01", "2000")
 	var element string
 	if err := h.tdb.Raw.QueryRowContext(h.ctx, h.tdb.Rebind("SELECT id FROM budgets_elements WHERE budget_id = ? AND external_id = ?"), h.budgetID, debtID).Scan(&element); err != nil {
 		t.Fatalf("the debt's row: %v", err)
 	}
 	h.f.BudgetLimit(fixture.BudgetLimit{ElementID: element, Period: "2026-05-01 00:00:00", Amount: "50000"})
-	h.setLimit(t, debtID, "2026-06-01", "2000")
 
 	row := planDebtRow(h.plan(t, "2026-04-01", "4"), debtID)
 	if row == nil {
@@ -376,16 +376,16 @@ func TestGetBudget_DebtRowsStayOutOfElements(t *testing.T) {
 
 // createLooseDebt makes a debt with no terms on the loan category: payment
 // and schedule only, so it is not set up.
-func (h *attrHarness) createLooseDebt(t *testing.T, extra func(*model.CreateDebtRequest)) string {
+func (h *attrHarness) createLooseDebt(t *testing.T, extra func(*debtSpec)) string {
 	t.Helper()
-	req := model.CreateDebtRequest{
-		BudgetId: h.budgetID, Name: "Loose", CurrencyId: fixture.USD, Rules: rules(h.loan),
+	req := debtSpec{
+		BudgetId: h.budgetID, ElementId: h.loan,
 		Payment: vo.NewFlexString("1000"), Schedule: "monthly",
 	}
 	if extra != nil {
 		extra(&req)
 	}
-	res, err := h.debts.CreateDebt(h.ctx, h.owner, req)
+	res, err := createDebtAs(h, h.owner, req)
 	if err != nil {
 		t.Fatalf("CreateDebt: %v", err)
 	}
@@ -485,41 +485,6 @@ func TestGetBudget_NotSetUpDebtRow(t *testing.T) {
 	}
 }
 
-func TestGetBudget_SharedLabelPaymentOnOlderDebtRow(t *testing.T) {
-	h := newAttrHarness(t)
-	car := h.f.Label(fixture.Label{UserID: h.owner.String(), Name: "Car"})
-	student := h.f.Label(fixture.Label{UserID: h.owner.String(), Name: "Student"})
-	carOnly := h.spend(h.usd, h.loan, "", "300", time.Date(2026, 6, 2, 10, 0, 0, 0, time.UTC))
-	h.labelTx(t, carOnly, car)
-	both := h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
-	h.labelTx(t, both, car, student)
-	h.spend(h.usd, h.loan, "", "40", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
-
-	carDebt := h.createLooseDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.Rules[0].LabelId = "Car", &car })
-	studentDebt := h.createRefDebt(t, func(r *model.CreateDebtRequest) { r.Name, r.Rules[0].LabelId = "Student", &student })
-	// The student loan is the older debt, though created second.
-	h.backdateDebt(t, studentDebt, attrToday.AddDate(0, -1, 0))
-
-	res := h.budgetAt(t, h.owner, "2026-06-01")
-	if got := spentOf(t, res, h.loan, model.ElementCategory); got != "40" {
-		t.Errorf("loan spent = %s, want 40 (the unlabelled payment only)", got)
-	}
-	if r := debtRow(res, studentDebt); r == nil || r.Spent != "1000" || r.IsSetUp != 1 {
-		t.Errorf("student row = %+v, want the shared payment's 1000, set up", r)
-	}
-	if r := debtRow(res, carDebt); r == nil || r.Spent != "300" {
-		t.Errorf("car row = %+v, want only its own 300", r)
-	}
-
-	plan := h.plan(t, "2026-06-01", "1")
-	if r := planDebtRow(plan, studentDebt); r == nil || r.Cells[0].Actual != "1000" || r.IsSetUp != 1 {
-		t.Errorf("student plan row = %+v, want 1000", r)
-	}
-	if r := planDebtRow(plan, carDebt); r == nil || r.Cells[0].Actual != "300" {
-		t.Errorf("car plan row = %+v, want 300", r)
-	}
-}
-
 // planAndComments reads the plans ("2006-01" -> amount) and the comment
 // months of the external id's row in the harness budget.
 func (h *attrHarness) planAndComments(t *testing.T, externalID string) (map[string]string, []string) {
@@ -556,49 +521,6 @@ func (h *attrHarness) planAndComments(t *testing.T, externalID string) (map[stri
 	return plans, comments
 }
 
-// A whole-category debt created without terms takes the category's plans
-// with no end; finishing setup with an end hands the months after it back to
-// the category, where they show again, with their comments.
-func TestFinishSetup_PlansPastTheEndReturnToTheCategory(t *testing.T) {
-	h := newAttrHarness(t)
-	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
-	for i := 0; i <= 24; i++ {
-		h.setLimit(t, h.loan, start.AddDate(0, i, 0).Format("2006-01-02"), "100")
-	}
-	for _, m := range []string{"2026-09-01", "2027-03-01"} {
-		if _, err := h.svc.CreateComment(h.ctx, h.owner, model.CreateCommentRequest{
-			Id: vo.NewId().String(), BudgetId: h.budgetID, ElementId: h.loan, Period: m, Comment: "note",
-		}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	debtID := h.createLooseDebt(t, nil)
-	if plans, _ := h.planAndComments(t, debtID); len(plans) != 25 {
-		t.Fatalf("debt plans after conversion = %d months, want all 25", len(plans))
-	}
-
-	if _, err := h.debts.UpdateDebt(h.ctx, h.owner, model.UpdateDebtRequest{
-		Id: debtID, Name: "Loose", CurrencyId: fixture.USD,
-		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("5800"), Balance: vo.NewFlexString("5800"), Payment: vo.NewFlexString("1000"), Schedule: "monthly", LastPaymentDate: "2026-12-01",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	debtPlans, debtComments := h.planAndComments(t, debtID)
-	catPlans, catComments := h.planAndComments(t, h.loan)
-	if len(debtPlans) != 7 || debtPlans["2026-06"] != "100" || debtPlans["2026-12"] != "100" {
-		t.Errorf("debt plans = %v, want June to December 2026", debtPlans)
-	}
-	if len(catPlans) != 18 || catPlans["2027-01"] != "100" || catPlans["2028-06"] != "100" {
-		t.Errorf("category plans = %v, want January 2027 to June 2028", catPlans)
-	}
-	if len(debtComments) != 1 || debtComments[0] != "2026-09" || len(catComments) != 1 || catComments[0] != "2027-03" {
-		t.Errorf("comments: debt %v, category %v; want September on the debt, March 2027 back on the category", debtComments, catComments)
-	}
-	if el := findElement(h.budgetAt(t, h.owner, "2027-01-01"), h.loan, model.ElementCategory); el == nil || el.Budgeted != "100" {
-		t.Errorf("January 2027 category row = %+v, want its 100 plan shown again", el)
-	}
-}
-
 func plannedTotal(t *testing.T, res *model.GetBudgetResult) float64 {
 	t.Helper()
 	var total float64
@@ -616,28 +538,4 @@ func plannedTotal(t *testing.T, res *model.GetBudgetResult) float64 {
 		add(d.Budgeted)
 	}
 	return total
-}
-
-// A category inside an envelope never counts its own plans: converting it to
-// a whole-category debt leaves those hidden plans where they are instead of
-// surfacing them on the debt row, so the budget's planned total is unchanged.
-func TestConvert_EnvelopeChildKeepsItsHiddenPlans(t *testing.T) {
-	h := newAttrHarness(t)
-	h.setLimit(t, h.loan, "2026-06-01", "300")
-	envelope := vo.NewId().String()
-	if _, err := h.svc.CreateEnvelope(h.ctx, h.owner, model.CreateEnvelopeRequest{BudgetId: h.budgetID, Id: envelope,
-		Name: "Housing", Icon: "home", CurrencyId: fixture.USD, Categories: []string{h.loan}}); err != nil {
-		t.Fatal(err)
-	}
-	h.setLimit(t, envelope, "2026-06-01", "500")
-	before := plannedTotal(t, h.budgetAt(t, h.owner, "2026-06-01"))
-
-	debtID := h.createRefDebt(t, nil)
-	res := h.budgetAt(t, h.owner, "2026-06-01")
-	if after := plannedTotal(t, res); after != before {
-		t.Fatalf("planned total = %v after converting, want %v", after, before)
-	}
-	if row := debtRow(res, debtID); row == nil || row.IsBudgeted != 0 {
-		t.Fatalf("debt row = %+v, want it without the category's hidden plan", row)
-	}
 }

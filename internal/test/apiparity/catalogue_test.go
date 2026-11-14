@@ -19,6 +19,7 @@ func TestCatalogueSize(t *testing.T) {
 	// 97 -> 98 on 2026-11-11: +onboarding_suggest_icon
 	// 98 -> 100 on 2026-11-12: +debt_rules, debt_rule_options (debt_guest_access and
 	// debt_classification_guard renamed to debt_budget_access and debt_classification_cleanup)
+	// 100 on 2026-11-13: debt_rules and debt_rule_options replaced by debt_elements and debt_paid_off
 	if n := len(Catalogue()); n < min {
 		t.Fatalf("catalogue has %d scenarios, want >= %d — a scenario file was dropped", n, min)
 	}

@@ -2,6 +2,7 @@ package debt_test
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/econumo/econumo/internal/model"
@@ -18,9 +19,20 @@ func (e *env) forecast(t *testing.T, id string) *model.DebtForecastResult {
 	return got
 }
 
-// plan sets the debt row's plans in the env's budget.
-func (e *env) plan(debtID string, plans map[string]string) {
-	e.fakeBudget(e.budget).plans[debtID] = plans
+// planOf sets the plans of the element the debt is attached to.
+func (e *env) planOf(t *testing.T, debtID string, plans map[string]string) {
+	t.Helper()
+	d, err := e.repo.GetByID(context.Background(), vo.MustParseId(debtID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for period, amount := range plans {
+		f, err := strconv.ParseFloat(amount, 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.setPlan(d.BudgetID.String(), d.ElementID.String(), period, f)
+	}
 }
 
 func TestGetDebtForecast_ScheduleOnlyRunsToPayoff(t *testing.T) {
@@ -78,7 +90,7 @@ func TestGetDebtForecast_UsesTheDebtsBudget(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
 	base := e.forecast(t, res.Id)
-	e.plan(res.Id, map[string]string{"2026-05-01": "3000"})
+	e.planOf(t, res.Id, map[string]string{"2026-05-01": "3000"})
 
 	got := e.forecast(t, res.Id)
 	if got.BudgetId != e.budget || got.BudgetName != "Family" {
@@ -110,7 +122,7 @@ func TestGetDebtForecast_UsesTheDebtsBudget(t *testing.T) {
 func TestGetDebtForecast_PlansWithoutExtrasNameNoBudget(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
-	e.plan(res.Id, map[string]string{"2026-06-01": "1000"})
+	e.planOf(t, res.Id, map[string]string{"2026-06-01": "1000"})
 	got := e.forecast(t, res.Id)
 	if got.BudgetId != "" || got.BudgetName != "" || len(got.Items) != res.PaymentsLeft {
 		t.Fatalf("forecast = %q %q with %d items, want the schedule's %d", got.BudgetId, got.BudgetName, len(got.Items), res.PaymentsLeft)
@@ -122,8 +134,8 @@ func TestGetDebtForecast_PlansWithoutExtrasNameNoBudget(t *testing.T) {
 // being projected, but May is past its life.
 func TestGetDebtForecast_IgnoresPlansOutsideTheLife(t *testing.T) {
 	e := newEnv(t)
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate, r.LastPaymentDate = ptr("2025-01-01"), "2025-12-01" })
-	e.plan(res.Id, map[string]string{"2026-05-01": "5000"})
+	res := e.create(t, func(r *createSpec) { r.StartDate, r.LastPaymentDate = ptr("2025-01-01"), "2025-12-01" })
+	e.planOf(t, res.Id, map[string]string{"2026-05-01": "5000"})
 
 	got := e.forecast(t, res.Id)
 	if got.BudgetId != "" || len(got.Items) != res.PaymentsLeft {
@@ -165,7 +177,7 @@ func TestGetDebtForecast_FollowsTheBudgetsPeriods(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
 	e.fakeBudget(e.budget).startDay = 15
-	e.plan(res.Id, map[string]string{"2026-05-01": "3000"})
+	e.planOf(t, res.Id, map[string]string{"2026-05-01": "3000"})
 
 	got := e.forecast(t, res.Id)
 	if got.BudgetName != "Family" {
@@ -188,7 +200,7 @@ func TestGetDebtForecast_SummaryMatchesTheDebtWithoutPlans(t *testing.T) {
 	for _, flat := range []bool{false, true} {
 		if flat {
 			e.fakeBudget(e.budget).startDay = 15
-			e.plan(res.Id, map[string]string{"2026-06-01": "1000"})
+			e.planOf(t, res.Id, map[string]string{"2026-06-01": "1000"})
 		}
 		got := e.forecast(t, res.Id)
 		if got.PaymentsLeft != res.PaymentsLeft || got.PayoffDate != res.PayoffDate || got.OverpaymentLeft != res.OverpaymentLeft {
@@ -206,7 +218,7 @@ func TestGetDebtForecast_SummaryMatchesTheDebtWithoutPlans(t *testing.T) {
 func TestGetDebtForecast_SummaryFollowsThePlans(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, nil)
-	e.plan(res.Id, map[string]string{"2026-05-01": "4000"})
+	e.planOf(t, res.Id, map[string]string{"2026-05-01": "4000"})
 
 	got := e.forecast(t, res.Id)
 	if got.PaymentsLeft >= res.PaymentsLeft {
@@ -237,19 +249,43 @@ func TestGetDebtForecast_SummaryEmptyWhileNotSetUp(t *testing.T) {
 // in a month due 450 adds 4550; with no plans it is "0".
 func TestGetDebtForecast_ExtraPlanned(t *testing.T) {
 	e := newEnv(t)
-	res := e.create(t, func(r *model.CreateDebtRequest) {
+	res := e.create(t, func(r *createSpec) {
 		r.AmountBorrowed, r.Payment, r.LastPaymentDate = vo.NewFlexString("16500"), vo.NewFlexString("450"), "2030-03-01"
 	})
 	if got := e.forecast(t, res.Id); got.ExtraPlanned != "0" {
 		t.Fatalf("extra planned with no plans = %q, want 0", got.ExtraPlanned)
 	}
-	e.plan(res.Id, map[string]string{"2026-05-01": "5000"})
+	e.planOf(t, res.Id, map[string]string{"2026-05-01": "5000"})
 	if got := e.forecast(t, res.Id); got.ExtraPlanned != "4550" {
 		t.Fatalf("extra planned = %q, want 4550", got.ExtraPlanned)
 	}
 
-	bare := e.createWithoutTerms(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = e.newCategory(e.user, true) })
+	bare := e.createWithoutTerms(t, func(r *createSpec) { r.ElementId = e.newCategory(e.user, true) })
 	if got := e.forecast(t, bare.Id); got.ExtraPlanned != "" {
 		t.Fatalf("not set up extra planned = %q, want empty", got.ExtraPlanned)
+	}
+}
+
+// A period's planned extra is the element's plan above the scheduled payment:
+// a plan of 3000 against a payment of 2647.82 pays 352.18 extra that month.
+func TestProjection_ExtraFromTheElementsPlan(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, func(r *createSpec) {
+		r.AmountBorrowed, r.Payment, r.LastPaymentDate = vo.NewFlexString("85000"), vo.NewFlexString("2647.82"), "2029-03-01"
+	})
+	e.planOf(t, res.Id, map[string]string{"2026-05-01": "3000"})
+
+	got := e.forecast(t, res.Id)
+	if got.ExtraPlanned != "352.18" || got.BudgetId != e.budget {
+		t.Fatalf("forecast = extra %q, budget %q; want 352.18 from the element's plan", got.ExtraPlanned, got.BudgetId)
+	}
+	var may string
+	for _, it := range got.Items {
+		if it.Date == "2026-05-01" {
+			may = it.Payment
+		}
+	}
+	if may != "3000" {
+		t.Fatalf("May's payment = %q, want 3000 (2647.82 + 352.18)", may)
 	}
 }

@@ -5471,7 +5471,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Records that from date on (on or after the start date) the loan's yearly rate is annualRate percent (0 to 100) and its regular payment is payment; interest and the schedule's dues follow it, and the payments are split again from the start of the schedule window holding the date. A payment that can never repay the balance is refused (debt.payments_dont_cover). A change on a date that already has one replaces it. A debt not set up is refused (debt.not_set_up).",
+                "description": "Records that from date on (on or after the start date) the loan's yearly rate is annualRate percent (0 to 100) and its regular payment is payment; interest and the schedule's dues follow it, and the payments are split again from the start of the schedule window holding the date. A payment that can never repay the balance is refused (debt.payments_dont_cover). A change on a date that already has one replaces it. A debt not set up is refused (debt.not_set_up). A paid-off debt is refused (debt.paid_off).",
                 "consumes": [
                     "application/json"
                 ],
@@ -5545,87 +5545,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/debt/add-debt-rule": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Adds one rule to a debt: an expense category of a participant of the budget, optionally narrowed by that participant's payee and by a tag or a label. A rule another rule of the debt covers, or one that could match another debt's payments, is refused with debt.key_conflict on rules; an eleventh rule with common.out_of_range. A whole-category rule moves its category row's plans and comments onto the debt's row, adding up with what is there.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Debt"
-                ],
-                "summary": "Add a rule to a debt",
-                "parameters": [
-                    {
-                        "description": "Add debt rule request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.AddDebtRuleRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.DebtResult"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
-                        }
-                    },
-                    "402": {
-                        "description": "Payment Required",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseException"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/debt/create-debt": {
             "post": {
                 "security": [
@@ -5633,7 +5552,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Creates a debt in a budget the caller may plan in (403 for a guest, budget.archived for an archived budget). rules (1 to 10) say which expenses pay it: each names an expense category of a participant of the budget, optionally narrowed by that participant's payee and by a tag or a label (common.invalid_choice on rules for both); rules that could match the same payment, in this debt or another debt of the budget, are refused with debt.key_conflict on rules. An empty currencyId takes the budget's currency. amountBorrowed, startDate and lastPaymentDate are the loan's facts and come together (a missing one is common.is_blank): the debt's first snapshot is amountBorrowed as of startDate (debt.start_in_future after today, debt.last_payment_before_start unless lastPaymentDate is later), and what is owed follows from the payments recorded since. An optional balance adds a statement balance as of balanceDate (default today). Without the facts the debt is created not set up (isSetUp 0), collecting its payments without figures; a startDate alone then only bounds which payments count.",
+                "description": "Attaches a debt to an element of a budget the caller may plan in (403 for a guest, budget.archived for an archived budget): elementId is a top-level expense category or an envelope of the budget, else debt.element_not_eligible on elementId; an element that already carries an active debt is refused with debt.element_has_debt. The debt is created not set up, in the element row's currency, with its payment and schedule; its payments are the untagged expenses the element's Spent counts (on the budget's everyday accounts, in its category or the envelope's categories). An optional startDate bounds which payments count and must follow the end of the element's previous debt (debt.start_before_previous_end).",
                 "consumes": [
                     "application/json"
                 ],
@@ -5714,7 +5633,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Deletes a debt. A debt whose only rule is a whole category hands its budget plans and comments back to that category; any other debt that holds plans or comments needs confirmDataRemoval.",
+                "description": "Deletes a debt, active or paid off, with its history (snapshots, payment splits, rate changes). Its element's plans, comments and transactions are untouched.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5795,7 +5714,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Removes one rate change by its id; the payments from its date are split again. Deleting the one stored on the start date brings back the rate the loan's terms imply; that implied first row, shown when none sits on the start date, has no id and cannot be deleted (not found).",
+                "description": "Removes one rate change by its id; the payments from its date are split again. Deleting the one stored on the start date brings back the rate the loan's terms imply; that implied first row, shown when none sits on the start date, has no id and cannot be deleted (not found). A paid-off debt is refused (debt.paid_off).",
                 "consumes": [
                     "application/json"
                 ],
@@ -5876,7 +5795,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Removes one statement balance (a history entry after the origin, by its id); the payments after its date are split again from what comes before it. The origin cannot be deleted (not found).",
+                "description": "Removes one statement balance (a history entry after the origin, by its id); the payments after its date are split again from what comes before it. The origin cannot be deleted (not found). A paid-off debt is refused (debt.paid_off).",
                 "consumes": [
                     "application/json"
                 ],
@@ -6021,7 +5940,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Projects the payments still to come, soonest first, to the payoff: the regular schedule plus the extras planned for the debt's row in its own budget. budgetId and budgetName name that budget only when its plans add an extra. paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with those extras (get-debt's own when there are none); extraPlanned sums the planned extras those payments carry (\"0\" with none). A debt not set up has no items, 0 payments left and empty figures. A debt of a budget the caller cannot read is not found.",
+                "description": "Projects the payments still to come, soonest first, to the payoff: the regular schedule plus the extras its element's plans add in its budget (a period's plan above its scheduled payments). budgetId and budgetName name that budget only when its plans add an extra. paymentsLeft, payoffDate and overpaymentLeft are the debt's figures with those extras (get-debt's own when there are none); extraPlanned sums the planned extras those payments carry (\"0\" with none). A debt not set up has no items, 0 payments left and empty figures. A debt of a budget the caller cannot read is not found.",
                 "produces": [
                     "application/json"
                 ],
@@ -6085,7 +6004,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Returns the debts of every budget the caller can read, archived ones included, with their projections. canEdit is 1 where the caller may change the debt (plan access to an unarchived budget).",
+                "description": "Returns the debts, active and paid off, of every budget the caller can read, archived ones included, with their projections. Each names its element (elementId, elementType category|envelope) and takes the element's name, icon and currency; status is active or paid_off, endedAt the last day payments count. canEdit is 1 where the caller may change the debt (plan access to an unarchived budget, the debt active).",
                 "produces": [
                     "application/json"
                 ],
@@ -6127,76 +6046,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/debt/get-debt-rule-options": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Lists the participants of a budget, the caller first and then the others by name, each with their active expense categories, payees, tags and labels. Needs the right to plan in the budget: a guest gets 403, a caller who cannot read the budget the not-found error.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Debt"
-                ],
-                "summary": "Get what a debt rule can name",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Budget id",
-                        "name": "budgetId",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.DebtRuleOptionsResult"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseException"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/debt/mark-debt-paid-off": {
             "post": {
                 "security": [
@@ -6204,7 +6053,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Writes a zero-balance snapshot as of today. A debt not set up is refused.",
+                "description": "Ends a set-up debt as of date (default today; after its start date and no later than today, else common.out_of_range on date): a statement of 0 as of that date (replacing one entered that day), status paid_off and endedAt that date. Payments after it no longer count. A debt that still owes may be marked (refinancing: mark the old loan paid off, then track a new one on the same element). A debt not set up is refused (debt.not_set_up), a paid-off one with debt.paid_off.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6285,7 +6134,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Writes the balance a statement gives for a set-up debt as of balanceDate (default today; after the start date and no later than today, else common.out_of_range on balanceDate). The balance is the principal still owed: interest since the last payment comes with the next due: a snapshot under the latest terms that overrides what the recorded payments give from that date on. A statement on a date that already has one replaces it. The payments after that date are split again from it, and every due up to the latest statement counts as paid. A debt not set up is refused (debt.not_set_up).",
+                "description": "Writes the balance a statement gives for a set-up debt as of balanceDate (default today; after the start date and no later than today, else common.out_of_range on balanceDate). The balance is the principal still owed: interest since the last payment comes with the next due: a snapshot under the latest terms that overrides what the recorded payments give from that date on. A statement on a date that already has one replaces it. The payments after that date are split again from it, and every due up to the latest statement counts as paid. A debt not set up is refused (debt.not_set_up). A paid-off debt is refused (debt.paid_off).",
                 "consumes": [
                     "application/json"
                 ],
@@ -6359,6 +6208,87 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/debt/reopen-debt": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Takes a paid-off debt back to active: its end and the statement of 0 dated on it go, and the payments after it count again (reopen, then mark paid off again, fixes a wrong paid-off date). Refused with debt.cannot_reopen while its element carries another active debt or a debt created after it. An active debt is returned unchanged.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Debt"
+                ],
+                "summary": "Reopen a paid-off debt",
+                "parameters": [
+                    {
+                        "description": "Reopen debt request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ReopenDebtRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DebtResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/debt/update-debt": {
             "post": {
                 "security": [
@@ -6366,7 +6296,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Updates a debt's name, rules and terms. rules left out keep the stored ones; a list (1 to 10) replaces them, a rule matched by id or by an identical key keeping its id. A debt not set up is set up by a body carrying amountBorrowed, startDate and lastPaymentDate (its first snapshot as of startDate, plus a statement balance when a balance is sent); without them only its payment, schedule, start date and key change. On a set-up debt startDate, amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored ones; one that differs corrects the loan's facts: the first snapshot is rewritten (a later one takes the corrected payment, schedule and last payment date, keeping its date and balance; debt.conflicts_with_reconciliation when the new start would follow it or the new last payment date not follow it) and every payment is split again. amountBorrowed and lastPaymentDate come as a pair. A balance adds a statement balance as of balanceDate (default today), as reconcile-debt does. A currencyId other than the stored one moves the debt to that currency (refused with currency.not_available when the user may not use it): the amounts sent, or the stored ones when left out, are read in it unconverted, the payments are split again and the budget rows follow; empty keeps the stored currency.",
+                "description": "Updates a debt's start date and terms; its element and currency stay. A debt not set up is set up by a body carrying amountBorrowed, startDate and lastPaymentDate (its first snapshot as of startDate, plus a statement balance when a balance is sent); without them only its payment, schedule and start date change. On a set-up debt startDate, amountBorrowed, lastPaymentDate, payment or schedule left out keep the stored ones; one that differs corrects the loan's facts: the first snapshot is rewritten (a later one takes the corrected payment, schedule and last payment date, keeping its date and balance; debt.conflicts_with_reconciliation when the new start would follow it or the new last payment date not follow it) and every payment is split again. amountBorrowed and lastPaymentDate come as a pair. A balance adds a statement balance as of balanceDate (default today), as reconcile-debt does. A start on or before the end of the element's previous debt is refused (debt.start_before_previous_end). A paid-off debt is refused (debt.paid_off).",
                 "consumes": [
                     "application/json"
                 ],
@@ -14960,17 +14890,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.AddDebtRuleRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "rule": {
-                    "$ref": "#/definitions/model.DebtRuleRequest"
-                }
-            }
-        },
         "model.ApplyImportRuleRequest": {
             "type": "object",
             "properties": {
@@ -15909,38 +15828,14 @@ const docTemplate = `{
         "model.CreateDebtRequest": {
             "type": "object",
             "properties": {
-                "amountBorrowed": {
-                    "$ref": "#/definitions/vo.FlexString"
-                },
-                "balance": {
-                    "$ref": "#/definitions/vo.FlexString"
-                },
-                "balanceDate": {
-                    "type": "string"
-                },
                 "budgetId": {
                     "type": "string"
                 },
-                "currencyId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "lastPaymentDate": {
-                    "type": "string"
-                },
-                "name": {
+                "elementId": {
                     "type": "string"
                 },
                 "payment": {
                     "$ref": "#/definitions/vo.FlexString"
-                },
-                "rules": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.DebtRuleRequest"
-                    }
                 },
                 "schedule": {
                     "type": "string"
@@ -16659,6 +16554,15 @@ const docTemplate = `{
                 "currentBalance": {
                     "type": "string"
                 },
+                "elementId": {
+                    "type": "string"
+                },
+                "elementType": {
+                    "type": "string"
+                },
+                "endedAt": {
+                    "type": "string"
+                },
                 "extraPaid": {
                     "type": "string"
                 },
@@ -16710,137 +16614,13 @@ const docTemplate = `{
                 "periodsPaid": {
                     "type": "integer"
                 },
-                "rules": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.DebtRuleResult"
-                    }
-                },
                 "schedule": {
                     "type": "string"
                 },
                 "startDate": {
                     "type": "string"
-                }
-            }
-        },
-        "model.DebtRuleOption": {
-            "type": "object",
-            "properties": {
-                "icon": {
-                    "type": "string"
                 },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.DebtRuleOptionsResult": {
-            "type": "object",
-            "properties": {
-                "participants": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.DebtRuleParticipant"
-                    }
-                }
-            }
-        },
-        "model.DebtRuleParticipant": {
-            "type": "object",
-            "properties": {
-                "categories": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.DebtRuleOption"
-                    }
-                },
-                "labels": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.DebtRuleOption"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "payees": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.DebtRuleOption"
-                    }
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.DebtRuleOption"
-                    }
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.DebtRuleRequest": {
-            "type": "object",
-            "properties": {
-                "categoryId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "labelId": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.DebtRuleResult": {
-            "type": "object",
-            "properties": {
-                "categoryIcon": {
-                    "type": "string"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "categoryName": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "labelId": {
-                    "type": "string"
-                },
-                "labelName": {
-                    "type": "string"
-                },
-                "ownerName": {
-                    "type": "string"
-                },
-                "ownerUserId": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "payeeName": {
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                },
-                "tagName": {
+                "status": {
                     "type": "string"
                 }
             }
@@ -16990,9 +16770,6 @@ const docTemplate = `{
         "model.DeleteDebtRequest": {
             "type": "object",
             "properties": {
-                "confirmDataRemoval": {
-                    "type": "boolean"
-                },
                 "id": {
                     "type": "string"
                 }
@@ -18095,6 +17872,9 @@ const docTemplate = `{
         "model.MarkDebtPaidOffRequest": {
             "type": "object",
             "properties": {
+                "date": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 }
@@ -19433,6 +19213,14 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ReopenDebtRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
         "model.ReplaceFolderRequest": {
             "type": "object",
             "properties": {
@@ -20429,29 +20217,14 @@ const docTemplate = `{
                 "balanceDate": {
                     "type": "string"
                 },
-                "currencyId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
                 "lastPaymentDate": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
-                },
                 "payment": {
                     "$ref": "#/definitions/vo.FlexString"
-                },
-                "rules": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.DebtRuleRequest"
-                    }
                 },
                 "schedule": {
                     "type": "string"

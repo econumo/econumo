@@ -38,17 +38,12 @@ type Completer interface {
 // DebtSteps is the debt feature as onboarding's debt detection uses it; the
 // debts belong to a budget, so every call names the one the step works in.
 type DebtSteps interface {
-	// CreateDebt creates a debt not set up (no amount borrowed, start or end)
-	// in the budget, counting every payment in the category. created is false,
-	// with no error, when the debt feature refuses it: the budget's debts
-	// already cover the category, it is not an expense category, the caller
-	// cannot plan the budget, or the currency cannot be used.
-	CreateDebt(ctx context.Context, userID, budgetID vo.Id, name string, categoryID, currencyID vo.Id, payment vo.DecimalNumber, schedule model.RecurringSchedule) (created bool, err error)
-	// CoveredCategories are the categories the budget's debts count in.
-	CoveredCategories(ctx context.Context, budgetID vo.Id) ([]vo.Id, error)
-	// TakeCategoryPlans hands the category's plans and comments in the budget
-	// to its debt covering the whole category while it is not set up.
-	TakeCategoryPlans(ctx context.Context, budgetID, categoryID vo.Id) (moved bool, err error)
+	// CreateDebt attaches a debt not set up (no amount borrowed, start or
+	// end) to the category's element in the budget. created is false, with
+	// no error, when the debt feature refuses it: the category already
+	// carries an active debt, it cannot carry one (an income category, one
+	// in an envelope), or the caller cannot plan the budget.
+	CreateDebt(ctx context.Context, userID, budgetID, categoryID vo.Id, payment vo.DecimalNumber, schedule model.RecurringSchedule) (created bool, err error)
 }
 
 // AttemptLimiter caps the AI classification per user; every job counts.

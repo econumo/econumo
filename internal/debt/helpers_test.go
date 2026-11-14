@@ -21,17 +21,15 @@ type fakeClock struct{ now time.Time }
 
 func (c *fakeClock) Now() time.Time { return c.now }
 
-// fakeClass holds every classification by kind and id.
-type fakeClass struct {
+// fakeCategories names the categories the tests made.
+type fakeCategories struct {
 	items map[string]model.DebtClassification
 }
 
-func classKey(kind, id string) string { return kind + ":" + id }
-
-func (c *fakeClass) Classification(_ context.Context, kind string, id vo.Id) (model.DebtClassification, error) {
-	item, ok := c.items[classKey(kind, id.String())]
+func (c *fakeCategories) Category(_ context.Context, id vo.Id) (model.DebtClassification, error) {
+	item, ok := c.items[id.String()]
 	if !ok {
-		return model.DebtClassification{}, errs.NewNotFound("Not found")
+		return model.DebtClassification{}, errs.NewNotFound("Category not found")
 	}
 	return item, nil
 }
@@ -66,40 +64,42 @@ func (r *fakeRates) FractionDigits(_ context.Context, id vo.Id) (int, error) {
 	return r.digits, nil
 }
 
-// fakeCurrencies refuses the currencies listed as unusable.
-type fakeCurrencies struct{ unusable map[string]bool }
-
-func (c *fakeCurrencies) EnsureUsable(_ context.Context, _, currencyID string) error {
-	if c.unusable[currencyID] {
-		return errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "currencyId", Message: "Currency is not available", Code: errs.CodeCurrencyNotAvailable})
-	}
-	return nil
-}
-
 func formatFloat(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 
-type transferCall struct {
-	budget      string
-	from        string
-	fromType    model.ElementType
-	to          string
-	toType      model.ElementType
-	currency    string
-	sum         bool
-	first, last string // Y-m-d, "" = open
-	after       string // Y-m-d, "" = unset
-	before      string // Y-m-d, "" = unset
+// fakeElements holds the budgets' elements and their rows' plans, keyed by
+// budget then element id.
+type fakeElements struct {
+	items map[string]map[string]model.DebtElementInfo
+	plans map[string]map[string]map[string]float64
 }
 
-type fakeElements struct {
-	transfers  []transferCall
-	hasData    bool
-	leftBehind bool
-	// calls is the order of the budget calls: "ensure", "lock", "transfer", "has-data", "remove", "currency".
-	calls []string
-	// currencies are the currencies the debt rows were moved to, in order
-	currencies []string
+func (f *fakeElements) Element(_ context.Context, budgetID, elementID vo.Id) (model.DebtElementInfo, error) {
+	if el, ok := f.items[budgetID.String()][elementID.String()]; ok {
+		return el, nil
+	}
+	return model.DebtElementInfo{ID: elementID}, nil
+}
+
+func (f *fakeElements) Plans(_ context.Context, budgetID, elementID vo.Id) (map[string]float64, error) {
+	return f.plans[budgetID.String()][elementID.String()], nil
+}
+
+func (f *fakeElements) set(budgetID string, el model.DebtElementInfo) {
+	if f.items[budgetID] == nil {
+		f.items[budgetID] = map[string]model.DebtElementInfo{}
+	}
+	f.items[budgetID][el.ID.String()] = el
+}
+
+// plan sets the element row's plan for a period key "YYYY-MM-01".
+func (e *env) setPlan(budgetID, elementID, period string, amount float64) {
+	if e.elements.plans[budgetID] == nil {
+		e.elements.plans[budgetID] = map[string]map[string]float64{}
+	}
+	if e.elements.plans[budgetID][elementID] == nil {
+		e.elements.plans[budgetID][elementID] = map[string]float64{}
+	}
+	e.elements.plans[budgetID][elementID][period] = amount
 }
 
 func monthString(t time.Time) string {
@@ -107,48 +107,6 @@ func monthString(t time.Time) string {
 		return ""
 	}
 	return t.Format("2006-01-02")
-}
-
-func (b *fakeElements) TransferData(_ context.Context, t model.ElementDataTransfer) (bool, error) {
-	b.calls = append(b.calls, "transfer")
-	b.transfers = append(b.transfers, transferCall{t.BudgetID.String(), t.FromID.String(), t.FromType, t.ToID.String(), t.ToType, t.CurrencyID.String(),
-		t.SumOnClash, monthString(t.FirstDay), monthString(t.LastDay), monthString(t.AfterDay), monthString(t.BeforeDay)})
-	return b.leftBehind, nil
-}
-
-func (b *fakeElements) HasData(context.Context, vo.Id, model.ElementType) (bool, error) {
-	b.calls = append(b.calls, "has-data")
-	return b.hasData, nil
-}
-
-func (b *fakeElements) RemoveRows(context.Context, vo.Id, model.ElementType) error {
-	b.calls = append(b.calls, "remove")
-	return nil
-}
-
-func (b *fakeElements) SetRowsCurrency(_ context.Context, _ vo.Id, _ model.ElementType, currencyID vo.Id) error {
-	b.calls = append(b.calls, "currency")
-	b.currencies = append(b.currencies, currencyID.String())
-	return nil
-}
-
-func (b *fakeElements) EnsureRows(context.Context, vo.Id) error {
-	b.calls = append(b.calls, "ensure")
-	return nil
-}
-
-func (b *fakeElements) LockRows(context.Context, vo.Id, model.ElementType) error {
-	b.calls = append(b.calls, "lock")
-	return nil
-}
-
-func (b *fakeElements) indexOf(call string) int {
-	for i, c := range b.calls {
-		if c == call {
-			return i
-		}
-	}
-	return -1
 }
 
 const (
@@ -162,15 +120,12 @@ const (
 type fakeBudget struct {
 	id, name, currency string
 	startDay           int
-	// currencies are the element rows' own currencies
-	currencies []string
-	archived   bool
-	owner      string
-	roles      map[string]string
-	accounts   []string
-	// plans are the debt rows' plans: debt id -> period key -> amount
-	plans   map[string]map[string]string
-	options *model.DebtRuleOptionsResult
+	archived           bool
+	owner              string
+	roles              map[string]string
+	accounts           []string
+	// savings are the savings members among accounts: no debt counts them
+	savings []string
 }
 
 // fakeBudgets answers access by role per user; a pending invite reads as no
@@ -189,20 +144,22 @@ func ids(raw ...string) []vo.Id {
 }
 
 func (f *fakeBudgets) view(b *fakeBudget, role string) model.DebtBudget {
-	participants := []string{b.owner}
-	for user, r := range b.roles {
-		if user != b.owner && (r == roleAdmin || r == roleUser) {
-			participants = append(participants, user)
-		}
-	}
-	slices.Sort(participants[1:])
 	startDay := b.startDay
 	if startDay == 0 {
 		startDay = 1
 	}
 	return model.DebtBudget{ID: vo.MustParseId(b.id), CurrencyID: vo.MustParseId(b.currency), Name: b.name, PeriodStartDay: startDay,
-		CurrencyIDs: ids(append([]string{b.currency}, b.currencies...)...), IsArchived: b.archived, CanPlan: role != roleGuest,
-		ParticipantIDs: ids(participants...), AccountIDs: ids(b.accounts...)}
+		IsArchived: b.archived, CanPlan: role != roleGuest, AccountIDs: ids(b.everyday()...)}
+}
+
+func (b *fakeBudget) everyday() []string {
+	var out []string
+	for _, a := range b.accounts {
+		if !slices.Contains(b.savings, a) {
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 func (f *fakeBudgets) Access(_ context.Context, userID, budgetID vo.Id) (model.DebtBudget, error) {
@@ -233,39 +190,15 @@ func (f *fakeBudgets) Scope(_ context.Context, budgetID vo.Id) (model.DebtScope,
 	if !ok {
 		return model.DebtScope{BudgetID: budgetID}, nil
 	}
-	return model.DebtScope{BudgetID: budgetID, AccountIDs: ids(b.accounts...)}, nil
-}
-
-func (f *fakeBudgets) RuleOptions(_ context.Context, _, budgetID vo.Id) (*model.DebtRuleOptionsResult, error) {
-	if b := f.byID[budgetID.String()]; b != nil && b.options != nil {
-		return b.options, nil
-	}
-	return &model.DebtRuleOptionsResult{Participants: []model.DebtRuleParticipant{}}, nil
-}
-
-func (f *fakeBudgets) DebtPlans(_ context.Context, budgetID, debtID vo.Id) (model.DebtBudgetPlans, bool, error) {
-	b, ok := f.byID[budgetID.String()]
-	if !ok {
-		return model.DebtBudgetPlans{}, false, nil
-	}
-	plans, ok := b.plans[debtID.String()]
-	if !ok {
-		return model.DebtBudgetPlans{}, false, nil
-	}
-	return model.DebtBudgetPlans{Name: b.name, PeriodStartDay: f.view(b, roleOwner).PeriodStartDay, Plans: plans}, true, nil
+	return model.DebtScope{BudgetID: budgetID, AccountIDs: ids(b.everyday()...)}, nil
 }
 
 type fakeUsers struct {
 	zones map[string]string
-	names map[string]string
 }
 
 func (u *fakeUsers) GetTimezone(_ context.Context, id vo.Id) (string, error) {
 	return u.zones[id.String()], nil
-}
-
-func (u *fakeUsers) GetName(_ context.Context, id vo.Id) (string, error) {
-	return u.names[id.String()], nil
 }
 
 type env struct {
@@ -274,9 +207,8 @@ type env struct {
 	db       *dbtest.DB
 	f        *fixture.Builder
 	clock    *fakeClock
-	class    *fakeClass
+	cats     *fakeCategories
 	rates    *fakeRates
-	currency *fakeCurrencies
 	elements *fakeElements
 	budgets  *fakeBudgets
 	users    *fakeUsers
@@ -297,19 +229,18 @@ func newEnv(t *testing.T) *env {
 	e := &env{
 		repo: debtrepo.NewRepo(db.Engine, db.TX), db: db, f: f, user: user,
 		clock:    &fakeClock{now: march10},
-		class:    &fakeClass{items: map[string]model.DebtClassification{}},
+		cats:     &fakeCategories{items: map[string]model.DebtClassification{}},
 		rates:    &fakeRates{multiplier: map[string]float64{}},
-		currency: &fakeCurrencies{unusable: map[string]bool{}},
-		elements: &fakeElements{},
+		elements: &fakeElements{items: map[string]map[string]model.DebtElementInfo{}, plans: map[string]map[string]map[string]float64{}},
 		budgets:  &fakeBudgets{byID: map[string]*fakeBudget{}},
-		users:    &fakeUsers{zones: map[string]string{}, names: map[string]string{user: "Alex"}},
+		users:    &fakeUsers{zones: map[string]string{}},
 	}
-	e.category = e.newCategory(user, true)
 	e.account = f.Account(fixture.Account{UserID: user})
 	e.budget = e.newBudget(user, "Family", e.account)
-	e.svc = debt.NewService(e.repo, db.TX, e.clock, e.class, e.rates, e.currency, e.users)
+	e.category = e.newCategory(user, true)
+	e.svc = debt.NewService(e.repo, db.TX, e.clock, e.cats, e.rates, e.users)
 	e.svc.SetBudgets(e.budgets)
-	e.svc.SetBudgetElements(e.elements)
+	e.svc.SetElements(e.elements)
 	return e
 }
 
@@ -317,7 +248,7 @@ func newEnv(t *testing.T) *env {
 func (e *env) newBudget(owner, name string, accounts ...string) string {
 	id := e.f.Budget(fixture.Budget{UserID: owner, Name: name})
 	e.budgets.byID[id] = &fakeBudget{id: id, name: name, currency: fixture.USD, owner: owner,
-		roles: map[string]string{owner: roleOwner}, accounts: accounts, plans: map[string]map[string]string{}}
+		roles: map[string]string{owner: roleOwner}, accounts: accounts}
 	e.budgets.order = append(e.budgets.order, id)
 	return id
 }
@@ -328,11 +259,12 @@ func (e *env) fakeBudget(id string) *fakeBudget { return e.budgets.byID[id] }
 func (e *env) partner(t *testing.T, name, role string) string {
 	t.Helper()
 	u := e.f.User(fixture.User{Name: name, Email: name + "@example.test"})
-	e.users.names[u] = name
 	e.fakeBudget(e.budget).roles[u] = role
 	return u
 }
 
+// newCategory is a category of owner shown in the user's budget as a
+// top-level element in USD, eligible when it is an expense category.
 func (e *env) newCategory(owner string, expense bool) string {
 	typ := 1
 	if expense {
@@ -340,44 +272,44 @@ func (e *env) newCategory(owner string, expense bool) string {
 	}
 	name := "Loan " + fixture.NewID()[:6]
 	id := e.f.Category(fixture.Category{UserID: owner, Name: name, Type: typ})
-	e.class.items[classKey(debt.KindCategory, id)] = model.DebtClassification{OwnerID: vo.MustParseId(owner), Name: name, Icon: "i", IsExpense: expense}
+	e.cats.items[id] = model.DebtClassification{OwnerID: vo.MustParseId(owner), Name: name, Icon: "i", IsExpense: expense}
+	e.elements.set(e.budget, model.DebtElementInfo{ID: vo.MustParseId(id), Type: model.DebtElementCategory, Name: name, Icon: "i",
+		CurrencyID: vo.MustParseId(fixture.USD), CategoryIDs: ids(id), Eligible: expense})
 	return id
 }
 
-func (e *env) newPayeeOf(owner string) string {
-	name := "Bank " + fixture.NewID()[:6]
-	id := e.f.Payee(fixture.Payee{UserID: owner, Name: name})
-	e.class.items[classKey(debt.KindPayee, id)] = model.DebtClassification{OwnerID: vo.MustParseId(owner), Name: name}
+// newEnvelope is an expense envelope of the user's budget over the
+// categories, in USD.
+func (e *env) newEnvelope(name string, categories ...string) string {
+	id := fixture.NewID()
+	e.elements.set(e.budget, model.DebtElementInfo{ID: vo.MustParseId(id), Type: model.DebtElementEnvelope, Name: name, Icon: "env",
+		CurrencyID: vo.MustParseId(fixture.USD), CategoryIDs: ids(categories...), Eligible: true})
+	for _, c := range categories {
+		el := e.elements.items[e.budget][c]
+		el.Eligible = false
+		e.elements.items[e.budget][c] = el
+	}
 	return id
 }
-
-func (e *env) newPayee() string { return e.newPayeeOf(e.user) }
 
 func (e *env) newTag() string {
-	name := "Tag " + fixture.NewID()[:6]
-	id := e.f.Tag(fixture.Tag{UserID: e.user, Name: name})
-	e.class.items[classKey(debt.KindTag, id)] = model.DebtClassification{OwnerID: vo.MustParseId(e.user), Name: name}
-	return id
+	return e.f.Tag(fixture.Tag{UserID: e.user, Name: "Tag " + fixture.NewID()[:6]})
 }
 
-func (e *env) newLabelOf(owner string) string {
-	name := "Label " + fixture.NewID()[:6]
-	id := e.f.Label(fixture.Label{UserID: owner, Name: name})
-	e.class.items[classKey(debt.KindLabel, id)] = model.DebtClassification{OwnerID: vo.MustParseId(owner), Name: name}
-	return id
+// createSpec is a create-debt request plus the loan's facts, which a
+// second, update-debt call sets up.
+type createSpec struct {
+	BudgetId, ElementId     string
+	StartDate               *string
+	AmountBorrowed, Balance vo.FlexString
+	BalanceDate             string
+	Payment                 vo.FlexString
+	Schedule                string
+	LastPaymentDate         string
 }
 
-func (e *env) newLabel() string { return e.newLabelOf(e.user) }
-
-func (e *env) addLabel(t *testing.T, txID, labelID string) {
-	t.Helper()
-	if _, err := e.db.Raw.ExecContext(context.Background(), e.db.Rebind("INSERT INTO transactions_labels (transaction_id, label_id) VALUES (?, ?)"), txID, labelID); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// withoutTerms leaves the loan's facts out: the debt is created not set up.
-func withoutTerms(r *model.CreateDebtRequest) {
+// withoutTerms leaves the loan's facts out: the debt stays not set up.
+func withoutTerms(r *createSpec) {
 	r.AmountBorrowed, r.StartDate, r.Balance, r.LastPaymentDate = vo.FlexString{}, nil, vo.FlexString{}, ""
 }
 
@@ -385,31 +317,59 @@ func (e *env) uid() vo.Id { return vo.MustParseId(e.user) }
 
 func ptr(s string) *string { return &s }
 
-// createReq is a loan of 10000 taken today (march10), its origin the same
-// snapshot a balance of 10000 as of today makes.
-func (e *env) createReq() model.CreateDebtRequest {
-	return model.CreateDebtRequest{
-		BudgetId: e.budget, Name: "Car loan", CurrencyId: fixture.USD, Rules: []model.DebtRuleRequest{{CategoryId: e.category}},
+// createReq is a loan of 10000 taken today (march10) on e.category.
+func (e *env) createReq() createSpec {
+	return createSpec{
+		BudgetId: e.budget, ElementId: e.category,
 		AmountBorrowed: vo.NewFlexString("10000"), StartDate: ptr("2026-03-10"), Payment: vo.NewFlexString("1000"),
 		Schedule: "monthly", LastPaymentDate: "2027-03-01",
 	}
 }
 
-func (e *env) create(t *testing.T, mod func(*model.CreateDebtRequest)) *model.DebtResult {
+// tryCreate creates the debt and, when the spec carries the loan's facts,
+// sets it up; the first refusal is returned, and a debt whose setup is
+// refused is deleted again, as one create used to be all or nothing.
+func (e *env) tryCreate(spec createSpec) (*model.DebtResult, error) {
+	ctx := context.Background()
+	hasFacts := spec.AmountBorrowed.String() != "" || spec.LastPaymentDate != "" || spec.Balance.String() != ""
+	create := model.CreateDebtRequest{BudgetId: spec.BudgetId, ElementId: spec.ElementId, Payment: spec.Payment, Schedule: spec.Schedule}
+	if !hasFacts {
+		create.StartDate = spec.StartDate
+	}
+	res, err := e.svc.CreateDebt(ctx, e.uid(), create)
+	if err != nil || !hasFacts {
+		return res, err
+	}
+	set, err := e.svc.UpdateDebt(ctx, e.uid(), model.UpdateDebtRequest{Id: res.Id, StartDate: spec.StartDate, AmountBorrowed: spec.AmountBorrowed,
+		Balance: spec.Balance, BalanceDate: spec.BalanceDate, LastPaymentDate: spec.LastPaymentDate})
+	if err != nil {
+		if _, derr := e.svc.DeleteDebt(ctx, e.uid(), model.DeleteDebtRequest{Id: res.Id}); derr != nil {
+			return nil, derr
+		}
+		return nil, err
+	}
+	return set, nil
+}
+
+// createDebtReq is the plain create-debt request on e.category.
+func (e *env) createDebtReq() model.CreateDebtRequest {
+	return model.CreateDebtRequest{BudgetId: e.budget, ElementId: e.category, Payment: vo.NewFlexString("1000"), Schedule: "monthly"}
+}
+
+func (e *env) create(t *testing.T, mod func(*createSpec)) *model.DebtResult {
 	t.Helper()
 	req := e.createReq()
 	if mod != nil {
 		mod(&req)
 	}
-	res, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	res, err := e.tryCreate(req)
 	if err != nil {
 		t.Fatalf("CreateDebt: %v", err)
 	}
 	return res
 }
 
-// updateReq sends back what res holds; its rules are left out, so they are
-// kept.
+// updateReq sends back what res holds.
 func (e *env) updateReq(res *model.DebtResult) model.UpdateDebtRequest {
 	start := res.StartDate
 	var startPtr *string
@@ -417,7 +377,7 @@ func (e *env) updateReq(res *model.DebtResult) model.UpdateDebtRequest {
 		startPtr = &start
 	}
 	return model.UpdateDebtRequest{
-		Id: res.Id, Name: res.Name, CurrencyId: res.CurrencyId, StartDate: startPtr,
+		Id: res.Id, StartDate: startPtr,
 		AmountBorrowed: vo.NewFlexString(res.AmountBorrowed), Payment: vo.NewFlexString(res.Payment),
 		Schedule: res.Schedule, LastPaymentDate: res.LastPaymentDate,
 	}
@@ -451,9 +411,6 @@ func (e *env) snapshots(t *testing.T, debtID string) []*model.DebtSnapshot {
 	}
 	return got
 }
-
-// rule is a whole-category rule on category.
-func rule(category string) model.DebtRuleRequest { return model.DebtRuleRequest{CategoryId: category} }
 
 func (e *env) scope(budgetID string) model.DebtScope {
 	scope, _ := e.budgets.Scope(context.Background(), vo.MustParseId(budgetID))

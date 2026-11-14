@@ -104,7 +104,9 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	// 147 -> 148 on 2026-11-11: onboarding/suggest-icon.
 	// 148 -> 149 on 2026-11-11: onboarding/apply-suggested-icon.
 	// 149 -> 151 on 2026-11-12: debt/add-debt-rule and debt/get-debt-rule-options.
-	const minRoutes = 151
+	// 151 -> 150 on 2026-11-13: debts attach to budget elements, so the two
+	// rule routes went (unreleased) and debt/reopen-debt was added.
+	const minRoutes = 150
 	if len(routes) < minRoutes {
 		t.Fatalf("route scan found only %d routes, want >= %d — a registration file moved outside handlerGlobs, or a route is no longer a literal \"METHOD /path\" string (see comment above)", len(routes), minRoutes)
 	}

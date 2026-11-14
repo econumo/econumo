@@ -60,7 +60,6 @@ type Querier interface {
 	DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuthGrantsParams) (int64, error)
 	DeleteDebt(ctx context.Context, id string) error
 	DeleteDebtRateChange(ctx context.Context, arg DeleteDebtRateChangeParams) (int64, error)
-	DeleteDebtRules(ctx context.Context, debtID string) error
 	DeleteDebtSnapshot(ctx context.Context, id string) error
 	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
@@ -297,7 +296,6 @@ type Querier interface {
 	InsertCorrectionTransaction(ctx context.Context, arg InsertCorrectionTransactionParams) error
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
-	InsertDebtRule(ctx context.Context, arg InsertDebtRuleParams) error
 	InsertDebtSnapshot(ctx context.Context, arg InsertDebtSnapshotParams) error
 	// Through the transaction row: a payment deleted since it was read inserts
 	// nothing instead of failing the foreign key.
@@ -457,10 +455,9 @@ type Querier interface {
 	// committed by then, and one that comes later waits for the transfer.
 	LockBudgetElementPair(ctx context.Context, arg LockBudgetElementPairParams) ([]string, error)
 	// Taken by a delete or merge after the debt budgets are locked and before the
-	// debt rules are released or moved: FOR UPDATE conflicts with the FOR KEY
-	// SHARE a debt write takes on the row while adding a rule, so the delete or
-	// merge waits for that write to commit and then sees its rule, instead of
-	// failing the debts_rules foreign key.
+	// debts attached to the category are deleted or moved: FOR UPDATE conflicts
+	// with the FOR KEY SHARE a debt create takes on the row, so the delete or
+	// merge waits for that write to commit and then sees its debt.
 	LockCategoryRow(ctx context.Context, id string) (string, error)
 	// NO KEY UPDATE leaves the KEY SHARE of child inserts (budget rows, debts)
 	// unblocked.
@@ -468,32 +465,14 @@ type Querier interface {
 	// Locks every budget's row of an external id, in id order, before a removal
 	// guard reads the rows' data (the debt counterpart of LockSavingsElement).
 	LockElementsByExternal(ctx context.Context, arg LockElementsByExternalParams) ([]string, error)
-	// Taken by a delete or merge after the debt budgets are locked and before the
-	// debt rules are released or moved: FOR UPDATE conflicts with the FOR KEY
-	// SHARE a debt write takes on the row while adding a rule, so the delete or
-	// merge waits for that write to commit and then sees its rule, instead of
-	// failing the debts_rules foreign key.
-	LockLabelRow(ctx context.Context, id string) (string, error)
 	// Plain FOR UPDATE is required: it is the only mode that conflicts with the KEY SHARE
 	// lock a concurrent grant INSERT takes on this row through its foreign key.
 	LockOAuthClient(ctx context.Context, id string) (string, error)
-	// Taken by a delete or merge after the debt budgets are locked and before the
-	// debt rules are released or moved: FOR UPDATE conflicts with the FOR KEY
-	// SHARE a debt write takes on the row while adding a rule, so the delete or
-	// merge waits for that write to commit and then sees its rule, instead of
-	// failing the debts_rules foreign key.
-	LockPayeeRow(ctx context.Context, id string) (string, error)
 	// Locks the savings element a removal is about to drop, before its guard
 	// reads the element's data: a limit or comment writer that share-locked the
 	// row first has committed by the time the guard's EXISTS runs, and one that
 	// comes later waits and then finds the row gone.
 	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
-	// Taken by a delete or merge after the debt budgets are locked and before the
-	// debt rules are released or moved: FOR UPDATE conflicts with the FOR KEY
-	// SHARE a debt write takes on the row while adding a rule, so the delete or
-	// merge waits for that write to commit and then sees its rule, instead of
-	// failing the debts_rules foreign key.
-	LockTagRow(ctx context.Context, id string) (string, error)
 	// The row lock behind every existing-row write and credential mint (see
 	// user.Repository.LockRow). FOR NO KEY UPDATE is the same lock mode the old
 	// no-op UPDATE took (it touched no key column), without writing a tuple
@@ -507,6 +486,7 @@ type Querier interface {
 	MakeOAuthClientGlobal(ctx context.Context, id string) (int64, error)
 	MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUsedParams) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
+	MoveDebtsToElement(ctx context.Context, arg MoveDebtsToElementParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
 	PurgeExcessUnusedOAuthClients(ctx context.Context, limit int32) (int64, error)
@@ -612,6 +592,7 @@ type Querier interface {
 	// index. Mirrors CurrencyRatesUpdateService (get-or-create then updateRate).
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	// The budget is written once, at insert: a debt never moves to another budget.
+	// The element moves only with a category merge (MoveDebtsToElement).
 	UpsertDebt(ctx context.Context, arg UpsertDebtParams) error
 	UpsertDebtRateChange(ctx context.Context, arg UpsertDebtRateChangeParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error

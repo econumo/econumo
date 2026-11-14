@@ -2,8 +2,6 @@ package debt
 
 import (
 	"context"
-	"slices"
-	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -11,17 +9,16 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// UpdateDebt saves a debt's name, icon, currency, rules, start date and terms. A
-// debt not set up is set up by a body carrying the loan's facts (amount
-// borrowed, start date, last payment date; the origin as of the start date,
-// plus a snapshot as of today with a balance now); without them only its
-// payment, schedule and start date change, each of the first two kept when
-// left out. On a set-up debt each fact left out keeps the stored one, so a
-// stale screen renaming the debt cannot write old ones back; a fact that
-// differs is a correction: the origin is rewritten (a later snapshot taking
-// the corrected payment, schedule and last payment date, its balance kept)
-// and every payment is split again. A balance now appends a snapshot as of
-// today. Rules left out are kept; a rule list replaces them.
+// UpdateDebt saves a debt's start date and terms. A debt not set up is set up
+// by a body carrying the loan's facts (amount borrowed, start date, last
+// payment date; the origin as of the start date, plus a snapshot as of today
+// with a balance now); without them only its payment, schedule and start
+// date change, each of the first two kept when left out. On a set-up debt
+// each fact left out keeps the stored one, so a stale screen cannot write old
+// ones back; a fact that differs is a correction: the origin is rewritten (a
+// later snapshot taking the corrected payment, schedule and last payment
+// date, its balance kept) and every payment is split again. A balance now
+// appends a snapshot as of today. A paid-off debt is read-only.
 func (s *Service) UpdateDebt(ctx context.Context, userID vo.Id, req model.UpdateDebtRequest) (*model.DebtResult, error) {
 	return inOneTx(ctx, s, func(ctx context.Context) (*model.DebtResult, error) { return s.updateDebt(ctx, userID, req) })
 }
@@ -31,26 +28,17 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 	if err != nil {
 		return nil, err
 	}
-	var rules []ruleInput
-	if req.Rules != nil {
-		if len(req.Rules) == 0 {
-			return nil, fieldError("rules", "This value should not be blank.", errs.CodeIsBlank)
-		}
-		if len(req.Rules) > maxRules {
-			return nil, tooManyRules()
-		}
-		if rules, err = parseRules(req.Rules); err != nil {
-			return nil, err
-		}
-	}
-	in, err := parseInput(debtBody{name: req.Name, currencyID: req.CurrencyId, start: req.StartDate, borrowed: req.AmountBorrowed,
+	in, err := parseInput(debtBody{start: req.StartDate, borrowed: req.AmountBorrowed,
 		balance: req.Balance, balanceDate: req.BalanceDate, payment: req.Payment, schedule: req.Schedule, lastPayment: req.LastPaymentDate})
 	if err != nil {
 		return nil, err
 	}
-	_, b, err := s.editableDebt(ctx, userID, id)
+	d, b, err := s.editableDebt(ctx, userID, id)
 	if err != nil {
 		return nil, err
+	}
+	if d.IsPaidOff() {
+		return nil, paidOff()
 	}
 	// Payments not split yet are split under the terms they were made under,
 	// before a new snapshot can change them.
@@ -61,19 +49,14 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 	today, now := s.today(ctx), s.clock.Now()
 	var saved *model.Debt
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		cur, b, err := s.lockedDebt(ctx, userID, id)
+		cur, _, err := s.lockedDebt(ctx, userID, id)
 		if err != nil {
 			return err
 		}
-		// the amounts in the request are in the currency the debt ends up in
-		oldCurrency, currency := cur.CurrencyID, cur.CurrencyID
-		if !in.currency.IsZero() && !in.currency.Equal(cur.CurrencyID) {
-			if currency, err = s.debtCurrency(ctx, userID, b, in.currency); err != nil {
-				return err
-			}
+		if cur.IsPaidOff() {
+			return paidOff()
 		}
-		currencyChanged := !currency.Equal(oldCurrency)
-		digits, err := s.rates.FractionDigits(ctx, currency)
+		digits, err := s.rates.FractionDigits(ctx, cur.CurrencyID)
 		if err != nil {
 			return err
 		}
@@ -84,33 +67,17 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if !cur.IsSetUp() && ((!in.hasOrigin && in.hasOwed) || (in.hasOrigin && in.start == nil)) {
 			return missingFacts(!in.hasOrigin, in.start == nil, !in.hasOrigin)
 		}
-		budgetDebts, err := s.repo.ListByBudget(ctx, cur.BudgetID)
-		if err != nil {
-			return err
-		}
-		wasSole, hasSole := model.SoleWholeCategory(cur, budgetDebts)
-		wasWhole := wholeCategories(cur, budgetDebts)
-		wasSetUp := cur.IsSetUp()
-		// the start of the months the debt row shows, before this update
-		var wasFirst time.Time
-		if len(wasWhole) > 0 && !sameDay(cur.StartDate, in.start) {
-			if wasFirst, _, err = s.planningDays(ctx, cur); err != nil {
+		if !sameDay(cur.StartDate, in.start) {
+			budgetDebts, err := s.repo.ListByBudget(ctx, cur.BudgetID)
+			if err != nil {
+				return err
+			}
+			if err := checkStart(in.start, previousEnd(onElement(budgetDebts, cur.ElementID, cur), cur)); err != nil {
 				return err
 			}
 		}
-		cur.Name, cur.StartDate = in.name, in.start
-		if icon := strings.TrimSpace(req.Icon); icon != "" {
-			cur.Icon = icon
-		}
-		var fresh []model.DebtRule
-		if rules != nil {
-			cur.Rules, fresh = s.mergeRules(cur.Rules, rules, now)
-		}
-		if err := s.writeRules(ctx, b, cur, fresh, budgetDebts); err != nil {
-			return err
-		}
-		// stored numbers are kept as they are and read in the new currency
-		cur.CurrencyID = currency
+		wasSetUp := cur.IsSetUp()
+		cur.StartDate = in.start
 		var added []model.DebtTerms
 		recheck := false
 		switch {
@@ -144,8 +111,8 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 				return err
 			}
 		}
-		// splits are in the debt's currency: the next sync splits again
-		if currencyChanged || (!wasSetUp && cur.IsSetUp()) {
+		// the provisional zero splits collected before setup are split again
+		if !wasSetUp && cur.IsSetUp() {
 			if err := s.dropSplits(ctx, cur.ID); err != nil {
 				return err
 			}
@@ -154,39 +121,6 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 		if recheck {
 			if err := s.checkRepayable(ctx, cur); err != nil {
 				return err
-			}
-		}
-		// the debt took every month of the category it covered alone before
-		// setup, whatever rules the same request gives it now
-		if !wasSetUp && cur.IsSetUp() && hasSole {
-			if err := s.moveTailToCategory(ctx, cur, wasSole, oldCurrency); err != nil {
-				return err
-			}
-		}
-		isWhole := wholeCategories(cur, budgetDebts)
-		if !wasFirst.IsZero() {
-			var sole *vo.Id
-			if hasSole {
-				sole = &wasSole
-			}
-			if err := s.moveHead(ctx, cur, sole, intersect(isWhole, wasWhole), wasFirst, oldCurrency); err != nil {
-				return err
-			}
-		}
-		// after the moves back, which find the rows still in the old currency
-		if currencyChanged {
-			if err := s.setRowsCurrency(ctx, cur.ID, cur.CurrencyID); err != nil {
-				return err
-			}
-		}
-		// A rule now covering a whole category it did not cover before takes
-		// that category's plans, as a conversion does. A rule removed or
-		// narrowed leaves the debt's own: they plan the loan's payments.
-		for _, c := range isWhole {
-			if !slices.ContainsFunc(wasWhole, c.Equal) {
-				if err := s.moveToDebt(ctx, cur, c); err != nil {
-					return err
-				}
 			}
 		}
 		saved = cur
@@ -198,82 +132,33 @@ func (s *Service) updateDebt(ctx context.Context, userID vo.Id, req model.Update
 	return s.resultOf(ctx, b, saved)
 }
 
-// wholeCategories are the categories d has a whole-category rule on.
-func wholeCategories(d *model.Debt, budgetDebts []*model.Debt) []vo.Id {
-	var out []vo.Id
-	for _, r := range d.Rules {
-		if model.IsWholeCategoryRule(d, r, budgetDebts) && !slices.ContainsFunc(out, r.CategoryID.Equal) {
-			out = append(out, r.CategoryID)
+// SetElementCurrency follows a change of the element row's currency: the
+// element's active debt moves to it, its stored numbers kept and read in the
+// new currency, and its payments are split again from their amounts
+// converted into it. A paid-off debt keeps the currency it ended in.
+func (s *Service) SetElementCurrency(ctx context.Context, budgetID, elementID, currencyID vo.Id) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.repo.LockBudget(ctx, budgetID); err != nil {
+			return err
 		}
-	}
-	return out
-}
-
-func intersect(a, b []vo.Id) []vo.Id {
-	var out []vo.Id
-	for _, id := range a {
-		if slices.ContainsFunc(b, id.Equal) {
-			out = append(out, id)
-		}
-	}
-	return out
-}
-
-// MarkDebtPaidOff writes a zero-balance snapshot as of today, keeping the
-// payment, schedule and last payment date (the rate is irrelevant at zero).
-func (s *Service) MarkDebtPaidOff(ctx context.Context, userID vo.Id, req model.MarkDebtPaidOffRequest) (*model.DebtResult, error) {
-	return inOneTx(ctx, s, func(ctx context.Context) (*model.DebtResult, error) { return s.markDebtPaidOff(ctx, userID, req) })
-}
-
-func (s *Service) markDebtPaidOff(ctx context.Context, userID vo.Id, req model.MarkDebtPaidOffRequest) (*model.DebtResult, error) {
-	id, err := vo.ParseId(req.Id)
-	if err != nil {
-		return nil, err
-	}
-	d, b, err := s.editableDebt(ctx, userID, id)
-	if err != nil {
-		return nil, err
-	}
-	if !d.IsSetUp() {
-		return nil, notSetUp()
-	}
-	if _, err := s.syncBudget(ctx, scopeOf(b)); err != nil {
-		return nil, err
-	}
-	today, now := s.today(ctx), s.clock.Now()
-	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		cur, _, err := s.lockedDebt(ctx, userID, id)
+		debts, err := s.repo.ListByBudget(ctx, budgetID)
 		if err != nil {
 			return err
 		}
-		if !cur.IsSetUp() {
-			return notSetUp()
+		for _, d := range onElement(debts, elementID, nil) {
+			if d.IsPaidOff() || d.CurrencyID.Equal(currencyID) {
+				continue
+			}
+			d.CurrencyID, d.UpdatedAt = currencyID, s.clock.Now()
+			if err := s.repo.Save(ctx, d); err != nil {
+				return err
+			}
+			if err := s.dropSplits(ctx, d.ID); err != nil {
+				return err
+			}
 		}
-		// A zero snapshot followed by a payment is reopened: only a debt
-		// that is paid off right now needs nothing written.
-		st, err := s.stateNow(ctx, cur)
-		if err != nil {
-			return err
-		}
-		if st.project(today, nil, nil).PaidOff {
-			d = cur
-			return nil
-		}
-		// a statement of 0 as of today: it replaces one already entered today,
-		// and the splits after today are dropped like any statement's
-		zero := *cur.Current
-		zero.AsOf, zero.Balance = today, vo.NewDecimal("0")
-		if err := s.storeStatement(ctx, cur, zero); err != nil {
-			return err
-		}
-		cur.UpdatedAt = now
-		d = cur
-		return s.repo.Save(ctx, cur)
+		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	return s.resultOf(ctx, b, d)
 }
 
 // stateNow is the debt's state from what is stored, splitting new payments

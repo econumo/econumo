@@ -19,161 +19,23 @@ type Service struct {
 	repo       Repository
 	tx         port.TxRunner
 	clock      port.Clock
-	class      Classifications
+	categories Categories
 	rates      Rates
-	currencies Currencies
 	users      Users
 	budgets    Budgets
-	elements   BudgetElements
+	elements   Elements
 }
 
-func NewService(repo Repository, tx port.TxRunner, clock port.Clock, class Classifications, rates Rates, currencies Currencies, users Users) *Service {
-	return &Service{repo: repo, tx: tx, clock: clock, class: class, rates: rates, currencies: currencies, users: users}
+func NewService(repo Repository, tx port.TxRunner, clock port.Clock, categories Categories, rates Rates, users Users) *Service {
+	return &Service{repo: repo, tx: tx, clock: clock, categories: categories, rates: rates, users: users}
 }
 
 // SetBudgets installs the budget access peer; the budget service is built
 // after this one, so it cannot be a constructor argument.
 func (s *Service) SetBudgets(b Budgets) { s.budgets = b }
 
-// SetBudgetElements installs the budget rows peer.
-func (s *Service) SetBudgetElements(b BudgetElements) { s.elements = b }
-
-// moveToDebt hands the category row's plans and comments in the debt's budget
-// to the debt's row, only for the months the debt can be planned in: the rest
-// stays on the category, whose Available keeps counting it. A month both rows
-// plan adds up, so nothing is lost.
-func (s *Service) moveToDebt(ctx context.Context, d *model.Debt, category vo.Id) error {
-	if s.elements == nil {
-		return nil
-	}
-	first, last, err := s.planningDays(ctx, d)
-	if err != nil {
-		return err
-	}
-	_, err = s.elements.TransferData(ctx, model.ElementDataTransfer{
-		BudgetID: d.BudgetID, FromID: category, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
-		CurrencyID: d.CurrencyID, SumOnClash: true, FirstDay: first, LastDay: last,
-	})
-	return err
-}
-
-// moveTailToCategory hands the plans and comments after a debt's end back to
-// category, the whole category the debt covered alone before setup: it took
-// them with no end, and its row hides every month past the end. currency is
-// the one the debt's rows are in.
-func (s *Service) moveTailToCategory(ctx context.Context, d *model.Debt, category, currency vo.Id) error {
-	if s.elements == nil {
-		return nil
-	}
-	_, last, err := s.planningDays(ctx, d)
-	if err != nil || last.IsZero() {
-		return err
-	}
-	if err := s.lockRows(ctx, d.ID); err != nil {
-		return err
-	}
-	_, err = s.elements.TransferData(ctx, model.ElementDataTransfer{
-		BudgetID: d.BudgetID, FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory,
-		CurrencyID: currency, SumOnClash: true, AfterDay: last,
-	})
-	return err
-}
-
-// planningDays are the first and last day of the debt's planning bounds as
-// stored.
-func (s *Service) planningDays(ctx context.Context, d *model.Debt) (first, last time.Time, err error) {
-	st, err := s.stateNow(ctx, d)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	first, last = planningBounds(st, st.project(s.today(ctx), nil, nil))
-	return first, last, nil
-}
-
-// moveHead follows a debt whose first planning day moved. Later: the plans
-// and comments before the new first day go back to sole, the whole category
-// the debt covered alone (it took them from its old first day on, and its row
-// hides every month before its start); a debt with several rules keeps them,
-// they cannot be split back by category. Earlier: each category in kept, the
-// whole-category rules the debt had before and still has, gives the debt its
-// plans and comments in the months it now starts in, as a conversion does.
-// currency is the one the debt's rows are in.
-func (s *Service) moveHead(ctx context.Context, d *model.Debt, sole *vo.Id, kept []vo.Id, wasFirst time.Time, currency vo.Id) error {
-	if s.elements == nil {
-		return nil
-	}
-	first, _, err := s.planningDays(ctx, d)
-	if err != nil {
-		return err
-	}
-	switch {
-	case first.After(wasFirst) && sole != nil:
-		if err := s.lockRows(ctx, d.ID); err != nil {
-			return err
-		}
-		_, err = s.elements.TransferData(ctx, model.ElementDataTransfer{
-			BudgetID: d.BudgetID, FromID: d.ID, FromType: model.ElementDebt, ToID: *sole, ToType: model.ElementCategory,
-			CurrencyID: currency, SumOnClash: true, BeforeDay: first,
-		})
-	case first.Before(wasFirst):
-		for _, category := range kept {
-			if _, err = s.elements.TransferData(ctx, model.ElementDataTransfer{
-				BudgetID: d.BudgetID, FromID: category, FromType: model.ElementCategory, ToID: d.ID, ToType: model.ElementDebt,
-				CurrencyID: currency, SumOnClash: true, FirstDay: first, BeforeDay: wasFirst,
-			}); err != nil {
-				return err
-			}
-		}
-	}
-	return err
-}
-
-// moveToCategory hands a deleted debt's row back to category, the whole
-// category it covered alone; a month the category already plans keeps the
-// category's plan.
-func (s *Service) moveToCategory(ctx context.Context, d *model.Debt, category vo.Id) (leftBehind bool, err error) {
-	if s.elements == nil {
-		return false, nil
-	}
-	return s.elements.TransferData(ctx, model.ElementDataTransfer{
-		BudgetID: d.BudgetID, FromID: d.ID, FromType: model.ElementDebt, ToID: category, ToType: model.ElementCategory, CurrencyID: d.CurrencyID,
-	})
-}
-
-func (s *Service) removeRows(ctx context.Context, id vo.Id) error {
-	if s.elements == nil {
-		return nil
-	}
-	return s.elements.RemoveRows(ctx, id, model.ElementDebt)
-}
-
-func (s *Service) setRowsCurrency(ctx context.Context, id, currencyID vo.Id) error {
-	if s.elements == nil {
-		return nil
-	}
-	return s.elements.SetRowsCurrency(ctx, id, model.ElementDebt, currencyID)
-}
-
-func (s *Service) ensureRows(ctx context.Context, budgetID vo.Id) error {
-	if s.elements == nil {
-		return nil
-	}
-	return s.elements.EnsureRows(ctx, budgetID)
-}
-
-func (s *Service) lockRows(ctx context.Context, id vo.Id) error {
-	if s.elements == nil {
-		return nil
-	}
-	return s.elements.LockRows(ctx, id, model.ElementDebt)
-}
-
-func (s *Service) hasData(ctx context.Context, id vo.Id) (bool, error) {
-	if s.elements == nil {
-		return false, nil
-	}
-	return s.elements.HasData(ctx, id, model.ElementDebt)
-}
+// SetElements installs the budget elements peer.
+func (s *Service) SetElements(e Elements) { s.elements = e }
 
 // userLocation is the user's stored timezone, UTC when none (or an unknown
 // one) is stored: the creation day is taken in the creator's, so a debt's
@@ -388,8 +250,6 @@ func isNotFound(err error) bool {
 // a start date); hasOwed: a statement balance, as of owedOn (zero = today).
 // Without hasPayment or hasSchedule an update keeps the stored one.
 type debtInput struct {
-	name                    string
-	currency                vo.Id
 	start                   *time.Time
 	borrowed, owed, payment vo.DecimalNumber
 	schedule                model.RecurringSchedule
@@ -400,33 +260,16 @@ type debtInput struct {
 
 // debtBody is the part of the create and update requests parseInput reads.
 type debtBody struct {
-	name, currencyID           string
 	start                      *string
 	borrowed, balance, payment vo.FlexString
 	schedule, lastPayment      string
 	balanceDate                string
 }
 
-func parseOptionalID(v *string) (*vo.Id, error) {
-	if v == nil || *v == "" {
-		return nil, nil
-	}
-	id, err := vo.ParseId(*v)
-	if err != nil {
-		return nil, err
-	}
-	return &id, nil
-}
-
 func parseInput(b debtBody) (debtInput, error) {
-	in := debtInput{name: b.name, borrowed: vo.NewDecimal(b.borrowed.String()), owed: vo.NewDecimal(b.balance.String()),
+	in := debtInput{borrowed: vo.NewDecimal(b.borrowed.String()), owed: vo.NewDecimal(b.balance.String()),
 		payment: vo.NewDecimal(b.payment.String())}
 	var err error
-	if b.currencyID != "" {
-		if in.currency, err = vo.ParseId(b.currencyID); err != nil {
-			return in, err
-		}
-	}
 	if b.start != nil && strings.TrimSpace(*b.start) != "" {
 		start, err := time.Parse(datetime.DateLayout, *b.start)
 		if err != nil {

@@ -23,23 +23,15 @@ func (s *stubOnboardingDebtService) CreateDebt(_ context.Context, _ vo.Id, req m
 	return &model.DebtResult{}, nil
 }
 
-func (s *stubOnboardingDebtService) CoveredCategories(context.Context, vo.Id) ([]vo.Id, error) {
-	return nil, nil
-}
-
-func (s *stubOnboardingDebtService) TakeCategoryPlans(context.Context, vo.Id, vo.Id) (bool, error) {
-	return false, nil
-}
-
 // A detected debt the caller may not create in the budget (a guest, or an
 // archived budget) is skipped like any other refusal; only a real failure
 // fails the job.
 func TestOnboardingDebts_RefusalsAreSkipped(t *testing.T) {
 	ctx := context.Background()
-	budget, category, currency := vo.NewId(), vo.NewId(), vo.NewId()
+	budget, category := vo.NewId(), vo.NewId()
 	create := func(err error) (bool, error, model.CreateDebtRequest) {
 		svc := &stubOnboardingDebtService{err: err}
-		ok, cerr := NewOnboardingDebts(svc).CreateDebt(ctx, vo.NewId(), budget, "Car", category, currency, vo.NewDecimal("250"), model.RecurringScheduleMonthly)
+		ok, cerr := NewOnboardingDebts(svc).CreateDebt(ctx, vo.NewId(), budget, category, vo.NewDecimal("250"), model.RecurringScheduleMonthly)
 		return ok, cerr, svc.req
 	}
 
@@ -47,16 +39,15 @@ func TestOnboardingDebts_RefusalsAreSkipped(t *testing.T) {
 	if !ok || err != nil {
 		t.Fatalf("created = %v, %v", ok, err)
 	}
-	if req.BudgetId != budget.String() || len(req.Rules) != 1 || req.Rules[0].CategoryId != category.String() ||
-		req.Rules[0].PayeeId != nil || req.Rules[0].TagId != nil || req.Rules[0].LabelId != nil || req.CurrencyId != currency.String() {
-		t.Errorf("request = %+v, want one whole-category rule in the budget", req)
+	if req.BudgetId != budget.String() || req.ElementId != category.String() || req.Payment.String() != "250" || req.Schedule != "monthly" {
+		t.Errorf("request = %+v, want a debt on the category in the budget", req)
 	}
 
 	for name, refusal := range map[string]error{
 		"guest":     errs.NewAccessDenied("Access denied"),
 		"archived":  &errs.AccessDeniedError{Msg: "This budget is archived", Code: errs.CodeBudgetArchived},
 		"not found": errs.NewNotFound("Budget not found"),
-		"covered":   errs.NewValidation("Validation failed", errs.FieldError{Key: "rules", Code: errs.CodeDebtKeyConflict}),
+		"has debt":  errs.NewValidation("Validation failed", errs.FieldError{Key: "elementId", Code: errs.CodeDebtElementHasDebt}),
 	} {
 		if ok, err, _ := create(refusal); ok || err != nil {
 			t.Errorf("%s: created = %v, %v; want skipped", name, ok, err)

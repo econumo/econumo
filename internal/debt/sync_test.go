@@ -111,8 +111,9 @@ func TestSync_UnmatchedPaymentLosesSplit(t *testing.T) {
 
 func TestSync_PartitionByStartDate(t *testing.T) {
 	e := newEnv(t)
-	oldLoan := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2025-12-01") })
-	newLoan := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-01-01") })
+	oldLoan := e.create(t, func(r *createSpec) { r.StartDate = ptr("2025-12-01") })
+	e.markPaidOff(t, oldLoan.Id, "2025-12-31")
+	newLoan := e.create(t, func(r *createSpec) { r.StartDate = ptr("2026-01-01") })
 	e.clock.now = ymd(2026, 7, 1)
 	inOld := e.expense(t, e.account, ymd(2025, 12, 20), "1000", "")
 	inNew := e.expense(t, e.account, ymd(2026, 2, 1), "1000", "")
@@ -121,18 +122,6 @@ func TestSync_PartitionByStartDate(t *testing.T) {
 	o, n := e.splits(t, oldLoan.Id), e.splits(t, newLoan.Id)
 	if len(o) != 1 || o[inOld] == "" || len(n) != 1 || n[inNew] == "" {
 		t.Fatalf("old %v new %v", o, n)
-	}
-}
-
-func TestSync_TagNarrowsMatching(t *testing.T) {
-	e := newEnv(t)
-	tag := e.newTag()
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].TagId = &tag })
-	e.clock.now = ymd(2026, 7, 1)
-	e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
-	e.sync(t)
-	if got := e.splits(t, res.Id); len(got) != 0 {
-		t.Fatalf("an untagged payment matched a tagged debt: %v", got)
 	}
 }
 
@@ -232,28 +221,6 @@ func TestSync_FutureDatedSplitIsProvisional(t *testing.T) {
 	}
 }
 
-// A shared mortgage paid from his category and from hers, on their own
-// accounts: one debt counts both.
-func TestSync_PaymentsFromEveryRule(t *testing.T) {
-	e := newEnv(t)
-	sam := e.partner(t, "Sam", roleUser)
-	hers := e.newCategory(sam, true)
-	herAccount := e.f.Account(fixture.Account{UserID: sam})
-	e.fakeBudget(e.budget).accounts = append(e.fakeBudget(e.budget).accounts, herAccount)
-	res := e.create(t, func(r *model.CreateDebtRequest) { r.Rules = []model.DebtRuleRequest{rule(e.category), rule(hers)} })
-	e.clock.now = ymd(2026, 7, 1)
-	his := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
-	her := e.f.Transaction(fixture.Transaction{UserID: sam, AccountID: herAccount, CategoryID: hers, Type: 0, Amount: "1000", SpentAt: ymd(2026, 5, 1)})
-	e.sync(t)
-	got := e.splits(t, res.Id)
-	if _, ok := got[his]; !ok || len(got) != 2 {
-		t.Fatalf("splits = %v, want his and her payments", got)
-	}
-	if _, ok := got[her]; !ok {
-		t.Fatalf("splits = %v, want her payment", got)
-	}
-}
-
 // Only the budget's member accounts count: a payment in the rule's category
 // on another account does not exist for the debt.
 func TestSync_OnlyTheBudgetsAccounts(t *testing.T) {
@@ -313,7 +280,8 @@ func TestSync_SameTransactionCountsInTwoBudgets(t *testing.T) {
 	e := newEnv(t)
 	home := e.create(t, nil)
 	second := e.newBudget(e.user, "Second", e.account)
-	away := e.create(t, func(r *model.CreateDebtRequest) { r.BudgetId = second })
+	e.elements.set(second, e.elements.items[e.budget][e.category])
+	away := e.create(t, func(r *createSpec) { r.BudgetId = second })
 	e.clock.now = ymd(2026, 7, 1)
 	tx := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
 	e.sync(t)
@@ -334,65 +302,45 @@ func TestSync_SameTransactionCountsInTwoBudgets(t *testing.T) {
 	}
 }
 
-// A later debt with an identical rule ends the earlier debt on every one of
-// its rules (refinancing moves both categories to the new loan).
-func TestSync_LaterDebtEndsEveryRule(t *testing.T) {
+// A debt's payments are exactly what its element's Spent counts: untagged
+// expenses in its categories (every child of an envelope) on the budget's
+// everyday accounts. A transfer, an expense on a savings member and a tagged
+// expense do not count.
+func TestSync_MatchesTheElementsSpending(t *testing.T) {
 	e := newEnv(t)
-	b := e.newCategory(e.user, true)
-	oldLoan := e.create(t, func(r *model.CreateDebtRequest) {
-		r.StartDate = ptr("2025-12-01")
-		r.Rules = []model.DebtRuleRequest{rule(e.category), rule(b)}
-	})
-	newLoan := e.create(t, func(r *model.CreateDebtRequest) { r.StartDate = ptr("2026-02-01") })
+	savings := e.f.Account(fixture.Account{UserID: e.user})
+	b := e.fakeBudget(e.budget)
+	b.accounts = append(b.accounts, savings)
+	b.savings = []string{savings}
+	other := e.f.Account(fixture.Account{UserID: e.user})
+	insurance := e.newCategory(e.user, true)
+	env := e.newEnvelope("Housing", e.category, insurance)
+	res := e.create(t, func(r *createSpec) { r.ElementId = env; r.StartDate = ptr("2026-01-01") })
 	e.clock.now = ymd(2026, 7, 1)
-	before := e.f.Transaction(fixtureExpense(e, b, ymd(2026, 1, 10), "100"))
-	after := e.f.Transaction(fixtureExpense(e, b, ymd(2026, 3, 10), "100"))
-	inNew := e.expense(t, e.account, ymd(2026, 3, 1), "1000", "")
+
+	mortgage := e.expense(t, e.account, ymd(2026, 2, 1), "1000", "")
+	insured := e.f.Transaction(fixtureExpense(e, insurance, ymd(2026, 3, 1), "100"))
+	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: e.account, CategoryID: e.category, Type: 2, Amount: "500",
+		AccountRecipientID: other, AmountRecipient: "500", SpentAt: ymd(2026, 4, 1)})
+	e.f.Transaction(fixture.Transaction{UserID: e.user, AccountID: savings, CategoryID: e.category, Type: 0, Amount: "700", SpentAt: ymd(2026, 4, 2)})
 	e.sync(t)
-	o, n := e.splits(t, oldLoan.Id), e.splits(t, newLoan.Id)
-	if _, ok := o[before]; !ok || len(o) != 1 {
-		t.Fatalf("old loan splits = %v, want only b's payment before the new loan", o)
-	}
-	if _, ok := o[after]; ok {
-		t.Fatal("b's payment after the new loan's start still counts for the old one")
-	}
-	if _, ok := n[inNew]; !ok || len(n) != 1 {
-		t.Fatalf("new loan splits = %v", n)
+
+	got := e.splits(t, res.Id)
+	if len(got) != 2 || got[mortgage] == "" || got[insured] == "" {
+		t.Fatalf("splits = %v, want the two untagged everyday expenses in the envelope's categories", got)
 	}
 }
 
-// A payment that moves to another debt of the same budget leaves the first
-// one's split in the same sync that stores the second's: it never counts twice.
-func TestSync_PaymentMovingBetweenDebtsKeepsOneSplit(t *testing.T) {
+func TestSync_TaggedExpenseIsNotAPayment(t *testing.T) {
 	e := newEnv(t)
-	ctx := context.Background()
-	kept, taken := e.newCategory(e.user, true), e.newCategory(e.user, true)
-	a := e.create(t, func(r *model.CreateDebtRequest) {
-		r.Rules = []model.DebtRuleRequest{{CategoryId: e.category}, {CategoryId: kept}}
-	})
-	b := e.create(t, func(r *model.CreateDebtRequest) { r.Rules[0].CategoryId = taken })
+	res := e.create(t, func(r *createSpec) { r.StartDate = ptr("2026-01-01") })
 	e.clock.now = ymd(2026, 7, 1)
-	tx := e.expense(t, e.account, ymd(2026, 4, 1), "1000", "")
+	tx := fixtureExpense(e, e.category, ymd(2026, 2, 1), "1000")
+	tx.TagID = e.newTag()
+	e.f.Transaction(tx)
+	plain := e.expense(t, e.account, ymd(2026, 3, 1), "1000", "")
 	e.sync(t)
-	if got := e.splits(t, a.Id); got[tx] == "" {
-		t.Fatalf("A's splits = %v, want the payment", got)
-	}
-
-	req := e.updateReq(a)
-	req.Rules = []model.DebtRuleRequest{{CategoryId: kept}}
-	if _, err := e.svc.UpdateDebt(ctx, e.uid(), req); err != nil {
-		t.Fatalf("UpdateDebt: %v", err)
-	}
-	if _, err := e.svc.AddDebtRule(ctx, e.uid(), model.AddDebtRuleRequest{Id: b.Id, Rule: model.DebtRuleRequest{CategoryId: e.category}}); err != nil {
-		t.Fatalf("AddDebtRule: %v", err)
-	}
-	e.sync(t)
-
-	var n int
-	if err := e.db.Raw.QueryRowContext(ctx, e.db.Rebind("SELECT COUNT(*) FROM debts_payments WHERE transaction_id = ?"), tx).Scan(&n); err != nil {
-		t.Fatal(err)
-	}
-	if n != 1 || e.splits(t, b.Id)[tx] == "" || len(e.splits(t, a.Id)) != 0 {
-		t.Fatalf("splits of the payment = %d (A %v, B %v), want one, on B", n, e.splits(t, a.Id), e.splits(t, b.Id))
+	if got := e.splits(t, res.Id); len(got) != 1 || got[plain] == "" {
+		t.Fatalf("splits = %v, want the untagged payment alone", got)
 	}
 }

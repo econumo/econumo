@@ -235,16 +235,13 @@ func (c *OnboardingCurrencies) UsableCurrencyCode(ctx context.Context, userID vo
 
 type onboardingDebtService interface {
 	CreateDebt(ctx context.Context, userID vo.Id, req model.CreateDebtRequest) (*model.DebtResult, error)
-	CoveredCategories(ctx context.Context, budgetID vo.Id) ([]vo.Id, error)
-	TakeCategoryPlans(ctx context.Context, budgetID, categoryID vo.Id) (bool, error)
 }
 
 // OnboardingDebts adapts the debt service to onboarding.DebtSteps: a debt
-// detection found creates a debt not set up in the budget, with one
-// whole-category rule, through create-debt's own validation, and a refusal (a
-// debt of the budget already covers the category, it is not an expense
-// category, the currency cannot be used, the caller cannot plan the budget)
-// creates nothing.
+// detection found attaches a debt not set up to the category's element in the
+// budget, through create-debt's own validation, and a refusal (the category
+// already carries an active debt or cannot carry one, the caller cannot plan
+// the budget) creates nothing.
 type OnboardingDebts struct {
 	onboardingDebtService
 }
@@ -255,10 +252,9 @@ func NewOnboardingDebts(debts onboardingDebtService) OnboardingDebts {
 	return OnboardingDebts{onboardingDebtService: debts}
 }
 
-func (d OnboardingDebts) CreateDebt(ctx context.Context, userID, budgetID vo.Id, name string, categoryID, currencyID vo.Id, payment vo.DecimalNumber, schedule model.RecurringSchedule) (bool, error) {
+func (d OnboardingDebts) CreateDebt(ctx context.Context, userID, budgetID, categoryID vo.Id, payment vo.DecimalNumber, schedule model.RecurringSchedule) (bool, error) {
 	req := model.CreateDebtRequest{
-		BudgetId: budgetID.String(), Name: name, CurrencyId: currencyID.String(),
-		Rules:   []model.DebtRuleRequest{{CategoryId: categoryID.String()}},
+		BudgetId: budgetID.String(), ElementId: categoryID.String(),
 		Payment: vo.NewFlexString(payment.String()), Schedule: string(schedule),
 	}
 	err := req.Validate()

@@ -4,15 +4,11 @@ import (
 	"context"
 
 	"github.com/econumo/econumo/internal/model"
-	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// DeleteDebt hands the plans and comments of a debt whose one rule is
-// whole-category back to that category; budget data that cannot go back
-// (another currency, a month the category already plans) and any other
-// debt's budget data are dropped, after the caller confirms: the plans of a
-// debt with several rules cannot be split back by category.
+// DeleteDebt removes a debt, active or paid off, with its history (snapshots,
+// splits, rate changes); its element's plans and transactions are untouched.
 func (s *Service) DeleteDebt(ctx context.Context, userID vo.Id, req model.DeleteDebtRequest) (*model.DeleteDebtResult, error) {
 	return inOneTx(ctx, s, func(ctx context.Context) (*model.DeleteDebtResult, error) { return s.deleteDebt(ctx, userID, req) })
 }
@@ -22,40 +18,9 @@ func (s *Service) deleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 	if err != nil {
 		return nil, err
 	}
-	var budgetID vo.Id
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		d, _, err := s.lockedDebt(ctx, userID, id)
 		if err != nil {
-			return err
-		}
-		budgetID = d.BudgetID
-		if err := s.lockRows(ctx, d.ID); err != nil {
-			return err
-		}
-		budgetDebts, err := s.repo.ListByBudget(ctx, d.BudgetID)
-		if err != nil {
-			return err
-		}
-		if category, ok := model.SoleWholeCategory(d, budgetDebts); ok {
-			left, err := s.moveToCategory(ctx, d, category)
-			if err != nil {
-				return err
-			}
-			if left && !req.ConfirmDataRemoval {
-				return removalUnconfirmed()
-			}
-		} else if !req.ConfirmDataRemoval {
-			has, err := s.hasData(ctx, d.ID)
-			if err != nil {
-				return err
-			}
-			if has {
-				return removalUnconfirmed()
-			}
-		}
-		// The rows go now, not on the budget's next structure sync: their
-		// data is confirmed gone (or moved back) by this point.
-		if err := s.removeRows(ctx, d.ID); err != nil {
 			return err
 		}
 		return s.repo.Delete(ctx, d.ID)
@@ -63,19 +28,67 @@ func (s *Service) deleteDebt(ctx context.Context, userID vo.Id, req model.Delete
 	if err != nil {
 		return nil, err
 	}
-	// The debts left in the budget may now cover the removed one's range.
-	if err := s.syncBudgetID(ctx, budgetID); err != nil {
-		return nil, err
-	}
 	return &model.DeleteDebtResult{}, nil
 }
 
-// The field key is the SPA's handle on this refusal: the envelope carries no
-// catalogue code, so the client recognises the error by field.
-func removalUnconfirmed() error {
-	return errs.NewValidation("Validation failed", errs.FieldError{
-		Key:     "confirmDataRemoval",
-		Message: "This deletes the planned amounts and comments of this debt in its budget; confirm to continue.",
-		Code:    errs.CodeDebtRemovalUnconfirmed,
+// DeleteElementDebts deletes every debt attached to the element in the
+// budget, with its history: the element is being deleted. It joins the
+// caller's transaction and takes no access check.
+func (s *Service) DeleteElementDebts(ctx context.Context, budgetID, elementID vo.Id) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.repo.LockBudget(ctx, budgetID); err != nil {
+			return err
+		}
+		return s.deleteOnElement(ctx, budgetID, elementID)
 	})
+}
+
+func (s *Service) deleteOnElement(ctx context.Context, budgetID, elementID vo.Id) error {
+	debts, err := s.repo.ListByBudget(ctx, budgetID)
+	if err != nil {
+		return err
+	}
+	for _, d := range onElement(debts, elementID, nil) {
+		if err := s.repo.Delete(ctx, d.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// MoveElementDebts follows a merge of the element into another: its debts
+// move to the target only when the target carries no debt (active or paid
+// off), can carry one and its row is in the debts' currency; otherwise they
+// are deleted with the source, so one element's debts never overlap. It joins
+// the caller's transaction and takes no access check.
+func (s *Service) MoveElementDebts(ctx context.Context, budgetID, fromID, toID vo.Id) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.repo.LockBudget(ctx, budgetID); err != nil {
+			return err
+		}
+		return s.moveOnElement(ctx, budgetID, fromID, toID)
+	})
+}
+
+func (s *Service) moveOnElement(ctx context.Context, budgetID, fromID, toID vo.Id) error {
+	debts, err := s.repo.ListByBudget(ctx, budgetID)
+	if err != nil {
+		return err
+	}
+	moving := onElement(debts, fromID, nil)
+	if len(moving) == 0 || fromID.Equal(toID) {
+		return nil
+	}
+	if len(onElement(debts, toID, nil)) == 0 {
+		target, err := s.element(ctx, budgetID, toID)
+		if err != nil {
+			return err
+		}
+		// the newest debt is in the source row's currency (a paid-off one
+		// keeps the currency it ended in)
+		if target.Eligible && moving[len(moving)-1].CurrencyID.Equal(target.CurrencyID) {
+			return s.repo.MoveToElement(ctx, budgetID, fromID, toID, target.Type)
+		}
+	}
+	return s.deleteOnElement(ctx, budgetID, fromID)
 }

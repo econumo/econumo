@@ -60,7 +60,7 @@ func TestMigration20261112_Pgsql(t *testing.T) {
 		return b.String()
 	}
 	checkBudgetDebtsReset(t, db, rebind, func() {
-		if err := migrate.Run(ctx, db, upTo(""), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
+		if err := migrate.Run(ctx, db, upTo("20261114000000"), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 			t.Fatalf("target migration: %v", err)
 		}
 	})

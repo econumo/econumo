@@ -54,45 +54,11 @@ func sameIDs(got, want []string) bool {
 	return true
 }
 
-func TestTransactionList_DrillDownsLeaveDebtPaymentsOut(t *testing.T) {
-	h := newAttrHarness(t)
-	env := h.f.BudgetEnvelope(fixture.BudgetEnvelope{BudgetID: h.budgetID, Name: "Home", Icon: "home"})
-	h.f.BudgetElement(fixture.BudgetElement{BudgetID: h.budgetID, ExternalID: env, Type: int(model.ElementEnvelope)})
-	h.f.EnvelopeCategory(env, h.loan)
-	h.f.EnvelopeCategory(env, h.food)
-	untagged := h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
-	h.spend(h.usd, h.loan, h.tag, "1000", time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC))
-	food := h.spend(h.usd, h.food, "", "50", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
-	foodTagged := h.spend(h.usd, h.food, h.tag, "20", time.Date(2026, 6, 6, 10, 0, 0, 0, time.UTC))
-	loan, tag, envID := h.loan, h.tag, env
-
-	if got := itemIDs(h.txList(t, model.BudgetTransactionListRequest{CategoryId: &loan})); !sameIDs(got, []string{untagged}) {
-		t.Fatalf("category list without a debt = %v", got)
-	}
-
-	h.createDebt(t)
-	cases := []struct {
-		name string
-		req  model.BudgetTransactionListRequest
-		want []string
-	}{
-		{"category", model.BudgetTransactionListRequest{CategoryId: &loan}, []string{}},
-		{"tag", model.BudgetTransactionListRequest{TagId: &tag}, []string{foodTagged}},
-		{"tag child", model.BudgetTransactionListRequest{TagId: &tag, CategoryId: &loan}, []string{}},
-		{"envelope", model.BudgetTransactionListRequest{EnvelopeId: &envID}, []string{food}},
-	}
-	for _, c := range cases {
-		if got := itemIDs(h.txList(t, c.req)); !sameIDs(got, c.want) {
-			t.Errorf("%s list = %v, want %v", c.name, got, c.want)
-		}
-	}
-}
-
 func TestTransactionList_DebtRow(t *testing.T) {
 	h := newAttrHarness(t)
 	outside := h.f.Account(fixture.Account{UserID: h.owner.String(), Name: "Not in the budget"})
 	paid := h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
-	paidEUR := h.spend(h.eur, h.loan, h.tag, "100", time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC))
+	paidEUR := h.spend(h.eur, h.loan, "", "100", time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC))
 	h.spend(outside, h.loan, "", "1000", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
 	h.spend(h.usd, h.food, "", "50", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
 	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 5, 3, 10, 0, 0, 0, time.UTC))
@@ -147,8 +113,8 @@ func TestTransactionList_DebtIdValidation(t *testing.T) {
 
 func (h *attrHarness) createDebtOn(t *testing.T, categoryID string) string {
 	t.Helper()
-	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
-		BudgetId: h.budgetID, Name: "Other", CurrencyId: fixture.USD, Rules: rules(categoryID),
+	res, err := createDebtAs(h, h.owner, debtSpec{
+		BudgetId: h.budgetID, ElementId: categoryID,
 		StartDate: &attrStart, AmountBorrowed: vo.NewFlexString("1000"), Balance: vo.NewFlexString("1000"), Payment: vo.NewFlexString("100"),
 		Schedule: "monthly", LastPaymentDate: "2027-06-01",
 	})

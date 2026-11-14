@@ -29,10 +29,10 @@ func (h *attrHarness) budgetIn(t *testing.T, budgetID, date string) *model.GetBu
 	return res
 }
 
-func (h *attrHarness) wholeDebtIn(t *testing.T, budgetID, name string, categoryIDs ...string) string {
+func (h *attrHarness) wholeDebtIn(t *testing.T, budgetID, name string, categoryID string) string {
 	t.Helper()
-	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
-		BudgetId: budgetID, Name: name, CurrencyId: fixture.USD, Rules: rules(categoryIDs...),
+	res, err := createDebtAs(h, h.owner, debtSpec{
+		BudgetId: budgetID, ElementId: categoryID,
 		Payment: vo.NewFlexString("1000"), Schedule: "monthly",
 	})
 	if err != nil {
@@ -79,30 +79,6 @@ func TestGetBudget_DebtRowOnlyInItsOwnBudget(t *testing.T) {
 	}
 }
 
-func TestGetBudget_PartnersCategoryPaymentsOnTheSharedDebt(t *testing.T) {
-	h := newAttrHarness(t)
-	partner := h.f.User(fixture.User{Name: "Partner", Email: "partner@shared.test"})
-	h.f.BudgetAccess(h.budgetID, partner, int(model.BudgetRoleUser), true)
-	partnerCash := h.f.Account(fixture.Account{UserID: partner, Name: "Her cash"})
-	h.f.BudgetAccount(h.budgetID, partnerCash)
-	herLoan := h.f.Category(fixture.Category{UserID: partner, Name: "Her loan"})
-	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
-	h.f.Transaction(fixture.Transaction{UserID: partner, AccountID: partnerCash, CategoryID: herLoan,
-		Type: 0, Amount: "500", SpentAt: time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)})
-
-	debtID := h.wholeDebtIn(t, h.budgetID, "Mortgage", h.loan, herLoan)
-
-	res := h.budgetIn(t, h.budgetID, "2026-06-01")
-	if row := debtRow(res, debtID); row == nil || row.Spent != "1500" {
-		t.Fatalf("debt row = %+v, want both payments, 1500", row)
-	}
-	for name, cat := range map[string]string{"his": h.loan, "her": herLoan} {
-		if got := spentOf(t, res, cat, model.ElementCategory); got != "0" {
-			t.Errorf("%s loan row spent = %s, want 0", name, got)
-		}
-	}
-}
-
 // Review Focus 1: an account in two budgets, each with a debt matching the
 // same payment. Each budget counts it once, on its own debt row.
 func TestGetBudget_PaymentMatchedInTwoBudgetsCountsOnceInEach(t *testing.T) {
@@ -145,59 +121,6 @@ func TestGetBudget_PaymentMatchedInTwoBudgetsCountsOnceInEach(t *testing.T) {
 				t.Errorf("budget %s plan loan actual = %s, want 0", budgetID, el.Cells[0].Actual)
 			}
 		}
-	}
-}
-
-func TestTxList_DebtDrillDownListsEveryRule(t *testing.T) {
-	h := newAttrHarness(t)
-	loanPaid := h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
-	homeFood := h.spend(h.usd, h.food, h.tag, "60", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
-	h.spend(h.usd, h.food, "", "25", time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC))
-	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
-		BudgetId: h.budgetID, Name: "Mortgage", CurrencyId: fixture.USD,
-		Rules:   []model.DebtRuleRequest{{CategoryId: h.loan}, {CategoryId: h.food, TagId: &h.tag}},
-		Payment: vo.NewFlexString("1000"), Schedule: "monthly",
-	})
-	if err != nil {
-		t.Fatalf("CreateDebt: %v", err)
-	}
-
-	list := h.txList(t, model.BudgetTransactionListRequest{DebtId: &res.Id})
-	if got := itemIDs(list); !sameIDs(got, []string{loanPaid, homeFood}) {
-		t.Errorf("debt list = %v, want the payment of each rule", got)
-	}
-	if row := debtRow(h.budgetAt(t, h.owner, "2026-06-01"), res.Id); row == nil || row.Spent != "1060" {
-		t.Errorf("debt row = %+v, want 1060, as the list adds up", row)
-	}
-}
-
-// Another budget's debt matching a payment does not take it out of this
-// budget's category list; this budget's own debt does.
-func TestTxList_CategoryDrillDownLeavesOutOnlyThisBudgetsDebtPayments(t *testing.T) {
-	h := newAttrHarness(t)
-	second := h.secondBudget(t)
-	bank := h.f.Payee(fixture.Payee{UserID: h.owner.String(), Name: "Bank"})
-	h.f.Transaction(fixture.Transaction{UserID: h.owner.String(), AccountID: h.usd, CategoryID: h.loan, PayeeID: bank,
-		Type: 0, Amount: "1000", SpentAt: time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC)})
-	plain := h.spend(h.usd, h.loan, "", "300", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
-	if _, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
-		BudgetId: h.budgetID, Name: "Bank loan", CurrencyId: fixture.USD,
-		Rules:   []model.DebtRuleRequest{{CategoryId: h.loan, PayeeId: &bank}},
-		Payment: vo.NewFlexString("1000"), Schedule: "monthly",
-	}); err != nil {
-		t.Fatalf("CreateDebt: %v", err)
-	}
-	h.wholeDebtIn(t, second, "Everything", h.loan)
-	h.budgetIn(t, second, "2026-06-01") // syncs the second budget's splits
-
-	loan := h.loan
-	list := h.txList(t, model.BudgetTransactionListRequest{CategoryId: &loan})
-	if got := itemIDs(list); !sameIDs(got, []string{plain}) {
-		t.Errorf("category list = %v, want only the payment this budget's debt does not take", got)
-	}
-	res := h.budgetIn(t, h.budgetID, "2026-06-01")
-	if got := spentOf(t, res, h.loan, model.ElementCategory); got != "300" {
-		t.Errorf("loan row = %s, want 300 as the list adds up", got)
 	}
 }
 
@@ -257,9 +180,9 @@ func TestCloneBudget_CopiesDebtsAndTheirRows(t *testing.T) {
 	if copyID == debtID {
 		t.Fatal("the copy shares the source debt's id")
 	}
-	var rules int
-	if err := h.tdb.Raw.QueryRowContext(h.ctx, h.tdb.Rebind("SELECT COUNT(*) FROM debts_rules WHERE debt_id = ? AND category_id = ?"), copyID, h.loan).Scan(&rules); err != nil || rules != 1 {
-		t.Fatalf("the copy's rules = %d, %v; want its one rule", rules, err)
+	var onLoan int
+	if err := h.tdb.Raw.QueryRowContext(h.ctx, h.tdb.Rebind("SELECT COUNT(*) FROM debts WHERE id = ? AND element_external_id = ?"), copyID, h.loan).Scan(&onLoan); err != nil || onLoan != 1 {
+		t.Fatalf("the copy on the loan category = %d, %v; want it attached there", onLoan, err)
 	}
 	june := h.budgetIn(t, newID, "2026-06-01")
 	if len(june.Item.Structure.Debts) != 1 {
@@ -300,38 +223,8 @@ func TestDeleteBudget_DeletesItsDebts(t *testing.T) {
 	if n := count("SELECT COUNT(*) FROM debts WHERE budget_id = ?", h.budgetID); n != 0 {
 		t.Errorf("%d debts of the deleted budget left", n)
 	}
-	if n := count("SELECT COUNT(*) FROM debts_rules WHERE debt_id NOT IN (SELECT id FROM debts)"); n != 0 {
-		t.Errorf("%d orphan rules left", n)
-	}
 	if n := count("SELECT COUNT(*) FROM debts WHERE id = ?", kept); n != 1 {
 		t.Error("the other budget's debt went too")
-	}
-}
-
-// The tag drill-down joins only this budget's splits: another budget's debt
-// on the same payment neither duplicates the row nor keeps it listed here.
-func TestTxList_TagDrillDownJoinsOnlyThisBudgetsSplits(t *testing.T) {
-	h := newAttrHarness(t)
-	second := h.secondBudget(t)
-	paid := h.spend(h.usd, h.loan, h.tag, "1000", time.Date(2026, 6, 3, 10, 0, 0, 0, time.UTC))
-	other := h.spend(h.usd, h.food, h.tag, "40", time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC))
-	if _, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
-		BudgetId: h.budgetID, Name: "Home loan", CurrencyId: fixture.USD,
-		Rules:   []model.DebtRuleRequest{{CategoryId: h.loan, TagId: &h.tag}},
-		Payment: vo.NewFlexString("1000"), Schedule: "monthly",
-	}); err != nil {
-		t.Fatalf("CreateDebt: %v", err)
-	}
-	h.wholeDebtIn(t, second, "Everything", h.loan)
-	h.budgetIn(t, second, "2026-06-01") // syncs the second budget's splits
-	h.budgetIn(t, h.budgetID, "2026-06-01")
-
-	list := h.txList(t, model.BudgetTransactionListRequest{TagId: &h.tag})
-	if got := itemIDs(list); !sameIDs(got, []string{other}) {
-		t.Errorf("tag list = %v, want only the payment no debt of this budget takes (not %s)", got, paid)
-	}
-	if got := spentOf(t, h.budgetIn(t, h.budgetID, "2026-06-01"), h.tag, model.ElementTag); got != "40" {
-		t.Errorf("tag row = %s, want 40 as the list adds up", got)
 	}
 }
 

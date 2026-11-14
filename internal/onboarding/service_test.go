@@ -89,38 +89,25 @@ func (fakeCategorySteps) OwnCategories(context.Context, vo.Id) ([]model.Category
 	return []model.CategoryResult{{Id: cash, Name: "Loan", Type: "expense"}, {Id: deposit, Name: "Salary", Type: "income"}}, nil
 }
 
-// fakeDebts covers the categories in covered, as the debts of coveredIn (the
-// test budget when empty); taken lists the categories whose plans were handed
-// to their debt, created the budget each debt was created in.
+// fakeDebts records each debt it creates: the budget and the category it is
+// attached to; refused lists the categories it refuses (one carrying an
+// active debt).
 type fakeDebts struct {
-	calls     int
-	covered   []vo.Id
-	coveredIn string
-	taken     []vo.Id
-	takenIn   []vo.Id
-	created   []vo.Id
+	calls      int
+	created    []vo.Id
+	categories []vo.Id
+	refused    []vo.Id
 }
 
-func (f *fakeDebts) CreateDebt(_ context.Context, _, budgetID vo.Id, _ string, _, _ vo.Id, _ vo.DecimalNumber, _ model.RecurringSchedule) (bool, error) {
+func (f *fakeDebts) CreateDebt(_ context.Context, _, budgetID, categoryID vo.Id, _ vo.DecimalNumber, _ model.RecurringSchedule) (bool, error) {
 	f.calls++
+	for _, r := range f.refused {
+		if r.Equal(categoryID) {
+			return false, nil
+		}
+	}
 	f.created = append(f.created, budgetID)
-	return true, nil
-}
-
-func (f *fakeDebts) CoveredCategories(_ context.Context, budget vo.Id) ([]vo.Id, error) {
-	in := f.coveredIn
-	if in == "" {
-		in = budgetID
-	}
-	if budget.String() != in {
-		return nil, nil
-	}
-	return f.covered, nil
-}
-
-func (f *fakeDebts) TakeCategoryPlans(_ context.Context, budgetID, categoryID vo.Id) (bool, error) {
-	f.taken = append(f.taken, categoryID)
-	f.takenIn = append(f.takenIn, budgetID)
+	f.categories = append(f.categories, categoryID)
 	return true, nil
 }
 
@@ -267,40 +254,23 @@ func TestPlanDebts_NoAIOrOverTheCapStartsNothing(t *testing.T) {
 	}
 }
 
-func TestPlanDebts_NoPositiveUncoveredExpensePlanReservesNothing(t *testing.T) {
-	for name, tc := range map[string]struct {
-		planned map[string]vo.DecimalNumber
-		covered []vo.Id
-		taken   int
-	}{
-		"zero plan":        {planned: map[string]vo.DecimalNumber{cash: vo.NewDecimal("0")}},
-		"income only":      {planned: map[string]vo.DecimalNumber{deposit: vo.NewDecimal("3000")}},
-		"unknown category": {planned: map[string]vo.DecimalNumber{gone: vo.NewDecimal("10")}},
-		// a debt covers it: its plan goes to the debt, nothing is asked
-		"covered": {planned: map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")}, covered: ids(cash), taken: 1},
+func TestPlanDebts_NoPositiveExpensePlanReservesNothing(t *testing.T) {
+	for name, planned := range map[string]map[string]vo.DecimalNumber{
+		"zero plan":        {cash: vo.NewDecimal("0")},
+		"income only":      {deposit: vo.NewDecimal("3000")},
+		"unknown category": {gone: vo.NewDecimal("10")},
 	} {
 		t.Run(name, func(t *testing.T) {
 			c := replying(`{"debts":[]}`)
 			reserved := &countingLimiter{}
 			svc, _ := newSvc(c, reserved)
-			debts := &fakeDebts{covered: tc.covered}
+			debts := &fakeDebts{}
 			svc.SetDebts(debts)
-			svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, tc.planned)
-			if reserved.n != 0 || c.calls != 0 || len(debts.taken) != tc.taken {
-				t.Fatalf("reserved %d, calls %d, taken %v", reserved.n, c.calls, debts.taken)
+			svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, planned)
+			if reserved.n != 0 || c.calls != 0 || debts.calls != 0 {
+				t.Fatalf("reserved %d, calls %d, debts %d", reserved.n, c.calls, debts.calls)
 			}
 		})
-	}
-}
-
-// Without AI a plan on a covered category still moves to the debt.
-func TestPlanDebts_HandsACoveredPlanToTheDebtWithoutAI(t *testing.T) {
-	svc, _ := newSvc(nil, nil)
-	debts := &fakeDebts{covered: ids(cash)}
-	svc.SetDebts(debts)
-	svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")})
-	if len(debts.taken) != 1 || debts.taken[0].String() != cash {
-		t.Fatalf("taken %v", debts.taken)
 	}
 }
 

@@ -74,8 +74,8 @@ func (h *debtHarness) addDebt(budgetID vo.Id, currencyID string) string {
 	id := vo.NewId().String()
 	h.debts.views = append(h.debts.views, model.DebtView{
 		ID: id, BudgetID: budgetID.String(), CurrencyID: currencyID, Name: "Loan",
-		Rules:      []model.DebtRuleView{{CategoryID: vo.NewId().String()}},
-		StartMonth: month(2026, time.May), EndMonth: month(2026, time.August),
+		CategoryIDs: []string{vo.NewId().String()},
+		StartMonth:  month(2026, time.May), EndMonth: month(2026, time.August),
 	})
 	return id
 }
@@ -729,30 +729,6 @@ func TestSyncElements_DebtRowFollowsTheDebtCurrency(t *testing.T) {
 	}
 	if l := h.limits(t, el.ID); l["2026-05-01"] != amount("100") {
 		t.Errorf("plans = %v, want 100 in May", l)
-	}
-}
-
-// DebtRowPlans feeds the debt forecast: the debt row's plans with the
-// budget's name and period start day; a budget without the row, or no budget,
-// gives nothing. The debt service has checked access to the debt.
-func TestDebtRowPlans(t *testing.T) {
-	h := newDebtHarness(t)
-	own := h.addDebt(h.budgetID, fixture.USD)
-	h.sync(t)
-	h.mustSetLimit(t, own, "2026-06-01", "250")
-
-	got, ok, err := h.svc.DebtRowPlans(h.ctx, h.budgetID, vo.MustParseId(own))
-	if err != nil || !ok {
-		t.Fatalf("ok=%v err=%v", ok, err)
-	}
-	if got.Name == "" || got.PeriodStartDay != model.MinPeriodStartDay || len(got.Plans) != 1 || amount(got.Plans["2026-06-01"]) != amount("250") {
-		t.Fatalf("plans = %+v", got)
-	}
-	if _, ok, err := h.svc.DebtRowPlans(h.ctx, h.budgetID, vo.NewId()); err != nil || ok {
-		t.Fatalf("no row: ok=%v err=%v", ok, err)
-	}
-	if _, ok, err := h.svc.DebtRowPlans(h.ctx, vo.NewId(), vo.MustParseId(own)); err != nil || ok {
-		t.Fatalf("unknown budget: ok=%v err=%v", ok, err)
 	}
 }
 

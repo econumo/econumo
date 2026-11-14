@@ -44,21 +44,20 @@ func TestWrites_CommitHookFiresOnceWithTheWrite(t *testing.T) {
 	}{
 		{"create", func(t *testing.T, e *env, _ *model.DebtResult, h *hookRecorder) error {
 			other := e.newCategory(e.user, true)
-			req := e.createReq()
-			req.Name, req.Rules = "Second", []model.DebtRuleRequest{rule(other)}
 			ctx := h.ctx(func(ctx context.Context) bool {
 				debts, err := e.repo.ListByBudget(ctx, vo.MustParseId(e.budget))
 				return err == nil && len(debts) == 2
 			})
-			_, err := e.svc.CreateDebt(ctx, e.uid(), req)
+			_, err := e.svc.CreateDebt(ctx, e.uid(), model.CreateDebtRequest{BudgetId: e.budget, ElementId: other,
+				Payment: vo.NewFlexString("100"), Schedule: "monthly"})
 			return err
 		}},
 		{"update", func(t *testing.T, e *env, res *model.DebtResult, h *hookRecorder) error {
 			req := e.updateReq(res)
-			req.Name = "Renamed"
+			req.Payment = vo.NewFlexString("1100")
 			ctx := h.ctx(func(ctx context.Context) bool {
 				d, err := e.repo.GetByID(ctx, vo.MustParseId(res.Id))
-				return err == nil && d.Name == "Renamed"
+				return err == nil && d.Payment.String() == "1100"
 			})
 			_, err := e.svc.UpdateDebt(ctx, e.uid(), req)
 			return err
@@ -68,16 +67,7 @@ func TestWrites_CommitHookFiresOnceWithTheWrite(t *testing.T) {
 				_, err := e.repo.GetByID(ctx, vo.MustParseId(res.Id))
 				return err != nil
 			})
-			_, err := e.svc.DeleteDebt(ctx, e.uid(), model.DeleteDebtRequest{Id: res.Id, ConfirmDataRemoval: true})
-			return err
-		}},
-		{"add-debt-rule", func(t *testing.T, e *env, res *model.DebtResult, h *hookRecorder) error {
-			other := e.newCategory(e.user, true)
-			ctx := h.ctx(func(ctx context.Context) bool {
-				d, err := e.repo.GetByID(ctx, vo.MustParseId(res.Id))
-				return err == nil && len(d.Rules) == 2
-			})
-			_, err := e.svc.AddDebtRule(ctx, e.uid(), model.AddDebtRuleRequest{Id: res.Id, Rule: rule(other)})
+			_, err := e.svc.DeleteDebt(ctx, e.uid(), model.DeleteDebtRequest{Id: res.Id})
 			return err
 		}},
 		{"reconcile", func(t *testing.T, e *env, res *model.DebtResult, h *hookRecorder) error {
@@ -99,11 +89,20 @@ func TestWrites_CommitHookFiresOnceWithTheWrite(t *testing.T) {
 			_, err := e.svc.MarkDebtPaidOff(ctx, e.uid(), model.MarkDebtPaidOffRequest{Id: res.Id})
 			return err
 		}},
+		{"reopen", func(t *testing.T, e *env, res *model.DebtResult, h *hookRecorder) error {
+			e.markPaidOff(t, res.Id, "")
+			ctx := h.ctx(func(ctx context.Context) bool {
+				d, err := e.repo.GetByID(ctx, vo.MustParseId(res.Id))
+				return err == nil && !d.IsPaidOff()
+			})
+			_, err := e.svc.ReopenDebt(ctx, e.uid(), model.ReopenDebtRequest{Id: res.Id})
+			return err
+		}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			e := newEnv(t)
-			res := e.create(t, func(r *model.CreateDebtRequest) {
+			res := e.create(t, func(r *createSpec) {
 				r.AmountBorrowed, r.StartDate, r.LastPaymentDate = vo.NewFlexString("10000"), ptr("2026-01-10"), "2026-12-10"
 			})
 			// a payment the write's sync splits first
@@ -126,10 +125,8 @@ func TestWrites_RefusedAfterTheSyncRecordNoKey(t *testing.T) {
 		run  func(e *env, res *model.DebtResult, ctx context.Context) error
 	}{
 		{"update", func(e *env, res *model.DebtResult, ctx context.Context) error {
-			eur := e.eur()
-			e.currency.unusable[eur] = true
 			req := e.updateReq(res)
-			req.CurrencyId = eur
+			req.StartDate = ptr("2026-04-01")
 			_, err := e.svc.UpdateDebt(ctx, e.uid(), req)
 			return err
 		}},
@@ -141,7 +138,7 @@ func TestWrites_RefusedAfterTheSyncRecordNoKey(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			e := newEnv(t)
-			res := e.create(t, func(r *model.CreateDebtRequest) {
+			res := e.create(t, func(r *createSpec) {
 				r.AmountBorrowed, r.StartDate, r.LastPaymentDate = vo.NewFlexString("10000"), ptr("2026-01-10"), "2026-12-10"
 			})
 			pay := e.expense(t, e.account, ymd(2026, 2, 10), "1000", "")

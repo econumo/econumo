@@ -16,8 +16,7 @@ import (
 // many-to-many, so re-pointing has to dedupe — a transaction already carrying
 // both ends up with one row, not a duplicate — and the source's own join rows
 // cascade away with the label rather than needing a delete. And they are
-// budget-neutral, so there are no elements or limits to fold in. A debt
-// matching payments by the source moves to the target.
+// budget-neutral, so there are no elements or limits to fold in.
 //
 // Ownership is checked on BOTH ids before any write: a foreign-owned source is
 // masked as not-found, a foreign-owned target is refused.
@@ -52,32 +51,11 @@ func (s *Service) MergeLabel(ctx context.Context, userID vo.Id, req model.MergeL
 			return cannotMerge
 		}
 
-		// Lock order (see DebtUsage): the debts' budget rows, then both rows
-		// in id order, before any other write.
-		if s.debts != nil {
-			if derr := s.debts.Prepare(txCtx, sourceID, targetID); derr != nil {
-				return derr
-			}
-			first, second := sourceID, targetID
-			if second.String() < first.String() {
-				first, second = second, first
-			}
-			for _, id := range []vo.Id{first, second} {
-				if lerr := s.repo.LockRow(txCtx, id); lerr != nil {
-					return lerr
-				}
-			}
-		}
 		if rerr := s.repo.ReassignTransactions(txCtx, sourceID, targetID); rerr != nil {
 			return rerr
 		}
 		if rerr := s.repo.ReassignRecurring(txCtx, sourceID, targetID); rerr != nil {
 			return rerr
-		}
-		if s.debts != nil {
-			if derr := s.debts.Reassign(txCtx, sourceID, targetID); derr != nil {
-				return derr
-			}
 		}
 		return s.repo.Delete(txCtx, sourceID)
 	}); err != nil {

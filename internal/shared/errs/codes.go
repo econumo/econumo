@@ -146,9 +146,11 @@ const (
 	CodeOAuthLastSignInMethod       = "oauth.last_sign_in_method"
 
 	CodeDebtPaymentsDontCover           = "debt.payments_dont_cover"
-	CodeDebtKeyConflict                 = "debt.key_conflict"
-	CodeDebtStartDateTaken              = "debt.start_date_taken"
-	CodeDebtCategoryNotExpense          = "debt.category_not_expense"
+	CodeDebtElementNotEligible          = "debt.element_not_eligible"
+	CodeDebtElementHasDebt              = "debt.element_has_debt"
+	CodeDebtStartBeforePreviousEnd      = "debt.start_before_previous_end"
+	CodeDebtCannotReopen                = "debt.cannot_reopen"
+	CodeDebtPaidOff                     = "debt.paid_off"
 	CodeDebtRemovalUnconfirmed          = "debt.removal_unconfirmed"
 	CodeDebtLastPaymentInPast           = "debt.last_payment_in_past"
 	CodeDebtLastPaymentBeforeStart      = "debt.last_payment_before_start"
@@ -308,9 +310,11 @@ var AllCodes = []string{
 	CodeAuthServerAppNotYours,
 
 	CodeDebtPaymentsDontCover,
-	CodeDebtKeyConflict,
-	CodeDebtStartDateTaken,
-	CodeDebtCategoryNotExpense,
+	CodeDebtElementNotEligible,
+	CodeDebtElementHasDebt,
+	CodeDebtStartBeforePreviousEnd,
+	CodeDebtCannotReopen,
+	CodeDebtPaidOff,
 	CodeDebtRemovalUnconfirmed,
 	CodeDebtLastPaymentInPast,
 	CodeDebtLastPaymentBeforeStart,

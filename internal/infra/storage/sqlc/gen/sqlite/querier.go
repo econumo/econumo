@@ -66,7 +66,6 @@ type Querier interface {
 	DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuthGrantsParams) (int64, error)
 	DeleteDebt(ctx context.Context, id string) error
 	DeleteDebtRateChange(ctx context.Context, arg DeleteDebtRateChangeParams) (int64, error)
-	DeleteDebtRules(ctx context.Context, debtID string) error
 	DeleteDebtSnapshot(ctx context.Context, id string) error
 	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
@@ -410,7 +409,6 @@ type Querier interface {
 	InsertCorrectionTransaction(ctx context.Context, arg InsertCorrectionTransactionParams) error
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
-	InsertDebtRule(ctx context.Context, arg InsertDebtRuleParams) error
 	InsertDebtSnapshot(ctx context.Context, arg InsertDebtSnapshotParams) error
 	// Through the transaction row: a payment deleted since it was read inserts
 	// nothing instead of failing the foreign key.
@@ -637,6 +635,7 @@ type Querier interface {
 	MakeOAuthClientGlobal(ctx context.Context, id string) (int64, error)
 	MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUsedParams) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
+	MoveDebtsToElement(ctx context.Context, arg MoveDebtsToElementParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
 	PurgeExcessUnusedOAuthClients(ctx context.Context, limit int64) (int64, error)
@@ -764,6 +763,7 @@ type Querier interface {
 	// the ON CONFLICT (identifier_uniq_currencies_rates) upsert.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	// The budget is written once, at insert: a debt never moves to another budget.
+	// The element moves only with a category merge (MoveDebtsToElement).
 	UpsertDebt(ctx context.Context, arg UpsertDebtParams) error
 	UpsertDebtRateChange(ctx context.Context, arg UpsertDebtRateChangeParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error

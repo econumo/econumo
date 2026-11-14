@@ -31,7 +31,6 @@ type querier interface {
 	ListTagsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]tagRow, error)
 	UpsertTag(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteTag(ctx context.Context, db backend.DBTX, id string) error
-	LockTagRow(ctx context.Context, db backend.DBTX, id string) error
 	ReassignTagTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error
 	ReassignTagRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error
 }
@@ -113,10 +112,6 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 		return err
 	}
 	return r.q.DeleteTag(ctx, r.db(ctx), id.String())
-}
-
-func (r *Repo) LockRow(ctx context.Context, id vo.Id) error {
-	return r.q.LockTagRow(ctx, r.db(ctx), id.String())
 }
 
 func hydrate(row tagRow) (*model.Tag, error) {

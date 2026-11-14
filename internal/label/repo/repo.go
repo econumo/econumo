@@ -35,7 +35,6 @@ type querier interface {
 	ListLabelsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]labelRow, error)
 	UpsertLabel(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteLabel(ctx context.Context, db backend.DBTX, id string) error
-	LockLabelRow(ctx context.Context, db backend.DBTX, id string) error
 	ReassignTransactionLabels(ctx context.Context, db backend.DBTX, p reassignTxParams) error
 	ReassignRecurringLabels(ctx context.Context, db backend.DBTX, p reassignRecParams) error
 }
@@ -117,10 +116,6 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 		return err
 	}
 	return r.q.DeleteLabel(ctx, r.db(ctx), id.String())
-}
-
-func (r *Repo) LockRow(ctx context.Context, id vo.Id) error {
-	return r.q.LockLabelRow(ctx, r.db(ctx), id.String())
 }
 
 func hydrate(row labelRow) (*model.Label, error) {

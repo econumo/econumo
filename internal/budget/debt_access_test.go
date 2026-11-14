@@ -23,12 +23,9 @@ func sorted(ids ...vo.Id) []string { return sortedIDs(ids) }
 
 func TestDebtBudget_RolesAndParticipants(t *testing.T) {
 	h := newCommentHarness(t)
-	eur := h.f.Currency(fixture.Currency{Code: "EUR", Symbol: "€", Name: "Euro"})
-	h.f.BudgetElement(fixture.BudgetElement{BudgetID: h.budgetID.String(), ExternalID: vo.NewId().String(), Type: int(model.ElementEnvelope), CurrencyID: eur})
 	cash := h.f.Account(fixture.Account{UserID: h.owner.String(), Name: "Cash"})
 	h.f.BudgetAccount(h.budgetID.String(), cash)
 
-	participants := sorted(h.owner, h.admin, h.member)
 	for name, tc := range map[string]struct {
 		user    vo.Id
 		canPlan bool
@@ -42,14 +39,8 @@ func TestDebtBudget_RolesAndParticipants(t *testing.T) {
 		if b.CanPlan != tc.canPlan {
 			t.Errorf("%s: CanPlan = %v, want %v", name, b.CanPlan, tc.canPlan)
 		}
-		if got := sortedIDs(b.ParticipantIDs); !slices.Equal(got, participants) {
-			t.Errorf("%s: participants = %v, want %v (no guest, no pending invite)", name, got, participants)
-		}
 		if !b.ID.Equal(h.budgetID) || b.CurrencyID.String() != fixture.USD || b.PeriodStartDay != model.MinPeriodStartDay || b.IsArchived {
 			t.Errorf("%s: budget = %+v", name, b)
-		}
-		if got := sortedIDs(b.CurrencyIDs); !slices.Equal(got, sorted(vo.MustParseId(fixture.USD), vo.MustParseId(eur))) {
-			t.Errorf("%s: currencies = %v, want the budget's and the element's", name, got)
 		}
 		if len(b.AccountIDs) != 1 || b.AccountIDs[0].String() != cash {
 			t.Errorf("%s: accounts = %v, want the member account", name, b.AccountIDs)
@@ -111,51 +102,64 @@ func TestDebtScope_IncludesSoftDeletedMembers(t *testing.T) {
 	}
 }
 
-func TestDebtRuleOptions_CallerFirstActiveExpenseOnly(t *testing.T) {
+// A debt counts what an element's Spent counts: never a savings member.
+func TestDebtScope_LeavesSavingsMembersOut(t *testing.T) {
 	h := newCommentHarness(t)
-	own := h.owner.String()
-	loan := h.f.Category(fixture.Category{UserID: own, Name: "Loan", Icon: "home"})
-	h.f.Category(fixture.Category{UserID: own, Name: "Salary", Type: 1})
-	h.f.Category(fixture.Category{UserID: own, Name: "Old loan", Archived: true})
-	bank := h.f.Payee(fixture.Payee{UserID: own, Name: "Bank"})
-	h.f.Payee(fixture.Payee{UserID: own, Name: "Closed bank", Archived: true})
-	home := h.f.Tag(fixture.Tag{UserID: own, Name: "Home", Icon: "house"})
-	h.f.Tag(fixture.Tag{UserID: own, Name: "Old", Archived: true})
-	car := h.f.Label(fixture.Label{UserID: own, Name: "Car", Icon: "car"})
-	h.f.Label(fixture.Label{UserID: own, Name: "Gone", Archived: true})
-	memberLoan := h.f.Category(fixture.Category{UserID: h.member.String(), Name: "Student loan"})
-	h.f.Category(fixture.Category{UserID: h.guest.String(), Name: "Guest loan"})
-
-	res, err := h.svc.DebtRuleOptions(h.ctx, h.member, h.budgetID)
-	if err != nil {
+	everyday := h.f.Account(fixture.Account{UserID: h.owner.String(), Name: "Everyday"})
+	savings := h.f.Account(fixture.Account{UserID: h.owner.String(), Name: "Savings"})
+	h.f.BudgetAccount(h.budgetID.String(), everyday)
+	h.f.BudgetAccount(h.budgetID.String(), savings)
+	if _, err := h.tdb.Raw.ExecContext(h.ctx, h.tdb.Rebind("UPDATE budgets_accounts SET is_savings = TRUE WHERE account_id = ?"), savings); err != nil {
 		t.Fatal(err)
 	}
-	var order []string
-	for _, p := range res.Participants {
-		order = append(order, p.Name)
+	scope, err := h.svc.DebtScope(h.ctx, h.budgetID)
+	if err != nil || len(scope.AccountIDs) != 1 || scope.AccountIDs[0].String() != everyday {
+		t.Fatalf("scope = %+v, %v; want the everyday member alone", scope, err)
 	}
-	// The member asks: they come first, then the others by name; the guest
-	// and the pending invite are not participants.
-	if !slices.Equal(order, []string{"Member", "Admin", "Owner"}) {
-		t.Fatalf("participants = %v, want Member, Admin, Owner", order)
+	b, err := h.svc.DebtBudget(h.ctx, h.owner, h.budgetID)
+	if err != nil || len(b.AccountIDs) != 1 || b.AccountIDs[0].String() != everyday {
+		t.Fatalf("access accounts = %v, %v", b.AccountIDs, err)
 	}
-	if m := res.Participants[0]; m.UserId != h.member.String() || len(m.Categories) != 1 || m.Categories[0].Id != memberLoan {
-		t.Errorf("member = %+v, want their one category", m)
+}
+
+// DebtElement tells which elements can carry a debt: a top-level expense
+// category or an expense envelope, with the element's name, icon, currency
+// and categories; DebtElementPlans reads the element row's plans.
+func TestDebtElement_EligibilityAndPlans(t *testing.T) {
+	h := newCommentHarness(t)
+	owner, budget := h.owner.String(), h.budgetID.String()
+	eur := h.f.Currency(fixture.Currency{Code: "EUR", Symbol: "€", Name: "Euro"})
+	loan := h.f.Category(fixture.Category{UserID: owner, Name: "Mortgage", Icon: "house"})
+	row := h.f.BudgetElement(fixture.BudgetElement{BudgetID: budget, ExternalID: loan, Type: int(model.ElementCategory), CurrencyID: eur})
+	h.f.BudgetLimit(fixture.BudgetLimit{ElementID: row, Period: "2026-05-01 00:00:00", Amount: "3000"})
+	child := h.f.Category(fixture.Category{UserID: owner, Name: "Insurance"})
+	env := h.f.BudgetEnvelope(fixture.BudgetEnvelope{BudgetID: budget, Name: "Housing", Icon: "home"})
+	h.f.BudgetElement(fixture.BudgetElement{BudgetID: budget, ExternalID: env, Type: int(model.ElementEnvelope)})
+	h.f.EnvelopeCategory(env, child)
+	income := h.f.Category(fixture.Category{UserID: owner, Name: "Salary", Type: 1})
+	strangers := h.f.Category(fixture.Category{UserID: h.stranger.String(), Name: "Theirs"})
+
+	el, err := h.svc.DebtElement(h.ctx, h.budgetID, vo.MustParseId(loan))
+	if err != nil || el.Type != model.DebtElementCategory || !el.Eligible || el.Name != "Mortgage" || el.Icon != "house" ||
+		el.CurrencyID.String() != eur || len(el.CategoryIDs) != 1 || el.CategoryIDs[0].String() != loan {
+		t.Fatalf("category = %+v, %v", el, err)
 	}
-	o := res.Participants[2]
-	if len(o.Categories) != 1 || o.Categories[0].Id != loan || o.Categories[0].Name != "Loan" || o.Categories[0].Icon != "home" {
-		t.Errorf("owner's categories = %+v, want only the active expense one", o.Categories)
+	el, err = h.svc.DebtElement(h.ctx, h.budgetID, vo.MustParseId(env))
+	if err != nil || el.Type != model.DebtElementEnvelope || !el.Eligible || el.Name != "Housing" || el.CurrencyID.String() != fixture.USD ||
+		len(el.CategoryIDs) != 1 || el.CategoryIDs[0].String() != child {
+		t.Fatalf("envelope = %+v, %v", el, err)
 	}
-	if len(o.Payees) != 1 || o.Payees[0].Id != bank || o.Payees[0].Name != "Bank" {
-		t.Errorf("owner's payees = %+v, want only Bank: the archived Closed bank is left out", o.Payees)
+	for name, id := range map[string]string{"in an envelope": child, "income": income, "a stranger's": strangers, "unknown": vo.NewId().String()} {
+		if el, err := h.svc.DebtElement(h.ctx, h.budgetID, vo.MustParseId(id)); err != nil || el.Eligible {
+			t.Errorf("%s: %+v, %v; want not eligible", name, el, err)
+		}
 	}
-	if len(o.Tags) != 1 || o.Tags[0].Id != home || o.Tags[0].Icon != "house" {
-		t.Errorf("owner's tags = %+v, want only the active one, with its icon", o.Tags)
+
+	plans, err := h.svc.DebtElementPlans(h.ctx, h.budgetID, vo.MustParseId(loan))
+	if err != nil || len(plans) != 1 || plans["2026-05-01"] != 3000 {
+		t.Fatalf("plans = %v, %v", plans, err)
 	}
-	if len(o.Labels) != 1 || o.Labels[0].Id != car || o.Labels[0].Icon != "car" {
-		t.Errorf("owner's labels = %+v, want only the active one", o.Labels)
-	}
-	if a := res.Participants[1]; a.Categories == nil || a.Payees == nil || a.Tags == nil || a.Labels == nil {
-		t.Errorf("admin = %+v, want empty lists, not null", a)
+	if plans, err := h.svc.DebtElementPlans(h.ctx, h.budgetID, vo.MustParseId(env)); err != nil || len(plans) != 0 {
+		t.Fatalf("envelope plans = %v, %v", plans, err)
 	}
 }
