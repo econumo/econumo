@@ -265,7 +265,7 @@ func (h *Handlers) DeleteDebtReconciliation(w http.ResponseWriter, r *http.Reque
 // AddDebtRateChange handles POST /api/v1/debt/add-debt-rate-change (auth).
 //
 // @Summary     Add a rate change to a debt
-// @Description Records that from date on (on or after the start date, no later than the last payment date) the loan's yearly rate is annualRate percent (0 to 100) and its regular payment is payment; interest and the schedule's dues follow it, and the payments from that date are split again. A change on a date that already has one replaces it. A debt not set up is refused (debt.not_set_up).
+// @Description Records that from date on (on or after the start date) the loan's yearly rate is annualRate percent (0 to 100) and its regular payment is payment; interest and the schedule's dues follow it, and the payments from that date are split again. A change on a date that already has one replaces it. A debt not set up is refused (debt.not_set_up).
 // @Tags        Debt
 // @Accept      json
 // @Produce     json
@@ -285,7 +285,7 @@ func (h *Handlers) AddDebtRateChange(w http.ResponseWriter, r *http.Request) {
 // DeleteDebtRateChange handles POST /api/v1/debt/delete-debt-rate-change (auth).
 //
 // @Summary     Delete a debt's rate change
-// @Description Removes one rate change by its id; the payments from its date are split again. The loan's starting rate cannot be deleted (not found).
+// @Description Removes one rate change by its id; the payments from its date are split again. Deleting the one stored on the start date brings back the rate the loan's terms imply; that implied first row, shown when none sits on the start date, has no id and cannot be deleted (not found).
 // @Tags        Debt
 // @Accept      json
 // @Produce     json

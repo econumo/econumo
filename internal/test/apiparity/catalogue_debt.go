@@ -495,11 +495,13 @@ func init() {
 	}})
 
 	// debt_rate_change: a loan of 300 taken two weeks ago takes a rate change
-	// a week ago, the same date again replaces it, deleting it restores the
-	// loan's own rate; a guest may not add one and a debt not set up refuses it.
+	// a week ago (which stores the start-date row beside it), the same date
+	// again replaces it. Deleting the added change leaves the start-date row;
+	// deleting that one too falls back to the loan's implied rate. A guest may
+	// not add one and a debt not set up refuses it.
 	register(Scenario{Name: "debt_rate_change", Calls: func() []Call {
 		const unknownDebt = "d0000000-0000-0000-0000-0000000000ff"
-		var debtID, draftID, categoryID, changeID string
+		var debtID, draftID, categoryID, startRowID, addedID string
 		add := func(label, auth string, body map[string]any) Call {
 			return Call{Label: label, Method: "POST", Path: "/api/v1/debt/add-debt-rate-change", Auth: auth, Body: body}
 		}
@@ -509,7 +511,9 @@ func init() {
 			add("add-rate-change", "owner", map[string]any{"id": &debtID, "date": day(-7), "annualRate": "5", "payment": "105"}),
 			add("add-same-date-replaces", "owner", map[string]any{"id": &debtID, "date": day(-7), "annualRate": "6", "payment": "110"}),
 			{Label: "get", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID,
-				CaptureIDInto: &changeID, CapturePath: "data.rateChanges.0.id"},
+				CaptureIDInto: &startRowID, CapturePath: "data.rateChanges.0.id"},
+			{Label: "get-added", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID,
+				CaptureIDInto: &addedID, CapturePath: "data.rateChanges.1.id"},
 			{Label: "list", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt-list"},
 			add("err:before-start", "owner", map[string]any{"id": &debtID, "date": day(-15), "annualRate": "5", "payment": "105"}),
 			add("err:bad-rate", "owner", map[string]any{"id": &debtID, "date": day(-6), "annualRate": "1e1", "payment": "105"}),
@@ -517,13 +521,16 @@ func init() {
 			add("err:unknown", "owner", map[string]any{"id": unknownDebt, "date": day(-6), "annualRate": "5", "payment": "105"}),
 			add("err:invited-add", "guest", map[string]any{"id": &debtID, "date": day(-6), "annualRate": "5", "payment": "105"}),
 			add("err:readonly-add", "readonly", map[string]any{"id": unknownDebt, "date": day(-6), "annualRate": "5", "payment": "105"}),
-			{Label: "delete-rate-change", Method: "POST", Path: "/api/v1/debt/delete-debt-rate-change", Auth: "owner",
-				Body: map[string]any{"id": &debtID, "rateChangeId": &changeID}},
-			{Label: "err:delete-again", Method: "POST", Path: "/api/v1/debt/delete-debt-rate-change", Auth: "owner",
-				Body: map[string]any{"id": &debtID, "rateChangeId": &changeID}},
+			{Label: "delete-added-change", Method: "POST", Path: "/api/v1/debt/delete-debt-rate-change", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "rateChangeId": &addedID}},
+			{Label: "err:delete-added-again", Method: "POST", Path: "/api/v1/debt/delete-debt-rate-change", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "rateChangeId": &addedID}},
 			{Label: "err:invited-delete", Method: "POST", Path: "/api/v1/debt/delete-debt-rate-change", Auth: "guest",
-				Body: map[string]any{"id": &debtID, "rateChangeId": &changeID}},
-			{Label: "get-after-delete", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+				Body: map[string]any{"id": &debtID, "rateChangeId": &startRowID}},
+			{Label: "get-after-delete-added", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
+			{Label: "delete-start-row", Method: "POST", Path: "/api/v1/debt/delete-debt-rate-change", Auth: "owner",
+				Body: map[string]any{"id": &debtID, "rateChangeId": &startRowID}},
+			{Label: "get-after-delete-start-row", Method: "GET", Auth: "owner", Path: "/api/v1/debt/get-debt?id=", PathID: &debtID},
 			{Label: "accept-access", Method: "POST", Path: "/api/v1/budget/accept-access", Auth: "guest",
 				Body: map[string]any{"budgetId": Budget}},
 			{Label: "make-guest", Method: "POST", Path: "/api/v1/budget/grant-access", Auth: "owner",
