@@ -1222,55 +1222,6 @@ definitions:
           $ref: '#/definitions/model.DebtSnapshotResult'
         type: array
     type: object
-  model.DebtElementResult:
-    properties:
-      available:
-        type: string
-      baseOverpaymentLeft:
-        type: string
-      basePayoffDate:
-        type: string
-      budgetSpent:
-        type: string
-      budgeted:
-        type: string
-      closingBalance:
-        type: string
-      currencyId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      isArchived:
-        type: integer
-      isBudgeted:
-        type: integer
-      isPaidOff:
-        type: integer
-      isPlannable:
-        type: integer
-      isSetUp:
-        type: integer
-      name:
-        type: string
-      overpaymentLeft:
-        type: string
-      paymentsLeft:
-        type: integer
-      payoffDate:
-        type: string
-      position:
-        type: integer
-      scheduledTotal:
-        type: string
-      spent:
-        type: string
-      type:
-        type: integer
-      upcoming:
-        type: string
-    type: object
   model.DebtForecastItem:
     properties:
       balance:
@@ -1581,6 +1532,31 @@ definitions:
   model.DiscardImportEventRequest:
     properties:
       eventId:
+        type: string
+    type: object
+  model.ElementDebtResult:
+    properties:
+      baseOverpaymentLeft:
+        type: string
+      basePayoffDate:
+        type: string
+      closingBalance:
+        type: string
+      id:
+        type: string
+      isPaidOff:
+        type: integer
+      isSetUp:
+        type: integer
+      overpaymentLeft:
+        type: string
+      paymentsLeft:
+        type: integer
+      payoffDate:
+        type: string
+      scheduledTotal:
+        type: string
+      upcoming:
         type: string
     type: object
   model.ExchangeHandoffRequest:
@@ -2663,6 +2639,13 @@ definitions:
         type: array
       currencyId:
         type: string
+      debt:
+        allOf:
+        - $ref: '#/definitions/model.ElementDebtResult'
+        description: |-
+          Debt is the debt in force on this element in the period: its active
+          debt, or a paid-off one whose start..end covers the period. Only a
+          top-level expense category or an expense envelope carries one.
       folderId:
         type: string
       icon:
@@ -2730,6 +2713,12 @@ definitions:
     properties:
       actual:
         type: string
+      debt:
+        allOf:
+        - $ref: '#/definitions/model.ElementDebtResult'
+        description: |-
+          Debt is the debt in force on the row in this cell's period, with its
+          figures for the period.
       planned:
         type: string
       upcoming:
@@ -2761,54 +2750,6 @@ definitions:
       type:
         type: integer
     type: object
-  model.PlanDebtCellResult:
-    properties:
-      actual:
-        type: string
-      closingBalance:
-        type: string
-      isPlannable:
-        type: integer
-      paymentsLeft:
-        type: integer
-      planned:
-        type: string
-      scheduledTotal:
-        type: string
-      upcoming:
-        type: string
-    type: object
-  model.PlanDebtElementResult:
-    properties:
-      baseOverpaymentLeft:
-        type: string
-      basePayoffDate:
-        type: string
-      cells:
-        items:
-          $ref: '#/definitions/model.PlanDebtCellResult'
-        type: array
-      currencyId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      isPaidOff:
-        type: integer
-      isSetUp:
-        type: integer
-      name:
-        type: string
-      overpaymentLeft:
-        type: string
-      payoffDate:
-        type: string
-      position:
-        type: integer
-      type:
-        type: integer
-    type: object
   model.PlanElementResult:
     properties:
       cells:
@@ -2821,6 +2762,12 @@ definitions:
         type: array
       currencyId:
         type: string
+      debt:
+        allOf:
+        - $ref: '#/definitions/model.ElementDebtResult'
+        description: |-
+          Debt is the element's active debt, with its figures for the caller's
+          current period; each cell carries the debt in force in its own period.
       folderId:
         type: string
       icon:
@@ -2901,10 +2848,6 @@ definitions:
     type: object
   model.PlanStructureResult:
     properties:
-      debts:
-        items:
-          $ref: '#/definitions/model.PlanDebtElementResult'
-        type: array
       elements:
         items:
           $ref: '#/definitions/model.PlanElementResult'
@@ -3378,10 +3321,6 @@ definitions:
     type: object
   model.StructureResult:
     properties:
-      debts:
-        items:
-          $ref: '#/definitions/model.DebtElementResult'
-        type: array
       elements:
         items:
           $ref: '#/definitions/model.ParentElementResult'
@@ -5796,11 +5735,6 @@ paths:
           savings accounts are accepted (composes with nothing)
         in: query
         name: accountId
-        type: string
-      - description: The payments a debt row of this budget counts, from its everyday
-          accounts (composes with nothing)
-        in: query
-        name: debtId
         type: string
       produces:
       - application/json

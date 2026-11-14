@@ -168,28 +168,6 @@ func (d DebtView) PlanningBounds(startDay int) (first, last time.Time) {
 	return first, last
 }
 
-// ElementDataTransfer moves one budget row's plans and comments onto another
-// row of BudgetID when both are in CurrencyID.
-type ElementDataTransfer struct {
-	BudgetID         vo.Id
-	FromID, ToID     vo.Id
-	FromType, ToType ElementType
-	CurrencyID       vo.Id
-	// SumOnClash adds a moved plan to the target's plan for that month;
-	// otherwise the target's wins and the moved one is dropped.
-	SumOnClash bool
-	// FirstDay and LastDay bound the data moved (zero = open): the budget
-	// moves its periods from the one holding FirstDay to the one holding
-	// LastDay; data outside them stays on the source row.
-	FirstDay, LastDay time.Time
-	// AfterDay, when set, moves only the periods after the one holding it,
-	// up to LastDay. A day bound cannot say "the next period" for a budget
-	// whose periods start on another day.
-	AfterDay time.Time
-	// BeforeDay, when set, moves only the periods before the one holding it.
-	BeforeDay time.Time
-}
-
 // CarriesKey reports whether a budget row of the category with this tag holds
 // the debt's payments: an untagged expense in one of its element's categories.
 func (d DebtView) CarriesKey(categoryID, tagID *string) bool {

@@ -103,17 +103,8 @@
 == setup POST /api/v1/debt/update-debt [owner] -> 200
 {"success":true,"message":"","data":{"id":"<generated-uuid>","budgetId":"b0000000-0000-0000-0000-000000000001","budgetName":"Budget","elementId":"c0000000-0000-0000-0000-000000000001","elementType":"category","status":"active","endedAt":"","canEdit":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startDate":"<date>","amountBorrowed":"100","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"periodsPaid":0,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"0","extraPaid":"0","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","annualRate":"260","impliedAnnualRate":"260","isPaidOff":0,"isSetUp":1}}
 
-== set-debt-limit POST /api/v1/budget/set-limit [owner] -> 200
-{"success":true,"message":"","data":{}}
-
-== err:set-debt-limit-out-of-range POST /api/v1/budget/set-limit [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"period":["This debt cannot be planned in this month"]}}
-
-== err:change-debt-currency POST /api/v1/budget/change-element-currency [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"currencyId":["A debt is planned in its own currency"]}}
-
-== err:move-debt-into-folder POST /api/v1/budget/move-element [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"folderId":["Debts cannot be put into a folder"]}}
+== err:set-limit-on-a-debt-id POST /api/v1/budget/set-limit [owner] -> 400
+{"success":false,"message":"BudgetElement not found","code":0,"errors":{}}
 
 == err:update-payment-dont-cover POST /api/v1/debt/update-debt [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"payment":["The payments do not cover the balance. Raise the payment or set a later last payment date."]}}

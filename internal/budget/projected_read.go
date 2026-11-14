@@ -50,10 +50,6 @@ type projectedRead struct {
 	currencyOf map[string]string
 	nameOf     map[string]string
 	byKey      map[occurrenceKey]*projectedTx
-	// debts are the budget's debts: an expense occurrence one of them matches
-	// is left out of the spending reads, since the debt's own schedule is its
-	// upcoming money.
-	debts []model.DebtView
 }
 
 type occurrenceKey struct{ templateID, dueAt string }
@@ -75,7 +71,7 @@ func (s *Service) newProjectedRead(ctx context.Context, f filters, until time.Ti
 	if len(templates) == 0 {
 		return nil, nil
 	}
-	p := &projectedRead{ReadModel: s.read, currencyOf: map[string]string{}, nameOf: map[string]string{}, debts: f.debtViews}
+	p := &projectedRead{ReadModel: s.read, currencyOf: map[string]string{}, nameOf: map[string]string{}}
 
 	var accountIDs []vo.Id
 	add := func(id vo.Id) {
@@ -328,22 +324,10 @@ func (p *projectedRead) SummarizedLimits(context.Context, vo.Id, time.Time, time
 	return nil, nil
 }
 
-type spendingKey struct{ month, category, tag, debt, currency string }
-
-// debtOf is the debt the occurrence would pay, by the rule the debt sync
-// assigns stored payments with: the oldest matching debt.
-func (p *projectedRead) debtOf(o *projectedTx) (model.DebtView, bool) {
-	return model.AssignDebt(p.debts, o.categoryID, o.tagID, o.dueAt)
-}
-
-func (p *projectedRead) paysDebt(o *projectedTx) bool {
-	_, ok := p.debtOf(o)
-	return ok
-}
+type spendingKey struct{ month, category, tag, currency string }
 
 // spending is the CountSpending/SpendingByMonth filter: expenses on the
-// accounts, in the category set or with no category at all, that no debt
-// matches.
+// accounts, in the category set or with no category at all.
 func (p *projectedRead) spending(categoryIDs, accountIDs []vo.Id, start, end time.Time, byMonth bool, startDay int) *sums[spendingKey] {
 	acc, cats := idSet(accountIDs), idSet(categoryIDs)
 	out := newSums[spendingKey]()
@@ -355,9 +339,6 @@ func (p *projectedRead) spending(categoryIDs, accountIDs []vo.Id, start, end tim
 		if o.categoryID != nil && !cats[*o.categoryID] {
 			continue
 		}
-		if p.paysDebt(o) {
-			continue
-		}
 		k := spendingKey{category: deref(o.categoryID), tag: deref(o.tagID), currency: o.currencyID}
 		if byMonth {
 			k.month = projectedMonth(o.filedAt, startDay)
@@ -367,7 +348,7 @@ func (p *projectedRead) spending(categoryIDs, accountIDs []vo.Id, start, end tim
 	return out
 }
 
-func (p *projectedRead) CountSpending(_ context.Context, _ vo.Id, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error) {
+func (p *projectedRead) CountSpending(_ context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error) {
 	s := p.spending(categoryIDs, accountIDs, start, end, false, 0)
 	var out []model.SpendingRow
 	for _, k := range s.keys {
@@ -376,7 +357,7 @@ func (p *projectedRead) CountSpending(_ context.Context, _ vo.Id, categoryIDs, a
 	return out, nil
 }
 
-func (p *projectedRead) SpendingByMonth(_ context.Context, _ vo.Id, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
+func (p *projectedRead) SpendingByMonth(_ context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time, startDay int) ([]model.MonthlySpendingRow, error) {
 	s := p.spending(categoryIDs, accountIDs, from, to, true, startDay)
 	var out []model.MonthlySpendingRow
 	for _, k := range s.keys {
@@ -545,26 +526,17 @@ func (p *projectedRead) expenses(accountIDs []vo.Id, start, end time.Time, keep 
 	return out
 }
 
-// The category and tag lists leave out what a debt matches, as their figures
-// do (see spending); the debt's own list has it.
-func (p *projectedRead) BudgetTransactionsByCategories(_ context.Context, _ vo.Id, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+func (p *projectedRead) BudgetTransactionsByCategories(_ context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	cats := idSet(categoryIDs)
 	return p.expenses(accountIDs, start, end, func(o *projectedTx) bool {
-		return o.tagID == nil && o.categoryID != nil && cats[*o.categoryID] && !p.paysDebt(o)
+		return o.tagID == nil && o.categoryID != nil && cats[*o.categoryID]
 	}), nil
 }
 
-func (p *projectedRead) BudgetTransactionsByDebt(_ context.Context, debt model.DebtView, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
-	return p.expenses(accountIDs, start, end, func(o *projectedTx) bool {
-		d, ok := p.debtOf(o)
-		return ok && d.ID == debt.ID
-	}), nil
-}
-
-func (p *projectedRead) BudgetTransactionsByTag(_ context.Context, _, tagID vo.Id, categoryID *vo.Id, uncategorized bool, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+func (p *projectedRead) BudgetTransactionsByTag(_ context.Context, tagID vo.Id, categoryID *vo.Id, uncategorized bool, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	tag := tagID.String()
 	return p.expenses(accountIDs, start, end, func(o *projectedTx) bool {
-		if o.tagID == nil || *o.tagID != tag || p.paysDebt(o) {
+		if o.tagID == nil || *o.tagID != tag {
 			return false
 		}
 		if categoryID != nil {

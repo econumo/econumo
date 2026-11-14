@@ -2,42 +2,50 @@ package budget
 
 import (
 	"context"
-	"sort"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/reqctx"
-	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// debtRow is one debt's in-progress row, shared by the monthly and plan
-// builders.
-type debtRow struct {
-	view    model.DebtView
-	sortKey sortkey.Key
+// debtRowKey is the elementKey of the budget row a debt is attached to.
+func debtRowKey(v model.DebtView) string {
+	typ := model.ElementCategory
+	if v.ElementType == model.DebtElementEnvelope {
+		typ = model.ElementEnvelope
+	}
+	return elementKey(v.ElementID, typ)
 }
 
-// debtRows orders the budget's debts by their element's sort key. Rows derive
-// from the debts themselves, not the element table, because sync is lazy; a
-// debt with no element row yet trails in creation order, the order the first
-// sync keys it in.
-func debtRows(f filters, options map[string]elementOption) []debtRow {
-	out := make([]debtRow, 0, len(f.debtViews))
-	for _, v := range f.debtViews {
-		out = append(out, debtRow{view: v, sortKey: options[elementKey(v.ID, model.ElementDebt)].sortKey})
+// debtsInForce maps each element row to the debt in force in the period: one
+// whose first period is not after it and, once paid off, whose end period is
+// not before it. One element's debts never overlap in time, but an old debt
+// ended and a new one started in the same period are both in force there; the
+// newer one is shown.
+func debtsInForce(views []model.DebtView, startDay int, period time.Time) map[string]model.DebtView {
+	out := map[string]model.DebtView{}
+	for _, v := range views {
+		if first, _ := v.PlanningBounds(startDay); period.Before(first) {
+			continue
+		}
+		if v.Until != nil && period.After(model.PeriodOf(*v.Until, startDay)) {
+			continue
+		}
+		out[debtRowKey(v)] = v
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		ki, kj := out[i].sortKey, out[j].sortKey
-		if ki == "" || kj == "" {
-			return ki != "" && kj == ""
+	return out
+}
+
+// activeDebts maps each element row to its active (not paid-off) debt.
+func activeDebts(views []model.DebtView) map[string]model.DebtView {
+	out := map[string]model.DebtView{}
+	for _, v := range views {
+		if v.Until == nil {
+			out[debtRowKey(v)] = v
 		}
-		if ki != kj {
-			return ki < kj
-		}
-		return out[i].view.ID < out[j].view.ID
-	})
+	}
 	return out
 }
 
@@ -49,25 +57,27 @@ func plannable(v model.DebtView, startDay int, month time.Time) bool {
 	return !month.Before(first) && (last.IsZero() || !month.After(last))
 }
 
-// debtTimelines projects every debt of the budget over months. The projection
-// takes this budget's plans of the debt from the caller's current period to
-// the debt's end, wherever the window is, so the payoff figures agree between
-// views; a plan stored outside the debt's life is ignored. Nil while no debt
-// source is wired: the upcoming pass unwires it, as its debt rows are dropped.
-// A debt not set up has nothing to project and is left out.
-func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filters, months []time.Time) (map[string]model.DebtTimeline, error) {
+// debtTimelines projects the debts over months. The projection takes the
+// plans of each debt's element row from the caller's current period to the
+// debt's end, wherever the window is, so the payoff figures agree between
+// views; a plan outside the debt's life is an ordinary plan. Nil while no debt
+// source is wired: the upcoming pass unwires it. A debt not set up has
+// nothing to project and is left out.
+func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filters, views []model.DebtView, months []time.Time) (map[string]model.DebtTimeline, error) {
 	if s.debts == nil {
 		return nil, nil
 	}
 	today := localToday(s.clock.Now(), reqctx.Location(ctx))
 	current := model.PeriodOf(today, f.startDay)
 	last := current
-	ids := make([]string, 0, len(f.debtViews))
-	for _, v := range f.debtViews {
+	ids := make([]string, 0, len(views))
+	byRow := map[string][]model.DebtView{}
+	for _, v := range views {
 		if !v.SetUp {
 			continue
 		}
 		ids = append(ids, v.ID)
+		byRow[debtRowKey(v)] = append(byRow[debtRowKey(v)], v)
 		if _, end := v.PlanningBounds(f.startDay); end.After(last) {
 			last = end
 		}
@@ -81,18 +91,19 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 	}
 	plans := map[string]map[string]string{}
 	for _, l := range rows {
-		v, ok := f.debtByID[l.ExternalID]
-		if !ok || !v.SetUp || model.ElementType(l.Type) != model.ElementDebt {
-			continue
-		}
 		m, perr := time.Parse(datetime.DateLayout, l.Month)
-		if perr != nil || !plannable(v, f.startDay, m) {
+		if perr != nil {
 			continue
 		}
-		if plans[v.ID] == nil {
-			plans[v.ID] = map[string]string{}
+		for _, v := range byRow[elementKey(l.ExternalID, model.ElementType(l.Type))] {
+			if !plannable(v, f.startDay, m) {
+				continue
+			}
+			if plans[v.ID] == nil {
+				plans[v.ID] = map[string]string{}
+			}
+			plans[v.ID][l.Month] = vo.NewDecimal(l.Amount).String()
 		}
-		plans[v.ID][l.Month] = vo.NewDecimal(l.Amount).String()
 	}
 	return s.debts.Timelines(ctx, model.DebtTimelineRequest{Scope: b.debtScope(), DebtIDs: ids, Months: months, Plans: plans, Today: today, PeriodStartDay: f.startDay})
 }
@@ -116,119 +127,24 @@ func timelineMonth(tl model.DebtTimeline, v model.DebtView, startDay int, month 
 
 func decimalString(s string) string { return vo.NewDecimal(s).String() }
 
-// debtMonthFigures are a debt row's projected figures for one month.
-type debtMonthFigures struct {
-	closingBalance           string
-	paymentsLeft             int
-	scheduledTotal, stillDue string
-}
-
-// monthFigures is the row's month of the projection; a debt not set up has
-// no balance to count down and nothing scheduled.
-func monthFigures(tl model.DebtTimeline, v model.DebtView, startDay int, month time.Time) debtMonthFigures {
+// elementDebt is the debt's figures for month on its element. A debt not set
+// up has no balance to count down, nothing scheduled and no payoff.
+func elementDebt(v model.DebtView, timelines map[string]model.DebtTimeline, startDay int, month time.Time) *model.ElementDebtResult {
+	out := &model.ElementDebtResult{Id: v.ID, IsSetUp: boolToInt(v.SetUp), IsPaidOff: boolToInt(v.PaidOff), ScheduledTotal: "0", Upcoming: "0"}
 	if !v.SetUp {
-		return debtMonthFigures{scheduledTotal: "0", stillDue: "0"}
+		return out
 	}
+	tl := timelines[v.ID]
 	tm := timelineMonth(tl, v, startDay, month)
-	return debtMonthFigures{
-		closingBalance: decimalString(tm.ClosingBalance), paymentsLeft: tm.PaymentsLeft,
-		scheduledTotal: decimalString(tm.ScheduledTotal), stillDue: decimalString(tm.StillDue),
-	}
-}
-
-// debtPayoffFigures are the payoff date and overpayment, with and without
-// the planned extras; all "" for a debt not set up.
-type debtPayoffFigures struct {
-	payoffDate, basePayoffDate           string
-	overpaymentLeft, baseOverpaymentLeft string
-}
-
-func payoffFigures(tl model.DebtTimeline, v model.DebtView) debtPayoffFigures {
-	if !v.SetUp {
-		return debtPayoffFigures{}
-	}
-	return debtPayoffFigures{
-		payoffDate: tl.PayoffDate, basePayoffDate: tl.BasePayoffDate,
-		overpaymentLeft: decimalString(tl.OverpaymentLeft), baseOverpaymentLeft: decimalString(tl.BaseOverpaymentLeft),
-	}
-}
-
-// emitMonthlyDebts renders get-budget's debt rows. A row shows in a month of
-// the debt's life, and outside it only when something was paid then or earlier
-// months left something over: the Available total counts that carry.
-func emitMonthlyDebts(rows []debtRow, month time.Time, startDay int, limits map[string]budgetedAmount, paid map[string]debtPaid, timelines map[string]model.DebtTimeline) []model.DebtElementResult {
-	zero := vo.NewDecimal("0")
-	out := []model.DebtElementResult{}
-	for _, r := range rows {
-		v := r.view
-		p := paid[v.ID]
-		paidNow, budgetPaid, paidBefore := orZero(p.paid, zero), orZero(p.budgetPaid, zero), orZero(p.paidBefore, zero)
-		in := plannable(v, startDay, month)
-		lim := limits[elementKey(v.ID, model.ElementDebt)]
-		budgeted, hasLimit := orZero(lim.budgeted, zero), lim.hasLimit
-		if !in {
-			budgeted, hasLimit = zero, false
-		}
-		available := orZero(lim.budgetedBefore, zero).Sub(paidBefore).Add(budgeted).Sub(paidNow)
-		if !in && paidNow.IsZero() && available.IsZero() {
-			continue
-		}
-		tl := timelines[v.ID]
-		mf, pf := monthFigures(tl, v, startDay, month), payoffFigures(tl, v)
-		out = append(out, model.DebtElementResult{
-			Id: v.ID, Type: int(model.ElementDebt.Int16()), Name: v.Name, Icon: v.Icon,
-			CurrencyId: v.CurrencyID, Position: len(out),
-			Budgeted: budgeted.String(), IsBudgeted: boolToInt(hasLimit),
-			Spent: paidNow.String(), BudgetSpent: budgetPaid.String(), Available: available.String(),
-			ClosingBalance: mf.closingBalance, PaymentsLeft: mf.paymentsLeft,
-			ScheduledTotal: mf.scheduledTotal, Upcoming: mf.stillDue,
-			PayoffDate: pf.payoffDate, BasePayoffDate: pf.basePayoffDate,
-			OverpaymentLeft: pf.overpaymentLeft, BaseOverpaymentLeft: pf.baseOverpaymentLeft,
-			IsPaidOff: boolToInt(v.PaidOff), IsPlannable: boolToInt(in), IsSetUp: boolToInt(v.SetUp),
-		})
-	}
+	out.ClosingBalance, out.PaymentsLeft = decimalString(tm.ClosingBalance), tm.PaymentsLeft
+	out.ScheduledTotal, out.Upcoming = decimalString(tm.ScheduledTotal), decimalString(tm.StillDue)
+	out.PayoffDate, out.BasePayoffDate = tl.PayoffDate, tl.BasePayoffDate
+	out.OverpaymentLeft, out.BaseOverpaymentLeft = decimalString(tl.OverpaymentLeft), decimalString(tl.BaseOverpaymentLeft)
 	return out
 }
 
-// emitPlanDebts renders the plan's debt rows: a row shows when a window month
-// lies in the debt's life or holds a payment; a cell outside the debt's life
-// shows no plan.
-func emitPlanDebts(rows []debtRow, months []time.Time, startDay int, plannedFor func(string) []string, get func(string) vo.DecimalNumber, timelines map[string]model.DebtTimeline) []model.PlanDebtElementResult {
-	out := []model.PlanDebtElementResult{}
-	for _, r := range rows {
-		v := r.view
-		index := elementKey(v.ID, model.ElementDebt)
-		planned := plannedFor(index)
-		tl := timelines[v.ID]
-		visible := false
-		cells := make([]model.PlanDebtCellResult, len(months))
-		for i, m := range months {
-			actual := get(planKey(i, index))
-			in := plannable(v, startDay, m)
-			visible = visible || in || !actual.IsZero()
-			plan := planned[i]
-			if !in {
-				plan = ""
-			}
-			mf := monthFigures(tl, v, startDay, m)
-			cells[i] = model.PlanDebtCellResult{
-				Actual: actual.String(), Planned: plan,
-				ClosingBalance: mf.closingBalance, PaymentsLeft: mf.paymentsLeft,
-				ScheduledTotal: mf.scheduledTotal, Upcoming: mf.stillDue,
-				IsPlannable: boolToInt(in),
-			}
-		}
-		if !visible {
-			continue
-		}
-		pf := payoffFigures(tl, v)
-		out = append(out, model.PlanDebtElementResult{
-			Id: v.ID, Type: int(model.ElementDebt.Int16()), Name: v.Name, Icon: v.Icon,
-			CurrencyId: v.CurrencyID, Position: len(out),
-			PayoffDate: pf.payoffDate, BasePayoffDate: pf.basePayoffDate,
-			OverpaymentLeft: pf.overpaymentLeft, BaseOverpaymentLeft: pf.baseOverpaymentLeft,
-			IsPaidOff: boolToInt(v.PaidOff), IsSetUp: boolToInt(v.SetUp), Cells: cells,
-		})
-	}
-	return out
+// carriesDebt reports whether a row of this type can carry a debt: a
+// top-level expense category or an expense envelope.
+func carriesDebt(t model.ElementType) bool {
+	return t == model.ElementCategory || t == model.ElementEnvelope
 }

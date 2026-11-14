@@ -185,9 +185,6 @@ func (s *Service) CreateComment(ctx context.Context, userID vo.Id, req model.Cre
 		if gerr != nil {
 			return gerr
 		}
-		if derr := s.checkDebtPeriod(txCtx, b, element, period); derr != nil {
-			return derr
-		}
 		c, verr := model.NewBudgetElementComment(commentID, element.ID, userID, req.Comment, period, now)
 		if verr != nil {
 			return verr

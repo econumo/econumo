@@ -22,7 +22,7 @@ import (
 // is unused by buildElementsSpending.
 type spendingStub struct{ rows []model.SpendingRow }
 
-func (s *spendingStub) CountSpending(context.Context, vo.Id, []vo.Id, []vo.Id, time.Time, time.Time) ([]model.SpendingRow, error) {
+func (s *spendingStub) CountSpending(context.Context, []vo.Id, []vo.Id, time.Time, time.Time) ([]model.SpendingRow, error) {
 	return s.rows, nil
 }
 
@@ -42,7 +42,7 @@ func (s *spendingStub) SummarizedLimits(context.Context, vo.Id, time.Time, time.
 	return nil, nil
 }
 
-func (s *spendingStub) SpendingByMonth(context.Context, vo.Id, []vo.Id, []vo.Id, time.Time, time.Time, int) ([]model.MonthlySpendingRow, error) {
+func (s *spendingStub) SpendingByMonth(context.Context, []vo.Id, []vo.Id, time.Time, time.Time, int) ([]model.MonthlySpendingRow, error) {
 	return nil, nil
 }
 
@@ -82,15 +82,11 @@ func (s *spendingStub) AccountsIncomeExpenseByMonth(context.Context, []vo.Id, ti
 	return nil, nil
 }
 
-func (s *spendingStub) BudgetTransactionsByCategories(context.Context, vo.Id, []vo.Id, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+func (s *spendingStub) BudgetTransactionsByCategories(context.Context, []vo.Id, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
 	return nil, nil
 }
 
-func (s *spendingStub) BudgetTransactionsByDebt(context.Context, model.DebtView, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
-	return nil, nil
-}
-
-func (s *spendingStub) BudgetTransactionsByTag(context.Context, vo.Id, vo.Id, *vo.Id, bool, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+func (s *spendingStub) BudgetTransactionsByTag(context.Context, vo.Id, *vo.Id, bool, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
 	return nil, nil
 }
 

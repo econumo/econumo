@@ -175,10 +175,6 @@ func (f *fakeComments) RepointComments(ctx context.Context, srcElementID, dstEle
 	return nil
 }
 
-func (f *fakeComments) RepointCommentsBetween(context.Context, vo.Id, vo.Id, time.Time, time.Time) error {
-	return nil
-}
-
 func (f *fakeComments) DeleteCommentsByBudget(ctx context.Context, budgetID vo.Id) error { return nil }
 
 type mergeEnv struct {

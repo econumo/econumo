@@ -43,9 +43,7 @@ const (
 	CodeBudgetFolderSideMixed           = "budget.folder_side_mixed"
 	CodeBudgetEnvelopeMemberNotCategory = "budget.envelope_member_not_category"
 	CodeBudgetSavingsFolderNotAllowed   = "budget.savings_folder_not_allowed"
-	CodeBudgetDebtFolderNotAllowed      = "budget.debt_folder_not_allowed"
-	CodeBudgetDebtPeriodOutOfRange      = "budget.debt_period_out_of_range"
-	CodeBudgetDebtCurrencyFixed         = "budget.debt_currency_fixed"
+	CodeBudgetElementHasDebt            = "budget.element_has_debt"
 	CodeBudgetAccountNotRemovable       = "budget.account_not_removable"
 	CodeBudgetSavingsAccountNotMember   = "budget.savings_account_not_member"
 	CodeBudgetSavingsRemovalUnconfirmed = "budget.savings_removal_unconfirmed"
@@ -151,7 +149,6 @@ const (
 	CodeDebtStartBeforePreviousEnd      = "debt.start_before_previous_end"
 	CodeDebtCannotReopen                = "debt.cannot_reopen"
 	CodeDebtPaidOff                     = "debt.paid_off"
-	CodeDebtRemovalUnconfirmed          = "debt.removal_unconfirmed"
 	CodeDebtLastPaymentInPast           = "debt.last_payment_in_past"
 	CodeDebtLastPaymentBeforeStart      = "debt.last_payment_before_start"
 	CodeDebtStartInFuture               = "debt.start_in_future"
@@ -201,9 +198,7 @@ var AllCodes = []string{
 	CodeBudgetFolderSideMixed,
 	CodeBudgetEnvelopeMemberNotCategory,
 	CodeBudgetSavingsFolderNotAllowed,
-	CodeBudgetDebtFolderNotAllowed,
-	CodeBudgetDebtPeriodOutOfRange,
-	CodeBudgetDebtCurrencyFixed,
+	CodeBudgetElementHasDebt,
 	CodeBudgetAccountNotRemovable,
 	CodeBudgetSavingsAccountNotMember,
 	CodeBudgetSavingsRemovalUnconfirmed,
@@ -315,7 +310,6 @@ var AllCodes = []string{
 	CodeDebtStartBeforePreviousEnd,
 	CodeDebtCannotReopen,
 	CodeDebtPaidOff,
-	CodeDebtRemovalUnconfirmed,
 	CodeDebtLastPaymentInPast,
 	CodeDebtLastPaymentBeforeStart,
 	CodeDebtStartInFuture,

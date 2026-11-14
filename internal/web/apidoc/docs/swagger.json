@@ -2916,12 +2916,6 @@
                         "description": "Every transaction on this account; currently only the budget's savings accounts are accepted (composes with nothing)",
                         "name": "accountId",
                         "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "The payments a debt row of this budget counts, from its everyday accounts (composes with nothing)",
-                        "name": "debtId",
-                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -16344,80 +16338,6 @@
                 }
             }
         },
-        "model.DebtElementResult": {
-            "type": "object",
-            "properties": {
-                "available": {
-                    "type": "string"
-                },
-                "baseOverpaymentLeft": {
-                    "type": "string"
-                },
-                "basePayoffDate": {
-                    "type": "string"
-                },
-                "budgetSpent": {
-                    "type": "string"
-                },
-                "budgeted": {
-                    "type": "string"
-                },
-                "closingBalance": {
-                    "type": "string"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isArchived": {
-                    "type": "integer"
-                },
-                "isBudgeted": {
-                    "type": "integer"
-                },
-                "isPaidOff": {
-                    "type": "integer"
-                },
-                "isPlannable": {
-                    "type": "integer"
-                },
-                "isSetUp": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "overpaymentLeft": {
-                    "type": "string"
-                },
-                "paymentsLeft": {
-                    "type": "integer"
-                },
-                "payoffDate": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "scheduledTotal": {
-                    "type": "string"
-                },
-                "spent": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "integer"
-                },
-                "upcoming": {
-                    "type": "string"
-                }
-            }
-        },
         "model.DebtForecastItem": {
             "type": "object",
             "properties": {
@@ -16891,6 +16811,44 @@
             "type": "object",
             "properties": {
                 "eventId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ElementDebtResult": {
+            "type": "object",
+            "properties": {
+                "baseOverpaymentLeft": {
+                    "type": "string"
+                },
+                "basePayoffDate": {
+                    "type": "string"
+                },
+                "closingBalance": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isPaidOff": {
+                    "type": "integer"
+                },
+                "isSetUp": {
+                    "type": "integer"
+                },
+                "overpaymentLeft": {
+                    "type": "string"
+                },
+                "paymentsLeft": {
+                    "type": "integer"
+                },
+                "payoffDate": {
+                    "type": "string"
+                },
+                "scheduledTotal": {
+                    "type": "string"
+                },
+                "upcoming": {
                     "type": "string"
                 }
             }
@@ -18559,6 +18517,14 @@
                 "currencyId": {
                     "type": "string"
                 },
+                "debt": {
+                    "description": "Debt is the debt in force on this element in the period: its active\ndebt, or a paid-off one whose start..end covers the period. Only a\ntop-level expense category or an expense envelope carries one.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ElementDebtResult"
+                        }
+                    ]
+                },
                 "folderId": {
                     "type": "string"
                 },
@@ -18652,6 +18618,14 @@
                 "actual": {
                     "type": "string"
                 },
+                "debt": {
+                    "description": "Debt is the debt in force on the row in this cell's period, with its\nfigures for the period.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ElementDebtResult"
+                        }
+                    ]
+                },
                 "planned": {
                     "type": "string"
                 },
@@ -18700,79 +18674,6 @@
                 }
             }
         },
-        "model.PlanDebtCellResult": {
-            "type": "object",
-            "properties": {
-                "actual": {
-                    "type": "string"
-                },
-                "closingBalance": {
-                    "type": "string"
-                },
-                "isPlannable": {
-                    "type": "integer"
-                },
-                "paymentsLeft": {
-                    "type": "integer"
-                },
-                "planned": {
-                    "type": "string"
-                },
-                "scheduledTotal": {
-                    "type": "string"
-                },
-                "upcoming": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.PlanDebtElementResult": {
-            "type": "object",
-            "properties": {
-                "baseOverpaymentLeft": {
-                    "type": "string"
-                },
-                "basePayoffDate": {
-                    "type": "string"
-                },
-                "cells": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PlanDebtCellResult"
-                    }
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isPaidOff": {
-                    "type": "integer"
-                },
-                "isSetUp": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "overpaymentLeft": {
-                    "type": "string"
-                },
-                "payoffDate": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "integer"
-                }
-            }
-        },
         "model.PlanElementResult": {
             "type": "object",
             "properties": {
@@ -18790,6 +18691,14 @@
                 },
                 "currencyId": {
                     "type": "string"
+                },
+                "debt": {
+                    "description": "Debt is the element's active debt, with its figures for the caller's\ncurrent period; each cell carries the debt in force in its own period.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ElementDebtResult"
+                        }
+                    ]
                 },
                 "folderId": {
                     "type": "string"
@@ -18914,12 +18823,6 @@
         "model.PlanStructureResult": {
             "type": "object",
             "properties": {
-                "debts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PlanDebtElementResult"
-                    }
-                },
                 "elements": {
                     "type": "array",
                     "items": {
@@ -19636,12 +19539,6 @@
         "model.StructureResult": {
             "type": "object",
             "properties": {
-                "debts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.DebtElementResult"
-                    }
-                },
                 "elements": {
                     "type": "array",
                     "items": {

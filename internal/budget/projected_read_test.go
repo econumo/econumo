@@ -169,7 +169,7 @@ func TestProjectedRead_CountSpendingFilesLikeSQL(t *testing.T) {
 	bare := prTemplate(t, model.TransactionTypeExpense, prEveryday, "7", model.RecurringScheduleMonthly)
 	p := prRead(t, prService(&recurringSourceStub{templates: []*model.RecurringTransaction{tagged, bare}}, nil), prEveryday)
 
-	rows, err := p.CountSpending(context.Background(), vo.Id{}, prIDs(t, prCat), prIDs(t, prEveryday), prNov, prDec)
+	rows, err := p.CountSpending(context.Background(), prIDs(t, prCat), prIDs(t, prEveryday), prNov, prDec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestProjectedRead_CountSpendingFilesLikeSQL(t *testing.T) {
 	}
 
 	// A category outside the set drops the row; NULL-category rows stay.
-	rows, err = p.CountSpending(context.Background(), vo.Id{}, nil, prIDs(t, prEveryday), prNov, prDec)
+	rows, err = p.CountSpending(context.Background(), nil, prIDs(t, prEveryday), prNov, prDec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestProjectedRead_SpendingByMonthBuckets(t *testing.T) {
 	weekly := prTemplate(t, model.TransactionTypeExpense, prEveryday, "10", model.RecurringScheduleWeekly)
 	p := prRead(t, prService(&recurringSourceStub{templates: []*model.RecurringTransaction{weekly}}, nil), prEveryday)
 
-	rows, err := p.SpendingByMonth(context.Background(), vo.Id{}, nil, prIDs(t, prEveryday), prNov, prJan, 1)
+	rows, err := p.SpendingByMonth(context.Background(), nil, prIDs(t, prEveryday), prNov, prJan, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -414,11 +414,11 @@ func TestProjectedRead_NoOccurrencesIsEmpty(t *testing.T) {
 			t.Errorf("%s: %d rows, err %v; want none", name, n, err)
 		}
 	}
-	r1, err := p.CountSpending(ctx, vo.Id{}, nil, acc, prNov, prJan)
+	r1, err := p.CountSpending(ctx, nil, acc, prNov, prJan)
 	check("CountSpending", len(r1), err)
 	r2, err := p.CountSpendingByLabel(ctx, acc, prNov, prJan)
 	check("CountSpendingByLabel", len(r2), err)
-	r3, err := p.SpendingByMonth(ctx, vo.Id{}, nil, acc, prNov, prJan, 1)
+	r3, err := p.SpendingByMonth(ctx, nil, acc, prNov, prJan, 1)
 	check("SpendingByMonth", len(r3), err)
 	r4, err := p.IncomeByMonth(ctx, acc, prNov, prJan, 1)
 	check("IncomeByMonth", len(r4), err)
@@ -472,7 +472,7 @@ func TestProjectedRead_ByMonthStartDay(t *testing.T) {
 	ctx, acc := context.Background(), prIDs(t, prEveryday)
 
 	for startDay, want := range map[int]string{28: "2026-10-01", 1: "2026-11-01"} {
-		spend, err := p.SpendingByMonth(ctx, vo.Id{}, nil, acc, prNov, prDec, startDay)
+		spend, err := p.SpendingByMonth(ctx, nil, acc, prNov, prDec, startDay)
 		if err != nil {
 			t.Fatal(err)
 		}

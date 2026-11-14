@@ -87,7 +87,7 @@ func TestBudgetReadRepo_CountSpending_MonthBoundary(t *testing.T) {
 
 	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
-	rows, err := read.CountSpending(ctx, vo.Id{}, []vo.Id{vo.MustParseId(cat)}, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	rows, err := read.CountSpending(ctx, []vo.Id{vo.MustParseId(cat)}, []vo.Id{vo.MustParseId(acctA)}, start, end)
 	if err != nil {
 		t.Fatalf("CountSpending: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestBudgetReadRepo_CountSpending_MonthBoundary(t *testing.T) {
 	// Empty account id set (every account excluded from the budget) -> nil,nil,
 	// not an "a.id IN ()" query: that's a no-op on SQLite but a PostgreSQL
 	// syntax error, so it must short-circuit like the empty-categoryIDs case.
-	none, err := read.CountSpending(ctx, vo.Id{}, []vo.Id{vo.MustParseId(cat)}, nil, start, end)
+	none, err := read.CountSpending(ctx, []vo.Id{vo.MustParseId(cat)}, nil, start, end)
 	if err != nil || none != nil {
 		t.Errorf("empty account ids should be nil,nil; got %v, %v", none, err)
 	}
@@ -125,7 +125,7 @@ func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {
 	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
 
-	rows, err := read.BudgetTransactionsByTag(ctx, vo.Id{}, vo.MustParseId(tag), nil, false, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	rows, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, false, []vo.Id{vo.MustParseId(acctA)}, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByTag: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {
 
 	// The categoryID filter narrows further; a non-matching category yields none.
 	catID := vo.MustParseId(cat)
-	withCat, err := read.BudgetTransactionsByTag(ctx, vo.Id{}, vo.MustParseId(tag), &catID, false, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	withCat, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), &catID, false, []vo.Id{vo.MustParseId(acctA)}, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByTag with category: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {
 		t.Fatalf("want 1 row with matching category filter, got %d", len(withCat))
 	}
 	otherCatID := vo.NewId()
-	none, err := read.BudgetTransactionsByTag(ctx, vo.Id{}, vo.MustParseId(tag), &otherCatID, false, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	none, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), &otherCatID, false, []vo.Id{vo.MustParseId(acctA)}, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByTag mismatching category: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {
 	}
 
 	// Empty account id set short-circuits to nil, nil.
-	empty, err := read.BudgetTransactionsByTag(ctx, vo.Id{}, vo.MustParseId(tag), nil, false, nil, start, end)
+	empty, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, false, nil, start, end)
 	if err != nil || empty != nil {
 		t.Errorf("empty account ids should be nil,nil; got %v, %v", empty, err)
 	}
@@ -220,7 +220,7 @@ func TestBudgetReadRepo_BudgetTransactionsByCategories(t *testing.T) {
 	catIDs := []vo.Id{vo.MustParseId(cat)}
 	accIDs := []vo.Id{vo.MustParseId(acctA)}
 
-	rows, err := read.BudgetTransactionsByCategories(ctx, vo.Id{}, catIDs, accIDs, start, end)
+	rows, err := read.BudgetTransactionsByCategories(ctx, catIDs, accIDs, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByCategories: %v", err)
 	}
@@ -233,10 +233,10 @@ func TestBudgetReadRepo_BudgetTransactionsByCategories(t *testing.T) {
 
 	// Empty id sets short-circuit: "IN ()" is a no-op on SQLite but a PostgreSQL
 	// syntax error, so both lists must be guarded.
-	if none, err := read.BudgetTransactionsByCategories(ctx, vo.Id{}, nil, accIDs, start, end); err != nil || none != nil {
+	if none, err := read.BudgetTransactionsByCategories(ctx, nil, accIDs, start, end); err != nil || none != nil {
 		t.Errorf("empty category ids should be nil,nil; got %v, %v", none, err)
 	}
-	if none, err := read.BudgetTransactionsByCategories(ctx, vo.Id{}, catIDs, nil, start, end); err != nil || none != nil {
+	if none, err := read.BudgetTransactionsByCategories(ctx, catIDs, nil, start, end); err != nil || none != nil {
 		t.Errorf("empty account ids should be nil,nil; got %v, %v", none, err)
 	}
 }
@@ -264,7 +264,7 @@ func TestBudgetReadRepo_Drilldown_MonthBoundary(t *testing.T) {
 	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
 	accIDs := []vo.Id{vo.MustParseId(acctA)}
 
-	byCat, err := read.BudgetTransactionsByCategories(ctx, vo.Id{}, []vo.Id{vo.MustParseId(cat)}, accIDs, start, end)
+	byCat, err := read.BudgetTransactionsByCategories(ctx, []vo.Id{vo.MustParseId(cat)}, accIDs, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByCategories: %v", err)
 	}
@@ -275,7 +275,7 @@ func TestBudgetReadRepo_Drilldown_MonthBoundary(t *testing.T) {
 		t.Errorf("wrong row: %q", byCat[0].ID)
 	}
 
-	byTag, err := read.BudgetTransactionsByTag(ctx, vo.Id{}, vo.MustParseId(tag), nil, false, accIDs, start, end)
+	byTag, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, false, accIDs, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByTag: %v", err)
 	}
@@ -374,7 +374,7 @@ func TestBudgetReadRepo_CountSpending_NullCategory(t *testing.T) {
 
 	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
-	rows, err := read.CountSpending(ctx, vo.Id{}, []vo.Id{vo.MustParseId(cat)}, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	rows, err := read.CountSpending(ctx, []vo.Id{vo.MustParseId(cat)}, []vo.Id{vo.MustParseId(acctA)}, start, end)
 	if err != nil {
 		t.Fatalf("CountSpending: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestBudgetReadRepo_CountSpending_NullCategory(t *testing.T) {
 	// than short-circuiting -- and must not emit "IN ()", a PostgreSQL syntax
 	// error. Assert WHICH rows come back, not just how many: a count alone
 	// would pass if the predicate returned the wrong two rows.
-	noCats, err := read.CountSpending(ctx, vo.Id{}, nil, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	noCats, err := read.CountSpending(ctx, nil, []vo.Id{vo.MustParseId(acctA)}, start, end)
 	if err != nil {
 		t.Fatalf("CountSpending with no categories: %v", err)
 	}
@@ -399,7 +399,7 @@ func TestBudgetReadRepo_CountSpending_NullCategory(t *testing.T) {
 	})
 
 	// No accounts still short-circuits.
-	if none, err := read.CountSpending(ctx, vo.Id{}, []vo.Id{vo.MustParseId(cat)}, nil, start, end); err != nil || none != nil {
+	if none, err := read.CountSpending(ctx, []vo.Id{vo.MustParseId(cat)}, nil, start, end); err != nil || none != nil {
 		t.Errorf("empty account ids should be nil,nil; got %v, %v", none, err)
 	}
 }
@@ -445,7 +445,7 @@ func TestBudgetReadRepo_UncategorizedDrilldown(t *testing.T) {
 		t.Errorf("amount mismatch: %q", uncat[0].Amount)
 	}
 
-	byTagUncat, err := read.BudgetTransactionsByTag(ctx, vo.Id{}, vo.MustParseId(tag), nil, true, accIDs, start, end)
+	byTagUncat, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, true, accIDs, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByTag uncategorized: %v", err)
 	}
@@ -477,7 +477,7 @@ func TestBudgetReadRepo_DrilldownOrdersByDayThenSortKey(t *testing.T) {
 	f.Transaction(fixture.Transaction{ID: morning, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "1", SpentAt: "2024-04-05 08:00:00", SortKey: "a2"})
 	f.Transaction(fixture.Transaction{ID: evening, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "2", SpentAt: "2024-04-05 20:00:00", SortKey: "a1"})
 	f.Transaction(fixture.Transaction{ID: earlier, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "3", SpentAt: "2024-04-04 23:00:00", SortKey: "a5"})
-	rows, err := read.BudgetTransactionsByCategories(ctx, vo.Id{}, []vo.Id{vo.MustParseId(cat)}, []vo.Id{vo.MustParseId(acctA)},
+	rows, err := read.BudgetTransactionsByCategories(ctx, []vo.Id{vo.MustParseId(cat)}, []vo.Id{vo.MustParseId(acctA)},
 		time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)

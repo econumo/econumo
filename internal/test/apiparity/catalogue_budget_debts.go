@@ -2,9 +2,10 @@ package apiparity
 
 import "time"
 
-// budget_debts: the debt rows of get-budget and get-budget-plan, and the debt
-// row's drill-down, in a budget shared with a partner who adds a debt to it
-// too, on their own category.
+// budget_debts: debts on budget elements in get-budget and get-budget-plan,
+// in a budget shared with a partner who tracks a debt on their own category
+// too. A debt only adds figures to its element: payments, plans and totals
+// stay the element's own.
 //
 // The figures must not depend on the day the suite runs, so each debt is 100
 // paid back by one monthly payment of 105 on today's day of the next month
@@ -13,20 +14,20 @@ import "time"
 // start day, which pays no due), has nothing still due and a balance of 100
 // with one payment left; the next month has the 105 due and closes at 0 (a
 // one-payment loan accrues 5 whatever the length of its prorated first
-// period). The owner's 50 payment today, the loan's start day, counts on the
-// debt row, not on the category's, and comes fully off the 100; with nothing
-// scheduled this month, 55 of the owner's plan of 105 is extra, which pays
-// off the 50 left: that debt closes the current month at 0 with nothing
-// scheduled after. The plan window runs from the previous month, before the debts
-// start, to the month after the last payment, so its first and last cells are
-// not plannable. Months stay out of the recorded paths (see
-// budget_upcoming_recurring).
+// period). The owner's 50 payment today, the loan's start day, stays in the
+// loan category's spent and comes fully off the 100; with nothing scheduled
+// this month, 55 of the category's plan of 105 is extra, which pays off the
+// 50 left: that debt closes the current month at 0 with nothing scheduled
+// after. The plan window runs from the previous month, before the debts
+// start, so its first cells carry no debt. Months stay out of the recorded
+// paths (see budget_upcoming_recurring).
+//
+// An expense envelope carries a debt too (not set up). A category whose debt
+// is active cannot go into an envelope, by move-element or create-envelope.
 //
 // Last, the owner adds a debt with no terms (payment and schedule only) on a
 // third category and pays 30 into it today: get-budget and get-budget-plan
-// then show it not set up, with its Paid, no balance, nothing scheduled and
-// plannable from the current month with no end. A debt shows its category's
-// name and icon.
+// then show it not set up, with no balance and nothing scheduled.
 func init() {
 	register(Scenario{Name: "budget_debts", Calls: func() []Call {
 		now := ClockTime.Format("2006-01-02 15:04:05")
@@ -44,6 +45,7 @@ func init() {
 		setup := func(debtID *string) map[string]any {
 			return map[string]any{"id": debtID, "amountBorrowed": "100", "startDate": ClockTime.Format("2006-01-02"), "lastPaymentDate": lastPayment}
 		}
+		const envelope = "d2000000-0000-0000-0000-0000000000e1"
 		var loanCat, bikeCat, studyCat, ownerDebt, partnerDebt string
 		txList := "/api/v1/budget/get-transaction-list?budgetId=" + Budget + "&periodStart="
 		return []Call{
@@ -59,13 +61,22 @@ func init() {
 				Body: map[string]any{"id": "d2000000-0000-0000-0000-0000000000b1", "type": "expense", "amount": "50.00",
 					"accountId": OwnerAccount, "categoryId": &loanCat, "date": now, "description": "loan"}},
 			{Label: "owner-plans-current-month", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
-				Body: map[string]any{"budgetId": Budget, "elementId": &ownerDebt, "period": month, "amount": "105"}},
+				Body: map[string]any{"budgetId": Budget, "elementId": &loanCat, "period": month, "amount": "105"}},
 			{Label: "partner-creates-loan-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "guest",
 				Body:          map[string]any{"id": "d2000000-0000-0000-0000-0000000000a2", "name": "Bike loan", "type": "expense", "icon": "bike"},
 				CaptureIDInto: &bikeCat},
 			{Label: "partner-creates-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "guest",
 				Body: debt(&bikeCat), CaptureIDInto: &partnerDebt},
 			{Label: "partner-sets-up-debt", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "guest", Body: setup(&partnerDebt)},
+			{Label: "owner-creates-envelope", Method: "POST", Path: "/api/v1/budget/create-envelope", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "id": envelope, "name": "Housing", "icon": "home", "currencyId": USD, "categories": []any{}}},
+			{Label: "owner-creates-envelope-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "elementId": envelope, "payment": "300", "schedule": "monthly"}},
+			{Label: "err:move-category-with-debt-into-envelope", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "id": &loanCat, "envelopeId": envelope}},
+			{Label: "err:create-envelope-with-category-with-debt", Method: "POST", Path: "/api/v1/budget/create-envelope", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "id": "d2000000-0000-0000-0000-0000000000e2", "name": "Loans", "icon": "bank",
+					"currencyId": USD, "categories": []any{&loanCat}}},
 
 			{Label: "owner-get-budget", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
 			{Label: "partner-get-budget", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "guest"},
@@ -73,18 +84,8 @@ func init() {
 				Path:       "/api/v1/budget/get-budget-plan?id=" + Budget + "&from=" + previous + "&months=4",
 				GoldenPath: "/api/v1/budget/get-budget-plan?id=" + Budget + "&from=<previous-month>&months=4", Auth: "owner"},
 
-			{Label: "debt-transaction-list", Method: "GET", Auth: "owner",
-				Path: txList + month + "&debtId=", GoldenPath: txList + "<current-month>&debtId=", PathID: &ownerDebt},
-			{Label: "category-transaction-list-without-the-payment", Method: "GET", Auth: "owner",
+			{Label: "category-transaction-list-with-the-payment", Method: "GET", Auth: "owner",
 				Path: txList + month + "&categoryId=", GoldenPath: txList + "<current-month>&categoryId=", PathID: &loanCat},
-			{Label: "partner-debt-transaction-list", Method: "GET", Auth: "guest",
-				Path: txList + month + "&debtId=", GoldenPath: txList + "<current-month>&debtId=", PathID: &partnerDebt},
-			{Label: "err:debt-transaction-list-unknown-debt", Method: "GET", Auth: "owner",
-				Path:       txList + month + "&debtId=d2000000-0000-0000-0000-0000000000ff",
-				GoldenPath: txList + "<current-month>&debtId=d2000000-0000-0000-0000-0000000000ff"},
-			{Label: "err:debt-transaction-list-with-category", Method: "GET", Auth: "owner",
-				Path:       txList + month + "&categoryId=" + CatFood + "&debtId=",
-				GoldenPath: txList + "<current-month>&categoryId=" + CatFood + "&debtId=", PathID: &ownerDebt},
 
 			{Label: "owner-creates-study-category", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
 				Body:          map[string]any{"id": "d2000000-0000-0000-0000-0000000000a3", "name": "Study loan", "type": "expense", "icon": "school"},

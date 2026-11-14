@@ -35,7 +35,7 @@ func TestSpendingByMonthStartDay(t *testing.T) {
 	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000004", UserID: userA, AccountID: acctA, CategoryID: catFood, Type: 0, Amount: "10.00", SpentAt: "2026-11-28 00:00:00"})
 
 	cats, accs := []vo.Id{vo.MustParseId(catFood)}, []vo.Id{vo.MustParseId(acctA)}
-	rows, err := read.SpendingByMonth(ctx, vo.Id{}, cats, accs, psSep28, psNov28, 28)
+	rows, err := read.SpendingByMonth(ctx, cats, accs, psSep28, psNov28, 28)
 	if err != nil {
 		t.Fatalf("SpendingByMonth d=28: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestSpendingByMonthStartDay(t *testing.T) {
 		}
 	}
 
-	rows, err = read.SpendingByMonth(ctx, vo.Id{}, cats, accs, psOct1, psDec1, 1)
+	rows, err = read.SpendingByMonth(ctx, cats, accs, psOct1, psDec1, 1)
 	if err != nil {
 		t.Fatalf("SpendingByMonth d=1: %v", err)
 	}

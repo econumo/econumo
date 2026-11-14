@@ -44,18 +44,9 @@ type structChild struct {
 	subIndex   string // for looking up converted amounts
 }
 
-// debtPaid is what a debt's matched payments on the budget's everyday
-// accounts add up to: paid in the period and paidBefore over the months from
-// the budget's start to the period, both in the debt's currency, and
-// budgetPaid, the period's in the budget's currency: the expense totals add
-// it to the element rows' spent.
-type debtPaid struct {
-	paid, budgetPaid, paidBefore vo.DecimalNumber
-}
-
 // buildStructure walks envelopes -> tags -> standalone categories, accumulates a
 // toConvert map, runs one bulkConvert, then emits the pruned, sorted parent
-// elements and the savings and debt rows.
+// elements.
 func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filters, limits map[string]budgetedAmount, spending map[string]*elementSpending) (model.StructureResult, error) {
 	options := s.elementOptions(b)
 
@@ -281,10 +272,6 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		}
 	}
 
-	if err := addDebtPaidConvert(toConvert, f.debtViews, spending, budgetCurrencyID); err != nil {
-		return model.StructureResult{}, err
-	}
-
 	savings, err := s.addMonthlySavings(ctx, b, f, options, toConvert)
 	if err != nil {
 		return model.StructureResult{}, err
@@ -300,6 +287,16 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			return v
 		}
 		return zero
+	}
+
+	inForce := debtsInForce(f.debtViews, f.startDay, f.periodKey)
+	shown := make([]model.DebtView, 0, len(inForce))
+	for _, v := range inForce {
+		shown = append(shown, v)
+	}
+	timelines, err := s.debtTimelines(ctx, b, f, shown, []time.Time{f.periodKey})
+	if err != nil {
+		return model.StructureResult{}, err
 	}
 
 	result := []model.ParentElementResult{}
@@ -346,6 +343,9 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			Spent: spent.String(), BudgetSpent: spentBudget.String(),
 			Children: children, OwnerUserId: el.ownerID,
 		})
+		if v, ok := inForce[index]; ok && carriesDebt(el.typ) {
+			result[len(result)-1].Debt = elementDebt(v, timelines, f.startDay, f.periodKey)
+		}
 	}
 	assignElementPositions(kept, result)
 	sortByPositionThenID(result, func(p model.ParentElementResult) int { return p.Position }, func(p model.ParentElementResult) string { return p.Id })
@@ -401,51 +401,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		func(l model.LabelSpendResult) string { return f.labels[l.Id].SortKey },
 		func(l model.LabelSpendResult) string { return l.Id })
 
-	paid := make(map[string]debtPaid, len(f.debtViews))
-	for _, d := range f.debtViews {
-		index := elementKey(d.ID, model.ElementDebt)
-		paid[d.ID] = debtPaid{
-			paid:       get(fmt.Sprintf("spent_%s", index)),
-			budgetPaid: get(fmt.Sprintf("spent-budget_%s", index)),
-			paidBefore: get(fmt.Sprintf("spent-before_%s", index)),
-		}
-	}
-	timelines, err := s.debtTimelines(ctx, b, f, []time.Time{f.periodKey})
-	if err != nil {
-		return model.StructureResult{}, err
-	}
-	return model.StructureResult{
-		Folders: folders, Elements: result, Labels: labels,
-		Savings: emitMonthlySavings(savings, limits, get),
-		Debts:   emitMonthlyDebts(debtRows(f, options), f.periodKey, f.startDay, limits, paid, timelines),
-	}, nil
-}
-
-// addDebtPaidConvert files each debt's attributed spending under the debt's
-// key: spent and spent-before in the debt's currency, spent-budget in the
-// budget's.
-func addDebtPaidConvert(toConvert map[string][]model.ConvertItem, views []model.DebtView, spending map[string]*elementSpending, budgetCurrency vo.Id) error {
-	for _, d := range views {
-		index := elementKey(d.ID, model.ElementDebt)
-		es := spending[index]
-		if es == nil {
-			continue
-		}
-		currencyID, err := vo.ParseId(d.CurrencyID)
-		if err != nil {
-			return err
-		}
-		for _, cs := range es.spendingInCategories {
-			for _, sp := range cs.currenciesSpent {
-				toConvert[fmt.Sprintf("spent_%s", index)] = append(toConvert[fmt.Sprintf("spent_%s", index)], convItem(sp, currencyID))
-				toConvert[fmt.Sprintf("spent-budget_%s", index)] = append(toConvert[fmt.Sprintf("spent-budget_%s", index)], convItem(sp, budgetCurrency))
-			}
-			for _, sp := range cs.currenciesSpentBefore {
-				toConvert[fmt.Sprintf("spent-before_%s", index)] = append(toConvert[fmt.Sprintf("spent-before_%s", index)], convItem(sp, currencyID))
-			}
-		}
-	}
-	return nil
+	return model.StructureResult{Folders: folders, Elements: result, Labels: labels, Savings: emitMonthlySavings(savings, limits, get)}, nil
 }
 
 // addSpendingConvert appends the spent / spent-budget / spent-before convert

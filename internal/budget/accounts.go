@@ -246,16 +246,17 @@ func (s *Service) ChangeElementCurrency(ctx context.Context, userID vo.Id, req m
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// The element's active debt follows its row's currency. The debt hook
+		// takes the budget's row lock, which goes before the element row's.
+		if s.debts != nil {
+			if derr := s.debts.LockBudget(txCtx, budgetID); derr != nil {
+				return derr
+			}
+		}
 		// elementId on the wire is the element's EXTERNAL id (category/tag/envelope).
 		el, gerr := s.getElementSelfHeal(txCtx, budgetID, elementID, now)
 		if gerr != nil {
 			return gerr
-		}
-		// A debt's plans are amounts in the debt's currency.
-		if el.Type == model.ElementDebt {
-			return errs.NewValidation("Validation failed", errs.FieldError{
-				Key: "currencyId", Message: "A debt is planned in its own currency", Code: errs.CodeBudgetDebtCurrencyFixed,
-			})
 		}
 		if el.CurrencyID == nil || !el.CurrencyID.Equal(curID) {
 			if eerr := s.currency.EnsureUsable(txCtx, userID.String(), curID.String()); eerr != nil {
@@ -263,7 +264,13 @@ func (s *Service) ChangeElementCurrency(ctx context.Context, userID vo.Id, req m
 			}
 		}
 		el.UpdateCurrency(&curID, now)
-		return s.elements.SaveElement(txCtx, el)
+		if serr := s.elements.SaveElement(txCtx, el); serr != nil {
+			return serr
+		}
+		if s.debts != nil {
+			return s.debts.SetElementCurrency(txCtx, budgetID, elementID, curID)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -313,13 +320,6 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 		element, gerr := s.getElementSelfHeal(txCtx, budgetID, externalID, now)
 		if gerr != nil {
 			return gerr
-		}
-		// Clearing stays open everywhere: a plan the debt's months no longer
-		// cover is hidden, and this is the only way to remove it.
-		if req.Amount != nil {
-			if derr := s.checkDebtPeriod(txCtx, b, element, period); derr != nil {
-				return derr
-			}
 		}
 		elementID := element.ID
 

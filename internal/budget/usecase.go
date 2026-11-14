@@ -59,8 +59,8 @@ func (s *Service) SetTransactionLabels(l TransactionLabels) { s.txLabels = l }
 // projection is empty.
 func (s *Service) SetRecurring(r RecurringSource) { s.recurring = r }
 
-// SetDebts wires the debt source behind the debt rows; the debt service is
-// built after this one. Unset, a budget has no debt rows.
+// SetDebts wires the debt source; the debt service is built after this one.
+// Unset, no element shows a debt.
 func (s *Service) SetDebts(d DebtSource) { s.debts = d }
 
 // SetShiftedPeriodRates wires the conversions used for budgets whose periods
@@ -162,14 +162,6 @@ func (a *budgetAggregate) participantIDs() []vo.Id {
 // accounts, soft-deleted ones included, as an element's Spent counts them.
 func (a *budgetAggregate) debtScope() model.DebtScope {
 	return model.DebtScope{BudgetID: a.budget.ID, AccountIDs: everydayIDs(a.accounts)}
-}
-
-// debtViews returns the budget's debts, none while no source is wired.
-func (s *Service) debtViews(ctx context.Context, scope model.DebtScope) ([]model.DebtView, error) {
-	if s.debts == nil {
-		return nil, nil
-	}
-	return s.debts.Views(ctx, scope)
 }
 
 // hasFolder reports whether folderID is one of this budget's folders. Child

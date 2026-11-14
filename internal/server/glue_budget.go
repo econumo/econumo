@@ -190,7 +190,7 @@ func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo
 			}
 			seen[t.ID.String()] = true
 			out = append(out, model.TagMeta{
-				ID: t.ID.String(), OwnerID: t.UserID.String(), Name: t.Name, Icon: t.Icon, IsArchived: t.IsArchived,
+				ID: t.ID.String(), OwnerID: t.UserID.String(), Name: t.Name, IsArchived: t.IsArchived,
 			})
 		}
 	}
@@ -229,7 +229,7 @@ func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs 
 				continue
 			}
 			seen[p.ID.String()] = true
-			out = append(out, model.PayeeMeta{ID: p.ID.String(), Name: p.Name, IsArchived: p.IsArchived})
+			out = append(out, model.PayeeMeta{ID: p.ID.String(), Name: p.Name})
 		}
 	}
 	return out, nil

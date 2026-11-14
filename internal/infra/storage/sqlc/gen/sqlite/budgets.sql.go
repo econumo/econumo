@@ -135,28 +135,6 @@ func (q *Queries) DeleteBudgetLimitsByBudget(ctx context.Context, budgetID strin
 	return err
 }
 
-const elementHasData = `-- name: ElementHasData :one
-SELECT EXISTS(
-  SELECT 1 FROM budgets_elements e
-  WHERE e.external_id = ? AND e.type = ?
-    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
-      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)))
-`
-
-type ElementHasDataParams struct {
-	ExternalID string
-	Type       int16
-}
-
-// Whether the external id's element of this type carries a limit or a comment
-// in any budget.
-func (q *Queries) ElementHasData(ctx context.Context, arg ElementHasDataParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, elementHasData, arg.ExternalID, arg.Type)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const getBudgetAccess = `-- name: GetBudgetAccess :one
 SELECT budget_id, user_id, role, is_accepted, created_at, updated_at
 FROM budgets_access WHERE budget_id = ? AND user_id = ?
@@ -1008,77 +986,6 @@ func (q *Queries) ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID 
 	return items, nil
 }
 
-const lockBudgetElementPair = `-- name: LockBudgetElementPair :many
-SELECT id FROM budgets_elements
-WHERE id IN (?1, ?2)
-ORDER BY id
-`
-
-type LockBudgetElementPairParams struct {
-	FirstID  string
-	SecondID string
-}
-
-// Plain read: SQLite serializes writers, so there is no concurrent limit
-// writer for a lock to order against.
-func (q *Queries) LockBudgetElementPair(ctx context.Context, arg LockBudgetElementPairParams) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, lockBudgetElementPair, arg.FirstID, arg.SecondID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const lockElementsByExternal = `-- name: LockElementsByExternal :many
-SELECT id FROM budgets_elements
-WHERE external_id = ? AND type = ?
-`
-
-type LockElementsByExternalParams struct {
-	ExternalID string
-	Type       int16
-}
-
-// Plain read: SQLite serializes writers, so there is no concurrent limit or
-// comment for a lock to order against.
-func (q *Queries) LockElementsByExternal(ctx context.Context, arg LockElementsByExternalParams) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, lockElementsByExternal, arg.ExternalID, arg.Type)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const lockSavingsElement = `-- name: LockSavingsElement :many
 SELECT id FROM budgets_elements
 WHERE budget_id = ? AND external_id = ? AND type = 5
@@ -1168,28 +1075,6 @@ type RepointBudgetCommentsParams struct {
 
 func (q *Queries) RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error {
 	_, err := q.db.ExecContext(ctx, repointBudgetComments, arg.ElementID, arg.ElementID_2)
-	return err
-}
-
-const repointBudgetCommentsBetween = `-- name: RepointBudgetCommentsBetween :exec
-UPDATE budgets_elements_comments SET element_id = ?
-WHERE element_id = ? AND datetime(period) >= datetime(?) AND datetime(period) <= datetime(?)
-`
-
-type RepointBudgetCommentsBetweenParams struct {
-	ElementID   string
-	ElementID_2 string
-	Datetime    interface{}
-	Datetime_2  interface{}
-}
-
-func (q *Queries) RepointBudgetCommentsBetween(ctx context.Context, arg RepointBudgetCommentsBetweenParams) error {
-	_, err := q.db.ExecContext(ctx, repointBudgetCommentsBetween,
-		arg.ElementID,
-		arg.ElementID_2,
-		arg.Datetime,
-		arg.Datetime_2,
-	)
 	return err
 }
 

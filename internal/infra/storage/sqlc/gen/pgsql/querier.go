@@ -100,9 +100,6 @@ type Querier interface {
 	// Password-reset request queries (users_password_requests). See the sqlite
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
-	// Whether the external id's element of this type carries a limit or a comment
-	// in any budget.
-	ElementHasData(ctx context.Context, arg ElementHasDataParams) (bool, error)
 	ExistsUserByEmail(ctx context.Context, arg ExistsUserByEmailParams) (bool, error)
 	// Joins users for access_level/access_until; see the sqlite sibling for why
 	// provider/id_token are deliberately omitted here.
@@ -450,10 +447,6 @@ type Querier interface {
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
-	// Locks the source and target rows of a plan transfer, in id order, before it
-	// reads their limits: a limit writer that share-locked either row first has
-	// committed by then, and one that comes later waits for the transfer.
-	LockBudgetElementPair(ctx context.Context, arg LockBudgetElementPairParams) ([]string, error)
 	// Taken by a delete or merge after the debt budgets are locked and before the
 	// debts attached to the category are deleted or moved: FOR UPDATE conflicts
 	// with the FOR KEY SHARE a debt create takes on the row, so the delete or
@@ -462,9 +455,6 @@ type Querier interface {
 	// NO KEY UPDATE leaves the KEY SHARE of child inserts (budget rows, debts)
 	// unblocked.
 	LockDebtBudget(ctx context.Context, id string) (string, error)
-	// Locks every budget's row of an external id, in id order, before a removal
-	// guard reads the rows' data (the debt counterpart of LockSavingsElement).
-	LockElementsByExternal(ctx context.Context, arg LockElementsByExternalParams) ([]string, error)
 	// Plain FOR UPDATE is required: it is the only mode that conflicts with the KEY SHARE
 	// lock a concurrent grant INSERT takes on this row through its foreign key.
 	LockOAuthClient(ctx context.Context, id string) (string, error)
@@ -516,7 +506,6 @@ type Querier interface {
 	// read is left alone, and nothing is written.
 	ReplaceCategoryIcon(ctx context.Context, arg ReplaceCategoryIconParams) (int64, error)
 	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
-	RepointBudgetCommentsBetween(ctx context.Context, arg RepointBudgetCommentsBetweenParams) error
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
 	RevokeAccessTokensByGrant(ctx context.Context, arg RevokeAccessTokensByGrantParams) error

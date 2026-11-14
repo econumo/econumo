@@ -207,28 +207,6 @@ SELECT EXISTS(
     AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
       OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)));
 
--- name: LockElementsByExternal :many
--- Plain read: SQLite serializes writers, so there is no concurrent limit or
--- comment for a lock to order against.
-SELECT id FROM budgets_elements
-WHERE external_id = ? AND type = ?;
-
--- name: LockBudgetElementPair :many
--- Plain read: SQLite serializes writers, so there is no concurrent limit
--- writer for a lock to order against.
-SELECT id FROM budgets_elements
-WHERE id IN (sqlc.arg(first_id), sqlc.arg(second_id))
-ORDER BY id;
-
--- name: ElementHasData :one
--- Whether the external id's element of this type carries a limit or a comment
--- in any budget.
-SELECT EXISTS(
-  SELECT 1 FROM budgets_elements e
-  WHERE e.external_id = ? AND e.type = ?
-    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
-      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)));
-
 -- name: RemoveBudgetAccount :exec
 DELETE FROM budgets_accounts WHERE budget_id = ? AND account_id = ?;
 
@@ -294,10 +272,6 @@ DELETE FROM budgets_elements_comments WHERE id = ?;
 
 -- name: RepointBudgetComments :exec
 UPDATE budgets_elements_comments SET element_id = ? WHERE element_id = ?;
-
--- name: RepointBudgetCommentsBetween :exec
-UPDATE budgets_elements_comments SET element_id = ?
-WHERE element_id = ? AND datetime(period) >= datetime(?) AND datetime(period) <= datetime(?);
 
 -- name: DeleteBudgetCommentsByBudget :exec
 DELETE FROM budgets_elements_comments

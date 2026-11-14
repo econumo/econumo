@@ -41,7 +41,7 @@ func TestSpendingByMonth(t *testing.T) {
 	apr := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
 	jul := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
 
-	rows, err := read.SpendingByMonth(ctx, vo.Id{}, []vo.Id{vo.MustParseId(catFood)}, []vo.Id{vo.MustParseId(acctA)}, apr, jul, 1)
+	rows, err := read.SpendingByMonth(ctx, []vo.Id{vo.MustParseId(catFood)}, []vo.Id{vo.MustParseId(acctA)}, apr, jul, 1)
 	if err != nil {
 		t.Fatalf("SpendingByMonth: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestPlanQueries_EmptyAccountSet(t *testing.T) {
 
 	// Empty accountIDs must short-circuit to (nil, nil) on BOTH engines — an
 	// empty IN () is a pgsql syntax error (same guard as CountSpending).
-	if rows, err := read.SpendingByMonth(ctx, vo.Id{}, nil, nil, apr, jul, 1); err != nil || rows != nil {
+	if rows, err := read.SpendingByMonth(ctx, nil, nil, apr, jul, 1); err != nil || rows != nil {
 		t.Errorf("SpendingByMonth empty accounts should be nil,nil; got %v, %v", rows, err)
 	}
 	if rows, err := read.IncomeByMonth(ctx, nil, apr, jul, 1); err != nil || rows != nil {

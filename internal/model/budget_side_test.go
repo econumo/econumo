@@ -26,21 +26,6 @@ func TestElementTypeSavings(t *testing.T) {
 	}
 }
 
-func TestElementTypeDebt(t *testing.T) {
-	if ElementDebt != 6 {
-		t.Fatalf("debt element type value is frozen at 6, got %d", ElementDebt)
-	}
-	if ElementDebt.Alias() != "debt" {
-		t.Fatalf("alias: got %q", ElementDebt.Alias())
-	}
-	if _, err := ElementTypeFromAlias("debt"); err == nil {
-		t.Fatal(`alias "debt" must stay invalid on the wire`)
-	}
-	if ElementDebt.IsIncomeSide() || ElementDebt.IsCategory() {
-		t.Fatal("a debt row is an expense-side row and not a category")
-	}
-}
-
 func TestElementTypeFromAlias_RejectsIncomeAliases(t *testing.T) {
 	// The income aliases are internal-only; the wire parser keeps rejecting them
 	// so existing drill-down validation output is unchanged.

@@ -38,18 +38,13 @@ import (
 // or, with uncategorized instead, into the income Uncategorized row's list;
 // accountId selects every transaction on one account of the budget (currently
 // only its savings accounts: see savingsMemberID). Both compose with nothing
-// else. debtId selects the payments a debt row counts, and composes with
-// nothing either; the category, tag and envelope lists leave those payments
-// out, as the rows' figures do.
+// else.
 // Requires read access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.BudgetTransactionListRequest) (*model.GetBudgetTransactionListResult, error) {
 	if req.Transfers && (req.Uncategorized || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
 	if optIDSet(req.AccountId) && (req.Transfers || req.Income || req.Uncategorized || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
-		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
-	}
-	if optIDSet(req.DebtId) && (req.Transfers || req.Income || req.Uncategorized || optIDSet(req.AccountId) || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
 	if req.Income && (req.Transfers || optIDSet(req.TagId) || optIDSet(req.LabelId) ||
@@ -79,7 +74,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	if err != nil {
 		return nil, err
 	}
-	f, err := s.filtersWithDebts(ctx, userID, b, b.clampPeriod(model.FirstOfMonth(periodStart)), 1)
+	f, err := s.buildFilters(ctx, userID, b, b.clampPeriod(model.FirstOfMonth(periodStart)), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -129,15 +124,6 @@ type txListQuery func(r ReadModel) ([]model.BudgetTransactionRow, error)
 
 func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters, req model.BudgetTransactionListRequest, cat, tag, env, lbl string, periodStart, periodEnd time.Time) (txListQuery, error) {
 	switch {
-	case optIDSet(req.DebtId):
-		debt, ok := f.debtByID[strings.TrimSpace(*req.DebtId)]
-		if !ok {
-			return nil, model.ValidateBlank(map[string]string{"debtId": ""})
-		}
-		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
-			rows, err := r.BudgetTransactionsByDebt(ctx, debt, f.everydayAccountIDs, periodStart, periodEnd)
-			return carriedBy(debt, rows, err)
-		}, nil
 	case optIDSet(req.AccountId):
 		accountID, perr := savingsMemberID(f, strings.TrimSpace(*req.AccountId))
 		if perr != nil {
@@ -222,7 +208,7 @@ func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters
 			return nil, model.ValidateBlank(map[string]string{"tagId": ""})
 		}
 		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
-			return r.BudgetTransactionsByTag(ctx, f.budgetID, tagID, nil, true, f.everydayAccountIDs, periodStart, periodEnd)
+			return r.BudgetTransactionsByTag(ctx, tagID, nil, true, f.everydayAccountIDs, periodStart, periodEnd)
 		}, nil
 	case cat != "" && tag == "" && env == "":
 		catID, perr := vo.ParseId(cat)
@@ -230,7 +216,7 @@ func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters
 			return nil, model.ValidateBlank(map[string]string{"categoryId": ""})
 		}
 		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
-			return f.withoutDebtPayments(r.BudgetTransactionsByCategories(ctx, f.budgetID, []vo.Id{catID}, f.everydayAccountIDs, periodStart, periodEnd))
+			return r.BudgetTransactionsByCategories(ctx, []vo.Id{catID}, f.everydayAccountIDs, periodStart, periodEnd)
 		}, nil
 	case tag != "" && env == "":
 		tagID, perr := vo.ParseId(tag)
@@ -246,7 +232,7 @@ func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters
 			catFilter = &c
 		}
 		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
-			return f.withoutDebtPayments(r.BudgetTransactionsByTag(ctx, f.budgetID, tagID, catFilter, false, f.everydayAccountIDs, periodStart, periodEnd))
+			return r.BudgetTransactionsByTag(ctx, tagID, catFilter, false, f.everydayAccountIDs, periodStart, periodEnd)
 		}, nil
 	case env != "" && tag == "" && cat == "" && !req.Uncategorized:
 		envID, perr := vo.ParseId(env)
@@ -258,41 +244,11 @@ func (s *Service) txListQuery(ctx context.Context, b *budgetAggregate, f filters
 			return nil, cerr
 		}
 		return func(r ReadModel) ([]model.BudgetTransactionRow, error) {
-			return f.withoutDebtPayments(r.BudgetTransactionsByCategories(ctx, f.budgetID, catIDs, f.everydayAccountIDs, periodStart, periodEnd))
+			return r.BudgetTransactionsByCategories(ctx, catIDs, f.everydayAccountIDs, periodStart, periodEnd)
 		}, nil
 	default:
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
-}
-
-// carriedBy keeps the debt's payments that still carry one of its rules'
-// category and tag pairs: a recategorised payment counts on its new rows
-// until the next sync drops its split (see debtOf).
-func carriedBy(debt model.DebtView, rows []model.BudgetTransactionRow, err error) ([]model.BudgetTransactionRow, error) {
-	if err != nil {
-		return nil, err
-	}
-	out := rows[:0]
-	for _, row := range rows {
-		if debt.CarriesKey(row.CategoryID, row.TagID) {
-			out = append(out, row)
-		}
-	}
-	return out, nil
-}
-
-// withoutDebtPayments drops the rows a debt row counts instead (see debtOf).
-func (f filters) withoutDebtPayments(rows []model.BudgetTransactionRow, err error) ([]model.BudgetTransactionRow, error) {
-	if err != nil {
-		return nil, err
-	}
-	out := rows[:0]
-	for _, row := range rows {
-		if _, isDebt := f.debtOf(row.DebtID, row.CategoryID, row.TagID); !isDebt {
-			out = append(out, row)
-		}
-	}
-	return out, nil
 }
 
 // savingsMemberID parses raw and requires it to be one of the budget's savings

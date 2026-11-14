@@ -95,7 +95,8 @@ func init() {
 	// debt_currency_change: a debt takes its element row's currency. The
 	// loan category's row is moved to a custom currency first, so a debt
 	// created on it is in that currency, and its 50 payment in USD reads 100
-	// at 2 per USD.
+	// at 2 per USD. Moving the row back to USD moves the active debt with it,
+	// its stored numbers kept.
 	register(Scenario{Name: "debt_currency_change", Calls: func() []Call {
 		const (
 			opCurrency = "cc000000-0000-0000-0000-0000000000d1"
@@ -119,6 +120,9 @@ func init() {
 					Body: map[string]any{"id": opPayment, "type": "expense", "amount": "50.00",
 						"accountId": OwnerAccount, "categoryId": &categoryID, "date": now, "description": "loan"}},
 				getDebt("get-after-payment", "owner", &debtID),
+				{Label: "change-element-currency-back", Method: "POST", Path: "/api/v1/budget/change-element-currency", Auth: "owner",
+					Body: map[string]any{"budgetId": Budget, "elementId": &categoryID, "currencyId": USD}},
+				getDebt("get-after-currency-change", "owner", &debtID),
 			},
 		)
 	}})
@@ -180,18 +184,12 @@ func init() {
 			{Label: "delete-draft", Method: "POST", Path: "/api/v1/debt/delete-debt", Auth: "owner",
 				Body: map[string]any{"id": &draftID}},
 
-			// the debt's budget row (removed with the rows in a later step)
+			// a debt is no budget row: set-limit does not know its id
 			{Label: "create-debt", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
 				Body: debtBody(nil), CaptureIDInto: &debtID},
 			{Label: "setup", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner", Body: setupBody(&debtID, nil)},
-			{Label: "set-debt-limit", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
+			{Label: "err:set-limit-on-a-debt-id", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "elementId": &debtID, "period": month(0), "amount": "10"}},
-			{Label: "err:set-debt-limit-out-of-range", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
-				Body: map[string]any{"budgetId": Budget, "elementId": &debtID, "period": month(3), "amount": "10"}},
-			{Label: "err:change-debt-currency", Method: "POST", Path: "/api/v1/budget/change-element-currency", Auth: "owner",
-				Body: map[string]any{"budgetId": Budget, "elementId": &debtID, "currencyId": USD}},
-			{Label: "err:move-debt-into-folder", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
-				Body: map[string]any{"budgetId": Budget, "id": &debtID, "folderId": BudgetFolder1}},
 			{Label: "err:update-payment-dont-cover", Method: "POST", Path: "/api/v1/debt/update-debt", Auth: "owner",
 				Body: map[string]any{"id": &debtID, "payment": "50"}},
 		}

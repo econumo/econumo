@@ -7,13 +7,14 @@ import (
 )
 
 // CloneDebts copies the debts of one budget into another (clone-budget): every
-// column (the element included: the copy has the same categories and
-// envelopes), the snapshots and the rate changes, under new ids. A copy keeps
+// column, the snapshots and the rate changes, under new ids. A debt's element
+// is mapped through elementIDs (the copy's envelopes have new ids); one not in
+// it keeps its id (a category is the same in the copy). A copy keeps
 // its original creation time and day, so the planning start is the same in
 // the copy. Splits are not copied: the next sync rebuilds them on the new
 // budget's accounts. It joins the caller's transaction and returns the new id
 // of every debt.
-func (s *Service) CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id) (map[vo.Id]vo.Id, error) {
+func (s *Service) CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id, elementIDs map[vo.Id]vo.Id) (map[vo.Id]vo.Id, error) {
 	ids := map[vo.Id]vo.Id{}
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if err := s.repo.LockBudget(ctx, fromBudgetID); err != nil {
@@ -38,6 +39,9 @@ func (s *Service) CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id
 		for _, d := range debts {
 			cp := *d
 			cp.ID, cp.BudgetID = s.repo.NextIdentity(), toBudgetID
+			if mapped, ok := elementIDs[d.ElementID]; ok {
+				cp.ElementID = mapped
+			}
 			if d.Current != nil {
 				current := *d.Current
 				cp.Current = &current

@@ -18,8 +18,6 @@ import (
 
 // filters is the internal filter set the builder derives.
 type filters struct {
-	// budgetID scopes the debt payment splits the spending reads join.
-	budgetID vo.Id
 	// periodKey..keyEnd are the period keys covered ([periodKey, keyEnd));
 	// periodStart..periodEnd is the date window they span on a budget whose
 	// periods start on startDay. Limits and comments read keys, every money
@@ -43,34 +41,14 @@ type filters struct {
 	// expenses booked on a savings account belong to its savings row.
 	savingsAccounts    []model.AccountView
 	everydayAccountIDs []vo.Id
-	// debtViews are the budget's debts, in creation order; the payments
-	// they matched count on their rows instead of category and tag rows.
-	// Empty on the reads that show no debt rows.
+	// debtViews are the budget's debts, active and paid off, in creation
+	// order; empty on the reads that show no debts.
 	debtViews []model.DebtView
-	debtByID  map[string]model.DebtView
-}
-
-// debtOf returns the debt a spending row is attributed to: the debt its
-// stored payment split names, when that debt is one of the budget's and the
-// row still carries a category (and tag) one of its rules names. A split a
-// recategorised payment left behind therefore keeps counting on the category
-// and tag rows. The reads join only this budget's splits, and its sync stores
-// at most one split per payment, on the oldest matching debt
-// (model.AssignDebt), so a payment leaves its category once.
-func (f filters) debtOf(debtID, categoryID, tagID *string) (model.DebtView, bool) {
-	if debtID == nil {
-		return model.DebtView{}, false
-	}
-	d, ok := f.debtByID[*debtID]
-	if !ok || !d.CarriesKey(categoryID, tagID) {
-		return model.DebtView{}, false
-	}
-	return d, true
 }
 
 // filtersWithDebts is buildFilters plus the budget's debts. Their payment
-// splits are synced first so the spending reads see current ones; the sync
-// takes the budget's row lock, so it must run outside any budget transaction.
+// splits are synced first; the sync takes the budget's row lock, so it must
+// run outside any budget transaction.
 func (s *Service) filtersWithDebts(ctx context.Context, userID vo.Id, b *budgetAggregate, key time.Time, months int) (filters, error) {
 	var views []model.DebtView
 	if s.debts != nil {
@@ -88,10 +66,6 @@ func (s *Service) filtersWithDebts(ctx context.Context, userID vo.Id, b *budgetA
 		return filters{}, err
 	}
 	f.debtViews = views
-	f.debtByID = make(map[string]model.DebtView, len(views))
-	for _, v := range views {
-		f.debtByID[v.ID] = v
-	}
 	return f, nil
 }
 
@@ -277,7 +251,6 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	periodStart, _ := model.PeriodWindow(key, startDay)
 	_, periodEnd := model.PeriodWindow(keyEnd.AddDate(0, -1, 0), startDay)
 	return filters{
-		budgetID:  b.budget.ID,
 		periodKey: key, keyEnd: keyEnd,
 		periodStart: periodStart, periodEnd: periodEnd, startDay: startDay,
 		userIDs: userIDs, accountFilters: accountFilters,

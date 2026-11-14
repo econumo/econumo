@@ -25,7 +25,7 @@ func TestCloneDebts_KeepsElements(t *testing.T) {
 	var ids map[vo.Id]vo.Id
 	err := e.db.TX.WithTx(ctx, func(ctx context.Context) error {
 		var err error
-		ids, err = e.svc.CloneDebts(ctx, vo.MustParseId(e.budget), vo.MustParseId(copyTo))
+		ids, err = e.svc.CloneDebts(ctx, vo.MustParseId(e.budget), vo.MustParseId(copyTo), nil)
 		return err
 	})
 	if err != nil {

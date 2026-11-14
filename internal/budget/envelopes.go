@@ -64,11 +64,14 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	// A new envelope element lands at the FRONT of its group. With sort keys that
 	// is a single write -- a key below the group's current first -- so no sibling
 	// is touched.
-	newKey, kerr := sortkey.Prepend(groupElements(b.elements, folderID, vo.Id{}, sortGroupRows), func(i sortkey.Item) sortkey.Item { return i }, sortkey.GrowsDown)
+	newKey, kerr := sortkey.Prepend(groupElements(b.elements, folderID, vo.Id{}, false), func(i sortkey.Item) sortkey.Item { return i }, sortkey.GrowsDown)
 	if kerr != nil {
 		return nil, kerr
 	}
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if derr := s.refuseDebtCarriers(txCtx, b, "categories", parseIDs(req.Categories)...); derr != nil {
+			return derr
+		}
 		if eerr := s.requireFreeEnvelopeID(txCtx, envelopeID); eerr != nil {
 			return eerr
 		}
@@ -140,6 +143,9 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 	// so it is read from the existing element row (default expense if missing).
 	envType := model.ElementEnvelope
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if derr := s.refuseDebtCarriers(txCtx, b, "categories", parseIDs(req.Categories)...); derr != nil {
+			return derr
+		}
 		env, gerr := s.envelopes.GetEnvelope(txCtx, envelopeID)
 		if gerr != nil {
 			return gerr
@@ -226,6 +232,13 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req model.De
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// The envelope's debts go with it. The debt hook takes the budget's
+		// row lock, which goes before the element row's.
+		if s.debts != nil {
+			if derr := s.debts.DeleteElementDebts(txCtx, budgetID, envelopeID); derr != nil {
+				return derr
+			}
+		}
 		el, eerr := s.elements.GetElementByExternal(txCtx, budgetID, envelopeID)
 		if eerr == nil {
 			if serr := s.elements.DeleteElement(txCtx, el.ID); serr != nil {
@@ -241,6 +254,17 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req model.De
 		return nil, err
 	}
 	return &model.DeleteEnvelopeResult{}, nil
+}
+
+// parseIDs keeps the ids that parse; the caller validates the rest.
+func parseIDs(raw []string) []vo.Id {
+	out := make([]vo.Id, 0, len(raw))
+	for _, r := range raw {
+		if id, err := vo.ParseId(r); err == nil {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // lastElementKey returns the greatest sort key among a budget's elements, so a
@@ -286,7 +310,12 @@ func (s *Service) validateEnvelopeCategories(ctx context.Context, b *budgetAggre
 	if len(categoryIDs) == 0 {
 		return nil
 	}
-	userIDs := b.participantIDs()
+	userIDs := []vo.Id{b.budget.UserID}
+	for _, a := range b.access {
+		if a.IsAccepted && a.Role != roleGuest() {
+			userIDs = append(userIDs, a.UserID)
+		}
+	}
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
 	if err != nil {
 		return err
@@ -322,7 +351,12 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 	if len(categoryIDs) == 0 {
 		return []model.ChildElementResult{}, nil
 	}
-	userIDs := b.participantIDs()
+	userIDs := []vo.Id{b.budget.UserID}
+	for _, a := range b.access {
+		if a.IsAccepted && a.Role != roleGuest() {
+			userIDs = append(userIDs, a.UserID)
+		}
+	}
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
 	if err != nil {
 		return nil, err

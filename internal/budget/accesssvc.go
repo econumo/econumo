@@ -146,9 +146,8 @@ func (s *Service) seedMemberAccounts(ctx context.Context, userID, budgetID vo.Id
 // accounts (limits and comments cascade via FK), their member accounts, and
 // their categories' envelope assignments. Runs in the caller's transaction;
 // revoke is deliberate, so the member's limit history goes with them. The
-// budget's debts are the budget's, not the member's: they and their rows
-// stay, and a rule naming the member's category matches nothing once their
-// accounts are gone.
+// budget's debts are the budget's, not the member's: one attached to the
+// member's category stays, and shows again if the category returns.
 func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, memberID vo.Id) error {
 	owned := map[vo.Id]bool{}
 	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{memberID})

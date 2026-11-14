@@ -30,16 +30,12 @@ type HoldingsRow struct {
 	ToHoldings   string
 }
 
-// SpendingRow is one (category, optional tag, optional debt, currency)
-// spending total in a period (grouped by category_id, tag_id, debt_id,
-// currency_id).
+// SpendingRow is one (category, optional tag, currency) spending total in a
+// period (grouped by category_id, tag_id, currency_id).
 type SpendingRow struct {
 	// nil when the transaction has no category (shown as Uncategorized).
 	CategoryID *string
 	TagID      *string
-	// DebtID is the debt whose stored payment split covers these
-	// transactions; nil for the ones no debt matched.
-	DebtID     *string
 	CurrencyID string
 	Amount     string
 }
@@ -52,14 +48,13 @@ type SummarizedLimitRow struct {
 	Amount     string
 }
 
-// MonthlySpendingRow is one (month, category?, tag?, debt?, currency) expense total
+// MonthlySpendingRow is one (month, category?, tag?, currency) expense total
 // for the plan sheet. Month is the first-of-month TEXT "YYYY-MM-01", rendered
 // identically by both engines so the wire output stays byte-identical.
 type MonthlySpendingRow struct {
 	Month      string
 	CategoryID *string
 	TagID      *string
-	DebtID     *string
 	CurrencyID string
 	Amount     string
 }
@@ -122,9 +117,6 @@ type BudgetTransactionRow struct {
 	// Type ("expense", "income" or "transfer") is set only on rows from
 	// BudgetTransactionsIncome and BudgetTransactionsOnAccount.
 	Type string
-	// DebtID is the debt the stored payment split names, read only by
-	// BudgetTransactionsByCategories, ByTag and ByDebt.
-	DebtID *string
 }
 
 // LabelSpendingRow is one (label, category, currency) spending total in a
@@ -180,15 +172,13 @@ type TagMeta struct {
 	ID         string
 	OwnerID    string
 	Name       string
-	Icon       string
 	IsArchived bool
 }
 
 // PayeeMeta is a payee's display metadata (for the budget transaction list).
 type PayeeMeta struct {
-	ID         string
-	Name       string
-	IsArchived bool
+	ID   string
+	Name string
 }
 
 // BudgetCategoryHistory is one budget category's actuals over consecutive

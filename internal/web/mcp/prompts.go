@@ -33,12 +33,15 @@ func budgetFieldGlossary() string {
   upcoming is that month's recurring payments still due plus transactions
   dated after today ("0" for a month before the current one), a planning hint,
   never part of actual or closingBalance.
-- structure.debts[]: loan rows, in the debt's currency; the payments a debt
-  matches count here, not on their category or tag. budgetSpent counts in the
-  expense totals like an element's; upcoming is the scheduled dues still to
-  pay this month; closingBalance is the debt left at the month's end. A debt
-  with isSetUp 0 has no balance or end date yet: closingBalance and the payoff
-  figures are "", paymentsLeft 0, scheduledTotal and upcoming "0".
+- debt (on a top-level expense category or envelope, and on each
+  get_budget_plan cell): the loan the element tracks in that month, in the
+  debt's currency; a get_budget_plan row carries its active one. Its
+  payments stay in the element's spent; the debt only adds figures: upcoming
+  is the scheduled dues still to pay this month, closingBalance the debt left
+  at the month's end, paymentsLeft and payoffDate where it is heading (the
+  element's plan above the scheduled payment counts as an extra payment). A
+  debt with isSetUp 0 has no balance or end date yet: closingBalance and the
+  payoff figures are "", paymentsLeft 0, scheduledTotal and upcoming "0".
 - balances[]: one row per currency the budget touches (budget currency first) —
   account-level, separate from envelope spending. startBalance/endBalance are
   point-in-time totals (null until the period starts/ends); income/expenses/

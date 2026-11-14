@@ -122,9 +122,6 @@ type Querier interface {
 	// it. Expiry is compared in the app layer (Go time.Time), not in SQL, to avoid
 	// engine date-format differences.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
-	// Whether the external id's element of this type carries a limit or a comment
-	// in any budget.
-	ElementHasData(ctx context.Context, arg ElementHasDataParams) (int64, error)
 	ExistsUserByEmail(ctx context.Context, arg ExistsUserByEmailParams) (int64, error)
 	// Joins users for access_level/access_until so per-request auth can report
 	// the caller's effective access level in the same round trip. This does NOT
@@ -612,12 +609,6 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
-	// Plain read: SQLite serializes writers, so there is no concurrent limit
-	// writer for a lock to order against.
-	LockBudgetElementPair(ctx context.Context, arg LockBudgetElementPairParams) ([]string, error)
-	// Plain read: SQLite serializes writers, so there is no concurrent limit or
-	// comment for a lock to order against.
-	LockElementsByExternal(ctx context.Context, arg LockElementsByExternalParams) ([]string, error)
 	// A no-op UPDATE so the operator transaction takes the write lock before it
 	// reads: a read first would leave it holding SHARED while a token exchange
 	// holds RESERVED, and neither could commit (database is locked).
@@ -677,7 +668,6 @@ type Querier interface {
 	// read is left alone, and nothing is written.
 	ReplaceCategoryIcon(ctx context.Context, arg ReplaceCategoryIconParams) (int64, error)
 	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
-	RepointBudgetCommentsBetween(ctx context.Context, arg RepointBudgetCommentsBetweenParams) error
 	// Merge, no-conflict branch: hand the element to another classification instead
 	// of deleting and recreating it, which keeps its folder and sort position so the
 	// budget row stays where the user put it. UpsertBudgetElement deliberately does

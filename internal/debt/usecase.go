@@ -37,6 +37,13 @@ func (s *Service) SetBudgets(b Budgets) { s.budgets = b }
 // SetElements installs the budget elements peer.
 func (s *Service) SetElements(e Elements) { s.elements = e }
 
+// LockBudget takes the budget's row lock in the caller's transaction, for a
+// budget write that reads or changes the debts of its elements: the budget
+// row is locked before any element row, everywhere.
+func (s *Service) LockBudget(ctx context.Context, budgetID vo.Id) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error { return s.repo.LockBudget(ctx, budgetID) })
+}
+
 // userLocation is the user's stored timezone, UTC when none (or an unknown
 // one) is stored: the creation day is taken in the creator's, so a debt's
 // planning start does not depend on who views it.
