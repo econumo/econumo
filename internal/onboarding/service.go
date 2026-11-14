@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -207,7 +208,7 @@ func (s *Service) runJob(userID vo.Id, logs jobSpec, facts promptFacts, job func
 		defer cancel()
 		if err := job(jobCtx, facts); err != nil {
 			// Never log the prompt, the reply or the error text: they can carry names.
-			slog.Warn(logs.failed, append(attrs, "err_type", fmt.Sprintf("%T", err))...)
+			slog.Warn(logs.failed, append(attrs, ai.LogAttrs(err)...)...)
 		}
 	})
 }

@@ -1230,3 +1230,19 @@ func TestSuggestUndoRunsUnderItsOwnContext(t *testing.T) {
 		t.Fatalf("undo runs under the owner's deadline (%s vs %s)", undo, owner)
 	}
 }
+
+func TestSuggestProviderStatusIsLogged(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	h.category(t, userA, "Coffee")
+	c.err = &ai.HTTPError{StatusCode: 401, Dialect: "openai"}
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(old)
+	ingest(t, h, tap)
+	out := buf.String()
+	if !strings.Contains(out, "status=401") || !strings.Contains(out, "err_type=*ai.HTTPError") {
+		t.Fatalf("log = %s", out)
+	}
+}

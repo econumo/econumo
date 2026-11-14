@@ -63,7 +63,7 @@ func (s *Service) startSuggestJob(links []model.ImportTransactionLink) {
 		}()
 		if err := s.suggest(live); err != nil {
 			// Never the error text, the prompt or the reply: they can carry names.
-			slog.Warn("import suggest failed", "err_type", fmt.Sprintf("%T", err))
+			slog.Warn("import suggest failed", ai.LogAttrs(err)...)
 		}
 	})
 }
@@ -141,7 +141,7 @@ func (s *Service) suggestForOwnerSafe(owner vo.Id, candidates []suggestCandidate
 	ctx, cancel := context.WithTimeout(context.Background(), suggestTimeout)
 	defer cancel()
 	if err := s.suggestForOwner(ctx, owner, candidates); err != nil {
-		slog.Warn("import suggest failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", err))
+		slog.Warn("import suggest failed", append([]any{"user_id", owner.String()}, ai.LogAttrs(err)...)...)
 	}
 }
 
@@ -380,7 +380,7 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 		}
 		if err != nil {
 			// the other type's answers still stand
-			slog.Warn("import suggest failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", err))
+			slog.Warn("import suggest failed", append([]any{"user_id", owner.String()}, ai.LogAttrs(err)...)...)
 			continue
 		}
 		for k, r := range parsed {
@@ -417,7 +417,7 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 	}
 	if err != nil {
 		// step 1's categories still stand without payees
-		slog.Warn("import suggest payees failed", "user_id", owner.String(), "err_type", fmt.Sprintf("%T", err))
+		slog.Warn("import suggest payees failed", append([]any{"user_id", owner.String()}, ai.LogAttrs(err)...)...)
 		return replies, nil
 	}
 	applyPayeeReply(replies, picks, candidates)

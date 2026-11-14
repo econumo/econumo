@@ -2,7 +2,6 @@ package imports
 
 import (
 	"encoding/json"
-	"errors"
 	"sort"
 	"strconv"
 	"strings"
@@ -162,17 +161,20 @@ func replyJSON(reply string) []byte {
 	return []byte(reply[start : end+1])
 }
 
+// replyError marks a reply that is not the expected JSON, so a log tells it
+// from a provider failure.
+type replyError struct{}
+
+func (replyError) Error() string { return "unusable AI reply" }
+
 // parseSuggestReply keys the rows by their key; a repeated key keeps its
 // first row.
 func parseSuggestReply(reply string) (map[string]suggestReplyRow, error) {
 	var out struct {
 		Rows []suggestReplyRow `json:"rows"`
 	}
-	if err := json.Unmarshal(replyJSON(reply), &out); err != nil {
-		return nil, err
-	}
-	if out.Rows == nil {
-		return nil, errors.New("reply has no rows")
+	if err := json.Unmarshal(replyJSON(reply), &out); err != nil || out.Rows == nil {
+		return nil, replyError{}
 	}
 	rows := make(map[string]suggestReplyRow, len(out.Rows))
 	for _, r := range out.Rows {
@@ -226,11 +228,8 @@ func parsePayeeReply(reply string) (map[string]string, error) {
 			PayeeID string `json:"payeeId"`
 		} `json:"rows"`
 	}
-	if err := json.Unmarshal(replyJSON(reply), &out); err != nil {
-		return nil, err
-	}
-	if out.Rows == nil {
-		return nil, errors.New("reply has no rows")
+	if err := json.Unmarshal(replyJSON(reply), &out); err != nil || out.Rows == nil {
+		return nil, replyError{}
 	}
 	picks := map[string]string{}
 	for _, r := range out.Rows {

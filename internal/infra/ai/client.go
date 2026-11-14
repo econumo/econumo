@@ -93,6 +93,51 @@ func checkNode(path string, node any) error {
 	return nil
 }
 
+// HTTPError is a non-2xx answer from the provider. It names the status and
+// dialect only: the body may echo the prompt or the key.
+type HTTPError struct {
+	StatusCode int
+	Dialect    string
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("ai: %s completion endpoint returned HTTP %d", e.Dialect, e.StatusCode)
+}
+
+// ResponseError is a 2xx answer that holds no usable completion.
+type ResponseError struct{ Reason string }
+
+func (e *ResponseError) Error() string { return "ai: " + e.Reason }
+
+var (
+	ErrMalformedResponse  = &ResponseError{"malformed completion response"}
+	ErrEmptyResponse      = &ResponseError{"completion returned no text"}
+	ErrIncompleteResponse = &ResponseError{"incomplete completion response"}
+)
+
+// LogAttrs gives the slog attributes that make a failed call diagnosable
+// without its text: err_type (a timeout reads as its context error, not the
+// wrapper around it) and, for a provider refusal, status.
+func LogAttrs(err error) []any {
+	var he *HTTPError
+	if errors.As(err, &he) {
+		return []any{"err_type", fmt.Sprintf("%T", he), "status", he.StatusCode}
+	}
+	for _, ctxErr := range []error{context.DeadlineExceeded, context.Canceled} {
+		if errors.Is(err, ctxErr) {
+			return []any{"err_type", fmt.Sprintf("%T", ctxErr)}
+		}
+	}
+	return []any{"err_type", fmt.Sprintf("%T", err)}
+}
+
+func (c *Client) dialect() string {
+	if c.cfg.Dialect == "anthropic" {
+		return "anthropic"
+	}
+	return "openai"
+}
+
 type Client struct {
 	cfg  Config
 	http *http.Client
@@ -193,17 +238,17 @@ func (c *Client) Complete(ctx context.Context, userID, system, user string, sche
 		return "", err
 	}
 	if status/100 != 2 {
-		return "", fmt.Errorf("ai: completion endpoint returned HTTP %d", status)
+		return "", &HTTPError{StatusCode: status, Dialect: c.dialect()}
 	}
 	if c.cfg.Dialect == "anthropic" {
 		return parseAnthropicResponse(raw)
 	}
 	var out response
 	if err := json.Unmarshal(raw, &out); err != nil {
-		return "", errors.New("ai: malformed completion response")
+		return "", ErrMalformedResponse
 	}
 	if len(out.Choices) == 0 {
-		return "", errors.New("ai: completion returned no choices")
+		return "", ErrEmptyResponse
 	}
 	return out.Choices[0].Message.Content, nil
 }
@@ -265,14 +310,14 @@ func (c *Client) send(ctx context.Context, userID, system, user string, schema *
 func parseAnthropicResponse(raw []byte) (string, error) {
 	var out anthropicResponse
 	if err := json.Unmarshal(raw, &out); err != nil {
-		return "", errors.New("ai: malformed completion response")
+		return "", ErrMalformedResponse
 	}
 	switch out.StopReason {
 	case "", "end_turn", "stop_sequence":
 		// Some compatible gateways omit stop_reason.
 	default:
 		// A token limit, refusal, or tool request is not a finished suggestion.
-		return "", errors.New("ai: incomplete completion response")
+		return "", ErrIncompleteResponse
 	}
 	var content strings.Builder
 	for _, block := range out.Content {
@@ -281,7 +326,7 @@ func parseAnthropicResponse(raw []byte) (string, error) {
 		}
 	}
 	if strings.TrimSpace(content.String()) == "" {
-		return "", errors.New("ai: completion returned no text")
+		return "", ErrEmptyResponse
 	}
 	return content.String(), nil
 }

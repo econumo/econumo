@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -379,5 +380,47 @@ func TestComplete_WithoutTheJSONFlagNoSchemaIsSent(t *testing.T) {
 				t.Fatalf("dialect %q: %s sent without json=1", dialect, field)
 			}
 		}
+	}
+}
+
+func TestComplete_NonSuccessIsAnHTTPErrorWithoutBody(t *testing.T) {
+	for _, code := range []int{401, 429, 500} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(code)
+			_, _ = io.WriteString(w, `secret-body sk-test`)
+		}))
+		for _, dialect := range []string{"", "anthropic"} {
+			_, err := New(Config{Dialect: dialect, Endpoint: srv.URL, APIKey: "sk-test", Model: "m"}).Complete(context.Background(), "u", "s", "u", nil)
+			var he *HTTPError
+			if !errors.As(err, &he) || he.StatusCode != code {
+				t.Fatalf("code %d dialect %q: err = %v", code, dialect, err)
+			}
+			if strings.Contains(err.Error(), "secret-body") || strings.Contains(err.Error(), "sk-test") {
+				t.Fatalf("error leaks: %v", err)
+			}
+		}
+		srv.Close()
+	}
+}
+
+func TestComplete_UnusableRepliesAreResponseErrors(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `not json`)
+	}))
+	defer srv.Close()
+	_, err := New(Config{Endpoint: srv.URL, Model: "m"}).Complete(context.Background(), "u", "s", "u", nil)
+	if !errors.Is(err, ErrMalformedResponse) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestLogAttrs(t *testing.T) {
+	got := LogAttrs(&HTTPError{StatusCode: 429, Dialect: "openai"})
+	if len(got) != 4 || got[0] != "err_type" || got[1] != "*ai.HTTPError" || got[3] != 429 {
+		t.Fatalf("attrs = %v", got)
+	}
+	got = LogAttrs(fmt.Errorf("ai: request failed: %w", context.DeadlineExceeded))
+	if len(got) != 2 || got[1] == "*fmt.wrapError" {
+		t.Fatalf("attrs = %v", got)
 	}
 }

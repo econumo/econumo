@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -435,10 +436,12 @@ func (s *Service) SuggestMatchText(ctx context.Context, userID vo.Id, req model.
 		MatchText string `json:"matchText"`
 	}
 	if err == nil {
-		err = json.Unmarshal(replyJSON(reply), &parsed)
+		if err = json.Unmarshal(replyJSON(reply), &parsed); err != nil {
+			err = replyError{}
+		}
 	}
 	if err != nil {
-		slog.Warn("import match text failed", "user_id", userID.String(), "err_type", fmt.Sprintf("%T", err))
+		slog.Warn("import match text failed", append([]any{"user_id", userID.String()}, ai.LogAttrs(err)...)...)
 		return empty, nil
 	}
 	field, text, ok := matchTextIn(*l, parsed.MatchText)
