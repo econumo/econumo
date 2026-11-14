@@ -130,6 +130,8 @@ export const METRICS = {
   DEBT_FORECAST_VIEW: 'appDebtForecastView',
   DEBT_RECONCILE: 'appDebtReconcile',
   DEBT_RECONCILIATION_DELETE: 'appDebtReconciliationDelete',
+  DEBT_RATE_CHANGE_ADD: 'appDebtRateChangeAdd',
+  DEBT_RATE_CHANGE_DELETE: 'appDebtRateChangeDelete',
   DEBT_RULE_ADD: 'appDebtRuleAdd',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
   BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',

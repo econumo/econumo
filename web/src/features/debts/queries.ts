@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as debtApi from '@/api/debt'
-import type { AddDebtRuleDto, CreateDebtDto, DebtDetailsDto, DebtDto, UpdateDebtDto, DeleteDebtForm, DeleteDebtReconciliationForm, ReconcileDebtForm } from '@/api/dto/debt'
+import type { AddDebtRateChangeForm, AddDebtRuleDto, DeleteDebtRateChangeForm, CreateDebtDto, DebtDetailsDto, DebtDto, UpdateDebtDto, DeleteDebtForm, DeleteDebtReconciliationForm, ReconcileDebtForm } from '@/api/dto/debt'
 import type { Id } from '@/api/types'
 import { isDebtForecastKey, queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -169,4 +169,12 @@ export function useReconcileDebt() {
 
 export function useDeleteDebtReconciliation() {
   return useReconciliationWrite((form: DeleteDebtReconciliationForm) => debtApi.deleteDebtReconciliation(form), METRICS.DEBT_RECONCILIATION_DELETE)
+}
+
+export function useAddDebtRateChange() {
+  return useReconciliationWrite((form: AddDebtRateChangeForm) => debtApi.addDebtRateChange(form), METRICS.DEBT_RATE_CHANGE_ADD)
+}
+
+export function useDeleteDebtRateChange() {
+  return useReconciliationWrite((form: DeleteDebtRateChangeForm) => debtApi.deleteDebtRateChange(form), METRICS.DEBT_RATE_CHANGE_DELETE)
 }

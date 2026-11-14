@@ -60,6 +60,10 @@ export interface DebtDto {
   nextDueDate: string
   /** implied rate per schedule period, 10 decimals */
   periodRate: string
+  /** the yearly percent in force today (up to 8 decimals); "" while not set up */
+  annualRate: string
+  /** the yearly percent the loan's own terms imply; "" while not set up */
+  impliedAnnualRate: string
   isPaidOff: 0 | 1
   /** 1 once the debt has its amount borrowed, start date and last payment date */
   isSetUp: 0 | 1
@@ -113,9 +117,19 @@ export interface DebtForecastDto {
   extraPlanned: string
 }
 
+/** a stored change of the yearly rate and the regular payment, from `date` on */
+export interface DebtRateChangeDto {
+  id: Id
+  date: string
+  annualRate: string
+  payment: string
+}
+
 export interface DebtDetailsDto {
   item: DebtDto
   snapshots: DebtSnapshotDto[]
+  /** oldest first */
+  rateChanges: DebtRateChangeDto[]
   payments: DebtPaymentDto[]
 }
 
@@ -207,6 +221,19 @@ export interface ReconcileDebtForm {
 export interface DeleteDebtReconciliationForm {
   id: Id
   reconciliationId: Id
+}
+
+/** a new rate (yearly percent) and payment from `date` (Y-m-d); a second one on the same date replaces the first */
+export interface AddDebtRateChangeForm {
+  id: Id
+  date: string
+  annualRate: string
+  payment: string
+}
+
+export interface DeleteDebtRateChangeForm {
+  id: Id
+  rateChangeId: Id
 }
 
 export interface DeleteDebtForm {

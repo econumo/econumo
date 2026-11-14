@@ -615,6 +615,28 @@
         "question": "La deuda se reabre: lo que se debe vuelve a calcularse a partir de los registros anteriores y los pagos."
       }
     },
+    "rates": {
+      "title": "Cambios de tipo",
+      "from_start": "Desde el inicio",
+      "from_terms": "según las condiciones del préstamo",
+      "column": {
+        "date": "Fecha",
+        "rate": "Tipo",
+        "payment": "Pago"
+      },
+      "form": {
+        "title": "Registrar un cambio de tipo",
+        "date": "Fecha",
+        "rate": "Tipo, % anual",
+        "payment": "Pago",
+        "save": "Añadir cambio de tipo"
+      },
+      "delete": "Eliminar el cambio de tipo del {date}",
+      "delete_confirm": {
+        "title": "¿Eliminar este cambio de tipo?",
+        "question": "Los pagos posteriores a su fecha vuelven a contarse con el tipo y el pago anteriores."
+      }
+    },
     "review": {
       "progress": "{paid} de {total} pagados",
       "progress_repaid": "{paid} de {total} pagados ({repaid} de {borrowed})",

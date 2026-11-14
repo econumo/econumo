@@ -13,6 +13,7 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { debtDay } from './debtDates'
 import { AmountField, DateField } from './debtFields'
 import { useDeleteDebtReconciliation, useReconcileDebt } from './queries'
+import { RateChangesCard } from './RateChangesCard'
 import { amountEcho, amountError, plainAmount } from './useDebtForm'
 
 const negate = (v: string) => (v.startsWith('-') ? v.slice(1) : `-${v}`)
@@ -213,6 +214,8 @@ export function DebtBalanceTab({ details, amount, lang, readOnly = false }: { de
           </table>
         </div>
       </section>
+
+      <RateChangesCard details={details} amount={amount} symbol={currency?.symbol ?? ''} currency={currency} lang={lang} readOnly={readOnly} />
 
       <ConfirmDialog
         open={deleting !== null}

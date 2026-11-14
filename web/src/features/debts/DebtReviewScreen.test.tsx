@@ -1,6 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -58,6 +58,7 @@ const details: DebtDetailsDto = {
     nextDueDate: '2026-12-05',
   },
   snapshots: [{ id: 's0', isOrigin: 1, computedBalance: '', asOf: '2026-10-01', balance: '1200', payment: '100', schedule: 'monthly', lastPaymentDate: '2027-11-05' }],
+  rateChanges: [],
   payments: [
     { transactionId: 't1', date: '2026-11-05 00:00:00', amount: '100', interest: '10', principal: '90', balance: '1090' },
     { transactionId: 't2', date: '2026-10-05 00:00:00', amount: '100', interest: '5.5', principal: '94.5', balance: '1180' },
@@ -67,6 +68,7 @@ const details: DebtDetailsDto = {
 const notSetUp: DebtDetailsDto = {
   item: wireDebtNotSetUp,
   snapshots: [],
+  rateChanges: [],
   payments: [
     { transactionId: 't1', date: '2026-11-05 00:00:00', amount: '100', interest: '0', principal: '100', balance: '' },
     { transactionId: 't2', date: '2026-10-05 00:00:00', amount: '50.5', interest: '0', principal: '50.5', balance: '' },
@@ -1234,4 +1236,139 @@ it('the Overview has no history of terms: the Balance tab holds the history', as
   renderScreen()
   await openScreen()
   expect(screen.queryByRole('button', { name: /History of terms/ })).toBeNull()
+})
+
+describe('Rate changes on the Balance tab', () => {
+  const rated: DebtDetailsDto = { ...details, item: { ...details.item, annualRate: '3.6912', impliedAnnualRate: '3.4412' } }
+  const stored: DebtDetailsDto = {
+    ...rated,
+    rateChanges: [
+      { id: 'rc0', date: '2026-10-01', annualRate: '3.4412', payment: '100' },
+      { id: 'rc1', date: '2026-11-01', annualRate: '3.6912', payment: '120' },
+    ],
+  }
+  const useDetails = (d: DebtDetailsDto) => server.use(http.get('*/api/v1/debt/get-debt', () => ok(d)))
+
+  it('with no stored rows lists the derived start row, with no delete', async () => {
+    useDetails(rated)
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    const panel = await openBalance(user)
+
+    const rows = within(panel).getAllByTestId('debt-rate-change')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveTextContent('From the start')
+    expect(rows[0]).toHaveTextContent('3.44%')
+    expect(rows[0]).toHaveTextContent('100.00 $')
+    expect(rows[0]).toHaveTextContent("from your loan's terms")
+    expect(within(rows[0]).queryByRole('button')).toBeNull()
+  })
+
+  it('prefills the form with the rate and payment in force, adds a typed change and fires DEBT_RATE_CHANGE_ADD', async () => {
+    useDetails({ ...stored })
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.post('*/api/v1/debt/add-debt-rate-change', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>)
+        return ok(details.item)
+      }),
+    )
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    const panel = await openBalance(user)
+
+    const rate = within(panel).getByLabelText('Rate, % a year')
+    const payment = within(panel).getByLabelText('Payment')
+    expect(rate).toHaveValue('3.69')
+    expect(payment).toHaveValue('120')
+    expect(within(panel).getByRole('button', { name: 'Date' })).toHaveTextContent('Nov 8, 2026')
+    await user.clear(rate)
+    await user.type(rate, '4,5')
+    await user.clear(payment)
+    await user.type(payment, '130')
+    await user.click(within(panel).getByRole('button', { name: 'Add rate change' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toEqual({ id: 'd1', date: '2026-11-08', annualRate: '4.5', payment: '130' })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_RATE_CHANGE_ADD)
+  })
+
+  it('prefills the payment from the origin when no change is in force yet', async () => {
+    useDetails(rated)
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    const panel = await openBalance(user)
+    expect(within(panel).getByLabelText('Payment')).toHaveValue('100')
+  })
+
+  it('every stored row has a delete behind a confirm, which sends its id and fires DEBT_RATE_CHANGE_DELETE', async () => {
+    useDetails(stored)
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.post('*/api/v1/debt/delete-debt-rate-change', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>)
+        return ok(details.item)
+      }),
+    )
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    const panel = await openBalance(user)
+
+    const rows = within(panel).getAllByTestId('debt-rate-change')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).not.toHaveTextContent("from your loan's terms")
+    expect(rows[0]).toHaveTextContent('Oct 1, 2026')
+    await user.click(within(rows[1]).getByRole('button', { name: 'Delete the rate change of Nov 1, 2026' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Delete this rate change?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toEqual({ id: 'd1', rateChangeId: 'rc1' })
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_RATE_CHANGE_DELETE)
+  })
+
+  it('shows a refusal under the field it names', async () => {
+    useDetails(rated)
+    server.use(
+      http.post('*/api/v1/debt/add-debt-rate-change', () =>
+        HttpResponse.json({ success: false, message: 'Invalid', code: 0, errors: { annualRate: ['Rate is out of range'] } }, { status: 400 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    const panel = await openBalance(user)
+
+    await user.click(within(panel).getByRole('button', { name: 'Add rate change' }))
+    expect(await within(panel).findByText('Rate is out of range')).toBeInTheDocument()
+  })
+
+  it('read-only shows the table with no form and no delete', async () => {
+    useDetails({ ...stored, item: { ...stored.item, canEdit: 0 } })
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    const panel = await openBalance(user)
+
+    expect(within(panel).getAllByTestId('debt-rate-change')).toHaveLength(2)
+    expect(within(panel).queryByLabelText('Rate, % a year')).toBeNull()
+    expect(within(panel).queryByRole('button', { name: /Delete the rate change/ })).toBeNull()
+  })
+
+  it('offline, Add and delete are disabled', async () => {
+    useDetails(stored)
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    const panel = await openBalance(user)
+
+    act(() => onlineManager.setOnline(false))
+    onTestFinished(() => act(() => onlineManager.setOnline(true)))
+    expect(await within(panel).findByRole('button', { name: 'Add rate change' })).toBeDisabled()
+    expect(within(panel).getByRole('button', { name: 'Delete the rate change of Nov 1, 2026' })).toBeDisabled()
+  })
 })

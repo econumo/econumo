@@ -615,6 +615,28 @@
         "question": "Die Schuld wird wieder geöffnet: Der offene Betrag wird erneut aus den früheren Einträgen und den Zahlungen berechnet."
       }
     },
+    "rates": {
+      "title": "Zinsänderungen",
+      "from_start": "Ab Beginn",
+      "from_terms": "aus den Kreditbedingungen",
+      "column": {
+        "date": "Datum",
+        "rate": "Zinssatz",
+        "payment": "Zahlung"
+      },
+      "form": {
+        "title": "Zinsänderung erfassen",
+        "date": "Datum",
+        "rate": "Zinssatz, % pro Jahr",
+        "payment": "Zahlung",
+        "save": "Zinsänderung hinzufügen"
+      },
+      "delete": "Zinsänderung vom {date} löschen",
+      "delete_confirm": {
+        "title": "Diese Zinsänderung löschen?",
+        "question": "Zahlungen nach ihrem Datum werden wieder mit dem vorherigen Zinssatz und der vorherigen Zahlung gerechnet."
+      }
+    },
     "review": {
       "progress": "{paid} von {total} bezahlt",
       "progress_repaid": "{paid} von {total} bezahlt ({repaid} von {borrowed})",

@@ -615,6 +615,28 @@
         "question": "Dług zostanie ponownie otwarty: kwota do spłaty znów liczy się z wcześniejszych wpisów i płatności."
       }
     },
+    "rates": {
+      "title": "Zmiany oprocentowania",
+      "from_start": "Od początku",
+      "from_terms": "z warunków kredytu",
+      "column": {
+        "date": "Data",
+        "rate": "Oprocentowanie",
+        "payment": "Płatność"
+      },
+      "form": {
+        "title": "Zapisz zmianę oprocentowania",
+        "date": "Data",
+        "rate": "Oprocentowanie, % rocznie",
+        "payment": "Płatność",
+        "save": "Dodaj zmianę oprocentowania"
+      },
+      "delete": "Usuń zmianę oprocentowania z dnia {date}",
+      "delete_confirm": {
+        "title": "Usunąć tę zmianę oprocentowania?",
+        "question": "Płatności po jej dacie znów liczą się według poprzedniego oprocentowania i płatności."
+      }
+    },
     "review": {
       "progress": "Opłacono {paid} z {total}",
       "progress_repaid": "Opłacono {paid} z {total} ({repaid} z {borrowed})",

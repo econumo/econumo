@@ -42,6 +42,8 @@ export const wireDebt: DebtDto = {
   payoffDate: '2027-11-05',
   nextDueDate: '2026-12-05',
   periodRate: '0',
+  annualRate: '0',
+  impliedAnnualRate: '0',
   isPaidOff: 0,
   isSetUp: 1,
 }
@@ -62,6 +64,8 @@ export const wireDebtNotSetUp: DebtDto = {
   payoffDate: '',
   nextDueDate: '',
   periodRate: '',
+  annualRate: '',
+  impliedAnnualRate: '',
   isSetUp: 0,
 }
 

@@ -1,6 +1,7 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type {
+  AddDebtRateChangeForm,
   AddDebtRuleDto,
   CreateDebtDto,
   DebtDetailsDto,
@@ -8,6 +9,7 @@ import type {
   DebtForecastDto,
   DebtRuleOptionsDto,
   DeleteDebtForm,
+  DeleteDebtRateChangeForm,
   DeleteDebtReconciliationForm,
   ReconcileDebtForm,
   UpdateDebtDto,
@@ -69,5 +71,15 @@ export async function reconcileDebt(form: ReconcileDebtForm): Promise<DebtDto> {
 
 export async function deleteDebtReconciliation(form: DeleteDebtReconciliationForm): Promise<DebtDto> {
   const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/delete-debt-reconciliation'), form)
+  return response.data.data
+}
+
+export async function addDebtRateChange(form: AddDebtRateChangeForm): Promise<DebtDto> {
+  const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/add-debt-rate-change'), form)
+  return response.data.data
+}
+
+export async function deleteDebtRateChange(form: DeleteDebtRateChangeForm): Promise<DebtDto> {
+  const response = await api.post<Envelope<DebtDto>>(apiUrl('/api/v1/debt/delete-debt-rate-change'), form)
   return response.data.data
 }

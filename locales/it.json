@@ -615,6 +615,28 @@
         "question": "Il debito si riapre: il dovuto viene di nuovo calcolato dalle voci precedenti e dai pagamenti."
       }
     },
+    "rates": {
+      "title": "Variazioni di tasso",
+      "from_start": "Dall'inizio",
+      "from_terms": "dalle condizioni del prestito",
+      "column": {
+        "date": "Data",
+        "rate": "Tasso",
+        "payment": "Pagamento"
+      },
+      "form": {
+        "title": "Registra una variazione di tasso",
+        "date": "Data",
+        "rate": "Tasso, % annuo",
+        "payment": "Pagamento",
+        "save": "Aggiungi variazione di tasso"
+      },
+      "delete": "Elimina la variazione di tasso del {date}",
+      "delete_confirm": {
+        "title": "Eliminare questa variazione di tasso?",
+        "question": "I pagamenti successivi alla sua data vengono di nuovo calcolati con il tasso e il pagamento precedenti."
+      }
+    },
     "review": {
       "progress": "{paid} di {total} pagati",
       "progress_repaid": "{paid} di {total} pagati ({repaid} di {borrowed})",

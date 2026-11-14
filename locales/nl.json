@@ -615,6 +615,28 @@
         "question": "De schuld gaat weer open: wat verschuldigd is, wordt opnieuw berekend uit de eerdere gegevens en de betalingen."
       }
     },
+    "rates": {
+      "title": "Renteswijzigingen",
+      "from_start": "Vanaf het begin",
+      "from_terms": "uit de voorwaarden van de lening",
+      "column": {
+        "date": "Datum",
+        "rate": "Rente",
+        "payment": "Betaling"
+      },
+      "form": {
+        "title": "Een renteswijziging vastleggen",
+        "date": "Datum",
+        "rate": "Rente, % per jaar",
+        "payment": "Betaling",
+        "save": "Renteswijziging toevoegen"
+      },
+      "delete": "Renteswijziging van {date} verwijderen",
+      "delete_confirm": {
+        "title": "Deze renteswijziging verwijderen?",
+        "question": "Betalingen na de datum ervan worden weer met de eerdere rente en betaling berekend."
+      }
+    },
     "review": {
       "progress": "{paid} van {total} betaald",
       "progress_repaid": "{paid} van {total} betaald ({repaid} van {borrowed})",

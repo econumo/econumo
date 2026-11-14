@@ -615,6 +615,28 @@
         "question": "A dívida volta a ficar aberta: o valor em dívida volta a ser calculado a partir dos registos anteriores e dos pagamentos."
       }
     },
+    "rates": {
+      "title": "Alterações da taxa",
+      "from_start": "Desde o início",
+      "from_terms": "dos termos do seu empréstimo",
+      "column": {
+        "date": "Data",
+        "rate": "Taxa",
+        "payment": "Pagamento"
+      },
+      "form": {
+        "title": "Registar uma alteração da taxa",
+        "date": "Data",
+        "rate": "Taxa, % ao ano",
+        "payment": "Pagamento",
+        "save": "Adicionar alteração da taxa"
+      },
+      "delete": "Eliminar a alteração da taxa de {date}",
+      "delete_confirm": {
+        "title": "Eliminar esta alteração da taxa?",
+        "question": "Os pagamentos posteriores à sua data voltam a ser contados com a taxa e o pagamento anteriores."
+      }
+    },
     "review": {
       "progress": "{paid} de {total} pagos",
       "progress_repaid": "{paid} de {total} pagos ({repaid} de {borrowed})",
