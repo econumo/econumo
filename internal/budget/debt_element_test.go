@@ -496,3 +496,76 @@ func TestGetTransactionList_ElementListsItsPayments(t *testing.T) {
 		t.Errorf("loan list = %+v, want its payment", res.Items)
 	}
 }
+
+// A budget whose periods start on the 5th: a debt ended on 3 February is in
+// force in the period keyed January (5 January to 4 February), and one that
+// starts on 3 April in the period keyed March.
+func TestGetBudget_DebtInForceByPeriod_ShiftedPeriods(t *testing.T) {
+	h := newDebtHarness(t)
+	if _, err := h.tdb.Raw.ExecContext(h.ctx, h.tdb.Rebind("UPDATE budgets SET period_start_day = 5 WHERE id = ?"), h.budgetID); err != nil {
+		t.Fatal(err)
+	}
+	old := h.setUpDebt(t, h.loan, "2025-12-10", "10000", "1000", "2026-10-10")
+	if _, err := h.debts.MarkDebtPaidOff(h.ctx, h.owner, model.MarkDebtPaidOffRequest{Id: old, Date: "2026-02-03"}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+	from := "2026-04-03"
+	newer := h.looseDebt(t, h.loan, &from)
+
+	for _, c := range []struct{ month, want string }{
+		{"2025-11-01", ""}, {"2025-12-01", old}, {"2026-01-01", old}, {"2026-02-01", ""}, {"2026-03-01", newer}, {"2026-04-01", newer},
+	} {
+		el := findElement(h.budgetAt(t, c.month), h.loan, model.ElementCategory)
+		var got *model.ElementDebtResult
+		if el != nil {
+			got = el.Debt
+		}
+		if debtIDOf(got) != c.want {
+			t.Errorf("%s debt = %+v, want %q", c.month, got, c.want)
+		}
+	}
+}
+
+// A paid-off debt whose category has since gone into an envelope cannot be
+// reopened: the active debt would sit hidden on an envelope child.
+func TestReopenDebt_RefusedOnceTheCategoryIsInAnEnvelope(t *testing.T) {
+	h := newDebtHarness(t)
+	housing := h.envelope(t, "Housing", h.rent)
+	paid := h.setUpDebt(t, h.food, "2026-01-01", "5000", "1000", "2026-06-01")
+	if _, err := h.debts.MarkDebtPaidOff(h.ctx, h.owner, model.MarkDebtPaidOffRequest{Id: paid, Date: "2026-03-01"}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+	if _, err := h.svc.MoveElement(h.ctx, h.owner, model.MoveElementRequest{BudgetId: h.budgetID, Id: h.food, EnvelopeId: &housing}); err != nil {
+		t.Fatalf("MoveElement: %v", err)
+	}
+	_, err := h.debts.ReopenDebt(h.ctx, h.owner, model.ReopenDebtRequest{Id: paid})
+	requireFieldCode(t, err, "elementId", errs.CodeDebtElementNotEligible)
+	if n := h.count(t, "SELECT COUNT(*) FROM debts WHERE id = ? AND status = 'paid_off'", paid); n != 1 {
+		t.Error("the refused reopen changed the debt")
+	}
+}
+
+// update-envelope checks only the categories joining the envelope: one
+// already in it never blocks a rename, while a new one with an active debt
+// is still refused.
+func TestUpdateEnvelope_ChecksOnlyNewCategories(t *testing.T) {
+	h := newDebtHarness(t)
+	housing := h.envelope(t, "Housing")
+	h.looseDebt(t, h.rent, nil)
+	h.looseDebt(t, h.loan, nil)
+	// a state the API no longer reaches: an active debt on an envelope child
+	h.f.EnvelopeCategory(housing, h.rent)
+
+	if _, err := h.svc.UpdateEnvelope(h.ctx, h.owner, model.UpdateEnvelopeRequest{
+		BudgetId: h.budgetID, Id: housing, Name: "Home", Icon: "home", CurrencyId: fixture.USD, Categories: []string{h.rent},
+	}); err != nil {
+		t.Fatalf("renaming the envelope: %v", err)
+	}
+	if _, err := h.svc.MoveElement(h.ctx, h.owner, model.MoveElementRequest{BudgetId: h.budgetID, Id: h.rent, EnvelopeId: &housing}); err != nil {
+		t.Fatalf("moving a child into its own envelope: %v", err)
+	}
+	_, err := h.svc.UpdateEnvelope(h.ctx, h.owner, model.UpdateEnvelopeRequest{
+		BudgetId: h.budgetID, Id: housing, Name: "Home", Icon: "home", CurrencyId: fixture.USD, Categories: []string{h.rent, h.loan},
+	})
+	requireFieldCode(t, err, "categories", errs.CodeBudgetElementHasDebt)
+}

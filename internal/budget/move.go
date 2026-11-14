@@ -190,12 +190,6 @@ func (s *Service) moveIntoEnvelope(ctx context.Context, b *budgetAggregate, move
 	}
 	now := s.clock.Now()
 	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		if err := s.refuseDebtCarriers(txCtx, b, "id", moved.ExternalID); err != nil {
-			return err
-		}
-		if err := s.leaveEnvelopes(txCtx, b, moved.ExternalID, &envelopeID); err != nil {
-			return err
-		}
 		ids, err := s.envelopes.EnvelopeCategoryIDs(txCtx, envelopeID)
 		if err != nil {
 			return err
@@ -203,6 +197,14 @@ func (s *Service) moveIntoEnvelope(ctx context.Context, b *budgetAggregate, move
 		member := false
 		for _, id := range ids {
 			member = member || id.Equal(moved.ExternalID)
+		}
+		if !member {
+			if err := s.refuseDebtCarriers(txCtx, b, "id", moved.ExternalID); err != nil {
+				return err
+			}
+		}
+		if err := s.leaveEnvelopes(txCtx, b, moved.ExternalID, &envelopeID); err != nil {
+			return err
 		}
 		if !member {
 			if err := s.envelopes.AddEnvelopeCategory(txCtx, envelopeID, moved.ExternalID); err != nil {
@@ -304,13 +306,7 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 	if err != nil {
 		return err
 	}
-	// Participant users = owner + accepted non-reader access.
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
-	}
+	userIDs := b.participantIDs()
 
 	// Index existing elements by "<externalId>-<typeAlias>" AND by external id.
 	// The external index is what makes a type (side) change an in-place update:

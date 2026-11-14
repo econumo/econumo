@@ -2,6 +2,7 @@ package budget
 
 import (
 	"context"
+	"slices"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -143,7 +144,12 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 	// so it is read from the existing element row (default expense if missing).
 	envType := model.ElementEnvelope
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		if derr := s.refuseDebtCarriers(txCtx, b, "categories", parseIDs(req.Categories)...); derr != nil {
+		// only a category joining the envelope can bring an active debt in
+		current, cerr := s.envelopes.EnvelopeCategoryIDs(txCtx, envelopeID)
+		if cerr != nil {
+			return cerr
+		}
+		if derr := s.refuseDebtCarriers(txCtx, b, "categories", newIDs(parseIDs(req.Categories), current)...); derr != nil {
 			return derr
 		}
 		env, gerr := s.envelopes.GetEnvelope(txCtx, envelopeID)
@@ -267,6 +273,17 @@ func parseIDs(raw []string) []vo.Id {
 	return out
 }
 
+// newIDs are the ids of want not in have.
+func newIDs(want, have []vo.Id) []vo.Id {
+	out := make([]vo.Id, 0, len(want))
+	for _, id := range want {
+		if !slices.ContainsFunc(have, id.Equal) {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 // lastElementKey returns the greatest sort key among a budget's elements, so a
 // caller can append after it. Unset (archived / child) elements carry no key and
 // are naturally excluded by the string comparison.
@@ -310,12 +327,7 @@ func (s *Service) validateEnvelopeCategories(ctx context.Context, b *budgetAggre
 	if len(categoryIDs) == 0 {
 		return nil
 	}
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
-	}
+	userIDs := b.participantIDs()
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
 	if err != nil {
 		return err
@@ -351,12 +363,7 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 	if len(categoryIDs) == 0 {
 		return []model.ChildElementResult{}, nil
 	}
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
-	}
+	userIDs := b.participantIDs()
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
 	if err != nil {
 		return nil, err

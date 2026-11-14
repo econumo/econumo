@@ -93,8 +93,9 @@ func paidOffWritable(d *model.Debt) error {
 
 // ReopenDebt takes a paid-off debt back to active: its end goes, and so does
 // the statement of 0 it stored on its end date. It is refused while its
-// element carries another active debt or one started after it. Reopening an
-// active debt changes nothing.
+// element carries another active debt or one started after it, and when the
+// element can no longer carry a debt. Reopening an active debt changes
+// nothing.
 func (s *Service) ReopenDebt(ctx context.Context, userID vo.Id, req model.ReopenDebtRequest) (*model.DebtResult, error) {
 	return inOneTx(ctx, s, func(ctx context.Context) (*model.DebtResult, error) { return s.reopenDebt(ctx, userID, req) })
 }
@@ -126,6 +127,15 @@ func (s *Service) reopenDebt(ctx context.Context, userID vo.Id, req model.Reopen
 			if !o.IsPaidOff() || createdBefore(cur, o) {
 				return cannotReopen()
 			}
+		}
+		// the element may have moved into an envelope (or gone) since the
+		// debt ended; an active debt there would be hidden
+		el, err := s.element(ctx, cur.BudgetID, cur.ElementID)
+		if err != nil {
+			return err
+		}
+		if !el.Eligible || el.Type != cur.ElementType {
+			return notEligible()
 		}
 		if cur.EndedAt != nil {
 			if err := s.dropClosingStatement(ctx, cur, *cur.EndedAt); err != nil {
