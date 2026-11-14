@@ -190,12 +190,66 @@ func TestUpdateDebt_StartAfterARateChangeIsRefused(t *testing.T) {
 	requireField(t, err, "startDate", errs.CodeDebtConflictsWithRateChange)
 }
 
+// The change on the start date is the start's: it moves with a corrected
+// start, its rate and payment kept.
+func TestUpdateDebt_StartRowMovesWithTheStart(t *testing.T) {
+	e := newEnv(t)
+	res := e.createOrigin(t, nil)
+	e.mustAddRate(t, res.Id, "2025-09-01", "5", "600")
+	req := e.updateReq(res)
+	req.StartDate = ptr("2025-04-01")
+	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := e.details(t, res.Id).RateChanges
+	if got.StartDate != "2025-04-01" || len(rows) != 2 {
+		t.Fatalf("start = %s, rate changes = %+v", got.StartDate, rows)
+	}
+	if rows[0].Date != "2025-04-01" || rows[0].AnnualRate != impliedAnnual(t) || rows[0].Payment != "600" {
+		t.Fatalf("start row = %+v, want it on 2025-04-01 at %s with 600", rows[0], impliedAnnual(t))
+	}
+	if rows[1].Date != "2025-09-01" || rows[1].AnnualRate != "5" {
+		t.Fatalf("change = %+v", rows[1])
+	}
+}
+
+// A corrected payment is the start row's payment too; a later change keeps
+// its own.
+func TestUpdateDebt_PaymentCorrectionReachesTheStartRow(t *testing.T) {
+	e := newEnv(t)
+	res := e.createOrigin(t, nil)
+	e.mustAddRate(t, res.Id, "2025-09-01", "5", "700")
+	req := e.updateReq(res)
+	req.Payment = vo.NewFlexString("650")
+	got, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := e.details(t, res.Id).RateChanges
+	if got.Payment != "650" || len(rows) != 2 || rows[0].Payment != "650" || rows[0].AnnualRate != impliedAnnual(t) || rows[1].Payment != "700" {
+		t.Fatalf("payment = %s, rate changes = %+v", got.Payment, rows)
+	}
+	e.clock.now = ymd(2025, 5, 10)
+	f, err := e.svc.GetDebtForecast(context.Background(), e.uid(), model.GetDebtForecastRequest{Id: res.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pays := map[string]string{}
+	for _, it := range f.Items {
+		pays[it.Date] = it.Payment
+	}
+	if pays["2025-06-01"] != "650" || pays["2025-08-01"] != "650" || pays["2025-09-01"] != "700" {
+		t.Fatalf("forecast = %+v, want 650 before September and 700 from it", f.Items)
+	}
+}
+
 // A correction is checked with the rate changes applied: from the change on,
 // its own rate and payment stay.
 func TestUpdateDebt_CorrectionCheckedWithTheRateChanges(t *testing.T) {
 	e := newEnv(t)
 	res := e.createOrigin(t, nil)
-	e.mustAddRate(t, res.Id, "2025-03-01", "10", "600")
+	e.mustAddRate(t, res.Id, "2025-09-01", "10", "600")
 	req := e.updateReq(res)
 	req.AmountBorrowed, req.Payment = vo.NewFlexString("100000"), vo.NewFlexString("5000")
 	_, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)

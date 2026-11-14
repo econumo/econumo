@@ -323,12 +323,13 @@ func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInpu
 	stored := roundedTerms(snapshotTerms(snaps[0]), digits)
 	origin := in.origin(stored, digits)
 	if termsDiffer(stored, origin) {
-		for _, c := range changes {
-			if c.EffectiveDate.Before(origin.AsOf) {
-				return false, fieldError("startDate", "This start date comes after a rate change.", errs.CodeDebtConflictsWithRateChange)
-			}
+		if err := startRateConflict(changes, stored.AsOf, origin.AsOf); err != nil {
+			return false, err
 		}
 		if err := validateOrigin(origin, today, digits); err != nil {
+			return false, err
+		}
+		if changes, err = s.followStartRate(ctx, cur.ID, changes, stored, origin); err != nil {
 			return false, err
 		}
 		for i, sn := range snaps {
@@ -359,6 +360,56 @@ func (s *Service) correctTerms(ctx context.Context, cur *model.Debt, in debtInpu
 		return recheck, s.writeStatement(ctx, cur, in.statement(snapshotTerms(snaps[len(snaps)-1]), today, digits), today, digits)
 	}
 	return recheck, nil
+}
+
+// startRateConflict refuses a start after a rate change other than the one on
+// the old start, which moves with it (followStartRate).
+func startRateConflict(changes []*model.DebtRateChange, oldStart, newStart time.Time) error {
+	for _, c := range changes {
+		if c.EffectiveDate.Before(newStart) && !c.EffectiveDate.Equal(oldStart) {
+			return fieldError("startDate", "This start date comes after a rate change.", errs.CodeDebtConflictsWithRateChange)
+		}
+	}
+	return nil
+}
+
+// followStartRate keeps the rate change on the start date the start's: it
+// moves with a corrected start date (giving way to a change already on the
+// new one) and takes a corrected payment, its rate kept. It returns the
+// changes as stored after.
+func (s *Service) followStartRate(ctx context.Context, debtID vo.Id, changes []*model.DebtRateChange, stored, origin model.DebtTerms) ([]*model.DebtRateChange, error) {
+	var start *model.DebtRateChange
+	taken := false
+	for _, c := range changes {
+		switch {
+		case c.EffectiveDate.Equal(stored.AsOf):
+			start = c
+		case c.EffectiveDate.Equal(origin.AsOf):
+			taken = true
+		}
+	}
+	if start != nil && !origin.AsOf.Equal(stored.AsOf) {
+		if _, err := s.repo.DeleteRateChange(ctx, debtID, start.ID); err != nil {
+			return nil, err
+		}
+		if !taken {
+			start.EffectiveDate = origin.AsOf
+			if err := s.repo.SaveRateChange(ctx, start); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if !origin.Payment.Equals(stored.Payment) {
+		for _, c := range changes {
+			if c.EffectiveDate.Equal(origin.AsOf) {
+				c.Payment = origin.Payment
+				if err := s.repo.SaveRateChange(ctx, c); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+	return s.repo.RateChanges(ctx, []vo.Id{debtID})
 }
 
 // laterConflict refuses a correction that leaves a statement balance before

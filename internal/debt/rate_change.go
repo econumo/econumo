@@ -20,7 +20,8 @@ const rateDigits = 8
 // A change on a date that has one replaces it. A change after the start while
 // none is dated on the start also stores one there, with the rate the terms
 // imply now and the origin's payment, so a later correction of the terms no
-// longer moves the rate the loan began with.
+// longer moves the rate the loan began with (only its date and payment follow
+// a correction: followStartRate).
 func (s *Service) AddDebtRateChange(ctx context.Context, userID vo.Id, req model.AddDebtRateChangeRequest) (*model.DebtResult, error) {
 	return inOneTx(ctx, s, func(ctx context.Context) (*model.DebtResult, error) { return s.addDebtRateChange(ctx, userID, req) })
 }
