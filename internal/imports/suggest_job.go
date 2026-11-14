@@ -397,18 +397,18 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 	candidates := map[string][]model.ImportNamed{}
 	for k, r := range replies {
 		row := rows[mustAtoi(k)]
-		if !row.Missing.Payee || strings.TrimSpace(r.Merchant) == "" {
+		if !row.Missing.Payee || len(r.Merchants) == 0 {
 			continue
 		}
 		if _, _, ok := matchTextIn(row.Link, r.MatchText); !ok {
 			continue
 		}
-		if id, ok := exactPayee(r.Merchant, r.MatchText, vocab.Payees); ok {
+		if id, ok := exactPayee(r.Merchants, r.MatchText, vocab.Payees); ok {
 			r.PayeeID = id
 			replies[k] = r
 			continue
 		}
-		if list := payeeCandidates(r.Merchant, r.MatchText, vocab.Payees); len(list) > 0 {
+		if list := payeeCandidates(r.Merchants, r.MatchText, vocab.Payees); len(list) > 0 {
 			candidates[k] = list
 		}
 	}

@@ -207,7 +207,7 @@ func TestImportSuggestionsTwoStepPayee(t *testing.T) {
 	ai := &recordingCompleter{names: dbNames(db), reply: func() (string, error) {
 		step++
 		if step == 1 {
-			return `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`, nil
+			return `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + cat + `"}]}`, nil
 		}
 		return `{"rows":[{"key":"0","payeeId":"` + bb + `"}]}`, nil
 	}}

@@ -30,7 +30,7 @@ func seedSuggestion(t *testing.T, h *harness, c *fakeCompleter, cat, payee strin
 	}
 	if payee != "" {
 		// one reply serves both steps: step 1 reads the merchant, step 2 the payee
-		reply += `,"merchant":"Blue Bottle","payeeId":"` + payee + `"`
+		reply += `,"merchants":["Blue Bottle"],"payeeId":"` + payee + `"`
 	}
 	c.reply = reply + `}]}`
 	if len(payees) == 0 {

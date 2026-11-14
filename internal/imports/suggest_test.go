@@ -379,22 +379,23 @@ func TestBuildSuggestPromptSendsOnlyTheAllowlist(t *testing.T) {
 func TestBuildPayeePromptSendsOnlyTheAllowlist(t *testing.T) {
 	row := guardRow()
 	bb := namedList("Blue Bottle Coffee")
-	replies := map[string]suggestReplyRow{"0": {MatchText: "BLUE BOTTLE", Merchant: "Blue Bottle"}}
+	replies := map[string]suggestReplyRow{"0": {MatchText: "BLUE BOTTLE", Merchants: []string{"Blue Bottle"}}}
 	_, user, _ := buildPayeePrompt([]suggestRow{row}, replies, map[string][]model.ImportNamed{"0": bb}, "en", "UTC")
 	require.False(t, uuidPattern.MatchString(user))
-	require.Equal(t, keySet("language", "timezone", "rows", "rows[].key", "rows[].payee", "rows[].merchant",
+	require.Equal(t, keySet("language", "timezone", "rows", "rows[].key", "rows[].payee", "rows[].merchants",
 		"rows[].candidates", "rows[].candidates[].key", "rows[].candidates[].name"), jsonKeyPaths(t, user))
 	var p struct {
 		Rows []struct {
-			Key, Payee, Merchant string
-			Candidates           []struct{ Key, Name string }
+			Key, Payee string
+			Merchants  []string
+			Candidates []struct{ Key, Name string }
 		}
 	}
 	require.NoError(t, json.Unmarshal([]byte(user), &p))
 	require.Equal(t, 1, len(p.Rows))
 	require.Equal(t, "0", p.Rows[0].Key)
 	require.Equal(t, "BLUE BOTTLE", p.Rows[0].Payee)
-	require.Equal(t, "Blue Bottle", p.Rows[0].Merchant)
+	require.Equal(t, []string{"Blue Bottle"}, p.Rows[0].Merchants)
 	require.Equal(t, "p1", p.Rows[0].Candidates[0].Key)
 	require.Equal(t, "Blue Bottle Coffee", p.Rows[0].Candidates[0].Name)
 	for _, leak := range append(guardLeaks, row.Link.ID.String()) {
@@ -538,41 +539,64 @@ func TestBuildSuggestPromptSendsOnlyTheRowTypesCategories(t *testing.T) {
 }
 
 func TestParseSuggestReplyReadsMerchantNotPayee(t *testing.T) {
-	m, err := parseSuggestReply(`{"rows":[{"key":"0","matchText":"AMZN","merchant":"Amazon","payeeId":"x"}]}`)
+	m, err := parseSuggestReply(`{"rows":[{"key":"0","matchText":"AMZN","merchants":["Amazon"],"payeeId":"x"}]}`)
 	require.NoError(t, err)
-	require.Equal(t, "Amazon", m["0"].Merchant)
+	require.Equal(t, []string{"Amazon"}, m["0"].Merchants)
 	require.Equal(t, "", m["0"].PayeeID)
 }
 
+func TestParseSuggestReplyCleansMerchants(t *testing.T) {
+	m, err := parseSuggestReply(`{"rows":[{"key":"0","merchants":[" Yandex Taxi ","","yandex taxi","Яндекс Такси","Yandex Go","Yandex","Extra"]},{"key":"1","merchants":[]},{"key":"2","merchants":null}]}`)
+	require.NoError(t, err)
+	require.Equal(t, []string{"Yandex Taxi", "Яндекс Такси", "Yandex Go", "Yandex"}, m["0"].Merchants)
+	require.Empty(t, m["1"].Merchants)
+	require.Empty(t, m["2"].Merchants)
+}
+
+func TestExactPayeeAcrossMerchantNames(t *testing.T) {
+	payees := namedList("Яндекс Такси", "Яндекс Плюс", "Перекрёсток")
+	id, ok := exactPayee([]string{"Yandex Taxi", "Яндекс Такси"}, "YANDEX*TAXI", payees)
+	require.True(t, ok)
+	require.Equal(t, payees[0].ID, id)
+	_, ok = exactPayee([]string{"Yandex Taxi", "Яндекс Такси", "Яндекс Плюс"}, "YANDEX", payees)
+	require.False(t, ok)
+	_, ok = exactPayee([]string{"Yandex Taxi"}, "YANDEX*TAXI", payees)
+	require.False(t, ok)
+}
+
 func TestPayeeCandidates(t *testing.T) {
-	payees := namedList("Amazon Fresh", "Amazon", "Apple", "Blue Bottle Coffee", "Starbucks", "Trader Joes", "Whole Foods Market")
+	payees := namedList("Amazon Fresh", "Amazon", "Apple", "Blue Bottle Coffee", "Starbucks", "Trader Joes", "Whole Foods Market", "Перекрёсток")
 	for _, tc := range []struct {
-		name, merchant, matchText string
-		want                      []string
+		name      string
+		merchants []string
+		matchText string
+		want      []string
 	}{
-		{"equality before containment", "Amazon", "AMZN MKTP", []string{"Amazon", "Amazon Fresh"}},
-		{"containment", "Blue Bottle", "BLUE BOTTLE", []string{"Blue Bottle Coffee"}},
-		{"punctuation and case", "TRADER JOE'S", "TRADER JOE'S #12", []string{"Trader Joes"}},
-		{"shared word", "Foods Co", "FOODS CO", []string{"Whole Foods Market"}},
-		{"small typo", "Starbuks", "STARBUKS", []string{"Starbucks"}},
-		{"match text alone", "Coffee Place", "STARBUCKS", []string{"Starbucks", "Blue Bottle Coffee"}},
-		{"nothing alike", "Zara", "ZARA", []string{}},
+		{"equality before containment", []string{"Amazon"}, "AMZN MKTP", []string{"Amazon", "Amazon Fresh"}},
+		{"containment", []string{"Blue Bottle"}, "BLUE BOTTLE", []string{"Blue Bottle Coffee"}},
+		{"punctuation and case", []string{"TRADER JOE'S"}, "TRADER JOE'S #12", []string{"Trader Joes"}},
+		{"shared word", []string{"Foods Co"}, "FOODS CO", []string{"Whole Foods Market"}},
+		{"small typo", []string{"Starbuks"}, "STARBUKS", []string{"Starbucks"}},
+		{"match text alone", []string{"Coffee Place"}, "STARBUCKS", []string{"Starbucks", "Blue Bottle Coffee"}},
+		{"other script", []string{"Perekrestok", "Перекрёсток"}, "PEREKRESTOK", []string{"Перекрёсток"}},
+		{"best score across names", []string{"Coffee Place", "Starbucks"}, "SBUX", []string{"Starbucks", "Blue Bottle Coffee"}},
+		{"nothing alike", []string{"Zara"}, "ZARA", []string{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.want, names(payeeCandidates(tc.merchant, tc.matchText, payees)))
+			require.Equal(t, tc.want, names(payeeCandidates(tc.merchants, tc.matchText, payees)))
 		})
 	}
 }
 
 func TestPayeeCandidatesCapsAtFive(t *testing.T) {
 	payees := namedList("Coffee 1", "Coffee 2", "Coffee 3", "Coffee 4", "Coffee 5", "Coffee 6", "Coffee 7", "Coffee")
-	got := payeeCandidates("Coffee", "COFFEE", payees)
+	got := payeeCandidates([]string{"Coffee"}, "COFFEE", payees)
 	require.Len(t, got, 5)
 	require.Equal(t, "Coffee", got[0].Name)
 }
 
 func TestPayeeCandidatesIgnoreShortContainment(t *testing.T) {
-	require.Equal(t, []string{}, names(payeeCandidates("Co", "CO", namedList("Costco"))))
+	require.Equal(t, []string{}, names(payeeCandidates([]string{"Co"}, "CO", namedList("Costco"))))
 }
 
 func TestVocabularyKeepsEveryPayee(t *testing.T) {
@@ -582,7 +606,7 @@ func TestVocabularyKeepsEveryPayee(t *testing.T) {
 	}
 	payees := namedList(append(all, "Zoo Market")...)
 	v := newSuggestVocabulary(nil, payees)
-	got := payeeCandidates("Zoo Market", "ZOO MARKET", v.Payees)
+	got := payeeCandidates([]string{"Zoo Market"}, "ZOO MARKET", v.Payees)
 	require.Equal(t, []string{"Zoo Market"}, names(got))
 	_, ok := v.hasPayee(got[0].ID)
 	require.True(t, ok)
@@ -592,10 +616,10 @@ func TestBuildPayeePromptSendsOnlyTheRowsCandidates(t *testing.T) {
 	day := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
 	rows := []suggestRow{sRow(sLink("PHILZ", "", day)), sRow(sLink("SQ *BLUE BOTTLE", "memo", day))}
 	bb := namedList("Blue Bottle Coffee")
-	replies := map[string]suggestReplyRow{"0": {MatchText: "PHILZ"}, "1": {MatchText: "BLUE BOTTLE", Merchant: "Blue Bottle"}}
+	replies := map[string]suggestReplyRow{"0": {MatchText: "PHILZ"}, "1": {MatchText: "BLUE BOTTLE", Merchants: []string{"Blue Bottle"}}}
 	sys, user, _ := buildPayeePrompt(rows, replies, map[string][]model.ImportNamed{"1": bb}, "en", "UTC")
 	require.NotEmpty(t, sys)
-	for _, want := range []string{"Blue Bottle Coffee", `"key":"p1"`, "SQ *BLUE BOTTLE", `"merchant":"Blue Bottle"`, `"key":"1"`} {
+	for _, want := range []string{"Blue Bottle Coffee", `"key":"p1"`, "SQ *BLUE BOTTLE", `"merchants":["Blue Bottle"]`, `"key":"1"`} {
 		require.True(t, strings.Contains(user, want))
 	}
 	for _, not := range []string{"PHILZ", `"key":"0"`, "categories", bb[0].ID} {
@@ -668,11 +692,11 @@ func TestReplySchemasFitStructuredOutputs(t *testing.T) {
 }
 
 func TestParseSuggestReplyNullsMissingAndRepeatedRows(t *testing.T) {
-	m, err := parseSuggestReply(`{"rows":[{"key":"0","matchText":"AMZN","merchant":null,"categoryKey":null},{"key":"0","matchText":"other"},{"key":" 2 ","matchText":"Z","merchant":"Zed","categoryKey":"c"},{"matchText":"no key"}]}`)
+	m, err := parseSuggestReply(`{"rows":[{"key":"0","matchText":"AMZN","merchants":null,"categoryKey":null},{"key":"0","matchText":"other"},{"key":" 2 ","matchText":"Z","merchants":["Zed"],"categoryKey":"c"},{"matchText":"no key"}]}`)
 	require.NoError(t, err)
 	require.Equal(t, map[string]suggestReplyRow{
 		"0": {Key: "0", MatchText: "AMZN"},
-		"2": {Key: "2", MatchText: "Z", Merchant: "Zed", CategoryKey: "c"},
+		"2": {Key: "2", MatchText: "Z", Merchants: []string{"Zed"}, CategoryKey: "c"},
 	}, m)
 	m, err = parseSuggestReply(`{"rows":[]}`)
 	require.NoError(t, err)

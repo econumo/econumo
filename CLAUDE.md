@@ -201,15 +201,19 @@ currency code; never the amount, the date or the description, and a row with no 
 not sent at all, a payee equal to the description counting as none since SimpleFIN copies the
 memo into an empty payee) with only that type's non-archived categories (`{key, name}`, keys
 `c1`, `c2`, ... per request) and no payees,
-and asks per row for a match text, the merchant's common name and, when confident, a category
-(reply `{rows:[{key, matchText, merchant|null, categoryKey|null}]}`; a row left out or a null
-field means not confident). Every prompt of this feature is a constant in
+and asks per row for a match text, up to 4 merchant names (the most common first, plus the
+name as written in the user's language or script and a short brand form when they differ:
+`YANDEX*TAXI` -> Yandex Taxi, Яндекс Такси, Yandex Go; the server keeps 4) and, when confident, a
+category (a well-known chain or a merchant whose name says what it sells counts as confident when
+a listed category fits; a person-to-person transfer or a bare payment processor never does)
+(reply `{rows:[{key, matchText, merchants[], categoryKey|null}]}`; a row left out, an empty list
+or a null field means not confident). Every prompt of this feature is a constant in
 `internal/imports/prompts.go`, with its reply schema.
 The server then picks, without AI, up to 5 of the owner's non-archived payees per row whose
-names resemble the merchant name or the match text (`payeeCandidates`: equal, one containing
+names resemble any merchant name or the match text (`payeeCandidates`, each payee by its best score: equal, one containing
 the other, Levenshtein ratio >= 0.8, or a shared word of 3+ letters; lowercased, punctuation
-stripped), a row whose merchant name or match text equals exactly ONE such payee's name (same normalization) takes it directly, with no AI call, and step 2, only when some other row has candidates (two equal names, or only looser matches), sends those rows (key, payee text,
-merchant name) with their own candidates (`{key, name}`, keys `p1`, `p2`, ... unique within the request; reply `{rows:[{key, payeeKey|null}]}`) and keeps a payee only when it is one of that row's (a failed step 2 keeps step 1's
+stripped), a row where exactly ONE payee's name equals any of its merchant names or its match text (same normalization) takes it directly, with no AI call, and step 2, only when some other row has candidates (two equal names, or only looser matches), sends those rows (key, payee text,
+all its merchant names) with their own candidates (`{key, name}`, keys `p1`, `p2`, ... unique within the request; reply `{rows:[{key, payeeKey|null}]}`) and keeps a payee only when it is one of that row's (a failed step 2 keeps step 1's
 categories); the opt-out is re-read before every call after the first. The suggestion lands in the OWNER's Inbox only (a partner's tap included).
 Match text holds at least 3 letters or digits and must occur in the payee; there is one open suggestion per (owner, merchant, income/expense): the suggestion
 stores its type (`import_suggestions.transaction_type`), and a row (before the AI call) or a

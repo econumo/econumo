@@ -130,24 +130,31 @@ type) are dropped before the cap, and a row dated more than a day after its impo
 For the owner: their non-archived categories of that type only (a short key `c1`, `c2`, ...
 issued per request, and the name; never the id), language and timezone. No payees. It asks, per
 row it is confident about,
-`{"rows":[{"key":"<key>","matchText":"...","merchant":"...","categoryKey":"..."}]}`: the system prompt
-says to include `categoryKey` only when highly confident and only from the listed keys, to pick as
-`matchText` the shortest substring of the payee that identifies the merchant, copied exactly, and as `merchant` the merchant's common name
-("Amazon" for "AMZN MKTP US*2K4"), omitted when unclear.
+`{"rows":[{"key":"<key>","matchText":"...","merchants":["..."],"categoryKey":"..."}]}`: the system prompt
+says to include `categoryKey` only when confident and only from the listed keys, to pick as
+`matchText` the shortest substring of the payee that identifies the merchant, copied exactly, and as `merchants`
+up to 4 names of the merchant, the most common first ("Amazon" for "AMZN MKTP US*2K4"), adding the
+name as it is commonly written in the request's language or script and a well-known short or brand
+form when they differ (`YANDEX*TAXI`: Yandex Taxi, Яндекс Такси, Yandex Go), an empty list when
+unclear. The schema cannot cap a list, so the server trims, dedupes and keeps the first 4. A bank's
+Latin text then still reaches payees the user wrote in Cyrillic. A well-known chain or brand, or a
+merchant whose name says what it sells (a farmers market, a pharmacy, a gas station), counts as
+confident for a category when a listed one fits; an unknown or ambiguous merchant, a
+person-to-person transfer or a payment processor naming no merchant gets none.
 
 *Candidates* (server, no AI): for each row with a merchant name, a valid match text and no
-payee yet, the owner's non-archived payees whose names resemble the merchant name or the match
-text, compared lowercased with punctuation stripped: equal, one containing the other (the
+payee yet, the owner's non-archived payees whose names resemble any merchant name or the match
+text (each payee ranked by its best score), compared lowercased with punctuation stripped: equal, one containing the other (the
 shorter at least 3 letters or digits), a Levenshtein ratio of at least 0.8, or a shared word of
 at least 3 letters, ranked in that order, at most 5 per row. There is no cap on the payee list
 itself, so a payee late in the alphabet is as reachable as any other.
 
-*Exact match.* A row whose merchant name or match text (normalized as above) equals the name of exactly
-one active payee takes that payee without a request; two equal names, or only looser matches,
+*Exact match.* A row where exactly one active payee's name equals any of its merchant names or its
+match text (normalized as above) takes that payee without a request; two equal names, or only looser matches,
 leave the row to step 2.
 
 *Step 2*, only when at least one row still has candidates after that: one request with only those rows (key,
-payee text, merchant name) and each row's candidates (a short key `p1`, `p2`, ... unique within
+payee text, all its merchant names) and each row's candidates (a short key `p1`, `p2`, ... unique within
 the request, so a payee offered to two rows has one key, and the name), asking
 `{"rows":[{"key":"<key>","payeeKey":"..."}]}` only when a candidate is clearly the same merchant.
 The server maps the keys back to ids: models mis-copy UUIDs (a live test returned `...6a78-...`

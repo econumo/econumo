@@ -13,7 +13,10 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-const maxPayeeCandidates = 5
+const (
+	maxPayeeCandidates = 5
+	maxMerchantNames   = 4
+)
 
 type suggestRow struct {
 	Link     model.ImportTransactionLink
@@ -48,12 +51,12 @@ type validSuggestion struct {
 // CategoryKey stands for (resolveCategories); PayeeID is filled from step 2,
 // never read from step 1's reply. A null field reads as empty.
 type suggestReplyRow struct {
-	Key         string `json:"key"`
-	MatchText   string `json:"matchText"`
-	Merchant    string `json:"merchant"`
-	CategoryKey string `json:"categoryKey"`
-	CategoryID  string `json:"-"`
-	PayeeID     string `json:"-"`
+	Key         string   `json:"key"`
+	MatchText   string   `json:"matchText"`
+	Merchants   []string `json:"merchants"`
+	CategoryKey string   `json:"categoryKey"`
+	CategoryID  string   `json:"-"`
+	PayeeID     string   `json:"-"`
 }
 
 func newSuggestVocabulary(categories, payees []model.ImportNamed) suggestVocabulary {
@@ -205,9 +208,29 @@ func parseSuggestReply(reply string) (map[string]suggestReplyRow, error) {
 			continue
 		}
 		r.Key, r.CategoryID, r.PayeeID = k, "", ""
+		r.Merchants = cleanMerchants(r.Merchants)
 		rows[k] = r
 	}
 	return rows, nil
+}
+
+// cleanMerchants trims the names, drops blanks and repeats, and keeps at most
+// maxMerchantNames: the schema cannot cap the list itself.
+func cleanMerchants(names []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, n := range names {
+		n = strings.TrimSpace(n)
+		if n == "" || seen[strings.ToLower(n)] {
+			continue
+		}
+		seen[strings.ToLower(n)] = true
+		out = append(out, n)
+		if len(out) == maxMerchantNames {
+			break
+		}
+	}
+	return out
 }
 
 // buildPayeePrompt is step 2: only the rows with candidates, each with its
@@ -219,10 +242,10 @@ func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, can
 		Name string `json:"name"`
 	}
 	type promptRow struct {
-		Key        string  `json:"key"`
-		Payee      string  `json:"payee"`
-		Merchant   string  `json:"merchant"`
-		Candidates []named `json:"candidates"`
+		Key        string   `json:"key"`
+		Payee      string   `json:"payee"`
+		Merchants  []string `json:"merchants"`
+		Candidates []named  `json:"candidates"`
 	}
 	payload := struct {
 		Language string      `json:"language"`
@@ -236,7 +259,7 @@ func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, can
 		if len(list) == 0 {
 			continue
 		}
-		pr := promptRow{Key: k, Payee: aiPayee(r.Link), Merchant: replies[k].Merchant}
+		pr := promptRow{Key: k, Payee: aiPayee(r.Link), Merchants: replies[k].Merchants}
 		for _, c := range list {
 			pr.Candidates = append(pr.Candidates, named{Key: keys.Key(c.ID), Name: c.Name})
 		}
@@ -303,16 +326,23 @@ func applyPayeeReply(replies map[string]suggestReplyRow, picks map[string]string
 	}
 }
 
-// exactPayee is the one payee whose name equals the merchant name or the
-// match text (as payeeCandidates normalizes them): a clear match needs no
-// second request. Two equal names are ambiguous and go to the AI.
-func exactPayee(merchant, matchText string, payees []model.ImportNamed) (string, bool) {
+// similarityQueries normalizes the merchant names and the match text, the
+// names payees are compared with; blanks and repeats are dropped.
+func similarityQueries(merchants []string, matchText string) []string {
 	var queries []string
-	for _, q := range []string{merchant, matchText} {
-		if q = similarityText(q); q != "" {
+	for _, q := range append(slices.Clone(merchants), matchText) {
+		if q = similarityText(q); q != "" && !slices.Contains(queries, q) {
 			queries = append(queries, q)
 		}
 	}
+	return queries
+}
+
+// exactPayee is the one payee whose name equals any merchant name or the
+// match text (as payeeCandidates normalizes them): a clear match needs no
+// second request. Two equal names are ambiguous and go to the AI.
+func exactPayee(merchants []string, matchText string, payees []model.ImportNamed) (string, bool) {
+	queries := similarityQueries(merchants, matchText)
 	id, n := "", 0
 	for _, p := range payees {
 		if name := similarityText(p.Name); slices.Contains(queries, name) {
@@ -322,17 +352,13 @@ func exactPayee(merchant, matchText string, payees []model.ImportNamed) (string,
 	return id, n == 1
 }
 
-// payeeCandidates ranks the payees by how alike their names are to the
-// merchant name or the match text: equal, one containing the other, a small
-// edit distance, then a shared word of three letters or more. The AI only
-// sees what this keeps, so it never needs the whole payee list.
-func payeeCandidates(merchant, matchText string, payees []model.ImportNamed) []model.ImportNamed {
-	queries := []string{}
-	for _, q := range []string{merchant, matchText} {
-		if q = similarityText(q); q != "" {
-			queries = append(queries, q)
-		}
-	}
+// payeeCandidates ranks the payees by how alike their names are to any of the
+// merchant names or the match text (each payee by its best score): equal, one
+// containing the other, a small edit distance, then a shared word of three
+// letters or more. The AI only sees what this keeps, so it never needs the
+// whole payee list.
+func payeeCandidates(merchants []string, matchText string, payees []model.ImportNamed) []model.ImportNamed {
+	queries := similarityQueries(merchants, matchText)
 	type scored struct {
 		p     model.ImportNamed
 		score float64

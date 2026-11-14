@@ -274,7 +274,7 @@ func TestSuggestSkipsRowsRulesClassified(t *testing.T) {
 
 	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "philz", CategoryID: cat})
 	philz := h.payee(t, userA, "Philz Coffee")
-	c.reply = `{"rows":[{"key":"0","matchText":"Philz","merchant":"Philz","categoryId":"` + other + `","payeeId":"` + philz + `"}]}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Philz","merchants":["Philz"],"categoryId":"` + other + `","payeeId":"` + philz + `"}]}`
 	ingest(t, h, pushWithPayee("Philz", "evt-2"))
 	if len(c.calls) != 2 {
 		t.Fatalf("calls = %d", len(c.calls))
@@ -574,7 +574,7 @@ func TestSuggestOpenSuggestionOfOtherTypeDoesNotCover(t *testing.T) {
 	if err := h.repo.InsertSuggestion(context.Background(), income); err != nil {
 		t.Fatal(err)
 	}
-	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}]}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"payeeId":"` + py + `"}]}`
 	ingest(t, h, tap)
 	if len(c.calls) != 2 {
 		t.Fatalf("an income suggestion must not cover an expense row: calls = %d", len(c.calls))
@@ -641,7 +641,7 @@ func TestSuggestCoveringSuggestionDeletedSendsRowsToAI(t *testing.T) {
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
 	old := seedPayeeSuggestion(t, h, py)
-	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}]}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"payeeId":"` + py + `"}]}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
@@ -661,7 +661,7 @@ func TestSuggestJoinTargetDeletedOpensFreshSuggestion(t *testing.T) {
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
 	old := seedPayeeSuggestion(t, h, py)
-	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}]}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"payeeId":"` + py + `"}]}`
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
 		t.Fatalf("status = %s", res.Status)
 	}
@@ -705,7 +705,7 @@ func TestSuggestJobsForOneOwnerRunOneAtATime(t *testing.T) {
 	h, _, facts := suggestSetup(t)
 	h.mapCard(t, "Apple Card")
 	py := h.payee(t, userA, "Blue Bottle Coffee")
-	c := &gatedCompleter{reply: `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","payeeId":"` + py + `"}]}`, started: make(chan struct{}, 2)}
+	c := &gatedCompleter{reply: `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"payeeId":"` + py + `"}]}`, started: make(chan struct{}, 2)}
 	h.svc.SetSuggester(c, facts)
 	var queued []func()
 	h.svc.SetJobRunner(func(run func()) { queued = append(queued, run) })
@@ -913,7 +913,7 @@ func TestSuggestTwoStepPayee(t *testing.T) {
 	bb := h.payee(t, userA, "Blue Bottle Coffee")
 	h.payee(t, userA, "Starbucks")
 	c.replies = []string{
-		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`,
+		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + cat + `"}]}`,
 		`{"rows":[{"key":"0","payeeId":"` + bb + `"}]}`,
 	}
 	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
@@ -946,7 +946,7 @@ func TestSuggestTwoStepPayee(t *testing.T) {
 
 func TestSuggestNoStepTwoWithoutCandidates(t *testing.T) {
 	for _, tc := range []struct{ name, reply string }{
-		{"merchant_like_no_payee", `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"%s"}]}`},
+		{"merchant_like_no_payee", `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"%s"}]}`},
 		{"no_merchant", `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"%s"}]}`},
 	} {
 		reply := tc.reply
@@ -974,7 +974,7 @@ func TestSuggestStepTwoRejectsPayeeOutsideTheRowsCandidates(t *testing.T) {
 	h.payee(t, userA, "Blue Bottle Coffee")
 	sb := h.payee(t, userA, "Starbucks")
 	c.replies = []string{
-		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`,
+		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + cat + `"}]}`,
 		`{"rows":[{"key":"0","payeeId":"` + sb + `"}]}`,
 	}
 	ingest(t, h, tap)
@@ -992,7 +992,7 @@ func TestSuggestStepTwoFailureKeepsCategory(t *testing.T) {
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Cafes")
 	h.payee(t, userA, "Blue Bottle Coffee")
-	c.replies = []string{`{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`, `not json`}
+	c.replies = []string{`{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + cat + `"}]}`, `not json`}
 	ingest(t, h, tap)
 	if len(c.calls) != 2 {
 		t.Fatalf("calls = %d", len(c.calls))
@@ -1010,7 +1010,7 @@ func TestSuggestOptOutBetweenStepsSkipsStepTwo(t *testing.T) {
 	h.mapCard(t, "Apple Card")
 	cat := h.category(t, userA, "Cafes")
 	h.payee(t, userA, "Blue Bottle Coffee")
-	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + cat + `"}]}`
 	ingest(t, h, tap)
 	if len(c.calls) != 1 || len(openSuggestions(t, h, userA)) != 0 {
 		t.Fatalf("calls = %d, suggestions = %+v", len(c.calls), openSuggestions(t, h, userA))
@@ -1026,7 +1026,7 @@ func TestSuggestFindsPayeeBeyondFiveHundred(t *testing.T) {
 	}
 	zoo := h.payee(t, userA, "Zoo Market")
 	c.replies = []string{
-		`{"rows":[{"key":"0","matchText":"Zoo","merchant":"Zoo Market Downtown"}]}`,
+		`{"rows":[{"key":"0","matchText":"Zoo","merchants":["Zoo Market Downtown"]}]}`,
 		`{"rows":[{"key":"0","payeeId":"` + zoo + `"}]}`,
 	}
 	ingest(t, h, pushWithPayee("ZOO MARKET 12", "evt-zoo"))
@@ -1310,7 +1310,7 @@ func exactPayeeSetup(t *testing.T, payees ...string) (*harness, *fakeCompleter, 
 
 func TestSuggestExactPayeeSkipsStepTwo(t *testing.T) {
 	h, c, ids := exactPayeeSetup(t, "Blue Bottle")
-	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + ids["cat"] + `"}]}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + ids["cat"] + `"}]}`
 	ingest(t, h, tap)
 	got := openSuggestions(t, h, userA)
 	if len(c.calls) != 1 || len(got) != 1 || got[0].PayeeID == nil || got[0].PayeeID.String() != ids["Blue Bottle1"] {
@@ -1318,10 +1318,20 @@ func TestSuggestExactPayeeSkipsStepTwo(t *testing.T) {
 	}
 }
 
+func TestSuggestExactPayeeByAnyMerchantName(t *testing.T) {
+	h, c, ids := exactPayeeSetup(t, "Синяя Бутылка")
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle","Синяя Бутылка"],"categoryId":"` + ids["cat"] + `"}]}`
+	ingest(t, h, tap)
+	got := openSuggestions(t, h, userA)
+	if len(c.calls) != 1 || len(got) != 1 || got[0].PayeeID == nil || got[0].PayeeID.String() != ids["Синяя Бутылка1"] {
+		t.Fatalf("calls = %d, suggestions = %+v", len(c.calls), got)
+	}
+}
+
 func TestSuggestTwoEqualPayeesGoToStepTwo(t *testing.T) {
 	h, c, ids := exactPayeeSetup(t, "Blue Bottle", "blue bottle")
 	c.replies = []string{
-		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + ids["cat"] + `"}]}`,
+		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + ids["cat"] + `"}]}`,
 		`{"rows":[{"key":"0","payeeId":"` + ids["Blue Bottle1"] + `"}]}`,
 	}
 	ingest(t, h, tap)
@@ -1333,7 +1343,7 @@ func TestSuggestTwoEqualPayeesGoToStepTwo(t *testing.T) {
 func TestSuggestContainmentOnlyGoesToStepTwo(t *testing.T) {
 	h, c, ids := exactPayeeSetup(t, "Blue Bottle Coffee")
 	c.replies = []string{
-		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + ids["cat"] + `"}]}`,
+		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle"],"categoryId":"` + ids["cat"] + `"}]}`,
 		`{"rows":[]}`,
 	}
 	ingest(t, h, tap)
@@ -1356,7 +1366,7 @@ func TestSuggestBatchStepTwoCarriesOnlyTheLooseRows(t *testing.T) {
 		extTx("ACT-1", "b", "-6.00", now.AddDate(0, 0, -2).Unix(), "Bakery Joy"),
 	}
 	c.replies = []string{
-		`{"rows":[{"key":"0","matchText":"Corner Shop","merchant":"Corner Shop","categoryId":"` + cat + `"},{"key":"1","matchText":"Bakery Joy","merchant":"Bakery Joy","categoryId":"` + cat + `"}]}`,
+		`{"rows":[{"key":"0","matchText":"Corner Shop","merchants":["Corner Shop"],"categoryId":"` + cat + `"},{"key":"1","matchText":"Bakery Joy","merchants":["Bakery Joy"],"categoryId":"` + cat + `"}]}`,
 		`{"rows":[{"key":"1","payeeId":"` + loose + `"}]}`,
 	}
 	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
