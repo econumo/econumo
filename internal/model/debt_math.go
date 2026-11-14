@@ -574,16 +574,21 @@ func groupByWindow(s MathSnapshot, pays []MathPayment) []payGroup {
 
 // allocate hands the window's interest to its payments: a stored interest is
 // kept (capped at the amount) and reserved first, so a payment split later
-// takes only what is left of the window's interest, whatever its date.
+// takes only what is left of the window's interest, whatever its date. A
+// payment of zero or less (a refund) takes none: its whole amount is principal.
 func allocate(pays []MathPayment, due float64, out map[string]float64) float64 {
 	for _, p := range pays {
+		if p.Amount <= 0 {
+			out[p.ID] = 0
+			continue
+		}
 		if p.Interest != nil {
 			out[p.ID] = math.Min(math.Max(*p.Interest, 0), p.Amount)
 			due -= out[p.ID]
 		}
 	}
 	for _, p := range pays {
-		if p.Interest == nil {
+		if p.Amount > 0 && p.Interest == nil {
 			out[p.ID] = math.Min(math.Max(due, 0), p.Amount)
 			due -= out[p.ID]
 		}
@@ -702,7 +707,7 @@ func splitBackward(s MathSnapshot, seg []MathPayment, out map[string]float64) {
 		r := dueInterest(s, 1, groups[i].due, time.Time{})
 		var total float64
 		for _, p := range groups[i].pays {
-			total += p.Amount
+			total += math.Max(p.Amount, 0)
 		}
 		due := (end + total) / (1 + r) * r
 		if total < due {

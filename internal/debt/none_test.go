@@ -196,3 +196,21 @@ func TestRead_MonthlyToFinishFollowsTheBudgetPeriods(t *testing.T) {
 		t.Fatalf("debt %q, element %q, want both 230.77", res.MonthlyToFinish, tl[res.Id].MonthlyToFinish)
 	}
 }
+
+func TestSync_RefundTakesNoInterestAndReadsTheSameTwice(t *testing.T) {
+	e := newEnv(t)
+	res := e.create(t, func(r *createSpec) {
+		r.AmountBorrowed, r.StartDate, r.Payment, r.Schedule, r.LastPaymentDate =
+			vo.NewFlexString("1000"), ptr("2026-03-01"), vo.NewFlexString("0"), "none", "2027-02-15"
+	})
+	e.clock.now = ymd(2026, 7, 1)
+	tx := e.expense(t, e.account, ymd(2026, 3, 5), "-100", "")
+	for i := 0; i < 2; i++ {
+		if got := e.details(t, res.Id).Item.CurrentBalance; got != "1100" {
+			t.Fatalf("read %d: balance = %q, want 1100", i+1, got)
+		}
+		if got := e.splits(t, res.Id)[tx]; got != "0" {
+			t.Fatalf("read %d: interest = %q, want 0", i+1, got)
+		}
+	}
+}

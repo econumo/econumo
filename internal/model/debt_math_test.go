@@ -1124,3 +1124,15 @@ func TestProjectDebt_PeriodHoldingTheOriginSchedulesOnlyLaterDues(t *testing.T) 
 func periodRateNow(snaps []MathSnapshot) float64 {
 	return PeriodRateOn(snaps, ymd(2100, time.January, 1))
 }
+
+func TestSplit_RefundTakesNoInterest(t *testing.T) {
+	ps := []MathPayment{pay("a", ymd(2026, time.February, 1), 2000), pay("r", ymd(2026, time.February, 1), -100)}
+	got := SplitPayments([]MathSnapshot{refLoan()}, ps)
+	near(t, "regular", got["a"], 1280.29, 0.01)
+	near(t, "refund", got["r"], 0, 1e-9)
+
+	free := MathSnapshot{AsOf: ymd(2026, time.January, 1), Balance: 1000, Schedule: "none",
+		Last: ymd(2027, time.January, 1), Origin: true}
+	got = SplitPayments([]MathSnapshot{free}, []MathPayment{pay("r", ymd(2026, time.February, 1), -100)})
+	near(t, "interest-free refund", got["r"], 0, 1e-9)
+}
