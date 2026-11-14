@@ -470,6 +470,162 @@
       }
     }
   },
+  "debts": {
+    "list": {
+      "payments_left": "还剩 {count} 笔还款",
+      "paid_off": "已还清"
+    },
+    "form": {
+      "header": "债务",
+      "intro": "无需账户即可跟踪贷款。之后可以再细调。",
+      "currency": {
+        "label": "币种"
+      },
+      "start_date": {
+        "label": "开始日期",
+        "hint": "贷款开始的日期",
+        "none": "无日期",
+        "clear": "清除开始日期"
+      },
+      "amount_borrowed": {
+        "label": "借款金额"
+      },
+      "payment": {
+        "label": "还款额"
+      },
+      "schedule": {
+        "label": "重复周期",
+        "every": {
+          "weekly": "每周",
+          "biweekly": "每 2 周",
+          "monthly": "每月",
+          "quarterly": "每季度",
+          "yearly": "每年"
+        }
+      },
+      "last_payment_date": {
+        "label": "最后还款日",
+        "hint": "债务何时结束",
+        "choose": "选择日期"
+      }
+    },
+    "details": {
+      "payments": "还款记录",
+      "payments_empty": "暂无还款",
+      "column": {
+        "date": "日期",
+        "amount": "还款额",
+        "interest": "利息",
+        "principal": "本金",
+        "balance": "余额"
+      },
+      "forecast": {
+        "show": "显示未来还款",
+        "hide": "隐藏未来还款",
+        "with_plan": "包含在 {budget} 中计划的额外还款",
+        "regular_only": "仅定期还款",
+        "overdue": "已逾期",
+        "recorded": "已记录",
+        "more": "显示其余 {count} 笔还款"
+      },
+      "mark_paid_off": "标记为已还清",
+      "reopen": "重新开启债务",
+      "paid_off_confirm": {
+        "title": "标记为已还清？",
+        "question": "从下面的日期起余额将设为 0。你的还款记录保持不变。",
+        "date": "还清日期"
+      },
+      "delete_confirm": {
+        "title": "删除此债务？",
+        "question": "该债务及其历史记录将被删除。其分类或信封的计划和交易不受影响。"
+      }
+    },
+    "terms": {
+      "finish_setup": "完成设置"
+    },
+    "balance": {
+      "econumo": "Econumo 今日余额",
+      "last_statement": "最近对账单",
+      "statement_on": "{date} 为 {amount}",
+      "difference": "差额",
+      "form": {
+        "title": "与对账单核对",
+        "hint": "输入贷款方对账单上尚欠的本金。自该日期起 Econumo 以此计算，截至该日期的应还款视为已还；自上次还款以来的利息在下次还款时按整期收取。",
+        "balance": "对账单余额",
+        "date": "对账单日期",
+        "date_range": "请选择开始日期之后、不晚于今天的日期。如需更改借款金额，请在设置中修改。",
+        "save": "核对"
+      },
+      "history": "对账单",
+      "column": {
+        "date": "日期",
+        "statement": "对账单",
+        "econumo": "Econumo",
+        "difference": "差额"
+      },
+      "origin": "借款金额",
+      "paid_off": "已标记为还清",
+      "delete": "删除 {date} 的对账单",
+      "delete_confirm": {
+        "title": "删除此对账单？",
+        "question": "该日期之后的还款将重新从之前的余额计算。"
+      },
+      "delete_paid_off_confirm": {
+        "title": "删除还清标记？",
+        "question": "债务将重新打开：欠款将重新根据之前的记录和还款计算。"
+      }
+    },
+    "rates": {
+      "title": "利率变更",
+      "from_start": "从起始日起",
+      "from_terms": "来自贷款条款",
+      "column": {
+        "date": "日期",
+        "rate": "利率",
+        "payment": "还款"
+      },
+      "form": {
+        "title": "记录利率变更",
+        "date": "日期",
+        "rate": "利率，年化 %",
+        "payment": "还款",
+        "save": "添加利率变更"
+      },
+      "delete": "删除 {date} 的利率变更",
+      "delete_confirm": {
+        "title": "删除此利率变更？",
+        "question": "该日期之后的还款将重新按之前的利率和还款额计算。"
+      }
+    },
+    "review": {
+      "progress": "已还 {paid}/{total} 期",
+      "progress_repaid": "已还 {paid}/{total} 期（{repaid}/{borrowed}）",
+      "owed_now": "当前欠款 {amount}",
+      "paid_so_far": "已还金额",
+      "paid_off_on": "已于 {date} 还清",
+      "not_set_up": "填写借款金额和贷款日期，即可查看剩余还款笔数",
+      "loan": "贷款",
+      "borrowed": "借款",
+      "next_payment": "下次还款",
+      "last_payment": "最后一次还款",
+      "last_payment_contract": "合同：{date}",
+      "start_date": "开始日期",
+      "from_first_payment": "从第一笔还款起",
+      "paid_extra": "已额外还款",
+      "planned_extra": "计划额外还款",
+      "danger": {
+        "title": "危险操作",
+        "paid_off": "将余额设为 0 并停止倒计时。",
+        "delete": "删除这笔债务及其历史。你的交易记录不受影响。",
+        "reopen": "让这笔债务重新生效：你可以修改它，其还款也会重新计入。"
+      },
+      "tab": {
+        "overview": "概览",
+        "balance": "余额",
+        "settings": "设置"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1328,6 +1484,7 @@
         "accounts_included": "已包含 {count} 个，共 {total} 个",
         "accounts_hidden": "在隐藏文件夹中",
         "accounts_locked_hint": "在过去月份中有交易的账户无法移除",
+        "debts_note": "债务会以名称连同还款和余额显示给所有有权访问此预算的人。",
         "savings": {
           "label": "储蓄账户",
           "description": "转入这些账户的钱计为储蓄，而不是支出。",
@@ -1637,6 +1794,22 @@
         "planned": "计划",
         "saved": "已储蓄",
         "balance_hint": "月末余额。"
+      },
+      "debts": {
+        "payoff_by": "预计{date}还清",
+        "payments_left": "还剩 {count} 笔还款",
+        "extra_effect": "提前 {months} 个月还清，少付 {amount} 利息与费用",
+        "extra_effect_earlier": "提前 {months} 个月还清",
+        "track": "作为债务跟踪",
+        "details": "详情",
+        "debt_details": "债务详情",
+        "delete": "删除债务",
+        "past": "过往债务（{count}）",
+        "past_title": "过往债务",
+        "borrowed": "借款 {amount}",
+        "section": "债务",
+        "left_at_end": "月末待还：{amount}",
+        "not_set_up": "尚未设置"
       },
       "phone": {
         "row_aria": "{name}，预算 {budget}，已支出 {spent}",
@@ -2316,6 +2489,7 @@
       "folder_side_mixed": "文件夹中不能同时包含收入和支出。",
       "envelope_member_not_category": "只能将分类添加到信封中",
       "savings_folder_not_allowed": "储蓄账户不能放入文件夹",
+      "element_has_debt": "已有债务的分类不能放入信封。请先将该债务标记为已还清。",
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
       "savings_account_not_member": "储蓄账户必须是您在此预算中的账户",
       "savings_removal_unconfirmed": "这将删除你在此预算中关闭或移除的储蓄账户的计划金额和评论；请确认以继续",
@@ -2374,6 +2548,20 @@
       "name_length": "标签名称需为 {min}-{max} 个字符。",
       "cannot_be_merged": "无法合并所选标签。",
       "list_empty": "标签列表为空。"
+    },
+    "debt": {
+      "payments_dont_cover": "还款金额不足以还清余额。请提高每期还款额，或将最后还款日设得更晚。",
+      "element_not_eligible": "债务只能记在不属于信封的支出分类上，或记在信封上。",
+      "element_has_debt": "此分类或信封已有一笔债务。请先将那笔债务标记为已还清。",
+      "start_before_previous_end": "开始日期必须晚于此分类或信封上一笔债务的结束日期。",
+      "cannot_reopen": "无法重新打开此债务：其分类或信封有另一笔进行中或开始得更晚的债务。",
+      "paid_off": "此债务已还清。请重新打开后再修改。",
+      "last_payment_in_past": "最后还款日必须晚于今天。",
+      "last_payment_before_start": "最后还款日必须晚于开始日期。",
+      "start_in_future": "开始日期不能晚于今天。",
+      "not_set_up": "请先完成此债务的设置。",
+      "conflicts_with_reconciliation": "这与你根据对账单输入的余额冲突。请先修改或删除该对账记录。",
+      "conflicts_with_rate_change": "此开始日期晚于一次利率变更。请先删除该利率变更。"
     },
     "authserver": {
       "disabled": "此服务器不支持连接应用。",

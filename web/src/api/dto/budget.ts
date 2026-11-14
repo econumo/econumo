@@ -53,6 +53,27 @@ export interface BudgetChildElementDto {
   budgetUpcoming?: string
 }
 
+/** the debt in force on an element in a period (amounts in the debt's currency,
+ *  the element's): scheduledTotal and upcoming are the period's scheduled dues and
+ *  those still to pay, closingBalance what is owed at its end, paymentsLeft how
+ *  many remain after it; payoffDate/basePayoffDate (Y-m-d, '' when none) and
+ *  overpaymentLeft/baseOverpaymentLeft with and without the element's planned
+ *  extras. While isSetUp is 0 there is no projection: closingBalance and the
+ *  payoff figures are '', paymentsLeft 0, scheduledTotal and upcoming '0'. */
+export interface ElementDebtDto {
+  id: Id
+  isSetUp: 0 | 1
+  paymentsLeft: number
+  payoffDate: string
+  basePayoffDate: string
+  closingBalance: string
+  scheduledTotal: string
+  upcoming: string
+  isPaidOff: 0 | 1
+  overpaymentLeft: string
+  baseOverpaymentLeft: string
+}
+
 export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUserId'> {
   /** null = inherit the budget base currency */
   currencyId: Id | null
@@ -65,6 +86,11 @@ export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUser
   available: string
   ownerUserId: Id | null
   children: BudgetChildElementDto[]
+  /** a top-level expense category or envelope: the debt in force in the period
+   *  (its active debt, or a paid-off one whose start..end covers it). The
+   *  element's own figures stay its own; `upcoming` above is its recurring
+   *  payments, `debt.upcoming` the scheduled dues. */
+  debt?: ElementDebtDto
 }
 
 export type BudgetFolderSide = 'income' | 'expense'
@@ -244,6 +270,8 @@ export interface PlanCellDto {
   /** the month's recurring payments not yet posted, filed like actual; absent
    *  from older servers */
   upcoming?: string
+  /** the debt in force on the row in this month, with its figures for the month */
+  debt?: ElementDebtDto
 }
 
 /** per-month cell on a plan-view child row: children never carry their own limit. */
@@ -269,6 +297,9 @@ export interface PlanElementDto {
   ownerUserId: Id | null
   cells: PlanCellDto[]
   children: PlanChildDto[]
+  /** the element's ACTIVE debt, figures for the caller's current period; a
+   *  paid-off debt shows only in the cells of the months it was in force */
+  debt?: ElementDebtDto
 }
 
 export interface PlanMonthRatesDto {

@@ -4,6 +4,7 @@ import type { AccountDto } from '@/api/dto/account'
 import type { BudgetDto, BudgetPlanDto, BudgetTransactionDto } from '@/api/dto/budget'
 import type { CreateTransactionDto, TransactionDto } from '@/api/dto/transaction'
 import type { UserDto } from '@/api/dto/user'
+import { fixtureElementDebt } from '@/test/fixtures'
 import { compareTransactions } from '../transactions/order'
 import {
   applyLimitToBudget,
@@ -257,6 +258,13 @@ describe('budget overlays', () => {
     const cleared = overlayPlan(plan, [op({ kind: 'limit', budgetId: 'b1', elementId: 'e1', period: '2026-10-01', amount: null })], 'b1')
     expect(cleared.structure.elements[0].cells.map((c) => c.planned)).toEqual(['', '2'])
     expect(plan.structure.elements[0].cells[1].planned).toBe('2')
+  })
+
+  it('patches a waiting plan on an element carrying a debt: its planned figure; the debt waits for the server', () => {
+    const base = budgetOf()
+    const budget = { ...base, structure: { ...base.structure, elements: base.structure.elements.map((el, i) => (i === 0 ? { ...el, debt: fixtureElementDebt() } : el)) } } as BudgetDto
+    const out = overlayBudget(budget, [op({ kind: 'limit', budgetId: 'b1', elementId: budget.structure.elements[0].id, period: '2026-11-01', amount: '2000' })], 'b1', '2026-11-01')
+    expect(out.structure.elements[0]).toMatchObject({ budgeted: '2000', isBudgeted: 1, debt: fixtureElementDebt() })
   })
 })
 

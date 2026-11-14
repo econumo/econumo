@@ -107,3 +107,31 @@ type RecurringSource interface {
 	// its owner, or a non-guest write grant on it.
 	CanEdit(ctx context.Context, userID, accountID vo.Id) (bool, error)
 }
+
+// DebtSource is the debt feature: the debts attached to the budget's
+// elements. Satisfied by the debt service at wiring time. A scope is one
+// budget and its everyday accounts, so a debt only ever matches payments on
+// its own budget's members.
+type DebtSource interface {
+	// Views lists every debt of the budget, active and paid off, in creation
+	// order. It reads only, so it can run inside a budget transaction.
+	Views(ctx context.Context, scope model.DebtScope) ([]model.DebtView, error)
+	// Sync takes the budget's row lock, so it must run outside any budget
+	// transaction that already holds element rows.
+	Sync(ctx context.Context, scope model.DebtScope) error
+	Timelines(ctx context.Context, req model.DebtTimelineRequest) (map[string]model.DebtTimeline, error)
+	// LockBudget, SetElementCurrency, AlignElementCurrencies,
+	// DeleteElementDebts and CloneDebts join
+	// the caller's transaction and take the budget's row lock, which goes
+	// before any element row lock: a budget write calls LockBudget first.
+	LockBudget(ctx context.Context, budgetID vo.Id) error
+	// SetElementCurrency moves the element's active debt to the currency.
+	SetElementCurrency(ctx context.Context, budgetID, elementID, currencyID vo.Id) error
+	// AlignElementCurrencies moves every active debt to its element's
+	// currency (the budget's for a row with none of its own).
+	AlignElementCurrencies(ctx context.Context, budgetID vo.Id) error
+	DeleteElementDebts(ctx context.Context, budgetID, elementID vo.Id) error
+	// CloneDebts copies the debts of one budget into another, mapping their
+	// elements through elementIDs, and returns the new id of each.
+	CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id, elementIDs map[vo.Id]vo.Id) (map[vo.Id]vo.Id, error)
+}

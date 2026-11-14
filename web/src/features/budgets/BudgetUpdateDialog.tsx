@@ -15,7 +15,7 @@ import type { Id } from '@/api/types'
 import { useAccounts } from '@/features/accounts/queries'
 import { useUserData } from '@/features/user/queries'
 import { useUpdateBudgetDetail, canConfigureBudget } from './queries'
-import { BudgetAccountsField, BudgetSavingsField } from './BudgetAccountsField'
+import { BudgetAccountsField, BudgetDebtsNote, BudgetSavingsField } from './BudgetAccountsField'
 import { PeriodStartDayField } from './PeriodStartDayField'
 import { periodStartDayOf } from './period'
 
@@ -232,6 +232,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
             <BudgetSavingsField accounts={ownAccounts} selected={selected} savings={savings} onToggle={toggleSavings} />
           </>
         ) : null}
+        <BudgetDebtsNote />
         {serverError ? (
           <p role="alert" className="text-sm text-destructive">
             {serverError}

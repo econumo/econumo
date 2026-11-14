@@ -69,6 +69,8 @@ it('create-transaction invalidates the budget and budget plan caches', async () 
   queryClient.setQueryData(queryKeys.accounts, [])
   queryClient.setQueryData([...queryKeys.budget, 'b1', '2026-09-01'], null)
   queryClient.setQueryData([...queryKeys.budgetPlan, 'b1', '2026-07-01', 6], null)
+  queryClient.setQueryData(queryKeys.debts, [])
+  queryClient.setQueryData(queryKeys.debt('d1'), null)
 
   const { result } = renderHook(() => useCreateTransaction(), { wrapper })
   result.current.mutate({
@@ -79,6 +81,9 @@ it('create-transaction invalidates the budget and budget plan caches', async () 
 
   expect(queryClient.getQueryState([...queryKeys.budget, 'b1', '2026-09-01'])!.isInvalidated).toBe(true)
   expect(queryClient.getQueryState([...queryKeys.budgetPlan, 'b1', '2026-07-01', 6])!.isInvalidated).toBe(true)
+  // a payment moves its debt's balance, and Edit pre-fills from it
+  expect(queryClient.getQueryState(queryKeys.debts)!.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(queryKeys.debt('d1'))!.isInvalidated).toBe(true)
 })
 
 it('delete-transaction removes the item and refreshes accounts', async () => {

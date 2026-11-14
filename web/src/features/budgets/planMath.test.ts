@@ -1,3 +1,4 @@
+import { fixtureElementDebt } from '@/test/fixtures'
 import { describe, expect, it } from 'vitest'
 import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto, PlanSavingsElementDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
@@ -1246,5 +1247,27 @@ describe('planSelectionSum', () => {
       planned: '20',
       actual: '10',
     })
+  })
+})
+
+describe('debts in the totals', () => {
+  it('a debt on a row changes nothing in the totals: the money is the element\'s own', () => {
+    const cells = [
+      { actual: '100', planned: '150' },
+      { actual: '120', planned: '150' },
+      { actual: '0', planned: '150' },
+    ]
+    const food = (debt: boolean) =>
+      mkEl({
+        id: 'food',
+        type: BudgetElementType.CATEGORY,
+        name: 'Food',
+        cells: cells.map((c) => (debt ? { ...c, debt: fixtureElementDebt() } : c)),
+        ...(debt ? { debt: fixtureElementDebt() } : {}),
+      })
+    const without = mkPlan({ structure: { folders: [], elements: [food(false)] } })
+    const withDebt = mkPlan({ structure: { folders: [], elements: [food(true)] } })
+    const ex = makePlanExchange(without, [usd, eur])
+    expect(planTotals(withDebt, ex)).toEqual(planTotals(without, ex))
   })
 })

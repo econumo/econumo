@@ -1,0 +1,167 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import * as debtApi from '@/api/debt'
+import type { AddDebtRateChangeForm, DeleteDebtRateChangeForm, CreateDebtDto, DebtDetailsDto, DebtDto, MarkDebtPaidOffForm, UpdateDebtDto, DeleteDebtForm, DeleteDebtReconciliationForm, ReconcileDebtForm } from '@/api/dto/debt'
+import type { Id } from '@/api/types'
+import { isDebtForecastKey, queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { METRICS, trackEvent } from '@/lib/metrics'
+import type { Metric } from '@/lib/metrics'
+
+export function useDebts({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: queryKeys.debts, queryFn: debtApi.getDebtList, staleTime: TEN_MINUTES, enabled })
+}
+
+export function useDebt(id: Id | undefined) {
+  return useQuery({
+    queryKey: queryKeys.debt(id ?? ''),
+    queryFn: () => debtApi.getDebt(id as Id),
+    enabled: !!id,
+    staleTime: TEN_MINUTES,
+  })
+}
+
+/** The payments still to come and the figures they give (payments left,
+ *  payoff, overpayment), with the planned extras of the debt's own budget,
+ *  loaded while `enabled` and never served stale: a plan saved in that budget
+ *  moves them (the budget's plan writes invalidate every forecast too) */
+export function useDebtForecast(id: Id, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.debtForecast(id),
+    queryFn: () => debtApi.getDebtForecast(id),
+    enabled,
+    staleTime: 0,
+  })
+}
+
+/** Loads the debt afresh for the Settings tab: the form starts from the loan's
+ *  facts as stored now (amountBorrowed and lastPaymentDate, which go together,
+ *  payment, repeats, start date), so a cached copy cannot send back facts
+ *  another device has corrected since. */
+export function useFetchDebtForEdit() {
+  const queryClient = useQueryClient()
+  return (id: Id) => queryClient.fetchQuery({ queryKey: queryKeys.debt(id), queryFn: () => debtApi.getDebt(id), staleTime: 0 })
+}
+
+// a debt write changes the debt its element shows in the budget and the plan
+function useInvalidateDebts() {
+  const queryClient = useQueryClient()
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+  }
+}
+
+// The debt a write returns is the debt as stored now. It goes into both caches at
+// once, so the Overview shows it before the refetch lands.
+function useStoreSavedDebt() {
+  const queryClient = useQueryClient()
+  return (saved: DebtDto) => {
+    queryClient.setQueryData<DebtDetailsDto>(queryKeys.debt(saved.id), (old) => (old ? { ...old, item: saved } : old))
+    queryClient.setQueryData<DebtDto[]>(queryKeys.debts, (old) => old?.map((d) => (d.id === saved.id ? saved : d)))
+  }
+}
+
+/** a debt is created on a budget element ("Track as debt") */
+export function useCreateDebt() {
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    mutationFn: (form: CreateDebtDto) => debtApi.createDebt(form),
+    onSuccess: () => {
+      invalidate()
+      trackEvent(METRICS.DEBT_CONVERT)
+    },
+  })
+}
+
+/** `finishingSetup`: the debt being saved is not set up yet, so a save that
+ *  comes back set up is the debt's setup finished, not an edit */
+export function useUpdateDebt({ finishingSetup = false }: { finishingSetup?: boolean } = {}) {
+  const invalidate = useInvalidateDebts()
+  const storeSaved = useStoreSavedDebt()
+  return useMutation({
+    mutationFn: (form: UpdateDebtDto) => debtApi.updateDebt(form),
+    onSuccess: (saved) => {
+      storeSaved(saved)
+      invalidate()
+      trackEvent(finishingSetup && saved.isSetUp === 1 ? METRICS.DEBT_FINISH_SETUP : METRICS.DEBT_UPDATE)
+    },
+  })
+}
+
+export function useDeleteDebt() {
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    // useDebtDangerActions shows every failure itself (inline or a toast)
+    meta: { handlesOwnErrors: true },
+    mutationFn: (form: DeleteDebtForm) => debtApi.deleteDebt(form),
+    onSuccess: () => {
+      invalidate()
+      trackEvent(METRICS.DEBT_DELETE)
+    },
+  })
+}
+
+export function useMarkDebtPaidOff() {
+  const invalidate = useInvalidateDebts()
+  const storeSaved = useStoreSavedDebt()
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: (form: MarkDebtPaidOffForm) => debtApi.markDebtPaidOff(form),
+    onSuccess: (saved) => {
+      storeSaved(saved)
+      invalidate()
+      trackEvent(METRICS.DEBT_MARK_PAID_OFF)
+    },
+  })
+}
+
+/** a paid-off debt back to active; its caller shows a refusal (debt.cannot_reopen) */
+export function useReopenDebt() {
+  const invalidate = useInvalidateDebts()
+  const storeSaved = useStoreSavedDebt()
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: (id: Id) => debtApi.reopenDebt(id),
+    onSuccess: (saved) => {
+      storeSaved(saved)
+      invalidate()
+      trackEvent(METRICS.DEBT_REOPEN)
+    },
+  })
+}
+
+// A statement written or removed moves the debt's history, every split after
+// its date, the figures and the projected payments.
+function useReconciliationWrite<T>(write: (form: T) => Promise<DebtDto>, metric: Metric) {
+  const queryClient = useQueryClient()
+  const invalidate = useInvalidateDebts()
+  const storeSaved = useStoreSavedDebt()
+  return useMutation({
+    mutationFn: write,
+    // the statement form and the rate card show their own errors
+    meta: { handlesOwnErrors: true },
+    onSuccess: (saved) => {
+      storeSaved(saved)
+      invalidate()
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debt(saved.id) })
+      void queryClient.invalidateQueries({ predicate: (q) => isDebtForecastKey(q.queryKey) })
+      trackEvent(metric)
+    },
+  })
+}
+
+export function useReconcileDebt() {
+  return useReconciliationWrite((form: ReconcileDebtForm) => debtApi.reconcileDebt(form), METRICS.DEBT_RECONCILE)
+}
+
+export function useDeleteDebtReconciliation() {
+  return useReconciliationWrite((form: DeleteDebtReconciliationForm) => debtApi.deleteDebtReconciliation(form), METRICS.DEBT_RECONCILIATION_DELETE)
+}
+
+export function useAddDebtRateChange() {
+  return useReconciliationWrite((form: AddDebtRateChangeForm) => debtApi.addDebtRateChange(form), METRICS.DEBT_RATE_CHANGE_ADD)
+}
+
+export function useDeleteDebtRateChange() {
+  return useReconciliationWrite((form: DeleteDebtRateChangeForm) => debtApi.deleteDebtRateChange(form), METRICS.DEBT_RATE_CHANGE_DELETE)
+}

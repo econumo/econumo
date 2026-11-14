@@ -470,6 +470,162 @@
       }
     }
   },
+  "debts": {
+    "list": {
+      "payments_left": "Queda {count} pago | Quedan {count} pagos",
+      "paid_off": "Pagada"
+    },
+    "form": {
+      "header": "Deuda",
+      "intro": "Sigue un préstamo sin cuenta. Podrás ajustarlo después.",
+      "currency": {
+        "label": "Moneda"
+      },
+      "start_date": {
+        "label": "Fecha de inicio",
+        "hint": "Cuándo empezó el préstamo",
+        "none": "Sin fecha",
+        "clear": "Quitar la fecha de inicio"
+      },
+      "amount_borrowed": {
+        "label": "Importe del préstamo"
+      },
+      "payment": {
+        "label": "Pago"
+      },
+      "schedule": {
+        "label": "Se repite",
+        "every": {
+          "weekly": "cada semana",
+          "biweekly": "cada 2 semanas",
+          "monthly": "cada mes",
+          "quarterly": "cada trimestre",
+          "yearly": "cada año"
+        }
+      },
+      "last_payment_date": {
+        "label": "Fecha del último pago",
+        "hint": "Cuándo termina la deuda",
+        "choose": "Elegir fecha"
+      }
+    },
+    "details": {
+      "payments": "Pagos",
+      "payments_empty": "Aún no hay pagos",
+      "column": {
+        "date": "Fecha",
+        "amount": "Pago",
+        "interest": "Intereses",
+        "principal": "Capital",
+        "balance": "Saldo"
+      },
+      "forecast": {
+        "show": "Mostrar pagos futuros",
+        "hide": "Ocultar pagos futuros",
+        "with_plan": "Incluye los pagos extra planificados en {budget}",
+        "regular_only": "Solo pagos regulares",
+        "overdue": "vencido",
+        "recorded": "Registrados",
+        "more": "Mostrar {count} pago más | Mostrar {count} pagos más"
+      },
+      "mark_paid_off": "Marcar como pagada",
+      "reopen": "Reabrir la deuda",
+      "paid_off_confirm": {
+        "title": "¿Marcar como pagada?",
+        "question": "El saldo pasa a 0 desde la fecha de abajo. Tus pagos se quedan como están.",
+        "date": "Pagada el"
+      },
+      "delete_confirm": {
+        "title": "¿Eliminar esta deuda?",
+        "question": "Se eliminan la deuda y su historial. Los planes y las transacciones de su categoría o sobre no cambian."
+      }
+    },
+    "terms": {
+      "finish_setup": "Terminar configuración"
+    },
+    "balance": {
+      "econumo": "Saldo de Econumo hoy",
+      "last_statement": "Último extracto",
+      "statement_on": "{amount} el {date}",
+      "difference": "Diferencia",
+      "form": {
+        "title": "Conciliar con un extracto",
+        "hint": "Introduce el capital pendiente según el extracto de tu prestamista. Desde su fecha Econumo cuenta a partir de él, y los pagos vencidos hasta entonces cuentan como pagados; los intereses desde el último pago se cobran en el siguiente pago, por un periodo completo.",
+        "balance": "Saldo del extracto",
+        "date": "Fecha del extracto",
+        "date_range": "Elige una fecha posterior a la fecha de inicio y como muy tarde hoy. Para cambiar el importe del préstamo, corrígelo en Ajustes.",
+        "save": "Conciliar"
+      },
+      "history": "Extractos",
+      "column": {
+        "date": "Fecha",
+        "statement": "Extracto",
+        "econumo": "Econumo",
+        "difference": "Diferencia"
+      },
+      "origin": "Importe del préstamo",
+      "paid_off": "Marcada como pagada",
+      "delete": "Eliminar el extracto del {date}",
+      "delete_confirm": {
+        "title": "¿Eliminar este extracto?",
+        "question": "Los pagos posteriores a su fecha vuelven a contarse desde el saldo anterior."
+      },
+      "delete_paid_off_confirm": {
+        "title": "¿Eliminar la marca de pagada?",
+        "question": "La deuda se reabre: lo que se debe vuelve a calcularse a partir de los registros anteriores y los pagos."
+      }
+    },
+    "rates": {
+      "title": "Cambios de tipo",
+      "from_start": "Desde el inicio",
+      "from_terms": "según las condiciones del préstamo",
+      "column": {
+        "date": "Fecha",
+        "rate": "Tipo",
+        "payment": "Pago"
+      },
+      "form": {
+        "title": "Registrar un cambio de tipo",
+        "date": "Fecha",
+        "rate": "Tipo, % anual",
+        "payment": "Pago",
+        "save": "Añadir cambio de tipo"
+      },
+      "delete": "Eliminar el cambio de tipo del {date}",
+      "delete_confirm": {
+        "title": "¿Eliminar este cambio de tipo?",
+        "question": "Los pagos posteriores a su fecha vuelven a contarse con el tipo y el pago anteriores."
+      }
+    },
+    "review": {
+      "progress": "{paid} de {total} pagados",
+      "progress_repaid": "{paid} de {total} pagados ({repaid} de {borrowed})",
+      "owed_now": "Debes ahora {amount}",
+      "paid_so_far": "Pagado hasta ahora",
+      "paid_off_on": "Pagada el {date}",
+      "not_set_up": "Añade el importe del préstamo y las fechas del préstamo para ver los pagos que quedan",
+      "loan": "Préstamo",
+      "borrowed": "Préstamo",
+      "next_payment": "Próximo pago",
+      "last_payment": "Último pago",
+      "last_payment_contract": "según contrato: {date}",
+      "start_date": "Fecha de inicio",
+      "from_first_payment": "Desde el primer pago",
+      "paid_extra": "Extra pagado",
+      "planned_extra": "Extra previsto",
+      "danger": {
+        "title": "Zona de peligro",
+        "paid_off": "Pone el saldo a 0 y detiene la cuenta atrás.",
+        "delete": "Elimina la deuda y su historial. Tus transacciones no cambian.",
+        "reopen": "Vuelve a activar la deuda: puedes cambiarla y sus pagos cuentan de nuevo."
+      },
+      "tab": {
+        "overview": "Resumen",
+        "balance": "Saldo",
+        "settings": "Ajustes"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1328,6 +1484,7 @@
         "accounts_included": "{count} de {total} incluidas",
         "accounts_hidden": "En carpetas ocultas",
         "accounts_locked_hint": "Las cuentas con transacciones en meses anteriores no se pueden quitar",
+        "debts_note": "Las deudas se muestran por nombre, con sus pagos y saldos, a todas las personas con acceso a este presupuesto.",
         "savings": {
           "label": "Cuentas de ahorro",
           "description": "El dinero que pasa a estas cuentas cuenta como ahorrado, no como gastado.",
@@ -1637,6 +1794,22 @@
         "planned": "Previsto",
         "saved": "Ahorrado",
         "balance_hint": "Saldo al final del mes."
+      },
+      "debts": {
+        "payoff_by": "Liquidación prevista: {date}",
+        "payments_left": "Queda {count} pago | Quedan {count} pagos",
+        "extra_effect": "Pagada {months} mes antes, {amount} menos de intereses | Pagada {months} meses antes, {amount} menos de intereses",
+        "extra_effect_earlier": "Pagada {months} mes antes | Pagada {months} meses antes",
+        "track": "Seguir como deuda",
+        "details": "Detalles",
+        "debt_details": "Detalles de la deuda",
+        "delete": "Eliminar deuda",
+        "past": "Deudas anteriores ({count})",
+        "past_title": "Deudas anteriores",
+        "borrowed": "Prestado: {amount}",
+        "section": "Deuda",
+        "left_at_end": "Por pagar a fin de mes: {amount}",
+        "not_set_up": "Aún sin configurar"
       },
       "phone": {
         "row_aria": "{name}, presupuesto {budget}, gastado {spent}",
@@ -2316,6 +2489,7 @@
       "folder_side_mixed": "Una carpeta no puede contener a la vez ingresos y gastos.",
       "envelope_member_not_category": "Solo se puede añadir una categoría a un sobre",
       "savings_folder_not_allowed": "Las cuentas de ahorro no se pueden colocar en una carpeta",
+      "element_has_debt": "Una categoría que sigue una deuda no se puede añadir a un sobre. Primero marca la deuda como pagada.",
       "account_not_removable": "Esta cuenta tiene transacciones en meses anteriores y ya no se puede quitar del presupuesto",
       "savings_account_not_member": "Las cuentas de ahorro deben ser tus propias cuentas en este presupuesto",
       "savings_removal_unconfirmed": "Esto elimina los importes planificados y los comentarios de las cuentas de ahorro que desactivaste o quitaste de este presupuesto; confirma para continuar",
@@ -2374,6 +2548,20 @@
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
       "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
       "list_empty": "La lista de etiquetas está vacía."
+    },
+    "debt": {
+      "payments_dont_cover": "Los pagos no cubren el saldo. Aumenta el pago o fija una fecha de último pago posterior.",
+      "element_not_eligible": "Una deuda se puede seguir en una categoría de gastos fuera de un sobre, o en un sobre.",
+      "element_has_debt": "Esta categoría o sobre ya sigue una deuda. Primero marca esa deuda como pagada.",
+      "start_before_previous_end": "La fecha de inicio debe ser posterior al final de la deuda anterior de esta categoría o sobre.",
+      "cannot_reopen": "Esta deuda no se puede reabrir: su categoría o sobre sigue otra deuda activa o iniciada más tarde.",
+      "paid_off": "Esta deuda está pagada. Reábrela para cambiarla.",
+      "last_payment_in_past": "La fecha del último pago debe ser posterior a hoy.",
+      "last_payment_before_start": "La fecha del último pago debe ser posterior a la fecha de inicio.",
+      "start_in_future": "La fecha de inicio debe ser hoy o anterior.",
+      "not_set_up": "Primero termina de configurar esta deuda.",
+      "conflicts_with_reconciliation": "Esto entra en conflicto con un saldo que introdujiste de un extracto. Cambia o elimina primero esa conciliación.",
+      "conflicts_with_rate_change": "Esta fecha de inicio es posterior a un cambio de tipo de interés. Elimina primero ese cambio."
     },
     "authserver": {
       "disabled": "La conexión de aplicaciones no está disponible en este servidor.",

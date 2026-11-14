@@ -1,5 +1,13 @@
 import '@testing-library/jest-dom/vitest'
+import { configure } from '@testing-library/react'
 import axios from 'axios'
+
+// findBy*/waitFor give up after 1 s by default. A file's first full-page mount
+// (BudgetPage in plan mode) takes about 0.35 s on an idle machine but 2-3 s
+// while Go builds share the CPU, so the first test of a file failed under load.
+// Only a wait that is going to fail runs this long; it stays under vitest's 5 s
+// test timeout so the failure still prints the DOM.
+configure({ asyncUtilTimeout: 4000 })
 
 // Under jsdom axios picks its XHR adapter, and msw's XHR interceptor never
 // delivers the response when the request body is FormData (the promise hangs
@@ -93,7 +101,9 @@ const { IDBFactory } = await import('fake-indexeddb')
 const { resetDbForTests } = await import('@/lib/db')
 const { resetTransactionStoreForTests } = await import('@/lib/transactionStore')
 const { resetPendingWritesForTests } = await import('@/features/pendingWrites/store')
+const { resetIconSuggestionsForTests } = await import('@/features/iconSuggestion/answers')
 beforeEach(() => {
+  resetIconSuggestionsForTests()
   globalThis.indexedDB = new IDBFactory()
   resetDbForTests()
   resetTransactionStoreForTests()

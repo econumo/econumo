@@ -177,6 +177,52 @@ type Currency struct {
 	IsDeleted      bool
 }
 
+type Debt struct {
+	ID                string
+	BudgetID          string
+	ElementExternalID string
+	ElementType       string
+	Status            string
+	EndedAt           *time.Time
+	CurrencyID        string
+	StartDate         *time.Time
+	AmountBorrowed    *string
+	AsOf              *time.Time
+	Balance           *string
+	Payment           string
+	Schedule          string
+	LastPaymentDate   *time.Time
+	CreatedDay        time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type DebtsPayment struct {
+	DebtID        string
+	TransactionID string
+	Interest      string
+}
+
+type DebtsRateChange struct {
+	ID            string
+	DebtID        string
+	EffectiveDate time.Time
+	AnnualRate    string
+	Payment       string
+	CreatedAt     time.Time
+}
+
+type DebtsSnapshot struct {
+	ID              string
+	DebtID          string
+	AsOf            time.Time
+	Balance         string
+	Payment         string
+	Schedule        string
+	LastPaymentDate time.Time
+	CreatedAt       time.Time
+}
+
 type Folder struct {
 	ID        string
 	UserID    string

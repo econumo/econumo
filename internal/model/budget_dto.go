@@ -119,6 +119,33 @@ type ParentElementResult struct {
 	// and Available stay real money only.
 	Upcoming       string `json:"upcoming"`
 	BudgetUpcoming string `json:"budgetUpcoming"`
+	// Debt is the debt in force on this element in the period: its active
+	// debt, or a paid-off one whose start..end covers the period. Only a
+	// top-level expense category or an expense envelope carries one.
+	Debt *ElementDebtResult `json:"debt,omitempty"`
+}
+
+// ElementDebtResult is a debt's figures on the element it is attached to, in
+// the debt's currency. ClosingBalance, PaymentsLeft, ScheduledTotal and
+// Upcoming (the scheduled payments still due) are the period's, from the
+// debt's projection, which takes the element's plans above the scheduled
+// amount as extra payments; PayoffDate and BasePayoffDate ("" when none) are
+// with and without those extras, and so are OverpaymentLeft and
+// BaseOverpaymentLeft. A debt not set up (IsSetUp 0) has no projection:
+// ClosingBalance and the payoff figures are "", PaymentsLeft 0,
+// ScheduledTotal and Upcoming "0".
+type ElementDebtResult struct {
+	Id                  string `json:"id"`
+	IsSetUp             int    `json:"isSetUp"`
+	PaymentsLeft        int    `json:"paymentsLeft"`
+	PayoffDate          string `json:"payoffDate"`
+	BasePayoffDate      string `json:"basePayoffDate"`
+	ClosingBalance      string `json:"closingBalance"`
+	ScheduledTotal      string `json:"scheduledTotal"`
+	Upcoming            string `json:"upcoming"`
+	IsPaidOff           int    `json:"isPaidOff"`
+	OverpaymentLeft     string `json:"overpaymentLeft"`
+	BaseOverpaymentLeft string `json:"baseOverpaymentLeft"`
 }
 
 // LabelSpendResult is one reporting label in the budget's labels block. It has
@@ -349,6 +376,9 @@ type PlanCellResult struct {
 	Actual   string `json:"actual"`
 	Planned  string `json:"planned"`
 	Upcoming string `json:"upcoming"`
+	// Debt is the debt in force on the row in this cell's period, with its
+	// figures for the period.
+	Debt *ElementDebtResult `json:"debt,omitempty"`
 }
 
 // PlanChildCellResult is one (envelope child, month) cell — actual only;
@@ -384,6 +414,9 @@ type PlanElementResult struct {
 	OwnerUserId *string           `json:"ownerUserId"`
 	Cells       []PlanCellResult  `json:"cells"`
 	Children    []PlanChildResult `json:"children"`
+	// Debt is the element's active debt, with its figures for the caller's
+	// current period; each cell carries the debt in force in its own period.
+	Debt *ElementDebtResult `json:"debt,omitempty"`
 }
 
 // OpeningBalanceResult is one currency's real account balance strictly

@@ -8,7 +8,7 @@ import type { WriteOptions } from '@/api/client'
 import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import type { TransactionItemDto } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
-import { queryKeys } from '@/app/queryKeys'
+import { isDebtForecastKey, queryKeys } from '@/app/queryKeys'
 import { markOnboardingStepDone } from '@/features/onboarding/onboardingProgress'
 import { applyTransactionItem } from '@/features/transactions/queries'
 import { consumeFullReload, transactionsQueryFn } from '@/features/transactions/revisionTracking'
@@ -80,8 +80,11 @@ function invalidateChange(queryClient: QueryClient, change: OpChange): void {
   if (change.kind === 'limit') {
     void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, change.budgetId] })
     void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, change.budgetId] })
+    // the plan of an element carrying a debt is an extra payment in its forecast
+    void queryClient.invalidateQueries({ predicate: (q) => isDebtForecastKey(q.queryKey) })
   } else {
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
   }
@@ -124,7 +127,7 @@ export function confirmChange(queryClient: QueryClient, change: OpChange, result
 // The tab that held the lock applied the server's answer to its own caches
 // only; here the change just left the overlay, so its result must be read back.
 function refreshAfterOtherTab(queryClient: QueryClient): void {
-  for (const queryKey of [queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
+  for (const queryKey of [queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.debts, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
     void queryClient.invalidateQueries({ queryKey })
   }
   invalidateReports(queryClient)

@@ -246,6 +246,13 @@ func (s *Service) ChangeElementCurrency(ctx context.Context, userID vo.Id, req m
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// The element's active debt follows its row's currency. The debt hook
+		// takes the budget's row lock, which goes before the element row's.
+		if s.debts != nil {
+			if derr := s.debts.LockBudget(txCtx, budgetID); derr != nil {
+				return derr
+			}
+		}
 		// elementId on the wire is the element's EXTERNAL id (category/tag/envelope).
 		el, gerr := s.getElementSelfHeal(txCtx, budgetID, elementID, now)
 		if gerr != nil {
@@ -257,7 +264,13 @@ func (s *Service) ChangeElementCurrency(ctx context.Context, userID vo.Id, req m
 			}
 		}
 		el.UpdateCurrency(&curID, now)
-		return s.elements.SaveElement(txCtx, el)
+		if serr := s.elements.SaveElement(txCtx, el); serr != nil {
+			return serr
+		}
+		if s.debts != nil {
+			return s.debts.SetElementCurrency(txCtx, budgetID, elementID, curID)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

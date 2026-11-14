@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
-import { fixtureWireBudget } from '@/test/fixtures'
+import { fixtureElementDebt, fixtureElementDebtNotSetUp, fixtureWireBudget } from '@/test/fixtures'
 import type { BudgetCommentDto, BudgetElementDto, PlanElementDto } from '@/api/dto/budget'
 import { makeBudgetExchange } from './budgetMath'
 import { ElementSheet } from './ElementSheet'
@@ -261,4 +261,57 @@ it('an income plan cell with no plan keeps its Planned figure empty', () => {
   const salaries = planElement({ id: 'ie1', type: 4, name: 'Salaries' })
   renderSheet({ target: { kind: 'plan', cell: { element: salaries, planned: '0', actual: '0', upcoming: '1500' } }, onShowTransactions: undefined })
   expect(screen.getByTestId('sheet-figure-planned')).not.toHaveTextContent('1,500')
+})
+
+describe('the Debt section', () => {
+  it('a category carrying a debt keeps its own figures and adds the debt, with Details', async () => {
+    const onDebtDetails = vi.fn()
+    const element = { ...food, debt: fixtureElementDebt({ payoffDate: '2027-08-05', overpaymentLeft: '1500' }) }
+    renderSheet({ target: { kind: 'expense', element }, onDebtDetails, canPlanDebt: true })
+    expect(screen.getByTestId('sheet-figure-budget')).toHaveTextContent('Budget200.00')
+    expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('Spent45.50')
+    const debt = screen.getByTestId('sheet-debt')
+    expect(debt).toHaveTextContent('24 payments left · Paid off by Aug 2027')
+    expect(debt).toHaveTextContent('23,000.00')
+    // what the planned extras buy
+    expect(within(debt).getByTestId('debt-extra-effect')).toBeInTheDocument()
+    await userEvent.click(within(debt).getByRole('button', { name: 'Details' }))
+    expect(onDebtDetails).toHaveBeenCalledWith('debt-1', 'overview')
+  })
+
+  it('a Plan cell shows the debt in force in its own month', () => {
+    const food = planElement({ id: 'cat-food', name: 'Food' })
+    renderSheet({
+      target: { kind: 'plan', cell: { element: food, planned: '', actual: '0', debt: fixtureElementDebt({ paymentsLeft: 3 }) } },
+      onDebtDetails: vi.fn(),
+    })
+    expect(screen.getByTestId('sheet-debt')).toHaveTextContent('3 payments left')
+  })
+
+  it('no debt, no section', () => {
+    renderSheet({ onDebtDetails: vi.fn() })
+    expect(screen.queryByTestId('sheet-debt')).toBeNull()
+  })
+
+  it('a debt not set up offers whoever plans Finish setup, on Settings', async () => {
+    const onDebtDetails = vi.fn()
+    renderSheet({ target: { kind: 'expense', element: { ...food, debt: fixtureElementDebtNotSetUp() } }, onDebtDetails, canPlanDebt: true })
+    const debt = screen.getByTestId('sheet-debt')
+    expect(debt).not.toHaveTextContent('payments left')
+    await userEvent.click(within(debt).getByRole('button', { name: 'Finish setup' }))
+    expect(onDebtDetails).toHaveBeenCalledWith('debt-1', 'settings')
+  })
+
+  it('a guest gets Details on a debt not set up, not Finish setup', () => {
+    renderSheet({ target: { kind: 'expense', element: { ...food, debt: fixtureElementDebtNotSetUp() } }, onDebtDetails: vi.fn(), canPlanDebt: false })
+    const debt = screen.getByTestId('sheet-debt')
+    expect(within(debt).queryByRole('button', { name: 'Finish setup' })).toBeNull()
+    expect(within(debt).getByRole('button', { name: 'Details' })).toBeInTheDocument()
+  })
+
+  it('the plan hint follows the scheduled amount', () => {
+    const element = { ...food, budgeted: '500', spent: '0', upcoming: '900', debt: fixtureElementDebt({ scheduledTotal: '400' }) }
+    renderSheet({ target: { kind: 'expense', element }, month: '2999-01-01' })
+    expect(within(screen.getByTestId('sheet-figure-budget')).getByText('500.00')).not.toHaveClass('text-expense')
+  })
 })

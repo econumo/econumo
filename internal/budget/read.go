@@ -47,7 +47,7 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudg
 	if err != nil {
 		return nil, err
 	}
-	f, err := s.buildFilters(ctx, userID, b, b.clampPeriod(key), 1)
+	f, err := s.filtersWithDebts(ctx, userID, b, b.clampPeriod(key), 1)
 	if err != nil {
 		return nil, err
 	}

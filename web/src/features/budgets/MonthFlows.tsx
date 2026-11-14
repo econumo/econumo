@@ -29,6 +29,7 @@ import { arrangementItem, dropIndicatorFor, envelopeCollisions, envelopeOfDrop, 
 import type { DropIndicator, ElementContainer, ElementMoveItem } from './elementMove'
 import { DragChild, DragFolder, DragGhost, DragRow, EnvelopeDrop, EnvelopeHeadDrop, FolderGrip } from './MonthDrag'
 import { isEnvelopeType } from './elementEdit'
+import { periodOf, periodStartDayOf } from './period'
 
 export type FlowTarget = Extract<SheetTarget, { kind: 'plan' } | { kind: 'savings' }>
 
@@ -148,8 +149,8 @@ interface MonthFlowsProps {
   }
 }
 
-/** Income and Savings for one month, above the expenses table, in the table's columns:
- *  Planned · Received · To receive, and Planned · Saved · Balance. */
+/** Income and Savings for one month, above the expenses table, in the table's
+ *  columns: Planned · Received · To receive and Planned · Saved · Balance. */
 export function MonthFlows({
   budget,
   dataPeriod,
@@ -174,8 +175,11 @@ export function MonthFlows({
     const c = currencyOf(currencyId)
     return moneyFormat(amount, c, cellOpts(c))
   }
+  const startDay = periodStartDayOf(budget.meta)
+  // filters.periodStart is the period's first day; the hint wants its key
+  const month = periodOf(budget.filters.periodStart.slice(0, 10), startDay)
   const planned = (target: FlowTarget, amount: string, currencyId: Id) => {
-    const hint = sheetPlanHint(target)
+    const hint = sheetPlanHint(target, { month, startDay })
     const figure = renderPlanned(target, amount === '' ? EMPTY_CELL : fmt(amount, currencyId), hint)
     return (
       <>
@@ -559,7 +563,6 @@ export function MonthFlows({
     drag.onMoveSavings(activeId, afterIdFromDrop(reordered, activeId))
   }
   const savingsSum = totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, exchangeFn)
-
   return (
     <>
       {/* the budget currency is named once, above every figure on the page */}

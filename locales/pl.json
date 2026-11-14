@@ -470,6 +470,162 @@
       }
     }
   },
+  "debts": {
+    "list": {
+      "payments_left": "Została {count} płatność | Zostały {count} płatności | Zostało {count} płatności",
+      "paid_off": "Spłacony"
+    },
+    "form": {
+      "header": "Dług",
+      "intro": "Śledź pożyczkę bez konta. Szczegóły możesz dopracować później.",
+      "currency": {
+        "label": "Waluta"
+      },
+      "start_date": {
+        "label": "Data rozpoczęcia",
+        "hint": "Kiedy zaczęła się pożyczka",
+        "none": "Brak daty",
+        "clear": "Wyczyść datę rozpoczęcia"
+      },
+      "amount_borrowed": {
+        "label": "Pożyczona kwota"
+      },
+      "payment": {
+        "label": "Płatność"
+      },
+      "schedule": {
+        "label": "Powtarzanie",
+        "every": {
+          "weekly": "co tydzień",
+          "biweekly": "co 2 tygodnie",
+          "monthly": "co miesiąc",
+          "quarterly": "co kwartał",
+          "yearly": "co rok"
+        }
+      },
+      "last_payment_date": {
+        "label": "Data ostatniej płatności",
+        "hint": "Kiedy kończy się dług",
+        "choose": "Wybierz datę"
+      }
+    },
+    "details": {
+      "payments": "Płatności",
+      "payments_empty": "Nie ma jeszcze płatności",
+      "column": {
+        "date": "Data",
+        "amount": "Płatność",
+        "interest": "Odsetki",
+        "principal": "Kapitał",
+        "balance": "Saldo"
+      },
+      "forecast": {
+        "show": "Pokaż przyszłe płatności",
+        "hide": "Ukryj przyszłe płatności",
+        "with_plan": "Uwzględnia dodatkowe płatności zaplanowane w {budget}",
+        "regular_only": "Tylko regularne płatności",
+        "overdue": "zaległa",
+        "recorded": "Zarejestrowane",
+        "more": "Pokaż {count} kolejną płatność | Pokaż {count} kolejne płatności | Pokaż {count} kolejnych płatności"
+      },
+      "mark_paid_off": "Oznacz jako spłacony",
+      "reopen": "Otwórz dług ponownie",
+      "paid_off_confirm": {
+        "title": "Oznaczyć jako spłacony?",
+        "question": "Saldo zostanie ustawione na 0 od daty poniżej. Twoje płatności pozostają bez zmian.",
+        "date": "Spłacony dnia"
+      },
+      "delete_confirm": {
+        "title": "Usunąć ten dług?",
+        "question": "Dług i jego historia zostaną usunięte. Plany i transakcje jego kategorii lub koperty nie zostaną zmienione."
+      }
+    },
+    "terms": {
+      "finish_setup": "Dokończ konfigurację"
+    },
+    "balance": {
+      "econumo": "Saldo w Econumo dziś",
+      "last_statement": "Ostatni wyciąg",
+      "statement_on": "{amount} z dnia {date}",
+      "difference": "Różnica",
+      "form": {
+        "title": "Uzgodnij z wyciągiem",
+        "hint": "Wpisz kapitał pozostały do spłaty z wyciągu od pożyczkodawcy. Od jego daty Econumo liczy od niego, a raty należne do tego dnia liczą się jako zapłacone; odsetki od ostatniej płatności są naliczane przy następnej płatności, za pełny okres.",
+        "balance": "Saldo z wyciągu",
+        "date": "Data wyciągu",
+        "date_range": "Wybierz datę po dacie rozpoczęcia i najpóźniej dzisiaj. Aby zmienić pożyczoną kwotę, popraw ją w ustawieniach.",
+        "save": "Uzgodnij"
+      },
+      "history": "Wyciągi",
+      "column": {
+        "date": "Data",
+        "statement": "Wyciąg",
+        "econumo": "Econumo",
+        "difference": "Różnica"
+      },
+      "origin": "Pożyczona kwota",
+      "paid_off": "Oznaczono jako spłacony",
+      "delete": "Usuń wyciąg z dnia {date}",
+      "delete_confirm": {
+        "title": "Usunąć ten wyciąg?",
+        "question": "Płatności po jego dacie znów liczą się od wcześniejszego salda."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Usunąć oznaczenie spłaty?",
+        "question": "Dług zostanie ponownie otwarty: kwota do spłaty znów liczy się z wcześniejszych wpisów i płatności."
+      }
+    },
+    "rates": {
+      "title": "Zmiany oprocentowania",
+      "from_start": "Od początku",
+      "from_terms": "z warunków kredytu",
+      "column": {
+        "date": "Data",
+        "rate": "Oprocentowanie",
+        "payment": "Płatność"
+      },
+      "form": {
+        "title": "Zapisz zmianę oprocentowania",
+        "date": "Data",
+        "rate": "Oprocentowanie, % rocznie",
+        "payment": "Płatność",
+        "save": "Dodaj zmianę oprocentowania"
+      },
+      "delete": "Usuń zmianę oprocentowania z dnia {date}",
+      "delete_confirm": {
+        "title": "Usunąć tę zmianę oprocentowania?",
+        "question": "Płatności po jej dacie znów liczą się według poprzedniego oprocentowania i płatności."
+      }
+    },
+    "review": {
+      "progress": "Opłacono {paid} z {total}",
+      "progress_repaid": "Opłacono {paid} z {total} ({repaid} z {borrowed})",
+      "owed_now": "Do spłaty teraz: {amount}",
+      "paid_so_far": "Zapłacono do tej pory",
+      "paid_off_on": "Spłacony dnia {date}",
+      "not_set_up": "Dodaj pożyczoną kwotę i daty pożyczki, aby zobaczyć pozostałe płatności",
+      "loan": "Pożyczka",
+      "borrowed": "Pożyczono",
+      "next_payment": "Następna płatność",
+      "last_payment": "Ostatnia płatność",
+      "last_payment_contract": "wg umowy: {date}",
+      "start_date": "Data rozpoczęcia",
+      "from_first_payment": "Od pierwszej płatności",
+      "paid_extra": "Dodatkowo wpłacone",
+      "planned_extra": "Dodatkowo zaplanowane",
+      "danger": {
+        "title": "Strefa zagrożenia",
+        "paid_off": "Ustawia saldo na 0 i zatrzymuje odliczanie.",
+        "delete": "Usuwa dług i jego historię. Twoje transakcje nie zostaną zmienione.",
+        "reopen": "Aktywuje dług ponownie: możesz go zmieniać, a jego płatności znów się liczą."
+      },
+      "tab": {
+        "overview": "Przegląd",
+        "balance": "Saldo",
+        "settings": "Ustawienia"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1328,6 +1484,7 @@
         "accounts_included": "Uwzględniono {count} z {total}",
         "accounts_hidden": "W ukrytych folderach",
         "accounts_locked_hint": "Kont z transakcjami w poprzednich miesiącach nie można usunąć",
+        "debts_note": "Długi są widoczne wraz z nazwą, płatnościami i saldami dla wszystkich z dostępem do tego budżetu.",
         "savings": {
           "label": "Konta oszczędnościowe",
           "description": "Pieniądze przelane na te konta liczą się jako zaoszczędzone, a nie wydane.",
@@ -1637,6 +1794,22 @@
         "planned": "Zaplanowano",
         "saved": "Zaoszczędzono",
         "balance_hint": "Saldo na koniec miesiąca."
+      },
+      "debts": {
+        "payoff_by": "Planowana spłata: {date}",
+        "payments_left": "Została {count} płatność | Zostały {count} płatności | Zostało {count} płatności",
+        "extra_effect": "Spłata {months} miesiąc wcześniej, {amount} mniej odsetek | Spłata {months} miesiące wcześniej, {amount} mniej odsetek | Spłata {months} miesięcy wcześniej, {amount} mniej odsetek",
+        "extra_effect_earlier": "Spłata {months} miesiąc wcześniej | Spłata {months} miesiące wcześniej | Spłata {months} miesięcy wcześniej",
+        "track": "Śledź jako dług",
+        "details": "Szczegóły",
+        "debt_details": "Szczegóły długu",
+        "delete": "Usuń dług",
+        "past": "Poprzednie długi ({count})",
+        "past_title": "Poprzednie długi",
+        "borrowed": "Pożyczono: {amount}",
+        "section": "Dług",
+        "left_at_end": "Do zapłaty na koniec miesiąca: {amount}",
+        "not_set_up": "Jeszcze nie skonfigurowano"
       },
       "phone": {
         "row_aria": "{name}, budżet {budget}, wydano {spent}",
@@ -2316,6 +2489,7 @@
       "folder_side_mixed": "Folder nie może jednocześnie zawierać przychodów i wydatków.",
       "envelope_member_not_category": "Do koperty można dodać tylko kategorię",
       "savings_folder_not_allowed": "Kont oszczędnościowych nie można umieścić w folderze",
+      "element_has_debt": "Kategorii, która śledzi dług, nie można dodać do koperty. Najpierw oznacz dług jako spłacony.",
       "account_not_removable": "To konto ma transakcje w poprzednich miesiącach i nie można go już usunąć z budżetu",
       "savings_account_not_member": "Konta oszczędnościowe muszą być Twoimi kontami w tym budżecie",
       "savings_removal_unconfirmed": "Spowoduje to usunięcie zaplanowanych kwot i komentarzy kont oszczędnościowych, które wyłączono lub usunięto z tego budżetu; potwierdź, aby kontynuować",
@@ -2374,6 +2548,20 @@
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
       "list_empty": "Lista tagów jest pusta."
+    },
+    "debt": {
+      "payments_dont_cover": "Płatności nie pokrywają salda. Zwiększ płatność lub ustaw późniejszą datę ostatniej płatności.",
+      "element_not_eligible": "Dług można śledzić w kategorii wydatków poza kopertą albo w kopercie.",
+      "element_has_debt": "Ta kategoria lub koperta śledzi już dług. Najpierw oznacz ten dług jako spłacony.",
+      "start_before_previous_end": "Data rozpoczęcia musi być późniejsza niż koniec poprzedniego długu tej kategorii lub koperty.",
+      "cannot_reopen": "Tego długu nie można ponownie otworzyć: jego kategoria lub koperta śledzi inny dług, aktywny lub rozpoczęty później.",
+      "paid_off": "Ten dług jest spłacony. Otwórz go ponownie, aby go zmienić.",
+      "last_payment_in_past": "Data ostatniej płatności musi być późniejsza niż dzisiaj.",
+      "last_payment_before_start": "Data ostatniej płatności musi być późniejsza niż data rozpoczęcia.",
+      "start_in_future": "Data rozpoczęcia nie może być późniejsza niż dzisiaj.",
+      "not_set_up": "Najpierw dokończ konfigurowanie tego długu.",
+      "conflicts_with_reconciliation": "To jest sprzeczne z saldem wpisanym z wyciągu. Najpierw zmień lub usuń to uzgodnienie.",
+      "conflicts_with_rate_change": "Ta data rozpoczęcia przypada po zmianie oprocentowania. Najpierw usuń tę zmianę."
     },
     "authserver": {
       "disabled": "Łączenie aplikacji nie jest dostępne na tym serwerze.",

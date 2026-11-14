@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -315,22 +316,59 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 		default:
 			t.Fatalf("[%s] unknown auth %q", c.Label, c.Auth)
 		}
-		statuses[i], bodies[i] = h.do(t, c.Method, c.Path, tok, c.Body, c.Form, c.RawBody, c.ContentType)
+		path := c.Path
+		if c.PathID != nil {
+			if *c.PathID == "" {
+				t.Fatalf("[%s] PathID is empty: the call that captures it failed or its response changed shape", c.Label)
+			}
+			path += *c.PathID
+		}
+		statuses[i], bodies[i] = h.do(t, c.Method, path, tok, c.Body, c.Form, c.RawBody, c.ContentType)
 		if c.CaptureIDInto != nil {
-			*c.CaptureIDInto = extractItemID(bodies[i])
+			if c.CapturePath != "" {
+				*c.CaptureIDInto = extractPath(bodies[i], c.CapturePath)
+			} else {
+				*c.CaptureIDInto = extractItemID(bodies[i])
+			}
 		}
 	}
 	return statuses, bodies
 }
 
+// extractPath reads a string at a dot path of a JSON body ("" when absent).
+func extractPath(body []byte, path string) string {
+	var node any
+	if err := json.Unmarshal(body, &node); err != nil {
+		return ""
+	}
+	for _, part := range strings.Split(path, ".") {
+		switch n := node.(type) {
+		case map[string]any:
+			node = n[part]
+		case []any:
+			i, err := strconv.Atoi(part)
+			if err != nil || i < 0 || i >= len(n) {
+				return ""
+			}
+			node = n[i]
+		default:
+			return ""
+		}
+	}
+	v, _ := node.(string)
+	return v
+}
+
 // extractItemID pulls "data.item.id" out of a create-endpoint response —
-// every CREATE result wraps the new entity as {item: {id, ...}}. Returns ""
+// almost every CREATE result wraps the new entity as {item: {id, ...}}; a
+// result that is the entity itself (debts) carries "data.id". Returns ""
 // (a deliberately invalid id for any later call that dereferences it) if the
 // call failed or the shape doesn't match, so a wiring mistake surfaces as a
 // downstream "not found" rather than silently reusing a stale id.
 func extractItemID(body []byte) string {
 	var env struct {
 		Data struct {
+			Id   string `json:"id"`
 			Item struct {
 				Id string `json:"id"`
 			} `json:"item"`
@@ -339,5 +377,8 @@ func extractItemID(body []byte) string {
 	if err := json.Unmarshal(body, &env); err != nil {
 		return ""
 	}
-	return env.Data.Item.Id
+	if env.Data.Item.Id != "" {
+		return env.Data.Item.Id
+	}
+	return env.Data.Id
 }

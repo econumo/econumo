@@ -25,6 +25,7 @@ import { CurrencyTag, Dash, FigureCells, RowMenu } from './monthLines'
 import type { MenuAction } from './monthLayout'
 import { CHILD_INDENT, FOLDER_INDENT, groupedLevel, PLAN_CROSSHAIR, PLAN_FIGURE_COL, PLAN_LINE, PLAN_NAME_COL, PLAN_SELECTED_TINT, ROW_INDENT, RowLevelContext, useRowLevel } from './monthLayout'
 import { planCellView, shownActual } from './planCell'
+import { DebtPayoff } from './debtRow'
 import { planHintClass } from './planHint'
 import { PlanCellInput } from './PlanCellInput'
 import type { CellMove } from './PlanCellInput'
@@ -160,8 +161,8 @@ export interface GridCtx {
   cancelEdit: () => void
   /** a row's ⋮ menu; undefined while the line controls are off (touch, no edit mode) */
   rowMenu?: (el: PlanElementDto) => MenuAction[] | undefined
-  /** the ⋮ menu of a category inside an envelope */
-  childMenu?: (child: PlanChildDto) => MenuAction[] | undefined
+  /** the ⋮ menu of a category inside an envelope (parent: that envelope) */
+  childMenu?: (child: PlanChildDto, parent: PlanElementDto) => MenuAction[] | undefined
 }
 
 const figureClass = (ctx: GridCtx, col: number): string =>
@@ -318,9 +319,10 @@ export function PlanTagGroup({ groupKey, name, rows, ctx, children }: { groupKey
 }
 
 export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }: { row: PlanRow; ctx: GridCtx; grouped?: boolean }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const level = useRowLevel()
   const el = row.element
+  const balanceHint = t('budgets.page.savings.balance_hint')
   // inside a same-name group the names match: the owner tells the tags apart
   const ownerHint = grouped && el.ownerUserId ? ctx.meta.access.find((a) => a.user.id === el.ownerUserId)?.user.name : undefined
   const unfolded = useBudgetPeriodStore((s) => !!s.planUnfoldedElements[el.id])
@@ -345,7 +347,7 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
         <p className={`${CHILD_INDENT[level]} px-2 py-1 text-xs text-muted-foreground`}>{t('budgets.page.budget.structure.empty_envelope.note')}</p>
       ) : null}
       {el.children.map((child) => {
-        const line = <ChildRow key={child.id} child={child} parentCurrency={currency} ctx={ctx} menu={isEnvelopeType(el.type) ? ctx.childMenu?.(child) : undefined} />
+        const line = <ChildRow key={child.id} child={child} parentCurrency={currency} ctx={ctx} menu={isEnvelopeType(el.type) ? ctx.childMenu?.(child, el) : undefined} />
         return childDrag ? (
           <DragChild key={child.id} id={child.id}>
             {line}
@@ -385,9 +387,18 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
             <span className="w-3.5 shrink-0" />
           )}
           {isUncategorized ? null : <EntityIcon name={el.icon} className="text-lg text-muted-foreground" />}
-          <span className={`min-w-0 truncate ${isUncategorized ? '' : 'text-[15px]'}`} title={displayName}>
-            {displayName}
-          </span>
+          {el.debt ? (
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span className="min-w-0 truncate text-[15px]" title={displayName}>
+                {displayName}
+              </span>
+              <DebtPayoff debt={el.debt} />
+            </div>
+          ) : (
+            <span className={`min-w-0 truncate ${isUncategorized ? '' : 'text-[15px]'}`} title={displayName}>
+              {displayName}
+            </span>
+          )}
           {ownerHint ? <span className="shrink-0 truncate text-xs text-muted-foreground">{ownerHint}</span> : null}
           {el.currencyId !== ctx.baseCurrencyId && currency ? <CurrencyTag code={currency.code} /> : null}
           <span className="flex-1" />
@@ -397,7 +408,14 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
           const idx = ctx.monthIndex(m)
           const cell = idx >= 0 ? el.cells[idx] : undefined
           const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
-          const view = planCellView({ type: el.type, id: el.id, cell, month: m, selected: ctx.selected })
+          const view = planCellView({
+            type: el.type,
+            id: el.id,
+            cell,
+            month: m,
+            selected: ctx.selected,
+            startDay: periodStartDayOf(ctx.meta),
+          })
           const actual = view.actual
           const planFigure = view.plan
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
@@ -416,6 +434,78 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
           const commentCount = cellComments.length
           const target = { el, month: m, monthIndex: idx }
           const actualColor = view.over ? 'text-expense' : 'text-muted-foreground'
+          // one layout in every month, edited or not: the actual (a balance, a dash)
+          // at the cell's left edge, the plan — or its editor — at the right. Nothing
+          // shifts when editing starts. The plan never gives way: when a column runs
+          // out of room only the actual is cut, its full figure in the tooltip.
+          const figuresNode = (
+            <span
+              data-testid="cell-figures"
+              className={`flex min-w-0 flex-1 justify-between gap-1 ${editing ? 'items-center' : 'items-baseline'}`}
+            >
+              {actual === null ? (
+                view.dash ? (
+                  <span data-testid="cell-no-actual" className="text-xs">
+                    <Dash />
+                  </span>
+                ) : null
+              ) : !view.balance || m <= ctx.selected ? (
+                <button
+                  type="button"
+                  data-testid="cell-actual"
+                  data-figure={view.balance ? 'balance' : undefined}
+                  title={`${fmt(actual)}. ${view.balance ? `${balanceHint} ` : ''}${t('budgets.page.budget.structure.element.action.show_transactions')}`}
+                  className={`min-w-0 truncate text-xs tabular-nums underline-offset-2 hover:underline ${actualColor}`}
+                  onClick={(e) => {
+                    // the cell's own click is skipped (a touch tap there opens the
+                    // item sheet), but the clicked cell still becomes the selection
+                    e.stopPropagation()
+                    ctx.select(rk, i, e)
+                    ctx.openTransactions(el, m)
+                  }}
+                >
+                  {fmt(actual)}
+                </button>
+              ) : (
+                <span
+                  data-testid="cell-actual"
+                  data-figure={view.balance ? 'balance' : undefined}
+                  className={`min-w-0 truncate text-xs tabular-nums ${actualColor}`}
+                  title={view.balance ? `${fmt(actual)}. ${balanceHint}` : fmt(actual)}
+                >
+                  {fmt(actual)}
+                </span>
+              )}
+              {editing ? (
+                <span className="ml-auto w-[58%] min-w-16 shrink-0">
+                  <PlanCellInput
+                    initial={editing.initial}
+                    label={t('budgets.page.plan.cell.edit_aria', { name: displayName, month: ctx.monthLabel(m) })}
+                    onCommit={ctx.finishEdit}
+                    onCancel={ctx.cancelEdit}
+                    upcoming={
+                      cell && wantsUpcomingPanel(m, cell.actual, cell.upcoming, el.type === BudgetElementType.SAVINGS, periodStartDayOf(ctx.meta))
+                        ? {
+                            budget: { meta: ctx.meta },
+                            target: { id: el.id, type: el.type, name: displayName, icon: el.icon, currencyId: el.currencyId },
+                            periodStart: m,
+                            currency,
+                            exchange: ctx.cellExchange(idx),
+                            spent: cell.actual,
+                            upcoming: cell.upcoming,
+                          }
+                        : null
+                    }
+                  />
+                </span>
+              ) : (
+                <span data-testid="cell-planned" className={`ml-auto shrink-0 text-[15px] whitespace-nowrap tabular-nums ${planHintClass(view.hint)}`}>
+                  <PendingLimitMark budgetId={ctx.meta.id} elementId={el.id} period={m} className="mr-1 align-middle" />
+                  {planFigure !== null ? fmt(planFigure) : view.balance ? <Dash /> : ''}
+                </span>
+              )}
+            </span>
+          )
           const cellNode = (
             <div
               {...{ [COMMENT_ANCHOR_ATTR]: '' }}
@@ -475,76 +565,17 @@ export const ElementRow = memo(function ElementRow({ row, ctx, grouped = false }
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
-              {/* one layout in every month, edited or not: the actual (a balance, a dash)
-                  at the cell's left edge, the plan — or its editor — at the right. Nothing
-                  shifts when editing starts. The plan never gives way: when a column runs
-                  out of room only the actual is cut, its full figure in the tooltip. */}
-              <span
-                data-testid="cell-figures"
-                className={`flex min-w-0 flex-1 justify-between gap-1 ${editing ? 'items-center' : 'items-baseline'}`}
-              >
-                {actual === null ? (
-                  view.dash ? (
-                    <span data-testid="cell-no-actual" className="text-xs">
-                      <Dash />
-                    </span>
-                  ) : null
-                ) : !view.balance || m <= ctx.selected ? (
-                  <button
-                    type="button"
-                    data-testid="cell-actual"
-                    data-figure={view.balance ? 'balance' : undefined}
-                    title={`${fmt(actual)}. ${view.balance ? `${t('budgets.page.savings.balance_hint')} ` : ''}${t('budgets.page.budget.structure.element.action.show_transactions')}`}
-                    className={`min-w-0 truncate text-xs tabular-nums underline-offset-2 hover:underline ${actualColor}`}
-                    onClick={(e) => {
-                      // the cell's own click is skipped (a touch tap there opens the
-                      // item sheet), but the clicked cell still becomes the selection
-                      e.stopPropagation()
-                      ctx.select(rk, i, e)
-                      ctx.openTransactions(el, m)
-                    }}
-                  >
-                    {fmt(actual)}
-                  </button>
-                ) : (
-                  <span
-                    data-testid="cell-actual"
-                    data-figure={view.balance ? 'balance' : undefined}
-                    className={`min-w-0 truncate text-xs tabular-nums ${actualColor}`}
-                    title={view.balance ? `${fmt(actual)}. ${t('budgets.page.savings.balance_hint')}` : fmt(actual)}
-                  >
-                    {fmt(actual)}
+              {/* the payments left on the debt in force that month sit under the figures */}
+              {view.paymentsLeft != null || view.paidOff ? (
+                <span className="flex min-w-0 flex-1 flex-col">
+                  {figuresNode}
+                  <span data-testid="cell-payments-left" className="truncate text-left text-[11px] text-muted-foreground">
+                    {view.paymentsLeft != null ? pluralPick(t('budgets.page.debts.payments_left'), view.paymentsLeft, i18n.language) : t('debts.list.paid_off')}
                   </span>
-                )}
-                {editing ? (
-                  <span className="ml-auto w-[58%] min-w-16 shrink-0">
-                    <PlanCellInput
-                      initial={editing.initial}
-                      label={t('budgets.page.plan.cell.edit_aria', { name: displayName, month: ctx.monthLabel(m) })}
-                      onCommit={ctx.finishEdit}
-                      onCancel={ctx.cancelEdit}
-                      upcoming={
-                        cell && wantsUpcomingPanel(m, cell.actual, cell.upcoming, el.type === BudgetElementType.SAVINGS, periodStartDayOf(ctx.meta))
-                          ? {
-                              budget: { meta: ctx.meta },
-                              target: { id: el.id, type: el.type, name: displayName, icon: el.icon, currencyId: el.currencyId },
-                              periodStart: m,
-                              currency,
-                              exchange: ctx.cellExchange(idx),
-                              spent: cell.actual,
-                              upcoming: cell.upcoming,
-                            }
-                          : null
-                      }
-                    />
-                  </span>
-                ) : (
-                  <span data-testid="cell-planned" className={`ml-auto shrink-0 text-[15px] whitespace-nowrap tabular-nums ${planHintClass(view.hint)}`}>
-                    <PendingLimitMark budgetId={ctx.meta.id} elementId={el.id} period={m} className="mr-1 align-middle" />
-                    {planFigure !== null ? fmt(planFigure) : view.balance ? <Dash /> : ''}
-                  </span>
-                )}
-              </span>
+                </span>
+              ) : (
+                figuresNode
+              )}
               {!editing && (commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
                 <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
               ) : null}

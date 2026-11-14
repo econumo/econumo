@@ -8,7 +8,7 @@ import { queryKeys } from '@/app/queryKeys'
 import { useAccounts } from '@/features/accounts/queries'
 import { useUserData } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { claimedElsewhere, finishImportStep, notUser } from './finishImport'
+import { claimedElsewhere, finishImportStep, notUser, scheduleAiRefresh } from './finishImport'
 import { emptyDraft, loadDraft, saveDraft, type AccountRow, type CategoryRow, type Day0Draft, type Day0Step } from './draft'
 
 export type CategoryReview = { archive: Id[]; restore: Id[] }
@@ -223,10 +223,12 @@ export function useDay0() {
       if (amounts.length > 0) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
         void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+        // the AI turns planned loan categories into debts in the background
+        if (userId) scheduleAiRefresh(queryClient, userId)
       }
       trackEvent(METRICS.ONBOARDING_PLAN_COMPLETE, { rows: amounts.length })
     },
-    [runStep, queryClient],
+    [runStep, queryClient, userId],
   )
 
   return { draft, ready: Boolean(user) && !accountsQuery.isPending, finishImport, saveCategories, saveAccounts, savePlan, pending, error }

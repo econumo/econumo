@@ -470,6 +470,162 @@
       }
     }
   },
+  "debts": {
+    "list": {
+      "payments_left": "{count} payment left | {count} payments left",
+      "paid_off": "Paid off"
+    },
+    "form": {
+      "header": "Debt",
+      "intro": "Track a loan without an account. You can fine-tune it afterwards.",
+      "currency": {
+        "label": "Currency"
+      },
+      "start_date": {
+        "label": "Start date",
+        "hint": "When the loan began",
+        "none": "None",
+        "clear": "Clear the start date"
+      },
+      "amount_borrowed": {
+        "label": "Amount borrowed"
+      },
+      "payment": {
+        "label": "Payment"
+      },
+      "schedule": {
+        "label": "Repeats",
+        "every": {
+          "weekly": "every week",
+          "biweekly": "every 2 weeks",
+          "monthly": "every month",
+          "quarterly": "every quarter",
+          "yearly": "every year"
+        }
+      },
+      "last_payment_date": {
+        "label": "Last payment date",
+        "hint": "When the debt ends",
+        "choose": "Choose a date"
+      }
+    },
+    "details": {
+      "payments": "Payments",
+      "payments_empty": "No payments yet",
+      "column": {
+        "date": "Date",
+        "amount": "Payment",
+        "interest": "Interest",
+        "principal": "Principal",
+        "balance": "Balance"
+      },
+      "forecast": {
+        "show": "Show future payments",
+        "hide": "Hide future payments",
+        "with_plan": "Includes extra payments planned in {budget}",
+        "regular_only": "Regular payments only",
+        "overdue": "overdue",
+        "recorded": "Recorded",
+        "more": "Show {count} more payment | Show {count} more payments"
+      },
+      "mark_paid_off": "Mark as paid off",
+      "reopen": "Reopen debt",
+      "paid_off_confirm": {
+        "title": "Mark as paid off?",
+        "question": "The balance is set to 0 as of the date below. Your payments stay as they are.",
+        "date": "Paid off on"
+      },
+      "delete_confirm": {
+        "title": "Delete this debt?",
+        "question": "The debt and its history are deleted. The plans and transactions of its category or envelope are not changed."
+      }
+    },
+    "terms": {
+      "finish_setup": "Finish setup"
+    },
+    "balance": {
+      "econumo": "Econumo's balance today",
+      "last_statement": "Last statement",
+      "statement_on": "{amount} on {date}",
+      "difference": "Difference",
+      "form": {
+        "title": "Reconcile with a statement",
+        "hint": "Enter the principal still owed from your loan statement. From the statement's date, Econumo counts from this balance, and every payment due before it counts as paid. Interest since the last payment is added to the next one.",
+        "balance": "Statement balance",
+        "date": "Statement date",
+        "date_range": "Pick a date after the loan's start and no later than today. To change the amount borrowed, edit it in Settings.",
+        "save": "Reconcile"
+      },
+      "history": "Statements",
+      "column": {
+        "date": "Date",
+        "statement": "Statement",
+        "econumo": "Econumo",
+        "difference": "Difference"
+      },
+      "origin": "Amount borrowed",
+      "paid_off": "Marked paid off",
+      "delete": "Delete the statement of {date}",
+      "delete_confirm": {
+        "title": "Delete this statement?",
+        "question": "Payments after this statement's date will be counted from the previous balance again."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Delete the paid-off mark?",
+        "question": "The debt will be open again: what's owed is recalculated from the earlier statements and payments."
+      }
+    },
+    "rates": {
+      "title": "Rate changes",
+      "from_start": "From the start",
+      "from_terms": "from your loan's terms",
+      "column": {
+        "date": "Date",
+        "rate": "Rate",
+        "payment": "Payment"
+      },
+      "form": {
+        "title": "Record a rate change",
+        "date": "Date",
+        "rate": "Rate, % a year",
+        "payment": "Payment",
+        "save": "Add rate change"
+      },
+      "delete": "Delete the rate change of {date}",
+      "delete_confirm": {
+        "title": "Delete this rate change?",
+        "question": "Payments after its date will be counted at the previous rate and payment again."
+      }
+    },
+    "review": {
+      "progress": "{paid} of {total} paid",
+      "progress_repaid": "{paid} of {total} paid ({repaid} of {borrowed})",
+      "owed_now": "Owed now {amount}",
+      "paid_so_far": "Paid so far",
+      "paid_off_on": "Paid off on {date}",
+      "not_set_up": "Add the amount borrowed and the loan's dates to see payments left",
+      "loan": "Loan",
+      "borrowed": "Borrowed",
+      "next_payment": "Next payment",
+      "last_payment": "Last payment",
+      "last_payment_contract": "contract: {date}",
+      "start_date": "Start date",
+      "from_first_payment": "From the first payment",
+      "paid_extra": "Paid extra",
+      "planned_extra": "Planned extra",
+      "danger": {
+        "title": "Danger zone",
+        "paid_off": "Sets what's owed to 0 and stops counting down the payments.",
+        "delete": "Removes the debt and its history. Your transactions are not changed.",
+        "reopen": "Makes the debt active again, so you can change it and its payments count."
+      },
+      "tab": {
+        "overview": "Overview",
+        "balance": "Balance",
+        "settings": "Settings"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1328,6 +1484,7 @@
         "accounts_included": "{count} of {total} included",
         "accounts_hidden": "In hidden folders",
         "accounts_locked_hint": "Accounts with transactions in past months can't be removed",
+        "debts_note": "Debts are shown by name, with their payments and balances, to everyone with access to this budget.",
         "savings": {
           "label": "Savings accounts",
           "description": "Money moved into these accounts counts as saved, not spent.",
@@ -1637,6 +1794,22 @@
         "planned": "Planned",
         "saved": "Saved",
         "balance_hint": "Balance at the end of the month."
+      },
+      "debts": {
+        "payoff_by": "Paid off by {date}",
+        "payments_left": "{count} payment left | {count} payments left",
+        "extra_effect": "Paid off {months} month earlier, {amount} less overpayment | Paid off {months} months earlier, {amount} less overpayment",
+        "extra_effect_earlier": "Paid off {months} month earlier | Paid off {months} months earlier",
+        "track": "Track as debt",
+        "details": "Details",
+        "debt_details": "Debt details",
+        "delete": "Delete debt",
+        "past": "Past debts ({count})",
+        "past_title": "Past debts",
+        "borrowed": "Borrowed {amount}",
+        "section": "Debt",
+        "left_at_end": "Left to pay at month end: {amount}",
+        "not_set_up": "Not set up yet"
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, spent {spent}",
@@ -2316,6 +2489,7 @@
       "folder_side_mixed": "A folder cannot contain both income and expenses",
       "envelope_member_not_category": "Only a category can go into an envelope",
       "savings_folder_not_allowed": "Savings cannot be put into a folder",
+      "element_has_debt": "A category that tracks a debt cannot go into an envelope. Mark the debt as paid off first.",
       "account_not_removable": "This account has transactions in past months and can no longer be removed from the budget",
       "savings_account_not_member": "Savings accounts must be your own accounts in this budget",
       "savings_removal_unconfirmed": "This deletes the planned amounts and comments of savings accounts you turned off or removed from this budget; confirm to continue",
@@ -2374,6 +2548,20 @@
       "name_length": "Tag name must be {min}-{max} characters",
       "cannot_be_merged": "The selected tags cannot be merged",
       "list_empty": "Tags list is empty"
+    },
+    "debt": {
+      "payments_dont_cover": "The payments do not cover the balance. Raise the payment or set a later last payment date.",
+      "element_not_eligible": "A debt can be tracked on an expense category outside an envelope, or on an envelope.",
+      "element_has_debt": "This category or envelope already tracks a debt. Mark that debt as paid off first.",
+      "start_before_previous_end": "The start date must be after the end of the previous debt on this category or envelope.",
+      "cannot_reopen": "This debt cannot be reopened: its category or envelope tracks another debt that is active or started later.",
+      "paid_off": "This debt is paid off. Reopen it to change it.",
+      "last_payment_in_past": "The last payment date must be after today.",
+      "last_payment_before_start": "The last payment date must be after the start date.",
+      "start_in_future": "The start date must be today or earlier.",
+      "not_set_up": "Finish setting up this debt first.",
+      "conflicts_with_reconciliation": "This conflicts with a balance you entered from a statement. Change or delete that reconciliation first.",
+      "conflicts_with_rate_change": "This start date comes after a rate change. Delete that rate change first."
     },
     "authserver": {
       "disabled": "Connecting apps is not available on this server.",

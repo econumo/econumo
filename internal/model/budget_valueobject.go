@@ -8,7 +8,8 @@ package model
 import "github.com/econumo/econumo/internal/shared/errs"
 
 // ElementType is a budget element's kind: envelope=0, category=1, tag=2,
-// income category=3, income envelope=4, savings=5.
+// income category=3, income envelope=4, savings=5. 6 held the removed debt
+// rows and must not be reused.
 type ElementType int16
 
 const (

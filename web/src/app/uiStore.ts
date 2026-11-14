@@ -45,6 +45,16 @@ export interface OpenRecurringParams {
   accountId?: Id
 }
 
+/** a new debt; an existing one is opened on its review screen (`openDebtDetails`) */
+export interface OpenDebtParams {
+  /** the element the debt is attached to: a top-level expense category or an envelope */
+  elementId: Id
+  /** that element's budget: the debt is created there */
+  budgetId: Id
+}
+
+export type DebtDetailsTab = 'overview' | 'balance' | 'settings' | 'danger'
+
 export interface RulePromptParams {
   link: TransactionImportLinkDto
   diff: RuleDiff
@@ -60,6 +70,14 @@ interface UiState {
   recurringModal: OpenRecurringParams | null
   openRecurringModal: (params: OpenRecurringParams) => void
   closeRecurringModal: () => void
+  debtModal: OpenDebtParams | null
+  openDebtModal: (params: OpenDebtParams) => void
+  closeDebtModal: () => void
+  debtDetailsId: Id | null
+  /** the review screen's tab it opens on: Finish setup opens straight on Settings */
+  debtDetailsTab: DebtDetailsTab
+  openDebtDetails: (id: Id, tab?: DebtDetailsTab) => void
+  closeDebtDetails: () => void
   switchAccountPrompt: Id | null
   setSwitchAccountPrompt: (id: Id | null) => void
   rulePrompt: RulePromptParams | null
@@ -89,6 +107,13 @@ export const useUiStore = create<UiState>()((set) => ({
   recurringModal: null,
   openRecurringModal: (params) => set({ recurringModal: params }),
   closeRecurringModal: () => set({ recurringModal: null }),
+  debtModal: null,
+  openDebtModal: (params) => set({ debtModal: params }),
+  closeDebtModal: () => set({ debtModal: null }),
+  debtDetailsId: null,
+  debtDetailsTab: 'overview',
+  openDebtDetails: (id, tab = 'overview') => set({ debtDetailsId: id, debtDetailsTab: tab }),
+  closeDebtDetails: () => set({ debtDetailsId: null }),
   switchAccountPrompt: null,
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),
   rulePrompt: null,

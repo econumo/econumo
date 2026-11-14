@@ -1,0 +1,111 @@
+== err:bad-element-id POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"elementId":["This value is not a valid UUID."]}}
+
+== err:no-element POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"elementId":["This value should not be blank."]}}
+
+== err:no-budget POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"budgetId":["This value should not be blank."]}}
+
+== err:unknown-budget POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Budget not found","code":0,"errors":{}}
+
+== err:zero-payment POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"payment":["This value is out of range."]}}
+
+== err:bad-schedule POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"schedule":["The value you selected is not a valid choice."]}}
+
+== err:bad-start-date POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"startDate":["This value is not valid."]}}
+
+== err:income-category POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"elementId":["A debt can be tracked on an expense category outside an envelope, or on an envelope."]}}
+
+== err:unknown-element POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"elementId":["A debt can be tracked on an expense category outside an envelope, or on an envelope."]}}
+
+== err:tag-element POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"elementId":["A debt can be tracked on an expense category outside an envelope, or on an envelope."]}}
+
+== create-draft POST /api/v1/debt/create-debt [owner] -> 200
+{"success":true,"message":"","data":{"id":"<generated-uuid>","budgetId":"b0000000-0000-0000-0000-000000000001","budgetName":"Budget","elementId":"c0000000-0000-0000-0000-000000000001","elementType":"category","status":"active","endedAt":"","canEdit":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startDate":"","amountBorrowed":"","balance":"","payment":"105","schedule":"weekly","lastPaymentDate":"","currentBalance":"","paymentsLeft":0,"periodsPaid":0,"moneyLeft":"","overpaymentLeft":"","overpaidSoFar":"","extraPaid":"","payoffDate":"","nextDueDate":"","periodRate":"","annualRate":"","impliedAnnualRate":"","isPaidOff":0,"isSetUp":0}}
+
+== err:element-has-debt POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"elementId":["This category or envelope already tracks a debt. Mark that debt as paid off first."]}}
+
+== err:bad-balance POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"balance":["This value is out of range."]}}
+
+== err:zero-amount-borrowed POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"amountBorrowed":["This value is out of range."]}}
+
+== err:bad-last-date POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"lastPaymentDate":["This value is not valid."]}}
+
+== err:last-payment-before-start POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"lastPaymentDate":["The last payment date must be after the start date."]}}
+
+== err:start-in-future POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"startDate":["The start date must be today or earlier."]}}
+
+== err:balance-now-after-last-payment POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"lastPaymentDate":["The last payment date must be after today."]}}
+
+== err:payments-dont-cover POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"payment":["The payments do not cover the balance. Raise the payment or set a later last payment date."]}}
+
+== err:loan-facts-missing-last-date POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"lastPaymentDate":["This value should not be blank."]}}
+
+== err:loan-facts-missing-amount-borrowed POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"amountBorrowed":["This value should not be blank."]}}
+
+== err:loan-facts-missing-start-date POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"startDate":["This value should not be blank."]}}
+
+== err:update-unknown POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:update-blank-id POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+
+== err:get-unknown GET /api/v1/debt/get-debt?id=d0000000-0000-0000-0000-0000000000ff [owner] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:get-bad-id GET /api/v1/debt/get-debt?id=nope [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value is not a valid UUID."]}}
+
+== err:get-missing-id GET /api/v1/debt/get-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+
+== err:paid-off-unknown POST /api/v1/debt/mark-debt-paid-off [owner] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:paid-off-bad-date POST /api/v1/debt/mark-debt-paid-off [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"date":["This value is not valid."]}}
+
+== err:reopen-unknown POST /api/v1/debt/reopen-debt [owner] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== err:reopen-bad-id POST /api/v1/debt/reopen-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value is not a valid UUID."]}}
+
+== err:delete-unknown POST /api/v1/debt/delete-debt [owner] -> 400
+{"success":false,"message":"Debt not found","code":0,"errors":{}}
+
+== delete-draft POST /api/v1/debt/delete-debt [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== create-debt POST /api/v1/debt/create-debt [owner] -> 200
+{"success":true,"message":"","data":{"id":"<generated-uuid>","budgetId":"b0000000-0000-0000-0000-000000000001","budgetName":"Budget","elementId":"c0000000-0000-0000-0000-000000000001","elementType":"category","status":"active","endedAt":"","canEdit":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startDate":"","amountBorrowed":"","balance":"","payment":"105","schedule":"weekly","lastPaymentDate":"","currentBalance":"","paymentsLeft":0,"periodsPaid":0,"moneyLeft":"","overpaymentLeft":"","overpaidSoFar":"","extraPaid":"","payoffDate":"","nextDueDate":"","periodRate":"","annualRate":"","impliedAnnualRate":"","isPaidOff":0,"isSetUp":0}}
+
+== setup POST /api/v1/debt/update-debt [owner] -> 200
+{"success":true,"message":"","data":{"id":"<generated-uuid>","budgetId":"b0000000-0000-0000-0000-000000000001","budgetName":"Budget","elementId":"c0000000-0000-0000-0000-000000000001","elementType":"category","status":"active","endedAt":"","canEdit":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startDate":"<date>","amountBorrowed":"100","balance":"100","payment":"105","schedule":"weekly","lastPaymentDate":"<date>","currentBalance":"100","paymentsLeft":1,"periodsPaid":0,"moneyLeft":"105","overpaymentLeft":"5","overpaidSoFar":"0","extraPaid":"0","payoffDate":"<date>","nextDueDate":"<date>","periodRate":"0.0500000000","annualRate":"260","impliedAnnualRate":"260","isPaidOff":0,"isSetUp":1}}
+
+== err:set-limit-on-a-debt-id POST /api/v1/budget/set-limit [owner] -> 400
+{"success":false,"message":"BudgetElement not found","code":0,"errors":{}}
+
+== err:update-payment-dont-cover POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"payment":["The payments do not cover the balance. Raise the payment or set a later last payment date."]}}
+

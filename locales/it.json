@@ -470,6 +470,162 @@
       }
     }
   },
+  "debts": {
+    "list": {
+      "payments_left": "Manca {count} pagamento | Mancano {count} pagamenti",
+      "paid_off": "Estinto"
+    },
+    "form": {
+      "header": "Debito",
+      "intro": "Segui un prestito senza conto. Potrai perfezionarlo in seguito.",
+      "currency": {
+        "label": "Valuta"
+      },
+      "start_date": {
+        "label": "Data di inizio",
+        "hint": "Quando è iniziato il prestito",
+        "none": "Nessuna data",
+        "clear": "Cancella la data di inizio"
+      },
+      "amount_borrowed": {
+        "label": "Importo preso in prestito"
+      },
+      "payment": {
+        "label": "Pagamento"
+      },
+      "schedule": {
+        "label": "Si ripete",
+        "every": {
+          "weekly": "ogni settimana",
+          "biweekly": "ogni 2 settimane",
+          "monthly": "ogni mese",
+          "quarterly": "ogni trimestre",
+          "yearly": "ogni anno"
+        }
+      },
+      "last_payment_date": {
+        "label": "Data dell'ultimo pagamento",
+        "hint": "Quando finisce il debito",
+        "choose": "Scegli una data"
+      }
+    },
+    "details": {
+      "payments": "Pagamenti",
+      "payments_empty": "Ancora nessun pagamento",
+      "column": {
+        "date": "Data",
+        "amount": "Pagamento",
+        "interest": "Interessi",
+        "principal": "Capitale",
+        "balance": "Saldo"
+      },
+      "forecast": {
+        "show": "Mostra i pagamenti futuri",
+        "hide": "Nascondi i pagamenti futuri",
+        "with_plan": "Include i pagamenti extra pianificati in {budget}",
+        "regular_only": "Solo pagamenti regolari",
+        "overdue": "scaduto",
+        "recorded": "Registrati",
+        "more": "Mostra {count} altro pagamento | Mostra altri {count} pagamenti"
+      },
+      "mark_paid_off": "Segna come estinto",
+      "reopen": "Riapri il debito",
+      "paid_off_confirm": {
+        "title": "Segnare come estinto?",
+        "question": "Il saldo viene impostato a 0 dalla data qui sotto. I tuoi pagamenti restano invariati.",
+        "date": "Estinto il"
+      },
+      "delete_confirm": {
+        "title": "Eliminare questo debito?",
+        "question": "Il debito e la sua cronologia vengono eliminati. I piani e le transazioni della sua categoria o busta restano invariati."
+      }
+    },
+    "terms": {
+      "finish_setup": "Completa la configurazione"
+    },
+    "balance": {
+      "econumo": "Saldo di Econumo oggi",
+      "last_statement": "Ultimo estratto conto",
+      "statement_on": "{amount} il {date}",
+      "difference": "Differenza",
+      "form": {
+        "title": "Riconcilia con un estratto conto",
+        "hint": "Inserisci il capitale ancora dovuto secondo l'estratto conto del tuo finanziatore. Dalla sua data Econumo parte da lì, e le rate dovute fino ad allora contano come pagate; gli interessi dall'ultimo pagamento vengono addebitati alla rata successiva, per un periodo intero.",
+        "balance": "Saldo dell'estratto conto",
+        "date": "Data dell'estratto conto",
+        "date_range": "Scegli una data successiva alla data di inizio e non oltre oggi. Per cambiare l'importo preso in prestito, correggilo nelle impostazioni.",
+        "save": "Riconcilia"
+      },
+      "history": "Estratti conto",
+      "column": {
+        "date": "Data",
+        "statement": "Estratto conto",
+        "econumo": "Econumo",
+        "difference": "Differenza"
+      },
+      "origin": "Importo preso in prestito",
+      "paid_off": "Segnato come estinto",
+      "delete": "Elimina l'estratto conto del {date}",
+      "delete_confirm": {
+        "title": "Eliminare questo estratto conto?",
+        "question": "I pagamenti successivi alla sua data vengono di nuovo calcolati dal saldo precedente."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Eliminare il segno di estinzione?",
+        "question": "Il debito si riapre: il dovuto viene di nuovo calcolato dalle voci precedenti e dai pagamenti."
+      }
+    },
+    "rates": {
+      "title": "Variazioni di tasso",
+      "from_start": "Dall'inizio",
+      "from_terms": "dalle condizioni del prestito",
+      "column": {
+        "date": "Data",
+        "rate": "Tasso",
+        "payment": "Pagamento"
+      },
+      "form": {
+        "title": "Registra una variazione di tasso",
+        "date": "Data",
+        "rate": "Tasso, % annuo",
+        "payment": "Pagamento",
+        "save": "Aggiungi variazione di tasso"
+      },
+      "delete": "Elimina la variazione di tasso del {date}",
+      "delete_confirm": {
+        "title": "Eliminare questa variazione di tasso?",
+        "question": "I pagamenti successivi alla sua data vengono di nuovo calcolati con il tasso e il pagamento precedenti."
+      }
+    },
+    "review": {
+      "progress": "{paid} di {total} pagati",
+      "progress_repaid": "{paid} di {total} pagati ({repaid} di {borrowed})",
+      "owed_now": "Dovuto ora: {amount}",
+      "paid_so_far": "Pagato finora",
+      "paid_off_on": "Estinto il {date}",
+      "not_set_up": "Aggiungi l'importo preso in prestito e le date del prestito per vedere i pagamenti rimanenti",
+      "loan": "Prestito",
+      "borrowed": "Preso in prestito",
+      "next_payment": "Prossimo pagamento",
+      "last_payment": "Ultimo pagamento",
+      "last_payment_contract": "da contratto: {date}",
+      "start_date": "Data di inizio",
+      "from_first_payment": "Dal primo pagamento",
+      "paid_extra": "Extra pagato",
+      "planned_extra": "Extra pianificato",
+      "danger": {
+        "title": "Zona pericolosa",
+        "paid_off": "Porta il saldo a 0 e ferma il conto alla rovescia.",
+        "delete": "Elimina il debito e la sua cronologia. Le tue transazioni restano invariate.",
+        "reopen": "Riattiva il debito: puoi modificarlo e i suoi pagamenti contano di nuovo."
+      },
+      "tab": {
+        "overview": "Panoramica",
+        "balance": "Saldo",
+        "settings": "Impostazioni"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1328,6 +1484,7 @@
         "accounts_included": "{count} di {total} inclusi",
         "accounts_hidden": "In cartelle nascoste",
         "accounts_locked_hint": "I conti con transazioni nei mesi passati non possono essere rimossi",
+        "debts_note": "I debiti sono mostrati per nome, con pagamenti e saldi, a tutti coloro che hanno accesso a questo budget.",
         "savings": {
           "label": "Conti di risparmio",
           "description": "Il denaro trasferito su questi conti conta come risparmiato, non come speso.",
@@ -1637,6 +1794,22 @@
         "planned": "Previsto",
         "saved": "Risparmiato",
         "balance_hint": "Saldo a fine mese."
+      },
+      "debts": {
+        "payoff_by": "Estinzione prevista: {date}",
+        "payments_left": "Manca {count} pagamento | Mancano {count} pagamenti",
+        "extra_effect": "Estinto {months} mese prima, {amount} di interessi in meno | Estinto {months} mesi prima, {amount} di interessi in meno",
+        "extra_effect_earlier": "Estinto {months} mese prima | Estinto {months} mesi prima",
+        "track": "Segui come debito",
+        "details": "Dettagli",
+        "debt_details": "Dettagli del debito",
+        "delete": "Elimina debito",
+        "past": "Debiti passati ({count})",
+        "past_title": "Debiti passati",
+        "borrowed": "Preso in prestito: {amount}",
+        "section": "Debito",
+        "left_at_end": "Ancora da pagare a fine mese: {amount}",
+        "not_set_up": "Non ancora configurato"
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, speso {spent}",
@@ -2316,6 +2489,7 @@
       "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite",
       "envelope_member_not_category": "Solo una categoria può essere aggiunta a una busta",
       "savings_folder_not_allowed": "I conti di risparmio non possono essere inseriti in una cartella",
+      "element_has_debt": "Una categoria che segue un debito non può essere aggiunta a una busta. Segna prima il debito come estinto.",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "savings_account_not_member": "I conti di risparmio devono essere tuoi conti in questo budget",
       "savings_removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti dei conti di risparmio che hai disattivato o rimosso da questo budget; conferma per continuare",
@@ -2374,6 +2548,20 @@
       "name_length": "Il nome del tag deve contenere da {min} a {max} caratteri",
       "cannot_be_merged": "I tag selezionati non possono essere uniti.",
       "list_empty": "L'elenco dei tag è vuoto"
+    },
+    "debt": {
+      "payments_dont_cover": "I pagamenti non coprono il saldo. Aumenta il pagamento o imposta una data dell'ultimo pagamento successiva.",
+      "element_not_eligible": "Un debito può essere seguito su una categoria di spesa fuori da una busta, o su una busta.",
+      "element_has_debt": "Questa categoria o busta segue già un debito. Segna prima quel debito come estinto.",
+      "start_before_previous_end": "La data di inizio deve essere successiva alla fine del debito precedente di questa categoria o busta.",
+      "cannot_reopen": "Questo debito non può essere riaperto: la sua categoria o busta segue un altro debito attivo o iniziato dopo.",
+      "paid_off": "Questo debito è estinto. Riaprilo per modificarlo.",
+      "last_payment_in_past": "La data dell'ultimo pagamento deve essere successiva a oggi.",
+      "last_payment_before_start": "La data dell'ultimo pagamento deve essere successiva alla data di inizio.",
+      "start_in_future": "La data di inizio deve essere oggi o precedente.",
+      "not_set_up": "Completa prima la configurazione di questo debito.",
+      "conflicts_with_reconciliation": "Questo è in conflitto con un saldo che hai inserito da un estratto conto. Modifica o elimina prima quella riconciliazione.",
+      "conflicts_with_rate_change": "Questa data di inizio è successiva a una variazione del tasso. Elimina prima quella variazione."
     },
     "authserver": {
       "disabled": "Il collegamento di app non è disponibile su questo server.",

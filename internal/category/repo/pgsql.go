@@ -2,6 +2,8 @@ package repo
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
@@ -63,4 +65,12 @@ func (pgsqlQuerier) ReassignCategoryRecurring(ctx context.Context, db backend.DB
 
 func (pgsqlQuerier) ReplaceCategoryIcon(ctx context.Context, db backend.DBTX, p replaceIconParams) (int64, error) {
 	return pgsqlgen.New(db).ReplaceCategoryIcon(ctx, pgsqlgen.ReplaceCategoryIconParams(p))
+}
+
+func (pgsqlQuerier) LockCategoryRow(ctx context.Context, db backend.DBTX, id string) error {
+	_, err := pgsqlgen.New(db).LockCategoryRow(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	return err
 }

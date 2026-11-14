@@ -50,6 +50,19 @@ func (c *recordingCompleter) Complete(ctx context.Context, _, system, user strin
 	return `{"savings":[]}`, nil
 }
 
+// promptsFor are the prompts sent with a system prompt carrying marker.
+func (c *recordingCompleter) promptsFor(marker string) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var out []string
+	for i, sys := range c.systems {
+		if strings.Contains(sys, marker) {
+			out = append(out, c.prompts[i])
+		}
+	}
+	return out
+}
+
 type onbEnv struct {
 	t     *testing.T
 	db    *dbtest.DB

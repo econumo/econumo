@@ -56,6 +56,7 @@ export function applyTransactionItem(queryClient: QueryClient, result: Transacti
     })
   }
   void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+  void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
   void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
   void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
 }
@@ -114,6 +115,7 @@ export function useMoveTransaction() {
         queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => (prev ?? []).map((t) => byId.get(t.id) ?? t))
       }
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
       trackEvent(METRICS.TRANSACTION_MOVE, { dayChanged: req.fromDate !== req.date })

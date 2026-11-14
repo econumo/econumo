@@ -33,6 +33,9 @@ interface ResponsiveDialogProps {
   titleIcon?: ReactNode
   /** a compact icon button at the header's end (beside the desktop corner X) */
   headerAction?: ReactNode
+  /** a bar under the title (a tab list): with it the header is one opaque,
+   *  bordered block that stays put while the content scrolls below it */
+  subheader?: ReactNode
   description?: string
   children: ReactNode
   dismissible?: boolean
@@ -42,12 +45,16 @@ interface ResponsiveDialogProps {
   hideHeader?: boolean
   /** desktop: keep the corner X even with hideHeader (hero-style dialogs) */
   showClose?: boolean
-  /** mobile only: stretch the sheet to the full viewport (long forms; avoids a scrolling half-sheet) */
-  fullScreen?: boolean
+  /** stretch the sheet to the full viewport (long forms; avoids a scrolling half-sheet):
+   *  `true` on phones only, `'always'` on every screen size (a page of its own) */
+  fullScreen?: boolean | 'always'
   /** action row rendered outside the scroll area — pinned to the sheet bottom on mobile */
   footer?: ReactNode
-  /** desktop width: `wide` suits list-heavy dialogs (the global search palette) */
-  size?: 'default' | 'wide'
+  /** desktop width: `wide` suits list-heavy dialogs (the global search palette);
+   *  `large` covers most of the screen (90% of its width and height) and scrolls
+   *  inside, a page-sized view that still reads as a dialog; `column` is as tall
+   *  but only as wide as a reading column (52rem, at most 90% of the width) */
+  size?: 'default' | 'wide' | 'large' | 'column'
   /** phone sheet: the top stays where it opened and the keyboard moves only
    *  the bottom edge (pickers, whose list scrolls between the two) */
   anchorTop?: boolean
@@ -58,7 +65,7 @@ interface ResponsiveDialogProps {
   onCloseAutoFocus?: (e: Event) => void
 }
 
-export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerAction, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus, initialFocus, size = 'default', anchorTop = false }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerAction, subheader, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus, initialFocus, size = 'default', anchorTop = false }: ResponsiveDialogProps) {
   // full-screen / bottom-sheet layouts kick in only below sm (640px); at 640px
   // and up dialogs stay centred like on desktop
   const isMobile = useIsPhone()
@@ -175,7 +182,18 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
   // the home indicator itself; a pinned footer carries its own inset instead
   // the keyboard covers the home indicator, so its inset is dead space then
   const keyboardUp = keyboard.height > 0
-  const bodyClass = `flex-1 overflow-y-auto px-4 pt-1 ${footer || keyboardUp ? 'pb-4' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`
+  const bodyClass = `flex-1 overflow-y-auto px-4 ${subheader ? 'pt-4' : 'pt-1'} ${footer || keyboardUp ? 'pb-4' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`
+  // the header and its bar as one block: not positioned, so the corner X
+  // (absolute, later in the DOM) still paints above it
+  const stickyHeader = (header: ReactNode, barClass: string) =>
+    subheader ? (
+      <div data-slot="dialog-sticky-header" className="shrink-0 border-b bg-popover">
+        {header}
+        <div className={barClass}>{subheader}</div>
+      </div>
+    ) : (
+      header
+    )
   const footerClass = `border-t px-4 pt-3 ${keyboardUp ? 'pb-3' : 'pb-[max(env(safe-area-inset-bottom),0.75rem)]'} [&_button]:h-11`
 
   // An open combobox popup (Base UI, not a Radix layer, so Radix's document-
@@ -212,7 +230,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
   // dismissible=false shields against ACCIDENTAL dismissal (outside click /
   // swipe) — those are prevented at the source (onInteractOutside, vaul's
   // dismissible), so any close reaching here is deliberate (Escape) and passes
-  if (isMobile && fullScreen) {
+  if ((isMobile && fullScreen) || fullScreen === 'always') {
     // full-viewport forms read as a PAGE, not a sheet — a plain fade beats the
     // whole screen sliding up from the bottom
     return (
@@ -226,17 +244,20 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
           ref={contentRef}
           style={pageStyle}
           onFocusCapture={onPageFocus}
-          className="transition-none top-0 left-0 flex h-dvh max-h-dvh w-screen after:absolute after:inset-x-0 after:top-full after:h-dvh after:bg-background after:content-[''] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
+          className="transition-none top-0 left-0 flex h-dvh max-h-dvh w-screen sm:max-w-none after:absolute after:inset-x-0 after:top-full after:h-dvh after:bg-background after:content-[''] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
           onInteractOutside={onInteractOutside}
           onEscapeKeyDown={onEscapeKeyDown}
           onCloseAutoFocus={onCloseAutoFocus}
           showCloseButton={showCloseButton}
         >
           {/* the full-viewport page sits under the status bar — keep the header (and the corner X above) clear of it */}
-          <DialogHeader className={`${headerClass ?? ''} px-4 pt-[max(env(safe-area-inset-top),1rem)]`}>
-            <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
-            {description ? <DialogDescription>{description}</DialogDescription> : null}
-          </DialogHeader>
+          {stickyHeader(
+            <DialogHeader className={`${headerClass ?? ''} px-4 pt-[max(env(safe-area-inset-top),1rem)]`}>
+              <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
+              {description ? <DialogDescription>{description}</DialogDescription> : null}
+            </DialogHeader>,
+            'px-4',
+          )}
           {headerAction && !hideHeader ? <div className={`absolute top-[max(env(safe-area-inset-top),0.5rem)] ${cornerActionClass}`}>{headerAction}</div> : null}
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
           <CoverPage.Provider value={cover}>
@@ -282,11 +303,14 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         >
           {/* the drawer has no corner X, so it never needs the pr-8 clearance */}
           {/* a header action is pinned to the end; the matching start inset keeps the title centred */}
-          <DrawerHeader className={hideHeader ? 'sr-only' : headerAction ? 'relative px-12' : undefined}>
-            <DrawerTitle className={`${titleClass ?? ''} ${titleIcon ? `${titleRowClass} justify-center` : ''}`}>{titleContent}</DrawerTitle>
-            {description ? <DrawerDescription>{description}</DrawerDescription> : null}
-            {headerAction && !hideHeader ? <div className="absolute top-1/2 right-3 -translate-y-1/2">{headerAction}</div> : null}
-          </DrawerHeader>
+          {stickyHeader(
+            <DrawerHeader className={hideHeader ? 'sr-only' : headerAction ? 'relative px-12' : undefined}>
+              <DrawerTitle className={`${titleClass ?? ''} ${titleIcon ? `${titleRowClass} justify-center` : ''}`}>{titleContent}</DrawerTitle>
+              {description ? <DrawerDescription>{description}</DrawerDescription> : null}
+              {headerAction && !hideHeader ? <div className="absolute top-1/2 right-3 -translate-y-1/2">{headerAction}</div> : null}
+            </DrawerHeader>,
+            'px-4',
+          )}
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
           <div ref={setSheetBody} className={bodyClass}>{children}</div>
           {footer ? (
@@ -296,14 +320,22 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
       </Drawer>
     )
   }
+  // both page-sized: a flex column whose body scrolls; overflow-hidden keeps
+  // the header block inside the rounded corners (focus rings live in the body)
+  const large = size === 'large' || size === 'column'
+  const largeWidth = size === 'column' ? 'w-[min(90vw,52rem)] max-w-[min(90vw,52rem)] sm:max-w-[min(90vw,52rem)]' : 'w-[90vw] max-w-[90vw] sm:max-w-[90vw]'
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         ref={contentRef}
         // one column that may shrink below its content's width: a long line (a
         // list of account names) truncates inside the dialog instead of widening
-        // every field past its edge
-        className={`grid-cols-[minmax(0,1fr)] ${size === 'wide' ? 'sm:max-w-2xl' : ''}`}
+        // every field past its edge; `large` is a flex column whose body scrolls
+        className={
+          large
+            ? `flex h-[90vh] max-h-[90vh] ${largeWidth} flex-col gap-0 overflow-hidden p-0`
+            : `grid-cols-[minmax(0,1fr)] ${size === 'wide' ? 'sm:max-w-2xl' : ''}`
+        }
         onInteractOutside={onInteractOutside}
         onEscapeKeyDown={onEscapeKeyDown}
         onCloseAutoFocus={onCloseAutoFocus}
@@ -316,13 +348,24 @@ export function ResponsiveDialog({ open, onOpenChange, title, titleIcon, headerA
         // a floating X with no header row to anchor it looks stray — unless asked for
         showCloseButton={showCloseButton}
       >
-        <DialogHeader className={headerClass}>
-          <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
-          {description ? <DialogDescription>{description}</DialogDescription> : null}
-        </DialogHeader>
+        {stickyHeader(
+          <DialogHeader className={large ? `${headerClass ?? ''} px-6 pt-5 pb-1` : headerClass}>
+            <DialogTitle className={`${titleClass ?? ''} ${titleRowClass}`}>{titleContent}</DialogTitle>
+            {description ? <DialogDescription>{description}</DialogDescription> : null}
+          </DialogHeader>,
+          large ? 'px-6' : '',
+        )}
         {headerAction && !hideHeader ? <div className={`absolute top-2 ${cornerActionClass}`}>{headerAction}</div> : null}
-        {children}
-        {footer}
+        {large ? (
+          // a reserved scrollbar gutter keeps the body's width, and so its
+          // columns, the same whether or not the content scrolls
+          <div data-slot="dialog-body" className={`min-h-0 flex-1 overflow-y-auto px-6 pb-6 ${subheader ? 'pt-4 [scrollbar-gutter:stable]' : 'pt-1'}`}>
+            {children}
+          </div>
+        ) : (
+          children
+        )}
+        {large && footer ? <div className="border-t px-6 pt-3 pb-3 [&_button]:h-11">{footer}</div> : footer}
       </DialogContent>
     </Dialog>
   )

@@ -107,7 +107,8 @@ export interface FinishImportResult {
 }
 
 // Marks the import step done and creates the budget when the user has none. When the
-// server has an AI provider it sets icons and savings flags in the background afterwards.
+// server has an AI provider it sets icons and savings flags and creates debts from loan
+// categories in the background afterwards.
 export async function finishOnboardingImport(id: Id): Promise<FinishImportResult> {
   const response = await api.post<Envelope<FinishImportResult>>(apiUrl('/api/v1/onboarding/finish-import'), { id })
   return response.data.data
@@ -122,4 +123,26 @@ export interface PlanSuggestions {
 export async function getOnboardingPlanSuggestions(budgetId: Id): Promise<PlanSuggestions> {
   const response = await api.get<Envelope<PlanSuggestions>>(apiUrl('/api/v1/onboarding/get-plan-suggestions'), { params: { budgetId } })
   return response.data.data
+}
+
+export interface SuggestIconParams {
+  kind: 'category' | 'account'
+  name: string
+  type?: 'expense' | 'income'
+  // the account's currency code
+  currency?: string
+}
+
+// The icon the server's AI provider picks for a name being typed; '' when there is none (no
+// provider, over the per-user limit, a failed or late answer). Never an error for those.
+export async function suggestIcon(params: SuggestIconParams, signal?: AbortSignal): Promise<string> {
+  const response = await api.get<Envelope<{ icon: string }>>(apiUrl('/api/v1/onboarding/suggest-icon'), { params, signal })
+  return response.data.data.icon
+}
+
+// Sets a suggested icon on the caller's category only while it still shows expectedIcon (the
+// server compares and writes in one step); the name is never sent.
+export async function applySuggestedIcon(form: { categoryId: Id; icon: string; expectedIcon: string }): Promise<boolean> {
+  const response = await api.post<Envelope<{ applied: boolean }>>(apiUrl('/api/v1/onboarding/apply-suggested-icon'), form)
+  return response.data.data.applied
 }

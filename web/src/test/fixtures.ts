@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type { ConnectionDto } from '@/api/dto/connection'
+import type { ElementDebtDto } from '@/api/dto/budget'
 
 export const fixtureUser = {
   id: 'u1',
@@ -143,6 +144,26 @@ export const fixtureWireBudget = {
     labels: [],
   },
 }
+
+/** the debt in force on an element in a period (get-budget elements, plan rows and
+ *  cells): 1,000 a month scheduled, 23,000 left at the month's end, 24 payments
+ *  left. Its payoff figures equal the base ones (as if the plans changed nothing):
+ *  override payoffDate/overpaymentLeft to give the extra an effect. */
+export function fixtureElementDebt(overrides: Partial<ElementDebtDto> = {}): ElementDebtDto {
+  return {
+    id: 'debt-1', isSetUp: 1, paymentsLeft: 24, payoffDate: '2028-10-05', basePayoffDate: '2028-10-05',
+    closingBalance: '23000', scheduledTotal: '1000', upcoming: '100', isPaidOff: 0,
+    overpaymentLeft: '2000', baseOverpaymentLeft: '2000',
+    ...overrides,
+  }
+}
+
+/** a debt not set up: payment and schedule only, no projection */
+export const fixtureElementDebtNotSetUp = (overrides: Partial<ElementDebtDto> = {}): ElementDebtDto =>
+  fixtureElementDebt({
+    isSetUp: 0, paymentsLeft: 0, payoffDate: '', basePayoffDate: '', closingBalance: '', scheduledTotal: '0', upcoming: '0',
+    overpaymentLeft: '', baseOverpaymentLeft: '', ...overrides,
+  })
 
 // Shared fixture for the budget plan-view sheet: 4 months, one of every element
 // shape (folder-bound expense envelope + child, standalone expense category, tag,
@@ -341,12 +362,14 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     importRules: [] as unknown[],
     importCredentialKey: null as unknown,
     personalTokens: [] as unknown[],
+    debts: [] as unknown[],
     ...overrides,
   }
   return [
     http.get('*/api/v1/connection/get-connection-list', () => envelope({ items: data.connections })),
     http.get('*/api/v1/account/get-account-list', () => envelope({ items: data.accounts })),
     http.get('*/api/v1/account/get-folder-list', () => envelope({ items: data.folders })),
+    http.get('*/api/v1/onboarding/suggest-icon', () => envelope({ icon: '' })),
     http.get('*/api/v1/onboarding/get-plan-suggestions', ({ request }) =>
       envelope({ budgetId: new URL(request.url).searchParams.get('budgetId') ?? '', items: [] }),
     ),
@@ -382,6 +405,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/import/get-credential-key', () =>
       envelope(data.importCredentialKey ?? { wrappedDataKey: '', kdf: '', updatedAt: '' })),
     http.get('*/api/v1/user/get-personal-token-list', () => envelope(data.personalTokens)),
+    http.get('*/api/v1/debt/get-debt-list', () => envelope({ items: data.debts })),
     http.get('*/api/v1/system/get-update-info', () => envelope({ version: 'v0.0.0', url: 'https://econumo.com/releases/v0.0.0/' })),
   ]
 }

@@ -11,7 +11,7 @@ import type { Id } from '@/api/types'
 import { useAccounts } from '@/features/accounts/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
-import { BudgetAccountsField, BudgetSavingsField } from './BudgetAccountsField'
+import { BudgetAccountsField, BudgetDebtsNote, BudgetSavingsField } from './BudgetAccountsField'
 import { PeriodStartDayField } from './PeriodStartDayField'
 import { useBudgets } from './queries'
 
@@ -160,6 +160,7 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
             <BudgetSavingsField accounts={ownAccounts} selected={selected} savings={savings} onToggle={toggleSavings} />
           </>
         ) : null}
+        <BudgetDebtsNote />
       </form>
 
     </ResponsiveDialog>

@@ -113,6 +113,7 @@ export function useAccountItemEffects() {
         queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => [row, ...(prev ?? [])])
       }
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     }
     if (opts.checkFirstFolder) {
@@ -173,6 +174,7 @@ export function useDeleteAccount() {
       // budget queries and the transaction list need a real refetch beyond
       // the optimistic cache patch above.
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       trackEvent(METRICS.ACCOUNT_DELETE)

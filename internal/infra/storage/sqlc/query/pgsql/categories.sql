@@ -43,3 +43,10 @@ UPDATE recurring_transactions SET category_id = $1 WHERE category_id = $2;
 -- read is left alone, and nothing is written.
 UPDATE categories SET icon = $1, updated_at = $2
 WHERE id = $3 AND user_id = $4 AND icon = $5;
+
+-- name: LockCategoryRow :one
+-- Taken by a delete or merge after the debt budgets are locked and before the
+-- debts attached to the category are deleted or moved: FOR UPDATE conflicts
+-- with the FOR KEY SHARE a debt create takes on the row, so the delete or
+-- merge waits for that write to commit and then sees its debt.
+SELECT id FROM categories WHERE id = $1 FOR UPDATE;

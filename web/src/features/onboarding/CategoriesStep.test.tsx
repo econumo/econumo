@@ -306,6 +306,89 @@ it('shows no drag handles on a phone or tablet width', () => {
   expect(screen.queryByRole('button', { name: /^Reorder / })).not.toBeInTheDocument()
 })
 
+describe('icon suggestions', () => {
+  let asked: string[]
+
+  beforeEach(() => {
+    window.econumoConfig = { AI_ENABLED: true }
+    asked = []
+    vi.mocked(trackEvent).mockClear()
+    server.use(
+      http.get('*/api/v1/onboarding/suggest-icon', ({ request }) => {
+        const name = new URL(request.url).searchParams.get('name') ?? ''
+        asked.push(name)
+        const icons: Record<string, string> = { Mortgage: 'house', Salary: '' }
+        return HttpResponse.json({ success: true, message: '', data: { icon: icons[name] ?? 'pets' } })
+      }),
+    )
+  })
+
+  const suggested = () => vi.mocked(trackEvent).mock.calls.filter(([name]) => name === METRICS.ICON_SUGGESTION_APPLIED)
+
+  it('a typed row takes the suggested icon; untouched defaults ask nothing', async () => {
+    const user = userEvent.setup()
+    const { onContinue } = renderStep()
+    await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'Mortgage{Enter}')
+    await waitFor(() => expect(suggested()).toHaveLength(1), { timeout: 3000 })
+    expect(suggested()[0][1]).toEqual({ kind: 'category', source: 'onboarding' })
+    expect(asked).toEqual(['Mortgage'])
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+    expect(submitted(onContinue).find((r) => r.name === 'Mortgage')).toMatchObject({ icon: 'house' })
+    expect(submitted(onContinue)[0]).toMatchObject({ name: 'Groceries', icon: 'shopping_cart' })
+  })
+
+  it('a row renamed to a name with no suggestion goes back to its starting icon', async () => {
+    const user = userEvent.setup()
+    const { onContinue } = renderStep()
+    await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'Mortgage{Enter}')
+    await waitFor(() => expect(suggested()).toHaveLength(1), { timeout: 3000 })
+    const row = screen.getAllByTestId('category-row').find((r) => within(r).queryByDisplayValue('Mortgage'))!
+    const input = within(row).getByLabelText('Category name')
+    await user.clear(input)
+    await user.type(input, 'Salary')
+    await waitFor(() => expect(asked).toEqual(['Mortgage', 'Salary']), { timeout: 3000 })
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+    expect(submitted(onContinue).find((r) => r.name === 'Salary')).toMatchObject({ icon: 'home' })
+  })
+
+  it('a renamed default asks for its new name', async () => {
+    const user = userEvent.setup()
+    const { onContinue } = renderStep()
+    const input = within(screen.getAllByTestId('category-row')[0]).getByLabelText('Category name')
+    await user.clear(input)
+    await user.type(input, 'Mortgage')
+    await waitFor(() => expect(suggested()).toHaveLength(1), { timeout: 3000 })
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+    expect(submitted(onContinue)[0]).toMatchObject({ name: 'Mortgage', icon: 'house' })
+  })
+
+  it('an icon picked by hand stays, whatever is typed after', async () => {
+    const user = userEvent.setup()
+    const { onContinue } = renderStep()
+    await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'Mortgage{Enter}')
+    await waitFor(() => expect(suggested()).toHaveLength(1), { timeout: 3000 })
+    const row = screen.getAllByTestId('category-row').find((r) => within(r).queryByDisplayValue('Mortgage'))!
+    await user.click(within(row).getByRole('button', { name: 'Change icon' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('option', { name: 'wallet' }))
+    const input = within(row).getByLabelText('Category name')
+    await user.clear(input)
+    await user.type(input, 'Vet')
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+    expect(submitted(onContinue).find((r) => r.name === 'Vet')).toMatchObject({ icon: 'wallet', iconPicked: true })
+    expect(asked).toEqual(['Mortgage'])
+  })
+
+  it('without AI nothing is asked', async () => {
+    window.econumoConfig = {}
+    const user = userEvent.setup()
+    renderStep()
+    await user.type(within(screen.getByTestId('group-expense')).getByPlaceholderText('Add your own'), 'Mortgage{Enter}')
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    expect(asked).toEqual([])
+  })
+})
+
 describe('in the UI language', () => {
   afterEach(async () => {
     await act(() => i18n.changeLanguage('en'))

@@ -41,6 +41,7 @@ type Service struct {
 
 	txLabels  TransactionLabels
 	recurring RecurringSource
+	debts     DebtSource
 
 	// shiftedConvertor/shiftedRates convert periods starting on a day other than
 	// the 1st at the rates inside each window; nil falls back to the defaults.
@@ -57,6 +58,10 @@ func (s *Service) SetTransactionLabels(l TransactionLabels) { s.txLabels = l }
 // projection; a setter for the same reason as SetTransactionLabels. Unset, the
 // projection is empty.
 func (s *Service) SetRecurring(r RecurringSource) { s.recurring = r }
+
+// SetDebts wires the debt source; the debt service is built after this one.
+// Unset, no element shows a debt.
+func (s *Service) SetDebts(d DebtSource) { s.debts = d }
 
 // SetShiftedPeriodRates wires the conversions used for budgets whose periods
 // start on a day other than the 1st. Calendar-month budgets keep the default
@@ -139,6 +144,24 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 		return nil, err
 	}
 	return &budgetAggregate{budget: b, access: access, accounts: accounts, folders: folders, envelopes: envelopes, elements: elements}, nil
+}
+
+// participantIDs are the users whose categories and tags the budget
+// shows: the owner and every accepted non-guest participant.
+func (a *budgetAggregate) participantIDs() []vo.Id {
+	ids := []vo.Id{a.budget.UserID}
+	for _, ac := range a.access {
+		if ac.IsAccepted && ac.Role != roleGuest() {
+			ids = append(ids, ac.UserID)
+		}
+	}
+	return ids
+}
+
+// debtScope is what the budget's debts match payments on: the everyday member
+// accounts, soft-deleted ones included, as an element's Spent counts them.
+func (a *budgetAggregate) debtScope() model.DebtScope {
+	return model.DebtScope{BudgetID: a.budget.ID, AccountIDs: everydayIDs(a.accounts)}
 }
 
 // hasFolder reports whether folderID is one of this budget's folders. Child

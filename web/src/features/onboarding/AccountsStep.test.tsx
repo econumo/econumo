@@ -349,6 +349,70 @@ it('changes a new row\'s icon through the icon picker and keeps it when the name
   expect(onContinue.mock.calls[0][0]).toEqual([expect.objectContaining({ name: 'Savings', icon: 'account_balance_wallet' })])
 })
 
+describe('icon suggestions', () => {
+  let asked: URLSearchParams[]
+
+  beforeEach(() => {
+    window.econumoConfig = { AI_ENABLED: true }
+    asked = []
+  })
+
+  afterEach(() => vi.restoreAllMocks())
+
+  function serveSuggestions() {
+    server.use(
+      http.get('*/api/v1/onboarding/suggest-icon', ({ request }) => {
+        const params = new URL(request.url).searchParams
+        asked.push(params)
+        return HttpResponse.json({ success: true, message: '', data: { icon: 'savings' } })
+      }),
+    )
+  }
+
+  it('a new row named by the user takes the suggested icon, reported once', async () => {
+    const track = vi.spyOn(metrics, 'trackEvent').mockImplementation(() => undefined)
+    const user = userEvent.setup()
+    const { onContinue } = renderStep({ existing: [{ id: 'a1', name: 'Card', icon: 'credit_card', balance: '0', currencyId: 'cur-usd' }] })
+    serveSuggestions()
+    await addAccount(user)
+    await user.type(nameInputs()[0], 'Tagesgeld')
+    await waitFor(() => expect(within(rowsEls()[1]).getByText('savings')).toBeInTheDocument(), { timeout: 3000 })
+    expect(Object.fromEntries(asked[0])).toEqual({ kind: 'account', name: 'Tagesgeld', currency: 'USD' })
+    expect(track.mock.calls.filter(([name]) => name === metrics.METRICS.ICON_SUGGESTION_APPLIED)).toEqual([
+      [metrics.METRICS.ICON_SUGGESTION_APPLIED, { kind: 'account', source: 'onboarding' }],
+    ])
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+    expect(onContinue.mock.calls[0][0][1]).toMatchObject({ name: 'Tagesgeld', icon: 'savings' })
+  })
+
+  it('the untouched Cash row asks nothing; renamed, it does', async () => {
+    const user = userEvent.setup()
+    renderStep()
+    serveSuggestions()
+    await ready()
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    expect(asked).toHaveLength(0)
+    await user.clear(nameInputs()[0])
+    await user.type(nameInputs()[0], 'Wallet')
+    await waitFor(() => expect(within(rowsEls()[0]).getByText('savings')).toBeInTheDocument(), { timeout: 3000 })
+  })
+
+  it('a picked icon is never replaced', async () => {
+    const user = userEvent.setup()
+    const { onContinue } = renderStep()
+    serveSuggestions()
+    await ready()
+    await user.click(within(rowsEls()[0]).getByRole('button', { name: 'Change icon' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('option', { name: 'wallet' }))
+    await user.clear(nameInputs()[0])
+    await user.type(nameInputs()[0], 'Tagesgeld')
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+    expect(onContinue.mock.calls[0][0][0]).toMatchObject({ name: 'Tagesgeld', icon: 'wallet' })
+    expect(asked).toHaveLength(0)
+  })
+})
+
 it('keeps the icon of an existing account read-only', async () => {
   renderStep({ existing: [imported] })
   await ready()

@@ -9,26 +9,52 @@ import { calendarLocale } from '@/lib/calendarLocale'
 import { parseDateTime } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 
-export function TransactionDatePicker({ value, onChange, label, className, disabled = false }: { value: string; onChange: (day: Date) => void; label?: string; className?: string; disabled?: boolean }) {
+interface TransactionDatePickerProps {
+  value: string
+  onChange: (day: Date) => void
+  /** names the chip when a form holds several dates */
+  label?: string
+  /** shown on the chip while `value` is empty (an optional date) */
+  placeholder?: string
+  /** `field`: the date reads as the value of a card field (`CardField`), like a borderless input */
+  variant?: 'chip' | 'field'
+  className?: string
+  disabled?: boolean
+}
+
+const fieldTriggerClass =
+  'h-auto w-full min-w-0 justify-start rounded-none border-0 bg-transparent p-0 text-base font-normal shadow-none hover:bg-transparent md:text-sm focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent'
+
+// a field shows the date as the screen around it does ("Nov 11, 2026"); the chip keeps the typed form
+function fieldDate(day: Date, lang: string): string {
+  return new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short', year: 'numeric' }).format(day)
+}
+
+export function TransactionDatePicker({ value, onChange, label, placeholder, variant = 'chip', className, disabled = false }: TransactionDatePickerProps) {
   const { t, i18n } = useTranslation()
   const isPhone = useIsPhone()
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const selectedDate = parseDateTime(value)
+  const selectedDate = value ? parseDateTime(value) : new Date()
   const currentYear = new Date().getFullYear()
   const trigger = (
     <Button
       ref={triggerRef}
       type="button"
       variant="secondary"
-      className={cn('h-7 rounded-lg bg-econumo-card px-2 text-xs font-normal max-sm:h-11 max-sm:px-3', className)}
+      className={cn(
+        variant === 'field'
+          ? `${fieldTriggerClass} ${value ? '' : 'text-muted-foreground'}`
+          : 'h-7 rounded-lg bg-econumo-card px-2 text-xs font-normal max-sm:h-11 max-sm:px-3',
+        className,
+      )}
       aria-label={label ?? 'date'}
       disabled={disabled}
       aria-haspopup="dialog"
       aria-expanded={open}
       onClick={isPhone ? () => setOpen(true) : undefined}
     >
-      {value}
+      {value ? (variant === 'field' ? fieldDate(selectedDate, i18n.language) : value) : placeholder}
     </Button>
   )
   const calendar = (
@@ -40,7 +66,7 @@ export function TransactionDatePicker({ value, onChange, label, className, disab
       endMonth={new Date(Math.max(currentYear + 100, selectedDate.getFullYear()), 11)}
       weekStartsOn={1}
       locale={calendarLocale(i18n.language)}
-      selected={selectedDate}
+      selected={value ? selectedDate : undefined}
       className={isPhone ? 'mx-auto bg-transparent p-0 [--cell-size:min(2.75rem,calc((100vw-2rem)/7))] [&_button[data-day]]:text-base' : undefined}
       classNames={isPhone ? {
         dropdown_root: 'relative rounded-md bg-econumo-card focus-within:ring-2 focus-within:ring-ring',
@@ -79,7 +105,7 @@ export function TransactionDatePicker({ value, onChange, label, className, disab
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end">{calendar}</PopoverContent>
+      <PopoverContent className="w-auto p-0" align={variant === 'field' ? 'start' : 'end'}>{calendar}</PopoverContent>
     </Popover>
   )
 }

@@ -470,6 +470,162 @@
       }
     }
   },
+  "debts": {
+    "list": {
+      "payments_left": "Nog {count} betaling | Nog {count} betalingen",
+      "paid_off": "Afbetaald"
+    },
+    "form": {
+      "header": "Schuld",
+      "intro": "Volg een lening zonder rekening. U kunt dit later verfijnen.",
+      "currency": {
+        "label": "Valuta"
+      },
+      "start_date": {
+        "label": "Startdatum",
+        "hint": "Wanneer de lening begon",
+        "none": "Geen datum",
+        "clear": "Startdatum wissen"
+      },
+      "amount_borrowed": {
+        "label": "Geleend bedrag"
+      },
+      "payment": {
+        "label": "Betaling"
+      },
+      "schedule": {
+        "label": "Herhaling",
+        "every": {
+          "weekly": "elke week",
+          "biweekly": "elke 2 weken",
+          "monthly": "elke maand",
+          "quarterly": "elk kwartaal",
+          "yearly": "elk jaar"
+        }
+      },
+      "last_payment_date": {
+        "label": "Datum van de laatste betaling",
+        "hint": "Wanneer de schuld eindigt",
+        "choose": "Kies een datum"
+      }
+    },
+    "details": {
+      "payments": "Betalingen",
+      "payments_empty": "Nog geen betalingen",
+      "column": {
+        "date": "Datum",
+        "amount": "Betaling",
+        "interest": "Rente",
+        "principal": "Aflossing",
+        "balance": "Saldo"
+      },
+      "forecast": {
+        "show": "Toekomstige betalingen tonen",
+        "hide": "Toekomstige betalingen verbergen",
+        "with_plan": "Inclusief de extra betalingen gepland in {budget}",
+        "regular_only": "Alleen vaste betalingen",
+        "overdue": "achterstallig",
+        "recorded": "Geregistreerd",
+        "more": "Nog {count} betaling tonen | Nog {count} betalingen tonen"
+      },
+      "mark_paid_off": "Markeren als afbetaald",
+      "reopen": "Schuld heropenen",
+      "paid_off_confirm": {
+        "title": "Markeren als afbetaald?",
+        "question": "Het saldo wordt vanaf de datum hieronder op 0 gezet. Uw betalingen blijven ongewijzigd.",
+        "date": "Afbetaald op"
+      },
+      "delete_confirm": {
+        "title": "Deze schuld verwijderen?",
+        "question": "De schuld en de geschiedenis ervan worden verwijderd. De plannen en transacties van de categorie of envelop blijven ongewijzigd."
+      }
+    },
+    "terms": {
+      "finish_setup": "Instellen voltooien"
+    },
+    "balance": {
+      "econumo": "Saldo in Econumo vandaag",
+      "last_statement": "Laatste afschrift",
+      "statement_on": "{amount} op {date}",
+      "difference": "Verschil",
+      "form": {
+        "title": "Afstemmen met een afschrift",
+        "hint": "Vul de nog openstaande hoofdsom van het afschrift van uw kredietverstrekker in. Vanaf die datum rekent Econumo daarmee, en de termijnen tot dan gelden als betaald; rente sinds de laatste betaling wordt bij de volgende betaling voor een volledige periode berekend.",
+        "balance": "Saldo volgens afschrift",
+        "date": "Datum van het afschrift",
+        "date_range": "Kies een datum na de startdatum en uiterlijk vandaag. Wilt u het geleende bedrag wijzigen, corrigeer het dan in de instellingen.",
+        "save": "Afstemmen"
+      },
+      "history": "Afschriften",
+      "column": {
+        "date": "Datum",
+        "statement": "Afschrift",
+        "econumo": "Econumo",
+        "difference": "Verschil"
+      },
+      "origin": "Geleend bedrag",
+      "paid_off": "Gemarkeerd als afbetaald",
+      "delete": "Afschrift van {date} verwijderen",
+      "delete_confirm": {
+        "title": "Dit afschrift verwijderen?",
+        "question": "Betalingen na de datum ervan worden weer vanaf het eerdere saldo berekend."
+      },
+      "delete_paid_off_confirm": {
+        "title": "Markering als afbetaald verwijderen?",
+        "question": "De schuld gaat weer open: wat verschuldigd is, wordt opnieuw berekend uit de eerdere gegevens en de betalingen."
+      }
+    },
+    "rates": {
+      "title": "Renteswijzigingen",
+      "from_start": "Vanaf het begin",
+      "from_terms": "uit de voorwaarden van de lening",
+      "column": {
+        "date": "Datum",
+        "rate": "Rente",
+        "payment": "Betaling"
+      },
+      "form": {
+        "title": "Een renteswijziging vastleggen",
+        "date": "Datum",
+        "rate": "Rente, % per jaar",
+        "payment": "Betaling",
+        "save": "Renteswijziging toevoegen"
+      },
+      "delete": "Renteswijziging van {date} verwijderen",
+      "delete_confirm": {
+        "title": "Deze renteswijziging verwijderen?",
+        "question": "Betalingen na de datum ervan worden weer met de eerdere rente en betaling berekend."
+      }
+    },
+    "review": {
+      "progress": "{paid} van {total} betaald",
+      "progress_repaid": "{paid} van {total} betaald ({repaid} van {borrowed})",
+      "owed_now": "Nu verschuldigd: {amount}",
+      "paid_so_far": "Tot nu toe betaald",
+      "paid_off_on": "Afbetaald op {date}",
+      "not_set_up": "Vul het geleende bedrag en de data van de lening in om de resterende betalingen te zien",
+      "loan": "Lening",
+      "borrowed": "Geleend",
+      "next_payment": "Volgende betaling",
+      "last_payment": "Laatste betaling",
+      "last_payment_contract": "volgens contract: {date}",
+      "start_date": "Startdatum",
+      "from_first_payment": "Vanaf de eerste betaling",
+      "paid_extra": "Extra betaald",
+      "planned_extra": "Extra gepland",
+      "danger": {
+        "title": "Gevarenzone",
+        "paid_off": "Zet het saldo op 0 en stopt het aftellen.",
+        "delete": "Verwijdert de schuld en haar geschiedenis. Uw transacties blijven ongewijzigd.",
+        "reopen": "Maakt de schuld weer actief, zodat u haar kunt wijzigen en haar betalingen meetellen."
+      },
+      "tab": {
+        "overview": "Overzicht",
+        "balance": "Saldo",
+        "settings": "Instellingen"
+      }
+    }
+  },
   "recurring": {
     "modal": {
       "form": {
@@ -1328,6 +1484,7 @@
         "accounts_included": "{count} van {total} opgenomen",
         "accounts_hidden": "In verborgen mappen",
         "accounts_locked_hint": "Rekeningen met transacties in eerdere maanden kunnen niet worden verwijderd",
+        "debts_note": "Schulden worden met naam, betalingen en saldi getoond aan iedereen met toegang tot dit budget.",
         "savings": {
           "label": "Spaarrekeningen",
           "description": "Geld dat naar deze rekeningen gaat, telt als gespaard, niet als uitgegeven.",
@@ -1637,6 +1794,22 @@
         "planned": "Gepland",
         "saved": "Gespaard",
         "balance_hint": "Saldo aan het einde van de maand."
+      },
+      "debts": {
+        "payoff_by": "Naar verwachting afbetaald in {date}",
+        "payments_left": "Nog {count} betaling | Nog {count} betalingen",
+        "extra_effect": "{months} maand eerder afbetaald, {amount} minder rente | {months} maanden eerder afbetaald, {amount} minder rente",
+        "extra_effect_earlier": "{months} maand eerder afbetaald | {months} maanden eerder afbetaald",
+        "track": "Volgen als schuld",
+        "details": "Details",
+        "debt_details": "Schulddetails",
+        "delete": "Schuld verwijderen",
+        "past": "Eerdere schulden ({count})",
+        "past_title": "Eerdere schulden",
+        "borrowed": "Geleend: {amount}",
+        "section": "Schuld",
+        "left_at_end": "Nog te betalen aan het einde van de maand: {amount}",
+        "not_set_up": "Nog niet ingesteld"
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, uitgegeven {spent}",
@@ -2316,6 +2489,7 @@
       "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten.",
       "envelope_member_not_category": "Alleen een categorie kan aan een envelop worden toegevoegd",
       "savings_folder_not_allowed": "Spaarrekeningen kunnen niet in een map worden geplaatst",
+      "element_has_debt": "Een categorie die een schuld volgt, kan niet aan een envelop worden toegevoegd. Markeer de schuld eerst als afbetaald.",
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "savings_account_not_member": "Spaarrekeningen moeten uw eigen rekeningen in dit budget zijn",
       "savings_removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen verwijderd van de spaarrekeningen die u in dit budget hebt uitgeschakeld of eruit hebt verwijderd; bevestig om door te gaan",
@@ -2374,6 +2548,20 @@
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
       "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg."
+    },
+    "debt": {
+      "payments_dont_cover": "De betalingen dekken het saldo niet. Verhoog de betaling of kies een latere datum voor de laatste betaling.",
+      "element_not_eligible": "Een schuld kan worden gevolgd op een uitgavencategorie buiten een envelop, of op een envelop.",
+      "element_has_debt": "Deze categorie of envelop volgt al een schuld. Markeer die schuld eerst als afbetaald.",
+      "start_before_previous_end": "De startdatum moet na het einde van de vorige schuld van deze categorie of envelop liggen.",
+      "cannot_reopen": "Deze schuld kan niet worden heropend: de categorie of envelop volgt een andere schuld die actief is of later is begonnen.",
+      "paid_off": "Deze schuld is afbetaald. Heropen haar om haar te wijzigen.",
+      "last_payment_in_past": "De datum van de laatste betaling moet na vandaag liggen.",
+      "last_payment_before_start": "De datum van de laatste betaling moet na de startdatum liggen.",
+      "start_in_future": "De startdatum moet vandaag of eerder zijn.",
+      "not_set_up": "Rond eerst het instellen van deze schuld af.",
+      "conflicts_with_reconciliation": "Dit botst met een saldo dat u van een afschrift hebt ingevoerd. Wijzig of verwijder eerst die afstemming.",
+      "conflicts_with_rate_change": "Deze startdatum ligt na een rentewijziging. Verwijder eerst die rentewijziging."
     },
     "authserver": {
       "disabled": "Apps koppelen is niet beschikbaar op deze server.",

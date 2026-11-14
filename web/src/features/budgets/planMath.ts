@@ -369,7 +369,7 @@ export function planGroupSums(
   months: string[],
   monthIndex: (m: string) => number,
   ex: MonthExchange,
-  /** 'balance': savings rows add their month-end balance in place of what was saved */
+  /** 'balance': savings rows add their month-end balance in place of what moved */
   figure: 'actual' | 'balance' = 'actual',
 ): { actual: string; planned: string }[] {
   return months.map((m) => {

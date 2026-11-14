@@ -232,3 +232,44 @@ func (c *OnboardingCurrencies) UsableCurrencyCode(ctx context.Context, userID vo
 	}
 	return cur.Code, nil
 }
+
+type onboardingDebtService interface {
+	CreateDebt(ctx context.Context, userID vo.Id, req model.CreateDebtRequest) (*model.DebtResult, error)
+	ElementIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error)
+}
+
+// OnboardingDebts adapts the debt service to onboarding.DebtSteps: a debt
+// detection found attaches a debt not set up to the category's element in the
+// budget, through create-debt's own validation, and a refusal (the category
+// already carries an active debt or cannot carry one, the caller cannot plan
+// the budget) creates nothing.
+type OnboardingDebts struct {
+	onboardingDebtService
+}
+
+var _ apponboarding.DebtSteps = OnboardingDebts{}
+
+func NewOnboardingDebts(debts onboardingDebtService) OnboardingDebts {
+	return OnboardingDebts{onboardingDebtService: debts}
+}
+
+func (d OnboardingDebts) CreateDebt(ctx context.Context, userID, budgetID, categoryID vo.Id, payment vo.DecimalNumber, schedule model.RecurringSchedule) (bool, error) {
+	req := model.CreateDebtRequest{
+		BudgetId: budgetID.String(), ElementId: categoryID.String(),
+		Payment: vo.NewFlexString(payment.String()), Schedule: string(schedule),
+	}
+	err := req.Validate()
+	if err == nil {
+		_, err = d.onboardingDebtService.CreateDebt(ctx, userID, req)
+	}
+	if err == nil {
+		return true, nil
+	}
+	var ve *errs.ValidationError
+	_, notFound := errs.AsNotFound(err)
+	_, denied := errs.AsAccessDenied(err)
+	if notFound || denied || errors.As(err, &ve) {
+		return false, nil
+	}
+	return false, err
+}

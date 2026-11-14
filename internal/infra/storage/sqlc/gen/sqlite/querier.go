@@ -64,6 +64,9 @@ type Querier interface {
 	// pile up far faster than sessions and are swept set-based, not per user.
 	DeleteDeadOAuthAccessTokens(ctx context.Context, arg DeleteDeadOAuthAccessTokensParams) (int64, error)
 	DeleteDeadOAuthGrants(ctx context.Context, arg DeleteDeadOAuthGrantsParams) (int64, error)
+	DeleteDebt(ctx context.Context, id string) error
+	DeleteDebtRateChange(ctx context.Context, arg DeleteDebtRateChangeParams) (int64, error)
+	DeleteDebtSnapshot(ctx context.Context, id string) error
 	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
@@ -229,6 +232,9 @@ type Querier interface {
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
+	// Budget debts. DATE columns are bound as 'Y-m-d' text (CAST ... AS TEXT):
+	// the driver would otherwise store a time part, like currencies_rates.published_at.
+	GetDebtByID(ctx context.Context, id string) (Debt, error)
 	// Oldest published_at for a base currency: the rate month used for periods
 	// before the first stored rate.
 	GetEarliestCurrencyRateDate(ctx context.Context, baseCurrencyID string) (time.Time, error)
@@ -400,6 +406,10 @@ type Querier interface {
 	InsertCorrectionTransaction(ctx context.Context, arg InsertCorrectionTransactionParams) error
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
+	InsertDebtSnapshot(ctx context.Context, arg InsertDebtSnapshotParams) error
+	// Through the transaction row: a payment deleted since it was read inserts
+	// nothing instead of failing the foreign key.
+	InsertDebtSplit(ctx context.Context, arg InsertDebtSplitParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
 	InsertIdempotencyKey(ctx context.Context, arg InsertIdempotencyKeyParams) error
 	// Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
@@ -522,6 +532,7 @@ type Querier interface {
 	// list and the code->id map. Custom (per-user) currencies must never reach the
 	// CLI/OXR path. Mirrors CurrencyRepository::getAll() (code projection only).
 	ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow, error)
+	ListDebtsByBudget(ctx context.Context, budgetID string) ([]Debt, error)
 	ListDeletedAccounts(ctx context.Context) ([]Account, error)
 	ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID string) ([]string, error)
 	// Read-side query for the transaction CSV export (SQLite). Returns the user's
@@ -615,6 +626,7 @@ type Querier interface {
 	MakeOAuthClientGlobal(ctx context.Context, id string) (int64, error)
 	MarkOAuthClientUsed(ctx context.Context, arg MarkOAuthClientUsedParams) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
+	MoveDebtsToElement(ctx context.Context, arg MoveDebtsToElementParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
 	PurgeExcessUnusedOAuthClients(ctx context.Context, limit int64) (int64, error)
@@ -694,6 +706,10 @@ type Querier interface {
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	// A correction of the loan's facts rewrites the origin (a debt's first
+	// snapshot) and every later snapshot's payment, schedule and last payment
+	// date; a statement on a date that already has one replaces its balance.
+	UpdateDebtSnapshot(ctx context.Context, arg UpdateDebtSnapshotParams) error
 	UpdateGlobalOAuthClient(ctx context.Context, arg UpdateGlobalOAuthClientParams) (int64, error)
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error
@@ -736,6 +752,10 @@ type Querier interface {
 	// time.Time would store a time part, splitting one day into distinct keys of
 	// the ON CONFLICT (identifier_uniq_currencies_rates) upsert.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
+	// The budget is written once, at insert: a debt never moves to another budget.
+	// The element moves only with a category merge (MoveDebtsToElement).
+	UpsertDebt(ctx context.Context, arg UpsertDebtParams) error
+	UpsertDebtRateChange(ctx context.Context, arg UpsertDebtRateChangeParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error

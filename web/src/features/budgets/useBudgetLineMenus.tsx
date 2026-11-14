@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { isAxiosError } from 'axios'
+import { useQueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
@@ -7,6 +9,7 @@ import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
+import { apiErrorMessage } from '@/lib/apiError'
 import { useOnline } from '@/hooks/useOnline'
 import type {
   BudgetDto,
@@ -14,18 +17,23 @@ import type {
   BudgetFolderSide,
   BudgetPlanDto,
   BudgetSavingsElementDto,
+  ElementDebtDto,
   LabelSpendDto,
   PlanElementDto,
 } from '@/api/dto/budget'
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
+import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { useAccounts } from '@/features/accounts/queries'
 import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { useUpdateCategory } from '@/features/classifications/queries'
+import { useDebts } from '@/features/debts/queries'
+import { useDebtDangerActions } from '@/features/debts/useDebtDangerActions'
 import {
   canConfigureBudget,
   canDeleteEnvelope,
@@ -49,6 +57,12 @@ import type { MenuAction } from './monthLayout'
 import { planCellFigures, sheetElement } from './phoneMonth'
 import type { PlanCellFigures, SheetTarget } from './phoneMonth'
 import { folderSides } from './planMath'
+import { currentPeriod, periodOf, periodStartDayOf } from './period'
+import { PastDebtsDialog } from './PastDebtsDialog'
+import type { PastDebtsTarget } from './PastDebtsDialog'
+
+/** a row that can carry a debt: its element and the debt the row shows */
+type DebtLine = { id: Id; type: BudgetElementType; name: string; isArchived?: 0 | 1; debt?: ElementDebtDto }
 
 export interface BudgetLineMenus {
   /** a row of the Budget view (get-budget) */
@@ -56,8 +70,10 @@ export interface BudgetLineMenus {
   incomeRowMenu: (cell: PlanCellFigures) => MenuAction[]
   /** a row of the Plan grid: any side, envelopes and savings included */
   planRowMenu: (el: PlanElementDto, monthIndex: number) => MenuAction[]
-  envelopeChildMenu: (child: { id: Id; type: BudgetElementType; name: string; icon: string; ownerUserId: Id | null }) => MenuAction[]
+  envelopeChildMenu: (child: EnvelopeChild) => MenuAction[]
   savingsRowMenu: (row: BudgetSavingsElementDto) => MenuAction[]
+  /** the caller plans in the budget, which is not archived, and is online: a debt's setup and writes are theirs */
+  debtEditAccess: boolean
   labelMenu: (label: LabelSpendDto) => MenuAction[]
   folderActionsFor: (folder: { id: Id; name: string } | null, empty: boolean, side: BudgetFolderSide) => MenuAction[] | undefined
   sectionMenu: (side: BudgetFolderSide) => MenuAction[] | undefined
@@ -71,6 +87,8 @@ export interface BudgetLineMenus {
   /** every dialog the menus open; render once */
   dialogs: ReactNode
 }
+
+type EnvelopeChild = { id: Id; type: BudgetElementType; name: string; icon: string; ownerUserId: Id | null; isArchived?: 0 | 1 }
 
 export function useBudgetLineMenus({
   budget,
@@ -89,6 +107,8 @@ export function useBudgetLineMenus({
   const online = useOnline()
   const { data: accounts = [] } = useAccounts()
   const openAccountModal = useUiStore((s) => s.openAccountModal)
+  const openDebtModal = useUiStore((s) => s.openDebtModal)
+  const openDebtDetails = useUiStore((s) => s.openDebtDetails)
   const classificationMenu = useClassificationMenu(budget?.meta.id ?? '')
   const createEnvelope = useCreateEnvelope()
   const updateEnvelope = useUpdateEnvelope()
@@ -100,11 +120,19 @@ export function useBudgetLineMenus({
   const moveElement = useMoveElement()
   const addSavingsAccount = useAddSavingsAccount()
   const changeCurrency = useChangeElementCurrency()
+  const debtDanger = useDebtDangerActions()
+  const [pastDebts, setPastDebts] = useState<PastDebtsTarget | null>(null)
 
   // the section a folder is being created in; null while the prompt is closed
   const [createFolderSide, setCreateFolderSide] = useState<BudgetFolderSide | null>(null)
   const [renameFolder, setRenameFolder] = useState<{ id: Id; name: string } | null>(null)
-  const [envelopeDialog, setEnvelopeDialog] = useState<{ open: boolean; envelope: EnvelopeDialogTarget | null; folderId: Id | null; side?: 'expense' | 'income' }>({ open: false, envelope: null, folderId: null })
+  const [envelopeDialog, setEnvelopeDialogState] = useState<{ open: boolean; envelope: EnvelopeDialogTarget | null; folderId: Id | null; side?: 'expense' | 'income' }>({ open: false, envelope: null, folderId: null })
+  // a refusal the server answered (a category carrying a debt cannot go in)
+  const [envelopeError, setEnvelopeError] = useState<string | null>(null)
+  const setEnvelopeDialog = (next: typeof envelopeDialog) => {
+    setEnvelopeError(null)
+    setEnvelopeDialogState(next)
+  }
   const [categoryTarget, setCategoryTarget] = useState<Pick<CategoryDto, 'id' | 'name' | 'type' | 'icon'> | null>(null)
   const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<{ id: Id } | null>(null)
@@ -129,6 +157,21 @@ export function useBudgetLineMenus({
     return null
   }
 
+  const debtEditAccess = editDetails && online
+  // which element carries an active debt and which paid off theirs: the debt list,
+  // read by whoever plans in the budget (a guest only opens the debt a row shows)
+  const { data: debtList } = useDebts({ enabled: editDetails })
+  const queryClient = useQueryClient()
+  // each disagreement between a row and the list refreshes the list once
+  const refreshedFor = useRef(new Set<string>())
+  const refreshDebtList = (key: string) => {
+    if (refreshedFor.current.has(key)) {
+      return
+    }
+    refreshedFor.current.add(key)
+    // the menus are built while rendering: the refresh waits for it to finish
+    queueMicrotask(() => void queryClient.invalidateQueries({ queryKey: queryKeys.debts, exact: true }))
+  }
   const rawEditAccess = (target: SheetTarget): boolean | null => {
     if (target.kind === 'label') {
       // update-label answers anyone but the tag's owner with NotFound
@@ -175,9 +218,14 @@ export function useBudgetLineMenus({
       },
     ]
   }
-  const structureActions = (el: { id: Id; type: BudgetElementType; currencyId: Id | null; isArchived: 0 | 1 }, side: BudgetFolderSide): MenuAction[] => {
+  // `debt`: the row's debt actions, listed before an envelope's Delete
+  const structureActions = (
+    el: { id: Id; type: BudgetElementType; currencyId: Id | null; isArchived: 0 | 1 },
+    side: BudgetFolderSide,
+    debt: MenuAction[] = [],
+  ): MenuAction[] => {
     if (!configure || !budget) {
-      return []
+      return debt
     }
     const remove: MenuAction[] =
       isEnvelopeType(el.type) && canDeleteEnvelope(budget.meta, userId)
@@ -185,11 +233,12 @@ export function useBudgetLineMenus({
         : []
     // an archived row is history: it can still be opened (an envelope unarchives there) or removed
     if (el.isArchived === 1) {
-      return remove
+      return [...debt, ...remove]
     }
     return [
       { label: t('budgets.page.budget.structure.element.action.change_currency'), onSelect: () => setCurrencyTarget({ id: el.id, currencyId: el.currencyId }) },
       { label: t('budgets.page.plan.menu.move_to_folder'), onSelect: () => setMoveFolderTarget({ id: el.id, side }) },
+      ...debt,
       ...remove,
     ]
   }
@@ -204,11 +253,67 @@ export function useBudgetLineMenus({
     const ref = el.id === UNCATEGORIZED_ID ? null : classificationOf(el)
     return ref ? classificationMenu.actionsFor(ref) : []
   }
+  // A top-level expense category or an envelope carries a debt (a category inside an
+  // envelope reaches its menu through envelopeChildMenu, never here). `activeOnRow`:
+  // the row's debt is its active one (a Plan row), not the period's (a Budget row,
+  // which can show a debt paid off since).
+  const debtActions = (el: DebtLine, activeOnRow: boolean): MenuAction[] => {
+    if (!budget || el.id === UNCATEGORIZED_ID || (el.type !== BudgetElementType.CATEGORY && el.type !== BudgetElementType.ENVELOPE)) {
+      return []
+    }
+    const details = (id: Id): MenuAction => ({ label: t('budgets.page.debts.debt_details'), onSelect: () => openDebtDetails(id, 'overview') })
+    if (!editDetails) {
+      // a guest reads the debt the row shows
+      return el.debt ? [details(el.debt.id)] : []
+    }
+    const listed = debtList?.filter((d) => d.budgetId === budget.meta.id && d.elementId === el.id)
+    const listedActive = listed?.find((d) => d.status === 'active')
+    // The row is read with the budget, the list can be ten minutes old: the row wins.
+    // Its debt is the active one on a Plan row, and on a Budget row while not paid off.
+    // A row with no debt has none active, unless it is a Budget row of a past period,
+    // which may predate the active debt: there, and on a paid-off row, the list decides.
+    const rowActive = el.debt && (activeOnRow || el.debt.isPaidOff === 0) ? el.debt : undefined
+    const startDay = periodStartDayOf(budget.meta)
+    const pastPeriod = !activeOnRow && periodOf(budget.filters.periodStart.slice(0, 10), startDay) < currentPeriod(startDay)
+    const rowDecides = !!rowActive || (!el.debt && !pastPeriod)
+    if (listed && rowDecides && listedActive?.id !== rowActive?.id) {
+      refreshDebtList(`${el.id}:${rowActive?.id ?? ''}:${listedActive?.id ?? ''}`)
+    }
+    const active = rowActive
+      ? { id: rowActive.id, isSetUp: rowActive.isSetUp }
+      : rowDecides
+        ? undefined
+        : listedActive && { id: listedActive.id, isSetUp: listedActive.isSetUp }
+    const past = (listed ?? []).filter((d) => d.status === 'paid_off' && d.id !== active?.id).sort((a, b) => b.endedAt.localeCompare(a.endedAt))
+    return [
+      ...(active
+        ? [
+            details(active.id),
+            ...(active.isSetUp === 1 ? [{ label: t('debts.details.mark_paid_off'), onSelect: () => debtDanger.askMarkPaidOff(active.id) }] : []),
+            { label: t('budgets.page.debts.delete'), destructive: true, onSelect: () => debtDanger.askDelete(active.id) },
+          ]
+        : el.isArchived === 1
+          ? []
+          : [{ label: t('budgets.page.debts.track'), onSelect: () => openDebtModal({ elementId: el.id, budgetId: budget.meta.id }) }]),
+      ...(past.length > 0
+        ? [{ label: t('budgets.page.debts.past', { count: past.length }), onSelect: () => {
+              trackEvent(METRICS.DEBT_PAST_LIST_OPEN)
+              setPastDebts({ name: el.name, debts: past })
+            },
+          },
+        ]
+        : []),
+    ]
+  }
   // the transaction list opens from a row's figures (Spent, Received, Saved), not from the menu
   const expenseRowMenu = (element: BudgetElementDto): MenuAction[] =>
     element.id === UNCATEGORIZED_ID
       ? []
-      : [...editAction({ kind: 'expense', element }), ...structureActions(element, 'expense'), ...classificationActions(element)]
+      : [
+          ...editAction({ kind: 'expense', element }),
+          ...structureActions(element, 'expense', debtActions(element, false)),
+          ...classificationActions(element),
+        ]
   const incomeRowMenu = (cell: PlanCellFigures): MenuAction[] => {
     const target: SheetTarget = { kind: 'plan', cell }
     // income Uncategorized has nothing to edit and no list of its own
@@ -226,10 +331,14 @@ export function useBudgetLineMenus({
       return editAction({ kind: 'plan', cell: planCellFigures(el, monthIndex) })
     }
     const side: BudgetFolderSide = isIncomeType(el.type) ? 'income' : 'expense'
-    return [...editAction({ kind: 'plan', cell: planCellFigures(el, monthIndex) }), ...structureActions(el, side), ...classificationActions(el)]
+    return [
+      ...editAction({ kind: 'plan', cell: planCellFigures(el, monthIndex) }),
+      ...structureActions(el, side, debtActions(el, true)),
+      ...classificationActions(el),
+    ]
   }
   // a category inside an envelope: edited, archived, merged or deleted in place
-  const envelopeChildMenu = (child: { id: Id; type: BudgetElementType; name: string; icon: string; ownerUserId: Id | null }): MenuAction[] => {
+  const envelopeChildMenu = (child: EnvelopeChild): MenuAction[] => {
     const own = !!userId && child.ownerUserId === userId
     return [
       {
@@ -342,13 +451,20 @@ export function useBudgetLineMenus({
         envelope={envelopeDialog.envelope}
         budgetCurrencyId={budget.meta.currencyId}
         side={envelopeDialog.side ?? 'expense'}
+        serverError={envelopeError}
         onClose={() => setEnvelopeDialog({ open: false, envelope: null, folderId: null })}
         onSubmit={(form) => {
           const close = () => setEnvelopeDialog({ open: false, envelope: null, folderId: null })
+          const refused = (err: unknown) => {
+            if (isAxiosError(err) && err.response) {
+              setEnvelopeError(apiErrorMessage(err))
+            }
+          }
+          setEnvelopeError(null)
           if (envelopeDialog.envelope) {
             updateEnvelope.mutate(
               { budgetId: budget.meta.id, id: envelopeDialog.envelope.id, name: form.name, icon: form.icon, currencyId: form.currencyId, isArchived: form.isArchived, categories: form.categories },
-              { onSuccess: close },
+              { onSuccess: close, onError: refused },
             )
           } else {
             createEnvelope.mutate(
@@ -362,13 +478,24 @@ export function useBudgetLineMenus({
                 categories: form.categories,
                 ...(envelopeDialog.side === 'income' ? { side: 'income' as const } : {}),
               },
-              { onSuccess: close },
+              { onSuccess: close, onError: refused },
             )
           }
         }}
       />
 
       {classificationMenu.dialogs}
+
+      {debtDanger.dialogs}
+
+      <PastDebtsDialog
+        target={pastDebts}
+        onClose={() => setPastDebts(null)}
+        onOpen={(id) => {
+          setPastDebts(null)
+          openDebtDetails(id, 'overview')
+        }}
+      />
 
       <CategoryDialog
         open={categoryTarget !== null}
@@ -477,6 +604,7 @@ export function useBudgetLineMenus({
     planRowMenu: (el, monthIndex) => gate(planRowMenu(el, monthIndex)),
     envelopeChildMenu: (child) => gate(envelopeChildMenu(child)),
     savingsRowMenu: (row) => gate(savingsRowMenu(row)),
+    debtEditAccess,
     labelMenu: (label) => gate(labelMenu(label)),
     folderActionsFor: (folder, empty, side) => gateOpt(folderActionsFor(folder, empty, side)),
     sectionMenu: (side) => gateOpt(sectionMenu(side)),

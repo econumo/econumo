@@ -20,6 +20,8 @@ import { sheetPlanHint } from './phoneMonth'
 import { planHintClass } from './planHint'
 import { currentPeriod, periodStartDayOf } from './period'
 import { commentCellKey } from './queries'
+import { ElementDebtLine } from './debtRow'
+import { showsDebtLine } from './debtSummary'
 import { segmentTagGroups } from './tagGroups'
 
 const INCOME_FOLD_ID = '__phone_income__'
@@ -47,6 +49,8 @@ export interface PhoneMonthViewProps {
   onOpenSheet: (target: SheetTarget) => void
   /** rows whose only action is their transaction list (children, reporting tags) */
   onShowTransactions: (target: BudgetTransactionsTarget) => void
+  /** the caller plans in the unarchived budget, online: a debt not set up offers Finish setup */
+  canPlanDebts?: boolean
 }
 
 interface RowProps {
@@ -77,6 +81,8 @@ interface RowProps {
   grouped?: { owner?: string }
   /** a sum line (a same-name tag group): grey name and figures */
   muted?: boolean
+  /** a line under the name and figures (the debt the row carries) */
+  subline?: ReactNode
 }
 
 // with a bar under it, the row's first line gives up its bottom padding and minimum
@@ -106,6 +112,7 @@ function PhoneRow({
   folderLike = false,
   grouped,
   muted = false,
+  subline,
 }: RowProps) {
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
   const pad = folderLike ? 'min-h-9 py-1' : cellPad(progress !== null)
@@ -179,6 +186,8 @@ function PhoneRow({
           <span className={`block h-full rounded-full ${barClass}`} style={{ width: `${Math.round(progress * 100)}%` }} />
         </span>
       ) : null}
+      {/* under the bar, so the bar stays right under the figures it measures */}
+      {subline ? <div className={`col-span-full -mt-1 pr-2 pb-1.5 ${grouped ? 'pl-16' : 'pl-9'}`}>{subline}</div> : null}
     </div>
   )
 }
@@ -285,7 +294,18 @@ function TotalLine({ testId, label, value, negative = false }: { testId: string;
   )
 }
 
-export function PhoneMonthView({ budget, buckets, currencies, selectedDate, dataPeriod, planMonth, commentsByCell, onOpenSheet, onShowTransactions }: PhoneMonthViewProps) {
+export function PhoneMonthView({
+  budget,
+  buckets,
+  currencies,
+  selectedDate,
+  dataPeriod,
+  planMonth,
+  commentsByCell,
+  onOpenSheet,
+  onShowTransactions,
+  canPlanDebts = false,
+}: PhoneMonthViewProps) {
   const { t } = useTranslation()
   const unfolded = useBudgetPeriodStore((s) => s.unfoldedElements)
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
@@ -301,7 +321,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, data
   }
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const planFigure = (target: SheetTarget, planned: string, currencyId: Id | null) => {
-    const hint = sheetPlanHint(target)
+    const hint = sheetPlanHint(target, { month: selectedDate, startDay: periodStartDayOf(budget.meta) })
     const elementId = target.kind === 'expense' ? target.element.id : target.kind === 'savings' ? target.row.id : target.kind === 'plan' ? target.cell.element.id : null
     return {
       first: planned === '' ? EMPTY : fmt(planned, currencyId),
@@ -384,6 +404,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, data
           toggle={expandable ? { open, onToggle: () => toggleElement(element.id) } : undefined}
           folderLike={isUncategorized}
           grouped={grouped}
+          subline={showsDebtLine(element.debt, canPlanDebts) ? <ElementDebtLine debt={element.debt} canPlan={canPlanDebts} /> : undefined}
         />
         {expandable && open ? element.children.map((child) => childLine(child, child.spent, element, !!grouped)) : null}
       </div>

@@ -9,7 +9,8 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { emptyDraft, loadDraft, saveDraft } from './draft'
 import { onboardingProgress, storedStepState } from './onboardingProgress'
 
-// when, after finish-import, the lists are refetched to show the AI's icons and savings (the job may take up to 90 s)
+// when, after finish-import, save-accounts and save-plan, the lists are refetched to show the AI's icons,
+// savings and debts (the job may take up to 90 s)
 export const AI_REFRESH_DELAYS_MS = [10_000, 30_000, 90_000]
 
 export const notUser = (q: Query) => q.queryKey[0] !== queryKeys.user[0]
@@ -28,7 +29,7 @@ export function cancelAiRefresh(): void {
 // Module-level, not tied to a component: the import may come from the Settings data page, and
 // finishing onboarding within 90 s must not stop the icons from showing up. Without AI there is
 // nothing to wait for; a logout or another user signing in (a different cached user) ends it.
-function scheduleAiRefresh(queryClient: QueryClient, userId: string): void {
+export function scheduleAiRefresh(queryClient: QueryClient, userId: string): void {
   cancelAiRefresh()
   if (!isAiEnabled()) return
   aiRefresh = AI_REFRESH_DELAYS_MS.map((delay) =>
@@ -37,7 +38,7 @@ function scheduleAiRefresh(queryClient: QueryClient, userId: string): void {
         cancelAiRefresh()
         return
       }
-      for (const queryKey of [queryKeys.categories, queryKeys.accounts, queryKeys.budgets, queryKeys.budget, queryKeys.budgetPlan]) {
+      for (const queryKey of [queryKeys.categories, queryKeys.accounts, queryKeys.budgets, queryKeys.budget, queryKeys.budgetPlan, queryKeys.debts]) {
         void queryClient.invalidateQueries({ queryKey })
       }
     }, delay),

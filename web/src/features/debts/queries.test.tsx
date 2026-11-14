@@ -1,0 +1,208 @@
+import { renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
+import type { ReactNode } from 'react'
+import { server } from '@/test/msw'
+import { queryKeys } from '@/app/queryKeys'
+import { METRICS, trackEvent } from '@/lib/metrics'
+import {
+  useCreateDebt,
+  useDebt,
+  useDebts,
+  useDeleteDebt,
+  useMarkDebtPaidOff,
+  useReopenDebt,
+  useUpdateDebt,
+} from './queries'
+
+vi.mock('@/lib/metrics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/metrics')>()
+  return { ...actual, trackEvent: vi.fn() }
+})
+
+import { wireDebt as fullDebt } from './testDebt'
+
+const wireDebt = {
+  ...fullDebt, startDate: '', balance: '100', payment: '105', schedule: 'monthly',
+  lastPaymentDate: '2027-06-20', currentBalance: '100', paymentsLeft: 1, moneyLeft: '105',
+  overpaymentLeft: '5', overpaidSoFar: '0', extraPaid: '0', payoffDate: '2027-06-20', nextDueDate: '2027-06-20',
+  periodRate: '0.0500000000', isPaidOff: 0, isSetUp: 1, periodsPaid: 0,
+}
+const ok = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
+
+const form = { budgetId: 'b1', elementId: 'cat-food', payment: '105', schedule: 'monthly' as const }
+
+function makeWrapper() {
+  const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  const invalidated = vi.spyOn(queryClient, 'invalidateQueries')
+  return { queryClient, wrapper, invalidated }
+}
+
+function expectInvalidated(spy: ReturnType<typeof makeWrapper>['invalidated']) {
+  const keys = spy.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown }).queryKey))
+  for (const key of [queryKeys.debts, queryKeys.budget, queryKeys.budgetPlan]) {
+    expect(keys).toContain(JSON.stringify(key))
+  }
+  // a debt owns no budget rows, comments or drill-downs
+  for (const key of [queryKeys.budgetTransactions, queryKeys.budgetComments]) {
+    expect(keys).not.toContain(JSON.stringify(key))
+  }
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  window.econumoConfig = {}
+  vi.mocked(trackEvent).mockClear()
+})
+
+it('useDebts fetches the list and useDebt the details', async () => {
+  server.use(
+    http.get('*/api/v1/debt/get-debt-list', () => ok({ items: [wireDebt] })),
+    http.get('*/api/v1/debt/get-debt', ({ request }) => {
+      expect(new URL(request.url).searchParams.get('id')).toBe('d1')
+      return ok({ item: wireDebt, snapshots: [], payments: [] })
+    }),
+  )
+  const { wrapper } = makeWrapper()
+  const list = renderHook(() => useDebts(), { wrapper })
+  await waitFor(() => expect(list.result.current.isSuccess).toBe(true))
+  expect(list.result.current.data![0].periodRate).toBe('0.0500000000')
+  const one = renderHook(() => useDebt('d1'), { wrapper })
+  await waitFor(() => expect(one.result.current.isSuccess).toBe(true))
+  expect(one.result.current.data!.item.id).toBe('d1')
+  expect(one.result.current.data!.payments).toEqual([])
+})
+
+it('useCreateDebt fires DEBT_CONVERT and invalidates debts, budget and budgetPlan', async () => {
+  let body: unknown
+  server.use(http.post('*/api/v1/debt/create-debt', async ({ request }) => {
+    body = await request.json()
+    return ok(wireDebt)
+  }))
+  const { wrapper, invalidated } = makeWrapper()
+  const { result } = renderHook(() => useCreateDebt(), { wrapper })
+  result.current.mutate(form)
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(body).toEqual(form)
+  expect(result.current.data!.id).toBe('d1')
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_CONVERT)
+  expectInvalidated(invalidated)
+})
+
+it('useUpdateDebt fires DEBT_UPDATE and invalidates', async () => {
+  server.use(http.post('*/api/v1/debt/update-debt', () => ok(wireDebt)))
+  const { wrapper, invalidated } = makeWrapper()
+  const { result } = renderHook(() => useUpdateDebt(), { wrapper })
+  result.current.mutate({ payment: '105', schedule: 'monthly', id: 'd1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
+  expectInvalidated(invalidated)
+})
+
+it('useUpdateDebt writes the saved debt into the details and list caches at once', async () => {
+  const saved = { ...wireDebt, balance: '80', lastPaymentDate: '2027-05-20' }
+  server.use(http.post('*/api/v1/debt/update-debt', () => ok(saved)))
+  const { queryClient, wrapper } = makeWrapper()
+  // the invalidation's refetch must not land first: only the write is under test
+  vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+  const other = { ...wireDebt, id: 'd2', name: 'Phone' }
+  queryClient.setQueryData(queryKeys.debt('d1'), { item: wireDebt, snapshots: [], payments: [] })
+  queryClient.setQueryData(queryKeys.debts, [wireDebt, other])
+  const { result } = renderHook(() => useUpdateDebt(), { wrapper })
+  result.current.mutate({ payment: '105', schedule: 'monthly', id: 'd1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryData(queryKeys.debt('d1'))).toEqual({ item: saved, snapshots: [], payments: [] })
+  expect(queryClient.getQueryData(queryKeys.debts)).toEqual([saved, other])
+})
+
+it('useUpdateDebt finishing setup fires DEBT_FINISH_SETUP instead, once the debt comes back set up', async () => {
+  server.use(http.post('*/api/v1/debt/update-debt', () => ok(wireDebt)))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useUpdateDebt({ finishingSetup: true }), { wrapper })
+  result.current.mutate({ payment: '105', schedule: 'monthly', id: 'd1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
+  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
+})
+
+it('useUpdateDebt finishing setup without terms is a plain update', async () => {
+  server.use(http.post('*/api/v1/debt/update-debt', () => ok({ ...wireDebt, isSetUp: 0 })))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useUpdateDebt({ finishingSetup: true }), { wrapper })
+  result.current.mutate({ payment: '105', schedule: 'monthly', id: 'd1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_UPDATE)
+  expect(trackEvent).not.toHaveBeenCalledWith(METRICS.DEBT_FINISH_SETUP)
+})
+
+it('useDeleteDebt sends the id, fires DEBT_DELETE and invalidates', async () => {
+  let body: unknown
+  server.use(http.post('*/api/v1/debt/delete-debt', async ({ request }) => {
+    body = await request.json()
+    return ok({})
+  }))
+  const { wrapper, invalidated } = makeWrapper()
+  const { result } = renderHook(() => useDeleteDebt(), { wrapper })
+  result.current.mutate({ id: 'd1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(body).toEqual({ id: 'd1' })
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_DELETE)
+  expectInvalidated(invalidated)
+})
+
+it('useMarkDebtPaidOff sends the date, fires DEBT_MARK_PAID_OFF and invalidates', async () => {
+  let body: unknown
+  server.use(http.post('*/api/v1/debt/mark-debt-paid-off', async ({ request }) => {
+    body = await request.json()
+    return ok({ ...wireDebt, isPaidOff: 1, status: 'paid_off', endedAt: '2026-11-10' })
+  }))
+  const { wrapper, invalidated } = makeWrapper()
+  const { result } = renderHook(() => useMarkDebtPaidOff(), { wrapper })
+  result.current.mutate({ id: 'd1', date: '2026-11-10' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(body).toEqual({ id: 'd1', date: '2026-11-10' })
+  expect(result.current.data!.isPaidOff).toBe(1)
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_MARK_PAID_OFF)
+  expectInvalidated(invalidated)
+})
+
+it('useReopenDebt sends the id, fires DEBT_REOPEN and invalidates', async () => {
+  let body: unknown
+  server.use(http.post('*/api/v1/debt/reopen-debt', async ({ request }) => {
+    body = await request.json()
+    return ok(wireDebt)
+  }))
+  const { wrapper, invalidated } = makeWrapper()
+  const { result } = renderHook(() => useReopenDebt(), { wrapper })
+  result.current.mutate('d1')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(body).toEqual({ id: 'd1' })
+  expect(result.current.data!.status).toBe('active')
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_REOPEN)
+  expectInvalidated(invalidated)
+})
+
+it('a refused reopen fires nothing', async () => {
+  server.use(http.post('*/api/v1/debt/reopen-debt', () =>
+    HttpResponse.json({ success: false, message: 'cannot', code: 400, errors: {} }, { status: 400 })))
+  const { wrapper, invalidated } = makeWrapper()
+  const { result } = renderHook(() => useReopenDebt(), { wrapper })
+  result.current.mutate('d1')
+  await waitFor(() => expect(result.current.isError).toBe(true))
+  expect(trackEvent).not.toHaveBeenCalled()
+  expect(invalidated).not.toHaveBeenCalled()
+})
+
+it('a failed mutation fires nothing', async () => {
+  server.use(http.post('*/api/v1/debt/create-debt', () =>
+    HttpResponse.json({ success: false, message: 'no', code: 400, errors: {} }, { status: 400 })))
+  const { wrapper, invalidated } = makeWrapper()
+  const { result } = renderHook(() => useCreateDebt(), { wrapper })
+  result.current.mutate(form)
+  await waitFor(() => expect(result.current.isError).toBe(true))
+  expect(trackEvent).not.toHaveBeenCalled()
+  expect(invalidated).not.toHaveBeenCalled()
+})

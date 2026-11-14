@@ -41,13 +41,39 @@ type filters struct {
 	// expenses booked on a savings account belong to its savings row.
 	savingsAccounts    []model.AccountView
 	everydayAccountIDs []vo.Id
+	// debtViews are the budget's debts, active and paid off, in creation
+	// order; empty on the reads that show no debts.
+	debtViews []model.DebtView
+}
+
+// filtersWithDebts is buildFilters plus the budget's debts. Their payment
+// splits are synced first; the sync takes the budget's row lock, so it must
+// run outside any budget transaction.
+func (s *Service) filtersWithDebts(ctx context.Context, userID vo.Id, b *budgetAggregate, key time.Time, months int) (filters, error) {
+	var views []model.DebtView
+	if s.debts != nil {
+		scope := b.debtScope()
+		if err := s.debts.Sync(ctx, scope); err != nil {
+			return filters{}, err
+		}
+		var err error
+		if views, err = s.debts.Views(ctx, scope); err != nil {
+			return filters{}, err
+		}
+	}
+	f, err := s.buildFilters(ctx, userID, b, key, months)
+	if err != nil {
+		return filters{}, err
+	}
+	f.debtViews = views
+	return f, nil
 }
 
 // BuildBudget assembles the full model.BudgetResult for the budget period named
 // by key (first-of-month). now is the clock time (controls nullable balance
 // fields).
 func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggregate, key, now time.Time) (model.BudgetResult, error) {
-	f, err := s.buildFilters(ctx, userID, b, key, 1)
+	f, err := s.filtersWithDebts(ctx, userID, b, key, 1)
 	if err != nil {
 		return model.BudgetResult{}, err
 	}
@@ -135,13 +161,7 @@ func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (model.Meta
 
 // buildFilters covers `months` periods, starting with the one keyed key.
 func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggregate, key time.Time, months int) (filters, error) {
-	// userIds = owner + accepted non-reader access users (reader == guest).
-	userIDs := []vo.Id{b.budget.UserID}
-	for _, a := range b.access {
-		if a.IsAccepted && a.Role != roleGuest() {
-			userIDs = append(userIDs, a.UserID)
-		}
-	}
+	userIDs := b.participantIDs()
 
 	// The budget counts every member account of every participant, deleted or
 	// not; the filters block reports only the requester's own, with the

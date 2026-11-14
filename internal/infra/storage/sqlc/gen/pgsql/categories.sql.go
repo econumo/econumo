@@ -95,6 +95,20 @@ func (q *Queries) ListCategoriesByOwner(ctx context.Context, userID string) ([]C
 	return items, nil
 }
 
+const lockCategoryRow = `-- name: LockCategoryRow :one
+SELECT id FROM categories WHERE id = $1 FOR UPDATE
+`
+
+// Taken by a delete or merge after the debt budgets are locked and before the
+// debts attached to the category are deleted or moved: FOR UPDATE conflicts
+// with the FOR KEY SHARE a debt create takes on the row, so the delete or
+// merge waits for that write to commit and then sees its debt.
+func (q *Queries) LockCategoryRow(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, lockCategoryRow, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
 const reassignCategoryRecurring = `-- name: ReassignCategoryRecurring :exec
 
 UPDATE recurring_transactions SET category_id = $1 WHERE category_id = $2
