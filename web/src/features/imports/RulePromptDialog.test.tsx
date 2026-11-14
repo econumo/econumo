@@ -328,6 +328,28 @@ it('a rule already applied still shows its matches, and closes after saving with
   expect(posted.apply).toBeUndefined()
 })
 
+it('skips both apply steps when every row that would change is one the user edited', async () => {
+  renderPrompt()
+  previewFull({ matched: 5, changes: 2, alreadyEdited: 2 }, { matched: 9, changes: 3, alreadyEdited: 3 })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Create rule' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(posted.preview!.some((p) => p.scope === 'all')).toBe(true)
+  expect(posted.apply).toBeUndefined()
+})
+
+it('offers every import after the run only when an unedited row there would change', async () => {
+  renderPrompt()
+  previewFull({ matched: 5, changes: 3, alreadyEdited: 0 }, { matched: 9, changes: 2, alreadyEdited: 2 })
+  useUiStore.getState().setRulePrompt({ kind: 'edit', link: link(), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Create rule' }))
+  await user.click(await screen.findByRole('button', { name: 'Apply' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(posted.apply).toHaveLength(1)
+})
+
 it('a failed live count shows no count instead of loading forever', async () => {
   renderPrompt()
   server.use(http.post('*/api/v1/import/preview-rule', () => HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 500 })))

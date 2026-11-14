@@ -48,6 +48,9 @@ type Step = 'define' | 'apply' | 'all'
 
 // what applying the rule would change; an older server sends only matched
 const changesOf = (p: PreviewImportRuleDto) => p.changes ?? p.matched
+// Apply leaves hand-edited rows alone unless asked, so a step whose every change is one of those
+// would update nothing; it is skipped, as in the suggestion flow.
+const offersChanges = (p: PreviewImportRuleDto) => changesOf(p) - p.alreadyEdited > 0
 
 export function RulePromptDialog() {
   const params = useUiStore((s) => s.rulePrompt)
@@ -230,7 +233,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
       return
     }
     const all = await allPreview.mutateAsync({ spec, scope: ALL_SCOPE }).catch(() => undefined)
-    if (all === undefined || changesOf(all) === 0) {
+    if (all === undefined || !offersChanges(all)) {
       onDone()
       return
     }
@@ -257,7 +260,7 @@ function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; di
       // count is never stale; a refresh failure just leaves the count at 0,
       // it must not undo the save that already succeeded
       const refreshed = await preview.mutateAsync({ spec, scope: runScope }).catch(() => undefined)
-      if (refreshed !== undefined && changesOf(refreshed) === 0) {
+      if (refreshed !== undefined && !offersChanges(refreshed)) {
         // the run step (or, with no run, the only step) has nothing to apply
         await goToAll()
         return
@@ -424,7 +427,7 @@ function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestion
       // the accept filled the suggestion's own rows, so this counts the others; a row the user
       // edited by hand (one of the suggestion's own included) is left for them, never offered
       const all = await allPreview.mutateAsync({ spec: stored, scope: ALL_SCOPE }).catch(() => undefined)
-      if (all !== undefined && changesOf(all) - all.alreadyEdited > 0) {
+      if (all !== undefined && offersChanges(all)) {
         setStep('all')
         return
       }
