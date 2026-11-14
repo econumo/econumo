@@ -110,6 +110,15 @@ describe('the plan hint on a debt-carrying row', () => {
     expect(within(screen.getByTestId('element-cat-food')).getByTestId('plan-figure').className).not.toContain('text-expense')
   })
 
+  it('a debt paid off in the period gives the expense hint back', () => {
+    renderTable((b) => {
+      thisMonth(b)
+      // the debt alone would not mark 500 (scheduled 400); 0 spent + 900 due does
+      Object.assign(food(b), { budgeted: '500', spent: '0', upcoming: '900', debt: fixtureElementDebt({ scheduledTotal: '400', isPaidOff: 1, paymentsLeft: 0 }) })
+    })
+    expect(within(screen.getByTestId('element-cat-food')).getByTestId('plan-figure').className).toContain('text-expense')
+  })
+
   it('a past month is never red', () => {
     renderTable((b) => {
       b.filters.periodStart = '2020-01-01 00:00:00'

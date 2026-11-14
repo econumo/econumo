@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v7 as uuidv7 } from 'uuid'
@@ -21,7 +22,9 @@ import type {
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
+import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { useAccounts } from '@/features/accounts/queries'
 import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
@@ -52,6 +55,7 @@ import type { MenuAction } from './monthLayout'
 import { planCellFigures, sheetElement } from './phoneMonth'
 import type { PlanCellFigures, SheetTarget } from './phoneMonth'
 import { folderSides } from './planMath'
+import { currentPeriod, periodOf, periodStartDayOf } from './period'
 import { PastDebtsDialog } from './PastDebtsDialog'
 import type { PastDebtsTarget } from './PastDebtsDialog'
 
@@ -149,6 +153,17 @@ export function useBudgetLineMenus({
   // which element carries an active debt and which paid off theirs: the debt list,
   // read by whoever plans in the budget (a guest only opens the debt a row shows)
   const { data: debtList } = useDebts({ enabled: editDetails })
+  const queryClient = useQueryClient()
+  // each disagreement between a row and the list refreshes the list once
+  const refreshedFor = useRef(new Set<string>())
+  const refreshDebtList = (key: string) => {
+    if (refreshedFor.current.has(key)) {
+      return
+    }
+    refreshedFor.current.add(key)
+    // the menus are built while rendering: the refresh waits for it to finish
+    queueMicrotask(() => void queryClient.invalidateQueries({ queryKey: queryKeys.debts, exact: true }))
+  }
   const rawEditAccess = (target: SheetTarget): boolean | null => {
     if (target.kind === 'label') {
       // update-label answers anyone but the tag's owner with NotFound
@@ -245,11 +260,23 @@ export function useBudgetLineMenus({
     }
     const listed = debtList?.filter((d) => d.budgetId === budget.meta.id && d.elementId === el.id)
     const listedActive = listed?.find((d) => d.status === 'active')
-    // until the list loads the row's debt stands in
-    const active = listed
-      ? listedActive && { id: listedActive.id, isSetUp: listedActive.isSetUp }
-      : el.debt && (activeOnRow || el.debt.isPaidOff === 0) ? { id: el.debt.id, isSetUp: el.debt.isSetUp } : undefined
-    const past = (listed ?? []).filter((d) => d.status === 'paid_off').sort((a, b) => b.endedAt.localeCompare(a.endedAt))
+    // The row is read with the budget, the list can be ten minutes old: the row wins.
+    // Its debt is the active one on a Plan row, and on a Budget row while not paid off.
+    // A row with no debt has none active, unless it is a Budget row of a past period,
+    // which may predate the active debt: there, and on a paid-off row, the list decides.
+    const rowActive = el.debt && (activeOnRow || el.debt.isPaidOff === 0) ? el.debt : undefined
+    const startDay = periodStartDayOf(budget.meta)
+    const pastPeriod = !activeOnRow && periodOf(budget.filters.periodStart.slice(0, 10), startDay) < currentPeriod(startDay)
+    const rowDecides = !!rowActive || (!el.debt && !pastPeriod)
+    if (listed && rowDecides && listedActive?.id !== rowActive?.id) {
+      refreshDebtList(`${el.id}:${rowActive?.id ?? ''}:${listedActive?.id ?? ''}`)
+    }
+    const active = rowActive
+      ? { id: rowActive.id, isSetUp: rowActive.isSetUp }
+      : rowDecides
+        ? undefined
+        : listedActive && { id: listedActive.id, isSetUp: listedActive.isSetUp }
+    const past = (listed ?? []).filter((d) => d.status === 'paid_off' && d.id !== active?.id).sort((a, b) => b.endedAt.localeCompare(a.endedAt))
     return [
       ...(active
         ? [
@@ -261,7 +288,12 @@ export function useBudgetLineMenus({
           ? []
           : [{ label: t('budgets.page.debts.track'), onSelect: () => openDebtModal({ elementId: el.id, budgetId: budget.meta.id }) }]),
       ...(past.length > 0
-        ? [{ label: t('budgets.page.debts.past', { count: past.length }), onSelect: () => setPastDebts({ name: el.name, debts: past }) }]
+        ? [{ label: t('budgets.page.debts.past', { count: past.length }), onSelect: () => {
+              trackEvent(METRICS.DEBT_PAST_LIST_OPEN)
+              setPastDebts({ name: el.name, debts: past })
+            },
+          },
+        ]
         : []),
     ]
   }

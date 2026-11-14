@@ -56,11 +56,12 @@ export function planCellView({ type, id, cell, month, selected, startDay }: Plan
   }
   const past = month <= selected
   // the hint compares the plan with what the month needs (saved, for savings), never a
-  // balance; on a row carrying a debt it is the debt's: a plan below the scheduled dues
+  // balance; on a row carrying a debt not yet paid off it is the debt's: a plan below
+  // the scheduled dues
   const hint =
     month < selected || id === UNCATEGORIZED_ID
       ? null
-      : cell.debt
+      : cell.debt && cell.debt.isPaidOff === 0
         ? planHint({ planned: cell.planned, spent: cell.actual, scheduled: cell.debt.scheduledTotal, month, startDay, kind: 'debt' })
         : planHint({ planned: cell.planned, spent: cell.actual, upcoming: cell.upcoming, kind: planHintKind(type) })
   // where a savings account stands says more than what went in that month; ahead of

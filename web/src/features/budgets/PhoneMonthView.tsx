@@ -179,7 +179,6 @@ function PhoneRow({
           ) : null}
         </span>
       </button>
-      {subline ? <div className={`col-span-full -mt-1 pr-2 pb-1 ${grouped ? 'pl-16' : 'pl-9'}`}>{subline}</div> : null}
       {progress !== null ? (
         // the bar spans the row, not the name column: a carry-over widens the Budget
         // column per row, which would leave every bar a different length
@@ -187,6 +186,8 @@ function PhoneRow({
           <span className={`block h-full rounded-full ${barClass}`} style={{ width: `${Math.round(progress * 100)}%` }} />
         </span>
       ) : null}
+      {/* under the bar, so the bar stays right under the figures it measures */}
+      {subline ? <div className={`col-span-full -mt-1 pr-2 pb-1.5 ${grouped ? 'pl-16' : 'pl-9'}`}>{subline}</div> : null}
     </div>
   )
 }

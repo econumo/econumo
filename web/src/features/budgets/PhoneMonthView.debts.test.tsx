@@ -47,6 +47,9 @@ it('no Debts card: the category row shows its debt under its own figures', async
   const row = screen.getByTestId('phone-row-cat-food')
   expect(row).toHaveTextContent(/Food.*45\.50/)
   expect(within(row).getByTestId('element-debt-line')).toHaveTextContent('24 payments left · Paid off by Oct 2028')
+  // the bar stays right under the figures; the debt line comes after it
+  const bar = within(row).getByTestId('phone-progress')
+  expect(bar.compareDocumentPosition(within(row).getByTestId('element-debt-line')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   // the figures still open the item sheet
   await userEvent.click(within(row).getByRole('button', { name: /^Food, budget .*, spent 45\.50$/ }))
   expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'expense', element: expect.objectContaining({ id: 'cat-food' }) })

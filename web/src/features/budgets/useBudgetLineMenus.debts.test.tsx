@@ -14,6 +14,7 @@ import { wireDebt } from '@/features/debts/testDebt'
 import type { DebtDto } from '@/api/dto/debt'
 import { queryKeys } from '@/app/queryKeys'
 import { useBudgetLineMenus } from './useBudgetLineMenus'
+import { currentPeriod } from './period'
 import type { BudgetLineMenus } from './useBudgetLineMenus'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -124,7 +125,9 @@ describe('an element carrying its active debt', () => {
   })
 
   it('no Mark as paid off while the debt is not set up', () => {
-    const { result, element } = renderMenus('u1', undefined, [{ ...wireDebt, isSetUp: 0 }])
+    const { result, element } = renderMenus('u1', (b) => {
+      b.structure.elements[0].debt = fixtureElementDebt({ id: 'd1', isSetUp: 0 })
+    }, [{ ...wireDebt, isSetUp: 0 }])
     expect(debtLabels(result.current.expenseRowMenu(element('cat-food')))).toEqual(['Debt details', 'Delete debt'])
   })
 
@@ -162,6 +165,69 @@ describe('an element carrying its active debt', () => {
   })
 })
 
+describe('the row and a stale debt list disagree: the row wins and the list is refreshed', () => {
+  const thisPeriod = (b: BudgetDto) => {
+    b.filters.periodStart = `${currentPeriod(1)} 00:00:00`
+  }
+  const refresh = (queryClient: QueryClient) => vi.spyOn(queryClient, 'invalidateQueries')
+  const listOnly = { queryKey: queryKeys.debts, exact: true }
+
+  it('the row carries a debt the list does not know: its actions, no Track as debt', async () => {
+    // tracked on another device after the list was read
+    const { result, element, queryClient } = renderMenus('u1', thisPeriod, history)
+    const spy = refresh(queryClient)
+    expect(debtLabels(result.current.expenseRowMenu(element('cat-food')))).toEqual(['Debt details', 'Mark as paid off', 'Delete debt', 'Past debts (2)'])
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(listOnly))
+  })
+
+  it('the list holds an active debt the row no longer carries: Track as debt', async () => {
+    // deleted on another device after the list was read
+    const { result, element, queryClient } = renderMenus('u1', (b) => {
+      thisPeriod(b)
+      b.structure.elements[0].debt = undefined
+    })
+    const spy = refresh(queryClient)
+    expect(debtLabels(result.current.expenseRowMenu(element('cat-food')))).toEqual(['Track as debt', 'Past debts (2)'])
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(listOnly))
+  })
+
+  it('the row\'s debt is another one than the list\'s: the row\'s', async () => {
+    const { result, element, queryClient } = renderMenus('u1', (b) => {
+      thisPeriod(b)
+      b.structure.elements[0].debt = fixtureElementDebt({ id: 'd-new' })
+    })
+    const spy = refresh(queryClient)
+    act(() => result.current.expenseRowMenu(element('cat-food')).find((a) => a.label === 'Debt details')!.onSelect())
+    expect(useUiStore.getState().debtDetailsId).toBe('d-new')
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(listOnly))
+  })
+
+  it('a Plan row without a debt has none active', () => {
+    const { result } = renderMenus()
+    const food = { id: 'cat-food', type: 1, name: 'Food', icon: 'restaurant', currencyId: 'cur-usd', isArchived: 0, folderId: 'bf1', position: 0, ownerUserId: 'u1', cells: [], children: [] } as PlanElementDto
+    expect(debtLabels(result.current.planRowMenu(food, 0))).toEqual(['Track as debt', 'Past debts (2)'])
+  })
+
+  it('a past period may predate the active debt: with no debt on the row, the list decides, and stays', async () => {
+    // the fixture's period (July 2026) is in the past
+    const { result, element, queryClient } = renderMenus('u1', (b) => {
+      b.structure.elements[0].debt = undefined
+    })
+    const spy = refresh(queryClient)
+    expect(debtLabels(result.current.expenseRowMenu(element('cat-food')))).toEqual(['Debt details', 'Mark as paid off', 'Delete debt', 'Past debts (2)'])
+    await new Promise((r) => setTimeout(r, 0))
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('agreeing, nothing is refreshed', async () => {
+    const { result, element, queryClient } = renderMenus('u1', thisPeriod)
+    const spy = refresh(queryClient)
+    result.current.expenseRowMenu(element('cat-food'))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(spy).not.toHaveBeenCalled()
+  })
+})
+
 describe('the menus\' dialogs', () => {
   // the menus with their dialogs on screen, as the Budget view and the Plan grid render them
   function renderWithDialogs(debts: DebtDto[] = [wireDebt, ...history]) {
@@ -194,6 +260,7 @@ describe('the menus\' dialogs', () => {
     const user = userEvent.setup()
     const { select } = renderWithDialogs()
     select('Past debts (2)')
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.DEBT_PAST_LIST_OPEN)
     const dialog = await screen.findByRole('dialog', { name: 'Past debts' })
     const items = within(dialog).getAllByRole('button', { name: /–/ })
     expect(items).toHaveLength(2)

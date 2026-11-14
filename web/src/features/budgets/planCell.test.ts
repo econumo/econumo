@@ -140,4 +140,9 @@ describe('planCellView on a row carrying a debt', () => {
     // without the debt the same cell is short of spent + due
     expect(planCellView({ type: cat, cell: cell('1200', null), month: sel, selected: sel, startDay: 1 }).hint).toEqual({ kind: 'short' })
   })
+
+  it('a debt paid off in the month gives the expense hint back', () => {
+    expect(planCellView({ type: cat, cell: cell('1200', { isPaidOff: 1, paymentsLeft: 0 }), month: sel, selected: sel, startDay: 1 }).hint).toEqual({ kind: 'short' })
+    expect(planCellView({ type: cat, cell: cell('800', { isPaidOff: 1, paymentsLeft: 0, scheduledTotal: '1000' }), month: sel, selected: sel, startDay: 1 }).hint).toEqual({ kind: 'short' })
+  })
 })

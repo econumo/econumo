@@ -175,11 +175,12 @@ export function sheetDebt(target: SheetTarget): ElementDebtDto | undefined {
 
 /** the hint on the target's plan figure; Uncategorized and reporting tags hold no plan.
  *  `period`: the period key ('YYYY-MM-01') the figure is for and the budget's period
- *  start day, which the hint of a row carrying a debt needs: there it replaces the
- *  expense hint with the debt's (a plan below the scheduled amount). */
+ *  start day, which the hint of a row carrying a debt needs: while the debt is not paid
+ *  off it replaces the expense hint with the debt's (a plan below the scheduled amount). */
 export function sheetPlanHint(target: SheetTarget, period?: { month: string; startDay: number }): PlanHint {
   const debt = sheetDebt(target)
-  if (debt) {
+  // a debt paid off in this period no longer sets the plan: the expense hint is back
+  if (debt && debt.isPaidOff === 0) {
     const planned = target.kind === 'expense' ? target.element.budgeted : target.kind === 'plan' ? target.cell.planned : ''
     return planHint({ planned, spent: '0', scheduled: debt.scheduledTotal, month: period?.month, startDay: period?.startDay, kind: 'debt' })
   }

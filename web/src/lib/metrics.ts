@@ -133,6 +133,7 @@ export const METRICS = {
   DEBT_RATE_CHANGE_ADD: 'appDebtRateChangeAdd',
   DEBT_RATE_CHANGE_DELETE: 'appDebtRateChangeDelete',
   DEBT_REOPEN: 'appDebtReopen',
+  DEBT_PAST_LIST_OPEN: 'appDebtPastListOpen',
   BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
   BUDGET_TRANSACTIONS_OPEN: 'appBudgetTransactionsOpen',
   BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',
