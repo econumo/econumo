@@ -59,19 +59,27 @@ At the end of a term (May 2031 for this mortgage) the bank also sets a new payme
   rates in force inside the period: `balance x sum(rate_i x days_i / period days)`. A change on a
   due date applies to the period after it (the payment that day is for the period before). The
   origin's prorated first period combines the same way.
-- **Payment in force on a day** = the most recent, by date, of the latest rate change and the latest
-  snapshot (origin or statement) on or before it; on the same day the rate change wins. It drives
+- **Payment in force on a day** = the latest rate change's payment on or before it, else the
+  origin's payment (*my call*: statements stop carrying a payment of their own in this rule; a
+  correction rewrites them to the origin's anyway, so they could only undo a rate change's payment).
+  A change on the start date wins over the origin's payment. It drives
   everything the regular payment drives today: projected payments, payments left, the payoff,
   `extraPaid`, `scheduledTotal`, the still-due and red plan hints, `StatementRepayable`.
-- **Statements**: a new statement records the payment in force on its date (today it copies the
-  latest snapshot's, which would undo a rate change's payment). `StatementRepayable` and the split
-  after a statement use the rate in force (not only the loan's).
+- **Statements**: a new statement still stores a payment (the payment in force on its date), but
+  the rule above never reads it. `StatementRepayable` and the split after a statement use the rate
+  and the payment in force (not only the loan's rate).
 - **Contract fields stay as entered**: the last payment date still anchors the dues and shows as the
-  "contract" date; a higher rate with the same payment simply makes the forecast's payoff later (as
-  a statement above Econumo's balance does now), a lower one earlier.
+  "contract" date; the dues continue past it while a balance is left, exactly as after a statement
+  above Econumo's balance today, so a higher rate with the same payment makes the payoff later and a
+  lower one or a higher payment earlier (`periodsPaid`, `paymentsLeft`, `scheduledTotal` and the
+  final partial payment follow from that as they do now).
 - **Corrections**: correcting the origin's terms (Settings) rewrites the origin and later snapshots
-  as today; rate changes keep their own rate and payment. The implied first-row rate moves with the
-  correction.
+  as today; rate changes keep their own rate and payment, so after a change's date its payment still
+  wins. The implied first-row rate moves with the correction. *My call:* a correction that would put
+  the start date after a rate change is refused with a new coded error `debt.conflicts_with_rate_change`
+  (on `startDate`), like the statement conflict today; a correction after which the payments can
+  never repay the balance is refused with `debt.payments_dont_cover` as today, the check now run
+  with the rate changes applied.
 - **Future-dated changes** are allowed (an announced change) and apply from their date in the
   forecast; splits of payments dated after today stay provisional as today.
 
@@ -89,8 +97,18 @@ At the end of a term (May 2031 for this mortgage) the bank also sets a new payme
 - `POST /api/v1/debt/delete-debt-rate-change` `{id, rateChangeId}` -> the debt details; another
   debt's id is not found.
 - Both are debt writes: plan access in an unarchived budget (guest 403, archived
-  `budget.archived`), run in `inOneTx` with the sync, and drop the debt's stored splits dated on or
-  after the change's date, so the next sync splits them at the new rate.
+  `budget.archived`), run in `inOneTx` with the sync, and drop the debt's stored splits of payments
+  from the start of the schedule window holding the change's date on (*my call*: a window that
+  straddles the date mixes the two rates, so its payments are split again too), so the next sync
+  splits them at the new rate.
+- **`debt.payments_dont_cover` on add/delete** (*my call*): checked after the write, inside its
+  transaction, by projecting the debt with the new list (splits recomputed in memory as `Views`
+  does) from the later of today and the change's date: refused when the balance is never repaid
+  within the projection's horizon. The same check runs on a delete.
+- Everything that projects a debt (`get-debt-forecast`, the budget's `Timelines` and `Views`,
+  onboarding's plan handover) takes the rate changes through the same math input, so the planned
+  extra is measured against the payment in force. Deleting a debt cascades its rate changes; a
+  currency change reads their payments in the new currency unconverted, like the stored terms.
 - `clone-budget` copies the rate changes with the debts. No MCP tool.
 
 ## SPA
