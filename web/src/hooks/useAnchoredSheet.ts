@@ -8,9 +8,6 @@ import { ownsKeyboard } from '@/lib/ownsKeyboard'
 export const SHEET_TOP_GAP = 24
 // px between the status bar and a sheet that fills the screen
 const STATUS_BAR_GAP = 8
-// px of list the keyboard must leave (about two rows) before the sheet's top
-// moves up
-const MIN_LIST = 100
 // ms a focused field may wait for a keyboard before the sheet stops leaving
 // room for one (a hardware keyboard raises none)
 const KEYBOARD_WAIT_MS = 800
@@ -21,6 +18,21 @@ const KEYBOARD_SETTLE_MS = 600
 // than the gap under the search, so the field is never below the keyboard's
 // edge while iOS decides whether to pan
 const FOCUSED_OPEN_SLIDE = '10px'
+
+/**
+ * Where the sheet sits when it is closed: vaul's `--initial-transform`, which
+ * its slide keyframes read at both ends. The default, 100% of the sheet's OWN
+ * height, only carries a sheet off the screen when it rests on the bottom
+ * edge. An anchored sheet does not: it rests on the keyboard, so its bottom
+ * edge is well above the screen's, and translating it down by its own height
+ * ended the slide with the sheet still covering the lower part of the screen,
+ * where it sat until the animation's end unmounted it and it vanished.
+ * `elementTop` is the sheet's own `top`, the pan included.
+ */
+export function closedTransform(layout: number, elementTop: number): string {
+  // ceil, not round: a half pixel short still leaves a sliver on screen
+  return String(Math.max(0, Math.ceil(layout - elementTop))) + 'px'
+}
 const KEYBOARD_STORE = 'econumo.keyboardVisible'
 
 // The visible height the on-screen keyboard left the last time a sheet's field
@@ -52,8 +64,6 @@ export interface SheetAnchor {
   top: number
   /** px the sheet's content takes */
   natural: number
-  /** px of it that is not the scrolling list: handle, title, search */
-  chrome: number
   /** px the top never goes above: clear of the status bar */
   minTop: number
   /** px of the layout viewport it was measured on: a new size measures afresh */
@@ -74,21 +84,24 @@ function safeAreaTop(): number {
   return safeTop.px
 }
 
-/** where the sheet's top sits on screen for the visible area left by the keyboard */
+/**
+ * Where the sheet's top sits on screen for the visible area left by the
+ * keyboard: high enough to show all its content above the keyboard, up to the
+ * status bar. Keeping the top where it opened instead left a list that fits
+ * the screen, but not the space above the keyboard, with two rows in view.
+ */
 export function anchoredTop(anchor: SheetAnchor, visibleHeight: number): number {
-  const room = Math.min(anchor.chrome + MIN_LIST, anchor.natural)
-  return Math.max(anchor.minTop, Math.min(anchor.top, visibleHeight - room))
+  return Math.max(anchor.minTop, Math.min(anchor.top, visibleHeight - anchor.natural))
 }
 
 /**
- * A sheet whose top stays where it opened: the keyboard coming and going only
- * moves its bottom edge, and the list in between gets shorter or taller. The
- * top is set once from the content: as tall as the content, and a list
- * longer than the screen fills it up to the status bar, so the keyboard
- * leaves it room for several rows. It moves up when the content grows (data
- * arriving), never down when it shrinks (a filter), and moves up only as far
- * as needed when the keyboard would leave less than about two rows of list.
- * A closing sheet keeps its place while it slides out.
+ * A sheet as tall as its content, up to the status bar. A list longer than
+ * the screen keeps its top there whatever the keyboard does, and only its
+ * bottom edge moves; a shorter one rises above the keyboard as far as its
+ * content needs and comes back down when the keyboard goes. The content's
+ * height only ever grows (data arriving), never shrinks with a filter, so
+ * typing does not move the top. A closing sheet keeps its place while it
+ * slides out.
  */
 /** the height the sheet lays itself out in: what the keyboard leaves, or will leave */
 export function sheetVisibleHeight(layout: number, keyboardVisible: number, remembered: number | undefined, expectsField: boolean, noKeyboard: boolean): number {
@@ -171,7 +184,7 @@ export function useAnchoredSheet(
     // the content grew (rows arriving, the query reset), or the screen changed
     if (!measured.current || anchor === null || anchor.layout !== layout || top < anchor.top - 1) {
       measured.current = true
-      setAnchor({ top, natural, chrome, minTop, layout })
+      setAnchor({ top, natural, minTop, layout })
     }
   })
 
@@ -316,7 +329,11 @@ export function useAnchoredSheet(
       marginTop: 0,
       height,
       maxHeight: 'none',
-      ...(shortSlide ? { '--initial-transform': FOCUSED_OPEN_SLIDE } : {}),
+      // the entrance keeps the value it always had; only the exit is corrected,
+      // so a sheet that slid in one way does not start sliding in another. The
+      // property is always set, never dropped between renders, so the flip
+      // happens with the state change rather than a render later
+      '--initial-transform': shortSlide ? FOCUSED_OPEN_SLIDE : open ? '100%' : closedTransform(layout, pan + top),
     } as CSSProperties,
   }
 }
