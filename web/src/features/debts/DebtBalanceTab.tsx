@@ -14,8 +14,7 @@ import { debtDay } from './debtDates'
 import { AmountField, DateField } from './debtFields'
 import { useDeleteDebtReconciliation, useReconcileDebt } from './queries'
 import { RateChangesCard } from './RateChangesCard'
-import { isNoFixed } from './useDebtForm'
-import { amountEcho, amountError, plainAmount } from './useDebtForm'
+import { amountEcho, amountError, isNoFixed, plainAmount } from './useDebtForm'
 
 const negate = (v: string) => (v.startsWith('-') ? v.slice(1) : `-${v}`)
 

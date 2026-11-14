@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureElementDebt, fixtureElementDebtNotSetUp, fixtureWireBudget } from '@/test/fixtures'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
@@ -104,6 +105,22 @@ it('a loan with no fixed payments reads what is left and its return-by month', a
   const line = within(screen.getByTestId('element-cat-food')).getByTestId('element-debt-line')
   expect(await within(line).findByText('3,000.00 $ left · return by Dec 2027')).toBeInTheDocument()
   expect(line).not.toHaveTextContent('payments left')
+})
+
+it('a possible no-fixed loan shows no payments-left text while the debt list loads', async () => {
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/debt/get-debt-list', async () => {
+      await new Promise((r) => setTimeout(r, 300))
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
+  renderTable((b) => {
+    food(b).debt = fixtureElementDebt({ paymentsLeft: 0, scheduledTotal: '0', upcoming: '0', payoffDate: '' })
+  })
+  const line = within(screen.getByTestId('element-cat-food')).getByTestId('element-debt-line')
+  expect(line).not.toHaveTextContent('payments left')
+  expect(await within(line).findByText('0 payments left')).toBeInTheDocument()
 })
 
 it('a loan with no fixed payments never turns the plan red', () => {

@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { createElement } from 'react'
 import type { ReactNode } from 'react'
 import type { ElementDebtDto } from '@/api/dto/budget'
 import type { DebtDto } from '@/api/dto/debt'
@@ -25,18 +24,26 @@ export function useDebtSummary() {
 }
 
 /** "3,000.00 $ left · return by Dec 2027" for a loan with no fixed payments, from the debt list */
-function NoFixedText({ debt, fallback }: { debt: ElementDebtDto; fallback: string | null }): ReactNode {
+function NoFixedText({ debt, fallback }: { debt: ElementDebtDto; fallback: string | null }) {
   const { t, i18n } = useTranslation()
   const { data: currencies } = useCurrencies()
   const { data } = useDebts()
-  const listed: DebtDto | undefined = data?.find((d) => d.id === debt.id)
+  // until the list answers the schedule is unknown: show nothing rather than "0 payments left"
+  if (!data) {
+    return null
+  }
+  const listed: DebtDto | undefined = data.find((d) => d.id === debt.id)
   if (listed?.schedule !== 'none') {
-    return fallback
+    return <>{fallback}</>
   }
   const amount = moneyFormat(listed.currentBalance, currencies?.find((c) => c.id === listed.currencyId))
-  return listed.lastPaymentDate === ''
-    ? t('budgets.page.debts.left', { amount })
-    : t('budgets.page.debts.left_return_by', { amount, date: debtMonth(listed.lastPaymentDate, i18n.language) })
+  return (
+    <>
+      {listed.lastPaymentDate === ''
+        ? t('budgets.page.debts.left', { amount })
+        : t('budgets.page.debts.left_return_by', { amount, date: debtMonth(listed.lastPaymentDate, i18n.language) })}
+    </>
+  )
 }
 
 /** a debt's summary line; a set-up debt still owed with no payments counted may be a loan with
@@ -45,7 +52,7 @@ export function useDebtSummaryText() {
   const summary = useDebtSummary()
   return (debt: ElementDebtDto): ReactNode => {
     const plain = summary(debt)
-    return debt.isSetUp === 1 && debt.isPaidOff === 0 && debt.paymentsLeft === 0 ? createElement(NoFixedText, { debt, fallback: plain }) : plain
+    return debt.isSetUp === 1 && debt.isPaidOff === 0 && debt.paymentsLeft === 0 ? <NoFixedText debt={debt} fallback={plain} /> : plain
   }
 }
 
