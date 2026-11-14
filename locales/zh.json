@@ -2566,7 +2566,6 @@
       "start_before_previous_end": "开始日期必须晚于此分类或信封上一笔债务的结束日期。",
       "cannot_reopen": "无法重新打开此债务：其分类或信封有另一笔进行中或开始得更晚的债务。",
       "paid_off": "此债务已还清。请重新打开后再修改。",
-      "last_payment_in_past": "最后还款日必须晚于今天。",
       "last_payment_before_start": "最后还款日必须晚于开始日期。",
       "start_in_future": "开始日期不能晚于今天。",
       "not_set_up": "请先完成此债务的设置。",

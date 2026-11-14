@@ -74,3 +74,11 @@ func (pgsqlQuerier) LockCategoryRow(ctx context.Context, db backend.DBTX, id str
 	}
 	return err
 }
+
+func (pgsqlQuerier) LockKeptCategoryRow(ctx context.Context, db backend.DBTX, id string) error {
+	_, err := pgsqlgen.New(db).LockKeptCategoryRow(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	return err
+}

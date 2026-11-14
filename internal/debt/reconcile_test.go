@@ -78,6 +78,30 @@ func TestReconcile_PastStatementResplitsTheLaterPayments(t *testing.T) {
 	}
 }
 
+// A loan still owed after its contract's last payment date reconciles: the
+// projection continues the dues past that date; only a balance the payment
+// can never repay is refused.
+func TestReconcile_PastTheContractsLastPaymentDate(t *testing.T) {
+	e := newEnv(t)
+	res := e.createOrigin(t, func(r *createSpec) {
+		r.StartDate, r.LastPaymentDate, r.Payment = ptr("2024-03-01"), "2026-01-01", vo.NewFlexString("600")
+	})
+	_, err := e.reconcile(res.Id, "50000000", "")
+	requireField(t, err, "payment", errs.CodeDebtPaymentsDontCover)
+
+	got, err := e.reconcile(res.Id, "1500", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.CurrentBalance != "1500" || got.PaymentsLeft < 3 || got.PayoffDate <= "2026-03-10" {
+		t.Fatalf("result = %+v", got)
+	}
+	snaps := e.snapshots(t, res.Id)
+	if len(snaps) != 2 || !snaps[1].AsOf.Equal(ymd(2026, 3, 10)) || !snaps[1].LastPaymentDate.Equal(ymd(2026, 1, 1)) {
+		t.Fatalf("snapshots = %+v", snaps)
+	}
+}
+
 // A second statement on the same date replaces the first.
 func TestReconcile_SameDateReplaces(t *testing.T) {
 	e := newEnv(t)

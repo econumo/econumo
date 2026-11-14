@@ -135,7 +135,9 @@ func mathRates(changes []*model.DebtRateChange, schedule model.RecurringSchedule
 // validateTerms checks terms about to become a statement as of terms.AsOf
 // after origin, in a currency with the given fraction digits. A balance of 0
 // needs no payments left; any other must be repayable by the payment in
-// force at the rate in force (the loan's, the origin's, until a rate change).
+// force at the rate in force (the loan's, the origin's, until a rate change),
+// on or after the contract's last payment date too: the dues continue past it
+// (a rate change can stretch the loan), so only repayability decides.
 // With no fixed payments nothing has to repay it, by the return-by date or
 // after it.
 func validateTerms(t, origin model.DebtTerms, digits int, changes []*model.DebtRateChange) error {
@@ -144,9 +146,6 @@ func validateTerms(t, origin model.DebtTerms, digits int, changes []*model.DebtR
 	}
 	if !t.Balance.IsGreaterThan(vo.NewDecimal("0")) || t.Schedule == model.DebtScheduleNone {
 		return nil
-	}
-	if !t.LastPaymentDate.After(t.AsOf) {
-		return fieldError("lastPaymentDate", "The last payment date must be after today.", errs.CodeDebtLastPaymentInPast)
 	}
 	ms := mathTerms(changes, digits, origin, t)
 	if err := model.StatementRepayable(ms[0], ms[1]); err != nil {

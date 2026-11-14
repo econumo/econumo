@@ -58,3 +58,5 @@ func (sqliteQuerier) ReplaceCategoryIcon(ctx context.Context, db backend.DBTX, p
 // SQLite has no row-level lock modes; its single writer already serializes
 // the delete against a debt write.
 func (sqliteQuerier) LockCategoryRow(context.Context, backend.DBTX, string) error { return nil }
+
+func (sqliteQuerier) LockKeptCategoryRow(context.Context, backend.DBTX, string) error { return nil }

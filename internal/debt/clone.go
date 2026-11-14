@@ -3,13 +3,16 @@ package debt
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CloneDebts copies the debts of one budget into another (clone-budget): every
 // column, the snapshots and the rate changes, under new ids. A debt's element
-// is mapped through elementIDs (the copy's envelopes have new ids); one not in
-// it keeps its id (a category is the same in the copy). A copy keeps
+// is mapped through elementIDs (the copy's envelopes have new ids); a category
+// keeps its id (it is the same in the copy), and a debt on an envelope the
+// map does not name is left out, never attached to an envelope of another
+// budget. A copy keeps
 // its original creation time and day, so the planning start is the same in
 // the copy. Splits are not copied: the next sync rebuilds them on the new
 // budget's accounts. It joins the caller's transaction and returns the new id
@@ -41,6 +44,8 @@ func (s *Service) CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id
 			cp.ID, cp.BudgetID = s.repo.NextIdentity(), toBudgetID
 			if mapped, ok := elementIDs[d.ElementID]; ok {
 				cp.ElementID = mapped
+			} else if d.ElementType == model.DebtElementEnvelope {
+				continue
 			}
 			if d.Current != nil {
 				current := *d.Current
@@ -52,15 +57,23 @@ func (s *Service) CloneDebts(ctx context.Context, fromBudgetID, toBudgetID vo.Id
 			ids[d.ID] = cp.ID
 		}
 		for _, sn := range snaps {
+			newID, ok := ids[sn.DebtID]
+			if !ok {
+				continue
+			}
 			cp := *sn
-			cp.ID, cp.DebtID = s.repo.NextIdentity(), ids[sn.DebtID]
+			cp.ID, cp.DebtID = s.repo.NextIdentity(), newID
 			if err := s.repo.AddSnapshot(ctx, &cp); err != nil {
 				return err
 			}
 		}
 		for _, c := range rates {
+			newID, ok := ids[c.DebtID]
+			if !ok {
+				continue
+			}
 			cp := *c
-			cp.ID, cp.DebtID = s.repo.NextIdentity(), ids[c.DebtID]
+			cp.ID, cp.DebtID = s.repo.NextIdentity(), newID
 			if err := s.repo.SaveRateChange(ctx, &cp); err != nil {
 				return err
 			}

@@ -2566,7 +2566,6 @@
       "start_before_previous_end": "La date de début doit être postérieure à la fin de la dette précédente de cette catégorie ou enveloppe.",
       "cannot_reopen": "Cette dette ne peut pas être rouverte : sa catégorie ou son enveloppe suit une autre dette active ou commencée plus tard.",
       "paid_off": "Cette dette est remboursée. Rouvrez-la pour la modifier.",
-      "last_payment_in_past": "La date du dernier paiement doit être postérieure à aujourd'hui.",
       "last_payment_before_start": "La date du dernier paiement doit être postérieure à la date de début.",
       "start_in_future": "La date de début doit être aujourd'hui ou antérieure.",
       "not_set_up": "Terminez d'abord la configuration de cette dette.",

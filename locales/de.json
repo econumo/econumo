@@ -2566,7 +2566,6 @@
       "start_before_previous_end": "Das Startdatum muss nach dem Ende der vorherigen Schuld dieser Kategorie bzw. dieses Umschlags liegen.",
       "cannot_reopen": "Diese Schuld kann nicht wieder geöffnet werden: Ihre Kategorie bzw. ihr Umschlag verfolgt eine andere Schuld, die aktiv ist oder später begonnen hat.",
       "paid_off": "Diese Schuld ist abbezahlt. Öffnen Sie sie wieder, um sie zu ändern.",
-      "last_payment_in_past": "Das Datum der letzten Zahlung muss nach heute liegen.",
       "last_payment_before_start": "Das Datum der letzten Zahlung muss nach dem Startdatum liegen.",
       "start_in_future": "Das Startdatum darf nicht nach heute liegen.",
       "not_set_up": "Schließen Sie zuerst die Einrichtung dieser Schuld ab.",

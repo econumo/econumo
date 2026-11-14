@@ -2566,7 +2566,6 @@
       "start_before_previous_end": "De startdatum moet na het einde van de vorige schuld van deze categorie of envelop liggen.",
       "cannot_reopen": "Deze schuld kan niet worden heropend: de categorie of envelop volgt een andere schuld die actief is of later is begonnen.",
       "paid_off": "Deze schuld is afbetaald. Heropen haar om haar te wijzigen.",
-      "last_payment_in_past": "De datum van de laatste betaling moet na vandaag liggen.",
       "last_payment_before_start": "De datum van de laatste betaling moet na de startdatum liggen.",
       "start_in_future": "De startdatum moet vandaag of eerder zijn.",
       "not_set_up": "Rond eerst het instellen van deze schuld af.",

@@ -109,6 +109,21 @@ func (q *Queries) LockCategoryRow(ctx context.Context, id string) (string, error
 	return id, err
 }
 
+const lockKeptCategoryRow = `-- name: LockKeptCategoryRow :one
+SELECT id FROM categories WHERE id = $1 FOR NO KEY UPDATE
+`
+
+// The merge target's lock. The target is kept, so it needs no FOR UPDATE, and
+// FOR NO KEY UPDATE lets the FOR KEY SHARE of a foreign key check pass: a
+// transaction moved onto the target while the merge runs does not wait on it
+// holding its row, which the merge's reassignment would then wait for
+// (deadlock).
+func (q *Queries) LockKeptCategoryRow(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, lockKeptCategoryRow, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
 const reassignCategoryRecurring = `-- name: ReassignCategoryRecurring :exec
 
 UPDATE recurring_transactions SET category_id = $1 WHERE category_id = $2

@@ -35,10 +35,12 @@ type BudgetElementMerger interface {
 // Lock order: a debt write locks its budget row before it touches a category
 // row or a budget element row, so a delete or merge calls Prepare first. Then
 // the delete locks its category row, a merge both rows in id order
-// (Repository.LockRow): a debt create on one of them commits first, and
-// Release or Reassign sees its debt. One window is left: a debt committed
-// between Prepare's read and those row locks names a budget Prepare did not
-// lock. Release or Reassign then fails with debt.ErrDebtsChangedConcurrently
+// (Repository.LockRow for the source, LockKeptRow for the target): a debt
+// write on the row that goes commits first, and Release or Reassign sees its
+// debt. A debt write on the target does not wait for the merge; one in a
+// budget Prepare locked waits on that budget instead. One window is left: a
+// debt committed between Prepare's read and those row locks names a budget
+// Prepare did not lock. Release or Reassign then fails with debt.ErrDebtsChangedConcurrently
 // (a 5xx, safe to retry) rather than lock that budget after the row, which
 // could deadlock with a debt write waiting for the row.
 type DebtUsage interface {

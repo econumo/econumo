@@ -35,6 +35,7 @@ type querier interface {
 	UpsertCategory(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteCategory(ctx context.Context, db backend.DBTX, id string) error
 	LockCategoryRow(ctx context.Context, db backend.DBTX, id string) error
+	LockKeptCategoryRow(ctx context.Context, db backend.DBTX, id string) error
 	ReplaceCategoryIcon(ctx context.Context, db backend.DBTX, p replaceIconParams) (int64, error)
 	ReassignCategoryTransactions(ctx context.Context, db backend.DBTX, p reassignParams) error
 	ReassignCategoryRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error
@@ -132,6 +133,10 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 
 func (r *Repo) LockRow(ctx context.Context, id vo.Id) error {
 	return r.q.LockCategoryRow(ctx, r.db(ctx), id.String())
+}
+
+func (r *Repo) LockKeptRow(ctx context.Context, id vo.Id) error {
+	return r.q.LockKeptCategoryRow(ctx, r.db(ctx), id.String())
 }
 
 // ReassignTransactions points every transaction on oldID at newID.

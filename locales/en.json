@@ -2566,7 +2566,6 @@
       "start_before_previous_end": "The start date must be after the end of the previous debt on this category or envelope.",
       "cannot_reopen": "This debt cannot be reopened: its category or envelope tracks another debt that is active or started later.",
       "paid_off": "This debt is paid off. Reopen it to change it.",
-      "last_payment_in_past": "The last payment date must be after today.",
       "last_payment_before_start": "The last payment date must be after the start date.",
       "start_in_future": "The start date must be today or earlier.",
       "not_set_up": "Finish setting up this debt first.",

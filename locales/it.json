@@ -2566,7 +2566,6 @@
       "start_before_previous_end": "La data di inizio deve essere successiva alla fine del debito precedente di questa categoria o busta.",
       "cannot_reopen": "Questo debito non può essere riaperto: la sua categoria o busta segue un altro debito attivo o iniziato dopo.",
       "paid_off": "Questo debito è estinto. Riaprilo per modificarlo.",
-      "last_payment_in_past": "La data dell'ultimo pagamento deve essere successiva a oggi.",
       "last_payment_before_start": "La data dell'ultimo pagamento deve essere successiva alla data di inizio.",
       "start_in_future": "La data di inizio deve essere oggi o precedente.",
       "not_set_up": "Completa prima la configurazione di questo debito.",

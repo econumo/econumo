@@ -2648,7 +2648,9 @@ a second budget member account in USD, before running these.
       payments" to about 1% of 10,000; a statement above Econumo's balance
       moves the payoff past the last payment date; a balance the payment
       can never repay (its interest at least the payment) is refused with
-      "The payments do not cover the balance."
+      "The payments do not cover the balance." A loan still owed after its
+      contract's last payment date reconciles too: the payments continue
+      past that date until the balance is repaid.
       A statement dated in the past re-splits only the payments after its
       date (the earlier ones keep their interest); a second statement on the
       same date replaces the first. The history lists the start (marked

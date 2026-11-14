@@ -50,3 +50,11 @@ WHERE id = $3 AND user_id = $4 AND icon = $5;
 -- with the FOR KEY SHARE a debt create takes on the row, so the delete or
 -- merge waits for that write to commit and then sees its debt.
 SELECT id FROM categories WHERE id = $1 FOR UPDATE;
+
+-- name: LockKeptCategoryRow :one
+-- The merge target's lock. The target is kept, so it needs no FOR UPDATE, and
+-- FOR NO KEY UPDATE lets the FOR KEY SHARE of a foreign key check pass: a
+-- transaction moved onto the target while the merge runs does not wait on it
+-- holding its row, which the merge's reassignment would then wait for
+-- (deadlock).
+SELECT id FROM categories WHERE id = $1 FOR NO KEY UPDATE;

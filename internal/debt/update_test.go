@@ -64,9 +64,11 @@ func TestUpdateDebt_ValidatesChangedTermsOnly(t *testing.T) {
 	if _, err := e.svc.UpdateDebt(ctx, e.uid(), rename); err != nil {
 		t.Fatalf("save of an old loan: %v", err)
 	}
+	// a balance still owed then is repaid by the dues past the contract date
 	rename.Balance = vo.NewFlexString("500")
-	_, err = e.svc.UpdateDebt(ctx, e.uid(), rename)
-	requireCode(t, err, errs.CodeDebtLastPaymentInPast)
+	if _, err := e.svc.UpdateDebt(ctx, e.uid(), rename); err != nil {
+		t.Fatalf("a statement past the last payment date: %v", err)
+	}
 }
 
 type currentTerms struct {

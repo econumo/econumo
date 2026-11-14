@@ -2566,7 +2566,6 @@
       "start_before_previous_end": "La fecha de inicio debe ser posterior al final de la deuda anterior de esta categoría o sobre.",
       "cannot_reopen": "Esta deuda no se puede reabrir: su categoría o sobre sigue otra deuda activa o iniciada más tarde.",
       "paid_off": "Esta deuda está pagada. Reábrela para cambiarla.",
-      "last_payment_in_past": "La fecha del último pago debe ser posterior a hoy.",
       "last_payment_before_start": "La fecha del último pago debe ser posterior a la fecha de inicio.",
       "start_in_future": "La fecha de inicio debe ser hoy o anterior.",
       "not_set_up": "Primero termina de configurar esta deuda.",

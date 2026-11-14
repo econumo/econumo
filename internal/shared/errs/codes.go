@@ -149,7 +149,6 @@ const (
 	CodeDebtStartBeforePreviousEnd      = "debt.start_before_previous_end"
 	CodeDebtCannotReopen                = "debt.cannot_reopen"
 	CodeDebtPaidOff                     = "debt.paid_off"
-	CodeDebtLastPaymentInPast           = "debt.last_payment_in_past"
 	CodeDebtLastPaymentBeforeStart      = "debt.last_payment_before_start"
 	CodeDebtStartInFuture               = "debt.start_in_future"
 	CodeDebtNotSetUp                    = "debt.not_set_up"
@@ -311,7 +310,6 @@ var AllCodes = []string{
 	CodeDebtStartBeforePreviousEnd,
 	CodeDebtCannotReopen,
 	CodeDebtPaidOff,
-	CodeDebtLastPaymentInPast,
 	CodeDebtLastPaymentBeforeStart,
 	CodeDebtStartInFuture,
 	CodeDebtNotSetUp,

@@ -455,6 +455,12 @@ type Querier interface {
 	// NO KEY UPDATE leaves the KEY SHARE of child inserts (budget rows, debts)
 	// unblocked.
 	LockDebtBudget(ctx context.Context, id string) (string, error)
+	// The merge target's lock. The target is kept, so it needs no FOR UPDATE, and
+	// FOR NO KEY UPDATE lets the FOR KEY SHARE of a foreign key check pass: a
+	// transaction moved onto the target while the merge runs does not wait on it
+	// holding its row, which the merge's reassignment would then wait for
+	// (deadlock).
+	LockKeptCategoryRow(ctx context.Context, id string) (string, error)
 	// Plain FOR UPDATE is required: it is the only mode that conflicts with the KEY SHARE
 	// lock a concurrent grant INSERT takes on this row through its foreign key.
 	LockOAuthClient(ctx context.Context, id string) (string, error)

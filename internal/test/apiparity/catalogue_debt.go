@@ -157,7 +157,7 @@ func init() {
 			setup("bad-last-date", map[string]any{"lastPaymentDate": "soon"}),
 			setup("last-payment-before-start", map[string]any{"lastPaymentDate": day(-1)}),
 			setup("start-in-future", map[string]any{"startDate": day(1)}),
-			setup("balance-now-after-last-payment", map[string]any{"startDate": day(-14), "lastPaymentDate": day(-7), "balance": "10"}),
+			setup("statement-past-last-payment-not-repaid", map[string]any{"startDate": day(-14), "lastPaymentDate": day(-7), "balance": "1000000"}),
 			setup("payments-dont-cover", map[string]any{"amountBorrowed": "300"}),
 			setup("loan-facts-missing-last-date", map[string]any{"lastPaymentDate": ""}),
 			setup("loan-facts-missing-amount-borrowed", map[string]any{"amountBorrowed": ""}),

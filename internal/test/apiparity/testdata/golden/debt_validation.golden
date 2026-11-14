@@ -49,8 +49,8 @@
 == err:start-in-future POST /api/v1/debt/update-debt [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"startDate":["The start date must be today or earlier."]}}
 
-== err:balance-now-after-last-payment POST /api/v1/debt/update-debt [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"lastPaymentDate":["The last payment date must be after today."]}}
+== err:statement-past-last-payment-not-repaid POST /api/v1/debt/update-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"payment":["The payments do not cover the balance. Raise the payment or set a later last payment date."]}}
 
 == err:payments-dont-cover POST /api/v1/debt/update-debt [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"payment":["The payments do not cover the balance. Raise the payment or set a later last payment date."]}}

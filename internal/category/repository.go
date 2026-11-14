@@ -34,6 +34,9 @@ type Repository interface {
 	// it commits first (see DebtUsage for the lock order).
 	// A missing row is not an error.
 	LockRow(ctx context.Context, id vo.Id) error
+	// LockKeptRow is LockRow for a row the transaction keeps (a merge
+	// target): foreign key checks of other writes on it are not blocked.
+	LockKeptRow(ctx context.Context, id vo.Id) error
 
 	// ReassignTransactions points every transaction on oldID at newID (merge),
 	// before the old category is deleted.

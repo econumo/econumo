@@ -60,6 +60,48 @@ func TestCloneDebts_KeepsElements(t *testing.T) {
 	}
 }
 
+// A debt on an envelope the copy has no envelope for is left out, never
+// attached to the source budget's envelope; one mapped follows its copy, and
+// a category debt keeps its category.
+func TestCloneDebts_SkipsAnUnmappedEnvelope(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	onCategory := e.create(t, nil)
+	mappedEnv := e.newEnvelope("Housing", e.newCategory(e.user, true))
+	onMapped := e.create(t, func(r *createSpec) { withoutTerms(r); r.ElementId = mappedEnv })
+	lostEnv := e.newEnvelope("Car", e.newCategory(e.user, true))
+	onLost := e.create(t, func(r *createSpec) { r.ElementId = lostEnv })
+	copyTo := e.newBudget(e.user, "Copy", e.account)
+	copiedEnv := vo.NewId()
+
+	var ids map[vo.Id]vo.Id
+	err := e.db.TX.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		ids, err = e.svc.CloneDebts(ctx, vo.MustParseId(e.budget), vo.MustParseId(copyTo),
+			map[vo.Id]vo.Id{vo.MustParseId(mappedEnv): copiedEnv})
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := ids[vo.MustParseId(onLost.Id)]; ok || len(ids) != 2 {
+		t.Fatalf("ids = %v, want the unmapped envelope's debt left out", ids)
+	}
+	if cp := e.debtOf(t, ids[vo.MustParseId(onCategory.Id)].String()); cp.ElementID.String() != onCategory.ElementId {
+		t.Fatalf("category debt element = %s", cp.ElementID)
+	}
+	if cp := e.debtOf(t, ids[vo.MustParseId(onMapped.Id)].String()); !cp.ElementID.Equal(copiedEnv) {
+		t.Fatalf("envelope debt element = %s, want %s", cp.ElementID, copiedEnv)
+	}
+	var n int
+	if err := e.db.Raw.QueryRowContext(ctx, e.db.Rebind(`SELECT COUNT(*) FROM debts_snapshots s JOIN debts d ON d.id = s.debt_id WHERE d.budget_id = ?`), copyTo).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("copied snapshots = %d, want the category debt's only", n)
+	}
+}
+
 func sameDate(a, b *time.Time) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil

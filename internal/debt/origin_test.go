@@ -218,10 +218,6 @@ func TestSetUpDebt_TermValidation(t *testing.T) {
 		"last before start": {func(r *createSpec) { r.LastPaymentDate = "2025-03-01" }, "lastPaymentDate", errs.CodeDebtLastPaymentBeforeStart},
 		"start in future":   {func(r *createSpec) { r.StartDate = ptr("2026-03-11") }, "startDate", errs.CodeDebtStartInFuture},
 		"not covered":       {func(r *createSpec) { r.Payment = vo.NewFlexString("400") }, "payment", errs.CodeDebtPaymentsDontCover},
-		"balance now after the last payment": {func(r *createSpec) {
-			r.LastPaymentDate, r.Balance = "2026-03-01", vo.NewFlexString("100")
-			r.Payment = vo.NewFlexString("1000")
-		}, "lastPaymentDate", errs.CodeDebtLastPaymentInPast},
 	} {
 		req := e.originReq()
 		tc.mod(&req)
@@ -239,6 +235,16 @@ func TestSetUpDebt_TermValidation(t *testing.T) {
 		return r
 	}()); err != nil {
 		t.Fatalf("a finished term: %v", err)
+	}
+	// a balance still owed after the contract's last payment date is repaid
+	// by the dues that continue past it
+	if _, err := e.tryCreate(func() createSpec {
+		r := e.originReq()
+		r.ElementId = e.newCategory(e.user, true)
+		r.LastPaymentDate, r.Balance, r.Payment = "2026-03-01", vo.NewFlexString("100"), vo.NewFlexString("1000")
+		return r
+	}()); err != nil {
+		t.Fatalf("a balance after the last payment: %v", err)
 	}
 }
 

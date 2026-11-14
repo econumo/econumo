@@ -61,10 +61,22 @@ func (r *debtLockDebtRepo) LockCategories(ctx context.Context, ids []vo.Id) erro
 	return err
 }
 
+// debtLockCategoryRepo pauses a category merge once its row locks are held.
+type debtLockCategoryRepo struct {
+	appcategory.Repository
+	beforeReassign func()
+}
+
+func (r *debtLockCategoryRepo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error {
+	fireHook(&r.beforeReassign)
+	return r.Repository.ReassignTransactions(ctx, oldID, newID)
+}
+
 // debtLockPair is the budget, debt and category services on one connection,
 // wired with the production glue.
 type debtLockPair struct {
 	debtRepo   *debtLockDebtRepo
+	catRepo    *debtLockCategoryRepo
 	budget     *appbudget.Service
 	debts      *appdebt.Service
 	categories *appcategory.Service
@@ -84,9 +96,11 @@ func newDebtLockPair(t *testing.T, tdb *dbtest.DB) *debtLockPair {
 	convertor := domcurrency.NewConvertor(rateProvider)
 	accessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(eng, txm))
 
-	p := &debtLockPair{debtRepo: &debtLockDebtRepo{Repository: debtrepo.NewRepo(eng, txm)}}
+	budgetRepo := budgetrepo.NewRepo(eng, txm)
+	p := &debtLockPair{debtRepo: &debtLockDebtRepo{Repository: debtrepo.NewRepo(eng, txm)},
+		catRepo: &debtLockCategoryRepo{Repository: categoryRepo}}
 	p.budget = appbudget.NewService(
-		budgetrepo.NewRepo(eng, txm), budgetrepo.NewReadRepo(eng, txm), convertor, rateProvider,
+		budgetRepo, budgetrepo.NewReadRepo(eng, txm), convertor, rateProvider,
 		server.NewBudgetUserLookup(userRepo, clk),
 		server.NewBudgetAccountLookup(accountrepo.NewRepo(eng, txm)),
 		server.NewBudgetCurrencyLookup(currencyLookup),
@@ -98,7 +112,8 @@ func newDebtLockPair(t *testing.T, tdb *dbtest.DB) *debtLockPair {
 	p.debts.SetBudgets(server.NewDebtBudgets(p.budget))
 	p.debts.SetElements(server.NewDebtElements(p.budget))
 	p.budget.SetDebts(p.debts)
-	p.categories = appcategory.NewService(categoryRepo, txm, operationrepo.NewGuard(eng, txm), clk, categoryrepo.NewReadRepo(eng, txm), accessResolver, nil)
+	p.categories = appcategory.NewService(p.catRepo, txm, operationrepo.NewGuard(eng, txm), clk, categoryrepo.NewReadRepo(eng, txm), accessResolver,
+		appbudget.NewMergeService(budgetRepo, budgetRepo, budgetRepo, clk))
 	p.categories.SetDebtUsage(server.NewDebtUsage(p.debts))
 	if err := tdb.Raw.QueryRowContext(context.Background(), "SELECT pg_backend_pid()").Scan(&p.pid); err != nil {
 		t.Fatalf("backend pid: %v", err)
@@ -111,9 +126,11 @@ func newDebtLockPair(t *testing.T, tdb *dbtest.DB) *debtLockPair {
 // would serialize the transactions and hide the race.
 type debtLockRig struct {
 	db       *dbtest.DB
+	db2      *dbtest.DB
 	monitor  *sql.DB
 	one, two *debtLockPair
 	owner    vo.Id
+	cash     string
 	budgetID string
 	loan     string // an expense category
 	car      string // another expense category
@@ -152,8 +169,8 @@ func newDebtLockRig(t *testing.T) *debtLockRig {
 	budgetID := f.Budget(fixture.Budget{UserID: owner, StartedAt: started})
 	f.BudgetAccount(budgetID, cash)
 	return &debtLockRig{
-		db: db, monitor: open(), one: newDebtLockPair(t, db), two: newDebtLockPair(t, db2),
-		owner: vo.MustParseId(owner), budgetID: budgetID,
+		db: db, db2: db2, monitor: open(), one: newDebtLockPair(t, db), two: newDebtLockPair(t, db2),
+		owner: vo.MustParseId(owner), cash: cash, budgetID: budgetID,
 		loan: f.Category(fixture.Category{UserID: owner, Name: "Loan"}),
 		car:  f.Category(fixture.Category{UserID: owner, Name: "Car"}),
 	}
@@ -261,5 +278,68 @@ func TestCreateDebt_ConcurrentCategoryDeleteFailsRetryably(t *testing.T) {
 	}
 	if debts, categories := state(); debts != 0 || categories != 0 {
 		t.Errorf("after the retry: %d debts, %d category rows; want both gone", debts, categories)
+	}
+}
+
+// A merge of one category into another holds both rows; a transaction moved
+// from the source onto the target meanwhile holds its row and takes a key
+// share on the target through the foreign key. The target's lock must let
+// that pass: if it waited, the merge reassigning the source's transactions
+// would wait for that row in turn (a deadlock). The UPDATE is what
+// update-transaction writes for the move.
+func TestMergeCategory_ConcurrentMoveOntoTheTargetDoesNotDeadlock(t *testing.T) {
+	r := newDebtLockRig(t)
+	ctx := context.Background()
+	f := fixture.New(t, r.db)
+	moved := f.Transaction(fixture.Transaction{UserID: r.owner.String(), AccountID: r.cash, CategoryID: r.loan, Amount: "10"})
+	stays := f.Transaction(fixture.Transaction{UserID: r.owner.String(), AccountID: r.cash, CategoryID: r.loan, Amount: "20"})
+
+	merged, unblockMerge := pause(t, func(h func()) { r.one.catRepo.beforeReassign = h },
+		func() error {
+			_, err := r.one.categories.MergeCategory(ctx, r.owner, model.MergeCategoryRequest{SourceId: r.loan, TargetId: r.car})
+			return err
+		})
+
+	updated := make(chan error, 1)
+	release, unblockUpdate := debtLockGate(t)
+	go func() {
+		updated <- r.db2.TX.WithTx(ctx, func(ctx context.Context) error {
+			if _, err := r.db2.TX.Querier(ctx).ExecContext(ctx, "UPDATE transactions SET category_id = $1 WHERE id = $2", r.car, moved); err != nil {
+				return err
+			}
+			updated <- nil
+			<-release
+			return nil
+		})
+	}()
+	// Never t.Fatal while a transaction is parked: record, release, assert.
+	var blocked bool
+	var updateErr error
+	select {
+	case updateErr = <-updated:
+	case <-time.After(2 * time.Second):
+		blocked = true
+	}
+	unblockMerge()
+	unblockUpdate()
+	mergeErr := <-merged
+	commitErr := <-updated
+	if blocked {
+		t.Fatalf("the move onto the target waited on the merge's lock (merge=%v, move=%v)", mergeErr, commitErr)
+	}
+	if updateErr != nil || commitErr != nil {
+		t.Fatalf("move: %v / %v", updateErr, commitErr)
+	}
+	if mergeErr != nil {
+		t.Fatalf("merge: %v", mergeErr)
+	}
+	for _, id := range []string{moved, stays} {
+		var cat string
+		if err := r.monitor.QueryRow(`SELECT category_id FROM transactions WHERE id = $1`, id).Scan(&cat); err != nil {
+			t.Fatal(err)
+		}
+		if cat != r.car {
+			t.Errorf("transaction %s on %s, want the target", id, cat)
+		}
 	}
 }

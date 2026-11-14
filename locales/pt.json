@@ -2566,7 +2566,6 @@
       "start_before_previous_end": "A data de início tem de ser posterior ao fim da dívida anterior desta categoria ou envelope.",
       "cannot_reopen": "Esta dívida não pode ser reaberta: a sua categoria ou envelope acompanha outra dívida ativa ou iniciada mais tarde.",
       "paid_off": "Esta dívida está liquidada. Reabra-a para a alterar.",
-      "last_payment_in_past": "A data do último pagamento tem de ser posterior a hoje.",
       "last_payment_before_start": "A data do último pagamento tem de ser posterior à data de início.",
       "start_in_future": "A data de início tem de ser hoje ou anterior.",
       "not_set_up": "Conclua primeiro a configuração desta dívida.",

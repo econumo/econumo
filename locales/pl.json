@@ -2566,7 +2566,6 @@
       "start_before_previous_end": "Data rozpoczęcia musi być późniejsza niż koniec poprzedniego długu tej kategorii lub koperty.",
       "cannot_reopen": "Tego długu nie można ponownie otworzyć: jego kategoria lub koperta śledzi inny dług, aktywny lub rozpoczęty później.",
       "paid_off": "Ten dług jest spłacony. Otwórz go ponownie, aby go zmienić.",
-      "last_payment_in_past": "Data ostatniej płatności musi być późniejsza niż dzisiaj.",
       "last_payment_before_start": "Data ostatniej płatności musi być późniejsza niż data rozpoczęcia.",
       "start_in_future": "Data rozpoczęcia nie może być późniejsza niż dzisiaj.",
       "not_set_up": "Najpierw dokończ konfigurowanie tego długu.",
