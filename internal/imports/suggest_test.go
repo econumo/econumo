@@ -555,11 +555,15 @@ func TestParseSuggestReplyCleansMerchants(t *testing.T) {
 
 func TestExactPayeeAcrossMerchantNames(t *testing.T) {
 	payees := namedList("Яндекс Такси", "Яндекс Плюс", "Перекрёсток")
-	id, ok := exactPayee([]string{"Yandex Taxi", "Яндекс Такси"}, "YANDEX*TAXI", payees)
+	id, ok := exactPayee([]string{"Яндекс Такси", "Yandex Taxi"}, "YANDEX*TAXI", payees)
 	require.True(t, ok)
 	require.Equal(t, payees[0].ID, id)
-	_, ok = exactPayee([]string{"Yandex Taxi", "Яндекс Такси", "Яндекс Плюс"}, "YANDEX", payees)
-	require.False(t, ok)
+	_, ok = exactPayee([]string{"Yandex Taxi", "Яндекс Такси"}, "YANDEX*TAXI", payees)
+	require.False(t, ok) // equal only to a later merchant name
+	_, ok = exactPayee([]string{"Яндекс Такси", "Яндекс Плюс"}, "YANDEX", payees)
+	require.True(t, ok)
+	_, ok = exactPayee(nil, "Перекрёсток", payees)
+	require.True(t, ok) // the match text alone
 	_, ok = exactPayee([]string{"Yandex Taxi"}, "YANDEX*TAXI", payees)
 	require.False(t, ok)
 }

@@ -338,11 +338,13 @@ func similarityQueries(merchants []string, matchText string) []string {
 	return queries
 }
 
-// exactPayee is the one payee whose name equals any merchant name or the
-// match text (as payeeCandidates normalizes them): a clear match needs no
-// second request. Two equal names are ambiguous and go to the AI.
+// exactPayee is the one payee whose name equals the first (most common)
+// merchant name or the match text (as payeeCandidates normalizes them): a
+// clear match needs no second request. A later merchant name can be a parent
+// brand ("Yandex" for YANDEX*TAXI), so a payee equal only to one of those goes
+// to the AI as a candidate. Two equal names are ambiguous and go there too.
 func exactPayee(merchants []string, matchText string, payees []model.ImportNamed) (string, bool) {
-	queries := similarityQueries(merchants, matchText)
+	queries := similarityQueries(merchants[:min(len(merchants), 1)], matchText)
 	id, n := "", 0
 	for _, p := range payees {
 		if name := similarityText(p.Name); slices.Contains(queries, name) {

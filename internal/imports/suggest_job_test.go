@@ -1318,13 +1318,32 @@ func TestSuggestExactPayeeSkipsStepTwo(t *testing.T) {
 	}
 }
 
-func TestSuggestExactPayeeByAnyMerchantName(t *testing.T) {
+func TestSuggestExactPayeeByFirstMerchantName(t *testing.T) {
 	h, c, ids := exactPayeeSetup(t, "Синяя Бутылка")
-	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle","Синяя Бутылка"],"categoryId":"` + ids["cat"] + `"}]}`
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Синяя Бутылка","Blue Bottle"],"categoryId":"` + ids["cat"] + `"}]}`
 	ingest(t, h, tap)
 	got := openSuggestions(t, h, userA)
 	if len(c.calls) != 1 || len(got) != 1 || got[0].PayeeID == nil || got[0].PayeeID.String() != ids["Синяя Бутылка1"] {
 		t.Fatalf("calls = %d, suggestions = %+v", len(c.calls), got)
+	}
+}
+
+func TestSuggestPayeeEqualToLaterAliasGoesToStepTwo(t *testing.T) {
+	h, c, ids := exactPayeeSetup(t, "Blue")
+	c.replies = []string{
+		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchants":["Blue Bottle","Blue"],"categoryId":"` + ids["cat"] + `"}]}`,
+		`{"rows":[]}`,
+	}
+	ingest(t, h, tap)
+	if len(c.calls) != 2 {
+		t.Fatalf("calls = %d, want step 2", len(c.calls))
+	}
+	if !strings.Contains(c.calls[1].user, `"name":"Blue"`) {
+		t.Fatalf("step 2 prompt lacks the alias payee: %s", c.calls[1].user)
+	}
+	got := openSuggestions(t, h, userA)
+	if len(got) != 1 || got[0].PayeeID != nil {
+		t.Fatalf("suggestions = %+v, want no payee taken without step 2", got)
 	}
 }
 
