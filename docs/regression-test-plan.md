@@ -2688,9 +2688,9 @@ a second budget member account in USD, before running these.
       deletes are greyed out.
 - [ ] 📱 **Return by a date** (schedule `none`, a loan returned by a date, e.g. a personal loan from a friend):
       Track as debt on a category and pick "Return by a date" in the Repeats picker (after "every year"): the
-      Payment card turns into "Amount" (empty, not prefilled) and "Borrowed on" (today) and "Return by" (empty)
-      appear; picking "every month" again brings the payment back. Add with no amount or no return-by date, or a
-      return-by date on or before Borrowed on, is refused under the field without a request. With the three
+      Payment card turns into "Amount" (empty, not prefilled) and a "Return by" date (empty)
+      appears (there is no "Borrowed on" field); picking "every month" again brings the payment back. Add with no amount or no return-by date, or a
+      return-by date on or before today, is refused under the field without a request. With both
       filled, Add creates the debt in one request and opens its review already set up (no Finish setup; the
       Balance tab is there). With any other repeat a payment of 0 or empty is refused. The last date reads
       "Return by" (Settings and Overview). With 3,000.00 borrowed and a return-by date in December 2027 the Overview top

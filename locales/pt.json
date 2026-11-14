@@ -487,9 +487,6 @@
         "none": "Sem data",
         "clear": "Limpar a data de início"
       },
-      "borrowed_on": {
-        "label": "Data do empréstimo"
-      },
       "amount_borrowed": {
         "label": "Montante do empréstimo"
       },
@@ -513,7 +510,7 @@
       "return_by": {
         "label": "Devolver até",
         "hint": "O dia em que o empréstimo deve ser devolvido",
-        "after_borrowed": "Escolha uma data posterior ao dia do empréstimo."
+        "after_today": "Escolha uma data posterior a hoje."
       },
       "last_payment_date": {
         "label": "Data do último pagamento",

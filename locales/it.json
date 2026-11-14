@@ -487,9 +487,6 @@
         "none": "Nessuna data",
         "clear": "Cancella la data di inizio"
       },
-      "borrowed_on": {
-        "label": "Preso in prestito il"
-      },
       "amount_borrowed": {
         "label": "Importo preso in prestito"
       },
@@ -513,7 +510,7 @@
       "return_by": {
         "label": "Restituire entro",
         "hint": "Il giorno entro cui il prestito va restituito",
-        "after_borrowed": "Scegli una data successiva al giorno del prestito."
+        "after_today": "Scegli una data successiva a oggi."
       },
       "last_payment_date": {
         "label": "Data dell'ultimo pagamento",

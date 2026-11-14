@@ -487,9 +487,6 @@
         "none": "Aucune date",
         "clear": "Effacer la date de début"
       },
-      "borrowed_on": {
-        "label": "Emprunté le"
-      },
       "amount_borrowed": {
         "label": "Montant emprunté"
       },
@@ -513,7 +510,7 @@
       "return_by": {
         "label": "À rembourser avant le",
         "hint": "Le jour où le prêt doit être remboursé",
-        "after_borrowed": "Choisissez une date postérieure au jour de l'emprunt."
+        "after_today": "Choisissez une date postérieure à aujourd'hui."
       },
       "last_payment_date": {
         "label": "Date du dernier paiement",

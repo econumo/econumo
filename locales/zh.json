@@ -487,9 +487,6 @@
         "none": "无日期",
         "clear": "清除开始日期"
       },
-      "borrowed_on": {
-        "label": "借款日期"
-      },
       "amount_borrowed": {
         "label": "借款金额"
       },
@@ -513,7 +510,7 @@
       "return_by": {
         "label": "归还期限",
         "hint": "需归还贷款的日期",
-        "after_borrowed": "请选择晚于借款日期的日期。"
+        "after_today": "请选择晚于今天的日期。"
       },
       "last_payment_date": {
         "label": "最后还款日",

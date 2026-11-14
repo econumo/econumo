@@ -19,27 +19,25 @@ export interface DebtCreateState {
   /** Y-m-d, "" = none; asked only after the server says the loan cannot start
       before the end of the element's previous debt */
   startDate: string
-  /** Return by a date (`none`): the whole amount, the day borrowed and the
-      day it is due back, so the debt is created set up */
+  /** Return by a date (`none`): the whole amount and the day it is due back;
+      the loan starts today, so the debt is created set up */
   amountBorrowed: string
-  borrowedOn: string
   returnBy: string
 }
 
 export function initialCreateState(): DebtCreateState {
-  return { payment: '', schedule: 'monthly', startDate: '', amountBorrowed: '', borrowedOn: formatDate(new Date()), returnBy: '' }
+  return { payment: '', schedule: 'monthly', startDate: '', amountBorrowed: '', returnBy: '' }
 }
 
-/** Return by a date's own fields: the amount, and a return-by day after the day borrowed */
+/** Return by a date's own fields: the amount, and a return-by day after today */
 export function returnByErrors(state: DebtCreateState, t: (key: string) => string): Record<string, string | undefined> {
   const required = t('common.validation.required_field')
   let lastPaymentDate = state.returnBy ? undefined : required
-  if (state.returnBy && state.borrowedOn && state.returnBy <= state.borrowedOn) {
-    lastPaymentDate = t('debts.form.return_by.after_borrowed')
+  if (state.returnBy && state.returnBy <= formatDate(new Date())) {
+    lastPaymentDate = t('debts.form.return_by.after_today')
   }
   return {
     amountBorrowed: amountError(state.amountBorrowed, t, true),
-    startDate: state.borrowedOn ? undefined : required,
     lastPaymentDate,
   }
 }
@@ -54,7 +52,7 @@ export function buildCreatePayload(state: DebtCreateState, params: OpenDebtParam
       schedule: state.schedule,
       payment: '0',
       amountBorrowed: sentAmount(state.amountBorrowed),
-      startDate: state.borrowedOn,
+      startDate: formatDate(new Date()),
       lastPaymentDate: state.returnBy,
     }
   }

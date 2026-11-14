@@ -487,9 +487,6 @@
         "none": "Brak daty",
         "clear": "Wyczyść datę rozpoczęcia"
       },
-      "borrowed_on": {
-        "label": "Data pożyczki"
-      },
       "amount_borrowed": {
         "label": "Pożyczona kwota"
       },
@@ -513,7 +510,7 @@
       "return_by": {
         "label": "Zwrot do",
         "hint": "Dzień, do którego trzeba oddać pożyczkę",
-        "after_borrowed": "Wybierz datę późniejszą niż dzień pożyczki."
+        "after_today": "Wybierz datę późniejszą niż dzisiaj."
       },
       "last_payment_date": {
         "label": "Data ostatniej płatności",

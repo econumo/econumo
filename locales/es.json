@@ -487,9 +487,6 @@
         "none": "Sin fecha",
         "clear": "Quitar la fecha de inicio"
       },
-      "borrowed_on": {
-        "label": "Prestado el"
-      },
       "amount_borrowed": {
         "label": "Importe del préstamo"
       },
@@ -513,7 +510,7 @@
       "return_by": {
         "label": "Devolver antes de",
         "hint": "El día en que hay que devolver el préstamo",
-        "after_borrowed": "Elige una fecha posterior al día del préstamo."
+        "after_today": "Elige una fecha posterior a hoy."
       },
       "last_payment_date": {
         "label": "Fecha del último pago",

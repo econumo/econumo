@@ -2306,9 +2306,10 @@ data unreadable. Most are also asserted by the test suite.
   element's (the payment shows its symbol, no Currency row); the start date field appears only
   after `debt.start_before_previous_end` (the one refusal a date resolves); the form creates a
   debt with no terms, then opens the review screen. With "Return by a date" picked the payment
-  card becomes "Amount" (the amount borrowed, no prefill) and a dates row asks "Borrowed on"
-  (default today) and "Return by" (required, after Borrowed on, both checked before sending); the
-  one `create-debt` sends `payment: "0"`, `schedule: "none"` and the setup trio, so the review
+  card becomes "Amount" (the amount borrowed, no prefill) and one "Return by"
+  date field asks for the day it is due back (required, after today, checked before sending; there is
+  no "Borrowed on" field); the one `create-debt` sends `payment: "0"`, `schedule: "none"`, the
+  amount, `startDate` = today in the caller's local day and the return-by day as the setup trio, so the review
   screen opens on a set-up debt (no Finish setup). The ONLY way into a debt is its review
   (`DebtReviewScreen`; every reader, guests included, who get it read-only): on desktop a centred
   dialog 90% of the viewport high and a reading column wide (min(90vw, 52rem)) that scrolls inside

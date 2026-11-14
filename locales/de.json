@@ -487,9 +487,6 @@
         "none": "Kein Datum",
         "clear": "Startdatum entfernen"
       },
-      "borrowed_on": {
-        "label": "Geliehen am"
-      },
       "amount_borrowed": {
         "label": "Geliehener Betrag"
       },
@@ -513,7 +510,7 @@
       "return_by": {
         "label": "Zurückzahlen bis",
         "hint": "Der Tag, an dem Sie das Darlehen zurückzahlen",
-        "after_borrowed": "Wählen Sie ein Datum nach dem Tag, an dem Sie das Geld geliehen haben."
+        "after_today": "Wählen Sie ein Datum nach heute."
       },
       "last_payment_date": {
         "label": "Datum der letzten Zahlung",

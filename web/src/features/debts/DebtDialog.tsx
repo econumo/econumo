@@ -18,7 +18,7 @@ import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { useCategories } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useCreateDebt } from './queries'
-import { DatesRow, PaymentField, StartDateField } from './debtFields'
+import { DateField, PaymentField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { suggestedPayment } from './suggestedPayment'
 import { amountEcho, buildCreatePayload, isNoFixed, paymentError, returnByErrors, useDebtCreateForm } from './useDebtForm'
@@ -202,19 +202,13 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
         )}
 
         {returnBy ? (
-          <DatesRow
-            returnBy
-            startLabel={t('debts.form.borrowed_on.label')}
-            startDate={form.borrowedOn}
-            lastPaymentDate={form.returnBy}
-            startError={errors.startDate}
-            lastPaymentError={errors.lastPaymentDate}
-            onStartDateChange={(borrowedOn) => {
-              clearError('startDate')
-              clearError('lastPaymentDate')
-              patch({ borrowedOn })
-            }}
-            onLastPaymentDateChange={(day) => {
+          <DateField
+            label={t('debts.form.return_by.label')}
+            hint={t('debts.form.return_by.hint')}
+            value={form.returnBy}
+            placeholder={t('debts.form.last_payment_date.choose')}
+            error={errors.lastPaymentDate}
+            onChange={(day) => {
               clearError('lastPaymentDate')
               patch({ returnBy: day })
             }}
