@@ -141,7 +141,11 @@ shorter at least 3 letters or digits), a Levenshtein ratio of at least 0.8, or a
 at least 3 letters, ranked in that order, at most 5 per row. There is no cap on the payee list
 itself, so a payee late in the alphabet is as reachable as any other.
 
-*Step 2*, only when at least one row has candidates: one request with only those rows (key,
+*Exact match.* A row whose merchant name or match text (normalized as above) equals the name of exactly
+one active payee takes that payee without a request; two equal names, or only looser matches,
+leave the row to step 2.
+
+*Step 2*, only when at least one row still has candidates after that: one request with only those rows (key,
 payee text, merchant name) and each row's candidates (id, name), asking
 `{"rows":{"<key>":{"payeeId":"..."}}}` only when a candidate is clearly the same merchant.
 A pick that is not one of that row's candidates is dropped; rows without candidates get no

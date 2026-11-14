@@ -207,7 +207,7 @@ field means not confident). Every prompt of this feature is a constant in
 The server then picks, without AI, up to 5 of the owner's non-archived payees per row whose
 names resemble the merchant name or the match text (`payeeCandidates`: equal, one containing
 the other, Levenshtein ratio >= 0.8, or a shared word of 3+ letters; lowercased, punctuation
-stripped), and step 2, only when some row has candidates, sends those rows (key, payee text,
+stripped), a row whose merchant name or match text equals exactly ONE such payee's name (same normalization) takes it directly, with no AI call, and step 2, only when some other row has candidates (two equal names, or only looser matches), sends those rows (key, payee text,
 merchant name) with their own candidates (reply `{rows:[{key, payeeId|null}]}`) and keeps a payee only when it is one of that row's (a failed step 2 keeps step 1's
 categories); the opt-out is re-read before every call after the first. The suggestion lands in the OWNER's Inbox only (a partner's tap included).
 Match text holds at least 3 letters or digits and must occur in the payee; there is one open suggestion per (owner, merchant, income/expense): the suggestion

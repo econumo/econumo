@@ -399,6 +399,11 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 		if _, _, ok := matchTextIn(row.Link, r.MatchText); !ok {
 			continue
 		}
+		if id, ok := exactPayee(r.Merchant, r.MatchText, vocab.Payees); ok {
+			r.PayeeID = id
+			replies[k] = r
+			continue
+		}
 		if list := payeeCandidates(r.Merchant, r.MatchText, vocab.Payees); len(list) > 0 {
 			candidates[k] = list
 		}

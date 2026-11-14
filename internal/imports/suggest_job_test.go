@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -975,7 +976,7 @@ func TestSuggestFindsPayeeBeyondFiveHundred(t *testing.T) {
 	}
 	zoo := h.payee(t, userA, "Zoo Market")
 	c.replies = []string{
-		`{"rows":[{"key":"0","matchText":"Zoo","merchant":"Zoo Market"}]}`,
+		`{"rows":[{"key":"0","matchText":"Zoo","merchant":"Zoo Market Downtown"}]}`,
 		`{"rows":[{"key":"0","payeeId":"` + zoo + `"}]}`,
 	}
 	ingest(t, h, pushWithPayee("ZOO MARKET 12", "evt-zoo"))
@@ -1244,5 +1245,89 @@ func TestSuggestProviderStatusIsLogged(t *testing.T) {
 	out := buf.String()
 	if !strings.Contains(out, "status=401") || !strings.Contains(out, "err_type=*ai.HTTPError") {
 		t.Fatalf("log = %s", out)
+	}
+}
+
+func exactPayeeSetup(t *testing.T, payees ...string) (*harness, *fakeCompleter, map[string]string) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	ids := map[string]string{"cat": h.category(t, userA, "Cafes")}
+	for _, n := range payees {
+		ids[n+fmt.Sprint(len(ids))] = h.payee(t, userA, n)
+	}
+	return h, c, ids
+}
+
+func TestSuggestExactPayeeSkipsStepTwo(t *testing.T) {
+	h, c, ids := exactPayeeSetup(t, "Blue Bottle")
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + ids["cat"] + `"}]}`
+	ingest(t, h, tap)
+	got := openSuggestions(t, h, userA)
+	if len(c.calls) != 1 || len(got) != 1 || got[0].PayeeID == nil || got[0].PayeeID.String() != ids["Blue Bottle1"] {
+		t.Fatalf("calls = %d, suggestions = %+v", len(c.calls), got)
+	}
+}
+
+func TestSuggestTwoEqualPayeesGoToStepTwo(t *testing.T) {
+	h, c, ids := exactPayeeSetup(t, "Blue Bottle", "blue bottle")
+	c.replies = []string{
+		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + ids["cat"] + `"}]}`,
+		`{"rows":[{"key":"0","payeeId":"` + ids["Blue Bottle1"] + `"}]}`,
+	}
+	ingest(t, h, tap)
+	if len(c.calls) != 2 {
+		t.Fatalf("calls = %d, want step 2", len(c.calls))
+	}
+}
+
+func TestSuggestContainmentOnlyGoesToStepTwo(t *testing.T) {
+	h, c, ids := exactPayeeSetup(t, "Blue Bottle Coffee")
+	c.replies = []string{
+		`{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + ids["cat"] + `"}]}`,
+		`{"rows":[]}`,
+	}
+	ingest(t, h, tap)
+	if len(c.calls) != 2 {
+		t.Fatalf("calls = %d, want step 2", len(c.calls))
+	}
+}
+
+func TestSuggestBatchStepTwoCarriesOnlyTheLooseRows(t *testing.T) {
+	h, p := bankHarness(t)
+	c := &fakeCompleter{}
+	withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en"}})
+	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
+	cat := h.category(t, userA, "Groceries")
+	exact := h.payee(t, userA, "Corner Shop")
+	loose := h.payee(t, userA, "Bakery Joy Cafe")
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
+	p.txs = []model.ExternalTransaction{
+		extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "Corner Shop"),
+		extTx("ACT-1", "b", "-6.00", now.AddDate(0, 0, -2).Unix(), "Bakery Joy"),
+	}
+	c.replies = []string{
+		`{"rows":[{"key":"0","matchText":"Corner Shop","merchant":"Corner Shop","categoryId":"` + cat + `"},{"key":"1","matchText":"Bakery Joy","merchant":"Bakery Joy","categoryId":"` + cat + `"}]}`,
+		`{"rows":[{"key":"1","payeeId":"` + loose + `"}]}`,
+	}
+	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.calls) != 2 {
+		t.Fatalf("calls = %d, want one step 1 and one step 2", len(c.calls))
+	}
+	if second := c.calls[1].user; !strings.Contains(second, loose) || strings.Contains(second, exact) {
+		t.Fatalf("step 2 prompt = %s", second)
+	}
+	var payees []string
+	for _, sg := range openSuggestions(t, h, userA) {
+		if sg.PayeeID != nil {
+			payees = append(payees, sg.PayeeID.String())
+		}
+	}
+	slices.Sort(payees)
+	want := []string{exact, loose}
+	slices.Sort(want)
+	if !slices.Equal(payees, want) {
+		t.Fatalf("payees = %v, want %v", payees, want)
 	}
 }

@@ -2,6 +2,7 @@ package imports
 
 import (
 	"encoding/json"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -256,6 +257,25 @@ func applyPayeeReply(replies map[string]suggestReplyRow, picks map[string]string
 			}
 		}
 	}
+}
+
+// exactPayee is the one payee whose name equals the merchant name or the
+// match text (as payeeCandidates normalizes them): a clear match needs no
+// second request. Two equal names are ambiguous and go to the AI.
+func exactPayee(merchant, matchText string, payees []model.ImportNamed) (string, bool) {
+	var queries []string
+	for _, q := range []string{merchant, matchText} {
+		if q = similarityText(q); q != "" {
+			queries = append(queries, q)
+		}
+	}
+	id, n := "", 0
+	for _, p := range payees {
+		if name := similarityText(p.Name); slices.Contains(queries, name) {
+			id, n = p.ID, n+1
+		}
+	}
+	return id, n == 1
 }
 
 // payeeCandidates ranks the payees by how alike their names are to the
