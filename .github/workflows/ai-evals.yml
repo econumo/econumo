@@ -6,10 +6,12 @@ name: AI evals
 # either language, more than 10% of its cases fail. The per-area table goes to
 # the job summary.
 #
-# The provider comes from the repository secret ECONUMO_AI_EVAL_DSN, in the
-# ECONUMO_AI_DSN format, e.g.
+# The provider comes from the secret ECONUMO_AI_EVAL_DSN of the `ai-evals`
+# environment, in the ECONUMO_AI_DSN format, e.g.
 #   anthropic://<api-key>@api.anthropic.com?model=claude-haiku-5-5&json=1
-# Without it (forks, or before it is added) the job skips with a notice.
+# The environment has a required reviewer, so every run (PR, manual, release)
+# waits for approval before the job, and its code, can read the key.
+# Without the secret (forks, or before it is added) the job skips with a notice.
 
 on:
     workflow_dispatch:
@@ -52,6 +54,7 @@ jobs:
     ai-evals:
         name: AI evals
         runs-on: ubuntu-latest
+        environment: ai-evals
         timeout-minutes: 20
         env:
             CGO_ENABLED: "0"
