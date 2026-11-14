@@ -45,7 +45,7 @@ At the end of a term (May 2031 for this mortgage) the bank also sets a new payme
 ## Model
 
 - New table `debts_rate_changes`: `id`, `debt_id` (FK `debts`, ON DELETE CASCADE), `effective_date`
-  DATE, `annual_rate` NUMERIC (percent, e.g. `3.69`), `payment` NUMERIC (debt currency), `created_at`;
+  DATE, `annual_rate` NUMERIC(19,8) (percent, e.g. `3.69`, full precision), `payment` NUMERIC (debt currency), `created_at`;
   unique `(debt_id, effective_date)`. **A new migration** on both engines, numbered above
   `20261113000000`.
 - **Period rate** = `annual_rate / 100 / periods per year` (weekly 52, biweekly 26, monthly 12,
