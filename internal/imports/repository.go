@@ -70,6 +70,7 @@ type Repository interface {
 	// AI rule suggestions
 	InsertSuggestion(ctx context.Context, s *model.ImportSuggestion) error
 	AddSuggestionLinks(ctx context.Context, suggestionID vo.Id, linkIDs []vo.Id, now time.Time) (bool, error)
+	ExistingLinkIDs(ctx context.Context, linkIDs []vo.Id) ([]vo.Id, error)
 	GetSuggestion(ctx context.Context, id vo.Id) (*model.ImportSuggestion, error)
 	// LockSuggestion takes the suggestion's row lock in the caller's
 	// transaction and reads it again with its links (NotFound once deleted).

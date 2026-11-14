@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -37,6 +39,53 @@ func (r *Repo) AddSuggestionLinks(ctx context.Context, suggestionID vo.Id, linkI
 		return false, err
 	}
 	return true, r.insertSuggestionLinks(ctx, suggestionID, linkIDs)
+}
+
+// ExistingLinkIDs keeps the ledger links that still exist, in input order.
+// The IN list is variadic, which sqlc cannot express on both engines, so the
+// query is built here.
+func (r *Repo) ExistingLinkIDs(ctx context.Context, linkIDs []vo.Id) ([]vo.Id, error) {
+	if len(linkIDs) == 0 {
+		return nil, nil
+	}
+	var sb strings.Builder
+	args := make([]any, len(linkIDs))
+	sb.WriteString("SELECT id FROM import_transaction_links WHERE id IN (")
+	for i, id := range linkIDs {
+		if i > 0 {
+			sb.WriteByte(',')
+		}
+		if r.driver == "postgresql" {
+			sb.WriteString("$" + strconv.Itoa(i+1))
+		} else {
+			sb.WriteByte('?')
+		}
+		args[i] = id.String()
+	}
+	sb.WriteByte(')')
+	rows, err := r.db(ctx).QueryContext(ctx, sb.String(), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	found := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		found[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]vo.Id, 0, len(found))
+	for _, id := range linkIDs {
+		if found[id.String()] {
+			out = append(out, id)
+		}
+	}
+	return out, nil
 }
 
 func (r *Repo) insertSuggestionLinks(ctx context.Context, suggestionID vo.Id, linkIDs []vo.Id) error {

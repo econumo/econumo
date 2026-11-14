@@ -1433,3 +1433,30 @@ func TestSuggestUnknownKeysAreDroppedAndCounted(t *testing.T) {
 		t.Fatalf("logs = %s", out)
 	}
 }
+
+// A ledger link that vanishes during the AI call (a concurrent reimport or
+// disconnect) is dropped from its group; the batch's other suggestions are
+// still stored instead of the whole write failing the foreign key.
+func TestSuggestVanishedLinkKeepsTheOtherSuggestions(t *testing.T) {
+	h, p := bankHarness(t)
+	c := &fakeCompleter{}
+	withCountingLimiter(t, h, c, fakeFacts{userA: {language: "en"}})
+	h.svc.RegisterProvider(model.ImportProviderSimpleFIN, p)
+	cat := h.category(t, userA, "Groceries")
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
+	p.txs = []model.ExternalTransaction{
+		extTx("ACT-1", "a", "-5.00", now.AddDate(0, 0, -1).Unix(), "Corner Shop"),
+		extTx("ACT-1", "b", "-6.00", now.AddDate(0, 0, -2).Unix(), "Bakery Joy"),
+	}
+	c.reply = `{"rows":[{"key":"0","matchText":"Corner Shop","categoryId":"` + cat + `"},{"key":"1","matchText":"Bakery Joy","categoryId":"` + cat + `"}]}`
+	c.onCall = func() {
+		h.db.Exec(t, h.db.Rebind(`DELETE FROM import_transaction_links WHERE external_transaction_id = ?`), "b")
+	}
+	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
+		t.Fatal(err)
+	}
+	got := openSuggestions(t, h, userA)
+	if len(got) != 1 || got[0].MatchText != "Corner Shop" || len(got[0].LinkIDs) != 1 {
+		t.Fatalf("suggestions = %+v, want only Corner Shop", got)
+	}
+}

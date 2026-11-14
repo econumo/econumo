@@ -124,9 +124,10 @@ type querier interface {
 }
 
 type Repo struct {
-	tx  *backend.TxManager
-	q   querier
-	rev *txrevision.Bumper
+	tx     *backend.TxManager
+	q      querier
+	rev    *txrevision.Bumper
+	driver string
 }
 
 var _ imports.Repository = (*Repo)(nil)
@@ -134,9 +135,9 @@ var _ imports.Repository = (*Repo)(nil)
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
 	case "sqlite":
-		return &Repo{tx: tx, q: sqliteQuerier{}, rev: txrevision.New(driver, tx)}
+		return &Repo{tx: tx, q: sqliteQuerier{}, rev: txrevision.New(driver, tx), driver: driver}
 	case "postgresql":
-		return &Repo{tx: tx, q: pgsqlQuerier{}, rev: txrevision.New(driver, tx)}
+		return &Repo{tx: tx, q: pgsqlQuerier{}, rev: txrevision.New(driver, tx), driver: driver}
 	default:
 		panic("importsrepo: unknown database driver " + driver)
 	}

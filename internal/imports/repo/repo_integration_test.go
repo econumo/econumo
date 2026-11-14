@@ -865,3 +865,20 @@ func TestReleaseAndJoinRace(t *testing.T) {
 		})
 	}
 }
+
+func TestExistingLinkIDs(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	_, links := seedSuggestionWithLinks(t, repo, db, 3)
+	db.Exec(t, db.Rebind(`DELETE FROM import_transaction_links WHERE id = ?`), links[1].ID.String())
+	got, err := repo.ExistingLinkIDs(ctx, []vo.Id{links[2].ID, links[1].ID, vo.NewId(), links[0].ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0] != links[2].ID || got[1] != links[0].ID {
+		t.Fatalf("got = %v", got)
+	}
+	if got, err := repo.ExistingLinkIDs(ctx, nil); err != nil || len(got) != 0 {
+		t.Fatalf("empty = %v, %v", got, err)
+	}
+}

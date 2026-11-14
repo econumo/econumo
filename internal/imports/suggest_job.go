@@ -212,7 +212,11 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 			if off, err = s.optedOut(ctx, owner); err != nil || off {
 				return err
 			}
-			gone, err = s.addSuggestionLinks(ctx, covered)
+			live, err := s.existingJoins(ctx, covered)
+			if err != nil {
+				return err
+			}
+			gone, err = s.addSuggestionLinks(ctx, live)
 			return err
 		})
 		if err != nil || off {
@@ -273,9 +277,9 @@ func (s *Service) suggestForOwner(ctx context.Context, owner vo.Id, candidates [
 		if err != nil {
 			return err
 		}
-		valid := validateReply(rest, parsed, vocab)
-		if len(valid) == 0 {
-			return nil
+		valid, err := s.stillLinked(ctx, validateReply(rest, parsed, vocab))
+		if err != nil || len(valid) == 0 {
+			return err
 		}
 		groups, groupMissing := groupRowsMissing(valid)
 		open, err := s.repo.ListOpenSuggestionsByUser(ctx, owner)
@@ -539,6 +543,57 @@ func (s *Service) suggestRows(ctx context.Context, owner vo.Id, candidates []sug
 
 // addSuggestionLinks writes the joins in id order, a stable order for
 // concurrent writers, and returns the suggestions that were no longer open.
+// stillLinked drops the rows whose ledger link vanished since the scan (a
+// concurrent reimport or disconnect), so one missing link never fails the
+// foreign key and rolls back every other suggestion of the batch.
+func (s *Service) stillLinked(ctx context.Context, valid []validSuggestion) ([]validSuggestion, error) {
+	ids := make([]vo.Id, 0, len(valid))
+	for _, v := range valid {
+		ids = append(ids, v.Row.Link.ID)
+	}
+	live, err := s.repo.ExistingLinkIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	keep := map[vo.Id]bool{}
+	for _, id := range live {
+		keep[id] = true
+	}
+	out := valid[:0:0]
+	for _, v := range valid {
+		if keep[v.Row.Link.ID] {
+			out = append(out, v)
+		}
+	}
+	return out, nil
+}
+
+// existingJoins is stillLinked for the joins made before the AI call; a
+// suggestion left with no link to add is dropped.
+func (s *Service) existingJoins(ctx context.Context, joins map[vo.Id][]vo.Id) (map[vo.Id][]vo.Id, error) {
+	var ids []vo.Id
+	for _, links := range joins {
+		ids = append(ids, links...)
+	}
+	live, err := s.repo.ExistingLinkIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	keep := map[vo.Id]bool{}
+	for _, id := range live {
+		keep[id] = true
+	}
+	out := make(map[vo.Id][]vo.Id, len(joins))
+	for id, links := range joins {
+		for _, l := range links {
+			if keep[l] {
+				out[id] = append(out[id], l)
+			}
+		}
+	}
+	return out, nil
+}
+
 func (s *Service) addSuggestionLinks(ctx context.Context, joins map[vo.Id][]vo.Id) ([]vo.Id, error) {
 	ids := make([]vo.Id, 0, len(joins))
 	for id := range joins {
