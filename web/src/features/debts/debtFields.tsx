@@ -102,7 +102,7 @@ export function PaymentField({
             <span className="text-sm text-muted-foreground">{symbol}</span>
           </div>
         </div>
-        <div className="flex min-w-0 flex-[2] items-center rounded-lg bg-econumo-card px-3 focus-within:ring-1 focus-within:ring-ring">
+        <div className="flex min-w-fit flex-[2] items-center rounded-lg bg-econumo-card px-3 focus-within:ring-1 focus-within:ring-ring">
           <OptionSelect
             id={`${id}-schedule`}
             className="h-auto w-full min-w-0 justify-between gap-1 border-0 bg-transparent p-0 text-sm text-econumo-link shadow-none focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent"
