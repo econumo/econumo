@@ -81,10 +81,11 @@ async function listWithout(err: unknown, id: Id): Promise<ImportSuggestionDto[] 
   return items !== undefined && !items.some((s) => s.id === id) ? items : null
 }
 
-// suggestions an accept was sent for and not yet answered as done: only a retry may find its
-// suggestion gone because its own first attempt landed; a first accept refused that way was
-// settled elsewhere (a dismiss, the list's cleanup) and is an error. Module level, so Cancel and
-// a reopen of the prompt keep it.
+// suggestions an accept was sent for whose outcome is unknown (no answer, or a 5xx the server may
+// have answered after committing): only a retry may find its suggestion gone because its own first
+// attempt landed; a first accept refused that way was settled elsewhere (a dismiss, the list's
+// cleanup) and is an error. A definite refusal (a 4xx) landed nothing, so it is forgotten. Module
+// level, so Cancel and a reopen of the prompt keep it.
 const acceptsSent = new Set<Id>()
 
 export function useAcceptImportSuggestion() {
@@ -97,8 +98,9 @@ export function useAcceptImportSuggestion() {
       try {
         return await importsApi.acceptImportSuggestion(id, ruleId)
       } catch (err) {
-        if (!retry || (await listWithout(err, id)) === null) throw err
-        return { updated: 0, alreadyGone: true }
+        if (retry && (await listWithout(err, id)) !== null) return { updated: 0, alreadyGone: true }
+        if (isAxiosError(err) && err.response !== undefined && err.response.status < 500) acceptsSent.delete(id)
+        throw err
       }
     },
     onSuccess: (_result, { id, changes }) => {

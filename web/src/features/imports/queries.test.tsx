@@ -222,6 +222,25 @@ it('an accept retried from a new hook instance after a lost answer counts as don
   await expect(act(() => second.result.current.mutateAsync(vars))).resolves.toEqual({ updated: 0, alreadyGone: true })
 })
 
+it('an accept after a definite refusal is a first attempt again, so a gone suggestion is an error', async () => {
+  const calls: number[] = []
+  server.use(
+    http.post('*/api/v1/import/accept-suggestion', () => {
+      calls.push(1)
+      return calls.length === 1
+        ? HttpResponse.json({ success: false, message: 'Import rule not found', code: 0, errors: {} }, { status: 400 })
+        : HttpResponse.json({ success: false, message: 'Import suggestion not found', code: 0, errors: {} }, { status: 400 })
+    }),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+  )
+  const vars = { id: 'sg-refused', ruleId: 'r1', changes: { changedMatch: false, changedCategory: false, changedPayee: false } }
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useAcceptImportSuggestion(), { wrapper })
+  await expect(act(() => result.current.mutateAsync(vars))).rejects.toBeDefined()
+  await expect(act(() => result.current.mutateAsync(vars))).rejects.toBeDefined()
+  expect(calls).toHaveLength(2)
+})
+
 it('a dismiss refused because the suggestion is already gone counts as done', async () => {
   server.use(
     http.post('*/api/v1/import/dismiss-suggestion', () => HttpResponse.json({ success: false, message: 'Import suggestion not found', code: 0, errors: {} }, { status: 400 })),
