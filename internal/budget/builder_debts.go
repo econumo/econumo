@@ -70,6 +70,12 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 	today := localToday(s.clock.Now(), reqctx.Location(ctx))
 	current := model.PeriodOf(today, f.startDay)
 	last := current
+	var latest time.Time
+	for _, m := range months {
+		if m.After(latest) {
+			latest = m
+		}
+	}
 	ids := make([]string, 0, len(views))
 	byRow := map[string][]model.DebtView{}
 	for _, v := range views {
@@ -81,8 +87,8 @@ func (s *Service) debtTimelines(ctx context.Context, b *budgetAggregate, f filte
 		_, end := v.PlanningBounds(f.startDay)
 		// an open end (no fixed payments, not repaid by its plans) reads the
 		// plans of the whole window
-		if end.IsZero() && len(months) > 0 {
-			end = months[len(months)-1]
+		if end.IsZero() {
+			end = latest
 		}
 		if end.After(last) {
 			last = end

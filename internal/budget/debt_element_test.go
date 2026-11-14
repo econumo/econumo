@@ -872,3 +872,32 @@ func TestGetBudgetPlan_NoFixedPaymentsDebt(t *testing.T) {
 		}
 	}
 }
+
+// An open-ended loan (no fixed payments, not repaid by its plans) reads the
+// plans of every requested month, not only up to the current period.
+func TestGetBudgetPlan_NoFixedPaymentsDebtProjectsFutureMonths(t *testing.T) {
+	h := newDebtHarness(t)
+	res, err := h.debts.CreateDebt(h.ctx, h.owner, model.CreateDebtRequest{
+		BudgetId: h.budgetID, ElementId: h.loan, Payment: vo.NewFlexString("0"), Schedule: "none",
+	})
+	if err != nil {
+		t.Fatalf("CreateDebt: %v", err)
+	}
+	start := "2026-01-01"
+	if _, err := h.debts.UpdateDebt(h.ctx, h.owner, model.UpdateDebtRequest{
+		Id: res.Id, StartDate: &start, AmountBorrowed: vo.NewFlexString("1000"), LastPaymentDate: "2027-05-31",
+	}); err != nil {
+		t.Fatalf("UpdateDebt: %v", err)
+	}
+	h.setLimit(t, h.loan, "2026-07-01", "100")
+
+	row := findPlanRow(h.plan(t, "2026-06-01", "3"), h.loan)
+	if row == nil {
+		t.Fatal("no loan row")
+	}
+	for i, want := range []string{"1000", "900", "900"} {
+		if got := row.Cells[i].Debt.ClosingBalance; got != want {
+			t.Errorf("cell %d closing = %s, want %s", i, got, want)
+		}
+	}
+}
