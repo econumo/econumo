@@ -517,7 +517,8 @@
       "failed": "Mislukte imports",
       "to_review": "Te beoordelen",
       "failed_writes": "Niet opgeslagen",
-      "skipped": "Overgeslagen ({count})"
+      "skipped": "Overgeslagen ({count})",
+      "suggested_rules": "Voorgestelde regels"
     },
     "due": {
       "overdue": "Achterstallig · {date}",
@@ -845,6 +846,11 @@
       "reimport": "Opnieuw importeren",
       "reimport_hint": "Importeer haar opnieuw om haar terug te zetten, of om haar te koppelen aan een transactie die u zelf hebt ingevoerd, zoals een overboeking.",
       "reimported": { "created": "Opnieuw geïmporteerd", "matched": "Gekoppeld aan een bestaande transactie", "queued": "Opnieuw geïmporteerd; ze wacht in de inbox", "skipped": "Niet toegevoegd: een overslaanregel of een genegeerde rekening is van toepassing" }
+    },
+    "suggestions": {
+      "dismiss": "Negeren",
+      "prompt_summary": "Voorgesteld voor {count} transactie | Voorgesteld voor {count} transacties",
+      "transactions": "{count} transactie | {count} transacties"
     }
   },
   "user": {
@@ -1088,6 +1094,12 @@
             "label": "Help Econumo verbeteren",
             "description": "Gebruiksstatistieken laten ons zien welke functies van de app het populairst zijn en wat we moeten verbeteren.",
             "promise": "Uw financiële en persoonlijke gegevens blijven privé en komen niet in de statistieken terecht."
+          },
+          "ai": {
+            "menu_item": "AI-functies",
+            "label": "AI-functies gebruiken",
+            "description": "AI helpt u uw financiën op orde te houden en maakt Econumo makkelijker te gebruiken.",
+            "promise": "Uw financiële en persoonlijke gegevens blijven privé en worden niet naar AI verstuurd."
           }
         }
       }

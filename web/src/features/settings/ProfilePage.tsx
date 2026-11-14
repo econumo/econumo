@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { LanguageDialog } from '@/components/LanguageDialog'
-import { getLocaleOptions, mcpUrl } from '@/lib/config'
+import { getLocaleOptions, isAiEnabled, mcpUrl } from '@/lib/config'
 import i18n from '@/app/i18n'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyField } from '@/features/currencies/CurrencyField'
@@ -18,11 +18,12 @@ import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { useCurrencies } from '@/features/currencies/queries'
 import { UserOptions } from '@/api/dto/user'
-import { useUserData, useUpdateName, useUpdateCurrency, useUpdateAnalytics, userCurrencyId, userOption } from '@/features/user/queries'
+import { useUserData, useUpdateName, useUpdateCurrency, useUpdateAnalytics, useUpdateAi, userAiOn, userCurrencyId, userOption } from '@/features/user/queries'
 import { RecoveryDialog } from '@/features/auth/RecoveryDialog'
 import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
 import { SettingsShell } from './SettingsShell'
 import { AnalyticsDialog } from './AnalyticsDialog'
+import { AiDialog } from './AiDialog'
 import { ThemeDialog } from './ThemeDialog'
 import { themePreference } from '@/lib/theme'
 import { useTheme } from 'next-themes'
@@ -42,6 +43,7 @@ export function ProfilePage() {
   const currentCurrencyId = userCurrencyId(user)
   const updateAnalytics = useUpdateAnalytics()
   const analyticsOn = userOption(user, UserOptions.ANALYTICS) !== '0'
+  const updateAi = useUpdateAi()
 
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
@@ -49,6 +51,7 @@ export function ProfilePage() {
   const [languageOpen, setLanguageOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [savedVisible, setSavedVisible] = useState(false)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
@@ -205,6 +208,19 @@ export function ProfilePage() {
         {t('user.page.settings.profile.analytics.menu_item')}
         <ChevronRight className="size-4 text-muted-foreground" />
       </button>
+      {isAiEnabled() ? (
+        <button
+          type="button"
+          className="mt-2 flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+          onClick={() => {
+            trackEvent(METRICS.USER_AI_SETTINGS_OPEN)
+            setAiOpen(true)
+          }}
+        >
+          {t('user.page.settings.profile.ai.menu_item')}
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </button>
+      ) : null}
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
         {t('user.page.settings.profile.groups.security')}
@@ -287,6 +303,13 @@ export function ProfilePage() {
         onClose={() => setAnalyticsOpen(false)}
         enabled={analyticsOn}
         onChange={(checked) => updateAnalytics.mutate(checked)}
+      />
+
+      <AiDialog
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        enabled={userAiOn(user)}
+        onChange={(checked) => updateAi.mutate(checked)}
       />
 
       <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />

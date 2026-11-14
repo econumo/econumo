@@ -81,6 +81,18 @@ definitions:
     type: object
   model.AcceptAccountAccessResult:
     type: object
+  model.AcceptImportSuggestionRequest:
+    properties:
+      id:
+        type: string
+      ruleId:
+        type: string
+    type: object
+  model.AcceptImportSuggestionResult:
+    properties:
+      updated:
+        type: integer
+    type: object
   model.AcceptInviteRequest:
     properties:
       code:
@@ -1318,6 +1330,11 @@ definitions:
       eventId:
         type: string
     type: object
+  model.DismissImportSuggestionRequest:
+    properties:
+      id:
+        type: string
+    type: object
   model.ExchangeHandoffRequest:
     properties:
       code:
@@ -1516,6 +1533,14 @@ definitions:
       items:
         items:
           $ref: '#/definitions/model.ImportSourceResult'
+        type: array
+    type: object
+  model.GetImportSuggestionListResult:
+    properties:
+      items:
+        description: oldest first, so the Inbox order is stable
+        items:
+          $ref: '#/definitions/model.ImportSuggestionResult'
         type: array
     type: object
   model.GetLabelListResult:
@@ -1846,6 +1871,43 @@ definitions:
       provider:
         type: string
       status:
+        type: string
+    type: object
+  model.ImportSuggestionResult:
+    properties:
+      categoryId:
+        type: string
+      id:
+        type: string
+      matchField:
+        type: string
+      matchText:
+        type: string
+      payeeId:
+        type: string
+      transactions:
+        description: newest first
+        items:
+          $ref: '#/definitions/model.ImportSuggestionTransactionResult'
+        type: array
+      type:
+        description: '"income" | "expense", of every listed transaction'
+        type: string
+    type: object
+  model.ImportSuggestionTransactionResult:
+    properties:
+      accountId:
+        type: string
+      amount:
+        type: string
+      currency:
+        description: the account's currency code
+        type: string
+      date:
+        type: string
+      externalPayee:
+        type: string
+      transactionId:
         type: string
     type: object
   model.IngestEventResult:
@@ -2670,6 +2732,11 @@ definitions:
     properties:
       alreadyEdited:
         type: integer
+      changes:
+        description: |-
+          Changes is how many of the matched rows applying the rule would change;
+          AlreadyEdited counts among them.
+        type: integer
       matched:
         type: integer
     type: object
@@ -3038,6 +3105,19 @@ definitions:
           $ref: '#/definitions/model.SavingsElementResult'
         type: array
     type: object
+  model.SuggestImportMatchTextRequest:
+    properties:
+      linkId:
+        type: string
+    type: object
+  model.SuggestImportMatchTextResult:
+    properties:
+      matchField:
+        description: '"" when no text could be picked'
+        type: string
+      matchText:
+        type: string
+    type: object
   model.SyncImportSourceRequest:
     properties:
       accessUrl:
@@ -3240,6 +3320,16 @@ definitions:
         type: string
     type: object
   model.UnlinkIdentityResult:
+    type: object
+  model.UpdateAIRequest:
+    properties:
+      enabled:
+        type: boolean
+    type: object
+  model.UpdateAIResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
     type: object
   model.UpdateAccountRequest:
     properties:
@@ -6949,6 +7039,53 @@ paths:
       summary: Update a custom currency
       tags:
       - Currency
+  /api/v1/import/accept-suggestion:
+    post:
+      consumes:
+      - application/json
+      description: After a rule was created from the suggestion, fills that rule's
+        category and payee into the empty fields of the suggestion's transactions
+        the rule matches, and closes the suggestion.
+      parameters:
+      - description: Accept suggestion request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AcceptImportSuggestionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AcceptImportSuggestionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Accept an import rule suggestion
+      tags:
+      - Import
   /api/v1/import/apply-rule:
     post:
       consumes:
@@ -7056,7 +7193,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a classify or skip rule for matching future/existing imports.
+      description: 'Creates a classify or skip rule for matching future/existing imports.
+        The id is the idempotency key: sending a stored id of your own again answers
+        that rule as stored.'
       parameters:
       - description: Create rule request
         in: body
@@ -7272,6 +7411,52 @@ paths:
       security:
       - Bearer: []
       summary: Discard a failed event
+      tags:
+      - Import
+  /api/v1/import/dismiss-suggestion:
+    post:
+      consumes:
+      - application/json
+      description: Deletes the suggestion and returns the remaining list. A later
+        import from the same merchant may bring a new one.
+      parameters:
+      - description: Dismiss suggestion request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DismissImportSuggestionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportSuggestionListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Dismiss an import rule suggestion
       tags:
       - Import
   /api/v1/import/get-credential-key:
@@ -7515,6 +7700,35 @@ paths:
       security:
       - Bearer: []
       summary: List import sources
+      tags:
+      - Import
+  /api/v1/import/get-suggestion-list:
+    get:
+      description: Returns the caller's open AI rule suggestions, oldest first, each
+        with the imported transactions it would still fill, newest first.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportSuggestionListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List import rule suggestions
       tags:
       - Import
   /api/v1/import/get-transaction-import-list:
@@ -8037,6 +8251,62 @@ paths:
       security:
       - Bearer: []
       summary: Skip a queued event
+      tags:
+      - Import
+  /api/v1/import/suggest-match-text:
+    post:
+      consumes:
+      - application/json
+      description: Asks the AI provider for the shortest part of the payee that identifies
+        the merchant and returns it only when the transaction really contains it;
+        empty fields when no AI is configured or it had nothing usable. Counts against
+        the preview-rule limit.
+      parameters:
+      - description: Suggest match text request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SuggestImportMatchTextRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SuggestImportMatchTextResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Suggest rule match text for an imported transaction
       tags:
       - Import
   /api/v1/import/sync-source:
@@ -11494,6 +11764,49 @@ paths:
       security:
       - Bearer: []
       summary: Revoke a session
+      tags:
+      - User
+  /api/v1/user/update-ai:
+    post:
+      consumes:
+      - application/json
+      description: Enables or disables AI features for the authenticated user (nothing
+        of theirs is sent to the AI provider while off) and returns the refreshed
+        user.
+      parameters:
+      - description: Update AI request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateAIRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateAIResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update AI preference
       tags:
       - User
   /api/v1/user/update-analytics:

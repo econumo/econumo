@@ -8,7 +8,7 @@ import (
 )
 
 // Providers selects the optional provider-specific routes; the shared ones
-// (sources, queue, runs, rules) and Apple Wallet's ingest are always mounted.
+// (sources, queue, runs, rules, suggestions) and Apple Wallet's ingest are always mounted.
 type Providers struct {
 	SimpleFIN bool
 }
@@ -42,6 +42,10 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, providers Pro
 		// POST, not GET: the whole rule spec travels in the body, like list-external-accounts.
 		mux.Handle("POST /api/v1/import/preview-rule", auth(h.PreviewRule))
 		mux.Handle("POST /api/v1/import/apply-rule", auth(h.ApplyRule))
+		mux.Handle("GET /api/v1/import/get-suggestion-list", auth(h.GetSuggestionList))
+		mux.Handle("POST /api/v1/import/accept-suggestion", auth(h.AcceptSuggestion))
+		mux.Handle("POST /api/v1/import/dismiss-suggestion", auth(h.DismissSuggestion))
+		mux.Handle("POST /api/v1/import/suggest-match-text", auth(h.SuggestMatchText))
 		// The only route an ingest-scoped PAT may call (middleware.IngestPathPrefix).
 		mux.Handle("POST /api/v1/import/ingest-apple-wallet-event", auth(h.IngestAppleWalletEvent))
 		if providers.SimpleFIN {

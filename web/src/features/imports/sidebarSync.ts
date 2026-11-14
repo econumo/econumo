@@ -6,6 +6,7 @@ import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { isSimpleFINImportEnabled } from '@/lib/config'
 import { decryptCredential, loadStoredKey } from '@/lib/importCrypto'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { scheduleSuggestionRefresh } from './suggestionRefresh'
 import { syncStartDate } from './syncWindow'
 
 // The sidebar's sync button also pulls SimpleFIN, but at most once per
@@ -37,6 +38,8 @@ export function afterPullSync(queryClient: QueryClient, sourceId: Id, result: Sy
   queryClient.setQueryData(queryKeys.importExternalAccounts(sourceId), result.accounts)
   void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
   void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
+  void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
+  if (result.run.importedCount > 0) scheduleSuggestionRefresh(queryClient)
   void queryClient.invalidateQueries({ queryKey: ['importRuns'] })
   if (result.run.importedCount + result.run.matchedCount + result.run.amountsUpdatedCount > 0) {
     void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })

@@ -1,17 +1,25 @@
 // Package ai supplies OpenAI-compatible chat completions and Anthropic
-// Messages for AI features. JSON can be requested in the prompt rather than
-// through vendor-specific response formats or tools.
+// Messages for AI features. With Config.JSONSchema a call may carry a JSON
+// schema the reply must follow; endpoints that reject schemas get the prompt
+// alone, which still asks for the JSON.
 package ai
 
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
+	"net"
 	"net/http"
+	"os"
 	"strings"
+	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -26,15 +34,175 @@ type Config struct {
 	Endpoint string // base URL including the API prefix, e.g. https://api.openai.com/v1
 	APIKey   string // empty for keyless local servers
 	Model    string
+	// JSONSchema sends each call's reply schema (the DSN's json=1). Off,
+	// schemas are never sent and the prompt alone asks for the JSON.
+	JSONSchema bool
 	// Sign, when set, supplies the bearer per call from the requesting
 	// user's id, replacing APIKey. The econumo:// dialect signs a
 	// econumo-ai:v1 token here so the AI gateway can attribute usage.
 	Sign func(userID string) (string, error)
 }
 
+// Schema is the JSON schema a reply must follow. It must fit the providers'
+// structured-output subset: every object closed (additionalProperties false)
+// with all its properties required, optional values nullable.
+type Schema struct {
+	Name string
+	JSON json.RawMessage
+}
+
+// Check reports where the schema leaves the structured-output subset, so a
+// test can guard each one: a provider refuses such a schema with a 400 and the
+// call loses its schema for the process lifetime.
+func (s Schema) Check() error {
+	var root any
+	if err := json.Unmarshal(s.JSON, &root); err != nil {
+		return fmt.Errorf("%s: %w", s.Name, err)
+	}
+	return checkNode(s.Name, root)
+}
+
+func checkNode(path string, node any) error {
+	m, ok := node.(map[string]any)
+	if !ok {
+		return fmt.Errorf("%s: not an object", path)
+	}
+	for _, k := range []string{"minLength", "maxLength", "minimum", "maximum", "minItems", "maxItems", "pattern", "format"} {
+		if _, has := m[k]; has {
+			return fmt.Errorf("%s: %s is not supported", path, k)
+		}
+	}
+	if props, has := m["properties"].(map[string]any); has || m["type"] == "object" {
+		if m["additionalProperties"] != false {
+			return fmt.Errorf("%s: additionalProperties must be false", path)
+		}
+		required, _ := m["required"].([]any)
+		if len(required) != len(props) {
+			return fmt.Errorf("%s: every property must be required", path)
+		}
+		for _, r := range required {
+			name, _ := r.(string)
+			if _, ok := props[name]; !ok {
+				return fmt.Errorf("%s: required %q is not a property", path, name)
+			}
+		}
+		for name, p := range props {
+			if err := checkNode(path+"."+name, p); err != nil {
+				return err
+			}
+		}
+	}
+	if items, has := m["items"]; has {
+		return checkNode(path+"[]", items)
+	}
+	return nil
+}
+
+// HTTPError is a non-2xx answer from the provider. It names the status and
+// dialect only: the body may echo the prompt or the key.
+type HTTPError struct {
+	StatusCode int
+	Dialect    string
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("ai: %s completion endpoint returned HTTP %d", e.Dialect, e.StatusCode)
+}
+
+// ResponseError is a 2xx answer that holds no usable completion.
+type ResponseError struct{ Reason string }
+
+func (e *ResponseError) Error() string { return "ai: " + e.Reason }
+
+var (
+	ErrMalformedResponse  = &ResponseError{"malformed completion response"}
+	ErrEmptyResponse      = &ResponseError{"completion returned no text"}
+	ErrIncompleteResponse = &ResponseError{"incomplete completion response"}
+)
+
+// TransportError is a call that got no complete answer from the endpoint.
+// Its text names only the failure class: the wrapped *url.Error holds the
+// URL, which carries the API key in some DSNs.
+type TransportError struct {
+	Op  string // "request" or "response"
+	Err error
+}
+
+func (e *TransportError) Error() string { return "ai: " + e.Op + " failed: " + e.Cause() }
+
+func (e *TransportError) Unwrap() error { return e.Err }
+
+// Cause classifies the failure: timeout, canceled, dns, connection_refused,
+// tls or network.
+func (e *TransportError) Cause() string {
+	var (
+		dnsErr  *net.DNSError
+		netErr  net.Error
+		hostErr x509.HostnameError
+		uaErr   x509.UnknownAuthorityError
+		invErr  x509.CertificateInvalidError
+		cvErr   *tls.CertificateVerificationError
+		recErr  tls.RecordHeaderError
+		alert   tls.AlertError
+	)
+	switch {
+	case errors.Is(e.Err, context.DeadlineExceeded), errors.Is(e.Err, os.ErrDeadlineExceeded):
+		return "timeout"
+	case errors.Is(e.Err, context.Canceled):
+		return "canceled"
+	case errors.As(e.Err, &dnsErr):
+		return "dns"
+	case errors.Is(e.Err, syscall.ECONNREFUSED):
+		return "connection_refused"
+	case errors.As(e.Err, &cvErr), errors.As(e.Err, &hostErr), errors.As(e.Err, &uaErr),
+		errors.As(e.Err, &invErr), errors.As(e.Err, &recErr), errors.As(e.Err, &alert):
+		return "tls"
+	case errors.As(e.Err, &netErr) && netErr.Timeout():
+		return "timeout"
+	}
+	return "network"
+}
+
+// LogAttrs gives the slog attributes that make a failed call diagnosable
+// without its text: err_type (a timeout reads as its context error, not the
+// wrapper around it), for a provider refusal status, and for a transport
+// failure cause.
+func LogAttrs(err error) []any {
+	var he *HTTPError
+	if errors.As(err, &he) {
+		return []any{"err_type", fmt.Sprintf("%T", he), "status", he.StatusCode}
+	}
+	var te *TransportError
+	if errors.As(err, &te) {
+		errType := fmt.Sprintf("%T", te)
+		for _, ctxErr := range []error{context.DeadlineExceeded, context.Canceled} {
+			if errors.Is(err, ctxErr) {
+				errType = fmt.Sprintf("%T", ctxErr)
+			}
+		}
+		return []any{"err_type", errType, "cause", te.Cause()}
+	}
+	for _, ctxErr := range []error{context.DeadlineExceeded, context.Canceled} {
+		if errors.Is(err, ctxErr) {
+			return []any{"err_type", fmt.Sprintf("%T", ctxErr)}
+		}
+	}
+	return []any{"err_type", fmt.Sprintf("%T", err)}
+}
+
+func (c *Client) dialect() string {
+	if c.cfg.Dialect == "anthropic" {
+		return "anthropic"
+	}
+	return "openai"
+}
+
 type Client struct {
 	cfg  Config
 	http *http.Client
+	// noSchema is set once the endpoint answered 400 to a request carrying a
+	// schema (local servers, older models): later calls send none.
+	noSchema atomic.Bool
 }
 
 func New(cfg Config) *Client {
@@ -58,9 +226,21 @@ type message struct {
 // field at all would break the exact DSN .env.example documents, invisibly.
 // Omitted, every server applies its own default.
 type request struct {
-	Model       string    `json:"model"`
-	Messages    []message `json:"messages"`
-	Temperature float64   `json:"temperature,omitempty"`
+	Model          string          `json:"model"`
+	Messages       []message       `json:"messages"`
+	Temperature    float64         `json:"temperature,omitempty"`
+	ResponseFormat *responseFormat `json:"response_format,omitempty"`
+}
+
+type responseFormat struct {
+	Type       string     `json:"type"`
+	JSONSchema jsonSchema `json:"json_schema"`
+}
+
+type jsonSchema struct {
+	Name   string          `json:"name"`
+	Strict bool            `json:"strict"`
+	Schema json.RawMessage `json:"schema"`
 }
 
 type response struct {
@@ -70,10 +250,20 @@ type response struct {
 }
 
 type anthropicRequest struct {
-	Model     string    `json:"model"`
-	MaxTokens int       `json:"max_tokens"`
-	System    string    `json:"system,omitempty"`
-	Messages  []message `json:"messages"`
+	Model        string        `json:"model"`
+	MaxTokens    int           `json:"max_tokens"`
+	System       string        `json:"system,omitempty"`
+	Messages     []message     `json:"messages"`
+	OutputConfig *outputConfig `json:"output_config,omitempty"`
+}
+
+type outputConfig struct {
+	Format outputFormat `json:"format"`
+}
+
+type outputFormat struct {
+	Type   string          `json:"type"`
+	Schema json.RawMessage `json:"schema"`
 }
 
 type anthropicResponse struct {
@@ -85,23 +275,67 @@ type anthropicResponse struct {
 }
 
 // Complete sends one system+user exchange on behalf of userID and returns the
-// assistant text; userID only matters when Config.Sign is set.
+// assistant text; userID only matters when Config.Sign is set. With
+// Config.JSONSchema, a non-nil schema asks the provider to force the reply
+// into it; when the endpoint
+// answers that with a 400 the call is retried once without it, and the
+// client sends no schema from then on.
 // Errors carry the HTTP status only: the response body may echo the prompt
 // (the user's payee strings) or the key, and errors end up in logs.
-func (c *Client) Complete(ctx context.Context, userID, system, user string) (string, error) {
+func (c *Client) Complete(ctx context.Context, userID, system, user string, schema *Schema) (string, error) {
+	if schema != nil && (!c.cfg.JSONSchema || c.noSchema.Load()) {
+		schema = nil
+	}
+	raw, status, err := c.send(ctx, userID, system, user, schema)
+	if err == nil && status == http.StatusBadRequest && schema != nil {
+		if c.noSchema.CompareAndSwap(false, true) {
+			slog.Info("ai endpoint rejects reply schemas, sending prompts alone", "dialect", c.cfg.Dialect, "schema", schema.Name)
+		}
+		raw, status, err = c.send(ctx, userID, system, user, nil)
+	}
+	if err != nil {
+		return "", err
+	}
+	if status/100 != 2 {
+		return "", &HTTPError{StatusCode: status, Dialect: c.dialect()}
+	}
+	if c.cfg.Dialect == "anthropic" {
+		return parseAnthropicResponse(raw)
+	}
+	var out response
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return "", ErrMalformedResponse
+	}
+	if len(out.Choices) == 0 {
+		return "", ErrEmptyResponse
+	}
+	return out.Choices[0].Message.Content, nil
+}
+
+func (c *Client) send(ctx context.Context, userID, system, user string, schema *Schema) ([]byte, int, error) {
 	path := "/chat/completions"
-	var payload any = request{Model: c.cfg.Model, Messages: []message{{Role: "system", Content: system}, {Role: "user", Content: user}}}
+	var payload any
 	if c.cfg.Dialect == "anthropic" {
 		path = "/messages"
-		payload = anthropicRequest{Model: c.cfg.Model, MaxTokens: anthropicMaxTokens, System: system, Messages: []message{{Role: "user", Content: user}}}
+		r := anthropicRequest{Model: c.cfg.Model, MaxTokens: anthropicMaxTokens, System: system, Messages: []message{{Role: "user", Content: user}}}
+		if schema != nil {
+			r.OutputConfig = &outputConfig{Format: outputFormat{Type: "json_schema", Schema: schema.JSON}}
+		}
+		payload = r
+	} else {
+		r := request{Model: c.cfg.Model, Messages: []message{{Role: "system", Content: system}, {Role: "user", Content: user}}}
+		if schema != nil {
+			r.ResponseFormat = &responseFormat{Type: "json_schema", JSONSchema: jsonSchema{Name: schema.Name, Strict: true, Schema: schema.JSON}}
+		}
+		payload = r
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return nil, 0, err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(c.cfg.Endpoint, "/")+path, bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return nil, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if c.cfg.Dialect == "anthropic" {
@@ -113,7 +347,7 @@ func (c *Client) Complete(ctx context.Context, userID, system, user string) (str
 		bearer := c.cfg.APIKey
 		if c.cfg.Sign != nil {
 			if bearer, err = c.cfg.Sign(userID); err != nil {
-				return "", fmt.Errorf("ai: signing the request: %w", err)
+				return nil, 0, fmt.Errorf("ai: signing the request: %w", err)
 			}
 		}
 		if bearer != "" {
@@ -122,40 +356,27 @@ func (c *Client) Complete(ctx context.Context, userID, system, user string) (str
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("ai: request failed: %w", err)
+		return nil, 0, &TransportError{Op: "request", Err: err}
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
-		return "", fmt.Errorf("ai: reading response: %w", err)
+		return nil, 0, &TransportError{Op: "response", Err: err}
 	}
-	if resp.StatusCode/100 != 2 {
-		return "", fmt.Errorf("ai: completion endpoint returned HTTP %d", resp.StatusCode)
-	}
-	if c.cfg.Dialect == "anthropic" {
-		return parseAnthropicResponse(raw)
-	}
-	var out response
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return "", errors.New("ai: malformed completion response")
-	}
-	if len(out.Choices) == 0 {
-		return "", errors.New("ai: completion returned no choices")
-	}
-	return out.Choices[0].Message.Content, nil
+	return raw, resp.StatusCode, nil
 }
 
 func parseAnthropicResponse(raw []byte) (string, error) {
 	var out anthropicResponse
 	if err := json.Unmarshal(raw, &out); err != nil {
-		return "", errors.New("ai: malformed completion response")
+		return "", ErrMalformedResponse
 	}
 	switch out.StopReason {
 	case "", "end_turn", "stop_sequence":
 		// Some compatible gateways omit stop_reason.
 	default:
 		// A token limit, refusal, or tool request is not a finished suggestion.
-		return "", errors.New("ai: incomplete completion response")
+		return "", ErrIncompleteResponse
 	}
 	var content strings.Builder
 	for _, block := range out.Content {
@@ -164,7 +385,7 @@ func parseAnthropicResponse(raw []byte) (string, error) {
 		}
 	}
 	if strings.TrimSpace(content.String()) == "" {
-		return "", errors.New("ai: completion returned no text")
+		return "", ErrEmptyResponse
 	}
 	return content.String(), nil
 }

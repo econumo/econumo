@@ -2,7 +2,7 @@ name: Web tests
 
 # Guards the React SPA on every push + PR: oxlint, the tsc type-check
 # (neither oxlint nor vitest type-checks), and the vitest suite.
-# locales/ is included because the SPA imports the shared catalogues.
+# locales/ and icons/ are included because the SPA imports the shared catalogues.
 # Backend paths are included too: the SPA talks to the API the backend
 # serves, so backend changes also run the frontend suite (the reverse is
 # not true — frontend changes never trigger the Go tests).
@@ -15,6 +15,7 @@ on:
         paths:
             - "web/**"
             - "locales/**"
+            - "icons/**"
             - "cmd/**"
             - "internal/**"
             - "go.mod"
@@ -24,6 +25,7 @@ on:
         paths:
             - "web/**"
             - "locales/**"
+            - "icons/**"
             - "cmd/**"
             - "internal/**"
             - "go.mod"

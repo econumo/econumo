@@ -450,7 +450,7 @@ func (s *Service) SaveAccounts(ctx context.Context, userID vo.Id, req model.Onbo
 	if err != nil {
 		return nil, err
 	}
-	s.schedule(ctx, userID, classifyBudget, classify)
+	s.scheduleClassify(ctx, userID, classifyBudget, classify)
 	return out, nil
 }
 

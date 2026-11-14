@@ -162,6 +162,24 @@ export function useUpdateAnalytics() {
   })
 }
 
+// AI features are on unless the user turned them off (an absent option reads as on).
+export function userAiOn(user: CurrentUserDto | undefined): boolean {
+  return userOption(user, UserOptions.AI) !== '0'
+}
+
+export function useUpdateAi() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (enabled: boolean) => userApi.updateAi(enabled),
+    onSuccess: (user, enabled) => {
+      queryClient.setQueryData(queryKeys.user, user)
+      // the server drops an opted-out user's open suggestions on the next read
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
+      trackEvent(METRICS.USER_UPDATE_AI, { enabled })
+    },
+  })
+}
+
 export function useUpdateLastSeenVersion() {
   const queryClient = useQueryClient()
   return useMutation({

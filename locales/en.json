@@ -517,7 +517,8 @@
       "failed": "Failed imports",
       "to_review": "To review",
       "failed_writes": "Not saved",
-      "skipped": "Skipped ({count})"
+      "skipped": "Skipped ({count})",
+      "suggested_rules": "Suggested rules"
     },
     "due": {
       "overdue": "Overdue · {date}",
@@ -845,6 +846,11 @@
       "reimport": "Import again",
       "reimport_hint": "Import it again to add it back, or to match a transaction you entered yourself, such as a transfer.",
       "reimported": { "created": "Imported again", "matched": "Matched to an existing transaction", "queued": "Imported again; it is waiting in the Inbox", "skipped": "Not added: a skip rule or an ignored account matched it" }
+    },
+    "suggestions": {
+      "dismiss": "Dismiss",
+      "prompt_summary": "Suggested for {count} transaction | Suggested for {count} transactions",
+      "transactions": "{count} transaction | {count} transactions"
     }
   },
   "user": {
@@ -1088,6 +1094,12 @@
             "label": "Help improve Econumo",
             "description": "Usage statistics show us which features of the app are most popular and what to improve.",
             "promise": "Your financial and personal data stays private and is never included in the statistics."
+          },
+          "ai": {
+            "menu_item": "AI features",
+            "label": "Use AI features",
+            "description": "AI helps you keep your finances organized and makes Econumo easier to use.",
+            "promise": "Your financial and personal data stays private and is never sent to AI."
           }
         }
       }

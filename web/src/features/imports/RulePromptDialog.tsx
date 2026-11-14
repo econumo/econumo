@@ -1,19 +1,42 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import type { ImportRuleMatchField, ImportRuleMatchType, ImportRuleScopeDto, ImportRuleSpecDto } from '@/api/dto/imports'
+import type {
+  ImportRuleMatchField,
+  ImportRuleMatchType,
+  ImportRuleScopeDto,
+  ImportRuleSpecDto,
+  ImportSuggestionDto,
+  PreviewImportRuleDto,
+  TransactionImportLinkDto,
+} from '@/api/dto/imports'
+import type { RuleDiff } from '@/lib/importMatch'
 import { useUiStore } from '@/app/uiStore'
-import type { RulePromptParams } from '@/app/uiStore'
 import { Button } from '@/components/ui/button'
 import { useOnline } from '@/hooks/useOnline'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
+import { EntitySelect } from '@/features/transactions/EntitySelect'
+import { SelectCard } from '@/features/transactions/SelectCard'
+import { userAiOn, useUserData } from '@/features/user/queries'
 import { apiErrorMessage } from '@/lib/apiError'
+import { pluralPick } from '@/lib/plural'
 import { suggestMatchValue } from '@/lib/importMatch'
-import { useApplyImportRule, useCreateImportRule, useImportRules, usePreviewImportRule, useUpdateImportRule } from './queries'
+import { isAiEnabled } from '@/lib/config'
+import { METRICS, trackEvent } from '@/lib/metrics'
+import {
+  useAcceptImportSuggestion,
+  useApplyImportRule,
+  useCreateImportRule,
+  useImportRules,
+  useSuggestMatchText,
+  usePreviewImportRule,
+  useUpdateImportRule,
+} from './queries'
 import { RuleCondition } from './RuleCondition'
 import { describeMatch } from './ruleSummary'
+import { ruleSpec, suggestionSpec } from './suggestionRule'
 
 const PREVIEW_DEBOUNCE_MS = 300
 // mirrors model.MaxImportRuleLabels — the server rejects a longer set
@@ -23,18 +46,24 @@ const ALL_SCOPE: ImportRuleScopeDto = { scope: 'all', runId: '', scopeSourceId: 
 
 type Step = 'define' | 'apply' | 'all'
 
+// what applying the rule would change; an older server sends only matched
+const changesOf = (p: PreviewImportRuleDto) => p.changes ?? p.matched
+
 export function RulePromptDialog() {
   const params = useUiStore((s) => s.rulePrompt)
   const setRulePrompt = useUiStore((s) => s.setRulePrompt)
   if (!params) {
     return null
   }
-  // keyed on the link so a new prompt always starts from a fresh form state
-  return <RulePrompt key={params.link.id} params={params} onDone={() => setRulePrompt(null)} />
+  const onDone = () => setRulePrompt(null)
+  // keyed so a new prompt always starts from a fresh form state
+  return params.kind === 'edit'
+    ? <RulePrompt key={`edit-${params.link.id}`} link={params.link} diff={params.diff} onDone={onDone} />
+    : <SuggestionPrompt key={`suggestion-${params.suggestion.id}`} suggestion={params.suggestion} onDone={onDone} />
 }
 
 // The classification the user just saved, phrased for the prompt copy.
-function useDiffSummary(diff: RulePromptParams['diff']) {
+function useDiffSummary(diff: RuleDiff) {
   const { t } = useTranslation()
   const { data: categories = [] } = useCategories()
   const { data: payees = [] } = usePayees()
@@ -53,11 +82,65 @@ function useDiffSummary(diff: RulePromptParams['diff']) {
   return t('imports.rules.prompt.changed_labels', { names: names.join(', ') })
 }
 
-function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () => void }) {
+// Shown at whichever step is about to apply, scoped to THAT step's own
+// already-edited count — the run-scoped and import-wide applies are
+// separate actions, so each gets its own control.
+function IncludeEditedControl({ count, checked, onChange }: { count: number; checked: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useTranslation()
+  if (count <= 0) {
+    return null
+  }
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">{t('imports.rules.prompt.skipped_edited', { count })}</p>
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox checked={checked} onCheckedChange={(v) => onChange(v === true)} aria-label={t('imports.rules.prompt.include_edited', { count })} />
+        {t('imports.rules.prompt.include_edited', { count })}
+      </label>
+    </>
+  )
+}
+
+// The import-wide step. Its include-edited choice starts unchecked: the
+// run-scoped choice must not silently carry over to this wider action.
+function AllStep({ ruleId, preview, loading, onDone }: { ruleId: string | null; preview: PreviewImportRuleDto | undefined; loading: boolean; onDone: () => void }) {
   const { t } = useTranslation()
   const online = useOnline()
-  const { link, diff } = params
-  const { data: rules = [] } = useImportRules()
+  const apply = useApplyImportRule()
+  const [includeEdited, setIncludeEdited] = useState(false)
+  const applyAll = async () => {
+    if (!ruleId) {
+      return
+    }
+    try {
+      const result = await apply.mutateAsync({ ruleId, scope: ALL_SCOPE, includeEdited })
+      toast.success(t('imports.rules.prompt.applied_toast', { count: result.updated }))
+      onDone()
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    }
+  }
+  return (
+    <>
+      <p className="text-sm">
+        {loading || preview === undefined
+          ? t('common.app.modal.loading.data_loading')
+          : t('imports.rules.prompt.all_question', { count: changesOf(preview) })}
+      </p>
+      <IncludeEditedControl count={preview?.alreadyEdited ?? 0} checked={includeEdited} onChange={setIncludeEdited} />
+      <div className={dialogActionsClass}>
+        <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.done')}</Button>
+        <Button type="button" disabled={apply.isPending || loading || !online} onClick={() => void applyAll()}>{t('imports.rules.prompt.apply_all')}</Button>
+      </div>
+    </>
+  )
+}
+
+function RulePrompt({ link, diff, onDone }: { link: TransactionImportLinkDto; diff: RuleDiff; onDone: () => void }) {
+  const { t } = useTranslation()
+  const online = useOnline()
+  const rulesQuery = useImportRules()
+  const rules = rulesQuery.data ?? []
   const existing = link.appliedRuleId ? rules.find((r) => r.id === link.appliedRuleId) ?? null : null
   const summary = useDiffSummary(diff)
 
@@ -67,6 +150,29 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
   const [step, setStep] = useState<Step>('define')
   const [includeEdited, setIncludeEdited] = useState(false)
   const [ruleId, setRuleId] = useState<string | null>(null)
+  const [touched, setTouched] = useState(false)
+  const [aiPick, setAiPick] = useState<{ field: ImportRuleMatchField; text: string } | null>(null)
+  // covers the save AND the count refreshes after it, so a second tap cannot create a second rule
+  const [busy, setBusy] = useState(false)
+
+  const { data: user } = useUserData()
+  // a lapsed-trial user's POST would only answer 402; wait until the access level is known. A
+  // link a rule classified updates that rule and keeps its match, so the paid call is never made
+  // for it, nor while the rules (and so `existing`) are still loading, nor for a user who opted out.
+  const aiOn =
+    !link.appliedRuleId && rulesQuery.isSuccess && isAiEnabled() && online && user !== undefined && user.accessLevel !== 'readonly' && userAiOn(user)
+  const aiMatch = useSuggestMatchText(link.id, aiOn)
+  const aiAnswer = aiOn ? aiMatch.data : undefined
+  useEffect(() => {
+    // once the save has started the spec is fixed: a late answer must not rewrite what was saved
+    if (!aiAnswer || aiAnswer.matchText === '' || touched || busy || step !== 'define') {
+      return
+    }
+    const field = aiAnswer.matchField || 'external_payee'
+    setMatchField(field)
+    setMatchValue(aiAnswer.matchText)
+    setAiPick({ field, text: aiAnswer.matchText })
+  }, [aiAnswer, touched, busy, step])
 
   // The rule spec: the existing rule's match (when updating) or the editable
   // one, with the classification the user just chose layered over it.
@@ -111,9 +217,29 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
   const fieldLabel = matchField === 'description' ? t('imports.rules.field.description') : t('imports.rules.field.external_payee')
   const typeLabel = t(`imports.rules.type.${matchType}`)
   const matched = preview.data?.matched ?? 0
+  const changes = preview.data ? changesOf(preview.data) : 0
   const alreadyEdited = preview.data?.alreadyEdited ?? 0
 
+  // The import-wide step: shown only when the rule would change something
+  // there, else the prompt is finished. A failed count also finishes it, as in
+  // the suggestion flow: the rule is saved, and a step with no count would
+  // wait forever.
+  const goToAll = async () => {
+    if (!link.runId) {
+      onDone()
+      return
+    }
+    const all = await allPreview.mutateAsync({ spec, scope: ALL_SCOPE }).catch(() => undefined)
+    if (all === undefined || changesOf(all) === 0) {
+      onDone()
+      return
+    }
+    setStep('all')
+  }
+
   const save = async () => {
+    setBusy(true)
+    setTouched(true)
     try {
       // the create/update and the count refresh are independent outcomes: if
       // the rule is saved but the refresh then fails, we must still record
@@ -123,81 +249,56 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
       // exists to avoid.
       const saved = existing ? await update.mutateAsync({ id: existing.id, spec }) : await create.mutateAsync({ spec })
       setRuleId(saved.id)
+      if (!existing && aiPick !== null && matchValue === aiPick.text && matchField === aiPick.field) {
+        trackEvent(METRICS.IMPORT_RULE_AI_MATCH_USED)
+      }
       // the debounced live-count preview may not have settled yet (e.g. the
       // user clicked Create right away) — refresh it so the apply step's
       // count is never stale; a refresh failure just leaves the count at 0,
       // it must not undo the save that already succeeded
-      await preview.mutateAsync({ spec, scope: runScope }).catch(() => {})
+      const refreshed = await preview.mutateAsync({ spec, scope: runScope }).catch(() => undefined)
+      if (refreshed !== undefined && changesOf(refreshed) === 0) {
+        // the run step (or, with no run, the only step) has nothing to apply
+        await goToAll()
+        return
+      }
       setStep('apply')
     } catch (err) {
       toast.error(apiErrorMessage(err))
+    } finally {
+      setBusy(false)
     }
   }
 
-  const applyTo = async (scope: ImportRuleScopeDto, next: Step | null) => {
+  const applyToRun = async () => {
     if (!ruleId) {
       return
     }
     try {
-      const result = await apply.mutateAsync({ ruleId, scope, includeEdited })
+      const result = await apply.mutateAsync({ ruleId, scope: runScope, includeEdited })
       toast.success(t('imports.rules.prompt.applied_toast', { count: result.updated }))
-      if (next && link.runId) {
-        // applying to every import is a separate, wider-reaching action — the
-        // run-scoped "include edited" choice must not silently carry over to it
-        setIncludeEdited(false)
-        allPreview.mutate({ spec, scope: ALL_SCOPE })
-        setStep(next)
-      } else {
-        onDone()
-      }
+      await goToAll()
     } catch (err) {
       toast.error(apiErrorMessage(err))
     }
   }
-
-  // Shown at whichever step is about to apply, scoped to THAT step's own
-  // already-edited count — the run-scoped and import-wide applies are
-  // separate actions (state reset in applyTo), so each gets its own control.
-  const includeEditedControl = (count: number) =>
-    count > 0 ? (
-      <>
-        <p className="text-sm text-muted-foreground">{t('imports.rules.prompt.skipped_edited', { count })}</p>
-        <label className="flex items-center gap-2 text-sm">
-          <Checkbox checked={includeEdited} onCheckedChange={(v) => setIncludeEdited(v === true)} aria-label={t('imports.rules.prompt.include_edited', { count })} />
-          {t('imports.rules.prompt.include_edited', { count })}
-        </label>
-      </>
-    ) : null
 
   const body = () => {
     if (step === 'apply') {
       return (
         <>
-          <p className="text-sm">{t(link.runId ? 'imports.rules.prompt.apply_question' : 'imports.rules.prompt.apply_all_question', { count: matched })}</p>
-          {includeEditedControl(alreadyEdited)}
+          <p className="text-sm">{t(link.runId ? 'imports.rules.prompt.apply_question' : 'imports.rules.prompt.apply_all_question', { count: changes })}</p>
+          <IncludeEditedControl count={alreadyEdited} checked={includeEdited} onChange={setIncludeEdited} />
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.skip_apply')}</Button>
-            <Button type="button" disabled={apply.isPending || !online} onClick={() => void applyTo(runScope, 'all')}>{t('imports.rules.prompt.apply')}</Button>
+            {/* stays disabled while goToAll waits for the import-wide count */}
+            <Button type="button" disabled={apply.isPending || allPreview.isPending || !online} onClick={() => void applyToRun()}>{t('imports.rules.prompt.apply')}</Button>
           </div>
         </>
       )
     }
     if (step === 'all') {
-      const allLoading = allPreview.data === undefined || allPreview.isPending
-      return (
-        <>
-          <p className="text-sm">
-            {allLoading
-              ? t('common.app.modal.loading.data_loading')
-              : t('imports.rules.prompt.all_question', { count: allPreview.data?.matched ?? 0 })}
-          </p>
-          {includeEditedControl(allPreview.data?.alreadyEdited ?? 0)}
-          <div className={dialogActionsClass}>
-            <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.done')}</Button>
-            <Button type="button" disabled={apply.isPending || allPreview.isPending || !online} onClick={() => void applyTo(ALL_SCOPE, null)}>{t('imports.rules.prompt.apply_all')}</Button>
-          </div>
-        </>
-      )
+      return <AllStep ruleId={ruleId} preview={allPreview.data} loading={allPreview.isPending} onDone={onDone} />
     }
     return (
       <>
@@ -210,6 +311,7 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
           <RuleCondition id="rule-prompt-value" matchField={matchField} matchType={matchType} matchValue={matchValue}
             valueLabel={`${fieldLabel} ${typeLabel}`}
             onChange={(p) => {
+              setTouched(true)
               if (p.matchField) {
                 setMatchField(p.matchField)
               }
@@ -221,14 +323,16 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
               }
             }} />
         )}
-        <p className="px-1 text-xs text-muted-foreground" aria-live="polite">
-          {preview.data === undefined || preview.isPending
-            ? t('common.app.modal.loading.data_loading')
-            : t('imports.rules.prompt.match_count', { count: matched })}
+        <p className="min-h-4 px-1 text-xs text-muted-foreground" aria-live="polite">
+          {preview.isError
+            ? ''
+            : preview.data === undefined || preview.isPending
+              ? t('common.app.modal.loading.data_loading')
+              : t('imports.rules.prompt.match_count', { count: matched })}
         </p>
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.not_now')}</Button>
-          <Button type="button" disabled={create.isPending || update.isPending || !online || spec.matchValue.trim() === ''} onClick={() => void save()}>
+          <Button type="button" disabled={busy || create.isPending || update.isPending || !online || spec.matchValue.trim() === ''} onClick={() => void save()}>
             {existing ? t('imports.rules.prompt.update_rule') : t('imports.rules.prompt.create_rule')}
           </Button>
         </div>
@@ -239,6 +343,152 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
   return (
     <ResponsiveDialog open onOpenChange={(o) => !o && onDone()} title={t('imports.rules.prompt.title')}>
       <div className="flex flex-col gap-3">{body()}</div>
+    </ResponsiveDialog>
+  )
+}
+
+// A rule the server proposed for a group of imported transactions: the match
+// and the classification arrive prefilled and stay editable. Saving creates
+// the rule and accepts the suggestion, which fills the group's empty fields.
+function SuggestionPrompt({ suggestion, onDone }: { suggestion: ImportSuggestionDto; onDone: () => void }) {
+  const { t, i18n } = useTranslation()
+  const online = useOnline()
+  const { data: categories = [] } = useCategories()
+  const { data: payees = [] } = usePayees()
+  const { data: user } = useUserData()
+
+  const [matchField, setMatchField] = useState<ImportRuleMatchField>(suggestion.matchField)
+  const [matchType, setMatchType] = useState<ImportRuleMatchType>('contains')
+  const [matchValue, setMatchValue] = useState(suggestion.matchText)
+  const [categoryId, setCategoryId] = useState(suggestion.categoryId)
+  const [payeeId, setPayeeId] = useState(suggestion.payeeId)
+  const [step, setStep] = useState<'define' | 'all'>('define')
+  const [ruleId, setRuleId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const spec: ImportRuleSpecDto = useMemo(() => ({
+    sourceId: '', action: 'classify', matchField, matchType, matchValue, isCaseSensitive: false,
+    categoryId, payeeId, tagId: '', labelIds: [], priority: 0,
+  }), [matchField, matchType, matchValue, categoryId, payeeId])
+  // the server refuses (and will not preview) a classify rule that sets nothing
+  const complete = spec.matchValue.trim() !== '' && (categoryId !== '' || payeeId !== '')
+
+  const preview = usePreviewImportRule()
+  const allPreview = usePreviewImportRule()
+  const create = useCreateImportRule()
+  const update = useUpdateImportRule()
+  const accept = useAcceptImportSuggestion()
+  const { mutate: runPreview } = preview
+
+  useEffect(() => {
+    if (step !== 'define' || !complete) {
+      return
+    }
+    const handle = setTimeout(() => runPreview({ spec, scope: ALL_SCOPE }), PREVIEW_DEBOUNCE_MS)
+    return () => clearTimeout(handle)
+  }, [spec, step, complete, runPreview])
+
+  const ownerId = user?.id
+  const own = <T extends { ownerUserId: string }>(rows: T[]) => rows.filter((r) => !ownerId || r.ownerUserId === ownerId)
+  const fieldLabel = matchField === 'description' ? t('imports.rules.field.description') : t('imports.rules.field.external_payee')
+  const typeLabel = t(`imports.rules.type.${matchType}`)
+
+  // The rule takes the suggestion's own id: a Save after a failed accept, a reload or a Cancel
+  // replays the rule already stored (create-rule answers it as stored) and brings what this dialog
+  // edits up to date, keeping what the rules page may have changed on it since, so one suggestion
+  // never leaves two rules behind. A rule deleted meanwhile is simply created again under that id.
+  const saveAndAccept = async () => {
+    let rule = await create.mutateAsync({ spec, id: suggestion.id })
+    const changed = suggestionSpec(rule, spec)
+    if (changed) {
+      rule = await update.mutateAsync({ id: rule.id, spec: changed })
+    }
+    setRuleId(rule.id)
+    const accepted = await accept.mutateAsync({
+      id: suggestion.id,
+      ruleId: rule.id,
+      changes: {
+        changedMatch: matchField !== suggestion.matchField || matchType !== 'contains' || matchValue !== suggestion.matchText,
+        changedCategory: categoryId !== suggestion.categoryId,
+        changedPayee: payeeId !== suggestion.payeeId,
+      },
+    })
+    return { accepted, stored: ruleSpec(rule) }
+  }
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      const { accepted, stored } = await saveAndAccept()
+      // the stored rule may carry more than the dialog edits, so the preview uses the rule itself
+      // the accept filled the suggestion's own rows, so this counts the others; a row the user
+      // edited by hand (one of the suggestion's own included) is left for them, never offered
+      const all = await allPreview.mutateAsync({ spec: stored, scope: ALL_SCOPE }).catch(() => undefined)
+      if (all !== undefined && changesOf(all) - all.alreadyEdited > 0) {
+        setStep('all')
+        return
+      }
+      // an accept that had already landed (its answer lost) has no count to report
+      if (!accepted.alreadyGone) {
+        toast.success(t('imports.rules.prompt.applied_toast', { count: accepted.updated }))
+      }
+      onDone()
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (step === 'all') {
+    return (
+      <ResponsiveDialog open onOpenChange={(o) => !o && onDone()} title={t('imports.rules.prompt.title')}>
+        <div className="flex flex-col gap-3">
+          <AllStep ruleId={ruleId} preview={allPreview.data} loading={allPreview.isPending} onDone={onDone} />
+        </div>
+      </ResponsiveDialog>
+    )
+  }
+
+  return (
+    <ResponsiveDialog open onOpenChange={(o) => !o && onDone()} title={t('imports.rules.prompt.title')}>
+      <div className="flex flex-col gap-3">
+        <p className="text-sm">{pluralPick(t('imports.suggestions.prompt_summary'), suggestion.transactions.length, i18n.language)}</p>
+        <RuleCondition id="rule-prompt-value" matchField={matchField} matchType={matchType} matchValue={matchValue}
+          valueLabel={`${fieldLabel} ${typeLabel}`}
+          onChange={(p) => {
+            if (p.matchField) {
+              setMatchField(p.matchField)
+            }
+            if (p.matchType) {
+              setMatchType(p.matchType)
+            }
+            if (p.matchValue !== undefined) {
+              setMatchValue(p.matchValue)
+            }
+          }} />
+        <SelectCard label={t('imports.rules.editor.category')}>
+          <EntitySelect aria-label={t('imports.rules.editor.category')} value={categoryId || null} clearable placeholder={t('imports.rules.editor.not_set')}
+            onChange={(id) => setCategoryId(id ?? '')}
+            options={own(categories).filter((c) => (!c.isArchived || c.id === categoryId) && (!suggestion.type || c.type === suggestion.type)).map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))} />
+        </SelectCard>
+        <SelectCard label={t('imports.rules.editor.payee')}>
+          <EntitySelect aria-label={t('imports.rules.editor.payee')} value={payeeId || null} clearable placeholder={t('imports.rules.editor.not_set')}
+            onChange={(id) => setPayeeId(id ?? '')}
+            options={own(payees).filter((p) => !p.isArchived || p.id === payeeId).map((p) => ({ value: p.id, label: p.name }))} />
+        </SelectCard>
+        <p className="min-h-4 px-1 text-xs text-muted-foreground" aria-live="polite">
+          {!complete || preview.isError
+            ? ''
+            : preview.data === undefined || preview.isPending
+              ? t('common.app.modal.loading.data_loading')
+              : t('imports.rules.editor.match_count', { count: preview.data.matched })}
+        </p>
+        <div className={dialogActionsClass}>
+          <Button type="button" variant="secondary" onClick={onDone}>{t('common.button.cancel.label')}</Button>
+          <Button type="button" disabled={busy || !online || !complete} onClick={() => void save()}>{t('common.button.save.label')}</Button>
+        </div>
+      </div>
     </ResponsiveDialog>
   )
 }

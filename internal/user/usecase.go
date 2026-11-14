@@ -53,6 +53,7 @@ type Service struct {
 	logoutURLs            LogoutURLBuilder
 	oauthGrants           OAuthReclaimer
 	identityEmails        IdentityEmailLister
+	aiSuggestions         AISuggestionClearer
 	mcpGrants             MCPGrantRevoker
 	appVersion            string
 }
@@ -135,6 +136,9 @@ func (s *Service) SetIdentityEmailLister(l IdentityEmailLister) { s.identityEmai
 // SetAppVersion records the running release so new accounts start with it as
 // their last-seen version: someone who never used an older release has no
 // "what's new" to see. A non-release version (a dev build) seeds nothing.
+// SetAISuggestionClearer installs the imports feature's suggestion removal.
+func (s *Service) SetAISuggestionClearer(c AISuggestionClearer) { s.aiSuggestions = c }
+
 func (s *Service) SetAppVersion(v string) { s.appVersion = v }
 
 // Logout revokes the presenting session. The "test" literal is a frozen wire

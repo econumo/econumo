@@ -1,9 +1,10 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
+import { queryKeys } from '@/app/queryKeys'
 import type { ReactNode } from 'react'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
 import { formatDateTime } from '@/lib/datetime'
 import { addChange } from '@/features/pendingWrites/queue'
 import { loadPendingWrites, mutate, resetPendingWritesForTests } from '@/features/pendingWrites/store'
@@ -21,7 +22,7 @@ const pendingAccount = {
 }
 
 function makeWrapper() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 }, mutations: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -253,4 +254,118 @@ describe('isLoaded and the stored queue', () => {
     restore()
     expect(result.current.failedWrites).toHaveLength(0)
   })
+})
+
+it('counts suggestions in the badge', async () => {
+  const wrapper = makeWrapper()
+  const sg = (id: string) => ({ id, matchField: 'external_payee', matchText: 'X', categoryId: 'cat-food', payeeId: '', transactions: [] })
+  server.use(...coreHandlers({
+    importQueue: { queued: [q('l1')], skipped: [], failed: [] },
+    importSuggestions: [sg('sg1'), sg('sg2')],
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  expect(result.current.suggestions.map((s) => s.id)).toEqual(['sg1', 'sg2'])
+  expect(result.current.count).toBe(1 + 2)
+})
+
+it('hides suggestions from a readonly user, who cannot accept or dismiss them', async () => {
+  const wrapper = makeWrapper()
+  const sg = { id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }
+  server.use(...coreHandlers({
+    user: { ...fixtureUser, accessLevel: 'readonly' },
+    importQueue: { queued: [q('l1')], skipped: [], failed: [] },
+    importSuggestions: [sg],
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.count).toBe(1))
+  expect(result.current.suggestions).toEqual([])
+})
+
+it('hides suggestions from a user who opted out of AI', async () => {
+  const wrapper = makeWrapper()
+  const sg = { id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }
+  server.use(...coreHandlers({
+    user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'ai', value: '0' }] },
+    importQueue: { queued: [q('l1')], skipped: [], failed: [] },
+    importSuggestions: [sg],
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.count).toBe(1))
+  expect(result.current.suggestions).toEqual([])
+})
+
+it('offline, suggestions never loaded on this device read as unavailable rather than loading forever', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  queryClient.setQueryData(queryKeys.importQueue, { queued: [], skipped: [], failed: [] })
+  queryClient.setQueryData(queryKeys.importSources, [])
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  server.use(...coreHandlers())
+  act(() => onlineManager.setOnline(false))
+  try {
+    const { result } = renderHook(() => useInbox(), { wrapper })
+    await waitFor(() => expect(result.current.importsOffline).toBe(true))
+  } finally {
+    act(() => onlineManager.setOnline(true))
+  }
+})
+
+it('flags importsError when the suggestion list fails, and retryImports refetches it', async () => {
+  const wrapper = makeWrapper()
+  let calls = 0
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] }, importSources: [] }))
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => {
+    calls += 1
+    return HttpResponse.json({ success: false, message: 'boom', code: 0 }, { status: 500 })
+  }))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  await waitFor(() => expect(result.current.importsError).toBe(true))
+  const before = calls
+  result.current.retryImports()
+  await waitFor(() => expect(calls).toBeGreaterThan(before))
+})
+
+it('an older server without the suggestion route is no failure', async () => {
+  const wrapper = makeWrapper()
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] }, importSources: [] }))
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: false, message: 'Not found', code: 0, errors: {} }, { status: 404 })))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  expect(result.current.importsError).toBe(false)
+  expect(result.current.suggestions).toEqual([])
+})
+
+// a cached (or restored) list from before the downgrade must not linger: the server has no suggestions
+it('a 404 from the suggestion route hides suggestions cached before it', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const sg = { id: 'sg1', matchField: 'external_payee', matchText: 'X', type: 'expense', categoryId: 'cat-food', payeeId: '', transactions: [] }
+  queryClient.setQueryData(queryKeys.importSuggestions, [sg], { updatedAt: 0 })
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] }, importSources: [] }))
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: false, message: 'Not found', code: 0, errors: {} }, { status: 404 })))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(queryClient.getQueryState(queryKeys.importSuggestions)?.status).toBe('error'))
+  expect(result.current.suggestions).toEqual([])
+  expect(result.current.importsError).toBe(false)
+  expect(result.current.count).toBe(0)
+})
+
+it('offline, a readonly user\'s never-loaded suggestion list does not raise the offline notice', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  queryClient.setQueryData(queryKeys.importQueue, { queued: [], skipped: [], failed: [] })
+  queryClient.setQueryData(queryKeys.importSources, [])
+  queryClient.setQueryData(queryKeys.user, { ...fixtureUser, accessLevel: 'readonly' })
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly' } }))
+  act(() => onlineManager.setOnline(false))
+  try {
+    const { result } = renderHook(() => useInbox(), { wrapper })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(result.current.importsOffline).toBe(false)
+  } finally {
+    act(() => onlineManager.setOnline(true))
+  }
 })

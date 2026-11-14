@@ -68,8 +68,9 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 	for _, t := range fetched.Transactions {
 		byAccount[t.ExternalAccountID] = append(byAccount[t.ExternalAccountID], t)
 	}
+	var created []model.ImportTransactionLink
 	for _, a := range fetched.Accounts {
-		if err := s.syncAccount(fin, src, run, a, byAccount[a.ID], rules); err != nil {
+		if err := s.syncAccount(fin, src, run, a, byAccount[a.ID], rules, &created); err != nil {
 			run.Errors = append(run.Errors, model.ImportRunError{ExternalAccountId: a.ID, Message: accountFailedMessage})
 			reqctx.AddLogAttr(ctx, "account_error", a.ID)
 			// Type only, never the error text: it may originate from the
@@ -90,6 +91,7 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 	if err := s.finishRun(fin, run); err != nil {
 		return nil, err
 	}
+	s.startSuggestJob(created)
 	if run.Status != model.ImportRunStatusFailed {
 		// Re-read the source: the fetch may have run for seconds, and writing
 		// back the row loaded before it would revert a concurrent reconnect
@@ -115,9 +117,12 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 
 // syncAccount stores and applies one account's rows in a single transaction.
 // A duplicate payload (same event already stored) is skipped silently, so a
-// re-run of an overlapping range is a no-op for rows already seen.
-func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run *model.ImportRun, account model.ExternalAccount, rows []model.ExternalTransaction, rules *ruleBook) error {
+// re-run of an overlapping range is a no-op for rows already seen. The
+// ledger rows of created transactions are appended to created once the
+// account's transaction commits.
+func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run *model.ImportRun, account model.ExternalAccount, rows []model.ExternalTransaction, rules *ruleBook, created *[]model.ImportTransactionLink) error {
 	snapshot := *run
+	var placed []model.ImportTransactionLink
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		for _, row := range rows {
 			payload := EncodePullEvent(row)
@@ -144,9 +149,12 @@ func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run 
 			if parsed.Currency == "" {
 				parsed.Currency = account.Currency
 			}
-			status, amountUpdated, err := s.applyEvent(ctx, src, ev.ID, parsed, &run.ID, true, rules, nil)
+			status, amountUpdated, link, err := s.applyEvent(ctx, src, ev.ID, parsed, &run.ID, true, rules, nil)
 			if err != nil {
 				return err
+			}
+			if link != nil {
+				placed = append(placed, *link)
 			}
 			switch status {
 			case model.ImportIngestStatusCreated:
@@ -166,8 +174,10 @@ func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run 
 	})
 	if err != nil {
 		*run = snapshot // the transaction rolled back; so do its counters
+		return err
 	}
-	return err
+	*created = append(*created, placed...)
+	return nil
 }
 
 func (s *Service) finishRun(ctx context.Context, run *model.ImportRun) error {

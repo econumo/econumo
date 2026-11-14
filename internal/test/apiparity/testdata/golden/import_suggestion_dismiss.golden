@@ -1,0 +1,9 @@
+== err:dismiss-suggestion-foreign POST /api/v1/import/dismiss-suggestion [guest] -> 400
+{"success":false,"message":"Import suggestion not found","code":0,"errors":{}}
+
+== dismiss-suggestion POST /api/v1/import/dismiss-suggestion [owner] -> 200
+{"success":true,"message":"","data":{"items":[]}}
+
+== err:dismiss-suggestion-again POST /api/v1/import/dismiss-suggestion [owner] -> 400
+{"success":false,"message":"Import suggestion not found","code":0,"errors":{}}
+

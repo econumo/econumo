@@ -21,12 +21,18 @@ type Service struct {
 	entities  ClassificationLister
 	limiter   AttemptLimiter
 	completer Completer
+	facts     OwnerFacts
+	run       func(func())
 	tx        port.TxRunner
 	clk       port.Clock
 	cfg       MatcherConfig
 	providers map[string]Provider
 	parsers   map[string]EventParser
 	disabled  map[string]bool
+	// suggestLocks runs one owner's suggestion jobs one at a time, so two
+	// imports landing together cannot each open a suggestion for the same
+	// merchant.
+	suggestLocks ownerLocks
 }
 
 func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionWriter, lister TransactionLister, entities ClassificationLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
@@ -57,8 +63,11 @@ func (s *Service) enabledSources(ctx context.Context, userID vo.Id) ([]model.Imp
 	return out, nil
 }
 
-// SetCompleter configures the AI client for import features.
-func (s *Service) SetCompleter(c Completer) { s.completer = c }
+// SetSuggester turns on AI rule suggestions for newly imported transactions.
+func (s *Service) SetSuggester(c Completer, facts OwnerFacts) { s.completer, s.facts = c, facts }
+
+// SetJobRunner replaces how background jobs start (tests run them inline).
+func (s *Service) SetJobRunner(run func(func())) { s.run = run }
 
 // ownedSource resolves a source the caller owns; a foreign id reads as
 // not-found so ids cannot be probed.

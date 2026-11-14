@@ -21,6 +21,15 @@ it('any successful write marks the reports stale, and only the reports', async (
   expect(client.getQueryState(queryKeys.categories)?.isInvalidated).toBe(false)
 })
 
+it('a read sent as a POST invalidates nothing', async () => {
+  const client = createAppQueryClient()
+  client.setQueryData([...queryKeys.reportNetWorth, 'mine'], { months: [] })
+  client.setQueryData(queryKeys.importSuggestions, { items: [] })
+  await client.getMutationCache().build(client, { mutationFn: async () => 'ok', meta: { skipInvalidate: true } }).execute(undefined)
+  expect(client.getQueryState([...queryKeys.reportNetWorth, 'mine'])?.isInvalidated).toBe(false)
+  expect(client.getQueryState(queryKeys.importSuggestions)?.isInvalidated).toBe(false)
+})
+
 it('a failed write leaves the reports alone', async () => {
   const client = createAppQueryClient()
   client.setQueryData([...queryKeys.reportNetWorth, 'mine'], { months: [] })

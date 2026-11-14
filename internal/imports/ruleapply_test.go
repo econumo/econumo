@@ -41,7 +41,7 @@ func TestPreviewRule_CountsMatchesAndEdited(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Matched != 2 || res.AlreadyEdited != 1 {
+	if res.Matched != 2 || res.Changes != 2 || res.AlreadyEdited != 1 {
 		t.Fatalf("got %+v", res)
 	}
 	none, _ := h.svc.PreviewRule(context.Background(), vo.MustParseId(userA), model.PreviewImportRuleRequest{
@@ -79,8 +79,8 @@ func TestApplyRule_SkipsEditedUnlessIncluded(t *testing.T) {
 		t.Fatalf("applied snapshot after apply: %+v", l)
 	}
 	res, err = h.svc.ApplyRule(context.Background(), uid, model.ApplyImportRuleRequest{RuleId: rule.Id, Scope: model.ImportRuleScopeAll, IncludeEdited: true})
-	if err != nil || res.Updated != 2 || res.Skipped != 0 {
-		t.Fatalf("include-edited apply: %v %+v", err, res)
+	if err != nil || res.Updated != 1 || res.Skipped != 0 {
+		t.Fatalf("include-edited apply (the row the first apply classified no longer changes): %v %+v", err, res)
 	}
 	e, _ := h.repo.GetLink(context.Background(), editedID)
 	if e.AppliedCategoryID == nil || e.AppliedCategoryID.String() != cat {
@@ -183,5 +183,89 @@ func TestPreviewRule_IsRateLimited(t *testing.T) {
 	}
 	if h.lim.fail != 2 {
 		t.Fatalf("every allowed preview counts toward the cap, got %d", h.lim.fail)
+	}
+}
+
+// row A already carries the rule's category and payee (set by hand, so its
+// applied snapshot differs), row B is empty
+func seedClassifiedAndEmpty(t *testing.T, h *harness) (spec model.ImportRuleSpec) {
+	t.Helper()
+	seedTwoImports(t, h)
+	uid := vo.MustParseId(userA)
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	payee := h.f.Payee(fixture.Payee{UserID: userA, Name: "Blue Bottle"})
+	h.entities.add(h.entities.categories, uid, cat, "Coffee")
+	h.entities.add(h.entities.payees, uid, payee, "Blue Bottle")
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	h.db.Raw.ExecContext(context.Background(), h.db.Rebind(`UPDATE transactions SET category_id = ?, payee_id = ? WHERE id = ?`), cat, payee, links[0].TransactionID.String())
+	h.db.Raw.ExecContext(context.Background(), h.db.Rebind(`UPDATE transactions SET category_id = NULL, payee_id = NULL WHERE id = ?`), links[1].TransactionID.String())
+	spec = classifyReq(h, cat).ImportRuleSpec
+	spec.PayeeId = &payee
+	return spec
+}
+
+// The live count keeps the already classified row; only changes leaves it out.
+func TestPreviewRuleCountsChangesApart(t *testing.T) {
+	h := setup(t)
+	spec := seedClassifiedAndEmpty(t, h)
+	res, err := h.svc.PreviewRule(context.Background(), vo.MustParseId(userA), model.PreviewImportRuleRequest{
+		ImportRuleSpec: spec, Scope: model.ImportRuleScopeSource, ScopeSourceId: source,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Matched != 2 || res.Changes != 1 || res.AlreadyEdited != 0 {
+		t.Fatalf("got %+v", res)
+	}
+}
+
+func TestApplyRuleLeavesUnchangedRowsUncounted(t *testing.T) {
+	h := setup(t)
+	spec := seedClassifiedAndEmpty(t, h)
+	uid := vo.MustParseId(userA)
+	rule, err := h.svc.CreateRule(context.Background(), uid, model.CreateImportRuleRequest{Id: vo.NewId().String(), ImportRuleSpec: spec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := h.svc.ApplyRule(context.Background(), uid, model.ApplyImportRuleRequest{RuleId: rule.Id, Scope: model.ImportRuleScopeAll})
+	if err != nil || res.Updated != 1 || res.Skipped != 0 {
+		t.Fatalf("apply: %v %+v", err, res)
+	}
+	if len(h.txns.replaced) != 1 {
+		t.Fatalf("the already classified row was rewritten: %+v", h.txns.replaced)
+	}
+}
+
+// A hand-edited row that already carries the rule's targets needs no
+// rewrite, but include-edited still makes the rule its applied baseline, so
+// the snapshot no longer reads as an edit.
+func TestApplyRule_IncludeEditedRestampsAnEditedRowThatAlreadyMatches(t *testing.T) {
+	h := setup(t)
+	editedID, _ := seedTwoImports(t, h)
+	uid := vo.MustParseId(userA)
+	e, _ := h.repo.GetLink(context.Background(), editedID)
+	var groceries string
+	if err := h.db.Raw.QueryRowContext(context.Background(), h.db.Rebind(`SELECT category_id FROM transactions WHERE id = ?`), e.TransactionID.String()).Scan(&groceries); err != nil {
+		t.Fatal(err)
+	}
+	h.entities.add(h.entities.categories, uid, groceries, "Groceries")
+	rule, err := h.svc.CreateRule(context.Background(), uid, classifyReq(h, groceries))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := h.svc.ApplyRule(context.Background(), uid, model.ApplyImportRuleRequest{RuleId: rule.Id, Scope: model.ImportRuleScopeAll, IncludeEdited: true})
+	if err != nil || res.Updated != 1 {
+		t.Fatalf("apply: %v %+v", err, res)
+	}
+	if len(h.txns.replaced) != 1 || h.txns.replaced[0].Id == e.TransactionID.String() {
+		t.Fatalf("the edited row was rewritten: %+v", h.txns.replaced)
+	}
+	e, _ = h.repo.GetLink(context.Background(), editedID)
+	if e.AppliedCategoryID == nil || e.AppliedCategoryID.String() != groceries || e.AppliedRuleID == nil || e.AppliedRuleID.String() != rule.Id {
+		t.Fatalf("edited row's snapshot: %+v", e)
+	}
+	preview, err := h.svc.PreviewRule(context.Background(), uid, model.PreviewImportRuleRequest{ImportRuleSpec: classifyReq(h, groceries).ImportRuleSpec, Scope: model.ImportRuleScopeAll})
+	if err != nil || preview.AlreadyEdited != 0 {
+		t.Fatalf("preview: %v %+v", err, preview)
 	}
 }

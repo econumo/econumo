@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -69,7 +70,20 @@ type ClassificationLister interface {
 // Completer is one chat completion. nil = AI disabled. userID names the
 // requesting user so a metering endpoint can attribute the call.
 type Completer interface {
-	Complete(ctx context.Context, userID, system, user string) (string, error)
+	Complete(ctx context.Context, userID, system, user string, schema *ai.Schema) (string, error)
+}
+
+// OwnerFacts is what the suggestion job needs about an account owner.
+type OwnerFacts interface {
+	OwnerFacts(ctx context.Context, userID vo.Id) (OwnerInfo, error)
+}
+
+// OwnerInfo: the stored language and timezone ("" when unknown) for the
+// prompt; Readonly when the effective access level is readonly and AIOff when
+// the user opted out of AI. Either one means no AI call with their data.
+type OwnerInfo struct {
+	Language, Timezone string
+	Readonly, AIOff    bool
 }
 
 // AttemptLimiter caps the unbounded import endpoints per user; every request
@@ -84,4 +98,5 @@ const (
 	RateScopeClaimSetupToken = "import-claim"
 	RateScopeSync            = "import-sync"
 	RateScopePreviewRule     = "import-preview"
+	RateScopeSuggest         = "import-ai-suggest"
 )

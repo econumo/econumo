@@ -47,6 +47,12 @@ type (
 	insertRuleLabelParams     = sqlitegen.InsertImportRuleLabelParams
 	linkAppliedLabelRow       = sqlitegen.ImportLinkAppliedLabel
 	insertLinkAppliedParams   = sqlitegen.InsertImportLinkAppliedLabelParams
+	suggestionRow             = sqlitegen.ImportSuggestion
+	suggestionLinkRow         = sqlitegen.ImportSuggestionLink
+	insertSuggestionParams    = sqlitegen.InsertImportSuggestionParams
+	insertSuggestionLinkPs    = sqlitegen.InsertImportSuggestionLinkParams
+	touchSuggestionParams     = sqlitegen.TouchOpenImportSuggestionParams
+	deleteSuggestionLinkPs    = sqlitegen.DeleteImportSuggestionLinkParams
 )
 
 // querier method signatures mirror the sqlc-generated ones exactly, including
@@ -103,6 +109,16 @@ type querier interface {
 	DeleteImportLinkAppliedLabels(ctx context.Context, db backend.DBTX, linkID string) error
 	InsertImportLinkAppliedLabel(ctx context.Context, db backend.DBTX, p insertLinkAppliedParams) error
 	ListImportLinkAppliedLabels(ctx context.Context, db backend.DBTX, linkID string) ([]linkAppliedLabelRow, error)
+	InsertImportSuggestion(ctx context.Context, db backend.DBTX, p insertSuggestionParams) error
+	InsertImportSuggestionLink(ctx context.Context, db backend.DBTX, p insertSuggestionLinkPs) error
+	TouchOpenImportSuggestion(ctx context.Context, db backend.DBTX, p touchSuggestionParams) (int64, error)
+	LockImportSuggestion(ctx context.Context, db backend.DBTX, id string) (int64, error)
+	DeleteImportSuggestionLink(ctx context.Context, db backend.DBTX, p deleteSuggestionLinkPs) error
+	GetImportSuggestionByID(ctx context.Context, db backend.DBTX, id string) (suggestionRow, error)
+	ListOpenImportSuggestionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionRow, error)
+	ListImportSuggestionLinks(ctx context.Context, db backend.DBTX, suggestionID string) ([]suggestionLinkRow, error)
+	ListOpenImportSuggestionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]suggestionLinkRow, error)
+	DeleteImportSuggestion(ctx context.Context, db backend.DBTX, id string) error
 	ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
 	ListImportTransactionLinksIntoUserAccounts(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
 }

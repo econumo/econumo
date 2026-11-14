@@ -23,6 +23,7 @@ export const queryKeys = {
   importSources: ['importSources'] as const,
   importRules: ['importRules'] as const,
   importQueue: ['importQueue'] as const,
+  importSuggestions: ['importSuggestions'] as const,
   transactionImports: (transactionId: string) => ['transactionImports', transactionId] as const,
   importRuns: (sourceId: string) => ['importRuns', sourceId] as const,
   importRun: (id: string) => ['importRun', id] as const,

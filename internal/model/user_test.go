@@ -475,3 +475,20 @@ func TestSetOnboardingProgress(t *testing.T) {
 		t.Fatal("a user without the option must be left alone")
 	}
 }
+
+func TestAIOption(t *testing.T) {
+	now := time.Date(2026, 11, 12, 10, 0, 0, 0, time.UTC)
+	u := &User{}
+	if !u.AIEnabled() {
+		t.Fatal("absent option must read as enabled")
+	}
+	u.SetAI(false, vo.NewId(), now)
+	if len(u.Options) != 1 || u.Options[0].Name != OptionAI || *u.Options[0].Value != "0" || u.AIEnabled() {
+		t.Fatalf("options = %+v after opting out", u.Options)
+	}
+	id := u.Options[0].ID
+	u.SetAI(true, vo.NewId(), now.Add(time.Hour))
+	if len(u.Options) != 1 || u.Options[0].ID != id || *u.Options[0].Value != "1" || !u.AIEnabled() {
+		t.Fatalf("options = %+v after opting in", u.Options)
+	}
+}

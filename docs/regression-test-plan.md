@@ -426,6 +426,15 @@ navigation (single-pane vs sidebar).
       budget the import created flags the accounts the AI judges savings, and
       an icon the user changed meanwhile is kept. Without AI the icons stay
       as imported.
+- [ ] With AI, a CSV import from Settings → Data AFTER onboarding (onboarding
+      completed) that creates a new account and new categories: about 30-110 s
+      later they get matching icons without a reload (a file large enough to be
+      sent in several requests still sends ONE categories and ONE accounts
+      request, about 15 s after its last request); categories and accounts
+      that existed before the import keep their icons, and so does an icon the
+      user changed meanwhile. An import that creates nothing new sends no AI
+      request. With the Profile's "Use AI features" switch off (or without AI on
+      the server) the icons stay as imported and no refetches run.
 - [ ] Steps per device: Install app appears only where the browser can
       install or show home-screen instructions (a standalone PWA shows
       none); the Install button or "Done" marks it done and Skip skips it. On
@@ -927,8 +936,8 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       Budget.
 - [ ] Inbox count 📱: the badge equals due recurring templates + pending invites +
       sources whose last sync failed/partially failed + failed imports + queued
-      imports; skipped rows are not counted.
-- [ ] Inbox page 📱: sections appear in order Due, To review, Sync problems,
+      imports + suggested rules; skipped rows are not counted.
+- [ ] Inbox page 📱: sections appear in order Due, To review, Suggested rules, Sync problems,
       Failed imports, Skipped (collapsed), Sharing; empty sections are hidden; with
       nothing pending it reads "All caught up". On desktop the heading has no
       breadcrumb above it (the Inbox is not part of Settings).
@@ -967,6 +976,65 @@ Preconditions for §5a–5c: `ECONUMO_IMPORT_SIMPLEFIN` unset or `true` (the def
       description, posted date); saving posts `import-queued-event` — the row
       leaves the Inbox and the transaction is created with the glyph; Skip moves
       a row to the Inbox's collapsed Skipped section, Restore brings it back.
+- [ ] Inbox's Suggested rules section 📱 (server with `ECONUMO_AI_DSN`, after new
+      imported transactions): each row shows the match text, "→ <category> · <payee>"
+      (whichever is set) and "<n> transactions · <newest amount> <currency> · <date>".
+      Dismiss removes the row and lowers the badge without a reload, and is disabled
+      offline. Tapping a row opens "Create an import rule" reading "Suggested for <n>
+      transactions" with the payee/description match, category and payee prefilled and
+      editable, and a live count. Cancel leaves the suggestion. Save creates the rule and
+      fills the empty fields of the suggestion's transactions: with no other import
+      matching it closes with "Updated <n> transactions"; otherwise it asks "Also apply
+      to all your imports?". Save is disabled offline and when neither a category nor a
+      payee is set. The category picker lists only categories of the suggestion's kind
+      (expense or income).
+- [ ] Suggested rule retry 📱: when Save created the rule but the accept failed (an error
+      toast), Cancel, reopen the row and Save again: Import rules shows ONE rule for it, and an
+      edited match on the retry is saved into that same rule.
+- [ ] A readonly (lapsed trial) user sees no Suggested rules section and no suggestions in
+      the Inbox badge. 📱
+- [ ] Offline, on a device that never loaded the suggestions, the Inbox shows the offline
+      notice rather than loading forever. 📱
+- [ ] In the rule prompt after an edit, tapping "Create rule" twice quickly creates one rule. 📱
+- [ ] Suggestion creation (server with `ECONUMO_AI_DSN`): an Apple Pay tap at a merchant with
+      no matching rule, whose category or payee stays empty, adds a Suggested rules row to the
+      Inbox within about a minute, without a reload once the app is refocused (or within 60 s
+      of a SimpleFIN sync on the page that ran it); with no AI configured, none appears. 📱
+- [ ] Two taps at the same new merchant a second apart give ONE Suggested rules row with
+      "2 transactions". 📱
+- [ ] A payee-only expense suggestion never takes an income row from the same merchant (a refund
+      gets its own row, read as income). 📱
+- [ ] Accepting a suggestion whose transaction already had a payee set by hand fills only the
+      category; "Apply to all imports" afterwards counts that transaction as edited and, without
+      "include edited", leaves its payee alone. 📱
+- [ ] If the suggestion list fails to load, the Inbox shows the import error and Retry loads
+      it again. 📱
+- [ ] Archive the category of an open suggestion, then tap the same merchant again: a new
+      Suggested rules row appears with a current category, the tap is not lost. 📱
+- [ ] Suggested rule retry after the rule was deleted in Import rules: Save creates a new rule and
+      the suggestion is accepted (no endless error). 📱
+- [ ] In the rule prompt after an edit, if counting all imports fails after Apply, the dialog
+      closes (the rule is saved) instead of showing "Loading" forever. 📱
+- [ ] Suggested rule Save on a flaky connection (drop the network right after tapping Save, then
+      Save again): Import rules shows ONE rule, and the suggestion leaves the Inbox without an
+      error. Dismiss retried the same way leaves no error either. 📱
+- [ ] Suggested rules list stays in the same order between visits (oldest first). 📱
+- [ ] Suggestions come only from live imports: the first SimpleFIN sync's rows older than a
+      week, and the queue replayed by mapping a card to an account, suggest nothing. A
+      transfer, or a row the owner's rules already fully classify, suggests nothing. 📱
+- [ ] A partner's tap on a shared account suggests to the account owner only: it appears in the
+      owner's Inbox and never in the partner's. 📱
+- [ ] Repeat taps at the same merchant (income and expense kept apart) join the one open
+      suggestion: its "<n> transactions" count grows and no second row appears; a different
+      merchant gets its own row. 📱
+- [ ] Dismiss, then the next tap at that merchant suggests again (dismissal is not
+      remembered). 📱
+- [ ] The AI match text in "Create an import rule" (server with AI): opening the editor from an
+      imported transaction fills the match with a short merchant text found in the payee,
+      at least 3 characters (a row with no payee text keeps the default and sends no AI request), still editable; with no
+      AI, offline, a readonly account or a transaction a rule classified (the prompt updates
+      that rule) it stays the plain default, and an answer arriving after "Create rule" was
+      pressed changes nothing. 📱
 - [ ] A second tap with the same amount on the same card within ±3 days of a
       hand-entered transaction of that amount is adopted (no duplicate); a tap
       already linked from this source is never adopted twice.
@@ -1178,6 +1246,18 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       Wallet tap imported straight away) gets one step: "Apply this rule to N
       matching transactions across your imports?". Rules created from the
       prompt or the Import rules page apply to imports from every provider.
+- [ ] The live "Matches N transactions" line (prompt, suggestion editor, Import
+      rules editor) counts every transaction the rule matches, also the ones it
+      already classified (re-opening a rule already applied still shows its
+      matches, not 0). While the count cannot be loaded (server error) the line
+      stays empty instead of "Loading your data".
+- [ ] The apply question appears only when the rule would change at least one
+      other transaction: after "Create rule", if nothing else in that import
+      would change, the run step is skipped (straight to "Also apply to all
+      your imports?" when older imports would change); if nothing anywhere
+      would change, the dialog just closes. The edited transaction itself is
+      never counted. The all-imports step is likewise skipped after applying
+      to the run when no other import would change.
 - [ ] A transaction that a rule classified (Import rules page shows the rule):
       changing its category offers "Update rule" (match shown read-only, no
       editor) rather than a second rule; the rule's targets change.
@@ -2662,6 +2742,24 @@ User C sees none of it.
       reload; log out and back in — the switch still reads off; a read-only
       user (lapsed trial) can still flip it, unlike other writes on that
       account. There is no Privacy group on the Profile page any more.
+- [ ] AI features 📱 (Settings → Profile → Preferences, after Usage
+      statistics): the row shows only when the server has an AI provider
+      (`ECONUMO_AI_DSN`); without one it is absent. Tapping it opens a dialog
+      (bottom sheet on a phone) laid out like Usage statistics: first "Your
+      financial and personal data stays private and is never sent to AI.", then,
+      muted, "AI helps you keep your finances organized and makes Econumo easier
+      to use.", then a card with a "Use AI features" switch (no other text), on
+      for a user who never touched it. Check the same order and register in
+      another language (e.g. German "Ihre ... Daten", Russian «Ваши ... данные»). The switch is
+      disabled offline. Switching it off persists across a reload; a read-only
+      user can still flip it. While off: open rule suggestions vanish from the
+      Inbox at once and do not come back after switching on again; a new Apple
+      Wallet tap or SimpleFIN sync brings no suggestion (also for a partner's
+      tap on an account this user owns); the import rule dialog makes no
+      `suggest-match-text` request; onboarding's finish-import and
+      save-accounts start no AI job, and neither does a CSV import (icons stay
+      default, no savings flagged).
+      Switching it back on brings suggestions for new imports only.
 - [ ] Create a personal token with scope "full" — it works everywhere; an
       "ingest" token (created via "Configure on this iPhone" or the API) is
       rejected with 401 on every non-import route and accepted on

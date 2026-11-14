@@ -283,6 +283,24 @@ type ImportSource struct {
 	UpdatedAt            time.Time
 }
 
+type ImportSuggestion struct {
+	ID              string
+	UserID          string
+	MatchField      string
+	MatchText       string
+	CategoryID      *string
+	PayeeID         *string
+	TransactionType string
+	Status          string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+type ImportSuggestionLink struct {
+	SuggestionID string
+	LinkID       string
+}
+
 type ImportTransactionLink struct {
 	ID                    string
 	SourceID              string

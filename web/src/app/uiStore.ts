@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { persist } from 'zustand/middleware'
 import type { AccountDto } from '@/api/dto/account'
-import type { TransactionImportLinkDto } from '@/api/dto/imports'
+import type { ImportSuggestionDto, TransactionImportLinkDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionPrefill, TransactionType } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
@@ -45,10 +45,9 @@ export interface OpenRecurringParams {
   accountId?: Id
 }
 
-export interface RulePromptParams {
-  link: TransactionImportLinkDto
-  diff: RuleDiff
-}
+export type RulePromptParams =
+  | { kind: 'edit'; link: TransactionImportLinkDto; diff: RuleDiff }
+  | { kind: 'suggestion'; suggestion: ImportSuggestionDto }
 
 interface UiState {
   transactionModal: OpenTransactionParams | null

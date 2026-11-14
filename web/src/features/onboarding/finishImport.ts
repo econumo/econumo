@@ -5,12 +5,14 @@ import { finishOnboardingImport } from '@/api/onboarding'
 import type { CurrentUserDto } from '@/api/dto/user'
 import { queryKeys } from '@/app/queryKeys'
 import { isAiEnabled } from '@/lib/config'
+import { userAiOn } from '@/features/user/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { emptyDraft, loadDraft, saveDraft } from './draft'
 import { onboardingProgress, storedStepState } from './onboardingProgress'
 
-// when, after finish-import, the lists are refetched to show the AI's icons and savings (the job may take up to 90 s)
-export const AI_REFRESH_DELAYS_MS = [10_000, 30_000, 90_000]
+// when, after a CSV import or finish-import, the lists are refetched to show the AI's icons and
+// savings: the icon review starts 15 s after an import's last chunk and may take up to 90 s
+export const AI_REFRESH_DELAYS_MS = [10_000, 30_000, 60_000, 110_000]
 
 export const notUser = (q: Query) => q.queryKey[0] !== queryKeys.user[0]
 
@@ -26,11 +28,14 @@ export function cancelAiRefresh(): void {
 }
 
 // Module-level, not tied to a component: the import may come from the Settings data page, and
-// finishing onboarding within 90 s must not stop the icons from showing up. Without AI there is
-// nothing to wait for; a logout or another user signing in (a different cached user) ends it.
-function scheduleAiRefresh(queryClient: QueryClient, userId: string): void {
+// finishing onboarding meanwhile must not stop the icons from showing up. Without AI (or with
+// the user's AI option off) there is nothing to wait for; a logout or another user signing in (a
+// different cached user) ends it.
+export function scheduleAiRefresh(queryClient: QueryClient): void {
   cancelAiRefresh()
-  if (!isAiEnabled()) return
+  const user = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
+  if (!isAiEnabled() || !user || !userAiOn(user)) return
+  const userId = user.id
   aiRefresh = AI_REFRESH_DELAYS_MS.map((delay) =>
     setTimeout(() => {
       if (queryClient.getQueryData<CurrentUserDto>(queryKeys.user)?.id !== userId) {
@@ -47,7 +52,7 @@ function scheduleAiRefresh(queryClient: QueryClient, userId: string): void {
 let inFlight: Promise<boolean> | null = null
 
 // The one path that settles the import step while onboarding is in progress: the server marks
-// `import`, creates the budget when there is none and starts the AI review job. The client never
+// `import`, creates the budget when there is none and starts the AI savings job. The client never
 // writes `import` through update-onboarding. Resolves false when there was nothing to settle
 // (onboarding over, or the step already done); concurrent callers share one request, and the
 // operation id lives in the Day 0 draft so a retry after a lost answer replays it.
@@ -86,6 +91,6 @@ async function run(queryClient: QueryClient): Promise<boolean> {
   saveDraft(user.id, done)
   void queryClient.invalidateQueries({ predicate: notUser })
   trackEvent(METRICS.ONBOARDING_IMPORT_FINISHED, { budget: result.budgetId !== '' })
-  scheduleAiRefresh(queryClient, user.id)
+  scheduleAiRefresh(queryClient)
   return true
 }

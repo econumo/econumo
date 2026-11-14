@@ -25,5 +25,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "../locales/*.json"]
+  "include": ["src", "../locales/*.json", "../icons/*.json"]
 }

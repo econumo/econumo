@@ -517,7 +517,8 @@
       "failed": "Importaciones fallidas",
       "to_review": "Para revisar",
       "failed_writes": "Sin guardar",
-      "skipped": "Omitidos ({count})"
+      "skipped": "Omitidos ({count})",
+      "suggested_rules": "Reglas sugeridas"
     },
     "due": {
       "overdue": "Vencido · {date}",
@@ -845,6 +846,11 @@
       "reimport": "Importar de nuevo",
       "reimport_hint": "Impórtala de nuevo para volver a añadirla o para asociarla a una transacción que introdujiste tú, como una transferencia.",
       "reimported": { "created": "Importada de nuevo", "matched": "Asociada a una transacción existente", "queued": "Importada de nuevo; está esperando en la bandeja de entrada", "skipped": "No se ha añadido: coincide con una regla de omisión o con una cuenta ignorada" }
+    },
+    "suggestions": {
+      "dismiss": "Descartar",
+      "prompt_summary": "Sugerida para {count} transacción | Sugerida para {count} transacciones",
+      "transactions": "{count} transacción | {count} transacciones"
     }
   },
   "user": {
@@ -1088,6 +1094,12 @@
             "label": "Ayudar a mejorar Econumo",
             "description": "Las estadísticas de uso nos muestran qué funciones de la aplicación son las más populares y qué conviene mejorar.",
             "promise": "Tus datos financieros y personales siguen siendo privados y no se incluyen en las estadísticas."
+          },
+          "ai": {
+            "menu_item": "Funciones de IA",
+            "label": "Usar funciones de IA",
+            "description": "La IA te ayuda a mantener tus finanzas en orden y hace que Econumo sea más fácil de usar.",
+            "promise": "Tus datos financieros y personales siguen siendo privados y no se envían a la IA."
           }
         }
       }

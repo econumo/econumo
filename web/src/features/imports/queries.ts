@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { v7 as uuidv7 } from 'uuid'
 import * as importsApi from '@/api/imports'
 import type { Id } from '@/api/types'
@@ -10,12 +11,13 @@ import type {
   ImportRuleScopeDto,
   ImportRuleSpecDto,
   ImportSourceDto,
+  ImportSuggestionDto,
   UpdateImportAccountDto,
 } from '@/api/dto/imports'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useApplyTransactionItem } from '@/features/transactions/queries'
-import type { OwnErrorHandling } from '@/lib/appQueryClient'
+import { retryPolicy, type OwnErrorHandling } from '@/lib/appQueryClient'
 import { afterFailedPullSync, afterPullSync } from './sidebarSync'
 
 // The queries reached from surfaces that exist with transaction import off
@@ -27,6 +29,108 @@ export function useImportSources() {
 
 export function useImportQueue() {
   return useQuery({ queryKey: queryKeys.importQueue, queryFn: importsApi.getImportQueue, staleTime: TEN_MINUTES })
+}
+
+// The server writes suggestions in the background after an import answers, and an Apple Wallet
+// push reaches the server without this device knowing: a short staleTime plus a refetch on focus
+// is how they show up.
+export function useImportSuggestions() {
+  return useQuery({
+    queryKey: queryKeys.importSuggestions,
+    queryFn: importsApi.getImportSuggestionList,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    retry: suggestionRetry,
+  })
+}
+
+// A 404 is an older server without the route: asking again cannot help.
+export function suggestionRetry(failureCount: number, error: unknown): boolean {
+  return !(isAxiosError(error) && error.response?.status === 404) && retryPolicy(failureCount, error)
+}
+
+export { cancelSuggestionRefresh, scheduleSuggestionRefresh, SUGGESTION_REFRESH_DELAYS_MS } from './suggestionRefresh'
+
+export interface SuggestionChanges {
+  changedMatch: boolean
+  changedCategory: boolean
+  changedPayee: boolean
+}
+
+// The AI's match text for an edited import. An empty answer (no AI) and a
+// failed request (an error with no data, a 429 included) both leave the
+// heuristic in place; no error is surfaced.
+export function useSuggestMatchText(linkId: Id, enabled: boolean) {
+  return useQuery({
+    queryKey: ['importMatchText', linkId],
+    queryFn: () => importsApi.suggestImportMatchText(linkId),
+    enabled,
+    staleTime: Infinity,
+    retry: false,
+  })
+}
+
+// A refused accept or dismiss whose suggestion is no longer listed already
+// happened: a retry after a lost answer, or another device. Answers the fresh
+// list then, else null (the refusal stands).
+async function listWithout(err: unknown, id: Id): Promise<ImportSuggestionDto[] | null> {
+  if (!isAxiosError(err) || err.response === undefined || err.response.status >= 500) {
+    return null
+  }
+  const items = await importsApi.getImportSuggestionList().catch(() => undefined)
+  return items !== undefined && !items.some((s) => s.id === id) ? items : null
+}
+
+// suggestions an accept was sent for and not yet answered as done: only a retry may find its
+// suggestion gone because its own first attempt landed; a first accept refused that way was
+// settled elsewhere (a dismiss, the list's cleanup) and is an error. Module level, so Cancel and
+// a reopen of the prompt keep it.
+const acceptsSent = new Set<Id>()
+
+export function useAcceptImportSuggestion() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: async ({ id, ruleId }: { id: Id; ruleId: Id; changes: SuggestionChanges }): Promise<{ updated: number; alreadyGone?: true }> => {
+      const retry = acceptsSent.has(id)
+      acceptsSent.add(id)
+      try {
+        return await importsApi.acceptImportSuggestion(id, ruleId)
+      } catch (err) {
+        if (!retry || (await listWithout(err, id)) === null) throw err
+        return { updated: 0, alreadyGone: true }
+      }
+    },
+    onSuccess: (_result, { id, changes }) => {
+      acceptsSent.delete(id)
+      for (const queryKey of [queryKeys.importSuggestions, queryKeys.transactions, queryKeys.accounts, queryKeys.budget, queryKeys.budgetPlan, queryKeys.budgetTransactions]) {
+        void queryClient.invalidateQueries({ queryKey })
+      }
+      void queryClient.invalidateQueries({ queryKey: ['transactionImports'] })
+      trackEvent(METRICS.IMPORT_SUGGESTION_ACCEPT, { ...changes })
+    },
+  })
+}
+
+export function useDismissImportSuggestion() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    meta: { handlesOwnErrors: true },
+    mutationFn: async (id: Id) => {
+      try {
+        await importsApi.dismissImportSuggestion(id)
+      } catch (err) {
+        if ((await listWithout(err, id)) === null) throw err
+      }
+    },
+    // Never replace the cache with the answer's list: two dismisses answered out of order would
+    // bring the first one's row back. Drop this id and refetch.
+    onSuccess: (_result, id) => {
+      queryClient.setQueryData<ImportSuggestionDto[]>(queryKeys.importSuggestions, (prev) => prev?.filter((s) => s.id !== id))
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
+      trackEvent(METRICS.IMPORT_SUGGESTION_DISMISS)
+    },
+  })
 }
 
 export function useCreateImportSource({ handlesOwnErrors = false }: OwnErrorHandling = {}) {
@@ -54,6 +158,7 @@ export function useDeleteImportSource({ handlesOwnErrors = false }: OwnErrorHand
       const source = queryClient.getQueryData<ImportSourceDto[]>(queryKeys.importSources)?.find((item) => item.id === id)
       queryClient.setQueryData(queryKeys.importSources, items)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       trackEvent(METRICS.IMPORT_SOURCE_DISCONNECT, source ? { provider: source.provider } : {})
     },
   })
@@ -67,6 +172,7 @@ function useApplyImportAccount() {
     queryClient.setQueryData<ImportSourceDto[]>(queryKeys.importSources, (prev) =>
       (prev ?? []).map((s) => (s.id === result.item.id ? result.item : s)))
     void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
     if (result.run) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
@@ -150,6 +256,7 @@ export function useImportQueuedEvent() {
           : prev)
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
       void queryClient.invalidateQueries({ queryKey: ['importSourceHistory'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       trackEvent(METRICS.IMPORT_QUEUE_IMPORT)
     },
   })
@@ -194,6 +301,7 @@ export function useRetryImportEvent() {
     mutationFn: importsApi.retryImportEvent,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.importQueue })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSuggestions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
@@ -242,7 +350,7 @@ export function useSetImportCredentialKey() {
 }
 
 export function useClaimSetupToken() {
-  return useMutation({ meta: { handlesOwnErrors: true }, mutationFn: importsApi.claimSetupToken })
+  return useMutation({ meta: { handlesOwnErrors: true, skipInvalidate: true }, mutationFn: importsApi.claimSetupToken })
 }
 
 // The access URL is a per-request secret: it is the query's input, never
@@ -338,6 +446,7 @@ export function useDeleteImportRule() {
 // never cached — the count must reflect the value the user is typing.
 export function usePreviewImportRule() {
   return useMutation({
+    meta: { skipInvalidate: true },
     mutationFn: ({ spec, scope }: { spec: ImportRuleSpecDto; scope: ImportRuleScopeDto }) => importsApi.previewImportRule(spec, scope),
   })
 }

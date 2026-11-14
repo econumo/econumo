@@ -220,8 +220,36 @@ export interface ImportRuleScopeDto {
 }
 
 export interface PreviewImportRuleDto {
+  // every row the rule matches (the live counts)
   matched: number
+  // the matched rows applying the rule would change (alreadyEdited counts among them); absent on older servers
+  changes?: number
   alreadyEdited: number
+}
+
+export interface ImportSuggestionTransactionDto {
+  transactionId: Id
+  accountId: Id
+  amount: string
+  currency: string
+  date: string
+  externalPayee: string
+}
+
+export interface ImportSuggestionDto {
+  id: Id
+  matchField: ImportRuleMatchField
+  matchText: string
+  /** the type of every listed transaction; the category picker offers only categories of this type */
+  type: 'income' | 'expense'
+  categoryId: Id | ''
+  payeeId: Id | ''
+  /** newest first */
+  transactions: ImportSuggestionTransactionDto[]
+}
+
+export interface AcceptImportSuggestionDto {
+  updated: number
 }
 
 export interface ApplyImportRuleDto {

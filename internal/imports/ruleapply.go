@@ -47,6 +47,8 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 		if err != nil {
 			return nil, err
 		}
+		// matched is what the rule matches (the editors' live count); changes
+		// only the rows applying it would change, which is what apply asks about.
 		if r.Action != model.ImportRuleActionSkip {
 			owned, err := s.ownsAccount(ctx, userID, live.AccountID)
 			if err != nil {
@@ -55,8 +57,14 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 			if !owned || !touches(r, income, live.Type) {
 				continue
 			}
+			out.Matched++
+			if !changes(r, live, income) {
+				continue
+			}
+		} else {
+			out.Matched++
 		}
-		out.Matched++
+		out.Changes++
 		applied, err := s.appliedOf(ctx, l)
 		if err != nil {
 			return nil, err
@@ -108,6 +116,14 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 		if !owned || !touches(rule, own.incomeCategories, live.Type) {
 			continue
 		}
+		if !changes(rule, live, own.incomeCategories) {
+			if req.IncludeEdited {
+				if err := s.restampEdited(ctx, l, live, rule, own.incomeCategories); err != nil {
+					return nil, err
+				}
+			}
+			continue
+		}
 		if !req.IncludeEdited {
 			applied, aerr := s.appliedOf(ctx, l)
 			if aerr != nil {
@@ -138,6 +154,28 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 	reqctx.AddLogAttr(ctx, "updated", out.Updated)
 	reqctx.AddLogAttr(ctx, "skipped", out.Skipped)
 	return out, nil
+}
+
+// restampEdited makes the rule the applied baseline of a hand-edited row that
+// already carries its targets: nothing on the transaction changes, but the
+// snapshot no longer reads as an edit. Not counted as updated.
+func (s *Service) restampEdited(ctx context.Context, l *model.ImportTransactionLink, live *model.Transaction, rule *model.ImportRule, income map[vo.Id]bool) error {
+	applied, err := s.appliedOf(ctx, l)
+	if err != nil {
+		return err
+	}
+	if !edited(applied, live) {
+		return nil
+	}
+	next := applyTargets(rule, live, income)
+	next.RuleID = &rule.ID
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		setApplied(l, next)
+		if err := s.repo.UpdateLink(ctx, l); err != nil {
+			return err
+		}
+		return s.repo.ReplaceLinkAppliedLabels(ctx, l.ID, next.LabelIDs)
+	})
 }
 
 // scopedLinks narrows to rows that are linked to a live transaction: a
@@ -221,6 +259,13 @@ func (s *Service) appliedOf(ctx context.Context, l *model.ImportTransactionLink)
 // changed since the import means a rule must not silently overwrite it.
 func edited(applied model.ImportClassification, live *model.Transaction) bool {
 	return !sameID(applied.CategoryID, live.CategoryID) || !sameID(applied.PayeeID, live.PayeeID) || !sameID(applied.TagID, live.TagID) || !sameIDs(applied.LabelIDs, live.LabelIDs)
+}
+
+// changes: a row already carrying everything the rule would set is neither
+// counted nor rewritten, so "apply to existing?" counts only rows that move.
+func changes(r *model.ImportRule, live *model.Transaction, income map[vo.Id]bool) bool {
+	next := applyTargets(r, live, income)
+	return !sameID(next.CategoryID, live.CategoryID) || !sameID(next.PayeeID, live.PayeeID) || !sameID(next.TagID, live.TagID) || !sameIDs(next.LabelIDs, live.LabelIDs)
 }
 
 // isNotFoundErr: a linked transaction the user has since deleted is simply

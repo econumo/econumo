@@ -486,6 +486,29 @@ func TestUpdateAnalytics(t *testing.T) {
 	}
 }
 
+func TestUpdateAI(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	_, env := h.do(t, http.MethodGet, "/api/v1/user/get-user-data", token, nil)
+	if strings.Contains(string(env.raw), `"name":"ai"`) {
+		t.Fatalf("a new user must carry no ai option (absent = on): %s", env.raw)
+	}
+	for _, c := range []struct {
+		enabled bool
+		want    string
+	}{{false, `{"name":"ai","value":"0"}`}, {true, `{"name":"ai","value":"1"}`}} {
+		status, env := h.do(t, http.MethodPost, "/api/v1/user/update-ai", token, map[string]any{"enabled": c.enabled})
+		if status != http.StatusOK || !strings.Contains(string(env.raw), c.want) {
+			t.Fatalf("enabled=%v: status = %d, body %s", c.enabled, status, env.raw)
+		}
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-ai", token, map[string]any{})
+	if status != http.StatusBadRequest || !strings.Contains(string(env.raw), "This value should not be blank.") {
+		t.Fatalf("missing enabled: status = %d, body %s", status, env.raw)
+	}
+}
+
 func TestUpdateLastSeenVersion(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)

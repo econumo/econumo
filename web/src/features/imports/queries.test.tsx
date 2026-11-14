@@ -10,7 +10,13 @@ import type { TransactionDto } from '@/api/dto/transaction'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { profileAttributes, setAnalyticsQueryClient } from '@/lib/analyticsProfile'
 import {
+  cancelSuggestionRefresh,
+  scheduleSuggestionRefresh,
+  suggestionRetry,
+  useAcceptImportSuggestion,
   useApplyImportRule,
+  useDismissImportSuggestion,
+  useImportSuggestions,
   useCreateImportRule,
   useCreateImportSource,
   useDeleteImportSource,
@@ -181,6 +187,146 @@ it('useSyncImportSource refreshes ledger caches only when the run wrote somethin
   expect(body).toEqual({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' })
   expect(queryClient.getQueryState(queryKeys.transactions)?.isInvalidated).toBe(true)
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SYNC, { trigger: 'manual', imported: 2, matched: 1, from: 'settings' })
+})
+
+it('useAcceptImportSuggestion invalidates the plan with the other ledger views', async () => {
+  server.use(http.post('*/api/v1/import/accept-suggestion', () => HttpResponse.json({ success: true, message: '', data: { updated: 1 } })))
+  const { queryClient, wrapper } = makeWrapper()
+  for (const key of [queryKeys.budgetPlan, queryKeys.budget, queryKeys.budgetTransactions, queryKeys.transactions, queryKeys.accounts]) {
+    queryClient.setQueryData(key, { stale: true })
+  }
+  const { result } = renderHook(() => useAcceptImportSuggestion(), { wrapper })
+  await act(() => result.current.mutateAsync({ id: 'sg1', ruleId: 'r1', changes: { changedMatch: false, changedCategory: false, changedPayee: false } }))
+  for (const key of [queryKeys.budgetPlan, queryKeys.budget, queryKeys.budgetTransactions, queryKeys.transactions, queryKeys.accounts]) {
+    expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
+  }
+})
+
+it('an accept retried from a new hook instance after a lost answer counts as done', async () => {
+  const calls: number[] = []
+  server.use(
+    http.post('*/api/v1/import/accept-suggestion', () => {
+      calls.push(1)
+      return calls.length === 1
+        ? HttpResponse.error()
+        : HttpResponse.json({ success: false, message: 'Import suggestion not found', code: 0, errors: {} }, { status: 400 })
+    }),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+  )
+  const vars = { id: 'sg-remount', ruleId: 'r1', changes: { changedMatch: false, changedCategory: false, changedPayee: false } }
+  const { wrapper } = makeWrapper()
+  const first = renderHook(() => useAcceptImportSuggestion(), { wrapper })
+  await expect(act(() => first.result.current.mutateAsync(vars))).rejects.toBeDefined()
+  first.unmount()
+  const second = renderHook(() => useAcceptImportSuggestion(), { wrapper })
+  await expect(act(() => second.result.current.mutateAsync(vars))).resolves.toEqual({ updated: 0, alreadyGone: true })
+})
+
+it('a dismiss refused because the suggestion is already gone counts as done', async () => {
+  server.use(
+    http.post('*/api/v1/import/dismiss-suggestion', () => HttpResponse.json({ success: false, message: 'Import suggestion not found', code: 0, errors: {} }, { status: 400 })),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.importSuggestions, [{ id: 'sg1' }])
+  const { result } = renderHook(() => useDismissImportSuggestion(), { wrapper })
+  await act(() => result.current.mutateAsync('sg1'))
+  expect(queryClient.getQueryData(queryKeys.importSuggestions)).toEqual([])
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SUGGESTION_DISMISS)
+})
+
+// Dismisses answered out of order must not bring a dismissed row back: only
+// that id leaves the cache, and the list is refetched.
+it('a dismiss removes only its own row from the cached list and invalidates it', async () => {
+  server.use(
+    http.post('*/api/v1/import/dismiss-suggestion', () => HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'sg1' }, { id: 'sg2' }, { id: 'sg3' }] } })),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.importSuggestions, [{ id: 'sg1' }, { id: 'sg2' }])
+  const { result } = renderHook(() => useDismissImportSuggestion(), { wrapper })
+  await act(() => result.current.mutateAsync('sg1'))
+  expect(queryClient.getQueryData(queryKeys.importSuggestions)).toEqual([{ id: 'sg2' }])
+  expect(queryClient.getQueryState(queryKeys.importSuggestions)?.isInvalidated).toBe(true)
+})
+
+it('a dismiss refused for a suggestion still listed stays an error', async () => {
+  server.use(
+    http.post('*/api/v1/import/dismiss-suggestion', () => HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 400 })),
+    http.get('*/api/v1/import/get-suggestion-list', () => HttpResponse.json({ success: true, message: '', data: { items: [{ id: 'sg1' }] } })),
+  )
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useDismissImportSuggestion(), { wrapper })
+  await act(async () => { await expect(result.current.mutateAsync('sg1')).rejects.toThrow() })
+})
+
+it('the suggestion list does not retry a 404 from an older server', async () => {
+  let calls = 0
+  server.use(http.get('*/api/v1/import/get-suggestion-list', () => {
+    calls += 1
+    return HttpResponse.json({ success: false, message: 'Not found', code: 0, errors: {} }, { status: 404 })
+  }))
+  const queryClient = new QueryClient()
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  const { result } = renderHook(() => useImportSuggestions(), { wrapper })
+  await waitFor(() => expect(result.current.isError).toBe(true))
+  expect(calls).toBe(1)
+})
+
+it('suggestionRetry retries other failures like every read', () => {
+  const httpError = (status: number) => Object.assign(new Error('x'), { isAxiosError: true, response: { status } })
+  expect(suggestionRetry(0, httpError(404))).toBe(false)
+  expect(suggestionRetry(0, httpError(500))).toBe(true)
+  expect(suggestionRetry(3, httpError(500))).toBe(false)
+})
+
+describe('suggestion refresh after a sync', () => {
+  afterEach(() => {
+    cancelSuggestionRefresh()
+    vi.useRealTimers()
+  })
+
+  it('refetches the suggestion list at 15 s and 60 s when AI is on', () => {
+    vi.useFakeTimers()
+    window.econumoConfig = { AI_ENABLED: true }
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    scheduleSuggestionRefresh(queryClient)
+    vi.advanceTimersByTime(14_999)
+    expect(spy).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(spy).toHaveBeenLastCalledWith({ queryKey: queryKeys.importSuggestions })
+    vi.advanceTimersByTime(45_000)
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('schedules nothing without AI', () => {
+    vi.useFakeTimers()
+    window.econumoConfig = { AI_ENABLED: false }
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    scheduleSuggestionRefresh(queryClient)
+    vi.advanceTimersByTime(120_000)
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('a sync that imported rows schedules the refresh', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    window.econumoConfig = { IMPORT_SIMPLEFIN: true, AI_ENABLED: true }
+    const run = {
+      id: 'r1', sourceId: 's2', provider: 'simplefin', status: 'completed', trigger: 'manual',
+      importedCount: 1, matchedCount: 0, amountsUpdatedCount: 0, queuedCount: 0, skippedCount: 0, failedCount: 0,
+      errors: [], startedAt: '2026-09-07 10:00:00', finishedAt: '2026-09-07 10:00:02',
+    }
+    server.use(http.post('*/api/v1/import/sync-source', () => HttpResponse.json({ success: true, message: '', data: { run, accounts: [] } })))
+    const { queryClient, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useSyncImportSource(), { wrapper })
+    await act(() => result.current.mutateAsync({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' }))
+    queryClient.setQueryData(queryKeys.importSuggestions, [])
+    expect(queryClient.getQueryState(queryKeys.importSuggestions)?.isInvalidated).toBe(false)
+    vi.advanceTimersByTime(15_000)
+    expect(queryClient.getQueryState(queryKeys.importSuggestions)?.isInvalidated).toBe(true)
+  })
 })
 
 it('useSyncImportSource invalidates the source list on a failed sync (a failed run still recorded on the source)', async () => {

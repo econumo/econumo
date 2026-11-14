@@ -517,7 +517,8 @@
       "failed": "导入失败",
       "to_review": "待审核",
       "failed_writes": "未保存",
-      "skipped": "已跳过（{count}）"
+      "skipped": "已跳过（{count}）",
+      "suggested_rules": "建议的规则"
     },
     "due": {
       "overdue": "已逾期 · {date}",
@@ -845,6 +846,11 @@
       "reimport": "重新导入",
       "reimport_hint": "重新导入可将其添加回来，或与您手动输入的交易（例如转账）匹配。",
       "reimported": { "created": "已重新导入", "matched": "已与现有交易匹配", "queued": "已重新导入，正在收件箱中等待", "skipped": "未添加：匹配了跳过规则或已忽略的账户" }
+    },
+    "suggestions": {
+      "dismiss": "忽略",
+      "prompt_summary": "建议用于 {count} 笔交易 | 建议用于 {count} 笔交易",
+      "transactions": "{count} 笔交易 | {count} 笔交易"
     }
   },
   "user": {
@@ -1088,6 +1094,12 @@
             "label": "帮助改进 Econumo",
             "description": "使用统计让我们了解应用中哪些功能最受欢迎，以及需要改进什么。",
             "promise": "您的财务和个人数据始终保密，不会被纳入统计。"
+          },
+          "ai": {
+            "menu_item": "AI 功能",
+            "label": "使用 AI 功能",
+            "description": "AI 帮助您让财务井井有条，让 Econumo 更易于使用。",
+            "promise": "您的财务和个人数据始终保密，不会发送给 AI。"
           }
         }
       }

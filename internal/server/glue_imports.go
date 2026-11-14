@@ -11,7 +11,9 @@ import (
 	"github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
+	appuser "github.com/econumo/econumo/internal/user"
 )
 
 type importsAccountSource interface {
@@ -278,3 +280,45 @@ func (a importsTransactionAdapter) UpdateTransactionReplacingLabels(ctx context.
 }
 
 var _ imports.TransactionWriter = importsTransactionAdapter{}
+
+type importsOwnerFactsRepo interface {
+	GetLanguage(ctx context.Context, id vo.Id) (string, error)
+	GetTimezone(ctx context.Context, id vo.Id) (string, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
+}
+
+// ImportsOwnerFacts reads what the suggestion job needs about an account
+// owner straight from the user repository.
+type ImportsOwnerFacts struct {
+	users importsOwnerFactsRepo
+	clk   port.Clock
+}
+
+func NewImportsOwnerFacts(users importsOwnerFactsRepo, clk port.Clock) *ImportsOwnerFacts {
+	return &ImportsOwnerFacts{users: users, clk: clk}
+}
+
+func (f *ImportsOwnerFacts) OwnerFacts(ctx context.Context, userID vo.Id) (imports.OwnerInfo, error) {
+	u, err := f.users.GetByID(ctx, userID)
+	if err != nil {
+		return imports.OwnerInfo{}, err
+	}
+	language, err := f.users.GetLanguage(ctx, userID)
+	if err != nil {
+		return imports.OwnerInfo{}, err
+	}
+	timezone, err := f.users.GetTimezone(ctx, userID)
+	if err != nil {
+		return imports.OwnerInfo{}, err
+	}
+	return imports.OwnerInfo{
+		Language: language, Timezone: timezone,
+		Readonly: u.EffectiveAccessLevel(f.clk.Now()) == model.AccessLevelReadonly,
+		AIOff:    !u.AIEnabled(),
+	}, nil
+}
+
+var (
+	_ imports.OwnerFacts          = (*ImportsOwnerFacts)(nil)
+	_ appuser.AISuggestionClearer = (*imports.Service)(nil)
+)

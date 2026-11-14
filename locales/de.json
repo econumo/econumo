@@ -517,7 +517,8 @@
       "failed": "Fehlgeschlagene Importe",
       "to_review": "Zu prüfen",
       "failed_writes": "Nicht gespeichert",
-      "skipped": "Übersprungen ({count})"
+      "skipped": "Übersprungen ({count})",
+      "suggested_rules": "Vorgeschlagene Regeln"
     },
     "due": {
       "overdue": "Überfällig · {date}",
@@ -845,6 +846,11 @@
       "reimport": "Erneut importieren",
       "reimport_hint": "Importieren Sie sie erneut, um sie wieder hinzuzufügen oder einer selbst erfassten Transaktion zuzuordnen, etwa einer Umbuchung.",
       "reimported": { "created": "Erneut importiert", "matched": "Einer vorhandenen Transaktion zugeordnet", "queued": "Erneut importiert; sie wartet im Posteingang", "skipped": "Nicht hinzugefügt: Eine Überspringen-Regel oder ein ignoriertes Konto trifft zu" }
+    },
+    "suggestions": {
+      "dismiss": "Verwerfen",
+      "prompt_summary": "Vorgeschlagen für {count} Transaktion | Vorgeschlagen für {count} Transaktionen",
+      "transactions": "{count} Transaktion | {count} Transaktionen"
     }
   },
   "user": {
@@ -1088,6 +1094,12 @@
             "label": "Helfen, Econumo zu verbessern",
             "description": "Nutzungsstatistiken zeigen uns, welche Funktionen der App am beliebtesten sind und was wir verbessern sollten.",
             "promise": "Ihre finanziellen und persönlichen Daten bleiben privat und fließen nicht in die Statistik ein."
+          },
+          "ai": {
+            "menu_item": "KI-Funktionen",
+            "label": "KI-Funktionen verwenden",
+            "description": "KI hilft Ihnen, Ordnung in Ihren Finanzen zu halten, und macht Econumo einfacher zu bedienen.",
+            "promise": "Ihre finanziellen und persönlichen Daten bleiben privat und werden nicht an die KI übermittelt."
           }
         }
       }
