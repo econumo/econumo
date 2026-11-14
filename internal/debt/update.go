@@ -146,19 +146,56 @@ func (s *Service) SetElementCurrency(ctx context.Context, budgetID, elementID, c
 			return err
 		}
 		for _, d := range onElement(debts, elementID, nil) {
-			if d.IsPaidOff() || d.CurrencyID.Equal(currencyID) {
+			if d.IsPaidOff() {
 				continue
 			}
-			d.CurrencyID, d.UpdatedAt = currencyID, s.clock.Now()
-			if err := s.repo.Save(ctx, d); err != nil {
-				return err
-			}
-			if err := s.dropSplits(ctx, d.ID); err != nil {
+			if err := s.moveToCurrency(ctx, d, currencyID); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+}
+
+// AlignElementCurrencies moves every active debt of the budget to its
+// element's currency. A row with no currency of its own follows the budget's,
+// so a budget currency change calls it after saving the budget.
+func (s *Service) AlignElementCurrencies(ctx context.Context, budgetID vo.Id) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.repo.LockBudget(ctx, budgetID); err != nil {
+			return err
+		}
+		debts, err := s.repo.ListByBudget(ctx, budgetID)
+		if err != nil {
+			return err
+		}
+		for _, d := range debts {
+			if d.IsPaidOff() {
+				continue
+			}
+			el, err := s.element(ctx, budgetID, d.ElementID)
+			if err != nil {
+				return err
+			}
+			if err := s.moveToCurrency(ctx, d, el.CurrencyID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// moveToCurrency keeps the debt's stored numbers, read in the new currency,
+// and drops its splits so the next sync splits every payment again.
+func (s *Service) moveToCurrency(ctx context.Context, d *model.Debt, currencyID vo.Id) error {
+	if currencyID.IsZero() || d.CurrencyID.Equal(currencyID) {
+		return nil
+	}
+	d.CurrencyID, d.UpdatedAt = currencyID, s.clock.Now()
+	if err := s.repo.Save(ctx, d); err != nil {
+		return err
+	}
+	return s.dropSplits(ctx, d.ID)
 }
 
 // stateNow is the debt's state from what is stored, splitting new payments

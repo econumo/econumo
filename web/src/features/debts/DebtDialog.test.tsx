@@ -87,6 +87,17 @@ it('an envelope\'s header is the envelope\'s name and icon, read from the budget
   expect(screen.getByRole('heading', { name: 'Living' }).parentElement).toHaveTextContent('home')
 })
 
+it('a category row set to another currency shows that currency\'s symbol on the payment', async () => {
+  const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
+  budget.structure.elements = budget.structure.elements.map((e: { id: string }) => (e.id === 'cat-food' ? { ...e, currencyId: 'cur-eur' } : e))
+  server.use(http.get('*/api/v1/budget/get-budget', () => ok({ item: budget })))
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate()
+  await user.type(screen.getByLabelText('Payment'), '1,5')
+  expect(await screen.findByText(/= 1\.50 €/)).toBeInTheDocument()
+})
+
 it('sends the budget, the element, the payment and the schedule', async () => {
   const bodies = captureCreate()
   const user = userEvent.setup()

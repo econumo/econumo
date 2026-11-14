@@ -537,7 +537,7 @@
       },
       "delete_confirm": {
         "title": "Diese Schuld löschen?",
-        "question": "Die Schuld verschwindet aus dem Budget. Die Zahlungen selbst bleiben unverändert."
+        "question": "Die Schuld und ihr Verlauf werden gelöscht. Die Pläne und Transaktionen ihrer Kategorie bzw. ihres Umschlags bleiben unverändert."
       }
     },
     "terms": {

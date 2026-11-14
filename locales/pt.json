@@ -537,7 +537,7 @@
       },
       "delete_confirm": {
         "title": "Eliminar esta dívida?",
-        "question": "A dívida sai do orçamento. Os pagamentos em si não são alterados."
+        "question": "A dívida e o respetivo histórico são eliminados. Os planos e as transações da sua categoria ou envelope não são alterados."
       }
     },
     "terms": {

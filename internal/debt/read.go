@@ -306,3 +306,21 @@ func planningBounds(st *debtState, proj model.Projection) (first, last time.Time
 	}
 	return first, debtDate(d.Current.LastPaymentDate)
 }
+
+// ElementIDs are the elements of the budget that carry a debt, active or
+// paid off, each once.
+func (s *Service) ElementIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error) {
+	debts, err := s.repo.ListByBudget(ctx, budgetID)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[vo.Id]bool{}
+	var out []vo.Id
+	for _, d := range debts {
+		if !seen[d.ElementID] {
+			seen[d.ElementID] = true
+			out = append(out, d.ElementID)
+		}
+	}
+	return out, nil
+}

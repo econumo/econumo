@@ -29,7 +29,7 @@ func (c *DebtCategories) Category(ctx context.Context, id vo.Id) (model.DebtClas
 	if err != nil {
 		return model.DebtClassification{}, err
 	}
-	return model.DebtClassification{OwnerID: cat.UserID, Name: cat.Name, Icon: cat.Icon, IsExpense: cat.Type == model.TypeExpense}, nil
+	return model.DebtClassification{Name: cat.Name, Icon: cat.Icon}, nil
 }
 
 type debtRateSource interface {

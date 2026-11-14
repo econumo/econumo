@@ -5,6 +5,7 @@ import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { besidePointer, centerRowOnPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
+import { toastRefusal } from '@/lib/apiError'
 import { Check, ChevronLeft, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { isAxiosError } from 'axios'
@@ -471,7 +472,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     if (envelopeId !== null) {
       if (canEnterEnvelope(activeId, envelopeId)) {
         setPendingMemberId(activeId)
-        moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id: activeId, envelopeId }, { onError: () => setPendingMemberId(null) })
+        moveIntoEnvelope.mutate(
+          { budgetId: budget.meta.id, id: activeId, envelopeId },
+          {
+            onError: (err) => {
+              setPendingMemberId(null)
+              toastRefusal(err)
+            },
+          },
+        )
       }
       return
     }
@@ -777,7 +786,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                         ? {
                             onMoveIncome: (item, onFailed) => moveElement.mutate({ budgetId: budget.meta.id, item }, { onError: onFailed }),
                             onMoveIncomeIntoEnvelope: (id, envelopeId, onFailed) =>
-                              moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id, envelopeId }, { onError: onFailed }),
+                              moveIntoEnvelope.mutate(
+                                { budgetId: budget.meta.id, id, envelopeId },
+                                {
+                                  onError: (err) => {
+                                    onFailed()
+                                    toastRefusal(err)
+                                  },
+                                },
+                              ),
                             onMoveIncomeFolder: (id, afterId) => orderFolders.mutate({ budgetId: budget.meta.id, id, afterId }),
                             onMoveSavings: (id, afterId) =>
                               moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } }),

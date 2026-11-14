@@ -537,7 +537,7 @@
       },
       "delete_confirm": {
         "title": "Supprimer cette dette ?",
-        "question": "La dette disparaît de son budget. Les paiements eux-mêmes ne sont pas modifiés."
+        "question": "La dette et son historique sont supprimés. Les plans et les transactions de sa catégorie ou de son enveloppe ne sont pas modifiés."
       }
     },
     "terms": {

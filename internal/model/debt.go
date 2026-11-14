@@ -95,9 +95,7 @@ type DebtElementInfo struct {
 
 // DebtClassification is a category as a debt's presentation reads it.
 type DebtClassification struct {
-	OwnerID    vo.Id
 	Name, Icon string
-	IsExpense  bool
 }
 
 type DebtTerms struct {

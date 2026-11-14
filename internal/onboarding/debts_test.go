@@ -46,3 +46,17 @@ func TestDetectDebts_SkipsARefusedCategory(t *testing.T) {
 		t.Fatalf("calls %d, created %v", debts.calls, debts.created)
 	}
 }
+
+// A category whose element already carries a debt, even a paid-off one, is
+// never asked about: with no other candidate the AI is not called at all.
+func TestDetectDebts_SkipsACategoryWithADebt(t *testing.T) {
+	debts := &fakeDebts{existing: ids(cash)}
+	ai := replying(`{"debts":[{"categoryId":"` + cash + `"}]}`)
+	svc, _ := newSvc(ai, nil)
+	svc.SetSteps(onboarding.Steps{Categories: fakeCategorySteps{}, Budgets: fakeDebtBudgets{}, Currencies: fakeDebtCurrencies{}})
+	svc.SetDebts(debts)
+	svc.StartPlanDebts(context.Background(), vo.MustParseId(me), budgetID, map[string]vo.DecimalNumber{cash: vo.NewDecimal("450")})
+	if ai.calls != 0 || debts.calls != 0 {
+		t.Fatalf("AI calls %d, create calls %d; want neither", ai.calls, debts.calls)
+	}
+}

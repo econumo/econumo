@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { isAxiosError } from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +9,7 @@ import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
+import { apiErrorMessage } from '@/lib/apiError'
 import { useOnline } from '@/hooks/useOnline'
 import type {
   BudgetDto,
@@ -124,7 +126,13 @@ export function useBudgetLineMenus({
   // the section a folder is being created in; null while the prompt is closed
   const [createFolderSide, setCreateFolderSide] = useState<BudgetFolderSide | null>(null)
   const [renameFolder, setRenameFolder] = useState<{ id: Id; name: string } | null>(null)
-  const [envelopeDialog, setEnvelopeDialog] = useState<{ open: boolean; envelope: EnvelopeDialogTarget | null; folderId: Id | null; side?: 'expense' | 'income' }>({ open: false, envelope: null, folderId: null })
+  const [envelopeDialog, setEnvelopeDialogState] = useState<{ open: boolean; envelope: EnvelopeDialogTarget | null; folderId: Id | null; side?: 'expense' | 'income' }>({ open: false, envelope: null, folderId: null })
+  // a refusal the server answered (a category carrying a debt cannot go in)
+  const [envelopeError, setEnvelopeError] = useState<string | null>(null)
+  const setEnvelopeDialog = (next: typeof envelopeDialog) => {
+    setEnvelopeError(null)
+    setEnvelopeDialogState(next)
+  }
   const [categoryTarget, setCategoryTarget] = useState<Pick<CategoryDto, 'id' | 'name' | 'type' | 'icon'> | null>(null)
   const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<{ id: Id } | null>(null)
@@ -443,13 +451,20 @@ export function useBudgetLineMenus({
         envelope={envelopeDialog.envelope}
         budgetCurrencyId={budget.meta.currencyId}
         side={envelopeDialog.side ?? 'expense'}
+        serverError={envelopeError}
         onClose={() => setEnvelopeDialog({ open: false, envelope: null, folderId: null })}
         onSubmit={(form) => {
           const close = () => setEnvelopeDialog({ open: false, envelope: null, folderId: null })
+          const refused = (err: unknown) => {
+            if (isAxiosError(err) && err.response) {
+              setEnvelopeError(apiErrorMessage(err))
+            }
+          }
+          setEnvelopeError(null)
           if (envelopeDialog.envelope) {
             updateEnvelope.mutate(
               { budgetId: budget.meta.id, id: envelopeDialog.envelope.id, name: form.name, icon: form.icon, currencyId: form.currencyId, isArchived: form.isArchived, categories: form.categories },
-              { onSuccess: close },
+              { onSuccess: close, onError: refused },
             )
           } else {
             createEnvelope.mutate(
@@ -463,7 +478,7 @@ export function useBudgetLineMenus({
                 categories: form.categories,
                 ...(envelopeDialog.side === 'income' ? { side: 'income' as const } : {}),
               },
-              { onSuccess: close },
+              { onSuccess: close, onError: refused },
             )
           }
         }}

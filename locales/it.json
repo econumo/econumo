@@ -537,7 +537,7 @@
       },
       "delete_confirm": {
         "title": "Eliminare questo debito?",
-        "question": "Il debito viene rimosso dal budget. I pagamenti in sé restano invariati."
+        "question": "Il debito e la sua cronologia vengono eliminati. I piani e le transazioni della sua categoria o busta restano invariati."
       }
     },
     "terms": {

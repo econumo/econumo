@@ -537,7 +537,7 @@
       },
       "delete_confirm": {
         "title": "Deze schuld verwijderen?",
-        "question": "De schuld verdwijnt uit het budget. De betalingen zelf blijven ongewijzigd."
+        "question": "De schuld en de geschiedenis ervan worden verwijderd. De plannen en transacties van de categorie of envelop blijven ongewijzigd."
       }
     },
     "terms": {

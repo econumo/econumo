@@ -76,9 +76,9 @@ func (s *Service) startPlanDebts(ctx context.Context, userID vo.Id, budget strin
 // it names. The payment is the category's plan when planned is set (a
 // category without a plan above zero is not asked about), else the median of
 // its paid months in the history (fewer than two: not asked about), rounded to
-// the category's element currency. A category whose currency cannot be read,
-// or that the debt feature refuses (it already carries an active debt, it sits
-// in an envelope), is skipped. An unusable reply creates nothing.
+// the category's element currency. A category whose element already carries
+// a debt (active or paid off) is not asked about; one whose currency cannot be
+// read, or that the debt feature refuses (it sits in an envelope), is skipped. An unusable reply creates nothing.
 func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts promptFacts, planned map[string]vo.DecimalNumber) error {
 	if loc, err := time.LoadLocation(facts.Timezone); err == nil && facts.Timezone != "" {
 		ctx = reqctx.WithLocation(ctx, loc)
@@ -86,6 +86,14 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 	own, err := s.steps.Categories.OwnCategories(ctx, userID)
 	if err != nil {
 		return err
+	}
+	tracked, err := s.debts.ElementIDs(ctx, budgetID)
+	if err != nil {
+		return err
+	}
+	hasDebt := map[string]bool{}
+	for _, id := range tracked {
+		hasDebt[strings.ToLower(id.String())] = true
 	}
 	history, err := s.steps.Budgets.CategoryHistory(ctx, userID, budgetID, debtHistoryMonths)
 	if err != nil {
@@ -127,7 +135,7 @@ func (s *Service) detectDebts(ctx context.Context, userID, budgetID vo.Id, facts
 	candidates := map[string]debtCandidate{}
 	for _, c := range own {
 		key := strings.ToLower(c.Id)
-		if c.IsArchived == 1 || c.Type != model.TypeExpense.Alias() {
+		if c.IsArchived == 1 || c.Type != model.TypeExpense.Alias() || hasDebt[key] {
 			continue
 		}
 		h := byID[key]

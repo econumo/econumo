@@ -39,7 +39,7 @@ type Repository interface {
 	ListByElement(ctx context.Context, elementID vo.Id) ([]*model.Debt, error)
 	Save(ctx context.Context, d *model.Debt) error
 	// MoveToElement re-attaches the budget's debts of one element to another.
-	MoveToElement(ctx context.Context, budgetID, fromID, toID vo.Id, typ model.DebtElementType) error
+	MoveToElement(ctx context.Context, budgetID, fromID, toID vo.Id, typ model.DebtElementType, now time.Time) error
 	Delete(ctx context.Context, id vo.Id) error
 	// AddSnapshot is always paired with a Save of the same terms in one transaction.
 	AddSnapshot(ctx context.Context, s *model.DebtSnapshot) error

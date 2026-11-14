@@ -537,7 +537,7 @@
       },
       "delete_confirm": {
         "title": "¿Eliminar esta deuda?",
-        "question": "La deuda desaparece del presupuesto. Los pagos en sí no cambian."
+        "question": "Se eliminan la deuda y su historial. Los planes y las transacciones de su categoría o sobre no cambian."
       }
     },
     "terms": {

@@ -37,7 +37,7 @@ ON CONFLICT (id) DO UPDATE SET
 DELETE FROM debts WHERE id = $1;
 
 -- name: MoveDebtsToElement :exec
-UPDATE debts SET element_external_id = sqlc.arg(to_id), element_type = sqlc.arg(element_type)
+UPDATE debts SET element_external_id = sqlc.arg(to_id), element_type = sqlc.arg(element_type), updated_at = sqlc.arg(updated_at)
 WHERE budget_id = sqlc.arg(budget_id) AND element_external_id = sqlc.arg(from_id);
 
 -- name: InsertDebtSnapshot :exec

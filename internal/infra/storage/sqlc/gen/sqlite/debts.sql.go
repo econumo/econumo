@@ -179,13 +179,14 @@ func (q *Queries) ListDebtsByBudget(ctx context.Context, budgetID string) ([]Deb
 }
 
 const moveDebtsToElement = `-- name: MoveDebtsToElement :exec
-UPDATE debts SET element_external_id = ?1, element_type = ?2
-WHERE budget_id = ?3 AND element_external_id = ?4
+UPDATE debts SET element_external_id = ?1, element_type = ?2, updated_at = ?3
+WHERE budget_id = ?4 AND element_external_id = ?5
 `
 
 type MoveDebtsToElementParams struct {
 	ToID        string
 	ElementType string
+	UpdatedAt   time.Time
 	BudgetID    string
 	FromID      string
 }
@@ -194,6 +195,7 @@ func (q *Queries) MoveDebtsToElement(ctx context.Context, arg MoveDebtsToElement
 	_, err := q.db.ExecContext(ctx, moveDebtsToElement,
 		arg.ToID,
 		arg.ElementType,
+		arg.UpdatedAt,
 		arg.BudgetID,
 		arg.FromID,
 	)

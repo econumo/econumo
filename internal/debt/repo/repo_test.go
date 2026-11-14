@@ -606,12 +606,16 @@ func TestRepo_MoveToElementAndListByElement(t *testing.T) {
 		t.Fatalf("ListByElement = %v, %v", got, err)
 	}
 	envelope := vo.NewId()
-	if err := e.repo.MoveToElement(ctx, d.BudgetID, vo.MustParseId(e.category), envelope, model.DebtElementEnvelope); err != nil {
+	movedAt := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
+	if err := e.repo.MoveToElement(ctx, d.BudgetID, vo.MustParseId(e.category), envelope, model.DebtElementEnvelope, movedAt); err != nil {
 		t.Fatal(err)
 	}
 	moved, err := e.repo.GetByID(ctx, d.ID)
 	if err != nil || !moved.ElementID.Equal(envelope) || moved.ElementType != model.DebtElementEnvelope {
 		t.Fatalf("moved = %+v, %v", moved, err)
+	}
+	if !moved.UpdatedAt.Equal(movedAt) {
+		t.Errorf("moved updated_at = %v, want %v", moved.UpdatedAt, movedAt)
 	}
 	if kept, err := e.repo.GetByID(ctx, elsewhere.ID); err != nil || kept.ElementID.String() != e.category {
 		t.Fatalf("the other budget's debt moved: %+v, %v", kept, err)

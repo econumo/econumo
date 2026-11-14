@@ -569,3 +569,92 @@ func TestUpdateEnvelope_ChecksOnlyNewCategories(t *testing.T) {
 	})
 	requireFieldCode(t, err, "categories", errs.CodeBudgetElementHasDebt)
 }
+
+func (h *debtHarness) debtCurrency(t *testing.T, id string) string {
+	t.Helper()
+	var c string
+	if err := h.tdb.Raw.QueryRowContext(h.ctx, h.tdb.Rebind("SELECT currency_id FROM debts WHERE id = ?"), id).Scan(&c); err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+// A category row with no currency of its own is in the budget's, so its
+// active debt follows a budget currency change; a row with its own currency
+// keeps its debt where it is.
+func TestUpdateBudget_CurrencyChangeMovesDebtsOnRowsWithoutOwnCurrency(t *testing.T) {
+	h := newDebtHarness(t)
+	loanDebt := h.setUpDebt(t, h.loan, "2026-01-01", "5000", "1000", "2026-06-01")
+	housing := h.envelope(t, "Housing", h.rent)
+	envDebt := h.looseDebt(t, housing, nil)
+	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 2, 1, 10, 0, 0, 0, time.UTC))
+	h.budgetAt(t, "2026-02-01")
+	if n := h.count(t, "SELECT COUNT(*) FROM debts_payments WHERE debt_id = ?", loanDebt); n != 1 {
+		t.Fatalf("splits before = %d, want 1", n)
+	}
+
+	if _, err := h.svc.UpdateBudget(h.ctx, h.owner, model.UpdateBudgetRequest{
+		Id: h.budgetID, Name: "Budget", CurrencyId: h.eurCur,
+	}); err != nil {
+		t.Fatalf("UpdateBudget: %v", err)
+	}
+	if got := h.debtCurrency(t, loanDebt); got != h.eurCur {
+		t.Errorf("category debt currency = %s, want EUR", got)
+	}
+	if got := h.debtCurrency(t, envDebt); got != fixture.USD {
+		t.Errorf("envelope debt currency = %s, want its row's USD", got)
+	}
+	if n := h.count(t, "SELECT COUNT(*) FROM debts_payments WHERE debt_id = ?", loanDebt); n != 0 {
+		t.Errorf("splits after the currency change = %d, want them dropped", n)
+	}
+	h.budgetAt(t, "2026-02-01")
+	if n := h.count(t, "SELECT COUNT(*) FROM debts_payments WHERE debt_id = ?", loanDebt); n != 1 {
+		t.Errorf("splits after the next sync = %d, want the payment split again", n)
+	}
+}
+
+func TestReopenDebt_FollowsTheElementCurrency(t *testing.T) {
+	h := newDebtHarness(t)
+	id := h.setUpDebt(t, h.loan, "2026-01-01", "5000", "1000", "2026-06-01")
+	h.spend(h.usd, h.loan, "", "1000", time.Date(2026, 2, 1, 10, 0, 0, 0, time.UTC))
+	if _, err := h.debts.MarkDebtPaidOff(h.ctx, h.owner, model.MarkDebtPaidOffRequest{Id: id, Date: "2026-03-01"}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+	if _, err := h.svc.ChangeElementCurrency(h.ctx, h.owner, model.ChangeElementCurrencyRequest{BudgetId: h.budgetID, ElementId: h.loan, CurrencyId: h.eurCur}); err != nil {
+		t.Fatalf("ChangeElementCurrency: %v", err)
+	}
+	if got := h.debtCurrency(t, id); got != fixture.USD {
+		t.Fatalf("paid-off debt currency = %s, want USD", got)
+	}
+
+	res, err := h.debts.ReopenDebt(h.ctx, h.owner, model.ReopenDebtRequest{Id: id})
+	if err != nil {
+		t.Fatalf("ReopenDebt: %v", err)
+	}
+	if got := h.debtCurrency(t, id); got != h.eurCur {
+		t.Errorf("reopened debt currency = %s, want the element's EUR", got)
+	}
+	if res.CurrencyId != h.eurCur {
+		t.Errorf("result currency = %s, want EUR", res.CurrencyId)
+	}
+}
+
+func TestDebtElementIDs_ListsPaidOffDebtsToo(t *testing.T) {
+	h := newDebtHarness(t)
+	paid := h.setUpDebt(t, h.loan, "2026-01-01", "5000", "1000", "2026-06-01")
+	if _, err := h.debts.MarkDebtPaidOff(h.ctx, h.owner, model.MarkDebtPaidOffRequest{Id: paid, Date: "2026-03-01"}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+	h.looseDebt(t, h.food, nil)
+	ids, err := h.debts.ElementIDs(h.ctx, vo.MustParseId(h.budgetID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]bool{}
+	for _, id := range ids {
+		got[id.String()] = true
+	}
+	if len(ids) != 2 || !got[h.loan] || !got[h.food] {
+		t.Fatalf("element ids = %v, want the loan and food categories once each", ids)
+	}
+}

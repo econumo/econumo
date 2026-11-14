@@ -15,17 +15,21 @@ import {
   useBudgetPlan,
   useBudgetTransactions,
   useBudgets,
+  useChangeElementCurrency,
   useCloneBudget,
   useCreateBudget,
   useDeclineBudgetAccess,
   useDefaultPeriodSettled,
   useDeleteBudget,
+  useDeleteEnvelope,
   useFillPlannedCells,
+  useMoveIntoEnvelope,
   planFetchWindow,
   usePlanSetLimit,
   useSetLimit,
   useUnarchiveBudget,
   useUpdateBudgetDetail,
+  useUpdateEnvelope,
 } from './queries'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -476,6 +480,7 @@ it('useUpdateBudgetDetail refreshes the debts when the budget\'s accounts change
     ),
   )
   const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
   const spy = vi.spyOn(queryClient, 'invalidateQueries')
   const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
 
@@ -486,6 +491,69 @@ it('useUpdateBudgetDetail refreshes the debts when the budget\'s accounts change
   // a debt counts only the payments on its budget's accounts
   result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', accountIds: ['a1'] })
   await waitFor(() => expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts }))
+})
+
+it('useUpdateBudgetDetail refreshes the debts when the budget\'s currency changes', async () => {
+  server.use(
+    http.post('*/api/v1/budget/update-budget', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: { ...fixtureBudgets[0], currencyId: 'cur-eur' } } }),
+    ),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
+  const spy = vi.spyOn(queryClient, 'invalidateQueries')
+  const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+
+  // a debt on a row with no currency of its own follows the budget's
+  result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-eur' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+})
+
+describe('budget writes that change what a debt counts refresh the debts', () => {
+  const ok = () => HttpResponse.json({ success: true, message: '', data: {} })
+
+  it('useChangeElementCurrency: the element\'s active debt follows its row\'s currency', async () => {
+    server.use(http.post('*/api/v1/budget/change-element-currency', ok))
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.debt('d1'), { item: {} })
+    queryClient.setQueryData(queryKeys.debtForecast('d1'), { items: [] })
+    const { result } = renderHook(() => useChangeElementCurrency(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', elementId: 'c1', currencyId: 'cur-eur' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryState(queryKeys.debt('d1'))?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(queryKeys.debtForecast('d1'))?.isInvalidated).toBe(true)
+  })
+
+  it('useDeleteEnvelope: the envelope\'s debts go with it', async () => {
+    server.use(http.post('*/api/v1/budget/delete-envelope', ok))
+    const { queryClient, wrapper } = makeWrapper()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useDeleteEnvelope(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', id: 'env1' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+  })
+
+  it('useMoveIntoEnvelope: the envelope\'s debt counts the new member', async () => {
+    server.use(http.post('*/api/v1/budget/move-element', ok))
+    const { queryClient, wrapper } = makeWrapper()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useMoveIntoEnvelope(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', id: 'c1', envelopeId: 'env1' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+  })
+
+  it('useUpdateEnvelope: its categories decide what its debt counts', async () => {
+    server.use(http.post('*/api/v1/budget/update-envelope', () => HttpResponse.json({ success: true, message: '', data: { item: {} } })))
+    const { queryClient, wrapper } = makeWrapper()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useUpdateEnvelope(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', id: 'env1', name: 'Housing', icon: 'home', currencyId: 'cur-usd', categories: ['c1'], isArchived: 0 })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.debts })
+  })
 })
 
 describe('budget savings toggle metric', () => {

@@ -199,8 +199,8 @@ func (r *Repo) Save(ctx context.Context, d *model.Debt) error {
 	return r.q.UpsertDebt(ctx, r.db(ctx), p)
 }
 
-func (r *Repo) MoveToElement(ctx context.Context, budgetID, fromID, toID vo.Id, typ model.DebtElementType) error {
-	return r.q.MoveDebtsToElement(ctx, r.db(ctx), moveParams{BudgetID: budgetID.String(), FromID: fromID.String(), ToID: toID.String(), ElementType: string(typ)})
+func (r *Repo) MoveToElement(ctx context.Context, budgetID, fromID, toID vo.Id, typ model.DebtElementType, now time.Time) error {
+	return r.q.MoveDebtsToElement(ctx, r.db(ctx), moveParams{BudgetID: budgetID.String(), FromID: fromID.String(), ToID: toID.String(), ElementType: string(typ), UpdatedAt: now})
 }
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {

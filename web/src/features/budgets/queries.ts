@@ -192,7 +192,7 @@ export function useBudget() {
   return { ...query, data: overlaid, dataPeriod: period } as typeof query & { dataPeriod: string }
 }
 
-// a debt row's plan is an extra payment in its forecast
+// the plan of an element carrying a debt is that debt's payment in its forecast
 function invalidateDebtForecasts(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ predicate: (q) => isDebtForecastKey(q.queryKey) })
 }
@@ -414,8 +414,20 @@ function useInvalidateBudget() {
   }
 }
 
-export function useCreateEnvelope() {
+// An envelope's membership decides what its debt counts, and a deleted
+// envelope or a row's currency takes its debt with it; the debts prefix
+// covers each debt's details and forecast too.
+function useInvalidateBudgetAndDebts() {
+  const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
+  return () => {
+    invalidate()
+    void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+  }
+}
+
+export function useCreateEnvelope() {
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: budgetApi.createEnvelope,
     onSuccess: () => {
@@ -426,7 +438,7 @@ export function useCreateEnvelope() {
 }
 
 export function useUpdateEnvelope() {
-  const invalidate = useInvalidateBudget()
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: budgetApi.updateEnvelope,
     onSuccess: () => {
@@ -437,7 +449,7 @@ export function useUpdateEnvelope() {
 }
 
 export function useDeleteEnvelope() {
-  const invalidate = useInvalidateBudget()
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: ({ budgetId, id }: { budgetId: Id; id: Id }) => budgetApi.deleteEnvelope(budgetId, id),
     onSuccess: () => {
@@ -517,8 +529,9 @@ export function useMoveBudgetFolder() {
   })
 }
 
+// a category placed outside an envelope leaves the one it sat in
 export function useMoveElement() {
-  const invalidate = useInvalidateBudget()
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: ({ budgetId, item }: { budgetId: Id; item: ElementMoveItem }) =>
       budgetApi.moveElement(budgetId, item.id, item.folderId, item.afterId),
@@ -546,7 +559,7 @@ export function useAddSavingsAccount() {
 
 // joining an envelope changes its membership, as editing the envelope's categories does
 export function useMoveIntoEnvelope() {
-  const invalidate = useInvalidateBudget()
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: ({ budgetId, id, envelopeId }: { budgetId: Id; id: Id; envelopeId: Id }) => budgetApi.moveIntoEnvelope(budgetId, id, envelopeId),
     onSuccess: () => {
@@ -557,7 +570,7 @@ export function useMoveIntoEnvelope() {
 }
 
 export function useChangeElementCurrency() {
-  const invalidate = useInvalidateBudget()
+  const invalidate = useInvalidateBudgetAndDebts()
   return useMutation({
     mutationFn: budgetApi.changeElementCurrency,
     onSuccess: () => {
@@ -582,12 +595,16 @@ export function useUpdateBudgetDetail({ handlesOwnErrors = false }: OwnErrorHand
     mutationFn: ({ previousSavingsAccountIds: _prev, ...form }: budgetApi.UpdateBudgetForm & { previousSavingsAccountIds?: Id[] }) =>
       budgetApi.updateBudget(form),
     onSuccess: (meta, variables) => {
+      const before = queryClient.getQueryData<BudgetMetaDto[]>(queryKeys.budgets)?.find((b) => b.id === variables.id)
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) =>
         (prev ?? []).map((b) => (b.id === meta.id ? meta : b)),
       )
       invalidate()
-      // a debt counts only the payments on its budget's accounts
-      if (variables.accountIds !== undefined) void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+      // a debt counts only the payments on its budget's accounts, and a debt on
+      // a row with no currency of its own follows the budget's currency
+      if (variables.accountIds !== undefined || before?.currencyId !== variables.currencyId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
+      }
       trackEvent(METRICS.BUDGET_UPDATE)
       if (variables.endDate !== undefined) trackEvent(METRICS.BUDGET_SET_END_DATE)
       // the dialog sends the day only when it differs from the stored one; the

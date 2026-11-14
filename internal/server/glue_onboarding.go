@@ -235,6 +235,7 @@ func (c *OnboardingCurrencies) UsableCurrencyCode(ctx context.Context, userID vo
 
 type onboardingDebtService interface {
 	CreateDebt(ctx context.Context, userID vo.Id, req model.CreateDebtRequest) (*model.DebtResult, error)
+	ElementIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error)
 }
 
 // OnboardingDebts adapts the debt service to onboarding.DebtSteps: a debt

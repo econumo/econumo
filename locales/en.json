@@ -537,7 +537,7 @@
       },
       "delete_confirm": {
         "title": "Delete this debt?",
-        "question": "The debt leaves its budget. The payments themselves are not changed."
+        "question": "The debt and its history are deleted. The plans and transactions of its category or envelope are not changed."
       }
     },
     "terms": {

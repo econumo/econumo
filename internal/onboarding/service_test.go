@@ -97,7 +97,10 @@ type fakeDebts struct {
 	created    []vo.Id
 	categories []vo.Id
 	refused    []vo.Id
+	existing   []vo.Id
 }
+
+func (f *fakeDebts) ElementIDs(context.Context, vo.Id) ([]vo.Id, error) { return f.existing, nil }
 
 func (f *fakeDebts) CreateDebt(_ context.Context, _, budgetID, categoryID vo.Id, _ vo.DecimalNumber, _ model.RecurringSchedule) (bool, error) {
 	f.calls++

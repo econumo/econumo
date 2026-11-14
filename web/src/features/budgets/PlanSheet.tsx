@@ -6,6 +6,7 @@ import type { CollisionDetection, DragEndEvent, DragOverEvent, DragStartEvent } 
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { besidePointer, centerRowOnPointer } from '@/lib/dnd'
 import { afterIdFromDrop } from '@/lib/ordering'
+import { toastRefusal } from '@/lib/apiError'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -1295,7 +1296,15 @@ export function PlanSheet({ budget, currencies, userId, editMode, onOpenSettings
     if (envelopeId !== null) {
       if (canEnterEnvelope(side)(activeId, envelopeId)) {
         holdMember(activeId)
-        moveIntoEnvelope.mutate({ budgetId: budget.meta.id, id: activeId, envelopeId }, { onError: releaseHold })
+        moveIntoEnvelope.mutate(
+          { budgetId: budget.meta.id, id: activeId, envelopeId },
+          {
+            onError: (err) => {
+              releaseHold()
+              toastRefusal(err)
+            },
+          },
+        )
       }
       return
     }

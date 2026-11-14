@@ -97,11 +97,11 @@ type EntityDto = CategoryDto | PayeeDto | TagDto | LabelDto
 function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
   const queryClient = useQueryClient()
   const key = queryKeys[kind]
-  // debts are attached to categories (and envelopes): only a category's delete,
-  // merge, rename or re-icon reaches them
-  const touchesDebts = kind === 'categories'
-  const invalidateDebts = () => {
-    if (touchesDebts) {
+  // debts are attached to categories (and envelopes): a category's delete,
+  // merge, rename or re-icon reaches them, and so does a tag's delete, since an
+  // untagged expense counts on its category and so for that category's debt
+  const invalidateDebts = (force = false) => {
+    if (force || kind === 'categories') {
       void queryClient.invalidateQueries({ queryKey: queryKeys.debts })
     }
   }
@@ -147,6 +147,9 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       )
       if (touchesBudget) {
         invalidateBudgetViews()
+      }
+      if (kind === 'tags') {
+        invalidateDebts(true)
       }
     },
     // A merge RE-POINTS rows at the target rather than nulling them, which is

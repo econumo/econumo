@@ -44,6 +44,9 @@ type DebtSteps interface {
 	// carries an active debt, it cannot carry one (an income category, one
 	// in an envelope), or the caller cannot plan the budget.
 	CreateDebt(ctx context.Context, userID, budgetID, categoryID vo.Id, payment vo.DecimalNumber, schedule model.RecurringSchedule) (created bool, err error)
+	// ElementIDs are the budget's elements that carry a debt, active or paid
+	// off: the detection never asks about them.
+	ElementIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error)
 }
 
 // AttemptLimiter caps the AI classification per user; every job counts.

@@ -87,7 +87,7 @@ func (s *Service) moveOnElement(ctx context.Context, budgetID, fromID, toID vo.I
 		// the newest debt is in the source row's currency (a paid-off one
 		// keeps the currency it ended in)
 		if target.Eligible && moving[len(moving)-1].CurrencyID.Equal(target.CurrencyID) {
-			return s.repo.MoveToElement(ctx, budgetID, fromID, toID, target.Type)
+			return s.repo.MoveToElement(ctx, budgetID, fromID, toID, target.Type, s.clock.Now())
 		}
 	}
 	return s.deleteOnElement(ctx, budgetID, fromID)

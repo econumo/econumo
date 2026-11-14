@@ -2484,7 +2484,8 @@ a second budget member account in USD, before running these.
 - [ ] 📱 Settings has no Debts entry and `/settings/debts` is not a page: a debt
       is reached only from the row of its category or envelope.
 - [ ] 📱 **Track as debt** (⋮ menu of a top-level expense category row or of an
-      envelope, in the Budget view, the Plan grid and the phone sheet, for anyone who may
+      envelope, in the Budget view and the Plan grid, on a phone or tablet in the Budget view's edit mode,
+      for anyone who may
       plan in an unarchived budget) opens a short form: the header shows the
       element's icon and name, and there is only the Payment card (amount and
       "every month ▾"); no name, icon, category picker, "Which payments count"
@@ -2548,23 +2549,31 @@ a second budget member account in USD, before running these.
 - [ ] 📱 **Past debts (N)** (⋮ menu of an element with paid-off debts): a short list newest first (start and end
       dates, amount borrowed) opening each debt's review read-only: Overview, Balance (summary and
       history, no forms) and a Danger zone with Reopen and Delete only; no Settings tab, no Finish setup, no
-      reconcile or rate-change forms, the closing statement has no delete button. The list's opening fires its
+      reconcile or rate-change forms and no delete buttons on the Balance tab. The list's opening fires its
       analytics event.
 - [ ] 📱 **Envelope rules**: dragging or moving a category with an ACTIVE debt into an envelope (move-element,
       the envelope's category picker in create and edit) is refused with "A category that tracks a debt cannot
-      go into an envelope", also through the MCP; a category with only paid-off debts can go in; adding a
+      go into an envelope" (after a drag as a toast, the row back where it was; in the envelope dialog under
+      its categories, the dialog staying open), also through the MCP; a category with only paid-off debts can go in; adding a
       category to an envelope that carries a debt is allowed and its expenses count as payments from then on.
       A category inside an envelope has no "Track as debt" (the envelope has).
 - [ ] **Element currency change** (change the currency of a category or envelope row in the budget): the active
       debt follows it (stored numbers kept and read in the new currency, payments converted and split
-      again, no statement added); a paid-off debt on that element keeps the currency it ended in.
+      again, no statement added); a paid-off debt on that element keeps the currency it ended in, and
+      takes the element's currency when reopened. Changing the BUDGET's currency moves the active debt of
+      a category whose row never had a currency of its own (it showed the budget's) to the new currency;
+      a row with its own currency keeps its debt where it is. The debt screens refresh at once after an
+      element currency change and after any envelope edit (create, edit, delete, a category dragged in or out).
 - [ ] **Deleting**: deleting the category or the envelope deletes the debts attached to it, active and past,
       with their history; a partner or guest deleting their own category that carries a shared debt succeeds.
       Merging category A into B moves A's debts to B only when B has no debt at all, is a top-level
-      category and its row has the same currency; otherwise A's debts are deleted with it. Payee, tag
-      and reporting tag deletes and merges never touch debts. Deleting a debt (review screen's Danger zone, or
-      the element's menu; asks first) leaves the element's plans, comments and transactions untouched;
-      it is offered on active and past debts, and a guest cannot.
+      category and its row has the same currency; otherwise A's debts are deleted with it. Payee and
+      reporting tag deletes and merges, and tag merges, never touch debts; deleting a tag can add payments:
+      the expenses it carried in the debt's category now count for the debt (the debt's figures refresh
+      at once). Deleting a debt (review screen's Danger zone, or the element's menu) asks first: "The debt
+      and its history are deleted. The plans and transactions of its category or envelope are not
+      changed."; afterwards the element's plans, comments and transactions are untouched; it is offered
+      on active and past debts, and a guest cannot.
 - [ ] **Participants and clones**: removing a participant (or the participant leaving) keeps the budget's debts;
       those on the leaver's categories show again if the category returns. Deleting the budget deletes its
       debts. Duplicating (cloning) a budget copies its debts with their elements, start dates, terms,

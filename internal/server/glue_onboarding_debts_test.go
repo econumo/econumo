@@ -23,6 +23,10 @@ func (s *stubOnboardingDebtService) CreateDebt(_ context.Context, _ vo.Id, req m
 	return &model.DebtResult{}, nil
 }
 
+func (s *stubOnboardingDebtService) ElementIDs(context.Context, vo.Id) ([]vo.Id, error) {
+	return nil, nil
+}
+
 // A detected debt the caller may not create in the budget (a guest, or an
 // archived budget) is skipped like any other refusal; only a real failure
 // fails the job.

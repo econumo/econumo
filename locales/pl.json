@@ -537,7 +537,7 @@
       },
       "delete_confirm": {
         "title": "Usunąć ten dług?",
-        "question": "Dług zniknie z budżetu. Same płatności nie zostaną zmienione."
+        "question": "Dług i jego historia zostaną usunięte. Plany i transakcje jego kategorii lub koperty nie zostaną zmienione."
       }
     },
     "terms": {

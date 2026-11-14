@@ -143,7 +143,12 @@ func (s *Service) reopenDebt(ctx context.Context, userID vo.Id, req model.Reopen
 			}
 		}
 		cur.Status, cur.EndedAt, cur.UpdatedAt = model.DebtActive, nil, s.clock.Now()
-		return s.repo.Save(ctx, cur)
+		if err := s.repo.Save(ctx, cur); err != nil {
+			return err
+		}
+		// a paid-off debt kept the currency it ended in; an active one is in
+		// its element's
+		return s.moveToCurrency(ctx, cur, el.CurrencyID)
 	})
 	if err != nil {
 		return nil, err

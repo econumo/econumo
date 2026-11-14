@@ -782,7 +782,7 @@ it('a delete the server accepts closes the screen without a second question', as
   await user.click(within(await openDanger(user)).getByRole('button', { name: 'Delete' }))
   const confirm = await screen.findByRole('dialog', { name: 'Delete this debt?' })
   // a debt has one budget, and the payments, a partner's included, stay as they are
-  expect(confirm).toHaveTextContent('The debt leaves its budget. The payments themselves are not changed.')
+  expect(confirm).toHaveTextContent('The debt and its history are deleted. The plans and transactions of its category or envelope are not changed.')
   await user.click(within(confirm).getByRole('button', { name: 'Delete' }))
 
   await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBeNull())

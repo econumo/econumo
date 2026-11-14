@@ -219,7 +219,8 @@ function invalidatedCaches(queryClient: QueryClient) {
 }
 
 const allInvalidated = { budget: true, budgetPlan: true, budgetTransactions: true, budgetComments: true }
-// debts are attached to categories only: a category's delete or merge refreshes them too
+// debts are attached to categories: a category's delete or merge refreshes
+// them, and so does a tag's delete (its expenses now count on their category)
 const withDebts = { ...allInvalidated, debts: true }
 const withoutDebts = { ...allInvalidated, debts: false }
 
@@ -253,7 +254,7 @@ it.each([
   result.current.mutate('src')
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-  expect(invalidatedCaches(queryClient)).toEqual(kind === 'category' ? withDebts : withoutDebts)
+  expect(invalidatedCaches(queryClient)).toEqual(kind === 'category' || kind === 'tag' ? withDebts : withoutDebts)
 })
 
 // A debt shows its element's name and icon, so renaming, re-iconing or archiving a

@@ -863,6 +863,26 @@ describe('the ⋮ menus on the Budget view', () => {
     expect(sent).not.toHaveProperty('side')
   })
 
+  it('a refused envelope save keeps the dialog open with the server\'s message under the categories', async () => {
+    const message = 'A category that tracks a debt cannot go into an envelope'
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(fixtureWirePlan),
+      http.post('*/api/v1/budget/create-envelope', () =>
+        HttpResponse.json({ success: false, message: 'Validation failed', code: 400, errors: { categories: [message] } }, { status: 400 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(within(await screen.findByTestId('column-headers')).getByRole('button', { name: 'menu Expenses' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'New envelope' }))
+    await user.type(await screen.findByRole('textbox', { name: 'Name' }), 'Home')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+    expect(await screen.findByTestId('envelope-server-error')).toHaveTextContent(message)
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Home')
+  })
+
   it('Create folder from Income creates an income folder, listed under Income while still empty', async () => {
     let created: { id: string; name: string; side?: string } | null = null
     const folderWire = () => (created ? [{ id: created.id, name: created.name, position: 9, side: created.side }] : [])

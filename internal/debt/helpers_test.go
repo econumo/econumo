@@ -272,7 +272,7 @@ func (e *env) newCategory(owner string, expense bool) string {
 	}
 	name := "Loan " + fixture.NewID()[:6]
 	id := e.f.Category(fixture.Category{UserID: owner, Name: name, Type: typ})
-	e.cats.items[id] = model.DebtClassification{OwnerID: vo.MustParseId(owner), Name: name, Icon: "i", IsExpense: expense}
+	e.cats.items[id] = model.DebtClassification{Name: name, Icon: "i"}
 	e.elements.set(e.budget, model.DebtElementInfo{ID: vo.MustParseId(id), Type: model.DebtElementCategory, Name: name, Icon: "i",
 		CurrencyID: vo.MustParseId(fixture.USD), CategoryIDs: ids(id), Eligible: expense})
 	return id

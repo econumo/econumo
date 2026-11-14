@@ -46,10 +46,13 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
   const [askStartDate, setAskStartDate] = useState(false)
 
   const budget = budgets?.find((b) => b.id === params.budgetId)
-  // a category by its id, an envelope from the budget's structure
-  const element = categories.find((c) => c.id === params.elementId) ?? openBudget?.structure.elements.find((e) => e.id === params.elementId)
-  // the element's currency, else the budget's
-  const currencyId = (element && 'currencyId' in element ? element.currencyId : null) ?? budget?.currencyId ?? null
+  // the budget's own row first: it carries the row's currency; the category
+  // list only names a category while the budget loads
+  const row = openBudget?.structure.elements.find((e) => e.id === params.elementId)
+  const category = categories.find((c) => c.id === params.elementId)
+  const element = row ?? category
+  // a row with no currency of its own is in the budget's
+  const currencyId = row?.currencyId ?? budget?.currencyId ?? null
   const currency = currencies?.find((c) => c.id === currencyId)
 
   const validate = (): boolean => {

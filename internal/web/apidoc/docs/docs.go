@@ -5998,7 +5998,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Returns the debts, active and paid off, of every budget the caller can read, archived ones included, with their projections. Each names its element (elementId, elementType category|envelope) and takes the element's name, icon and currency; status is active or paid_off, endedAt the last day payments count. canEdit is 1 where the caller may change the debt (plan access to an unarchived budget, the debt active).",
+                "description": "Returns the debts, active and paid off, of every budget the caller can read, archived ones included, with their projections. Each names its element (elementId, elementType category|envelope) and takes the element's name, icon and currency; status is active or paid_off, endedAt the last day payments count. canEdit is 1 where the caller may change the debt (plan access to an unarchived budget), whatever the debt's status.",
                 "produces": [
                     "application/json"
                 ],
@@ -6209,7 +6209,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Takes a paid-off debt back to active: its end and the statement of 0 dated on it go, and the payments after it count again (reopen, then mark paid off again, fixes a wrong paid-off date). Refused with debt.cannot_reopen while its element carries another active debt or a debt created after it. An active debt is returned unchanged.",
+                "description": "Takes a paid-off debt back to active: its end and the statement of 0 dated on it go, and the payments after it count again (reopen, then mark paid off again, fixes a wrong paid-off date). Refused with debt.cannot_reopen while its element carries another active debt or a debt created after it. A statement mark-debt-paid-off replaced on its end date is not restored. The debt takes its element's current currency. An active debt is returned unchanged.",
                 "consumes": [
                     "application/json"
                 ],

@@ -40,13 +40,9 @@ func TestDebtCategories(t *testing.T) {
 	owner := vo.NewId()
 	cat := &model.Category{ID: vo.NewId(), UserID: owner, Name: "Loans", Icon: "bank", Type: model.TypeExpense}
 	c := NewDebtCategories(stubDebtCategories{cat: cat})
-	want := model.DebtClassification{OwnerID: owner, Name: "Loans", Icon: "bank", IsExpense: true}
+	want := model.DebtClassification{Name: "Loans", Icon: "bank"}
 	if got, err := c.Category(ctx, cat.ID); err != nil || got != want {
 		t.Errorf("category = %+v, %v; want %+v", got, err, want)
-	}
-	cat.Type = model.TypeIncome
-	if got, _ := c.Category(ctx, cat.ID); got.IsExpense {
-		t.Error("an income category is not an expense")
 	}
 	if _, err := NewDebtCategories(stubDebtCategories{}).Category(ctx, vo.NewId()); !isNotFoundErr(err) {
 		t.Errorf("missing category: err = %v, want not found", err)

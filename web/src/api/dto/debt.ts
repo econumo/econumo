@@ -9,8 +9,8 @@ export interface DebtDto {
   /** the budget the debt belongs to */
   budgetId: Id
   budgetName: string
-  /** 1 when the caller may plan in that budget (owner, admin or user), it is
-   *  not archived and the debt is active; 0 reads only */
+  /** 1 when the caller may plan in that budget (owner, admin or user) and it
+   *  is not archived, whatever the debt's status; 0 reads only */
   canEdit: 0 | 1
   /** the element the debt is attached to: a top-level expense category or an envelope */
   elementId: Id
