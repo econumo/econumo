@@ -2013,8 +2013,10 @@ data unreadable. Most are also asserted by the test suite.
   (`debt.last_payment_before_start`). Without anything else, what is owed today is the amount
   borrowed less the debt parts of the payments RECORDED since the start, split forward from the
   origin (no assumption that unrecorded dues were paid). The origin is the amount borrowed BEFORE
-  the start day's payments: a payment dated on the start date is split forward, accrues nothing,
-  comes fully off the balance and pays no due. The FIRST period is prorated by days: the window
+  the start day's payments: a payment dated on the start date is split forward and pays no due;
+  it pays the interest owed for the time before the start first (a mortgage's interest
+  adjustment), at most a full period's interest on the amount borrowed, and only the rest comes
+  off the balance (migration `20261113000000` dropped the splits stored under the earlier rule). The FIRST period is prorated by days: the window
   of the first due after the start accrues a regular period's interest x (days from the start to
   that due / days of the full period ending on it); a window whose due is on or before the start
   accrues nothing, later ones a full period; the implied rate solves that same accrual
@@ -2091,7 +2093,8 @@ data unreadable. Most are also asserted by the test suite.
   over the same windows, those holding payments dated up to today, each adds max(0, its
   payments (in the debt currency) less the payment of the snapshot in force on its due), so a
   missed window followed by a double payment counts the second payment as extra and the dues a
-  statement settles add only what was recorded in them; a start-day payment counts in full.
+  statement settles add only what was recorded in them; a start-day payment counts what it took off
+  the amount borrowed (less its interest).
   `currencyId` is optional on create: none takes the budget's currency (the SPA sends the
   converted category row's). A currency the budget already uses (its own or an element row's) is
   accepted from anyone; any other must be usable by the caller (deleted, or another user's custom

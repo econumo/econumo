@@ -2698,7 +2698,10 @@ running these.
       above the regular payment, due window by due window, up to today: a
       payment of 1,000 against a payment of 450 shows 550.00; a second
       payment of 300 in a window already paid 450 shows 300.00; a payment on
-      the start date counts in full; a future-dated payment adds nothing
+      the start date counts only what it took off the amount borrowed (it pays
+      up to a month's interest first: a mortgage's interest adjustment of
+      1,175.27 on its start date shows Interest 1,175.27, leaves the balance at
+      the amount borrowed and adds 0.00); a future-dated payment adds nothing
       until its day; with nothing extra it reads 0.00 (not hidden). Planned
       extra is what the budget plans above the regular payment from now on
       (0.00 with no plans); it appears only once the plans have loaded and

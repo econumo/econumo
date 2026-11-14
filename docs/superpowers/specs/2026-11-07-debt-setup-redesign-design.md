@@ -245,7 +245,8 @@ create form stays short and sets none of them.
   shows no interest. **Overpaid** becomes **Paid extra**, `get-debt`'s additive
   `extraPaid`: over the due windows periodsPaid uses, up to today, each window adds
   what its recorded payments went above the regular payment of the snapshot in
-  force on its due (never below 0); a start-day payment counts in full, a window a
+  force on its due (never below 0); a start-day payment counts what it took off the
+  amount borrowed (2026-11-13: it pays the time before the start's interest first), a window a
   statement settles counts only what was recorded in it, and a missed window
   followed by a double payment counts the second payment as extra (it is measured
   by window). **Planned overpayment** becomes **Planned extra**, the forecast

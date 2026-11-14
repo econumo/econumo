@@ -827,19 +827,37 @@ func TestSplit_OriginFirstPeriodIsProratedByDays(t *testing.T) {
 	near(t, "second period interest", got["feb"], (12000-(600-first))*r, 1e-9)
 }
 
-// A payment on the start day accrues nothing: all of it comes off the amount
-// borrowed, and the balance after that day shows it.
-func TestSplit_OriginDayPaymentIsAllPrincipal(t *testing.T) {
+// A payment on the start day pays the interest owed for the time before the
+// start first, at most a full period's on the amount borrowed; only the rest
+// comes off it, and the balance after that day shows it.
+func TestSplit_OriginDayPaymentPaysInterestFirst(t *testing.T) {
 	s := originLoan()
 	r := mustRate(t, s)
 	pays := []MathPayment{pay("down", ymd(2026, time.January, 15), 1000), pay("jan", ymd(2026, time.January, 20), 600)}
 	got := SplitPayments([]MathSnapshot{s}, pays)
-	if got["down"] != 0 {
-		t.Fatalf("start-day interest = %v, want 0", got["down"])
-	}
-	near(t, "first period interest", got["jan"], 11000*r*5/31, 1e-9)
-	near(t, "balance on the start day", BalanceAt([]MathSnapshot{s}, pays, got, s.AsOf), 11000, 1e-9)
+	near(t, "start-day interest", got["down"], 12000*r, 1e-9)
+	after := 12000 - (1000 - 12000*r)
+	near(t, "first period interest", got["jan"], after*r*5/31, 1e-9)
+	near(t, "balance on the start day", BalanceAt([]MathSnapshot{s}, pays, got, s.AsOf), after, 1e-9)
 	near(t, "balance before the start", BalanceAt([]MathSnapshot{s}, pays, got, s.AsOf.AddDate(0, 0, -1)), 12000, 1e-9)
+}
+
+// A mortgage's interest adjustment: a start-day payment below a period's
+// interest is all interest and leaves the amount borrowed, the term and the
+// contract's payoff as they were.
+func TestSplit_InterestAdjustmentOnTheStartDayIsAllInterest(t *testing.T) {
+	s := MathSnapshot{AsOf: ymd(2026, time.May, 1), Balance: 594078.30, Payment: 2647.82,
+		Schedule: RecurringScheduleMonthly, Last: ymd(2056, time.May, 1), Digits: 2, Origin: true}
+	r := mustRate(t, s)
+	pays := []MathPayment{pay("adj", ymd(2026, time.May, 1), 1175.27), pay("jun", ymd(2026, time.June, 1), 2647.82)}
+	got := SplitPayments([]MathSnapshot{s}, pays)
+	near(t, "adjustment interest", got["adj"], 1175.27, 1e-9)
+	near(t, "June interest, a full period", got["jun"], 594078.30*r, 1e-9)
+	p := ProjectDebt(ProjectionInput{Digits: 2, Snaps: []MathSnapshot{s}, Pays: pays, Interest: got, Today: ymd(2026, time.June, 2)})
+	if p.PeriodsPaid != 1 || p.PaymentsLeft != 359 || !p.PayoffDate.Equal(s.Last) || p.ExtraPaid != 0 {
+		t.Fatalf("periods paid %d, payments left %d, payoff %v, extra %v; want 1, 359, the contract's last date, 0",
+			p.PeriodsPaid, p.PaymentsLeft, p.PayoffDate, p.ExtraPaid)
+	}
 }
 
 // A window keyed by a due on or before the start accrues nothing: the loan
@@ -948,7 +966,9 @@ func TestProjectDebt_ExtraPaidIsWhatAWindowPaidAboveThePayment(t *testing.T) {
 		{"two payments in one window", []MathPayment{pay("a", ymd(2026, time.June, 10), 450), pay("b", ymd(2026, time.June, 20), 300)}, 300},
 		// by window: July is missed, August's window holds 900, so 450 is extra
 		{"a missed window then a double payment", []MathPayment{pay("a", ymd(2026, time.June, 10), 450), pay("b", ymd(2026, time.August, 10), 900)}, 450},
-		{"the start-day payment counts in full", []MathPayment{pay("down", ymd(2026, time.May, 15), 2000), pay("a", ymd(2026, time.June, 10), 450)}, 2000},
+		// a month's interest on 16500 (167.51) is the time before the start
+		{"the start-day payment counts what it took off the amount borrowed", []MathPayment{pay("down", ymd(2026, time.May, 15), 2000), pay("a", ymd(2026, time.June, 10), 450)}, 1832.49},
+		{"a start-day payment within a month's interest adds nothing", []MathPayment{pay("adj", ymd(2026, time.May, 15), 100), pay("a", ymd(2026, time.June, 10), 450)}, 0},
 		{"payments after today do not count", []MathPayment{pay("a", ymd(2026, time.June, 10), 450), pay("f", ymd(2026, time.December, 10), 5000)}, 0},
 		{"a smaller payment is no negative", []MathPayment{pay("a", ymd(2026, time.June, 10), 100), pay("b", ymd(2026, time.July, 10), 500)}, 50},
 		{"nothing paid", nil, 0},

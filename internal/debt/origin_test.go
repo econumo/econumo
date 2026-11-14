@@ -273,21 +273,26 @@ func TestFinishSetup_FromTheLoanFacts(t *testing.T) {
 	}
 }
 
-// A payment on the start date is matched and comes fully off the amount
-// borrowed: it accrues nothing and pays no due.
-func TestSetUpDebt_StartDayPaymentReducesTheBalance(t *testing.T) {
+// A payment on the start date is matched and pays the interest owed for the
+// time before the start first (a month's on the amount borrowed, 181.57 here);
+// only the rest comes off it, and it pays no due.
+func TestSetUpDebt_StartDayPaymentPaysInterestFirst(t *testing.T) {
 	e := newEnv(t)
 	down := e.expense(t, e.account, ymd(2025, 3, 1), "2000", "")
+	adj := e.expense(t, e.account, ymd(2025, 3, 1), "100", "")
 	res := e.createOrigin(t, nil)
-	if got := e.splits(t, res.Id)[down]; got != "0" {
-		t.Fatalf("start-day split = %q, want 0", got)
+	splits := e.splits(t, res.Id)
+	a, _ := strconv.ParseFloat(splits[down], 64)
+	b, _ := strconv.ParseFloat(splits[adj], 64)
+	if math.Abs(a+b-181.57) > 0.005 {
+		t.Fatalf("start-day splits = %q + %q, want 181.57 in all", splits[down], splits[adj])
 	}
 	got, err := e.svc.GetDebt(context.Background(), e.uid(), model.GetDebtRequest{Id: res.Id})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Item.CurrentBalance != "10000" || got.Item.PeriodsPaid != 0 || got.Payments[0].Balance != "10000" {
-		t.Fatalf("item = %+v, payments = %+v", got.Item, got.Payments)
+	if got.Item.CurrentBalance != "10081.57" || got.Item.PeriodsPaid != 0 || got.Item.ExtraPaid != "1918.43" {
+		t.Fatalf("item = %+v", got.Item)
 	}
 }
 

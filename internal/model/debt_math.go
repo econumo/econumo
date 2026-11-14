@@ -18,8 +18,8 @@ type MathSnapshot struct {
 	// its smallest unit of the balance are interest-free.
 	Digits int
 	// Origin marks the loan's first snapshot: its balance is the amount
-	// borrowed BEFORE the start day's payments (which accrue nothing), and
-	// its first period accrues interest prorated by days.
+	// borrowed BEFORE the start day's payments (see splitFromOrigin), and its
+	// first period accrues interest prorated by days.
 	Origin bool
 	// rate, when rateSet, is the rate in force from this snapshot: a
 	// statement after the origin keeps the loan's rate (withLoanRate).
@@ -455,9 +455,11 @@ func splitForward(s MathSnapshot, seg, all []MathPayment, out map[string]float64
 	}
 }
 
-// splitFromOrigin: the start day's payments accrue nothing; a window whose
-// due is on or before the start accrues nothing (the loan had not begun);
-// the first due's window accrues its prorated share; later ones a full
+// splitFromOrigin: the start day's payments pay the interest owed for the time
+// before the start first (a mortgage's interest adjustment), at most a full
+// period's on the amount borrowed, and only the rest comes off the balance; a
+// window whose due is on or before the start accrues nothing (the loan had not
+// begun); the first due's window accrues its prorated share; later ones a full
 // period's interest.
 func splitFromOrigin(s MathSnapshot, seg []MathPayment, out map[string]float64) {
 	r := snapshotRate(s)
@@ -471,7 +473,7 @@ func splitFromOrigin(s MathSnapshot, seg []MathPayment, out map[string]float64) 
 			rest = append(rest, p)
 		}
 	}
-	allocate(startDay, 0, out)
+	allocate(startDay, balance*r, out)
 	for _, p := range startDay {
 		balance -= p.Amount - out[p.ID]
 	}
@@ -766,7 +768,7 @@ func ProjectDebt(in ProjectionInput) Projection {
 		}
 	}
 	out.PeriodsPaid = len(paidDues)
-	out.ExtraPaid = extraPaid(snaps, pays, today)
+	out.ExtraPaid = extraPaid(snaps, pays, in.Interest, today)
 
 	firstDue := firstUnpaidDue(latest, snaps[0], pays, today)
 	sd := in.PeriodStartDay
@@ -876,9 +878,10 @@ func ProjectDebt(in ProjectionInput) Projection {
 // due; a window paid short adds nothing. It is measured by window, so a missed
 // window followed by a double payment counts the second payment as extra: the
 // money went above that window's payment, whatever was owed from before. A
-// payment on the origin's day pays no due and counts in full; the dues a
+// payment on the origin's day pays no due and counts what it took off the
+// amount borrowed (its interest is the time before the start); the dues a
 // statement settles count only the payments recorded in their windows.
-func extraPaid(snaps []MathSnapshot, pays []MathPayment, today time.Time) float64 {
+func extraPaid(snaps []MathSnapshot, pays []MathPayment, interest map[string]float64, today time.Time) float64 {
 	latest := snaps[len(snaps)-1]
 	var total float64
 	paid := map[time.Time]float64{}
@@ -888,7 +891,9 @@ func extraPaid(snaps []MathSnapshot, pays []MathPayment, today time.Time) float6
 			continue
 		}
 		if !instalment(snaps[0], p) {
-			total += p.Amount
+			if principal := roundDigits(p.Amount-interest[p.ID], latest.Digits); principal > 0 {
+				total += principal
+			}
 			continue
 		}
 		due := dueContaining(latest.Schedule, latest.Last, p.Date)
