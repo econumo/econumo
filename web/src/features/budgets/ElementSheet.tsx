@@ -12,7 +12,7 @@ import type { Id } from '@/api/types'
 import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
 import type { DebtDetailsTab } from '@/app/uiStore'
 import { DebtExtraNote } from './debtRow'
-import { useDebtSummary } from './debtSummary'
+import { useDebtSummaryText } from './debtSummary'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
 import { sheetCell, sheetDebt, sheetIcon, sheetPlanHint, sheetSetsPlan } from './phoneMonth'
@@ -79,7 +79,7 @@ export function ElementSheet({
   canPlanDebt = false,
 }: ElementSheetProps) {
   const { t, i18n } = useTranslation()
-  const debtSummary = useDebtSummary()
+  const debtSummary = useDebtSummaryText()
   if (!target) {
     return null
   }

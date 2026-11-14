@@ -1,6 +1,9 @@
 import type { Id } from '../types'
 import type { RecurringSchedule } from './recurring'
 
+/** the schedule of a debt's payments; none = no fixed payments (the loan is returned by a date) */
+export type DebtSchedule = RecurringSchedule | 'none'
+
 /** amounts are decimal strings in the debt's currency, dates Y-m-d ("" when none).
  *  While isSetUp is 0 the terms and figures (balance .. periodRate, payment and
  *  schedule excepted) are "" and the counts 0. */
@@ -30,7 +33,7 @@ export interface DebtDto {
   /** the latest snapshot's terms */
   balance: string
   payment: string
-  schedule: RecurringSchedule
+  schedule: DebtSchedule
   lastPaymentDate: string
   currentBalance: string
   paymentsLeft: number
@@ -43,6 +46,8 @@ export interface DebtDto {
    *  window by due window (a payment on the start date in full) */
   extraPaid: string
   payoffDate: string
+  /** no fixed payments: what a period repays it by the return-by date; '' otherwise */
+  monthlyToFinish?: string
   nextDueDate: string
   /** the rate per schedule period in force today, 10 decimals */
   periodRate: string
@@ -65,7 +70,7 @@ export interface DebtSnapshotDto {
   asOf: string
   balance: string
   payment: string
-  schedule: RecurringSchedule
+  schedule: DebtSchedule
   lastPaymentDate: string
 }
 
@@ -123,9 +128,9 @@ export interface CreateDebtDto {
   budgetId: Id
   /** a top-level expense category or an envelope of the budget */
   elementId: Id
-  /** must be positive (the server refuses 0 and blank) */
+  /** positive, except 0 with the `none` schedule */
   payment: string
-  schedule: RecurringSchedule
+  schedule: DebtSchedule
   /** Y-m-d, asked only after debt.start_before_previous_end */
   startDate?: string | null
 }
@@ -141,7 +146,7 @@ export interface UpdateDebtDto {
   balance?: string
   balanceDate?: string
   payment?: string
-  schedule?: RecurringSchedule
+  schedule?: DebtSchedule
   lastPaymentDate?: string
 }
 

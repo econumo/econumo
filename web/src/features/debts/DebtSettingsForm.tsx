@@ -12,7 +12,7 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { useUpdateDebt } from './queries'
 import { AmountField, DatesRow, PaymentField } from './debtFields'
 import type { FieldErrors } from './debtFields'
-import { amountEcho, amountError, buildTermsPayload, factsAsked, useDebtTermsForm } from './useDebtForm'
+import { amountEcho, amountError, buildTermsPayload, factsAsked, isNoFixed, paymentError, useDebtTermsForm } from './useDebtForm'
 
 // the fields a server refusal can name here; anything else lands in the form's alert
 const SERVER_FIELDS = [
@@ -82,7 +82,7 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
   const validate = (): boolean => {
     const next: FieldErrors = {}
     const required = t('common.validation.required_field')
-    next.payment = amountError(form.payment, t, true)
+    next.payment = paymentError(form.payment, form.schedule, t)
     // a debt not set up may be saved without the loan's facts, never with only some
     if (factsAsked(form, debt)) {
       next.amountBorrowed = amountError(form.amountBorrowed, t, true)
@@ -146,6 +146,7 @@ export function DebtSettingsForm({ debt, onSaved, onDirtyChange, focusMissing = 
             lastPaymentDate={form.lastPaymentDate}
             startError={errors.startDate}
             lastPaymentError={errors.lastPaymentDate}
+            returnBy={isNoFixed(form.schedule)}
             // a set-up debt always has its start: only a debt not set up drops it
             clearable={settingUp}
             onStartDateChange={(startDate) => {

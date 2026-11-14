@@ -296,3 +296,19 @@ it('a debt not set up can drop its start date', async () => {
   await waitFor(() => expect(bodies).toHaveLength(1))
   expect(bodies[0]).toMatchObject({ startDate: null })
 })
+
+it('with no fixed payments the last payment date reads Return by and a 0 payment saves', async () => {
+  const bodies = captureUpdate()
+  const user = userEvent.setup()
+  const onSaved = renderForm({ ...wireDebt, schedule: 'none', payment: '0' })
+
+  expect(screen.getByRole('button', { name: 'Return by' })).toHaveTextContent('Nov 5, 2027')
+  expect(screen.queryByRole('button', { name: 'Last payment date' })).toBeNull()
+  const borrowed = screen.getByLabelText('Amount borrowed')
+  await user.clear(borrowed)
+  await user.type(borrowed, '1500')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(bodies[0]).toMatchObject({ amountBorrowed: '1500', payment: '0', schedule: 'none' })
+})

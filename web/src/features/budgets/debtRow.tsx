@@ -8,7 +8,7 @@ import { moneyFormat } from '@/lib/money'
 import { pluralPick } from '@/lib/plural'
 import { debtExtraEffect } from './budgetMath'
 import type { PayoffFigures } from './budgetMath'
-import { useDebtSummary } from './debtSummary'
+import { useDebtSummary, useDebtSummaryText } from './debtSummary'
 
 /** "Paid off 14 months earlier, $21,000.00 less overpayment", or nothing */
 export function DebtExtraNote({ row, currency, className = 'text-xs text-muted-foreground' }: { row: PayoffFigures; currency: CurrencyDto | undefined; className?: string }) {
@@ -58,6 +58,7 @@ export function ElementDebtLine({ debt, canPlan, className = '' }: { debt: Eleme
   const { t } = useTranslation()
   const openDebtDetails = useUiStore((s) => s.openDebtDetails)
   const summary = useDebtSummary()(debt)
+  const summaryText = useDebtSummaryText()(debt)
   if (summary === null && !canPlan) {
     return null
   }
@@ -74,7 +75,7 @@ export function ElementDebtLine({ debt, canPlan, className = '' }: { debt: Eleme
           title={t('budgets.page.debts.details')}
           onClick={() => openDebtDetails(debt.id, 'overview')}
         >
-          {summary}
+          {summaryText}
         </button>
       )}
     </div>

@@ -500,8 +500,13 @@
           "biweekly": "每 2 周",
           "monthly": "每月",
           "quarterly": "每季度",
-          "yearly": "每年"
+          "yearly": "每年",
+          "none": "无固定还款"
         }
+      },
+      "return_by": {
+        "label": "归还期限",
+        "hint": "需归还贷款的日期"
       },
       "last_payment_date": {
         "label": "最后还款日",
@@ -612,6 +617,9 @@
       "start_date": "开始日期",
       "from_first_payment": "从第一笔还款起",
       "paid_extra": "已额外还款",
+      "left": "剩余{amount}",
+      "left_return_by": "剩余{amount} · 请在{date}前归还",
+      "monthly_to_finish": "每月约{amount}即可按时还清",
       "planned_extra": "计划额外还款",
       "danger": {
         "title": "危险操作",
@@ -1797,6 +1805,8 @@
       },
       "debts": {
         "payoff_by": "预计{date}还清",
+        "left": "剩余{amount}",
+        "left_return_by": "剩余{amount} · 请在{date}前归还",
         "payments_left": "还剩 {count} 笔还款",
         "extra_effect": "提前 {months} 个月还清，少付 {amount} 利息与费用",
         "extra_effect_earlier": "提前 {months} 个月还清",

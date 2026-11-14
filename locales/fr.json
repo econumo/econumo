@@ -500,8 +500,13 @@
           "biweekly": "toutes les 2 semaines",
           "monthly": "tous les mois",
           "quarterly": "tous les trimestres",
-          "yearly": "tous les ans"
+          "yearly": "tous les ans",
+          "none": "Sans paiements fixes"
         }
+      },
+      "return_by": {
+        "label": "À rembourser avant le",
+        "hint": "Le jour où le prêt doit être remboursé"
       },
       "last_payment_date": {
         "label": "Date du dernier paiement",
@@ -612,6 +617,9 @@
       "start_date": "Date de début",
       "from_first_payment": "Dès le premier paiement",
       "paid_extra": "Supplément payé",
+      "left": "Reste {amount}",
+      "left_return_by": "Reste {amount} · à rembourser avant le {date}",
+      "monthly_to_finish": "≈ {amount} par mois pour finir à temps",
       "planned_extra": "Supplément prévu",
       "danger": {
         "title": "Zone de danger",
@@ -1797,6 +1805,8 @@
       },
       "debts": {
         "payoff_by": "Remboursement prévu : {date}",
+        "left": "Reste {amount}",
+        "left_return_by": "Reste {amount} · à rembourser avant le {date}",
         "payments_left": "{count} paiement restant | {count} paiements restants",
         "extra_effect": "Remboursée {months} mois plus tôt, {amount} d'intérêts en moins | Remboursée {months} mois plus tôt, {amount} d'intérêts en moins",
         "extra_effect_earlier": "Remboursée {months} mois plus tôt | Remboursée {months} mois plus tôt",

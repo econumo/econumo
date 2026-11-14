@@ -72,6 +72,8 @@ export interface ElementDebtDto {
   isPaidOff: 0 | 1
   overpaymentLeft: string
   baseOverpaymentLeft: string
+  /** no fixed payments: the balance over the periods to the return-by date; '' otherwise or when absent */
+  monthlyToFinish?: string
 }
 
 export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUserId'> {

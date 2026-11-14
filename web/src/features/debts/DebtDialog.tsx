@@ -21,7 +21,7 @@ import { useCreateDebt } from './queries'
 import { PaymentField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { suggestedPayment } from './suggestedPayment'
-import { amountEcho, amountError, buildCreatePayload, useDebtCreateForm } from './useDebtForm'
+import { amountEcho, buildCreatePayload, paymentError, useDebtCreateForm } from './useDebtForm'
 
 // the fields a server refusal can name; anything else lands in the form's alert
 const SERVER_FIELDS = ['elementId', 'startDate', 'payment', 'schedule']
@@ -91,7 +91,7 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
   })
 
   const validate = (): boolean => {
-    const next: FieldErrors = { payment: amountError(form.payment, t, true) }
+    const next: FieldErrors = { payment: paymentError(form.payment, form.schedule, t) }
     const found = Object.fromEntries(Object.entries(next).filter(([, v]) => v))
     setErrors(found)
     return Object.keys(found).length === 0

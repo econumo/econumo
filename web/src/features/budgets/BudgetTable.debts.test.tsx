@@ -92,6 +92,28 @@ it('anyone else sees nothing extra on a debt not set up', () => {
   expect(within(row).queryByRole('button', { name: 'Finish setup' })).toBeNull()
 })
 
+it('a loan with no fixed payments reads what is left and its return-by month', async () => {
+  server.use(
+    ...coreHandlers({
+      debts: [{ id: 'debt-1', schedule: 'none', currencyId: 'cur-usd', currentBalance: '3000', lastPaymentDate: '2027-12-05' }],
+    }),
+  )
+  renderTable((b) => {
+    food(b).debt = fixtureElementDebt({ paymentsLeft: 0, scheduledTotal: '0', upcoming: '0', payoffDate: '' })
+  })
+  const line = within(screen.getByTestId('element-cat-food')).getByTestId('element-debt-line')
+  expect(await within(line).findByText('3,000.00 $ left · return by Dec 2027')).toBeInTheDocument()
+  expect(line).not.toHaveTextContent('payments left')
+})
+
+it('a loan with no fixed payments never turns the plan red', () => {
+  renderTable((b) => {
+    thisMonth(b)
+    Object.assign(food(b), { budgeted: '500', spent: '0', upcoming: '0', debt: fixtureElementDebt({ paymentsLeft: 0, scheduledTotal: '0', upcoming: '0' }) })
+  })
+  expect(within(screen.getByTestId('element-cat-food')).getByTestId('plan-figure').className).not.toContain('text-expense')
+})
+
 describe('the plan hint on a debt-carrying row', () => {
   it('is red when the plan is below the scheduled amount', () => {
     renderTable((b) => {

@@ -500,8 +500,13 @@
           "biweekly": "elke 2 weken",
           "monthly": "elke maand",
           "quarterly": "elk kwartaal",
-          "yearly": "elk jaar"
+          "yearly": "elk jaar",
+          "none": "Geen vaste betalingen"
         }
+      },
+      "return_by": {
+        "label": "Terugbetalen vóór",
+        "hint": "De dag waarop de lening terug moet zijn"
       },
       "last_payment_date": {
         "label": "Datum van de laatste betaling",
@@ -612,6 +617,9 @@
       "start_date": "Startdatum",
       "from_first_payment": "Vanaf de eerste betaling",
       "paid_extra": "Extra betaald",
+      "left": "Nog {amount}",
+      "left_return_by": "Nog {amount} · terugbetalen vóór {date}",
+      "monthly_to_finish": "≈ {amount} per maand om op tijd klaar te zijn",
       "planned_extra": "Extra gepland",
       "danger": {
         "title": "Gevarenzone",
@@ -1797,6 +1805,8 @@
       },
       "debts": {
         "payoff_by": "Naar verwachting afbetaald in {date}",
+        "left": "Nog {amount}",
+        "left_return_by": "Nog {amount} · terugbetalen vóór {date}",
         "payments_left": "Nog {count} betaling | Nog {count} betalingen",
         "extra_effect": "{months} maand eerder afbetaald, {amount} minder rente | {months} maanden eerder afbetaald, {amount} minder rente",
         "extra_effect_earlier": "{months} maand eerder afbetaald | {months} maanden eerder afbetaald",

@@ -2684,6 +2684,18 @@ a second budget member account in USD, before running these.
       start row's payment, its rate kept. A guest and an archived budget
       see the table without the form or delete buttons. Offline the form and
       deletes are greyed out.
+- [ ] 📱 **No fixed payments** (a loan returned by a date, e.g. a personal loan from a friend): Track as debt on a
+      category, pick "No fixed payments" in the Repeats picker (after "every year") and leave the payment empty
+      or 0; it saves (with any other repeat 0 or empty is refused). Finish setup: the last date reads "Return by"
+      (Settings and Overview). With 3,000.00 borrowed and a return-by date in December 2027 the Overview top
+      reads "3,000.00 $ left · return by Dec 2027" (no "payments left", no progress bar) with "≈ N a month to
+      finish on time" under it, N being the balance over the budget's periods from the current one through the
+      one holding the return-by date; Paid extra and Next payment are not listed; the budget row line and the
+      item sheet read the same "X left · return by <month>" and the plan is never red for it. Planning
+      amounts on the row moves the payoff in "Show future payments" and the planned extra; plans after the
+      return-by date still count and a loan the plans never repay has no end month to plan until. The
+      Balance tab has no "Rate changes" card, and adding a rate change by the API is refused. A statement
+      and payments split with rate 0. Once the return-by period is past the monthly hint disappears.
 - [ ] 📱 **Danger zone tab** (the fourth tab): a red-tinted card lists, for an active set-up debt, Mark as paid off
       (asks the date, default today) and Delete (its confirm says the element's plans and transactions are
       not changed); for a paid-off debt Reopen and Delete. Each is a row with its description and button; on a

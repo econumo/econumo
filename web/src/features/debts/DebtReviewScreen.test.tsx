@@ -1454,3 +1454,46 @@ describe('a debt on an element', () => {
     })
   })
 })
+
+describe('a loan with no fixed payments', () => {
+  const none: DebtDetailsDto = {
+    ...details,
+    item: {
+      ...details.item,
+      schedule: 'none', payment: '0', currentBalance: '3000', paymentsLeft: 0, periodsPaid: 0, extraPaid: '0',
+      lastPaymentDate: '2027-12-05', payoffDate: '', nextDueDate: '', monthlyToFinish: '250',
+    },
+  }
+  const useNone = () => server.use(http.get('*/api/v1/debt/get-debt', () => ok(none)))
+
+  it('shows what is left and the return-by date, and the monthly amount, not payments left', async () => {
+    useNone()
+    renderScreen()
+    await openScreen()
+
+    const top = screen.getByTestId('debt-review-top')
+    expect(within(top).getByTestId('debt-review-payments-left')).toHaveTextContent('3,000.00 $ left · return by Dec 2027')
+    expect(within(top).getByTestId('debt-review-monthly')).toHaveTextContent('≈ 250.00 $ a month to finish on time')
+    expect(top).not.toHaveTextContent('payments left')
+    expect(screen.queryByRole('progressbar')).toBeNull()
+    const loan = screen.getByRole('region', { name: 'Loan' })
+    expect(loan).toHaveTextContent('Return by')
+    expect(loan).not.toHaveTextContent('Paid extra')
+  })
+
+  it('has no monthly hint when the server sends none', async () => {
+    server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...none, item: { ...none.item, monthlyToFinish: '' } })))
+    renderScreen()
+    await openScreen()
+    expect(screen.queryByTestId('debt-review-monthly')).toBeNull()
+  })
+
+  it('has no Rate changes card on the Balance tab', async () => {
+    useNone()
+    const user = userEvent.setup()
+    renderScreen()
+    await openScreen()
+    const panel = await openBalance(user)
+    expect(within(panel).queryByText('Rate changes')).toBeNull()
+  })
+})

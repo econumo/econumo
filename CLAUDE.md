@@ -2259,6 +2259,23 @@ data unreadable. Most are also asserted by the test suite.
   payment in force now; guests and archived budgets see the table only; disabled offline); both
   actions refresh the debt, the lists and every forecast and fire `appDebtRateChangeAdd` /
   `appDebtRateChangeDelete`.
+  **No fixed payments** (schedule `none`, "No fixed payments"; a loan returned by a date): `payment` may be
+  0 only with it (any other schedule keeps the positive-payment rule), the debt has rate 0, no dues,
+  `paymentsLeft`/`periodsPaid`/`extraPaid` 0 and `scheduledTotal`/`upcoming` 0, so it ends only through
+  the element's plans (the element's `debt.payoffDate` on `get-budget`, the forecast summary). The last
+  payment date is its "return by" date; plans dated after it still count, and when the plans never repay
+  it the planning end stays open. `monthlyToFinish` (additive decimal string on `DebtResult` and on the
+  element `debt` object, `""` for any other schedule, not set up, paid off, nothing owed or once the
+  return-by period is past) is today's balance over the budget's periods from the current one through the
+  one holding the return-by date. Rate changes are refused with the top-level `debt.no_fixed_payments`.
+  Planning end of an active set-up debt: the later of the contract's last payment date and the projected
+  payoff. A refinance within the current period: the new debt's planned extra subtracts the element's
+  payments on its other debts in that period. SPA: the schedule picker offers it after the regular
+  options (a blank payment is sent as "0"), the last date reads "Return by", the Overview shows "X left ·
+  return by <month>" and "≈ Y a month to finish on time" instead of payments left and the progress bar
+  (no Paid extra or Next payment), the Balance tab has no Rate changes card, and the row line and item
+  sheet read "X left · return by <month>" (the row's figures carry no schedule, so a set-up debt still
+  owed with `paymentsLeft` 0 looks its debt up in `get-debt-list`).
   **Debt SPA flow** (`web/src/features/debts`, `web/src/features/budgets`): a debt is reached from
   its element. **Row menu** (`useBudgetLineMenus`) of a top-level expense category or an envelope
   (Budget view, Plan grid; on a phone or tablet the Budget view's edit mode; a category inside an envelope or Uncategorized never has

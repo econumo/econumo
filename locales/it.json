@@ -500,8 +500,13 @@
           "biweekly": "ogni 2 settimane",
           "monthly": "ogni mese",
           "quarterly": "ogni trimestre",
-          "yearly": "ogni anno"
+          "yearly": "ogni anno",
+          "none": "Nessun pagamento fisso"
         }
+      },
+      "return_by": {
+        "label": "Restituire entro",
+        "hint": "Il giorno entro cui il prestito va restituito"
       },
       "last_payment_date": {
         "label": "Data dell'ultimo pagamento",
@@ -612,6 +617,9 @@
       "start_date": "Data di inizio",
       "from_first_payment": "Dal primo pagamento",
       "paid_extra": "Extra pagato",
+      "left": "Restano {amount}",
+      "left_return_by": "Restano {amount} · restituire entro {date}",
+      "monthly_to_finish": "≈ {amount} al mese per finire in tempo",
       "planned_extra": "Extra pianificato",
       "danger": {
         "title": "Zona pericolosa",
@@ -1797,6 +1805,8 @@
       },
       "debts": {
         "payoff_by": "Estinzione prevista: {date}",
+        "left": "Restano {amount}",
+        "left_return_by": "Restano {amount} · restituire entro {date}",
         "payments_left": "Manca {count} pagamento | Mancano {count} pagamenti",
         "extra_effect": "Estinto {months} mese prima, {amount} di interessi in meno | Estinto {months} mesi prima, {amount} di interessi in meno",
         "extra_effect_earlier": "Estinto {months} mese prima | Estinto {months} mesi prima",

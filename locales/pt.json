@@ -500,8 +500,13 @@
           "biweekly": "de 2 em 2 semanas",
           "monthly": "todos os meses",
           "quarterly": "todos os trimestres",
-          "yearly": "todos os anos"
+          "yearly": "todos os anos",
+          "none": "Sem pagamentos fixos"
         }
+      },
+      "return_by": {
+        "label": "Devolver até",
+        "hint": "O dia em que o empréstimo deve ser devolvido"
       },
       "last_payment_date": {
         "label": "Data do último pagamento",
@@ -612,6 +617,9 @@
       "start_date": "Data de início",
       "from_first_payment": "Desde o primeiro pagamento",
       "paid_extra": "Extra pago",
+      "left": "Faltam {amount}",
+      "left_return_by": "Faltam {amount} · devolver até {date}",
+      "monthly_to_finish": "≈ {amount} por mês para terminar a tempo",
       "planned_extra": "Extra planeado",
       "danger": {
         "title": "Zona de perigo",
@@ -1797,6 +1805,8 @@
       },
       "debts": {
         "payoff_by": "Liquidação prevista: {date}",
+        "left": "Faltam {amount}",
+        "left_return_by": "Faltam {amount} · devolver até {date}",
         "payments_left": "Falta {count} pagamento | Faltam {count} pagamentos",
         "extra_effect": "Liquidada {months} mês mais cedo, menos {amount} de juros | Liquidada {months} meses mais cedo, menos {amount} de juros",
         "extra_effect_earlier": "Liquidada {months} mês mais cedo | Liquidada {months} meses mais cedo",

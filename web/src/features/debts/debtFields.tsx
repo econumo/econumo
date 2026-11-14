@@ -6,7 +6,7 @@ import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { Label } from '@/components/ui/label'
 import { OptionSelect } from '@/components/OptionSelect'
 import { formatDate } from '@/lib/datetime'
-import type { RecurringSchedule } from '@/api/dto/recurring'
+import type { DebtSchedule } from '@/api/dto/debt'
 import { TransactionDatePicker } from '@/features/transactions/TransactionDatePicker'
 import { SCHEDULE_ORDER } from './useDebtForm'
 
@@ -75,12 +75,12 @@ export function PaymentField({
   id: string
   value: string
   symbol: string
-  schedule: RecurringSchedule
+  schedule: DebtSchedule
   error?: string | null
   /** how the typed amount is read (`amountEcho`), shown while there is no error */
   echo?: string | null
   onChange: (value: string) => void
-  onScheduleChange: (value: RecurringSchedule) => void
+  onScheduleChange: (value: DebtSchedule) => void
 }) {
   const { t } = useTranslation()
   const label = t('debts.form.payment.label')
@@ -106,7 +106,7 @@ export function PaymentField({
             aria-label={repeats}
             title={repeats}
             value={schedule}
-            onValueChange={(v) => onScheduleChange(v as RecurringSchedule)}
+            onValueChange={(v) => onScheduleChange(v as DebtSchedule)}
             options={SCHEDULE_ORDER.map((s) => ({ value: s, label: t(`debts.form.schedule.every.${s}`) }))}
           />
         </div>
@@ -186,6 +186,7 @@ export function DatesRow({
   lastPaymentDate,
   startError,
   lastPaymentError,
+  returnBy = false,
   clearable = false,
   onStartDateChange,
   onLastPaymentDateChange,
@@ -194,13 +195,15 @@ export function DatesRow({
   lastPaymentDate: string
   startError?: string
   lastPaymentError?: string
+  /** no fixed payments: the second date is the day the loan is to be returned by */
+  returnBy?: boolean
   clearable?: boolean
   onStartDateChange: (value: string) => void
   onLastPaymentDateChange: (value: string) => void
 }) {
   const { t } = useTranslation()
   const startLabel = t('debts.form.start_date.label')
-  const lastLabel = t('debts.form.last_payment_date.label')
+  const lastLabel = returnBy ? t('debts.form.return_by.label') : t('debts.form.last_payment_date.label')
   const error = startError ?? lastPaymentError
   return (
     <div className="flex flex-col gap-1">
@@ -216,7 +219,7 @@ export function DatesRow({
         />
         <DateField
           label={lastLabel}
-          hint={t('debts.form.last_payment_date.hint')}
+          hint={returnBy ? t('debts.form.return_by.hint') : t('debts.form.last_payment_date.hint')}
           value={lastPaymentDate}
           placeholder={t('debts.form.last_payment_date.choose')}
           onChange={onLastPaymentDateChange}

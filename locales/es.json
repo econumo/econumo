@@ -500,8 +500,13 @@
           "biweekly": "cada 2 semanas",
           "monthly": "cada mes",
           "quarterly": "cada trimestre",
-          "yearly": "cada año"
+          "yearly": "cada año",
+          "none": "Sin pagos fijos"
         }
+      },
+      "return_by": {
+        "label": "Devolver antes de",
+        "hint": "El día en que hay que devolver el préstamo"
       },
       "last_payment_date": {
         "label": "Fecha del último pago",
@@ -612,6 +617,9 @@
       "start_date": "Fecha de inicio",
       "from_first_payment": "Desde el primer pago",
       "paid_extra": "Extra pagado",
+      "left": "Quedan {amount}",
+      "left_return_by": "Quedan {amount} · devolver antes de {date}",
+      "monthly_to_finish": "≈ {amount} al mes para terminar a tiempo",
       "planned_extra": "Extra previsto",
       "danger": {
         "title": "Zona de peligro",
@@ -1797,6 +1805,8 @@
       },
       "debts": {
         "payoff_by": "Liquidación prevista: {date}",
+        "left": "Quedan {amount}",
+        "left_return_by": "Quedan {amount} · devolver antes de {date}",
         "payments_left": "Queda {count} pago | Quedan {count} pagos",
         "extra_effect": "Pagada {months} mes antes, {amount} menos de intereses | Pagada {months} meses antes, {amount} menos de intereses",
         "extra_effect_earlier": "Pagada {months} mes antes | Pagada {months} meses antes",

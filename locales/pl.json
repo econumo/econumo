@@ -500,8 +500,13 @@
           "biweekly": "co 2 tygodnie",
           "monthly": "co miesiąc",
           "quarterly": "co kwartał",
-          "yearly": "co rok"
+          "yearly": "co rok",
+          "none": "Bez stałych płatności"
         }
+      },
+      "return_by": {
+        "label": "Zwrot do",
+        "hint": "Dzień, do którego trzeba oddać pożyczkę"
       },
       "last_payment_date": {
         "label": "Data ostatniej płatności",
@@ -612,6 +617,9 @@
       "start_date": "Data rozpoczęcia",
       "from_first_payment": "Od pierwszej płatności",
       "paid_extra": "Dodatkowo wpłacone",
+      "left": "Zostało {amount}",
+      "left_return_by": "Zostało {amount} · zwrot do {date}",
+      "monthly_to_finish": "≈ {amount} miesięcznie, by zdążyć na czas",
       "planned_extra": "Dodatkowo zaplanowane",
       "danger": {
         "title": "Strefa zagrożenia",
@@ -1797,6 +1805,8 @@
       },
       "debts": {
         "payoff_by": "Planowana spłata: {date}",
+        "left": "Zostało {amount}",
+        "left_return_by": "Zostało {amount} · zwrot do {date}",
         "payments_left": "Została {count} płatność | Zostały {count} płatności | Zostało {count} płatności",
         "extra_effect": "Spłata {months} miesiąc wcześniej, {amount} mniej odsetek | Spłata {months} miesiące wcześniej, {amount} mniej odsetek | Spłata {months} miesięcy wcześniej, {amount} mniej odsetek",
         "extra_effect_earlier": "Spłata {months} miesiąc wcześniej | Spłata {months} miesiące wcześniej | Spłata {months} miesięcy wcześniej",

@@ -500,8 +500,13 @@
           "biweekly": "alle 2 Wochen",
           "monthly": "jeden Monat",
           "quarterly": "jedes Quartal",
-          "yearly": "jedes Jahr"
+          "yearly": "jedes Jahr",
+          "none": "Keine festen Zahlungen"
         }
+      },
+      "return_by": {
+        "label": "Zurückzahlen bis",
+        "hint": "Der Tag, an dem Sie das Darlehen zurückzahlen"
       },
       "last_payment_date": {
         "label": "Datum der letzten Zahlung",
@@ -612,6 +617,9 @@
       "start_date": "Startdatum",
       "from_first_payment": "Ab der ersten Zahlung",
       "paid_extra": "Geleistete Sonderzahlungen",
+      "left": "{amount} offen",
+      "left_return_by": "{amount} offen · zurückzahlen bis {date}",
+      "monthly_to_finish": "≈ {amount} pro Monat, um rechtzeitig fertig zu werden",
       "planned_extra": "Geplante Sonderzahlungen",
       "danger": {
         "title": "Gefahrenbereich",
@@ -1797,6 +1805,8 @@
       },
       "debts": {
         "payoff_by": "Voraussichtlich abbezahlt im {date}",
+        "left": "{amount} offen",
+        "left_return_by": "{amount} offen · zurückzahlen bis {date}",
         "payments_left": "Noch {count} Zahlung | Noch {count} Zahlungen",
         "extra_effect": "{months} Monat früher abbezahlt, {amount} weniger Zinsen | {months} Monate früher abbezahlt, {amount} weniger Zinsen",
         "extra_effect_earlier": "{months} Monat früher abbezahlt | {months} Monate früher abbezahlt",

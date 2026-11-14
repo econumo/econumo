@@ -19,7 +19,8 @@ import { useUiStore } from '@/app/uiStore'
 import type { DebtDetailsTab } from '@/app/uiStore'
 import type { DebtDetailsDto, DebtDto } from '@/api/dto/debt'
 import { useCurrencies } from '@/features/currencies/queries'
-import { debtDay } from './debtDates'
+import { debtDay, debtMonth } from './debtDates'
+import { isNoFixed } from './useDebtForm'
 import { DebtBalanceTab } from './DebtBalanceTab'
 import { DebtSettingsForm } from './DebtSettingsForm'
 import { paymentInForce } from './rateChanges'
@@ -517,10 +518,12 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
   const summary = canForecast && !forecast.isError ? forecast.data : undefined
   const left = summary ? summary.paymentsLeft : item.paymentsLeft
   // the last payment the plans lead to; the contract's date until the forecast answers
-  const lastPayment = summary?.payoffDate || item.lastPaymentDate
+  const noFixed = isNoFixed(item.schedule)
+  // with no fixed payments the date is the contract's return-by date, whatever the plans do
+  const lastPayment = noFixed ? item.lastPaymentDate : summary?.payoffDate || item.lastPaymentDate
   const amount = (value: string) => money(value, item)
   const currency = currencies?.find((c) => c.id === item.currencyId)
-  const schedule = t(`recurring.schedule.${item.schedule}`)
+  const schedule = noFixed ? t('debts.form.schedule.every.none') : t(`recurring.schedule.${item.schedule}`)
 
   // a debt not set up sends its figures empty: the top shows what was paid
   // instead, up to the caller's today (the list also holds future-dated ones)
@@ -542,9 +545,20 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
         {setUp ? (
           <>
             <p data-testid="debt-review-payments-left" className="text-3xl leading-tight">
-              {item.isPaidOff === 1 ? t('debts.list.paid_off') : paymentsLeft(left)}
+              {item.isPaidOff === 1
+                ? t('debts.list.paid_off')
+                : noFixed
+                  ? lastPayment
+                    ? t('debts.review.left_return_by', { amount: amount(item.currentBalance), date: debtMonth(lastPayment, lang) })
+                    : t('debts.review.left', { amount: amount(item.currentBalance) })
+                  : paymentsLeft(left)}
             </p>
-            {total > 0 ? (
+            {noFixed && item.isPaidOff === 0 && item.monthlyToFinish ? (
+              <p data-testid="debt-review-monthly" className="text-sm text-muted-foreground">
+                {t('debts.review.monthly_to_finish', { amount: amount(item.monthlyToFinish) })}
+              </p>
+            ) : null}
+            {!noFixed && total > 0 ? (
               <div className="flex flex-col gap-1.5">
                 {/* the track is the whole loan, the filled part what is paid */}
                 <Progress value={(item.periodsPaid / total) * 100} aria-label={progress} className="h-2 bg-foreground/15" />
@@ -580,11 +594,15 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
           {setUp ? (
             <Figure label={t('debts.review.borrowed')}>{`${amount(item.amountBorrowed)} · ${debtDay(item.startDate, lang)}`}</Figure>
           ) : null}
-          <Figure label={t('debts.form.payment.label')}>{`${amount(paymentInForce(details.rateChanges, today, item.payment))} · ${schedule}`}</Figure>
+          {noFixed ? (
+            <Figure label={t('debts.form.schedule.label')}>{schedule}</Figure>
+          ) : (
+            <Figure label={t('debts.form.payment.label')}>{`${amount(paymentInForce(details.rateChanges, today, item.payment))} · ${schedule}`}</Figure>
+          )}
           {setUp ? (
             <>
-              <Figure label={t('debts.review.next_payment')}>{item.nextDueDate ? debtDay(item.nextDueDate, lang) : '—'}</Figure>
-              <Figure label={t('debts.review.last_payment')}>
+              {noFixed ? null : <Figure label={t('debts.review.next_payment')}>{item.nextDueDate ? debtDay(item.nextDueDate, lang) : '—'}</Figure>}
+              <Figure label={noFixed ? t('debts.form.return_by.label') : t('debts.review.last_payment')}>
                 {lastPayment ? debtDay(lastPayment, lang) : '—'}
                 {/* planned extras pay the loan off before the contract's last payment date */}
                 {lastPayment && item.lastPaymentDate && lastPayment !== item.lastPaymentDate ? (
@@ -602,7 +620,7 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
               plans: until the forecast answers there is no number to show. */}
           {setUp ? (
             <>
-              <Figure label={t('debts.review.paid_extra')}>{amount(item.extraPaid)}</Figure>
+              {noFixed ? null : <Figure label={t('debts.review.paid_extra')}>{amount(item.extraPaid)}</Figure>}
               {summary ? <Figure label={t('debts.review.planned_extra')}>{amount(summary.extraPlanned)}</Figure> : null}
             </>
           ) : (

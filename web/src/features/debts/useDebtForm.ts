@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import type { CreateDebtDto, DebtDto, UpdateDebtDto } from '@/api/dto/debt'
-import type { RecurringSchedule } from '@/api/dto/recurring'
+import type { DebtSchedule } from '@/api/dto/debt'
 import type { OpenDebtParams } from '@/app/uiStore'
 import { tryNormalize } from '@/lib/decimal'
 import { moneyFormat, normalizeNumber } from '@/lib/money'
 import type { CurrencyLike } from '@/lib/money'
 import { isNotEmpty } from '@/lib/validation'
 
-export const SCHEDULE_ORDER: RecurringSchedule[] = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']
+export const SCHEDULE_ORDER: DebtSchedule[] = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'none']
+
+/** the loan has no regular payment: the payment may be 0 and the last payment date reads "Return by" */
+export const isNoFixed = (schedule: DebtSchedule): boolean => schedule === 'none'
 
 export interface DebtCreateState {
   payment: string
-  schedule: RecurringSchedule
+  schedule: DebtSchedule
   /** Y-m-d, "" = none; asked only after the server says the loan cannot start
       before the end of the element's previous debt */
   startDate: string
@@ -26,7 +29,7 @@ export function buildCreatePayload(state: DebtCreateState, params: OpenDebtParam
   return {
     budgetId: params.budgetId,
     elementId: params.elementId,
-    payment: sentAmount(state.payment),
+    payment: sentPayment(state.payment, state.schedule),
     schedule: state.schedule,
     startDate: state.startDate || null,
   }
@@ -47,7 +50,7 @@ export interface DebtTermsState {
   /** Y-m-d, "" until chosen */
   lastPaymentDate: string
   payment: string
-  schedule: RecurringSchedule
+  schedule: DebtSchedule
 }
 
 export function initialTermsState(debt: DebtDto): DebtTermsState {
@@ -103,6 +106,16 @@ function sentAmount(raw: string): string {
   return plainAmount(raw) ?? raw.trim()
 }
 
+/** the payment as sent: no fixed payments take a blank one as 0 */
+function sentPayment(raw: string, schedule: DebtSchedule): string {
+  return isNoFixed(schedule) && raw.trim() === '' ? '0' : sentAmount(raw)
+}
+
+/** the payment's error: blank and 0 are fine without fixed payments, else it must be positive */
+export function paymentError(raw: string, schedule: DebtSchedule, t: (key: string) => string): string | undefined {
+  return isNoFixed(schedule) && raw.trim() === '' ? undefined : amountError(raw, t, !isNoFixed(schedule))
+}
+
 /** a required amount's error: blank, not a number, or below the floor */
 export function amountError(raw: string, t: (key: string) => string, positive: boolean): string | undefined {
   if (!isNotEmpty(raw)) {
@@ -122,7 +135,7 @@ const sameAmount = (a: string, b: string): boolean => sentAmount(a) === sentAmou
 function factsTouched(form: DebtTermsState, initial: DebtTermsState): boolean {
   return (
     !sameAmount(form.amountBorrowed, initial.amountBorrowed) ||
-    !sameAmount(form.payment, initial.payment) ||
+    sentPayment(form.payment, form.schedule) !== sentPayment(initial.payment, initial.schedule) ||
     form.schedule !== initial.schedule ||
     form.lastPaymentDate !== initial.lastPaymentDate
   )
@@ -148,12 +161,12 @@ export function buildTermsPayload(form: DebtTermsState, initial: DebtTermsState,
   if (!setUp) {
     // without the loan's facts the save only updates payment, repeats and start date
     const complete = isNotEmpty(form.amountBorrowed) && form.lastPaymentDate !== ''
-    return { ...base, payment: sentAmount(form.payment), schedule: form.schedule, ...(complete ? facts : {}) }
+    return { ...base, payment: sentPayment(form.payment, form.schedule), schedule: form.schedule, ...(complete ? facts : {}) }
   }
   if (!factsTouched(form, initial)) {
     return base
   }
-  return { ...base, ...facts, payment: sentAmount(form.payment), schedule: form.schedule }
+  return { ...base, ...facts, payment: sentPayment(form.payment, form.schedule), schedule: form.schedule }
 }
 
 export function useDebtTermsForm(debt: DebtDto) {

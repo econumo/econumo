@@ -500,8 +500,13 @@
           "biweekly": "every 2 weeks",
           "monthly": "every month",
           "quarterly": "every quarter",
-          "yearly": "every year"
+          "yearly": "every year",
+          "none": "No fixed payments"
         }
+      },
+      "return_by": {
+        "label": "Return by",
+        "hint": "The day the loan is due back"
       },
       "last_payment_date": {
         "label": "Last payment date",
@@ -612,6 +617,9 @@
       "start_date": "Start date",
       "from_first_payment": "From the first payment",
       "paid_extra": "Paid extra",
+      "left": "{amount} left",
+      "left_return_by": "{amount} left · return by {date}",
+      "monthly_to_finish": "≈ {amount} a month to finish on time",
       "planned_extra": "Planned extra",
       "danger": {
         "title": "Danger zone",
@@ -1797,6 +1805,8 @@
       },
       "debts": {
         "payoff_by": "Paid off by {date}",
+        "left": "{amount} left",
+        "left_return_by": "{amount} left · return by {date}",
         "payments_left": "{count} payment left | {count} payments left",
         "extra_effect": "Paid off {months} month earlier, {amount} less overpayment | Paid off {months} months earlier, {amount} less overpayment",
         "extra_effect_earlier": "Paid off {months} month earlier | Paid off {months} months earlier",

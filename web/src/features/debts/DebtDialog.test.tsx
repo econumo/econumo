@@ -300,3 +300,17 @@ describe('the prefilled payment', () => {
     expect(screen.getByLabelText('Payment')).toHaveValue('75')
   })
 })
+
+it('offers No fixed payments, which takes a blank payment and sends 0', async () => {
+  const bodies = captureCreate()
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ elementId: 'cat-food', budgetId: 'b2' })
+
+  await user.click(screen.getByRole('combobox', { name: 'Repeats' }))
+  await user.click(await screen.findByRole('option', { name: 'No fixed payments' }))
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toEqual({ budgetId: 'b2', elementId: 'cat-food', startDate: null, payment: '0', schedule: 'none' })
+})
