@@ -386,10 +386,6 @@ func (s *Service) DismissSuggestion(ctx context.Context, userID vo.Id, req model
 
 const suggestMatchTextTimeout = 10 * time.Second
 
-const suggestMatchTextSystem = `You help write a bank-import rule. Given one imported transaction as JSON, reply with JSON only: {"matchText":"..."}.
-matchText is the shortest substring of the payee that identifies the merchant, copied exactly from the text, with no store numbers, dates or reference codes.
-Copy the merchant part character for character as it appears in the text; never translate, expand or correct it. The language and timezone only help you recognise local merchant names and date formats.`
-
 // SuggestMatchText answers empty, never an error, when the AI is off or
 // fails: the dialog then simply falls back to the raw payee. A text the row
 // does not contain is dropped by matchTextIn, so a model cannot invent a

@@ -269,17 +269,6 @@ func idSet(ids []vo.Id) map[string]bool {
 	return out
 }
 
-var iconRules = `Names may be in any language; use the user's timezone and language to read local bank and product names. ` +
-	`Use only icons from this list: ` + strings.Join(Icons, ", ") + `. `
-
-var categoryIconsSystem = `You help set up a personal budget from the user's imported bank data. ` +
-	`For each category pick the icon that best shows what the money is spent on or comes from. ` + iconRules +
-	`Reply with JSON only, exactly {"categories":{"<id>":"<icon>"}}; leave out a category when no icon fits.`
-
-var accountIconsSystem = `You help set up a personal budget from the user's imported bank data. ` +
-	`For each account pick the icon that best shows what kind of account it is (a card, a bank account, cash, savings, an investment). ` + iconRules +
-	`Reply with JSON only, exactly {"accounts":{"<id>":"<icon>"}}; leave out an account when no icon fits.`
-
 type reviewCategory struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`

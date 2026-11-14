@@ -9,8 +9,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-const classifySystem = `You help set up a personal budget. A savings account holds money the user is putting aside (a savings or deposit account, an emergency fund, a piggy bank, an investment or brokerage account kept for the future); everyday accounts are for spending (cards, checking, cash, wallets). Account names may be in any language; use the user's timezone and language to read local bank and product names. Decide for each account whether it is a savings account. Reply with JSON only, exactly {"savings":["<id>", ...]} listing the ids of the savings accounts; use an empty list when none is.`
-
 type promptAccount struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
