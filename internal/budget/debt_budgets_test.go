@@ -128,3 +128,46 @@ func TestCategoryHistory_PaymentSplitInTwoBudgetsCountsOnce(t *testing.T) {
 	}
 	t.Fatalf("no history for the loan category: %+v", items)
 }
+
+// A participant's category row with its own currency goes when they leave and
+// comes back in the budget's when they return: the debt kept on it follows
+// the row, its payments split again in that currency.
+func TestAcceptAccess_ReturningElementRealignsItsDebt(t *testing.T) {
+	h := newDebtHarness(t)
+	partner := h.f.User(fixture.User{Name: "Partner", Email: "partner@return.test"})
+	h.f.BudgetAccess(h.budgetID, partner, int(model.BudgetRoleUser), true)
+	partnerCash := h.f.Account(fixture.Account{UserID: partner, Name: "Her cash"})
+	h.f.BudgetAccount(h.budgetID, partnerCash)
+	herLoan := h.f.Category(fixture.Category{UserID: partner, Name: "Her loan"})
+	h.f.Transaction(fixture.Transaction{UserID: partner, AccountID: partnerCash, CategoryID: herLoan,
+		Type: 0, Amount: "500", SpentAt: time.Date(2026, 6, 4, 10, 0, 0, 0, time.UTC)})
+	debtID := h.debtIn(t, h.budgetID, herLoan)
+	if _, err := h.svc.ChangeElementCurrency(h.ctx, h.owner, model.ChangeElementCurrencyRequest{BudgetId: h.budgetID, ElementId: herLoan, CurrencyId: h.eurCur}); err != nil {
+		t.Fatalf("ChangeElementCurrency: %v", err)
+	}
+	h.budgetAt(t, "2026-06-01")
+	if got := h.debtCurrency(t, debtID); got != h.eurCur {
+		t.Fatalf("debt currency = %s, want EUR", got)
+	}
+
+	if _, err := h.svc.RevokeAccess(h.ctx, h.owner, model.RevokeAccessRequest{BudgetId: h.budgetID, UserId: partner}); err != nil {
+		t.Fatalf("RevokeAccess: %v", err)
+	}
+	h.f.BudgetAccess(h.budgetID, partner, int(model.BudgetRoleUser), false)
+	if _, err := h.svc.AcceptAccess(h.ctx, vo.MustParseId(partner), model.AcceptAccessRequest{BudgetId: h.budgetID}); err != nil {
+		t.Fatalf("AcceptAccess: %v", err)
+	}
+	if got := h.debtCurrency(t, debtID); got != fixture.USD {
+		t.Fatalf("debt currency after the return = %s, want the row's USD", got)
+	}
+	if n := h.count(t, "SELECT COUNT(*) FROM debts_payments WHERE debt_id = ?", debtID); n != 0 {
+		t.Errorf("splits after the return = %d, want the EUR ones dropped", n)
+	}
+	el := findElement(h.budgetAt(t, "2026-06-01"), herLoan, model.ElementCategory)
+	if el == nil || debtIDOf(el.Debt) != debtID || el.CurrencyId != fixture.USD {
+		t.Errorf("her loan row = %+v, want it back in USD with the debt", el)
+	}
+	if n := h.count(t, "SELECT COUNT(*) FROM debts_payments WHERE debt_id = ?", debtID); n != 1 {
+		t.Errorf("splits after the next sync = %d, want the payment split again", n)
+	}
+}

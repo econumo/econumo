@@ -83,6 +83,11 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if s.debts != nil {
+			if lerr := s.debts.LockBudget(txCtx, budgetID); lerr != nil {
+				return lerr
+			}
+		}
 		grant, gerr := s.access.GetAccess(txCtx, budgetID, userID)
 		if gerr != nil {
 			return gerr
@@ -105,7 +110,15 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 		if serr := s.seedTagElements(txCtx, userID, budgetID, after, now, existing); serr != nil {
 			return serr
 		}
-		return s.seedMemberAccounts(txCtx, userID, budgetID, grant.Role, now)
+		if serr := s.seedMemberAccounts(txCtx, userID, budgetID, grant.Role, now); serr != nil {
+			return serr
+		}
+		// A returning member's category rows come back in the budget's
+		// currency; a debt kept on one while they were away follows its row.
+		if s.debts != nil {
+			return s.debts.AlignElementCurrencies(txCtx, budgetID)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

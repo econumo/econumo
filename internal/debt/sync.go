@@ -28,6 +28,9 @@ type debtState struct {
 	rates   []*model.DebtRateChange // by effective date
 	pays    []payment               // by date, then id
 	digits  int
+	// otherPays are the recent payments of the element's other debts, in
+	// this debt's currency (ProjectionInput.OtherPays).
+	otherPays []model.MathPayment
 }
 
 func (st *debtState) mathSnaps() []model.MathSnapshot {
@@ -63,7 +66,7 @@ func (st *debtState) project(today time.Time, months []time.Time, plans map[stri
 func (st *debtState) projectPeriods(today time.Time, months []time.Time, plans map[string]float64, startDay int) model.Projection {
 	pays, interest := st.mathPays()
 	return model.ProjectDebt(model.ProjectionInput{Snaps: st.mathSnaps(), Pays: pays, Interest: interest,
-		Today: today, Months: months, Plans: plans, Digits: st.digits, PeriodStartDay: startDay})
+		Today: today, Months: months, Plans: plans, OtherPays: st.otherPays, Digits: st.digits, PeriodStartDay: startDay})
 }
 
 // Sync brings the stored payment splits of the budget's debts up to date.
@@ -265,9 +268,39 @@ func (s *Service) computeDebts(ctx context.Context, scope model.DebtScope, debts
 		if err := s.fillPayments(ctx, st, assigned[d.ID], stored, persist); err != nil {
 			return nil, err
 		}
+		if st.otherPays, err = s.otherPays(ctx, d, onElement(debts, d.ElementID, d), assigned, today, digits); err != nil {
+			return nil, err
+		}
 		states = append(states, st)
 	}
 	return states, nil
+}
+
+// otherPays converts into d's currency the payments of the element's other
+// debts dated from a month and a day before today on: only the current
+// period's (a forecast may start on a later recorded payment's day, still
+// within it or the next) are ever read.
+func (s *Service) otherPays(ctx context.Context, d *model.Debt, others []*model.Debt, assigned map[vo.Id][]CandidateTx, today time.Time, digits int) ([]model.MathPayment, error) {
+	since := today.AddDate(0, -1, -1)
+	var out []model.MathPayment
+	for _, o := range others {
+		for _, c := range assigned[o.ID] {
+			day := time.Date(c.SpentAt.Year(), c.SpentAt.Month(), c.SpentAt.Day(), 0, 0, 0, 0, time.UTC)
+			if day.Before(since) {
+				continue
+			}
+			amount := c.Amount
+			if !c.CurrencyID.Equal(d.CurrencyID) {
+				converted, err := s.rates.ConvertOnDay(ctx, c.CurrencyID, d.CurrencyID, c.Amount, day)
+				if err != nil {
+					return nil, err
+				}
+				amount = converted
+			}
+			out = append(out, model.MathPayment{ID: c.ID.String(), Date: day, Amount: roundTo(toFloat(amount), digits)})
+		}
+	}
+	return out, nil
 }
 
 // fillPayments converts the debt's matched expenses and splits those without

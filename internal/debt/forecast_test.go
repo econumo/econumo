@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -129,17 +130,17 @@ func TestGetDebtForecast_PlansWithoutExtrasNameNoBudget(t *testing.T) {
 	}
 }
 
-// A plan outside the debt's planning life never reaches the forecast: a loan
-// whose term ended in December, still owing what was never recorded, keeps
-// being projected, but May is past its life.
-func TestGetDebtForecast_IgnoresPlansOutsideTheLife(t *testing.T) {
+// A loan whose term ended in December, still owing what was never recorded,
+// keeps being projected, and its planning life runs to that payoff: a May
+// plan is an extra.
+func TestGetDebtForecast_PlansPastAnEndedTermWhileStillOwing(t *testing.T) {
 	e := newEnv(t)
 	res := e.create(t, func(r *createSpec) { r.StartDate, r.LastPaymentDate = ptr("2025-01-01"), "2025-12-01" })
 	e.planOf(t, res.Id, map[string]string{"2026-05-01": "5000"})
 
 	got := e.forecast(t, res.Id)
-	if got.BudgetId != "" || len(got.Items) != res.PaymentsLeft {
-		t.Fatalf("forecast = %q with %d items, want the schedule's %d", got.BudgetId, len(got.Items), res.PaymentsLeft)
+	if got.BudgetId != e.budget || len(got.Items) >= res.PaymentsLeft {
+		t.Fatalf("forecast = %q with %d items, want fewer than the schedule's %d", got.BudgetId, len(got.Items), res.PaymentsLeft)
 	}
 }
 
@@ -287,5 +288,57 @@ func TestProjection_ExtraFromTheElementsPlan(t *testing.T) {
 	}
 	if may != "3000" {
 		t.Fatalf("May's payment = %q, want 3000 (2647.82 + 352.18)", may)
+	}
+}
+
+// A rate raised under the same payment repays past the contract's last
+// payment date: the planning life runs to the projected payoff, so a plan
+// after the contract date is an extra.
+func TestGetDebtForecast_PlansPastTheContractWhileStillOwing(t *testing.T) {
+	e := newEnv(t)
+	for _, m := range []time.Month{time.January, time.February, time.March} {
+		e.expense(t, e.account, ymd(2026, m, 1), "1000", "")
+	}
+	res := e.create(t, func(r *createSpec) {
+		r.StartDate, r.AmountBorrowed, r.LastPaymentDate = ptr("2025-12-01"), vo.NewFlexString("6000"), "2026-06-01"
+	})
+	res = e.mustAddRate(t, res.Id, "2025-12-01", "60", "1000")
+	if res.LastPaymentDate != "2026-06-01" || res.PayoffDate <= "2026-07-01" {
+		t.Fatalf("debt = last %s payoff %s, want a payoff after July", res.LastPaymentDate, res.PayoffDate)
+	}
+	views, err := e.svc.Views(context.Background(), e.scope(e.budget))
+	if err != nil || len(views) != 1 {
+		t.Fatalf("views = %+v, %v", views, err)
+	}
+	if got := monthString(views[0].LastDay); got != res.PayoffDate {
+		t.Fatalf("last planning day = %s, want the projected payoff %s", got, res.PayoffDate)
+	}
+
+	e.planOf(t, res.Id, map[string]string{"2026-07-01": "1500"})
+	got := e.forecast(t, res.Id)
+	if got.ExtraPlanned == "0" || got.PayoffDate >= res.PayoffDate {
+		t.Fatalf("forecast = extra %s payoff %s, want July's plan to bring %s forward", got.ExtraPlanned, got.PayoffDate, res.PayoffDate)
+	}
+}
+
+// A loan refinanced within the period: the element's plan covered the old
+// debt's payment too, so the new debt's still-due payment leaves no extra.
+func TestGetDebtForecast_RefinancingCountsTheOldDebtsPayments(t *testing.T) {
+	e := newEnv(t)
+	e.expense(t, e.account, ymd(2026, 3, 1), "600", "")
+	old := e.create(t, func(r *createSpec) {
+		r.StartDate, r.AmountBorrowed, r.Payment, r.LastPaymentDate = ptr("2025-06-01"), vo.NewFlexString("12000"), vo.NewFlexString("600"), "2027-06-01"
+	})
+	if _, err := e.svc.MarkDebtPaidOff(context.Background(), e.uid(), model.MarkDebtPaidOffRequest{Id: old.Id, Date: "2026-03-05"}); err != nil {
+		t.Fatalf("MarkDebtPaidOff: %v", err)
+	}
+	newer := e.create(t, func(r *createSpec) {
+		r.StartDate, r.AmountBorrowed, r.Payment, r.LastPaymentDate = ptr("2026-03-06"), vo.NewFlexString("6000"), vo.NewFlexString("600"), "2027-02-25"
+	})
+	e.planOf(t, newer.Id, map[string]string{"2026-03-01": "1200"})
+
+	got := e.forecast(t, newer.Id)
+	if got.ExtraPlanned != "0" || got.BudgetId != "" {
+		t.Fatalf("forecast = extra %s budget %q, want no extra: the plan covered both debts' payments", got.ExtraPlanned, got.BudgetId)
 	}
 }

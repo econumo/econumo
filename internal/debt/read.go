@@ -277,8 +277,8 @@ func (s *Service) Views(ctx context.Context, scope model.DebtScope) ([]model.Deb
 
 // planningBounds: a debt can be planned from its start date (always there
 // once set up: the day the loan began), else from the earliest of its first
-// matched payment, its creation day and its first snapshot, to its last
-// payment date, or its payoff once paid off; a budget plans it in the periods
+// matched payment, its creation day and its first snapshot, to the later of
+// its last payment date and its projected payoff, or its payoff once paid off; a budget plans it in the periods
 // holding those days. The creation day is the stored one, taken in the
 // creator's timezone at creation, so every viewer sees the same start and a
 // later timezone change does not move it. A debt not set up has no end:
@@ -304,7 +304,14 @@ func planningBounds(st *debtState, proj model.Projection) (first, last time.Time
 	case proj.PaidOff:
 		return first, proj.PaidOffAt
 	}
-	return first, debtDate(d.Current.LastPaymentDate)
+	// A rate raised under the same payment repays later than the contract
+	// says: dues go on while a balance is left. proj carries no plans, so the
+	// bound does not depend on what it bounds.
+	last = debtDate(d.Current.LastPaymentDate)
+	if !d.IsPaidOff() && proj.PayoffDate.After(last) {
+		last = debtDate(proj.PayoffDate)
+	}
+	return first, last
 }
 
 // ElementIDs are the elements of the budget that carry a debt, active or

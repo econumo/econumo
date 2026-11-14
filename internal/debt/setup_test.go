@@ -190,7 +190,8 @@ func TestFinishSetup_ResplitsCollectedPayments(t *testing.T) {
 
 // A debt converted in September and set up in November with a loan that
 // began in July plans from July: the whole category's plans of July and
-// August come to it, as at conversion.
+// August come to it, as at conversion. None of its dues since July is
+// recorded, so it repays past the contract date and plans to that payoff.
 func TestFinishSetup_PlanningStartsAtTheLoanStart(t *testing.T) {
 	e := newEnv(t)
 	e.clock.now = time.Date(2026, 9, 15, 9, 0, 0, 0, time.UTC)
@@ -207,12 +208,16 @@ func TestFinishSetup_PlanningStartsAtTheLoanStart(t *testing.T) {
 	e.clock.now = ymd(2026, 11, 5)
 	req := e.updateReq(res)
 	req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("8000"), ptr("2026-07-01"), "2027-08-01"
-	if _, err := e.svc.UpdateDebt(context.Background(), e.uid(), req); err != nil {
+	set, err := e.svc.UpdateDebt(context.Background(), e.uid(), req)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if set.PayoffDate <= "2027-08-01" {
+		t.Fatalf("payoff = %s, want it past the contract's 2027-08-01", set.PayoffDate)
 	}
 	v = e.viewOf(t, res.Id)
 	if !v.SetUp || !v.FirstDay.Equal(ymd(2026, 7, 1)) || !v.StartMonth.Equal(ymd(2026, 7, 1)) ||
-		!v.LastDay.Equal(ymd(2027, 8, 1)) || !v.EndMonth.Equal(ymd(2027, 8, 1)) {
+		monthString(v.LastDay) != set.PayoffDate || !v.EndMonth.Equal(ymd(v.LastDay.Year(), v.LastDay.Month(), 1)) {
 		t.Fatalf("view after setup = %+v", v)
 	}
 }

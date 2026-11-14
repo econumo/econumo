@@ -788,3 +788,37 @@ func TestCloneBudget_LocksSourceBudgetBeforeCopying(t *testing.T) {
 		t.Errorf("debt calls = %v, want the source's lock first, then the clone", events)
 	}
 }
+
+// A rate raised under the same payment repays past the contract's last
+// payment date: the months after it keep their dues and take plans as extras
+// until the projected payoff.
+func TestGetBudgetPlan_LatePayoffKeepsTheDebtPlannable(t *testing.T) {
+	h := newDebtHarness(t)
+	for m := time.February; m <= time.June; m++ {
+		h.spend(h.usd, h.loan, "", "1000", time.Date(2026, m, 1, 10, 0, 0, 0, time.UTC))
+	}
+	id := h.setUpDebt(t, h.loan, "2026-01-01", "6000", "1000", "2026-07-01")
+	if _, err := h.debts.AddDebtRateChange(h.ctx, h.owner, model.AddDebtRateChangeRequest{
+		Id: id, Date: "2026-01-01", AnnualRate: vo.NewFlexString("60"), Payment: vo.NewFlexString("1000"),
+	}); err != nil {
+		t.Fatalf("AddDebtRateChange: %v", err)
+	}
+
+	row := findPlanRow(h.plan(t, "2026-07-01", "3"), h.loan)
+	if row == nil || row.Debt == nil || row.Debt.PayoffDate <= "2026-08-01" {
+		t.Fatalf("row debt = %+v, want a payoff after August", row)
+	}
+	for i := 1; i < 3; i++ {
+		c := row.Cells[i].Debt
+		if c == nil || !vo.NewDecimal(c.ScheduledTotal).IsGreaterThan(vo.NewDecimal("0")) || !vo.NewDecimal(c.Upcoming).IsGreaterThan(vo.NewDecimal("0")) {
+			t.Errorf("cell %d debt = %+v, want its due scheduled and upcoming past the contract date", i, c)
+		}
+	}
+	base := row.Debt.PayoffDate
+
+	h.setLimit(t, h.loan, "2026-08-01", "3000")
+	row = findPlanRow(h.plan(t, "2026-07-01", "3"), h.loan)
+	if row.Debt.PayoffDate >= base || row.Debt.BasePayoffDate != base {
+		t.Errorf("payoff with the August plan = %s (base %s), want it earlier than %s", row.Debt.PayoffDate, row.Debt.BasePayoffDate, base)
+	}
+}

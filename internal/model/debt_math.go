@@ -57,6 +57,10 @@ type ProjectionInput struct {
 	Today    time.Time
 	Months   []time.Time        // period keys (first-of-month), ascending
 	Plans    map[string]float64 // period key "YYYY-MM-01" -> planned
+	// OtherPays are the payments matched to the element's other debts (the
+	// one a refinancing paid off), in this debt's currency: the element's plan
+	// for the current period covered them too.
+	OtherPays []MathPayment
 	// PeriodStartDay is the day the budget's periods start on (PeriodWindow);
 	// 0 or 1 is the calendar month.
 	PeriodStartDay int
@@ -961,9 +965,11 @@ func ProjectDebt(in ProjectionInput) Projection {
 			covered += latest.paymentOn(d)
 		}
 		// This period's plan is also met by what was paid and is still due in
-		// it; a due paid early last period keeps counting as scheduled here.
+		// it, on this debt or the element's others; a due paid early last
+		// period keeps counting as scheduled here.
 		if m.Equal(currentMonth) {
-			covered = math.Max(covered, paidBetween(pays, currentStart, today)+stillDueBefore(base, currentEnd))
+			paid := paidBetween(pays, currentStart, today) + paidBetween(in.OtherPays, currentStart, today)
+			covered = math.Max(covered, paid+stillDueBefore(base, currentEnd))
 		}
 		if extra := planned - covered; extra > 0 {
 			extras[key] = extra
