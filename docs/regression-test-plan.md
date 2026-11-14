@@ -2621,6 +2621,27 @@ running these.
       "Marked paid off" (no difference; a statement entered the same day is
       replaced, not doubled); deleting it warns that the debt reopens. Both
       actions are greyed out offline.
+- [ ] 📱 **Rate changes** (Balance tab, "Rate changes" card under the history; set-up
+      debts only): with no change recorded the table has one row, "From the
+      start" with the rate implied by the loan's terms and the payment,
+      captioned "from your loan's terms", and no delete button. The form
+      prefills the rate and payment in force now. Adding a change dated after
+      the start (e.g. 3.69% and the same payment) lists the start row as a
+      stored one (implied rate, origin payment, now with a delete button)
+      plus the new row, oldest first; with the payment unchanged and a higher
+      rate, Last payment on the Overview moves later than the contract date
+      (shown "contract: ...") and payments left grows; a lower rate or a
+      higher payment moves it earlier. Changing only the payment in a new row
+      moves payments left and the next payments in "Show future payments".
+      Adding on a date that already has a change replaces it (one row per
+      date). A date before the start is refused under the field; a payment
+      the balance can never be repaid with shows "The payments do not
+      cover the balance.". Deleting a row asks first; deleting the start row
+      brings the derived "From the start" row back; the payments after the
+      deleted date are split again. A correction in Settings that puts the
+      start date after a change is refused. A guest and an archived budget
+      see the table without the form or delete buttons. Offline the form and
+      deletes are greyed out.
 - [ ] 📱 **Danger zone tab** (the fourth tab): a red-tinted card lists Mark as
       paid off (set-up debts that are not paid off only; "Sets the balance to
       0 and stops the countdown.") and Delete ("Removes the debt. Its payments

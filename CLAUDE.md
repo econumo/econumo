@@ -199,10 +199,11 @@ currency / transaction-creation ports, wired in `internal/server/glue_imports.go
 The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
 
-`debt` (loans a budget pays down through expense categories) exposes eleven routes under
+`debt` (loans a budget pays down through expense categories) exposes thirteen routes under
 `/api/v1/debt/` (`get-debt-list`, `get-debt`, `get-debt-forecast`, `get-debt-rule-options`,
 `create-debt`, `update-debt`, `add-debt-rule`, `delete-debt`, `mark-debt-paid-off`,
-`reconcile-debt`, `delete-debt-reconciliation`); a debt belongs to a budget, not a user: a caller
+`reconcile-debt`, `delete-debt-reconciliation`, `add-debt-rate-change`,
+`delete-debt-rate-change`); a debt belongs to a budget, not a user: a caller
 without accepted access to it gets not-found, a guest reads it, writes need the right to plan there.
 A debt is created in a budget with a name, its payment rules, a payment and a schedule; its terms
 (the loan contract's amount borrowed, start date and last payment date) are optional and can be
@@ -2258,6 +2259,42 @@ data unreadable. Most are also asserted by the test suite.
   way). Day 1 gives exactly the calendar figures. The debt service's own figures (Settings,
   details) stay calendar-month and today based; the SPA's red debt hint takes the budget's
   start day (`planHint` `startDay`).
+  **Rate changes** (`debts_rate_changes`: `debt_id` cascade, `effective_date`, `annual_rate` percent at
+  full precision, `payment`; unique `(debt_id, effective_date)`; migration `20261113000100`, and
+  `20261113000000` drops every stored split because a start-day payment now pays the interest before
+  the start first): a lender's new yearly rate and regular payment from a date. The rate in force on a
+  day is the latest change on or before it, else the loan's implied rate (`model.WithRates`); the
+  period rate is `annual/100/periods per year` (weekly 52, biweekly 26, monthly 12, quarterly 4,
+  yearly 1), nominal per payment period (no semi-annual compounding). A window's interest is the
+  balance x the sum of each rate x days / the period's days, so a change dated on a due applies to the
+  next period; a change on the start date replaces the implied rate in the prorated first period too.
+  The payment in force is the latest change's on or before the day, else the origin's (statements'
+  own payments are never read); it drives projected payments, payments left, payoff, `extraPaid`,
+  `scheduledTotal`, the still-due and red plan hints and `StatementRepayable`. The contract's last
+  payment date still anchors the dues and shows as "contract", so a higher rate at the same payment
+  moves the payoff past it. `add-debt-rate-change` (`{id, date, annualRate, payment}`: date on or
+  after the start, else `common.out_of_range` on `date`; rate 0-100; payment positive; a taken date
+  is REPLACED; future dates allowed; `debt.not_set_up` on a debt not set up) and
+  `delete-debt-rate-change` (`{id, rateChangeId}`) are debt writes (plan access, archived
+  `budget.archived`, `inOneTx` with the sync) answering `DebtResult`. Adding a change dated after the
+  start when no start-date row exists also stores one dated the start, with the implied yearly rate
+  (full precision, so no split moves) and the origin's payment, in the same transaction; from then it
+  is an ordinary row (a correction of the terms no longer moves it, deleting it falls back to the
+  derived one). Both writes drop the stored splits from the start of the schedule window holding the
+  date on, and refuse with `debt.payments_dont_cover` when, projected with the new list from the later
+  of today and the date, the balance is never repaid (checked on delete too). A correction of the terms
+  that would put the start date after a change is `debt.conflicts_with_rate_change` on `startDate`,
+  and its payments check runs with the changes applied. `get-debt` carries `rateChanges`
+  (`[{id, date, annualRate, payment}]`, oldest first) and on `item` `annualRate` (in force today) and
+  `impliedAnnualRate` (from the terms), both `""` while not set up (`get-debt-list` items carry the
+  two too); `periodRate` is the rate in force today. Forecast, `Timelines`, `Views` and onboarding's
+  plan handover read the same list; `clone-budget` copies it; a currency change reads the payments
+  unconverted. SPA: the Balance tab's "Rate changes" card under the history (Date | Rate | Payment,
+  oldest first; with no stored start row the first row is the derived "From the start" from the loan's
+  terms, with no delete; every stored row has a delete behind a confirm; the form prefills the rate and
+  payment in force now; guests and archived budgets see the table only; disabled offline); both
+  actions refresh the debt, the lists and every forecast and fire `appDebtRateChangeAdd` /
+  `appDebtRateChangeDelete`.
   **Debt SPA flow** (`web/src/features/debts`): a debt belongs to its budget and is reached only
   from its budget row (there is no Settings page for debts). Create is a short form opened by the
   row's "Track as debt" (`OpenDebtParams.budgetId` required: the form never asks for a budget):
