@@ -214,3 +214,82 @@ func TestSync_RefundTakesNoInterestAndReadsTheSameTwice(t *testing.T) {
 		}
 	}
 }
+
+// One create sets up a debt with no fixed payments: the origin is written
+// with it, and payments since the start come off the amount borrowed.
+func TestCreateDebt_SetUpInOneStep(t *testing.T) {
+	e := newEnv(t)
+	e.expense(t, e.account, ymd(2026, 2, 20), "100", "")
+	e.expense(t, e.account, ymd(2026, 3, 5), "700", "")
+	req := e.createDebtReq()
+	req.Payment, req.Schedule = vo.NewFlexString("0"), "none"
+	req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("3000"), ptr("2026-03-01"), "2027-02-15"
+	if err := req.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	res, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsSetUp != 1 || res.AmountBorrowed != "3000" || res.CurrentBalance != "2300" || res.StartDate != "2026-03-01" ||
+		res.LastPaymentDate != "2027-02-15" || res.Schedule != "none" || res.Payment != "0" || res.MonthlyToFinish == "" {
+		t.Fatalf("result = %+v", res)
+	}
+	if snaps := e.snapshots(t, res.Id); len(snaps) != 1 || !snaps[0].AsOf.Equal(ymd(2026, 3, 1)) || snaps[0].Balance.String() != "3000" {
+		t.Fatalf("snapshots = %+v", snaps)
+	}
+}
+
+// A scheduled debt created with the loan's facts reads as one set up later.
+func TestCreateDebt_ScheduledSetUpInOneStep(t *testing.T) {
+	e := newEnv(t)
+	twoStep := e.create(t, nil)
+
+	req := e.createDebtReq()
+	req.ElementId = e.newCategory(e.user, true)
+	req.AmountBorrowed, req.StartDate, req.LastPaymentDate = vo.NewFlexString("10000"), ptr("2026-03-10"), "2027-03-01"
+	res, err := e.svc.CreateDebt(context.Background(), e.uid(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsSetUp != 1 || res.CurrentBalance != "10000" || res.PeriodRate == "" || res.PeriodRate != twoStep.PeriodRate ||
+		res.ImpliedAnnualRate != twoStep.ImpliedAnnualRate || res.PaymentsLeft != twoStep.PaymentsLeft || res.NextDueDate != twoStep.NextDueDate {
+		t.Fatalf("one step = %+v, two steps = %+v", res, twoStep)
+	}
+
+	// the setup checks apply as on update-debt
+	short := e.createDebtReq()
+	short.ElementId = e.newCategory(e.user, true)
+	short.AmountBorrowed, short.StartDate, short.LastPaymentDate = vo.NewFlexString("100000"), ptr("2026-03-10"), "2026-06-01"
+	_, err = e.svc.CreateDebt(context.Background(), e.uid(), short)
+	requireField(t, err, "payment", errs.CodeDebtPaymentsDontCover)
+}
+
+func TestCreateDebt_PartialFactsRefused(t *testing.T) {
+	e := newEnv(t)
+	noLast := e.createDebtReq()
+	noLast.AmountBorrowed, noLast.StartDate = vo.NewFlexString("3000"), ptr("2026-03-01")
+	requireField(t, noLast.Validate(), "lastPaymentDate", errs.CodeIsBlank)
+	_, err := e.svc.CreateDebt(context.Background(), e.uid(), noLast)
+	requireField(t, err, "lastPaymentDate", errs.CodeIsBlank)
+
+	noStart := e.createDebtReq()
+	noStart.AmountBorrowed, noStart.LastPaymentDate = vo.NewFlexString("3000"), "2027-02-15"
+	requireField(t, noStart.Validate(), "startDate", errs.CodeIsBlank)
+	_, err = e.svc.CreateDebt(context.Background(), e.uid(), noStart)
+	requireField(t, err, "startDate", errs.CodeIsBlank)
+
+	noBorrowed := e.createDebtReq()
+	noBorrowed.StartDate, noBorrowed.LastPaymentDate = ptr("2026-03-01"), "2027-02-15"
+	requireField(t, noBorrowed.Validate(), "amountBorrowed", errs.CodeIsBlank)
+	_, err = e.svc.CreateDebt(context.Background(), e.uid(), noBorrowed)
+	requireField(t, err, "amountBorrowed", errs.CodeIsBlank)
+
+	list, err := e.svc.GetDebtList(context.Background(), e.uid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Items) != 0 {
+		t.Fatalf("debts created = %d", len(list.Items))
+	}
+}

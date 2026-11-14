@@ -16,3 +16,15 @@
 == err:add-rate-change POST /api/v1/debt/add-debt-rate-change [owner] -> 400
 {"success":false,"message":"This debt has no fixed payments, so it has no rate to change.","code":400,"errors":{}}
 
+== create-loan-category POST /api/v1/category/create-category [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Family loan","position":2,"type":"expense","icon":"bank","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}}}
+
+== err:create-set-up-no-return-by POST /api/v1/debt/create-debt [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"lastPaymentDate":["This value should not be blank."]}}
+
+== create-set-up POST /api/v1/debt/create-debt [owner] -> 200
+{"success":true,"message":"","data":{"id":"<generated-uuid>","budgetId":"b0000000-0000-0000-0000-000000000001","budgetName":"Budget","elementId":"<generated-uuid>","elementType":"category","status":"active","endedAt":"","canEdit":1,"name":"Family loan","icon":"bank","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startDate":"<date>","amountBorrowed":"600","balance":"600","payment":"0","schedule":"none","lastPaymentDate":"<date>","currentBalance":"600","paymentsLeft":0,"periodsPaid":0,"moneyLeft":"600","overpaymentLeft":"0","overpaidSoFar":"0","extraPaid":"0","payoffDate":"","nextDueDate":"","periodRate":"0.0000000000","annualRate":"0","impliedAnnualRate":"0","isPaidOff":0,"isSetUp":1,"monthlyToFinish":"200"}}
+
+== get-set-up GET /api/v1/debt/get-debt?id= [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","budgetId":"b0000000-0000-0000-0000-000000000001","budgetName":"Budget","elementId":"<generated-uuid>","elementType":"category","status":"active","endedAt":"","canEdit":1,"name":"Family loan","icon":"bank","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startDate":"<date>","amountBorrowed":"600","balance":"600","payment":"0","schedule":"none","lastPaymentDate":"<date>","currentBalance":"600","paymentsLeft":0,"periodsPaid":0,"moneyLeft":"600","overpaymentLeft":"0","overpaidSoFar":"0","extraPaid":"0","payoffDate":"","nextDueDate":"","periodRate":"0.0000000000","annualRate":"0","impliedAnnualRate":"0","isPaidOff":0,"isSetUp":1,"monthlyToFinish":"200"},"snapshots":[{"id":"<generated-uuid>","isOrigin":1,"computedBalance":"","asOf":"<date>","balance":"600","payment":"0","schedule":"none","lastPaymentDate":"<date>"}],"payments":[],"rateChanges":[]}}
+

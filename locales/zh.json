@@ -487,8 +487,14 @@
         "none": "无日期",
         "clear": "清除开始日期"
       },
+      "borrowed_on": {
+        "label": "借款日期"
+      },
       "amount_borrowed": {
         "label": "借款金额"
+      },
+      "amount": {
+        "label": "金额"
       },
       "payment": {
         "label": "还款额"
@@ -501,12 +507,13 @@
           "monthly": "每月",
           "quarterly": "每季度",
           "yearly": "每年",
-          "none": "无固定还款"
+          "none": "在指定日期前归还"
         }
       },
       "return_by": {
         "label": "归还期限",
-        "hint": "需归还贷款的日期"
+        "hint": "需归还贷款的日期",
+        "after_borrowed": "请选择晚于借款日期的日期。"
       },
       "last_payment_date": {
         "label": "最后还款日",

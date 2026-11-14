@@ -15822,10 +15822,16 @@ const docTemplate = `{
         "model.CreateDebtRequest": {
             "type": "object",
             "properties": {
+                "amountBorrowed": {
+                    "$ref": "#/definitions/vo.FlexString"
+                },
                 "budgetId": {
                     "type": "string"
                 },
                 "elementId": {
+                    "type": "string"
+                },
+                "lastPaymentDate": {
                     "type": "string"
                 },
                 "payment": {

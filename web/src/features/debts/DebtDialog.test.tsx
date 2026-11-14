@@ -301,16 +301,88 @@ describe('the prefilled payment', () => {
   })
 })
 
-it('offers No fixed payments, which takes a blank payment and sends 0', async () => {
-  const bodies = captureCreate()
-  const user = userEvent.setup()
-  renderDialog()
-  await openCreate({ elementId: 'cat-food', budgetId: 'b2' })
+describe('Return by a date', () => {
+  const now = new Date()
+  const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(now)
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const dayButton = (ordinal: string) => screen.findByRole('button', { name: new RegExp(`${monthName} ${ordinal}, ${now.getFullYear()}`) })
 
-  await user.click(screen.getByRole('combobox', { name: 'Repeats' }))
-  await user.click(await screen.findByRole('option', { name: 'No fixed payments' }))
-  await user.click(screen.getByRole('button', { name: 'Add' }))
+  async function chooseReturnByADate(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('combobox', { name: 'Repeats' }))
+    await user.click(await screen.findByRole('option', { name: 'Return by a date' }))
+  }
 
-  await waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toEqual({ budgetId: 'b2', elementId: 'cat-food', startDate: null, payment: '0', schedule: 'none' })
+  async function pick(user: ReturnType<typeof userEvent.setup>, field: string, ordinal: string) {
+    await user.click(screen.getByRole('button', { name: field }))
+    await user.click(await dayButton(ordinal))
+  }
+
+  it('swaps the payment for the amount, the day borrowed (today) and the return-by day', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await openCreate()
+    await chooseReturnByADate(user)
+
+    expect(screen.queryByLabelText('Payment')).toBeNull()
+    expect(screen.getByLabelText('Amount')).toHaveAttribute('inputmode', 'decimal')
+    expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('Return by a date')
+    const today = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(now)
+    expect(screen.getByRole('button', { name: 'Borrowed on' })).toHaveTextContent(today)
+    expect(screen.getByRole('button', { name: 'Return by' })).toHaveTextContent('Choose a date')
+
+    // back to a schedule: the payment form as before
+    await user.click(screen.getByRole('combobox', { name: 'Repeats' }))
+    await user.click(await screen.findByRole('option', { name: 'every month' }))
+    expect(screen.getByLabelText('Payment')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Amount')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Return by' })).toBeNull()
+  })
+
+  it('sends the amount and both dates in the one create, payment 0, and opens the debt', async () => {
+    const bodies = captureCreate(() => ok({ ...wireDebtNotSetUp, id: 'd-new', isSetUp: 1, schedule: 'none', payment: '0' }))
+    const user = userEvent.setup()
+    renderDialog()
+    await openCreate({ elementId: 'cat-food', budgetId: 'b2' })
+    await chooseReturnByADate(user)
+
+    await user.type(screen.getByLabelText('Amount'), '3 000')
+    await pick(user, 'Borrowed on', '1st')
+    await pick(user, 'Return by', '15th')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toEqual({
+      budgetId: 'b2', elementId: 'cat-food', schedule: 'none', payment: '0',
+      amountBorrowed: '3000', startDate: `${ym}-01`, lastPaymentDate: `${ym}-15`,
+    })
+    await waitFor(() => expect(useUiStore.getState().debtDetailsId).toBe('d-new'))
+  })
+
+  it('refuses a missing amount or return-by day before sending', async () => {
+    const bodies = captureCreate()
+    const user = userEvent.setup()
+    renderDialog()
+    await openCreate()
+    await chooseReturnByADate(user)
+
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    expect(await screen.findAllByText('Required field')).toHaveLength(2)
+    expect(bodies).toHaveLength(0)
+  })
+
+  it('refuses a return-by day that is not after the day borrowed', async () => {
+    const bodies = captureCreate()
+    const user = userEvent.setup()
+    renderDialog()
+    await openCreate()
+    await chooseReturnByADate(user)
+
+    await user.type(screen.getByLabelText('Amount'), '500')
+    await pick(user, 'Borrowed on', '15th')
+    await pick(user, 'Return by', '1st')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(await screen.findByText('Pick a date after the day you borrowed.')).toBeInTheDocument()
+    expect(bodies).toHaveLength(0)
+  })
 })

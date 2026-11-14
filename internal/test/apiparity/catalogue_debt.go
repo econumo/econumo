@@ -477,9 +477,11 @@ func init() {
 	// payment of 0 is refused for a monthly schedule and accepted with none;
 	// set up with 300 borrowed and a return-by date on the first of the month
 	// after next (three calendar months, the current one included, so 100 a
-	// month finishes it), it has no rate, so a rate change is refused.
+	// month finishes it), it has no rate, so a rate change is refused. A
+	// second loan on a new category is created set up in one call (the
+	// create form's "Return by a date"); a partial set of facts is refused.
 	register(Scenario{Name: "debt_no_fixed_payments", Calls: func() []Call {
-		var debtID string
+		var debtID, categoryID, oneStepID string
 		return []Call{
 			{Label: "err:create-zero-payment-monthly", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
 				Body: debtBody(map[string]any{"payment": "0", "schedule": "monthly"})},
@@ -491,6 +493,14 @@ func init() {
 			{Label: "get-budget", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + Budget, Auth: "owner"},
 			{Label: "err:add-rate-change", Method: "POST", Path: "/api/v1/debt/add-debt-rate-change", Auth: "owner",
 				Body: map[string]any{"id": &debtID, "date": day(-7), "annualRate": "5", "payment": "100"}},
+			createCategory("create-loan-category", "owner", "d4000000-0000-0000-0000-0000000000b1", "Family loan", &categoryID),
+			{Label: "err:create-set-up-no-return-by", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: debtBody(map[string]any{"elementId": &categoryID, "payment": "0", "schedule": "none",
+					"amountBorrowed": "600", "startDate": day(-14)})},
+			{Label: "create-set-up", Method: "POST", Path: "/api/v1/debt/create-debt", Auth: "owner",
+				Body: debtBody(map[string]any{"elementId": &categoryID, "payment": "0", "schedule": "none",
+					"amountBorrowed": "600", "startDate": day(-14), "lastPaymentDate": month(2)}), CaptureIDInto: &oneStepID},
+			getDebt("get-set-up", "owner", &oneStepID),
 		}
 	}})
 

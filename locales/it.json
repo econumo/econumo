@@ -487,8 +487,14 @@
         "none": "Nessuna data",
         "clear": "Cancella la data di inizio"
       },
+      "borrowed_on": {
+        "label": "Preso in prestito il"
+      },
       "amount_borrowed": {
         "label": "Importo preso in prestito"
+      },
+      "amount": {
+        "label": "Importo"
       },
       "payment": {
         "label": "Pagamento"
@@ -501,12 +507,13 @@
           "monthly": "ogni mese",
           "quarterly": "ogni trimestre",
           "yearly": "ogni anno",
-          "none": "Nessun pagamento fisso"
+          "none": "Restituzione entro una data"
         }
       },
       "return_by": {
         "label": "Restituire entro",
-        "hint": "Il giorno entro cui il prestito va restituito"
+        "hint": "Il giorno entro cui il prestito va restituito",
+        "after_borrowed": "Scegli una data successiva al giorno del prestito."
       },
       "last_payment_date": {
         "label": "Data dell'ultimo pagamento",

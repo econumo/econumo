@@ -487,8 +487,14 @@
         "none": "Geen datum",
         "clear": "Startdatum wissen"
       },
+      "borrowed_on": {
+        "label": "Geleend op"
+      },
       "amount_borrowed": {
         "label": "Geleend bedrag"
+      },
+      "amount": {
+        "label": "Bedrag"
       },
       "payment": {
         "label": "Betaling"
@@ -501,12 +507,13 @@
           "monthly": "elke maand",
           "quarterly": "elk kwartaal",
           "yearly": "elk jaar",
-          "none": "Geen vaste betalingen"
+          "none": "Terugbetalen vóór een datum"
         }
       },
       "return_by": {
         "label": "Terugbetalen vóór",
-        "hint": "De dag waarop de lening terug moet zijn"
+        "hint": "De dag waarop de lening terug moet zijn",
+        "after_borrowed": "Kies een datum na de dag waarop u het geld leende."
       },
       "last_payment_date": {
         "label": "Datum van de laatste betaling",

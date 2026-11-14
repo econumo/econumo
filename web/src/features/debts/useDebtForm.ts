@@ -6,6 +6,7 @@ import { tryNormalize } from '@/lib/decimal'
 import { moneyFormat, normalizeNumber } from '@/lib/money'
 import type { CurrencyLike } from '@/lib/money'
 import { isNotEmpty } from '@/lib/validation'
+import { formatDate } from '@/lib/datetime'
 
 export const SCHEDULE_ORDER: DebtSchedule[] = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'none']
 
@@ -18,14 +19,45 @@ export interface DebtCreateState {
   /** Y-m-d, "" = none; asked only after the server says the loan cannot start
       before the end of the element's previous debt */
   startDate: string
+  /** Return by a date (`none`): the whole amount, the day borrowed and the
+      day it is due back, so the debt is created set up */
+  amountBorrowed: string
+  borrowedOn: string
+  returnBy: string
 }
 
 export function initialCreateState(): DebtCreateState {
-  return { payment: '', schedule: 'monthly', startDate: '' }
+  return { payment: '', schedule: 'monthly', startDate: '', amountBorrowed: '', borrowedOn: formatDate(new Date()), returnBy: '' }
 }
 
-/** a new debt carries no terms: the loan's facts come with Finish setup */
+/** Return by a date's own fields: the amount, and a return-by day after the day borrowed */
+export function returnByErrors(state: DebtCreateState, t: (key: string) => string): Record<string, string | undefined> {
+  const required = t('common.validation.required_field')
+  let lastPaymentDate = state.returnBy ? undefined : required
+  if (state.returnBy && state.borrowedOn && state.returnBy <= state.borrowedOn) {
+    lastPaymentDate = t('debts.form.return_by.after_borrowed')
+  }
+  return {
+    amountBorrowed: amountError(state.amountBorrowed, t, true),
+    startDate: state.borrowedOn ? undefined : required,
+    lastPaymentDate,
+  }
+}
+
+/** A new debt carries no terms (the loan's facts come with Finish setup),
+    except Return by a date, which is created set up in the one request. */
 export function buildCreatePayload(state: DebtCreateState, params: OpenDebtParams): CreateDebtDto {
+  if (isNoFixed(state.schedule)) {
+    return {
+      budgetId: params.budgetId,
+      elementId: params.elementId,
+      schedule: state.schedule,
+      payment: '0',
+      amountBorrowed: sentAmount(state.amountBorrowed),
+      startDate: state.borrowedOn,
+      lastPaymentDate: state.returnBy,
+    }
+  }
   return {
     budgetId: params.budgetId,
     elementId: params.elementId,

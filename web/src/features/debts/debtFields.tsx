@@ -64,6 +64,7 @@ function AmountEcho({ echo }: { echo?: string | null }) {
     amount card and, beside it, the same-height "every month ▾" card. */
 export function PaymentField({
   id,
+  label: amountLabel,
   value,
   symbol,
   schedule,
@@ -73,6 +74,8 @@ export function PaymentField({
   onScheduleChange,
 }: {
   id: string
+  /** the amount's label, "Payment" by default */
+  label?: string
   value: string
   symbol: string
   schedule: DebtSchedule
@@ -83,7 +86,7 @@ export function PaymentField({
   onScheduleChange: (value: DebtSchedule) => void
 }) {
   const { t } = useTranslation()
-  const label = t('debts.form.payment.label')
+  const label = amountLabel ?? t('debts.form.payment.label')
   const repeats = t('debts.form.schedule.label')
   return (
     <div className="flex flex-col gap-1">
@@ -187,6 +190,7 @@ export function DatesRow({
   startError,
   lastPaymentError,
   returnBy = false,
+  startLabel: startLabelProp,
   clearable = false,
   onStartDateChange,
   onLastPaymentDateChange,
@@ -197,12 +201,14 @@ export function DatesRow({
   lastPaymentError?: string
   /** no fixed payments: the second date is the day the loan is to be returned by */
   returnBy?: boolean
+  /** the first date's label, "Start date" by default */
+  startLabel?: string
   clearable?: boolean
   onStartDateChange: (value: string) => void
   onLastPaymentDateChange: (value: string) => void
 }) {
   const { t } = useTranslation()
-  const startLabel = t('debts.form.start_date.label')
+  const startLabel = startLabelProp ?? t('debts.form.start_date.label')
   const lastLabel = returnBy ? t('debts.form.return_by.label') : t('debts.form.last_payment_date.label')
   const error = startError ?? lastPaymentError
   return (

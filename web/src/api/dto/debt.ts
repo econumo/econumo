@@ -131,8 +131,13 @@ export interface CreateDebtDto {
   /** positive, except 0 with the `none` schedule */
   payment: string
   schedule: DebtSchedule
-  /** Y-m-d, asked only after debt.start_before_previous_end */
+  /** Y-m-d: asked only after debt.start_before_previous_end, or the day
+   *  borrowed of a debt created set up */
   startDate?: string | null
+  /** with lastPaymentDate and startDate: the debt is created set up */
+  amountBorrowed?: string
+  /** Y-m-d */
+  lastPaymentDate?: string
 }
 
 /** amountBorrowed and lastPaymentDate come as a pair; they, payment, schedule

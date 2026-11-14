@@ -487,8 +487,14 @@
         "none": "Brak daty",
         "clear": "Wyczyść datę rozpoczęcia"
       },
+      "borrowed_on": {
+        "label": "Data pożyczki"
+      },
       "amount_borrowed": {
         "label": "Pożyczona kwota"
+      },
+      "amount": {
+        "label": "Kwota"
       },
       "payment": {
         "label": "Płatność"
@@ -501,12 +507,13 @@
           "monthly": "co miesiąc",
           "quarterly": "co kwartał",
           "yearly": "co rok",
-          "none": "Bez stałych płatności"
+          "none": "Zwrot do określonej daty"
         }
       },
       "return_by": {
         "label": "Zwrot do",
-        "hint": "Dzień, do którego trzeba oddać pożyczkę"
+        "hint": "Dzień, do którego trzeba oddać pożyczkę",
+        "after_borrowed": "Wybierz datę późniejszą niż dzień pożyczki."
       },
       "last_payment_date": {
         "label": "Data ostatniej płatności",

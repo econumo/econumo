@@ -2001,6 +2001,8 @@ data unreadable. Most are also asserted by the test suite.
   `startDate` required with them; each missing one is `common.is_blank`; a start date alone only
   bounds which payments count), and the debt stays NOT SET UP (`isSetUp` 0, no snapshot,
   `debts.amount_borrowed`/`as_of`/`balance`/`last_payment_date` NULL) until a body supplies them.
+  `create-debt` also takes the trio (any schedule, same validation and setup checks as update-debt):
+  the debt is then created set up, its origin written in the create's transaction.
   The trio makes the FIRST snapshot, the ORIGIN: as of the start date, balance = the amount
   borrowed (`debts.amount_borrowed` copies it, `amountBorrowed` on `DebtResult`), the payment,
   schedule and last payment date as entered; the rate is implied from them (the dues after the
@@ -2271,7 +2273,8 @@ data unreadable. Most are also asserted by the test suite.
   Planning end of an active set-up debt: the later of the contract's last payment date and the projected
   payoff. A refinance within the current period: the new debt's planned extra subtracts the element's
   payments on its other debts in that period. SPA: the schedule picker offers it after the regular
-  options (a blank payment is sent as "0"), the last date reads "Return by", the Overview shows "X left ·
+  options as "Return by a date" (the wire value stays `none`; a blank payment is sent as "0"), the
+  last date reads "Return by", the Overview shows "X left ·
   return by <month>" and "≈ Y a month to finish on time" instead of payments left and the progress bar
   (no Paid extra or Next payment), the Balance tab has no Rate changes card, and the row line and item
   sheet read "X left · return by <month>" (the row's figures carry no schedule, so a set-up debt still
@@ -2302,7 +2305,11 @@ data unreadable. Most are also asserted by the test suite.
   how it is read in the display format (`amountEcho`, "= 1,500.00 $"). The currency is the
   element's (the payment shows its symbol, no Currency row); the start date field appears only
   after `debt.start_before_previous_end` (the one refusal a date resolves); the form creates a
-  debt with no terms, then opens the review screen. The ONLY way into a debt is its review
+  debt with no terms, then opens the review screen. With "Return by a date" picked the payment
+  card becomes "Amount" (the amount borrowed, no prefill) and a dates row asks "Borrowed on"
+  (default today) and "Return by" (required, after Borrowed on, both checked before sending); the
+  one `create-debt` sends `payment: "0"`, `schedule: "none"` and the setup trio, so the review
+  screen opens on a set-up debt (no Finish setup). The ONLY way into a debt is its review
   (`DebtReviewScreen`; every reader, guests included, who get it read-only): on desktop a centred
   dialog 90% of the viewport high and a reading column wide (min(90vw, 52rem)) that scrolls inside
   (`ResponsiveDialog` `size="column"`), full screen on a phone (`fullScreen`). Its header is the

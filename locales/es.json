@@ -487,8 +487,14 @@
         "none": "Sin fecha",
         "clear": "Quitar la fecha de inicio"
       },
+      "borrowed_on": {
+        "label": "Prestado el"
+      },
       "amount_borrowed": {
         "label": "Importe del préstamo"
+      },
+      "amount": {
+        "label": "Importe"
       },
       "payment": {
         "label": "Pago"
@@ -501,12 +507,13 @@
           "monthly": "cada mes",
           "quarterly": "cada trimestre",
           "yearly": "cada año",
-          "none": "Sin pagos fijos"
+          "none": "Devolver antes de una fecha"
         }
       },
       "return_by": {
         "label": "Devolver antes de",
-        "hint": "El día en que hay que devolver el préstamo"
+        "hint": "El día en que hay que devolver el préstamo",
+        "after_borrowed": "Elige una fecha posterior al día del préstamo."
       },
       "last_payment_date": {
         "label": "Fecha del último pago",

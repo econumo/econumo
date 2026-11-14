@@ -18,19 +18,20 @@ import { useBudgetPeriodStore } from '@/features/budgets/budgetStore'
 import { useCategories } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useCreateDebt } from './queries'
-import { PaymentField, StartDateField } from './debtFields'
+import { DatesRow, PaymentField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { suggestedPayment } from './suggestedPayment'
-import { amountEcho, buildCreatePayload, paymentError, useDebtCreateForm } from './useDebtForm'
+import { amountEcho, buildCreatePayload, isNoFixed, paymentError, returnByErrors, useDebtCreateForm } from './useDebtForm'
 
 // the fields a server refusal can name; anything else lands in the form's alert
-const SERVER_FIELDS = ['elementId', 'startDate', 'payment', 'schedule']
+const SERVER_FIELDS = ['elementId', 'startDate', 'payment', 'schedule', 'amountBorrowed', 'lastPaymentDate']
 
 /** A new debt on a budget element: payment and schedule, nothing else. The
     element's own name, icon and currency are the debt's; the terms come
     later, with Finish setup on the debt's own screen. The start date is asked
     only when the server says the loan cannot start before the end of the
-    element's previous debt. */
+    element's previous debt. Return by a date asks instead for the amount, the
+    day borrowed and the return-by day, and creates the debt set up. */
 function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: () => void }) {
   const { t } = useTranslation()
   const online = useOnline()
@@ -90,8 +91,9 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
     }
   })
 
+  const returnBy = isNoFixed(form.schedule)
   const validate = (): boolean => {
-    const next: FieldErrors = { payment: paymentError(form.payment, form.schedule, t) }
+    const next: FieldErrors = returnBy ? returnByErrors(form, t) : { payment: paymentError(form.payment, form.schedule, t) }
     const found = Object.fromEntries(Object.entries(next).filter(([, v]) => v))
     setErrors(found)
     return Object.keys(found).length === 0
@@ -112,8 +114,9 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
       }
       setErrors(named)
       // the loan cannot start before the previous debt on the element ended
-      // (debt.start_before_previous_end): a start date resolves it
-      if (named.startDate) {
+      // (debt.start_before_previous_end): a start date resolves it; Return by
+      // a date already shows its own
+      if (named.startDate && !returnBy) {
         setAskStartDate(true)
       }
       if (!Object.values(named).some(Boolean)) {
@@ -160,25 +163,63 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
         <OfflineNotice />
         <p className="text-sm text-muted-foreground">{t('debts.form.intro')}</p>
 
-        <PaymentField
-          id="debt-payment"
-          value={form.payment}
-          symbol={currency?.symbol ?? ''}
-          schedule={form.schedule}
-          error={errors.payment ?? errors.schedule}
-          echo={amountEcho(form.payment, currency)}
-          onChange={(payment) => {
-            clearError('payment')
-            typed.current = true
-            patch({ payment })
-          }}
-          onScheduleChange={(schedule) => {
-            clearError('schedule')
-            patch({ schedule })
-          }}
-        />
+        {returnBy ? (
+          <PaymentField
+            id="debt-amount"
+            label={t('debts.form.amount.label')}
+            value={form.amountBorrowed}
+            symbol={currency?.symbol ?? ''}
+            schedule={form.schedule}
+            error={errors.amountBorrowed ?? errors.schedule}
+            echo={amountEcho(form.amountBorrowed, currency)}
+            onChange={(amountBorrowed) => {
+              clearError('amountBorrowed')
+              patch({ amountBorrowed })
+            }}
+            onScheduleChange={(schedule) => {
+              clearError('schedule')
+              patch({ schedule })
+            }}
+          />
+        ) : (
+          <PaymentField
+            id="debt-payment"
+            value={form.payment}
+            symbol={currency?.symbol ?? ''}
+            schedule={form.schedule}
+            error={errors.payment ?? errors.schedule}
+            echo={amountEcho(form.payment, currency)}
+            onChange={(payment) => {
+              clearError('payment')
+              typed.current = true
+              patch({ payment })
+            }}
+            onScheduleChange={(schedule) => {
+              clearError('schedule')
+              patch({ schedule })
+            }}
+          />
+        )}
 
-        {askStartDate ? (
+        {returnBy ? (
+          <DatesRow
+            returnBy
+            startLabel={t('debts.form.borrowed_on.label')}
+            startDate={form.borrowedOn}
+            lastPaymentDate={form.returnBy}
+            startError={errors.startDate}
+            lastPaymentError={errors.lastPaymentDate}
+            onStartDateChange={(borrowedOn) => {
+              clearError('startDate')
+              clearError('lastPaymentDate')
+              patch({ borrowedOn })
+            }}
+            onLastPaymentDateChange={(day) => {
+              clearError('lastPaymentDate')
+              patch({ returnBy: day })
+            }}
+          />
+        ) : askStartDate ? (
           <StartDateField
             value={form.startDate}
             error={errors.startDate}

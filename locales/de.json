@@ -487,8 +487,14 @@
         "none": "Kein Datum",
         "clear": "Startdatum entfernen"
       },
+      "borrowed_on": {
+        "label": "Geliehen am"
+      },
       "amount_borrowed": {
         "label": "Geliehener Betrag"
+      },
+      "amount": {
+        "label": "Betrag"
       },
       "payment": {
         "label": "Rate"
@@ -501,12 +507,13 @@
           "monthly": "jeden Monat",
           "quarterly": "jedes Quartal",
           "yearly": "jedes Jahr",
-          "none": "Keine festen Zahlungen"
+          "none": "Rückzahlung bis zu einem Datum"
         }
       },
       "return_by": {
         "label": "Zurückzahlen bis",
-        "hint": "Der Tag, an dem Sie das Darlehen zurückzahlen"
+        "hint": "Der Tag, an dem Sie das Darlehen zurückzahlen",
+        "after_borrowed": "Wählen Sie ein Datum nach dem Tag, an dem Sie das Geld geliehen haben."
       },
       "last_payment_date": {
         "label": "Datum der letzten Zahlung",

@@ -487,8 +487,14 @@
         "none": "None",
         "clear": "Clear the start date"
       },
+      "borrowed_on": {
+        "label": "Borrowed on"
+      },
       "amount_borrowed": {
         "label": "Amount borrowed"
+      },
+      "amount": {
+        "label": "Amount"
       },
       "payment": {
         "label": "Payment"
@@ -501,12 +507,13 @@
           "monthly": "every month",
           "quarterly": "every quarter",
           "yearly": "every year",
-          "none": "No fixed payments"
+          "none": "Return by a date"
         }
       },
       "return_by": {
         "label": "Return by",
-        "hint": "The day the loan is due back"
+        "hint": "The day the loan is due back",
+        "after_borrowed": "Pick a date after the day you borrowed."
       },
       "last_payment_date": {
         "label": "Last payment date",

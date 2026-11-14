@@ -868,9 +868,13 @@ definitions:
     type: object
   model.CreateDebtRequest:
     properties:
+      amountBorrowed:
+        $ref: '#/definitions/vo.FlexString'
       budgetId:
         type: string
       elementId:
+        type: string
+      lastPaymentDate:
         type: string
       payment:
         $ref: '#/definitions/vo.FlexString'

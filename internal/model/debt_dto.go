@@ -13,20 +13,25 @@ import (
 )
 
 // CreateDebtRequest attaches a debt to an element of the budget (ElementId: a
-// top-level expense category or an envelope), created not set up: its terms
-// come with update-debt. A StartDate bounds which payments count.
+// top-level expense category or an envelope). Without AmountBorrowed and
+// LastPaymentDate it is created not set up (a StartDate only bounds which
+// payments count) and its terms come with update-debt; with them, and the
+// StartDate they require, it is created set up.
 type CreateDebtRequest struct {
-	BudgetId  string        `json:"budgetId"`
-	ElementId string        `json:"elementId"`
-	Payment   vo.FlexString `json:"payment"`
-	Schedule  string        `json:"schedule"`
-	StartDate *string       `json:"startDate"`
+	BudgetId        string        `json:"budgetId"`
+	ElementId       string        `json:"elementId"`
+	Payment         vo.FlexString `json:"payment"`
+	Schedule        string        `json:"schedule"`
+	StartDate       *string       `json:"startDate"`
+	AmountBorrowed  vo.FlexString `json:"amountBorrowed"`
+	LastPaymentDate string        `json:"lastPaymentDate"`
 }
 
 func (r CreateDebtRequest) Validate() error {
 	fields := debtIDField("budgetId", r.BudgetId, true)
 	fields = append(fields, debtIDField("elementId", r.ElementId, true)...)
-	fields = append(fields, debtFields(debtTermFields{startDate: r.StartDate, payment: r.Payment, schedule: r.Schedule}, false)...)
+	fields = append(fields, debtFields(debtTermFields{startDate: r.StartDate, amountBorrowed: r.AmountBorrowed,
+		payment: r.Payment, schedule: r.Schedule, lastPaymentDate: r.LastPaymentDate}, false)...)
 	return debtValidation(fields)
 }
 
