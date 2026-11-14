@@ -16,7 +16,13 @@ on:
     pull_request:
         paths:
             - "internal/imports/prompts.go"
+            - "internal/imports/suggest.go"
+            - "internal/imports/suggest_job.go"
+            - "internal/imports/suggestion.go"
             - "internal/onboarding/prompts.go"
+            - "internal/onboarding/classify.go"
+            - "internal/onboarding/review.go"
+            - "internal/onboarding/service.go"
             - "icons/icons.json"
             - "internal/infra/ai/**"
             - "internal/imports/aieval_test.go"
