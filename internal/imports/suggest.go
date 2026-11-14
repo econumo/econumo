@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -43,14 +44,16 @@ type validSuggestion struct {
 	PayeeID    *vo.Id
 }
 
-// suggestReplyRow is step 1's answer for a row; PayeeID is filled from step
-// 2, never read from step 1's reply. A null field reads as empty.
+// suggestReplyRow is step 1's answer for a row. CategoryID is the id
+// CategoryKey stands for (resolveCategories); PayeeID is filled from step 2,
+// never read from step 1's reply. A null field reads as empty.
 type suggestReplyRow struct {
-	Key        string `json:"key"`
-	MatchText  string `json:"matchText"`
-	Merchant   string `json:"merchant"`
-	CategoryID string `json:"categoryId"`
-	PayeeID    string `json:"-"`
+	Key         string `json:"key"`
+	MatchText   string `json:"matchText"`
+	Merchant    string `json:"merchant"`
+	CategoryKey string `json:"categoryKey"`
+	CategoryID  string `json:"-"`
+	PayeeID     string `json:"-"`
 }
 
 func newSuggestVocabulary(categories, payees []model.ImportNamed) suggestVocabulary {
@@ -114,12 +117,12 @@ func (v suggestVocabulary) hasPayee(id string) (vo.Id, bool) {
 }
 
 // buildSuggestPrompt is step 1 for the rows of one type (keys are the rows'
-// indexes in rows): the categories of that type, no payees. A row carries only
-// the bank's payee text, its type, account name and currency: never an
-// amount, a date or the description.
-func buildSuggestPrompt(rows []suggestRow, income bool, v suggestVocabulary, language, timezone string) (system, user string) {
+// indexes in rows): the categories of that type under short keys (c1, c2,
+// ...), no payees. A row carries only the bank's payee text, its type, account
+// name and currency: never an amount, a date or the description.
+func buildSuggestPrompt(rows []suggestRow, income bool, v suggestVocabulary, language, timezone string) (system, user string, keys *ai.Keys) {
 	type named struct {
-		ID   string `json:"id"`
+		Key  string `json:"key"`
 		Name string `json:"name"`
 	}
 	type promptRow struct {
@@ -135,9 +138,10 @@ func buildSuggestPrompt(rows []suggestRow, income bool, v suggestVocabulary, lan
 		Categories []named     `json:"categories"`
 		Rows       []promptRow `json:"rows"`
 	}{Language: language, Timezone: timezone, Categories: []named{}, Rows: []promptRow{}}
+	keys = ai.NewKeys("c")
 	for _, c := range v.Categories {
 		if c.Income == income {
-			payload.Categories = append(payload.Categories, named{ID: c.ID, Name: c.Name})
+			payload.Categories = append(payload.Categories, named{Key: keys.Key(c.ID), Name: c.Name})
 		}
 	}
 	for i, r := range rows {
@@ -149,7 +153,24 @@ func buildSuggestPrompt(rows []suggestRow, income bool, v suggestVocabulary, lan
 		})
 	}
 	b, _ := json.Marshal(payload)
-	return suggestSystemPrompt, string(b)
+	return suggestSystemPrompt, string(b), keys
+}
+
+// resolveCategories maps step 1's category keys back to the ids they stand
+// for; a key the request never issued is dropped and counted.
+func resolveCategories(rows map[string]suggestReplyRow, keys *ai.Keys) (unknown int) {
+	for k, r := range rows {
+		if r.CategoryKey == "" {
+			continue
+		}
+		if id, ok := keys.ID(r.CategoryKey); ok {
+			r.CategoryID = id
+		} else {
+			unknown++
+		}
+		rows[k] = r
+	}
+	return unknown
 }
 
 // replyJSON is the reply from its first "{" to its last "}": providers often
@@ -183,16 +204,18 @@ func parseSuggestReply(reply string) (map[string]suggestReplyRow, error) {
 		if _, seen := rows[k]; seen || k == "" {
 			continue
 		}
-		r.Key, r.PayeeID = k, ""
+		r.Key, r.CategoryID, r.PayeeID = k, "", ""
 		rows[k] = r
 	}
 	return rows, nil
 }
 
-// buildPayeePrompt is step 2: only the rows with candidates, each with its own.
-func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, candidates map[string][]model.ImportNamed, language, timezone string) (system, user string) {
+// buildPayeePrompt is step 2: only the rows with candidates, each with its
+// own, under short keys (p1, p2, ...) unique within the request: a payee that
+// is a candidate of two rows has one key.
+func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, candidates map[string][]model.ImportNamed, language, timezone string) (system, user string, keys *ai.Keys) {
 	type named struct {
-		ID   string `json:"id"`
+		Key  string `json:"key"`
 		Name string `json:"name"`
 	}
 	type promptRow struct {
@@ -206,6 +229,7 @@ func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, can
 		Timezone string      `json:"timezone"`
 		Rows     []promptRow `json:"rows"`
 	}{Language: language, Timezone: timezone, Rows: []promptRow{}}
+	keys = ai.NewKeys("p")
 	for i, r := range rows {
 		k := strconv.Itoa(i)
 		list := candidates[k]
@@ -214,19 +238,20 @@ func buildPayeePrompt(rows []suggestRow, replies map[string]suggestReplyRow, can
 		}
 		pr := promptRow{Key: k, Payee: aiPayee(r.Link), Merchant: replies[k].Merchant}
 		for _, c := range list {
-			pr.Candidates = append(pr.Candidates, named{ID: c.ID, Name: c.Name})
+			pr.Candidates = append(pr.Candidates, named{Key: keys.Key(c.ID), Name: c.Name})
 		}
 		payload.Rows = append(payload.Rows, pr)
 	}
 	b, _ := json.Marshal(payload)
-	return payeeSystemPrompt, string(b)
+	return payeeSystemPrompt, string(b), keys
 }
 
+// parsePayeeReply reads each row's payee key; a repeated row keeps its first.
 func parsePayeeReply(reply string) (map[string]string, error) {
 	var out struct {
 		Rows []struct {
-			Key     string `json:"key"`
-			PayeeID string `json:"payeeId"`
+			Key      string `json:"key"`
+			PayeeKey string `json:"payeeKey"`
 		} `json:"rows"`
 	}
 	if err := json.Unmarshal(replyJSON(reply), &out); err != nil || out.Rows == nil {
@@ -235,11 +260,30 @@ func parsePayeeReply(reply string) (map[string]string, error) {
 	picks := map[string]string{}
 	for _, r := range out.Rows {
 		k := strings.TrimSpace(r.Key)
-		if _, seen := picks[k]; !seen && k != "" && r.PayeeID != "" {
-			picks[k] = r.PayeeID
+		if _, seen := picks[k]; !seen && k != "" && r.PayeeKey != "" {
+			picks[k] = r.PayeeKey
 		}
 	}
 	return picks, nil
+}
+
+// resolvePayees maps step 2's payee keys back to ids for the rows the request
+// carried; a row or payee key it never issued is dropped and counted.
+func resolvePayees(picks map[string]string, candidates map[string][]model.ImportNamed, keys *ai.Keys) (ids map[string]string, unknown int) {
+	ids = make(map[string]string, len(picks))
+	for k, key := range picks {
+		if _, asked := candidates[k]; !asked {
+			unknown++
+			continue
+		}
+		id, ok := keys.ID(key)
+		if !ok {
+			unknown++
+			continue
+		}
+		ids[k] = id
+	}
+	return ids, unknown
 }
 
 // applyPayeeReply keeps a pick only when it is one of that row's candidates.

@@ -30,7 +30,7 @@ func TestImportSuggestionsEndToEnd(t *testing.T) {
 	f.ImportAccountLink(fixture.ImportAccountLink{SourceID: src, ExternalAccountID: "Apple Card", AccountID: account})
 	cat := f.Category(fixture.Category{UserID: user, Name: "Coffee"})
 
-	ai := &recordingCompleter{reply: func() (string, error) {
+	ai := &recordingCompleter{names: dbNames(db), reply: func() (string, error) {
 		return `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`, nil
 	}}
 	ts := httptest.NewServer(server.BuildAPI(baseTestConfig(db.Engine), db.Raw, server.Seams{
@@ -124,7 +124,7 @@ func TestImportSuggestionsStopWhenUserOptsOutOfAI(t *testing.T) {
 	src := f.ImportSource(fixture.ImportSource{UserID: user, Name: "iPhone"})
 	f.ImportAccountLink(fixture.ImportAccountLink{SourceID: src, ExternalAccountID: "Apple Card", AccountID: account})
 	cat := f.Category(fixture.Category{UserID: user, Name: "Coffee"})
-	ai := &recordingCompleter{reply: func() (string, error) {
+	ai := &recordingCompleter{names: dbNames(db), reply: func() (string, error) {
 		return `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryId":"` + cat + `"}]}`, nil
 	}}
 	ts := httptest.NewServer(server.BuildAPI(baseTestConfig(db.Engine), db.Raw, server.Seams{
@@ -204,7 +204,7 @@ func TestImportSuggestionsTwoStepPayee(t *testing.T) {
 	bb := f.Payee(fixture.Payee{UserID: user, Name: "Blue Bottle Coffee"})
 	f.Payee(fixture.Payee{UserID: user, Name: "Starbucks"})
 	step := 0
-	ai := &recordingCompleter{reply: func() (string, error) {
+	ai := &recordingCompleter{names: dbNames(db), reply: func() (string, error) {
 		step++
 		if step == 1 {
 			return `{"rows":[{"key":"0","matchText":"Blue Bottle","merchant":"Blue Bottle","categoryId":"` + cat + `"}]}`, nil
@@ -250,7 +250,7 @@ func TestImportSuggestionsTwoStepPayee(t *testing.T) {
 	if p := ai.prompts[0]; strings.Contains(p, "Blue Bottle Coffee") || strings.Contains(p, "Starbucks") || strings.Contains(p, "Wages") || !strings.Contains(p, "Cafes") {
 		t.Fatalf("step 1 prompt = %s", p)
 	}
-	if p := ai.prompts[1]; !strings.Contains(p, bb) || strings.Contains(p, "Starbucks") || strings.Contains(p, "Cafes") {
+	if p := ai.prompts[1]; strings.Contains(p, bb) || !strings.Contains(p, `{"key":"p1","name":"Blue Bottle Coffee"}`) || strings.Contains(p, "Starbucks") || strings.Contains(p, "Cafes") {
 		t.Fatalf("step 2 prompt = %s", p)
 	}
 	items, _ := do(full, http.MethodGet, "/api/v1/import/get-suggestion-list", nil)["items"].([]any)

@@ -321,10 +321,10 @@ func (f *fakeEntities) CategoriesByOwner(_ context.Context, o vo.Id) ([]model.Im
 	if f.err != nil {
 		return nil, f.err
 	}
-	return f.categories[o], nil
+	return rememberNames(f.categories[o]), nil
 }
 func (f *fakeEntities) PayeesByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
-	return f.payees[o], nil
+	return rememberNames(f.payees[o]), nil
 }
 func (f *fakeEntities) TagsByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
 	return f.tags[o], nil

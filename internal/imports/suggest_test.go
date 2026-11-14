@@ -2,6 +2,7 @@ package imports
 
 import (
 	"encoding/json"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -357,9 +358,10 @@ func keySet(keys ...string) map[string]bool {
 func TestBuildSuggestPromptSendsOnlyTheAllowlist(t *testing.T) {
 	v, _, _, _, _ := sVocab()
 	row := guardRow()
-	sys, user := buildSuggestPrompt([]suggestRow{row}, false, v, "en", "UTC")
+	sys, user, _ := buildSuggestPrompt([]suggestRow{row}, false, v, "en", "UTC")
 	require.NotEmpty(t, sys)
-	require.Equal(t, keySet("language", "timezone", "categories", "categories[].id", "categories[].name",
+	require.False(t, uuidPattern.MatchString(user))
+	require.Equal(t, keySet("language", "timezone", "categories", "categories[].key", "categories[].name",
 		"rows", "rows[].key", "rows[].payee", "rows[].currency", "rows[].type", "rows[].account"), jsonKeyPaths(t, user))
 	var p struct {
 		Language, Timezone string
@@ -378,13 +380,14 @@ func TestBuildPayeePromptSendsOnlyTheAllowlist(t *testing.T) {
 	row := guardRow()
 	bb := namedList("Blue Bottle Coffee")
 	replies := map[string]suggestReplyRow{"0": {MatchText: "BLUE BOTTLE", Merchant: "Blue Bottle"}}
-	_, user := buildPayeePrompt([]suggestRow{row}, replies, map[string][]model.ImportNamed{"0": bb}, "en", "UTC")
+	_, user, _ := buildPayeePrompt([]suggestRow{row}, replies, map[string][]model.ImportNamed{"0": bb}, "en", "UTC")
+	require.False(t, uuidPattern.MatchString(user))
 	require.Equal(t, keySet("language", "timezone", "rows", "rows[].key", "rows[].payee", "rows[].merchant",
-		"rows[].candidates", "rows[].candidates[].id", "rows[].candidates[].name"), jsonKeyPaths(t, user))
+		"rows[].candidates", "rows[].candidates[].key", "rows[].candidates[].name"), jsonKeyPaths(t, user))
 	var p struct {
 		Rows []struct {
 			Key, Payee, Merchant string
-			Candidates           []model.ImportNamed
+			Candidates           []struct{ Key, Name string }
 		}
 	}
 	require.NoError(t, json.Unmarshal([]byte(user), &p))
@@ -392,7 +395,7 @@ func TestBuildPayeePromptSendsOnlyTheAllowlist(t *testing.T) {
 	require.Equal(t, "0", p.Rows[0].Key)
 	require.Equal(t, "BLUE BOTTLE", p.Rows[0].Payee)
 	require.Equal(t, "Blue Bottle", p.Rows[0].Merchant)
-	require.Equal(t, bb[0].ID, p.Rows[0].Candidates[0].ID)
+	require.Equal(t, "p1", p.Rows[0].Candidates[0].Key)
 	require.Equal(t, "Blue Bottle Coffee", p.Rows[0].Candidates[0].Name)
 	for _, leak := range append(guardLeaks, row.Link.ID.String()) {
 		require.False(t, strings.Contains(user, leak))
@@ -517,7 +520,7 @@ func TestBuildSuggestPromptSendsOnlyTheRowTypesCategories(t *testing.T) {
 	inc.Type = model.TransactionTypeIncome
 	rows := []suggestRow{exp, inc}
 
-	_, user := buildSuggestPrompt(rows, false, v, "en", "UTC")
+	_, user, _ := buildSuggestPrompt(rows, false, v, "en", "UTC")
 	for _, want := range []string{coffee.Name, dining.Name, "BLUE BOTTLE", `"key":"0"`} {
 		require.True(t, strings.Contains(user, want))
 	}
@@ -525,7 +528,7 @@ func TestBuildSuggestPromptSendsOnlyTheRowTypesCategories(t *testing.T) {
 		require.False(t, strings.Contains(user, not))
 	}
 
-	_, user = buildSuggestPrompt(rows, true, v, "en", "UTC")
+	_, user, _ = buildSuggestPrompt(rows, true, v, "en", "UTC")
 	for _, want := range []string{salary.Name, "ACME PAYROLL", `"key":"1"`} {
 		require.True(t, strings.Contains(user, want))
 	}
@@ -590,12 +593,12 @@ func TestBuildPayeePromptSendsOnlyTheRowsCandidates(t *testing.T) {
 	rows := []suggestRow{sRow(sLink("PHILZ", "", day)), sRow(sLink("SQ *BLUE BOTTLE", "memo", day))}
 	bb := namedList("Blue Bottle Coffee")
 	replies := map[string]suggestReplyRow{"0": {MatchText: "PHILZ"}, "1": {MatchText: "BLUE BOTTLE", Merchant: "Blue Bottle"}}
-	sys, user := buildPayeePrompt(rows, replies, map[string][]model.ImportNamed{"1": bb}, "en", "UTC")
+	sys, user, _ := buildPayeePrompt(rows, replies, map[string][]model.ImportNamed{"1": bb}, "en", "UTC")
 	require.NotEmpty(t, sys)
-	for _, want := range []string{"Blue Bottle Coffee", bb[0].ID, "SQ *BLUE BOTTLE", `"merchant":"Blue Bottle"`, `"key":"1"`} {
+	for _, want := range []string{"Blue Bottle Coffee", `"key":"p1"`, "SQ *BLUE BOTTLE", `"merchant":"Blue Bottle"`, `"key":"1"`} {
 		require.True(t, strings.Contains(user, want))
 	}
-	for _, not := range []string{"PHILZ", `"key":"0"`, "categories"} {
+	for _, not := range []string{"PHILZ", `"key":"0"`, "categories", bb[0].ID} {
 		require.False(t, strings.Contains(user, not))
 	}
 }
@@ -605,7 +608,7 @@ func TestParsePayeeReply(t *testing.T) {
 	require.Error(t, err)
 	_, err = parsePayeeReply(`{"x":1}`)
 	require.Error(t, err)
-	m, err := parsePayeeReply(`{"rows":[{"key":"1","payeeId":"abc"},{"key":"2"}]}`)
+	m, err := parsePayeeReply(`{"rows":[{"key":"1","payeeKey":"abc"},{"key":"2"}]}`)
 	require.NoError(t, err)
 	require.Equal(t, map[string]string{"1": "abc"}, m)
 }
@@ -625,7 +628,7 @@ func TestParseRepliesReadFencedJSON(t *testing.T) {
 	m, err := parseSuggestReply("```json\n{\"rows\":[{\"key\":\"0\",\"matchText\":\"x\"}]}\n```")
 	require.NoError(t, err)
 	require.Equal(t, "x", m["0"].MatchText)
-	p, err := parsePayeeReply("Here you go:\n```json\n{\"rows\":[{\"key\":\"1\",\"payeeId\":\"abc\"}]}\n```")
+	p, err := parsePayeeReply("Here you go:\n```json\n{\"rows\":[{\"key\":\"1\",\"payeeKey\":\"abc\"}]}\n```")
 	require.NoError(t, err)
 	require.Equal(t, map[string]string{"1": "abc"}, p)
 	_, err = parseSuggestReply("```json\n```")
@@ -665,11 +668,11 @@ func TestReplySchemasFitStructuredOutputs(t *testing.T) {
 }
 
 func TestParseSuggestReplyNullsMissingAndRepeatedRows(t *testing.T) {
-	m, err := parseSuggestReply(`{"rows":[{"key":"0","matchText":"AMZN","merchant":null,"categoryId":null},{"key":"0","matchText":"other"},{"key":" 2 ","matchText":"Z","merchant":"Zed","categoryId":"c"},{"matchText":"no key"}]}`)
+	m, err := parseSuggestReply(`{"rows":[{"key":"0","matchText":"AMZN","merchant":null,"categoryKey":null},{"key":"0","matchText":"other"},{"key":" 2 ","matchText":"Z","merchant":"Zed","categoryKey":"c"},{"matchText":"no key"}]}`)
 	require.NoError(t, err)
 	require.Equal(t, map[string]suggestReplyRow{
 		"0": {Key: "0", MatchText: "AMZN"},
-		"2": {Key: "2", MatchText: "Z", Merchant: "Zed", CategoryID: "c"},
+		"2": {Key: "2", MatchText: "Z", Merchant: "Zed", CategoryKey: "c"},
 	}, m)
 	m, err = parseSuggestReply(`{"rows":[]}`)
 	require.NoError(t, err)
@@ -677,7 +680,53 @@ func TestParseSuggestReplyNullsMissingAndRepeatedRows(t *testing.T) {
 }
 
 func TestParsePayeeReplyNullsAndRepeatedRows(t *testing.T) {
-	m, err := parsePayeeReply(`{"rows":[{"key":"0","payeeId":null},{"key":"1","payeeId":"a"},{"key":"1","payeeId":"b"}]}`)
+	m, err := parsePayeeReply(`{"rows":[{"key":"0","payeeKey":null},{"key":"1","payeeKey":"a"},{"key":"1","payeeKey":"b"}]}`)
 	require.NoError(t, err)
 	require.Equal(t, map[string]string{"1": "a"}, m)
+}
+
+var uuidPattern = regexp.MustCompile(`(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+
+// Step 1's category keys map back to the ids they stand for; a key the request
+// never issued is dropped and counted.
+func TestSuggestCategoryKeysRoundTrip(t *testing.T) {
+	v, coffee, dining, _, _ := sVocab()
+	rows := []suggestRow{sRow(sLink("BLUE BOTTLE", "", time.Time{})), sRow(sLink("CHEZ PANISSE", "", time.Time{})), sRow(sLink("PEETS", "", time.Time{}))}
+	_, user, keys := buildSuggestPrompt(rows, false, v, "en", "UTC")
+	var p struct{ Categories []struct{ Key, Name string } }
+	require.NoError(t, json.Unmarshal([]byte(user), &p))
+	key := map[string]string{}
+	for _, c := range p.Categories {
+		key[c.Name] = c.Key
+	}
+	require.Equal(t, "c1", key[coffee.Name])
+	require.Equal(t, "c2", key[dining.Name])
+	m, err := parseSuggestReply(`{"rows":[{"key":"0","matchText":"BLUE BOTTLE","categoryKey":" C1 "},{"key":"1","matchText":"CHEZ PANISSE","categoryKey":"c2"},{"key":"2","matchText":"PEETS","categoryKey":"` + coffee.ID + `"}]}`)
+	require.NoError(t, err)
+	require.Equal(t, 1, resolveCategories(m, keys))
+	require.Equal(t, coffee.ID, m["0"].CategoryID)
+	require.Equal(t, dining.ID, m["1"].CategoryID)
+	require.Equal(t, "", m["2"].CategoryID)
+}
+
+// Step 2's payee keys are unique within the request and map back only for the
+// rows it carried.
+func TestPayeeKeysRoundTrip(t *testing.T) {
+	day := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	rows := []suggestRow{sRow(sLink("SQ *BLUE BOTTLE", "", day)), sRow(sLink("BLUE BOTTLE SF", "", day))}
+	bb, philz := namedList("Blue Bottle Coffee")[0], namedList("Philz")[0]
+	candidates := map[string][]model.ImportNamed{"0": {bb}, "1": {philz, bb}}
+	replies := map[string]suggestReplyRow{"0": {MatchText: "BLUE BOTTLE"}, "1": {MatchText: "BLUE BOTTLE"}}
+	_, user, keys := buildPayeePrompt(rows, replies, candidates, "en", "UTC")
+	require.True(t, strings.Contains(user, `{"key":"p1","name":"Blue Bottle Coffee"}`))
+	require.True(t, strings.Contains(user, `{"key":"p2","name":"Philz"}`))
+	require.Equal(t, 2, strings.Count(user, `"key":"p1"`))
+	picks, err := parsePayeeReply(`{"rows":[{"key":"0","payeeKey":"p1"},{"key":"1","payeeKey":"p7"},{"key":"5","payeeKey":"p1"}]}`)
+	require.NoError(t, err)
+	ids, unknown := resolvePayees(picks, candidates, keys)
+	require.Equal(t, 2, unknown)
+	require.Equal(t, map[string]string{"0": bb.ID}, ids)
+	applyPayeeReply(replies, ids, candidates)
+	require.Equal(t, bb.ID, replies["0"].PayeeID)
+	require.Equal(t, "", replies["1"].PayeeID)
 }

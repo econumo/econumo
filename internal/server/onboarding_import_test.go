@@ -131,7 +131,7 @@ func TestFinishImport_CreatesTheBudgetOnceAndOnlyMarksImport(t *testing.T) {
 	}
 	var p struct {
 		Timezone, Language string
-		Accounts           []struct{ ID, Name, Currency string }
+		Accounts           []struct{ Key, Name, Currency string }
 	}
 	raw := e.ai.prompts[0]
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {

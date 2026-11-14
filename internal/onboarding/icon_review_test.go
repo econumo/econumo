@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -109,6 +110,8 @@ func (ft *fakeTimers) fire() {
 	}
 }
 
+var uuidPattern = regexp.MustCompile(`(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+
 const (
 	cat1  = "019a0000-0000-7000-8000-0000000000c1"
 	cat2  = "019a0000-0000-7000-8000-0000000000c2"
@@ -141,19 +144,20 @@ func newIconSvcWith(users onboarding.UserFacts) (*onboarding.Service, *recording
 	return svc, ai, lim, timers
 }
 
-func askedIDs(t *testing.T, raw, key string) []string {
+// askedNames lists the names a prompt asks about, sorted.
+func askedNames(t *testing.T, raw, key string) []string {
 	t.Helper()
 	var p map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {
 		t.Fatal(err)
 	}
-	var rows []struct{ ID string }
+	var rows []struct{ Name string }
 	if err := json.Unmarshal(p[key], &rows); err != nil {
 		t.Fatal(err)
 	}
 	var out []string
 	for _, r := range rows {
-		out = append(out, r.ID)
+		out = append(out, r.Name)
 	}
 	sort.Strings(out)
 	return out
@@ -187,11 +191,11 @@ func TestIconReview_ChunksOfOneImportAskOnce(t *testing.T) {
 	for _, c := range ai.calls {
 		switch {
 		case strings.Contains(c.system, `{"categories":`):
-			if got := askedIDs(t, c.user, "categories"); strings.Join(got, ",") != strings.Join([]string{cat1, cat2, cat3}, ",") {
+			if got := askedNames(t, c.user, "categories"); strings.Join(got, ",") != "Food,Fun,Rent" {
 				t.Fatalf("categories asked = %v", got)
 			}
 		case strings.Contains(c.system, `{"accounts":`):
-			if got := askedIDs(t, c.user, "accounts"); strings.Join(got, ",") != strings.Join([]string{acct1, acct2}, ",") {
+			if got := askedNames(t, c.user, "accounts"); strings.Join(got, ",") != "Cash,Visa" {
 				t.Fatalf("accounts asked = %v", got)
 			}
 		default:
@@ -255,7 +259,8 @@ func jsonKeyPaths(t *testing.T, raw string) string {
 }
 
 // Every onboarding prompt carries only names, types, currency codes, the
-// language and the timezone, plus the ids its answer refers to.
+// language and the timezone, plus the short per-request keys its answer
+// refers to; no entity id (no UUID) reaches a prompt.
 func TestPrompts_SendOnlyTheAllowlist(t *testing.T) {
 	svc, ai, _, timers := newIconSvc(false)
 	ctx := reqctx.WithLanguage(context.Background(), "de")
@@ -266,8 +271,8 @@ func TestPrompts_SendOnlyTheAllowlist(t *testing.T) {
 	schedule(ctx, csvc, cash, deposit)
 
 	want := map[string]string{
-		"categories": "categories,categories[].id,categories[].name,categories[].type,language,timezone",
-		"accounts":   "accounts,accounts[].currency,accounts[].id,accounts[].name,language,timezone",
+		"categories": "categories,categories[].key,categories[].name,categories[].type,language,timezone",
+		"accounts":   "accounts,accounts[].currency,accounts[].key,accounts[].name,language,timezone",
 	}
 	if len(ai.calls) != 2 {
 		t.Fatalf("calls = %d", len(ai.calls))
@@ -283,6 +288,11 @@ func TestPrompts_SendOnlyTheAllowlist(t *testing.T) {
 	}
 	if got := jsonKeyPaths(t, c.user); got != want["accounts"] {
 		t.Fatalf("savings prompt keys = %s", got)
+	}
+	for _, call := range append(ai.calls, recordedCall{user: c.user}) {
+		if uuidPattern.MatchString(call.user) {
+			t.Fatalf("prompt carries a UUID: %s", call.user)
+		}
 	}
 }
 
@@ -308,7 +318,7 @@ func TestIconReview_EmptyChunksKeepTheReviewWaiting(t *testing.T) {
 	}
 	for _, c := range ai.calls {
 		if strings.Contains(c.system, `{"categories":`) {
-			if got := askedIDs(t, c.user, "categories"); strings.Join(got, ",") != cat1+","+cat2 {
+			if got := askedNames(t, c.user, "categories"); strings.Join(got, ",") != "Food,Rent" {
 				t.Fatalf("categories asked = %v", got)
 			}
 		}
@@ -398,5 +408,82 @@ func TestIconReview_HeldWhileALaterRequestIsInFlight(t *testing.T) {
 	timers.fire()
 	if len(ai.calls) != 3 {
 		t.Fatalf("calls = %d after a failed request", len(ai.calls))
+	}
+}
+
+type replacement struct{ id, from, to string }
+
+type recordingReplacer struct {
+	mu   sync.Mutex
+	done []replacement
+}
+
+func (r *recordingReplacer) ReplaceIcon(_ context.Context, _, id vo.Id, from, to string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.done = append(r.done, replacement{id.String(), from, to})
+	return true, nil
+}
+
+type replacingCategories struct {
+	iconCategories
+	*recordingReplacer
+}
+
+func (r replacingCategories) ReplaceIcon(ctx context.Context, u, id vo.Id, from, to string) (bool, error) {
+	return r.recordingReplacer.ReplaceIcon(ctx, u, id, from, to)
+}
+
+type replacingAccounts struct {
+	iconAccounts
+	*recordingReplacer
+}
+
+func (r replacingAccounts) ReplaceIcon(ctx context.Context, u, id vo.Id, from, to string) (bool, error) {
+	return r.recordingReplacer.ReplaceIcon(ctx, u, id, from, to)
+}
+
+type routedAI struct{ categories, accounts string }
+
+func (r routedAI) Complete(_ context.Context, _, system, _ string, _ *ai.Schema) (string, error) {
+	if strings.Contains(system, `{"categories":`) {
+		return r.categories, nil
+	}
+	return r.accounts, nil
+}
+
+// The reply's keys map back to the ids they stood for; a key the request never
+// issued is dropped and counted in one WARN per request.
+func TestIconReview_KeysMapBackToIDs(t *testing.T) {
+	svc, _, _, timers := newIconSvc(false)
+	cats, accts := &recordingReplacer{}, &recordingReplacer{}
+	var catRows []model.CategoryResult
+	for i, id := range []string{cat1, cat2} {
+		catRows = append(catRows, model.CategoryResult{Id: id, Name: []string{"Food", "Rent"}[i], Type: "expense", Icon: model.ImportCategoryIcon})
+	}
+	svc.SetSteps(onboarding.Steps{
+		Categories: replacingCategories{iconCategories{rows: catRows}, cats},
+		Accounts: replacingAccounts{iconAccounts{rows: []model.OnboardingAccount{
+			{ID: acct1, OwnerID: me, Name: "Visa", CurrencyCode: "EUR", Icon: model.ImportAccountIcon},
+			{ID: acct2, OwnerID: me, Name: "Cash", CurrencyCode: "EUR", Icon: model.ImportAccountIcon},
+		}}, accts},
+	})
+	svc.SetAdvisor(routedAI{
+		categories: `{"categories":[{"key":"C2","icon":"home"},{"key":"c9","icon":"pets"},{"key":"` + cat1 + `","icon":"cake"}]}`,
+		accounts:   `{"accounts":[{"key":"a1","icon":"credit_card"},{"key":"a2","icon":"payments"}]}`,
+	}, &countingLimiter{})
+	logs := captureLogs(t)
+	svc.ReviewImportedIcons(context.Background(), vo.MustParseId(me), ids(cat1, cat2), ids(acct1, acct2))
+	timers.fire()
+	if len(cats.done) != 1 || cats.done[0] != (replacement{cat2, model.ImportCategoryIcon, "home"}) {
+		t.Fatalf("category icons = %+v", cats.done)
+	}
+	sort.Slice(accts.done, func(i, j int) bool { return accts.done[i].id < accts.done[j].id })
+	if len(accts.done) != 2 || accts.done[0] != (replacement{acct1, model.ImportAccountIcon, "credit_card"}) || accts.done[1] != (replacement{acct2, model.ImportAccountIcon, "payments"}) {
+		t.Fatalf("account icons = %+v", accts.done)
+	}
+	out := logs.String()
+	if strings.Count(out, `msg="ai reply named unknown keys"`) != 1 || !strings.Contains(out, "part=categories count=2") || strings.Contains(out, cat1) {
+		t.Fatalf("logs = %s", out)
 	}
 }

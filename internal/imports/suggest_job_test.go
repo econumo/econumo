@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -51,9 +52,57 @@ func (c *fakeCompleter) Complete(ctx context.Context, userID, system, user strin
 		panic("boom")
 	}
 	if n := len(c.calls) - 1; n < len(c.replies) {
-		return c.replies[n], c.err
+		return keyedReply(c.replies[n], user), c.err
 	}
-	return c.reply, c.err
+	return keyedReply(c.reply, user), c.err
+}
+
+// entityNames maps the ids of the entities the fakes handed the service to
+// their names, so a test can write a reply with ids (keyedReply).
+var entityNames sync.Map
+
+func rememberNames(list []model.ImportNamed) []model.ImportNamed {
+	for _, n := range list {
+		entityNames.Store(n.ID, n.Name)
+	}
+	return list
+}
+
+var idRef = regexp.MustCompile(`"(categoryId|payeeId)":"([^"]*)"`)
+
+// keyedReply lets a test reply name entities by id, as a model would mean
+// them: each "categoryId"/"payeeId" becomes the "categoryKey"/"payeeKey" the
+// prompt gave the entity of that name. An id the prompt did not offer is
+// passed on as the key, which the server then ignores as never issued.
+func keyedReply(reply, prompt string) string {
+	type named struct{ Key, Name string }
+	var p struct {
+		Categories []named
+		Rows       []struct{ Candidates []named }
+	}
+	_ = json.Unmarshal([]byte(prompt), &p)
+	keys := map[string]string{}
+	for _, c := range p.Categories {
+		keys[c.Name] = c.Key
+	}
+	for _, r := range p.Rows {
+		for _, c := range r.Candidates {
+			keys[c.Name] = c.Key
+		}
+	}
+	return idRef.ReplaceAllStringFunc(reply, func(m string) string {
+		sub := idRef.FindStringSubmatch(m)
+		field, val := "categoryKey", sub[2]
+		if sub[1] == "payeeId" {
+			field = "payeeKey"
+		}
+		if name, ok := entityNames.Load(val); ok {
+			if k, ok := keys[name.(string)]; ok {
+				val = k
+			}
+		}
+		return `"` + field + `":"` + val + `"`
+	})
 }
 
 type ownerFact struct {
@@ -634,13 +683,13 @@ type gatedCompleter struct {
 	started chan struct{}
 }
 
-func (c *gatedCompleter) Complete(context.Context, string, string, string, *ai.Schema) (string, error) {
+func (c *gatedCompleter) Complete(_ context.Context, _, _, user string, _ *ai.Schema) (string, error) {
 	c.mu.Lock()
 	c.calls++
 	first := c.calls == 1
 	c.mu.Unlock()
 	if !first {
-		return c.reply, nil
+		return keyedReply(c.reply, user), nil
 	}
 	for i := 0; i < 2; i++ {
 		select {
@@ -649,7 +698,7 @@ func (c *gatedCompleter) Complete(context.Context, string, string, string, *ai.S
 		}
 	}
 	time.Sleep(100 * time.Millisecond)
-	return c.reply, nil
+	return keyedReply(c.reply, user), nil
 }
 
 func TestSuggestJobsForOneOwnerRunOneAtATime(t *testing.T) {
@@ -784,8 +833,9 @@ func TestSuggestTimeoutStartsOnceTheOwnerLockIsHeld(t *testing.T) {
 
 type completerFunc func(ctx context.Context) (string, error)
 
-func (f completerFunc) Complete(ctx context.Context, _, _, _ string, _ *ai.Schema) (string, error) {
-	return f(ctx)
+func (f completerFunc) Complete(ctx context.Context, _, _, user string, _ *ai.Schema) (string, error) {
+	reply, err := f(ctx)
+	return keyedReply(reply, user), err
 }
 
 func (h *harness) incomeCategory(t *testing.T, owner, name string) string {
@@ -876,7 +926,7 @@ func TestSuggestTwoStepPayee(t *testing.T) {
 	if strings.Contains(first.user, "Blue Bottle Coffee") || strings.Contains(first.user, "Starbucks") || strings.Contains(first.user, `"payees"`) || !strings.Contains(first.user, "Cafes") {
 		t.Fatalf("step 1 prompt = %s", first.user)
 	}
-	if !strings.Contains(second.user, bb) || !strings.Contains(second.user, "Blue Bottle Coffee") || strings.Contains(second.user, "Starbucks") || strings.Contains(second.user, "Cafes") {
+	if strings.Contains(second.user, bb) || !strings.Contains(second.user, `{"key":"p1","name":"Blue Bottle Coffee"}`) || strings.Contains(second.user, "Starbucks") || strings.Contains(second.user, "Cafes") {
 		t.Fatalf("step 2 prompt = %s", second.user)
 	}
 	if first.system == second.system {
@@ -980,7 +1030,7 @@ func TestSuggestFindsPayeeBeyondFiveHundred(t *testing.T) {
 		`{"rows":[{"key":"0","payeeId":"` + zoo + `"}]}`,
 	}
 	ingest(t, h, pushWithPayee("ZOO MARKET 12", "evt-zoo"))
-	if len(c.calls) != 2 || !strings.Contains(c.calls[1].user, zoo) {
+	if len(c.calls) != 2 || !strings.Contains(c.calls[1].user, `{"key":"p1","name":"Zoo Market"}`) || strings.Contains(c.calls[1].user, zoo) {
 		t.Fatalf("calls = %+v", c.calls)
 	}
 	if got := openSuggestions(t, h, userA); len(got) != 1 || got[0].PayeeID == nil || got[0].PayeeID.String() != zoo {
@@ -1315,7 +1365,7 @@ func TestSuggestBatchStepTwoCarriesOnlyTheLooseRows(t *testing.T) {
 	if len(c.calls) != 2 {
 		t.Fatalf("calls = %d, want one step 1 and one step 2", len(c.calls))
 	}
-	if second := c.calls[1].user; !strings.Contains(second, loose) || strings.Contains(second, exact) {
+	if second := c.calls[1].user; !strings.Contains(second, `"name":"Bakery Joy Cafe"`) || strings.Contains(second, loose) || strings.Contains(second, `"key":"0"`) {
 		t.Fatalf("step 2 prompt = %s", second)
 	}
 	var payees []string
@@ -1329,5 +1379,28 @@ func TestSuggestBatchStepTwoCarriesOnlyTheLooseRows(t *testing.T) {
 	slices.Sort(want)
 	if !slices.Equal(payees, want) {
 		t.Fatalf("payees = %v, want %v", payees, want)
+	}
+}
+
+// A reply naming keys the request never issued (a mis-copied key, a row the
+// request did not carry) has them dropped and logs one WARN with their count.
+func TestSuggestUnknownKeysAreDroppedAndCounted(t *testing.T) {
+	h, c, _ := suggestSetup(t)
+	h.mapCard(t, "Apple Card")
+	h.category(t, userA, "Coffee")
+	c.reply = `{"rows":[{"key":"0","matchText":"Blue Bottle","categoryKey":"c9"},{"key":"7","matchText":"x","categoryKey":"c1"}]}`
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(old)
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if got := openSuggestions(t, h, userA); len(got) != 0 {
+		t.Fatalf("suggestions = %+v", got)
+	}
+	out := buf.String()
+	if strings.Count(out, `msg="ai reply named unknown keys"`) != 1 || !strings.Contains(out, "part=suggest count=2") || strings.Contains(out, "c9") {
+		t.Fatalf("logs = %s", out)
 	}
 }

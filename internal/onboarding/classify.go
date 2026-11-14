@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 type promptAccount struct {
-	ID       string `json:"id"`
+	Key      string `json:"key"`
 	Name     string `json:"name"`
 	Currency string `json:"currency"`
 }
@@ -41,9 +42,10 @@ func (s *Service) classify(ctx context.Context, userID, budgetID vo.Id, accountI
 	if err != nil {
 		return err
 	}
+	keys := ai.NewKeys("a")
 	for _, a := range accounts {
 		if a.OwnerID == userID.String() && !a.IsDeleted {
-			facts.Accounts = append(facts.Accounts, promptAccount{ID: a.ID, Name: a.Name, Currency: a.CurrencyCode})
+			facts.Accounts = append(facts.Accounts, promptAccount{Key: keys.Key(a.ID), Name: a.Name, Currency: a.CurrencyCode})
 		}
 	}
 	if len(facts.Accounts) == 0 {
@@ -60,10 +62,11 @@ func (s *Service) classify(ctx context.Context, userID, budgetID vo.Id, accountI
 	if err != nil {
 		return err
 	}
-	picked, ok := parseReply(reply, facts.Accounts)
+	picked, unknown, ok := parseReply(reply, keys)
 	if !ok {
 		return MalformedReplyError{}
 	}
+	ai.LogUnknownKeys(userID.String(), reviewSavings.part, unknown)
 	if len(picked) == 0 {
 		return nil
 	}
@@ -71,31 +74,34 @@ func (s *Service) classify(ctx context.Context, userID, budgetID vo.Id, accountI
 }
 
 // parseReply reads {"savings":[...]} out of the reply (tolerating a code fence
-// or prose around it) and keeps only ids that were asked about.
-func parseReply(reply string, asked []promptAccount) ([]vo.Id, bool) {
+// or prose around it) and maps the keys back to the accounts asked about; it
+// also counts the keys the request never issued.
+func parseReply(reply string, keys *ai.Keys) ([]vo.Id, int, bool) {
 	start, end := strings.Index(reply, "{"), strings.LastIndex(reply, "}")
 	if start < 0 || end <= start {
-		return nil, false
+		return nil, 0, false
 	}
 	var parsed struct {
 		Savings []string `json:"savings"`
 	}
 	if err := json.Unmarshal([]byte(reply[start:end+1]), &parsed); err != nil {
-		return nil, false
-	}
-	chosen := map[string]bool{}
-	for _, id := range parsed.Savings {
-		chosen[strings.ToLower(strings.TrimSpace(id))] = true
+		return nil, 0, false
 	}
 	var out []vo.Id
-	for _, a := range asked {
-		if chosen[strings.ToLower(a.ID)] {
-			if id, err := vo.ParseId(a.ID); err == nil {
-				out = append(out, id)
-			}
+	seen := map[string]bool{}
+	unknown := 0
+	for _, key := range parsed.Savings {
+		raw, ok := keys.ID(key)
+		if !ok {
+			unknown++
+			continue
+		}
+		if id, err := vo.ParseId(raw); err == nil && !seen[raw] {
+			seen[raw] = true
+			out = append(out, id)
 		}
 	}
-	return out, true
+	return out, unknown, true
 }
 
 // MalformedReplyError marks an AI reply that is not the expected JSON; its

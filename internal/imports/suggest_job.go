@@ -369,7 +369,7 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 		if !slices.ContainsFunc(rows, func(r suggestRow) bool { return r.Type.IsIncome() == income }) {
 			continue
 		}
-		system, user := buildSuggestPrompt(rows, income, vocab, language, timezone)
+		system, user, keys := buildSuggestPrompt(rows, income, vocab, language, timezone)
 		reply, ok, err := ask(system, user, suggestSchema)
 		if !ok {
 			return nil, err
@@ -383,12 +383,16 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 			slog.Warn("import suggest failed", append([]any{"user_id", owner.String()}, ai.LogAttrs(err)...)...)
 			continue
 		}
+		unknown := resolveCategories(parsed, keys)
 		for k, r := range parsed {
 			// only keys of the rows this request carried
 			if i, err := strconv.Atoi(k); err == nil && i >= 0 && i < len(rows) && rows[i].Type.IsIncome() == income {
 				replies[k] = r
+			} else {
+				unknown++
 			}
 		}
+		ai.LogUnknownKeys(owner.String(), "suggest", unknown)
 	}
 	candidates := map[string][]model.ImportNamed{}
 	for k, r := range replies {
@@ -411,7 +415,7 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 	if len(candidates) == 0 {
 		return replies, nil
 	}
-	system, user := buildPayeePrompt(rows, replies, candidates, language, timezone)
+	system, user, keys := buildPayeePrompt(rows, replies, candidates, language, timezone)
 	reply, ok, err := ask(system, user, payeeSchema)
 	if !ok {
 		return nil, err
@@ -425,7 +429,9 @@ func (s *Service) askSuggestions(ctx context.Context, owner vo.Id, rows []sugges
 		slog.Warn("import suggest payees failed", append([]any{"user_id", owner.String()}, ai.LogAttrs(err)...)...)
 		return replies, nil
 	}
-	applyPayeeReply(replies, picks, candidates)
+	ids, unknown := resolvePayees(picks, candidates, keys)
+	ai.LogUnknownKeys(owner.String(), "payees", unknown)
+	applyPayeeReply(replies, ids, candidates)
 	return replies, nil
 }
 

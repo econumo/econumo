@@ -127,10 +127,11 @@ row with no payee text is not sent at all (it gets no suggestion); a payee equal
 description counts as none (SimpleFIN copies the memo into an empty payee). Rows no suggestion
 could fill (a missing payee with no active payees, a missing category with none of the row's
 type) are dropped before the cap, and a row dated more than a day after its import is not live.
-For the owner: their non-archived categories of that type only (id, name), language and
-timezone. No payees. It asks, per row it is confident about,
-`{"rows":{"<key>":{"matchText":"...","merchant":"...","categoryId":"..."}}}`: the system prompt
-says to include `categoryId` only when highly confident and only from the listed ids, to pick as
+For the owner: their non-archived categories of that type only (a short key `c1`, `c2`, ...
+issued per request, and the name; never the id), language and timezone. No payees. It asks, per
+row it is confident about,
+`{"rows":[{"key":"<key>","matchText":"...","merchant":"...","categoryKey":"..."}]}`: the system prompt
+says to include `categoryKey` only when highly confident and only from the listed keys, to pick as
 `matchText` the shortest substring of the payee that identifies the merchant, copied exactly, and as `merchant` the merchant's common name
 ("Amazon" for "AMZN MKTP US*2K4"), omitted when unclear.
 
@@ -146,8 +147,14 @@ one active payee takes that payee without a request; two equal names, or only lo
 leave the row to step 2.
 
 *Step 2*, only when at least one row still has candidates after that: one request with only those rows (key,
-payee text, merchant name) and each row's candidates (id, name), asking
-`{"rows":{"<key>":{"payeeId":"..."}}}` only when a candidate is clearly the same merchant.
+payee text, merchant name) and each row's candidates (a short key `p1`, `p2`, ... unique within
+the request, so a payee offered to two rows has one key, and the name), asking
+`{"rows":[{"key":"<key>","payeeKey":"..."}]}` only when a candidate is clearly the same merchant.
+The server maps the keys back to ids: models mis-copy UUIDs (a live test returned `...6a78-...`
+for `...6a0b-...`), so no entity id is ever sent. A key the request never issued (a category,
+payee or row key) is dropped, and one WARN per call (`ai reply named unknown keys`, with
+`user_id`, `part` = `suggest`/`payees` and the count only) makes a model that copies badly
+visible.
 A pick that is not one of that row's candidates is dropped; rows without candidates get no
 payee (payees are never created). A failed or unusable step 2 keeps step 1's categories. The
 owner's opt-out is read again right before step 2 (and before the second type's step 1), as
@@ -155,8 +162,8 @@ before the first call; an opt-out found there ends the job with nothing stored.
 
 **Data allowlist (every AI prompt, 2026-11-12).** Allowed: category names and types, payee,
 tag and label names, account names, currency codes, language, timezone, the transaction's type
-and the bank's payee/merchant text, plus the opaque row keys and entity ids the answer refers
-to. Never: amounts, balances, opening balances, plans, dates, the description/memo line, user
+and the bank's payee/merchant text, plus the opaque per-request keys the answer refers to
+(row keys, and the short keys standing in for entity ids, which are never sent). Never: amounts, balances, opening balances, plans, dates, the description/memo line, user
 names, email addresses, other users' data. A guard test per prompt builder asserts its exact
 key set.
 
@@ -165,8 +172,8 @@ A score from an LLM is not calibrated, while the prompt plus validation does the
 more simply.
 
 **Validation.** The server keeps only what passes:
-- `categoryId` is one of the owner's non-archived categories and fits the row's type
-  (`categoryFits`); `payeeId` is one of that row's step-2 candidates (so one of the owner's
+- `categoryKey` maps to one of the owner's non-archived categories that fits the row's type
+  (`categoryFits`); `payeeKey` maps to one of that row's step-2 candidates (so one of the owner's
   non-archived payees);
 - `matchText`, after `NormalizeText`, occurs case-insensitively in the normalized payee (field
   `external_payee`); the description is never shown to the AI, so it is never a match field.

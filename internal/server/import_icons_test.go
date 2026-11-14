@@ -78,8 +78,8 @@ func (e *onbEnv) idByName(table, name string) string {
 
 type iconPrompt struct {
 	Timezone, Language string
-	Categories         []struct{ ID, Name, Type string }
-	Accounts           []struct{ ID, Name, Currency string }
+	Categories         []struct{ Key, Name, Type string }
+	Accounts           []struct{ Key, Name, Currency string }
 }
 
 func (e *onbEnv) iconPrompts() map[string]iconPrompt {
@@ -126,7 +126,7 @@ func TestCSVImport_ReviewsTheIconsOfWhatItCreated(t *testing.T) {
 	}
 	parts := e.iconPrompts()
 	cats, accts := parts["categories"], parts["accounts"]
-	if len(cats.Categories) != 2 || len(accts.Accounts) != 1 || accts.Accounts[0].ID != visa || accts.Accounts[0].Currency != "USD" {
+	if len(cats.Categories) != 2 || len(accts.Accounts) != 1 || accts.Accounts[0].Name != "Visa" || accts.Accounts[0].Key != "a1" || accts.Accounts[0].Currency != "USD" {
 		t.Fatalf("prompts = %+v", parts)
 	}
 	for _, p := range []iconPrompt{cats, accts} {

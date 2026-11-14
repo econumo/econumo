@@ -271,7 +271,7 @@ func idSet(ids []vo.Id) map[string]bool {
 }
 
 type reviewCategory struct {
-	ID   string `json:"id"`
+	Key  string `json:"key"`
 	Name string `json:"name"`
 	Type string `json:"type"`
 }
@@ -301,16 +301,17 @@ func (s *Service) reviewCategoryIcons(ctx context.Context, userID vo.Id, facts p
 	}
 	prompt := categoryIconFacts{Timezone: facts.Timezone, Language: facts.Language, Categories: []reviewCategory{}}
 	from := map[string]string{}
+	keys := ai.NewKeys("c")
 	for _, c := range categories {
 		if only[strings.ToLower(c.Id)] && c.IsArchived == 0 && repaintableCategory[c.Icon] {
-			prompt.Categories = append(prompt.Categories, reviewCategory{ID: c.Id, Name: c.Name, Type: c.Type})
+			prompt.Categories = append(prompt.Categories, reviewCategory{Key: keys.Key(strings.ToLower(c.Id)), Name: c.Name, Type: c.Type})
 			from[strings.ToLower(c.Id)] = c.Icon
 		}
 	}
 	if len(prompt.Categories) == 0 {
 		return nil
 	}
-	icons, err := s.askIcons(ctx, userID, categoryIconsSystem, categoryIconsSchema, prompt, "categories")
+	icons, err := s.askIcons(ctx, userID, categoryIconsSystem, categoryIconsSchema, prompt, keys, reviewCategories.part)
 	if err != nil {
 		return err
 	}
@@ -329,16 +330,17 @@ func (s *Service) reviewAccountIcons(ctx context.Context, userID vo.Id, facts pr
 	}
 	prompt := promptFacts{Timezone: facts.Timezone, Language: facts.Language, Accounts: []promptAccount{}}
 	from := map[string]string{}
+	keys := ai.NewKeys("a")
 	for _, a := range accounts {
 		if only[strings.ToLower(a.ID)] && repaintableAccount[a.Icon] {
-			prompt.Accounts = append(prompt.Accounts, promptAccount{ID: a.ID, Name: a.Name, Currency: a.CurrencyCode})
+			prompt.Accounts = append(prompt.Accounts, promptAccount{Key: keys.Key(strings.ToLower(a.ID)), Name: a.Name, Currency: a.CurrencyCode})
 			from[strings.ToLower(a.ID)] = a.Icon
 		}
 	}
 	if len(prompt.Accounts) == 0 {
 		return nil
 	}
-	icons, err := s.askIcons(ctx, userID, accountIconsSystem, accountIconsSchema, prompt, "accounts")
+	icons, err := s.askIcons(ctx, userID, accountIconsSystem, accountIconsSchema, prompt, keys, reviewAccounts.part)
 	if err != nil {
 		return err
 	}
@@ -362,10 +364,11 @@ func (s *Service) reviewSavings(ctx context.Context, userID, budgetID vo.Id, fac
 	return s.classify(ctx, userID, budgetID, ids, facts)
 }
 
-// askIcons sends one icon request and reads the {key:[{id, icon}]} list out of
-// the reply (tolerating a code fence or prose around it) into a map, ids
-// lower-cased; a repeated id keeps its first icon.
-func (s *Service) askIcons(ctx context.Context, userID vo.Id, system string, schema *ai.Schema, prompt any, key string) (map[string]string, error) {
+// askIcons sends one icon request and reads the {part:[{key, icon}]} list out
+// of the reply (tolerating a code fence or prose around it) into a map from
+// the lower-cased ids the keys stand for; a repeated key keeps its first icon,
+// and keys the request never issued are dropped and counted in a WARN.
+func (s *Service) askIcons(ctx context.Context, userID vo.Id, system string, schema *ai.Schema, prompt any, keys *ai.Keys, part string) (map[string]string, error) {
 	body, err := json.Marshal(prompt)
 	if err != nil {
 		return nil, err
@@ -377,7 +380,21 @@ func (s *Service) askIcons(ctx context.Context, userID vo.Id, system string, sch
 	if err != nil {
 		return nil, err
 	}
-	return parseIcons(raw, key)
+	byKey, err := parseIcons(raw, part)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]string, len(byKey))
+	unknown := 0
+	for key, icon := range byKey {
+		if id, ok := keys.ID(key); ok {
+			out[id] = icon
+		} else {
+			unknown++
+		}
+	}
+	ai.LogUnknownKeys(userID.String(), part, unknown)
+	return out, nil
 }
 
 func parseIcons(raw, key string) (map[string]string, error) {
@@ -390,7 +407,7 @@ func parseIcons(raw, key string) (map[string]string, error) {
 		return nil, MalformedReplyError{}
 	}
 	var icons []struct {
-		ID   string `json:"id"`
+		Key  string `json:"key"`
 		Icon string `json:"icon"`
 	}
 	if err := json.Unmarshal(parsed[key], &icons); err != nil && parsed[key] != nil {
@@ -398,9 +415,9 @@ func parseIcons(raw, key string) (map[string]string, error) {
 	}
 	out := make(map[string]string, len(icons))
 	for _, it := range icons {
-		id := strings.ToLower(strings.TrimSpace(it.ID))
-		if _, seen := out[id]; !seen && id != "" {
-			out[id] = strings.TrimSpace(it.Icon)
+		k := strings.ToLower(strings.TrimSpace(it.Key))
+		if _, seen := out[k]; !seen && k != "" {
+			out[k] = strings.TrimSpace(it.Icon)
 		}
 	}
 	return out, nil
