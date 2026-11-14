@@ -23,7 +23,7 @@ const choices: PaymentsFromChoices = {
   labels: [{ id: 'label1', name: 'health', icon: 'sell' }, { id: 'label2', name: 'car', icon: 'sell' }],
 }
 
-function renderEditor({ initial = empty, categoryLocked = false, readOnly = false, onRemove }: { initial?: PaymentsFrom; categoryLocked?: boolean; readOnly?: boolean; onRemove?: () => void } = {}) {
+function renderEditor({ initial = empty, categoryLocked = false, onRemove }: { initial?: PaymentsFrom; categoryLocked?: boolean; onRemove?: () => void } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const changes: PaymentsFrom[] = []
   function Host() {
@@ -37,7 +37,6 @@ function renderEditor({ initial = empty, categoryLocked = false, readOnly = fals
         }}
         choices={choices}
         categoryLocked={categoryLocked}
-        readOnly={readOnly}
         onRemove={onRemove}
       />
     )
@@ -64,13 +63,6 @@ it('reads as a sentence with no explainer under it', () => {
   expect(screen.getByRole('button', { name: 'Payee (optional): any payee' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Tag (optional): any tag' })).toBeInTheDocument()
   expect(screen.queryByText(/Econumo finds this loan's payments/)).toBeNull()
-})
-
-it('a read-only sentence names the picks without pickers', () => {
-  renderEditor({ initial: { categoryId: 'cat-food', payeeId: null, tagId: null, labelId: 'label1' }, readOnly: true })
-  // the icons are ligature text
-  expect(document.body).toHaveTextContent(/Payments in \w*Food · from any payee · tagged \w*health/)
-  expect(screen.queryAllByRole('button')).toHaveLength(0)
 })
 
 it('one tag slot lists tags and reporting tags in two groups', async () => {

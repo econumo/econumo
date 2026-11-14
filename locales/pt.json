@@ -561,9 +561,7 @@
       "heading": "Que pagamentos contam",
       "add_category": "Adicionar uma categoria",
       "remove": "Remover esta categoria",
-      "owned_category": "{category} de {owner}",
-      "none": "Sem categorias",
-      "none_editor": "Sem categorias. Adicione uma em Definições."
+      "owned_category": "{category} de {owner}"
     },
     "add_to": {
       "title": "Adicionar a uma dívida",

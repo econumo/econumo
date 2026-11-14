@@ -1,14 +1,13 @@
 import { useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Plus } from 'lucide-react'
-import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import type { DebtRuleDto, DebtRuleOptionsDto } from '@/api/dto/debt'
 import type { Id } from '@/api/types'
 import { useUserData } from '@/features/user/queries'
 import { PaymentsFromEditor } from './PaymentsFromEditor'
 import type { Option, OptionGroup, PaymentsFromChoices } from './PaymentsFromEditor'
-import { emptyRule, MAX_RULES, ruleDraft, ruleOwnerLabel } from './rules'
+import { emptyRule, MAX_RULES } from './rules'
 import type { PaymentsFrom, RuleDraft } from './rules'
 
 export interface RulesEditorProps {
@@ -16,29 +15,15 @@ export interface RulesEditorProps {
   onChange: (next: RuleDraft[]) => void
   /** the budget's participants and what a rule may name; undefined while loading */
   options: DebtRuleOptionsDto | undefined
-  /** the debt's stored rules: read-only they are the sentences; editing, their
-      names stand in for picks the options no longer list (an archived
-      category, a former participant's) */
+  /** the debt's stored rules: their names stand in for picks the options no
+      longer list (an archived category, a former participant's) */
   initialRules?: DebtRuleDto[]
   /** converting a category row: the first rule keeps that category */
   lockedCategoryId?: Id
   error?: string
-  readOnly?: boolean
 }
-
-const noop = () => {}
 
 const categoryOption = (o: { id: Id; name: string; icon?: string }): Option => ({ id: o.id, name: o.name, icon: o.icon || 'pending' })
-
-/** the stored rule's own names as the only choices: its sentence read aloud */
-function storedChoices(rule: DebtRuleDto, viewerId: Id | undefined, t: TFunction): PaymentsFromChoices {
-  return {
-    categories: [{ options: [categoryOption({ id: rule.categoryId, name: ruleOwnerLabel(rule, viewerId, t), icon: rule.categoryIcon })] }],
-    payees: rule.payeeId ? [{ id: rule.payeeId, name: rule.payeeName }] : [],
-    tags: rule.tagId ? [{ id: rule.tagId, name: rule.tagName }] : [],
-    labels: rule.labelId ? [{ id: rule.labelId, name: rule.labelName }] : [],
-  }
-}
 
 function RulesCard({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   const { t } = useTranslation()
@@ -51,33 +36,14 @@ function RulesCard({ children, footer }: { children: ReactNode; footer?: ReactNo
   )
 }
 
-/** The debt's stored rules read out, a partner's category with its owner's name */
-export function RulesReadOnly({ rules, canEdit = false }: { rules: DebtRuleDto[]; canEdit?: boolean }) {
-  const { t } = useTranslation()
-  const { data: user } = useUserData()
-  return (
-    <RulesCard>
-      {/* deleting the categories of every rule leaves none */}
-      {rules.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t(canEdit ? 'debts.rules.none_editor' : 'debts.rules.none')}</p>
-      ) : (
-        rules.map((rule) => (
-          <PaymentsFromEditor key={rule.id} value={ruleDraft(rule)} onChange={noop} choices={storedChoices(rule, user?.id, t)} readOnly />
-        ))
-      )}
-    </RulesCard>
-  )
-}
-
 /**
  * Which payments count as the debt's: one sentence per rule (1..10 when
  * saved; a stored debt may have 0 after a classification delete), each on
  * a category of any participant of the budget. The category picker groups
  * the categories by participant, the caller's first; the payee and tag
- * pickers list what the chosen category's owner has. Read-only, the stored
- * rules are read out, a partner's category with its owner's name.
+ * pickers list what the chosen category's owner has.
  */
-export function RulesEditor({ value, onChange, options, initialRules = [], lockedCategoryId, error, readOnly = false }: RulesEditorProps) {
+export function RulesEditor({ value, onChange, options, initialRules = [], lockedCategoryId, error }: RulesEditorProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   // a line's React key follows its draft through edits (each edit is a new
@@ -91,10 +57,6 @@ export function RulesEditor({ value, onChange, options, initialRules = [], locke
       lineKeys.current.set(rule, key)
     }
     return key
-  }
-
-  if (readOnly) {
-    return <RulesReadOnly rules={initialRules} />
   }
 
   const participants = options?.participants ?? []

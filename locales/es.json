@@ -561,9 +561,7 @@
       "heading": "Qué pagos cuentan",
       "add_category": "Añadir una categoría",
       "remove": "Quitar esta categoría",
-      "owned_category": "{category} de {owner}",
-      "none": "Sin categorías",
-      "none_editor": "Sin categorías. Añade una en Ajustes."
+      "owned_category": "{category} de {owner}"
     },
     "add_to": {
       "title": "Añadir a una deuda",

@@ -373,21 +373,6 @@ it('a debt not set up without a start date counts from the first payment', async
   expect(within(loan).getByText('Start date').nextElementSibling).toHaveTextContent('From the first payment')
 })
 
-// deleting the categories of every rule leaves a debt with none: one line says so
-it.each([
-  [1, 'No categories. Add one in Settings.'],
-  [0, 'No categories'],
-] as const)('a debt with no rules left says so (canEdit %s)', async (canEdit, line) => {
-  server.use(http.get('*/api/v1/debt/get-debt', () => ok({ ...details, item: { ...details.item, canEdit, rules: [] } })))
-  renderScreen()
-  await openScreen()
-  const group = screen.getByRole('group', { name: 'Which payments count' })
-  expect(within(group).getByText(line)).toBeInTheDocument()
-  if (canEdit === 0) {
-    expect(group).not.toHaveTextContent('Settings')
-  }
-})
-
 describe('a guest reads the debt without changing it', () => {
   const anna = {
     id: 'r2', categoryId: 'cat-mortgage', categoryName: 'Mortgage', categoryIcon: 'home', ownerUserId: 'u2', ownerName: 'Anna',
@@ -403,14 +388,11 @@ describe('a guest reads the debt without changing it', () => {
     server.use(http.get('*/api/v1/debt/get-debt', () => ok(guestView)))
   })
 
-  it('has no Settings or Danger zone tab, and the rules name the owner of a partner\'s category', async () => {
+  it('has no Settings or Danger zone tab', async () => {
     renderScreen()
     await openScreen()
 
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Overview', 'Balance'])
-    const sentence = screen.getByRole('group', { name: 'Which payments count' })
-    expect(sentence).toHaveTextContent(/Payments in \w*Anna's Mortgage · from any payee · tagged any tag/)
-    expect(within(sentence).queryAllByRole('button')).toHaveLength(0)
   })
 
   it('the Balance tab shows the history with no reconcile form and nothing to delete', async () => {
@@ -448,13 +430,11 @@ describe('a guest reads the debt without changing it', () => {
   })
 })
 
-it('the Overview reads which payments count as a sentence, with no pickers', async () => {
+it('the Overview does not list which payments count', async () => {
   renderScreen()
   await openScreen()
 
-  const sentence = screen.getByRole('group', { name: 'Which payments count' })
-  expect(sentence).toHaveTextContent(/Payments in \w*Food · from any payee · tagged any tag/)
-  expect(within(sentence).queryAllByRole('button')).toHaveLength(0)
+  expect(screen.queryByRole('group', { name: 'Which payments count' })).toBeNull()
 })
 
 it('shows interest, principal and the balance left after each payment, newest first', async () => {

@@ -2258,7 +2258,8 @@ data unreadable. Most are also asserted by the test suite.
   **Debt SPA flow** (`web/src/features/debts`): a debt belongs to its budget and is reached only
   from its budget row (there is no Settings page for debts). Create is a short form opened by the
   row's "Track as debt" (`OpenDebtParams.budgetId` required: the form never asks for a budget):
-  name, the rule list
+  name with the icon button at its start (`DebtNameField`, shared with Settings: it shows the
+  first rule's category icon until one is picked, and only a picked one is sent), the rule list
   `RulesEditor`, a "Which payments count" card with one "payments from" sentence per rule, each a
   `PaymentsFromEditor` of chip pickers for category/payee and ONE tag slot whose picker lists tags
   and reporting tags in two headed groups, setting `tagId` or `labelId` and clearing the other,
@@ -2326,9 +2327,7 @@ data unreadable. Most are also asserted by the test suite.
   (that answer may predate a plan change; a forecast already loaded keeps standing offline), and
   hiding Planned extra meanwhile rather than show a plan-free number.
   The principal repaid does not depend on plans.
-  The rules read-only (`RulesReadOnly`, one sentence each, a category of another participant
-  named with its owner, "Anna's Mortgage", `ruleOwnerLabel`; with none left after a
-  classification delete, one line, "No categories", plus "Add one in Settings." for an editor), payments (with a Balance column on a set-up debt: `get-debt`'s
+  The rules are not on the Overview (only in Settings). Payments (with a Balance column on a set-up debt: `get-debt`'s
   additive `balance` per payment, what was owed after it, from the snapshots and stored splits,
   `""` while not set up; Principal is left out on a phone); the history of the loan's entries is
   the Balance tab's.

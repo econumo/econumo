@@ -13,6 +13,10 @@ from its budget row, so the create form never asks for a budget.
 picked in the review screen's Settings tab with the name; `icon` on create/update-debt (left out
 or `""` on update keeps it). Every reader shows it, else the first rule's category icon as before.
 
+**Revision 2026-11-13:** the create form also picks the icon (the same button at the start of the
+name field), and the Overview no longer lists which payments count: the rules are in Settings only,
+so a guest no longer sees them.
+
 ## Why
 
 A couple shares a mortgage. Sometimes he pays it, sometimes she does; each records the payment from

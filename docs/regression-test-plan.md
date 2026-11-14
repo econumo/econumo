@@ -2485,7 +2485,10 @@ running these.
       Connections, Budgets, Recurring) and `/settings/debts` is not a page: a
       debt is reached only from its budget's row.
 - [ ] 📱 **Create form** (a budget category row's "Track as debt") is short: an
-      intro line, Name (no Budget row: the debt goes to that row's budget), a "Which
+      intro line, Name with an icon button at the start of the field (it shows
+      the category's icon; tapping it opens the icon list, picking closes it, and
+      the debt is saved with the picked icon; untouched, it keeps showing its
+      category's), no Budget row (the debt goes to that row's budget), a "Which
       payments count" card holding one "Payments from" sentence per category (chips:
       Category, then an optional payee and an optional tag, each opening a
       searchable picker with an "any ..." row at the top that is hidden while
@@ -2579,7 +2582,8 @@ running these.
       its field. A partner who may plan edits the shared debt the same way. The tab ends at
       Cancel and Save; while the debt loads it shows the loader, not the
       buttons alone.
-- [ ] 📱 **Debt icon**: a new debt shows its category's icon. In Settings pick
+- [ ] 📱 **Debt icon**: a new debt shows its category's icon unless one was picked
+      on the create form. In Settings pick
       another icon and Save: the header, the budget's Debts row (Budget and
       Plan, for every participant, a guest included), the item sheet and "Add
       to a debt" show the new one; changing the category afterwards keeps it.
@@ -2699,8 +2703,7 @@ running these.
       extra is what the budget plans above the regular payment from now on
       (0.00 with no plans); it appears only once the plans have loaded and
       stays hidden offline with nothing loaded before;
-      below it "Which payments count" as plain sentences (no pickers), one per
-      category, a partner's category named with its owner ("Anna's Mortgage"), the
+      below it (no "Which payments count" card: the rules are in Settings) the
       payments (Date / Payment / Interest / Principal / Balance, newest
       first; Balance is what was owed after that payment, the newest one
       matching the Balance tab's balance today when it is not dated after
@@ -2716,8 +2719,7 @@ running these.
       item sheet) and gets a read-only screen: the Overview and,
       for a set-up debt, the Balance tab with the summary and the history but no
       reconcile form and no delete buttons; there is no Settings or Danger zone tab
-      and no Finish setup button. The sentences under "Which payments count" read
-      the same as for the partner. Opened from a "Finish setup" path (an old link)
+      and no Finish setup button. Opened from a "Finish setup" path (an old link)
       it shows the Overview.
 - [ ] 📱 **Overview follows the plans**: in the debt's budget, plan the debt row above
       its regular payment in a coming month, then open the debt's Details: "N payments left" and the "X of Y paid" total drop (an

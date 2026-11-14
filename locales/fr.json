@@ -561,9 +561,7 @@
       "heading": "Paiements pris en compte",
       "add_category": "Ajouter une catégorie",
       "remove": "Retirer cette catégorie",
-      "owned_category": "{category} de {owner}",
-      "none": "Aucune catégorie",
-      "none_editor": "Aucune catégorie. Ajoutez-en une dans Paramètres."
+      "owned_category": "{category} de {owner}"
     },
     "add_to": {
       "title": "Ajouter à une dette",

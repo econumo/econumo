@@ -39,8 +39,6 @@ export interface PaymentsFromEditorProps {
   choices: PaymentsFromChoices
   /** converting a category row: the category is the row's and stays */
   categoryLocked?: boolean
-  /** the sentence as text: the picks named, nothing to change */
-  readOnly?: boolean
   /** shows a button that drops this sentence */
   onRemove?: () => void
 }
@@ -57,7 +55,6 @@ function SlotPicker({
   placeholder,
   anyLabel,
   disabled,
-  readOnly,
   onPick,
 }: {
   title: string
@@ -66,21 +63,12 @@ function SlotPicker({
   placeholder: string
   anyLabel?: string
   disabled?: boolean
-  readOnly?: boolean
   onPick: (id: string | null) => void
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const selected = groups.flatMap((g) => g.options).find((o) => o.id === value)
   const shown = selected?.chosenName ?? selected?.name ?? placeholder
-  if (readOnly) {
-    return (
-      <span className={cn('inline-flex max-w-full items-center gap-1', !selected && 'text-muted-foreground')}>
-        {selected?.icon ? <EntityIcon name={selected.icon} className="shrink-0 text-base text-muted-foreground" /> : null}
-        <span className="truncate">{shown}</span>
-      </span>
-    )
-  }
   const pick = (id: string | null) => {
     onPick(id)
     setOpen(false)
@@ -151,7 +139,7 @@ const LABEL = 'label:'
  * [any payee] · tagged [any tag]". The tag slot holds a tag or a reporting
  * tag, never both. The category is required, the rest narrow it down.
  */
-export function PaymentsFromEditor({ value, onChange, choices, categoryLocked = false, readOnly = false, onRemove }: PaymentsFromEditorProps) {
+export function PaymentsFromEditor({ value, onChange, choices, categoryLocked = false, onRemove }: PaymentsFromEditorProps) {
   const { t } = useTranslation()
   const set = (partial: Partial<PaymentsFrom>) => onChange({ ...value, ...partial })
   const tagValue = value.tagId ? TAG + value.tagId : value.labelId ? LABEL + value.labelId : null
@@ -176,7 +164,6 @@ export function PaymentsFromEditor({ value, onChange, choices, categoryLocked = 
           groups={choices.categories}
           value={value.categoryId}
           placeholder={t('debts.payments_from.choose_category')}
-          readOnly={readOnly}
           disabled={categoryLocked}
           onPick={(categoryId) => set({ categoryId })}
         />
@@ -190,7 +177,6 @@ export function PaymentsFromEditor({ value, onChange, choices, categoryLocked = 
           groups={[{ options: choices.payees }]}
           value={value.payeeId}
           placeholder={t('debts.payments_from.any_payee')}
-          readOnly={readOnly}
           anyLabel={t('debts.payments_from.any_payee')}
           onPick={(payeeId) => set({ payeeId })}
         />
@@ -207,12 +193,11 @@ export function PaymentsFromEditor({ value, onChange, choices, categoryLocked = 
           ]}
           value={tagValue}
           placeholder={t('debts.payments_from.any_tag')}
-          readOnly={readOnly}
           anyLabel={t('debts.payments_from.any_tag')}
           onPick={pickTag}
         />
       </p>
-      {onRemove && !readOnly ? (
+      {onRemove ? (
         <Button type="button" variant="ghost" size="icon" className="-my-1 size-8 shrink-0" aria-label={t('debts.rules.remove')} title={t('debts.rules.remove')} onClick={onRemove}>
           <X className="size-4" />
         </Button>

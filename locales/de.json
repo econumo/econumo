@@ -561,9 +561,7 @@
       "heading": "Welche Zahlungen zählen",
       "add_category": "Kategorie hinzufügen",
       "remove": "Diese Kategorie entfernen",
-      "owned_category": "{category} von {owner}",
-      "none": "Keine Kategorien",
-      "none_editor": "Keine Kategorien. Fügen Sie in den Einstellungen eine hinzu."
+      "owned_category": "{category} von {owner}"
     },
     "add_to": {
       "title": "Zu einer Schuld hinzufügen",

@@ -18,10 +18,9 @@ function mockMatchMedia() {
 
 const food: RuleDraft = { categoryId: 'cat-food', payeeId: null, tagId: null, labelId: null }
 
-function renderEditor({ initial = [food], initialRules, readOnly = false, lockedCategoryId, error }: {
+function renderEditor({ initial = [food], initialRules, lockedCategoryId, error }: {
   initial?: RuleDraft[]
   initialRules?: DebtRuleDto[]
-  readOnly?: boolean
   lockedCategoryId?: string
   error?: string
 } = {}) {
@@ -39,7 +38,6 @@ function renderEditor({ initial = [food], initialRules, readOnly = false, locked
         }}
         options={wireRuleOptions}
         initialRules={initialRules}
-        readOnly={readOnly}
         lockedCategoryId={lockedCategoryId}
         error={error}
       />
@@ -187,14 +185,4 @@ it('the locked category cannot be changed or removed', async () => {
 it('shows its error under the rules', () => {
   renderEditor({ error: 'Another debt already counts these payments.' })
   expect(screen.getByText('Another debt already counts these payments.')).toBeInTheDocument()
-})
-
-it('read-only, it names each rule and the owner of a partner\'s category', () => {
-  const anna: DebtRuleDto = { ...wireRule, id: 'r2', categoryId: 'cat-mortgage', categoryName: 'Mortgage', categoryIcon: 'home', ownerUserId: 'u2', ownerName: 'Anna', labelId: 'l-house', labelName: 'house' }
-  renderEditor({ readOnly: true, initialRules: [wireRule, anna] })
-  const group = screen.getByRole('group', { name: 'Which payments count' })
-  // icons are ligature text
-  expect(group).toHaveTextContent(/Payments in \w*Food · from any payee · tagged any tag/)
-  expect(group).toHaveTextContent(/Payments in \w*Anna's Mortgage · from any payee · tagged \w*house/)
-  expect(within(group).queryAllByRole('button')).toHaveLength(0)
 })

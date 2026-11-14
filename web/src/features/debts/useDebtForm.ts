@@ -15,6 +15,8 @@ export const SCHEDULE_ORDER: RecurringSchedule[] = ['weekly', 'biweekly', 'month
 
 export interface DebtCreateState {
   name: string
+  /** the icon picked, "" = none (the debt shows its first rule's category icon) */
+  icon: string
   /** a budget row's currency; null leaves the budget's to the server, until a
       refused currency makes the user pick one */
   currencyId: Id | null
@@ -29,6 +31,7 @@ export interface DebtCreateState {
 export function initialCreateState(params: OpenDebtParams, categories: CategoryDto[]): DebtCreateState {
   return {
     name: categories.find((c) => c.id === params.categoryId)?.name ?? '',
+    icon: '',
     currencyId: params.currencyId ?? null,
     rules: [{ ...emptyRule(), categoryId: params.categoryId ?? null }],
     payment: '',
@@ -42,6 +45,7 @@ export function buildCreatePayload(state: DebtCreateState, budgetId: Id): Create
   return {
     budgetId,
     name: state.name.trim(),
+    ...(state.icon ? { icon: state.icon } : {}),
     ...(state.currencyId ? { currencyId: state.currencyId } : {}),
     rules: state.rules.map(ruleForm),
     startDate: state.startDate || null,

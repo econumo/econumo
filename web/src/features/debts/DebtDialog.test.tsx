@@ -205,6 +205,29 @@ it('the payload carries the given budget and every rule', async () => {
   })
 })
 
+it('the icon button before the name shows the category\'s icon and sends only a picked one', async () => {
+  const bodies = captureCreate()
+  const user = userEvent.setup()
+  renderDialog()
+  await openCreate({ categoryId: 'cat-food' })
+  await waitFor(() => expect(ruleOptionRequests).toContain('b1'))
+
+  const iconButton = screen.getByRole('button', { name: 'Icon' })
+  expect(iconButton.compareDocumentPosition(screen.getByLabelText('Name')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // icons are ligature text
+  await waitFor(() => expect(iconButton).toHaveTextContent('restaurant'))
+  await user.click(iconButton)
+  const picker = await screen.findByRole('listbox', { name: 'Icon' })
+  await user.click(within(picker).getByRole('option', { name: 'savings' }))
+  await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Icon' })).toBeNull())
+  expect(iconButton).toHaveTextContent('savings')
+
+  await user.type(screen.getByLabelText('Payment'), '50')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).toMatchObject({ icon: 'savings' })
+})
+
 it('saving opens the debt\'s review screen', async () => {
   captureCreate()
   const user = userEvent.setup()

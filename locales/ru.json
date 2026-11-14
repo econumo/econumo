@@ -561,9 +561,7 @@
       "heading": "Какие платежи учитываются",
       "add_category": "Добавить категорию",
       "remove": "Убрать эту категорию",
-      "owned_category": "{category} ({owner})",
-      "none": "Нет категорий",
-      "none_editor": "Нет категорий. Добавьте категорию в настройках."
+      "owned_category": "{category} ({owner})"
     },
     "add_to": {
       "title": "Добавить к долгу",

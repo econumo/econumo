@@ -22,7 +22,6 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { debtDay } from './debtDates'
 import { DebtBalanceTab } from './DebtBalanceTab'
 import { DebtSettingsForm } from './DebtSettingsForm'
-import { RulesReadOnly } from './RulesEditor'
 import { useDebt, useDebtForecast, useFetchDebtForEdit } from './queries'
 import { useDebtDangerActions } from './useDebtDangerActions'
 import { useDebtMoney, usePaymentsLeft } from './useDebtMoney'
@@ -581,8 +580,6 @@ function ReviewContent({ details, lang, onFinishSetup }: { details: DebtDetailsD
           )}
         </dl>
       </section>
-
-      <RulesReadOnly rules={item.rules} canEdit={item.canEdit === 1} />
 
       <PaymentsSection payments={payments} splits={setUp} canForecast={canForecast} forecast={forecast} amount={amount} lang={lang} />
 

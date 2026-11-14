@@ -561,9 +561,7 @@
       "heading": "Quali pagamenti contano",
       "add_category": "Aggiungi una categoria",
       "remove": "Rimuovi questa categoria",
-      "owned_category": "{category} di {owner}",
-      "none": "Nessuna categoria",
-      "none_editor": "Nessuna categoria. Aggiungine una in Impostazioni."
+      "owned_category": "{category} di {owner}"
     },
     "add_to": {
       "title": "Aggiungi a un debito",

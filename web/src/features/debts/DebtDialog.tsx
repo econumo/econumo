@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { CardField } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { fullCurrencyLabel } from '@/components/CurrencySelect'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
@@ -20,10 +19,13 @@ import { useBudgets } from '@/features/budgets/queries'
 import { useCategories } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useCreateDebt, useDebtRuleOptions } from './queries'
-import { PaymentField, StartDateField } from './debtFields'
+import { DebtNameField, PaymentField, StartDateField } from './debtFields'
 import type { FieldErrors } from './debtFields'
 import { RulesEditor } from './RulesEditor'
 import { amountEcho, amountError, buildCreatePayload, useDebtCreateForm } from './useDebtForm'
+
+// model.DefaultIcon: a debt with no icon and no rule category
+const DEFAULT_CATEGORY_ICON = 'local_offer'
 
 // the fields a server refusal can name; anything else lands in the form's alert
 const SERVER_FIELDS = ['name', 'budgetId', 'currencyId', 'rules', 'startDate', 'payment', 'schedule']
@@ -77,6 +79,12 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
     // only when the options arrive: typing must not bring the name back
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options])
+
+  // until one is picked the debt shows its first rule's category icon
+  const firstCategoryId = form.rules[0]?.categoryId
+  const firstCategoryIcon = options?.participants.flatMap((p) => p.categories).find((c) => c.id === firstCategoryId)?.icon
+    || categories.find((c) => c.id === firstCategoryId)?.icon
+    || DEFAULT_CATEGORY_ICON
 
   const currencyId = form.currencyId ?? budget?.currencyId ?? null
   const currency = currencies?.find((c) => c.id === currencyId)
@@ -158,19 +166,18 @@ function DebtCreateForm({ params, onDone }: { params: OpenDebtParams; onDone: ()
         <OfflineNotice />
         <p className="text-sm text-muted-foreground">{t('debts.form.intro')}</p>
 
-        <CardField label={t('debts.form.name.label')} htmlFor="debt-name" error={errors.name}>
-          <Input
-            id="debt-name"
-            className={cardFieldControlClass}
-            autoComplete="off"
-            value={form.name}
-            onChange={(e) => {
-              clearError('name')
-              setNameTouched(true)
-              patch({ name: e.target.value })
-            }}
-          />
-        </CardField>
+        <DebtNameField
+          id="debt-name"
+          name={form.name}
+          icon={form.icon || firstCategoryIcon}
+          error={errors.name}
+          onNameChange={(name) => {
+            clearError('name')
+            setNameTouched(true)
+            patch({ name })
+          }}
+          onIconChange={(icon) => patch({ icon })}
+        />
 
         <RulesEditor
           value={form.rules}
